@@ -4883,6 +4883,13 @@ export interface ServiceRecommendationEventsTable {   // migration 766 — appen
 export interface ServiceRecommendationHealthRunsTable {   // migration 766 — read-only "Check Service Recommendations System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface AiCustomerProfileSettingsEventsTable {   // migration 767 — append-only history of Customer AI Settings changes
+  id: Generated<string>; tenant_id: string; level: string; branch_id: string | null; user_id: string | null; event_type: string; before: Generated<unknown>; after: Generated<unknown>;
+  changed_keys: Generated<string[]>; reason: string | null; version: number; actor_user_id: string | null; actor_role: string | null; created_at: Generated<Ts>;
+}
+export interface CustomerAiSettingsHealthRunsTable {   // migration 767 — read-only "Check Customer AI System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerIntelligenceScansTable {   // migration 763 — Customer Intelligence scans (counts per state, rule version, tunables)
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
@@ -7226,6 +7233,8 @@ export interface DB {
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
   ai_customer_profile_settings: AiCustomerProfileSettingsTable;
+  ai_customer_profile_settings_events: AiCustomerProfileSettingsEventsTable;
+  customer_ai_settings_health_runs: CustomerAiSettingsHealthRunsTable;
   ai_checkout_upsell_settings: AiCheckoutUpsellSettingsTable;
   ai_checkout_upsell_recommendations: AiCheckoutUpsellRecommendationsTable;
   ai_checkout_upsell_dismissals: AiCheckoutUpsellDismissalsTable;
@@ -8293,6 +8302,7 @@ export interface AiCustomerProfileSettingsTable {
   updated_by_user_id: string | null;
   created_at: Generated<string>; updated_at: Generated<string>;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  version: Generated<number>;   // migration 767 (Customer AI Settings: optimistic concurrency)
 }
 export interface AiCheckoutUpsellSettingsTable {
   id: Generated<string>; tenant_id: string; level: 'tenant' | 'branch' | 'device' | 'user';

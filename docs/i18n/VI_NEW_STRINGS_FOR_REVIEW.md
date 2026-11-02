@@ -12948,3 +12948,194 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `srx.scanStatus.completed` | Completed | Hoàn tất |
 | `srx.scanStatus.failed` | Failed | Lỗi |
 | `srx.scanStatus.running` | Running | Đang chạy |
+
+## Customer AI Settings (`casx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `casx.loadFailed` | Customer AI settings could not be loaded. Nothing is shown as "enabled" until they are. | Không tải được cài đặt AI khách hàng. Sẽ không hiển thị "đang bật" cho đến khi tải được. |
+| `casx.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì thay đổi. |
+| `casx.loading` | Loading settings… | Đang tải cài đặt… |
+| `casx.close` | Close | Đóng |
+| `casx.cancel` | Cancel | Hủy |
+| `casx.check` | Check Customer AI System | Kiểm tra hệ thống AI khách hàng |
+| `casx.notAllowed` | Your role can view these settings but not change them. | Vai trò của bạn được xem nhưng không được thay đổi các cài đặt này. |
+| `casx.scopeNote` | Changes here apply to this salon only. They never change the subscription, billing, another salon, or the Super Admin package switch. | Thay đổi ở đây chỉ áp dụng cho tiệm này. Không thay đổi gói đăng ký, thanh toán, tiệm khác hay công tắc gói của Super Admin. |
+| `casx.superAdminNote` | Super Admin can turn the AI Customer Profile package off for every salon; per-salon values are set here. | Super Admin có thể tắt gói Hồ sơ khách hàng AI cho mọi tiệm; giá trị riêng của tiệm được đặt tại đây. |
+| `casx.edit` | Edit thresholds | Sửa ngưỡng |
+| `casx.reset` | Reset to defaults | Đặt lại mặc định |
+| `casx.save` | Save | Lưu |
+| `casx.preview` | Preview impact | Xem trước ảnh hưởng |
+| `casx.reason` | Reason (optional) | Lý do (không bắt buộc) |
+| `casx.lastChange` | Last change {at} by {by} | Thay đổi gần nhất lúc {at} bởi {by} |
+| `casx.noChange` | No change has been recorded yet. | Chưa ghi nhận thay đổi nào. |
+| `casx.saved` | Saved. Version {v}. The evaluations use the new values on their next Refresh. | Đã lưu. Phiên bản {v}. Các lần đánh giá sẽ dùng giá trị mới ở lần Làm mới tiếp theo. |
+| `casx.previewNote` | An estimate from live completed visits. Nothing is recalculated until you save and the evaluations are refreshed. | Ước tính từ các lượt đã hoàn tất. Không tính lại gì cho đến khi bạn lưu và làm mới đánh giá. |
+| `casx.affected` | about {n} customers cross this line | khoảng {n} khách vượt ngưỡng này |
+| `casx.unchanged` | unchanged | không đổi |
+| `casx.invalid` | outside {min}–{max} | ngoài khoảng {min}–{max} |
+| `casx.rows` | Rows | Số dòng |
+| `casx.searchHistory` | Search by setting, person, role or change ID | Tìm theo cài đặt, người, vai trò hoặc mã thay đổi |
+| `casx.search` | Search | Tìm |
+| `casx.clear` | Clear | Xóa bộ lọc |
+| `casx.noHistory` | No settings change has been recorded yet. | Chưa ghi nhận thay đổi cài đặt nào. |
+| `casx.noMatch` | No change matches these filters. | Không có thay đổi nào khớp bộ lọc. |
+| `casx.anyType` | All changes | Tất cả thay đổi |
+| `casx.confirmTitle` | Confirm the change | Xác nhận thay đổi |
+| `casx.confirmDisable` | Turn the AI Customer Profile assistant OFF for {salon}? Profiles, Intelligence, Churn Watch, Rebooking and Service Recommendations stop until it is turned back on. Nothing is deleted. | Tắt trợ lý Hồ sơ khách hàng AI cho {salon}? Hồ sơ, Phân tích, Theo dõi rời bỏ, Đặt lại lịch và Gợi ý dịch vụ sẽ dừng cho đến khi bật lại. Không có gì bị xóa. |
+| `casx.confirmEnable` | Turn the AI Customer Profile assistant back ON for {salon}? It runs only if the package and subscription allow it. | Bật lại trợ lý Hồ sơ khách hàng AI cho {salon}? Trợ lý chỉ chạy nếu gói và đăng ký cho phép. |
+| `casx.confirmRole` | You are signed in as {role}. | Bạn đang đăng nhập với vai trò {role}. |
+| `casx.thisSalon` | this salon | tiệm này |
+| `casx.tab.thresholds` | Thresholds | Ngưỡng |
+| `casx.tab.history` | History | Lịch sử |
+| `casx.tab.health` | System Health | Tình trạng hệ thống |
+| `casx.strip.salon` | Salon setting | Cài đặt của tiệm |
+| `casx.strip.package` | Package & subscription | Gói & đăng ký |
+| `casx.strip.effective` | Effective | Hiệu lực |
+| `casx.strip.evaluations` | Evaluations | Đánh giá |
+| `casx.salon.enabled` | Enabled | Đang bật |
+| `casx.salon.disabled` | Disabled | Đang tắt |
+| `casx.salon.inherited` | Enabled (default) | Bật (mặc định) |
+| `casx.op.operational` | Running | Đang chạy |
+| `casx.op.disabled` | Turned off | Đã tắt |
+| `casx.op.subscription_blocked` | Blocked by the subscription | Bị chặn bởi gói đăng ký |
+| `casx.op.unknown_entitlement` | Subscription status unknown | Chưa rõ trạng thái đăng ký |
+| `casx.level.tenant` | this salon | tiệm này |
+| `casx.level.branch` | this branch | chi nhánh này |
+| `casx.level.user` | your user | tài khoản của bạn |
+| `casx.level.platform` | the platform | nền tảng |
+| `casx.disabledAt` | Turned off at the level of {l}. | Đã tắt ở cấp {l}. |
+| `casx.branchOff` | A branch setting turns it off here. | Cài đặt chi nhánh đang tắt tại đây. |
+| `casx.userOff` | A personal setting turns it off for you. | Cài đặt cá nhân đang tắt cho bạn. |
+| `casx.ent.ok` | Allowed | Được phép |
+| `casx.ent.package_disabled` | Turned off by Super Admin for all salons | Super Admin đã tắt cho mọi tiệm |
+| `casx.ent.not_subscribed` | Not subscribed | Chưa đăng ký |
+| `casx.ent.trial_expired` | Trial ended | Hết thời gian dùng thử |
+| `casx.ent.past_due` | Payment past due | Quá hạn thanh toán |
+| `casx.ent.unpaid` | Unpaid | Chưa thanh toán |
+| `casx.ent.cancelled` | Cancelled | Đã hủy |
+| `casx.ent.expired` | Expired | Đã hết hạn |
+| `casx.ent.subscription_suspended` | Suspended | Đã tạm ngưng |
+| `casx.ent.tenant_not_active` | Salon account not active | Tài khoản tiệm chưa hoạt động |
+| `casx.ent.branch_disabled` | Turned off for this branch | Đã tắt cho chi nhánh này |
+| `casx.ent.permission_denied` | Your role is not allowed | Vai trò của bạn không được phép |
+| `casx.ent.limit_exceeded` | Usage limit reached | Đã hết hạn mức sử dụng |
+| `casx.ent.unreadable` | Could not be read | Không đọc được |
+| `casx.ent.unknown` | Unknown | Chưa rõ |
+| `casx.mode.observe` | Not enforced yet — access is only recorded | Chưa áp dụng — chỉ ghi nhận |
+| `casx.mode.enforce` | Enforced | Đang áp dụng |
+| `casx.mode.off` | Gate off | Tắt kiểm tra |
+| `casx.prop.applied` | Using the current values | Đang dùng giá trị hiện tại |
+| `casx.prop.pending` | Pending — press Refresh on the screen | Đang chờ — hãy bấm Làm mới trên màn hình đó |
+| `casx.prop.never` | Not evaluated yet | Chưa đánh giá |
+| `casx.prop.ci` | Customer Intelligence (also Churn Watch and Rebooking) | Phân tích khách hàng (cả Theo dõi rời bỏ và Đặt lại lịch) |
+| `casx.prop.sr` | Service Recommendations | Gợi ý dịch vụ |
+| `casx.col.setting` | Setting | Cài đặt |
+| `casx.col.value` | Value | Giá trị |
+| `casx.col.default` | Default | Mặc định |
+| `casx.col.source` | Set by | Đặt bởi |
+| `casx.col.range` | Allowed | Cho phép |
+| `casx.src.default` | Default | Mặc định |
+| `casx.src.tenant` | This salon | Tiệm này |
+| `casx.src.branch` | This branch | Chi nhánh này |
+| `casx.src.user` | Your user | Tài khoản của bạn |
+| `casx.ignored` | A stored value at {l} was invalid and is ignored. | Giá trị lưu ở {l} không hợp lệ và bị bỏ qua. |
+| `casx.unit.visits` | {n} visits | {n} lượt |
+| `casx.unit.days` | {n} days | {n} ngày |
+| `casx.event.assistant_enabled` | Assistant turned on | Bật trợ lý |
+| `casx.event.assistant_disabled` | Assistant turned off | Tắt trợ lý |
+| `casx.event.thresholds_changed` | Thresholds changed | Thay đổi ngưỡng |
+| `casx.event.thresholds_reset` | Thresholds reset to defaults | Đặt lại ngưỡng mặc định |
+| `casx.hist.when` | When | Thời điểm |
+| `casx.hist.change` | Change | Thay đổi |
+| `casx.hist.keys` | Settings | Cài đặt |
+| `casx.hist.by` | By | Người thực hiện |
+| `casx.hist.version` | Version | Phiên bản |
+| `casx.preset.all` | All time | Mọi thời gian |
+| `casx.preset.today` | Today | Hôm nay |
+| `casx.preset.yesterday` | Yesterday | Hôm qua |
+| `casx.preset.week` | This week | Tuần này |
+| `casx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `casx.preset.month` | This month | Tháng này |
+| `casx.preset.last_month` | Last month | Tháng trước |
+| `casx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `casx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `casx.preset.year` | This year | Năm nay |
+| `casx.preset.custom` | Custom range | Tùy chọn |
+| `casx.ov.title` | Settings change | Thay đổi cài đặt |
+| `casx.ov.id` | Change ID | Mã thay đổi |
+| `casx.ov.before` | Before | Trước |
+| `casx.ov.after` | After | Sau |
+| `casx.ov.reason` | Reason | Lý do |
+| `casx.ov.role` | Role | Vai trò |
+| `casx.ov.propagation` | Picked up by the evaluations | Đã được các lần đánh giá áp dụng |
+| `casx.ov.appliedAt` | applied {at} | áp dụng lúc {at} |
+| `casx.ov.pendingRefresh` | pending — not refreshed since | đang chờ — chưa làm mới từ đó |
+| `casx.ov.assistant` | Assistant | Trợ lý |
+| `casx.ov.on` | On | Bật |
+| `casx.ov.off` | Off | Tắt |
+| `casx.ov.inherit` | Default | Mặc định |
+| `casx.err.CAS_STALE_VERSION` | Someone else changed these settings. They have been reloaded — check and try again. | Người khác vừa thay đổi cài đặt. Đã tải lại — hãy kiểm tra và thử lại. |
+| `casx.err.CAS_NO_CHANGE` | Nothing changed. | Không có gì thay đổi. |
+| `casx.err.CAS_OUT_OF_RANGE` | A value is outside its allowed range. | Có giá trị nằm ngoài khoảng cho phép. |
+| `casx.err.CAS_ORDER` | "Long-term inactive after" must be later than "Inactive after". | "Không hoạt động lâu dài sau" phải muộn hơn "Không hoạt động sau". |
+| `casx.err.CAS_INVALID_VALUE` | That value is not valid. | Giá trị không hợp lệ. |
+| `casx.err.CAS_VERSION_REQUIRED` | Reload the settings and try again. | Hãy tải lại cài đặt và thử lại. |
+| `casx.err.CAS_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `casx.err.CAS_EVENT_NOT_FOUND` | Change not found. | Không tìm thấy thay đổi. |
+| `casx.err.PERMISSION_DENIED` | Your role cannot change these settings. | Vai trò của bạn không được thay đổi các cài đặt này. |
+| `casx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `casx.health.running` | Checking… | Đang kiểm tra… |
+| `casx.health.run` | Run the check | Chạy kiểm tra |
+| `casx.health.intro` | Read-only. It never changes settings, starts paid AI work, books customers or sends messages. | Chỉ đọc. Không thay đổi cài đặt, chạy AI tính phí, đặt hẹn hay gửi tin. |
+| `casx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `casx.health.PASSED` | Passed | Đạt |
+| `casx.health.WARNING` | Warning | Cảnh báo |
+| `casx.health.FAILED` | Failed | Lỗi |
+| `casx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `casx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `casx.health.k.settings_source` | Settings can be read | Đọc được cài đặt |
+| `casx.health.d.settings_source.PASSED` | The salon, branch and user settings were read and resolved. | Đã đọc và tổng hợp cài đặt của tiệm, chi nhánh và người dùng. |
+| `casx.health.d.settings_source.FAILED` | The settings could not be read. The assistant stops (it never runs on an unreadable switch). Report this. | Không đọc được cài đặt. Trợ lý dừng (không bao giờ chạy khi không đọc được công tắc). Hãy báo lại. |
+| `casx.health.k.values_valid` | Stored values are valid | Giá trị lưu hợp lệ |
+| `casx.health.d.values_valid.PASSED` | Every stored threshold is a valid number. | Mọi ngưỡng đã lưu đều là số hợp lệ. |
+| `casx.health.d.values_valid.WARNING` | A stored threshold is invalid and is being ignored (the default applies). Save the thresholds again. | Có ngưỡng đã lưu không hợp lệ và đang bị bỏ qua (dùng mặc định). Hãy lưu lại ngưỡng. |
+| `casx.health.k.threshold_order` | Inactive before long-term inactive | Không hoạt động trước không hoạt động lâu dài |
+| `casx.health.d.threshold_order.PASSED` | Long-term inactive comes after inactive. | Không hoạt động lâu dài đến sau không hoạt động. |
+| `casx.health.d.threshold_order.FAILED` | Long-term inactive is not after inactive; customer states would be wrong. Fix the thresholds. | Không hoạt động lâu dài không sau không hoạt động; trạng thái khách sẽ sai. Hãy sửa ngưỡng. |
+| `casx.health.k.values_in_range` | Values within the allowed ranges | Giá trị trong khoảng cho phép |
+| `casx.health.d.values_in_range.PASSED` | Every effective threshold is within its allowed range. | Mọi ngưỡng hiệu lực đều trong khoảng cho phép. |
+| `casx.health.d.values_in_range.WARNING` | An effective threshold is outside the range this screen allows (set before the ranges existed). Review and save. | Có ngưỡng hiệu lực ngoài khoảng cho phép (được đặt trước khi có giới hạn). Hãy xem lại và lưu. |
+| `casx.health.k.assistant_state` | Assistant switched on | Trợ lý đang bật |
+| `casx.health.d.assistant_state.PASSED` | The assistant is on for this salon, branch and user. | Trợ lý đang bật cho tiệm, chi nhánh và người dùng này. |
+| `casx.health.d.assistant_state.WARNING` | The assistant is turned off; the customer AI screens show it as off rather than as empty. | Trợ lý đang tắt; các màn hình AI khách hàng hiển thị là đã tắt chứ không phải trống. |
+| `casx.health.k.scoped_overrides` | Branch or personal overrides | Cài đặt riêng của chi nhánh hoặc cá nhân |
+| `casx.health.d.scoped_overrides.PASSED` | No branch or personal override changes the salon values here. | Không có cài đặt riêng nào của chi nhánh hay cá nhân thay đổi giá trị của tiệm tại đây. |
+| `casx.health.d.scoped_overrides.WARNING` | A branch or personal override changes what applies for this session; the table shows which values. | Có cài đặt riêng của chi nhánh hoặc cá nhân thay đổi giá trị áp dụng cho phiên này; bảng cho biết giá trị nào. |
+| `casx.health.k.subscription` | Package and subscription | Gói và đăng ký |
+| `casx.health.d.subscription.PASSED` | The package is on and the subscription allows the assistant. | Gói đang bật và đăng ký cho phép trợ lý. |
+| `casx.health.d.subscription.WARNING` | The subscription would not allow the assistant; access is only recorded today (not enforced). See AI Plans. | Đăng ký không cho phép trợ lý; hiện chỉ ghi nhận (chưa áp dụng). Xem Gói AI. |
+| `casx.health.d.subscription.FAILED` | The subscription blocks the assistant. See AI Plans. | Đăng ký đang chặn trợ lý. Xem Gói AI. |
+| `casx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái đăng ký. |
+| `casx.health.k.intelligence_applied` | Customer Intelligence uses the current values | Phân tích khách hàng dùng giá trị hiện tại |
+| `casx.health.d.intelligence_applied.PASSED` | The last evaluation used the current thresholds (Churn Watch and Rebooking read it too). | Lần đánh giá gần nhất đã dùng ngưỡng hiện tại (Theo dõi rời bỏ và Đặt lại lịch cũng đọc kết quả này). |
+| `casx.health.d.intelligence_applied.WARNING` | The values changed since the last evaluation. Press Refresh on Customer Intelligence. | Giá trị đã đổi sau lần đánh giá gần nhất. Hãy bấm Làm mới ở Phân tích khách hàng. |
+| `casx.health.d.intelligence_applied.INSUFFICIENT_DATA` | Customer Intelligence has not been evaluated yet. | Phân tích khách hàng chưa được đánh giá. |
+| `casx.health.k.recommendations_applied` | Service Recommendations uses the current values | Gợi ý dịch vụ dùng giá trị hiện tại |
+| `casx.health.d.recommendations_applied.PASSED` | The last evaluation used the current thresholds. | Lần đánh giá gần nhất đã dùng ngưỡng hiện tại. |
+| `casx.health.d.recommendations_applied.WARNING` | The values changed since the last evaluation. Press Refresh on Service Recommendations. | Giá trị đã đổi sau lần đánh giá gần nhất. Hãy bấm Làm mới ở Gợi ý dịch vụ. |
+| `casx.health.d.recommendations_applied.INSUFFICIENT_DATA` | Service Recommendations has not been evaluated yet. | Gợi ý dịch vụ chưa được đánh giá. |
+| `casx.health.k.recent_evaluation_failures` | Recent evaluation failures | Lỗi đánh giá gần đây |
+| `casx.health.d.recent_evaluation_failures.PASSED` | No evaluation failed in the last 7 days. | Không có lần đánh giá nào lỗi trong 7 ngày qua. |
+| `casx.health.d.recent_evaluation_failures.WARNING` | An evaluation failed in the last 7 days. Open the screen and press Refresh; report it if it repeats. | Có lần đánh giá bị lỗi trong 7 ngày qua. Hãy mở màn hình đó và bấm Làm mới; báo lại nếu lặp lại. |
+| `casx.health.k.customer_history` | Completed-visit history | Lịch sử lượt hoàn tất |
+| `casx.health.d.customer_history.PASSED` | Completed visits are available for the thresholds to count. | Có dữ liệu lượt hoàn tất để các ngưỡng đếm. |
+| `casx.health.d.customer_history.INSUFFICIENT_DATA` | No completed visits yet — every customer shows Insufficient History. | Chưa có lượt hoàn tất — mọi khách sẽ hiển thị Chưa đủ lịch sử. |
+| `casx.health.k.history_complete` | Every change is in History | Mọi thay đổi đều có trong Lịch sử |
+| `casx.health.d.history_complete.PASSED` | The current salon settings match a recorded change. | Cài đặt hiện tại của tiệm khớp với một thay đổi đã ghi nhận. |
+| `casx.health.d.history_complete.WARNING` | The salon settings were changed outside this screen (before History existed); the next save records them. | Cài đặt của tiệm đã được đổi ngoài màn hình này (trước khi có Lịch sử); lần lưu tiếp theo sẽ ghi nhận. |
+| `casx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `casx.health.d.tenant_isolation.PASSED` | Every recorded change belongs to this salon. | Mọi thay đổi đã ghi nhận đều thuộc tiệm này. |
+| `casx.health.d.tenant_isolation.FAILED` | A change references another salon's user. Report this immediately. | Có thay đổi trỏ tới người dùng của tiệm khác. Hãy báo ngay. |
+| `casx.health.k.no_side_effects` | No bookings, messages or billing | Không đặt hẹn, nhắn tin hay tính phí |
+| `casx.health.d.no_side_effects.PASSED` | This screen and its check only read and write the salon's own settings and history. | Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm. |

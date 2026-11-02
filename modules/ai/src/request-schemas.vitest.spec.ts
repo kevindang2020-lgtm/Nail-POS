@@ -13,6 +13,7 @@ import { TenantAiDashboardController as Dash } from './ai/ai-control-plane.contr
 import { AiSubscriptionBillingController as Bill } from './ai/ai-subscription-billing.service';
 import { AiCenterController as Ctr } from './ai-center/ai-center.controller';
 import { AiCustomerProfileController as Prof } from './ai-customer-profile/ai-customer-profile.controller';
+import { CustomerAiSettingsCenterController as Cas } from './ai-customer-profile/customer-ai-settings-center.controller';
 import { AiGovernanceController as Gov } from './ai-governance/ai-governance.controller';
 import { AiInventoryController as Inv } from './ai-inventory/ai-inventory.controller';
 import { AiMarketingController as Mkt } from './ai-marketing/ai-marketing.controller';
@@ -65,7 +66,9 @@ const CASES: RouteBodyCase[] = [
   c('PATCH /tenant/ai/center/copilot/settings', Ctr, 'copilotPatchSettings', [{ allowCancel: false }, { level: 'branch', enabled: true }], [{ allowCancel: 'false' }, 'allowCancel']),
   // customer profile / governance / inventory
   c('POST /pos/ai-customer-profile/duplicates/:groupId/merge', Prof, 'merge', [{ primaryCustomerId: ID, confirm: true }], [{ primaryCustomerId: ID, confirm: 'yes' }, 'confirm']),
-  c('PUT /pos/ai-customer-profile/settings/:level', Prof, 'updateSettings', [{ enabled: true, tunables: { minScore: 0.8 } }], [{ tunables: [] }, 'tunables']),
+  // PUT /pos/ai-customer-profile/settings/:level is retired; the settings writes are the Customer AI Settings routes
+  c('POST /pos/customer-ai-settings/assistant', Cas, 'assistant', [{ enabled: false, expectedVersion: 0, reason: 'closing for renovation' }], [{ enabled: 'no', expectedVersion: 0 }, 'enabled']),
+  c('POST /pos/customer-ai-settings/thresholds', Cas, 'thresholds', [{ values: { inactiveDays: 60 }, expectedVersion: 1 }, { reset: true, expectedVersion: 2 }], [{ values: { inactiveDays: 60 }, expectedVersion: 'x' }, 'expectedVersion']),
   c('PATCH /tenant/ai/control-modes/:assistantKey', Gov, 'set', [{ mode: 'suggest_only' }], [{ mode: 1 }, 'mode']),
   c('POST /pos/ai-inventory/recipes', Inv, 'createRecipe', [{ serviceId: ID, notes: 'gel set', lines: [{ productId: ID, expectedQuantity: 2, consumptionUnit: 'ml', wasteAllowancePct: 5 }] }], [{ serviceId: ID, lines: [{ productId: ID, expectedQuantity: '2' }] }, 'lines[0].expectedQuantity']),
   // marketing

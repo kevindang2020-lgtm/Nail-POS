@@ -689,13 +689,19 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - The assistant's `recommendServices`, now keyed by catalog service id and stored per suggestion; prices, add-ons, qualifications and bookings are read live.
   - Service-level "Already Booked"; "Open AI Booking Assistant" = the same one-use prefill (re-checks qualification + calendar).
   - Tests: pgtest 13/13, screen 7/7. Doc: `docs/ai/SERVICE_RECOMMENDATIONS.md`.
-- **Next: Customer AI Settings** (guide 8).
+- **Done: Customer AI Settings** (guide 8): `pos/customer-ai-settings` routes and migration 767.
+  - Fixed: the settings read failed OPEN (DB error = enabled past a Disable); Enable/Disable wiped the thresholds; no version / history.
+  - Provenance, propagation, subscription shown apart; version-checked writes + append-only history; preview; health check. Old GET/PUT settings retired (pinned).
+  - Tests: pgtest 12/12, screen 6/6. Doc: `docs/ai/CUSTOMER_AI_SETTINGS.md`.
+- **Next: Review & Reputation** (guide 9).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
      behaviour, shown as acknowledgements), or should they BLOCK the merge until handled in Gift Cards / Checkout?
   3. Rebooking: any future appointment suppresses an opportunity today (the existing rule). The guide says an unrelated
      booked service should not. Change it (it also changes the Customer Intelligence and Churn Watch numbers) or keep it?
+  4. Super Admin per-salon threshold overrides and a per-salon emergency switch: build them (the old Settings note promised
+     them), or keep Super Admin at the package-wide switch only?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

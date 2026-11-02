@@ -366,6 +366,14 @@
   "service_recommendation_health_runs": {
    "domain": "AI",
    "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 read-only Check Service Recommendations System runs"
+  },
+  "ai_customer_profile_settings_events": {
+   "domain": "AI",
+   "reason": "Customer AI Settings guide (Nov 2 2026, migration 767): the AI Customer Profile assistant's settings screen \u2014 append-only history of every salon-level settings change (before / after, actor, role, version, reason), next to ai_customer_profile_settings"
+  },
+  "customer_ai_settings_health_runs": {
+   "domain": "AI",
+   "reason": "Customer AI Settings guide (Nov 2 2026, migration 767): the AI Customer Profile assistant's settings screen \u2014 read-only Check Customer AI System runs"
   }
  }
 }

@@ -20,7 +20,9 @@ export class KyselyProfileSettings implements ProfileSettingsPort {
         eb.and([eb('level', '=', 'branch'), eb('branch_id', '=', ctx.branchId || '')]),
         eb.and([eb('level', '=', 'user'), eb('user_id', '=', ctx.userId || '')]),
       ]))
-      .limit(50).execute().catch(() => [] as any[]);
+      // FAIL CLOSED (Customer AI Settings guide, Nov 2 2026): this used to `.catch(() => [])`, so a database error read as
+      // "no overrides" — the assistant ran ENABLED past a salon's own Disable. An unreadable switch now stops the request.
+      .limit(50).execute();
     const mapped: SettingsRow[] = rows.map(r => ({
       level: r.level, branch_id: r.branch_id ?? null, user_id: r.user_id ?? null,
       enabled: r.enabled ?? null, tunables: r.tunables ?? null,
@@ -31,6 +33,13 @@ export class KyselyProfileSettings implements ProfileSettingsPort {
   async setLayer(ctx: AiCustomerProfileContext, level: 'tenant' | 'branch' | 'user', patch: ProfileSettingsLayer): Promise<void> {
     const branch_id = level === 'branch' ? (ctx.branchId || null) : null;
     const user_id = level === 'user' ? (ctx.userId || null) : null;
+    // MERGE, never replace: a patch of only `enabled` used to delete the row's threshold overrides (and vice versa)
+    let cur = this.db.selectFrom('ai_customer_profile_settings').select(['enabled', 'tunables']).where('tenant_id', '=', ctx.tenantId).where('level', '=', level);
+    cur = branch_id ? cur.where('branch_id', '=', branch_id) : cur.where('branch_id', 'is', null);
+    cur = user_id ? cur.where('user_id', '=', user_id) : cur.where('user_id', 'is', null);
+    const prev = await cur.executeTakeFirst();
+    patch = { enabled: patch.enabled !== undefined ? patch.enabled : (prev?.enabled ?? undefined),
+      tunables: patch.tunables !== undefined ? patch.tunables : ((prev?.tunables ?? undefined) as ProfileSettingsLayer['tunables']) };
     // Delete-then-insert keeps the write independent of the COALESCE expression index (no onConflict target mismatch).
     let del = this.db.deleteFrom('ai_customer_profile_settings').where('tenant_id', '=', ctx.tenantId).where('level', '=', level);
     del = branch_id ? del.where('branch_id', '=', branch_id) : del.where('branch_id', 'is', null);

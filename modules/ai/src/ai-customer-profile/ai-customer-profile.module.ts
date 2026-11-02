@@ -17,6 +17,11 @@ import { RebookingCenter } from './rebooking-center';
 import { RebookingCenterController, REBOOKING_CENTER } from './rebooking-center.controller';
 import { ServiceRecommendationsCenter } from './service-recommendations-center';
 import { ServiceRecommendationsCenterController, SERVICE_RECOMMENDATIONS_CENTER } from './service-recommendations-center.controller';
+import { CustomerAiSettingsCenter } from './customer-ai-settings-center';
+import { CustomerAiSettingsCenterController, CUSTOMER_AI_SETTINGS_CENTER } from './customer-ai-settings-center.controller';
+import { KyselyAiAccessRepo } from '../ai/ai-access.kysely.repository';
+import { evaluateAiAccess } from '../ai/ai-access-gate';
+import { enforcementMode } from '../ai-entitlement/ai-entitlement.guard';
 import { AiCustomerProfileService, DefaultProfileSettings, DefaultCallSummary, type ProfileSettingsPort, type CallSummaryPort } from './ai-customer-profile.service';
 import { KyselyCallSummary } from './ai-customer-profile.call-summary.kysely';
 import { AiCustomerProfileScanScheduler } from './ai-customer-profile-scan.scheduler';
@@ -37,7 +42,7 @@ function makeProfileCache(): CachePort | null {
 
 @Module({
   imports: [CustomersModule, ServicesModule],
-  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController, ChurnWatchCenterController, RebookingCenterController, ServiceRecommendationsCenterController],   // + Customer Intelligence guide (Nov 1 2026)
+  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController, ChurnWatchCenterController, RebookingCenterController, ServiceRecommendationsCenterController, CustomerAiSettingsCenterController],   // + Customer Intelligence guide (Nov 1 2026)
   providers: [
     { provide: 'PROFILE_CACHE', useFactory: makeProfileCache },
     // DB-backed settings (persistent overrides + emergency kill switches) when Postgres is present; else read-only defaults.
@@ -70,6 +75,16 @@ function makeProfileCache(): CachePort | null {
     // Service Recommendations (Nov 1 2026): the assistant's recommendation rule, evaluated per salon by catalog service id
     { provide: SERVICE_RECOMMENDATIONS_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) =>
         (db ? new ServiceRecommendationsCenter(db, async (ctx) => { const s = await svc.getEffectiveSettings({ ...ctx, branchId: ctx.branchId ?? '' }); return { enabled: s.enabled, tunables: s.tunables }; }) : null),
+      inject: [DATABASE, AiCustomerProfileService] },
+    // Customer AI Settings (Nov 1 2026): provenance, safe salon-level writes with history, the entitlement gate's own decision
+    { provide: CUSTOMER_AI_SETTINGS_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) => {
+        if (!db) return null;
+        const access = new KyselyAiAccessRepo(db);
+        return new CustomerAiSettingsCenter(db,
+          async (ctx) => { const d = evaluateAiAccess(await access.loadSnapshot(ctx.tenantId, 'ai_customer_profile_assistant', ctx.userId ?? null, { branchId: ctx.branchId || null }));
+            return { allowed: d.allowed, reason: d.reason, subscriptionStatus: String(d.subscriptionStatus) }; },
+          (tenantId) => svc.invalidateTenant(tenantId), () => enforcementMode());
+      },
       inject: [DATABASE, AiCustomerProfileService] },
   ],
   exports: [AiCustomerProfileService],

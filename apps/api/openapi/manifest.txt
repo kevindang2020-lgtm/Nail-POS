@@ -339,7 +339,6 @@ GET /pos/ai-customer-profile/customers/{id}/technician-preference  realm=staff  
 GET /pos/ai-customer-profile/customers/{id}/timeline  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/customers/{id}/visit-summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/duplicates  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/ai-customer-profile/settings  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/usage  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-inventory/context  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-inventory/low-stock  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -566,6 +565,9 @@ GET /pos/communications/state  realm=staff  auth=session  domain=communications 
 GET /pos/connected-apps  realm=staff  auth=session  domain=identity  perm=settings.edit
 GET /pos/coupons/health  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/coupons/{dealId}/campaigns  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-ai-settings/history  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-ai-settings/history/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-ai-settings/state  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-display/devices  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-displays  realm=staff  auth=session  domain=operations  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-intelligence/customers  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2614,6 +2616,10 @@ POST /pos/connected-apps/{id}/revoke  realm=staff  auth=session  domain=identity
 POST /pos/coupons/assistant/draft  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/coupons/assistant/suggest  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/coupons/{dealId}/check  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-ai-settings/assistant  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-ai-settings/check  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-ai-settings/preview  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-ai-settings/thresholds  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-display/sessions  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-display/sessions/{sessionId}/cancel-terminal  realm=staff  auth=session  domain=operations  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-display/sessions/{sessionId}/close  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
@@ -3715,7 +3721,6 @@ PUT /owner/finance/expense-settings  realm=staff  auth=session  domain=finance  
 PUT /pos/access/members/{userId}/branches  realm=staff  auth=session  domain=identity  perm=branch_access.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/access/members/{userId}/role  realm=staff  auth=session  domain=identity  perm=roles.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-checkout-upsell/settings/{level}  realm=staff  auth=session  domain=checkout  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/ai-customer-profile/settings/{level}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-ocr-receipt/settings  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-queue-assignment/auto-config  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.manage_auto  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-queue-assignment/rotation-policy  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.manage_rules  guards=RolePermissionGuard,TenantAuthGuard

@@ -1,8 +1,8 @@
 // ai-customer-profile.controller.ts — read-only endpoints under /pos/ai-customer-profile. Tenant/branch/permissions
 // are server-derived from req.ctx (never from body/query/header) — same pattern as every other POS slice.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
-import { AI_CUSTOMER_MERGE_BODY, AI_CUSTOMER_PROFILE_SETTINGS_BODY } from '../request-schemas';
-import { Controller, Get, Post, Put, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { AI_CUSTOMER_MERGE_BODY } from '../request-schemas';
+import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { AiCustomerProfileService, AiCustomerProfileForbiddenError } from './ai-customer-profile.service';
 import type { AiCustomerProfileContext } from './ai-customer-profile.dto';
@@ -103,18 +103,14 @@ export class AiCustomerProfileController {
   // /pos/customer-intelligence/* — a full, set-based scan (no 300-customer cap) whose six states reconcile on screen. The
   // service methods stay for the scan scheduler.
 
-  // Effective settings (§52) — resolved platform→tenant→branch→user; shows thresholds + any disabled level.
-  @Get('settings') @RequirePermission('pos.ai_customer_profile.view')
-  settings(@Req() r: any) { return this.guard(() => this.svc.getEffectiveSettings(ctxFrom(r))); }
+  // GET settings is retired (Customer AI Settings guide, Nov 2 2026): GET /pos/customer-ai-settings/state returns the same
+  // resolved values plus where each came from, the package / subscription decision and whether the evaluations applied them.
 
   // Per-tenant usage counters for the AI Usage surface (§58). Manage-gated.
   @Get('usage') @RequirePermission('pos.ai_customer_profile.churn')
   usage(@Req() r: any) { return this.guard(() => this.svc.getUsage(ctxFrom(r))); }
 
-  // Persist a per-scope override (enable/disable + tunables). Manage-gated; requires the DB-backed settings port.
-  @Put('settings/:level') @RequirePermission('pos.ai_customer_profile.churn')
-  updateSettings(@Req() r: any, @Param('level') level: string, @Body(ValidatedBody(AI_CUSTOMER_PROFILE_SETTINGS_BODY, { strict: true })) body: { enabled?: boolean; tunables?: any }) {
-    const lvl = (['tenant', 'branch', 'user'].includes(level) ? level : 'tenant') as 'tenant' | 'branch' | 'user';
-    return this.guard(() => this.svc.updateSettings(ctxFrom(r), lvl, { enabled: body?.enabled, tunables: body?.tunables }));
-  }
+  // PUT settings/:level is retired (Customer AI Settings guide, Nov 2 2026): every write now goes through
+  // /pos/customer-ai-settings/* — version-checked, recorded in append-only history and audited fail-closed. The old route
+  // replaced the whole row (an Enable / Disable wiped the salon's thresholds) and left no history.
 }

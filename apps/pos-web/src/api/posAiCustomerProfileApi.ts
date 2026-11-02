@@ -26,9 +26,7 @@ export const posAiCustomerProfileApi = {
   // tenant-wide
   // tenant overview: since Nov 2 2026 the Customer Intelligence dashboard uses posCustomerIntelligenceApi (/pos/customer-intelligence/*)
   duplicates: () => api.get<any>(`/pos/ai-customer-profile/duplicates`),
-  settings: () => api.get<any>(`/pos/ai-customer-profile/settings`),
-  updateSettings: (level: 'tenant' | 'branch' | 'user', patch: { enabled?: boolean; tunables?: any }) =>
-    api.put<any>(`/pos/ai-customer-profile/settings/${level}`, patch),
+  // settings / updateSettings retired (Nov 2 2026): the Settings screen reads and writes posCustomerAiSettingsApi (/pos/customer-ai-settings/*)
 
   // duplicate merge: the Duplicate Review screen uses /pos/duplicate-review/* (posDuplicateReviewApi) since Nov 2 2026 — its
   // preview is recorded and hash-bound to the merge; this older positional-group preview has no caller left in the POS.

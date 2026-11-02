@@ -528,4 +528,8 @@ describe('ai-customer-profile — retired tenant-overview routes (Customer Intel
   it('GET tenant-overview and POST tenant-overview/refresh stay retired (the dashboard reads /pos/customer-intelligence/*)', () => {
     for (const h of ['tenantOverview', 'refreshTenantOverview']) expect((AiCustomerProfileController.prototype as any)[h]).toBeUndefined();
   });
+  it('GET settings and PUT settings/:level stay retired — writes go through /pos/customer-ai-settings/* (Customer AI Settings guide, Nov 2 2026)', () => {
+    expect((AiCustomerProfileController.prototype as any).updateSettings).toBeUndefined();
+    expect((AiCustomerProfileController.prototype as any).settings).toBeUndefined();
+  });
 });
