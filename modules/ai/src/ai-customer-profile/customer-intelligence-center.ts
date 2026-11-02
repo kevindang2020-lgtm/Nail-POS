@@ -14,7 +14,7 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, toStoredCustomerPhone, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
-import { summarizeVisits, classifyInactivity, rebookingOpportunity, DEFAULT_TUNABLES, type ProfileTunables, type VisitRecord, type AppointmentRecord } from './ai-customer-profile-core';
+import { summarizeVisits, classifyInactivity, rebookingOpportunity, evaluateChurnRisk, DEFAULT_TUNABLES, type ProfileTunables, type VisitRecord, type AppointmentRecord } from './ai-customer-profile-core';
 
 type Row = Record<string, any>;
 export type CiCtx = RetentionContext;
@@ -24,7 +24,7 @@ export class CustomerIntelligenceError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
 }
 
-export const CI_RULE_VERSION = 'ci-2026-11-02';
+export const CI_RULE_VERSION = 'ci-2026-11-02b';   // b: + the churn rule (Churn Watch, migration 764)
 export const CI_STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_term_inactive', 'insufficient_history'] as const;
 export const CI_STATUS_FILTERS = ['all', ...CI_STATES, 'inactive_all', 'never_served', 'not_scanned'] as const;   // inactive_all = the Inactive card (inactive + long-term)
 export const CI_FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'] as const;
@@ -50,9 +50,12 @@ export interface CiClassification {
   customerId: string; status: (typeof CI_STATES)[number]; completedVisits: number; firstVisitAt: string | null; lastVisitAt: string | null;
   typicalIntervalDays: number | null; daysSinceLast: number | null; hasUpcoming: boolean; nextAppointmentDate: string | null;
   churnWatch: boolean; rebooking: boolean; rebookingReason: string; evidence: string[];
+  churnLevel: 'insufficient' | 'low' | 'possible' | 'elevated' | 'high'; churnConfidence: string; churnEvidence: string[];
+  canceledCount: number; noShowCount: number; membershipCanceled: boolean;
 }
+export interface CiHistory { canceled: number; noShows: number; membershipCanceled: boolean }
 /** the per-customer AI profile's own rules, applied to one customer's completed-visit times and future appointments */
-export function classifyCustomer(customerId: string, visitTimes: string[], upcoming: { date: string; status: string }[], nowIso: string, t: ProfileTunables): CiClassification {
+export function classifyCustomer(customerId: string, visitTimes: string[], upcoming: { date: string; status: string }[], nowIso: string, t: ProfileTunables, h: CiHistory = { canceled: 0, noShows: 0, membershipCanceled: false }): CiClassification {
   const visits: VisitRecord[] = visitTimes.map((d) => ({ date: d, serviceName: '', technicianName: '', totalCents: 0, tipCents: 0 }));
   const appts: AppointmentRecord[] = upcoming.map((a) => ({ startsAt: `${a.date}T23:59:59.000Z`, serviceName: '', technicianName: '', status: a.status }));
   const vs = summarizeVisits(visits, appts, nowIso, 0, t);
@@ -61,11 +64,44 @@ export function classifyCustomer(customerId: string, visitTimes: string[], upcom
   const rb = rebookingOpportunity(inact, hasUpcoming, false, vs.typicalIntervalDays);
   // the same "coarse churn watch" the old aggregate used: past due, inactive or long-term inactive, with nothing booked
   const churn = !hasUpcoming && (inact.status === 'due_for_return' || inact.status === 'inactive' || inact.status === 'long_term_inactive');
+  // the assistant's existing per-customer churn rule (evaluateChurnRisk), with the same inputs it reads one customer at a time
+  const risk = evaluateChurnRisk({ completedVisits: vs.completedVisits, daysSinceLastVisit: inact.daysSinceLastVisit, typicalIntervalDays: vs.typicalIntervalDays,
+    hasFutureAppointment: hasUpcoming, canceledCount: h.canceled, noShowCount: h.noShows, membershipCanceled: h.membershipCanceled, unresolvedFollowUp: false }, t);
   return {
     customerId, status: inact.status as CiClassification['status'], completedVisits: vs.completedVisits, firstVisitAt: vs.firstVisit, lastVisitAt: vs.lastVisit,
     typicalIntervalDays: vs.typicalIntervalDays, daysSinceLast: inact.daysSinceLastVisit, hasUpcoming, nextAppointmentDate: upcoming.length ? [...upcoming].sort((a, b) => a.date.localeCompare(b.date))[0].date : null,
     churnWatch: churn, rebooking: rb.eligible, rebookingReason: rb.reason, evidence: inact.evidence,
+    churnLevel: risk.level as CiClassification['churnLevel'], churnConfidence: String(risk.confidence), churnEvidence: risk.evidence,
+    canceledCount: h.canceled, noShowCount: h.noShows, membershipCanceled: h.membershipCanceled,
   };
+}
+
+/** the authorized customer search (alias `c`): name (accents optional) · phone in any format · email · customer id · appointment id ·
+ *  technician / service from completed visits. Shared by Customer Intelligence and Churn Watch. */
+export function customerSearchPredicate(T: string, q: string) {
+  const digits = q.replace(/\D/g, '');
+  const stored = toStoredCustomerPhone(q) ?? null;
+  const conds = [];
+  if (isUuid(`${q}`)) conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
+  else {
+    if (q.includes('@')) conds.push(sql`c.email ilike ${'%' + likeEsc(q) + '%'}`);
+    if (stored) conds.push(sql`c.normalized_phone = ${stored}`);
+    if (digits.length >= 4 && digits.length >= q.replace(/[\s()+.-]/g, '').length) conds.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'}`);
+    if (!q.includes('@')) {
+      const folded = sql`${'%'} || vi_fold(${likeEsc(q)}::text) || ${'%'}`;
+      conds.push(sql`vi_fold(coalesce(c.full_name, c.first_name || ' ' || coalesce(c.last_name, ''))) ilike ${folded}`);
+      // technician / service: a completed visit with them (not a preference — labelled separately in the 360° view)
+      conds.push(sql`exists (select 1 from tickets t join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
+          left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id
+        where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
+          and (vi_fold(coalesce(l.service_name_snapshot, '')) ilike ${folded} or vi_fold(coalesce(tc.full_name, '')) ilike ${folded}))`);
+      // the visit's main technician (a ticket may have no service lines yet, e.g. an imported visit)
+      conds.push(sql`exists (select 1 from tickets t join technicians tp on tp.id = t.primary_technician_id and tp.tenant_id = t.tenant_id
+        where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
+          and vi_fold(coalesce(tp.full_name, tp.first_name || ' ' || coalesce(tp.last_name, ''))) ilike ${folded})`);
+    }
+  }
+  return sql`(${sql.join(conds, sql` or `)})`;
 }
 
 export interface CiQuery {
@@ -125,30 +161,49 @@ export class CustomerIntelligenceCenter {
         const apptRows = (await sql<Row>`select a.customer_id, array_agg(a.appt_date::text order by a.appt_date) as d, array_agg(a.status order by a.appt_date) as s
           from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id is not null and a.appt_date >= ${today}::date
             and a.status in ('booked', 'confirmed', 'arrived', 'checked_in', 'waiting', 'in_service') group by a.customer_id`.execute(trx)).rows;
+        const histRows = (await sql<Row>`select a.customer_id, count(*) filter (where a.status = 'cancelled')::int as canceled, count(*) filter (where a.status = 'no_show')::int as no_shows
+          from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id is not null group by a.customer_id`.execute(trx)).rows;
+        const memRows = (await sql<Row>`select m.customer_id from customer_memberships m where m.tenant_id = ${T} and m.status in ('canceled', 'cancelled')
+          and not exists (select 1 from customer_memberships x where x.tenant_id = m.tenant_id and x.customer_id = m.customer_id and x.status = 'active') group by m.customer_id`.execute(trx)).rows;
+        const prevRows = (await sql<Row>`select customer_id, churn_level, churn_since from customer_intelligence_snapshots where tenant_id = ${T}`.execute(trx)).rows;
+        const hist = new Map(histRows.map((r) => [String(r.customer_id), r]));
+        const memCanceled = new Set(memRows.map((r) => String(r.customer_id)));
+        const prev = new Map(prevRows.map((r) => [String(r.customer_id), r]));
         const visits = new Map(visitRows.map((r) => [String(r.customer_id), (r.at as unknown[]).map((x) => new Date(x as string).toISOString())]));
         const appts = new Map(apptRows.map((r) => [String(r.customer_id), (r.d as string[]).map((d, i) => ({ date: d, status: String((r.s as string[])[i]) }))]));
-        const counts: Record<string, number> = Object.fromEntries([...CI_STATES, 'churn_watch', 'rebooking', 'with_upcoming', 'never_served', 'under_cadence'].map((k) => [k, 0]));
-        const rows = live.map((id) => classifyCustomer(id, visits.get(id) ?? [], appts.get(id) ?? [], nowIso, t));
+        const counts: Record<string, number> = Object.fromEntries([...CI_STATES, 'churn_watch', 'rebooking', 'with_upcoming', 'never_served', 'under_cadence', 'risk_insufficient', 'risk_low', 'risk_possible', 'risk_elevated', 'risk_high'].map((k) => [k, 0]));
+        const rows = live.map((id) => { const hh = hist.get(id); return classifyCustomer(id, visits.get(id) ?? [], appts.get(id) ?? [], nowIso, t,
+          { canceled: N(hh?.canceled), noShows: N(hh?.no_shows), membershipCanceled: memCanceled.has(id) }); });
+        const FLAGGED = ['possible', 'elevated', 'high'];
+        // a signal keeps the date it was first seen while it lasts; a new signal starts now; no signal has no date
+        const since = (r: CiClassification) => (!FLAGGED.includes(r.churnLevel) ? null
+          : FLAGGED.includes(String(prev.get(r.customerId)?.churn_level)) && prev.get(r.customerId)?.churn_since ? new Date(prev.get(r.customerId)!.churn_since).toISOString() : nowIso);
         for (const r of rows) {
           counts[r.status]++;
           if (r.churnWatch) counts.churn_watch++;
           if (r.rebooking) counts.rebooking++;
           if (r.hasUpcoming) counts.with_upcoming++;
           if (r.status === 'insufficient_history') counts[r.completedVisits === 0 ? 'never_served' : 'under_cadence']++;
+          counts['risk_' + r.churnLevel]++;
         }
         await sql`delete from customer_intelligence_snapshots where tenant_id = ${T}`.execute(trx);
         for (let i = 0; i < rows.length; i += 500) {
           const chunk = rows.slice(i, i + 500);
           await sql`insert into customer_intelligence_snapshots (tenant_id, customer_id, scan_id, status, completed_visits, first_visit_at, last_visit_at, typical_interval_days,
-              days_since_last, has_upcoming, next_appointment_date, churn_watch, rebooking, rebooking_reason, evidence)
+              days_since_last, has_upcoming, next_appointment_date, churn_watch, rebooking, rebooking_reason, evidence,
+              churn_level, churn_confidence, churn_evidence, canceled_count, no_show_count, membership_canceled, churn_since)
             select ${T}::uuid, x.customer_id, ${scanId}::uuid, x.status, x.completed_visits, x.first_visit_at, x.last_visit_at, x.typical_interval_days, x.days_since_last,
-              x.has_upcoming, x.next_appointment_date, x.churn_watch, x.rebooking, x.rebooking_reason, x.evidence
+              x.has_upcoming, x.next_appointment_date, x.churn_watch, x.rebooking, x.rebooking_reason, x.evidence,
+              x.churn_level, x.churn_confidence, x.churn_evidence, x.canceled_count, x.no_show_count, x.membership_canceled, x.churn_since
             from jsonb_to_recordset(${JSON.stringify(chunk.map((r) => ({
               customer_id: r.customerId, status: r.status, completed_visits: r.completedVisits, first_visit_at: r.firstVisitAt, last_visit_at: r.lastVisitAt,
               typical_interval_days: r.typicalIntervalDays, days_since_last: r.daysSinceLast, has_upcoming: r.hasUpcoming, next_appointment_date: r.nextAppointmentDate,
               churn_watch: r.churnWatch, rebooking: r.rebooking, rebooking_reason: r.rebookingReason, evidence: r.evidence,
+              churn_level: r.churnLevel, churn_confidence: r.churnConfidence, churn_evidence: r.churnEvidence, canceled_count: r.canceledCount,
+              no_show_count: r.noShowCount, membership_canceled: r.membershipCanceled, churn_since: since(r),
             })))}::jsonb) as x(customer_id uuid, status text, completed_visits int, first_visit_at timestamptz, last_visit_at timestamptz, typical_interval_days int,
-              days_since_last int, has_upcoming boolean, next_appointment_date date, churn_watch boolean, rebooking boolean, rebooking_reason text, evidence text[])`.execute(trx);
+              days_since_last int, has_upcoming boolean, next_appointment_date date, churn_watch boolean, rebooking boolean, rebooking_reason text, evidence text[],
+              churn_level text, churn_confidence text, churn_evidence text[], canceled_count int, no_show_count int, membership_canceled boolean, churn_since timestamptz)`.execute(trx);
         }
         await sql`update customer_intelligence_scans set status = 'completed', finished_at = now(), scanned = ${rows.length}, counts = ${JSON.stringify(counts)}::jsonb,
           archived_excluded = ${archived}, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId}`.execute(trx);
@@ -238,31 +293,7 @@ export class CustomerIntelligenceCenter {
       else if (dateField === 'next_appointment') where.push(sql`sn.next_appointment_date >= ${per.from}::date and sn.next_appointment_date <= ${per.to}::date`);
       else where.push(sql`sn.last_visit_at >= ${per.start} and sn.last_visit_at < ${per.end}`);
     }
-    if (q) {
-      const digits = q.replace(/\D/g, '');
-      const stored = toStoredCustomerPhone(q) ?? null;
-      const conds = [];
-      if (isUuid(`${q}`)) conds.push(sql`(c.id = ${q}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${q}::uuid and a.customer_id = c.id))`);
-      else {
-        if (q.includes('@')) conds.push(sql`c.email ilike ${'%' + likeEsc(q) + '%'}`);
-        if (stored) conds.push(sql`c.normalized_phone = ${stored}`);
-        if (digits.length >= 4 && digits.length >= q.replace(/[\s()+.-]/g, '').length) conds.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'}`);
-        if (!q.includes('@')) {
-          const folded = sql`${'%'} || vi_fold(${likeEsc(q)}::text) || ${'%'}`;
-          conds.push(sql`vi_fold(coalesce(c.full_name, c.first_name || ' ' || coalesce(c.last_name, ''))) ilike ${folded}`);
-          // technician / service: a completed visit with them (not a preference — labelled separately in the 360° view)
-          conds.push(sql`exists (select 1 from tickets t join ticket_service_lines l on l.ticket_id = t.id and l.tenant_id = t.tenant_id and l.removed_at is null
-              left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id
-            where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
-              and (vi_fold(coalesce(l.service_name_snapshot, '')) ilike ${folded} or vi_fold(coalesce(tc.full_name, '')) ilike ${folded}))`);
-          // the visit's main technician (a ticket may have no service lines yet, e.g. an imported visit)
-          conds.push(sql`exists (select 1 from tickets t join technicians tp on tp.id = t.primary_technician_id and tp.tenant_id = t.tenant_id
-            where t.tenant_id = ${T} and t.customer_id = c.id and t.removed_at is null and t.status = any(${VISIT}::text[])
-              and vi_fold(coalesce(tp.full_name, tp.first_name || ' ' || coalesce(tp.last_name, ''))) ilike ${folded})`);
-        }
-      }
-      where.push(sql`(${sql.join(conds, sql` or `)})`);
-    }
+    if (q) where.push(customerSearchPredicate(T, q));
     const W = sql.join(where, sql` and `);
     const order = sort === 'recently_added' ? sql`c.created_at desc, c.id desc`
       : sort === 'name' ? sql`lower(coalesce(c.full_name, c.first_name)) asc, c.id asc`

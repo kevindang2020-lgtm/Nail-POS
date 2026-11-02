@@ -67,6 +67,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   chargebacks: 'ut',
   checkout_locks: 'ut',
   checkout_settings: 'ut',
+  churn_watch_reviews: 'u',
   commission_discrepancy_reviews: 'ut',
   communication_providers: 'ct',
   communication_threads: 'ut',

@@ -4847,6 +4847,15 @@ export interface ReceptionCopilotActionLedgerTable {
 export interface CustomerSearchHealthRunsTable {   // migration 760 — read-only "Check Customer Search System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface ChurnWatchReviewsTable {   // migration 764 — Churn Watch's internal review state (never a customer status)
+  tenant_id: string; customer_id: string; status: string; level_at_review: string | null; due_on: string | null; reviewed_by: string | null; reviewed_at: Generated<Ts>; updated_by: string | null; version: Generated<number>;
+}
+export interface ChurnWatchReviewEventsTable {   // migration 764 — append-only review history
+  id: Generated<string>; tenant_id: string; customer_id: string; event_type: string; level: string | null; note: string | null; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface ChurnWatchHealthRunsTable {   // migration 764 — read-only "Check Churn Watch System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerIntelligenceScansTable {   // migration 763 — Customer Intelligence scans (counts per state, rule version, tunables)
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
@@ -4855,6 +4864,8 @@ export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — lat
   tenant_id: string; customer_id: string; scan_id: string; status: string; completed_visits: Generated<number>; first_visit_at: Ts | null; last_visit_at: Ts | null;
   typical_interval_days: number | null; days_since_last: number | null; has_upcoming: Generated<boolean>; next_appointment_date: string | null; churn_watch: Generated<boolean>;
   rebooking: Generated<boolean>; rebooking_reason: string | null; evidence: Generated<string[]>; computed_at: Generated<Ts>;
+  churn_level: string | null; churn_confidence: string | null; churn_evidence: Generated<string[]>; canceled_count: Generated<number>; no_show_count: Generated<number>;   // 764
+  membership_canceled: Generated<boolean>; churn_since: Ts | null;
 }
 export interface CustomerIntelligenceHealthRunsTable {   // migration 763 — read-only "Check Customer Intelligence System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
@@ -7471,6 +7482,9 @@ export interface DB {
   ai_calendar_health_runs: AiCalendarHealthRunsTable;
   customer_search_health_runs: CustomerSearchHealthRunsTable;
   customer_timeline_health_runs: CustomerTimelineHealthRunsTable;
+  churn_watch_health_runs: ChurnWatchHealthRunsTable;
+  churn_watch_review_events: ChurnWatchReviewEventsTable;
+  churn_watch_reviews: ChurnWatchReviewsTable;
   customer_intelligence_health_runs: CustomerIntelligenceHealthRunsTable;
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;

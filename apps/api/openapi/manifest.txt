@@ -537,6 +537,10 @@ GET /pos/checkout/tickets/{ticketId}/rewards  realm=staff  auth=session  domain=
 GET /pos/checkout/tickets/{ticketId}/signature  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/technician-split  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/unsettled-tenders  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/churn-watch/customers  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/churn-watch/customers/{id}  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/churn-watch/history  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/churn-watch/summary  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/commission-discrepancies  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/commission-discrepancies/assignees  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/commission-discrepancies/{id}  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2576,6 +2580,8 @@ POST /pos/checkout/tickets/{ticketId}/reward-code  realm=staff  auth=session  do
 POST /pos/checkout/tickets/{ticketId}/reward-code/remove  realm=staff  auth=session  domain=checkout  perm=pos.checkout.redeem_reward  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/rewards/remove  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/send-to-customer-display  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/churn-watch/check  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/churn-watch/customers/{id}/review  realm=staff  auth=session  domain=ai  perm=CHURN  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/commission-discrepancies/run-check  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/commission-discrepancies/{id}/assign  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/commission-discrepancies/{id}/dismiss  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard

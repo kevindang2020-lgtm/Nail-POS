@@ -322,6 +322,18 @@
   "birthday_message_claims": {
    "domain": "CUSTOMERS",
    "reason": "Birthday Campaigns guide (Oct 31 2026) \u00a713\u2013\u00a714: the send-time claim behind \"one birthday message per customer per occasion year per channel\" (salon + customer + year + channel, the campaign that claimed it, claimed / sent / released) \u2014 next to customers.birthday"
+  },
+  "churn_watch_reviews": {
+   "domain": "AI",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow \u2014 current review state per customer (reviewed / deferred); never a customer status"
+  },
+  "churn_watch_review_events": {
+   "domain": "AI",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow \u2014 append-only review history"
+  },
+  "churn_watch_health_runs": {
+   "domain": "AI",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow \u2014 read-only Check Churn Watch System runs"
   }
  }
 }

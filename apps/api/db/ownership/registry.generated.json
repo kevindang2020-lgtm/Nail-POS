@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 895,
+  "tables": 898,
   "ownership": {
-   "tenant_owned": 585,
+   "tenant_owned": 588,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 104,
+   "AI": 107,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -41,14 +41,14 @@
    "TENANTS": 27
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 131,
-   "CONFIDENTIAL": 155,
+   "HIGHLY_SENSITIVE": 132,
+   "CONFIDENTIAL": 156,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 489,
+   "INTERNAL": 490,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
-  "append_only": 43,
+  "append_only": 44,
   "platform_rows": 99
  },
  "tables": {
@@ -1976,6 +1976,45 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "churn_watch_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow — read-only Check Churn Watch System runs"
+  },
+  "churn_watch_review_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "override",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow — append-only review history"
+  },
+  "churn_watch_reviews": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow — current review state per customer (reviewed / deferred); never a customer status"
   },
   "code_lookup_attempts": {
    "ownership": "tenant_owned",

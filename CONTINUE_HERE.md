@@ -678,7 +678,10 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - The 15/1/0 counts were correct: four of the six states were never shown. They now reconcile on screen.
   - A set-based scan uses the assistant's own rules; there is no 300 cap.
   - Tests: pgtest 9/9 (identical to the old aggregate), screen 6/6. Doc: `docs/ai/CUSTOMER_INTELLIGENCE.md`.
-- **Next: Churn Watch** (guide 5).
+- **Done: Churn Watch** (guide 5): `pos/churn-watch` routes and migration 764.
+  - Uses the existing `evaluateChurnRisk` inside the shared Intelligence scan, plus a review workflow; Data Unavailable is never shown as zero.
+  - Tests: pgtest 10/10, screen 6/6. Doc: `docs/ai/CHURN_WATCH.md`.
+- **Next: Rebooking** (guide 6).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

@@ -12251,3 +12251,195 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `cix.health.k.indexes` | Indexes | Chỉ mục |
 | `cix.health.d.indexes.PASSED` | Classification and visit indexes are present. | Đã có chỉ mục phân loại và lượt khách. |
 | `cix.health.d.indexes.WARNING` | Some indexes are missing; the list may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+
+## Churn Watch (`cwx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `cwx.loadFailed` | Churn Watch could not load. Try again. | Không tải được Theo dõi rời bỏ. Hãy thử lại. |
+| `cwx.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì thay đổi. |
+| `cwx.loading` | Loading… | Đang tải… |
+| `cwx.close` | Close | Đóng |
+| `cwx.all` | All | Tất cả |
+| `cwx.none` | None | Không có |
+| `cwx.notProvided` | Not provided | Chưa có |
+| `cwx.unavailable` | Unavailable | Không khả dụng |
+| `cwx.check` | Check Churn Watch System | Kiểm tra hệ thống Theo dõi rời bỏ |
+| `cwx.refreshReused` | An evaluation just ran — showing its results. | Vừa đánh giá xong — đang hiển thị kết quả đó. |
+| `cwx.refreshDone` | Evaluation finished: {n} customers. | Đã đánh giá xong: {n} khách hàng. |
+| `cwx.unavailableNote` | No evaluation is available yet, so there is no signal to show. This is not "no risk" — press Refresh. | Chưa có kết quả đánh giá nên chưa có tín hiệu để hiển thị. Đây không phải là "không rủi ro" — hãy bấm Làm mới. |
+| `cwx.searchHint` | Also finds technician, service or customer ID. | Cũng tìm được theo thợ, dịch vụ hoặc mã khách. |
+| `cwx.clearAll` | Clear all | Xóa tất cả |
+| `cwx.count` | {n} customers | {n} khách hàng |
+| `cwx.noMatch` | No customers match these filters. | Không có khách nào khớp bộ lọc. |
+| `cwx.rows` | Rows | Số dòng |
+| `cwx.viewEvidence` | View evidence | Xem bằng chứng |
+| `cwx.days` | about {n} days | khoảng {n} ngày |
+| `cwx.notEstablished` | Not established yet | Chưa xác định được |
+| `cwx.noHistory` | No review activity yet. | Chưa có hoạt động xem xét nào. |
+| `cwx.internalOnly` | Internal review only — never shown to customers, never a certainty. Churn Watch never texts, books or changes anything. | Chỉ để xem xét nội bộ — không bao giờ hiển thị cho khách, không phải điều chắc chắn. Theo dõi rời bỏ không nhắn tin, đặt lịch hay thay đổi gì. |
+| `cwx.sortDefault` | Default for this tab | Mặc định của thẻ này |
+| `cwx.markReviewed` | Mark reviewed | Đánh dấu đã xem |
+| `cwx.defer` | Review later | Xem lại sau |
+| `cwx.reopen` | Reopen | Mở lại |
+| `cwx.addNote` | Add note | Thêm ghi chú |
+| `cwx.noteRequired` | Note (required) | Ghi chú (bắt buộc) |
+| `cwx.noteOptional` | Note (optional) | Ghi chú (không bắt buộc) |
+| `cwx.deferUntil` | Review again on | Xem lại vào ngày |
+| `cwx.fresh.never` | Not evaluated yet | Chưa đánh giá |
+| `cwx.fresh.up_to_date` | Evaluated {at} | Đã đánh giá lúc {at} |
+| `cwx.fresh.stale` | Out of date · last evaluated {at} | Đã cũ · đánh giá gần nhất {at} |
+| `cwx.fresh.failed` | Last evaluation failed · last good {at} | Lần đánh giá gần nhất bị lỗi · lần tốt gần nhất {at} |
+| `cwx.fresh.running` | Evaluating… | Đang đánh giá… |
+| `cwx.kpi.evaluated` | Customers evaluated | Khách đã đánh giá |
+| `cwx.kpi.needsReview` | Needs review | Cần xem xét |
+| `cwx.kpi.higher` | Higher priority | Ưu tiên cao |
+| `cwx.kpi.insufficient` | Insufficient history | Chưa đủ lịch sử |
+| `cwx.kpi.upcoming` | Upcoming booking | Có lịch hẹn sắp tới |
+| `cwx.kpi.reviewed` | Reviewed | Đã xem xét |
+| `cwx.tab.needs_review` | Needs review | Cần xem xét |
+| `cwx.tab.reviewed` | Reviewed | Đã xem xét |
+| `cwx.tab.all_signals` | All signals | Tất cả tín hiệu |
+| `cwx.tab.insufficient` | Insufficient history | Chưa đủ lịch sử |
+| `cwx.tab.no_signal` | No current signal | Không có tín hiệu |
+| `cwx.tab.history` | History | Lịch sử |
+| `cwx.empty.needs_review` | No customer needs review right now. | Hiện không có khách nào cần xem xét. |
+| `cwx.empty.reviewed` | No reviewed signals. | Không có tín hiệu nào đã xem xét. |
+| `cwx.empty.all_signals` | No current signals. | Không có tín hiệu hiện tại. |
+| `cwx.empty.insufficient` | Every evaluated customer has enough history. | Mọi khách đã đánh giá đều đủ lịch sử. |
+| `cwx.empty.no_signal` | No customer without a signal. | Không có khách nào không có tín hiệu. |
+| `cwx.f.priority` | Priority | Mức ưu tiên |
+| `cwx.f.sort` | Sort | Sắp xếp |
+| `cwx.f.dateField` | Date | Ngày |
+| `cwx.priority.higher` | Higher priority | Ưu tiên cao |
+| `cwx.priority.normal` | Needs review | Cần xem xét |
+| `cwx.sort.priority` | Highest priority first | Ưu tiên cao nhất trước |
+| `cwx.sort.signal_newest` | Newest signal first | Tín hiệu mới nhất trước |
+| `cwx.sort.last_visit` | Most recent visit first | Lần đến gần nhất trước |
+| `cwx.sort.days_since` | Longest since last visit | Lâu nhất từ lần đến cuối |
+| `cwx.sort.name` | Name | Tên |
+| `cwx.date.signal_since` | Signal generated | Ngày có tín hiệu |
+| `cwx.date.last_visit` | Last completed visit | Lần hoàn tất gần nhất |
+| `cwx.date.next_appointment` | Appointment date | Ngày hẹn |
+| `cwx.date.created` | Customer created | Ngày tạo khách |
+| `cwx.date.reviewed` | Staff reviewed | Ngày nhân viên xem xét |
+| `cwx.date.evaluated` | Last evaluated | Lần đánh giá gần nhất |
+| `cwx.preset.all` | All time | Mọi thời gian |
+| `cwx.preset.today` | Today | Hôm nay |
+| `cwx.preset.yesterday` | Yesterday | Hôm qua |
+| `cwx.preset.week` | This week | Tuần này |
+| `cwx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `cwx.preset.month` | This month | Tháng này |
+| `cwx.preset.last_month` | Last month | Tháng trước |
+| `cwx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `cwx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `cwx.preset.year` | This year | Năm nay |
+| `cwx.preset.custom` | Custom range | Tùy chọn |
+| `cwx.col.customer` | Customer | Khách hàng |
+| `cwx.col.lastVisit` | Last completed visit | Lần hoàn tất gần nhất |
+| `cwx.col.daysSince` | Days since visit | Số ngày từ lần đến |
+| `cwx.col.interval` | Usual return interval | Khoảng quay lại quen thuộc |
+| `cwx.col.upcoming` | Upcoming booking | Lịch hẹn sắp tới |
+| `cwx.col.signal` | Signal | Tín hiệu |
+| `cwx.col.reason` | Main reason | Lý do chính |
+| `cwx.col.review` | Review | Xem xét |
+| `cwx.state.needs_review` | Needs review | Cần xem xét |
+| `cwx.state.higher_priority` | Higher priority | Ưu tiên cao |
+| `cwx.state.no_current_signal` | No current signal | Không có tín hiệu |
+| `cwx.state.insufficient_history` | Insufficient history | Chưa đủ lịch sử |
+| `cwx.state.data_unavailable` | Data unavailable | Không có dữ liệu |
+| `cwx.level.possible` | possible | có thể |
+| `cwx.level.elevated` | elevated | tăng cao |
+| `cwx.level.high` | high | cao |
+| `cwx.level.low` | low | thấp |
+| `cwx.level.insufficient` | insufficient history | chưa đủ lịch sử |
+| `cwx.review.reviewed` | Reviewed | Đã xem |
+| `cwx.review.deferred` | Later | Xem sau |
+| `cwx.action.reviewed` | Marked reviewed | Đã đánh dấu đã xem |
+| `cwx.action.deferred` | Review later | Xem lại sau |
+| `cwx.action.reopened` | Reopened | Mở lại |
+| `cwx.action.note` | Note | Ghi chú |
+| `cwx.saved.reviewed` | Marked reviewed. Nothing was sent or changed for the customer. | Đã đánh dấu đã xem. Không gửi hay thay đổi gì cho khách. |
+| `cwx.saved.deferred` | Saved for later review. | Đã lưu để xem lại sau. |
+| `cwx.saved.reopened` | Back in Needs review. | Đã đưa lại vào Cần xem xét. |
+| `cwx.saved.note` | Note added. | Đã thêm ghi chú. |
+| `cwx.hist.when` | When | Thời điểm |
+| `cwx.hist.action` | Action | Hành động |
+| `cwx.hist.note` | Note | Ghi chú |
+| `cwx.hist.by` | By | Người thực hiện |
+| `cwx.ov.title` | Retention evidence | Bằng chứng giữ chân khách |
+| `cwx.ov.profile` | View customer profile | Xem hồ sơ khách |
+| `cwx.ov.appointments` | Appointment history | Lịch sử lịch hẹn |
+| `cwx.ov.rebooking` | Open Rebooking | Mở Đặt lại lịch |
+| `cwx.ov.recommendations` | Service Recommendations | Gợi ý dịch vụ |
+| `cwx.ov.notEvaluated` | This customer has not been evaluated yet. Press Refresh. | Khách này chưa được đánh giá. Hãy bấm Làm mới. |
+| `cwx.ov.caution` | A cautious internal signal — not a confirmed decision to leave, and never shown to the customer. | Tín hiệu nội bộ thận trọng — không phải quyết định rời đi đã xác nhận, và không bao giờ hiển thị cho khách. |
+| `cwx.ov.evidence` | Why this signal | Vì sao có tín hiệu này |
+| `cwx.ov.visits` | Completed visits | Lượt đã hoàn tất |
+| `cwx.ov.visitsLine` | {n} visits · first {first} · last {last} | {n} lượt · lần đầu {first} · gần nhất {last} |
+| `cwx.ov.canceled` | Cancellations / no-shows | Hủy / không đến |
+| `cwx.ov.cancelLine` | {c} canceled · {n} no-shows | {c} lần hủy · {n} lần không đến |
+| `cwx.ov.membership` | Membership | Hội viên |
+| `cwx.ov.membershipCanceled` | Canceled (no active plan) | Đã hủy (không có gói đang hoạt động) |
+| `cwx.ov.since` | Signal since | Có tín hiệu từ |
+| `cwx.ov.rule` | Rule | Quy tắc |
+| `cwx.ov.ruleLine` | Version {v} · evaluated {at} | Phiên bản {v} · đánh giá lúc {at} |
+| `cwx.ov.reviewLine` | {s} on {at} at level {l} | {s} lúc {at} ở mức {l} |
+| `cwx.ov.until` | until {d} | đến {d} |
+| `cwx.ov.reviewExpired` | the signal changed since — review again | tín hiệu đã thay đổi — hãy xem lại |
+| `cwx.ov.history` | Review history | Lịch sử xem xét |
+| `cwx.ov.noActions` | Churn Watch never texts, books, edits the customer or changes points. Use the linked modules for any follow-up. | Theo dõi rời bỏ không nhắn tin, đặt lịch, sửa hồ sơ hay đổi điểm. Hãy dùng các mục liên kết để theo dõi tiếp. |
+| `cwx.err.AI_CUSTOMER_PROFILE_DISABLED` | The AI Customer Profile assistant is turned off for this salon. Turn it on in Customer AI Settings. | Trợ lý Hồ sơ khách hàng AI đang tắt cho tiệm này. Hãy bật trong Cài đặt AI khách hàng. |
+| `cwx.err.CUSTOMER_NOT_FOUND` | Customer not found in your authorized salon records. | Không tìm thấy khách trong hồ sơ tiệm bạn được xem. |
+| `cwx.err.CHURN_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `cwx.err.CHURN_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `cwx.err.CHURN_NO_SIGNAL` | There is no current signal to review. | Không có tín hiệu hiện tại để xem xét. |
+| `cwx.err.CHURN_STALE_VERSION` | Someone else updated this review. It has been reloaded. | Người khác vừa cập nhật mục này. Đã tải lại. |
+| `cwx.err.CHURN_NOTE_REQUIRED` | Write a note first. | Hãy viết ghi chú trước. |
+| `cwx.err.INTELLIGENCE_SCAN_FAILED` | The evaluation could not finish. Nothing was changed. | Không đánh giá xong được. Không có gì thay đổi. |
+| `cwx.err.PERMISSION_DENIED` | Your role cannot view Churn Watch. | Vai trò của bạn không được xem Theo dõi rời bỏ. |
+| `cwx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `cwx.health.running` | Checking… | Đang kiểm tra… |
+| `cwx.health.readOnly` | This check only reads. It never books, texts, edits customers, changes points or reclassifies anyone. | Việc kiểm tra chỉ đọc. Không đặt lịch, nhắn tin, sửa khách, đổi điểm hay phân loại lại ai. |
+| `cwx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `cwx.health.PASSED` | Passed | Đạt |
+| `cwx.health.WARNING` | Warning | Cảnh báo |
+| `cwx.health.FAILED` | Failed | Lỗi |
+| `cwx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `cwx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `cwx.health.agreement` | Customer Intelligence's coarse churn card counts {c}; this queue's rule finds {p} possible, {e} elevated and {h} high. Both come from the same evaluation. | Thẻ rời bỏ (sơ bộ) của Phân tích khách hàng đếm {c}; quy tắc của danh sách này thấy {p} có thể, {e} tăng cao và {h} cao. Cả hai đến từ cùng một lần đánh giá. |
+| `cwx.health.k.assistant_enabled` | AI Customer Profile assistant | Trợ lý Hồ sơ khách hàng AI |
+| `cwx.health.d.assistant_enabled.PASSED` | The assistant is on. | Trợ lý đang bật. |
+| `cwx.health.d.assistant_enabled.WARNING` | The assistant is off; signals cannot refresh. Turn it on in Customer AI Settings. | Trợ lý đang tắt; tín hiệu không thể làm mới. Hãy bật trong Cài đặt AI khách hàng. |
+| `cwx.health.k.evaluation_freshness` | Evaluation is recent | Lần đánh giá còn mới |
+| `cwx.health.d.evaluation_freshness.PASSED` | The last evaluation is recent and used the current rule. | Lần đánh giá gần nhất còn mới và dùng quy tắc hiện tại. |
+| `cwx.health.d.evaluation_freshness.WARNING` | The last evaluation is older than an hour or used an older rule. Press Refresh. | Lần đánh giá gần nhất đã hơn một giờ hoặc dùng quy tắc cũ. Hãy bấm Làm mới. |
+| `cwx.health.d.evaluation_freshness.FAILED` | The last evaluation failed. Press Refresh; if it fails again, report it. | Lần đánh giá gần nhất bị lỗi. Hãy bấm Làm mới; nếu vẫn lỗi, hãy báo lại. |
+| `cwx.health.d.evaluation_freshness.INSUFFICIENT_DATA` | Nothing has been evaluated yet. Press Refresh. | Chưa đánh giá lần nào. Hãy bấm Làm mới. |
+| `cwx.health.k.levels_reconcile` | Every customer has one level | Mỗi khách có đúng một mức |
+| `cwx.health.d.levels_reconcile.PASSED` | Every evaluated customer has exactly one signal level. | Mỗi khách đã đánh giá có đúng một mức tín hiệu. |
+| `cwx.health.d.levels_reconcile.WARNING` | The last evaluation predates the churn rule. Press Refresh. | Lần đánh giá gần nhất có trước quy tắc rời bỏ. Hãy bấm Làm mới. |
+| `cwx.health.d.levels_reconcile.FAILED` | The levels do not add up to the evaluated total. Press Refresh and report it if it repeats. | Các mức không cộng khớp tổng đã đánh giá. Hãy Làm mới và báo lại nếu lặp lại. |
+| `cwx.health.d.levels_reconcile.INSUFFICIENT_DATA` | Nothing evaluated yet. | Chưa đánh giá lần nào. |
+| `cwx.health.k.intelligence_agreement` | Agreement with Customer Intelligence | Khớp với Phân tích khách hàng |
+| `cwx.health.k.rule_applied` | The churn rule ran for everyone | Quy tắc rời bỏ đã chạy cho mọi khách |
+| `cwx.health.d.rule_applied.PASSED` | Every evaluated customer has a churn level. | Mọi khách đã đánh giá đều có mức rời bỏ. |
+| `cwx.health.d.rule_applied.WARNING` | Some customers have no churn level yet. Press Refresh. | Một số khách chưa có mức rời bỏ. Hãy bấm Làm mới. |
+| `cwx.health.d.rule_applied.INSUFFICIENT_DATA` | Nothing evaluated yet. | Chưa đánh giá lần nào. |
+| `cwx.health.k.bookings_since_evaluation` | Bookings made since the evaluation | Lịch hẹn đặt sau lần đánh giá |
+| `cwx.health.d.bookings_since_evaluation.PASSED` | No flagged customer has booked since the evaluation. | Không có khách được đánh dấu nào đặt lịch sau lần đánh giá. |
+| `cwx.health.d.bookings_since_evaluation.WARNING` | Some flagged customers booked after the evaluation; their signal is out of date. Press Refresh. | Một số khách được đánh dấu đã đặt lịch sau lần đánh giá; tín hiệu đã cũ. Hãy bấm Làm mới. |
+| `cwx.health.k.reviews_point_at_live_customers` | Reviews belong to live customers | Mục xem xét thuộc khách đang hoạt động |
+| `cwx.health.d.reviews_point_at_live_customers.PASSED` | Every review belongs to a live customer. | Mọi mục xem xét đều thuộc khách đang hoạt động. |
+| `cwx.health.d.reviews_point_at_live_customers.WARNING` | Some reviews belong to a merged or archived customer. Nothing to do unless they reappear. | Một số mục xem xét thuộc khách đã gộp hoặc lưu trữ. Không cần làm gì trừ khi xuất hiện lại. |
+| `cwx.health.k.tenant_isolation` | Only this salon's customers | Chỉ khách của tiệm này |
+| `cwx.health.d.tenant_isolation.PASSED` | Every signal and review belongs to this salon. | Mọi tín hiệu và mục xem xét đều thuộc tiệm này. |
+| `cwx.health.d.tenant_isolation.FAILED` | A signal or review references another salon's customer. Report this immediately. | Có tín hiệu hoặc mục xem xét trỏ tới khách của tiệm khác. Hãy báo ngay. |
+| `cwx.health.k.deferrals_due` | Deferred reviews due | Mục hoãn đến hạn |
+| `cwx.health.d.deferrals_due.PASSED` | No deferred review has reached its date. | Không có mục hoãn nào đến hạn. |
+| `cwx.health.d.deferrals_due.WARNING` | Some deferred reviews have reached their date and are back in Needs review. | Một số mục hoãn đã đến hạn và quay lại Cần xem xét. |
+| `cwx.health.k.no_customer_side_effects` | No messages, bookings or edits | Không nhắn tin, đặt lịch hay sửa |
+| `cwx.health.d.no_customer_side_effects.PASSED` | Churn Watch has no path that texts, books, edits a customer or changes points; its only writes are its own review notes. | Theo dõi rời bỏ không có đường nào để nhắn tin, đặt lịch, sửa khách hay đổi điểm; chỉ ghi nhận xét của chính nó. |
+| `cwx.health.k.indexes` | Indexes | Chỉ mục |
+| `cwx.health.d.indexes.PASSED` | Signal and review indexes are present. | Đã có chỉ mục tín hiệu và xem xét. |
+| `cwx.health.d.indexes.WARNING` | Some indexes are missing; the queue may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |

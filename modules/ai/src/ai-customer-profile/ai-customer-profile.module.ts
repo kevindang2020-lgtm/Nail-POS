@@ -11,6 +11,8 @@ import { Module } from '@nestjs/common';
 import { AiCustomerProfileController } from './ai-customer-profile.controller';
 import { CustomerIntelligenceCenter } from './customer-intelligence-center';
 import { CustomerIntelligenceCenterController, CUSTOMER_INTELLIGENCE_CENTER } from './customer-intelligence-center.controller';
+import { ChurnWatchCenter } from './churn-watch-center';
+import { ChurnWatchCenterController, CHURN_WATCH_CENTER } from './churn-watch-center.controller';
 import { AiCustomerProfileService, DefaultProfileSettings, DefaultCallSummary, type ProfileSettingsPort, type CallSummaryPort } from './ai-customer-profile.service';
 import { KyselyCallSummary } from './ai-customer-profile.call-summary.kysely';
 import { AiCustomerProfileScanScheduler } from './ai-customer-profile-scan.scheduler';
@@ -31,7 +33,7 @@ function makeProfileCache(): CachePort | null {
 
 @Module({
   imports: [CustomersModule, ServicesModule],
-  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController],   // + Customer Intelligence guide (Nov 1 2026)
+  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController, ChurnWatchCenterController],   // + Customer Intelligence guide (Nov 1 2026)
   providers: [
     { provide: 'PROFILE_CACHE', useFactory: makeProfileCache },
     // DB-backed settings (persistent overrides + emergency kill switches) when Postgres is present; else read-only defaults.
@@ -52,6 +54,10 @@ function makeProfileCache(): CachePort | null {
     // Customer Intelligence (Nov 1 2026): the six cards from a set-based scan with the assistant's own rules + tunables
     { provide: CUSTOMER_INTELLIGENCE_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) =>
         (db ? new CustomerIntelligenceCenter(db, async (ctx) => { const s = await svc.getEffectiveSettings({ ...ctx, branchId: ctx.branchId ?? '' }); return { enabled: s.enabled, tunables: s.tunables }; }) : null),
+      inject: [DATABASE, AiCustomerProfileService] },
+    // Churn Watch (Nov 1 2026): the review queue over the same scan's churn rule
+    { provide: CHURN_WATCH_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) =>
+        (db ? new ChurnWatchCenter(db, async (ctx) => (await svc.getEffectiveSettings({ ...ctx, branchId: ctx.branchId ?? '' })).enabled) : null),
       inject: [DATABASE, AiCustomerProfileService] },
   ],
   exports: [AiCustomerProfileService],
