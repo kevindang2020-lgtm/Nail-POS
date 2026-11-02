@@ -59,9 +59,8 @@ export const posCustomersApi = {
     api.post(`/pos/customers/${enc(customerId)}/phone/${enc(sessionId)}/cancel`, {}),
   merge: (duplicateGroupId: string, primaryCustomerId: string) =>
     api.post(`/pos/customers/duplicates/${enc(duplicateGroupId)}/merge`, { primaryCustomerId }),
-  /** Functional Decision 29: Keep Separate (the group leaves the queue) or Not Sure (it stays, flagged). */
-  decideDuplicate: (duplicateGroupId: string, decision: 'keep_separate' | 'not_sure') =>
-    api.post(`/pos/customers/duplicates/${enc(duplicateGroupId)}/decision`, { decision }),
+  // Functional Decision 29 Keep Separate / Not Sure: since Nov 2 2026 recorded through /pos/duplicate-review/groups/:id/decision
+  // (posDuplicateReviewApi.decide), which writes the same customer_duplicate_decisions pairs plus the review timeline.
   importPreview: (csv: string, updateExisting?: boolean) => api.post(`/pos/customers/import/preview`, { csv, updateExisting: !!updateExisting }),
   importCommit: (csv: string, updateExisting?: boolean) => api.post(`/pos/customers/import/commit`, { csv, updateExisting: !!updateExisting }),
 };

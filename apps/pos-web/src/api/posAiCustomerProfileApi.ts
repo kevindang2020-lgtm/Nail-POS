@@ -31,9 +31,8 @@ export const posAiCustomerProfileApi = {
   updateSettings: (level: 'tenant' | 'branch' | 'user', patch: { enabled?: boolean; tunables?: any }) =>
     api.put<any>(`/pos/ai-customer-profile/settings/${level}`, patch),
 
-  // duplicate merge: preview (read-only) then confirmed execution (mutation)
-  mergePreview: (groupId: string, primaryCustomerId: string) =>
-    api.get<any>(`/pos/ai-customer-profile/duplicates/${enc(groupId)}/preview`, { primary: primaryCustomerId }),
+  // duplicate merge: the Duplicate Review screen uses /pos/duplicate-review/* (posDuplicateReviewApi) since Nov 2 2026 — its
+  // preview is recorded and hash-bound to the merge; this older positional-group preview has no caller left in the POS.
   merge: (groupId: string, primaryCustomerId: string) =>
     api.post<any>(`/pos/ai-customer-profile/duplicates/${enc(groupId)}/merge`, { primaryCustomerId, confirm: true }),
 };

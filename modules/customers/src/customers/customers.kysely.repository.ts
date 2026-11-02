@@ -11,7 +11,6 @@
 import { storedDateString, monthDayOf, toStorage } from '../birthdays/birthday-core';
 import { OutboxWriter, DOMAIN_EVENTS, createDomainEvent } from '@aipowersalon/events';
 import { sql, type Kysely } from 'kysely';
-import { randomUUID } from 'node:crypto';
 import { toStoredCustomerPhone, normalizePhone } from '../customer-activation-rules/customer-activation-core';
 import type { DB } from '@aipowersalon/database';
 import { VISIT_TICKET_STATUSES, RETURNING_MIN_VISITS, INACTIVE_DAYS } from './customer-segments';
@@ -24,6 +23,7 @@ import {
 import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
 import { applyLoyaltyEntry, lockLoyaltyCustomer, LoyaltyLedgerError } from '../loyalty/loyalty-ledger.service';
+import { mergeCustomersTx } from './customer-merge';
 
 interface Cust {
   customerId: string; firstName: string; lastName: string; phone: string; normalizedPhone?: string | null; email: string; avatarUrl?: string | null; status: 'active' | 'inactive' | 'archived';
@@ -740,71 +740,9 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     if (!group.members.some((m) => m.customerId === primaryId)) return null;
     const others = group.members.map((m) => m.customerId).filter((cid) => cid !== primaryId);
     if (!others.length) return this.detail(ctx, primaryId);
-    const T = ctx.tenantId;
-    const moved: Record<string, number> = {};
-    await this.db.transaction().execute(async (trx) => {
-      // the same per-customer loyalty lock adjustLoyaltyPoints takes — sorted, so two merges cannot deadlock
-      for (const id of [primaryId, ...others].sort()) await lockLoyaltyCustomer(trx as any, T, id);
-      const REASSIGN = ['tickets', 'pos_tech_appointments', 'reviews', 'review_requests', 'gift_cards', 'gift_card_recipients',
-        'customer_memberships', 'membership_payments', 'membership_activity', 'membership_audit', 'customer_payment_methods',
-        'customer_wallet_ledger', 'loyalty_point_earnings', 'loyalty_redemptions', 'nail_showcase_photos',
-        'nail_showcase_posts', 'nail_photo_consent', 'customer_preferences'];
-      for (const t of REASSIGN) {
-        const r: any = await sql`update ${sql.table(t)} set customer_id = ${primaryId} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx);
-        if (Number(r.numAffectedRows ?? 0)) moved[t] = Number(r.numAffectedRows);
-      }
-      // tags are unique per (tenant, customer, tag): drop the ones the primary already has, move the rest
-      await sql`delete from customer_tags s where s.tenant_id = ${T} and s.customer_id = any(${others}::uuid[])
-        and exists (select 1 from customer_tags p where p.tenant_id = ${T} and p.customer_id = ${primaryId} and p.tag = s.tag)`.execute(trx);
-      const tg: any = await sql`update customer_tags set customer_id = ${primaryId} where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx);
-      if (Number(tg.numAffectedRows ?? 0)) moved.customer_tags = Number(tg.numAffectedRows);
-      // loyalty (Phase 10): the ledger is the truth, so points move as a pair of `merge` entries — the duplicate's balance
-      // out of its own history (which stays where it happened) and into the primary's — then the duplicate's profile goes
-      // (one profile per customer) and its lifetime totals are added to the primary's.
-      const logIds = new Map(others.map((src) => [src, randomUUID()] as const));
-      const profs: any[] = (await sql<any>`select id, customer_id, branch_id, points_balance, total_earned_points, total_redeemed_points from customer_loyalty_profiles
-        where tenant_id = ${T} and customer_id = any(${others}::uuid[])`.execute(trx)).rows;
-      let movedPoints = 0;
-      for (const p of profs) {
-        const b = Number(p.points_balance || 0); const src = String(p.customer_id);
-        if (b !== 0) {
-          await applyLoyaltyEntry(trx as any, { tenantId: T, branchId: p.branch_id, customerId: src, entryType: 'merge', delta: -b, allowNegative: true,
-            reason: `merged into customer ${primaryId}`, sourceTable: 'customers', sourceId: src, actorUserId: ctx.userId, legacyType: 'merge_out', legacySource: 'pos' });
-          await applyLoyaltyEntry(trx as any, { tenantId: T, branchId: ctx.branchId || p.branch_id, customerId: primaryId, entryType: 'merge', delta: b, allowNegative: true,
-            reason: `merged from customer ${src}`, sourceTable: 'customer_merge_logs', sourceId: logIds.get(src)!, actorUserId: ctx.userId, legacyType: 'merge_in', legacySource: 'pos' });
-        }
-        movedPoints += b;
-      }
-      if (profs.length) {
-        const add = (k: string) => profs.reduce((n, p) => n + Number(p[k] || 0), 0);
-        // the primary has a profile now unless every duplicate held 0 points and the primary had none — create it then
-        const has = (await sql`select 1 from customer_loyalty_profiles where tenant_id = ${T} and customer_id = ${primaryId}`.execute(trx)).rows.length > 0;
-        if (!has) await sql`insert into customer_loyalty_profiles (tenant_id, branch_id, customer_id, points_balance, total_earned_points, total_redeemed_points)
-          values (${T}, ${profs[0].branch_id}, ${primaryId}, 0, 0, 0)`.execute(trx);
-        await sql`update customer_loyalty_profiles set total_earned_points = total_earned_points + ${add('total_earned_points')},
-          total_redeemed_points = total_redeemed_points + ${add('total_redeemed_points')}, updated_at = now() where tenant_id = ${T} and customer_id = ${primaryId}`.execute(trx);
-        await sql`delete from customer_loyalty_profiles where tenant_id = ${T} and id = any(${profs.map((p) => p.id)}::uuid[])`.execute(trx);
-        moved.loyalty_points = movedPoints;
-      }
-      await this.scoped(trx.updateTable('customers'), ctx).set({ status: 'archived', archived_at: sql`now()`, updated_at: sql`now()` }).where('id', 'in', others).execute();
-      const prim: any = await this.scoped(trx.selectFrom('customers'), ctx).select(['branch_id']).where('id', '=', primaryId).executeTakeFirst();
-      for (const src of others) {
-        await sql`insert into customer_merge_logs (id, tenant_id, branch_id, source_customer_id, target_customer_id, merged_by_user_id, merge_summary_json)
-          values (${logIds.get(src)}, ${T}, ${prim?.branch_id ?? ctx.branchId}, ${src}, ${primaryId}, ${/^[0-9a-f-]{36}$/i.test(String(ctx.userId)) ? ctx.userId : null}, ${JSON.stringify({ groupId, moved })}::jsonb)`.execute(trx);
-      }
-      // BUILD_PLAN Phase 15 (Constitution 8 §78/§18): ONE customer.merged per merge, committed with the merge or not at all.
-      // This is the canonical merge — the only path that moves what the customer owns. Ids only (§95): never the name,
-      // phone or email, and not the duplicate group id (it is derived from the shared contact).
-      if (this.outbox) {
-        const mergedIds = [...others].sort();
-        await this.outbox.write(trx, createDomainEvent({
-          eventType: DOMAIN_EVENTS.CUSTOMER_MERGED, tenantId: T, branchId: ctx.branchId || prim?.branch_id || undefined,
-          aggregateType: 'customer', aggregateId: primaryId, actorId: ctx.userId, actorType: 'user',
-          correlationId: `customer:${primaryId}`,
-          payload: { customerId: primaryId, mergedCustomerIds: mergedIds, mergeLogIds: mergedIds.map((id) => logIds.get(id)!) },
-        }));
-      }
-    });
+    // Nov 2 2026: the transaction body is the shared canonical merge (customer-merge.ts) — the Duplicate Review
+    // workspace runs exactly the same code.
+    await this.db.transaction().execute((trx) => mergeCustomersTx(trx as unknown as Kysely<any>, { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId }, primaryId, others, { groupId }, this.outbox));
     return this.detail(ctx, primaryId);
   }
 

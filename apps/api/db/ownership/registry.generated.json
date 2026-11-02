@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 886,
+  "tables": 891,
   "ownership": {
-   "tenant_owned": 576,
+   "tenant_owned": 581,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -28,7 +28,7 @@
    "MARKETING": 21,
    "PAYMENTS": 59,
    "WORKFORCE": 73,
-   "CUSTOMERS": 48,
+   "CUSTOMERS": 53,
    "CATALOG": 20,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 12,
@@ -41,14 +41,14 @@
    "TENANTS": 27
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 130,
-   "CONFIDENTIAL": 147,
+   "HIGHLY_SENSITIVE": 131,
+   "CONFIDENTIAL": 151,
    "SECURITY_SECRET": 39,
    "INTERNAL": 489,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
-  "append_only": 42,
+  "append_only": 43,
   "platform_rows": 99
  },
  "tables": {
@@ -2534,6 +2534,66 @@
    "source": "heuristic"
   },
   "customer_duplicate_decisions": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_duplicate_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "customer_duplicate_groups": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_duplicate_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_duplicate_merge_ops": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_duplicate_scans": {
    "ownership": "tenant_owned",
    "class": "B",
    "domain": "CUSTOMERS",

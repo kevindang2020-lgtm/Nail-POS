@@ -31,6 +31,8 @@ export { CustomersService } from './customers/customers.service';   // used by t
 // joined by --into (reviews, wallet):
 export { ReviewsModule } from './reviews/reviews.module';
 export { CustomerSearchModule } from './customer-search/customer-search.module';   // Customer Search guide (Nov 1 2026): /pos/customer-search/*
+export { DuplicateReviewModule } from './duplicate-review/duplicate-review.module';   // Duplicate Review guides (Nov 1 2026): /pos/duplicate-review/*
+export { mergeCustomersTx, MERGE_REASSIGN_TABLES } from './customers/customer-merge';   // the canonical customer merge (one transaction)
 export { WalletModule } from './wallet/wallet.module';
 export * from './reviews/reviews.dto';
 export { ReviewsService } from './reviews/reviews.service';   // used by the API today

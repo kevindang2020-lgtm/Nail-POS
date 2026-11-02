@@ -3713,3 +3713,19 @@ span.tq-who{cursor:default}
 .csx-table tr[data-testid="csx-row"] { cursor: pointer; }
 .csx-table td .chip { margin-left: 6px; }
 .csx-foot { padding: 0 12px 10px; }
+
+/* Duplicate Review (Nov 2 2026) — full-width queue, side-by-side comparison, merge preview */
+.dupx-group-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.dupx-detected { margin-left: auto; font-size: 12px; }
+.dupx-compare th[scope="row"] { text-align: left; white-space: nowrap; color: var(--muted); font-weight: 500; }
+.dupx-compare td, .dupx-compare th { vertical-align: top; min-width: 180px; }
+.dupx-keep { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; cursor: pointer; }
+.dupx-keep input { width: 20px; height: 20px; }
+.dupx-evidence { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.dupx-evidence p { flex-basis: 100%; margin: 4px 0 0; }
+.dupx-form { display: grid; gap: 8px; margin: 12px 0; }
+.dupx-form textarea { min-height: 72px; width: 100%; }
+.dupx-block { border-left: 4px solid var(--aps-red, #b42318); padding: 10px 12px; margin: 10px 0; }
+.dupx-acks { display: grid; gap: 8px; margin: 10px 0; }
+.dupx-ack { display: flex; gap: 10px; align-items: flex-start; min-height: 40px; line-height: 1.4; cursor: pointer; }
+.dupx-ack input { width: 20px; height: 20px; flex: none; margin-top: 2px; }

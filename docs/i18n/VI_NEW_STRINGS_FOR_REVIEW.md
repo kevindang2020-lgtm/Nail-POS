@@ -11519,3 +11519,274 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `csx.src.memberships` | memberships | hội viên |
 | `csx.src.duplicates` | possible duplicates | hồ sơ có thể trùng |
 | `csx.src.preferences` | preferences | sở thích |
+
+## Duplicate Review (`dup.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `dup.loadFailed` | Duplicate Review could not load. Try again. | Không tải được Rà soát trùng lặp. Hãy thử lại. |
+| `dup.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì bị thay đổi. |
+| `dup.loading` | Loading… | Đang tải… |
+| `dup.refresh` | Refresh | Làm mới |
+| `dup.scanNow` | Scan now | Quét ngay |
+| `dup.check` | Check Duplicate Review System | Kiểm tra hệ thống Rà soát trùng lặp |
+| `dup.close` | Close | Đóng |
+| `dup.back` | Back to comparison | Quay lại so sánh |
+| `dup.any` | Any | Tất cả |
+| `dup.clearSearch` | Clear search | Xóa tìm kiếm |
+| `dup.clearAll` | Clear all | Xóa tất cả |
+| `dup.searchPh` | Search name, phone, email, customer ID, group ID or appointment… | Tìm tên, số điện thoại, email, mã khách hàng, mã nhóm hoặc lịch hẹn… |
+| `dup.rule` | Matching rule {v} | Quy tắc đối chiếu {v} |
+| `dup.scanReused` | A scan just ran — showing its results. | Vừa có một lần quét — đang hiển thị kết quả đó. |
+| `dup.scanDone` | Scan finished: {n} possible duplicate groups. | Đã quét xong: {n} nhóm có thể trùng lặp. |
+| `dup.fresh.never` | Never scanned | Chưa quét lần nào |
+| `dup.fresh.up_to_date` | Up to date · scanned {at} | Mới nhất · quét lúc {at} |
+| `dup.fresh.stale` | Out of date · last scan {at} | Đã cũ · lần quét gần nhất {at} |
+| `dup.fresh.failed` | Last scan failed · last good {at} | Lần quét gần nhất bị lỗi · lần tốt gần nhất {at} |
+| `dup.fresh.running` | Scanning… | Đang quét… |
+| `dup.fresh.scanning` | Scanning… | Đang quét… |
+| `dup.kpi.open` | Needs review | Cần xem xét |
+| `dup.kpi.openSub` | Pending, in review, later or failed | Đang chờ, đang xem, để sau hoặc lỗi |
+| `dup.kpi.high` | High confidence | Độ tin cậy cao |
+| `dup.kpi.highSub` | Exact or Strong, still open | Chính xác hoặc Mạnh, chưa xử lý |
+| `dup.kpi.deferred` | Review later | Xem lại sau |
+| `dup.kpi.kept` | Kept separate | Giữ riêng |
+| `dup.kpi.merged` | Merged | Đã gộp |
+| `dup.kpi.mergedSub` | {n} in the last 30 days | {n} trong 30 ngày qua |
+| `dup.kpi.failed` | Merge failed | Gộp thất bại |
+| `dup.f.status` | Status | Trạng thái |
+| `dup.f.confidence` | Confidence | Độ tin cậy |
+| `dup.f.reason` | Matched on | Trùng theo |
+| `dup.f.sort` | Sort | Sắp xếp |
+| `dup.f.dateField` | Date | Ngày |
+| `dup.status.open` | Needs review | Cần xem xét |
+| `dup.status.pending` | Pending review | Chờ xem xét |
+| `dup.status.in_review` | In review | Đang xem xét |
+| `dup.status.deferred` | Review later | Xem lại sau |
+| `dup.status.kept_separate` | Kept separate | Giữ riêng |
+| `dup.status.merged` | Merged | Đã gộp |
+| `dup.status.failed` | Merge failed | Gộp thất bại |
+| `dup.status.resolved` | No longer detected | Không còn phát hiện |
+| `dup.status.all` | All | Tất cả |
+| `dup.conf.exact` | Exact | Chính xác |
+| `dup.conf.strong` | Strong | Mạnh |
+| `dup.conf.possible` | Possible | Có thể |
+| `dup.confHint` | A confidence label is a signal for a person to check, never proof that two profiles are the same customer. | Mức tin cậy chỉ là tín hiệu để người kiểm tra, không bao giờ là bằng chứng hai hồ sơ là cùng một khách. |
+| `dup.reason.phone` | Phone | Điện thoại |
+| `dup.reason.email` | Email | Email |
+| `dup.reason.name` | Name | Tên |
+| `dup.reasonChip.phone` | Same phone | Cùng số điện thoại |
+| `dup.reasonChip.email` | Same email | Cùng email |
+| `dup.reasonChip.name` | Similar name | Tên giống nhau |
+| `dup.why.name_only` | Name only | Chỉ trùng tên |
+| `dup.why.shared_contact_different_names` | Shared contact, different names | Chung liên hệ, khác tên |
+| `dup.why.contact_conflict` | Different phone or email | Khác số điện thoại hoặc email |
+| `dup.sort.newest` | Newest detected first | Phát hiện mới nhất trước |
+| `dup.sort.oldest` | Oldest detected first | Phát hiện cũ nhất trước |
+| `dup.sort.confidence` | Highest confidence | Độ tin cậy cao nhất |
+| `dup.sort.members` | Most profiles | Nhiều hồ sơ nhất |
+| `dup.sort.updated` | Recently updated | Cập nhật gần đây |
+| `dup.date.detected` | Detected | Ngày phát hiện |
+| `dup.date.updated` | Last updated | Cập nhật gần nhất |
+| `dup.date.reviewed` | Reviewed | Ngày xem xét |
+| `dup.date.merged` | Merged | Ngày gộp |
+| `dup.date.customer_created` | Customer created | Ngày tạo khách hàng |
+| `dup.preset.all` | All time | Mọi thời gian |
+| `dup.preset.today` | Today | Hôm nay |
+| `dup.preset.yesterday` | Yesterday | Hôm qua |
+| `dup.preset.week` | This week | Tuần này |
+| `dup.preset.last_7` | Last 7 days | 7 ngày qua |
+| `dup.preset.month` | This month | Tháng này |
+| `dup.preset.last_30` | Last 30 days | 30 ngày qua |
+| `dup.preset.last_month` | Last month | Tháng trước |
+| `dup.preset.year` | This year | Năm nay |
+| `dup.preset.custom` | Custom range | Tùy chọn |
+| `dup.candidates` | Candidate groups | Các nhóm nghi trùng |
+| `dup.count` | {n} groups · {order} | {n} nhóm · {order} |
+| `dup.newer` | New candidates available — show | Có nhóm mới — hiển thị |
+| `dup.noMatch` | No groups match these filters. | Không có nhóm nào khớp bộ lọc. |
+| `dup.neverScanned` | No scan has run yet. Press Scan now to look for duplicates. | Chưa quét lần nào. Bấm Quét ngay để tìm hồ sơ trùng. |
+| `dup.scanFailedEmpty` | The last scan failed, so this list may be incomplete. Press Scan now. | Lần quét gần nhất bị lỗi nên danh sách có thể thiếu. Bấm Quét ngay. |
+| `dup.detected` | Detected {at} | Phát hiện {at} |
+| `dup.compare` | Compare | So sánh |
+| `dup.archived` | Archived | Đã lưu trữ |
+| `dup.created` | Created {d} | Tạo {d} |
+| `dup.notProvided` | Not provided | Chưa có |
+| `dup.mergeIntoHint` | Proposes this profile as the one to keep. Nothing changes until you preview and confirm. | Đề xuất giữ hồ sơ này. Chưa có gì thay đổi cho đến khi bạn xem trước và xác nhận. |
+| `dup.rows` | Rows | Số dòng |
+| `dup.contactFull` | Full phone and email shown | Hiển thị đầy đủ số điện thoại và email |
+| `dup.contactMasked` | Phone and email are masked for your role | Số điện thoại và email được che theo vai trò của bạn |
+| `dup.noAutoMerge` | Nothing is ever merged automatically. | Không bao giờ tự động gộp. |
+| `dup.ov.title` | Compare {n} profiles | So sánh {n} hồ sơ |
+| `dup.keepThis` | Keep this profile | Giữ hồ sơ này |
+| `dup.mergesIn` | Merges into the kept profile | Gộp vào hồ sơ được giữ |
+| `dup.c.name` | Name | Tên |
+| `dup.c.id` | Customer ID | Mã khách hàng |
+| `dup.c.phone` | Phone | Điện thoại |
+| `dup.c.email` | Email | Email |
+| `dup.c.created` | Profile created | Ngày tạo hồ sơ |
+| `dup.c.updated` | Profile updated | Cập nhật hồ sơ |
+| `dup.c.branch` | Home branch | Chi nhánh chính |
+| `dup.c.visits` | Completed visits · last | Lượt đã hoàn tất · gần nhất |
+| `dup.c.upcoming` | Upcoming appointments | Lịch hẹn sắp tới |
+| `dup.c.canceled` | Canceled / no-show | Hủy / không đến |
+| `dup.c.openTickets` | Open tickets | Hóa đơn đang mở |
+| `dup.c.technician` | Last technician | Thợ gần nhất |
+| `dup.c.loyalty` | Loyalty points | Điểm tích lũy |
+| `dup.c.memberships` | Active memberships | Hội viên đang hoạt động |
+| `dup.c.giftCards` | Gift cards with balance | Thẻ quà tặng còn số dư |
+| `dup.c.savedCards` | Saved cards | Thẻ đã lưu |
+| `dup.c.consent` | Marketing consent | Đồng ý nhận tiếp thị |
+| `dup.c.tags` | Tags | Nhãn |
+| `dup.verified` | Verified | Đã xác minh |
+| `dup.notVerified` | Not verified | Chưa xác minh |
+| `dup.prefers` | prefers {n} | thích {n} |
+| `dup.notEnrolled` | Not enrolled | Chưa tham gia |
+| `dup.sms` | SMS | SMS |
+| `dup.emailShort` | Email | Email |
+| `dup.yes` | Yes | Có |
+| `dup.no` | No | Không |
+| `dup.evidence` | Why these profiles were grouped | Vì sao các hồ sơ này được nhóm lại |
+| `dup.state.match` | same on all {of} | giống nhau trên cả {of} |
+| `dup.state.partial` | on {p} of {of} only — the rest are blank | chỉ có trên {p}/{of} — các hồ sơ còn lại để trống |
+| `dup.state.conflict` | different values | khác nhau |
+| `dup.state.missing` | not provided | chưa có |
+| `dup.confExplain.exact` | Same phone, email and name on every profile. Still confirm with the customer before merging. | Cùng số điện thoại, email và tên trên mọi hồ sơ. Vẫn hãy xác nhận với khách trước khi gộp. |
+| `dup.confExplain.strong` | Same phone or email and the same name, with no conflicting contact. Confirm before merging. | Cùng số điện thoại hoặc email và cùng tên, không có liên hệ mâu thuẫn. Hãy xác nhận trước khi gộp. |
+| `dup.confExplain.possible` | Not enough evidence that these are the same person (for example a matching name only, or a family phone). Check carefully. | Chưa đủ bằng chứng là cùng một người (ví dụ chỉ trùng tên, hoặc dùng chung số của gia đình). Hãy kiểm tra kỹ. |
+| `dup.history` | Review history | Lịch sử xem xét |
+| `dup.ev.detected` | Detected | Đã phát hiện |
+| `dup.ev.reopened` | Reopened | Mở lại |
+| `dup.ev.resolved` | No longer detected | Không còn phát hiện |
+| `dup.ev.assigned` | Assigned | Đã phân công |
+| `dup.ev.in_review` | Marked in review | Đánh dấu đang xem xét |
+| `dup.ev.deferred` | Review later | Xem lại sau |
+| `dup.ev.kept_separate` | Kept separate | Giữ riêng |
+| `dup.ev.note_added` | Note | Ghi chú |
+| `dup.ev.merge_previewed` | Merge previewed | Đã xem trước việc gộp |
+| `dup.ev.merged` | Merged | Đã gộp |
+| `dup.ev.merge_failed` | Merge failed | Gộp thất bại |
+| `dup.ev.evidence_requested` | More evidence requested | Yêu cầu thêm bằng chứng |
+| `dup.reviewLater` | Review later | Xem lại sau |
+| `dup.markInReview` | Mark in review | Đánh dấu đang xem xét |
+| `dup.reopen` | Reopen | Mở lại |
+| `dup.addNote` | Add note | Thêm ghi chú |
+| `dup.previewMerge` | Preview merge | Xem trước việc gộp |
+| `dup.chooseFirst` | Choose the profile to keep first. | Hãy chọn hồ sơ cần giữ trước. |
+| `dup.reasonRequired` | Reason (required) | Lý do (bắt buộc) |
+| `dup.noteOptional` | Note (optional) | Ghi chú (không bắt buộc) |
+| `dup.dueOn` | Follow up by | Theo dõi trước ngày |
+| `dup.keepExplain` | Both profiles stay exactly as they are. They will not be flagged again unless new matching details appear. | Cả hai hồ sơ giữ nguyên. Chúng sẽ không bị đánh dấu lại trừ khi có thông tin trùng mới. |
+| `dup.saved.keep_separate` | Kept separate. Both profiles are unchanged. | Đã giữ riêng. Cả hai hồ sơ không thay đổi. |
+| `dup.saved.defer` | Saved for later review. Nothing was changed. | Đã lưu để xem lại sau. Không có gì thay đổi. |
+| `dup.saved.in_review` | Marked in review. | Đã đánh dấu đang xem xét. |
+| `dup.saved.reopen` | Reopened for review. | Đã mở lại để xem xét. |
+| `dup.noMergePermission` | You can review, but your role cannot merge profiles. | Bạn có thể xem xét, nhưng vai trò của bạn không được gộp hồ sơ. |
+| `dup.confirmMerge` | Confirm merge | Xác nhận gộp |
+| `dup.merged` | Profiles merged. The other profile is archived, not deleted. | Đã gộp hồ sơ. Hồ sơ còn lại được lưu trữ, không bị xóa. |
+| `dup.pv.readOnly` | Preview only — nothing has changed yet. | Chỉ xem trước — chưa có gì thay đổi. |
+| `dup.pv.keep` | Keep | Giữ |
+| `dup.pv.mergeArchive` | Merge in, then archive | Gộp vào, rồi lưu trữ |
+| `dup.pv.moves` | What moves to the kept profile | Những gì chuyển sang hồ sơ được giữ |
+| `dup.pv.nothingMoves` | No appointments, visits or other records to move. | Không có lịch hẹn, lượt khách hay dữ liệu nào cần chuyển. |
+| `dup.pv.blocked` | This merge cannot be done yet: | Chưa thể gộp: |
+| `dup.pv.confirmEach` | Read and confirm each item: | Đọc và xác nhận từng mục: |
+| `dup.pv.never` | A merge never moves money, refunds, cancels a membership or booking, sends a message, or copies marketing consent. | Việc gộp không bao giờ chuyển tiền, hoàn tiền, hủy hội viên hay lịch hẹn, gửi tin nhắn, hoặc sao chép sự đồng ý nhận tiếp thị. |
+| `dup.pv.undo` | A merge cannot be undone from here; the archived profile and the merge log are kept. | Không thể hoàn tác việc gộp tại đây; hồ sơ được lưu trữ và nhật ký gộp vẫn được giữ. |
+| `dup.pv.expires` | This preview expires {at}. | Bản xem trước hết hạn lúc {at}. |
+| `dup.table.tickets` | Visits and tickets | Lượt khách và hóa đơn |
+| `dup.table.pos_tech_appointments` | Appointments | Lịch hẹn |
+| `dup.table.reviews` | Reviews | Đánh giá |
+| `dup.table.review_requests` | Review requests | Yêu cầu đánh giá |
+| `dup.table.gift_cards` | Gift cards | Thẻ quà tặng |
+| `dup.table.gift_card_recipients` | Gift card recipients | Người nhận thẻ quà tặng |
+| `dup.table.customer_memberships` | Memberships | Hội viên |
+| `dup.table.membership_payments` | Membership payments | Thanh toán hội viên |
+| `dup.table.membership_activity` | Membership activity | Hoạt động hội viên |
+| `dup.table.membership_audit` | Membership history | Lịch sử hội viên |
+| `dup.table.customer_payment_methods` | Saved card references | Tham chiếu thẻ đã lưu |
+| `dup.table.customer_wallet_ledger` | Wallet history | Lịch sử ví |
+| `dup.table.loyalty_point_earnings` | Points earned | Điểm đã tích |
+| `dup.table.loyalty_redemptions` | Points redeemed | Điểm đã đổi |
+| `dup.table.nail_showcase_photos` | Showcase photos | Ảnh trưng bày |
+| `dup.table.nail_showcase_posts` | Showcase posts | Bài trưng bày |
+| `dup.table.nail_photo_consent` | Photo consent | Đồng ý dùng ảnh |
+| `dup.table.customer_preferences` | Preferences | Sở thích |
+| `dup.block.GROUP_CLOSED` | This group is already closed. | Nhóm này đã đóng. |
+| `dup.block.MEMBER_ARCHIVED` | One of these profiles was already merged or archived. Run a scan. | Một hồ sơ đã được gộp hoặc lưu trữ. Hãy quét lại. |
+| `dup.block.OUT_OF_SCOPE` | A profile belongs outside your branches. | Có hồ sơ thuộc chi nhánh ngoài quyền của bạn. |
+| `dup.block.OPEN_TICKET` | The profile being merged has {n} open ticket(s). Finish checkout first. | Hồ sơ bị gộp còn {n} hóa đơn đang mở. Hãy thanh toán xong trước. |
+| `dup.block.IN_SALON_NOW` | The profile being merged is in the salon today. Finish the visit first. | Khách của hồ sơ bị gộp đang ở tiệm hôm nay. Hãy hoàn tất lượt trước. |
+| `dup.block.MEMBERSHIP_CONFLICT` | {n} profiles have an active membership. Resolve the memberships first. | {n} hồ sơ đang có hội viên. Hãy xử lý hội viên trước. |
+| `dup.ack.NAME_ONLY` | Only the name matches. I confirmed with the customer that this is the same person. | Chỉ trùng tên. Tôi đã xác nhận với khách đây là cùng một người. |
+| `dup.ack.CONTACT_CONFLICT` | The profiles have different phones or emails. The kept profile's contact stays; the other is not copied. | Các hồ sơ có số điện thoại hoặc email khác nhau. Giữ liên hệ của hồ sơ được giữ; liên hệ kia không được sao chép. |
+| `dup.ack.CONSENT_DIFFERS` | Marketing consent differs. The kept profile keeps its own consent; nothing is copied. | Sự đồng ý nhận tiếp thị khác nhau. Hồ sơ được giữ giữ nguyên sự đồng ý của mình; không sao chép. |
+| `dup.ack.LOYALTY_ON_BOTH` | {n} profiles have points. Points move through the loyalty ledger — check they were not earned twice. | {n} hồ sơ có điểm. Điểm được chuyển qua sổ điểm — hãy kiểm tra không bị tích hai lần. |
+| `dup.ack.FUTURE_APPOINTMENTS` | {n} upcoming appointment(s) move to the kept profile. Nothing is rescheduled or canceled. | {n} lịch hẹn sắp tới chuyển sang hồ sơ được giữ. Không đổi giờ hay hủy lịch. |
+| `dup.ack.GIFT_CARDS_MOVE` | {n} gift card(s) ({amount}) move to the kept profile. No value is created or removed. | {n} thẻ quà tặng ({amount}) chuyển sang hồ sơ được giữ. Không tạo thêm hay bớt giá trị. |
+| `dup.ack.MEMBERSHIP_MOVES` | An active membership moves to the kept profile. Billing is not changed. | Một hội viên đang hoạt động chuyển sang hồ sơ được giữ. Không thay đổi việc thu phí. |
+| `dup.ack.PAYMENT_METHODS_MOVE` | {n} saved card reference(s) move. No card data is shown or copied. | {n} tham chiếu thẻ đã lưu được chuyển. Không hiển thị hay sao chép dữ liệu thẻ. |
+| `dup.err.DUPLICATE_STALE_PREVIEW` | Something changed since the preview. Preview the merge again. | Có thay đổi kể từ khi xem trước. Hãy xem trước lại. |
+| `dup.err.DUPLICATE_ACK_REQUIRED` | Confirm every listed item before merging. | Hãy xác nhận mọi mục trước khi gộp. |
+| `dup.err.DUPLICATE_MERGE_BLOCKED` | This merge is blocked until the listed issues are resolved. | Chưa thể gộp cho đến khi xử lý xong các vấn đề đã nêu. |
+| `dup.err.DUPLICATE_ALREADY_MERGED` | This group was already merged. | Nhóm này đã được gộp. |
+| `dup.err.DUPLICATE_STALE_VERSION` | Someone else updated this group. It has been reloaded. | Người khác vừa cập nhật nhóm này. Đã tải lại. |
+| `dup.err.DUPLICATE_REASON_REQUIRED` | Add a short reason. | Hãy thêm lý do ngắn. |
+| `dup.err.DUPLICATE_OUT_OF_SCOPE` | This group includes a customer outside your branches. | Nhóm này có khách thuộc chi nhánh ngoài quyền của bạn. |
+| `dup.err.DUPLICATE_GROUP_NOT_FOUND` | This group no longer exists. | Nhóm này không còn tồn tại. |
+| `dup.err.DUPLICATE_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `dup.err.DUPLICATE_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `dup.err.DUPLICATE_SCAN_FAILED` | The scan could not finish. Nothing was changed. | Không quét xong được. Không có gì bị thay đổi. |
+| `dup.err.DUPLICATE_MERGE_FAILED` | The merge could not finish. Nothing was changed. | Không gộp xong được. Không có gì bị thay đổi. |
+| `dup.err.DUPLICATE_MERGE_CONFLICT` | A profile changed while merging. Nothing was merged. | Một hồ sơ thay đổi trong khi gộp. Không có gì được gộp. |
+| `dup.err.PERMISSION_DENIED` | Your role cannot do this. | Vai trò của bạn không được làm việc này. |
+| `dup.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `dup.health.running` | Checking… | Đang kiểm tra… |
+| `dup.health.readOnly` | This check only reads. It never merges, edits, books or sends anything. | Việc kiểm tra chỉ đọc. Không bao giờ gộp, sửa, đặt lịch hay gửi gì. |
+| `dup.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `dup.health.PASSED` | Passed | Đạt |
+| `dup.health.WARNING` | Warning | Cảnh báo |
+| `dup.health.FAILED` | Failed | Lỗi |
+| `dup.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `dup.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `dup.health.k.scan_freshness` | Duplicate scan is recent | Lần quét trùng lặp còn mới |
+| `dup.health.k.scan_failures` | Last scan finished | Lần quét gần nhất đã hoàn tất |
+| `dup.health.k.confidence_rule` | Strong labels rest on real contact evidence | Nhãn Mạnh dựa trên liên hệ thật |
+| `dup.health.k.legacy_overconfidence` | Groups the old rule over-labelled | Nhóm bị quy tắc cũ gắn nhãn quá cao |
+| `dup.health.k.normalizers` | Phone, email and Vietnamese name matching | Đối chiếu số điện thoại, email và tên tiếng Việt |
+| `dup.health.k.indexes` | Search indexes | Chỉ mục tìm kiếm |
+| `dup.health.k.stale_members` | Groups list live profiles only | Nhóm chỉ gồm hồ sơ đang hoạt động |
+| `dup.health.k.tenant_isolation` | Only this salon's customers | Chỉ khách của tiệm này |
+| `dup.health.k.merge_integrity` | Completed merges left nothing behind | Việc gộp không để sót dữ liệu |
+| `dup.health.k.merge_failures` | Failed merge attempts (7 days) | Lần gộp thất bại (7 ngày) |
+| `dup.health.k.loyalty_after_merge` | Points match the loyalty ledger after merges | Điểm khớp sổ điểm sau khi gộp |
+| `dup.health.k.oversized_keys` | Over-shared phones, emails or names | Số điện thoại, email hoặc tên dùng chung quá nhiều |
+| `dup.health.d.scan_freshness.PASSED` | The last scan is recent and used the current rule. | Lần quét gần nhất còn mới và dùng quy tắc hiện tại. |
+| `dup.health.d.scan_freshness.WARNING` | The last scan is more than a day old or used an older rule. Run a scan. | Lần quét gần nhất đã hơn một ngày hoặc dùng quy tắc cũ. Hãy quét lại. |
+| `dup.health.d.scan_freshness.INSUFFICIENT_DATA` | No scan has finished yet. Press Scan now. | Chưa có lần quét nào hoàn tất. Bấm Quét ngay. |
+| `dup.health.d.scan_failures.PASSED` | The latest scan did not fail. | Lần quét gần nhất không bị lỗi. |
+| `dup.health.d.scan_failures.FAILED` | The latest scan failed. Run it again; if it fails again, report it. | Lần quét gần nhất bị lỗi. Hãy quét lại; nếu vẫn lỗi, hãy báo lại. |
+| `dup.health.d.scan_failures.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |
+| `dup.health.d.confidence_rule.PASSED` | No group is labelled Strong or Exact on a name alone. | Không nhóm nào được gắn nhãn Mạnh hay Chính xác chỉ vì trùng tên. |
+| `dup.health.d.confidence_rule.FAILED` | Some groups are labelled Strong or Exact on a name alone. Run a scan with the current rule. | Có nhóm được gắn nhãn Mạnh hay Chính xác chỉ vì trùng tên. Hãy quét lại với quy tắc hiện tại. |
+| `dup.health.d.legacy_overconfidence.PASSED` | No open group was over-labelled by the old rule. | Không nhóm nào đang mở bị quy tắc cũ gắn nhãn quá cao. |
+| `dup.health.d.legacy_overconfidence.WARNING` | The old rule called these Strong because a blank phone or email counted as a match, or only the name matched. They are Possible now — confirm with the customer before merging. | Quy tắc cũ gọi các nhóm này là Mạnh vì số điện thoại hoặc email để trống bị tính là trùng, hoặc chỉ trùng tên. Giờ chúng là Có thể — hãy xác nhận với khách trước khi gộp. |
+| `dup.health.d.normalizers.PASSED` | Phone, email and Vietnamese-name matching agree on test samples. | Đối chiếu số điện thoại, email và tên tiếng Việt khớp trên dữ liệu mẫu. |
+| `dup.health.d.normalizers.FAILED` | A matching normalizer disagreed. Do not trust phone or name matches until it is fixed. | Một bộ chuẩn hóa cho kết quả sai. Đừng tin kết quả trùng số điện thoại hay tên cho đến khi được sửa. |
+| `dup.health.d.indexes.PASSED` | Detection and queue indexes are present. | Đã có đủ chỉ mục cho việc phát hiện và hàng chờ xem xét. |
+| `dup.health.d.indexes.WARNING` | Some indexes are missing; searches may be slow. Apply the latest database update. | Thiếu một số chỉ mục; tìm kiếm có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+| `dup.health.d.stale_members.PASSED` | Every open group lists live profiles only. | Mọi nhóm đang mở chỉ gồm hồ sơ đang hoạt động. |
+| `dup.health.d.stale_members.WARNING` | Some open groups include an archived profile. Run a scan to close them. | Một số nhóm đang mở có hồ sơ đã lưu trữ. Hãy quét lại để đóng chúng. |
+| `dup.health.d.tenant_isolation.PASSED` | Every group references this salon's customers only. | Mọi nhóm chỉ gồm khách của tiệm này. |
+| `dup.health.d.tenant_isolation.FAILED` | A group references another salon's customer. Stop merging and report this immediately. | Có nhóm chứa khách của tiệm khác. Hãy ngừng gộp và báo ngay. |
+| `dup.health.d.merge_integrity.PASSED` | Every merged profile is archived and no booking or ticket was left behind. | Mọi hồ sơ đã gộp đều được lưu trữ, không còn lịch hẹn hay hóa đơn sót lại. |
+| `dup.health.d.merge_integrity.FAILED` | A merge left a live profile or a booking behind. Reconcile it in Customers before merging more. | Một lần gộp để sót hồ sơ hoặc lịch hẹn. Hãy đối soát trong Khách hàng trước khi gộp tiếp. |
+| `dup.health.d.merge_integrity.INSUFFICIENT_DATA` | No merge has been completed here yet. | Chưa có lần gộp nào hoàn tất ở đây. |
+| `dup.health.d.merge_failures.PASSED` | No failed merge attempts in the last 7 days. | Không có lần gộp thất bại trong 7 ngày qua. |
+| `dup.health.d.merge_failures.WARNING` | Some merge attempts failed (nothing was changed by them). See the review history for the reason. | Có lần gộp thất bại (không thay đổi gì). Xem lịch sử xem xét để biết lý do. |
+| `dup.health.d.loyalty_after_merge.PASSED` | Merged profiles' points equal their loyalty ledger. | Điểm của các hồ sơ đã gộp khớp với sổ điểm. |
+| `dup.health.d.loyalty_after_merge.FAILED` | A merged profile's points differ from its loyalty ledger. Run the loyalty reconcile; do not adjust points by hand. | Điểm của một hồ sơ đã gộp không khớp sổ điểm. Hãy chạy đối soát điểm; đừng sửa điểm bằng tay. |
+| `dup.health.d.loyalty_after_merge.INSUFFICIENT_DATA` | No merged profile to check yet. | Chưa có hồ sơ đã gộp để kiểm tra. |
+| `dup.health.d.oversized_keys.PASSED` | No phone, email or name is shared by more than 20 profiles. | Không số điện thoại, email hay tên nào dùng chung cho hơn 20 hồ sơ. |
+| `dup.health.d.oversized_keys.WARNING` | Some phones, emails or names are shared by more than 20 profiles (for example the salon's own number) and are not grouped. Clean them up in Customers. | Một số số điện thoại, email hoặc tên dùng chung cho hơn 20 hồ sơ (ví dụ số của tiệm) nên không được nhóm. Hãy dọn dẹp trong Khách hàng. |
+| `dup.health.d.oversized_keys.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |

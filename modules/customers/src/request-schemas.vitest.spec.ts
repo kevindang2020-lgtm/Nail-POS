@@ -26,7 +26,6 @@ const CASES: RouteBodyCase[] = [
     ], bad: [{ points: '120', reason: 'x' }, 'points'] },
   { route: 'POST /pos/customers/:id/loyalty-adjust', ctl: C, handler: 'sLoyaltyAdjust', today: [{ amount: -50, reason: 'goodwill' }], bad: [{ amount: { n: 1 } }, 'amount'] },
   { route: 'PATCH /pos/customers/:id/membership', ctl: C, handler: 'sMember', today: [{ plan: 'Gold', status: 'active', benefits: ['10% off'], billingStatus: 'current' }], bad: [{ benefits: 'all' }, 'benefits'] },
-  { route: 'POST /pos/customers/duplicates/:id/decision', ctl: C, handler: 'decide', today: [{ decision: 'keep_separate' }, { decision: 'not_sure' }], bad: [{ decision: ['x'] }, 'decision'] },
   { route: 'POST /pos/customers/duplicates/:id/merge', ctl: C, handler: 'merge', today: [{ primaryCustomerId: '0b6c1f5e-3d0f-4c7e-9a51-1c2b3d4e5f60' }], bad: [{ primaryCustomerId: {} }, 'primaryCustomerId'] },
   { route: 'POST /pos/customers/import/preview', ctl: C, handler: 'importPreview', today: [{ csv: 'first_name,phone\nAna,6095551234', updateExisting: false }], bad: [{ csv: 42 }, 'csv'] },
   { route: 'POST /pos/customers/import/commit', ctl: C, handler: 'importCommit', today: [{ csv: 'first_name,phone\nAna,6095551234', updateExisting: true }], bad: [{ csv: ['a'] }, 'csv'] },
@@ -35,4 +34,10 @@ const CASES: RouteBodyCase[] = [
 
 describe('customers — validated bodies, route by route', () => {
   for (const c of CASES) it(c.route, () => expect(routeBodyFailures(c, bodyPipeOf as any)).toEqual([]));
+});
+
+// Duplicate Review guides (Nov 2 2026): Keep Separate / Not Sure moved to POST /pos/duplicate-review/groups/:id/decision
+// (reason required, version-checked, on the review timeline). The old positional-group route stays retired.
+describe('customers — retired duplicate decision route', () => {
+  it('POST /pos/customers/duplicates/:id/decision stays retired', () => { expect((C.prototype as any).decide).toBeUndefined(); });
 });

@@ -6,5 +6,4 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const AiCustomerProfileControllerListQueries = {
   timeline: { search: false, params: ['before'] },
-  mergePreview: { filters: { primary: { type: 'text' } }, search: false },
 } satisfies Record<string, ListQuerySpec>;

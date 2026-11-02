@@ -88,11 +88,9 @@ export class AiCustomerProfileController {
   @Get('customers/:id/copilot-context') @RequirePermission('pos.ai_customer_profile.view')
   copilotContext(@Req() r: any, @Param('id') id: string) { return this.guard(() => this.svc.copilotContext(ctxFrom(r), id)); }
 
-  // Duplicate merge PREVIEW (read-only) — shows surviving record + what moves (§47).
-  @Get('duplicates/:groupId/preview') @RequirePermission('pos.ai_customer_profile.view')
-  mergePreview(@Req() r: any, @Param('groupId') groupId: string, @Query('primary') primary: string) {
-    return this.guard(() => this.svc.mergePreview(ctxFrom(r), groupId, primary));
-  }
+  // Duplicate merge PREVIEW route retired Nov 2 2026 (Duplicate Review guides): the POS previews through
+  // POST /pos/duplicate-review/groups/:id/preview, which is recorded and hash-bound to the confirmed merge. The service
+  // method stays for the AI tool (ai-customer-profile.tools.ts).
 
   // Duplicate merge EXECUTION (mutation) — requires explicit confirm=true AND the elevated pos.customers.merge
   // permission (re-enforced inside customers.merge). Never auto-merges (§16).

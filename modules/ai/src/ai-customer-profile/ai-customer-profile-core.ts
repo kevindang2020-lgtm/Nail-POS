@@ -274,12 +274,23 @@ export function profileCompleteness(f: ProfileFields, requiredExtra: string[] = 
 
 export type DuplicateConfidence = 'exact' | 'strong' | 'possible' | 'not_duplicate';
 
-/** Maps an existing dedup group's reason + field overlap to a confidence label. Reuses, never re-derives, dedup. */
-export function duplicateConfidence(reason: string, samePhone: boolean, sameEmail: boolean, sameLastName: boolean): DuplicateConfidence {
-  if (samePhone && sameEmail) return 'exact';
-  if (samePhone || sameEmail) return 'strong';
-  if (sameLastName && /name/i.test(reason)) return 'possible';
+/**
+ * Maps an existing dedup group's field overlap to a confidence label. Reuses, never re-derives, dedup.
+ * Nov 2 2026 (Duplicate Review guide §04): each `same*` flag must mean "EVERY member has this value and they are all
+ * equal" — a blank is not a match (the old caller compared only the non-empty values, so one profile with a phone and
+ * one without counted as "same phone" → Strong: the screenshot's two "test" records). Strong also needs the same full
+ * name: a shared family phone with different names is only Possible. Same rule as Duplicate Review (dr-2026-11-02).
+ */
+export function duplicateConfidence(_reason: string, samePhone: boolean, sameEmail: boolean, sameName: boolean): DuplicateConfidence {
+  if (samePhone && sameEmail && sameName) return 'exact';
+  if ((samePhone || sameEmail) && sameName) return 'strong';
   return 'possible';
+}
+
+/** true when every value is present and they are all equal (case/space-insensitive) */
+export function allSame(values: (string | null | undefined)[]): boolean {
+  const v = values.map((x) => String(x ?? '').trim().toLowerCase().replace(/\s+/g, ' '));
+  return v.length > 1 && v.every((x) => x !== '' && x === v[0]);
 }
 
 // ---------- §21/§22 rebooking opportunity (suppressed when a future appointment exists) ----------

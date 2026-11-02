@@ -87,7 +87,7 @@ reservation (`apps/api/scripts/event-producers.reserved.json`: 0). Consumers are
 | `payroll.period_canceled` | `modules/workforce/src/payroll/payroll-paycheck.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `customer.created` | `modules/customers/src/customers/customers.kysely.repository.ts` | `apps/api/src/events/consumers/analytics-rollup.consumer.ts`<br>`apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `customer.updated` | `modules/customers/src/customers/customers.kysely.repository.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
-| `customer.merged` | `modules/customers/src/customers/customers.kysely.repository.ts` | — |
+| `customer.merged` | `modules/customers/src/customers/customer-merge.ts` | — |
 | `customer.phone_verified` | `modules/booking/src/customer-phone/customer-phone-update.service.ts` | — |
 | `customer.phone_update_requested` | `modules/booking/src/customer-phone/customer-phone-update.service.ts` | — |
 | `customer.phone_verification_failed` | `modules/booking/src/customer-phone/customer-phone-update.service.ts` | — |

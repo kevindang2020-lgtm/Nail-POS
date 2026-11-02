@@ -80,6 +80,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   customer_deletion_requests: 'ut',
   customer_display_devices: 'ut',
   customer_display_sessions: 'ut',
+  customer_duplicate_groups: 'ut',
   customer_follows: 'ut',
   customer_identity_conflicts: 'ut',
   customer_import_jobs: 'ut',

@@ -507,3 +507,18 @@ describe('ai-customer-profile Redis metrics sink (cross-instance)', () => {
     expect(Object.keys(await nodeA.snapshot('T9')).length).toBe(0);
   });
 });
+
+import { duplicateConfidence, allSame } from './ai-customer-profile-core';
+describe('ai-customer-profile core — duplicate confidence never counts a blank as a match (Duplicate Review guide §04, Nov 2 2026)', () => {
+  it('the screenshot case: two "test" records, one phone, no emails → possible (was strong)', () => {
+    const m = [{ phone: null, email: null, displayName: 'test' }, { phone: '+16095550001', email: null, displayName: 'test' }];
+    expect(allSame(m.map((x) => x.phone))).toBe(false);
+    expect(duplicateConfidence('Similar name', allSame(m.map((x) => x.phone)), allSame(m.map((x) => x.email)), allSame(m.map((x) => x.displayName)))).toBe('possible');
+  });
+  it('a shared family phone with different names is possible; phone + name is strong; phone + email + name is exact', () => {
+    expect(duplicateConfidence('Same phone', true, false, false)).toBe('possible');
+    expect(duplicateConfidence('Same phone', true, false, true)).toBe('strong');
+    expect(duplicateConfidence('Same phone', true, true, true)).toBe('exact');
+    expect(allSame(['Amy  Lee', 'amy lee'])).toBe(true);
+  });
+});

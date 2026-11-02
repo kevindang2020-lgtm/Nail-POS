@@ -4847,6 +4847,27 @@ export interface ReceptionCopilotActionLedgerTable {
 export interface CustomerSearchHealthRunsTable {   // migration 760 — read-only "Check Customer Search System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface CustomerDuplicateScansTable {   // migration 761 — Duplicate Review detection runs (= real data freshness)
+  id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; status: Generated<string>;
+  customers_scanned: Generated<number>; groups_found: Generated<number>; groups_new: Generated<number>; groups_reopened: Generated<number>; groups_resolved: Generated<number>;
+  oversized_keys: Generated<number>; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
+}
+export interface CustomerDuplicateGroupsTable {   // migration 761 — one candidate group per distinct member set (review record, not a customer)
+  id: Generated<string>; tenant_id: string; group_key: string; member_ids: string[]; member_count: number; reasons: string[]; confidence: string; rule_version: string;
+  evidence: Generated<unknown>; evidence_hash: string; status: Generated<string>; assigned_to: string | null; due_on: string | null; detected_at: Generated<Ts>;
+  updated_at: Generated<Ts>; updated_by: string | null; last_seen_at: Generated<Ts>; last_scan_id: string | null; reviewed_at: Ts | null; reviewed_by: string | null; merged_at: Ts | null;
+  survivor_id: string | null; merge_op_id: string | null; version: Generated<number>;
+}
+export interface CustomerDuplicateEventsTable {   // migration 761 — append-only review timeline (trigger refuses UPDATE / DELETE)
+  id: Generated<string>; tenant_id: string; group_id: string; event_type: string; actor_user_id: string | null; note: string | null; payload: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface CustomerDuplicateMergeOpsTable {   // migration 761 — confirmed merge attempts; idempotency key unique per salon
+  id: Generated<string>; tenant_id: string; group_id: string; idempotency_key: string; preview_hash: string; survivor_id: string; source_ids: string[]; status: string;
+  error_code: string | null; result: Generated<unknown>; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface CustomerDuplicateHealthRunsTable {   // migration 761 — read-only "Check Duplicate Review System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface AiCalendarHealthRunsTable {   // migration 758 — read-only "Check Calendar System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; calendar_date: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
@@ -6885,6 +6906,11 @@ export interface DB {
   payment_settlements: PaymentSettlementsTable;
   payment_terminal_leases: PaymentTerminalLeasesTable;
   customer_duplicate_decisions: CustomerDuplicateDecisionsTable;
+  customer_duplicate_events: CustomerDuplicateEventsTable;
+  customer_duplicate_groups: CustomerDuplicateGroupsTable;
+  customer_duplicate_health_runs: CustomerDuplicateHealthRunsTable;
+  customer_duplicate_merge_ops: CustomerDuplicateMergeOpsTable;
+  customer_duplicate_scans: CustomerDuplicateScansTable;
   staff_role_assignments: StaffRoleAssignmentsTable;
   tenant_custom_roles: TenantCustomRolesTable;
   chargebacks: ChargebacksTable;

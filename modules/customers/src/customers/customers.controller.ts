@@ -12,7 +12,7 @@ import { CustomerVersionConflict } from './customers.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { CustomersControllerListQueries } from './customers.list-queries';
 
-import { CREATE_CUSTOMER_BODY, CUSTOMER_IMPORT_BODY, CUSTOMER_LOYALTY_BODY, CUSTOMER_MEMBERSHIP_BODY, CUSTOMER_NOTES_BODY, CUSTOMER_TAGS_BODY, DUPLICATE_DECISION_BODY, DUPLICATE_MERGE_BODY, EDIT_CUSTOMER_BODY, LOYALTY_ADJUST_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
+import { CREATE_CUSTOMER_BODY, CUSTOMER_IMPORT_BODY, CUSTOMER_LOYALTY_BODY, CUSTOMER_MEMBERSHIP_BODY, CUSTOMER_NOTES_BODY, CUSTOMER_TAGS_BODY, DUPLICATE_MERGE_BODY, EDIT_CUSTOMER_BODY, LOYALTY_ADJUST_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 function ctxFrom(req: any): CustomersContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 function filtersFrom(q: any): CustomerFilters {
   const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v));
@@ -45,7 +45,7 @@ export class CustomersController {
 
   // duplicates (before :customerId)
   @Get('duplicates') @RequirePermission('pos.customers.view') duplicates(@Req() r: any) { return run(() => this.svc.duplicates(ctxFrom(r))); }
-  @Post('duplicates/:duplicateGroupId/decision') @RequirePermission('pos.customers.merge') decide(@Req() r: any, @Param('duplicateGroupId') gid: string, @Body(ValidatedBody(DUPLICATE_DECISION_BODY, { strict: true })) b: any) { return run(() => this.svc.decideDuplicate(ctxFrom(r), gid, String(b?.decision ?? ''))); }   // Decision 29: keep_separate | not_sure
+  // POST duplicates/:id/decision retired Nov 2 2026 → POST /pos/duplicate-review/groups/:id/decision (same customer_duplicate_decisions pairs + the review timeline)
   @Post('duplicates/:duplicateGroupId/merge') @RequirePermission('pos.customers.merge') merge(@Req() r: any, @Param('duplicateGroupId') gid: string, @Body(ValidatedBody(DUPLICATE_MERGE_BODY, { strict: true })) b: any) { return run(() => this.svc.merge(ctxFrom(r), gid, b?.primaryCustomerId)); }
 
   // list + create + import

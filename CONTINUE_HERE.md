@@ -663,7 +663,18 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   Settings → Voice Transcription Settings → Voice Transcription Follow-Ups. (Guide 27, AI Center, is still open too.)
 - **Done: Customer Search** (guide 1): `pos/customer-search` routes, migration 760, POS screen rebuilt, EN/VI.
   pgtest 20/20, screen 6/6. Doc: `docs/customers/CUSTOMER_SEARCH.md`.
-- **Next: Duplicate Review.** The existing in-memory detector doesn't scale; read both guides (FULL + COMPLETE) first.
+- **Done: Duplicate Review** (guides 2a + 2b): `pos/duplicate-review` routes, migration 761, POS screen rebuilt, EN/VI.
+  - The screenshot's "Strong" came from a blank phone counted as a match. Both the new rule and the old AI endpoint are fixed.
+  - Merge = the canonical merge (now `customers/customer-merge.ts`), with a preview hash, idempotency key and acknowledgements.
+  - Tests: pgtest 22/22, real-Postgres races 2/2, screen 9/9. Doc: `docs/customers/DUPLICATE_REVIEW.md`.
+  - Two old routes with no caller are retired (pinned in tests).
+- **Real Postgres is available in the sandbox:** `/usr/lib/postgresql/16` (initdb, port 55432, `PG_RACE_URL`). The race lanes
+  can be judged here now.
+- **Next: Customer Timeline** (guide 3).
+- **Decisions for Kevin** (collected; he asked to decide after everything is built):
+  1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
+  2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
+     behaviour, shown as acknowledgements), or should they BLOCK the merge until handled in Gift Cards / Checkout?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

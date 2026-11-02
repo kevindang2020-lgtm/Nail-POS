@@ -10,7 +10,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import type { AuditService } from '@aipowersalon/audit';
 import {
   summarizeVisits, detectServicePreferences, detectTechnicianPreference,
-  classifyInactivity, profileCompleteness, duplicateConfidence, rebookingOpportunity,
+  classifyInactivity, profileCompleteness, duplicateConfidence, allSame, rebookingOpportunity,
   evaluateChurnRisk, recommendServices, buildTimeline, aggregateTenant, type TenantScanItem,
   summarizeCalls, type CallRow, detectBranchPreference,
   DEFAULT_TUNABLES, type ProfileTunables, type VisitRecord, type AppointmentRecord,
@@ -302,13 +302,11 @@ export class AiCustomerProfileService {
     this.audit(ctx, 'ai_profile_duplicates_viewed', undefined, { groups: groups.length });
     return {
       groups: groups.map(g => {
-        const phones = new Set(g.members.map(m => m.phone).filter(Boolean));
-        const emails = new Set(g.members.map(m => m.email).filter(Boolean));
-        const lastNames = new Set(g.members.map(m => (m.displayName || '').split(' ').at(-1)));
+        // every member must carry the value for it to "match" — a blank phone / email is "not provided", never a match
         return {
           duplicateGroupId: g.duplicateGroupId,
           reason: g.reason,
-          confidence: duplicateConfidence(g.reason, phones.size === 1 && phones.size > 0, emails.size === 1 && emails.size > 0, lastNames.size === 1),
+          confidence: duplicateConfidence(g.reason, allSame(g.members.map(m => m.phone)), allSame(g.members.map(m => m.email)), allSame(g.members.map(m => m.displayName))),
           members: g.members,
           notSure: !!(g as any).notSure,   // Functional Decision 29: staff marked this group Not Sure
         };
