@@ -2,17 +2,17 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3747 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3754 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3747 |
+| all HTTP routes | 3754 |
 | realm `customer` | 165 |
 | realm `shared` | 282 |
-| realm `staff` | 2128 |
+| realm `staff` | 2135 |
 | realm `super_admin` | 1172 |
 | public (no session; each one reviewed by `check:public`) | 123 |
 | integration key / OAuth (`auth=api_key`) | 13 |

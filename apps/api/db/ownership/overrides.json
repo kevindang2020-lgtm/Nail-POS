@@ -334,6 +334,18 @@
   "churn_watch_health_runs": {
    "domain": "AI",
    "reason": "Churn Watch guide (Nov 2 2026, migration 764): the AI Customer Profile assistant's internal churn review workflow \u2014 read-only Check Churn Watch System runs"
+  },
+  "rebooking_reviews": {
+   "domain": "AI",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow \u2014 current review state per customer, pinned to the opportunity it reviewed; never a booking or customer status"
+  },
+  "rebooking_review_events": {
+   "domain": "AI",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow \u2014 append-only review and Booking Assistant handoff history (a handoff is never an appointment)"
+  },
+  "rebooking_health_runs": {
+   "domain": "AI",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow \u2014 read-only Check Rebooking System runs"
   }
  }
 }

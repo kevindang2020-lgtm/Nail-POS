@@ -24,7 +24,7 @@ export class CustomerIntelligenceError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details: Record<string, unknown> = {}) { super(message); }
 }
 
-export const CI_RULE_VERSION = 'ci-2026-11-02b';   // b: + the churn rule (Churn Watch, migration 764)
+export const CI_RULE_VERSION = 'ci-2026-11-02c';   // b: + the churn rule (Churn Watch, 764) · c: + the rebooking window and opportunity date (Rebooking, 765)
 export const CI_STATES = ['active', 'rebooking_soon', 'due_for_return', 'inactive', 'long_term_inactive', 'insufficient_history'] as const;
 export const CI_STATUS_FILTERS = ['all', ...CI_STATES, 'inactive_all', 'never_served', 'not_scanned'] as const;   // inactive_all = the Inactive card (inactive + long-term)
 export const CI_FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'] as const;
@@ -52,6 +52,8 @@ export interface CiClassification {
   churnWatch: boolean; rebooking: boolean; rebookingReason: string; evidence: string[];
   churnLevel: 'insufficient' | 'low' | 'possible' | 'elevated' | 'high'; churnConfidence: string; churnEvidence: string[];
   canceledCount: number; noShowCount: number; membershipCanceled: boolean;
+  /** the customer's own return window: last completed visit + typical interval → + half an interval (null without a cadence) */
+  rebookingDueOn: string | null; rebookingWindowEnd: string | null;
 }
 export interface CiHistory { canceled: number; noShows: number; membershipCanceled: boolean }
 /** the per-customer AI profile's own rules, applied to one customer's completed-visit times and future appointments */
@@ -73,8 +75,13 @@ export function classifyCustomer(customerId: string, visitTimes: string[], upcom
     churnWatch: churn, rebooking: rb.eligible, rebookingReason: rb.reason, evidence: inact.evidence,
     churnLevel: risk.level as CiClassification['churnLevel'], churnConfidence: String(risk.confidence), churnEvidence: risk.evidence,
     canceledCount: h.canceled, noShowCount: h.noShows, membershipCanceled: h.membershipCanceled,
+    // the same multipliers classifyInactivity applies: due at interval × dueMultiplier, past the window at × inactiveMultiplier
+    rebookingDueOn: addDays(vs.lastVisit, vs.typicalIntervalDays == null ? null : vs.typicalIntervalDays * t.dueMultiplier),
+    rebookingWindowEnd: addDays(vs.lastVisit, vs.typicalIntervalDays == null ? null : vs.typicalIntervalDays * t.inactiveMultiplier),
   };
 }
+const addDays = (fromIso: string | null, days: number | null) => (fromIso == null || days == null ? null
+  : new Date(Date.parse(fromIso.slice(0, 10) + 'T00:00:00.000Z') + Math.round(days) * 86_400_000).toISOString().slice(0, 10));
 
 /** the authorized customer search (alias `c`): name (accents optional) · phone in any format · email · customer id · appointment id ·
  *  technician / service from completed visits. Shared by Customer Intelligence and Churn Watch. */
@@ -165,7 +172,7 @@ export class CustomerIntelligenceCenter {
           from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id is not null group by a.customer_id`.execute(trx)).rows;
         const memRows = (await sql<Row>`select m.customer_id from customer_memberships m where m.tenant_id = ${T} and m.status in ('canceled', 'cancelled')
           and not exists (select 1 from customer_memberships x where x.tenant_id = m.tenant_id and x.customer_id = m.customer_id and x.status = 'active') group by m.customer_id`.execute(trx)).rows;
-        const prevRows = (await sql<Row>`select customer_id, churn_level, churn_since from customer_intelligence_snapshots where tenant_id = ${T}`.execute(trx)).rows;
+        const prevRows = (await sql<Row>`select customer_id, churn_level, churn_since, rebooking, rebooking_since from customer_intelligence_snapshots where tenant_id = ${T}`.execute(trx)).rows;
         const hist = new Map(histRows.map((r) => [String(r.customer_id), r]));
         const memCanceled = new Set(memRows.map((r) => String(r.customer_id)));
         const prev = new Map(prevRows.map((r) => [String(r.customer_id), r]));
@@ -178,6 +185,9 @@ export class CustomerIntelligenceCenter {
         // a signal keeps the date it was first seen while it lasts; a new signal starts now; no signal has no date
         const since = (r: CiClassification) => (!FLAGGED.includes(r.churnLevel) ? null
           : FLAGGED.includes(String(prev.get(r.customerId)?.churn_level)) && prev.get(r.customerId)?.churn_since ? new Date(prev.get(r.customerId)!.churn_since).toISOString() : nowIso);
+        // the same for a rebooking opportunity: "opportunity created" is the first scan that saw it, kept while it lasts
+        const rebSince = (r: CiClassification) => (!r.rebooking ? null
+          : prev.get(r.customerId)?.rebooking && prev.get(r.customerId)?.rebooking_since ? new Date(prev.get(r.customerId)!.rebooking_since).toISOString() : nowIso);
         for (const r of rows) {
           counts[r.status]++;
           if (r.churnWatch) counts.churn_watch++;
@@ -191,19 +201,21 @@ export class CustomerIntelligenceCenter {
           const chunk = rows.slice(i, i + 500);
           await sql`insert into customer_intelligence_snapshots (tenant_id, customer_id, scan_id, status, completed_visits, first_visit_at, last_visit_at, typical_interval_days,
               days_since_last, has_upcoming, next_appointment_date, churn_watch, rebooking, rebooking_reason, evidence,
-              churn_level, churn_confidence, churn_evidence, canceled_count, no_show_count, membership_canceled, churn_since)
+              churn_level, churn_confidence, churn_evidence, canceled_count, no_show_count, membership_canceled, churn_since, rebooking_since, rebooking_due_on, rebooking_window_end)
             select ${T}::uuid, x.customer_id, ${scanId}::uuid, x.status, x.completed_visits, x.first_visit_at, x.last_visit_at, x.typical_interval_days, x.days_since_last,
               x.has_upcoming, x.next_appointment_date, x.churn_watch, x.rebooking, x.rebooking_reason, x.evidence,
-              x.churn_level, x.churn_confidence, x.churn_evidence, x.canceled_count, x.no_show_count, x.membership_canceled, x.churn_since
+              x.churn_level, x.churn_confidence, x.churn_evidence, x.canceled_count, x.no_show_count, x.membership_canceled, x.churn_since, x.rebooking_since, x.rebooking_due_on, x.rebooking_window_end
             from jsonb_to_recordset(${JSON.stringify(chunk.map((r) => ({
               customer_id: r.customerId, status: r.status, completed_visits: r.completedVisits, first_visit_at: r.firstVisitAt, last_visit_at: r.lastVisitAt,
               typical_interval_days: r.typicalIntervalDays, days_since_last: r.daysSinceLast, has_upcoming: r.hasUpcoming, next_appointment_date: r.nextAppointmentDate,
               churn_watch: r.churnWatch, rebooking: r.rebooking, rebooking_reason: r.rebookingReason, evidence: r.evidence,
               churn_level: r.churnLevel, churn_confidence: r.churnConfidence, churn_evidence: r.churnEvidence, canceled_count: r.canceledCount,
               no_show_count: r.noShowCount, membership_canceled: r.membershipCanceled, churn_since: since(r),
+              rebooking_since: rebSince(r), rebooking_due_on: r.rebookingDueOn, rebooking_window_end: r.rebookingWindowEnd,
             })))}::jsonb) as x(customer_id uuid, status text, completed_visits int, first_visit_at timestamptz, last_visit_at timestamptz, typical_interval_days int,
               days_since_last int, has_upcoming boolean, next_appointment_date date, churn_watch boolean, rebooking boolean, rebooking_reason text, evidence text[],
-              churn_level text, churn_confidence text, churn_evidence text[], canceled_count int, no_show_count int, membership_canceled boolean, churn_since timestamptz)`.execute(trx);
+              churn_level text, churn_confidence text, churn_evidence text[], canceled_count int, no_show_count int, membership_canceled boolean, churn_since timestamptz,
+              rebooking_since timestamptz, rebooking_due_on date, rebooking_window_end date)`.execute(trx);
         }
         await sql`update customer_intelligence_scans set status = 'completed', finished_at = now(), scanned = ${rows.length}, counts = ${JSON.stringify(counts)}::jsonb,
           archived_excluded = ${archived}, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId}`.execute(trx);

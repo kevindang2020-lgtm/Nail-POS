@@ -4856,6 +4856,16 @@ export interface ChurnWatchReviewEventsTable {   // migration 764 — append-onl
 export interface ChurnWatchHealthRunsTable {   // migration 764 — read-only "Check Churn Watch System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface RebookingReviewsTable {   // migration 765 — Rebooking's internal review state, pinned to the opportunity it reviewed
+  tenant_id: string; customer_id: string; status: string; opportunity_since: Ts | null; due_on: string | null; reviewed_by: string | null; reviewed_at: Generated<Ts>; updated_by: string | null; version: Generated<number>;
+}
+export interface RebookingReviewEventsTable {   // migration 765 — append-only review + Booking Assistant handoff history (never an appointment)
+  id: Generated<string>; tenant_id: string; customer_id: string; event_type: string; opportunity_since: Ts | null; service_id: string | null; technician_id: string | null; note: string | null;
+  actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface RebookingHealthRunsTable {   // migration 765 — read-only "Check Rebooking System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerIntelligenceScansTable {   // migration 763 — Customer Intelligence scans (counts per state, rule version, tunables)
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
@@ -4866,6 +4876,7 @@ export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — lat
   rebooking: Generated<boolean>; rebooking_reason: string | null; evidence: Generated<string[]>; computed_at: Generated<Ts>;
   churn_level: string | null; churn_confidence: string | null; churn_evidence: Generated<string[]>; canceled_count: Generated<number>; no_show_count: Generated<number>;   // 764
   membership_canceled: Generated<boolean>; churn_since: Ts | null;
+  rebooking_since: Ts | null; rebooking_due_on: string | null; rebooking_window_end: string | null;   // 765
 }
 export interface CustomerIntelligenceHealthRunsTable {   // migration 763 — read-only "Check Customer Intelligence System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
@@ -7485,6 +7496,9 @@ export interface DB {
   churn_watch_health_runs: ChurnWatchHealthRunsTable;
   churn_watch_review_events: ChurnWatchReviewEventsTable;
   churn_watch_reviews: ChurnWatchReviewsTable;
+  rebooking_health_runs: RebookingHealthRunsTable;
+  rebooking_review_events: RebookingReviewEventsTable;
+  rebooking_reviews: RebookingReviewsTable;
   customer_intelligence_health_runs: CustomerIntelligenceHealthRunsTable;
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;

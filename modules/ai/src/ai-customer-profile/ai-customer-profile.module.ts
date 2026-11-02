@@ -13,6 +13,8 @@ import { CustomerIntelligenceCenter } from './customer-intelligence-center';
 import { CustomerIntelligenceCenterController, CUSTOMER_INTELLIGENCE_CENTER } from './customer-intelligence-center.controller';
 import { ChurnWatchCenter } from './churn-watch-center';
 import { ChurnWatchCenterController, CHURN_WATCH_CENTER } from './churn-watch-center.controller';
+import { RebookingCenter } from './rebooking-center';
+import { RebookingCenterController, REBOOKING_CENTER } from './rebooking-center.controller';
 import { AiCustomerProfileService, DefaultProfileSettings, DefaultCallSummary, type ProfileSettingsPort, type CallSummaryPort } from './ai-customer-profile.service';
 import { KyselyCallSummary } from './ai-customer-profile.call-summary.kysely';
 import { AiCustomerProfileScanScheduler } from './ai-customer-profile-scan.scheduler';
@@ -33,7 +35,7 @@ function makeProfileCache(): CachePort | null {
 
 @Module({
   imports: [CustomersModule, ServicesModule],
-  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController, ChurnWatchCenterController],   // + Customer Intelligence guide (Nov 1 2026)
+  controllers: [AiCustomerProfileController, CustomerIntelligenceCenterController, ChurnWatchCenterController, RebookingCenterController],   // + Customer Intelligence guide (Nov 1 2026)
   providers: [
     { provide: 'PROFILE_CACHE', useFactory: makeProfileCache },
     // DB-backed settings (persistent overrides + emergency kill switches) when Postgres is present; else read-only defaults.
@@ -58,6 +60,10 @@ function makeProfileCache(): CachePort | null {
     // Churn Watch (Nov 1 2026): the review queue over the same scan's churn rule
     { provide: CHURN_WATCH_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) =>
         (db ? new ChurnWatchCenter(db, async (ctx) => (await svc.getEffectiveSettings({ ...ctx, branchId: ctx.branchId ?? '' })).enabled) : null),
+      inject: [DATABASE, AiCustomerProfileService] },
+    // Rebooking Opportunities (Nov 1 2026): the review queue + Booking Assistant handoff over the same scan's rebooking rule
+    { provide: REBOOKING_CENTER, useFactory: (db: AppDatabase, svc: AiCustomerProfileService) =>
+        (db ? new RebookingCenter(db, async (ctx) => { const s = await svc.getEffectiveSettings({ ...ctx, branchId: ctx.branchId ?? '' }); return { enabled: s.enabled, tunables: s.tunables }; }) : null),
       inject: [DATABASE, AiCustomerProfileService] },
   ],
   exports: [AiCustomerProfileService],

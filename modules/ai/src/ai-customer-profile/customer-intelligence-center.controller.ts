@@ -52,32 +52,32 @@ export class CustomerIntelligenceCenterController {
   private r(): CustomerIntelligenceCenter { if (!this.ci) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Customer Intelligence needs the database.' }, HttpStatus.SERVICE_UNAVAILABLE); return this.ci; }
 
   /** the six cards from the latest completed scan + the reconciliation (every scanned profile is in exactly one state) */
-  @Get('summary') @RequirePermission(VIEW)
+  @Get('summary') @RequirePermission('pos.ai_customer_profile.view')
   summary(@Req() q: any) { const c = ctxFrom(q); need(c, VIEW); return run(() => this.r().summary(c)); }
 
   /** Refresh: classify every live customer now (rate-limited; a scan inside 60 s is reused) */
-  @Post('scan') @RequirePermission(VIEW)
+  @Post('scan') @RequirePermission('pos.ai_customer_profile.view')
   scan(@Req() q: any, @Body(ValidatedBody(CI_EMPTY_BODY, { strict: true })) _b: unknown) { const c = ctxFrom(q); need(c, VIEW); return run(() => this.r().scan(c, 'manual')); }
 
   /** authorized customers with their classification: q (name · phone · email · id · appointment id · technician · service) ·
    *  status · flag · date field + range · sort · pages 10/25/50/100 */
-  @Get('customers') @RequirePermission(VIEW)
+  @Get('customers') @RequirePermission('pos.ai_customer_profile.view')
   @ListQuery(LIST)
   customers(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, VIEW); return run(() => this.r().customers(c, f ?? {}, { fullContact: can(c, 'pos.customers.export') })); }
 
   /** one customer's classification + evidence + open duplicate groups — audited, fail-closed */
-  @Get('customers/:id') @RequirePermission(VIEW)
+  @Get('customers/:id') @RequirePermission('pos.ai_customer_profile.view')
   customer(@Req() q: any, @Param('id') id: string) {
     const c = ctxFrom(q); need(c, VIEW);
     return run(() => this.r().customer(c, id, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'ai', action: 'customer_intelligence.customer_viewed', resourceType: 'customer', resourceId: id, summary: 'Customer intelligence opened', metadata: meta })));
   }
 
   /** scan history, newest first */
-  @Get('scans') @RequirePermission(VIEW)
+  @Get('scans') @RequirePermission('pos.ai_customer_profile.view')
   @ListQuery(SCANS)
   scans(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, VIEW); return run(() => this.r().scans(c, f ?? {})); }
 
   /** Check Customer Intelligence System — read-only; never merges, books, texts, edits profiles or changes points */
-  @Post('check') @RequirePermission(VIEW)
+  @Post('check') @RequirePermission('pos.ai_customer_profile.view')
   check(@Req() q: any, @Body(ValidatedBody(CI_EMPTY_BODY, { strict: true })) _b: unknown) { const c = ctxFrom(q); need(c, VIEW); return run(() => this.r().check(c)); }
 }

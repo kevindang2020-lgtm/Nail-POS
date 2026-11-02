@@ -223,6 +223,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   queue_assignment_tenant_settings: 'ut',
   queue_groups: 'cut',
   queue_service_assignments: 'ut',
+  rebooking_reviews: 'u',
   reception_copilot_action_ledger: 'ut',
   reception_copilot_feedback: 'ut',
   reconciliation_exceptions: 'ut',

@@ -48,7 +48,8 @@ export interface CsQuery {
   dateField?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown;
 }
 export type CheckState = 'READY' | 'WARNING' | 'FAILED' | 'UNKNOWN';
-export interface CsCheck { key: string; state: CheckState; evidence: string; action: string | null; count?: number | null }
+/** `evidence` / `action` are English for the API and the run log; the POS renders `csx.health.d.<key>.<state>` with `detail` */
+export interface CsCheck { key: string; state: CheckState; evidence: string; action: string | null; count?: number | null; detail?: Record<string, string | number | undefined> }
 export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>;
 
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
@@ -398,11 +399,11 @@ export class CustomerSearchCenter {
       const checks: CsCheck[] = [];
       const run = async (key: string, fn: () => Promise<Omit<CsCheck, 'key'>>) => {
         try { checks.push({ key, ...(await fn()) }); }
-        catch (e: any) { checks.push({ key, state: 'FAILED', evidence: `The check could not run: ${String(e?.message ?? e).slice(0, 160)}`, action: 'Retry; if it persists, check the database connection.' }); }
+        catch (e: any) { checks.push({ key, state: 'FAILED', evidence: `The check could not run: ${String(e?.message ?? e).slice(0, 160)}`, action: 'Retry; if it persists, check the database connection.', detail: { failedToRun: 1 } }); }
       };
       await run('directory', async () => {
         const r = (await sql<Row>`select count(*) filter (where archived_at is null)::int as live, count(*) filter (where archived_at is not null)::int as archived from customers where tenant_id = ${T}`.execute(trx)).rows[0];
-        return { state: 'READY', evidence: `${N(r.live)} live and ${N(r.archived)} archived customer records in this salon.`, action: null, count: N(r.live) };
+        return { state: 'READY', evidence: `${N(r.live)} live and ${N(r.archived)} archived customer records in this salon.`, action: null, count: N(r.live), detail: { live: N(r.live), archived: N(r.archived) } };
       });
       await run('exact_lookup', async () => {
         // a real record must be findable by its own id and stored phone through the SAME predicates the search uses
@@ -412,44 +413,44 @@ export class CustomerSearchCenter {
         const stored = toStoredCustomerPhone(String(s.normalized_phone));
         const viaPhone = stored ? N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.normalized_phone = ${stored}`.execute(trx)).rows[0]?.n) : 0;
         if (viaId === 1 && viaPhone >= 1) return { state: 'READY', evidence: 'The newest customer was found by id and by phone.', action: null };
-        return { state: 'FAILED', evidence: `Lookup of a known customer failed (by id: ${viaId}, by phone: ${viaPhone}).`, action: 'Check phone normalization — the stored phone does not round-trip through the search normalizer.' };
+        return { state: 'FAILED', evidence: `Lookup of a known customer failed (by id: ${viaId}, by phone: ${viaPhone}).`, action: 'Check phone normalization — the stored phone does not round-trip through the search normalizer.', detail: { byId: viaId, byPhone: viaPhone } };
       });
       await run('phone_normalization', async () => {
         const missing = N((await sql<Row>`select count(*)::int as n from customers where tenant_id = ${T} and archived_at is null and normalized_phone is null and coalesce(phone_display, '') <> ''`.execute(trx)).rows[0]?.n);
         const sample = (await sql<Row>`select normalized_phone from customers where tenant_id = ${T} and normalized_phone is not null order by updated_at desc limit 500`.execute(trx)).rows;
         const off = sample.filter((r) => toStoredCustomerPhone(String(r.normalized_phone)) !== String(r.normalized_phone)).length;
-        if (!missing && !off) return { state: 'READY', evidence: `Stored phones round-trip through the customer normalizer (${sample.length} checked).`, action: null };
+        if (!missing && !off) return { state: 'READY', evidence: `Stored phones round-trip through the customer normalizer (${sample.length} checked).`, action: null, detail: { n: sample.length } };
         return { state: 'WARNING', evidence: `${missing} customer(s) have a phone shown but none stored for search; ${off} of the last ${sample.length} stored phones are not in the stored format.`,
-          action: 'Open these customers in Customer Management and save the phone again — exact phone search cannot find them until then.', count: missing + off };
+          action: 'Open these customers in Customer Management and save the phone again — exact phone search cannot find them until then.', count: missing + off, detail: { missing, off, n: sample.length } };
       });
       await run('indexes', async () => {
         const have = new Set((await sql<Row>`select indexname from pg_indexes where tablename = 'customers'`.execute(trx)).rows.map((r) => String(r.indexname)));
         const miss = CS_REQUIRED_INDEXES.filter((i) => !have.has(i));
-        return miss.length ? { state: 'WARNING', evidence: `Missing search index(es): ${miss.join(', ')}.`, action: 'Apply migrations 694 and 760; large directories search slowly without them.' }
+        return miss.length ? { state: 'WARNING', evidence: `Missing search index(es): ${miss.join(', ')}.`, action: 'Apply migrations 694 and 760; large directories search slowly without them.', detail: { list: miss.join(', ') } }
           : { state: 'READY', evidence: 'Directory, email and Vietnamese-name search indexes are present.', action: null };
       });
       await run('tenant_isolation', async () => {
         const a = N((await sql<Row>`select count(*)::int as n from pos_tech_appointments a join customers c on c.id = a.customer_id where a.tenant_id = ${T} and c.tenant_id <> a.tenant_id`.execute(trx)).rows[0]?.n);
         const t = N((await sql<Row>`select count(*)::int as n from tickets t join customers c on c.id = t.customer_id where t.tenant_id = ${T} and c.tenant_id <> t.tenant_id`.execute(trx)).rows[0]?.n);
-        return a || t ? { state: 'FAILED', evidence: `${a} appointment(s) and ${t} ticket(s) of this salon point at another salon's customer.`, action: 'Critical: report to support. Search never shows these links; the records need a data repair.', count: a + t }
+        return a || t ? { state: 'FAILED', evidence: `${a} appointment(s) and ${t} ticket(s) of this salon point at another salon's customer.`, action: 'Critical: report to support. Search never shows these links; the records need a data repair.', count: a + t, detail: { a, t } }
           : { state: 'READY', evidence: 'No appointment or ticket of this salon points at another salon\'s customer.', action: null };
       });
       await run('booking_links', async () => {
         const r = (await sql<Row>`select count(*) filter (where a.customer_id is not null and c.id is null)::int as dangling, count(*) filter (where a.customer_id is null)::int as unlinked, count(*)::int as total
           from pos_tech_appointments a left join customers c on c.id = a.customer_id and c.tenant_id = a.tenant_id
           where a.tenant_id = ${T} and a.appt_date >= current_date - 90`.execute(trx)).rows[0];
-        if (N(r.dangling)) return { state: 'FAILED', evidence: `${N(r.dangling)} recent appointment(s) point at a customer record that no longer exists.`, action: 'Those bookings cannot show in a customer\'s history; report to support.', count: N(r.dangling) };
+        if (N(r.dangling)) return { state: 'FAILED', evidence: `${N(r.dangling)} recent appointment(s) point at a customer record that no longer exists.`, action: 'Those bookings cannot show in a customer\'s history; report to support.', count: N(r.dangling), detail: { n: N(r.dangling) } };
         return { state: N(r.unlinked) ? 'WARNING' : 'READY', evidence: `${N(r.total)} appointments in the last 90 days; ${N(r.unlinked)} have no customer record (walk-ins or guest bookings).`,
-          action: N(r.unlinked) ? 'Unlinked bookings never appear in Customer Search; link the guest in Booking when you know who it is.' : null, count: N(r.unlinked) };
+          action: N(r.unlinked) ? 'Unlinked bookings never appear in Customer Search; link the guest in Booking when you know who it is.' : null, count: N(r.unlinked), detail: { total: N(r.total), unlinked: N(r.unlinked) } };
       });
       await run('service_history', async () => {
         const r = (await sql<Row>`select count(*) filter (where t.customer_id is null)::int as anon, count(*)::int as total from tickets t
           where t.tenant_id = ${T} and t.removed_at is null and t.status = any(${VISIT}::text[]) and coalesce(t.paid_at, t.created_at) > now() - interval '90 days'`.execute(trx)).rows[0];
-        return { state: 'READY', evidence: `${N(r.total)} completed visits in the last 90 days; ${N(r.anon)} without a customer (they never count toward anyone's history).`, action: null, count: N(r.anon) };
+        return { state: 'READY', evidence: `${N(r.total)} completed visits in the last 90 days; ${N(r.anon)} without a customer (they never count toward anyone's history).`, action: null, count: N(r.anon), detail: { total: N(r.total), anon: N(r.anon) } };
       });
       await run('duplicate_signals', async () => {
         const n = N((await sql<Row>`select count(*)::int as n from customers c where c.tenant_id = ${T} and c.archived_at is null and ${this.dupPred(T)}`.execute(trx)).rows[0]?.n);
-        return n ? { state: 'WARNING', evidence: `${n} profile(s) share a phone or email with another profile and have not been reviewed as separate people.`, action: 'Review them in Duplicate Review — search never merges anyone.', count: n }
+        return n ? { state: 'WARNING', evidence: `${n} profile(s) share a phone or email with another profile and have not been reviewed as separate people.`, action: 'Review them in Duplicate Review — search never merges anyone.', count: n, detail: { n } }
           : { state: 'READY', evidence: 'No unreviewed shared phone or email.', action: null };
       });
       await run('ai_profile', async () => {
@@ -457,11 +458,11 @@ export class CustomerSearchCenter {
           order by updated_at desc nulls last limit 1`.execute(trx)).rows[0];
         if (!s) return { state: 'UNKNOWN', evidence: 'No AI Customer Profile package on file. Search works without it; only the AI profile panel needs it.', action: null };
         const ok = ['active', 'trialing'].includes(String(s.status));
-        return { state: ok ? 'READY' : 'WARNING', evidence: `AI Customer Profile package: ${String(s.status)}. Search does not depend on it.`, action: ok ? null : 'Renew the package to use the AI profile panel; Customer Search keeps working.' };
+        return { state: ok ? 'READY' : 'WARNING', evidence: `AI Customer Profile package: ${String(s.status)}. Search does not depend on it.`, action: ok ? null : 'Renew the package to use the AI profile panel; Customer Search keeps working.', detail: { status: String(s.status) } };
       });
       await run('freshness', async () => {
         const r = (await sql<Row>`select max(updated_at) as u, max(created_at) as c from customers where tenant_id = ${T}`.execute(trx)).rows[0];
-        return { state: r?.u ? 'READY' : 'UNKNOWN', evidence: r?.u ? `Search reads the live table: newest change ${iso(r.u)}, newest record ${iso(r.c)}. There is no separate index to go stale.` : 'No customer records yet.', action: null };
+        return { state: r?.u ? 'READY' : 'UNKNOWN', evidence: r?.u ? `Search reads the live table: newest change ${iso(r.u)}, newest record ${iso(r.c)}. There is no separate index to go stale.` : 'No customer records yet.', action: null, detail: r?.u ? { at: String(iso(r.u)) } : {} };
       });
       const rank: Record<CheckState, number> = { READY: 0, UNKNOWN: 1, WARNING: 2, FAILED: 3 };
       const overall = checks.reduce<CheckState>((w, c) => (rank[c.state] > rank[w] ? c.state : w), 'READY');

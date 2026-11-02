@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 898,
+  "tables": 901,
   "ownership": {
-   "tenant_owned": 588,
+   "tenant_owned": 591,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 107,
+   "AI": 110,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -41,14 +41,14 @@
    "TENANTS": 27
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 132,
-   "CONFIDENTIAL": 156,
+   "HIGHLY_SENSITIVE": 133,
+   "CONFIDENTIAL": 157,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 490,
+   "INTERNAL": 491,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
-  "append_only": 44,
+  "append_only": 45,
   "platform_rows": 99
  },
  "tables": {
@@ -7052,6 +7052,45 @@
    "append_only": false,
    "source": "override",
    "reason": "BUILD_PLAN Phase 13 (Constitution 6 §28-32): single-use 60 s tickets bound to a person's SESSION (like sessions / refresh_tokens) that open a realtime stream from a native app; redeemed by hash before any tenant context exists"
+  },
+  "rebooking_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow — read-only Check Rebooking System runs"
+  },
+  "rebooking_review_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "override",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow — append-only review and Booking Assistant handoff history (a handoff is never an appointment)"
+  },
+  "rebooking_reviews": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow — current review state per customer, pinned to the opportunity it reviewed; never a booking or customer status"
   },
   "receipt_delivery_logs": {
    "ownership": "tenant_branch_owned",

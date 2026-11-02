@@ -12443,3 +12443,261 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `cwx.health.k.indexes` | Indexes | Chỉ mục |
 | `cwx.health.d.indexes.PASSED` | Signal and review indexes are present. | Đã có chỉ mục tín hiệu và xem xét. |
 | `cwx.health.d.indexes.WARNING` | Some indexes are missing; the queue may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+
+## Rebooking Opportunities (`rbx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `rbx.loadFailed` | Rebooking data is temporarily unavailable. Open Check Rebooking System or try again. | Dữ liệu đặt lại lịch tạm thời không khả dụng. Hãy mở Kiểm tra hệ thống đặt lại lịch hoặc thử lại. |
+| `rbx.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì thay đổi. |
+| `rbx.loading` | Checking customer service history and upcoming appointments… | Đang kiểm tra lịch sử dịch vụ và lịch hẹn sắp tới của khách… |
+| `rbx.close` | Close | Đóng |
+| `rbx.all` | All | Tất cả |
+| `rbx.none` | None | Không có |
+| `rbx.notProvided` | Not provided | Chưa có |
+| `rbx.unavailable` | Unavailable | Không khả dụng |
+| `rbx.check` | Check Rebooking System | Kiểm tra hệ thống đặt lại lịch |
+| `rbx.openCalendar` | Open Booking Calendar | Mở lịch đặt hẹn |
+| `rbx.refreshReused` | An evaluation just ran — showing its results. | Vừa đánh giá xong — đang hiển thị kết quả đó. |
+| `rbx.refreshDone` | Evaluation finished: {n} customers. | Đã đánh giá xong: {n} khách hàng. |
+| `rbx.unavailableNote` | No evaluation is available yet, so there are no opportunities to show. This is not "zero opportunities" — press Refresh. | Chưa có kết quả đánh giá nên chưa có cơ hội để hiển thị. Đây không phải là "không có cơ hội" — hãy bấm Làm mới. |
+| `rbx.searchHint` | Also finds technician, service, customer ID or appointment ID. | Cũng tìm được theo thợ, dịch vụ, mã khách hoặc mã lịch hẹn. |
+| `rbx.clearAll` | Clear | Xóa bộ lọc |
+| `rbx.count` | {n} customers | {n} khách hàng |
+| `rbx.noMatch` | No customers currently match these rebooking criteria. | Hiện không có khách nào khớp tiêu chí đặt lại lịch này. |
+| `rbx.rows` | Rows | Số dòng |
+| `rbx.view` | View details | Xem chi tiết |
+| `rbx.days` | about {n} days | khoảng {n} ngày |
+| `rbx.notEstablished` | Not established yet | Chưa xác định được |
+| `rbx.noHistory` | No rebooking activity yet. | Chưa có hoạt động đặt lại lịch nào. |
+| `rbx.advisory` | Advisory only. Rebooking never books, texts or changes anything — booking goes through the Booking Assistant with confirmation. | Chỉ mang tính gợi ý. Đặt lại lịch không tự đặt hẹn, nhắn tin hay thay đổi gì — việc đặt hẹn đi qua Trợ lý đặt lịch và cần xác nhận. |
+| `rbx.asOf` | Results as of {at} | Kết quả tính đến {at} |
+| `rbx.markReviewed` | Mark reviewed | Đánh dấu đã xem |
+| `rbx.defer` | Review later | Xem lại sau |
+| `rbx.reopen` | Reopen | Mở lại |
+| `rbx.addNote` | Add note | Thêm ghi chú |
+| `rbx.noteRequired` | Note (required) | Ghi chú (bắt buộc) |
+| `rbx.noteOptional` | Note (optional) | Ghi chú (không bắt buộc) |
+| `rbx.deferUntil` | Review again on | Xem lại vào ngày |
+| `rbx.anyService` | All services | Tất cả dịch vụ |
+| `rbx.anyTechnician` | All technicians | Tất cả thợ |
+| `rbx.newer` | Newer opportunities are available on page 1. | Có cơ hội mới hơn ở trang 1. |
+| `rbx.fresh.never` | Not evaluated yet | Chưa đánh giá |
+| `rbx.fresh.up_to_date` | Evaluated {at} | Đã đánh giá lúc {at} |
+| `rbx.fresh.stale` | Out of date · last evaluated {at} | Đã cũ · đánh giá gần nhất {at} |
+| `rbx.fresh.failed` | Last evaluation failed · last good {at} | Lần đánh giá gần nhất bị lỗi · lần tốt gần nhất {at} |
+| `rbx.fresh.running` | Evaluating… | Đang đánh giá… |
+| `rbx.kpi.opportunities` | Opportunities | Cơ hội |
+| `rbx.kpi.due` | Due for review | Cần xem xét |
+| `rbx.kpi.booked` | Already booked | Đã có lịch hẹn |
+| `rbx.kpi.reviewed` | Reviewed | Đã xem xét |
+| `rbx.tab.due_for_review` | Due for Review | Cần xem xét |
+| `rbx.tab.coming_due` | Coming Due | Sắp đến hạn |
+| `rbx.tab.reviewed` | Reviewed | Đã xem xét |
+| `rbx.tab.booked` | Already Booked | Đã có lịch hẹn |
+| `rbx.tab.insufficient` | Insufficient History | Chưa đủ lịch sử |
+| `rbx.tab.all` | All Opportunities | Tất cả cơ hội |
+| `rbx.tab.history` | History | Lịch sử |
+| `rbx.empty.due_for_review` | No customer is past their usual return window right now. | Hiện không có khách nào quá khoảng quay lại quen thuộc. |
+| `rbx.empty.coming_due` | No customer is approaching their usual return window. | Không có khách nào sắp đến khoảng quay lại quen thuộc. |
+| `rbx.empty.reviewed` | No reviewed opportunities. | Không có cơ hội nào đã xem xét. |
+| `rbx.empty.booked` | No customer with history has an upcoming appointment. | Không có khách có lịch sử nào có lịch hẹn sắp tới. |
+| `rbx.empty.insufficient` | Every customer with a visit has enough history. | Mọi khách đã đến đều đủ lịch sử. |
+| `rbx.empty.all` | No current rebooking opportunities. | Không có cơ hội đặt lại lịch nào hiện tại. |
+| `rbx.f.service` | Service | Dịch vụ |
+| `rbx.f.technician` | Technician | Thợ |
+| `rbx.f.sort` | Sort | Sắp xếp |
+| `rbx.f.dateField` | Date | Ngày |
+| `rbx.sort.newest` | Newest opportunity first | Cơ hội mới nhất trước |
+| `rbx.sort.most_overdue` | Most overdue first | Quá hạn lâu nhất trước |
+| `rbx.sort.last_visit` | Most recent visit first | Lần đến gần nhất trước |
+| `rbx.sort.name` | Customer name | Tên khách |
+| `rbx.date.opportunity` | Opportunity created | Ngày tạo cơ hội |
+| `rbx.date.last_visit` | Last completed visit | Lần hoàn tất gần nhất |
+| `rbx.date.suggested_return` | Suggested return | Ngày gợi ý quay lại |
+| `rbx.date.next_appointment` | Next booking | Lịch hẹn kế tiếp |
+| `rbx.date.created` | Customer created | Ngày tạo khách |
+| `rbx.date.reviewed` | Staff reviewed | Ngày nhân viên xem xét |
+| `rbx.date.evaluated` | Last evaluated | Lần đánh giá gần nhất |
+| `rbx.preset.all` | All time | Mọi thời gian |
+| `rbx.preset.today` | Today | Hôm nay |
+| `rbx.preset.yesterday` | Yesterday | Hôm qua |
+| `rbx.preset.week` | This week | Tuần này |
+| `rbx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `rbx.preset.month` | This month | Tháng này |
+| `rbx.preset.last_month` | Last month | Tháng trước |
+| `rbx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `rbx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `rbx.preset.year` | This year | Năm nay |
+| `rbx.preset.custom` | Custom range | Tùy chọn |
+| `rbx.col.customer` | Customer / Phone | Khách / Điện thoại |
+| `rbx.col.lastService` | Last service / Visit | Dịch vụ gần nhất / Lần đến |
+| `rbx.col.suggested` | Suggested service | Dịch vụ gợi ý |
+| `rbx.col.due` | Due / Suggested date | Đến hạn / Ngày gợi ý |
+| `rbx.col.techBooking` | Technician / Booking | Thợ / Lịch hẹn |
+| `rbx.col.status` | Review status | Trạng thái xem xét |
+| `rbx.state.due` | Due for review | Cần xem xét |
+| `rbx.state.coming_due` | Coming due | Sắp đến hạn |
+| `rbx.state.booked` | Already booked | Đã có lịch hẹn |
+| `rbx.state.insufficient` | Insufficient history | Chưa đủ lịch sử |
+| `rbx.state.not_due` | Not due | Chưa đến hạn |
+| `rbx.state.data_unavailable` | Data unavailable | Không có dữ liệu |
+| `rbx.review.reviewed` | Reviewed | Đã xem |
+| `rbx.review.deferred` | Later | Xem sau |
+| `rbx.action.reviewed` | Marked reviewed | Đã đánh dấu đã xem |
+| `rbx.action.deferred` | Review later | Xem lại sau |
+| `rbx.action.reopened` | Reopened | Mở lại |
+| `rbx.action.note` | Note | Ghi chú |
+| `rbx.action.booking_started` | Booking Assistant opened | Đã mở Trợ lý đặt lịch |
+| `rbx.saved.reviewed` | Marked reviewed. Nothing was booked or sent. | Đã đánh dấu đã xem. Không đặt hẹn hay gửi gì. |
+| `rbx.saved.deferred` | Saved for later review. | Đã lưu để xem lại sau. |
+| `rbx.saved.reopened` | Back in Due for Review. | Đã đưa lại vào Cần xem xét. |
+| `rbx.saved.note` | Note added. | Đã thêm ghi chú. |
+| `rbx.hist.when` | When | Thời điểm |
+| `rbx.hist.action` | Action | Hành động |
+| `rbx.hist.note` | Note | Ghi chú |
+| `rbx.hist.by` | By | Người thực hiện |
+| `rbx.row.window` | Due {d} | Đến hạn {d} |
+| `rbx.row.next` | Booked {d} | Đã hẹn {d} |
+| `rbx.row.bookedSince` | Booked since the last evaluation | Đã đặt hẹn sau lần đánh giá gần nhất |
+| `rbx.row.noUpcoming` | No upcoming booking | Chưa có lịch hẹn |
+| `rbx.row.inactive` | Not active in the catalog | Không còn hoạt động trong danh mục |
+| `rbx.row.price` | {p} · {m} min | {p} · {m} phút |
+| `rbx.ov.title` | Rebooking review | Xem xét đặt lại lịch |
+| `rbx.ov.identity` | Customer | Khách hàng |
+| `rbx.ov.recommendation` | Recommendation | Gợi ý |
+| `rbx.ov.services` | Completed services | Dịch vụ đã hoàn tất |
+| `rbx.ov.bookings` | Bookings | Lịch hẹn |
+| `rbx.ov.preference` | Technician | Thợ |
+| `rbx.ov.memberships` | Memberships | Hội viên |
+| `rbx.ov.activity` | Activity | Hoạt động |
+| `rbx.ov.note` | A suggestion for staff review — not a booking, a visit or revenue. | Một gợi ý để nhân viên xem xét — không phải lịch hẹn, lượt đến hay doanh thu. |
+| `rbx.ov.visitsLine` | {n} completed visits · first {first} · last {last} | {n} lượt hoàn tất · lần đầu {first} · gần nhất {last} |
+| `rbx.ov.interval` | Usual return interval | Khoảng quay lại quen thuộc |
+| `rbx.ov.window` | Suggested window | Khoảng thời gian gợi ý |
+| `rbx.ov.windowLine` | {a} to {b} | {a} đến {b} |
+| `rbx.ov.since` | Opportunity created | Ngày tạo cơ hội |
+| `rbx.ov.rule` | Rule | Quy tắc |
+| `rbx.ov.ruleLine` | Version {v} · evaluated {at} | Phiên bản {v} · đánh giá lúc {at} |
+| `rbx.ov.minHistory` | Needs at least {n} completed visits for a reliable suggestion. | Cần ít nhất {n} lượt hoàn tất để gợi ý đáng tin cậy. |
+| `rbx.ov.preferred` | {name} · {v} of {of} visits (preferred) | {name} · {v}/{of} lượt (thợ quen) |
+| `rbx.ov.lastTech` | {name} · {v} of {of} visits (no clear preference) | {name} · {v}/{of} lượt (chưa rõ thợ quen) |
+| `rbx.ov.techInactive` | not active now | hiện không hoạt động |
+| `rbx.ov.noBookings` | No bookings on record. | Chưa có lịch hẹn nào. |
+| `rbx.ov.noServices` | No completed visits. | Chưa có lượt hoàn tất nào. |
+| `rbx.ov.upcoming` | upcoming | sắp tới |
+| `rbx.ov.book` | Open AI Booking Assistant | Mở Trợ lý đặt lịch AI |
+| `rbx.ov.profile` | View customer | Xem khách hàng |
+| `rbx.ov.history` | View service history | Xem lịch sử dịch vụ |
+| `rbx.ov.viewBooking` | View booking | Xem lịch hẹn |
+| `rbx.ov.handoffNote` | The Booking Assistant re-checks availability, conflicts and the salon's phone verification before anything is booked. | Trợ lý đặt lịch sẽ kiểm tra lại giờ trống, trùng lịch và xác minh điện thoại của tiệm trước khi đặt. |
+| `rbx.ov.bookingDisabled` | Booking is not available for this opportunity: {why} | Không thể đặt hẹn cho cơ hội này: {why} |
+| `rbx.ov.noActions` | Rebooking never books, texts, edits the customer or changes points. Follow-up messages go through Communications. | Đặt lại lịch không tự đặt hẹn, nhắn tin, sửa hồ sơ hay đổi điểm. Tin nhắn theo dõi đi qua mục Liên lạc. |
+| `rbx.ov.reviewLine` | {s} on {at} | {s} lúc {at} |
+| `rbx.ov.until` | until {d} | đến {d} |
+| `rbx.ov.reviewExpired` | a new opportunity since — review again | có cơ hội mới — hãy xem lại |
+| `rbx.caveat.not_evaluated` | This customer has not been evaluated yet. Press Refresh. | Khách này chưa được đánh giá. Hãy bấm Làm mới. |
+| `rbx.caveat.booked_since_evaluation` | Booked after the last evaluation — shown as Already Booked. | Đã đặt hẹn sau lần đánh giá gần nhất — hiển thị là Đã có lịch hẹn. |
+| `rbx.caveat.service_inactive` | The last service is no longer active in the catalog; choose a current service in the Booking Assistant. | Dịch vụ gần nhất không còn hoạt động trong danh mục; hãy chọn dịch vụ hiện có trong Trợ lý đặt lịch. |
+| `rbx.caveat.no_service_lines` | The visits have no recorded services. | Các lượt đến chưa ghi dịch vụ. |
+| `rbx.caveat.no_cadence` | Not enough visits to know the usual return interval. | Chưa đủ lượt đến để biết khoảng quay lại quen thuộc. |
+| `rbx.caveat.no_technician_preference` | No clear technician preference in the history. | Lịch sử chưa cho thấy thợ quen rõ ràng. |
+| `rbx.caveat.preferred_technician_inactive` | The usual technician is not active now; the Booking Assistant will offer who is available. | Thợ quen hiện không hoạt động; Trợ lý đặt lịch sẽ gợi ý thợ đang có. |
+| `rbx.err.AI_CUSTOMER_PROFILE_DISABLED` | The AI Customer Profile assistant is turned off for this salon. Turn it on in Customer AI Settings. | Trợ lý Hồ sơ khách hàng AI đang tắt cho tiệm này. Hãy bật trong Cài đặt AI khách hàng. |
+| `rbx.err.CUSTOMER_NOT_FOUND` | Customer not found in your authorized salon records. | Không tìm thấy khách trong hồ sơ tiệm bạn được xem. |
+| `rbx.err.REBOOKING_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `rbx.err.REBOOKING_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `rbx.err.REBOOKING_INVALID_FILTER` | That filter value is not valid. | Giá trị bộ lọc không hợp lệ. |
+| `rbx.err.REBOOKING_NOT_CURRENT` | There is no current rebooking opportunity for this customer. Refresh the evaluation. | Khách này hiện không có cơ hội đặt lại lịch. Hãy làm mới đánh giá. |
+| `rbx.err.REBOOKING_ALREADY_BOOKED` | This customer already has an upcoming appointment ({d}). Nothing was booked. | Khách này đã có lịch hẹn sắp tới ({d}). Không đặt thêm gì. |
+| `rbx.err.REBOOKING_SERVICE_INACTIVE` | That service is no longer active. Choose a current service in the Booking Assistant. | Dịch vụ đó không còn hoạt động. Hãy chọn dịch vụ hiện có trong Trợ lý đặt lịch. |
+| `rbx.err.REBOOKING_TECHNICIAN_INACTIVE` | That technician is not active now. | Thợ đó hiện không hoạt động. |
+| `rbx.err.REBOOKING_STALE_VERSION` | Someone else updated this review. It has been reloaded. | Người khác vừa cập nhật mục này. Đã tải lại. |
+| `rbx.err.REBOOKING_NOTE_REQUIRED` | Write a note first. | Hãy viết ghi chú trước. |
+| `rbx.err.INTELLIGENCE_SCAN_FAILED` | The evaluation could not finish. Nothing was changed. | Không đánh giá xong được. Không có gì thay đổi. |
+| `rbx.err.PERMISSION_DENIED` | You do not have permission to view these records. | Bạn không có quyền xem các hồ sơ này. |
+| `rbx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `rbx.health.running` | Checking… | Đang kiểm tra… |
+| `rbx.health.readOnly` | This check only reads. It never books, texts, edits customers, changes points or reclassifies anyone. | Việc kiểm tra chỉ đọc. Không đặt hẹn, nhắn tin, sửa khách, đổi điểm hay phân loại lại ai. |
+| `rbx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `rbx.health.PASSED` | Passed | Đạt |
+| `rbx.health.WARNING` | Warning | Cảnh báo |
+| `rbx.health.FAILED` | Failed | Lỗi |
+| `rbx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `rbx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `rbx.health.k.assistant_enabled` | AI Customer Profile assistant | Trợ lý Hồ sơ khách hàng AI |
+| `rbx.health.d.assistant_enabled.PASSED` | The assistant is on. | Trợ lý đang bật. |
+| `rbx.health.d.assistant_enabled.WARNING` | The assistant is off; opportunities cannot refresh. Turn it on in Customer AI Settings. | Trợ lý đang tắt; cơ hội không thể làm mới. Hãy bật trong Cài đặt AI khách hàng. |
+| `rbx.health.k.evaluation_freshness` | Evaluation is recent | Lần đánh giá còn mới |
+| `rbx.health.d.evaluation_freshness.PASSED` | The last evaluation is recent and used the current rule. | Lần đánh giá gần nhất còn mới và dùng quy tắc hiện tại. |
+| `rbx.health.d.evaluation_freshness.WARNING` | The last evaluation is older than an hour or used an older rule. Press Refresh. | Lần đánh giá gần nhất đã hơn một giờ hoặc dùng quy tắc cũ. Hãy bấm Làm mới. |
+| `rbx.health.d.evaluation_freshness.FAILED` | The last evaluation failed. Press Refresh; if it fails again, report it. | Lần đánh giá gần nhất bị lỗi. Hãy bấm Làm mới; nếu vẫn lỗi, hãy báo lại. |
+| `rbx.health.d.evaluation_freshness.INSUFFICIENT_DATA` | Nothing has been evaluated yet. Press Refresh. | Chưa đánh giá lần nào. Hãy bấm Làm mới. |
+| `rbx.health.k.intelligence_agreement` | Agreement with Customer Intelligence | Khớp với Phân tích khách hàng |
+| `rbx.health.d.intelligence_agreement.PASSED` | The stored opportunities equal the Rebooking card on Customer Intelligence. | Số cơ hội lưu trữ bằng thẻ Đặt lại lịch trên Phân tích khách hàng. |
+| `rbx.health.d.intelligence_agreement.WARNING` | The last evaluation predates the rebooking window. Press Refresh. | Lần đánh giá gần nhất có trước khoảng thời gian đặt lại lịch. Hãy bấm Làm mới. |
+| `rbx.health.d.intelligence_agreement.FAILED` | The stored opportunities do not equal the evaluation's count. Press Refresh and report it if it repeats. | Số cơ hội lưu trữ không khớp số của lần đánh giá. Hãy Làm mới và báo lại nếu lặp lại. |
+| `rbx.health.d.intelligence_agreement.INSUFFICIENT_DATA` | Nothing evaluated yet. | Chưa đánh giá lần nào. |
+| `rbx.health.k.opportunity_dates` | Every opportunity has its dates | Mỗi cơ hội có đủ ngày |
+| `rbx.health.d.opportunity_dates.PASSED` | Every opportunity has a created date and, where the interval is known, a return window. | Mỗi cơ hội có ngày tạo và, khi biết khoảng quay lại, có khoảng thời gian gợi ý. |
+| `rbx.health.d.opportunity_dates.WARNING` | Some opportunities are missing dates. Press Refresh. | Một số cơ hội thiếu ngày. Hãy bấm Làm mới. |
+| `rbx.health.d.opportunity_dates.INSUFFICIENT_DATA` | Nothing evaluated yet. | Chưa đánh giá lần nào. |
+| `rbx.health.k.service_done_history` | Completed-service history | Lịch sử dịch vụ đã hoàn tất |
+| `rbx.health.d.service_done_history.PASSED` | Completed visits are available. | Có dữ liệu lượt đến đã hoàn tất. |
+| `rbx.health.d.service_done_history.INSUFFICIENT_DATA` | No completed visits yet — opportunities need completed services. | Chưa có lượt hoàn tất — cơ hội cần dịch vụ đã hoàn tất. |
+| `rbx.health.k.visits_with_services` | Visits record their services | Lượt đến có ghi dịch vụ |
+| `rbx.health.d.visits_with_services.PASSED` | Every completed visit records at least one catalog service. | Mỗi lượt hoàn tất đều ghi ít nhất một dịch vụ trong danh mục. |
+| `rbx.health.d.visits_with_services.WARNING` | Some completed visits record no catalog service, so no service can be suggested for them. | Một số lượt hoàn tất không ghi dịch vụ, nên không thể gợi ý dịch vụ cho các lượt đó. |
+| `rbx.health.k.booking_calendar` | Booking Calendar | Lịch đặt hẹn |
+| `rbx.health.d.booking_calendar.PASSED` | Upcoming appointments are read live from the Booking Calendar. | Lịch hẹn sắp tới được đọc trực tiếp từ Lịch đặt hẹn. |
+| `rbx.health.k.bookings_since_evaluation` | Bookings made since the evaluation | Lịch hẹn đặt sau lần đánh giá |
+| `rbx.health.d.bookings_since_evaluation.PASSED` | No opportunity has booked since the evaluation. | Không có cơ hội nào đã đặt hẹn sau lần đánh giá. |
+| `rbx.health.d.bookings_since_evaluation.WARNING` | Some customers booked after the evaluation. They already show as Already Booked; press Refresh to update the counts. | Một số khách đã đặt hẹn sau lần đánh giá. Họ đã hiển thị là Đã có lịch hẹn; hãy bấm Làm mới để cập nhật số liệu. |
+| `rbx.health.k.services_catalog` | Services Catalog | Danh mục dịch vụ |
+| `rbx.health.d.services_catalog.PASSED` | Active services are available for booking. | Có dịch vụ đang hoạt động để đặt hẹn. |
+| `rbx.health.d.services_catalog.FAILED` | No active service in the catalog — nothing can be booked. Add or reactivate services. | Danh mục không có dịch vụ đang hoạt động — không thể đặt hẹn. Hãy thêm hoặc bật lại dịch vụ. |
+| `rbx.health.k.technicians_active` | Active technicians | Thợ đang hoạt động |
+| `rbx.health.d.technicians_active.PASSED` | Active technicians are available for booking. | Có thợ đang hoạt động để đặt hẹn. |
+| `rbx.health.d.technicians_active.FAILED` | No active technician — nothing can be booked. Check Technician Management. | Không có thợ đang hoạt động — không thể đặt hẹn. Hãy kiểm tra Quản lý thợ. |
+| `rbx.health.k.reviews_point_at_live_customers` | Reviews belong to live customers | Mục xem xét thuộc khách đang hoạt động |
+| `rbx.health.d.reviews_point_at_live_customers.PASSED` | Every review belongs to a live customer. | Mọi mục xem xét đều thuộc khách đang hoạt động. |
+| `rbx.health.d.reviews_point_at_live_customers.WARNING` | Some reviews belong to a merged or archived customer. Nothing to do unless they reappear. | Một số mục xem xét thuộc khách đã gộp hoặc lưu trữ. Không cần làm gì trừ khi xuất hiện lại. |
+| `rbx.health.k.deferrals_due` | Deferred reviews due | Mục hoãn đến hạn |
+| `rbx.health.d.deferrals_due.PASSED` | No deferred review has reached its date. | Không có mục hoãn nào đến hạn. |
+| `rbx.health.d.deferrals_due.WARNING` | Some deferred reviews have reached their date and are back in Due for Review. | Một số mục hoãn đã đến hạn và quay lại Cần xem xét. |
+| `rbx.health.k.tenant_isolation` | Only this salon's customers | Chỉ khách của tiệm này |
+| `rbx.health.d.tenant_isolation.PASSED` | Every review and event belongs to this salon. | Mọi mục xem xét và sự kiện đều thuộc tiệm này. |
+| `rbx.health.d.tenant_isolation.FAILED` | A review references another salon's customer. Report this immediately. | Có mục xem xét trỏ tới khách của tiệm khác. Hãy báo ngay. |
+| `rbx.health.k.no_booking_or_message_side_effects` | No bookings or messages | Không đặt hẹn hay nhắn tin |
+| `rbx.health.d.no_booking_or_message_side_effects.PASSED` | Rebooking has no path that books, texts, edits a customer or changes points; its only writes are its own review notes and handoff records. | Đặt lại lịch không có đường nào để đặt hẹn, nhắn tin, sửa khách hay đổi điểm; chỉ ghi nhận xét và bản ghi chuyển giao của chính nó. |
+| `rbx.health.k.indexes` | Indexes | Chỉ mục |
+| `rbx.health.d.indexes.PASSED` | Opportunity and review indexes are present. | Đã có chỉ mục cơ hội và xem xét. |
+| `rbx.health.d.indexes.WARNING` | Some indexes are missing; the queue may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+| `rbx.prefill` | Prefilled from Rebooking for {name}. Pick a time — availability, conflicts and phone verification are checked before booking. | Đã điền sẵn từ Đặt lại lịch cho {name}. Hãy chọn giờ — giờ trống, trùng lịch và xác minh điện thoại sẽ được kiểm tra trước khi đặt. |
+
+## Customer Search health check (`csx.health.d.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `csx.health.d.failed` | The check could not run. Retry; if it persists, check the database connection. | Không chạy được bước kiểm tra. Hãy thử lại; nếu vẫn lỗi, hãy kiểm tra kết nối cơ sở dữ liệu. |
+| `csx.health.d.directory.READY` | {live} live and {archived} archived customer records in this salon. | {live} hồ sơ khách đang hoạt động và {archived} hồ sơ đã lưu trữ trong tiệm này. |
+| `csx.health.d.exact_lookup.READY` | The newest customer was found by ID and by phone. | Đã tìm thấy khách mới nhất theo mã và theo số điện thoại. |
+| `csx.health.d.exact_lookup.FAILED` | A known customer could not be found (by ID: {byId}, by phone: {byPhone}). Check phone normalization. | Không tìm được một khách đã biết (theo mã: {byId}, theo điện thoại: {byPhone}). Hãy kiểm tra cách chuẩn hóa số điện thoại. |
+| `csx.health.d.exact_lookup.UNKNOWN` | No customer with a phone number to test with. | Chưa có khách nào có số điện thoại để kiểm tra. |
+| `csx.health.d.phone_normalization.READY` | Stored phones are in the search format ({n} checked). | Số điện thoại đã lưu đúng định dạng tìm kiếm (đã kiểm tra {n}). |
+| `csx.health.d.phone_normalization.WARNING` | {missing} customer(s) show a phone but have none stored for search; {off} of the last {n} stored phones are not in the stored format. Open them in Customer Management and save the phone again. | {missing} khách có hiện số điện thoại nhưng chưa lưu để tìm kiếm; {off} trong {n} số gần nhất không đúng định dạng. Hãy mở họ trong Quản lý khách hàng và lưu lại số điện thoại. |
+| `csx.health.d.indexes.READY` | Directory, email and Vietnamese-name search indexes are present. | Đã có chỉ mục tìm kiếm danh bạ, email và tên tiếng Việt. |
+| `csx.health.d.indexes.WARNING` | Missing search index(es): {list}. Apply the latest database update; large directories search slowly without them. | Thiếu chỉ mục tìm kiếm: {list}. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất; danh bạ lớn sẽ tìm chậm nếu thiếu. |
+| `csx.health.d.tenant_isolation.READY` | No appointment or ticket of this salon points at another salon's customer. | Không có lịch hẹn hay hóa đơn nào của tiệm trỏ tới khách của tiệm khác. |
+| `csx.health.d.tenant_isolation.FAILED` | {a} appointment(s) and {t} ticket(s) of this salon point at another salon's customer. Report this to support immediately. | {a} lịch hẹn và {t} hóa đơn của tiệm trỏ tới khách của tiệm khác. Hãy báo ngay cho bộ phận hỗ trợ. |
+| `csx.health.d.booking_links.READY` | {total} appointments in the last 90 days, all linked to a customer. | {total} lịch hẹn trong 90 ngày qua, đều đã gắn với khách. |
+| `csx.health.d.booking_links.WARNING` | {total} appointments in the last 90 days; {unlinked} have no customer record (walk-ins or guest bookings). Link the guest in Booking when you know who it is. | {total} lịch hẹn trong 90 ngày qua; {unlinked} chưa gắn hồ sơ khách (khách vãng lai hoặc đặt hộ). Hãy gắn khách trong mục Đặt lịch khi biết là ai. |
+| `csx.health.d.booking_links.FAILED` | {n} recent appointment(s) point at a customer record that no longer exists. Report this to support. | {n} lịch hẹn gần đây trỏ tới hồ sơ khách không còn tồn tại. Hãy báo cho bộ phận hỗ trợ. |
+| `csx.health.d.service_history.READY` | {total} completed visits in the last 90 days; {anon} without a customer (they never count toward anyone's history). | {total} lượt hoàn tất trong 90 ngày qua; {anon} lượt không có khách (không tính vào lịch sử của ai). |
+| `csx.health.d.duplicate_signals.READY` | No unreviewed shared phone or email. | Không có số điện thoại hay email trùng nào chưa xem xét. |
+| `csx.health.d.duplicate_signals.WARNING` | {n} profile(s) share a phone or email with another profile. Review them in Duplicate Review — search never merges anyone. | {n} hồ sơ trùng số điện thoại hoặc email với hồ sơ khác. Hãy xem xét trong mục Hồ sơ trùng — tìm kiếm không bao giờ tự gộp. |
+| `csx.health.d.ai_profile.READY` | The AI Customer Profile package is active. Search does not depend on it. | Gói Hồ sơ khách hàng AI đang hoạt động. Tìm kiếm không phụ thuộc vào gói này. |
+| `csx.health.d.ai_profile.WARNING` | The AI Customer Profile package is not active ({status}). Customer Search keeps working; renew it to use the AI profile panel. | Gói Hồ sơ khách hàng AI chưa hoạt động ({status}). Tìm kiếm khách vẫn hoạt động; hãy gia hạn để dùng bảng hồ sơ AI. |
+| `csx.health.d.ai_profile.UNKNOWN` | No AI Customer Profile package on file. Search works without it. | Chưa có gói Hồ sơ khách hàng AI. Tìm kiếm vẫn hoạt động. |
+| `csx.health.d.freshness.READY` | Search reads the live records (newest change {at}); there is no separate index to go stale. | Tìm kiếm đọc trực tiếp hồ sơ (thay đổi gần nhất {at}); không có chỉ mục riêng nào bị cũ. |
+| `csx.health.d.freshness.UNKNOWN` | No customer records yet. | Chưa có hồ sơ khách nào. |

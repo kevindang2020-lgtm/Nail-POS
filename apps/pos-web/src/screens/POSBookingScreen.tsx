@@ -24,6 +24,7 @@ import { MembershipChip, useMemberStatusMap } from './MembershipChip';
 import { ProfileAvatarWithPreview, resolveAvatarUrl, useInlineAsk, useEventCallback } from '@aipowersalon/ui';
 import { t as tx, enPlural, getLanguage, currentLocale } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtMoney, fmtTime as fmtClock, fmtYmd } from '../i18n/format';
+import { takeBookingHandoff } from '../api/posRebookingApi';
 
 import { statusLabel } from '../i18n/status-label';
 // POS Booking — reads the real /pos/booking/state (POSBookingFullState) and now WIRES the full appointment lifecycle.
@@ -1254,6 +1255,16 @@ export function POSBookingScreen() {
     setCreateMsg({ ok: true, text: tx('pos.prefilled_v0_v1_pick_the_service_y0xa', { v0: String(techName ? techName + ' · ' : ''), v1: String(calLabel(calMinutes(time) ?? 0)) }) });
     assistantRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
+  // Rebooking Opportunities (Nov 1 2026): "Open AI Booking Assistant" hands over a one-use prefill (customer · service ·
+  // technician · day). Nothing is booked here either: staff pick a time and confirm, and availability, conflicts and the
+  // salon's phone verification apply exactly as for any booking.
+  useEffect(() => {
+    const h = takeBookingHandoff();
+    if (!h) return;
+    setForm((f) => ({ ...f, customerName: h.customerName ?? '', customerPhone: h.customerPhone ?? '', primaryService: h.serviceId ?? '', addons: [], technicianId: h.technicianId ?? '', date: h.date, time: '', source: 'manual' }));
+    setFormTechName(h.technicianName ?? undefined); setSlots(null); setBookTab('new');
+    setCreateMsg({ ok: true, text: tx('rbx.prefill', { name: h.customerName ?? '' }) });
+  }, []);
 
   // Drag-and-drop move: optimistic UI, server re-validates (schedule windows + conflicts), rollback on rejection.
   const moveAppointment = async (aid: string, technicianId: string | undefined, time: string, versionAtDragStart?: number) => {

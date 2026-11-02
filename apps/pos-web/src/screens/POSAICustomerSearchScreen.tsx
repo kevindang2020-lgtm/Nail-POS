@@ -268,8 +268,9 @@ function HealthDialog({ data, onClose }: { data: any; onClose: () => void }) {
         {data.checks.map((c: any) => (
           <div key={c.key} className="rvw-check" data-testid={`chk-${c.key}`}>
             <div><span className={'chip ' + (STATE_TONE[c.state] ?? '')} data-testid={`chk-${c.key}-state`}>{t('csx.health.' + c.state)}</span> <b>{t('csx.health.k.' + c.key)}</b></div>
-            <div className="sub">{c.evidence}</div>
-            {c.action ? <div><b>{t('csx.health.next')}</b> {c.action}</div> : null}
+            {/* localized from the check's numbers — the server's English evidence stays in the API / run log */}
+            <div className="sub" data-testid={`chk-${c.key}-detail`}>{c.detail?.failedToRun ? t('csx.health.d.failed')
+              : t('csx.health.d.' + c.key + '.' + c.state, { ...(c.detail ?? {}), ...(c.detail?.at ? { at: when(String(c.detail.at), true) } : {}) })}</div>
           </div>
         ))}
       </>}

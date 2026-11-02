@@ -681,11 +681,17 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
 - **Done: Churn Watch** (guide 5): `pos/churn-watch` routes and migration 764.
   - Uses the existing `evaluateChurnRisk` inside the shared Intelligence scan, plus a review workflow; Data Unavailable is never shown as zero.
   - Tests: pgtest 10/10, screen 6/6. Doc: `docs/ai/CHURN_WATCH.md`.
-- **Next: Rebooking** (guide 6).
+- **Done: Rebooking Opportunities** (guide 6): `pos/rebooking` routes and migration 765.
+  - Same shared evaluation (rule `ci-2026-11-02c` adds the return window and "opportunity created"); upcoming bookings are read live.
+  - "Open AI Booking Assistant" = a one-use prefill of POS → Booking (re-checked on the server; never an appointment).
+  - Tests: pgtest 14/14, screen 7/7, handoff 3/3. Doc: `docs/ai/REBOOKING_OPPORTUNITIES.md`.
+- **Next: Service Recommendations** (guide 7).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
      behaviour, shown as acknowledgements), or should they BLOCK the merge until handled in Gift Cards / Checkout?
+  3. Rebooking: any future appointment suppresses an opportunity today (the existing rule). The guide says an unrelated
+     booked service should not. Change it (it also changes the Customer Intelligence and Churn Watch numbers) or keep it?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

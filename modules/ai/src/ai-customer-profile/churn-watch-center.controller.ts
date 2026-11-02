@@ -54,31 +54,31 @@ export class ChurnWatchCenterController {
   }
 
   /** the six metrics from the latest evaluation (Data Unavailable when there is none) */
-  @Get('summary') @RequirePermission(CHURN)
+  @Get('summary') @RequirePermission('pos.ai_customer_profile.churn')
   summary(@Req() q: any) { const c = ctxFrom(q); need(c, CHURN); return run(() => this.r().summary(c)); }
 
   /** the review queue: tab · priority · q · date field + range · sort · pages 10/25/50/100 */
-  @Get('customers') @RequirePermission(CHURN)
+  @Get('customers') @RequirePermission('pos.ai_customer_profile.churn')
   @ListQuery(LIST)
   list(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, CHURN); return run(() => this.r().list(c, f ?? {}, { fullContact: can(c, 'pos.customers.export') })); }
 
   /** the Retention Evidence overlay — audited, fail-closed */
-  @Get('customers/:id') @RequirePermission(CHURN)
+  @Get('customers/:id') @RequirePermission('pos.ai_customer_profile.churn')
   customer(@Req() q: any, @Param('id') id: string) { const c = ctxFrom(q); need(c, CHURN); return run(() => this.r().customer(c, id, this.audit(c, 'churn_watch.evidence_viewed', id, 'Churn Watch evidence opened'))); }
 
   /** Mark reviewed · Defer · Reopen · Note — the internal review workflow only */
-  @Post('customers/:id/review') @RequirePermission(CHURN)
+  @Post('customers/:id/review') @RequirePermission('pos.ai_customer_profile.churn')
   review(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(CW_REVIEW_BODY, { strict: true })) b: any) {
     const c = ctxFrom(q); need(c, CHURN);
     return run(() => this.r().review(c, id, b ?? {}, this.audit(c, 'churn_watch.reviewed', id, `Churn Watch review: ${String(b?.action)}`)));
   }
 
   /** review history, newest first */
-  @Get('history') @RequirePermission(CHURN)
+  @Get('history') @RequirePermission('pos.ai_customer_profile.churn')
   @ListQuery(HISTORY)
   history(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, CHURN); return run(() => this.r().history(c, f ?? {})); }
 
   /** Check Churn Watch System — read-only */
-  @Post('check') @RequirePermission(CHURN)
+  @Post('check') @RequirePermission('pos.ai_customer_profile.churn')
   check(@Req() q: any, @Body(ValidatedBody(CW_EMPTY_BODY, { strict: true })) _b: unknown) { const c = ctxFrom(q); need(c, CHURN); return run(() => this.r().check(c)); }
 }

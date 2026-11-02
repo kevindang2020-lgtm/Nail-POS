@@ -85,14 +85,18 @@ describe('POSAICustomerSearchScreen', () => {
     await waitFor(() => expect(screen.queryByTestId('csx-overlay')).toBeNull());
     expect(screen.getAllByTestId('csx-row')).toHaveLength(2);
   });
-  it('Check Customer Search System shows each area with its state and next step', async () => {
+  it('Check Customer Search System shows each area with its state and next step — localized from the numbers, never the server\'s English', async () => {
     api.check.mockResolvedValue({ overall: 'WARNING', checkedAt: '2026-11-02T15:00:00Z', rateLimited: false, checks: [
-      { key: 'directory', state: 'READY', evidence: '8 live', action: null }, { key: 'duplicate_signals', state: 'WARNING', evidence: '2 share', action: 'Review them in Duplicate Review' }] });
+      { key: 'directory', state: 'READY', evidence: 'SERVER ENGLISH', action: null, detail: { live: 8, archived: 1 } },
+      { key: 'duplicate_signals', state: 'WARNING', evidence: 'SERVER ENGLISH', action: 'SERVER ENGLISH', detail: { n: 2 } },
+      { key: 'indexes', state: 'FAILED', evidence: 'The check could not run: boom', action: 'x', detail: { failedToRun: 1 } }] });
     mount();
     await screen.findAllByTestId('csx-row');
     fireEvent.click(screen.getByTestId('csx-check'));
-    expect(await screen.findByTestId('chk-duplicate_signals')).toHaveTextContent('Review them in Duplicate Review');
-    expect(screen.getByTestId('chk-directory-state')).toBeInTheDocument();
+    expect(await screen.findByTestId('chk-duplicate_signals-detail')).toHaveTextContent('2 profile(s) share a phone or email with another profile. Review them in Duplicate Review');
+    expect(screen.getByTestId('chk-directory-detail')).toHaveTextContent('8 live and 1 archived customer records');
+    expect(screen.getByTestId('chk-indexes-detail')).toHaveTextContent('The check could not run.');
+    expect(screen.queryByText(/SERVER ENGLISH/)).toBeNull();
   });
   it('no matches offers Clear all; a 403 shows the role message (never an empty directory)', async () => {
     api.customers.mockResolvedValue(page([]));
