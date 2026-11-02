@@ -12701,3 +12701,250 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `csx.health.d.ai_profile.UNKNOWN` | No AI Customer Profile package on file. Search works without it. | Chưa có gói Hồ sơ khách hàng AI. Tìm kiếm vẫn hoạt động. |
 | `csx.health.d.freshness.READY` | Search reads the live records (newest change {at}); there is no separate index to go stale. | Tìm kiếm đọc trực tiếp hồ sơ (thay đổi gần nhất {at}); không có chỉ mục riêng nào bị cũ. |
 | `csx.health.d.freshness.UNKNOWN` | No customer records yet. | Chưa có hồ sơ khách nào. |
+
+## Service Recommendations (`srx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `srx.loadFailed` | Service recommendation data is temporarily unavailable. Open Check Service Recommendations System or try again. | Dữ liệu gợi ý dịch vụ tạm thời không khả dụng. Hãy mở Kiểm tra hệ thống gợi ý dịch vụ hoặc thử lại. |
+| `srx.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì thay đổi. |
+| `srx.loading` | Finding relevant services from completed visits… | Đang tìm dịch vụ phù hợp từ các lượt đã hoàn tất… |
+| `srx.close` | Close | Đóng |
+| `srx.notProvided` | Not provided | Chưa có |
+| `srx.unavailable` | Unavailable | Không khả dụng |
+| `srx.check` | Check Service Recommendations System | Kiểm tra hệ thống gợi ý dịch vụ |
+| `srx.openSearch` | Open Customer Search | Mở Tìm khách hàng |
+| `srx.openCatalog` | View Services Catalog | Xem danh mục dịch vụ |
+| `srx.refreshReused` | An evaluation just ran — showing its results. | Vừa đánh giá xong — đang hiển thị kết quả đó. |
+| `srx.refreshDone` | Evaluation finished: {n} customers, {s} suggestions. | Đã đánh giá xong: {n} khách hàng, {s} gợi ý. |
+| `srx.unavailableNote` | No evaluation is available yet, so there are no suggestions to show. This is not "no recommendations" — press Refresh. | Chưa có kết quả đánh giá nên chưa có gợi ý để hiển thị. Đây không phải là "không có gợi ý" — hãy bấm Làm mới. |
+| `srx.searchHint` | Also finds service, technician, customer ID or appointment ID. | Cũng tìm được theo dịch vụ, thợ, mã khách hoặc mã lịch hẹn. |
+| `srx.clearAll` | Clear | Xóa bộ lọc |
+| `srx.count` | {n} suggestions | {n} gợi ý |
+| `srx.noMatch` | No suggestions match these filters. | Không có gợi ý nào khớp bộ lọc. |
+| `srx.rows` | Rows | Số dòng |
+| `srx.view` | View | Xem |
+| `srx.noHistory` | No recommendation activity yet. | Chưa có hoạt động gợi ý nào. |
+| `srx.advisory` | Optional suggestions from completed visits and your active catalog. Nothing is booked, added to a ticket, priced or sent automatically. | Gợi ý không bắt buộc từ các lượt đã hoàn tất và danh mục đang hoạt động. Không tự đặt hẹn, thêm vào hóa đơn, đổi giá hay gửi tin. |
+| `srx.asOf` | Results as of {at} | Kết quả tính đến {at} |
+| `srx.markReviewed` | Mark reviewed | Đánh dấu đã xem |
+| `srx.defer` | Review later | Xem lại sau |
+| `srx.notApplicable` | Not applicable | Không phù hợp |
+| `srx.reopen` | Reopen | Mở lại |
+| `srx.addNote` | Add note | Thêm ghi chú |
+| `srx.noteRequired` | Note (required) | Ghi chú (bắt buộc) |
+| `srx.noteOptional` | Note (optional) | Ghi chú (không bắt buộc) |
+| `srx.deferUntil` | Review again on | Xem lại vào ngày |
+| `srx.anyService` | All services | Tất cả dịch vụ |
+| `srx.anyTechnician` | All technicians | Tất cả thợ |
+| `srx.anyType` | All types | Tất cả loại |
+| `srx.evalHistory` | Evaluation history | Lịch sử đánh giá |
+| `srx.prefill` | Prefilled from Service Recommendations for {name}. Pick a time — availability, qualifications, conflicts and phone verification are checked before booking. | Đã điền sẵn từ Gợi ý dịch vụ cho {name}. Hãy chọn giờ — giờ trống, tay nghề thợ, trùng lịch và xác minh điện thoại sẽ được kiểm tra trước khi đặt. |
+| `srx.fresh.never` | Not evaluated yet | Chưa đánh giá |
+| `srx.fresh.up_to_date` | Evaluated {at} | Đã đánh giá lúc {at} |
+| `srx.fresh.stale` | Out of date · last evaluated {at} | Đã cũ · đánh giá gần nhất {at} |
+| `srx.fresh.failed` | Last evaluation failed · last good {at} | Lần đánh giá gần nhất bị lỗi · lần tốt gần nhất {at} |
+| `srx.fresh.running` | Evaluating… | Đang đánh giá… |
+| `srx.kpi.recommendations` | Recommendations | Gợi ý |
+| `srx.kpi.evaluated` | Customers evaluated | Khách đã đánh giá |
+| `srx.kpi.needs` | Needs review | Cần xem xét |
+| `srx.kpi.recent` | Reviewed (30 days) | Đã xem xét (30 ngày) |
+| `srx.kpi.bookings` | Associated bookings | Lịch hẹn liên quan |
+| `srx.kpi.insufficient` | Insufficient history | Chưa đủ lịch sử |
+| `srx.tab.needs_review` | Needs Review | Cần xem xét |
+| `srx.tab.reviewed` | Reviewed | Đã xem xét |
+| `srx.tab.booked` | Already Booked | Đã có lịch hẹn |
+| `srx.tab.all` | All Current | Tất cả hiện tại |
+| `srx.tab.superseded` | No Longer Suggested | Không còn gợi ý |
+| `srx.tab.history` | History | Lịch sử |
+| `srx.empty.needs_review` | No suggestion needs review right now. | Hiện không có gợi ý nào cần xem xét. |
+| `srx.empty.reviewed` | No reviewed suggestions. | Không có gợi ý nào đã xem xét. |
+| `srx.empty.booked` | No suggested service is booked yet. | Chưa có dịch vụ gợi ý nào được đặt hẹn. |
+| `srx.empty.all` | No current suggestions. | Không có gợi ý hiện tại. |
+| `srx.empty.superseded` | No retired suggestions. | Không có gợi ý nào đã ngừng. |
+| `srx.type.repeat_service` | Repeat service | Dịch vụ quen |
+| `srx.type.previously_preferred` | Previously preferred | Từng chọn nhiều lần |
+| `srx.ev.repeat_service` | Completed {n} times — the customer's most frequent service (last {d}). | Đã làm {n} lần — dịch vụ khách chọn nhiều nhất (gần nhất {d}). |
+| `srx.ev.previously_preferred` | Completed {n} times; last {w} weeks ago. | Đã làm {n} lần; lần gần nhất cách đây {w} tuần. |
+| `srx.conf.high` | High | Cao |
+| `srx.conf.medium` | Medium | Trung bình |
+| `srx.conf.low` | Low | Thấp |
+| `srx.f.type` | Type | Loại |
+| `srx.f.service` | Service | Dịch vụ |
+| `srx.f.technician` | Technician | Thợ |
+| `srx.f.sort` | Sort | Sắp xếp |
+| `srx.f.dateField` | Date | Ngày |
+| `srx.sort.newest` | Newest recommendation | Gợi ý mới nhất |
+| `srx.sort.oldest` | Oldest recommendation | Gợi ý cũ nhất |
+| `srx.sort.recently_reviewed` | Most recently reviewed | Xem xét gần nhất |
+| `srx.sort.name` | Customer name | Tên khách |
+| `srx.sort.last_completed` | Last completed service | Dịch vụ hoàn tất gần nhất |
+| `srx.sort.service` | Suggested service | Dịch vụ gợi ý |
+| `srx.date.generated` | Recommendation created | Ngày tạo gợi ý |
+| `srx.date.evaluated` | Recommendation updated | Ngày cập nhật gợi ý |
+| `srx.date.last_completed` | Last completed service | Dịch vụ hoàn tất gần nhất |
+| `srx.date.reviewed` | Review date | Ngày xem xét |
+| `srx.date.customer_created` | Customer created | Ngày tạo khách |
+| `srx.date.booking` | Appointment date | Ngày hẹn |
+| `srx.preset.all` | All time | Mọi thời gian |
+| `srx.preset.today` | Today | Hôm nay |
+| `srx.preset.yesterday` | Yesterday | Hôm qua |
+| `srx.preset.week` | This week | Tuần này |
+| `srx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `srx.preset.month` | This month | Tháng này |
+| `srx.preset.last_month` | Last month | Tháng trước |
+| `srx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `srx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `srx.preset.year` | This year | Năm nay |
+| `srx.preset.custom` | Custom range | Tùy chọn |
+| `srx.col.customer` | Customer / Phone | Khách / Điện thoại |
+| `srx.col.last` | Last service / Visit | Dịch vụ gần nhất / Lần đến |
+| `srx.col.suggested` | Recommended service | Dịch vụ gợi ý |
+| `srx.col.price` | Price · Duration | Giá · Thời lượng |
+| `srx.col.technician` | Technician | Thợ |
+| `srx.col.booking` | Upcoming booking | Lịch hẹn sắp tới |
+| `srx.col.reason` | Reason | Lý do |
+| `srx.col.status` | Status | Trạng thái |
+| `srx.state.needs_review` | Needs review | Cần xem xét |
+| `srx.state.reviewed` | Reviewed | Đã xem xét |
+| `srx.state.deferred` | Review later | Xem lại sau |
+| `srx.state.not_applicable` | Not applicable | Không phù hợp |
+| `srx.state.booked` | Already booked | Đã có lịch hẹn |
+| `srx.state.service_inactive` | Service inactive | Dịch vụ ngừng hoạt động |
+| `srx.state.superseded` | No longer suggested | Không còn gợi ý |
+| `srx.action.reviewed` | Marked reviewed | Đã đánh dấu đã xem |
+| `srx.action.deferred` | Review later | Xem lại sau |
+| `srx.action.not_applicable` | Not applicable | Không phù hợp |
+| `srx.action.reopened` | Reopened | Mở lại |
+| `srx.action.note` | Note | Ghi chú |
+| `srx.action.booking_started` | Booking Assistant opened | Đã mở Trợ lý đặt lịch |
+| `srx.saved.reviewed` | Marked reviewed. Nothing was booked, priced or sent. | Đã đánh dấu đã xem. Không đặt hẹn, đổi giá hay gửi gì. |
+| `srx.saved.deferred` | Saved for later review. | Đã lưu để xem lại sau. |
+| `srx.saved.not_applicable` | Marked not applicable. | Đã đánh dấu không phù hợp. |
+| `srx.saved.reopened` | Back in Needs review. | Đã đưa lại vào Cần xem xét. |
+| `srx.saved.note` | Note added. | Đã thêm ghi chú. |
+| `srx.hist.when` | When | Thời điểm |
+| `srx.hist.action` | Action | Hành động |
+| `srx.hist.service` | Service | Dịch vụ |
+| `srx.hist.note` | Note | Ghi chú |
+| `srx.hist.by` | By | Người thực hiện |
+| `srx.row.thisBooked` | This service is booked | Dịch vụ này đã được đặt |
+| `srx.row.otherBooked` | Other booking {d} | Lịch hẹn khác {d} |
+| `srx.row.none` | None | Không có |
+| `srx.row.inactive` | Not active in the catalog | Không còn hoạt động trong danh mục |
+| `srx.row.price` | {p} · {m} min | {p} · {m} phút |
+| `srx.row.associated` | Booked after the suggestion | Đã đặt sau khi gợi ý |
+| `srx.ov.title` | Service recommendation | Gợi ý dịch vụ |
+| `srx.ov.identity` | Customer | Khách hàng |
+| `srx.ov.recommendation` | Recommendation | Gợi ý |
+| `srx.ov.service` | Service (current catalog) | Dịch vụ (danh mục hiện tại) |
+| `srx.ov.addOns` | Approved add-ons | Dịch vụ thêm được duyệt |
+| `srx.ov.noAddOns` | No approved add-ons for this service. | Dịch vụ này không có dịch vụ thêm được duyệt. |
+| `srx.ov.technicians` | Qualified technicians | Thợ đủ tay nghề |
+| `srx.ov.qualifiedLine` | {n} active technician(s) qualified for this service | {n} thợ đang hoạt động đủ tay nghề cho dịch vụ này |
+| `srx.ov.preferred` | Usual technician: {name} | Thợ quen: {name} |
+| `srx.ov.availability` | Shown as qualified only. Actual availability is checked by the Booking Assistant. | Chỉ hiển thị là đủ tay nghề. Giờ trống thực tế do Trợ lý đặt lịch kiểm tra. |
+| `srx.ov.history` | Completed services | Dịch vụ đã hoàn tất |
+| `srx.ov.frequency` | Service frequency | Tần suất dịch vụ |
+| `srx.ov.frequencyLine` | {s}: {n} times · last {d} | {s}: {n} lần · gần nhất {d} |
+| `srx.ov.bookings` | Bookings | Lịch hẹn |
+| `srx.ov.noBookings` | No bookings on record. | Chưa có lịch hẹn nào. |
+| `srx.ov.noVisits` | No completed visits. | Chưa có lượt hoàn tất nào. |
+| `srx.ov.upcoming` | upcoming | sắp tới |
+| `srx.ov.thisService` | this service | dịch vụ này |
+| `srx.ov.memberships` | Memberships | Hội viên |
+| `srx.ov.others` | Other current suggestions | Gợi ý hiện tại khác |
+| `srx.ov.activity` | Activity | Hoạt động |
+| `srx.ov.generated` | Recommendation created | Ngày tạo gợi ý |
+| `srx.ov.rule` | Rule | Quy tắc |
+| `srx.ov.ruleLine` | Version {v} · updated {at} | Phiên bản {v} · cập nhật lúc {at} |
+| `srx.ov.note` | An optional suggestion from completed visits — not a booking, a purchase requirement or revenue. | Một gợi ý không bắt buộc từ các lượt đã hoàn tất — không phải lịch hẹn, yêu cầu mua hay doanh thu. |
+| `srx.ov.book` | Open AI Booking Assistant | Mở Trợ lý đặt lịch AI |
+| `srx.ov.profile` | View customer profile | Xem hồ sơ khách |
+| `srx.ov.serviceHistory` | View service history | Xem lịch sử dịch vụ |
+| `srx.ov.catalog` | View service catalog | Xem danh mục dịch vụ |
+| `srx.ov.rebooking` | View Rebooking | Xem Đặt lại lịch |
+| `srx.ov.noActions` | Service Recommendations never books, adds to a ticket, changes a price or sends a message. Follow-up messages go through Communications. | Gợi ý dịch vụ không tự đặt hẹn, thêm vào hóa đơn, đổi giá hay gửi tin. Tin nhắn theo dõi đi qua mục Liên lạc. |
+| `srx.ov.reviewLine` | {s} on {at} | {s} lúc {at} |
+| `srx.ov.until` | until {d} | đến {d} |
+| `srx.ov.reviewExpired` | the suggestion was renewed since — review again | gợi ý đã được làm mới — hãy xem lại |
+| `srx.ov.outcome` | Associated outcome: a booking for this service was made after the suggestion (not proof the suggestion caused it). | Kết quả liên quan: đã có lịch hẹn cho dịch vụ này sau khi gợi ý (không chứng minh gợi ý là nguyên nhân). |
+| `srx.caveat.service_inactive` | The service is no longer active in the catalog; it cannot be booked from here. | Dịch vụ không còn hoạt động trong danh mục; không thể đặt hẹn từ đây. |
+| `srx.caveat.price_or_duration_missing` | The catalog has no current price or duration for this service. | Danh mục chưa có giá hoặc thời lượng hiện tại cho dịch vụ này. |
+| `srx.caveat.already_booked` | This exact service is already booked for the customer. | Dịch vụ này đã được đặt cho khách. |
+| `srx.caveat.no_qualified_technician` | No active technician is qualified for this service. | Không có thợ đang hoạt động nào đủ tay nghề cho dịch vụ này. |
+| `srx.caveat.preferred_technician_inactive` | The usual technician is not active now. | Thợ quen hiện không hoạt động. |
+| `srx.caveat.preferred_technician_not_qualified` | The usual technician is not marked as qualified for this service. | Thợ quen chưa được ghi nhận đủ tay nghề cho dịch vụ này. |
+| `srx.caveat.superseded` | No longer suggested by the latest evaluation. | Lần đánh giá gần nhất không còn gợi ý này. |
+| `srx.caveat.availability_not_checked` | Times are not checked here — the Booking Assistant checks real availability. | Giờ trống không được kiểm tra ở đây — Trợ lý đặt lịch sẽ kiểm tra. |
+| `srx.err.AI_CUSTOMER_PROFILE_DISABLED` | The AI Customer Profile assistant is turned off for this salon. Turn it on in Customer AI Settings. | Trợ lý Hồ sơ khách hàng AI đang tắt cho tiệm này. Hãy bật trong Cài đặt AI khách hàng. |
+| `srx.err.SR_NOT_FOUND` | Recommendation not found in your authorized salon records. | Không tìm thấy gợi ý trong hồ sơ tiệm bạn được xem. |
+| `srx.err.SR_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `srx.err.SR_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `srx.err.SR_INVALID_FILTER` | That filter value is not valid. | Giá trị bộ lọc không hợp lệ. |
+| `srx.err.SR_NOT_CURRENT` | This suggestion is no longer current. Refresh the evaluation. | Gợi ý này không còn hiện tại. Hãy làm mới đánh giá. |
+| `srx.err.SR_ALREADY_BOOKED` | This service is already booked for the customer ({d}). Nothing was booked. | Dịch vụ này đã được đặt cho khách ({d}). Không đặt thêm gì. |
+| `srx.err.SR_SERVICE_INACTIVE` | That service is no longer active in the catalog. | Dịch vụ đó không còn hoạt động trong danh mục. |
+| `srx.err.SR_TECHNICIAN_NOT_QUALIFIED` | That technician is not active or not qualified for this service. | Thợ đó không hoạt động hoặc chưa đủ tay nghề cho dịch vụ này. |
+| `srx.err.SR_STALE_VERSION` | Someone else updated this suggestion. It has been reloaded. | Người khác vừa cập nhật gợi ý này. Đã tải lại. |
+| `srx.err.SR_NOTE_REQUIRED` | Write a note first. | Hãy viết ghi chú trước. |
+| `srx.err.SR_SCAN_FAILED` | The evaluation could not finish. Nothing was changed. | Không đánh giá xong được. Không có gì thay đổi. |
+| `srx.err.PERMISSION_DENIED` | You do not have permission to view these records. | Bạn không có quyền xem các hồ sơ này. |
+| `srx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `srx.health.running` | Checking… | Đang kiểm tra… |
+| `srx.health.readOnly` | This check only reads. It never books, changes prices, edits customers, sends messages or creates transactions. | Việc kiểm tra chỉ đọc. Không đặt hẹn, đổi giá, sửa khách, gửi tin hay tạo giao dịch. |
+| `srx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `srx.health.PASSED` | Passed | Đạt |
+| `srx.health.WARNING` | Warning | Cảnh báo |
+| `srx.health.FAILED` | Failed | Lỗi |
+| `srx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `srx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `srx.health.k.assistant_enabled` | AI Customer Profile assistant | Trợ lý Hồ sơ khách hàng AI |
+| `srx.health.d.assistant_enabled.PASSED` | The assistant is on. | Trợ lý đang bật. |
+| `srx.health.d.assistant_enabled.WARNING` | The assistant is off; suggestions cannot refresh. Turn it on in Customer AI Settings. | Trợ lý đang tắt; gợi ý không thể làm mới. Hãy bật trong Cài đặt AI khách hàng. |
+| `srx.health.k.evaluation_freshness` | Evaluation is recent | Lần đánh giá còn mới |
+| `srx.health.d.evaluation_freshness.PASSED` | The last evaluation is recent and used the current rule. | Lần đánh giá gần nhất còn mới và dùng quy tắc hiện tại. |
+| `srx.health.d.evaluation_freshness.WARNING` | The last evaluation is older than an hour or used an older rule. Press Refresh. | Lần đánh giá gần nhất đã hơn một giờ hoặc dùng quy tắc cũ. Hãy bấm Làm mới. |
+| `srx.health.d.evaluation_freshness.FAILED` | The last evaluation failed. Press Refresh; if it fails again, report it. | Lần đánh giá gần nhất bị lỗi. Hãy bấm Làm mới; nếu vẫn lỗi, hãy báo lại. |
+| `srx.health.d.evaluation_freshness.INSUFFICIENT_DATA` | Nothing has been evaluated yet. Press Refresh. | Chưa đánh giá lần nào. Hãy bấm Làm mới. |
+| `srx.health.k.records_reconcile` | Suggestions match the last evaluation | Gợi ý khớp lần đánh giá gần nhất |
+| `srx.health.d.records_reconcile.PASSED` | The current suggestions equal what the last evaluation produced. | Số gợi ý hiện tại bằng kết quả lần đánh giá gần nhất. |
+| `srx.health.d.records_reconcile.FAILED` | The current suggestions do not match the last evaluation. Press Refresh and report it if it repeats. | Gợi ý hiện tại không khớp lần đánh giá gần nhất. Hãy Làm mới và báo lại nếu lặp lại. |
+| `srx.health.d.records_reconcile.INSUFFICIENT_DATA` | Nothing evaluated yet. | Chưa đánh giá lần nào. |
+| `srx.health.k.service_history` | Completed-service history | Lịch sử dịch vụ đã hoàn tất |
+| `srx.health.d.service_history.PASSED` | Completed visits with catalog services are available. | Có lượt hoàn tất với dịch vụ trong danh mục. |
+| `srx.health.d.service_history.INSUFFICIENT_DATA` | No completed visits with catalog services yet — suggestions need them. | Chưa có lượt hoàn tất với dịch vụ trong danh mục — gợi ý cần dữ liệu này. |
+| `srx.health.k.services_catalog` | Services Catalog | Danh mục dịch vụ |
+| `srx.health.d.services_catalog.PASSED` | Active services have a current price and duration. | Dịch vụ đang hoạt động có giá và thời lượng hiện tại. |
+| `srx.health.d.services_catalog.WARNING` | Some active services have no price or duration. Complete them in Services & Products. | Một số dịch vụ đang hoạt động chưa có giá hoặc thời lượng. Hãy bổ sung trong Dịch vụ & Sản phẩm. |
+| `srx.health.d.services_catalog.FAILED` | No active service in the catalog — nothing can be suggested. | Danh mục không có dịch vụ đang hoạt động — không thể gợi ý. |
+| `srx.health.k.active_services_only` | Only active services suggested | Chỉ gợi ý dịch vụ đang hoạt động |
+| `srx.health.d.active_services_only.PASSED` | Every current suggestion is for an active service. | Mọi gợi ý hiện tại đều là dịch vụ đang hoạt động. |
+| `srx.health.d.active_services_only.WARNING` | Some suggestions point at a service deactivated since the evaluation. They show as Service inactive; press Refresh. | Một số gợi ý trỏ tới dịch vụ đã ngừng sau lần đánh giá. Chúng hiển thị là Dịch vụ ngừng hoạt động; hãy bấm Làm mới. |
+| `srx.health.k.technician_qualifications` | Qualified technicians | Thợ đủ tay nghề |
+| `srx.health.d.technician_qualifications.PASSED` | Every suggested service has at least one active qualified technician. | Mỗi dịch vụ gợi ý có ít nhất một thợ đang hoạt động đủ tay nghề. |
+| `srx.health.d.technician_qualifications.WARNING` | Some suggested services have no active qualified technician. Check Technician Management. | Một số dịch vụ gợi ý không có thợ đang hoạt động đủ tay nghề. Hãy kiểm tra Quản lý thợ. |
+| `srx.health.k.already_booked` | Already-booked suggestions | Gợi ý đã có lịch hẹn |
+| `srx.health.d.already_booked.PASSED` | Suggestions whose exact service is booked show as Already Booked (read live). | Gợi ý có đúng dịch vụ đã được đặt sẽ hiển thị là Đã có lịch hẹn (đọc trực tiếp). |
+| `srx.health.k.live_customers` | Suggestions belong to live customers | Gợi ý thuộc khách đang hoạt động |
+| `srx.health.d.live_customers.PASSED` | Every current suggestion belongs to a live customer. | Mọi gợi ý hiện tại đều thuộc khách đang hoạt động. |
+| `srx.health.d.live_customers.WARNING` | Some suggestions belong to a merged or archived customer. Press Refresh. | Một số gợi ý thuộc khách đã gộp hoặc lưu trữ. Hãy bấm Làm mới. |
+| `srx.health.k.deferrals_due` | Deferred reviews due | Mục hoãn đến hạn |
+| `srx.health.d.deferrals_due.PASSED` | No deferred review has reached its date. | Không có mục hoãn nào đến hạn. |
+| `srx.health.d.deferrals_due.WARNING` | Some deferred reviews have reached their date and are back in Needs review. | Một số mục hoãn đã đến hạn và quay lại Cần xem xét. |
+| `srx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `srx.health.d.tenant_isolation.PASSED` | Every suggestion, service and event belongs to this salon. | Mọi gợi ý, dịch vụ và sự kiện đều thuộc tiệm này. |
+| `srx.health.d.tenant_isolation.FAILED` | A suggestion references another salon's customer or service. Report this immediately. | Có gợi ý trỏ tới khách hoặc dịch vụ của tiệm khác. Hãy báo ngay. |
+| `srx.health.k.no_side_effects` | No bookings, charges or messages | Không đặt hẹn, thu tiền hay nhắn tin |
+| `srx.health.d.no_side_effects.PASSED` | Service Recommendations has no path that books, charges, changes a price or sends a message; its only writes are its own suggestions, reviews and handoff records. | Gợi ý dịch vụ không có đường nào để đặt hẹn, thu tiền, đổi giá hay gửi tin; chỉ ghi gợi ý, nhận xét và bản ghi chuyển giao của chính nó. |
+| `srx.health.k.indexes` | Indexes | Chỉ mục |
+| `srx.health.d.indexes.PASSED` | Suggestion and activity indexes are present. | Đã có chỉ mục gợi ý và hoạt động. |
+| `srx.health.d.indexes.WARNING` | Some indexes are missing; the queue may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+| `srx.scan.when` | Started | Bắt đầu |
+| `srx.scan.status` | Status | Trạng thái |
+| `srx.scan.customers` | Customers | Khách |
+| `srx.scan.suggestions` | Suggestions | Gợi ý |
+| `srx.scan.duration` | Duration | Thời gian chạy |
+| `srx.scanStatus.completed` | Completed | Hoàn tất |
+| `srx.scanStatus.failed` | Failed | Lỗi |
+| `srx.scanStatus.running` | Running | Đang chạy |

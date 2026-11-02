@@ -951,6 +951,11 @@ GET /pos/service-done/state  realm=staff  auth=session  domain=checkout  perm=po
 GET /pos/service-done/technicians  realm=staff  auth=session  domain=checkout  perm=pos.service_done.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/service-done/tickets  realm=staff  auth=session  domain=checkout  perm=pos.service_done.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/service-done/tickets/{ticketId}  realm=staff  auth=session  domain=checkout  perm=pos.service_done.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/service-recommendations/history  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/service-recommendations/recommendations  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/service-recommendations/recommendations/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/service-recommendations/scans  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/service-recommendations/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/services  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/services/categories  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/services/export  realm=staff  auth=session  domain=catalog  perm=pos.services.export  async=pos.services.export  guards=RolePermissionGuard,TenantAuthGuard
@@ -2862,6 +2867,10 @@ POST /pos/service-done/tickets/{ticketId}/quality-check  realm=staff  auth=sessi
 POST /pos/service-done/tickets/{ticketId}/reopen-service  realm=staff  auth=session  domain=checkout  perm=pos.service_done.reopen  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/service-done/tickets/{ticketId}/send-to-checkout  realm=staff  auth=session  domain=checkout  perm=pos.service_done.send_to_checkout  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/service-done/tickets/{ticketId}/update-notes  realm=staff  auth=session  domain=checkout  perm=pos.service_done.update_notes  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/service-recommendations/check  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/service-recommendations/recommendations/{id}/handoff  realm=staff  auth=session  domain=ai  perm=pos.booking.create  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/service-recommendations/recommendations/{id}/review  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/service-recommendations/scan  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/services  realm=staff  auth=session  domain=catalog  perm=pos.services.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/services/categories  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/services/categories/reorder  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard

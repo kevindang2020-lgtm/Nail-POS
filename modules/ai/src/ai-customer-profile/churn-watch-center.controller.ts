@@ -10,6 +10,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody 
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
+import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { isUuid, type RetentionContext } from '@aipowersalon/customers';
 import { ChurnWatchCenter, ChurnWatchError, CW_TABS, CW_PRIORITIES, CW_DATE_FIELDS, CW_PRESETS, CW_ACTIONS } from './churn-watch-center';
 
@@ -45,6 +46,8 @@ const LIST = {
 const HISTORY = { filters: { preset: { type: 'enum', values: CW_PRESETS }, customerId: { type: 'uuid' } }, sorts: { newest: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
+// the same AI subscription gate as the AI Customer Profile assistant (observe mode by default — see ai-entitlement.guard.ts)
+@RequiresAiPackage('ai_customer_profile_assistant')
 @Controller('pos/churn-watch')
 export class ChurnWatchCenterController {
   constructor(@Inject(CHURN_WATCH_CENTER) private readonly cw: ChurnWatchCenter | null) {}

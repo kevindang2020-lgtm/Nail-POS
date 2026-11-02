@@ -685,7 +685,11 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Same shared evaluation (rule `ci-2026-11-02c` adds the return window and "opportunity created"); upcoming bookings are read live.
   - "Open AI Booking Assistant" = a one-use prefill of POS → Booking (re-checked on the server; never an appointment).
   - Tests: pgtest 14/14, screen 7/7, handoff 3/3. Doc: `docs/ai/REBOOKING_OPPORTUNITIES.md`.
-- **Next: Service Recommendations** (guide 7).
+- **Done: Service Recommendations** (guide 7): `pos/service-recommendations` routes and migration 766.
+  - The assistant's `recommendServices`, now keyed by catalog service id and stored per suggestion; prices, add-ons, qualifications and bookings are read live.
+  - Service-level "Already Booked"; "Open AI Booking Assistant" = the same one-use prefill (re-checks qualification + calendar).
+  - Tests: pgtest 13/13, screen 7/7. Doc: `docs/ai/SERVICE_RECOMMENDATIONS.md`.
+- **Next: Customer AI Settings** (guide 8).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

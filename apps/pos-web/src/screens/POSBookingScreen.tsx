@@ -1255,7 +1255,7 @@ export function POSBookingScreen() {
     setCreateMsg({ ok: true, text: tx('pos.prefilled_v0_v1_pick_the_service_y0xa', { v0: String(techName ? techName + ' · ' : ''), v1: String(calLabel(calMinutes(time) ?? 0)) }) });
     assistantRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
-  // Rebooking Opportunities (Nov 1 2026): "Open AI Booking Assistant" hands over a one-use prefill (customer · service ·
+  // Rebooking Opportunities / Service Recommendations (Nov 1 2026): "Open AI Booking Assistant" hands over a one-use prefill (customer · service ·
   // technician · day). Nothing is booked here either: staff pick a time and confirm, and availability, conflicts and the
   // salon's phone verification apply exactly as for any booking.
   useEffect(() => {
@@ -1263,7 +1263,7 @@ export function POSBookingScreen() {
     if (!h) return;
     setForm((f) => ({ ...f, customerName: h.customerName ?? '', customerPhone: h.customerPhone ?? '', primaryService: h.serviceId ?? '', addons: [], technicianId: h.technicianId ?? '', date: h.date, time: '', source: 'manual' }));
     setFormTechName(h.technicianName ?? undefined); setSlots(null); setBookTab('new');
-    setCreateMsg({ ok: true, text: tx('rbx.prefill', { name: h.customerName ?? '' }) });
+    setCreateMsg({ ok: true, text: tx(h.source === 'recommendation' ? 'srx.prefill' : 'rbx.prefill', { name: h.customerName ?? '' }) });
   }, []);
 
   // Drag-and-drop move: optimistic UI, server re-validates (schedule windows + conflicts), rollback on rejection.

@@ -346,6 +346,26 @@
   "rebooking_health_runs": {
    "domain": "AI",
    "reason": "Rebooking Opportunities guide (Nov 2 2026, migration 765): the AI Customer Profile assistant's advisory rebooking review workflow \u2014 read-only Check Rebooking System runs"
+  },
+  "service_recommendation_scans": {
+   "domain": "AI",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 one bounded evaluation per salon (rule version, customers evaluated, suggestions, counts)"
+  },
+  "service_recommendations": {
+   "domain": "AI",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 the current suggestions per customer + catalog service + type (derived, superseded never deleted; prices are read live from the catalog)"
+  },
+  "service_recommendation_reviews": {
+   "domain": "AI",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 staff review state per suggestion; never a booking, ticket or price"
+  },
+  "service_recommendation_events": {
+   "domain": "AI",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 append-only review and Booking Assistant handoff history (a handoff is never an appointment)"
+  },
+  "service_recommendation_health_runs": {
+   "domain": "AI",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions \u2014 read-only Check Service Recommendations System runs"
   }
  }
 }

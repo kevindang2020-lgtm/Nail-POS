@@ -261,6 +261,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   service_duration_recommendations: 'ut',
   service_follow_up_tasks: 'udt',
   service_product_recipes: 'ut',
+  service_recommendation_reviews: 'u',
   service_scheduling_profiles: 'ut',
   service_template_versions: 'c',
   service_templates: 'cut',

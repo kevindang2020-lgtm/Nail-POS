@@ -4866,6 +4866,23 @@ export interface RebookingReviewEventsTable {   // migration 765 — append-only
 export interface RebookingHealthRunsTable {   // migration 765 — read-only "Check Rebooking System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface ServiceRecommendationScansTable {   // migration 766 — Service Recommendations evaluations
+  id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
+  customers_evaluated: Generated<number>; generated: Generated<number>; counts: Generated<unknown>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
+}
+export interface ServiceRecommendationsTable {   // migration 766 — current suggestions (customer + catalog service + type); superseded, never deleted
+  id: Generated<string>; tenant_id: string; customer_id: string; service_id: string; rec_type: string; confidence: string; times_completed: Generated<number>; last_completed_at: Ts | null;
+  preferred_technician_id: string | null; status: Generated<string>; generated_at: Generated<Ts>; evaluated_at: Generated<Ts>; superseded_at: Ts | null; scan_id: string | null; rule_version: string;
+}
+export interface ServiceRecommendationReviewsTable {   // migration 766 — staff review state, pinned to the suggestion it reviewed
+  tenant_id: string; recommendation_id: string; status: string; generated_at_reviewed: Ts | null; due_on: string | null; reviewed_by: string | null; reviewed_at: Generated<Ts>; updated_by: string | null; version: Generated<number>;
+}
+export interface ServiceRecommendationEventsTable {   // migration 766 — append-only review + Booking Assistant handoff history (never an appointment)
+  id: Generated<string>; tenant_id: string; recommendation_id: string; customer_id: string; event_type: string; technician_id: string | null; note: string | null; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface ServiceRecommendationHealthRunsTable {   // migration 766 — read-only "Check Service Recommendations System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerIntelligenceScansTable {   // migration 763 — Customer Intelligence scans (counts per state, rule version, tunables)
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
   scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
@@ -7499,6 +7516,11 @@ export interface DB {
   rebooking_health_runs: RebookingHealthRunsTable;
   rebooking_review_events: RebookingReviewEventsTable;
   rebooking_reviews: RebookingReviewsTable;
+  service_recommendation_events: ServiceRecommendationEventsTable;
+  service_recommendation_health_runs: ServiceRecommendationHealthRunsTable;
+  service_recommendation_reviews: ServiceRecommendationReviewsTable;
+  service_recommendation_scans: ServiceRecommendationScansTable;
+  service_recommendations: ServiceRecommendationsTable;
   customer_intelligence_health_runs: CustomerIntelligenceHealthRunsTable;
   customer_intelligence_scans: CustomerIntelligenceScansTable;
   customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;

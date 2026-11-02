@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 901,
+  "tables": 906,
   "ownership": {
-   "tenant_owned": 591,
+   "tenant_owned": 596,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 110,
+   "AI": 115,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -41,14 +41,14 @@
    "TENANTS": 27
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 133,
-   "CONFIDENTIAL": 157,
+   "HIGHLY_SENSITIVE": 134,
+   "CONFIDENTIAL": 158,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 491,
+   "INTERNAL": 494,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
-  "append_only": 45,
+  "append_only": 46,
   "platform_rows": 99
  },
  "tables": {
@@ -8259,6 +8259,71 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "service_recommendation_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "override",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions — append-only review and Booking Assistant handoff history (a handoff is never an appointment)"
+  },
+  "service_recommendation_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions — read-only Check Service Recommendations System runs"
+  },
+  "service_recommendation_reviews": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions — staff review state per suggestion; never a booking, ticket or price"
+  },
+  "service_recommendation_scans": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions — one bounded evaluation per salon (rule version, customers evaluated, suggestions, counts)"
+  },
+  "service_recommendations": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Service Recommendations guide (Nov 2 2026, migration 766): the AI Customer Profile assistant's advisory service suggestions — the current suggestions per customer + catalog service + type (derived, superseded never deleted; prices are read live from the catalog)"
   },
   "service_scheduling_profiles": {
    "ownership": "tenant_owned",

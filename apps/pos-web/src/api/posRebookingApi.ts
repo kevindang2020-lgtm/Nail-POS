@@ -18,9 +18,9 @@ export const posRebookingApi = {
   refresh: () => api.post<any>(`/pos/customer-intelligence/scan`, {}),
 };
 
-/** the Booking Assistant prefill handed from Rebooking to POS → Booking (session storage, one use, 10 minutes) */
+/** the Booking Assistant prefill handed from Rebooking or Service Recommendations to POS → Booking (session storage, one use, 10 minutes) */
 export const BOOKING_HANDOFF_KEY = 'aps.bookingHandoff';
-export type BookingHandoff = { source: 'rebooking'; customerId: string; customerName: string | null; customerPhone: string | null; serviceId: string | null; technicianId: string | null; technicianName: string | null; date: string; preparedAt: string };
+export type BookingHandoff = { source: 'rebooking' | 'recommendation'; customerId: string; customerName: string | null; customerPhone: string | null; serviceId: string | null; technicianId: string | null; technicianName: string | null; date: string; preparedAt: string };
 export function storeBookingHandoff(h: BookingHandoff) { try { sessionStorage.setItem(BOOKING_HANDOFF_KEY, JSON.stringify(h)); } catch { /* storage unavailable: the Booking Assistant opens empty */ } }
 export function takeBookingHandoff(now = Date.now()): BookingHandoff | null {
   try {
@@ -28,6 +28,6 @@ export function takeBookingHandoff(now = Date.now()): BookingHandoff | null {
     if (!raw) return null;
     sessionStorage.removeItem(BOOKING_HANDOFF_KEY);
     const h = JSON.parse(raw) as BookingHandoff;
-    return h?.source === 'rebooking' && now - Date.parse(h.preparedAt) < 10 * 60_000 ? h : null;
+    return (h?.source === 'rebooking' || h?.source === 'recommendation') && now - Date.parse(h.preparedAt) < 10 * 60_000 ? h : null;
   } catch { return null; }
 }

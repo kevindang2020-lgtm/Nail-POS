@@ -11,6 +11,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody 
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
+import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { isUuid, type RetentionContext } from '@aipowersalon/customers';
 import { RebookingCenter, RebookingError, RB_TABS, RB_DATE_FIELDS, RB_PRESETS, RB_ACTIONS } from './rebooking-center';
 
@@ -48,6 +49,8 @@ const HISTORY = { filters: { preset: { type: 'enum', values: RB_PRESETS }, custo
   sorts: { newest: null }, dateRange: { maxDays: 3660 }, maxLimit: 100, defaultLimit: 25, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
+// the same AI subscription gate as the AI Customer Profile assistant (observe mode by default — see ai-entitlement.guard.ts)
+@RequiresAiPackage('ai_customer_profile_assistant')
 @Controller('pos/rebooking')
 export class RebookingCenterController {
   constructor(@Inject(REBOOKING_CENTER) private readonly rb: RebookingCenter | null) {}
