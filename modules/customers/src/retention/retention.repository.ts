@@ -373,7 +373,7 @@ export class RetentionRepository {
   search(ctx: RetentionContext, q?: string) {
     const raw = String(q ?? '').trim().slice(0, 100); if (!raw) return sql`true`;
     const T = ctx.tenantId;
-    if (isUuid(raw)) return sql`(b.id = ${raw}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${raw}::uuid and a.customer_id = b.id)
+    if (isUuid(String(raw))) return sql`(b.id = ${raw}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${raw}::uuid and a.customer_id = b.id)
       or exists (select 1 from tickets t where t.tenant_id = ${T} and t.id = ${raw}::uuid and t.customer_id = b.id))`;
     const digits = raw.replace(/\D/g, '');
     const name = sql`b.full_name ilike ${'%' + raw + '%'}`;

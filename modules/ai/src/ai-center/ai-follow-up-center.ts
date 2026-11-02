@@ -14,6 +14,7 @@
 //     overdue escalation job (one owner alert per task per rule).
 // Nothing here places a call, sends a text without the Copilot confirmation, changes a booking or resolves on its own.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
@@ -63,7 +64,7 @@ export function salonToday(tz: string, now = new Date()): string {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(now).map((x) => [x.type, x.value]));
   return `${p.year}-${p.month}-${p.day}`;
 }
-const addDays = (ymd: string, d: number) => { const t = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10) + d)); return t.toISOString().slice(0, 10); };
+const addDays = (ymd: string, d: number) => { const t = new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10) + d)); return utcDate(t); };
 /** preset / custom → whole salon-local days (inclusive To; the SQL uses the exclusive next-day boundary) */
 export function fuPeriod(q: { preset?: string; from?: string; to?: string }, tz: string, now = new Date()): { preset: string; from: string | null; to: string | null; tz: string; today: string } {
   const today = salonToday(tz, now);
@@ -457,7 +458,7 @@ export class AiFollowUpCenter {
     const phone = c?.normalized_phone ?? f.caller_phone ?? null;
     const sharedPhone = phone ? n((await sql<Row>`select count(*)::int n from customers where tenant_id = ${T} and normalized_phone = ${phone} and archived_at is null`.execute(this.db)).rows[0]?.n) : 0;
     const optOut = phone ? !!(await sql<Row>`select 1 from notification_opt_outs where tenant_id = ${T} and channel = 'sms' and address = ${phone} limit 1`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows.length : false;
-    const upcoming: Row[] = c ? (await sql<Row>`select id, appt_date::text d, start_time, status from pos_tech_appointments where tenant_id = ${T} and customer_id = ${c.id} and appt_date >= current_date and status not in ('cancelled','no_show') order by appt_date, start_time, id limit 5`.execute(this.db)).rows : [];
+    const upcoming: Row[] = c ? (await sql<Row>`select id, appt_date::text d, start_time, status from pos_tech_appointments where tenant_id = ${T} and customer_id = ${c.id} and appt_date >= ${(await this.clock(ctx)).today}::date and status not in ('cancelled','no_show') order by appt_date, start_time, id limit 5`.execute(this.db)).rows : [];
     const linkedAppt: Row | undefined = f.appointment_id ? (await sql<Row>`select id, appt_date::text d, start_time, status, source from pos_tech_appointments where id = ${f.appointment_id} and tenant_id = ${T}`.execute(this.db)).rows[0] : undefined;
     const visits = c ? n((await sql<Row>`select count(*)::int n from tickets where tenant_id = ${T} and customer_id = ${c.id} and status in ('closed','paid')`.execute(this.db).catch(() => ({ rows: [{ n: 0 }] }))).rows[0]?.n) : 0;
     const call: Row | undefined = f.provider_call_id ? (await sql<Row>`select provider_call_id, agent_ref, started_at, ended_at, duration_seconds, handoff_outcome, disconnection_reason, error_category, summary, sentiment

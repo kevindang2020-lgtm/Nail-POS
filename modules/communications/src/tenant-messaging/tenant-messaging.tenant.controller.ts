@@ -13,7 +13,7 @@
 import { Controller, Get, Put, Post, Delete, Body, Req, UseGuards, ForbiddenException, HttpException, HttpStatus, Query, Param, Optional } from '@nestjs/common';
 import { TenantAuthGuard, RequirePermission, RequireStepUp, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission } from '@aipowersalon/permissions';
-import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
+import { ERROR_REGISTRY, isRegisteredCode, codedFieldsOf } from '@aipowersalon/api-contracts';
 import { TenantMessagingCredentialsService, CredentialsInputError } from './tenant-messaging-credentials.service';
 import { TenantNumberService, NumberPurchaseError } from './tenant-number.service';
 import { TenantMessagingReadinessService, ReadinessInputError } from './tenant-messaging-readiness.service';
@@ -53,9 +53,10 @@ async function coded<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e: any) {
     if (e instanceof CredentialsInputError || e instanceof NumberPurchaseError || e instanceof ReadinessInputError || e instanceof RegistrationSyncError) {
-      const code = isRegisteredCode(e?.apiCode) ? e.apiCode : 'VALIDATION_FAILED';
-      const status = isRegisteredCode(e?.apiCode) ? ERROR_REGISTRY[e.apiCode as keyof typeof ERROR_REGISTRY].status : HttpStatus.BAD_REQUEST;
-      throw new HttpException({ code, message: e.message, ...(e.apiParams ? { params: e.apiParams } : {}) }, status);
+      const coded = codedFieldsOf(e);   // the code + params withCode attached
+      const code = coded && isRegisteredCode(coded.apiCode) ? coded.apiCode : 'VALIDATION_FAILED';
+      const status = coded && isRegisteredCode(coded.apiCode) ? ERROR_REGISTRY[coded.apiCode as keyof typeof ERROR_REGISTRY].status : HttpStatus.BAD_REQUEST;
+      throw new HttpException({ code, message: e.message, ...(coded?.apiParams ? { params: coded.apiParams } : {}) }, status);
     }
     throw e;
   }

@@ -7,7 +7,7 @@ import type { Kysely } from 'kysely';
 import { withCode } from '@aipowersalon/api-contracts';
 import { DATABASE, ListQuery, type AppDatabase } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
-import { ValidatedBody } from '@aipowersalon/validation';
+import { ValidatedBody } from '@aipowersalon/permissions/guards';
 import { EOD_SEND_BODY, EOD_REJECT_BODY } from '../request-schemas';
 import { DailyFollowUpService } from './end-of-day-followups.service';
 import { FollowUpError, localDateInTz, type FollowUpContext } from './end-of-day-followups.dto';

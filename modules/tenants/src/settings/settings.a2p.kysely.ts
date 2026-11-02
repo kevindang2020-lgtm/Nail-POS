@@ -41,7 +41,7 @@ export function a2pStatusOf(r: { brand_status?: unknown; campaign_status?: unkno
 }
 
 export class KyselyA2pStatusReader implements A2pStatusReaderPort {
-  constructor(private readonly db: AppDatabase) {}
+  constructor(private readonly db: NonNullable<AppDatabase>) {}
   async read(tenantId: string): Promise<A2pStatusView> {
     const res: any = await sql`SELECT a.brand_status, a.campaign_status, a.status, a.updated_at,
         COALESCE(a.business_info->>'businessName', a.business_info->>'business_name', a.business_info->>'legalName') AS brand_name

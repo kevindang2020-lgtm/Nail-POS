@@ -100,7 +100,7 @@ export function CopilotOpsBar() {
   const [o, setO] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [health, setHealth] = useState<any>(null); const [checking, setChecking] = useState(false);
   const load = useCallback(() => { posCopilotCenterApi.overview().then((r) => { setO(r); setErr(null); }).catch((e) => setErr(errorTextOf(e, t('rcc.failed')))); }, []);
   useEffect(() => { load(); const id = setInterval(load, 45_000); return () => clearInterval(id); }, [load]);
-  const check = async () => { setChecking(true); try { setHealth(await posCopilotCenterApi.health()); load(); } catch (e) { setHealth({ error: errorTextOf(e) }); } finally { setChecking(false); } };
+  const check = async () => { setChecking(true); try { setHealth(await posCopilotCenterApi.health()); load(); } catch (e) { setHealth({ error: errorTextOf(e, t('pos.something_went_wrong')) }); } finally { setChecking(false); } };
   return (
     <section className="rcc-ops" data-testid="rcc-ops" aria-label={t('rcc.status')}>
       {err ? <ErrorRetry message={err} onRetry={load} /> : !o ? <div className="rcc-muted">{t('rcc.loading')}</div> : (

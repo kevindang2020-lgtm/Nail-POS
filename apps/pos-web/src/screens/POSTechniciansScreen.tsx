@@ -87,7 +87,7 @@ export function POSTechniciansScreen() {
       }).catch(() => undefined);
     }, 45_000);
     return () => clearInterval(id);
-  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);    
   void stamp;
   const k = dash.data?.kpis; const rows: any[] = dir.data?.items ?? [];
   const filtered = !!(q || role || status !== 'current' || shift !== 'all' || missingMapping || band || sort !== 'newest' || dirPeriod.preset !== 'all');

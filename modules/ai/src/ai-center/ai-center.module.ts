@@ -52,6 +52,25 @@ function makeCopilotCache(): CachePort | null {
   try { return new RedisCache(makeCacheRedis(makeIoredis(url, 'ai') as any), { prefix: process.env.CACHE_PREFIX || 'aps:cache:' }); } catch { return null; }
 }
 
+/** overdue follow-ups → one owner alert per task (reconciliation job class, every 5 minutes, single owner across instances) */
+@Injectable()
+export class AiFollowUpEscalationJob implements OnModuleInit, OnModuleDestroy {
+  private timer: ReturnType<typeof setInterval> | null = null;
+  constructor(@Inject(DATABASE) private readonly db: AppDatabase) {}
+  onModuleInit() {
+    if (!runsBackgroundJob('reconciliation')) return;
+    if (!this.db || process.env.AI_FOLLOW_UP_ESCALATION === 'off') return;
+    const every = 5 * 60_000;
+    this.timer = setInterval(() => {
+      void runTick({ jobType: 'ai.follow_up_escalation', jobClass: 'reconciliation', everyMs: every },
+        () => runAsSingleOwner(this.db as unknown as Kysely<any>, 'ai.follow_up_escalation', () => escalateOverdueFollowUps(this.db as unknown as Kysely<any>)))
+        .catch((e) => logException(e, { where: 'ai-follow-up.escalation.tick' }));
+    }, every);
+    this.timer.unref?.();
+  }
+  onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
+}
+
 @Module({
   imports: [AiModule, CustomersModule, QueueModule, BookingModule, AuditModule, NotificationsModule, BookingConversionModule, ServicesModule],
   controllers: [AiCenterController, SuperAdminCopilotController, ReceptionCopilotCenterController, AiCalendarCenterController, AiFollowUpCenterController],
@@ -86,21 +105,3 @@ function makeCopilotCache(): CachePort | null {
 })
 export class AiCenterModule {}
 
-/** overdue follow-ups → one owner alert per task (reconciliation job class, every 5 minutes, single owner across instances) */
-@Injectable()
-export class AiFollowUpEscalationJob implements OnModuleInit, OnModuleDestroy {
-  private timer: ReturnType<typeof setInterval> | null = null;
-  constructor(@Inject(DATABASE) private readonly db: AppDatabase) {}
-  onModuleInit() {
-    if (!runsBackgroundJob('reconciliation')) return;
-    if (!this.db || process.env.AI_FOLLOW_UP_ESCALATION === 'off') return;
-    const every = 5 * 60_000;
-    this.timer = setInterval(() => {
-      void runTick({ jobType: 'ai.follow_up_escalation', jobClass: 'reconciliation', everyMs: every },
-        () => runAsSingleOwner(this.db as unknown as Kysely<any>, 'ai.follow_up_escalation', () => escalateOverdueFollowUps(this.db as unknown as Kysely<any>)))
-        .catch((e) => logException(e, { where: 'ai-follow-up.escalation.tick' }));
-    }, every);
-    this.timer.unref?.();
-  }
-  onModuleDestroy() { if (this.timer) clearInterval(this.timer); }
-}

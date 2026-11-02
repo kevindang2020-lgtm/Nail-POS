@@ -8,7 +8,7 @@
 //                        a duplicate SKU / barcode is refused by the server and said so here
 //   AddStockDialog       a documented receipt: quantity, lot, expiration, cost, note — one movement, never a duplicate product
 // Usage history and Record Product Use come from the Stock Alerts screen (one usage system, never two).
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { inventoryApi } from '../api/inventoryApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';

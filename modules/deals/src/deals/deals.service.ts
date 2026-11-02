@@ -244,7 +244,7 @@ export class DealsService {
       if (v.length) throw withCode(new DealValidationError(v.join(' ')), settings.allowTechnicianDeals === 'off' ? 'TECH_DEALS_OFF' : 'TECH_DEAL_OVER_POLICY');
       if (current.status !== 'draft') {
         const wider = widenedTerms(current, merged, p);
-        if (wider.length) throw withCode(new DealConflictError(`Approved technician deals cannot be widened without a new review (${wider.join(', ')}). Pause or end it and submit a new proposal.`), 'DEAL_REREVIEW_REQUIRED', { fields: wider });
+        if (wider.length) throw withCode(new DealConflictError(`Approved technician deals cannot be widened without a new review (${wider.join(', ')}). Pause or end it and submit a new proposal.`), 'DEAL_REREVIEW_REQUIRED', { fields: wider.join(', ') });
       }
     }
     if (used && !settings.editableAfterRedemption) {

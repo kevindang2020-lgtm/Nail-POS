@@ -2,6 +2,7 @@
 // permissions; validates + flags duplicates; preserves history; merges only with confirmation; audits.
 // ASYNC: the repository is async (Postgres/Kysely or in-memory), so every use-case awaits the repo.
 import { parseBirthdayInput } from '../birthdays/birthday-core';
+import { utcDate } from '@aipowersalon/date-time';
 import { type EntitlementsService, AutomationEngineService } from '@aipowersalon/platform';
 import { type RealtimeEmitter, EVENTS, makeEnvelope } from '@aipowersalon/realtime-contracts';
 import { hasPermission, isStaffPrincipal } from '@aipowersalon/permissions';
@@ -158,7 +159,7 @@ export class CustomersService {
   private cleanBirthday<R extends { birthday?: string | null; birthdayYearKnown?: boolean }>(req: R): R {
     if (req.birthday === undefined) return req;
     if (req.birthday === null || (typeof req.birthday === 'string' && req.birthday.trim() === '')) return { ...req, birthday: null };
-    const today = new Date(Date.now() + 14 * 3600_000).toISOString().slice(0, 10);   // the latest calendar date anywhere on Earth: never refuses a salon's "today"
+    const today = utcDate(new Date(Date.now() + 14 * 3600_000));   // the latest calendar date anywhere on Earth: never refuses a salon's "today"
     const p = parseBirthdayInput(req.birthday, today);
     if (!p.ok) throw withCode(new ValidationError(p.reason, { field: 'birthday', rule: 'FORMAT' }), 'BIRTHDAY_INVALID');
     return { ...req, birthday: p.value.date, birthdayYearKnown: p.value.yearKnown };

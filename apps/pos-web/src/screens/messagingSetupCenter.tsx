@@ -12,7 +12,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtDateTime } from '../i18n/format';
 import { FitDialog, FitPanel, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
-import { PeriodBar, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { posMessagingSetupApi as api, type SetupOverview, type PartState, type PartKey, type WizardKey, type BranchSenders as BranchSendersView, type ActivityPage, type ActivityDetail, type ActivityKind } from '../api/posMessagingSetupApi';
 
 /** literal keys (read at render — never translated at import) */
@@ -172,7 +172,7 @@ export function SetupActivity({ branches, refreshKey }: { branches: { id: string
         </label>
         {filtersOn ? <button type="button" className="btn ghost" onClick={() => { setQText(''); setV(START); }} data-testid="ms-clear">{t('ms.act.clear')}</button> : null}
       </div>
-      <PeriodBar compact allowAll value={period} server={page?.period ?? null} basis={v.basis}
+      <PeriodBar compact allowAll value={period} server={(page?.period ?? null) as ServerPeriod | null} basis={v.basis}
         basisOptions={Object.keys(BASIS).map((b) => ({ value: b, label: BASIS[b]() }))} onBasis={(b) => set({ basis: b })}
         onChange={(p) => set({ preset: p.preset, from: p.from, to: p.to })} />
       {err ? <ErrorRetry message={err} onRetry={load} /> : !page ? <div className="state" role="status">…</div> : page.items.length === 0 ? <Empty title={t('ms.act.empty')} /> : (

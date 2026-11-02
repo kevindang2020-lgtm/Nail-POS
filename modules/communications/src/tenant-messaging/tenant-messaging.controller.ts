@@ -4,7 +4,7 @@ import { Controller, Get, Put, Post, Param, Body, Req, UseGuards, HttpException,
 import { SuperAdminGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { TenantMessagingCredentialsService, CredentialsInputError } from './tenant-messaging-credentials.service';
 import { TenantNumberService, NumberPurchaseError } from './tenant-number.service';
-import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
+import { ERROR_REGISTRY, isRegisteredCode, codedFieldsOf } from '@aipowersalon/api-contracts';
 import { ListQueries } from '@aipowersalon/database';
 import { TenantMessagingControllerListQueries } from './tenant-messaging.list-queries';
 import { EMPTY_BODY, MESSAGING_CREDS_BODY, MESSAGING_TEST_BODY, PHONE_NUMBER_BODY, NUMBER_QUOTE_BODY, NUMBER_BUY_BODY, PLATFORM_PROVISION_BODY, PLATFORM_OFFBOARD_BODY } from '../request-schemas';
@@ -14,9 +14,10 @@ import { PlatformMessagingProvisioner, ProvisioningConflict } from './platform-m
  *  before, every credential refusal became a bare VALIDATION_FAILED and the "Twilio unreachable — save unverified?" choice was lost */
 function codedError(e: any): unknown {
   if (e instanceof CredentialsInputError || e instanceof NumberPurchaseError) {
-    const code = isRegisteredCode(e?.apiCode) ? e.apiCode : 'VALIDATION_FAILED';
-    const status = isRegisteredCode(e?.apiCode) ? ERROR_REGISTRY[e.apiCode as keyof typeof ERROR_REGISTRY].status : HttpStatus.BAD_REQUEST;
-    return new HttpException({ code, message: e.message, ...(e.apiParams ? { params: e.apiParams } : {}) }, status);
+    const coded = codedFieldsOf(e);   // the code + params withCode attached
+    const code = coded && isRegisteredCode(coded.apiCode) ? coded.apiCode : 'VALIDATION_FAILED';
+    const status = coded && isRegisteredCode(coded.apiCode) ? ERROR_REGISTRY[coded.apiCode as keyof typeof ERROR_REGISTRY].status : HttpStatus.BAD_REQUEST;
+    return new HttpException({ code, message: e.message, ...(coded?.apiParams ? { params: coded.apiParams } : {}) }, status);
   }
   return e;
 }

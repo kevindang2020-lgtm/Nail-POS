@@ -73,7 +73,8 @@ export const LOYALTY_VOID_BODY: BodySchema = S.object({ reason: S.text(300) }, [
 export const RETENTION_SMS_PREVIEW_BODY: BodySchema = S.object({
   customerIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
   selection: S.nullable(S.object({ segment: str(32), q: str(120), excludeIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
-    preset: str(16), from: str(10), to: str(10), basis: str(24), band: str(12), sms: str(16), minVisits: S.nullable(S.integer()), sort: str(24), branch: str(40) })),
+    preset: str(16), from: str(10), to: str(10), basis: str(24), band: str(12), sms: str(16), minVisits: S.nullable(S.integer()), sort: str(24), branch: str(40),
+    email: str(16), future: str(8), minDays: S.nullable(S.integer()) })),   // listFilters() reads these too
   body: S.text(600), label: str(120),
 }, ['body']);
 /** PUT /pos/retention/settings — the salon's thresholds (Complete Build Guide §05), optimistic version */
@@ -91,7 +92,8 @@ export const SEGMENT_AUDIENCE_DRAFT_BODY: BodySchema = S.object({
   channel: S.enumOf(['sms', 'email']), purpose: S.nullable(S.enumOf(['general', 'win_back'])), selectionMode: S.enumOf(['page', 'selected', 'all_matching']),
   customerIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
   filters: S.nullable(S.object({ segment: str(16), q: str(100), sort: str(16), branch: str(40), preset: str(16), from: str(10), to: str(10), basis: str(24),
-    minVisits: S.nullable(S.integer()), maxVisits: S.nullable(S.integer()), minSpend: S.nullable(S.integer()), maxSpend: S.nullable(S.integer()), tier: str(40), service: str(60), sms: str(16), email: str(16) })),
+    minVisits: S.nullable(S.integer()), maxVisits: S.nullable(S.integer()), minSpend: S.nullable(S.integer()), maxSpend: S.nullable(S.integer()), tier: str(40), service: str(60), sms: str(16), email: str(16),
+    page: S.nullable(S.integer()), pageSize: S.nullable(S.integer()) })),   // filtersOf() reads them; the POS always sends its page
   message: str(1000), idempotencyKey: S.text(80),
 }, ['channel', 'selectionMode', 'idempotencyKey']);
 /** POST …/audience-drafts/:id/recheck and /discard — no body */

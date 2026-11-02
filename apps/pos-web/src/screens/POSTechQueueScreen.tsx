@@ -102,8 +102,6 @@ const partLabel = (t: { visitPart?: number | null; sharedWith?: TechQueueSharedP
   const others = t.sharedWith.map((o) => `${o.technicianName || tx('pos.another_technician')}${o.serviceNames.length ? ` (${o.serviceNames.join(', ')})` : ''}`).join('; ');
   return tx('pos.part_v0_of_of_with_others', { v0: String(t.visitPart ?? '?'), of: String(of), others: String(others) });
 };
-const inputStyle: React.CSSProperties = { height: 30, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#FFFDF8', fontFamily: 'inherit', fontSize: 11.5, color: 'var(--text)' };
-const tinyBtn: React.CSSProperties = { padding: '5px 8px', fontSize: 11 };
 
 export function POSTechQueueScreen() {
   const nav = useNavigate();
@@ -189,7 +187,6 @@ export function POSTechQueueScreen() {
   if (!s) return <div className="work mos tqs" data-testid="tech-queue-screen"><div className="fk-loading">{tx('pos.loading_tech_queue')}</div></div>;
   const k = s.kpis;
   const a = s.analytics;
-  const O = 'var(--aps-orange)';
   const m2 = (c?: number) => fmtMoney(c || 0);
   const rows = s.technicianRows || [];
   // server-paged (rows = this page); an older server sends every lane and the page is cut here
@@ -212,7 +209,6 @@ export function POSTechQueueScreen() {
     appointment_soon: { bg: '#FBF1E6', fg: '#B5821F', label: tx('pos.appointment_soon') }, hold: { bg: '#F3E8F5', fg: '#7A4A8C', label: tx('pos.on_hold') },
   };
   const st = (x: string) => STATUS_TONE[x] || STATUS_TONE.available;
-  const PRIO_TONE: Record<string, { bg: string; fg: string }> = { high: { bg: '#FBE9E7', fg: '#C0392B' }, urgent: { bg: '#FBE9E7', fg: '#C0392B' }, medium: { bg: '#FBF1E6', fg: '#B5821F' }, normal: { bg: '#FBF1E6', fg: '#B5821F' }, low: { bg: '#E9F6EC', fg: '#2E9E54' } };
   // the code is the authority; only the label is translated (urgent has always shown as "High" here)
   const prioLabel = (p: string) => statusLabel('priority', p === 'urgent' ? 'high' : p);
   // the server's "next available" code → a label in the user's language (its English label only for an older server)

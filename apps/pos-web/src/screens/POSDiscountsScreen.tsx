@@ -66,9 +66,9 @@ export function POSDiscountsScreen() {
   const redScope = { q: q || undefined, state: redState, ...periodQuery(periods.redemptions) };
   const perfScope = { q: q || undefined, ...periodQuery(periods.performance) };
   const keys = { discounts: JSON.stringify(listScope), redemptions: JSON.stringify(redScope), performance: JSON.stringify(perfScope) };
-  useEffect(() => setPg('discounts')(1), [keys.discounts]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('redemptions')(1), [keys.redemptions]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('performance')(1), [keys.performance]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setPg('discounts')(1), [keys.discounts]);    
+  useEffect(() => setPg('redemptions')(1), [keys.redemptions]);    
+  useEffect(() => setPg('performance')(1), [keys.performance]);    
 
   const kpis = useLoad(() => posDiscountsApi.kpis(), [tick]);
   const list = useLoad(() => (tab === 'discounts' ? posDiscountsApi.list({ ...listScope, page: pages.discounts, pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.discounts, pages.discounts, tick]);

@@ -132,6 +132,6 @@ describe('POSRetentionScreen', () => {
     await screen.findByText('Ana Rivera');
     fireEvent.click(screen.getAllByTestId('rt-row-book')[0]!);
     expect(navigate).toHaveBeenCalledWith('/booking/new?customerId=c1&from=retention');
-    expect(String(navigate.mock.calls.at(-1)?.[0])).not.toMatch(/Ana|0101|customerName|customerPhone/);
+    expect(String(navigate.mock.calls.slice(-1)[0]?.[0])).not.toMatch(/Ana|0101|customerName|customerPhone/);
   });
 });

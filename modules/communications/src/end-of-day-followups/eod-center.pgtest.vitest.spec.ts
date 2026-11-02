@@ -6,6 +6,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { MIGRATIONS_DIR } from '@aipowersalon/database';
 import { DailyFollowUpService } from './end-of-day-followups.service';
 import { KyselyDailyFollowUpRepository } from './end-of-day-followups.kysely.repository';
 import { EodCenter, loadEodCandidates, summarizeCandidates, EOD_RULE_VERSION } from './eod-center';
@@ -184,7 +185,7 @@ describe('24-hour expiry keeps history and can never send afterwards (guide §10
         values ($1,$2,'2026-10-01',$3,$4,$5,$6,$7,$8) returning id`, [T, B, C(1), T1, id('77009'), lineId, status, deleted ? '2026-10-02T00:00:00Z' : null]).then((r: any) => r[0].id);
     const hidden = await ins(lineA, 'expired', true);
     const shadowed = await ins(lineB, 'expired', true); await ins(lineB, 'pending', false);
-    await pg.exec(readFileSync(join(process.env.REPO_ROOT ?? process.cwd(), 'apps/api/db/migrations/745_eod_follow_up_center.sql'), 'utf8'));
+    await pg.exec(readFileSync(join(MIGRATIONS_DIR, '745_eod_follow_up_center.sql'), 'utf8'));   // cwd-independent (CI runs from the module dir)
     expect((await q(`select deleted_at is null as back, expired_at is not null as ex from service_follow_up_tasks where id = $1`, [hidden]))[0]).toEqual({ back: true, ex: true });
     expect((await q(`select deleted_at is null as back from service_follow_up_tasks where id = $1`, [shadowed]))[0].back).toBe(false);
   });
@@ -225,7 +226,9 @@ describe('settings + summary + health (guide §5, §7, §17)', () => {
     const st = await repo.settingsFor(T, B);
     const sum = await center.summary(T, B, st, new Date());
     expect(sum.kpis.sentToday).toBeGreaterThanOrEqual(4);
-    expect(sum.lastRun).toMatchObject({ businessDate: '2026-10-31', status: 'completed', candidates: expect.any(Number) });
+    // the newest run in the table (an earlier step generates with the real clock, so a fixed date only held on Oct 31)
+    const latest = (await q(`select to_char(max(business_date), 'YYYY-MM-DD') as d from daily_follow_up_generation_runs where tenant_id = $1 and branch_id = $2`, [T, B]))[0].d;
+    expect(sum.lastRun).toMatchObject({ businessDate: latest, status: 'completed', candidates: expect.any(Number) });
     let h = await center.health(T, B, st, new Date());
     expect(h.rows.find((r) => r.key === 'scheduler')!.state).toBe('unknown');
     expect(h.rows.find((r) => r.key === 'sms')!.state).toBe('not_used');

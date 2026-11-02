@@ -23,12 +23,12 @@ const memberships = {
   topServices: [{ name: 'Gel Manicure', redemptions: 142, valueCents: 639000 }],
   rangeDays: 30,
 };
-const services = {
+const _services = {
   kpisFull: { totalServices: 5, activeServices: 4, inactiveServices: 1, categoriesCount: 2, addOnsCount: 3, servicesMissingDuration: 0, servicesMissingPrice: 0, servicesWithoutTechMapping: 1, topServiceRevenueCents: 9000 },
   rows: { items: [{ serviceId: 's1', categoryId: 'c1', categoryName: 'Manicures', name: 'Classic Mani', basePriceCents: 3500, durationMinutes: 30, isActive: true, isTaxable: true, bookingEnabled: true, checkoutEnabled: true, onlineBookingEnabled: false, aiBookingEnabled: false, addOnsCount: 0 }], pagination: { totalItems: 1 } },
   filterFacets: { categories: [{ categoryId: 'c1', name: 'Manicures' }], statuses: ['active', 'inactive'], taxableOptions: [], durationRanges: [], priceRanges: [], technicianSkillGroups: [] },
 };
-const techs = {
+const _techs = {
   kpisFull: { totalTechnicians: 3, activeTechnicians: 2, availableNow: 1, inService: 1, onBreak: 0, offToday: 1, avgRating: 4.6, todaySalesCents: 12500, todayTipsCents: 2000, estimatedCommissionCents: 5000, totalServicesCompletedToday: 18 },
   rows: { items: [{ technicianId: 't1', firstName: 'Ana', lastName: 'Lee', displayName: 'Ana Lee', status: 'suspended', workingStatus: 'available', skillGroups: ['Nails'], servicesCount: 4, todaySalesCents: 5000, todayTipsCents: 800, estimatedCommissionCents: 1500, rating: 4.8, techAppEnabled: true, canProcessPayment: true }], pagination: { totalItems: 1 } },
   filterFacets: { statuses: ['active', 'inactive'], roles: [], skillGroups: ['Nails'], serviceCategories: [], shiftStatuses: ['on_shift', 'clocked_out'], appAccessStatuses: [] },

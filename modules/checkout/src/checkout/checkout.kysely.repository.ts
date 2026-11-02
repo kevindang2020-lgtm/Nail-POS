@@ -103,11 +103,14 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
   /** A gift card of this SALON: every location's cards when cross-location redemption is on (the default), else this
    *  location's + cards with no location (Gift Cards mandate §16). Tenant-scoped always. */
-  private async giftScoped(qb: any, ctx: CheckoutContext, exec: Kysely<DB> = this.db): Promise<any> {
+  // Returns { q }, never the builder itself: an async function resolving to a Kysely builder makes the runtime treat it as a
+  // thenable, and Kysely throws "don't await SelectQueryBuilder instances directly" — every gift-card lookup / payment /
+  // reload failed that way before the first query ran (found by checkout-giftcard-crosstenant.pgtest, Nov 2 2026).
+  private async giftScoped(qb: any, ctx: CheckoutContext, exec: Kysely<DB> = this.db): Promise<{ q: any }> {
     const q = qb.where('tenant_id', '=', ctx.tenantId);
-    if (!ctx.branchId) return q;
+    if (!ctx.branchId) return { q };
     const gc = await resolveGiftCardSaleSettings(exec, ctx.tenantId, ctx.branchId);   // the caller's executor: inside its transaction, one connection
-    return gc.crossBranchRedemption ? q : q.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));
+    return { q: gc.crossBranchRedemption ? q : q.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)])) };
   }
   private settingsToFull(s: CheckoutSettings): POSCheckoutPaymentSettingsFull {
     return { cardEnabled: true, cashEnabled: true, giftCardEnabled: true, splitPaymentEnabled: true, cardSurchargeEnabled: s.creditCardSurchargeEnabled, cardSurchargePercent: s.creditCardSurchargePercent, taxRatePercent: s.taxRatePercent, tipsEnabled: true, defaultTipPercents: s.defaultTipPercents, allowCustomTip: true, allowNoTip: true, customerDisplayMode: s.customerDisplayPayButtonEnabled ? 'customer_pays' : 'review_only', fiservStatus: resolvePaymentStatus() };
@@ -505,7 +508,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
 
   // gift cards: real balances on the Postgres path (migration 033). Tenant-wide (branch_id null) so a card works at any branch.
   async giftBalance(ctx: CheckoutContext, code: string) {
-    const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).where('code', '=', code).where('status', '=', 'active').select(['balance_cents']).executeTakeFirst().catch(() => undefined);
+    const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).q.where('code', '=', code).where('status', '=', 'active').select(['balance_cents']).executeTakeFirst().catch(() => undefined);
     if (r) return Number((r as any).balance_cents);
     // §15 a same-tenant miss may be an eligible network card issued at another member salon.
     const x = await this.resolveCrossTenantGiftCard(ctx, code);
@@ -522,7 +525,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
    *  ledger row now carries the ticket, and later the payment, so a gift-card payment can say which card paid. */
   private async redeemGift(ctx: CheckoutContext, code: string, by: Money, pin: string | undefined, exec: Kysely<DB>, ticketId?: string): Promise<{ ledgerId: string | null; ledgerTenantId: string; last4: string | null } | null> {
     if (!(by > 0)) return null;
-    const local = await (await this.giftScoped(exec.selectFrom('gift_cards'), ctx, exec)).where('code', '=', code).select(['id', 'balance_cents', 'card_pin_hash']).executeTakeFirst();
+    const local = await (await this.giftScoped(exec.selectFrom('gift_cards'), ctx, exec)).q.where('code', '=', code).select(['id', 'balance_cents', 'card_pin_hash']).executeTakeFirst();
     let id: string, ledgerTenantId = ctx.tenantId, crossTenant = false, issuingTenantId = ctx.tenantId, programId: string | null = null, pinHash: string | null = null;
     if (local) {
       id = (local as any).id; pinHash = (local as any).card_pin_hash ?? null; // same-tenant redemption — unchanged (no clearing)
@@ -650,7 +653,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   async resolveGiftCardCode(ctx: CheckoutContext, input: string): Promise<string | null> {
     const digits = String(input || '').replace(/\D+/g, '');
     if (/^\d{16}$/.test(digits)) {
-      const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).where('card_number_hash', '=', hashCardNumber(digits)).select(['code']).executeTakeFirst().catch(() => undefined);
+      const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).q.where('card_number_hash', '=', hashCardNumber(digits)).select(['code']).executeTakeFirst().catch(() => undefined);
       if (r) return String((r as any).code);
       // §15 a 16-digit number issued at another salon resolves only if the current salon may redeem it under the program.
       const x = await this.resolveCrossTenantGiftCard(ctx, digits);
@@ -692,7 +695,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const newCode = 'GC-' + secureString(10)   /* H9: a gift-card code is spendable money — was Math.random() */;
     const newNumber = generateCardNumber();
     return this.db.transaction().execute(async (trx): Promise<{ ok: boolean; reason?: string; newCode?: string; newCardNumber?: string; newReference?: string; newCardNumberMasked?: string; balanceCents?: Money }> => {
-      const old: any = await (await this.giftScoped(trx.selectFrom('gift_cards'), ctx, trx as unknown as Kysely<DB>)).where('code', '=', code)
+      const old: any = await (await this.giftScoped(trx.selectFrom('gift_cards'), ctx, trx as unknown as Kysely<DB>)).q.where('code', '=', code)
         .select(['id', 'status', 'balance_cents', 'purchased_cents', 'customer_id', 'program_id', 'design_id']).executeTakeFirst();
       if (!old) return { ok: false, reason: 'not_found' };
       if (!REPLACEABLE.includes(String(old.status))) return { ok: false, reason: 'not_replaceable' };
@@ -723,14 +726,14 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
 
   async getGiftCard(ctx: CheckoutContext, code: string): Promise<GiftCardDetail | null> {
-    const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).where('code', '=', code).select(['id', 'code', 'balance_cents', 'initial_balance_cents', 'status', 'card_number_last4']).executeTakeFirst().catch(() => undefined);
+    const r = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).q.where('code', '=', code).select(['id', 'code', 'balance_cents', 'initial_balance_cents', 'status', 'card_number_last4']).executeTakeFirst().catch(() => undefined);
     return r ? { code: (r as any).code, balanceCents: Number((r as any).balance_cents), initialBalanceCents: Number((r as any).initial_balance_cents), status: (r as any).status, id: String((r as any).id), last4: (r as any).card_number_last4 ?? null } : null;
   }
   // Pending reload = an immutable 'hold' event tied to the ticket; the card's balance does NOT change until the ticket is
   // paid. Idempotent per ticket+card so a double-tap creates one hold. Mirrors the pending-SALE model, but for an
   // existing card (credit on payment) rather than a new one.
   async createPendingGiftCardReload(ctx: CheckoutContext, req: { code: string; amountCents: Money; ticketId: string; reference: string }): Promise<{ reference: string; amountCents: Money }> {
-    const card = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).where('code', '=', req.code).select(['id', 'balance_cents', 'status', 'tenant_id']).executeTakeFirst();
+    const card = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).q.where('code', '=', req.code).select(['id', 'balance_cents', 'status', 'tenant_id']).executeTakeFirst();
     // Gift Cards mandate §15 (Oct 29 2026): a reload is accepted only for a live card, and a hold that cannot be written is an
     // error — it used to be swallowed, so the ticket charged the customer for a reload that was never going to be credited
     if (!card) throw Object.assign(new Error('Gift card not found'), { giftCardCode: 'GIFT_CARD_INVALID' });
@@ -778,7 +781,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   // Mandate P0 §142 (Oct 20 2026): balance write and ledger row in ONE transaction; the ledger insert is no longer
   // `.catch(() => undefined)` — a void that cannot write its ledger line does not happen. The direct reloadGiftCard was removed.
   async voidGiftCard(ctx: CheckoutContext, code: string): Promise<GiftCardDetail> {
-    const card = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).where('code', '=', code).select(['id', 'balance_cents', 'status']).executeTakeFirst().catch(() => undefined);
+    const card = await (await this.giftScoped(this.db.selectFrom('gift_cards'), ctx)).q.where('code', '=', code).select(['id', 'balance_cents', 'status']).executeTakeFirst().catch(() => undefined);
     if (card) {
       const prior = Number((card as any).balance_cents);
       // Phase 12 (#27): voiding a card that is already void / replaced / refunded is refused (409) — it used to write a
@@ -795,10 +798,11 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
   /** The gift-card location rule as SQL (raw, so it runs on any handle / transaction): every location of the salon when
    *  cross-location redemption is on (the default), else this location's + cards with no location. */
-  private async giftLocationSql(exec: Kysely<DB>, ctx: CheckoutContext, col: ReturnType<typeof sql>): Promise<ReturnType<typeof sql>> {
-    if (!ctx.branchId) return sql`true`;
+  // returns { w }, never the RawBuilder itself (an async function resolving to a builder throws "don't await RawBuilder")
+  private async giftLocationSql(exec: Kysely<DB>, ctx: CheckoutContext, col: ReturnType<typeof sql>): Promise<{ w: ReturnType<typeof sql> }> {
+    if (!ctx.branchId) return { w: sql`true` };
     const gc = await resolveGiftCardSaleSettings(exec, ctx.tenantId, ctx.branchId);
-    return gc.crossBranchRedemption ? sql`true` : sql`(${col} = ${ctx.branchId}::uuid or ${col} is null)`;
+    return { w: gc.crossBranchRedemption ? sql`true` : sql`(${col} = ${ctx.branchId}::uuid or ${col} is null)` };
   }
   /** Gift Cards mandate §11 (Oct 29 2026) — Issue Gift Card from the Gift Cards screen, payment-first: ONE transaction opens a
    *  numbered ticket for the purchaser (no service lines — the card's value is its only charge, untaxed, through
@@ -863,7 +867,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     try {
       return await this.db.transaction().execute(async (trx) => {
         const k = trx as unknown as Kysely<DB>;
-        const loc = await this.giftLocationSql(k, ctx, sql`branch_id`);
+        const loc = (await this.giftLocationSql(k, ctx, sql`branch_id`)).w;
         const card: any = (await sql`select id, balance_cents, status, customer_id, reference, code from gift_cards where tenant_id = ${T} and id = ${req.cardId}::uuid and ${loc} for update`.execute(k)).rows[0];
         if (!card) return { ok: false as const, reason: 'not_found' as const };
         if (!RELOADABLE_GIFT_CARD_STATUSES.has(String(card.status))) return { ok: false as const, reason: 'not_reloadable' as const };
@@ -899,7 +903,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const T = ctx.tenantId;
     return this.db.transaction().execute(async (trx) => {
       const k = trx as unknown as Kysely<DB>;
-      const loc = await this.giftLocationSql(k, ctx, sql`branch_id`);
+      const loc = (await this.giftLocationSql(k, ctx, sql`branch_id`)).w;
       const card: any = (await sql`select id, balance_cents, status from gift_cards where tenant_id = ${T} and id = ${cardId}::uuid and ${loc} for update`.execute(k)).rows[0];
       if (!card) return { ok: false as const, reason: 'not_found' as const };
       const prior = Number(card.balance_cents);

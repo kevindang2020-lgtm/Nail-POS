@@ -20,7 +20,7 @@ const toTemplate = (r: { id: string; channel: string; name: string; body: string
   ({ id: String(r.id), channel: r.channel === 'email' ? 'email' : 'sms', name: String(r.name), body: String(r.body) });
 
 export class KyselyMessageTemplateStore implements MessageTemplateStorePort {
-  constructor(private readonly db: AppDatabase) {}
+  constructor(private readonly db: NonNullable<AppDatabase>) {}
 
   async list(ctx: SettingsContext): Promise<MessageTemplate[]> {
     // 740: archived templates are history, not part of the working list (the Message Templates screen shows them on request)

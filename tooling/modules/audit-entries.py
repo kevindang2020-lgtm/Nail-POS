@@ -10,7 +10,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')); os.
 bad = 0
 for m in sorted(os.listdir('modules')):
     idx = open(f'modules/{m}/src/index.ts', encoding='utf-8').read(); exported = set()
-    for mm in re.finditer(r"export \{([^}]*)\}", idx):
+    for mm in re.finditer(r"export (?:type )?\{([^}]*)\}", idx):   # `export type { A } from …` in the entry counts too
         exported |= {re.sub(r'^\s*type\s+', '', n).strip().split(' as ')[-1].strip() for n in mm.group(1).split(',') if n.strip()}
     for mm in re.finditer(r"export \* from '\./([^']+)'", idx):
         body = open(f'modules/{m}/src/{mm.group(1)}.ts', encoding='utf-8').read()

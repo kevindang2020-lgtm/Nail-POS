@@ -48,7 +48,7 @@ describe('POSGiftCardsScreen', () => {
     fireEvent.change(screen.getByTestId('search'), { target: { value: '8565551234' } });
     await waitFor(() => expect(gc.list).toHaveBeenLastCalledWith(expect.objectContaining({ search: '8565551234', status: 'redeemed' })));
     fireEvent.click(screen.getByTestId('clear-all'));
-    await waitFor(() => expect(gc.list.mock.calls.at(-1)![0].status).toBeUndefined());
+    await waitFor(() => expect(gc.list.mock.calls.slice(-1)[0]![0].status).toBeUndefined());
   });
   it('the detail shows the ledger of a partial redemption ($100 · −$65 · $35 left) and Void needs a reason', async () => {
     gc.detail.mockResolvedValue({ card: card(), permissions: { void: true, reload: true },

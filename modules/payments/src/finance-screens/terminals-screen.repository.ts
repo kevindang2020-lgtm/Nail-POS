@@ -268,7 +268,7 @@ export class TerminalsScreenRepository {
     if (/^\d{4}$/.test(q)) ors.push(sql`a.card_last4 = ${q}`);
     const cents = moneyToCents(q);
     if (cents != null && /[.$]/.test(q)) ors.push(sql`a.amount_cents = ${cents}`);
-    return sql`(${sql.join(ors, sql` or `)})`;
+    return sql<boolean>`(${sql.join(ors, sql` or `)})`;
   }
   async activityList(ctx: FinanceCtx, f: { period: Period; q: string; status?: string; device?: string; deviceId?: string; sort: (typeof ACTIVITY_SORTS)[number] }, pr: PageReq) {
     const T = ctx.tenantId;

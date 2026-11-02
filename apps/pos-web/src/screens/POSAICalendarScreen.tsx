@@ -353,7 +353,7 @@ function SchedulingAssistant({ date, onOpen, onDone }: { date: string; onOpen: (
           {c.proposal?.type === 'reschedule_review' ? (
             <div className="aic-row">
               <button className="btn ghost" onClick={() => onOpen(c.proposal.appointmentId)} data-testid="aic-card-inspect">{t('aical.inspect')}</button>
-              <input type="time" step={900} aria-label={t('aical.newTime')} value={move?.appointmentId === c.proposal.appointmentId ? move.startTime : ''} onChange={(e) => setMove({ appointmentId: c.proposal.appointmentId, date: c.proposal.date, startTime: e.target.value })} data-testid="aic-move-time" />
+              <input type="time" step={900} aria-label={t('aical.newTime')} value={move?.appointmentId === c.proposal.appointmentId ? (move?.startTime ?? '') : ''} onChange={(e) => setMove({ appointmentId: c.proposal.appointmentId, date: c.proposal.date, startTime: e.target.value })} data-testid="aic-move-time" />
               <button className="btn" disabled={!move || move.appointmentId !== c.proposal.appointmentId || !move.startTime || !!h.busy}
                 onClick={() => move && h.prepare({ type: 'reschedule_appointment', appointmentId: move.appointmentId, date: move.date, startTime: move.startTime, reason: 'AI Calendar: resolve staff conflict' })} data-testid="aic-move-review">{t('aical.reviewMove')}</button>
             </div>

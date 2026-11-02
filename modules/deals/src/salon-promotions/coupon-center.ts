@@ -12,7 +12,7 @@
 // Tenant pinned in every statement; a branch user sees salon-wide coupons and their branch's. Money is integer cents.
 import { sql, type Kysely } from 'kysely';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { withCode } from '@aipowersalon/api-contracts';
+import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { DATABASE, tenantTimeZone } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
@@ -213,7 +213,7 @@ function ctxOf(req: any): DealContext {
 async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e) {
-    if (e instanceof DealRefusedError) throw withCode(new HttpException({ code: e.code, message: e.message, reasons: e.reasons }, e.status), e.code);
+    if (e instanceof DealRefusedError) throw withCode(new HttpException({ code: e.code, message: e.message, reasons: e.reasons }, e.status), e.code as ApiErrorCode);
     if (e instanceof DealForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
     if (e instanceof DealValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     if (e instanceof DealConflictError) throw new HttpException(e.message, HttpStatus.CONFLICT);

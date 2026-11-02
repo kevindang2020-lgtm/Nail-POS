@@ -81,7 +81,7 @@ const SOURCE_CHANNELS = new Set(['upload', 'pos_upload', 'owner_app_upload', 'mo
 
 // ── DB-backed DocStore over ocr_documents (+ ocr_document_files for hashes, ocr_reviews for decision state) ──
 export class KyselyDocStore implements DocStorePort {
-  constructor(private readonly db: AppDatabase) {}
+  constructor(private readonly db: NonNullable<AppDatabase>) {}
   /** the writes that must not degrade silently (pages, the per-field reading, corrections) need a real database */
   private get live(): NonNullable<AppDatabase> { if (!this.db) throw new Error('receipt documents need the database'); return this.db; }
 

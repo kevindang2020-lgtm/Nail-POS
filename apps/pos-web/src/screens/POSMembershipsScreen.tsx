@@ -33,7 +33,6 @@ type Overview = { kpis: Kpis; plans: PlanRow[]; revenueSeries: { label: string; 
 type Member = { membershipId: string; customerId: string; customerName: string; avatarUrl: string | null; maskedPhone: string | null; planId: string | null; planName: string; status: string; memberNumber: string | null;
   startedAt: string | null; nextDate: string | null; nextDateKind: 'ends' | 'renews' | null; canceledAt: string | null; autoRenew: boolean; redemptions: number; lifetimePaidCents: number; lastPaymentStatus: string | null };
 type Activity = { id: string; activityType: string; customerId: string | null; membershipId: string | null; customerName: string | null; planName: string | null; occurredAt: string | null; amountCents: number | null; status: string | null };
-type Paged<T> = PageInfo & { items: T[] };
 type Tab = 'overview' | 'members' | 'plans' | 'payments' | 'benefits' | 'activity';
 
 const TABS: Tab[] = ['overview', 'members', 'plans', 'payments', 'benefits', 'activity'];
@@ -95,18 +94,18 @@ export function POSMembershipsScreen() {
   const planScope = { q: q || undefined, status: planStatus || undefined };
   // a changed filter sends only the AFFECTED list back to Page 1
   const keys = { members: JSON.stringify(memberScope), payments: JSON.stringify(payScope), benefits: JSON.stringify(redScope), activity: JSON.stringify(actScope), plans: JSON.stringify(planScope) };
-  useEffect(() => setPg('members')(1), [keys.members]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('payments')(1), [keys.payments]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('benefits')(1), [keys.benefits]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('activity')(1), [keys.activity]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('plans')(1), [keys.plans]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setPg('members')(1), [keys.members]);    
+  useEffect(() => setPg('payments')(1), [keys.payments]);    
+  useEffect(() => setPg('benefits')(1), [keys.benefits]);    
+  useEffect(() => setPg('activity')(1), [keys.activity]);    
+  useEffect(() => setPg('plans')(1), [keys.plans]);    
 
   const ov = useLoad(() => posMembershipsApi.overview() as Promise<Overview>, [rev]);
   const [panelFilter, setPanelFilter] = useState('active');
   const ovActScope = { ...periodQuery(periods.overview) };
   const panelMembers = useLoad(() => (tab === 'overview' ? posMembershipsApi.members({ page: pg('p-members'), pageSize: PANEL, filter: panelFilter }) : Promise.resolve(null)), [tab === 'overview', pg('p-members'), panelFilter, rev]);
   const panelActivity = useLoad(() => (tab === 'overview' ? posMembershipsApi.activity({ page: pg('p-activity'), pageSize: PANEL, ...ovActScope }) : Promise.resolve(null)), [tab === 'overview', pg('p-activity'), JSON.stringify(ovActScope), rev]);
-  useEffect(() => setPg('p-members')(1), [panelFilter]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setPg('p-members')(1), [panelFilter]);    
   useEffect(() => setPg('p-activity')(1), [JSON.stringify(ovActScope)]);   // eslint-disable-line react-hooks/exhaustive-deps
   const members = useLoad(() => (tab === 'members' ? posMembershipsApi.members({ ...memberScope, page: pg('members'), pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.members, pg('members'), rev]);
   const payments = useLoad(() => (tab === 'payments' ? posMembershipsApi.payments({ ...payScope, page: pg('payments'), pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.payments, pg('payments'), rev]);

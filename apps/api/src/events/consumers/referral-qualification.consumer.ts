@@ -8,7 +8,7 @@
 // Never qualifies on a booking alone; never pays cash (a cash reward is BLOCKED_EXTERNAL). A ticket of another salon is a
 // SECURITY failure, not a retry-and-award.
 import { type EventConsumer, TenantMismatchError, type DomainEvent, DOMAIN_EVENTS } from '@aipowersalon/events';
-import { sql, type Transaction } from 'kysely';
+import { sql, type Kysely, type Transaction } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { ReferralProgram, ReferralProgramError } from '@aipowersalon/customers';
@@ -23,12 +23,13 @@ export class ReferralQualificationConsumer implements EventConsumer {
 
   async handle(e: DomainEvent<any>, trx: Transaction<DB>): Promise<void> {
     const tenantId = e.tenantId!;
-    const rp = new ReferralProgram(trx);
+    const db = trx as unknown as Kysely<any>;
+    const rp = new ReferralProgram(db);
     try {
       if (e.eventType === DOMAIN_EVENTS.CHECKOUT_COMPLETED) {
         const ticketId = String(e.payload?.ticketId ?? e.aggregateId ?? '');
         if (!ticketId) return;
-        await rp.qualifyForTicket(tenantId, ticketId, `checkout.completed:${e.eventId}`, trx);
+        await rp.qualifyForTicket(tenantId, ticketId, `checkout.completed:${e.eventId}`, db);
         return;
       }
       const paymentId = String(e.payload?.paymentId ?? '');
@@ -37,7 +38,7 @@ export class ReferralQualificationConsumer implements EventConsumer {
       const p = (await sql<{ ticket_id: string; tenant_id: string }>`SELECT p.ticket_id, p.tenant_id FROM payments p WHERE p.id = ${paymentId}::uuid`.execute(trx)).rows[0];
       if (!p?.ticket_id) return;
       if (String(p.tenant_id) !== tenantId) throw withCode(new TenantMismatchError(`payment ${paymentId} belongs to another tenant`), 'TENANT_ACCESS_DENIED');
-      await rp.handleRefund(tenantId, String(p.ticket_id), refundId, trx);
+      await rp.handleRefund(tenantId, String(p.ticket_id), refundId, db);
     } catch (err) {
       if (err instanceof ReferralProgramError && err.code === 'TENANT_ACCESS_DENIED') throw withCode(new TenantMismatchError(err.message), 'TENANT_ACCESS_DENIED');
       throw err;

@@ -252,12 +252,12 @@ export class InboxRepository {
   async detail(ctx: InboxCtx, threadId: string, opts: { showFullContact: boolean }) {
     const t = await this.mustThread(ctx, threadId);
     const tid = ctx.tenantId;
-    const cu: Row | undefined = t.customer_id ? (await sql<Row>`SELECT c.id, c.full_name, c.phone_display, c.normalized_phone, c.email, c.marketing_sms_opt_in, c.marketing_opt_in, c.archived_at
+    const cu: Row | null | undefined = t.customer_id ? (await sql<Row>`SELECT c.id, c.full_name, c.phone_display, c.normalized_phone, c.email, c.marketing_sms_opt_in, c.marketing_opt_in, c.archived_at
       FROM customers c WHERE c.tenant_id = ${tid} AND c.id = ${t.customer_id}::uuid`.execute(this.db)).rows[0] : null;
     const contact = t.channel === 'email' ? (t.customer_contact ?? null) : (t.contact_normalized ?? normalizePhone(t.customer_contact) ?? t.customer_contact ?? null);
     const optedOut = contact && t.channel !== 'email'
       ? (await sql<Row>`SELECT 1 FROM notification_opt_outs o WHERE o.tenant_id = ${tid} AND o.channel = 'sms' AND o.address = ${contact} LIMIT 1`.execute(this.db)).rows.length > 0 : false;
-    const next: Row | undefined = t.customer_id ? (await sql<Row>`SELECT a.id, to_char(a.appt_date, 'YYYY-MM-DD') AS appt_date_text, a.start_time, a.status, a.branch_id FROM pos_tech_appointments a
+    const next: Row | null | undefined = t.customer_id ? (await sql<Row>`SELECT a.id, to_char(a.appt_date, 'YYYY-MM-DD') AS appt_date_text, a.start_time, a.status, a.branch_id FROM pos_tech_appointments a
       WHERE a.tenant_id = ${tid} AND a.customer_id = ${t.customer_id}::uuid AND a.appt_date >= (now() AT TIME ZONE ${await this.salonTimeZone(tid)})::date
         AND a.status NOT IN ('cancelled', 'canceled', 'no_show', 'completed') AND ${this.branchOk(ctx, sql`a.branch_id`)}
       ORDER BY a.appt_date ASC, a.start_time ASC LIMIT 1`.execute(this.db)).rows[0] : null;
@@ -267,7 +267,7 @@ export class InboxRepository {
         AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) = ${last10(contact)}`.execute(this.db)).rows[0];
       candidates = n(cr?.n);
     }
-    const br: Row | undefined = t.branch_id ? (await sql<Row>`SELECT b.name FROM branches b WHERE b.tenant_id = ${tid} AND b.id = ${t.branch_id}::uuid`.execute(this.db)).rows[0] : null;
+    const br: Row | null | undefined = t.branch_id ? (await sql<Row>`SELECT b.name FROM branches b WHERE b.tenant_id = ${tid} AND b.id = ${t.branch_id}::uuid`.execute(this.db)).rows[0] : null;
     const item = this.item({ ...t, activity_at: t.last_message_at ?? t.created_at, customer_full_name: cu?.full_name ?? null, branch_name: br?.name ?? null });
     return {
       thread: { ...item, contact: opts.showFullContact ? contact : item.contactMasked, customerMatch: t.customer_match ?? null, closedAt: iso(t.closed_at), lastInboundAt: iso(t.last_inbound_at) },

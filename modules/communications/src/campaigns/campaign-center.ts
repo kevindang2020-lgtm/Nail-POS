@@ -24,7 +24,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Kysely } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { estimateSmsSegments, withCode, LARGE_CAMPAIGN_RECIPIENTS } from '@aipowersalon/api-contracts';
+import { estimateSmsSegments, withCode, LARGE_CAMPAIGN_RECIPIENTS, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { hasPermission } from '@aipowersalon/permissions';
 import { recordAuditStrict } from '@aipowersalon/audit';
@@ -60,7 +60,7 @@ export class CampaignCenterError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'CampaignCenterError'; this.code = code; this.status = status; this.extra = extra; }
 }
-const err = (msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) => withCode(new CampaignCenterError(msg, code, status, extra), code);
+const err = (msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) => withCode(new CampaignCenterError(msg, code, status, extra), code as ApiErrorCode);
 
 /** what an approval is bound to — any change voids it (guide §14) */
 export function campaignContentHash(c: { channel: string; message_body: string | null; email_subject: string | null; deal_id: string | null; snapshot_version: number; branch_id: string | null }): string {
@@ -775,6 +775,6 @@ export function renderMessage(body: string, v: { salonName: string; offer: strin
 }
 
 export function asHttp(e: unknown): never {
-  if (e instanceof CampaignCenterError) throw withCode(new HttpException({ code: e.code, message: e.message, ...e.extra }, e.status as HttpStatus), e.code);
+  if (e instanceof CampaignCenterError) throw withCode(new HttpException({ code: e.code, message: e.message, ...e.extra }, e.status as HttpStatus), e.code as ApiErrorCode);
   throw e;
 }

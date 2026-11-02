@@ -67,7 +67,7 @@ export class TenantMessagingReadinessService {
   /** the per-salon health check window (tests shorten it) */
   minIntervalMs = HEALTH_CHECK_MIN_INTERVAL_MS;
 
-  private need(): AppDatabase { if (!this.db) throw withCode(new ReadinessInputError('Messaging readiness needs the database.'), 'SERVICE_UNAVAILABLE'); return this.db; }
+  private need(): NonNullable<AppDatabase> { if (!this.db) throw withCode(new ReadinessInputError('Messaging readiness needs the database.'), 'SERVICE_UNAVAILABLE'); return this.db; }
 
   private async scopeOf(tenantId: string, branchId: string | null): Promise<string | null> {
     if (!branchId) return null;

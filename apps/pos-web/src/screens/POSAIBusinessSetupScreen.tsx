@@ -13,7 +13,8 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiBusinessSetupApi, type FaqAction, type FaqQuery } from '../api/posAiBusinessSetupApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtInZone } from '../i18n/format';
+import { fmtInZone as fmtInZoneOpts } from '../i18n/format';
+const fmtInZone = (x: string | null | undefined) => fmtInZoneOpts(x, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' });
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 
@@ -59,7 +60,7 @@ export function POSAIBusinessSetupScreen() {
   const [open, setOpen] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | 'health' | 'preview' | 'assistant'>(null);
 
-  const loadReady = useCallback(() => { setReadyErr(null); posAiBusinessSetupApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e))); }, []);
+  const loadReady = useCallback(() => { setReadyErr(null); posAiBusinessSetupApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { loadReady(); }, [loadReady]);
   const loadList = useCallback(async () => {
     setLoading(true); setListErr(null);
@@ -67,7 +68,7 @@ export function POSAIBusinessSetupScreen() {
       if (scope === 'faqs') setList(await posAiBusinessSetupApi.faqs({ q: dq, status: f.status, category: f.category, dateBasis: f.dateBasis, from: f.from, to: f.to, sort: f.sort, page: f.page, pageSize: f.pageSize }));
       else if (scope === 'history') setList(await posAiBusinessSetupApi.history({ basis: f.basis, from: f.from, to: f.to, page: f.page, pageSize: f.pageSize }));
       else setList(await posAiBusinessSetupApi.search({ scope, q: dq, page: f.page, pageSize: f.pageSize }));
-    } catch (e) { setListErr(errorTextOf(e)); setList(null); } finally { setLoading(false); }
+    } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setList(null); } finally { setLoading(false); }
   }, [scope, dq, f]);
   useEffect(() => { void loadList(); }, [loadList]);
   useEffect(() => { setF((x) => ({ ...x, page: 1 })); }, [dq, scope]);
@@ -84,7 +85,7 @@ export function POSAIBusinessSetupScreen() {
       setNotice(visible ? t('aiset.savedDraft') : t('aiset.savedDraftFiltered'));
       if (scope === 'faqs') setF((x) => ({ ...x, page: 1 }));
       void loadReady(); setOpen(r.id);
-    } catch (e) { setFormErr(errorTextOf(e)); } finally { setSaving(false); }
+    } catch (e) { setFormErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setSaving(false); }
   };
   const clearAll = () => { setSearch(''); setF({ page: 1, pageSize: f.pageSize, sort: 'newest', dateBasis: 'created', basis: 'faq_change' }); };
   const info = list ? { page: list.page, pageSize: list.pageSize, totalItems: list.totalItems, totalPages: list.totalPages } : null;
@@ -186,12 +187,12 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
   const [tab, setTab] = useState<'overview' | 'answer' | 'history' | 'audit'>('overview');
   const [edit, setEdit] = useState<null | { question: string; answer: string; category: string; reason: string }>(null);
   const [ask, setAsk] = useState<null | 'reject' | 'archive'>(null); const [reason, setReason] = useState('');
-  const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.faq(id).then(setD).catch((e) => setErr(errorTextOf(e))); }, [id]);
+  const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.faq(id).then(setD).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [id]);
   useEffect(() => { load(); }, [load]);
   const run = async (action: FaqAction, extra: Record<string, unknown> = {}) => {
     if (!d) return; setBusy(true); setErr(null);
     try { await posAiBusinessSetupApi.act(id, { action, expectedVersion: d.version, idempotencyKey: requestId(), ...extra } as Parameters<typeof posAiBusinessSetupApi.act>[1]); setEdit(null); setAsk(null); setReason(''); load(); onChanged(); }
-    catch (e) { setErr(errorTextOf(e)); } finally { setBusy(false); }
+    catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); }
   };
   const pending = d && (d.status !== 'approved' ? true : d.hasPendingChange);
   const actions = useMemo(() => {
@@ -258,7 +259,7 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
 
 function HealthDialog({ onClose, onGo }: { onClose: () => void; onGo: (r: string) => void }) {
   const [h, setH] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); setH(null); posAiBusinessSetupApi.health().then(setH).catch((e) => setErr(errorTextOf(e))); }, []);
+  const load = useCallback(() => { setErr(null); setH(null); posAiBusinessSetupApi.health().then(setH).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { load(); }, [load]);
   return (
     <FitDialog title={t('aiset.checkSetup')} subtitle={h ? <StatusBadge s={h.overall} /> : null} onClose={onClose} wide testId="ais-health" footer={<div className="ais-actions"><button className="btn ghost" onClick={load}>{t('aiset.runAgain')}</button><button className="btn ghost" onClick={onClose}>{t('aiset.close')}</button></div>}>
@@ -274,7 +275,7 @@ function HealthDialog({ onClose, onGo }: { onClose: () => void; onGo: (r: string
 
 function PreviewDialog({ onClose }: { onClose: () => void }) {
   const [q, setQ] = useState(''); const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
-  const ask = async (question: string) => { setBusy(true); setErr(null); setQ(question); try { setR(await posAiBusinessSetupApi.preview(question)); } catch (e) { setErr(errorTextOf(e)); } finally { setBusy(false); } };
+  const ask = async (question: string) => { setBusy(true); setErr(null); setQ(question); try { setR(await posAiBusinessSetupApi.preview(question)); } catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); } };
   return (
     <FitDialog title={t('aiset.preview')} subtitle={t('aiset.previewSub')} onClose={onClose} wide busy={busy} testId="ais-preview-dialog" footer={<button className="btn ghost" onClick={onClose}>{t('aiset.close')}</button>}>
       <div className="ais-samples">{SAMPLES.map((s) => <button key={s} className="btn ghost" onClick={() => ask(s)}>{s}</button>)}</div>
@@ -295,7 +296,7 @@ function PreviewDialog({ onClose }: { onClose: () => void }) {
 
 function AssistantDialog({ onClose, onGo, onDraft, onOpenFaq }: { onClose: () => void; onGo: (r: string) => void; onDraft: (q: string) => void; onOpenFaq: (id: string) => void }) {
   const [a, setA] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const can = useCan();
-  const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.assistant().then(setA).catch((e) => setErr(errorTextOf(e))); }, []);
+  const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.assistant().then(setA).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { load(); }, [load]);
   return (
     <FitDialog title={t('aiset.assistant')} subtitle={t('aiset.assistantSub')} onClose={onClose} wide testId="ais-assistant-dialog" footer={<button className="btn ghost" onClick={onClose}>{t('aiset.close')}</button>}>

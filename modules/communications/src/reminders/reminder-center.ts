@@ -29,7 +29,7 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
-import { withCode } from '@aipowersalon/api-contracts';
+import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { REMINDER_DISPATCH } from '../communications-lifecycles';
 import { REASON_TEXT, occurrenceKey } from './reminder-core';
 import { ladderOf, type RemindersService } from './reminders.service';
@@ -47,7 +47,7 @@ const iso = (v: unknown): string | null => (v == null ? null : v instanceof Date
 const n = (v: unknown) => Number(v ?? 0) || 0;
 const last4 = (p: unknown) => (p ? String(p).replace(/\D/g, '').slice(-4) || null : null);
 const maskEmail = (e: unknown) => { const s = String(e ?? ''); const i = s.indexOf('@'); return i > 0 ? `${s[0]}•••${s.slice(i)}` : null; };
-const err = (code: string, message: string, status: number) => withCode(Object.assign(new Error(message), { status, expose: true, code }), code);
+const err = (code: string, message: string, status: number) => withCode(Object.assign(new Error(message), { status, expose: true, code }), code as ApiErrorCode);
 
 export interface RcCtx { tenantId: string; branchId: string | null; userId: string | null; role: string | null; allowedBranches: string[] | null }
 export interface RcQuery { tab?: string; q?: string; channel?: string; branchId?: string; basis?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }

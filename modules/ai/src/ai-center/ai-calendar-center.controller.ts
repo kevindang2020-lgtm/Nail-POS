@@ -28,7 +28,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 const APPOINTMENT_LIST = {
   filters: {
     status: { type: 'enum', values: AIC_STATUSES }, source: { type: 'enum', values: AIC_SOURCES }, period: { type: 'enum', values: AIC_PERIODS },
-    basis: { type: 'enum', values: AIC_BASES }, aiOnly: { type: 'boolean' }, technicianId: { type: 'uuid' },
+    basis: { type: 'enum', values: AIC_BASES }, aiOnly: { type: 'bool' }, technicianId: { type: 'uuid' },
   },
   sorts: { created: null, scheduled: null, updated: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page', 'sort'],
 } as const;

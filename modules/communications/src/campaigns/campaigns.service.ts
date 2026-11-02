@@ -9,7 +9,7 @@ import type { AuditService } from '@aipowersalon/audit';
 import { buildMarketingOverview, splitByOwner, type CampaignLike as MarketingCampaignLike } from './marketing-oversight-core';
 import type { PlatformAnnouncementsService } from './platform-announcements.service';
 import type { CampaignComplianceService } from './campaign-compliance.service';
-import { estimateSmsSegments, LARGE_CAMPAIGN_RECIPIENTS, type CampaignCostPreview, foldVi, withCode } from '@aipowersalon/api-contracts';   // wave 3 PAYI §81
+import { estimateSmsSegments, LARGE_CAMPAIGN_RECIPIENTS, type CampaignCostPreview, foldVi, withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';   // wave 3 PAYI §81
 import type { CampaignDeliveryService } from './campaign-delivery.service';
 import {
   type CampaignRow, type CampaignFilters, type CreateCampaignRequest, type UpdateCampaignRequest, type CampaignStatus, type CampaignKpis,
@@ -123,7 +123,7 @@ export class CampaignsService {
   private async requireSendReady(ctx: CampaignsContext, id: string) {
     if (!this.repo.sendReadiness) return;   // in-memory adapter (unit tests of the legacy lifecycle)
     const r = await this.repo.sendReadiness(ctx, id);
-    if (!r.ok) throw withCode(new CampaignLimitError(r.code, r.message), r.code);
+    if (!r.ok) throw withCode(new CampaignLimitError(r.code, r.message), r.code as ApiErrorCode);
   }
   /** the platform-limit check, without moving anything — Campaign Center's Launch calls it so a refusal shows immediately */
   async preflightLimits(ctx: CampaignsContext, id: string): Promise<void> {

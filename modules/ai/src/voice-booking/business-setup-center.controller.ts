@@ -42,7 +42,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 }
 const FAQ_LIST = {
   filters: {
-    status: { type: 'enum', values: FAQ_STATUSES }, category: { type: 'string' }, branch: { type: 'string' }, author: { type: 'uuid' },
+    status: { type: 'enum', values: FAQ_STATUSES }, category: { type: 'text' }, branch: { type: 'text' }, author: { type: 'uuid' },
     dateBasis: { type: 'enum', values: FAQ_DATE_BASES },
   },
   sorts: { newest: null, oldest: null, updated: null, approved: null, question_az: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 },

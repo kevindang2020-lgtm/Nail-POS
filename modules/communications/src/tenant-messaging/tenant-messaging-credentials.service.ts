@@ -13,7 +13,7 @@
 //     its own row uses it; every other branch inherits the default.
 import { PROVIDER_SECRETS, secretLast4, type ProviderSecrets } from '@aipowersalon/security';
 import { Injectable, Inject } from '@nestjs/common';
-import { sql } from 'kysely';
+import { sql, type Kysely } from 'kysely';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { TwilioSmsSender, probeVerifyService, isVerifyServiceSid, isApiKeySid } from '@aipowersalon/notifications';
 import { AuditService } from '@aipowersalon/audit';
@@ -224,9 +224,9 @@ export class TenantMessagingCredentialsService {
           VALUES (${tenantId}, ${scope}, 'twilio', ${accountSid}, ${tokenEnc}, ${tokenLast4}, ${nextFrom || null}, ${nextVerify || null}, ${nextKeySid}, ${keyEnc}, 'configured', ${actorOf(actorUserId)}) RETURNING *`.execute(trx);
         saved = r.rows?.[0];
       }
-      if (check) await recordHealthCheck(trx as unknown as AppDatabase, { tenantId, branchId: scope, source: scope ? 'branch_override' : 'tenant_default', fingerprint: configFingerprint(saved), actorUserId, trigger: 'save', fromNumber: nextFrom || null, result: check });
+      if (check) await recordHealthCheck(trx as unknown as NonNullable<AppDatabase>, { tenantId, branchId: scope, source: scope ? 'branch_override' : 'tenant_default', fingerprint: configFingerprint(saved), actorUserId, trigger: 'save', fromNumber: nextFrom || null, result: check });
       // fail-closed audit in the same transaction: metadata only — never a token or a key secret
-      await recordAuditStrict(trx, { tenantId, userId: actorUserId, branchId: scope }, {
+      await recordAuditStrict(trx as unknown as Kysely<any>, { tenantId, userId: actorUserId, branchId: scope }, {
         module: 'messaging', action: 'tenant_credentials.updated', resourceType: 'tenant_messaging_credentials', resourceId: scope ?? tenantId,
         summary: scope ? 'Branch Twilio credentials updated' : 'Salon Twilio credentials updated',
         metadata: { provider: 'twilio', branchId: scope, accountSidLast4: accountSid.slice(-4), fromNumber: nextFrom || null, verifyServiceSid: nextVerify || null, apiKeySidLast4: nextKeySid ? nextKeySid.slice(-4) : null,
@@ -290,7 +290,7 @@ export class TenantMessagingCredentialsService {
     const row = await this.row(tenantId, scope);
     if (!row?.account_sid) return { accountSid: null, branchId: scope };
     await this.db.transaction().execute(async (trx) => {
-      await recordAuditStrict(trx, { tenantId, userId: actorUserId, branchId: scope }, {
+      await recordAuditStrict(trx as unknown as Kysely<any>, { tenantId, userId: actorUserId, branchId: scope }, {
         module: 'messaging', action: 'tenant_credentials.sid_revealed', resourceType: 'tenant_messaging_credentials', resourceId: scope ?? tenantId,
         summary: 'Twilio Account SID revealed', metadata: { branchId: scope, accountSidLast4: String(row.account_sid).slice(-4) },
       });

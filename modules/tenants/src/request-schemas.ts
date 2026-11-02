@@ -36,6 +36,7 @@ export const SETTINGS_PAYMENTS_CHECKOUT_BODY = section({
   methods: flags(['card', 'cash', 'giftCard', 'split']), creditCardSurchargeEnabled: bool, creditCardSurchargePercent: num,
   surchargeLabel: text(80), cashDiscountEnabled: bool, whoCanRefund: text(80), whoCanOverride: text(80),
   managerApprovalOverCents: num, customerDisplayMode: text(32),
+  customerDisplayCaptureMode: S.enumOf(['front_desk', 'terminal']),   // Payment Terminals: who captures the card (read by checkout)
 });
 export const SETTINGS_GIFT_CARD_BODY = section({
   enabled: bool, posSalesEnabled: bool, customerAppSalesEnabled: bool, sendToFriendEnabled: bool, presetAmountsCents: nums(20),

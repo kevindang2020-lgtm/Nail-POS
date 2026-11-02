@@ -224,7 +224,7 @@ export class RefundsVoidsScreenRepository {
     return r ? this.tenderRow(ctx, r) : null;
   }
   private tenderRow(ctx: FinanceCtx, p: any) {
-    const captured = CAPTURED.includes(String(p.status)); const refunded = N(p.refunded_cents), pending = N(p.pending_cents), amount = N(p.amount_cents);
+    const captured = (CAPTURED as readonly string[]).includes(String(p.status)); const refunded = N(p.refunded_cents), pending = N(p.pending_cents), amount = N(p.amount_cents);
     const refundable = captured ? Math.max(0, amount - refunded - pending) : 0;
     const settled = !!p.settlement_batch_id; const method = methodKey(p.method);
     const refundWhy = !captured ? 'not_captured' : N(p.processing_count) > 0 ? 'pending_verification' : refundable <= 0 ? 'nothing_left' : null;

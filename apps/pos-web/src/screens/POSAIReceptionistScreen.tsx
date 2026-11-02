@@ -55,17 +55,17 @@ export function POSAIReceptionistScreen() {
   const [notice, setNotice] = useState<string | null>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
 
-  const loadReady = useCallback(() => { setReadyErr(null); posAiReceptionistCenterApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e))); }, []);
-  const loadKpi = useCallback(() => { setKpiErr(null); posAiReceptionistCenterApi.kpis(period).then(setKpi).catch((e) => setKpiErr(errorTextOf(e))); }, [period]);
-  const loadPrio = useCallback(() => { setPrioErr(null); posAiReceptionistCenterApi.priority({ page: prioPage, pageSize: 10 }).then(setPrio).catch((e) => setPrioErr(errorTextOf(e))); }, [prioPage]);
+  const loadReady = useCallback(() => { setReadyErr(null); posAiReceptionistCenterApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
+  const loadKpi = useCallback(() => { setKpiErr(null); posAiReceptionistCenterApi.kpis(period).then(setKpi).catch((e) => setKpiErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [period]);
+  const loadPrio = useCallback(() => { setPrioErr(null); posAiReceptionistCenterApi.priority({ page: prioPage, pageSize: 10 }).then(setPrio).catch((e) => setPrioErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [prioPage]);
   const loadList = useCallback(async () => {
     setLoading(true); setListErr(null);
     try {
       if (scope === 'calls') setList(await posAiReceptionistCenterApi.calls({ ...f, q: dq }));
       else setList(await posAiReceptionistCenterApi.search({ scope, q: dq, page: f.page, pageSize: f.pageSize }));
-    } catch (e) { setListErr(errorTextOf(e)); setList(null); } finally { setLoading(false); }
+    } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setList(null); } finally { setLoading(false); }
   }, [scope, dq, f]);
-  useEffect(() => { loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e))); }, [loadReady]);
+  useEffect(() => { loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e, tx('pos.something_went_wrong')))); }, [loadReady]);
   useEffect(() => { loadKpi(); }, [loadKpi]);
   useEffect(() => { loadPrio(); }, [loadPrio]);
   useEffect(() => { void loadList(); }, [loadList]);
@@ -84,7 +84,7 @@ export function POSAIReceptionistScreen() {
     } catch (e: any) {
       const failing: string[] = e?.body?.details?.failing ?? e?.details?.failing ?? [];
       setPending(null);
-      setNotice(errorTextOf(e) + (failing.length ? ' ' + t('rcpt.failingGates', { list: failing.map((x) => t(`rcpt.gate.${x}`)).join(', ') }) : ''));
+      setNotice(errorTextOf(e, tx('pos.something_went_wrong')) + (failing.length ? ' ' + t('rcpt.failingGates', { list: failing.map((x) => t(`rcpt.gate.${x}`)).join(', ') }) : ''));
     }
   };
 
@@ -197,11 +197,11 @@ export function POSAIReceptionistScreen() {
                     {x.sourceType === 'call' ? <button className="btn ghost" onClick={() => setOpen(x.sourceRef)}>{t('rcpt.open')}</button> : null}
                     {x.canPrepare ? <button className="btn ghost" data-testid="rcp-prepare" onClick={async () => {
                       try { await posAiReceptionistCenterApi.prepare({ sourceType: x.sourceType, sourceRef: x.sourceRef, kind: 'create_follow_up', idempotencyKey: requestId() }); setNotice(t('rcpt.prepared')); loadPrio(); }
-                      catch (e) { setNotice(errorTextOf(e)); }
+                      catch (e) { setNotice(errorTextOf(e, tx('pos.something_went_wrong'))); }
                     }}>{t('rcpt.prepare')}</button> : null}
                     {x.action?.status === 'awaiting_confirmation' && canManage ? <>
-                      <button className="btn" data-testid="rcp-confirm" onClick={async () => { try { await posAiReceptionistCenterApi.decide(x.action.id, { decision: 'confirm', expectedVersion: 1 }); setNotice(t('rcpt.confirmed')); loadPrio(); } catch (e) { setNotice(errorTextOf(e)); } }}>{t('rcpt.confirm')}</button>
-                      <button className="btn ghost" onClick={async () => { try { await posAiReceptionistCenterApi.decide(x.action.id, { decision: 'cancel', expectedVersion: 1 }); loadPrio(); } catch (e) { setNotice(errorTextOf(e)); } }}>{t('rcpt.cancel')}</button>
+                      <button className="btn" data-testid="rcp-confirm" onClick={async () => { try { await posAiReceptionistCenterApi.decide(x.action.id, { decision: 'confirm', expectedVersion: 1 }); setNotice(t('rcpt.confirmed')); loadPrio(); } catch (e) { setNotice(errorTextOf(e, tx('pos.something_went_wrong'))); } }}>{t('rcpt.confirm')}</button>
+                      <button className="btn ghost" onClick={async () => { try { await posAiReceptionistCenterApi.decide(x.action.id, { decision: 'cancel', expectedVersion: 1 }); loadPrio(); } catch (e) { setNotice(errorTextOf(e, tx('pos.something_went_wrong'))); } }}>{t('rcpt.cancel')}</button>
                     </> : null}
                   </td>
                 </tr>
@@ -276,7 +276,7 @@ export function POSAIReceptionistScreen() {
       {open ? <CallOverlay callRef={open} canManage={canManage} onClose={() => setOpen(null)} nav={nav}
         onVerifyTest={(ref) => { setOpen(null); control('verify_test_call', { providerCallRef: ref }); }} /> : null}
       {pending ? <ReasonDialog action={pending.action} onCancel={() => setPending(null)} onSubmit={submitControl} /> : null}
-      {dialog === 'health' ? <HealthDialog onClose={() => { setDialog(null); loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e))); }} /> : null}
+      {dialog === 'health' ? <HealthDialog onClose={() => { setDialog(null); loadReady(); posAiReceptionistCenterApi.lastHealth().then(setLastCheck).catch((e) => setNotice(errorTextOf(e, tx('pos.something_went_wrong')))); }} /> : null}
       {dialog === 'history' ? <ControlHistory onClose={() => setDialog(null)} /> : null}
     </div>
   );
@@ -297,7 +297,7 @@ function ReasonDialog({ action, onCancel, onSubmit }: { action: RcControlAction;
 
 function HealthDialog({ onClose }: { onClose: () => void }) {
   const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(true);
-  const run = useCallback(() => { setBusy(true); setErr(null); posAiReceptionistCenterApi.health().then(setR).catch((e) => setErr(errorTextOf(e))).finally(() => setBusy(false)); }, []);
+  const run = useCallback(() => { setBusy(true); setErr(null); posAiReceptionistCenterApi.health().then(setR).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))).finally(() => setBusy(false)); }, []);
   useEffect(() => { run(); }, [run]);
   return (
     <FitDialog title={t('rcpt.check')} subtitle={t('rcpt.checkNote')} onClose={onClose} busy={busy} wide testId="rcp-health">
@@ -322,7 +322,7 @@ function HealthDialog({ onClose }: { onClose: () => void }) {
 
 function ControlHistory({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(1); const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { posAiReceptionistCenterApi.controlHistory({ page, pageSize: 10 }).then(setR).catch((e) => setErr(errorTextOf(e))); }, [page]);
+  useEffect(() => { posAiReceptionistCenterApi.controlHistory({ page, pageSize: 10 }).then(setR).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [page]);
   return (
     <FitDialog title={t('rcpt.ctl.history')} onClose={onClose} testId="rcp-ctl-history">
       {err ? <div className="err">{err}</div> : !r ? <div className="state">{t('rcpt.loading')}</div> : r.items.length === 0 ? <Empty title={t('rcpt.noHistory')} /> : (
@@ -336,7 +336,7 @@ function ControlHistory({ onClose }: { onClose: () => void }) {
 
 function CallOverlay({ callRef, canManage, onClose, nav, onVerifyTest }: { callRef: string; canManage: boolean; onClose: () => void; nav: (r: string) => void; onVerifyTest: (ref: string) => void }) {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); posAiReceptionistCenterApi.call(callRef).then(setD).catch((e) => setErr(errorTextOf(e))); }, [callRef]);
+  const load = useCallback(() => { setErr(null); posAiReceptionistCenterApi.call(callRef).then(setD).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [callRef]);
   useEffect(() => { load(); }, [load]);
   const c = d?.call;
   return (

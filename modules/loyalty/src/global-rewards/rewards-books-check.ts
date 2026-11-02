@@ -22,7 +22,7 @@ import { REWARDS_RECON_FINDING, LOYALTY_FRAUD_ALERT, REWARDS_RECON_RUN } from '.
 type Row = Record<string, any>;
 const n = (v: unknown): number => (v == null ? 0 : Number(v));
 type Outcome = 'PASS' | 'WARNING' | 'FAILED' | 'UNKNOWN';
-interface Finding { checkType: string; outcome: Outcome; severity: 'info' | 'warning' | 'critical'; tenantId?: string | null; expected?: number | null; actual?: number | null; affected?: string[]; detail: string; action?: string | null }
+interface Finding { checkType: string; outcome: Outcome; severity?: 'info' | 'warning' | 'critical' /* written from the outcome (sev) */; tenantId?: string | null; expected?: number | null; actual?: number | null; affected?: string[]; detail: string; action?: string | null }
 const sev = (o: Outcome): Finding['severity'] => (o === 'FAILED' ? 'critical' : o === 'PASS' ? 'info' : 'warning');
 const TZ = 'America/New_York';
 

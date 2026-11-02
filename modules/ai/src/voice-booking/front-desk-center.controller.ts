@@ -40,11 +40,11 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 const AGENTS_LIST = {
-  filters: { status: { type: 'enum', values: FD_FILTERS }, dateBasis: { type: 'enum', values: FD_DATE_BASES }, period: { type: 'enum', values: RC_PERIODS }, branchId: { type: 'string' } },
+  filters: { status: { type: 'enum', values: FD_FILTERS }, dateBasis: { type: 'enum', values: FD_DATE_BASES }, period: { type: 'enum', values: RC_PERIODS }, branchId: { type: 'text' } },
   sorts: { newest: null, oldest: null, name_az: null, name_za: null, updated: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'],
 } as const;
 const CALLS_LIST = { filters: { period: { type: 'enum', values: RC_PERIODS } }, sorts: {}, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
-const EVENTS_LIST = { filters: { action: { type: 'enum', values: FD_EVENT_ACTIONS }, period: { type: 'enum', values: RC_PERIODS }, agentId: { type: 'string' } }, sorts: {}, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
+const EVENTS_LIST = { filters: { action: { type: 'enum', values: FD_EVENT_ACTIONS }, period: { type: 'enum', values: RC_PERIODS }, agentId: { type: 'text' } }, sorts: {}, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/ai/front-desk')

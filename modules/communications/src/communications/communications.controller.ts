@@ -35,7 +35,8 @@ async function run<T>(fn: () => T | Promise<T>): Promise<T> {
 @ListQueries(CommunicationsControllerListQueries)
 @Controller('pos/communications')
 export class CommunicationsController {
-  constructor(private readonly svc: CommunicationsService, private readonly activitySvc: CommunicationsActivityService) {}
+  constructor(private readonly svc: CommunicationsService, private readonly activitySvc: CommunicationsActivityService,
+              @Optional() @Inject(INBOX_SERVICE) private readonly inbox?: InboxService | null) {}
 
   @Get('state') @RequirePermission('pos.communications.view') state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getInbox(ctxFrom(r), filtersFrom(q))); }
   // Activity/volume metrics (mockup 19's KPI strip) — each from a real source, each carrying an availability flag.

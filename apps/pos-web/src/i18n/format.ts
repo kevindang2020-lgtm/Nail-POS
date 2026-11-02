@@ -54,6 +54,13 @@ export const fmtTime = (x: X): string => sdkTime(x);
 export const fmtDateTime = (x: X): string => sdkDateTime(x);
 /** Any Intl date options, branch zone, language words. */
 export const fmtInZone = (x: X, opts: Intl.DateTimeFormatOptions): string => sdkInZone(x, opts);
+/** Same, in an explicit zone (a row's own branch zone); falls back to the branch zone. */
+export function fmtInTz(x: X, tz: string | null | undefined, opts: Intl.DateTimeFormatOptions): string {
+  if (!tz) return sdkInZone(x, opts);
+  const d = x instanceof Date ? x : x == null || x === '' ? null : new Date(x);
+  if (!d || Number.isNaN(d.getTime())) return '';
+  try { return d.toLocaleString(currentLocale(), { ...opts, timeZone: tz }); } catch { return sdkInZone(x, opts); }
+}
 /** A calendar day 'YYYY-MM-DD' (never shifted by a zone). */
 export const fmtYmd = (ymd: string | null | undefined, opts?: Intl.DateTimeFormatOptions, fallback = ''): string => sdkYmd(ymd, opts, fallback);
 /** For screens that build their own Intl formatter: the words locale and the branch zone. */

@@ -87,7 +87,7 @@ export function POSSettlementsScreen() {
       seen.current[k] = rec.id;
     };
     check('s', n.settlement, 'settlement'); check('r', n.refund, 'refund');
-  }, [summary.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [summary.data]);    
 
   const clearAll = () => { setSearch(''); setProcessor(''); setStatus(''); setRStatus(''); setPeriod({ preset: 'month' }); setBasis('settlement_date'); setNote(null); };
   const refresh = () => { setTick((t) => t + 1); };

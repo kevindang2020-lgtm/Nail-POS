@@ -271,7 +271,7 @@ export interface OwnerInventoryCategory { category: string; products: number; st
 export interface OwnerMarketingKpis {
   activeCampaigns: number; totalCampaigns: number; totalSent: number;
   openRatePercent: number; clickRatePercent: number; conversionRatePercent: number;
-  campaignRevenueCents: number; campaignCostCents: number; roi: number;
+  campaignRevenueCents: number; campaignCostCents: number; roi: number | null;   // null: not computable (no cost) — shown as —
   referrals: number;
 }
 

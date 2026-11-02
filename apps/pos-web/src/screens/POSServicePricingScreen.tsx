@@ -46,9 +46,9 @@ export function POSServicePricingScreen() {
   const histScope = { q: q || undefined, field, serviceId: historyService || undefined, ...periodQuery(periods.history) };
   const custScope = { q: q || undefined, kind, ...periodQuery(periods.customers) };
   const keys = { list: JSON.stringify(listScope), history: JSON.stringify(histScope), customers: JSON.stringify(custScope) };
-  useEffect(() => setPg('list')(1), [keys.list]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('history')(1), [keys.history]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('customers')(1), [keys.customers]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setPg('list')(1), [keys.list]);    
+  useEffect(() => setPg('history')(1), [keys.history]);    
+  useEffect(() => setPg('customers')(1), [keys.customers]);    
 
   const whole = useLoad(() => posCatalogApi.services({ pageSize: 1 }), [tick]);
   const cats = useLoad(() => posCatalogApi.categories({ status: 'current', sort: 'name', pageSize: 100 }), [tick]);

@@ -13,7 +13,7 @@ import { posMessageTemplatesApi as api, type MtRow, type MtDetail, type MtPrevie
 import { posCommunicationsApi, newRequestKey } from '../api/posCommunicationsApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtNumber, fmtInTz } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 
@@ -27,7 +27,7 @@ const TONE: Record<string, string> = { active: 'ok', draft: 'info', inactive: 'w
 const nf = (n: number) => fmtNumber(n);
 const errText = (e: unknown) => errorTextOf(e, tx('mt.err.generic'));
 const isForbidden = (e: unknown) => { const x = e as { status?: number; code?: string } | null; return !!x && (x.status === 403 || x.code === 'PERMISSION_DENIED'); };
-const when = (iso: string | null | undefined, tz?: string) => (iso ? fmtInZone(iso, tz, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+const when = (iso: string | null | undefined, tz?: string) => (iso ? fmtInTz(iso, tz, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 const catLabel = (c: string | null | undefined) => (c ? tx('mt.cat.' + c) : tx('mt.cat.none'));
 const wfLabel = (k: string) => tx('mt.wf.' + k);
 /** a validation finding in the cashier's language, by its code (the server's English sentence is never shown raw) */

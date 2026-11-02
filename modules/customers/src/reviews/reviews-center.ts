@@ -16,6 +16,7 @@
 //                             approval-gated AI Review Reputation workflow).
 //   check()                   Check Review System — READ-ONLY, six sections, READY / WARNING / FAILED / UNKNOWN with evidence.
 import { sql, type Kysely } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { isUuid, RetentionRepository, type RetentionContext } from '../retention/retention.repository';
 import { maskPhone, maskEmail } from '../pos-referrals/referral-program';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
@@ -78,7 +79,7 @@ export class ReviewsCenter {
     const preset = pick(RV_PRESETS, f.preset) ?? (f.from || f.to ? 'custom' : undefined);
     if (!preset) return null;
     const d = new Date(today + 'T00:00:00Z');
-    const ymd = (x: Date) => x.toISOString().slice(0, 10);
+    const ymd = (x: Date) => utcDate(x);
     if (preset === 'today') return { preset, from: today, to: today };
     if (preset === 'week') { const dow = (d.getUTCDay() + 6) % 7; const s = new Date(d); s.setUTCDate(d.getUTCDate() - dow); const e = new Date(s); e.setUTCDate(s.getUTCDate() + 6); return { preset, from: ymd(s), to: ymd(e) }; }
     if (preset === 'month') return { preset, from: ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1))), to: ymd(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0))) };

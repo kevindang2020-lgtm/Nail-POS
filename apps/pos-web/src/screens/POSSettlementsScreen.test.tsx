@@ -48,8 +48,8 @@ describe('POSSettlementsScreen', () => {
     mount();
     await screen.findByText('CP-20260063');
     fireEvent.click(screen.getByTestId('preset-year'));
-    await waitFor(() => expect(api.list.mock.calls.at(-1)![0]).toMatchObject({ preset: 'year', page: 1 }));
-    expect(api.list.mock.calls.at(-1)![0]).not.toHaveProperty('from');
+    await waitFor(() => expect(api.list.mock.calls.slice(-1)[0]![0]).toMatchObject({ preset: 'year', page: 1 }));
+    expect(api.list.mock.calls.slice(-1)[0]![0]).not.toHaveProperty('from');
   });
   it('a failed summary is an error with Retry, not $0.00', async () => {
     api.summary.mockRejectedValue({ status: 503 }); api.list.mockResolvedValue(pageOf([]));
@@ -66,6 +66,6 @@ describe('POSSettlementsScreen', () => {
       payment: null, ticket: null, customer: null, saleSettlement: null, matchedBy: null }]));
     fireEvent.click(screen.getByTestId('tab-refunds'));
     expect(await screen.findByText('RF-88001')).toBeInTheDocument();
-    expect(api.list.mock.calls.at(-1)![0]).toMatchObject({ tab: 'refunds', page: 1 });
+    expect(api.list.mock.calls.slice(-1)[0]![0]).toMatchObject({ tab: 'refunds', page: 1 });
   });
 });

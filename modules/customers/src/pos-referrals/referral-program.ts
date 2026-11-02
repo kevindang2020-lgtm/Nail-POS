@@ -10,6 +10,7 @@
 // point / credit reward is never "paid cash". A cash payout has no approved provider here, so it is BLOCKED_EXTERNAL — never paid.
 // Fraud signals (a shared phone / email / card) put a referral UNDER_REVIEW for a person; they never merge customers or confiscate.
 import { sql, type Kysely } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { canMoveToSql } from '@aipowersalon/database';
 import { REFERRAL, REFERRAL_REWARD, REFERRAL_CODE } from '../customer-lifecycles';
 import { applyLoyaltyEntry } from '../loyalty/loyalty-ledger.service';
@@ -135,7 +136,7 @@ export class ReferralProgram {
     const preset = pick(RP_PRESETS, f.preset) ?? (f.from || f.to ? 'custom' : undefined);
     if (!preset) return null;
     const d = new Date(today + 'T00:00:00Z');
-    const ymd = (x: Date) => x.toISOString().slice(0, 10);
+    const ymd = (x: Date) => utcDate(x);
     if (preset === 'today') return { preset, from: today, to: today };
     if (preset === 'week') { const dow = (d.getUTCDay() + 6) % 7; const s = new Date(d); s.setUTCDate(d.getUTCDate() - dow); const e = new Date(s); e.setUTCDate(s.getUTCDate() + 6); return { preset, from: ymd(s), to: ymd(e) }; }
     if (preset === 'month') { const s = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1)); const e = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)); return { preset, from: ymd(s), to: ymd(e) }; }
@@ -679,7 +680,7 @@ export class ReferralProgram {
     if (!link) add('checkout_linkage', 'unknown', 'Qualifying tickets could not be checked.', 'tickets: query failed');
     else add('checkout_linkage', N(link.broken) ? 'attention_required' : 'ready', N(link.broken) ? `${N(link.broken)} qualified referral(s) point at a ticket that is no longer a paid visit.` : `${N(link.n)} qualified referral(s), each linked to a completed, paid ticket.`, 'referral_redemptions.qualifying_ticket_id → tickets', N(link.broken) ? 'Open each and request an investigation.' : null);
     const pol = await this.settings(ctx);
-    const off = await this.rewardsSwitchOff(T, ctx.branchId);
+    const off = await this.rewardsSwitchOff(T, ctx.branchId ?? null);
     if (!pol.enabled) add('reward_policy', 'attention_required', 'The referral program is turned off: no new referrals can be recorded.', `referral_program_settings v${pol.version}`, 'Turn it on in Policy when ready.');
     else if (!pol.configured) add('reward_policy', 'attention_required', 'No reward is set. Referrals can qualify, but no reward is created until the owner chooses one.', 'referral_program_settings: reward_type empty', 'Set the reward type and value in Policy (owner decision).');
     else if (off) add('reward_policy', 'attention_required', 'Settings → Loyalty & Memberships has Referral rewards turned off, so rewards stay approved but are not issued.', 'tenant_settings loyalty-memberships.referralReward = false', 'Turn Referral rewards on, then retry the approved rewards.');

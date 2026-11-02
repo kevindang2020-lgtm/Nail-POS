@@ -17,7 +17,7 @@ import { fmtInZone, fmtNumber } from '../i18n/format';
 import { errorTextOf } from '../i18n/error-text';
 import { posBookingVerificationApi as bvApi, type BvDetail, type BvHealth, type BvPage, type BvRow, type BvSummary } from '../api/posBookingVerificationApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
-import { PeriodBar, type PeriodState } from '../components/FinanceKit';
+import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 
 
 interface Settings {
@@ -55,10 +55,10 @@ const REVERIFY_OPTIONS = [
   { get label() { return t('pos.once_every_30_days'); }, seconds: 2_592_000 },
 ];
 
-function CheckOption({ label, hint, on, disabled, onChange }: { label: string; hint?: string; on: boolean; disabled?: boolean; onChange: (v: boolean) => void }) {
+function CheckOption({ label, hint, on, disabled, onChange }: { label: string; hint?: string; on: boolean; disabled?: boolean; onChange?: (v: boolean) => void }) {   // no onChange: a fixed, disabled option
   return (
     <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '6px 0', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}>
-      <input type="checkbox" checked={on} disabled={disabled} onChange={(e) => onChange(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16 }} />
+      <input type="checkbox" checked={on} disabled={disabled} onChange={(e) => onChange?.(e.target.checked)} style={{ marginTop: 2, width: 16, height: 16 }} />
       <div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>{label}</div>
         {hint ? <div className="sub" style={{ fontSize: 11.5, marginTop: 2 }}>{hint}</div> : null}
@@ -199,7 +199,7 @@ export function POSBookingVerificationScreen() {
             {/* guide §2 "six sources": the in-salon three are shown, fixed off — staff confirm the customer in person (Phase 4
                 decision; the server refuses turning them on, IN_SALON_NOT_VERIFIED) and staff exemptions never reach remote channels */}
             {(['kiosk', 'front_desk', 'walk_in'] as const).map((k) => (
-              <CheckOption key={k} label={t('bv.ch.' + k)} hint={t('bv.ch.inSalon')} on={false} disabled onChange={() => undefined} />
+              <CheckOption key={k} label={t('bv.ch.' + k)} hint={t('bv.ch.inSalon')} on={false} disabled />
             ))}
           </div>
 
@@ -501,7 +501,7 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
           </select>
           {filtersOn ? <button type="button" className="btn ghost" onClick={() => { setQText(''); setView({ status: null, channel: null, basis: null, preset: null, from: null, to: null, size: null }); }} data-testid="bv-clear">{t('bv.f.clear')}</button> : null}
         </div>
-        <PeriodBar compact allowAll value={period} server={hist?.period ?? null} basis={f.basis}
+        <PeriodBar compact allowAll value={period} server={(hist?.period ?? null) as ServerPeriod | null} basis={f.basis}
           basisOptions={BV_BASES.map((b) => ({ value: b, label: t('bv.basis.' + b) }))} onBasis={(b) => setView({ basis: b })}
           onChange={(p) => setView({ preset: p.preset, from: p.from ?? null, to: p.to ?? null })} />
         <div className="sub bv-small" data-testid="bv-order">{t('bv.history.order')}</div>

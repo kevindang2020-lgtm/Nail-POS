@@ -397,8 +397,9 @@ export class BirthdayCenter {
     if (bad.length) throw new BirthdayError(`Campaign Center can't fill ${bad.map((x) => `{${x}}`).join(', ')} for each customer.`, 'BIRTHDAY_TEMPLATE_INVALID');
     if (!p.audience.eligible) throw new BirthdayError('No eligible customers have a birthday in this range.', 'BIRTHDAY_AUDIENCE_EMPTY', 409);
     const base = await this.base(ctx);
-    const aud = await this.audience(ctx, p.range.from, p.range.to, base.policy, p.channel, base.year);
-    const draft = await this.seg.createDraft(ctx, { channel: p.channel, purpose: 'birthday', selectionMode: 'selected', customerIds: aud.ids, filters: { segment: 'all' },
+    const channel = p.channel as 'sms' | 'email';   // plan() refuses anything else
+    const aud = await this.audience(ctx, p.range.from, p.range.to, base.policy, channel, base.year);
+    const draft = await this.seg.createDraft(ctx, { channel, purpose: 'birthday', selectionMode: 'selected', customerIds: aud.ids, filters: { segment: 'all' },
       message, idempotencyKey: `birthday:${key}` }, (trx, meta) => audit(trx, { ...meta, objective: p.objective, range: p.range, assistant: true, ruleset: BIRTHDAY_RULESET }));
     // a retried save returns the campaign already made for this draft — never a second campaign
     if (draft.campaignId) return { draftId: draft.draftId, campaignId: draft.campaignId, duplicate: true, selected: draft.selected, eligible: draft.eligible, excluded: draft.excluded };

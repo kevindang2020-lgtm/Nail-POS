@@ -43,8 +43,8 @@ export function POSServiceAddOnsScreen() {
   const scope = { q: q || undefined, status, taxable: taxable || undefined, sort, dateField, ...periodQuery(periods.catalog) };
   const uscope = { q: q || undefined, dateField: usageField, ...periodQuery(periods.usage) };
   const keys = { catalog: JSON.stringify(scope), usage: JSON.stringify(uscope) };
-  useEffect(() => setPg('catalog')(1), [keys.catalog]);   // eslint-disable-line react-hooks/exhaustive-deps
-  useEffect(() => setPg('usage')(1), [keys.usage]);   // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => setPg('catalog')(1), [keys.catalog]);    
+  useEffect(() => setPg('usage')(1), [keys.usage]);    
   const sum = useLoad(() => posCatalogApi.addOnSummary(), [tick]);
   const list = useLoad(() => (tab === 'catalog' ? posCatalogApi.addOns({ ...scope, page: pages.catalog, pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.catalog, pages.catalog, tick]);
   const usage = useLoad(() => (tab === 'usage' ? posCatalogApi.addOnUsage({ ...uscope, page: pages.usage, pageSize: PAGE }) : Promise.resolve(null)), [tab, keys.usage, pages.usage, tick]);

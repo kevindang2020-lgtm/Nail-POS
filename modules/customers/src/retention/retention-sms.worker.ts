@@ -49,13 +49,14 @@ export async function runRetentionSmsJob(db: Kysely<any>, messenger: TenantMesse
     return { send: true as const, to: String(r.destination), body: String(r.body), customerId: String(r.customer_id), campaignId: String(r.campaign_id) };
   });
   if (!('send' in claim)) { if ('campaignId' in claim && claim.campaignId) await finishCampaign(db, tenantId, claim.campaignId); return { outcome: claim.skip }; }
+  const send = claim as { send: true; to: string; body: string; customerId: string; campaignId: string };
 
   // 3. the ONE provider call
   let status: 'sent' | 'blocked' | 'failed'; let providerId: string | null = null; let error: string | null = null;
   if (!messenger) { status = 'blocked'; error = 'not_configured'; }
   else {
     try {
-      const res = await messenger.sendSms({ tenantId, to: claim.to, body: claim.body, purpose: 'marketing', customerId: claim.customerId, meter: true });
+      const res = await messenger.sendSms({ tenantId, to: send.to, body: send.body, purpose: 'marketing', customerId: send.customerId, meter: true });
       status = res.sent ? 'sent' : res.status === 'blocked' ? 'blocked' : 'failed';
       providerId = res.providerId ?? null; error = res.sent ? null : (res.reason ?? res.status);
     } catch (e: any) { status = 'failed'; error = String(e?.message ?? 'send_failed').slice(0, 200); }   // the messenger records its own failures; never retried (could double-send)
@@ -67,7 +68,7 @@ export async function runRetentionSmsJob(db: Kysely<any>, messenger: TenantMesse
   // the claim committed 'submitting'; only a concurrent run (which then marked it 'unknown') can make this miss — the
   // provider outcome is still in the notifications ledger, and the recipient is never re-sent either way
   if (!recorded) logException(new Error(`retention sms outcome '${status}' not recorded: recipient ${recipientId} is no longer submitting`), { where: 'retention-sms.worker.record', tenantId });
-  await finishCampaign(db, tenantId, claim.campaignId);
+  await finishCampaign(db, tenantId, send.campaignId);
   return { outcome: status };
 }
 

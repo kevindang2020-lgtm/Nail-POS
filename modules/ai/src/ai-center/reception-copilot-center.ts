@@ -19,6 +19,7 @@
 import { sql, type Kysely } from 'kysely';
 import { createHmac, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
+import { businessDate } from '@aipowersalon/date-time';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { hasPermission } from '@aipowersalon/permissions';
 import { evaluateAiAccess, type AiAccessSnapshot } from '../ai/ai-access-gate';
@@ -502,7 +503,7 @@ export class ReceptionCopilotCenter {
     await recordAuditStrict(this.db, { tenantId: T, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role }, {
       module: 'reception_copilot', action: 'customer_overlay.viewed', resourceType: 'customer', resourceId: c.id, summary: 'Customer reception activity viewed in Reception Copilot',
     });
-    const today = new Date().toISOString().slice(0, 10);
+    const today = businessDate(await this.zone(ctx));   // the branch's day (UTC is already tomorrow every evening)
     return {
       overview: { id: c.id, name: c.full_name, phone: maskPhone(c.normalized_phone), phoneVerified: !!c.phone_verified_at, email: maskEmail(c.email), customerSince: iso(c.created_at), sharedPhoneProfiles: shared },
       appointments: {

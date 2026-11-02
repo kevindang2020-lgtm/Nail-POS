@@ -473,7 +473,6 @@ import {
 } from 'react-icons/fi';
 import { enrollFaceId, faceIdMode, canEnrollFaceId, disableFaceId, isFaceIdEnrolled, useT } from '@aipowersalon/mobile-sdk';
 import { useAuth } from '../auth/AuthContext';
-import { api } from '../api/client';
 export function OwnerSettingScreen() {
   const { principal } = useAuth();
   const { back, openNotifications } = useOwnerNav();
@@ -487,7 +486,7 @@ export function OwnerSettingScreen() {
   const [enrolling, setEnrolling] = useState(false);
   const [bioErr, setBioErr] = useState<string | null>(null);
   const [bioOk, setBioOk] = useState<string | null>(null);
-  const tr = useT();
+  const _tr = useT();   // keeps the screen subscribed to the language
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordSavedMsg, setPasswordSavedMsg] = useState(false);
 

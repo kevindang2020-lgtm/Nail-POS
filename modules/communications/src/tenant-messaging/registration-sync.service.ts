@@ -74,7 +74,7 @@ export class TenantRegistrationSyncService {
   /** the manual refresh window (tests shorten it) */
   minIntervalMs = REGISTRATION_REFRESH_MIN_INTERVAL_MS;
 
-  private need(): AppDatabase { if (!this.db) throw withCode(new RegistrationSyncError('Registration status needs the database.'), 'SERVICE_UNAVAILABLE'); return this.db; }
+  private need(): NonNullable<AppDatabase> { if (!this.db) throw withCode(new RegistrationSyncError('Registration status needs the database.'), 'SERVICE_UNAVAILABLE'); return this.db; }
 
   /** the account this salon's registration is read from — its own credentials first, else the platform ISV account */
   private async accountFor(tenantId: string): Promise<{ auth: RegAuth; source: AccountSource; fromNumber: string | null; messagingServiceSid: string | null } | { none: 'not_configured' | 'secret_unreadable' }> {
@@ -195,7 +195,7 @@ export class TenantRegistrationSyncService {
   }
 
   /** append one snapshot per item (carrying the last success + retry state forward); returns the state changes */
-  private async writeSnapshots(db: AppDatabase, tenantId: string, runId: string, accountSource: string, items: ItemResult[]): Promise<{ item: ItemKind; from: string | null; to: string }[]> {
+  private async writeSnapshots(db: NonNullable<AppDatabase>, tenantId: string, runId: string, accountSource: string, items: ItemResult[]): Promise<{ item: ItemKind; from: string | null; to: string }[]> {
     const { items: prev } = await loadRegistrationSnapshots(db as unknown as Kysely<any>, tenantId);
     const changes: { item: ItemKind; from: string | null; to: string }[] = [];
     for (const it of items) {

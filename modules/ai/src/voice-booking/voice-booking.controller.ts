@@ -25,7 +25,7 @@ import { RetellVoiceAdapter } from './retell-voice.adapter';
 import { VOICE_TOOLS, voiceWriteToolsEnabled } from './voice-tools';
 import { BusinessSetupCenter } from './business-setup-center';
 import { RECEPTIONIST_CENTER, type ReceptionistCenter } from './receptionist-center';
-import { AiCallsIngest, toolOutcome } from './ai-calls-ingest';
+import { AiCallsIngest, toolOutcome, ledgerWarn } from './ai-calls-ingest';
 import { AI_CALLS_INGEST } from './ai-calls-tokens';
 export const AI_BUSINESS_KNOWLEDGE = 'AI_BUSINESS_KNOWLEDGE';
 import type { VoiceToolResult } from './voice-provider.port';

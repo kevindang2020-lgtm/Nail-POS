@@ -83,7 +83,7 @@ export interface DisplayCheckInSession { sessionId: string; sessionToken: string
 export type DisplayState = 'idle' | 'ticket_review' | 'tip_selected' | 'payment_processing' | 'payment_verifying' | 'payment_success' | 'payment_failed' | 'disconnected' | 'expired';
 export interface CheckoutTotals {
   subtotalCents: number; tipCents: number; taxCents: number; surchargeCents: number; giftCardChargeCents: number; totalDueCents: number;
-  paymentMethod?: 'card' | 'cash' | 'gift_card' | 'split' | 'deposit';
+  paymentMethod?: 'card' | 'cash' | 'gift_card' | 'split' | 'deposit' | 'global_reward';
 }
 export interface TipOption { label: string; tipType: 'none' | 'percent' | 'custom'; percent?: number; amountCents: number; selected: boolean; }
 

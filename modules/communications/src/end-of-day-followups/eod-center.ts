@@ -21,6 +21,7 @@
  * archived customer or a missing Customer App account.
  */
 import { sql, type Kysely } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { canMoveToSql, transitionStatus } from '@aipowersalon/database';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { FOLLOW_UP_TASK } from '../communications-lifecycles';
@@ -47,7 +48,7 @@ export interface EodCandidate {
 }
 
 const iso = (v: unknown): string | null => (v == null ? null : new Date(v as string).toISOString());
-function addDays(ymd: string, n: number): string { const [y, m, d] = ymd.split('-').map(Number); return new Date(Date.UTC(y, m - 1, d) + n * 86400000).toISOString().slice(0, 10); }
+function addDays(ymd: string, n: number): string { const [y, m, d] = ymd.split('-').map(Number); return utcDate(new Date(Date.UTC(y, m - 1, d) + n * 86400000)); }
 
 /** The single eligibility rule — see header. `now` drives the cooldown; `businessDate` is branch-local. */
 export async function loadEodCandidates(db: Kysely<any>, a: { tenantId: string; branchId: string; tz: string; businessDate: string; cooldownHours: number; now: Date }): Promise<EodCandidate[]> {
@@ -237,7 +238,7 @@ export class EodCenter {
     rows.push(jobRow('scheduler', 'followups.run_due', s.enabled ? null : 'End-of-day follow-ups are turned off for this branch.'));
     rows.push(jobRow('expiry', 'followups.expire_stale', s.autoExpirePendingHours > 0 ? null : 'Auto-remove is set to Never.'));
     const failedRuns = Number((await sql<any>`select count(*)::int as n from daily_follow_up_generation_runs where tenant_id = ${T}::uuid and branch_id = ${B}::uuid
-        and run_status = 'failed' and business_date >= (current_date - 7)`.execute(this.db)).rows[0].n);
+        and run_status = 'failed' and business_date >= (${localDateInTz(now, s.timezone)}::date - 7)`.execute(this.db)).rows[0].n);
     const lastRun = (await sql<any>`select business_date::text as d, run_status, finished_at, error_message from daily_follow_up_generation_runs where tenant_id = ${T}::uuid and branch_id = ${B}::uuid order by business_date desc limit 1`.execute(this.db)).rows[0];
     rows.push(failedRuns > 0
       ? { key: 'generation', state: 'failed', detail: `${failedRuns} generation run(s) failed in the last 7 days.`, evidence: `last: ${lastRun?.d} ${lastRun?.run_status}${lastRun?.error_message ? ` — ${String(lastRun.error_message).slice(0, 120)}` : ''}`, nextStep: 'Open Generation runs below; Generate Now retries safely (no duplicates).' }

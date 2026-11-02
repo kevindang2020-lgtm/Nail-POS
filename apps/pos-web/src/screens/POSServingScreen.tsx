@@ -246,7 +246,6 @@ export function POSServingScreen() {
 
   const LIVE_TONE: Record<RealtimeStatus, string> = { CONNECTED: '#2E9E54', RECONNECTING: '#B5821F', DEGRADED: '#B5821F', OFFLINE: '#C0392B' };
   const O = 'var(--aps-orange)';
-  const card: CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10 };
   const h2: CSSProperties = { font: '700 13px/1.2 "Hanken Grotesk",sans-serif', margin: 0, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
   const ghostBtn: CSSProperties = { background: 'var(--card)', border: `1px solid ${O}`, color: O, borderRadius: 9, padding: '0 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', minHeight: 32 };
   const orangeBtn: CSSProperties = { background: O, border: `1px solid ${O}`, color: '#fff', borderRadius: 9, padding: '0 11px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', minHeight: 40 };

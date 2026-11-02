@@ -193,7 +193,7 @@ export class GlobalRewardsRepository {
   /** Save (or update) a CUSTOM draft. A draft never changes the effective rule (T02). */
   async saveDraft(ctx: GrCtx, input: Row & { draftId?: string; expectedVersion?: number }) {
     const { program } = await this.mustEditCustom(ctx);
-    const rate = validateCustomRate(input, program);
+    const rate = validateCustomRate(input as Parameters<typeof validateCustomRate>[0], program);
     return this.db.transaction().execute(async (trx) => {
       await lockTenantPolicy(trx, ctx.tenantId);
       if (input.draftId) {
@@ -251,7 +251,7 @@ export class GlobalRewardsRepository {
               activated_at = now(), reason = ${input.reason ?? null}, updated_by = ${actor(ctx.userId)}, updated_at = now(), record_version = v.record_version + 1
             WHERE v.tenant_id = ${ctx.tenantId}::uuid AND v.id = ${input.draftId}::uuid AND ${canMoveToSql(TENANT_EARNING_POLICY_VERSION, 'ACTIVATED', 'v')} RETURNING ${TV_COLS}`.execute(trx)).rows[0];
         } else {
-          const rate = validateCustomRate(input, program);
+          const rate = validateCustomRate(input as Parameters<typeof validateCustomRate>[0], program);
           const vn = await this.nextVersionNo(trx, ctx.tenantId);
           row = (await sql<Row>`INSERT INTO tenant_earning_policy_versions AS v (tenant_id, version_no, mode, spend_increment_cents, point_tenths_per_increment, min_eligible_cents, per_ticket_cap_tenths,
               effective_from, status, reason, created_by, updated_by, activated_by, activated_at)
@@ -481,7 +481,7 @@ export class GlobalRewardsRepository {
   // ── Super Admin: program, global rules, enrollment ─────────────────────────────────────────────────────────────
   async publishGlobalRule(input: Row & { effectiveFrom?: string | null; reason?: string | null }, actorUserId: string, now = new Date()) {
     const program = await this.program();
-    const rate = validateGlobalRate(input, program);
+    const rate = validateGlobalRate(input as Parameters<typeof validateGlobalRate>[0], program);
     const at = this.effectiveTime(input.effectiveFrom, now);
     const reason = String(input.reason ?? '').trim();
     if (reason.length < 10) throw new GlobalRewardsError('Give a reason of at least 10 characters.', 'VALIDATION_FAILED', 400, { field: 'reason' });
@@ -603,7 +603,7 @@ export class GlobalRewardsRepository {
 }
 
 // ── journal ───────────────────────────────────────────────────────────────────────────────────────────────────────
-export type JournalAccount = 'settlement_cash' | 'merchant_prepaid_liability' | 'rewards_liability' | 'reimbursement_payable' | 'funding_deficit_receivable';
+export type JournalAccount = 'settlement_cash' | 'merchant_prepaid_liability' | 'rewards_liability' | 'reimbursement_payable' | 'funding_deficit_receivable' | 'merchant_recovery_receivable';   // 734
 export interface JournalLine { account: JournalAccount; tenantId: string | null; debit?: number; credit?: number }
 /** One balanced journal entry (the deferred trigger refuses an unbalanced one at commit). Idempotent per source. */
 export async function postJournal(trx: Transaction<any>, e: { entryType: string; tenantId: string | null; sourceTable: string; sourceId: string; memo: string | null; lines: JournalLine[] }): Promise<boolean> {

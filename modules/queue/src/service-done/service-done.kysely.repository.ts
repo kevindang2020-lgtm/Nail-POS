@@ -184,7 +184,7 @@ export class KyselyServiceDoneRepository implements ServiceDoneRepositoryPort {
         .where('status', 'not in', ['cancelled', 'canceled', 'no_show', 'no-show'])
         .where('created_at', '>=', (await this.dayStart(ctx)))
         .select(['customer_id', 'created_at']).execute().catch(() => []);
-      rebookedCustomerIds = [...new Set(rb.filter((r: any) => Date.parse(iso(r.created_at)) >= (doneAt[r.customer_id] ?? Infinity)).map((r: any) => String(r.customer_id)))];
+      rebookedCustomerIds = [...new Set<string>(rb.filter((r: any) => Date.parse(iso(r.created_at)) >= (doneAt[r.customer_id] ?? Infinity)).map((r: any) => String(r.customer_id)))];
     }
     const rebookingRatePercent = computeRebookingRatePercent(completedTodayCustomerIds, rebookedCustomerIds);
     const kpis: POSServiceDoneKpisFull = {

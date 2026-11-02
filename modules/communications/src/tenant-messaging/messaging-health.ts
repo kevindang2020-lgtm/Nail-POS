@@ -73,7 +73,7 @@ export async function runProviderChecks(http: ProbeHttp, c: CheckCreds, opts: { 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** Append one check row (append-only table). `db` may be a transaction. */
-export async function recordHealthCheck(db: AppDatabase, a: { tenantId: string; branchId: string | null; source: string; fingerprint: string | null; actorUserId: string | null; trigger: 'manual' | 'save' | 'scheduled'; fromNumber: string | null; result: CheckResult | null; notConfigured?: boolean; errorCode?: string }): Promise<void> {
+export async function recordHealthCheck(db: NonNullable<AppDatabase>, a: { tenantId: string; branchId: string | null; source: string; fingerprint: string | null; actorUserId: string | null; trigger: 'manual' | 'save' | 'scheduled'; fromNumber: string | null; result: CheckResult | null; notConfigured?: boolean; errorCode?: string }): Promise<void> {
   const r = a.result;
   const accountState = a.notConfigured ? 'not_configured' : a.errorCode ? 'error' : r!.account.state;
   const accountReason = a.notConfigured ? 'NO_CREDENTIALS' : a.errorCode ? a.errorCode : r!.account.reasonCode;

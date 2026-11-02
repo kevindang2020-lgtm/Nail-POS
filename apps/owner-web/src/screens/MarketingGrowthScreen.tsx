@@ -55,7 +55,7 @@ export function MarketingGrowthScreen() {
           <div className="owner-kpigrid three" style={{ marginBottom: 8 }}>
             <div className="owner-kpi"><div className="label">Active Campaigns</div><div className="val">{num(data.kpis.activeCampaigns)}</div><div className="sub owner-text-muted">{num(data.kpis.totalCampaigns)} total</div></div>
             <div className="owner-kpi"><div className="label">Revenue</div><div className="val">{money0(data.kpis.campaignRevenueCents)}</div><div className="sub owner-text-muted">cost {money0(data.kpis.campaignCostCents)}</div></div>
-            <div className="owner-kpi"><div className="label">ROI</div><div className="val">{data.kpis.roi.toFixed(1)}×</div></div>
+            <div className="owner-kpi"><div className="label">ROI</div><div className="val">{data.kpis.roi == null ? '—' : `${data.kpis.roi.toFixed(1)}×`}</div></div>
           </div>
 
           <div className="owner-kpigrid three" style={{ marginBottom: 8 }}>

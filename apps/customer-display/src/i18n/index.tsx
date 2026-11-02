@@ -42,10 +42,12 @@ export function Rich({ text }: { text: string }) {
 export function LanguageSwitch({ className = 'lang-switch' }: { className?: string }) {
   const { lang, available, setLang } = useLanguage();
   const t = useT();
-  if (available.length < 2) return null;
+  // only languages this display actually has (English only since POSLanguage.pdf) — a language forced in from elsewhere never adds a switch
+  const offered = available.filter((l) => (DISPLAY_LANGUAGES as readonly string[]).includes(l));
+  if (offered.length < 2) return null;
   return (
     <div className={className} role="group" aria-label={t('lang.label')}>
-      {available.map((l) => (
+      {offered.map((l) => (
         <button key={l} type="button" lang={l} className={`lang-opt${l === lang ? ' on' : ''}`} aria-pressed={l === lang} onClick={() => setLang(l)}>{LANGUAGE_NAMES[l]}</button>
       ))}
     </div>

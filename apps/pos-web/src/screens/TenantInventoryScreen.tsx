@@ -209,7 +209,7 @@ function ProductsTab({ s, q, patch, setExtra, tick, can, onDetail, onEdit, onAdd
 }
 
 // ── Technician Reports: usage by technician (→ their products) · the bottle-report review queue ─────────────────────
-function ReportsTab({ s, q, patch, setExtra, tick, can, onDetail, onChanged, onRecord }: TabProps & { setExtra: (k: string, v: string) => void; onDetail: (id: string, tab?: any) => void; onChanged: () => void; onRecord: () => void }) {
+function ReportsTab({ s, q, patch, setExtra: _setExtra, tick, can, onDetail, onChanged, onRecord }: TabProps & { setExtra: (k: string, v: string) => void; onDetail: (id: string, tab?: any) => void; onChanged: () => void; onRecord: () => void }) {
   const view = s.extra.view || 'technicians'; const techId = s.extra.technicianId || '';
   const scope = { search: q || undefined, ...periodQuery(s.period), dateBasis: s.dateField === 'recorded' ? 'recorded' : 'occurred', technicianId: techId || undefined };
   const key = view + JSON.stringify(scope) + (view === 'bottle' ? s.status : '');
@@ -675,7 +675,6 @@ function CreateTransferModal({ products, onClose, onSaved }: { products: InvProd
   );
 }
 
-const C_GRID = { gridTemplateColumns: '1.3fr 1.1fr 0.8fr 0.9fr 0.9fr' } as const;
 const CL_GRID = { gridTemplateColumns: '2fr 1fr 1fr 1fr' } as const;
 const C_TONE: Record<string, string> = { in_progress: 'warn', submitted: 'mut', reconciled: 'ok', cancelled: 'mut' };
 

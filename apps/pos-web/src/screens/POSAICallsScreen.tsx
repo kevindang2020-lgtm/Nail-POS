@@ -48,7 +48,7 @@ export function POSAICallsScreen() {
     for (const k of QKEYS) { const v = sp.get(k); if (v) (o as Record<string, unknown>)[k] = k === 'page' || k === 'pageSize' ? Number(v) : v; }
     if (![10, 20, 50].includes(Number(o.pageSize))) o.pageSize = 10;
     return o;
-  }, []);   // eslint-disable-line react-hooks/exhaustive-deps — read the URL once; later changes are written back
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- read the URL once; later changes are written back
   const [f, setF] = useState<AicCallsQuery>(initial);
   const [period, setPeriod] = useState<{ period: string; from?: string; to?: string }>({ period: 'month' });
   const [kpi, setKpi] = useState<any>(null); const [kpiErr, setKpiErr] = useState<string | null>(null);
@@ -61,14 +61,14 @@ export function POSAICallsScreen() {
   const [dialog, setDialog] = useState<null | 'health' | 'recon'>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
 
-  const loadKpi = useCallback(() => { setKpiErr(null); posAiCallsCenterApi.kpis(period).then(setKpi).catch((e) => setKpiErr(errorTextOf(e))); }, [period]);
-  const loadAsst = useCallback(() => { setAsstErr(null); posAiCallsCenterApi.assistant({ page: asstPage, pageSize: 10 }).then(setAsst).catch((e) => setAsstErr(errorTextOf(e))); }, [asstPage]);
+  const loadKpi = useCallback(() => { setKpiErr(null); posAiCallsCenterApi.kpis(period).then(setKpi).catch((e) => setKpiErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [period]);
+  const loadAsst = useCallback(() => { setAsstErr(null); posAiCallsCenterApi.assistant({ page: asstPage, pageSize: 10 }).then(setAsst).catch((e) => setAsstErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [asstPage]);
   const loadList = useCallback(async () => {
     setLoading(true); setListErr(null);
     try {
       if (scope === 'calls') setList(await posAiCallsCenterApi.calls({ ...f, q: dq }));
       else setList(await posAiCallsCenterApi.search({ scope, q: dq, page: f.page, pageSize: f.pageSize }));
-    } catch (e) { setListErr(errorTextOf(e)); setList(null); } finally { setLoading(false); }
+    } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setList(null); } finally { setLoading(false); }
   }, [scope, dq, f]);
   const loadLast = useCallback(() => { posAiCallsCenterApi.lastHealth().then(setLastCheck).catch(() => setLastCheck(null)); }, []);
   useEffect(() => { loadLast(); }, [loadLast]);
@@ -226,8 +226,8 @@ function HealthDialog({ onClose }: { onClose: () => void }) {
   const run = useCallback(() => {
     setErr(null); setR(null);
     posAiCallsCenterApi.health().then(setR).catch((e: any) => {
-      if ((e?.code ?? e?.body?.code ?? e?.details?.code) !== 'AI_CALLS_CHECK_RATE_LIMITED') { setErr(errorTextOf(e)); return; }
-      posAiCallsCenterApi.lastHealth().then((x) => (x ? setR({ ...x, cached: true }) : setErr(errorTextOf(e)))).catch(() => setErr(errorTextOf(e)));
+      if ((e?.code ?? e?.body?.code ?? e?.details?.code) !== 'AI_CALLS_CHECK_RATE_LIMITED') { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); return; }
+      posAiCallsCenterApi.lastHealth().then((x) => (x ? setR({ ...x, cached: true }) : setErr(errorTextOf(e, tx('pos.something_went_wrong'))))).catch(() => setErr(errorTextOf(e, tx('pos.something_went_wrong'))));
     });
   }, []);
   useEffect(() => { run(); }, [run]);
@@ -259,7 +259,7 @@ function HealthDialog({ onClose }: { onClose: () => void }) {
 
 function ReconDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (ref: string) => void }) {
   const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); posAiCallsCenterApi.reconciliation().then(setR).catch((e) => setErr(errorTextOf(e))); }, []);
+  const load = useCallback(() => { setErr(null); posAiCallsCenterApi.reconciliation().then(setR).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { load(); }, [load]);
   return (
     <FitDialog title={t('aic.recon')} subtitle={t('aic.reconNote')} onClose={onClose} wide testId="aic-recon">
@@ -282,7 +282,7 @@ function ReconDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (ref: s
 function CallOverlay({ callRef, canManage, onClose, nav }: { callRef: string; canManage: boolean; onClose: () => void; nav: (r: string) => void }) {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState<typeof TABS[number]>('overview');
-  const load = useCallback(() => { setErr(null); posAiCallsCenterApi.call(callRef).then(setD).catch((e) => setErr(errorTextOf(e))); }, [callRef]);
+  const load = useCallback(() => { setErr(null); posAiCallsCenterApi.call(callRef).then(setD).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [callRef]);
   useEffect(() => { load(); }, [load]);
   const c = d?.call;
   return (

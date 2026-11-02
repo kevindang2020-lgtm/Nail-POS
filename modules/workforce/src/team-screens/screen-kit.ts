@@ -3,7 +3,7 @@
 // included, DST-safe), server paging that clamps to the last page, search helpers that never build SQL from text.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { HttpException } from '@nestjs/common';
-import { withCode } from '@aipowersalon/api-contracts';
+import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { tenantTimeZone } from '@aipowersalon/database';
 import { hasPermission } from '@aipowersalon/permissions';
 
@@ -18,7 +18,7 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 export const N = (v: unknown) => Number(v ?? 0) || 0;
 export const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 export const like = (raw: string) => '%' + raw.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
-export const err = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) => withCode(new HttpException({ code, message, ...extra }, status), code);
+export const err = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) => withCode(new HttpException({ code, message, ...extra }, status), code as ApiErrorCode);
 export const maskPhone = (p: string | null | undefined) => { if (!p) return null; const d = String(p).replace(/\D/g, ''); return d.length >= 4 ? `••• ${d.slice(-4)}` : '•••'; };
 /** digits of a phone typed in any format (8565551234 · (856) 555-1234 · +1 856 555 1234); phoneish = digits only, ≥ 4 */
 export function phoneDigits(raw: string) { let d = raw.replace(/\D/g, ''); if (d.length === 11 && d.startsWith('1')) d = d.slice(1); return { d, phoneish: d.length >= 4 && !/[a-z@]/i.test(raw) }; }

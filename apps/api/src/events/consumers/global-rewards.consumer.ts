@@ -7,7 +7,7 @@
 // network never converts or touches those points (guide §9.1). With the network's flags OFF both handlers return
 // without writing anything.
 import { type EventConsumer, TenantMismatchError, type DomainEvent, DOMAIN_EVENTS } from '@aipowersalon/events';
-import { sql, type Transaction } from 'kysely';
+import { sql, type Kysely, type Transaction } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { giftCardChargeForTicket } from '@aipowersalon/gift-cards';
 import { withCode } from '@aipowersalon/api-contracts';
@@ -25,7 +25,7 @@ export class GlobalRewardsConsumer implements EventConsumer {
 
   async handle(e: DomainEvent<any>, trx: Transaction<DB>): Promise<void> {
     const tenantId = e.tenantId!;
-    const repo = new GlobalRewardsRepository(trx);
+    const repo = new GlobalRewardsRepository(trx as unknown as Kysely<any>);
     try {
       if (e.eventType === DOMAIN_EVENTS.CHECKOUT_COMPLETED) {
         const ticketId = String(e.payload?.ticketId ?? e.aggregateId ?? '');

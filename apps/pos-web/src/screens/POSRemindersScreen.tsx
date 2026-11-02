@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { posRemindersApi, type ReminderConfig } from '../api/posRemindersApi';
-import { posReminderCenterApi as rc, type RcKpis, type RcPage, type RcRow, type RcDetails, type RcHealth, type RcQuery } from '../api/posReminderCenterApi';
+import { posReminderCenterApi as rc, type RcKpis, type RcPage, type RcDetails, type RcHealth, type RcQuery } from '../api/posReminderCenterApi';
 import { authApi } from '../api/authApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';

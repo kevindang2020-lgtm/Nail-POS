@@ -102,7 +102,7 @@ export class ReceptionCopilotActionService {
     // Spine rule 0 (§47): tenant toggles gate what the Copilot may do. A disabled switch refuses cleanly.
     // Reception Copilot guide §08: settings that cannot be read FAIL CLOSED — an unreadable switch never allows an action.
     if (this.settings) {
-      const read = await this.settings.get({ tenantId: ctx.tenantId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions, branchId: ctx.branchId }).catch(() => SETTINGS_UNREADABLE);
+      const read = await this.settings.get({ tenantId: ctx.tenantId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions, branchId: ctx.branchId }).catch((): typeof SETTINGS_UNREADABLE => SETTINGS_UNREADABLE);
       if (read === SETTINGS_UNREADABLE) return { ok: false, errorCode: 'ACTION_DISABLED', message: 'The Copilot settings could not be read, so no action was taken. Try again in a moment.' };
       const gate = read;
       if (gate) {

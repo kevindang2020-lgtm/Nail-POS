@@ -99,7 +99,7 @@ const FAQ_GAP_TOPICS: { key: string; words: RegExp; question: string }[] = [
   { key: 'gift_cards', words: /gift/i, question: 'Do you sell gift cards?' },
 ];
 
-interface Check { key: string; status: BsStatus; source: string; branchScope: string; rawCount: number | null; eligibleCount: number | null;
+export interface Check { key: string; status: BsStatus; source: string; branchScope: string; rawCount: number | null; eligibleCount: number | null;
   exclusions: { reason: string; count: number }[]; warnings: string[]; detail: string; action: { label: string; route: string } | null; checkedAt: string; traceId: string; errorCode?: string }
 
 export class BusinessSetupCenter {
@@ -119,7 +119,7 @@ export class BusinessSetupCenter {
   /** the hours the AI is told (same row VoiceBranchInfoService.storeHours reads), plus where they came from */
   async hours(ctx: BsCtx): Promise<{ source: 'branch' | 'tenant' | 'platform_default'; timezone: string; storeHours: Record<string, any>; updatedAt: string | null }> {
     const b = this.branch(ctx); const timezone = await this.zone(ctx);
-    const rows: Row[] = (await sql`select branch_id, settings_json, updated_at from tenant_settings where tenant_id = ${ctx.tenantId}
+    const rows: Row[] = (await sql<Row>`select branch_id, settings_json, updated_at from tenant_settings where tenant_id = ${ctx.tenantId}
       and category in ('store-hours-auto-logout', 'store_hours') and (branch_id = ${b} or branch_id is null)`.execute(this.db)).rows;
     const pick = rows.find((r) => b && r.branch_id === b) ?? rows.find((r) => r.branch_id == null);
     const dflt = (DEFAULT_SETTINGS as unknown as { storeHoursAutoLogout: { storeHours: Record<string, unknown> } }).storeHoursAutoLogout.storeHours;
@@ -131,12 +131,12 @@ export class BusinessSetupCenter {
   /** services the AI and online booking offer: tenant + (branch OR no branch) + active (CustomerBooking listServices) */
   private async eligibleServices(ctx: BsCtx): Promise<Row[]> {
     const b = this.branch(ctx);
-    return (await sql`select id, name, duration_minutes, price_cents, online_booking_enabled from services where tenant_id = ${ctx.tenantId}
+    return (await sql<Row>`select id, name, duration_minutes, price_cents, online_booking_enabled from services where tenant_id = ${ctx.tenantId}
       and status = 'active' and (${b}::uuid is null or branch_id = ${b} or branch_id is null) order by name asc, id asc`.execute(this.db)).rows;
   }
   private async eligibleTechnicians(ctx: BsCtx): Promise<Row[]> {
     const b = this.branch(ctx);
-    return (await sql`select t.id, t.full_name,
+    return (await sql<Row>`select t.id, t.full_name,
         exists (select 1 from technician_services ts join services s on s.id = ts.service_id and s.tenant_id = t.tenant_id and s.status = 'active'
                 where ts.tenant_id = t.tenant_id and ts.technician_id = t.id) as qualified,
         exists (select 1 from technician_schedules sc where sc.tenant_id = t.tenant_id and sc.technician_id = t.id and sc.is_working) as scheduled
@@ -149,7 +149,7 @@ export class BusinessSetupCenter {
     try {
       const h = await this.hours(ctx); const v = validateWeek(h.storeHours);
       const b = this.branch(ctx);
-      const other = b ? N((await sql`select count(*)::int n from tenant_location_hours where tenant_id = ${ctx.tenantId} and location_id = ${b}`.execute(this.db).catch(() => ({ rows: [{ n: 0 }] }))).rows[0]?.n) : 0;
+      const other = b ? N((await sql<Row>`select count(*)::int n from tenant_location_hours where tenant_id = ${ctx.tenantId} and location_id = ${b}`.execute(this.db).catch(() => ({ rows: [{ n: 0 }] }))).rows[0]?.n) : 0;
       const warnings: string[] = [];
       if (v.overnightDays.length) warnings.push(`Open past midnight on ${v.overnightDays.join(', ')}.`);
       if (other > 0) warnings.push('Super Admin also keeps location hours for this branch; the AI reads the POS Settings hours only.');
@@ -165,7 +165,7 @@ export class BusinessSetupCenter {
   private async servicesCheck(ctx: BsCtx): Promise<Check> {
     try {
       const b = this.branch(ctx);
-      const r: Row = (await sql`select count(*)::int raw,
+      const r: Row = (await sql<Row>`select count(*)::int raw,
           count(*) filter (where status <> 'active')::int inactive,
           count(*) filter (where status = 'active' and ${b}::uuid is not null and branch_id is not null and branch_id <> ${b})::int other_branch
         from services where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
@@ -187,7 +187,7 @@ export class BusinessSetupCenter {
   private async techniciansCheck(ctx: BsCtx): Promise<Check> {
     try {
       const b = this.branch(ctx);
-      const r: Row = (await sql`select count(*)::int raw,
+      const r: Row = (await sql<Row>`select count(*)::int raw,
           count(*) filter (where not is_active)::int inactive,
           count(*) filter (where is_active and ${b}::uuid is not null and branch_id is not null and branch_id <> ${b})::int other_branch,
           count(*) filter (where (status = 'active') <> is_active and archived_at is null)::int mismatch
@@ -209,7 +209,7 @@ export class BusinessSetupCenter {
   }
   private async faqCheck(ctx: BsCtx): Promise<Check> {
     try {
-      const r: Row = (await sql`select count(*)::int raw, count(*) filter (where status = 'approved' and approved_revision_id is not null)::int approved,
+      const r: Row = (await sql<Row>`select count(*)::int raw, count(*) filter (where status = 'approved' and approved_revision_id is not null)::int approved,
           count(*) filter (where status in ('draft', 'pending_review', 'needs_review'))::int unapproved, count(*) filter (where status = 'archived')::int archived
         from ai_receptionist_faqs where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
       const exclusions = [{ reason: 'not_approved', count: N(r.unapproved) }, { reason: 'archived', count: N(r.archived) }].filter((x) => x.count > 0);
@@ -260,7 +260,7 @@ export class BusinessSetupCenter {
     checks.push({ ...prov, key: 'agent_knowledge', status: prov.status === 'READY' ? 'UNKNOWN' : 'DISABLED',
       detail: prov.status === 'READY' ? 'The provider is connected, but whether the live agent has the get_business_info tool registered can only be confirmed in the provider account.' : 'No voice agent is connected, so no agent receives this knowledge yet.' });
     try {
-      const j: Row = (await sql`select count(*) filter (where status = 'failed' and created_at > now() - interval '7 days')::int failed,
+      const j: Row = (await sql<Row>`select count(*) filter (where status = 'failed' and created_at > now() - interval '7 days')::int failed,
           count(*) filter (where status in ('queued', 'running') and updated_at < now() - interval '1 hour')::int stuck from ai_receptionist_provisioning_jobs where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0];
       const st: BsStatus = N(j.failed) ? 'FAILED' : N(j.stuck) ? 'STALE' : 'READY';
       checks.push({ key: 'audit_jobs', status: st, source: 'AI agent provisioning jobs', branchScope: this.scopeLabel(ctx), rawCount: null, eligibleCount: null, exclusions: [], warnings: [],
@@ -292,13 +292,13 @@ export class BusinessSetupCenter {
     const where = sql.join(conds, sql` and `);
     const order = f.sort === 'oldest' ? sql`f.created_at asc, f.id asc` : f.sort === 'updated' ? sql`f.updated_at desc, f.id desc`
       : f.sort === 'approved' ? sql`f.approved_at desc nulls last, f.id desc` : f.sort === 'question_az' ? sql`lower(f.question) asc, f.id asc` : sql`f.created_at desc, f.id desc`;
-    const total = N((await sql`select count(*)::int n from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-    const rows: Row[] = (await sql`select f.id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id,
+    const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+    const rows: Row[] = (await sql<Row>`select f.id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id,
         f.created_by_user_id, f.created_at, f.updated_at, f.approved_at, f.submitted_at, f.archived_at,
         (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
         (select r.answer from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_answer
       from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and ${where} order by ${order} limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
-    const cats: Row[] = (await sql`select distinct category from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and category is not null order by category limit 100`.execute(this.db)).rows;
+    const cats: Row[] = (await sql<Row>`select distinct category from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and category is not null order by category limit 100`.execute(this.db)).rows;
     return { items: rows.map((r) => this.faqRow(r)), page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), timezone: tz, dateBasis: basis, categories: cats.map((c) => c.category) };
   }
   private faqRow(r: Row) {
@@ -310,16 +310,16 @@ export class BusinessSetupCenter {
   }
   async faq(ctx: BsCtx, id: string) {
     if (!isUuid(id)) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
-    const r: Row = (await sql`select f.id, f.tenant_id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id, f.approved_at, f.submitted_at, f.archived_at, f.created_at, f.updated_at, f.created_by_user_id, (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
+    const r: Row = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id, f.approved_at, f.submitted_at, f.archived_at, f.created_at, f.updated_at, f.created_by_user_id, (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
         (select r.answer from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_answer
       from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.id = ${id}`.execute(this.db)).rows[0];
     if (!r) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
-    const revisions: Row[] = (await sql`select id, revision_no, question, answer, category, prior_revision_id, reason, source, created_at from ai_receptionist_faq_revisions
+    const revisions: Row[] = (await sql<Row>`select id, revision_no, question, answer, category, prior_revision_id, reason, source, created_at from ai_receptionist_faq_revisions
       where tenant_id = ${ctx.tenantId} and faq_id = ${id} order by revision_no desc limit 50`.execute(this.db)).rows;
-    const events: Row[] = (await sql`select id, action, from_status, to_status, revision_id, reason, created_at, (actor_user_id is not null) has_actor,
+    const events: Row[] = (await sql<Row>`select id, action, from_status, to_status, revision_id, reason, created_at, (actor_user_id is not null) has_actor,
         (select u.full_name from users u where u.id = e.actor_user_id and u.tenant_id = e.tenant_id) actor_name
       from ai_receptionist_faq_events e where tenant_id = ${ctx.tenantId} and faq_id = ${id} order by created_at desc, id desc limit 100`.execute(this.db)).rows;
-    const usage = N((await sql`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and sources @> ${JSON.stringify([{ type: 'faq', id }])}::jsonb`.execute(this.db)).rows[0]?.n);
+    const usage = N((await sql<Row>`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and sources @> ${JSON.stringify([{ type: 'faq', id }])}::jsonb`.execute(this.db)).rows[0]?.n);
     const approved = revisions.find((x) => x.id === r.approved_revision_id) ?? null;
     return { ...this.faqRow(r), approvedRevision: approved ? { id: approved.id, revisionNo: N(approved.revision_no), question: approved.question, answer: approved.answer, category: approved.category } : null,
       revisions: revisions.map((x) => ({ id: x.id, revisionNo: N(x.revision_no), question: x.question, answer: x.answer, category: x.category ?? null, priorRevisionId: x.prior_revision_id ?? null,
@@ -346,16 +346,16 @@ export class BusinessSetupCenter {
     const branchId = b.branchScope === 'branch' && this.branch(ctx) ? this.branch(ctx) : null;
     const origin = b.origin === 'assistant' ? 'assistant' : 'pos';
     return this.db.transaction().execute(async (trx) => {
-      const prior: Row = (await sql`select id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      const prior: Row = (await sql<Row>`select id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
       if (prior) return { id: prior.id, replayed: true };
-      const ins: Row = (await sql`insert into ai_receptionist_faqs (tenant_id, branch_id, question, answer, category, language, is_active, status, version, idempotency_key, created_by_user_id, updated_by_user_id)
+      const ins: Row = (await sql<Row>`insert into ai_receptionist_faqs (tenant_id, branch_id, question, answer, category, language, is_active, status, version, idempotency_key, created_by_user_id, updated_by_user_id)
         values (${ctx.tenantId}, ${branchId}, ${q}, ${a}, ${c}, 'en', false, 'draft', 1, ${key}, ${ctx.userId}, ${ctx.userId})
         on conflict (tenant_id, idempotency_key) where idempotency_key is not null do nothing returning id`.execute(trx)).rows[0];
-      if (!ins) return { id: (await sql`select id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0]?.id as string, replayed: true };
-      const rev: Row = (await sql`insert into ai_receptionist_faq_revisions (tenant_id, faq_id, revision_no, question, answer, category, reason, source, created_by_user_id)
+      if (!ins) return { id: (await sql<Row>`select id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0]?.id as string, replayed: true };
+      const rev: Row = (await sql<Row>`insert into ai_receptionist_faq_revisions (tenant_id, faq_id, revision_no, question, answer, category, reason, source, created_by_user_id)
         values (${ctx.tenantId}, ${ins.id}, 1, ${q}, ${a}, ${c}, ${origin === 'assistant' ? 'Drafted from a Knowledge Assistant suggestion' : 'Created'}, ${origin}, ${ctx.userId}) returning id`.execute(trx)).rows[0];
-      await sql`update ai_receptionist_faqs set draft_revision_id = ${rev.id} where tenant_id = ${ctx.tenantId} and id = ${ins.id}`.execute(trx);
-      await sql`insert into ai_receptionist_faq_events (tenant_id, branch_id, faq_id, action, from_status, to_status, revision_id, actor_user_id, reason)
+      await sql<Row>`update ai_receptionist_faqs set draft_revision_id = ${rev.id} where tenant_id = ${ctx.tenantId} and id = ${ins.id}`.execute(trx);
+      await sql<Row>`insert into ai_receptionist_faq_events (tenant_id, branch_id, faq_id, action, from_status, to_status, revision_id, actor_user_id, reason)
         values (${ctx.tenantId}, ${branchId}, ${ins.id}, 'created', null, 'draft', ${rev.id}, ${ctx.userId}, null)`.execute(trx);
       await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role ?? null },
         { module: 'ai_business_setup', action: 'faq.created', resourceType: 'ai_receptionist_faq', resourceId: ins.id, summary: 'Created a draft FAQ (not yet used by the AI)', metadata: { origin } });
@@ -374,23 +374,23 @@ export class BusinessSetupCenter {
     if ((action === 'reject' || action === 'archive') && !reason) throw new BusinessSetupError('Add a short reason.', 'AI_FAQ_REASON_REQUIRED');
     const text = action === 'edit' ? this.validateText(b.question, b.answer, b.category) : null;
     return this.db.transaction().execute(async (trx) => {
-      const f: Row = (await sql`select id, branch_id, status, version, approved_revision_id, draft_revision_id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and id = ${id} for update`.execute(trx)).rows[0];
+      const f: Row = (await sql<Row>`select id, branch_id, status, version, approved_revision_id, draft_revision_id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and id = ${id} for update`.execute(trx)).rows[0];
       if (!f) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
-      const replay: Row = (await sql`select id from ai_receptionist_faq_events where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      const replay: Row = (await sql<Row>`select id from ai_receptionist_faq_events where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
       if (replay) return { id, status: f.status, version: N(f.version), replayed: true };
       if (N(f.version) !== expected) throw new BusinessSetupError('This FAQ was changed by someone else. Reload and try again.', 'AI_FAQ_VERSION_CONFLICT', 409, { currentVersion: N(f.version) });
       const from = String(f.status);
       let to = from; let event = action; let revisionId: string | null = null; const sets: Row[] = [];
       const move = async (target: string) => {
-        const ok: Row = (await sql`update ai_receptionist_faqs set status = ${target} where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(AI_RECEPTIONIST_FAQ, target)} returning id`.execute(trx)).rows[0];
+        const ok: Row = (await sql<Row>`update ai_receptionist_faqs set status = ${target} where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(AI_RECEPTIONIST_FAQ, target)} returning id`.execute(trx)).rows[0];
         if (!ok) throw new BusinessSetupError(`An FAQ that is ${from.replace('_', ' ')} cannot be ${action === 'submit' ? 'submitted' : action + 'd'}.`, 'AI_FAQ_INVALID_TRANSITION', 409, { from, to: target });
         to = target;
       };
       if (action === 'edit') {
         if (from === 'archived') throw new BusinessSetupError('Restore the FAQ before editing it.', 'AI_FAQ_INVALID_TRANSITION', 409, { from });
-        const no = N((await sql`select coalesce(max(revision_no), 0)::int n from ai_receptionist_faq_revisions where tenant_id = ${ctx.tenantId} and faq_id = ${id}`.execute(trx)).rows[0]?.n) + 1;
+        const no = N((await sql<Row>`select coalesce(max(revision_no), 0)::int n from ai_receptionist_faq_revisions where tenant_id = ${ctx.tenantId} and faq_id = ${id}`.execute(trx)).rows[0]?.n) + 1;
         const prior = f.draft_revision_id ?? f.approved_revision_id ?? null;
-        revisionId = (await sql`insert into ai_receptionist_faq_revisions (tenant_id, faq_id, revision_no, question, answer, category, prior_revision_id, reason, source, created_by_user_id)
+        revisionId = (await sql<Row>`insert into ai_receptionist_faq_revisions (tenant_id, faq_id, revision_no, question, answer, category, prior_revision_id, reason, source, created_by_user_id)
           values (${ctx.tenantId}, ${id}, ${no}, ${text!.q}, ${text!.a}, ${text!.c}, ${prior}, ${reason}, 'pos', ${ctx.userId}) returning id`.execute(trx)).rows[0].id;
         sets.push(sql`draft_revision_id = ${revisionId}`);
         // the visible columns follow the newest text ONLY while nothing is live; an approved FAQ keeps its live text
@@ -405,7 +405,7 @@ export class BusinessSetupCenter {
         const rev = f.draft_revision_id;
         if (!rev || (from === 'approved' && rev === f.approved_revision_id)) throw new BusinessSetupError('There is nothing waiting for approval.', 'AI_FAQ_NOTHING_PENDING', 409);
         if (from !== 'approved') await move('approved');
-        const t: Row = (await sql`select question, answer, category from ai_receptionist_faq_revisions where tenant_id = ${ctx.tenantId} and id = ${rev}`.execute(trx)).rows[0];
+        const t: Row = (await sql<Row>`select question, answer, category from ai_receptionist_faq_revisions where tenant_id = ${ctx.tenantId} and id = ${rev}`.execute(trx)).rows[0];
         sets.push(sql`approved_revision_id = ${rev}, draft_revision_id = null, approved_by_user_id = ${ctx.userId}, approved_at = now(), submitted_at = null, is_active = true,
           question = ${t.question}, answer = ${t.answer}, category = ${t.category}`);
         revisionId = rev;
@@ -423,9 +423,9 @@ export class BusinessSetupCenter {
       }
       if (to !== 'approved') sets.push(sql`is_active = false`);
       sets.push(sql`version = version + 1, updated_at = now(), updated_by_user_id = ${ctx.userId}`);
-      const out: Row = (await sql`update ai_receptionist_faqs set ${sql.join(sets, sql`, `)} where tenant_id = ${ctx.tenantId} and id = ${id} returning version, status`.execute(trx)).rows[0];
+      const out: Row = (await sql<Row>`update ai_receptionist_faqs set ${sql.join(sets, sql`, `)} where tenant_id = ${ctx.tenantId} and id = ${id} returning version, status`.execute(trx)).rows[0];
       const evName = action === 'archive' ? 'archived' : action === 'approve' ? 'approved' : action === 'reject' ? 'rejected' : action === 'submit' ? 'submitted' : event;
-      await sql`insert into ai_receptionist_faq_events (tenant_id, branch_id, faq_id, action, from_status, to_status, revision_id, actor_user_id, reason, idempotency_key)
+      await sql<Row>`insert into ai_receptionist_faq_events (tenant_id, branch_id, faq_id, action, from_status, to_status, revision_id, actor_user_id, reason, idempotency_key)
         values (${ctx.tenantId}, ${f.branch_id ?? null}, ${id}, ${evName}, ${from}, ${out.status}, ${revisionId}, ${ctx.userId}, ${reason}, ${key})`.execute(trx);
       await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role ?? null },
         { module: 'ai_business_setup', action: `faq.${evName}`, resourceType: 'ai_receptionist_faq', resourceId: id, summary: `FAQ ${evName} (${from} → ${out.status})`, reason, metadata: { from, to: out.status, revisionId } });
@@ -437,7 +437,7 @@ export class BusinessSetupCenter {
   async knowledge(tenantId: string, branchId: string | null) {
     const ctx: BsCtx = { tenantId, branchId, userId: 'ai-receptionist' };
     const h = await this.hours(ctx);
-    const faqs: Row[] = (await sql`select f.id, r.id revision_id, r.question, r.answer, r.category from ai_receptionist_faqs f join ai_receptionist_faq_revisions r on r.id = f.approved_revision_id and r.tenant_id = f.tenant_id
+    const faqs: Row[] = (await sql<Row>`select f.id, r.id revision_id, r.question, r.answer, r.category from ai_receptionist_faqs f join ai_receptionist_faq_revisions r on r.id = f.approved_revision_id and r.tenant_id = f.tenant_id
       where f.tenant_id = ${tenantId} and f.status = 'approved' and (f.branch_id is null or f.branch_id = ${isUuid(branchId) ? branchId : null}) order by f.approved_at desc nulls last, f.id desc limit 200`.execute(this.db)).rows;
     return { hours: h.source === 'platform_default' ? null : { timezone: h.timezone, week: h.storeHours, source: h.source },
       hoursNote: h.source === 'platform_default' ? 'Business hours are not set up; do not state opening hours — offer to take a message.' : null,
@@ -477,7 +477,7 @@ export class BusinessSetupCenter {
           outcome = p == null ? 'not_configured' : 'answered'; sources.push({ type: 'service', id: svc.s.id, label: svc.s.name });
         } else {
           const b2 = this.branch(ctx);
-          const techs: Row[] = (await sql`select t.id, t.full_name from technicians t join technician_services ts on ts.technician_id = t.id and ts.tenant_id = t.tenant_id and ts.service_id = ${svc.s.id}
+          const techs: Row[] = (await sql<Row>`select t.id, t.full_name from technicians t join technician_services ts on ts.technician_id = t.id and ts.tenant_id = t.tenant_id and ts.service_id = ${svc.s.id}
             where t.tenant_id = ${ctx.tenantId} and t.is_active and (${b2}::uuid is null or t.branch_id = ${b2} or t.branch_id is null) order by t.full_name, t.id limit 20`.execute(this.db)).rows;
           answer = techs.length ? `Qualified for ${svc.s.name}: ${techs.map((t) => (t.full_name ?? '').split(' ')[0] || 'Technician').join(', ')}. Who is free is checked live when booking.` : `No technician is recorded as qualified for ${svc.s.name}.`;
           outcome = techs.length ? 'answered' : 'not_configured'; sources.push({ type: 'service', id: svc.s.id, label: svc.s.name }); for (const t of techs) sources.push({ type: 'technician', id: t.id, label: 'Qualification' });
@@ -493,7 +493,7 @@ export class BusinessSetupCenter {
         else { answer = 'No approved answer matches this question. The AI would offer to take a message for staff.'; outcome = 'handoff'; }
       }
     } catch (e) { sourceError = String((e as { code?: string })?.code ?? 'QUERY_FAILED'); outcome = 'source_unavailable'; answer = 'A source could not be read, so the AI would not answer this from guesswork.'; }
-    const run: Row = (await sql`insert into ai_business_setup_preview_runs (tenant_id, branch_id, question, intent, answer, outcome, sources, tester_user_id)
+    const run: Row = (await sql<Row>`insert into ai_business_setup_preview_runs (tenant_id, branch_id, question, intent, answer, outcome, sources, tester_user_id)
       values (${ctx.tenantId}, ${this.branch(ctx)}, ${question}, ${intent}, ${answer}, ${outcome}, ${JSON.stringify(sources)}::jsonb, ${ctx.userId}) returning id, created_at`.execute(this.db)).rows[0];
     return { runId: run.id, isPreview: true, question, intent, outcome, answer, sources, sourceError, createdAt: iso(run.created_at),
       limits: 'Preview only: nothing was booked, held, texted or called, and no voice provider was contacted. Drafts are never used.' };
@@ -508,20 +508,20 @@ export class BusinessSetupCenter {
     let total = 0; let rows: Row[] = [];
     if (scope === 'services') {
       const where = sql`(${b}::uuid is null or branch_id = ${b} or branch_id is null) and (${q} = '' or name ilike ${pat} or id::text = ${q})`;
-      total = N((await sql`select count(*)::int n from services where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select id, name as title, status as subtitle, 'service' kind from services where tenant_id = ${ctx.tenantId} and ${where} order by name asc, id asc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      total = N((await sql<Row>`select count(*)::int n from services where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select id, name as title, status as subtitle, 'service' kind from services where tenant_id = ${ctx.tenantId} and ${where} order by name asc, id asc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     } else if (scope === 'technicians') {
       const where = sql`(${b}::uuid is null or branch_id = ${b} or branch_id is null) and (${q} = '' or full_name ilike ${pat} or id::text = ${q})`;
-      total = N((await sql`select count(*)::int n from technicians where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select id, full_name as title, case when is_active then 'active' else 'inactive' end as subtitle, 'technician' kind from technicians where tenant_id = ${ctx.tenantId} and ${where} order by full_name asc, id asc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      total = N((await sql<Row>`select count(*)::int n from technicians where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select id, full_name as title, case when is_active then 'active' else 'inactive' end as subtitle, 'technician' kind from technicians where tenant_id = ${ctx.tenantId} and ${where} order by full_name asc, id asc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     } else if (scope === 'tests') {
       const where = sql`(${q} = '' or question ilike ${pat} or answer ilike ${pat} or id::text = ${q})`;
-      total = N((await sql`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select id, question as title, outcome as subtitle, 'test' kind, created_at from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where} order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      total = N((await sql<Row>`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select id, question as title, outcome as subtitle, 'test' kind, created_at from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where} order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     } else {
       const where = sql`(${q} = '' or e.action ilike ${pat} or coalesce(e.reason, '') ilike ${pat} or f.question ilike ${pat})`;
-      total = N((await sql`select count(*)::int n from ai_receptionist_faq_events e join ai_receptionist_faqs f on f.id = e.faq_id and f.tenant_id = e.tenant_id where e.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select e.faq_id as id, f.question as title, e.action as subtitle, 'history' kind, e.created_at from ai_receptionist_faq_events e join ai_receptionist_faqs f on f.id = e.faq_id and f.tenant_id = e.tenant_id
+      total = N((await sql<Row>`select count(*)::int n from ai_receptionist_faq_events e join ai_receptionist_faqs f on f.id = e.faq_id and f.tenant_id = e.tenant_id where e.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select e.faq_id as id, f.question as title, e.action as subtitle, 'history' kind, e.created_at from ai_receptionist_faq_events e join ai_receptionist_faqs f on f.id = e.faq_id and f.tenant_id = e.tenant_id
         where e.tenant_id = ${ctx.tenantId} and ${where} order by e.created_at desc, e.id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     }
     return { scope, items: rows.map((r) => ({ id: r.id, title: r.title ?? '', subtitle: r.subtitle ?? null, kind: r.kind, at: r.created_at ? iso(r.created_at) : null })), page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) };
@@ -538,13 +538,13 @@ export class BusinessSetupCenter {
     let total = 0; let rows: Row[] = [];
     if (basis === 'preview') {
       const where = sql`created_at >= ${lo} and created_at < ${hi}`;
-      total = N((await sql`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select id, 'preview' kind, question as title, outcome as detail, created_at from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where} order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      total = N((await sql<Row>`select count(*)::int n from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select id, 'preview' kind, question as title, outcome as detail, created_at from ai_business_setup_preview_runs where tenant_id = ${ctx.tenantId} and ${where} order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     } else {
       const only = basis === 'approval' ? sql`and e.action in ('approved', 'rejected')` : sql``;
       const where = sql`e.created_at >= ${lo} and e.created_at < ${hi} ${only}`;
-      total = N((await sql`select count(*)::int n from ai_receptionist_faq_events e where e.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-      rows = (await sql`select e.faq_id as id, e.action as kind, f.question as title, coalesce(e.to_status, '') as detail, e.created_at from ai_receptionist_faq_events e
+      total = N((await sql<Row>`select count(*)::int n from ai_receptionist_faq_events e where e.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
+      rows = (await sql<Row>`select e.faq_id as id, e.action as kind, f.question as title, coalesce(e.to_status, '') as detail, e.created_at from ai_receptionist_faq_events e
         join ai_receptionist_faqs f on f.id = e.faq_id and f.tenant_id = e.tenant_id where e.tenant_id = ${ctx.tenantId} and ${where} order by e.created_at desc, e.id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     }
     return { basis, timezone: tz, items: rows.map((r) => ({ id: r.id, kind: r.kind, title: r.title ?? '', detail: r.detail ?? null, at: iso(r.created_at) })), page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) };
@@ -562,7 +562,7 @@ export class BusinessSetupCenter {
       if (s.price_cents == null || N(s.price_cents) <= 0) out.push({ key: `service_price:${s.id}`, kind: 'service', why: 'This bookable service has no price.', affected: { type: 'service', id: s.id, name: s.name }, impact: 'The AI will not quote a price for it.', suggestion: 'Add the price in Services & Products.', action: { label: 'Open Services', route: '/services' } });
       if (N(s.duration_minutes) <= 0) out.push({ key: `service_duration:${s.id}`, kind: 'service', why: 'This bookable service has no duration.', affected: { type: 'service', id: s.id, name: s.name }, impact: 'Availability cannot be computed correctly.', suggestion: 'Add the duration in Services & Products.', action: { label: 'Open Services', route: '/services' } });
     }
-    const unq: Row[] = svcs.length ? (await sql`select s.id, s.name from services s where s.tenant_id = ${ctx.tenantId} and s.id = any(${svcs.map((x) => x.id)}::uuid[])
+    const unq: Row[] = svcs.length ? (await sql<Row>`select s.id, s.name from services s where s.tenant_id = ${ctx.tenantId} and s.id = any(${svcs.map((x) => x.id)}::uuid[])
         and not exists (select 1 from technician_services ts join technicians t on t.id = ts.technician_id and t.is_active where ts.tenant_id = s.tenant_id and ts.service_id = s.id) order by s.name limit 50`.execute(this.db).catch((e: unknown) => { miss('qualifications')(e); return { rows: [] as Row[] }; })).rows : [];
     for (const s of unq) out.push({ key: `service_no_tech:${s.id}`, kind: 'qualification', why: 'No active technician is recorded as qualified for this service.', affected: { type: 'service', id: s.id, name: s.name }, impact: 'The AI cannot name who performs it.', suggestion: 'Add qualified technicians in Team Management.', action: { label: 'Open Team', route: '/technicians' } });
     const techs = await this.eligibleTechnicians(ctx).catch((e: unknown) => { miss('technicians')(e); return [] as Row[]; });
@@ -570,7 +570,7 @@ export class BusinessSetupCenter {
       if (!t.qualified) out.push({ key: `tech_no_services:${t.id}`, kind: 'qualification', why: 'This active technician has no service qualification.', affected: { type: 'technician', id: t.id, name: t.full_name ?? 'Technician' }, impact: 'They are never matched to a service.', suggestion: 'Add the services they perform.', action: { label: 'Open Team', route: '/technicians' } });
       if (!t.scheduled) out.push({ key: `tech_no_schedule:${t.id}`, kind: 'schedule', why: 'This active technician has no working schedule.', affected: { type: 'technician', id: t.id, name: t.full_name ?? 'Technician' }, impact: 'They will not appear as available.', suggestion: 'Set their weekly schedule.', action: { label: 'Open Staff Schedule', route: '/technicians' } });
     }
-    const faqs: Row[] = (await sql`select f.id, f.question, f.answer, f.status, f.submitted_at from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.status <> 'archived'`.execute(this.db).catch((e: unknown) => { miss('faqs')(e); return { rows: [] as Row[] }; })).rows;
+    const faqs: Row[] = (await sql<Row>`select f.id, f.question, f.answer, f.status, f.submitted_at from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.status <> 'archived'`.execute(this.db).catch((e: unknown) => { miss('faqs')(e); return { rows: [] as Row[] }; })).rows;
     const text = faqs.map((f) => `${f.question} ${f.answer}`).join(' \n ');
     for (const g of FAQ_GAP_TOPICS) if (!g.words.test(text)) out.push({ key: `faq_gap:${g.key}`, kind: 'faq', why: 'Callers often ask this and no FAQ covers it.', affected: null, impact: 'The AI will hand these questions off.', suggestion: `Write and approve an answer to "${g.question}". The answer must come from you — the assistant never invents a policy.`, action: { label: 'Draft this FAQ', draftQuestion: g.question } });
     const prices = new Set(svcs.map((s) => N(s.price_cents)).filter((p) => p > 0));

@@ -184,7 +184,8 @@ export class CustomerNotificationsCenter {
   }
 
   // ── activity list (§06, §07) ─────────────────────────────────────────────────────────────────────────────────────
-  private async searchWhere(T: string, qRaw: unknown) {
+  // not async: a function resolving to a Kysely RawBuilder is treated as a thenable and throws "don't await RawBuilder"
+  private searchWhere(T: string, qRaw: unknown) {
     const q = String(qRaw ?? '').trim().slice(0, 100);
     if (!q) return sql`true`;
     const digits = q.replace(/\D/g, '');
@@ -239,7 +240,7 @@ export class CustomerNotificationsCenter {
     const status = q.status ? oneOf(q.status, CN_STATUSES, 'sent') : null; const type = q.type ? oneOf(q.type, CN_TYPES, 'unknown') : null;
     const channel = q.channel === 'sms' || q.channel === 'email' ? String(q.channel) : null;
     const branch = await this.branchFilter(ctx, q.branchId);
-    const where = sql`${this.listWhere(T, tab, status, type, channel, branch)} and ${this.inP(this.basisCol(basis), p)} and ${await this.searchWhere(T, q.q)}`;
+    const where = sql`${this.listWhere(T, tab, status, type, channel, branch)} and ${this.inP(this.basisCol(basis), p)} and ${this.searchWhere(T, q.q)}`;
     const { page, pageSize } = paging(q.page, q.pageSize, 20);
     const total = N((await sql<any>`select count(*)::int as n from notifications n where n.tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.n);
     const sv = served(page, pageSize, total);
@@ -357,7 +358,7 @@ export class CustomerNotificationsCenter {
     for (const r of rows) {
       const f = classifyFailure({ status: r.status, channel: r.channel, toAddress: r.to_address, failureReason: r.failure_reason, providerErrorCode: r.provider_error_code, providerStatus: r.provider_status })!;
       const key = `${f.category}|${r.channel}`;
-      const g = groups.get(key) ?? { category: f.category, channel: r.channel, count: 0, latestAt: null, firstAt: null, sampleIds: [], retry: f.retry, action: f.action, rootCauses: {}, example: sanitizeProviderText(r.failure_reason, 140) };
+      const g: NonNullable<ReturnType<typeof groups.get>> = groups.get(key) ?? { category: f.category, channel: r.channel, count: 0, latestAt: null, firstAt: null, sampleIds: [], retry: f.retry, action: f.action, rootCauses: {}, example: sanitizeProviderText(r.failure_reason, 140) };
       g.count++; if (!g.latestAt) g.latestAt = iso(r.created_at); g.firstAt = iso(r.created_at);
       if (g.sampleIds.length < 6) g.sampleIds.push(String(r.id));
       if (f.rootCause) g.rootCauses[f.rootCause] = (g.rootCauses[f.rootCause] ?? 0) + 1;

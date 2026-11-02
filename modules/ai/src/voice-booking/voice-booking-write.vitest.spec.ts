@@ -70,7 +70,8 @@ describe('write-tool exposure is dark by default', () => {
 
   it('enabledVoiceTools hides write tools when the flag is off, shows the full write set when on', () => {
     const off = enabledVoiceTools({}).map((t) => t.name);
-    expect(off).toEqual(['get_services', 'get_technicians', 'get_availability', 'get_deals']); // read-only when dark
+    // read-only when dark — AI Business Setup (guide 20) added get_business_info (hours + APPROVED FAQs only), also a read tool
+    expect(off).toEqual(['get_services', 'get_technicians', 'get_availability', 'get_deals', 'get_business_info']);
     const on = enabledVoiceTools({ VOICE_WRITE_TOOLS_ENABLED: 'true' }).map((t) => t.name);
     expect(on).toContain('create_appointment');
     expect(on).toContain('reschedule_appointment');   // now authorized (verification-gated)

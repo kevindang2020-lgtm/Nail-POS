@@ -43,7 +43,7 @@ const LIST = {
   filters: {
     comment: { type: 'enum', values: RV_COMMENT }, visibility: { type: 'enum', values: RV_VISIBILITY }, followup: { type: 'enum', values: RV_FOLLOWUP },
     source: { type: 'enum', values: RV_SOURCES }, basis: { type: 'enum', values: RV_BASES }, preset: { type: 'enum', values: RV_PRESETS },
-    rating: { type: 'int', min: 1, max: 5 }, technician: { type: 'string' }, service: { type: 'uuid' },
+    rating: { type: 'int', min: 1, max: 5 }, technician: { type: 'text' }, service: { type: 'uuid' },
   },
   sorts: { newest: null, oldest: null, lowest: null, highest: null, moderated: null, attention: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 },
   maxLimit: 50, defaultLimit: 20, params: ['page'],

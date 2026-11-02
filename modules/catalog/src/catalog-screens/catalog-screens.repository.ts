@@ -17,7 +17,7 @@
 //                        one DEFINITION. Add-ons-category services (packages/database add-on-authority) are listed apart.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { withCode, isAddOnCategory } from '@aipowersalon/api-contracts';
+import { withCode, isAddOnCategory, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { tenantTimeZone } from '@aipowersalon/database';
 import { recordCatalogChanges, diffFields, type CatalogChange } from './catalog-change-log';
 import * as crypto from 'crypto';
@@ -33,7 +33,7 @@ const like = (raw: string) => '%' + raw.replace(/[\\%_]/g, (m) => '\\' + m) + '%
 const maskPhone = (p: string | null | undefined) => { if (!p) return null; const d = String(p).replace(/\D/g, ''); return d.length >= 4 ? `••• ${d.slice(-4)}` : '•••'; };
 export function paging(page: unknown, pageSize: unknown, def = 10) { return { page: Math.max(1, Math.trunc(Number(page)) || 1), pageSize: Math.max(1, Math.min(100, Math.trunc(Number(pageSize)) || def)) }; }
 function served(page: number, pageSize: number, total: number) { const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages); return { page: p, totalPages, offset: (p - 1) * pageSize }; }
-const err = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) => withCode(new HttpException({ code, message, ...extra }, status), code);
+const err = (status: number, code: string, message: string, extra: Record<string, unknown> = {}) => withCode(new HttpException({ code, message, ...extra }, status), code as ApiErrorCode);
 /** "$55", "55.00", "55" → 5500 cents when the text is a money amount; "45m", "45 min" → 45 minutes. */
 function moneyOf(raw: string): number | null { const m = raw.trim().match(/^\$?\s*(\d{1,6})(?:\.(\d{1,2}))?$/); if (!m) return null; return Number(m[1]) * 100 + (m[2] ? Number(m[2].padEnd(2, '0')) : 0); }
 function minutesOf(raw: string): number | null { const m = raw.trim().toLowerCase().match(/^(\d{1,4})\s*(m|min|mins|minutes)$/); return m ? Number(m[1]) : null; }

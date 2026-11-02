@@ -5,7 +5,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
-export function Card({ title, right, children, foot, testId, className, bodyRef }: { title: string; right?: ReactNode; children: ReactNode; foot?: ReactNode; testId?: string; className?: string; bodyRef?: RefObject<HTMLDivElement | null> }) {
+export function Card({ title, right, children, foot, testId, className, bodyRef }: { title: string; right?: ReactNode; children: ReactNode; foot?: ReactNode; testId?: string; className?: string; bodyRef?: RefObject<HTMLDivElement> }) {
   return (
     <section className={`ov-card ${className || ''}`} data-testid={testId}>
       <div className="ov-card-h"><h3>{title}</h3>{right}</div>
@@ -21,8 +21,8 @@ export function Empty({ msg }: { msg: string }) { return <div className="ov-empt
  * hidden behind the card's internal scroll and the card never grows. Measured before paint (useLayoutEffect) and again when
  * the card is resized, from the first row's pitch; without layout (jsdom / no ResizeObserver) it is simply `max`.
  */
-export function useFitRows(max: number, dep: unknown): [RefObject<HTMLDivElement | null>, number] {
-  const ref = useRef<HTMLDivElement | null>(null);
+export function useFitRows(max: number, dep: unknown): [RefObject<HTMLDivElement>, number] {
+  const ref = useRef<HTMLDivElement>(null);
   const [n, setN] = useState(max);
   // the row pitch measured when two rows were on screen — with ONE row its height alone under-estimates the pitch (gaps /
   // borders), so 1 → 2 → 1 → … could flip forever (React #185, found by the Live Operations 1600×765 run, Oct 28 2026)

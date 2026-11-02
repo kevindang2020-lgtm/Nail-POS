@@ -15,6 +15,7 @@
 //     shown separately. Requested / pending verification is never counted as an appointment.
 //   • The default day came from the browser in UTC (toISOString); it is now the branch's own clock.
 import { sql, type Kysely } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
@@ -64,7 +65,7 @@ const minOf = (t: string) => { const [h, m] = String(t).split(':').map(Number); 
 const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
 
 /** salon-local calendar arithmetic on plain YYYY-MM-DD strings (never the browser's or the server's zone) */
-export function addDays(d: string, k: number): string { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + k); return t.toISOString().slice(0, 10); }
+export function addDays(d: string, k: number): string { const t = new Date(d + 'T12:00:00Z'); t.setUTCDate(t.getUTCDate() + k); return utcDate(t); }
 export function dowOf(d: string): number { return new Date(d + 'T12:00:00Z').getUTCDay(); }
 export function localToday(tz: string, now = new Date()): { today: string; minute: number } {
   const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(now).map((x) => [x.type, x.value]));
@@ -78,7 +79,7 @@ export function periodRange(period: string | undefined, today: string, from?: st
     return { from, to };
   }
   if (period === 'week') { const back = (dowOf(today) + 6) % 7; const s = addDays(today, -back); return { from: s, to: addDays(s, 6) }; }
-  if (period === 'month') { const s = today.slice(0, 8) + '01'; const nx = new Date(s + 'T12:00:00Z'); nx.setUTCMonth(nx.getUTCMonth() + 1); return { from: s, to: addDays(nx.toISOString().slice(0, 10), -1) }; }
+  if (period === 'month') { const s = today.slice(0, 8) + '01'; const nx = new Date(s + 'T12:00:00Z'); nx.setUTCMonth(nx.getUTCMonth() + 1); return { from: s, to: addDays(utcDate(nx), -1) }; }
   if (period === 'year') return { from: today.slice(0, 4) + '-01-01', to: today.slice(0, 4) + '-12-31' };
   if (period === 'today' || !period) return { from: today, to: today };
   throw new AiCalendarError('Unknown period.', 'AI_CALENDAR_INVALID_FILTER');

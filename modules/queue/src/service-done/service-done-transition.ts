@@ -19,7 +19,7 @@
 //   • optionally LOCKS the ticket at Service Done (the Serving "send" path) with the subtotal it was sent at
 //   • records service.completed in the outbox INSIDE the transaction (Constitution 8), and transitions workforce state
 //     (serviceCompleted) for the primary + helper technicians AFTER commit — never inside the transaction
-import { sql, type Kysely, type Transaction } from 'kysely';
+import { sql, type Kysely, type Transaction, type RawBuilder, type SqlBool } from 'kysely';
 import { canMoveToSql, type DB } from '@aipowersalon/database';
 import { APPOINTMENT, QUEUE_ITEM, TECH_QUEUE_TICKET } from '@aipowersalon/appointments';
 import { OutboxWriter, DOMAIN_EVENTS, createDomainEvent } from '@aipowersalon/events';
@@ -129,7 +129,7 @@ async function completeInTrx(trx: Transaction<DB>, deps: ServiceDoneDeps, input:
       service_done_checkout_status: 'not_ready',
       service_done_quality_status: sql`case when service_done_checkout_status = 'reopened' then 'pending' else service_done_quality_status end`,
     } as any).where('tenant_id', '=', input.tenantId).where('id', '=', input.ticketId)
-      .where(canMoveToSql(SERVICE_DONE_CHECKOUT, 'not_ready')).where(canMoveToSql(SERVICE_DONE_QUALITY, 'pending')).execute();   // every state may reach these: a guard, never a filter
+      .where(canMoveToSql(SERVICE_DONE_CHECKOUT, 'not_ready') as RawBuilder<SqlBool>).where(canMoveToSql(SERVICE_DONE_QUALITY, 'pending') as RawBuilder<SqlBool>).execute();   // every state may reach these: a guard, never a filter
     // visit projections → completed (queue board, tech queue, calendar, per-line plan) — each through its machine
     const queueItemIds = new Set<string>();
     if (t.queue_item_id) queueItemIds.add(String(t.queue_item_id));

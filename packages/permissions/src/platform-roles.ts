@@ -127,6 +127,7 @@ export const PLATFORM_PATH_DOMAIN: Readonly<Record<string, PlatformDomain>> = {
   'database': 'system',   // BUILD_PLAN Phase 10: the Database page (its routes declare super_admin.database.*)
   'observability': 'system',   // BUILD_PLAN Phase 14 A: request / correlation / trace / log search (routes declare super_admin.telemetry.*)
   'jobs': 'system',   // Phase 2: the one job queue (stats, dead jobs, retry/cancel)
+  'release-evidence': 'system',   // CI runs / staging reports / device tests per release — unclassified, it was refused to every platform identity
   // GET /super-admin/stream — the admin app's SSE stream. It carries only the aggregated live-ops snapshot the System
   // Status screen shows (counts, per-minute rates, realtime health). Unclassified until Constitution 5 Step 8, so
   // PlatformDomainGuard refused it to every platform identity (403 "not classified", confirmed live Oct 4 2026).

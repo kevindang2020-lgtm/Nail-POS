@@ -23,6 +23,7 @@
 //   rollback (owner)    re-activates the agent recorded as `prior_agent_id` on this agent's last activation — same gates.
 // Drafts are rows only: create / save / duplicate never call a provider, place a call or change a route.
 import { sql, type Kysely } from 'kysely';
+import { utcDate } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
@@ -50,7 +51,7 @@ export const FD_ACTIVATION_GATES = ['ent.package', 'tw.account', 'tw.route', 'rt
 const HANDOFF = /^(\+[1-9]\d{7,14}|voicemail|front_desk)$/;
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 /** a real calendar day (rejects 2026-13-01, 2026-02-30) */
-const realDay = (v: string) => { if (!DATE.test(v)) return false; const d = new Date(v + 'T00:00:00Z'); return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === v; };
+const realDay = (v: string) => { if (!DATE.test(v)) return false; const d = new Date(v + 'T00:00:00Z'); return !Number.isNaN(d.getTime()) && utcDate(d) === v; };
 const N = (v: unknown) => (v == null ? 0 : Number(v));
 const iso = (v: unknown) => (v == null ? null : v instanceof Date ? v.toISOString() : String(v));
 const nowIso = () => new Date().toISOString();

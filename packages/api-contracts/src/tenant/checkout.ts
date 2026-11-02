@@ -3,7 +3,7 @@
 
 export type ReadyStatus = "ready_checkout" | "ready_for_payment" | "payment_processing" | "payment_failed";
 
-export type PaymentMethod = "card" | "cash" | "gift_card" | "split" | "deposit";   // deposit: D11 (Oct 21 2026) — a booking deposit applied to the ticket
+export type PaymentMethod = "card" | "cash" | "gift_card" | "split" | "deposit" | "global_reward";   // deposit: D11 (Oct 21 2026) — a booking deposit applied to the ticket
 
 export interface CheckoutFilters { search?: string; status?: string; station?: string; technicianId?: string; paymentMethod?: string; page?: number; pageSize?: number; }
 

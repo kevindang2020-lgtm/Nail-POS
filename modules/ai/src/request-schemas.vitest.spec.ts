@@ -142,16 +142,11 @@ const CASES: RouteBodyCase[] = [
   c('POST /api/ai-receptionist/v1/verification/send', GwV, 'send', [{ bookingSessionId: 'bs_1', customerPhone: '+16095551234' }], [{ customerPhone: {} }, 'customerPhone']),
   c('POST /api/ai-receptionist/v1/verification/dtmf', GwV, 'dtmf', [{ Digits: '482913' }, { digits: '482913', vc: 'sealed.token' }], [{ Digits: ['4'] }, 'Digits']),
   // tenant receptionist management
-  c('POST /tenant/ai/receptionist/agents', Rcp, 'createAgent', [{ name: 'Front desk', callType: 'inbound', language: 'en', useCase: 'booking' }], [{ name: 'x', status: 'active' }, 'status']),
-  c('PATCH /tenant/ai/receptionist/agents/:id', Rcp, 'updateAgent', [{ greeting: 'Thanks for calling Bella Nails!' }], [{ greeting: 5 }, 'greeting']),
-  c('POST /tenant/ai/receptionist/agents/:id/status', Rcp, 'setStatus', [{ status: 'active' }], [{ status: ['active'] }, 'status']),
   // AI Follow-Ups guide (Oct 31 2026): the four tenant/ai/receptionist/follow-ups routes are retired → /pos/ai/follow-ups-center
   c('POST /pos/ai/follow-ups-center/tasks', Fuc, 'create', [{ reason: 'CALLBACK', description: 'asked about gel-x', callerPhone: '+16095551234', idempotencyKey: 'req-key-0001' }], [{ reason: 'CALLBACK', description: 'x x', idempotencyKey: 'req-key-0002', status: 'closed' }, 'status']),
   c('POST /pos/ai/follow-ups-center/tasks/:id/assign', Fuc, 'assign', [{ assignedUserId: ID, version: 1 }, { assignedUserId: null }], [{ assignedUserId: 4 }, 'assignedUserId']),
   c('POST /pos/ai/follow-ups-center/tasks/:id/note', Fuc, 'note', [{ note: 'left voicemail', version: 2 }], [{ note: {} }, 'note']),
   c('POST /pos/ai/follow-ups-center/tasks/:id/status', Fuc, 'status', [{ to: 'resolved', resolutionCategory: 'booked', version: 3 }, { to: 'in_progress' }], [{ to: 'done' }, 'to']),
-  c('POST /tenant/ai/receptionist/faqs', Rcp, 'createFaq', [{ question: 'Do you take walk-ins?', answer: 'Yes, until 6pm.', category: 'hours' }], [{ question: 'q', isActive: 'yes' }, 'isActive']),
-  c('PATCH /tenant/ai/receptionist/faqs/:id', Rcp, 'updateFaq', [{ isActive: false }], [{ answer: [] }, 'answer']),
   c('PATCH /tenant/ai/receptionist/settings', Rcp, 'updateSettings', [{ enabled: true, silenceTimeoutSeconds: 8, afterHoursBehavior: 'take_message' }], [{ enabled: 'true' }, 'enabled'], true),
   c('POST /voice/calls/:callId/outcome', Vb, 'recordOutcome', [{ durationSeconds: 120, language: 'en', intents: ['BOOK'], toolCalls: [{ name: 'book' }], bookingOutcome: 'booked', abandoned: false, summary: 'Booked gel for Friday' }], [{ summary: { s: 1 } }, 'summary']),
 ];
@@ -174,6 +169,11 @@ describe('ai — validated bodies, route by route', () => {
     expect(() => pipe.transform({ ...x.today, permissions: ['*'] })).toThrow();
   });
   for (const x of CASES) it(x.route, () => expect(routeBodyFailures(x, bodyPipeOf as any)).toEqual([]));
+  // AI Business Setup (guide 20) moved FAQs to the versioned draft → review → approved workflow and AI Front Desk (guide 23)
+  // retired the plain agent writes (activation only through the owner-approved path): these routes stay gone.
+  it('retired receptionist agent / FAQ write routes stay retired: POST /tenant/ai/receptionist/agents, PATCH /tenant/ai/receptionist/agents/:id, POST /tenant/ai/receptionist/agents/:id/status, POST /tenant/ai/receptionist/faqs, PATCH /tenant/ai/receptionist/faqs/:id', () => {
+    for (const h of ['createAgent', 'updateAgent', 'setStatus', 'createFaq', 'updateFaq']) expect((Rcp.prototype as any)[h]).toBeUndefined();
+  });
   it('the refusals the services make themselves still happen: unknown audience / receptionist-setting keys reach the service; content fields on feedback and a payment status on a resolution are refused here', () => {
     expect(validateBody(AI_MARKETING_AUDIENCE_BODY, { channel: 'sms', zip: '08109' })).toMatchObject({ ok: true, value: { zip: '08109' } });
     expect(validateBody(RECEPTIONIST_SETTINGS_BODY, { voice: 'x' })).toMatchObject({ ok: true, value: { voice: 'x' } });

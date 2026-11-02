@@ -14,7 +14,7 @@ const P = 'd7341000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
 const T = id('a1'), B = id('b1'), C = id('c1'), IDV = id('f1'), OWNER = id('e1'), CAT = id('a7'), SVC = id('a8');
 const posCtx: any = { tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: ['pos.checkout.view', 'pos.checkout.take_payment', 'pos.checkout.cash_payment', 'pos.checkout.refund', 'checkout.approve_refund'] };
-let db: any; let svc: CheckoutService; let n = 0;
+let db: any; let svc: CheckoutService;
 const pts = async () => (await sql<any>`select available_tenths::int a, reserved_tenths::int h from global_rewards_accounts where identity_id = ${IDV}`.execute(db)).rows[0];
 async function ticket(totalCents: number) {
   n++;

@@ -45,7 +45,6 @@ export function POSTipsScreen() {
   const [technicianId, setTech] = useState(''); const [method, setMethod] = useState(''); const [status, setStatus] = useState(''); const [sort, setSort] = useState('collected_desc');
   const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [detail, setDetail] = useState<string | null>(null); const [exporting, setExporting] = useState(false);
   const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, technicianId: technicianId || undefined, method: method || undefined, status: status || undefined, sort };
-  const key = JSON.stringify(scope);
   const sum = useLoad(() => api.summary({ ...periodQuery(period), dateField: basis, technicianId: technicianId || undefined }), [JSON.stringify(period), basis, technicianId, tick]);
   const techs = useLoad(() => api.technicians(), []);
   const k = sum.data?.kpis; const rec = sum.data?.reconciliation;

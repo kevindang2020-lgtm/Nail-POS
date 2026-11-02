@@ -29,7 +29,7 @@ import type { ReminderTemplatePort } from './reminders.service';
 export class RemindersModule {}
 
 /** Message Templates (740): Appointment Reminders reads its active template binding (Automation Connection Center) */
-export function reminderTemplates(db: AppDatabase): ReminderTemplatePort {
+export function reminderTemplates(db: NonNullable<AppDatabase>): ReminderTemplatePort {
   return {
     resolve: (tenantId, branchId, channel) => resolveBoundTemplate(db, tenantId, branchId, 'appointment_reminder', channel),
     record: (u) => recordTemplateUsage(db, { ...u, workflow: 'appointment_reminder' }),

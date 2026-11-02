@@ -158,7 +158,7 @@ export function POSCommunicationsScreen() {
   const useTemplate = async (x: { id: string; body: string; scope: string }) => {
     setTplOpen(false);
     let text = x.body;
-    try {
+    if (selId) try {
       const r = await posCommunicationsApi.inbox.renderTemplate(selId, x.id);
       text = r.text;
       if (r.missing.length || r.unknown.length) setNote({ tone: 'warn', text: tx('ci.tpl.checkVars', { list: [...r.missing.map((m) => `{${m}}`), ...r.unknown].join(', ') }) });

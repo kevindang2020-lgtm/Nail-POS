@@ -21,7 +21,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { sql, type Kysely } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
-import { withCode } from '@aipowersalon/api-contracts';
+import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
 import { logException } from '@aipowersalon/observability';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -63,9 +63,9 @@ export class TemplatesError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'TemplatesError'; this.code = code; this.status = status; this.extra = extra; }
 }
-const err = (msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) => withCode(new TemplatesError(msg, code, status, extra), code);
+const err = (msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) => withCode(new TemplatesError(msg, code, status, extra), code as ApiErrorCode);
 export function asHttp(e: unknown): never {
-  if (e instanceof TemplatesError) throw withCode(new HttpException({ code: e.code, message: e.message, ...e.extra }, e.status as HttpStatus), e.code);
+  if (e instanceof TemplatesError) throw withCode(new HttpException({ code: e.code, message: e.message, ...e.extra }, e.status as HttpStatus), e.code as ApiErrorCode);
   throw e;
 }
 

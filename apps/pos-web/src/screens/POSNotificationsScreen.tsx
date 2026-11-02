@@ -16,7 +16,7 @@ import {
 import { posNotificationsApi } from '../api/posNotificationsApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtNumber, fmtInTz } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 
@@ -29,8 +29,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const nf = (n: number) => fmtNumber(n);
 const errText = (e: unknown) => errorTextOf(e, tx('cn.err.generic'));
 const isForbidden = (e: unknown) => { const x = e as { status?: number; code?: string } | null; return !!x && (x.status === 403 || x.code === 'PERMISSION_DENIED'); };
-const when = (iso: string | null | undefined, tz?: string) => (iso ? fmtInZone(iso, tz, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
-const whenLong = (iso: string | null | undefined, tz?: string) => (iso ? fmtInZone(iso, tz, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—');
+const when = (iso: string | null | undefined, tz?: string) => (iso ? fmtInTz(iso, tz, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+const whenLong = (iso: string | null | undefined, tz?: string) => (iso ? fmtInTz(iso, tz, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '—');
 function Chip({ s, label, testId }: { s: string; label?: string; testId?: string }) { return <span className={'fk-chip ' + (TONE[s] ?? 'mut')} data-testid={testId ?? 'cn-chip-' + s}>{label ?? tx('cn.st.' + s)}</span>; }
 function HChip({ s }: { s: string }) { return <span className={'fk-chip ' + (s === 'pending' ? 'mut' : TONE[s] ?? 'mut')} data-testid={'cn-h-' + s}>{tx('cn.hs.' + s)}</span>; }
 const typeLabel = (t: string | null | undefined) => tx('cn.type.' + (t ?? 'unknown'));

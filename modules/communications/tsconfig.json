@@ -77,6 +77,9 @@
       ],
       "@aipowersalon/config": [
         "../../packages/config/dist/index.d.ts"
+      ],
+      "@aipowersalon/database/nest": [
+        "../../packages/database/dist/nest/index.d.ts"
       ]
     }
   },

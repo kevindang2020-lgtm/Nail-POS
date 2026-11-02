@@ -251,7 +251,6 @@ export function POSServiceDoneScreen() {
     if (ins.route && ins.route !== '/service-done') nav(ins.route);
   };
 
-  const card: CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 12, padding: 10 };
   const h2: CSSProperties = { font: '700 13px/1.2 "Hanken Grotesk",sans-serif', margin: 0, color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' };
   const chip = (txt: string, tone: { bg: string; fg: string }) => <span style={{ background: tone.bg, color: tone.fg, borderRadius: 6, padding: '2px 7px', fontSize: 10.5, fontWeight: 700, whiteSpace: 'nowrap' }}>{txt}</span>;
   const ghostBtn: CSSProperties = { background: 'var(--card)', border: `1px solid ${O}`, color: O, borderRadius: 9, padding: '0 9px', fontSize: 11, fontWeight: 700, cursor: 'pointer', minHeight: 32 };
