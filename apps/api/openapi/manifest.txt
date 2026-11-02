@@ -582,6 +582,10 @@ GET /pos/customer-phone-center/requests  realm=staff  auth=session  domain=ident
 GET /pos/customer-phone-center/requests/{id}  realm=staff  auth=session  domain=identity  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-phone-center/summary  realm=staff  auth=session  domain=identity  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-phone-center/sync  realm=staff  auth=session  domain=identity  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-search/customers  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-search/customers/{id}  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-search/options  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-search/summary  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/duplicates  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/export  realm=staff  auth=session  domain=customers  perm=pos.customers.export  async=pos.customers.export  guards=RolePermissionGuard,TenantAuthGuard
@@ -1491,7 +1495,7 @@ GET /super-admin/queue/live-overview  realm=super_admin  auth=session  domain=bo
 GET /super-admin/queue/overview  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.view  guards=SuperAdminGuard
 GET /super-admin/realtime/presence  realm=super_admin  auth=session  domain=operations  derived=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/reconciliation/overview  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.view  guards=SuperAdminGuard
-GET /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=UNCLASSIFIED  guards=SuperAdminGuard
+GET /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/report-builder/catalog  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.view  guards=SuperAdminGuard
 GET /super-admin/report-builder/definitions  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.view  guards=SuperAdminGuard
 GET /super-admin/revenue-residuals/accounting-periods  realm=super_admin  auth=session  domain=finance  derived=super_admin.payments.view  guards=SuperAdminGuard
@@ -2597,6 +2601,7 @@ POST /pos/customer-displays/{deviceId}/refresh  realm=staff  auth=session  domai
 POST /pos/customer-displays/{deviceId}/revoke  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/health/check  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/records/{id}/retry  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-search/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers  realm=staff  auth=session  domain=customers  perm=pos.customers.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers/duplicates/{duplicateGroupId}/decision  realm=staff  auth=session  domain=customers  perm=pos.customers.merge  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers/duplicates/{duplicateGroupId}/merge  realm=staff  auth=session  domain=customers  perm=pos.customers.merge  guards=RolePermissionGuard,TenantAuthGuard
@@ -3296,7 +3301,7 @@ POST /super-admin/queue/notify-branch  realm=super_admin  auth=session  domain=b
 POST /super-admin/queue/snapshot  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  guards=SuperAdminGuard
 POST /super-admin/queue/support-session  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  step-up  guards=SuperAdminGuard
 POST /super-admin/queue/{queueId}/retry-sync  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  guards=SuperAdminGuard
-POST /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=UNCLASSIFIED  guards=SuperAdminGuard
+POST /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=super_admin.system.manage  guards=SuperAdminGuard
 POST /super-admin/report-builder/definitions  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.manage  guards=SuperAdminGuard
 POST /super-admin/report-builder/run  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.manage  guards=SuperAdminGuard
 POST /super-admin/revenue-residuals/accounting-periods  realm=super_admin  auth=session  domain=finance  derived=super_admin.payments.manage  guards=SuperAdminGuard

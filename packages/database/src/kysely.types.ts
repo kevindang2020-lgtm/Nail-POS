@@ -4844,6 +4844,9 @@ export interface ReceptionCopilotActionLedgerTable {
   state: Generated<string | null>; actor_user_id: string | null; payload_hash: string | null; correlation_id: string | null;
   error_code: string | null; summary: string | null; finished_at: Ts | null; updated_at: Generated<Ts>; updated_by: string | null;
 }
+export interface CustomerSearchHealthRunsTable {   // migration 760 — read-only "Check Customer Search System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface AiCalendarHealthRunsTable {   // migration 758 — read-only "Check Calendar System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; calendar_date: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
@@ -7425,6 +7428,7 @@ export interface DB {
   reception_copilot_action_ledger: ReceptionCopilotActionLedgerTable;
   reception_copilot_health_runs: ReceptionCopilotHealthRunsTable;
   ai_calendar_health_runs: AiCalendarHealthRunsTable;
+  customer_search_health_runs: CustomerSearchHealthRunsTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

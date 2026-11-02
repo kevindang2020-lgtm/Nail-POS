@@ -196,6 +196,10 @@
     "modules/ai/src/ai-center/ai-calendar-center.controller.ts#AiCalendarCenterController.assistant": {
       "kind": "not-a-list",
       "reason": "AI Calendar (Oct 31 2026): a bounded set of evidence-backed suggestion cards for one day (at most ~15); ?date picks the day"
+    },
+    "modules/customers/src/customer-search/customer-search-center.controller.ts#CustomerSearchCenterController.summary": {
+      "kind": "not-a-list",
+      "reason": "Customer Search (Nov 1 2026): ONE KPI card set for one period; ?preset/from/to/branch pick the period and scope, never a filter of rows"
     }
   }
 }

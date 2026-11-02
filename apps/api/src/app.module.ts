@@ -18,7 +18,7 @@ import { PlatformNoticeModule, CampaignsModule, TenantA2pModule, MessagingReadin
 import { ReportsModule, MenuInsightsModule, BookingCheckinEventsModule, MarketingReportModule, MarketingGrowthModule, BirthdayCenterModule } from '@aipowersalon/reports';
 import { CashDrawerModule, CheckoutModule, MobileCheckoutModule, TicketHistoryModule, SkipLineCheckoutModule, AiCheckoutUpsellModule } from '@aipowersalon/checkout';
 import { BrandingModule, OwnerPortfolioModule, DevicesModule, PosSettingsModule, TenantLocationsModule, TenantNavigationModule, TenantEntitlementsModule, SocialModule } from '@aipowersalon/tenants';
-import { CustomerSalonsModule, CustomerIdentityModule, CustomersModule, ReviewsModule, WalletModule, ReferralsModule } from '@aipowersalon/customers';
+import { CustomerSalonsModule, CustomerIdentityModule, CustomersModule, ReviewsModule, WalletModule, ReferralsModule, CustomerSearchModule } from '@aipowersalon/customers';
 import { AuthModule, WebAuthnModule, PasswordResetModule, SystemResetModule, MfaModule, CustomerSecurityModule, StaffRolesModule, CustomerRegistrationModule } from '@aipowersalon/identity';
 import { ServiceDoneModule, ServingModule, TechQueueModule, CheckInModule, QueueModule, GoCheckInModule, TechModule, LiveTechnicianScheduleModule, TechnicianHelpModule } from '@aipowersalon/queue';
 import { TechCashHandoffModule, TimeClockModule, PosTeamModule, TeamPermissionsModule, AccessGovernanceModule, PayrollModule, CompensationModule, TechnicianAppAccessMiddleware, TechProfileModule, NailShowcaseModule, TechniciansModule, TeamScreensModule, TeamStaffModule, CommissionReportModule, TechnicianTimeOffModule, TurnQueueModule } from '@aipowersalon/workforce';
@@ -140,7 +140,7 @@ import { DbConstraintRetrierModule } from './common/db-constraint-retrier.module
     QueueModule, ServingModule, ServiceDoneModule, CheckoutModule, MobileCheckoutModule, CustomersModule, TechniciansModule, TeamScreensModule, TeamStaffModule,
     ServicesModule, BundlesModule, MembershipChargeWiringModule, StaffBranchAccessWiringModule, MembershipsModule, MembershipBillingModule, MembershipEnrollModule, MembershipCompModule, MembershipCommsModule, MenuInsightsModule, DevicesModule, ApiWebhooksModule, DeploymentsModule, LogsModule, ReportsModule,
     GiftCardsModule,
-    LoyaltyModule, GlobalRewardsCheckoutModule, DisplayAdvertisingModule, SalonPromotionsModule, DealsModule, AiMarketingModule, AiMarketingSendModule, MoneyProtectionModule, VoiceTranscriptionModule, QueueAssignmentModule, AiSchedulingModule, ReviewsModule, CommissionReportModule, RefundsVoidsModule, PosSettingsModule, PosProjectStatusModule,
+    LoyaltyModule, GlobalRewardsCheckoutModule, DisplayAdvertisingModule, SalonPromotionsModule, DealsModule, AiMarketingModule, AiMarketingSendModule, MoneyProtectionModule, VoiceTranscriptionModule, QueueAssignmentModule, AiSchedulingModule, ReviewsModule, CustomerSearchModule, CommissionReportModule, RefundsVoidsModule, PosSettingsModule, PosProjectStatusModule,
     AiBusinessModule,
     AiInventoryModule,
     AiOcrReceiptModule,

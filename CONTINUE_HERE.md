@@ -648,6 +648,25 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - 58 of 62 gates pass, plus the 4 that can't run here.
 - **Next:** guide 27, AI Center (last).
 
+## Merge verification + 20 new guides — Nov 2 2026
+
+- **Merge:** the nine uploaded bundles are one linear chain ending at 4467fb80; this repo is a snapshot import of it
+  (`ef877c5`) plus fixes. Full report: `docs/MERGE_2026-11-02.md`.
+- **Running it found the API could not start** (3 causes), gift cards and the Customer Notifications list threw on every
+  call, and ~220 type errors across modules, API and POS. All fixed; `check:boot` is green and everything builds.
+- **Pre-existing test failures** (identical on the untouched tree) are listed in the report: PGlite race tests, plus a bug
+  pass worth doing (commission review, tips, voice holds, payroll void, OCR `subtotal_cents`).
+- **Next:** Kevin's 20 new guides (Nov 1 2026), built one at a time. Order: Customer Search → Duplicate Review (two guides,
+  one screen) → Customer Timeline → Customer Intelligence → Churn Watch → Rebooking → Service Recommendations →
+  Customer AI Settings → Review & Reputation → Reputation Settings → AI OCR Receipt Scanner → Receipt Document
+  Recognition → AI Plans → AI Usage Limits → AI Analytics & Forecasting → AI Scheduling Optimizer → Checkout Upsell
+  Settings → Voice Transcription Settings → Voice Transcription Follow-Ups. (Guide 27, AI Center, is still open too.)
+- **Done: Customer Search** (guide 1): `pos/customer-search` routes, migration 760, POS screen rebuilt, EN/VI.
+  pgtest 20/20, screen 6/6. Doc: `docs/customers/CUSTOMER_SEARCH.md`.
+- **Next: Duplicate Review.** The existing in-memory detector doesn't scale; read both guides (FULL + COMPLETE) first.
+- **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
+  related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
+
 ## External — Kevin / his developer
 
 The full table is `NEXT_STEPS.md` §2. In short:

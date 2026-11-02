@@ -11326,3 +11326,196 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `tm2.new.hidden` | New employee {n} was saved, but the current filters hide them. | Đã lưu nhân viên mới {n}, nhưng bộ lọc hiện tại đang ẩn họ. |
 | `tm2.new.view` | View new employee | Xem nhân viên mới |
 | `tm2.new.clear` | Clear filters | Xóa bộ lọc |
+
+## Customer Search (`csx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `csx.updated` | Updated {time} | Cập nhật {time} |
+| `csx.refresh` | Refresh | Làm mới |
+| `csx.check` | Check Customer Search System | Kiểm tra hệ thống tìm khách |
+| `csx.clearSearch` | Clear search | Xóa tìm kiếm |
+| `csx.clearAll` | Clear all | Xóa tất cả |
+| `csx.noAccess` | Your role cannot search customers. | Vai trò của bạn không được tìm khách hàng. |
+| `csx.loadFailed` | Customer search could not load. Try again. | Không tải được kết quả tìm khách. Vui lòng thử lại. |
+| `csx.loading` | Loading… | Đang tải… |
+| `csx.any` | Any | Tất cả |
+| `csx.allBranches` | All my branches | Tất cả chi nhánh của tôi |
+| `csx.kpi.customers` | Customers | Khách hàng |
+| `csx.kpi.customersSub` | Live profiles you can see | Hồ sơ đang hoạt động bạn được xem |
+| `csx.kpi.active` | Active | Đang quay lại |
+| `csx.kpi.activeSub` | A completed visit in the last {d} days | Có lượt làm xong trong {d} ngày qua |
+| `csx.kpi.never` | No completed visit | Chưa có lượt làm |
+| `csx.kpi.neverSub` | Profile only — never served | Chỉ có hồ sơ — chưa từng phục vụ |
+| `csx.kpi.upcoming` | Upcoming appointment | Có lịch hẹn sắp tới |
+| `csx.kpi.upcomingSub` | Booked from today on | Đặt từ hôm nay trở đi |
+| `csx.kpi.created` | New profiles | Hồ sơ mới |
+| `csx.kpi.shared` | Shared phone or email | Trùng số điện thoại hoặc email |
+| `csx.kpi.sharedSub` | Review in Duplicate Review | Xem lại trong Kiểm tra trùng lặp |
+| `csx.f.status` | Customer status | Trạng thái khách |
+| `csx.f.booking` | Booking | Lịch hẹn |
+| `csx.f.technician` | Technician | Thợ |
+| `csx.f.service` | Service | Dịch vụ |
+| `csx.f.branch` | Branch | Chi nhánh |
+| `csx.f.sort` | Sort | Sắp xếp |
+| `csx.f.dateField` | Date type | Loại ngày |
+| `csx.status.all` | All | Tất cả |
+| `csx.status.active` | Active | Đang quay lại |
+| `csx.status.inactive` | Inactive | Lâu chưa quay lại |
+| `csx.status.new` | New (1 visit) | Mới (1 lượt) |
+| `csx.status.returning` | Returning (2+ visits) | Khách quen (2+ lượt) |
+| `csx.status.never` | No completed visit | Chưa có lượt làm |
+| `csx.status.duplicate` | Possible duplicate | Có thể trùng lặp |
+| `csx.status.archived` | Archived | Đã lưu trữ |
+| `csx.booking.upcoming` | Upcoming | Sắp tới |
+| `csx.booking.completed` | Completed | Đã hoàn tất |
+| `csx.booking.canceled` | Canceled | Đã hủy |
+| `csx.booking.no_show` | No-show | Không đến |
+| `csx.date.created` | Customer created | Ngày tạo hồ sơ |
+| `csx.date.updated` | Customer updated | Ngày cập nhật hồ sơ |
+| `csx.date.last_visit` | Last completed visit | Lượt làm gần nhất |
+| `csx.date.first_visit` | First completed visit | Lượt làm đầu tiên |
+| `csx.date.appointment` | Appointment date | Ngày hẹn |
+| `csx.date.booking_created` | Booking created | Ngày đặt lịch |
+| `csx.date.service_completed` | Service completed | Ngày hoàn tất dịch vụ |
+| `csx.preset.all` | All time | Mọi thời gian |
+| `csx.preset.today` | Today | Hôm nay |
+| `csx.preset.week` | This week | Tuần này |
+| `csx.preset.month` | This month | Tháng này |
+| `csx.preset.year` | This year | Năm nay |
+| `csx.preset.custom` | Custom range… | Chọn khoảng ngày… |
+| `csx.sort.relevance` | Best match | Khớp nhất |
+| `csx.sort.newest` | Newest added | Mới thêm nhất |
+| `csx.sort.oldest` | Oldest added | Thêm lâu nhất |
+| `csx.sort.name` | Name A–Z | Tên A–Z |
+| `csx.sort.last_visit` | Most recent visit | Lượt làm gần nhất |
+| `csx.sort.visits` | Most visits | Nhiều lượt nhất |
+| `csx.order.relevance` | best match first | khớp nhất trước |
+| `csx.results` | Customers | Khách hàng |
+| `csx.count` | {n} matching · {order} | {n} kết quả · {order} |
+| `csx.newer` | {n} new — show | {n} khách mới — hiển thị |
+| `csx.noMatch` | No matching customers found in your authorized salon records. | Không tìm thấy khách hàng phù hợp trong hồ sơ tiệm bạn được xem. |
+| `csx.empty` | No customers yet. | Chưa có khách hàng. |
+| `csx.col.customer` | Customer | Khách hàng |
+| `csx.col.contact` | Phone / email | Điện thoại / email |
+| `csx.col.lastVisit` | Last visit | Lượt làm gần nhất |
+| `csx.col.next` | Next appointment | Lịch hẹn kế tiếp |
+| `csx.col.technician` | Last technician | Thợ gần nhất |
+| `csx.col.visits` | Visits | Số lượt |
+| `csx.col.status` | Status | Trạng thái |
+| `csx.col.created` | Added | Ngày thêm |
+| `csx.view` | View | Xem |
+| `csx.match.customer_id` | ID match | Khớp mã khách |
+| `csx.match.appointment_or_ticket` | Appointment / ticket | Lịch hẹn / phiếu |
+| `csx.match.phone` | Phone match | Khớp số điện thoại |
+| `csx.match.email` | Email match | Khớp email |
+| `csx.match.name` | Name match | Khớp tên |
+| `csx.match.partial` | Partial match | Khớp một phần |
+| `csx.sharedChip` | Shares contact ({n}) | Trùng liên lạc ({n}) |
+| `csx.sharedHint` | Another profile has the same phone or email. That does not make them one person — review it in Duplicate Review. | Có hồ sơ khác cùng số điện thoại hoặc email. Điều đó không có nghĩa là cùng một người — hãy xem lại trong Kiểm tra trùng lặp. |
+| `csx.member` | Member | Hội viên |
+| `csx.verifiedHint` | Phone verified | Số điện thoại đã xác minh |
+| `csx.life.active` | Active | Đang quay lại |
+| `csx.life.inactive` | Inactive | Lâu chưa quay lại |
+| `csx.life.never` | No visit yet | Chưa có lượt làm |
+| `csx.life.archived` | Archived | Đã lưu trữ |
+| `csx.life.unknown` | Unknown | Chưa rõ |
+| `csx.rows` | Rows | Số dòng |
+| `csx.contactFull` | Full phone and email shown | Hiển thị đầy đủ số điện thoại và email |
+| `csx.contactMasked` | Phone and email are masked for your role | Số điện thoại và email được che theo vai trò của bạn |
+| `csx.fresh` | Live data — last change {at} | Dữ liệu trực tiếp — thay đổi gần nhất {at} |
+| `csx.unavailable` | Unavailable right now | Hiện không có dữ liệu |
+| `csx.close` | Close | Đóng |
+| `csx.anyTech` | Any technician | Thợ bất kỳ |
+| `csx.appt.booked` | Booked | Đã đặt |
+| `csx.appt.confirmed` | Confirmed | Đã xác nhận |
+| `csx.appt.arrived` | Arrived | Đã đến |
+| `csx.appt.checked_in` | Checked in | Đã tiếp nhận |
+| `csx.appt.waiting` | Waiting | Đang chờ |
+| `csx.appt.in_service` | In service | Đang phục vụ |
+| `csx.appt.completed` | Completed | Đã hoàn tất |
+| `csx.appt.cancelled` | Canceled | Đã hủy |
+| `csx.appt.canceled` | Canceled | Đã hủy |
+| `csx.appt.no_show` | No-show | Không đến |
+| `csx.appt.late` | Late | Trễ |
+| `csx.mstatus.active` | Active | Đang hoạt động |
+| `csx.mstatus.trialing` | Trial | Dùng thử |
+| `csx.mstatus.past_due` | Past due | Quá hạn thanh toán |
+| `csx.mstatus.paused` | Paused | Tạm dừng |
+| `csx.mstatus.canceled` | Canceled | Đã hủy |
+| `csx.mstatus.cancelled` | Canceled | Đã hủy |
+| `csx.mstatus.expired` | Expired | Hết hạn |
+| `csx.mstatus.pending` | Pending | Đang chờ |
+| `csx.ov.title` | Customer | Khách hàng |
+| `csx.ov.since` | added {d} | thêm ngày {d} |
+| `csx.ov.book` | New Booking | Đặt lịch mới |
+| `csx.ov.openCustomer` | Open Customer | Mở hồ sơ khách |
+| `csx.ov.reviewDuplicates` | Duplicate Review | Kiểm tra trùng lặp |
+| `csx.ov.unavailable` | Not available right now: {list}. Nothing is shown as empty for these. | Hiện không có: {list}. Các mục này không được hiển thị là trống. |
+| `csx.ov.tab.identity` | Profile | Hồ sơ |
+| `csx.ov.tab.appointments` | Appointments | Lịch hẹn |
+| `csx.ov.tab.services` | Services | Dịch vụ |
+| `csx.ov.tab.benefits` | Loyalty & memberships | Tích điểm & hội viên |
+| `csx.ov.tab.duplicates` | Possible duplicates | Có thể trùng lặp |
+| `csx.ov.tab.ai` | AI profile | Hồ sơ AI |
+| `csx.ov.id` | Customer ID | Mã khách |
+| `csx.ov.phone` | Phone | Điện thoại |
+| `csx.ov.email` | Email | Email |
+| `csx.ov.verified` | Verified | Đã xác minh |
+| `csx.ov.unverified` | Not verified | Chưa xác minh |
+| `csx.ov.visits` | Completed visits | Lượt làm đã hoàn tất |
+| `csx.ov.visitsLine` | {n} · first {first} · last {last} | {n} · đầu tiên {first} · gần nhất {last} |
+| `csx.ov.homeBranch` | Home branch | Chi nhánh chính |
+| `csx.ov.prefers` | prefers {b} | thích {b} |
+| `csx.ov.prefTech` | Preferred technician | Thợ ưa thích |
+| `csx.ov.recorded` | recorded | đã ghi nhận |
+| `csx.ov.noneRecorded` | None recorded | Chưa ghi nhận |
+| `csx.ov.updated` | Last updated | Cập nhật lần cuối |
+| `csx.ov.archived` | Archived | Đã lưu trữ |
+| `csx.ov.upcoming` | Upcoming | Sắp tới |
+| `csx.ov.history` | History | Lịch sử |
+| `csx.ov.noUpcoming` | No upcoming appointment. | Không có lịch hẹn sắp tới. |
+| `csx.ov.noHistory` | No past appointments. | Không có lịch hẹn trước đây. |
+| `csx.ov.cancelNoShow` | {c} canceled · {n} no-show | {c} đã hủy · {n} không đến |
+| `csx.ov.viewBooking` | Open in Booking | Mở trong Đặt lịch |
+| `csx.ov.noServices` | No completed services. | Chưa có dịch vụ hoàn tất. |
+| `csx.ov.minutes` | {n} min | {n} phút |
+| `csx.ov.loyalty` | Loyalty | Tích điểm |
+| `csx.ov.notEnrolled` | Not enrolled. | Chưa tham gia. |
+| `csx.ov.points` | {n} points (from the loyalty ledger) | {n} điểm (theo sổ điểm) |
+| `csx.ov.conflict` | The profile shows {p}, the ledger {l} — the ledger counts | Hồ sơ ghi {p}, sổ điểm ghi {l} — tính theo sổ điểm |
+| `csx.ov.memberships` | Memberships | Hội viên |
+| `csx.ov.noMemberships` | No memberships. | Không có gói hội viên. |
+| `csx.ov.readOnly` | Shown read-only. Points and memberships change only in Loyalty and Memberships. | Chỉ xem. Điểm và gói hội viên chỉ thay đổi trong Tích điểm và Hội viên. |
+| `csx.ov.dupRule` | These profiles share a phone or email with this customer. That is a signal, not proof: nothing is merged here — decide in Duplicate Review. | Các hồ sơ này cùng số điện thoại hoặc email với khách này. Đó chỉ là dấu hiệu, không phải bằng chứng: ở đây không gộp hồ sơ nào — hãy quyết định trong Kiểm tra trùng lặp. |
+| `csx.ov.samePhone` | same phone | cùng số điện thoại |
+| `csx.ov.sameEmail` | same email | cùng email |
+| `csx.ov.decision.keep_separate` | kept separate | đã giữ riêng |
+| `csx.ov.decision.not_sure` | marked not sure | đánh dấu chưa chắc |
+| `csx.ov.noDuplicates` | No other profile shares this phone or email. | Không có hồ sơ nào khác cùng số điện thoại hoặc email này. |
+| `csx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `csx.health.running` | Checking… | Đang kiểm tra… |
+| `csx.health.readOnly` | Read-only: the check reads the live records and changes nothing. | Chỉ đọc: việc kiểm tra đọc dữ liệu thật và không thay đổi gì. |
+| `csx.health.recent` | This is the run from the last 30 seconds. | Đây là kết quả của lần kiểm tra trong 30 giây vừa qua. |
+| `csx.health.next` | Next step: | Bước tiếp theo: |
+| `csx.health.READY` | Ready | Sẵn sàng |
+| `csx.health.WARNING` | Needs attention | Cần chú ý |
+| `csx.health.FAILED` | Failed | Lỗi |
+| `csx.health.UNKNOWN` | Unknown | Chưa rõ |
+| `csx.health.k.directory` | Customer directory | Danh bạ khách hàng |
+| `csx.health.k.exact_lookup` | Find a known customer | Tìm một khách đã biết |
+| `csx.health.k.phone_normalization` | Phone numbers ready for search | Số điện thoại sẵn sàng để tìm |
+| `csx.health.k.indexes` | Search indexes | Chỉ mục tìm kiếm |
+| `csx.health.k.tenant_isolation` | Salon isolation | Tách biệt giữa các tiệm |
+| `csx.health.k.booking_links` | Booking links | Liên kết lịch hẹn |
+| `csx.health.k.service_history` | Service history links | Liên kết lịch sử dịch vụ |
+| `csx.health.k.duplicate_signals` | Shared phone / email | Trùng số điện thoại / email |
+| `csx.health.k.ai_profile` | AI Customer Profile package | Gói Hồ sơ khách AI |
+| `csx.health.k.freshness` | Data freshness | Độ mới của dữ liệu |
+| `csx.src.visits` | visits | lượt làm |
+| `csx.src.booking` | appointments | lịch hẹn |
+| `csx.src.services` | services | dịch vụ |
+| `csx.src.loyalty` | loyalty | tích điểm |
+| `csx.src.memberships` | memberships | hội viên |
+| `csx.src.duplicates` | possible duplicates | hồ sơ có thể trùng |
+| `csx.src.preferences` | preferences | sở thích |

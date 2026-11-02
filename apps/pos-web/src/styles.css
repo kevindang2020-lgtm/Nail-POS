@@ -3705,3 +3705,11 @@ span.tq-who{cursor:default}
 @media (max-width: 1400px) { .aifu-body { grid-template-columns: minmax(0, 1fr); } .aifu-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 @media (max-width: 1100px) { .aifu-form { grid-template-columns: minmax(0, 1fr); } .aifu-dl { grid-template-columns: minmax(0, 1fr); } }
 .aifu-desc { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Customer Search (Nov 1 2026) — reuses the rvw-* layout; only what differs */
+.csx-searchbar { align-items: center; }
+.csx-searchbar .btn { min-height: 42px; }
+.csx-table { min-width: 980px; }
+.csx-table tr[data-testid="csx-row"] { cursor: pointer; }
+.csx-table td .chip { margin-left: 6px; }
+.csx-foot { padding: 0 12px 10px; }

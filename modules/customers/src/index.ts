@@ -30,6 +30,7 @@ export { CustomersContext, InMemoryCustomersRepository } from './customers/custo
 export { CustomersService } from './customers/customers.service';   // used by the API today
 // joined by --into (reviews, wallet):
 export { ReviewsModule } from './reviews/reviews.module';
+export { CustomerSearchModule } from './customer-search/customer-search.module';   // Customer Search guide (Nov 1 2026): /pos/customer-search/*
 export { WalletModule } from './wallet/wallet.module';
 export * from './reviews/reviews.dto';
 export { ReviewsService } from './reviews/reviews.service';   // used by the API today

@@ -56,7 +56,7 @@ export const SOURCE_DOMAINS = {
   'communications:sms-packages': 'COMMUNICATIONS', 'communications:tenant-a2p': 'COMMUNICATIONS', 'communications:tenant-messaging': 'COMMUNICATIONS',
   // modules/customers, loyalty, memberships, deals, marketing
   'customers:customer-salons': 'CUSTOMERS', 'customers:customers': 'CUSTOMERS', 'customers:pos-referrals': 'LOYALTY',
-  'customers:reviews': 'CUSTOMERS', 'customers:wallet': 'PAYMENTS',
+  'customers:reviews': 'CUSTOMERS', 'customers:wallet': 'PAYMENTS', 'customers:customer-search': 'CUSTOMERS',
   'loyalty:loyalty.controller.ts': 'LOYALTY',
   'finance:expense.controller.ts': 'FINANCE',   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026)
   'memberships:membership-billing.controller.ts': 'MEMBERSHIPS', 'memberships:membership-comms.controller.ts': 'MEMBERSHIPS',
