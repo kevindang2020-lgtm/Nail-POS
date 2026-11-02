@@ -670,7 +670,11 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Two old routes with no caller are retired (pinned in tests).
 - **Real Postgres is available in the sandbox:** `/usr/lib/postgresql/16` (initdb, port 55432, `PG_RACE_URL`). The race lanes
   can be judged here now.
-- **Next: Customer Timeline** (guide 3).
+- **Done: Customer Timeline** (guide 3): `pos/customer-timeline` routes and migration 762.
+  - Events are read live from 14 source tables; there is no projection table.
+  - Search and the summary reuse Customer Search. Money and messages are shown by role.
+  - Tests: pgtest 12/12, screen 6/6. Doc: `docs/customers/CUSTOMER_TIMELINE.md`.
+- **Next: Customer Intelligence** (guide 4).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

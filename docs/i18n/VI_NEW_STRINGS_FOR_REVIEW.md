@@ -11790,3 +11790,275 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `dup.health.d.oversized_keys.PASSED` | No phone, email or name is shared by more than 20 profiles. | Không số điện thoại, email hay tên nào dùng chung cho hơn 20 hồ sơ. |
 | `dup.health.d.oversized_keys.WARNING` | Some phones, emails or names are shared by more than 20 profiles (for example the salon's own number) and are not grouped. Clean them up in Customers. | Một số số điện thoại, email hoặc tên dùng chung cho hơn 20 hồ sơ (ví dụ số của tiệm) nên không được nhóm. Hãy dọn dẹp trong Khách hàng. |
 | `dup.health.d.oversized_keys.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |
+
+## Customer Timeline (`tlx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `tlx.check` | Check Customer Timeline System | Kiểm tra hệ thống Dòng thời gian khách hàng |
+| `tlx.searchPh` | Search by name, phone, email or customer ID | Tìm theo tên, số điện thoại, email hoặc mã khách hàng |
+| `tlx.searchFailed` | Customer search could not load. Try again. | Không tải được kết quả tìm khách. Hãy thử lại. |
+| `tlx.loadFailed` | The timeline could not load. Try again. | Không tải được dòng thời gian. Hãy thử lại. |
+| `tlx.loading` | Loading… | Đang tải… |
+| `tlx.close` | Close | Đóng |
+| `tlx.changeCustomer` | Choose another customer | Chọn khách khác |
+| `tlx.matches` | Matching customers | Khách hàng phù hợp |
+| `tlx.matchCount` | {n} found | Tìm thấy {n} |
+| `tlx.noMatches` | No matching customers found in your authorized salon records. | Không tìm thấy khách hàng phù hợp trong hồ sơ tiệm bạn được xem. |
+| `tlx.searchFirst` | Search for a customer by name, phone or email to view their authorized timeline. | Tìm khách theo tên, số điện thoại hoặc email để xem dòng thời gian bạn được phép xem. |
+| `tlx.col.customer` | Customer | Khách hàng |
+| `tlx.col.contact` | Contact | Liên hệ |
+| `tlx.col.lastVisit` | Last visit | Lần đến gần nhất |
+| `tlx.col.visits` | Visits | Số lần đến |
+| `tlx.col.created` | Created | Ngày tạo |
+| `tlx.shared` | Shares contact with {n} | Chung liên hệ với {n} hồ sơ |
+| `tlx.sharedHint` | Another profile has the same phone or email. They stay separate records; review them in Duplicate Review. | Có hồ sơ khác cùng số điện thoại hoặc email. Các hồ sơ vẫn riêng biệt; xem ở Rà soát trùng lặp. |
+| `tlx.notProvided` | Not provided | Chưa có |
+| `tlx.viewTimeline` | View timeline | Xem dòng thời gian |
+| `tlx.openCustomer` | Open customer | Mở hồ sơ khách |
+| `tlx.newBooking` | New booking | Đặt lịch mới |
+| `tlx.kpi.visits` | Completed visits | Lượt đã hoàn tất |
+| `tlx.kpi.last` | Last {d} | Gần nhất {d} |
+| `tlx.kpi.first` | First visit | Lần đến đầu tiên |
+| `tlx.kpi.upcoming` | Upcoming appointments | Lịch hẹn sắp tới |
+| `tlx.kpi.prefTech` | Preferred technician | Thợ ưa thích |
+| `tlx.kpi.points` | Loyalty points | Điểm tích lũy |
+| `tlx.kpi.membership` | Membership | Hội viên |
+| `tlx.unavailable` | Unavailable | Không khả dụng |
+| `tlx.none` | None | Không có |
+| `tlx.noneRecorded` | None recorded | Chưa ghi nhận |
+| `tlx.notEnrolled` | Not enrolled | Chưa tham gia |
+| `tlx.partial` | Some history is unavailable right now: {list}. What is shown is still correct. | Một số lịch sử tạm thời không khả dụng: {list}. Dữ liệu đang hiển thị vẫn chính xác. |
+| `tlx.src.visits` | visits | lượt khách |
+| `tlx.src.booking` | bookings | lịch hẹn |
+| `tlx.src.services` | services | dịch vụ |
+| `tlx.src.loyalty` | loyalty | điểm tích lũy |
+| `tlx.src.memberships` | memberships | hội viên |
+| `tlx.src.duplicates` | possible duplicates | hồ sơ có thể trùng |
+| `tlx.src.preferences` | preferences | sở thích |
+| `tlx.src.customers` | customer directory | danh bạ khách hàng |
+| `tlx.src.check_in` | check-in and queues | tiếp nhận và hàng chờ |
+| `tlx.src.service_done` | Service Done and checkout | Hoàn tất dịch vụ và thanh toán |
+| `tlx.src.payments` | payments | thanh toán |
+| `tlx.src.gift_cards` | gift cards | thẻ quà tặng |
+| `tlx.src.communications` | messages | tin nhắn |
+| `tlx.family.all` | All activity | Tất cả hoạt động |
+| `tlx.family.appointment` | Appointments | Lịch hẹn |
+| `tlx.family.visit` | Visits & services | Lượt khách & dịch vụ |
+| `tlx.family.money` | Payments | Thanh toán |
+| `tlx.family.benefit` | Loyalty, memberships & gift cards | Điểm, hội viên & thẻ quà tặng |
+| `tlx.family.communication` | Messages | Tin nhắn |
+| `tlx.family.profile` | Profile | Hồ sơ |
+| `tlx.innerPh` | Search this history: ticket #, appointment ID, technician or service | Tìm trong lịch sử: số hóa đơn, mã lịch hẹn, thợ hoặc dịch vụ |
+| `tlx.f.sort` | Sort | Sắp xếp |
+| `tlx.f.dateField` | Date | Ngày |
+| `tlx.sort.newest` | Newest activity first | Hoạt động mới nhất trước |
+| `tlx.sort.oldest` | Oldest activity first | Hoạt động cũ nhất trước |
+| `tlx.sort.recently_added` | Recently added | Mới được thêm |
+| `tlx.date.occurred` | When it happened | Thời điểm xảy ra |
+| `tlx.date.recorded` | When it was recorded | Thời điểm ghi nhận |
+| `tlx.date.appointment` | Appointment date | Ngày hẹn |
+| `tlx.preset.all` | All time | Mọi thời gian |
+| `tlx.preset.today` | Today | Hôm nay |
+| `tlx.preset.yesterday` | Yesterday | Hôm qua |
+| `tlx.preset.week` | This week | Tuần này |
+| `tlx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `tlx.preset.month` | This month | Tháng này |
+| `tlx.preset.last_month` | Last month | Tháng trước |
+| `tlx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `tlx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `tlx.preset.year` | This year | Năm nay |
+| `tlx.preset.custom` | Custom range | Tùy chọn |
+| `tlx.clearFilters` | Clear filters | Xóa bộ lọc |
+| `tlx.activity` | Customer activity | Hoạt động của khách |
+| `tlx.count` | {n} events · {order} | {n} sự kiện · {order} |
+| `tlx.newer` | New activity is available — show | Có hoạt động mới — hiển thị |
+| `tlx.noActivity` | No recorded activity matches the selected filters. | Không có hoạt động nào khớp bộ lọc đã chọn. |
+| `tlx.group.visit` | Visit | Lượt khách |
+| `tlx.group.visitNo` | Visit · ticket #{n} | Lượt khách · hóa đơn #{n} |
+| `tlx.group.appointment` | Appointment | Lịch hẹn |
+| `tlx.amountHidden` | Amount hidden | Số tiền được ẩn |
+| `tlx.amountHiddenHint` | Your role cannot see payment amounts. | Vai trò của bạn không được xem số tiền. |
+| `tlx.points` | {n} pts | {n} điểm |
+| `tlx.rows` | Rows | Số dòng |
+| `tlx.liveSources` | Read live from each system at {at} | Đọc trực tiếp từ từng hệ thống lúc {at} |
+| `tlx.moneyHidden` | payment amounts hidden for your role | số tiền được ẩn theo vai trò của bạn |
+| `tlx.type.appointment_booked` | Appointment booked | Đã đặt lịch hẹn |
+| `tlx.type.appointment_confirmed` | Appointment confirmed | Lịch hẹn đã xác nhận |
+| `tlx.type.appointment_arrived` | Arrived for appointment | Khách đã đến theo lịch hẹn |
+| `tlx.type.appointment_checked_in` | Checked in for appointment | Đã tiếp nhận theo lịch hẹn |
+| `tlx.type.appointment_waiting` | Waiting | Đang chờ |
+| `tlx.type.appointment_in_service` | Appointment in service | Lịch hẹn đang phục vụ |
+| `tlx.type.appointment_completed` | Appointment completed | Lịch hẹn đã hoàn tất |
+| `tlx.type.appointment_cancelled` | Appointment canceled | Lịch hẹn đã hủy |
+| `tlx.type.appointment_no_show` | No-show | Không đến |
+| `tlx.type.checked_in` | Checked in | Đã tiếp nhận khách |
+| `tlx.type.queue_waiting` | Waiting in the queue | Đang trong hàng chờ |
+| `tlx.type.queue_called` | Called from the queue | Đã gọi từ hàng chờ |
+| `tlx.type.queue_assigned` | Technician assigned | Đã chỉ định thợ |
+| `tlx.type.queue_ready_for_tech` | Ready for the technician | Sẵn sàng cho thợ |
+| `tlx.type.queue_moved_to_tech_queue` | Moved to the tech queue | Chuyển sang hàng chờ thợ |
+| `tlx.type.queue_in_service` | Service in progress | Đang phục vụ |
+| `tlx.type.queue_serving` | Service in progress | Đang phục vụ |
+| `tlx.type.queue_completed` | Queue visit completed | Lượt trong hàng chờ đã xong |
+| `tlx.type.queue_done` | Queue visit done | Lượt trong hàng chờ đã xong |
+| `tlx.type.queue_cancelled` | Removed from the queue (canceled) | Đã hủy khỏi hàng chờ |
+| `tlx.type.queue_removed` | Removed from the queue | Đã rời hàng chờ |
+| `tlx.type.service_started` | Service started | Bắt đầu dịch vụ |
+| `tlx.type.service_done` | Service Done | Hoàn tất dịch vụ |
+| `tlx.type.visit_completed` | Visit completed | Lượt khách đã hoàn tất |
+| `tlx.type.ticket_removed` | Ticket removed | Hóa đơn đã bị gỡ |
+| `tlx.type.payment_approved` | Payment approved | Thanh toán đã duyệt |
+| `tlx.type.payment_captured` | Payment captured | Đã thu tiền |
+| `tlx.type.payment_completed` | Payment completed | Thanh toán hoàn tất |
+| `tlx.type.payment_declined` | Payment declined | Thanh toán bị từ chối |
+| `tlx.type.payment_failed` | Payment failed | Thanh toán thất bại |
+| `tlx.type.payment_cancelled` | Payment canceled | Thanh toán đã hủy |
+| `tlx.type.payment_created` | Payment started | Bắt đầu thanh toán |
+| `tlx.type.payment_open` | Payment pending | Thanh toán đang chờ |
+| `tlx.type.payment_partial` | Partial payment | Thanh toán một phần |
+| `tlx.type.payment_refunded` | Payment refunded | Thanh toán đã hoàn tiền |
+| `tlx.type.payment_voided` | Payment voided | Thanh toán đã hủy bỏ |
+| `tlx.type.refund_pending` | Refund pending | Hoàn tiền đang chờ |
+| `tlx.type.refund_processing` | Refund processing | Đang hoàn tiền |
+| `tlx.type.refund_refunded` | Refunded | Đã hoàn tiền |
+| `tlx.type.refund_failed` | Refund failed | Hoàn tiền thất bại |
+| `tlx.type.refund_cancelled` | Refund canceled | Đã hủy hoàn tiền |
+| `tlx.type.refund_voided` | Refund voided | Hoàn tiền đã hủy bỏ |
+| `tlx.type.refund_reserved` | Refund reserved | Hoàn tiền đã giữ chỗ |
+| `tlx.type.receipt_issued` | Receipt issued | Đã xuất hóa đơn |
+| `tlx.type.loyalty_earn` | Points earned | Đã tích điểm |
+| `tlx.type.loyalty_redeem` | Points redeemed | Đã đổi điểm |
+| `tlx.type.loyalty_reverse` | Points reversed | Đã hoàn điểm |
+| `tlx.type.loyalty_adjust` | Points adjusted | Đã điều chỉnh điểm |
+| `tlx.type.loyalty_merge` | Points moved in a profile merge | Điểm chuyển khi gộp hồ sơ |
+| `tlx.type.loyalty_expire` | Points expired | Điểm hết hạn |
+| `tlx.type.membership_enrolled` | Membership started | Bắt đầu hội viên |
+| `tlx.type.membership_renewed` | Membership renewed | Gia hạn hội viên |
+| `tlx.type.membership_canceled` | Membership canceled | Đã hủy hội viên |
+| `tlx.type.membership_cancelled` | Membership canceled | Đã hủy hội viên |
+| `tlx.type.membership_paused` | Membership paused | Tạm dừng hội viên |
+| `tlx.type.membership_resumed` | Membership resumed | Tiếp tục hội viên |
+| `tlx.type.membership_benefit_used` | Membership benefit used | Đã dùng quyền lợi hội viên |
+| `tlx.type.membership_payment_failed` | Membership payment failed | Thu phí hội viên thất bại |
+| `tlx.type.gift_card_issue` | Gift card issued | Đã phát hành thẻ quà tặng |
+| `tlx.type.gift_card_activate` | Gift card activated | Đã kích hoạt thẻ quà tặng |
+| `tlx.type.gift_card_purchase` | Gift card purchased | Đã mua thẻ quà tặng |
+| `tlx.type.gift_card_redeem` | Gift card used | Đã dùng thẻ quà tặng |
+| `tlx.type.gift_card_redemption` | Gift card used | Đã dùng thẻ quà tặng |
+| `tlx.type.gift_card_refund` | Gift card refund | Hoàn tiền thẻ quà tặng |
+| `tlx.type.gift_card_reload` | Gift card reloaded | Đã nạp thêm thẻ quà tặng |
+| `tlx.type.gift_card_promo_bonus` | Gift card bonus added | Đã thêm thưởng thẻ quà tặng |
+| `tlx.type.gift_card_transfer` | Gift card transferred | Đã chuyển thẻ quà tặng |
+| `tlx.type.notification_receipt` | Receipt message | Tin nhắn hóa đơn |
+| `tlx.type.notification_appointment` | Appointment message | Tin nhắn lịch hẹn |
+| `tlx.type.notification_loyalty` | Loyalty message | Tin nhắn điểm tích lũy |
+| `tlx.type.reminder_claimed` | Reminder being prepared | Đang chuẩn bị nhắc lịch |
+| `tlx.type.reminder_submitted` | Reminder sent | Đã gửi nhắc lịch |
+| `tlx.type.reminder_failed` | Reminder failed | Nhắc lịch thất bại |
+| `tlx.type.reminder_skipped` | Reminder skipped | Đã bỏ qua nhắc lịch |
+| `tlx.type.reminder_cancelled` | Reminder canceled | Đã hủy nhắc lịch |
+| `tlx.type.reminder_deferred` | Reminder postponed | Đã hoãn nhắc lịch |
+| `tlx.type.profile_created` | Customer profile created | Đã tạo hồ sơ khách |
+| `tlx.type.profile_merged_in` | Another profile merged into this one | Một hồ sơ khác đã gộp vào hồ sơ này |
+| `tlx.type.profile_merged_into` | This profile was merged into another | Hồ sơ này đã gộp vào hồ sơ khác |
+| `tlx.fallback.appointment` | Appointment update | Cập nhật lịch hẹn |
+| `tlx.fallback.visit` | Visit update | Cập nhật lượt khách |
+| `tlx.fallback.money` | Payment update | Cập nhật thanh toán |
+| `tlx.fallback.benefit` | Benefits update | Cập nhật quyền lợi |
+| `tlx.fallback.communication` | Message | Tin nhắn |
+| `tlx.fallback.profile` | Profile update | Cập nhật hồ sơ |
+| `tlx.source.appt` | Booking | Đặt lịch |
+| `tlx.source.queue` | Check-In | Tiếp nhận khách |
+| `tlx.source.queueh` | Queue | Hàng chờ |
+| `tlx.source.ticket` | Service Done / Checkout | Hoàn tất dịch vụ / Thanh toán |
+| `tlx.source.pay` | Payments | Thanh toán |
+| `tlx.source.refund` | Refunds | Hoàn tiền |
+| `tlx.source.receipt` | Receipts | Hóa đơn |
+| `tlx.source.loyalty` | Loyalty ledger | Sổ điểm tích lũy |
+| `tlx.source.membership` | Memberships | Hội viên |
+| `tlx.source.giftcard` | Gift Cards | Thẻ quà tặng |
+| `tlx.source.notice` | Customer messages | Tin nhắn khách hàng |
+| `tlx.source.reminder` | Appointment reminders | Nhắc lịch hẹn |
+| `tlx.source.customer` | Customer Management | Quản lý khách hàng |
+| `tlx.source.merge` | Duplicate Review merge | Gộp từ Rà soát trùng lặp |
+| `tlx.ov.occurred` | Happened | Xảy ra lúc |
+| `tlx.ov.recorded` | Recorded | Ghi nhận lúc |
+| `tlx.ov.source` | Source | Nguồn |
+| `tlx.ov.branch` | Branch | Chi nhánh |
+| `tlx.ov.technician` | Technician | Thợ |
+| `tlx.ov.apptDate` | Appointment | Lịch hẹn |
+| `tlx.ov.amount` | Amount | Số tiền |
+| `tlx.ov.points` | Points | Điểm |
+| `tlx.ov.plan` | Plan | Gói |
+| `tlx.ov.message` | Message | Tin nhắn |
+| `tlx.ov.service` | Service | Dịch vụ |
+| `tlx.ov.minutes` | Minutes | Phút |
+| `tlx.ov.addOn` | Add-on | Dịch vụ thêm |
+| `tlx.ov.noServices` | No service lines on this visit. | Lượt này không có dòng dịch vụ. |
+| `tlx.ov.viewBooking` | View booking | Xem lịch hẹn |
+| `tlx.ov.viewCheckout` | View checkout | Xem thanh toán |
+| `tlx.ov.viewRefunds` | View refunds | Xem hoàn tiền |
+| `tlx.ov.viewLoyalty` | View loyalty | Xem điểm tích lũy |
+| `tlx.ov.viewMembership` | View membership | Xem hội viên |
+| `tlx.ov.viewGiftCards` | View gift cards | Xem thẻ quà tặng |
+| `tlx.ov.readOnly` | Read-only. To change anything, open the module that owns it. | Chỉ xem. Muốn thay đổi, hãy mở mục quản lý dữ liệu đó. |
+| `tlx.ov.statusTimeNote` | The time shown is the booking's last update; the booking system does not keep a separate time for each status. | Thời gian hiển thị là lần cập nhật cuối của lịch hẹn; hệ thống đặt lịch không lưu thời gian riêng cho từng trạng thái. |
+| `tlx.ov.visitTimes` | Checked in {inAt} · started {start} · Service Done {done} · paid {paid} | Tiếp nhận {inAt} · bắt đầu {start} · hoàn tất {done} · thanh toán {paid} |
+| `tlx.ov.total` | Total {total} · tip {tip} | Tổng {total} · tiền tip {tip} |
+| `tlx.err.CUSTOMER_NOT_FOUND` | Customer not found in your authorized salon records. | Không tìm thấy khách trong hồ sơ tiệm bạn được xem. |
+| `tlx.err.TIMELINE_EVENT_NOT_FOUND` | This event is no longer available. | Sự kiện này không còn nữa. |
+| `tlx.err.TIMELINE_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `tlx.err.TIMELINE_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `tlx.err.PERMISSION_DENIED` | Your role cannot view customer history. | Vai trò của bạn không được xem lịch sử khách hàng. |
+| `tlx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `tlx.health.running` | Checking… | Đang kiểm tra… |
+| `tlx.health.readOnly` | This check only reads. It never books, merges, charges, edits or sends anything. | Việc kiểm tra chỉ đọc. Không bao giờ đặt lịch, gộp, thu tiền, sửa hay gửi gì. |
+| `tlx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `tlx.health.PASSED` | Passed | Đạt |
+| `tlx.health.WARNING` | Warning | Cảnh báo |
+| `tlx.health.FAILED` | Failed | Lỗi |
+| `tlx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `tlx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `tlx.health.k.sources` | Every history source answers | Mọi nguồn lịch sử đều phản hồi |
+| `tlx.health.d.sources.PASSED` | Bookings, check-in, Service Done, payments, loyalty, memberships, gift cards and messages all answered. | Lịch hẹn, tiếp nhận, hoàn tất dịch vụ, thanh toán, điểm, hội viên, thẻ quà tặng và tin nhắn đều phản hồi. |
+| `tlx.health.d.sources.FAILED` | Some sources did not answer; their events are missing from timelines until they recover. | Một số nguồn không phản hồi; sự kiện của chúng sẽ thiếu cho đến khi khôi phục. |
+| `tlx.health.k.directory` | Customer directory | Danh bạ khách hàng |
+| `tlx.health.d.directory.PASSED` | The customer directory answers. | Danh bạ khách hàng phản hồi bình thường. |
+| `tlx.health.d.directory.UNAVAILABLE` | The customer directory did not answer. Customer search will fail. | Danh bạ khách hàng không phản hồi. Tìm khách sẽ lỗi. |
+| `tlx.health.d.directory.INSUFFICIENT_DATA` | This salon has no customers yet. | Tiệm chưa có khách hàng nào. |
+| `tlx.health.k.phone_search` | Phone search format | Định dạng tìm theo số điện thoại |
+| `tlx.health.d.phone_search.PASSED` | Stored phones are in the searchable format. | Số điện thoại đã lưu đúng định dạng để tìm. |
+| `tlx.health.d.phone_search.WARNING` | Some recent phones are stored in another format; searching by those numbers may miss them. Fix them in Customers. | Một số số điện thoại gần đây lưu sai định dạng; tìm theo số đó có thể không ra. Hãy sửa trong Khách hàng. |
+| `tlx.health.d.phone_search.FAILED` | The phone normalizer failed on a test number. Report this. | Bộ chuẩn hóa số điện thoại lỗi trên số mẫu. Hãy báo lại. |
+| `tlx.health.k.tenant_isolation` | Only this salon's customers | Chỉ khách của tiệm này |
+| `tlx.health.d.tenant_isolation.PASSED` | Every visit and booking points at this salon's customers. | Mọi lượt khách và lịch hẹn đều thuộc khách của tiệm này. |
+| `tlx.health.d.tenant_isolation.FAILED` | A visit or booking points at another salon's customer. Report this immediately. | Có lượt khách hoặc lịch hẹn trỏ tới khách của tiệm khác. Hãy báo ngay. |
+| `tlx.health.k.visits_without_services` | Visits have their services | Lượt khách có đủ dịch vụ |
+| `tlx.health.d.visits_without_services.PASSED` | Recent completed visits all have service lines. | Các lượt hoàn tất gần đây đều có dòng dịch vụ. |
+| `tlx.health.d.visits_without_services.WARNING` | Some completed visits in the last 90 days have no service lines; their timeline shows the visit without services. Check them in Service Done. | Một số lượt hoàn tất trong 90 ngày qua không có dòng dịch vụ; dòng thời gian sẽ hiện lượt đó mà không có dịch vụ. Hãy kiểm tra ở Hoàn tất dịch vụ. |
+| `tlx.health.k.booking_to_service_done` | Bookings link to their visits | Lịch hẹn liên kết với lượt khách |
+| `tlx.health.d.booking_to_service_done.PASSED` | Completed appointments link to their visit. | Lịch hẹn hoàn tất đều liên kết với lượt khách. |
+| `tlx.health.d.booking_to_service_done.WARNING` | Some completed appointments have no linked visit; they show as a separate appointment instead of inside the visit. | Một số lịch hẹn hoàn tất không có lượt khách liên kết; chúng hiện riêng thay vì nằm trong lượt khách. |
+| `tlx.health.k.chronology` | Events sort by when they happened | Sự kiện xếp theo thời điểm xảy ra |
+| `tlx.health.d.chronology.PASSED` | Imported visits keep their own date and nothing is dated in the future. | Lượt khách nhập vào giữ đúng ngày của chúng và không có gì ghi ngày tương lai. |
+| `tlx.health.d.chronology.WARNING` | Some completed visits have no completion time; they use the time the ticket was opened. | Một số lượt hoàn tất không có thời điểm hoàn tất; dùng thời điểm mở hóa đơn. |
+| `tlx.health.d.chronology.FAILED` | Some visits are dated in the future; they will sort at the top. Check the device clock or import. | Một số lượt khách ghi ngày tương lai nên sẽ nằm trên cùng. Hãy kiểm tra đồng hồ thiết bị hoặc dữ liệu nhập. |
+| `tlx.health.k.merged_history` | History moved with merges | Lịch sử đi theo khi gộp |
+| `tlx.health.d.merged_history.PASSED` | Merged profiles left no visits or bookings behind. | Hồ sơ đã gộp không để sót lượt khách hay lịch hẹn. |
+| `tlx.health.d.merged_history.WARNING` | A merged profile still has visits or bookings; they are missing from the kept profile's timeline. Check Duplicate Review. | Một hồ sơ đã gộp vẫn còn lượt khách hoặc lịch hẹn; chúng thiếu trong dòng thời gian của hồ sơ được giữ. Hãy kiểm tra Rà soát trùng lặp. |
+| `tlx.health.k.loyalty_ledger` | Points match the loyalty ledger | Điểm khớp sổ điểm |
+| `tlx.health.d.loyalty_ledger.PASSED` | Every points balance equals its ledger. | Mọi số dư điểm đều khớp sổ điểm. |
+| `tlx.health.d.loyalty_ledger.WARNING` | Some points balances differ from their ledger. The timeline shows the ledger; reconcile in Loyalty — do not edit points by hand. | Một số số dư điểm khác sổ điểm. Dòng thời gian hiện theo sổ điểm; hãy đối soát ở Điểm tích lũy — đừng sửa điểm bằng tay. |
+| `tlx.health.d.loyalty_ledger.INSUFFICIENT_DATA` | No loyalty activity yet. | Chưa có hoạt động tích điểm. |
+| `tlx.health.k.indexes` | History indexes | Chỉ mục lịch sử |
+| `tlx.health.d.indexes.PASSED` | Per-customer history indexes are present. | Đã có chỉ mục lịch sử theo khách. |
+| `tlx.health.d.indexes.WARNING` | Some indexes are missing; long histories may load slowly. Apply the latest database update. | Thiếu một số chỉ mục; lịch sử dài có thể tải chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |
+| `tlx.health.k.timezone` | Salon time zone | Múi giờ của tiệm |
+| `tlx.health.d.timezone.PASSED` | Every branch has a time zone, so date filters use the salon's days. | Mọi chi nhánh đều có múi giờ nên bộ lọc ngày dùng đúng ngày của tiệm. |
+| `tlx.health.d.timezone.WARNING` | A branch has no time zone set; its dates may shift by a day. Set it in Branch settings. | Một chi nhánh chưa đặt múi giờ; ngày có thể lệch một ngày. Hãy đặt trong cài đặt chi nhánh. |
+| `tlx.health.k.duplicates` | Possible duplicate profiles | Hồ sơ có thể trùng |
+| `tlx.health.d.duplicates.PASSED` | No open duplicate groups. | Không có nhóm trùng lặp nào cần xem. |
+| `tlx.health.d.duplicates.WARNING` | Some profiles may be the same customer; their history is split until reviewed in Duplicate Review. Nothing is merged automatically. | Một số hồ sơ có thể là cùng một khách; lịch sử bị tách cho đến khi xem ở Rà soát trùng lặp. Không tự động gộp. |
+| `tlx.health.d.duplicates.INSUFFICIENT_DATA` | Duplicate Review has not scanned yet. | Rà soát trùng lặp chưa quét lần nào. |
+| `tlx.health.d.duplicates.UNAVAILABLE` | Duplicate Review did not answer. | Rà soát trùng lặp không phản hồi. |

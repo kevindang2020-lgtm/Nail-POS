@@ -3729,3 +3729,18 @@ span.tq-who{cursor:default}
 .dupx-acks { display: grid; gap: 8px; margin: 10px 0; }
 .dupx-ack { display: flex; gap: 10px; align-items: flex-start; min-height: 40px; line-height: 1.4; cursor: pointer; }
 .dupx-ack input { width: 20px; height: 20px; flex: none; margin-top: 2px; }
+
+/* Customer Timeline (Nov 2 2026) — search-first, 360° summary, grouped source-linked events */
+.tlx-summary { padding: 14px 16px; }
+.tlx-who { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.tlx-who h2 { margin: 0; }
+.tlx-links { margin-left: auto; display: flex; gap: 8px; }
+.tlx-inner { display: flex; gap: 8px; flex: 1 1 320px; }
+.tlx-inner input { flex: 1; min-height: 42px; }
+.tlx-group { padding: 6px 0; border-top: 1px solid var(--line); }
+.tlx-group.grouped { border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; margin: 10px 0; }
+.tlx-group-h { font-weight: 600; color: var(--muted); font-size: 13px; padding: 4px 0; }
+.tlx-ev { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 6px 4px; text-align: left; background: none; border: 0; cursor: pointer; }
+.tlx-ev:hover, .tlx-ev:focus-visible { background: var(--cream, #faf6ee); }
+.tlx-when { min-width: 170px; color: var(--muted); font-size: 13px; }
+.tlx-amt { margin-left: auto; font-variant-numeric: tabular-nums; }

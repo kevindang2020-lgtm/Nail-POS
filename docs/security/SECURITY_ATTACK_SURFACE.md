@@ -2,17 +2,17 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3734 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3737 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3734 |
+| all HTTP routes | 3737 |
 | realm `customer` | 165 |
 | realm `shared` | 282 |
-| realm `staff` | 2115 |
+| realm `staff` | 2118 |
 | realm `super_admin` | 1172 |
 | public (no session; each one reviewed by `check:public`) | 123 |
 | integration key / OAuth (`auth=api_key`) | 13 |
@@ -20,7 +20,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | with an idempotency contract | 42 |
 | webhooks | 9 |
 | multipart uploads | 9 |
-| server-sent event streams | 12 |
+| server-sent event streams | 13 |
 | service / scheduler endpoints (`/internal`, `/jobs`) | 13 |
 
 ## 2. Layers every request passes (in order)
@@ -204,6 +204,7 @@ All uploads go through `packages/media/src/upload-policy.ts` (size, magic bytes,
 | `/pos/ai/front-desk/events` | modules/ai/src/voice-booking/front-desk-center.controller.ts:118 | staff | session |
 | `/pos/audit/events` | modules/audit/src/audit.controller.ts:28 | staff | session |
 | `/pos/campaign-center/campaigns/{id}/events` | modules/communications/src/campaigns/campaign-center.controller.ts:74 | staff | session |
+| `/pos/customer-timeline/customers/{id}/events` | modules/customers/src/customer-timeline/customer-timeline-center.controller.ts:59 | staff | session |
 | `/realtime/stream` | apps/api/src/realtime/realtime.controller.ts:39 | shared | session |
 | `/super-admin/hardware-packages/events` | modules/super-admin/src/super-admin-hardware-packages/super-admin-hardware-packages.module.ts:34 | super_admin | session |
 | `/super-admin/integrations/webhooks/events` | modules/super-admin/src/super-admin-integrations/super-admin-integrations.controller.ts:34 | super_admin | session |

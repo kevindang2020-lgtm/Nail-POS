@@ -585,6 +585,8 @@ GET /pos/customer-search/customers  realm=staff  auth=session  domain=customers 
 GET /pos/customer-search/customers/{id}  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-search/options  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-search/summary  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-timeline/customers/{id}/events  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-timeline/customers/{id}/events/{eventId}  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/duplicates  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customers/export  realm=staff  auth=session  domain=customers  perm=pos.customers.export  async=pos.customers.export  guards=RolePermissionGuard,TenantAuthGuard
@@ -2605,6 +2607,7 @@ POST /pos/customer-displays/{deviceId}/revoke  realm=staff  auth=session  domain
 POST /pos/customer-notifications/health/check  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/records/{id}/retry  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-search/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-timeline/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers  realm=staff  auth=session  domain=customers  perm=pos.customers.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers/duplicates/{duplicateGroupId}/merge  realm=staff  auth=session  domain=customers  perm=pos.customers.merge  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customers/import  realm=staff  auth=session  domain=customers  perm=pos.customers.import  guards=RolePermissionGuard,TenantAuthGuard

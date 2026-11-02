@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 891,
+  "tables": 892,
   "ownership": {
-   "tenant_owned": 581,
+   "tenant_owned": 582,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -28,7 +28,7 @@
    "MARKETING": 21,
    "PAYMENTS": 59,
    "WORKFORCE": 73,
-   "CUSTOMERS": 53,
+   "CUSTOMERS": 54,
    "CATALOG": 20,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 12,
@@ -42,7 +42,7 @@
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 131,
-   "CONFIDENTIAL": 151,
+   "CONFIDENTIAL": 152,
    "SECURITY_SECRET": 39,
    "INTERNAL": 489,
    "PAYMENT_RESTRICTED": 75,
@@ -2934,6 +2934,18 @@
    "source": "heuristic"
   },
   "customer_tags": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "customer_timeline_health_runs": {
    "ownership": "tenant_owned",
    "class": "B",
    "domain": "CUSTOMERS",

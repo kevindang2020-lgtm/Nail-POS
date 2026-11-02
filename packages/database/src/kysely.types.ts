@@ -4847,6 +4847,9 @@ export interface ReceptionCopilotActionLedgerTable {
 export interface CustomerSearchHealthRunsTable {   // migration 760 — read-only "Check Customer Search System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface CustomerTimelineHealthRunsTable {   // migration 762 — read-only "Check Customer Timeline System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerDuplicateScansTable {   // migration 761 — Duplicate Review detection runs (= real data freshness)
   id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; status: Generated<string>;
   customers_scanned: Generated<number>; groups_found: Generated<number>; groups_new: Generated<number>; groups_reopened: Generated<number>; groups_resolved: Generated<number>;
@@ -7455,6 +7458,7 @@ export interface DB {
   reception_copilot_health_runs: ReceptionCopilotHealthRunsTable;
   ai_calendar_health_runs: AiCalendarHealthRunsTable;
   customer_search_health_runs: CustomerSearchHealthRunsTable;
+  customer_timeline_health_runs: CustomerTimelineHealthRunsTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;
