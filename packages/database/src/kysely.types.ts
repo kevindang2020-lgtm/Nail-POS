@@ -4847,6 +4847,18 @@ export interface ReceptionCopilotActionLedgerTable {
 export interface CustomerSearchHealthRunsTable {   // migration 760 — read-only "Check Customer Search System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
+export interface CustomerIntelligenceScansTable {   // migration 763 — Customer Intelligence scans (counts per state, rule version, tunables)
+  id: Generated<string>; tenant_id: string; actor_user_id: string | null; trigger_kind: Generated<string>; rule_version: string; tunables: Generated<unknown>; status: Generated<string>;
+  scanned: Generated<number>; counts: Generated<unknown>; archived_excluded: Generated<number>; duration_ms: number | null; error_code: string | null; started_at: Generated<Ts>; finished_at: Ts | null;
+}
+export interface CustomerIntelligenceSnapshotsTable {   // migration 763 — latest per-customer classification (derived, rebuildable)
+  tenant_id: string; customer_id: string; scan_id: string; status: string; completed_visits: Generated<number>; first_visit_at: Ts | null; last_visit_at: Ts | null;
+  typical_interval_days: number | null; days_since_last: number | null; has_upcoming: Generated<boolean>; next_appointment_date: string | null; churn_watch: Generated<boolean>;
+  rebooking: Generated<boolean>; rebooking_reason: string | null; evidence: Generated<string[]>; computed_at: Generated<Ts>;
+}
+export interface CustomerIntelligenceHealthRunsTable {   // migration 763 — read-only "Check Customer Intelligence System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface CustomerTimelineHealthRunsTable {   // migration 762 — read-only "Check Customer Timeline System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
@@ -7459,6 +7471,9 @@ export interface DB {
   ai_calendar_health_runs: AiCalendarHealthRunsTable;
   customer_search_health_runs: CustomerSearchHealthRunsTable;
   customer_timeline_health_runs: CustomerTimelineHealthRunsTable;
+  customer_intelligence_health_runs: CustomerIntelligenceHealthRunsTable;
+  customer_intelligence_scans: CustomerIntelligenceScansTable;
+  customer_intelligence_snapshots: CustomerIntelligenceSnapshotsTable;
   reception_copilot_feedback: ReceptionCopilotFeedbackTable;
   reception_copilot_knowledge_versions: ReceptionCopilotKnowledgeVersionsTable;
   reception_copilot_learning_suggestions: ReceptionCopilotLearningSuggestionsTable;

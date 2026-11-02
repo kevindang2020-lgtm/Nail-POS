@@ -99,12 +99,9 @@ export class AiCustomerProfileController {
     return this.guard(() => this.svc.merge(ctxFrom(r), groupId, String(body?.primaryCustomerId ?? ''), body?.confirm === true));
   }
 
-  // Customer Intelligence Overview aggregate (§44) — cached; refresh is worker-ready.
-  @Get('tenant-overview') @RequirePermission('pos.ai_customer_profile.view')
-  tenantOverview(@Req() r: any) { return this.guard(() => this.svc.tenantOverview(ctxFrom(r))); }
-
-  @Post('tenant-overview/refresh') @RequirePermission('pos.ai_customer_profile.view')
-  refreshTenantOverview(@Req() r: any) { return this.guard(() => this.svc.refreshTenantOverview(ctxFrom(r))); }
+  // GET tenant-overview + POST tenant-overview/refresh retired Nov 2 2026 (Customer Intelligence guide): the dashboard reads
+  // /pos/customer-intelligence/* — a full, set-based scan (no 300-customer cap) whose six states reconcile on screen. The
+  // service methods stay for the scan scheduler.
 
   // Effective settings (§52) — resolved platform→tenant→branch→user; shows thresholds + any disabled level.
   @Get('settings') @RequirePermission('pos.ai_customer_profile.view')

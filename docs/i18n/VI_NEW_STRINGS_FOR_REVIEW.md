@@ -12062,3 +12062,192 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `tlx.health.d.duplicates.WARNING` | Some profiles may be the same customer; their history is split until reviewed in Duplicate Review. Nothing is merged automatically. | Một số hồ sơ có thể là cùng một khách; lịch sử bị tách cho đến khi xem ở Rà soát trùng lặp. Không tự động gộp. |
 | `tlx.health.d.duplicates.INSUFFICIENT_DATA` | Duplicate Review has not scanned yet. | Rà soát trùng lặp chưa quét lần nào. |
 | `tlx.health.d.duplicates.UNAVAILABLE` | Duplicate Review did not answer. | Rà soát trùng lặp không phản hồi. |
+
+## Customer Intelligence (`cix.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `cix.loadFailed` | Customer Intelligence could not load. Try again. | Không tải được Phân tích khách hàng. Hãy thử lại. |
+| `cix.loading` | Loading… | Đang tải… |
+| `cix.close` | Close | Đóng |
+| `cix.all` | All | Tất cả |
+| `cix.none` | None | Không có |
+| `cix.notProvided` | Not provided | Chưa có |
+| `cix.unavailable` | Unavailable | Không khả dụng |
+| `cix.check` | Check Customer Intelligence System | Kiểm tra hệ thống Phân tích khách hàng |
+| `cix.customerSearch` | Customer Search | Tìm khách hàng |
+| `cix.rule` | Classification rule {v} | Quy tắc phân loại {v} |
+| `cix.fresh.never` | Never scanned | Chưa quét lần nào |
+| `cix.fresh.up_to_date` | Up to date · scanned {at} | Mới nhất · quét lúc {at} |
+| `cix.fresh.stale` | Out of date · last scan {at} | Đã cũ · lần quét gần nhất {at} |
+| `cix.fresh.failed` | Last scan failed · last good {at} | Lần quét gần nhất bị lỗi · lần tốt gần nhất {at} |
+| `cix.fresh.running` | Scanning… | Đang quét… |
+| `cix.scanReused` | A scan just ran — showing its results. | Vừa quét xong — đang hiển thị kết quả đó. |
+| `cix.scanDone` | Scan finished: {n} customers classified. | Đã quét xong: phân loại {n} khách hàng. |
+| `cix.dupNotScanned` | Duplicate Review has not scanned yet | Rà soát trùng lặp chưa quét |
+| `cix.updated` | Updated {at} · took {ms} ms | Cập nhật lúc {at} · mất {ms} ms |
+| `cix.noScanYet` | No scan has run yet. | Chưa có lần quét nào. |
+| `cix.whyNumbers` | Why these numbers? | Vì sao ra các con số này? |
+| `cix.view.customers` | Customers | Khách hàng |
+| `cix.view.history` | Scan history | Lịch sử quét |
+| `cix.searchPh` | Search name, phone, email, customer ID, technician, service or appointment ID | Tìm tên, số điện thoại, email, mã khách, thợ, dịch vụ hoặc mã lịch hẹn |
+| `cix.f.status` | Status | Trạng thái |
+| `cix.f.flag` | Signal | Tín hiệu |
+| `cix.f.sort` | Sort | Sắp xếp |
+| `cix.f.dateField` | Date | Ngày |
+| `cix.status.active` | Active | Đang hoạt động |
+| `cix.status.rebooking_soon` | Rebooking soon | Sắp đến hạn đặt lại |
+| `cix.status.due_for_return` | Due for return | Đến hạn quay lại |
+| `cix.status.inactive_all` | Inactive (incl. long-term) | Không hoạt động (gồm lâu ngày) |
+| `cix.status.inactive` | Inactive | Không hoạt động |
+| `cix.status.long_term_inactive` | Long-term inactive | Không hoạt động lâu ngày |
+| `cix.status.insufficient_history` | Not enough history | Chưa đủ lịch sử |
+| `cix.status.never_served` | Never served | Chưa từng phục vụ |
+| `cix.status.not_scanned` | Not scanned yet | Chưa được quét |
+| `cix.flag.churn_watch` | Churn watch | Theo dõi rời bỏ |
+| `cix.flag.rebooking` | Rebooking opportunity | Cơ hội đặt lại |
+| `cix.flag.upcoming` | Has upcoming appointment | Có lịch hẹn sắp tới |
+| `cix.flag.duplicate` | Possible duplicate | Có thể trùng |
+| `cix.date.last_visit` | Last completed visit | Lần hoàn tất gần nhất |
+| `cix.date.created` | Customer created | Ngày tạo khách |
+| `cix.date.next_appointment` | Next appointment | Lịch hẹn kế tiếp |
+| `cix.date.profile_updated` | Profile updated | Cập nhật hồ sơ |
+| `cix.preset.all` | All time | Mọi thời gian |
+| `cix.preset.today` | Today | Hôm nay |
+| `cix.preset.yesterday` | Yesterday | Hôm qua |
+| `cix.preset.week` | This week | Tuần này |
+| `cix.preset.last_7` | Last 7 days | 7 ngày qua |
+| `cix.preset.month` | This month | Tháng này |
+| `cix.preset.last_month` | Last month | Tháng trước |
+| `cix.preset.last_30` | Last 30 days | 30 ngày qua |
+| `cix.preset.last_90` | Last 90 days | 90 ngày qua |
+| `cix.preset.year` | This year | Năm nay |
+| `cix.preset.custom` | Custom range | Tùy chọn |
+| `cix.sort.last_visit` | Most recent visit first | Lần đến gần nhất trước |
+| `cix.sort.recently_added` | Recently added | Mới thêm |
+| `cix.sort.name` | Name | Tên |
+| `cix.sort.visits` | Most visits | Nhiều lượt nhất |
+| `cix.sort.days_since` | Longest since last visit | Lâu nhất từ lần đến cuối |
+| `cix.clearAll` | Clear all | Xóa tất cả |
+| `cix.customers` | Customer overview | Tổng quan khách hàng |
+| `cix.count` | {n} customers · {order} | {n} khách hàng · {order} |
+| `cix.noMatch` | No customers match these filters. | Không có khách nào khớp bộ lọc. |
+| `cix.empty` | No customers in your authorized salon records yet. | Chưa có khách hàng trong hồ sơ tiệm bạn được xem. |
+| `cix.col.customer` | Customer | Khách hàng |
+| `cix.col.history` | Service history | Lịch sử dịch vụ |
+| `cix.col.next` | Next booking | Lịch hẹn kế tiếp |
+| `cix.col.technician` | Technician | Thợ |
+| `cix.col.status` | Status | Trạng thái |
+| `cix.col.benefits` | Loyalty / membership | Điểm / hội viên |
+| `cix.visitsLine` | {n} visits · last {last} | {n} lượt · gần nhất {last} |
+| `cix.lastTech` | Last: {n} | Gần nhất: {n} |
+| `cix.prefTech` | Preferred: {n} (recorded) | Ưa thích: {n} (đã ghi nhận) |
+| `cix.points` | {n} pts | {n} điểm |
+| `cix.member` | Member | Hội viên |
+| `cix.view` | View | Xem |
+| `cix.rows` | Rows | Số dòng |
+| `cix.contactFull` | Full phone and email shown | Hiển thị đầy đủ số điện thoại và email |
+| `cix.contactMasked` | Phone and email are masked for your role | Số điện thoại và email được che theo vai trò của bạn |
+| `cix.readOnly` | Read-only: nothing here merges, books, texts or changes points. | Chỉ xem: không gộp, đặt lịch, nhắn tin hay đổi điểm. |
+| `cix.why.title` | How the six cards fit together | Sáu thẻ số liệu liên quan với nhau thế nào |
+| `cix.why.intro` | {n} live customer profiles were scanned. Each one is in exactly one of these states: | Đã quét {n} hồ sơ khách đang hoạt động. Mỗi hồ sơ thuộc đúng một trạng thái dưới đây: |
+| `cix.why.def.active` | Within their usual interval, or has an upcoming appointment. | Còn trong khoảng thời gian quen thuộc, hoặc có lịch hẹn sắp tới. |
+| `cix.why.def.rebooking_soon` | Approaching their usual interval. | Sắp đến khoảng thời gian quen thuộc. |
+| `cix.why.def.due_for_return` | Past their usual interval (or past half of {d} days), nothing booked. | Đã qua khoảng thời gian quen thuộc (hoặc quá nửa {d} ngày), chưa đặt lịch. |
+| `cix.why.def.inactive` | Well past their interval (or over {d} days), up to {l} days. | Quá xa khoảng thời gian quen thuộc (hoặc hơn {d} ngày), tối đa {l} ngày. |
+| `cix.why.def.long_term_inactive` | Over {l} days since the last completed visit. | Hơn {l} ngày từ lần hoàn tất gần nhất. |
+| `cix.why.def.insufficient_history` | No completed visit, or fewer than {m} visits and nothing booked. | Chưa có lượt hoàn tất, hoặc ít hơn {m} lượt và chưa đặt lịch. |
+| `cix.why.total` | Total | Tổng |
+| `cix.why.matches` | = customers scanned | = số khách đã quét |
+| `cix.why.mismatch` | Does not match the scanned total — run the check. | Không khớp tổng đã quét — hãy chạy kiểm tra. |
+| `cix.why.insufficient` | "Not enough history" = {never} never served + {under} with fewer than {m} completed visits. They are neither active nor inactive yet. | "Chưa đủ lịch sử" = {never} chưa từng phục vụ + {under} có ít hơn {m} lượt hoàn tất. Họ chưa được tính là hoạt động hay không hoạt động. |
+| `cix.why.cards` | The Inactive card = Inactive + Long-term inactive. Churn watch = due, inactive or long-term inactive with nothing booked. These are review shortlists, not verdicts. | Thẻ Không hoạt động = Không hoạt động + Không hoạt động lâu ngày. Theo dõi rời bỏ = đến hạn, không hoạt động hoặc lâu ngày mà chưa đặt lịch. Đây là danh sách cần xem, không phải kết luận. |
+| `cix.why.excluded` | Not counted: {a} archived (merged or removed) profiles. {n} profiles were added after the scan — press Refresh to include them. | Không tính: {a} hồ sơ đã lưu trữ (đã gộp hoặc gỡ). {n} hồ sơ được thêm sau lần quét — bấm Làm mới để tính vào. |
+| `cix.hist.when` | When | Thời điểm |
+| `cix.hist.status` | Result | Kết quả |
+| `cix.hist.scanned` | Customers | Khách hàng |
+| `cix.hist.by` | By | Người chạy |
+| `cix.hist.completed` | Completed | Hoàn tất |
+| `cix.hist.failed` | Failed | Lỗi |
+| `cix.hist.running` | Running | Đang chạy |
+| `cix.hist.manual` | Refresh | Làm mới |
+| `cix.hist.auto` | Automatic (page opened) | Tự động (khi mở trang) |
+| `cix.hist.scheduled` | Scheduled | Theo lịch |
+| `cix.ov.title` | Customer | Khách hàng |
+| `cix.ov.openCustomer` | Open customer | Mở hồ sơ khách |
+| `cix.ov.timeline` | Customer timeline | Dòng thời gian khách hàng |
+| `cix.ov.book` | New booking | Đặt lịch mới |
+| `cix.ov.notScanned` | This customer was added after the last scan. Press Refresh to classify them. | Khách này được thêm sau lần quét gần nhất. Bấm Làm mới để phân loại. |
+| `cix.ov.visits` | Completed visits | Lượt đã hoàn tất |
+| `cix.ov.first` | first {d} | lần đầu {d} |
+| `cix.ov.interval` | Usual interval | Khoảng thời gian quen thuộc |
+| `cix.ov.days` | about {n} days | khoảng {n} ngày |
+| `cix.ov.noCadence` | Not established yet | Chưa xác định được |
+| `cix.ov.next` | Next appointment | Lịch hẹn kế tiếp |
+| `cix.ov.evidence` | Why | Lý do |
+| `cix.ov.computed` | Classified | Phân loại lúc |
+| `cix.ov.contact` | Contact | Liên hệ |
+| `cix.ov.prefTech` | Preferred technician | Thợ ưa thích |
+| `cix.ov.recorded` | recorded | đã ghi nhận |
+| `cix.ov.noneRecorded` | None recorded | Chưa ghi nhận |
+| `cix.ov.loyalty` | Loyalty points | Điểm tích lũy |
+| `cix.ov.notEnrolled` | Not enrolled | Chưa tham gia |
+| `cix.ov.membership` | Membership | Hội viên |
+| `cix.ov.profileUnavailable` | The customer profile is unavailable right now. | Hồ sơ khách hiện không khả dụng. |
+| `cix.ov.readOnly` | Read-only. To change anything, open the module that owns it. | Chỉ xem. Muốn thay đổi, hãy mở mục quản lý dữ liệu đó. |
+| `cix.err.AI_CUSTOMER_PROFILE_DISABLED` | The AI Customer Profile assistant is turned off for this salon. Turn it on in Customer AI Settings. | Trợ lý Hồ sơ khách hàng AI đang tắt cho tiệm này. Hãy bật trong Cài đặt AI khách hàng. |
+| `cix.err.CUSTOMER_NOT_FOUND` | Customer not found in your authorized salon records. | Không tìm thấy khách trong hồ sơ tiệm bạn được xem. |
+| `cix.err.INTELLIGENCE_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `cix.err.INTELLIGENCE_SEARCH_TOO_SHORT` | Type at least 2 characters. | Hãy nhập ít nhất 2 ký tự. |
+| `cix.err.INTELLIGENCE_SCAN_FAILED` | The scan could not finish. Nothing was changed. | Không quét xong được. Không có gì bị thay đổi. |
+| `cix.err.PERMISSION_DENIED` | Your role cannot view Customer Intelligence. | Vai trò của bạn không được xem Phân tích khách hàng. |
+| `cix.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `cix.health.running` | Checking… | Đang kiểm tra… |
+| `cix.health.readOnly` | This check only reads. It never merges, books, texts, edits profiles or changes points. | Việc kiểm tra chỉ đọc. Không bao giờ gộp, đặt lịch, nhắn tin, sửa hồ sơ hay đổi điểm. |
+| `cix.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `cix.health.PASSED` | Passed | Đạt |
+| `cix.health.WARNING` | Warning | Cảnh báo |
+| `cix.health.FAILED` | Failed | Lỗi |
+| `cix.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `cix.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `cix.health.eligibility` | {s} scanned = {a} active + {i} inactive (card) + {r} due or rebooking soon + {n} never served + {u} with too few visits. | {s} đã quét = {a} hoạt động + {i} không hoạt động (thẻ) + {r} đến hạn hoặc sắp đặt lại + {n} chưa từng phục vụ + {u} có quá ít lượt. |
+| `cix.health.k.assistant_enabled` | AI Customer Profile assistant | Trợ lý Hồ sơ khách hàng AI |
+| `cix.health.d.assistant_enabled.PASSED` | The assistant is on for this salon. | Trợ lý đang bật cho tiệm này. |
+| `cix.health.d.assistant_enabled.WARNING` | The assistant is turned off; the cards cannot refresh. Turn it on in Customer AI Settings. | Trợ lý đang tắt; không thể làm mới số liệu. Hãy bật trong Cài đặt AI khách hàng. |
+| `cix.health.k.scan_freshness` | Scan is recent | Lần quét còn mới |
+| `cix.health.d.scan_freshness.PASSED` | The last scan is recent and used the current rule. | Lần quét gần nhất còn mới và dùng quy tắc hiện tại. |
+| `cix.health.d.scan_freshness.WARNING` | The last scan is older than an hour or used another rule or settings. Press Refresh. | Lần quét gần nhất đã hơn một giờ hoặc dùng quy tắc / cài đặt khác. Hãy bấm Làm mới. |
+| `cix.health.d.scan_freshness.FAILED` | The last scan failed. Press Refresh; if it fails again, report it. | Lần quét gần nhất bị lỗi. Hãy bấm Làm mới; nếu vẫn lỗi, hãy báo lại. |
+| `cix.health.d.scan_freshness.INSUFFICIENT_DATA` | No scan has run yet. Press Refresh. | Chưa quét lần nào. Hãy bấm Làm mới. |
+| `cix.health.k.counts_reconcile` | The cards add up | Các thẻ số liệu cộng khớp |
+| `cix.health.d.counts_reconcile.PASSED` | Every scanned customer is in exactly one state. | Mỗi khách đã quét thuộc đúng một trạng thái. |
+| `cix.health.d.counts_reconcile.FAILED` | The states do not add up to the scanned total. Press Refresh and report it if it repeats. | Các trạng thái không cộng khớp tổng đã quét. Hãy Làm mới và báo lại nếu lặp lại. |
+| `cix.health.d.counts_reconcile.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |
+| `cix.health.k.eligibility` | Who is counted where | Ai được tính vào đâu |
+| `cix.health.k.snapshot_matches_scan` | Customer list matches the cards | Danh sách khách khớp với thẻ |
+| `cix.health.d.snapshot_matches_scan.PASSED` | The list holds exactly the scanned customers. | Danh sách có đúng số khách đã quét. |
+| `cix.health.d.snapshot_matches_scan.FAILED` | The list and the cards disagree. Press Refresh. | Danh sách và thẻ không khớp. Hãy bấm Làm mới. |
+| `cix.health.d.snapshot_matches_scan.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |
+| `cix.health.k.coverage` | Every current customer is included | Mọi khách hiện tại đều được tính |
+| `cix.health.d.coverage.PASSED` | The scan covers every current customer. | Lần quét bao gồm mọi khách hiện tại. |
+| `cix.health.d.coverage.WARNING` | Customers were added or archived since the scan. Press Refresh to include them. | Có khách được thêm hoặc lưu trữ sau lần quét. Hãy bấm Làm mới. |
+| `cix.health.d.coverage.INSUFFICIENT_DATA` | No scan yet. | Chưa quét lần nào. |
+| `cix.health.k.tenant_isolation` | Only this salon's customers | Chỉ khách của tiệm này |
+| `cix.health.d.tenant_isolation.PASSED` | Every classified customer belongs to this salon. | Mọi khách được phân loại đều thuộc tiệm này. |
+| `cix.health.d.tenant_isolation.FAILED` | A classified customer belongs to another salon. Report this immediately. | Có khách được phân loại thuộc tiệm khác. Hãy báo ngay. |
+| `cix.health.k.completed_visits` | Completed visits have a time | Lượt hoàn tất có thời điểm |
+| `cix.health.d.completed_visits.PASSED` | Completed visits have a completion time. | Các lượt hoàn tất đều có thời điểm hoàn tất. |
+| `cix.health.d.completed_visits.WARNING` | Some completed visits have no completion time; the ticket's open time is used instead. | Một số lượt hoàn tất không có thời điểm hoàn tất; dùng thời điểm mở hóa đơn. |
+| `cix.health.k.booking_sync` | Bookings point at live customers | Lịch hẹn trỏ tới khách đang hoạt động |
+| `cix.health.d.booking_sync.PASSED` | Upcoming bookings belong to live customer profiles. | Lịch hẹn sắp tới đều thuộc hồ sơ khách đang hoạt động. |
+| `cix.health.d.booking_sync.WARNING` | Some upcoming bookings belong to an archived profile; those customers look "not booked". Check Duplicate Review. | Một số lịch hẹn sắp tới thuộc hồ sơ đã lưu trữ; các khách đó trông như "chưa đặt lịch". Hãy kiểm tra Rà soát trùng lặp. |
+| `cix.health.k.duplicate_review` | Duplicate Review | Rà soát trùng lặp |
+| `cix.health.d.duplicate_review.PASSED` | No open duplicate groups. | Không có nhóm trùng lặp nào cần xem. |
+| `cix.health.d.duplicate_review.WARNING` | Some profiles may be the same customer; their visits are split until reviewed. Nothing is merged automatically. | Một số hồ sơ có thể là cùng một khách; lượt đến bị tách cho đến khi được xem. Không tự động gộp. |
+| `cix.health.d.duplicate_review.INSUFFICIENT_DATA` | Duplicate Review has not scanned yet. | Rà soát trùng lặp chưa quét lần nào. |
+| `cix.health.k.phone_normalizer` | Phone matching | Đối chiếu số điện thoại |
+| `cix.health.d.phone_normalizer.PASSED` | Phone numbers in any format match the stored number. | Số điện thoại ở mọi định dạng đều khớp số đã lưu. |
+| `cix.health.d.phone_normalizer.FAILED` | The phone normalizer failed on a test number. Report this. | Bộ chuẩn hóa số điện thoại lỗi trên số mẫu. Hãy báo lại. |
+| `cix.health.k.indexes` | Indexes | Chỉ mục |
+| `cix.health.d.indexes.PASSED` | Classification and visit indexes are present. | Đã có chỉ mục phân loại và lượt khách. |
+| `cix.health.d.indexes.WARNING` | Some indexes are missing; the list may be slow. Apply the latest database update. | Thiếu một số chỉ mục; danh sách có thể chậm. Hãy áp dụng bản cập nhật cơ sở dữ liệu mới nhất. |

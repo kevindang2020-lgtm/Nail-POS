@@ -24,8 +24,7 @@ export const posAiCustomerProfileApi = {
   callSummary: (id: string) => api.get<any>(`/pos/ai-customer-profile/customers/${enc(id)}/call-summary`),
 
   // tenant-wide
-  tenantOverview: () => api.get<any>(`/pos/ai-customer-profile/tenant-overview`),
-  refreshTenantOverview: () => api.post<any>(`/pos/ai-customer-profile/tenant-overview/refresh`),
+  // tenant overview: since Nov 2 2026 the Customer Intelligence dashboard uses posCustomerIntelligenceApi (/pos/customer-intelligence/*)
   duplicates: () => api.get<any>(`/pos/ai-customer-profile/duplicates`),
   settings: () => api.get<any>(`/pos/ai-customer-profile/settings`),
   updateSettings: (level: 'tenant' | 'branch' | 'user', patch: { enabled?: boolean; tunables?: any }) =>

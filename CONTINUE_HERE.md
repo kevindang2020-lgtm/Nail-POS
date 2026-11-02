@@ -674,7 +674,11 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Events are read live from 14 source tables; there is no projection table.
   - Search and the summary reuse Customer Search. Money and messages are shown by role.
   - Tests: pgtest 12/12, screen 6/6. Doc: `docs/customers/CUSTOMER_TIMELINE.md`.
-- **Next: Customer Intelligence** (guide 4).
+- **Done: Customer Intelligence** (guide 4): `pos/customer-intelligence` routes and migration 763.
+  - The 15/1/0 counts were correct: four of the six states were never shown. They now reconcile on screen.
+  - A set-based scan uses the assistant's own rules; there is no 300 cap.
+  - Tests: pgtest 9/9 (identical to the old aggregate), screen 6/6. Doc: `docs/ai/CUSTOMER_INTELLIGENCE.md`.
+- **Next: Churn Watch** (guide 5).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

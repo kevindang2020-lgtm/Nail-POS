@@ -3744,3 +3744,7 @@ span.tq-who{cursor:default}
 .tlx-ev:hover, .tlx-ev:focus-visible { background: var(--cream, #faf6ee); }
 .tlx-when { min-width: 170px; color: var(--muted); font-size: 13px; }
 .tlx-amt { margin-left: auto; font-variant-numeric: tabular-nums; }
+
+/* Customer Intelligence (Nov 2 2026) */
+.cix .link { background: none; border: 0; padding: 0; color: var(--aps-orange); text-decoration: underline; cursor: pointer; min-height: 32px; }
+.cix .rvw-table td .chip { margin-left: 4px; }

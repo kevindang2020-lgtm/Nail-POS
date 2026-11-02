@@ -340,7 +340,6 @@ GET /pos/ai-customer-profile/customers/{id}/timeline  realm=staff  auth=session 
 GET /pos/ai-customer-profile/customers/{id}/visit-summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/duplicates  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/settings  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/ai-customer-profile/tenant-overview  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-customer-profile/usage  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-inventory/context  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-inventory/low-stock  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -565,6 +564,10 @@ GET /pos/coupons/health  realm=staff  auth=session  domain=deals  perm=pos.marke
 GET /pos/coupons/{dealId}/campaigns  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-display/devices  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-displays  realm=staff  auth=session  domain=operations  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-intelligence/customers  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-intelligence/customers/{id}  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-intelligence/scans  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-intelligence/summary  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/alert-settings  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/customers/{customerId}/timeline  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/failures  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2364,7 +2367,6 @@ POST /pos/ai-checkout-upsell/checkout/{checkoutId}/membership/{planId}/enroll  r
 POST /pos/ai-checkout-upsell/checkout/{checkoutId}/next-appointment/{serviceId}  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-checkout-upsell/checkout/{checkoutId}/promotions/{promotionId}/apply  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-customer-profile/duplicates/{groupId}/merge  realm=staff  auth=session  domain=ai  perm=pos.customers.merge  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/ai-customer-profile/tenant-overview/refresh  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-inventory/recipes  realm=staff  auth=session  domain=ai  perm=ai_inventory.manage_recipes  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-inventory/recipes/{id}/approve  realm=staff  auth=session  domain=ai  perm=ai_inventory.manage_recipes  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-inventory/recipes/{id}/archive  realm=staff  auth=session  domain=ai  perm=ai_inventory.manage_recipes  guards=RolePermissionGuard,TenantAuthGuard
@@ -2604,6 +2606,8 @@ POST /pos/customer-displays/pair  realm=staff  auth=session  domain=operations  
 POST /pos/customer-displays/stations  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-displays/{deviceId}/refresh  realm=staff  auth=session  domain=operations  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-displays/{deviceId}/revoke  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-intelligence/check  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/customer-intelligence/scan  realm=staff  auth=session  domain=ai  perm=VIEW  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/health/check  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-notifications/records/{id}/retry  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-search/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard

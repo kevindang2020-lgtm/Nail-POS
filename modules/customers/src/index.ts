@@ -21,7 +21,7 @@ export { maskEmail } from './customer-identity/identity-core';   // used by the 
 export { CustomersModule } from './customers/customers.module';
 export * from './customers/customers.dto';
 export { INACTIVE_DAYS, RETURNING_MIN_VISITS, VISIT_TICKET_STATUSES } from './customers/customer-segments';   // used by the API today
-export { RetentionRepository, PERIOD_PRESETS, isUuid } from './retention/retention.repository';   // Marketing & Growth (reports): salon-local periods + authorized branch scope
+export { RetentionRepository, PERIOD_PRESETS, isUuid, maskPhone as maskStoredPhone } from './retention/retention.repository';   // Marketing & Growth (reports): salon-local periods + authorized branch scope
 export type { RetentionContext, BranchScope } from './retention/retention.repository';
 export { SegmentsRepository, SegmentsError } from './segments/segments.repository';   // Birthday Campaigns (reports): consent verdicts, unsent audience drafts, the customer overlay
 export * from './birthdays/birthday-core';   // Birthday Campaigns: the ONE birthday → occurrence rule (Feb 29 policy, year rollover, occasion year)
@@ -32,6 +32,7 @@ export { CustomersService } from './customers/customers.service';   // used by t
 export { ReviewsModule } from './reviews/reviews.module';
 export { CustomerSearchModule } from './customer-search/customer-search.module';   // Customer Search guide (Nov 1 2026): /pos/customer-search/*
 export { CustomerTimelineModule } from './customer-timeline/customer-timeline.module';   // Customer Timeline guide (Nov 1 2026): /pos/customer-timeline/*
+export { tlPresetRange as salonPresetRange } from './customer-timeline/customer-timeline-center';   // shared salon-local date presets
 export { DuplicateReviewModule } from './duplicate-review/duplicate-review.module';   // Duplicate Review guides (Nov 1 2026): /pos/duplicate-review/*
 export { mergeCustomersTx, MERGE_REASSIGN_TABLES } from './customers/customer-merge';   // the canonical customer merge (one transaction)
 export { WalletModule } from './wallet/wallet.module';

@@ -522,3 +522,10 @@ describe('ai-customer-profile core — duplicate confidence never counts a blank
     expect(allSame(['Amy  Lee', 'amy lee'])).toBe(true);
   });
 });
+
+import { AiCustomerProfileController } from './ai-customer-profile.controller';
+describe('ai-customer-profile — retired tenant-overview routes (Customer Intelligence guide, Nov 2 2026)', () => {
+  it('GET tenant-overview and POST tenant-overview/refresh stay retired (the dashboard reads /pos/customer-intelligence/*)', () => {
+    for (const h of ['tenantOverview', 'refreshTenantOverview']) expect((AiCustomerProfileController.prototype as any)[h]).toBeUndefined();
+  });
+});
