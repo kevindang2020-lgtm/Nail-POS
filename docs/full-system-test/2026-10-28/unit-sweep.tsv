@@ -1,0 +1,1014 @@
+status	file	passed	failed	total	ms	first_failure
+PASS	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell-core.vitest.spec.ts	7	0	7	549	
+ENV_FAIL	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell-settings.pgtest.vitest.spec.ts	0	2	2	19247	✗ AI checkout upsell — the salon's own switches › a POS session with NO device still reads the tenant and branch layers
+PASS	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.integration.vitest.spec.ts	1	0	1	22501	
+FAIL	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.hardening.vitest.spec.ts	4	2	6	33474	✗ concurrency (§47) › executes a charge-producing action exactly once under simultaneous same-key submits
+PASS	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.mutations.vitest.spec.ts	7	0	7	16018	
+PASS	modules/checkout/src/ai-checkout-upsell/ai-upsell-promotion-adapter.vitest.spec.ts	2	0	2	3136	
+PASS	modules/checkout/src/ai-checkout-upsell/upsell-added-value-cap.vitest.spec.ts	6	0	6	584	
+PASS	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.records.vitest.spec.ts	2	0	2	16007	
+PASS	modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.security.vitest.spec.ts	5	0	5	18314	
+PASS	modules/checkout/src/cash-drawer/cash-drawer-core.spec.ts	20	0	20	3541	
+PASS	modules/checkout/src/ai-checkout-upsell/upsell-feedback-400.vitest.spec.ts	2	0	2	23146	
+PASS	modules/checkout/src/ai-checkout-upsell/upsell-schedule-conflict.vitest.spec.ts	6	0	6	23089	
+PASS	modules/checkout/src/checkout-lock/checkout-lock.vitest.spec.ts	11	0	11	862	
+ENV_FAIL	modules/checkout/src/cash-drawer/cash-drawer-split-cash.pgtest.vitest.spec.ts	0	1	1	18218	✗ register cash › counts the cash part of a split (partial) with the plain cash sales; never a declined row or a card
+ENV_FAIL	modules/checkout/src/checkout-lock/checkout-lock-version.pgtest.vitest.spec.ts	0	2	2	15822	✗ checkout_locks.checkout_version (migration 690) › claim at v7 → stored; heartbeat keeps v7; POS moves the ticket to v8 → stale; re-claim at v8 → current
+PASS	modules/checkout/src/checkout/checkout-apply-deal.vitest.spec.ts	9	0	9	16579	
+PASS	modules/checkout/src/checkout/checkout-apply-promotion.vitest.spec.ts	4	0	4	18083	
+PASS	modules/checkout/src/checkout/checkout-card-idempotency.vitest.spec.ts	7	0	7	19516	
+PASS	modules/checkout/src/checkout/checkout-card-surcharge-recorded.vitest.spec.ts	1	0	1	17651	
+PASS	modules/checkout/src/checkout/checkout-card-verify.vitest.spec.ts	7	0	7	16554	
+ENV_LOAD	modules/checkout/src/checkout/checkout-card-paid-atomic.pgtest.vitest.spec.ts	0	0	0	35337	Error: db.getExecutor is not a function
+PASS	modules/checkout/src/checkout/checkout-cash-tender.vitest.spec.ts	5	0	5	19410	
+PASS	modules/checkout/src/checkout/checkout-commission-preview.vitest.spec.ts	2	0	2	26286	
+PASS	modules/checkout/src/checkout/checkout-compensation-hook.vitest.spec.ts	5	0	5	26739	
+EMPTY	modules/checkout/src/checkout/checkout-concurrency.postgres-race.vitest.spec.ts	0	0	0	25005	checkout-concurrency.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/checkout-concurrent-payment.vitest.spec.ts	3	0	3	18340	
+PASS	modules/checkout/src/checkout/checkout-core.spec.ts	83	0	83	17804	
+ENV_FAIL	modules/checkout/src/checkout/checkout-concurrent-payment.pgtest.vitest.spec.ts	0	5	5	31920	✗ gift-card payment: debit + payment row are one transaction under the paid-amount check › with the paid amount it was priced on: debits the card once and records the payment
+FAIL	modules/checkout/src/checkout/checkout-deals-permission.vitest.spec.ts	2	7	9	17402	✗ who may apply deals and coupons at checkout › the 'applyDeal' route asks for pos.deals.apply
+PASS	modules/checkout/src/checkout/checkout-deals-phase5.vitest.spec.ts	10	0	10	20859	
+PASS	modules/checkout/src/checkout/checkout-discount-guard.vitest.spec.ts	3	0	3	20945	
+PASS	modules/checkout/src/checkout/checkout-error-taxonomy.vitest.spec.ts	3	0	3	20760	
+PASS	modules/checkout/src/checkout/checkout-giftcard-amount-guard.vitest.spec.ts	11	0	11	18665	
+PASS	modules/checkout/src/checkout/checkout-final-totals.vitest.spec.ts	1	0	1	19516	
+PASS	modules/checkout/src/checkout/checkout-giftcard-charge-core.spec.ts	13	0	13	17451	
+PASS	modules/checkout/src/checkout/checkout-giftcard-charge.vitest.spec.ts	4	0	4	17514	
+PASS	modules/checkout/src/checkout/checkout-giftcard-guard.vitest.spec.ts	4	0	4	17250	
+ENV_FAIL	modules/checkout/src/checkout/checkout-giftcard-crosstenant.pgtest.vitest.spec.ts	0	12	12	31696	✗ cross-tenant gift-card recognition (§15, read-only) › a member salon recognizes a network card issued at another salon
+PASS	modules/checkout/src/checkout/checkout-giftcard-issue-retired.vitest.spec.ts	1	0	1	14532	
+PASS	modules/checkout/src/checkout/checkout-giftcard-lookup.vitest.spec.ts	7	0	7	17674	
+ENV_FAIL	modules/checkout/src/checkout/checkout-giftcard-ledger-atomic.pgtest.vitest.spec.ts	0	2	2	30403	✗ gift-card redemption is atomic with its ledger row › a failed ledger write leaves the balance untouched and surfaces (no silent decrement)
+ENV_FAIL	modules/checkout/src/checkout/checkout-giftcard-number-hardening.pgtest.vitest.spec.ts	1	7	8	33247	✗ gift-card number hardening — hashed at rest, looked up by hash (§3/§12/§32) › issuing a card stores only the hash + last4, never the plaintext number
+PASS	modules/checkout/src/checkout/checkout-giftcard-reload.vitest.spec.ts	4	0	4	18386	
+PASS	modules/checkout/src/checkout/checkout-giftcard-sale.vitest.spec.ts	4	0	4	17978	
+PASS	modules/checkout/src/checkout/checkout-lifecycles-r2.vitest.spec.ts	2	0	2	2116	
+PASS	modules/checkout/src/checkout/checkout-membership-comp-hook.vitest.spec.ts	4	0	4	15634	
+ENV_LOAD	modules/checkout/src/checkout/checkout-giftcard-tender-refund.pgtest.vitest.spec.ts	0	0	0	31223	Error: db.getExecutor is not a function
+PASS	modules/checkout/src/checkout/checkout-membership-discount.vitest.spec.ts	7	0	7	11866	
+ENV_FAIL	modules/checkout/src/checkout/checkout-local-day.pgtest.vitest.spec.ts	1	4	5	31797	✗ Checkout counts the branch's day › tips, paid tickets and failed payments today: the 10 am rows only
+PASS	modules/checkout/src/checkout/checkout-mobile-lock-guard.vitest.spec.ts	3	0	3	16294	
+PASS	modules/checkout/src/checkout/checkout-partial-refund-reversal.vitest.spec.ts	6	0	6	17618	
+PASS	modules/checkout/src/checkout/checkout-payment-guard.vitest.spec.ts	2	0	2	17750	
+PASS	modules/checkout/src/checkout/checkout-payment-metrics.vitest.spec.ts	3	0	3	18284	
+PASS	modules/checkout/src/checkout/checkout-payment-persistence.vitest.spec.ts	5	0	5	19428	
+PASS	modules/checkout/src/checkout/checkout-provider-unavailable.vitest.spec.ts	4	0	4	19924	
+PASS	modules/checkout/src/checkout/checkout-realtime-producers.vitest.spec.ts	4	0	4	20444	
+PASS	modules/checkout/src/checkout/checkout-receipt-language.vitest.spec.ts	5	0	5	19373	
+PASS	modules/checkout/src/checkout/checkout-receipt-messenger.vitest.spec.ts	6	0	6	18920	
+PASS	modules/checkout/src/checkout/checkout-receipt-push.vitest.spec.ts	3	0	3	18476	
+PASS	modules/checkout/src/checkout/checkout-receipt-surcharge.vitest.spec.ts	4	0	4	17075	
+PASS	modules/checkout/src/checkout/checkout-refund-atomic.vitest.spec.ts	4	0	4	17905	
+PASS	modules/checkout/src/checkout/checkout-refund-guard.vitest.spec.ts	7	0	7	17672	
+PASS	modules/checkout/src/checkout/checkout-refund-unknown.vitest.spec.ts	21	0	21	16881	
+PASS	modules/checkout/src/checkout/checkout-retail-stock-returns.vitest.spec.ts	5	0	5	17468	
+PASS	modules/checkout/src/checkout/checkout-satisfaction.vitest.spec.ts	4	0	4	18212	
+PASS	modules/checkout/src/checkout/checkout-split-card-compensation.vitest.spec.ts	2	0	2	18180	
+PASS	modules/checkout/src/checkout/checkout-split-segment-guard.vitest.spec.ts	5	0	5	19142	
+PASS	modules/checkout/src/checkout/checkout-split-surcharge.vitest.spec.ts	15	0	15	27054	
+PASS	modules/checkout/src/checkout/checkout-stacking-order.vitest.spec.ts	6	0	6	28436	
+PASS	modules/checkout/src/checkout/checkout-staff-rows.vitest.spec.ts	3	0	3	27525	
+PASS	modules/checkout/src/checkout/checkout-tenant-gateway-charge.vitest.spec.ts	4	0	4	17089	
+PASS	modules/checkout/src/checkout/checkout-terminal-lease.vitest.spec.ts	3	0	3	15675	
+ENV_FAIL	modules/checkout/src/checkout/checkout-state-bounded.pgtest.vitest.spec.ts	0	2	2	29850	✗ checkout board state is bounded to open tickets + today › lists the open ticket and today's two paid tickets — not the 40 paid three days ago
+PASS	modules/checkout/src/checkout/checkout-ticket-refund.vitest.spec.ts	8	0	8	15299	
+PASS	modules/checkout/src/checkout/checkout-tip-guard.vitest.spec.ts	4	0	4	15840	
+PASS	modules/checkout/src/checkout/checkout-tip-matrix.vitest.spec.ts	5	0	5	17172	
+PASS	modules/checkout/src/checkout/checkout-upsell-mix.vitest.spec.ts	3	0	3	16998	
+PASS	modules/checkout/src/checkout/checkout-upsell.vitest.spec.ts	4	0	4	15635	
+ENV_FAIL	modules/checkout/src/checkout/checkout-tip-provenance.pgtest.vitest.spec.ts	0	5	5	32146	✗ tip provenance + isolation + finalized guard (real schema) › percent → custom → none: each choice REPLACES the previous one, with tip_type/tip_percent persisted
+PASS	modules/checkout/src/checkout/checkout-void-guard.vitest.spec.ts	10	0	10	17615	
+PASS	modules/checkout/src/checkout/customer-display-projection.vitest.spec.ts	17	0	17	1471	
+FAIL	modules/checkout/src/checkout/code-lookup-limit-routes.vitest.spec.ts	11	4	15	20333	✗ every lookup-by-code POS route is limited › carries                    with the right kind
+EMPTY	modules/checkout/src/checkout/display-reservation.postgres-race.vitest.spec.ts	0	0	0	17194	display-reservation.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/display-send.vitest.spec.ts	17	0	17	15632	
+ENV_FAIL	modules/checkout/src/checkout/customer-display-projection.pgtest.vitest.spec.ts	0	6	6	33086	✗ the customer-safe checkout on the real schema › the §33 example ticket projects to the cent: four lines, two benefits, tax $8.68, tip $21.72, TOTAL DUE $142.40
+PASS	modules/checkout/src/checkout/display-session-events.vitest.spec.ts	7	0	7	16624	
+EMPTY	modules/checkout/src/checkout/gift-card-branch.postgres-race.vitest.spec.ts	0	0	0	16624	gift-card-branch.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/checkout/src/checkout/gift-card-machine.postgres-race.vitest.spec.ts	0	0	0	15669	gift-card-machine.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/checkout/src/checkout/gift-card-last4.pgtest.vitest.spec.ts	2	5	7	28996	✗ which gift card paid › a card with a printed number: the payment keeps its last four; the ledger row names the ticket and the payment
+EMPTY	modules/checkout/src/checkout/gift-card-redeem.postgres-race.vitest.spec.ts	0	0	0	14791	gift-card-redeem.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/checkout/src/checkout/loyalty-reward-code.postgres-race.vitest.spec.ts	0	0	0	15712	loyalty-reward-code.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/loyalty-reward-code.vitest.spec.ts	12	0	12	15631	
+PASS	modules/checkout/src/checkout/membership-benefits.vitest.spec.ts	8	0	8	368	
+ENV_FAIL	modules/checkout/src/checkout/hold-and-move.pgtest.vitest.spec.ts	1	4	5	29884	✗ Hold Ticket › sets the ticket aside with its tip and lines as they were; it leaves the ready count; Resume brings it back
+EMPTY	modules/checkout/src/checkout/membership-benefits.postgres-race.vitest.spec.ts	0	0	0	17655	membership-benefits.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/one-payment-per-ticket.vitest.spec.ts	7	0	7	17652	
+PASS	modules/checkout/src/checkout/payment-attempt-sweep-interval.vitest.spec.ts	3	0	3	18587	
+EMPTY	modules/checkout/src/checkout/payment-attempt-sweep.postgres-race.vitest.spec.ts	0	0	0	18345	payment-attempt-sweep.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/payment-attempt-sweep.vitest.spec.ts	13	0	13	18008	
+FAIL	modules/checkout/src/checkout/pos-ticket-refund.routes.vitest.spec.ts	0	2	2	17730	✗ POS ticket-refund routes › preview: GET with the amount as a number, refund permission
+PASS	modules/checkout/src/checkout/raw-card-refusal.vitest.spec.ts	3	0	3	17963	
+PASS	modules/checkout/src/checkout/refund-approval.engine.vitest.spec.ts	7	0	7	17074	
+EMPTY	modules/checkout/src/checkout/refund-race.postgres-race.vitest.spec.ts	0	0	0	16948	refund-race.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/checkout/src/checkout/terminal-lease.postgres-race.vitest.spec.ts	0	0	0	379	terminal-lease.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/checkout/src/checkout/split-tender-lost-card.postgres-race.vitest.spec.ts	0	0	0	16403	split-tender-lost-card.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/checkout/src/checkout/refund-approval.pgtest.vitest.spec.ts	7	4	11	33125	✗ database repository — under the advisory lock › cumulative against REAL prior refunds: $30 + $30 cash by front desk → the second needs approval
+EMPTY	modules/checkout/src/checkout/ticket-status.postgres-race.vitest.spec.ts	0	0	0	16652	ticket-status.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/checkout/v5-coded-refusals.vitest.spec.ts	2	0	2	19017	
+ENV_FAIL	modules/checkout/src/checkout/ticket-status-replicas.pgtest.vitest.spec.ts	1	7	8	32641	✗ two replicas over one database › B sees the display status A wrote — on the ticket and on the board — and it is stored on the row
+PASS	modules/checkout/src/mobile-checkout/capture-result.vitest.spec.ts	7	0	7	605	
+PASS	modules/checkout/src/mobile-checkout/capture-bridge.vitest.spec.ts	6	0	6	15583	
+ENV_FAIL	modules/checkout/src/mobile-checkout/attempt-branch-scope.pgtest.vitest.spec.ts	0	5	5	30187	✗ SD-21: a payment attempt is read only at its own location › location 1's manager is served location 1's attempt (positive control)
+PASS	modules/checkout/src/mobile-checkout/device-attestation.vitest.spec.ts	7	0	7	16054	
+ENV_FAIL	modules/checkout/src/mobile-checkout/device-identity.pgtest.vitest.spec.ts	0	10	10	21620	✗ payment device identity on Postgres (migration 687) › §4 / §18: the key is set once; a different key for the device id is refused; §58: one key cannot belong to two devices
+PASS	modules/checkout/src/mobile-checkout/mobile-attempt-recovery.vitest.spec.ts	7	0	7	1694	
+FAIL	modules/checkout/src/mobile-checkout/device-identity.vitest.spec.ts	15	2	17	20296	✗ Secure Tap to Pay §7 / §70 — single-use POS pairing › a pairing code registers ONE new phone, active at once in the pairing's branch; reuse and expiry fail
+PASS	modules/checkout/src/mobile-checkout/device-security-signals.vitest.spec.ts	8	0	8	19117	
+PASS	modules/checkout/src/mobile-checkout/mobile-checkout-queue.vitest.spec.ts	6	0	6	604	
+PASS	modules/checkout/src/mobile-checkout/mobile-checkout-readiness.vitest.spec.ts	10	0	10	1041	
+PASS	modules/checkout/src/mobile-checkout/mobile-checkout-ticket.vitest.spec.ts	3	0	3	4309	
+FAIL	modules/checkout/src/mobile-checkout/mobile-branch-switch.vitest.spec.ts	8	1	9	18820	✗ §120 wiring — the checkout module answers the identity branch switch › MobileCheckoutModule provides BRANCH_SWITCH_GUARD (the token POST /auth/select-branch looks up) backed by branchSwitchBlock
+PASS	modules/checkout/src/mobile-checkout/mobile-checkout-foreign-id.vitest.spec.ts	1	0	1	19505	
+EMPTY	modules/checkout/src/mobile-checkout/mobile-checkout.postgres-race.vitest.spec.ts	0	0	0	20593	mobile-checkout.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/mobile-checkout/mobile-device-rename.vitest.spec.ts	7	0	7	19107	
+PASS	modules/checkout/src/mobile-checkout/mobile-guards.vitest.spec.ts	18	0	18	17375	
+PASS	modules/checkout/src/mobile-checkout/mobile-money-wiring.vitest.spec.ts	11	0	11	24040	
+PASS	modules/checkout/src/mobile-checkout/mobile-payment-attempt.vitest.spec.ts	7	0	7	2188	
+PASS	modules/checkout/src/mobile-checkout/mobile-partial-attempt.vitest.spec.ts	5	0	5	24152	
+PASS	modules/checkout/src/mobile-checkout/mobile-pay-device.vitest.spec.ts	25	0	25	24285	
+PASS	modules/checkout/src/mobile-checkout/mobile-receipt.vitest.spec.ts	2	0	2	27919	
+PASS	modules/checkout/src/mobile-checkout/mobile-remaining-balance.vitest.spec.ts	10	0	10	1856	
+PASS	modules/checkout/src/mobile-checkout/mobile-report.vitest.spec.ts	6	0	6	1308	
+PASS	modules/checkout/src/mobile-checkout/mobile-recovery-convergence.vitest.spec.ts	5	0	5	30536	
+FAIL	modules/checkout/src/mobile-checkout/mobile-refund.vitest.spec.ts	6	1	7	32834	✗ MobileCheckoutService.listTicketPayments (real PG) › returns only the ticket's approved/partial payments
+PASS	modules/checkout/src/mobile-checkout/mobile-send-to-device.vitest.spec.ts	6	0	6	33182	
+PASS	modules/checkout/src/mobile-checkout/mobile-ticket-composition.vitest.spec.ts	5	0	5	32062	
+FAIL	modules/checkout/src/mobile-checkout/mobile-route-idempotency.pgtest.vitest.spec.ts	1	5	6	53965	✗ M6-6 route-level idempotency on the Payment App money routes › every money-moving route carries              
+PASS	modules/checkout/src/mobile-checkout/payment-flow.vitest.spec.ts	14	0	14	932	
+FAIL	modules/checkout/src/mobile-checkout/mobile-unsettled-guard.vitest.spec.ts	9	2	11	22166	✗ §34 fail closed: an unreadable unsettled-tender view takes no money on either surface › phone: proceed, intent and cash throw the read error (never a "go ahead"); nothing recorded
+ENV_LOAD	modules/checkout/src/mobile-checkout/payment-device-oversight.pgtest.vitest.spec.ts	0	0	0	28433	Error: db.getExecutor is not a function
+PASS	modules/checkout/src/mobile-checkout/secure-tap-payment-integrity.vitest.spec.ts	8	0	8	19514	
+ENV_FAIL	modules/checkout/src/mobile-checkout/refresh-device-binding.pgtest.vitest.spec.ts	0	8	8	28139	✗ M6-6 refresh rotation × payment device (Postgres) › §14: the family id is stored on the root and inherited by every rotation; another sign-in is another family
+PASS	modules/checkout/src/mobile-checkout/tap-to-pay-session.vitest.spec.ts	9	0	9	20132	
+PASS	modules/checkout/src/mobile-checkout/ttp-certification.vitest.spec.ts	5	0	5	18894	
+PASS	modules/checkout/src/mobile-checkout/ttp-location-merchant.vitest.spec.ts	11	0	11	20075	
+PASS	modules/checkout/src/mobile-checkout/ttp-onboarding.vitest.spec.ts	8	0	8	19379	
+PASS	modules/checkout/src/mobile-checkout/ttp-recovery-lookup.vitest.spec.ts	8	0	8	21655	
+PASS	modules/checkout/src/mobile-checkout/ttp-refund-in-pos.vitest.spec.ts	6	0	6	21685	
+FAIL	modules/checkout/src/request-schemas.round2.vitest.spec.ts	0	14	14	25068	✗ checkout (round 2) — validated bodies, route by route › POST /pos/ai-checkout-upsell/checkout/:checkoutId/addons/:addOnId/add
+FAIL	modules/checkout/src/request-schemas.vitest.spec.ts	0	40	40	20274	✗ checkout — validated bodies, route by route › POST /pos/checkout/tickets/:id/pay/cash
+PASS	modules/checkout/src/skip-line-checkout/skip-line-checkout-core.spec.ts	19	0	19	20964	
+PASS	modules/checkout/src/skip-line-checkout/skip-line-customer-tip.vitest.spec.ts	9	0	9	17942	
+PASS	modules/checkout/src/skip-line-checkout/skip-line-front-desk-approval.vitest.spec.ts	6	0	6	16284	
+EMPTY	modules/checkout/src/skip-line-checkout/skip-line-recovery.postgres-race.vitest.spec.ts	0	0	0	16024	skip-line-recovery.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/checkout/src/skip-line-checkout/skip-line-salon-gateway.vitest.spec.ts	3	0	3	13995	
+PASS	modules/checkout/src/ticket-history/ticket-history-core.vitest.spec.ts	3	0	3	640	
+PASS	modules/payments/src/customer-payments/customer-payments.vitest.spec.ts	8	0	8	2622	
+ENV_FAIL	modules/checkout/src/skip-line-checkout/skip-line-recovery.pgtest.vitest.spec.ts	0	8	8	30192	✗ Skip-the-Line app charge recovery (B-80) › a lost answer: the intent is charged-processing; a second confirm of it never reaches the processor; Verify finds the approval → ONE approved payment, ticket paid
+PASS	modules/payments/src/customer-payments/wallet-topup-intents.vitest.spec.ts	16	0	16	3672	
+EMPTY	modules/payments/src/customer-payments/wallet-topup.postgres-race.vitest.spec.ts	0	0	0	3440	wallet-topup.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.adjustments.vitest.spec.ts	4	0	4	901	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.duplicates.vitest.spec.ts	9	0	9	976	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.exceptions.vitest.spec.ts	8	0	8	1491	
+FAIL	modules/checkout/src/skip-line-checkout/skip-line-settings.pgtest.vitest.spec.ts	6	3	9	16492	✗ "never configured" still gets the product defaults — unchanged behaviour › no row → the defaults, exactly
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.fees.vitest.spec.ts	12	0	12	1161	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.reports.vitest.spec.ts	8	0	8	1472	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.sweep.vitest.spec.ts	5	0	5	1494	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.vitest.spec.ts	14	0	14	880	
+ENV_FAIL	modules/payments/src/deposit-reconciliation/deposit-reconciliation.exceptions.pgtest.vitest.spec.ts	0	1	1	14915	✗ who raised a reconciliation case › the sweep (systemContext) → created_by_user_id NULL; a person → their id
+PASS	modules/payments/src/hardware-payment/hardware-payment-core.vitest.spec.ts	6	0	6	518	
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.explain.vitest.spec.ts	7	0	7	14253	
+PASS	modules/payments/src/hardware-payment/hardware-payment.charge-adapter.vitest.spec.ts	3	0	3	1564	
+PASS	modules/payments/src/hardware-payment/hardware-payment.reconciliation-job.vitest.spec.ts	7	0	7	1257	
+PASS	modules/payments/src/hardware-payment/hardware-payment.residual-import.vitest.spec.ts	4	0	4	1204	
+ENV_FAIL	modules/payments/src/hardware-payment/hardware-payment.scheduler.vitest.spec.ts	3	1	4	1155	✗ Hardware payment monthly tick › swallows job errors (a failed tick never crashes the process)
+PASS	modules/payments/src/hardware-payment/hardware-payment.service.vitest.spec.ts	13	0	13	1250	
+PASS	modules/payments/src/invoices/invoices.vitest.spec.ts	8	0	8	1356	
+PASS	modules/payments/src/payments/cardpointe-bolt.client.vitest.spec.ts	9	0	9	780	
+PASS	modules/payments/src/payments-lifecycles.vitest.spec.ts	5	0	5	1362	
+PASS	modules/payments/src/payments/cardpointe.client.vitest.spec.ts	13	0	13	480	
+PASS	modules/payments/src/payments/clover.client.vitest.spec.ts	8	0	8	532	
+PASS	modules/payments/src/payments/commercehub.client.vitest.spec.ts	8	0	8	622	
+PASS	modules/payments/src/payments/integrations-production-config.vitest.spec.ts	5	0	5	456	
+LOAD	modules/payments/src/payments/payment-gateways-core.spec.ts	0	0	0	624	payment-gateways-core: 93 assertions passed
+PASS	modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.vitest.spec.ts	7	0	7	14499	
+PASS	modules/payments/src/payments/payment-webhook-chargeback.vitest.spec.ts	5	0	5	1492	
+PASS	modules/payments/src/payments/payment-webhook-processor-signature.vitest.spec.ts	4	0	4	1323	
+PASS	modules/payments/src/payments/payment-webhook-scrub.vitest.spec.ts	2	0	2	1457	
+PASS	modules/payments/src/payments/payment-webhook-signature.vitest.spec.ts	7	0	7	1451	
+PASS	modules/payments/src/payments/payment-webhook-topup.vitest.spec.ts	3	0	3	1352	
+ENV_FAIL	modules/payments/src/payments/merchant-routing.pgtest.vitest.spec.ts	1	12	13	14188	✗ payment provider router — tenant + branch → merchant account › a branch with its own merchant routes to it (scope branch, its MID)
+PASS	modules/payments/src/refunds-voids/refund-orchestration.vitest.spec.ts	5	0	5	365	
+PASS	modules/payments/src/refunds-voids/refunds-voids.vitest.spec.ts	5	0	5	770	
+FAIL	modules/payments/src/request-schemas.round2.vitest.spec.ts	0	11	11	1252	✗ payments (round 2) — validated bodies, route by route › POST /internal/hardware-payment/run-monthly
+PASS	modules/payments/src/payments/webhook-counters-wiring.vitest.spec.ts	2	0	2	11881	
+PASS	modules/payments/src/split-payments/split-payments.vitest.spec.ts	4	0	4	942	
+ENV_FAIL	modules/payments/src/payments/processor-url-allowlist.pgtest.vitest.spec.ts	4	2	6	13951	✗ PaymentGatewayResolver — D2 write + build checks › refuses to STORE an attacker / http base URL or Bolt URL (400 PROCESSOR_URL_NOT_ALLOWED), and writes nothing
+PASS	modules/workforce/src/access-governance/access-governance.core.vitest.spec.ts	12	0	12	1181	
+FAIL	modules/payments/src/request-schemas.vitest.spec.ts	0	11	11	4370	✗ payments — validated bodies, route by route › POST /customer/payment-methods
+EMPTY	modules/workforce/src/access-governance/access-review.postgres-race.vitest.spec.ts	0	0	0	4232	access-review.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/workforce/src/access-governance/access-governance.pgtest.vitest.spec.ts	0	9	9	15960	✗ high-risk report › lists who holds high / critical keys and why — incl. the front desk's ALLOW override; never another salon
+ENV_FAIL	modules/workforce/src/access-governance/access-governance.scheduler.pgtest.vitest.spec.ts	1	2	3	16051	✗ DormantAccountScheduler › runs once per UTC day, over every salon the service names
+FAIL	modules/workforce/src/approvals/approvals-decide-idempotent.vitest.spec.ts	0	2	2	2063	✗ approval decisions are idempotent › 'owner' decide carries              
+EMPTY	modules/workforce/src/approvals/approvals.postgres-race.vitest.spec.ts	0	0	0	1426	approvals.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/workforce/src/availability/availability-core.vitest.spec.ts	13	0	13	446	
+PASS	modules/workforce/src/commission-report/commission-report-salon-day.vitest.spec.ts	3	0	3	394	
+FAIL	modules/workforce/src/access-governance/escalation.pgtest.vitest.spec.ts	1	4	5	14450	✗ escalation on the write paths › an ALLOW override above the actor is refused (a manager cannot hand out what only the owner holds)
+PASS	modules/workforce/src/commission-report/commission-report.vitest.spec.ts	11	0	11	398	
+PASS	modules/workforce/src/compensation/commission-basis.vitest.spec.ts	3	0	3	546	
+PASS	modules/workforce/src/compensation/compensation-adjustments.vitest.spec.ts	13	0	13	717	
+ENV_FAIL	modules/workforce/src/compensation/compensation-agreements.pgtest.vitest.spec.ts	0	2	2	2181	✗ KyselyAgreementsRepo (real PG) › creates a versioned agreement with JSONB terms and supersedes the prior one
+PASS	modules/workforce/src/compensation/compensation-agreements.service.vitest.spec.ts	9	0	9	2277	
+FAIL	modules/workforce/src/compensation/compensation-bonus-approve.pgtest.vitest.spec.ts	0	1	1	1471	✗ approved bonus → payroll net (§17, real PG) › records an approved bonus adjustment that payroll sums into the period
+FAIL	modules/workforce/src/compensation/compensation-bonus-facts.pgtest.vitest.spec.ts	0	4	4	1343	✗ bonus facts — rating_avg from reviews (real PG) › averages the technician's in-period ratings only
+ENV_FAIL	modules/workforce/src/compensation/compensation-bonus-rules.pgtest.vitest.spec.ts	0	2	2	1302	✗ KyselyBonusRulesRepo (real PG) › creates a rule and parses NUMERIC target + BIGINT amount back to numbers
+PASS	modules/workforce/src/compensation/compensation-bonus-rules.service.vitest.spec.ts	10	0	10	1392	
+PASS	modules/workforce/src/compensation/compensation-bonus.vitest.spec.ts	10	0	10	383	
+ENV_LOAD	modules/workforce/src/compensation/compensation-compliance-period.pgtest.vitest.spec.ts	0	0	0	1017	Error: this.db.insertInto is not a function
+ENV_FAIL	modules/workforce/src/compensation/compensation-compliance.pgtest.vitest.spec.ts	0	2	2	1612	✗ classification upsert (real PG) › keeps one row per technician and updates it in place
+PASS	modules/workforce/src/compensation/compensation-compliance.service.vitest.spec.ts	7	0	7	874	
+PASS	modules/workforce/src/compensation/compensation-compliance.vitest.spec.ts	8	0	8	295	
+PASS	modules/workforce/src/compensation/compensation-engine.vitest.spec.ts	12	0	12	468	
+PASS	modules/workforce/src/compensation/compensation-guarantee.vitest.spec.ts	16	0	16	620	
+FAIL	modules/workforce/src/compensation/compensation-guarantee-facts.pgtest.vitest.spec.ts	1	5	6	1685	✗ guarantee period facts from technician_shifts (real PG) › tenant-wide period: worked hours sum punches, eligible vs scheduled days split, other tenant excluded
+PASS	modules/workforce/src/compensation/compensation-payroll.vitest.spec.ts	4	0	4	510	
+PASS	modules/workforce/src/compensation/compensation-payroll-autobuild.vitest.spec.ts	14	0	14	1317	
+PASS	modules/workforce/src/compensation/compensation-policy.vitest.spec.ts	9	0	9	402	
+PASS	modules/workforce/src/compensation/compensation-reports.vitest.spec.ts	4	0	4	342	
+ENV_LOAD	modules/workforce/src/approvals/approvals.pgtest.vitest.spec.ts	0	0	0	15328	Error: db.getExecutor is not a function
+PASS	modules/workforce/src/compensation/compensation-rule-loader.vitest.spec.ts	10	0	10	640	
+PASS	modules/workforce/src/compensation/compensation-retail-policy.vitest.spec.ts	5	0	5	1355	
+FAIL	modules/workforce/src/compensation/compensation-rule-loader.pgtest.vitest.spec.ts	1	3	4	1532	✗ compensation rule loader + resolver (§4/§5) › loads only live versions (draft excluded)
+PASS	modules/workforce/src/compensation/compensation-scheduled-hours.vitest.spec.ts	8	0	8	461	
+PASS	modules/workforce/src/compensation/compensation-rules.service.vitest.spec.ts	6	0	6	1711	
+ENV_FAIL	modules/workforce/src/compensation/compensation-rules.pgtest.vitest.spec.ts	0	2	2	1968	✗ compensation rules lifecycle on real PG (§25) + resolver hand-off › authors a salon-default rule, activates it, and the resolver returns it
+PASS	modules/workforce/src/compensation/compensation-snapshot.vitest.spec.ts	5	0	5	1455	
+PASS	modules/workforce/src/compensation/compensation-supply.vitest.spec.ts	6	0	6	652	
+PASS	modules/workforce/src/compensation/compensation-supply-wire.vitest.spec.ts	3	0	3	1482	
+FAIL	modules/workforce/src/compensation/compensation-tier-plan.pgtest.vitest.spec.ts	1	2	3	1748	✗ resolveTierPlan (§2, real PG) › loads the plan and parses the JSONB band ladder
+PASS	modules/workforce/src/compensation/compensation-tiered.vitest.spec.ts	12	0	12	427	
+ENV_FAIL	modules/workforce/src/compensation/compensation-tier-plans.pgtest.vitest.spec.ts	0	2	2	1824	✗ KyselyTierPlansRepo (real PG, JSONB) › creates a plan, storing + parsing the band ladder as JSONB
+PASS	modules/workforce/src/compensation/compensation-tier-plans.service.vitest.spec.ts	5	0	5	1554	
+PASS	modules/workforce/src/compensation/compensation-tips.vitest.spec.ts	3	0	3	731	
+PASS	modules/workforce/src/compensation/compensation-tip-allocation.vitest.spec.ts	9	0	9	1630	
+PASS	modules/workforce/src/compensation/earnings-period.vitest.spec.ts	7	0	7	528	
+PASS	modules/workforce/src/compensation/compensation.service.vitest.spec.ts	21	0	21	1774	
+PASS	modules/workforce/src/compensation/compensation.controller.vitest.spec.ts	10	0	10	2172	
+PASS	modules/workforce/src/compensation/one-calculation.vitest.spec.ts	16	0	16	518	
+FAIL	modules/workforce/src/compensation/merge-pay-compensation.pgtest.vitest.spec.ts	0	13	13	12721	✗ commission precedence: rule → service rate → tenant default (mandate §11), stamped on the line (587) › no rule, no service rate → the TENANT default (45), never null / $0; a tenant without one gets the platform 50
+ENV_FAIL	modules/workforce/src/compensation/rule-activation-auth-code.pgtest.vitest.spec.ts	0	3	3	12346	✗ rule activation requires the commission authorization code (mandate §72/§122) › the row holds only the hash; another tenant's code and a wrong code are refused; the code is one-time
+ENV_FAIL	modules/workforce/src/compensation/tip-allocation-branch.pgtest.vitest.spec.ts	0	1	1	12733	✗ §75 tip allocation is location-scoped › the ticket's own location reads it; another location gets 404 on read and write
+PASS	modules/workforce/src/eligibility/technician-eligibility-batch.vitest.spec.ts	63	0	63	1044	
+FAIL	modules/workforce/src/eligibility/technician-eligibility-batch.pgtest.vitest.spec.ts	0	4	4	12603	✗ KyselyEligibilityReader.technicians ≡ technician(), at a fixed query count › 60 technicians: every batch record equals the single read
+ENV_FAIL	modules/workforce/src/eligibility/technician-eligibility.pgtest.vitest.spec.ts	0	7	7	12313	✗ exact-service eligibility on the real schema › §24 (Kevin, Oct 27 2026): NO services set up → bookable through the category fallback (basis named); a certification still applies
+PASS	modules/workforce/src/eligibility/technician-eligibility.vitest.spec.ts	28	0	28	1030	
+PASS	modules/workforce/src/nail-showcase/nail-photo-consent.vitest.spec.ts	6	0	6	472	
+ENV_FAIL	modules/workforce/src/eligibility/technician-eligibility-legacy.pgtest.vitest.spec.ts	1	7	8	13260	✗ a salon that existed before the exact-service model keeps working after the deploy › Lee (mapped to Gel Manicure only, category rule) can still accept and start a Classic Manicure — not a Pedicure
+PASS	modules/workforce/src/nail-showcase/nail-showcase-ranking-push.vitest.spec.ts	5	0	5	5263	
+ENV_FAIL	modules/workforce/src/nail-showcase/nail-photo-consent-queries.pgtest.vitest.spec.ts	0	10	10	13065	✗ the customer record lookup › resolves a real customer id from the user id
+PASS	modules/workforce/src/payroll/payroll-buildfromsales.vitest.spec.ts	3	0	3	1612	
+ENV_FAIL	modules/workforce/src/nail-showcase/showcase-attribution.pgtest.vitest.spec.ts	1	7	8	14588	✗ manual post attribution › credits a technician ONLY when the customer had a paid ticket served by them at this salon
+ENV_LOAD	modules/workforce/src/payroll/payroll-200-technicians.pgtest.vitest.spec.ts	0	0	0	15606	Error: trx.selectFrom is not a function
+ENV_FAIL	modules/workforce/src/payroll/payroll-exceptions-67.pgtest.vitest.spec.ts	0	2	2	14315	✗ §67 exception codes on the real schema › validation names the technicians: UNALLOCATED_TIP (who served the ticket) and MISSING_COMMISSION_RULE (fallback-priced)
+ENV_LOAD	modules/workforce/src/payroll/payroll-list-query.pgtest.vitest.spec.ts	0	0	0	14200	Error: db.insertInto is not a function
+PASS	modules/workforce/src/payroll/payroll-paid-push.vitest.spec.ts	4	0	4	1631	
+EMPTY	modules/workforce/src/payroll/payroll-paycheck-closeout.postgres-race.vitest.spec.ts	0	0	0	2350	payroll-paycheck-closeout.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/workforce/src/payroll/payroll-lock.pgtest.vitest.spec.ts	1	4	5	14653	✗ payroll paid-period lock (DB trigger) + reopen reason › reopening a FINALIZED period requires a reason; with one it is stored on the row + audited (high)
+EMPTY	modules/workforce/src/payroll/payroll-paycheck.postgres-race.vitest.spec.ts	0	0	0	2248	payroll-paycheck.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/workforce/src/payroll/payroll-paycheck.vitest.spec.ts	32	0	32	1373	
+FAIL	modules/workforce/src/payroll/payroll-paycheck-closeout.pgtest.vitest.spec.ts	0	12	12	17604	✗ close-out §3.3 / §3.4 / §17.7 — a monthly schedule opens its last month, tells the manager, and a mistake is canceled › the scheduler path: a monthly salon opens Sep 1–30, calculated, and the manager is pushed "ready f
+LOAD	modules/workforce/src/payroll/payroll-paystub.vitest.spec.ts	0	0	0	837	
+ENV_LOAD	modules/workforce/src/payroll/payroll-paycheck.pgtest.vitest.spec.ts	0	0	0	17880	Error: trx.selectFrom is not a function
+EMPTY	modules/workforce/src/payroll/payroll-period-overlap.postgres-race.vitest.spec.ts	0	0	0	2369	payroll-period-overlap.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/workforce/src/payroll/payroll-wave2.postgres-race.vitest.spec.ts	0	0	0	3007	payroll-wave2.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/workforce/src/payroll/payroll-week-review.vitest.spec.ts	11	0	11	1723	
+PASS	modules/workforce/src/payroll/payroll-workflow.vitest.spec.ts	18	0	18	2045	
+PASS	modules/workforce/src/payroll/payroll.vitest.spec.ts	7	0	7	2110	
+FAIL	modules/workforce/src/payroll/payroll-paystub.pgtest.vitest.spec.ts	0	8	8	23608	✗ pay stub 17.5 — from the immutable statement snapshot › a statement that is not approved has no stub yet (409 PAYROLL_PERIOD_NOT_READY) — it is an estimate until the owner approves
+PASS	modules/workforce/src/pos-team/pos-team.vitest.spec.ts	3	0	3	2180	
+ENV_FAIL	modules/workforce/src/payroll/payroll-period-overlap.pgtest.vitest.spec.ts	1	1	2	22566	✗ pay periods never overlap within one scope › a second period over the same days is refused (409 PAYROLL_PERIOD_OVERLAP, naming the first); the next week is fine
+PASS	modules/workforce/src/team-permissions/team-permissions.vitest.spec.ts	3	0	3	1787	
+PASS	modules/workforce/src/tech-cash-handoff/tech-cash-handoff-core.spec.ts	18	0	18	3417	
+FAIL	modules/workforce/src/request-schemas.vitest.spec.ts	0	88	88	14138	✗ workforce team-permissions — validated bodies, route by route › PUT /pos/access/members/:id/role
+FAIL	modules/workforce/src/team-permissions/access.pgtest.vitest.spec.ts	1	10	11	27009	✗ overrides › ALLOW only for keys the actor holds; never super_admin.*; never an unknown key; never on yourself; reason required
+PASS	modules/workforce/src/tech-profile/global-tech-identity-core.vitest.spec.ts	27	0	27	3341	
+ENV_FAIL	modules/workforce/src/tech-profile/consent-before-link.pgtest.vitest.spec.ts	0	2	2	27560	✗ consent before link › a NEW human links immediately; an EXISTING human does not link until she accepts
+ENV_FAIL	modules/workforce/src/tech-profile/booking-service-technicians-salon.pgtest.vitest.spec.ts	0	3	3	29485	✗ customerBookingServiceTechnicians + salonId › no salonId: the session salon (as before)
+PASS	modules/workforce/src/tech-profile/global-tech-identity.pgtest.vitest.spec.ts	7	0	7	17934	
+FAIL	modules/workforce/src/tech-profile/identity-one-minter.pgtest.vitest.spec.ts	2	6	8	27196	✗ the Tech App path mints through the ONE minter › a logged-in technician with no profile gets a tech_code, normalized keys, an active membership and a branch grant
+ENV_FAIL	modules/workforce/src/tech-profile/hidden-tech-visibility.pgtest.vitest.spec.ts	0	5	5	27747	✗ customer-facing lists › salon technicians: only the public, active, not-hidden profile
+FAIL	modules/workforce/src/tech-profile/media-access.pgtest.vitest.spec.ts	8	4	12	28916	✗ /media/* — public vs private › a public + approved portfolio photo of a visible profile is served openly (cacheable)
+PASS	modules/workforce/src/tech-profile/missing-query-id.vitest.spec.ts	2	0	2	14207	
+ENV_LOAD	modules/workforce/src/tech-profile/portfolio-delete-removes-file.pgtest.vitest.spec.ts	0	0	0	30775	Error: db.transaction is not a function
+ENV_FAIL	modules/workforce/src/tech-profile/portfolio-showcase.pgtest.vitest.spec.ts	0	2	2	29442	✗ §46 portfolio → Nail Showcase › share waits for the salon's review by default, is approved through the showcase's own moderation, shows attribution in the feed, and can be taken back
+ENV_FAIL	modules/workforce/src/tech-profile/pos-profile-no-other-salons.pgtest.vitest.spec.ts	0	6	6	28213	✗ posViewTechProfile — no other salons › shows THIS salon's membership plus a count; the other salons' names and ids are absent from the whole payload
+ENV_FAIL	modules/workforce/src/tech-profile/profile-policy-transfer.pgtest.vitest.spec.ts	0	4	4	28288	✗ §95 public-profile change approval › no policy → the edit applies at once; policy ON at an employing salon → the edit is HELD; approve applies it; the version guards the decision
+ENV_FAIL	modules/workforce/src/tech-profile/review-response.pgtest.vitest.spec.ts	0	4	4	30218	✗ technician review responses (Phase 3) › the owning technician can post a public response, surfaced in their ratings
+PASS	modules/workforce/src/tech-profile/tech-profile-core.vitest.spec.ts	13	0	13	1273	
+ENV_FAIL	modules/workforce/src/tech-profile/salon-wide-events.pgtest.vitest.spec.ts	0	2	2	31612	✗ B-14: salon-wide tech-profile facts are recorded domain events › a membership request is technician.membership_requested on the salon ASKED, naming its branches, committed with the request row
+PASS	modules/workforce/src/tech-recommendation/tech-recommendation.vitest.spec.ts	5	0	5	613	
+PASS	modules/workforce/src/tech-utilization/tech-utilization.vitest.spec.ts	4	0	4	2183	
+PASS	modules/workforce/src/technician-clock-pin/clock-pin-hash.vitest.spec.ts	7	0	7	5258	
+ENV_FAIL	modules/workforce/src/tech-profile/tech-dm.pgtest.vitest.spec.ts	0	8	8	32948	✗ customer ↔ technician DMs (Phase 5) › a customer who has not booked cannot open a thread
+LOAD	modules/workforce/src/technician-clock-pin/clock-pin.vitest.spec.ts	0	0	0	747	SyntaxError: Identifier 'InMemoryClockPinRepository' has already been declared
+PASS	modules/workforce/src/technician-clock-pin/technician-clock-management.vitest.spec.ts	7	0	7	2037	
+PASS	modules/workforce/src/technicians/employment-history-import.vitest.spec.ts	8	0	8	1044	
+ENV_FAIL	modules/workforce/src/technician-clock-pin/clock-pin-scale.vitest.spec.ts	5	1	6	28575	✗ identify-by-PIN against the real schema (PGlite) › stores the digest, narrows to the matching row, finds an unkeyed (legacy) row and re-keys it
+ENV_FAIL	modules/workforce/src/tech-profile/technician-invite.pgtest.vitest.spec.ts	1	8	9	46581	✗ the invitation reaches the technician › SMS when she has a phone and no email — which is most nail technicians
+FAIL	modules/workforce/src/technicians/phone-email-sync.pgtest.vitest.spec.ts	0	5	5	25454	✗ create + attach: one normalization everywhere › the roster row, the login and the global profile all carry identityKeys() of what the manager typed
+FAIL	modules/workforce/src/technicians/technician-app-access.pgtest.vitest.spec.ts	1	7	8	21741	✗ the write LANDS › setPermissions persists — and getPermissions reads back what the manager set, not a default
+ENV_FAIL	modules/workforce/src/technicians/technician-commission-rules.pgtest.vitest.spec.ts	1	5	6	22331	✗ the POS technician commission edit authors the rule payroll pays › before: the service rate prices Anna's acrylic (55 %)
+PASS	modules/workforce/src/technicians/technicians-core.spec.ts	65	0	65	4940	
+ENV_LOAD	modules/workforce/src/technicians/technician-revocation.pgtest.vitest.spec.ts	0	0	0	23029	Error: this.db.insertInto is not a function
+FAIL	modules/workforce/src/technicians/technicians-audit.pgtest.vitest.spec.ts	0	5	5	24669	✗ the POS technician audit trail reaches the database › a recorded event is IN audit_logs — with its tenant, its actor, and its metadata
+PASS	modules/workforce/src/technicians/technicians-pay-projection.vitest.spec.ts	7	0	7	5314	
+PASS	modules/workforce/src/technicians/technicians-permissions-core.vitest.spec.ts	8	0	8	1080	
+PASS	modules/workforce/src/technicians/technicians-qualified.vitest.spec.ts	7	0	7	5738	
+LOAD	modules/workforce/src/technicians/technicians-one-calculation.pgtest.vitest.spec.ts	0	0	0	28288	Error: expected false toBe true
+ENV_FAIL	modules/workforce/src/technicians/technicians-local-day.pgtest.vitest.spec.ts	0	4	4	29225	✗ Technicians count the branch's day › today's sales: 10 am + 9 pm tonight = $55 — not last night's $99, and not missing tonight's $10
+PASS	modules/workforce/src/time-clock/break-policy.vitest.spec.ts	9	0	9	853	
+PASS	modules/workforce/src/time-clock/time-clock-roster-1000.vitest.spec.ts	3	0	3	3006	
+PASS	modules/workforce/src/technicians/v5-coded-refusals.vitest.spec.ts	1	0	1	8822	
+ENV_FAIL	modules/workforce/src/time-clock/time-clock.vitest.spec.ts	12	4	16	2514	✗ time-clock — the branch day › at 8:15 pm New Jersey time, today is Oct 1: both of today's shifts count; the open one can be clocked out
+EMPTY	modules/workforce/src/time-off/time-off-decision.postgres-race.vitest.spec.ts	0	0	0	2198	time-off-decision.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/workforce/src/technicians/technicians-role-branch-filter.pgtest.vitest.spec.ts	0	3	3	26903	✗ Team page: role and branch filter on the server (§34) › role filters the WHOLE roster before paging (10 seniors across pages, not the first page only)
+PASS	modules/workforce/src/turn-queue/turn-coded-text.vitest.spec.ts	4	0	4	965	
+PASS	modules/workforce/src/turn-queue/turn-core.vitest.spec.ts	40	0	40	1222	
+FAIL	modules/workforce/src/time-clock/time-clock.pgtest.vitest.spec.ts	0	10	10	22522	✗ date key is the SALON-LOCAL day › a 9:30pm clock-in in New Jersey (01:30Z next day) is filed under TODAY, and getState sees it
+ENV_FAIL	modules/workforce/src/time-off/time-off.pgtest.vitest.spec.ts	0	8	8	20307	✗ technician request → manager decision › a technician requests time off for HERSELF (from the session): pending, audited, emitted; availability untouched
+PASS	modules/workforce/src/workforce-status/workforce-status-core.vitest.spec.ts	27	0	27	718	
+PASS	modules/workforce/src/upload-policy-routes.vitest.spec.ts	8	0	8	11244	
+FAIL	modules/workforce/src/turn-queue/turn-ledger.pgtest.vitest.spec.ts	0	21	21	21732	✗ §27–28 clock-in joins the rotation in order (back of the queue) › Lisa, Mary, Anna clock in → positions 1, 2, 3 and three JOIN events
+PASS	modules/queue/src/check-in/assign-exact-eligibility.vitest.spec.ts	6	0	6	12319	
+FAIL	modules/workforce/src/workforce-status/workforce-status.pgtest.vitest.spec.ts	0	11	11	19086	✗ first-touch backfill from the legacy rows › builds one workforce row per technician from the open punch + the LATEST legacy status
+EMPTY	modules/queue/src/check-in/check-in-branch-day.postgres-race.vitest.spec.ts	0	0	0	11174	check-in-branch-day.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/queue/src/check-in/check-in-concurrency.postgres-race.vitest.spec.ts	0	0	0	10899	check-in-concurrency.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/queue/src/check-in/check-in-appointment-event.pgtest.vitest.spec.ts	0	2	2	19020	✗ B-14: a check-in of an appointment is a recorded domain event › createVisitRecords: queue.customer_joined on the queue item AND checkin.customer_checked_in on the appointment, one transaction
+PASS	modules/queue/src/check-in/check-in-core.spec.ts	113	0	113	12269	
+PASS	modules/queue/src/check-in/check-in-place-in-line.vitest.spec.ts	4	0	4	1380	
+PASS	modules/queue/src/check-in/check-in-roster-1000.vitest.spec.ts	2	0	2	793	
+PASS	modules/queue/src/check-in/check-in-duplicate-emit.vitest.spec.ts	3	0	3	11636	
+PASS	modules/queue/src/check-in/check-in-one-active.vitest.spec.ts	2	0	2	11984	
+PASS	modules/queue/src/check-in/check-in-temp-id.vitest.spec.ts	2	0	2	4392	
+EMPTY	modules/queue/src/front-desk-machines.postgres-race.vitest.spec.ts	0	0	0	12121	front-desk-machines.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/queue/src/go-check-in/check-in-allowance.postgres-race.vitest.spec.ts	0	0	0	11326	check-in-allowance.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/queue/src/front-desk-machines.pgtest.vitest.spec.ts	3	6	9	24010	✗ the writers, on the real schema › cancelling a COMPLETED queue item is 409 — nothing changes, the paid ticket is not cancelled
+PASS	modules/queue/src/go-check-in/go-check-in-alternates.vitest.spec.ts	6	0	6	11742	
+PASS	modules/queue/src/go-check-in/go-check-in-display.vitest.spec.ts	18	0	18	11074	
+PASS	modules/queue/src/go-check-in/go-check-in-expiry-emit.vitest.spec.ts	2	0	2	12272	
+PASS	modules/queue/src/go-check-in/go-check-in-isolation.vitest.spec.ts	22	0	22	11245	
+PASS	modules/queue/src/go-check-in/go-check-in-languages.vitest.spec.ts	4	0	4	12674	
+PASS	modules/queue/src/go-check-in/go-check-in-rules.vitest.spec.ts	10	0	10	10551	
+PASS	modules/queue/src/go-check-in/go-check-in-salon-caps.vitest.spec.ts	2	0	2	12690	
+PASS	modules/queue/src/go-check-in/go-check-in-slug-for-branch.vitest.spec.ts	7	0	7	12054	
+PASS	modules/queue/src/go-check-in/go-check-in-super-admin.vitest.spec.ts	17	0	17	11730	
+PASS	modules/queue/src/go-check-in/go-check-in-tech-clock.vitest.spec.ts	16	0	16	11266	
+PASS	modules/queue/src/go-check-in/go-check-in-telemetry.vitest.spec.ts	1	0	1	11748	
+PASS	modules/queue/src/go-check-in/go-check-in-welcome-message.vitest.spec.ts	5	0	5	12004	
+PASS	modules/queue/src/go-check-in/wait-estimate.vitest.spec.ts	4	0	4	12105	
+PASS	modules/queue/src/live-technician-schedule/live-schedule-lanes.vitest.spec.ts	5	0	5	10257	
+PASS	modules/queue/src/live-technician-schedule/one-calculation.vitest.spec.ts	1	0	1	614	
+PASS	modules/queue/src/live-technician-schedule/live-technician-schedule-core.spec.ts	59	0	59	10439	
+ENV_FAIL	modules/queue/src/go-check-in/go-check-in.pgtest.vitest.spec.ts	1	16	17	26443	✗ migration 512: one device per check-in session › a display session (no kiosk) and a kiosk session are both fine; neither, or both, is refused
+FAIL	modules/queue/src/local-day.pgtest.vitest.spec.ts	1	10	11	25884	✗ Service Done and Serving count the branch's day › tips captured today: the 10 am ticket only — not 0 (UTC "tomorrow"), not 1200 (last night too)
+PASS	modules/queue/src/queue/queue-analytics.vitest.spec.ts	7	0	7	501	
+LOAD	modules/queue/src/one-calculation.pgtest.vitest.spec.ts	0	0	0	27169	Error: expected false toBe true
+FAIL	modules/queue/src/queue-merge-bk.pgtest.vitest.spec.ts	0	6	6	27567	✗ tech-queue offer writer (accept / decline) on the real schema › accept flips only a pending offer and bumps the version; a stale expectedVersion is a no-op; a started ticket is never re-accepted
+PASS	modules/queue/src/queue/queue-assign-conflict.vitest.spec.ts	2	0	2	13595	
+PASS	modules/queue/src/queue/queue-assign-guard.vitest.spec.ts	4	0	4	16829	
+EMPTY	modules/queue/src/queue/queue-assign.postgres-race.vitest.spec.ts	0	0	0	16791	queue-assign.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/queue/src/queue/queue-assignment-inputs.vitest.spec.ts	9	0	9	17202	
+PASS	modules/queue/src/queue/queue-assignment-push.vitest.spec.ts	10	0	10	16747	
+PASS	modules/queue/src/queue/queue-auto-balance.vitest.spec.ts	7	0	7	14686	
+PASS	modules/queue/src/queue/queue-core.spec.ts	74	0	74	12710	
+FAIL	modules/queue/src/queue/queue-multitech.controller.vitest.spec.ts	2	1	3	13537	✗ queue multi-technician routes › POST plans/assign needs pos.queue.assign_technician; POST groups/:id/move-to-tech-queue needs pos.queue.move_to_tech_queue
+FAIL	modules/queue/src/queue/queue-exact-eligibility.vitest.spec.ts	8	1	9	14013	✗ queue — exact-service eligibility when the authority is bound › §24: the module refuses to boot with a database and no authority (no silent category fallback in production)
+EMPTY	modules/queue/src/queue/queue-multitech.postgres-race.vitest.spec.ts	0	0	0	14861	queue-multitech.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/queue/src/queue/queue-multitech.pgtest.vitest.spec.ts	0	11	11	30595	✗ assignPlan — one transaction › lines + lead + one history row + audit + queue.customer_assigned + queue.service_lines_assigned
+EMPTY	modules/queue/src/queue/queue-phase6.postgres-race.vitest.spec.ts	0	0	0	12061	queue-phase6.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/queue/src/queue/queue-return-rate.vitest.spec.ts	5	0	5	668	
+FAIL	modules/queue/src/queue/queue-phase6.pgtest.vitest.spec.ts	2	19	21	30288	✗ versioned, audited transitions in one transaction (bug 15) › assign: version 1 → 2, history check_in + assign (who / source / reason), a pos_queue_audit row
+PASS	modules/queue/src/queue/queue-requested-technician.vitest.spec.ts	4	0	4	14257	
+PASS	modules/queue/src/queue/queue-round2.vitest.spec.ts	11	0	11	13473	
+PASS	modules/queue/src/queue/queue-signals.vitest.spec.ts	14	0	14	455	
+PASS	modules/queue/src/queue/queue-serving-shared-record.vitest.spec.ts	2	0	2	11379	
+PASS	modules/queue/src/queue/queue-tech-queue-shared-record.vitest.spec.ts	3	0	3	12606	
+ENV_FAIL	modules/queue/src/queue/queue-round2.pgtest.vitest.spec.ts	0	6	6	29507	✗ board rows (GET pos/queue/state, items) › carry lock { technicianId, reason } and locked; null when unlocked
+PASS	modules/queue/src/queue/queue-transitions.vitest.spec.ts	18	0	18	16400	
+PASS	modules/queue/src/queue/queue-vi-search.vitest.spec.ts	1	0	1	20654	
+FAIL	modules/queue/src/request-schemas.vitest.spec.ts	1	89	90	18778	✗ queue — validated bodies, route by route › POST /pos/check-in/walk-in
+PASS	modules/queue/src/service-done/service-done-addon.vitest.spec.ts	2	0	2	438	
+PASS	modules/queue/src/service-done/service-done-analytics.vitest.spec.ts	4	0	4	439	
+PASS	modules/queue/src/service-done/service-done-audit-bridge.vitest.spec.ts	2	0	2	2489	
+PASS	modules/queue/src/service-done/service-done-core.spec.ts	57	0	57	1179	
+PASS	modules/queue/src/service-done/no-commission-estimate.vitest.spec.ts	2	0	2	10228	
+PASS	modules/queue/src/service-done/service-done-rebooking-suggestion.vitest.spec.ts	4	0	4	626	
+PASS	modules/queue/src/service-done/service-done-rebooking.vitest.spec.ts	6	0	6	519	
+PASS	modules/queue/src/service-done/service-done-reopen-lock.vitest.spec.ts	2	0	2	1213	
+ENV_FAIL	modules/queue/src/queue/visit-ticket-category.pgtest.vitest.spec.ts	0	1	1	34527	✗ ensureVisitTicket snapshots the service category › the line carries "Nails", and a Technician + Category rule (58 %) prices it
+ENV_FAIL	modules/queue/src/service-done/service-done-guest.pgtest.vitest.spec.ts	0	1	1	19108	✗ Service Done → guest summary › shows the guest's loyalty points from the loyalty profile
+ENV_FAIL	modules/queue/src/serving/compensation-multitech.pgtest.vitest.spec.ts	0	2	2	21060	✗ a 2-technician visit pays each technician their lines › ticket lines carry the LINE technician with the commission baked; the snapshot splits commission and the tip by line
+ENV_FAIL	modules/queue/src/serving/compensation-serving-wire.pgtest.vitest.spec.ts	0	3	3	19716	✗ serving line creation bakes the resolved commission (§4/§21, Phase 1b) › bakes the authored rule rate (60%) onto the line for a tenant with a rule
+PASS	modules/queue/src/serving/manager-pin-location.vitest.spec.ts	5	0	5	667	
+FAIL	modules/queue/src/serving/manager-pin-budget.pgtest.vitest.spec.ts	2	5	7	14520	✗ manager PIN budget shared by every replica › a correct PIN refunds its charge (no budget spent)
+PASS	modules/queue/src/serving/serving-addon.vitest.spec.ts	3	0	3	1214	
+PASS	modules/queue/src/serving/serving-analytics.vitest.spec.ts	4	0	4	386	
+EMPTY	modules/queue/src/serving/pay-merge.postgres-race.vitest.spec.ts	0	0	0	11698	pay-merge.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/queue/src/serving/serving-addon-category.vitest.spec.ts	4	0	4	11549	
+PASS	modules/queue/src/serving/serving-eligibility.vitest.spec.ts	10	0	10	12420	
+PASS	modules/queue/src/serving/serving-core.spec.ts	102	0	102	13238	
+PASS	modules/queue/src/serving/serving-lifecycles.vitest.spec.ts	2	0	2	1464	
+PASS	modules/queue/src/serving/serving-lifecycle-revisions.vitest.spec.ts	3	0	3	11424	
+ENV_FAIL	modules/queue/src/serving/serving-guest-details.pgtest.vitest.spec.ts	0	2	2	28433	✗ Serving → Guest Service Details › shows the guest's loyalty points (from the loyalty profile) and their preferred technician
+PASS	modules/queue/src/serving/serving-ontime.vitest.spec.ts	5	0	5	499	
+FAIL	modules/queue/src/serving/serving-module-inventory.vitest.spec.ts	0	1	1	10247	✗ ServingModule wiring › imports InventoryModule, so the optional InventoryService the retail sale moves stock with can resolve
+ENV_FAIL	modules/queue/src/serving/serving-line-revision.pgtest.vitest.spec.ts	0	1	1	27417	✗ added service line → revision names the persisted line › POS add service: the line is stored and the service_added revision carries its uuid and snapshot
+PASS	modules/queue/src/serving/serving-retail.vitest.spec.ts	12	0	12	10143	
+PASS	modules/queue/src/serving/serving-revision-coded.vitest.spec.ts	3	0	3	10925	
+ENV_FAIL	modules/queue/src/serving/serving-retail.pgtest.vitest.spec.ts	1	4	5	25901	✗ retail line on the real schema › only sells an active, retail-flagged, PRICED product
+PASS	modules/queue/src/serving/serving-revisions.vitest.spec.ts	3	0	3	14152	
+PASS	modules/queue/src/serving/serving-service-done-lock.vitest.spec.ts	3	0	3	12111	
+PASS	modules/queue/src/serving/serving-tech-recalc.vitest.spec.ts	2	0	2	12143	
+PASS	modules/queue/src/serving/v5-coded-refusals.vitest.spec.ts	2	0	2	11924	
+PASS	modules/queue/src/tech-queue/tech-queue-analytics.vitest.spec.ts	11	0	11	480	
+PASS	modules/queue/src/tech-queue/tech-queue-accept-status.vitest.spec.ts	2	0	2	11576	
+ENV_FAIL	modules/queue/src/serving/serving-session.pgtest.vitest.spec.ts	0	5	5	31030	✗ durable serving state (586) › status, pause clock, delay, notes and helper survive a NEW repository instance
+PASS	modules/queue/src/tech-queue/tech-queue-core.spec.ts	88	0	88	16554	
+PASS	modules/queue/src/tech-queue/tech-queue-expiry.vitest.spec.ts	7	0	7	16585	
+PASS	modules/queue/src/tech-queue/tech-queue-metrics.vitest.spec.ts	9	0	9	858	
+ENV_FAIL	modules/queue/src/tech-queue/tech-queue-lane-states.pgtest.vitest.spec.ts	0	2	2	30336	✗ §33 Tech Queue lane states from the domain › Hold (Fair Turn HOLD, with its reason) and Appointment Soon (≤ 60 min); busy / break / off keep their own
+PASS	modules/queue/src/tech-queue/tech-queue-transition-guard.vitest.spec.ts	7	0	7	889	
+ENV_FAIL	modules/queue/src/tech-queue/tech-queue-lanes-1000.pgtest.vitest.spec.ts	0	3	3	27285	✗ §2 Tech Queue state at 1,000 technicians — one page, never the roster › lanePage: one page of lane rows / lanes / available, the workload as counts, the totals; roster=none drops the names
+ENV_FAIL	modules/queue/src/tech-queue/tech-queue-queries.pgtest.vitest.spec.ts	0	7	7	23903	✗ the service catalog actually loads › a seeded service comes BACK — an empty catalog reads as "no services configured", not as a bug
+PASS	modules/queue/src/tech/compensation-earnings.vitest.spec.ts	11	0	11	9576	
+PASS	modules/queue/src/tech/compensation-security.vitest.spec.ts	6	0	6	10072	
+ENV_FAIL	modules/queue/src/tech/certification-expiry.pgtest.vitest.spec.ts	5	5	10	16458	✗ certifications on the real schema › a technician adds / edits her own; editing evidence drops a prior verification; a manager verifies / revokes (audited)
+PASS	modules/queue/src/tech/skill-document-upload.vitest.spec.ts	2	0	2	12697	
+PASS	modules/queue/src/tech/skill-evidence-links.vitest.spec.ts	2	0	2	12909	
+PASS	modules/queue/src/tech/tech-assignment-reason.vitest.spec.ts	5	0	5	545	
+ENV_FAIL	modules/queue/src/tech/skill-review.pgtest.vitest.spec.ts	0	2	2	13599	✗ skill request review on real tables (Decision 7) › walks submitted -> under review -> more info -> resubmitted -> approved; eligibility appears only at approval
+PASS	modules/queue/src/tech/skill-review.vitest.spec.ts	10	0	10	13728	
+PASS	modules/queue/src/tech/tech-dashboard.core.vitest.spec.ts	7	0	7	579	
+PASS	modules/queue/src/tech/tech-clock.vitest.spec.ts	4	0	4	13324	
+PASS	modules/queue/src/tech/tech-manager-messages-realm.vitest.spec.ts	4	0	4	13132	
+FAIL	modules/queue/src/tech/tech-mobile-idempotent.vitest.spec.ts	0	2	2	12603	✗ technician service transitions are idempotent › 'start' carries              
+ENV_FAIL	modules/queue/src/tech/tech-dashboard-unread.pgtest.vitest.spec.ts	0	1	1	31364	✗ dashboardRaw.notificationsCount › counts only this technician’s unread rows
+PASS	modules/queue/src/tech/tech-paycheck-codes.vitest.spec.ts	3	0	3	12125	
+PASS	modules/queue/src/tech/tech-permissions.vitest.spec.ts	6	0	6	10274	
+ENV_FAIL	modules/queue/src/tech/tech-payroll.pgtest.vitest.spec.ts	0	3	3	23867	✗ tech myPayroll › excludes draft periods and rolls up paid/unpaid/total correctly
+ENV_FAIL	modules/queue/src/tech/tech-service-history.pgtest.vitest.spec.ts	0	3	3	9106	✗ tech service history (real tables) › returns only MY paid lines — unpaid tickets, other technicians, other tenants excluded
+ENV_FAIL	modules/queue/src/tech/tech-self-service.pgtest.vitest.spec.ts	0	6	6	15686	✗ Technician App self-service reads (real schema) › time clock: the open punch counts toward today, the finished break is subtracted
+PASS	modules/queue/src/tech/tech.service.vitest.spec.ts	34	0	34	11935	
+PASS	modules/queue/src/technician-help/help-missing-line-id.vitest.spec.ts	1	0	1	11860	
+PASS	modules/queue/src/technician-help/technician-help.vitest.spec.ts	16	0	16	1006	
+PASS	modules/booking/src/booking-lifecycles.vitest.spec.ts	2	0	2	1331	
+PASS	modules/booking/src/booking/booking-200-technicians.vitest.spec.ts	15	0	15	7202	
+EMPTY	modules/booking/src/booking/booking-arrived-late.postgres-race.vitest.spec.ts	0	0	0	2339	booking-arrived-late.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/queue/src/tech/tech-shared-visit.pgtest.vitest.spec.ts	0	5	5	24937	✗ projection: one part per technician › 2 parts (visit_part 1..2), each with only its technician's services; the lines record their part; a second move adds nothing
+ENV_FAIL	modules/booking/src/booking/booking-arrived-late.vitest.spec.ts	12	1	13	6947	✗ the board's day is the salon's day, not UTC's › at 8:30 pm EDT (00:30 UTC next day) today is still the salon's date and the minute is 20:30
+FAIL	modules/booking/src/booking/booking-appointment-machine.pgtest.vitest.spec.ts	0	4	4	17069	✗ Booking board — appointment status through the APPOINTMENT machine › cancelling a COMPLETED visit is 409; its queue item is not cancelled
+PASS	modules/booking/src/booking/booking-blocked-times.vitest.spec.ts	6	0	6	7201	
+EMPTY	modules/booking/src/booking/booking-branch-timezone.postgres-race.vitest.spec.ts	0	0	0	2910	booking-branch-timezone.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/booking/src/booking/booking-concurrency.postgres-race.vitest.spec.ts	0	0	0	2524	booking-concurrency.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/booking/booking-conflict-atomic.vitest.spec.ts	4	0	4	1048	
+EMPTY	modules/booking/src/booking/booking-board-payload.measure.vitest.spec.ts	0	0	0	8057	booking-board-payload.measure.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/booking/booking-changes-feed.vitest.spec.ts	9	0	9	8255	
+EMPTY	modules/booking/src/booking/booking-cross-surface.postgres-race.vitest.spec.ts	0	0	0	3617	booking-cross-surface.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/booking/src/booking/booking-drafts.controller.vitest.spec.ts	1	1	2	3469	✗ BookingDraftsController is resolvable by Nest (the compiled API boots) › the constructor injects the repository by its CLASS token (never the erased Object), and it is optional
+PASS	modules/booking/src/booking/booking-create-emit.vitest.spec.ts	6	0	6	9379	
+PASS	modules/booking/src/booking/booking-core.spec.ts	95	0	95	10574	
+EMPTY	modules/booking/src/booking/booking-first-available.postgres-race.vitest.spec.ts	0	0	0	11416	booking-first-available.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/booking/src/booking/booking-hold-vs-booking.postgres-race.vitest.spec.ts	0	0	0	8236	booking-hold-vs-booking.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/booking/src/booking/booking-drafts.pgtest.vitest.spec.ts	3	4	7	22375	✗ B-22: Save Draft makes a real draft, not an appointment › saves the whole form on a kind=draft hold with NO technician, 7 days to live; lists it for the branch; gets it back whole
+FAIL	modules/booking/src/booking/booking-first-available.pgtest.vitest.spec.ts	0	7	7	30737	✗ first available — a booking without a technician is assigned by the "any technician" rule › books, and lands on the first technician by name who is free and skilled
+EMPTY	modules/booking/src/booking/booking-move-paths.postgres-race.vitest.spec.ts	0	0	0	3050	booking-move-paths.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/booking/booking-overbooking-policy.vitest.spec.ts	8	0	8	6851	
+FAIL	modules/booking/src/booking/booking-holds-locked.pgtest.vitest.spec.ts	0	7	7	28098	✗ gap 1 — the hold check is inside the booking's locked transaction › a hold placed after the service's pre-check (before the locked insert) still refuses the explicit booking
+PASS	modules/booking/src/booking/booking-permissions.vitest.spec.ts	2	0	2	7877	
+FAIL	modules/booking/src/booking/booking-holds.pgtest.vitest.spec.ts	0	6	6	29026	✗ the staff booking engine respects live holds › another session holds Ava at 10:00 → explicit Ava refused (409), first available lands on Bea, 10:00 not offered for Ava
+PASS	modules/booking/src/booking/booking-schedule-core.vitest.spec.ts	24	0	24	1627	
+EMPTY	modules/booking/src/booking/booking-same-customer.postgres-race.vitest.spec.ts	0	0	0	4455	booking-same-customer.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/booking/booking-realtime.vitest.spec.ts	3	0	3	14461	
+PASS	modules/booking/src/booking/booking-service-branch-clock.vitest.spec.ts	1	0	1	14377	
+PASS	modules/booking/src/booking/booking-skills-authority.vitest.spec.ts	6	0	6	13663	
+EMPTY	modules/booking/src/booking/booking-time-off.postgres-race.vitest.spec.ts	0	0	0	3542	booking-time-off.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/booking/eligibility-authority-boot.vitest.spec.ts	3	0	3	346	
+PASS	modules/booking/src/booking/booking-window-enforcement.vitest.spec.ts	13	0	13	9564	
+PASS	modules/booking/src/booking/v5-coded-refusals.vitest.spec.ts	2	0	2	10921	
+PASS	modules/booking/src/customer-activation/activation-destination.vitest.spec.ts	7	0	7	5800	
+FAIL	modules/booking/src/customer-activation/customer-activation.pgtest.vitest.spec.ts	1	10	11	2775	✗ directory lookup (real SQL) › finds the customer in EVERY salon that knows the number
+ENV_FAIL	modules/booking/src/booking/booking-start-service-event.pgtest.vitest.spec.ts	0	1	1	22357	✗ B-14: starting service from the Booking board is a recorded domain event › checked_in → in_service writes appointment.updated { status: in_service } with the status write
+PASS	modules/booking/src/customer-booking/availability.vitest.spec.ts	7	0	7	4939	
+PASS	modules/booking/src/customer-booking/booking-hold-core.vitest.spec.ts	27	0	27	1042	
+PASS	modules/booking/src/customer-activation/activation-sends-through-messenger.vitest.spec.ts	2	0	2	12276	
+PASS	modules/booking/src/customer-booking/booking-hold.service.vitest.spec.ts	14	0	14	2439	
+PASS	modules/booking/src/customer-activation/customer-activation.service.vitest.spec.ts	23	0	23	12329	
+PASS	modules/booking/src/customer-booking/booking-verification-fraud.vitest.spec.ts	19	0	19	456	
+PASS	modules/booking/src/customer-booking/booking-session-token.vitest.spec.ts	5	0	5	1560	
+PASS	modules/booking/src/customer-booking/booking-verification-override.vitest.spec.ts	15	0	15	1565	
+PASS	modules/booking/src/customer-booking/booking-verification-policy.vitest.spec.ts	29	0	29	678	
+PASS	modules/booking/src/customer-booking/booking-verification-guard.vitest.spec.ts	24	0	24	4457	
+PASS	modules/booking/src/customer-booking/booking-verification-provider-base.vitest.spec.ts	5	0	5	1805	
+PASS	modules/booking/src/customer-booking/booking-verification-purpose.vitest.spec.ts	3	0	3	3854	
+PASS	modules/booking/src/customer-booking/booking-verification-session.vitest.spec.ts	6	0	6	4027	
+FAIL	modules/booking/src/customer-booking/booking-hold-deadlock.pgtest.vitest.spec.ts	0	3	3	20598	✗ a deadlocked hold insert is retried once, never surfaced raw › deadlock victim, slot still free → the retry takes the hold
+PASS	modules/booking/src/customer-booking/booking-verification-voice.vitest.spec.ts	20	0	20	555	
+PASS	modules/booking/src/customer-booking/booking-verification-settings.vitest.spec.ts	14	0	14	1076	
+PASS	modules/booking/src/customer-booking/booking-verification-webhook.vitest.spec.ts	10	0	10	1505	
+ENV_LOAD	modules/booking/src/customer-booking/booking-verification-proof.pgtest.vitest.spec.ts	0	0	0	19004	Error: db.getExecutor is not a function
+EMPTY	modules/booking/src/customer-booking/booking-verification.postgres-race.vitest.spec.ts	0	0	0	3560	booking-verification.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/customer-booking/booking-verification.service.vitest.spec.ts	19	0	19	3672	
+FAIL	modules/booking/src/customer-booking/booking-verification-webhook-dedupe.pgtest.vitest.spec.ts	1	2	3	15850	✗ booking-verification status callback: a retried "failed" is applied once › delivered twice in sequence + twice concurrently → one queued job; the job run twice → one failure event
+ENV_FAIL	modules/booking/src/customer-booking/booking-verification.pgtest.vitest.spec.ts	7	21	28	16319	✗ the migrations actually apply › creates every table this module reads and writes
+PASS	modules/booking/src/customer-booking/customer-booking-deal.vitest.spec.ts	7	0	7	3072	
+EMPTY	modules/booking/src/customer-booking/customer-booking-holds-schedule.postgres-race.vitest.spec.ts	0	0	0	3021	customer-booking-holds-schedule.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/booking/src/customer-booking/customer-booking-idempotent.vitest.spec.ts	0	1	1	2640	✗ customer booking create is idempotent › book carries              
+ENV_LOAD	modules/booking/src/customer-booking/branch-service-price.pgtest.vitest.spec.ts	0	0	0	17365	Error: db.getExecutor is not a function
+PASS	modules/booking/src/customer-booking/customer-booking-reschedule-23p01.vitest.spec.ts	3	0	3	2776	
+ENV_FAIL	modules/booking/src/customer-booking/customer-booking-availability-holds.pgtest.vitest.spec.ts	0	1	1	24962	✗ customer / voice availability and live holds › a slot another session holds is not offered; the asking session's own hold stays offered
+PASS	modules/booking/src/customer-booking/customer-booking-reschedule.vitest.spec.ts	10	0	10	7380	
+PASS	modules/booking/src/customer-booking/customer-booking-working-hours.vitest.spec.ts	6	0	6	3000	
+ENV_LOAD	modules/booking/src/customer-booking/customer-booking-race.pgtest.vitest.spec.ts	0	0	0	19141	Error: db.getExecutor is not a function
+LOAD	modules/booking/src/customer-phone/customer-phone-bypass.vitest.spec.ts	0	0	0	635	Error: ENOENT: no such file or directory, open '/home/claude/modules/customers/src/customers/customers.kysely.repository.ts'
+PASS	modules/booking/src/customer-phone/customer-phone-core.vitest.spec.ts	32	0	32	529	
+PASS	modules/booking/src/customer-phone/customer-identity-phone.vitest.spec.ts	16	0	16	4644	
+PASS	modules/booking/src/customer-booking/customer-booking-verification-gate.vitest.spec.ts	17	0	17	8750	
+PASS	modules/booking/src/customer-phone/customer-phone-no-sms.vitest.spec.ts	6	0	6	981	
+PASS	modules/booking/src/customer-phone/customer-phone-http.vitest.spec.ts	2	0	2	4090	
+PASS	modules/booking/src/customer-phone/customer-phone-settings.vitest.spec.ts	14	0	14	1509	
+PASS	modules/booking/src/customer-phone/customer-phone-policy.vitest.spec.ts	15	0	15	4254	
+PASS	modules/booking/src/customer-phone/customer-phone-update.service.vitest.spec.ts	25	0	25	3922	
+EMPTY	modules/booking/src/customer-phone/customer-phone.postgres-race.vitest.spec.ts	0	0	0	3600	customer-phone.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/booking/src/customer-phone/old-number-notice-language.vitest.spec.ts	1	0	1	3422	
+ENV_LOAD	modules/booking/src/customer-phone/customer-phone-flow.pgtest.vitest.spec.ts	0	0	0	18838	Error: db.getExecutor is not a function
+FAIL	modules/booking/src/request-schemas.round2.vitest.spec.ts	0	21	21	4225	✗ booking (round 2) — validated bodies, route by route › POST /pos/booking/verification-override
+ENV_LOAD	modules/booking/src/customer-phone/customer-phone.pgtest.vitest.spec.ts	0	0	0	16601	Error: db.getExecutor is not a function
+FAIL	modules/booking/src/request-schemas.vitest.spec.ts	0	16	16	7090	✗ booking — validated bodies, route by route › POST /pos/booking/appointments
+PASS	modules/gift-cards/src/gift-card-stock/gift-card-stock.vitest.spec.ts	5	0	5	1708	
+PASS	modules/gift-cards/src/gift-cards/gift-card-claim-core.spec.ts	13	0	13	467	
+PASS	modules/gift-cards/src/gift-cards/gift-card-clearing-core.spec.ts	32	0	32	477	
+ENV_LOAD	modules/booking/src/deposits/booking-deposit.pgtest.vitest.spec.ts	0	0	0	16513	Error: db.getExecutor is not a function
+EMPTY	modules/gift-cards/src/gift-cards/gift-card-fifo.postgres-race.vitest.spec.ts	0	0	0	1769	gift-card-fifo.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/gift-cards/src/gift-cards/gift-card-fifo.vitest.spec.ts	6	0	6	453	
+PASS	modules/gift-cards/src/gift-cards/gift-card-liability.vitest.spec.ts	7	0	7	1023	
+PASS	modules/gift-cards/src/gift-cards/gift-card-number-core.spec.ts	22	0	22	413	
+ENV_FAIL	modules/gift-cards/src/gift-card-stock/gift-card-stock.pgtest.vitest.spec.ts	0	4	4	15019	✗ physical gift-card stock (§21) › registers a batch, storing only hash + last four
+PASS	modules/gift-cards/src/gift-cards/gift-card-token-core.spec.ts	22	0	22	500	
+EMPTY	modules/gift-cards/src/gift-cards/gift-card-report-days.postgres-race.vitest.spec.ts	0	0	0	1391	gift-card-report-days.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/gift-cards/src/gift-cards/gift-cards.vitest.spec.ts	5	0	5	1478	
+FAIL	modules/gift-cards/src/request-schemas.vitest.spec.ts	0	1	1	1705	✗ gift-cards — validated bodies › POST /pos/gift-cards/stock/register
+PASS	modules/identity/src/auth/account-core.vitest.spec.ts	7	0	7	1249	
+EMPTY	modules/identity/src/auth/attempt-budget.postgres-race.vitest.spec.ts	0	0	0	602	attempt-budget.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/identity/src/auth/auth-core.vitest.spec.ts	28	0	28	1192	
+PASS	modules/identity/src/auth/auth-devices.vitest.spec.ts	2	0	2	1453	
+PASS	modules/gift-cards/src/gift-cards/gift-card-clearing.pgtest.vitest.spec.ts	7	0	7	14285	
+PASS	modules/identity/src/auth/auth-login-scope.vitest.spec.ts	5	0	5	2015	
+PASS	modules/identity/src/auth/auth-login-security.vitest.spec.ts	11	0	11	751	
+PASS	modules/identity/src/auth/auth-gaps.vitest.spec.ts	17	0	17	5582	
+PASS	modules/identity/src/auth/auth-login-staff-role.vitest.spec.ts	4	0	4	1605	
+PASS	modules/identity/src/auth/auth-login-throttle.vitest.spec.ts	3	0	3	2630	
+FAIL	modules/identity/src/auth/auth-login.service.vitest.spec.ts	10	2	12	2397	✗ LoginService.attempt — tenant portal › MFA_REQUIRED without a code, then SUCCESS with a valid code
+PASS	modules/identity/src/auth/auth-realms.vitest.spec.ts	11	0	11	861	
+FAIL	modules/identity/src/auth/auth-mfa-require-totp.vitest.spec.ts	2	1	3	2020	✗ MFA fallback gating (MFA_REQUIRE_TOTP) › dev/local default: an MFA user with no enrolled factor passes with any well-formed 6-digit code
+PASS	modules/identity/src/auth/auth-resume.vitest.spec.ts	3	0	3	1367	
+PASS	modules/identity/src/auth/auth-session-token.vitest.spec.ts	19	0	19	841	
+PASS	modules/identity/src/auth/auth-user.repository.vitest.spec.ts	6	0	6	769	
+PASS	modules/identity/src/auth/auth-totp-replay.vitest.spec.ts	2	0	2	1926	
+PASS	modules/identity/src/auth/auth.http.vitest.spec.ts	7	0	7	765	
+PASS	modules/identity/src/auth/authorization-state.vitest.spec.ts	13	0	13	1318	
+PASS	modules/identity/src/auth/billing-only-login.vitest.spec.ts	4	0	4	775	
+FAIL	modules/identity/src/auth/attempt-budget.pgtest.vitest.spec.ts	4	7	11	19551	✗ PostgresAttemptBudget (auth_events, no Redis) › admits max failures, then refuses; a correct answer is refunded; the exhausting failure records the lock once
+PASS	modules/identity/src/auth/branch-access.vitest.spec.ts	25	0	25	1639	
+FAIL	modules/identity/src/auth/branch-switch-guard.vitest.spec.ts	6	1	7	2693	✗ §120 wiring — the guard another Nest module provides is found without identity importing it › a module that does NOT export BRANCH_SWITCH_GUARD is still reached (ModuleRef strict:false); none → null
+ENV_FAIL	modules/identity/src/auth/authorization-denials.pgtest.vitest.spec.ts	0	3	3	13847	✗ authorization denial sink › one row per user + key + reason within a minute; the count grows; another reason is another row
+PASS	modules/identity/src/auth/customer-default-salon.vitest.spec.ts	4	0	4	1865	
+PASS	modules/identity/src/auth/customer-identity.vitest.spec.ts	9	0	9	2087	
+ENV_FAIL	modules/identity/src/auth/biometric-auth.pgtest.vitest.spec.ts	0	16	16	15707	✗ enroll (signed in, native, recent password) › a browser cannot enrol — the secret would land in JavaScript
+PASS	modules/identity/src/auth/faceid-flag.vitest.spec.ts	4	0	4	547	
+PASS	modules/identity/src/auth/identity-lifecycles.vitest.spec.ts	3	0	3	1358	
+PASS	modules/identity/src/auth/customer-portal-login.vitest.spec.ts	11	0	11	3001	
+ENV_FAIL	modules/identity/src/auth/login-attempt-sink.pgtest.vitest.spec.ts	0	9	9	1252	✗ the sink actually WRITES (or the dashboard still reads zeros) › records a successful sign-in
+PASS	modules/identity/src/auth/login-risk.vitest.spec.ts	5	0	5	2301	
+FAIL	modules/identity/src/auth/change-password-budget.pgtest.vitest.spec.ts	0	1	1	15916	✗ C4 — change-password attempts are budgeted › a weak new password spends nothing; 5 wrong current passwords lock; then the right one is refused (429)
+PASS	modules/identity/src/auth/login-throttle-ip.vitest.spec.ts	2	0	2	2879	
+PASS	modules/identity/src/auth/login-throttle-redis.vitest.spec.ts	6	0	6	2085	
+PASS	modules/identity/src/auth/mfa-policy.vitest.spec.ts	7	0	7	743	
+PASS	modules/identity/src/auth/mfa-bypass-regression.vitest.spec.ts	7	0	7	2510	
+PASS	modules/identity/src/auth/mfa-recovery-codes.vitest.spec.ts	3	0	3	1604	
+PASS	modules/identity/src/auth/mfa-brute-force.vitest.spec.ts	5	0	5	4739	
+PASS	modules/identity/src/auth/native-client.vitest.spec.ts	13	0	13	743	
+PASS	modules/identity/src/auth/password-reset-complete.vitest.spec.ts	1	0	1	1383	
+PASS	modules/identity/src/auth/password-reset-roles.vitest.spec.ts	7	0	7	709	
+PASS	modules/identity/src/auth/owner-portal-login.vitest.spec.ts	17	0	17	3442	
+PASS	modules/identity/src/auth/phone-normalization-parity.vitest.spec.ts	21	0	21	3666	
+ENV_FAIL	modules/identity/src/auth/mfa-replace.pgtest.vitest.spec.ts	0	2	2	14239	✗ replacing an authenticator › first enrollment needs no code
+PASS	modules/identity/src/auth/platform-role-token.vitest.spec.ts	3	0	3	703	
+PASS	modules/identity/src/auth/refresh-authorization.vitest.spec.ts	7	0	7	1195	
+PASS	modules/identity/src/auth/refresh-reuse-alert.vitest.spec.ts	3	0	3	2315	
+EMPTY	modules/identity/src/auth/refresh-session.postgres.vitest.spec.ts	0	0	0	1488	refresh-session.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/identity/src/auth/refresh-session.vitest.spec.ts	11	0	11	819	
+FAIL	modules/identity/src/auth/pin-set-security.pgtest.vitest.spec.ts	0	7	7	16991	✗ /auth/verify-pin has no default PIN › a user with no PIN is NOT verified by 1234
+PASS	modules/identity/src/auth/security-notifications.vitest.spec.ts	1	0	1	1879	
+PASS	modules/identity/src/auth/session-idle-lock.vitest.spec.ts	5	0	5	1331	
+FAIL	modules/identity/src/auth/platform-device-trust.pgtest.vitest.spec.ts	4	6	10	17062	✗ S-A13 enforce: platform sign-in only from an approved device › first device bootstraps; a second device is refused with no session and an approval email
+FAIL	modules/identity/src/auth/session-lifetime.vitest.spec.ts	6	1	7	963	✗ wiring › the session row AND the cookie both take their lifetime from sessionTtlSeconds — they can never disagree
+EMPTY	modules/identity/src/auth/session-lock.postgres.vitest.spec.ts	0	0	0	2805	session-lock.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+FAIL	modules/identity/src/auth/session-devices.pgtest.vitest.spec.ts	0	5	5	13779	✗ §144 the session row carries the device › device id, name, platform and user agent are stored; last_seen_at starts at creation
+FAIL	modules/identity/src/auth/session-revocation-status.pgtest.vitest.spec.ts	3	2	5	13741	✗ C10 — KyselySessionStore.revocationStatus › active → revoked
+PASS	modules/identity/src/auth/super-admin-login-otp.vitest.spec.ts	9	0	9	4088	
+ENV_FAIL	modules/identity/src/auth/session-revoked-markers.pgtest.vitest.spec.ts	0	5	5	14802	✗ every revocation marker ends the session › a live session is not revoked
+PASS	modules/identity/src/auth/technician-global-status-login.vitest.spec.ts	10	0	10	2194	
+PASS	modules/identity/src/auth/tenant-auth-policy.vitest.spec.ts	6	0	6	2403	
+PASS	modules/identity/src/auth/tenant-portal-customer-exclusion.vitest.spec.ts	1	0	1	1448	
+PASS	modules/identity/src/auth/totp.vitest.spec.ts	5	0	5	382	
+PASS	modules/identity/src/auth/webauthn-config.vitest.spec.ts	11	0	11	401	
+FAIL	modules/identity/src/auth/system-reset-hardening.pgtest.vitest.spec.ts	1	8	9	17541	✗ C6 / E4 — the admin reset route › declares the permission and the step-up the global guards enforce (the route is no longer self-authenticating)
+ENV_FAIL	modules/identity/src/auth/technician-branch-access.pgtest.vitest.spec.ts	0	3	3	16681	✗ enterable branches for a TECHNICIAN login › no grant → her home branch only; no home either → none (never "any")
+FAIL	modules/identity/src/auth/webauthn-verifier.vitest.spec.ts	4	4	8	489	✗ authentication verification fails closed › rejects a FORGED signature
+PASS	modules/identity/src/auth/webauthn-wiring.vitest.spec.ts	4	0	4	840	
+PASS	modules/identity/src/auth/webauthn.service.vitest.spec.ts	6	0	6	522	
+FAIL	modules/identity/src/auth/webauthn.kysely.pgtest.vitest.spec.ts	0	12	12	1158	✗ credential storage really persists (or "Face ID enabled" is a lie) › save() WRITES the credential — otherwise enrollment reports success and stores nothing
+PASS	modules/identity/src/customer-registration/customer-registration-core.spec.ts	10	0	10	404	
+PASS	modules/identity/src/customer-registration/customer-registration.vitest.spec.ts	4	0	4	397	
+EMPTY	modules/identity/src/customer-registration/customer-registration-salon.postgres.vitest.spec.ts	0	0	0	796	customer-registration-salon.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/identity/src/customer-security/customer-password.vitest.spec.ts	8	0	8	2095	
+PASS	modules/identity/src/invitations/invitation-notifier-core.vitest.spec.ts	3	0	3	206	
+PASS	modules/identity/src/invitations/invitation-token-core.vitest.spec.ts	8	0	8	375	
+FAIL	modules/identity/src/auth/webauthn-cross-salon.pgtest.vitest.spec.ts	4	3	7	13479	✗ her face works at every salon she works at › the passkey she enrolled at Luxe is OFFERED to her when she signs in at Belle
+FAIL	modules/identity/src/request-schemas.round2.vitest.spec.ts	0	4	4	3474	✗ identity (round 2) — validated bodies, route by route › POST /auth/webauthn/register/finish
+FAIL	modules/identity/src/request-schemas.vitest.spec.ts	0	21	21	3727	✗ identity — validated bodies, route by route › POST /auth/login: today's bodies pass intact, an unknown field is stripped, a bad body is 400 naming the field
+EMPTY	modules/identity/src/staff-roles/last-owner.postgres-race.vitest.spec.ts	0	0	0	1924	last-owner.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+EMPTY	modules/identity/src/staff-roles/staff-roles.postgres.vitest.spec.ts	0	0	0	861	staff-roles.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/identity/src/staff-roles/staff-roles.vitest.spec.ts	15	0	15	1072	
+PASS	modules/tenants/src/branding/email-layout-safety.vitest.spec.ts	3	0	3	634	
+LOAD	modules/tenants/src/devices/devices-overview-core.spec.ts	0	0	0	973	[devices-overview-core] 41 passed, 0 failed
+PASS	modules/tenants/src/owner-portfolio/owner-portfolio-core.vitest.spec.ts	25	0	25	478	
+PASS	modules/tenants/src/owner-portfolio/owner-portfolio-dashboard.vitest.spec.ts	17	0	17	378	
+FAIL	modules/identity/src/customer-security/customer-security.pgtest.vitest.spec.ts	2	14	16	14058	✗ password writes actually persist (the silent no-op trap) › a customer with no password reads back NULL (the OTP-activated case)
+PASS	modules/tenants/src/owner-portfolio/owner-portfolio.controller.vitest.spec.ts	18	0	18	4264	
+PASS	modules/tenants/src/pos-social/pos-social.vitest.spec.ts	7	0	7	1350	
+PASS	modules/tenants/src/pos-social/social-post-machine.vitest.spec.ts	2	0	2	1212	
+FAIL	modules/tenants/src/devices/devices-terminals.pgtest.vitest.spec.ts	0	2	2	13594	✗ POS → Devices: the payment terminals › lists every terminal of the branch (the lease lookup no longer fails on uuid = text)
+ENV_FAIL	modules/tenants/src/owner-portfolio/owner-portfolio-local-day.pgtest.vitest.spec.ts	0	4	4	13743	✗ each salon's own month and day › New York: this month $65 (10 am $50 − $5 refund + 9 pm $20) — not $0 (UTC November), not $164 (Sep 30 too)
+FAIL	modules/tenants/src/request-schemas.vitest.spec.ts	0	38	38	5522	✗ tenants — validated bodies, route by route › PATCH /pos/settings/business-branch
+PASS	modules/tenants/src/settings/connect-google-400.vitest.spec.ts	2	0	2	2663	
+ENV_FAIL	modules/tenants/src/settings/business-branch-timezone.pgtest.vitest.spec.ts	0	3	3	17695	✗ Business & Branch time zone is the location's zone › saving the zone writes it to the session's branch row (and only that one)
+LOAD	modules/tenants/src/settings/settings-core.spec.ts	0	0	0	1624	settings-core (with integrations): 110 passed, 0 failed
+PASS	modules/tenants/src/settings/settings-queue-workflow.vitest.spec.ts	3	0	3	897	
+FAIL	modules/tenants/src/settings/salon-logo.pgtest.vitest.spec.ts	0	9	9	17332	✗ the salon logo is stored, one per salon › an upload stores the file and the salon-wide row (not process memory)
+ENV_FAIL	modules/tenants/src/settings/settings-audit-entity.pgtest.vitest.spec.ts	0	2	2	16745	✗ settings audit trail is written › a category save writes an audit row whose entity is the category
+PASS	modules/tenants/src/settings/settings-security-autolock.vitest.spec.ts	3	0	3	1615	
+PASS	modules/tenants/src/settings/terminal-foreign-id.vitest.spec.ts	2	0	2	832	
+PASS	modules/tenants/src/settings/settings-updated-producer.vitest.spec.ts	4	0	4	1742	
+LOAD	modules/tenants/src/tenant-navigation/help-dashboard-core.spec.ts	0	0	0	546	help-dashboard-core: 6 passed, 0 failed
+LOAD	modules/tenants/src/tenant-locations/location-core.spec.ts	0	0	0	3733	location-core: 25 passed, 0 failed
+PASS	modules/appointments/src/appointments/appointment-slot-guard.vitest.spec.ts	5	0	5	683	
+PASS	modules/appointments/src/appointments/catalog-lines.vitest.spec.ts	8	0	8	663	
+PASS	modules/appointments/src/appointments/manager-override-permission.vitest.spec.ts	4	0	4	661	
+FAIL	modules/appointments/src/request-schemas.vitest.spec.ts	0	6	6	1525	✗ appointments — validated bodies, route by route › POST /pos/tech-appointments/appointments
+FAIL	modules/tenants/src/settings/terminal-register.pgtest.vitest.spec.ts	1	4	5	13711	✗ a terminal is tied to one of the location's registers › pairs with a register chosen from the location's registers, and is listed with that register's name
+FAIL	modules/tenants/src/tenant-navigation/tenant-navigation.pgtest.vitest.spec.ts	0	3	3	12220	✗ the salon name in the POS header › is the registered name when the business settings have none
+PASS	modules/appointments/src/tech-appointments/tech-appointments-core.spec.ts	87	0	87	1157	
+PASS	modules/appointments/src/tech-appointments/tech-appointments-lanes-1000.vitest.spec.ts	4	0	4	1188	
+PASS	modules/customers/src/customer-activation-rules/customer-activation-core.vitest.spec.ts	26	0	26	447	
+ENV_FAIL	modules/appointments/src/tech-appointments/tech-appointments-branch-zone.pgtest.vitest.spec.ts	1	2	3	13132	✗ tech appointments in the branch zone (bug 2) › the default board day is the branch's, and each item carries date + startAt resolved in the branch's zone
+PASS	modules/customers/src/customer-identity/customer-identity-audit.vitest.spec.ts	4	0	4	1215	
+PASS	modules/customers/src/customer-identity/customer-identity-hooks.vitest.spec.ts	3	0	3	1069	
+PASS	modules/customers/src/customer-identity/customer-identity-merge.vitest.spec.ts	5	0	5	1521	
+PASS	modules/customers/src/customer-identity/customer-identity-profile.vitest.spec.ts	5	0	5	1287	
+LOAD	modules/customers/src/customer-identity/customer-cross-tenant-isolation.pgtest.vitest.spec.ts	0	0	0	11611	Error: expected 'error' toBe 'linked'
+ENV_FAIL	modules/appointments/src/tech-appointments/tech-appointments-slot-guard.pgtest.vitest.spec.ts	0	6	6	12743	✗ tech-appointments slot guard (create / move / reassign / service change) on the real schema › the exclusion constraint exists: an unflagged overlapping INSERT is refused by the database itself; a FLAGGED row is exempt
+PASS	modules/customers/src/customer-identity/customer-reconciliation.vitest.spec.ts	5	0	5	1873	
+PASS	modules/customers/src/customer-identity/customer-sync-hardening.vitest.spec.ts	8	0	8	1649	
+PASS	modules/customers/src/customer-identity/customer-sync-sa.vitest.spec.ts	5	0	5	1758	
+PASS	modules/customers/src/customer-identity/customer-sync-scheduler.vitest.spec.ts	9	0	9	1960	
+PASS	modules/customers/src/customer-identity/identity-core.vitest.spec.ts	19	0	19	490	
+PASS	modules/customers/src/customer-lifecycles.vitest.spec.ts	2	0	2	1075	
+FAIL	modules/customers/src/customer-identity/customer-identity.pgtest.vitest.spec.ts	0	3	3	12433	✗ global identity on the real schema › CASE B then CASE A: two salons, formats "(856) 555-1234" and "+1 856 555 1234" → ONE global, TWO links, tenant rows untouched
+PASS	modules/customers/src/customer-salons/salon-directory-core.vitest.spec.ts	6	0	6	431	
+ENV_FAIL	modules/customers/src/customer-identity/customer-reconciliation.pgtest.vitest.spec.ts	0	3	3	12615	✗ 7 PM reconciliation on the real schema › links unlinked customers across both salons: one person = ONE global identity, two links, honest run row
+EMPTY	modules/customers/src/customers/customer-merge.postgres.vitest.spec.ts	0	0	0	2004	customer-merge.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/customers/src/customer-salons/salon-browse-paging.pgtest.vitest.spec.ts	0	5	5	15402	✗ B-28: the salon browse is paged and filtered in SQL › no location: the first page is 50 of the 120 listed branches, ordered by salon then branch, with a cursor; the unlisted salon never appears
+EMPTY	modules/customers/src/customers/customer-preferences.postgres.vitest.spec.ts	0	0	0	2338	customer-preferences.postgres.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/customers/src/customers/customer-language.pgtest.vitest.spec.ts	3	1	4	16074	✗ migration 697 — customers.preferred_language → en / vi › the profile edit stores the code on the real table
+ENV_LOAD	modules/customers/src/customers/customer-merged-producer.pgtest.vitest.spec.ts	0	0	0	14884	Error: db.getExecutor is not a function
+PASS	modules/customers/src/customers/customer-preferences.vitest.spec.ts	6	0	6	2578	
+PASS	modules/customers/src/customers/customer-validation-codes.vitest.spec.ts	4	0	4	2745	
+PASS	modules/customers/src/customers/customer-version-conflict.vitest.spec.ts	3	0	3	2865	
+PASS	modules/customers/src/customers/customers-audit-bridge.vitest.spec.ts	2	0	2	2510	
+PASS	modules/customers/src/customers/customers-core.spec.ts	58	0	58	2197	
+PASS	modules/customers/src/customers/customers-import.vitest.spec.ts	21	0	21	2698	
+ENV_FAIL	modules/customers/src/customers/customer-tags.pgtest.vitest.spec.ts	1	10	11	14110	✗ a customer tag survives › is still there when the next person opens the record
+ENV_FAIL	modules/customers/src/customers/customers-limit-enforcement.vitest.spec.ts	1	1	2	2230	✗ CustomersService — hard customer-limit enforcement › blocks creation (propagates LimitExceededError) when the limit is reached
+PASS	modules/customers/src/customers/customers-vi-search.vitest.spec.ts	1	0	1	1080	
+EMPTY	modules/customers/src/customers/loyalty-adjust.postgres-race.vitest.spec.ts	0	0	0	1786	loyalty-adjust.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/customers/src/customers/membership-set-409.vitest.spec.ts	1	0	1	2704	
+ENV_FAIL	modules/customers/src/customers/customers-appointments.pgtest.vitest.spec.ts	0	2	2	15977	✗ POS → Customer profile → Appointments › lists the guest's appointments, newest first, with the technician and the scheduled length
+PASS	modules/customers/src/legal-hold/legal-hold-lifecycle.vitest.spec.ts	7	0	7	403	
+PASS	modules/customers/src/legal-hold/legal-hold.service.vitest.spec.ts	6	0	6	358	
+ENV_FAIL	modules/customers/src/customers/customers-loyalty.pgtest.vitest.spec.ts	0	2	2	15939	✗ POS → Customer profile → Loyalty › shows the rewards the guest can afford and their redemption history
+EMPTY	modules/customers/src/loyalty/loyalty-ledger.postgres-race.vitest.spec.ts	0	0	0	1834	loyalty-ledger.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/customers/src/pos-referrals/pos-referrals.vitest.spec.ts	8	0	8	842	
+PASS	modules/customers/src/pos-referrals/v5-coded-refusals.vitest.spec.ts	1	0	1	984	
+FAIL	modules/customers/src/request-schemas.round2.vitest.spec.ts	0	3	3	1724	✗ customers (round 2) — validated bodies, route by route › POST /pos/referrals/record
+ENV_FAIL	modules/customers/src/loyalty/loyalty-ledger.pgtest.vitest.spec.ts	0	7	7	16646	✗ the ledger is the source of truth › earn → redeem → adjust: one row each, balance_after chains, the profile equals sum(delta), legacy columns stay filled
+ENV_FAIL	modules/customers/src/customers/vietnamese-unicode.pgtest.vitest.spec.ts	1	3	4	17904	✗ Vietnamese text survives the customer write / read / search / edit path unchanged › create + read: names, the note and a full-alphabet last name come back byte-identical (service, repository, SQL)
+FAIL	modules/customers/src/request-schemas.vitest.spec.ts	0	12	12	3075	✗ customers — validated bodies, route by route › POST /pos/customers
+PASS	modules/customers/src/reviews/reviews.vitest.spec.ts	5	0	5	965	
+PASS	modules/customers/src/wallet/wallet-idempotency-race.vitest.spec.ts	3	0	3	504	
+PASS	modules/customers/src/wallet/wallet-ledger.vitest.spec.ts	3	0	3	344	
+PASS	modules/customers/src/wallet/wallet.service.vitest.spec.ts	5	0	5	631	
+PASS	modules/memberships/src/membership-billing-core.vitest.spec.ts	9	0	9	495	
+PASS	modules/memberships/src/membership-comms-core.vitest.spec.ts	5	0	5	275	
+PASS	modules/memberships/src/membership-billing.service.vitest.spec.ts	10	0	10	982	
+PASS	modules/memberships/src/membership-compensation-core.vitest.spec.ts	7	0	7	300	
+PASS	modules/memberships/src/membership-comms.service.vitest.spec.ts	9	0	9	1136	
+PASS	modules/memberships/src/membership-compensation.service.vitest.spec.ts	3	0	3	283	
+PASS	modules/memberships/src/membership-enroll-core.vitest.spec.ts	4	0	4	534	
+PASS	modules/memberships/src/membership-enroll.controller.vitest.spec.ts	2	0	2	1348	
+PASS	modules/memberships/src/membership-enroll.service.vitest.spec.ts	18	0	18	859	
+PASS	modules/memberships/src/membership-isolation.vitest.spec.ts	2	0	2	328	
+PASS	modules/memberships/src/membership-lifecycle-core.vitest.spec.ts	8	0	8	437	
+PASS	modules/memberships/src/membership-plan-machine.vitest.spec.ts	1	0	1	1388	
+PASS	modules/memberships/src/membership-rbac.vitest.spec.ts	6	0	6	1048	
+PASS	modules/memberships/src/membership-renewal-charge.vitest.spec.ts	3	0	3	920	
+ENV_FAIL	modules/memberships/src/membership-renewal.scheduler.vitest.spec.ts	2	1	3	1718	✗ membership renewals are actually run › armed only when the flag is on (and this process runs critical jobs)
+PASS	modules/memberships/src/membership-split-one-calculation.vitest.spec.ts	8	0	8	307	
+PASS	modules/memberships/src/memberships-engine.vitest.spec.ts	18	0	18	432	
+ENV_LOAD	modules/customers/src/reviews/reviews-denorm.pgtest.vitest.spec.ts	0	0	0	15372	Error: d.selectFrom is not a function
+PASS	modules/memberships/src/memberships.service.vitest.spec.ts	8	0	8	989	
+FAIL	modules/memberships/src/request-schemas.vitest.spec.ts	0	16	16	2299	✗ memberships — validated bodies, route by route › POST /pos/memberships/plans
+ENV_FAIL	modules/memberships/src/membership-coverage-branch.pgtest.vitest.spec.ts	0	1	1	15723	✗ §75 membership coverage is location-scoped › the ticket's location finds its customer; another location finds nothing; no location selected keeps the tenant rule
+PASS	modules/communications/src/campaigns/campaign-compliance-core.vitest.spec.ts	4	0	4	436	
+PASS	modules/memberships/src/v5-coded-refusals.vitest.spec.ts	1	0	1	1166	
+PASS	modules/communications/src/campaigns/campaign-compliance-isolation.vitest.spec.ts	10	0	10	568	
+PASS	modules/communications/src/campaigns/campaign-compliance.service.vitest.spec.ts	3	0	3	454	
+PASS	modules/communications/src/campaigns/campaign-cost-preview.vitest.spec.ts	6	0	6	1824	
+PASS	modules/communications/src/campaigns/campaign-delivery-core.vitest.spec.ts	3	0	3	323	
+ENV_FAIL	modules/memberships/src/memberships-local-day.pgtest.vitest.spec.ts	0	2	2	14950	✗ the salon's month › this month $100 (Oct 15 + tonight), last month $33.33 (Sep 15 + Sep 30 11 pm) — from the whole salon and from its branch
+PASS	modules/communications/src/campaigns/campaign-delivery.service.vitest.spec.ts	4	0	4	419	
+PASS	modules/communications/src/campaigns/campaign-limits-core.vitest.spec.ts	23	0	23	513	
+FAIL	modules/communications/src/campaigns/campaign-compliance-queries.pgtest.vitest.spec.ts	2	6	8	14959	✗ compliance flags — "no open flags" is the answer nobody questions › an open flag is LISTED
+PASS	modules/communications/src/campaigns/campaign-template-core.vitest.spec.ts	4	0	4	305	
+FAIL	modules/communications/src/campaigns/campaign-delivery-queries.pgtest.vitest.spec.ts	2	5	7	13965	✗ delivery totals › attempted, delivered and opted-out all come back, and none is cross-wired
+PASS	modules/communications/src/campaigns/campaign-templates.service.vitest.spec.ts	4	0	4	339	
+PASS	modules/communications/src/campaigns/campaign-trend-core.vitest.spec.ts	3	0	3	272	
+PASS	modules/communications/src/campaigns/campaigns.vitest.spec.ts	10	0	10	2065	
+PASS	modules/communications/src/campaigns/marketing-oversight-core.vitest.spec.ts	5	0	5	403	
+PASS	modules/communications/src/campaigns/marketing-oversight.service.vitest.spec.ts	4	0	4	1560	
+PASS	modules/communications/src/campaigns/platform-announcement-core.vitest.spec.ts	4	0	4	978	
+FAIL	modules/communications/src/campaigns/campaign-limits-enforcement.pgtest.vitest.spec.ts	0	11	11	15369	✗ migration 442: started_at is stamped once › activating a campaign stamps started_at
+PASS	modules/communications/src/campaigns/platform-announcements.service.vitest.spec.ts	5	0	5	1001	
+PASS	modules/communications/src/campaigns/v5-coded-refusals.vitest.spec.ts	1	0	1	1215	
+ENV_LOAD	modules/communications/src/campaigns/campaign-templates-queries.pgtest.vitest.spec.ts	0	0	0	14410	Error: db.getExecutor is not a function
+FAIL	modules/communications/src/communications/communications-activity.pgtest.vitest.spec.ts	1	4	5	572	✗ communications activity on real tables › reads every metric from its real source, tenant-scoped
+PASS	modules/communications/src/communications/communications-activity.vitest.spec.ts	12	0	12	319	
+FAIL	modules/communications/src/campaigns/platform-announcements-queries.pgtest.vitest.spec.ts	2	7	9	13178	✗ the announcement list › a sent announcement is LISTED — an empty board reads as "nothing in flight"
+PASS	modules/communications/src/communications/communications-overview-core.vitest.spec.ts	5	0	5	375	
+PASS	modules/communications/src/communications/communications-templates-core.vitest.spec.ts	3	0	3	348	
+PASS	modules/communications/src/communications/communications-templates-isolation.vitest.spec.ts	4	0	4	1238	
+PASS	modules/communications/src/communications/communications.vitest.spec.ts	7	0	7	2378	
+ENV_LOAD	modules/communications/src/communications-list-query.pgtest.vitest.spec.ts	0	0	0	13760	Error: db.insertInto is not a function
+PASS	modules/communications/src/end-of-day-followups/end-of-day-followups-core.spec.ts	20	0	20	2010	
+PASS	modules/communications/src/end-of-day-followups/end-of-day-followups-generation-core.spec.ts	16	0	16	1294	
+ENV_FAIL	modules/communications/src/communications/communications-limits-local-day.pgtest.vitest.spec.ts	0	2	2	15899	✗ the salon's month and day › month to date: the four October messages — not 1 (UTC November), not 5 (from UTC Oct 1, which is Sep 30 here)
+FAIL	modules/communications/src/messaging-inbound/twilio-inbound.vitest.spec.ts	0	11	11	4854	✗ twilio signature › verifies a correctly-signed request and rejects a tampered one
+PASS	modules/communications/src/messaging-inbound/twilio-webhook-counters.vitest.spec.ts	1	0	1	5725	
+ENV_FAIL	modules/communications/src/end-of-day-followups/branch-timezone.pgtest.vitest.spec.ts	1	3	4	19162	✗ end-of-day follow-ups use the branch's real timezone › a Los Angeles branch resolves to America/Los_Angeles — not the New York default
+PASS	modules/communications/src/messaging-readiness/invitation-readiness-core.vitest.spec.ts	8	0	8	349	
+PASS	modules/communications/src/messaging-readiness/messaging-readiness.vitest.spec.ts	6	0	6	354	
+PASS	modules/communications/src/notifications/messaging-metrics.vitest.spec.ts	2	0	2	4634	
+FAIL	modules/communications/src/messaging-inbound/twilio-tenant-binding.pgtest.vitest.spec.ts	0	11	11	20061	✗ E1 — the credentials form cannot take another salon's number › salon A saves its own Twilio with its number: A owns the number
+PASS	modules/communications/src/notifications/notifications-core.spec.ts	29	0	29	4406	
+ENV_FAIL	modules/communications/src/messaging-inbound/twilio-webhook-dedupe.pgtest.vitest.spec.ts	0	4	4	19406	✗ Twilio inbound SMS: a retried STOP is one opt-out › delivered twice in sequence and twice concurrently → one notification_opt_outs row
+PASS	modules/communications/src/notifications/notifications.sender-numbers.vitest.spec.ts	2	0	2	4459	
+PASS	modules/communications/src/notifications/sender-not-configured.vitest.spec.ts	3	0	3	4557	
+PASS	modules/communications/src/platform-announcements/platform-notice-core.vitest.spec.ts	12	0	12	1691	
+ENV_FAIL	modules/communications/src/notifications/messenger-events.pgtest.vitest.spec.ts	0	4	4	18356	✗ tenant messenger events (Constitution 8) › a salon text writes its ledger row and communication.sms_sent together — never the body or the number
+PASS	modules/communications/src/push/push-apns-host-fallback.vitest.spec.ts	3	0	3	933	
+PASS	modules/communications/src/push/push-targeting.vitest.spec.ts	6	0	6	954	
+PASS	modules/communications/src/push/push.vitest.spec.ts	27	0	27	1376	
+PASS	modules/communications/src/reminders/reminder-core.spec.ts	14	0	14	370	
+PASS	modules/communications/src/reminders/reminder-ladder.vitest.spec.ts	4	0	4	795	
+PASS	modules/communications/src/reminders/reminder-language.vitest.spec.ts	3	0	3	697	
+ENV_FAIL	modules/communications/src/notifications/sms-segments.pgtest.vitest.spec.ts	0	5	5	17382	✗ SMS segment accounting › the send records the provider's segment count; the status callback adds the provider status, error code and a corrected count
+ENV_FAIL	modules/communications/src/platform-announcements/platform-notice.pgtest.vitest.spec.ts	1	28	29	13907	✗ Platform Announcements — targeting decided by the server › §140 an all-tenants message reaches every salon (A, B and C) once published, never as a draft
+PASS	modules/communications/src/reminders/reminder-push.vitest.spec.ts	5	0	5	878	
+PASS	modules/communications/src/reminders/reminders-service-core.spec.ts	27	0	27	1166	
+PASS	modules/communications/src/reminders/reminders-400.vitest.spec.ts	1	0	1	1467	
+FAIL	modules/communications/src/request-schemas.vitest.spec.ts	0	58	58	5536	✗ communications — validated bodies, route by route › POST /pos/campaigns
+ENV_FAIL	modules/communications/src/reminders/reminder-push.pgtest.vitest.spec.ts	0	1	1	15231	✗ reminders dueCandidates — linked-account resolution (real schema) › resolves customers.user_id for linked customers, null otherwise, and never leaks across tenants
+ENV_LOAD	modules/communications/src/sms-packages/sms-billing.pgtest.vitest.spec.ts	0	0	0	16515	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/sms-packages/sms-entitlement.pgtest.vitest.spec.ts	0	0	0	14759	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/sms-packages/sms-packages.pgtest.vitest.spec.ts	0	0	0	15386	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/sms-packages/sms-platform-controls.pgtest.vitest.spec.ts	0	0	0	15821	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/sms-packages/sms-reconciliation.pgtest.vitest.spec.ts	0	0	0	15923	Error: db.getExecutor is not a function
+PASS	modules/communications/src/tenant-a2p/tenant-a2p.vitest.spec.ts	10	0	10	2424	
+ENV_LOAD	modules/communications/src/sms-packages/sms-tenant-plan.pgtest.vitest.spec.ts	0	0	0	15653	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/tenant-a2p/tenant-a2p-audit.pgtest.vitest.spec.ts	0	0	0	15760	Error: db.getExecutor is not a function
+PASS	modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.vitest.spec.ts	3	0	3	2192	
+PASS	modules/communications/src/tenant-messaging/tenant-messaging.vitest.spec.ts	8	0	8	1789	
+ENV_LOAD	modules/communications/src/tenant-messaging/platform-messaging-provisioner.pgtest.vitest.spec.ts	0	0	0	15435	Error: db.getExecutor is not a function
+ENV_LOAD	modules/communications/src/tenant-messaging/tenant-messaging-credentials.pgtest.vitest.spec.ts	0	0	0	15575	Error: db.getExecutor is not a function
+PASS	modules/communications/src/tenant-messaging/tenant-number.vitest.spec.ts	6	0	6	1654	
+PASS	modules/communications/src/tenant-messaging/twilio-subaccount-client.vitest.spec.ts	8	0	8	1231	
+PASS	packages/api-client/src/api-version.test.ts	4	0	4	403	
+PASS	packages/api-client/src/auth-refresh.test.ts	6	0	6	764	
+PASS	packages/api-client/src/async-operation.test.ts	6	0	6	849	
+PASS	packages/api-contracts/src/app-version.test.ts	12	0	12	625	
+PASS	packages/api-client/src/http-core.test.ts	22	0	22	1131	
+PASS	packages/api-contracts/src/check-in-rules.test.ts	2	0	2	575	
+PASS	packages/api-contracts/src/client-telemetry.test.ts	9	0	9	480	
+PASS	packages/api-contracts/src/cursor.test.ts	9	0	9	466	
+PASS	packages/api-contracts/src/customer-language.test.ts	3	0	3	309	
+PASS	packages/api-contracts/src/customer-notification-text.test.ts	4	0	4	338	
+PASS	packages/api-contracts/src/date-range.test.ts	7	0	7	293	
+PASS	packages/api-contracts/src/display-device-rules.test.ts	7	0	7	332	
+PASS	packages/api-contracts/src/display-mode.test.ts	10	0	10	310	
+PASS	packages/api-contracts/src/mobile-links.test.ts	6	0	6	331	
+PASS	packages/api-contracts/src/mobile-push.test.ts	7	0	7	367	
+PASS	packages/api-contracts/src/pagination.test.ts	6	0	6	294	
+PASS	packages/api-contracts/src/payment-status.test.ts	4	0	4	308	
+PASS	packages/api-contracts/src/payment-terminals.test.ts	6	0	6	328	
+PASS	packages/api-contracts/src/pos-auto-lock.test.ts	8	0	8	351	
+PASS	packages/api-contracts/src/sms-segments.test.ts	4	0	4	295	
+PASS	packages/api-contracts/src/tenant/booking-tech-pages.test.ts	4	0	4	246	
+PASS	packages/api-contracts/src/text/vi-fold.test.ts	27	0	27	339	
+PASS	packages/auth/src/require-totp.test.ts	9	0	9	364	
+PASS	packages/auth/src/service-principals.test.ts	6	0	6	348	
+PASS	packages/auth/src/password.test.ts	5	0	5	1064	
+PASS	packages/config/src/events-flags.test.ts	3	0	3	348	
+PASS	packages/config/src/flag-rollout.test.ts	5	0	5	458	
+PASS	packages/cache/src/redis-command-timeout.test.ts	3	0	3	1141	
+PASS	packages/config/src/platform-urls.test.ts	10	0	10	303	
+PASS	packages/config/src/process-role.test.ts	4	0	4	286	
+ENV_FAIL	packages/database/src/actor-stamp.plugin.test.ts	2	11	13	479	✗ actor-stamp plugin (Constitution 1 §34) › insert: adds created_by = the actor when the table has it and the row does not name it
+PASS	packages/database/src/branch-timezone.test.ts	8	0	8	509	
+PASS	packages/database/src/escape-like.test.ts	1	0	1	854	
+PASS	packages/database/src/idempotency-lifecycle.test.ts	2	0	2	372	
+FAIL	packages/database/src/kysely.provider.test.ts	7	2	9	385	✗ createWorkerDatabase › its own pool: PG_WORKER_POOL_MAX (default 5), PG_WORKER_DATABASE_URL preferred over DATABASE_URL
+FAIL	packages/database/src/list-query.test.ts	24	3	27	945	✗ applyListQuery — SQL from the spec only › columns from the spec; every request value is a bound parameter
+PASS	packages/database/src/overview-scope.test.ts	4	0	4	317	
+PASS	packages/database/src/scheduler-lock.test.ts	4	0	4	329	
+ENV_LOAD	modules/communications/src/tenant-messaging/tenant-number-isolation.pgtest.vitest.spec.ts	0	0	0	15116	Error: db.getExecutor is not a function
+FAIL	packages/database/src/tenant-session.test.ts	13	3	16	598	✗ tenantTransaction — the tenant set LOCAL to one transaction › flag ON: set_config(..., true) as the transaction's first statement, and the callback runs as that tenant
+PASS	packages/date-time/src/date-time.test.ts	11	0	11	466	
+PASS	packages/date-time/src/display.test.ts	8	0	8	338	
+PASS	packages/events/src/event-contract.test.ts	12	0	12	1423	
+PASS	packages/events/src/outbox-writer.test.ts	3	0	3	1983	
+ENV_FAIL	packages/database/src/backfill.test.ts	1	4	5	17380	✗ runBackfill › a crash mid-way leaves the completed batches committed, records failed + last_error, and a re-run resumes without re-applying a batch
+PASS	packages/media/src/media-storage-p11.vitest.spec.ts	19	0	19	1338	
+PASS	packages/media/src/media-storage-s3.vitest.spec.ts	7	0	7	1138	
+PASS	packages/media/src/private-store.test.ts	3	0	3	1594	
+PASS	packages/media/src/storage-telemetry-wiring.test.ts	3	0	3	1224	
+PASS	packages/media/src/upload-policy.vitest.spec.ts	18	0	18	976	
+ENV_LOAD	packages/database/src/state-machine.test.ts	0	0	0	20162	Error: db.getExecutor is not a function
+FAIL	packages/mobile-sdk/src/capacitor-adapters.test.ts	12	6	18	902	✗ the WEB build gains nothing › is not a native platform
+PASS	packages/media/src/upload-scan-required.test.ts	4	0	4	1866	
+FAIL	packages/mobile-sdk/src/capture/receipt-capture-queue.test.ts	5	1	6	797	✗ receipt capture queue › bindReconnect syncs on the online event (one sync at a time) and reports the result
+PASS	packages/mobile-sdk/src/i18n/error-message.test.ts	1	0	1	1355	
+PASS	packages/mobile-sdk/src/device-proof.test.ts	12	0	12	1928	
+PASS	packages/mobile-sdk/src/i18n/language-policy.test.ts	4	0	4	778	
+PASS	packages/mobile-sdk/src/i18n/locale.test.ts	5	0	5	1597	
+PASS	packages/mobile-sdk/src/links/app-links.test.ts	4	0	4	1210	
+FAIL	packages/mobile-sdk/src/native-auth.test.ts	7	2	9	391	✗ the NATIVE app › never touches localStorage
+PASS	packages/mobile-sdk/src/native-device.test.ts	6	0	6	437	
+PASS	packages/mobile-sdk/src/native-faceid.test.ts	13	0	13	632	
+FAIL	packages/mobile-sdk/src/network/network-state.test.ts	0	4	4	600	✗ NetworkState › starts online; the browser going offline makes it offline, back online makes it online
+FAIL	packages/mobile-sdk/src/network/realtime.test.ts	3	1	4	1741	✗ bindRealtimeToSession › disconnects on sign-out and on a dead session (aps:unauthorized); unbind stops listening
+PASS	packages/mobile-sdk/src/push/push.test.ts	12	0	12	664	
+FAIL	packages/mobile-sdk/src/query/cache.test.ts	7	5	12	492	✗ persist + restore › writes only opt-in reads of the current scope, secret-free
+PASS	packages/mobile-sdk/src/query/journal.test.ts	30	0	30	697	
+ENV_FAIL	packages/mobile-sdk/src/telemetry/telemetry.test.ts	5	1	6	1041	✗ mobile telemetry › auto-flushes on a timer when configured
+FAIL	packages/mobile-sdk/src/webauthn.test.ts	0	9	9	392	✗ availability › is false when the browser has no WebAuthn
+PASS	packages/money/src/display-rules.test.ts	5	0	5	365	
+PASS	packages/money/src/money.test.ts	20	0	20	318	
+PASS	packages/money/src/percent-share.test.ts	10	0	10	243	
+PASS	packages/notifications/src/adapters.test.ts	6	0	6	981	
+PASS	packages/notifications/src/email-sender-env.test.ts	2	0	2	885	
+PASS	packages/notifications/src/mock-outbox.test.ts	2	0	2	876	
+PASS	packages/notifications/src/sender-selection.test.ts	4	0	4	1228	
+PASS	packages/observability/src/build-info.test.ts	9	0	9	781	
+PASS	packages/observability/src/coded-refusal.test.ts	4	0	4	970	
+PASS	packages/observability/src/concurrency-telemetry.test.ts	2	0	2	338	
+PASS	packages/observability/src/customer-display-telemetry.test.ts	3	0	3	481	
+PASS	packages/observability/src/db-telemetry.test.ts	20	0	20	549	
+FAIL	packages/observability/src/error-envelope.test.ts	7	1	8	969	✗ the filter end to end › a bare Nest exception and a crash are both enveloped
+PASS	packages/observability/src/integration-business-metrics.test.ts	5	0	5	460	
+ENV_FAIL	packages/observability/src/job-telemetry.test.ts	10	2	12	754	Error: a\n    at file:///home/claude/work/aipowersalon/packages/observability/src/job-telemetry.test.ts:123:19\n    at file:///home/claude/work/aipowersalon/packages/observability/src/job-telemetry.ts:131:31\n    at Asyn
+PASS	packages/observability/src/metrics.test.ts	24	0	24	534	
+PASS	packages/observability/src/process-metrics.test.ts	2	0	2	491	
+PASS	packages/observability/src/provider-breaker.test.ts	6	0	6	602	
+PASS	packages/observability/src/provider-telemetry.test.ts	19	0	19	897	
+PASS	packages/observability/src/realtime-telemetry.test.ts	4	0	4	435	
+PASS	packages/observability/src/redact-path.test.ts	1	0	1	981	
+PASS	packages/observability/src/redaction.test.ts	99	0	99	320	
+PASS	packages/observability/src/redis-telemetry.test.ts	12	0	12	580	
+PASS	packages/observability/src/request-context.test.ts	12	0	12	454	
+PASS	packages/observability/src/request-telemetry.test.ts	17	0	17	869	
+PASS	packages/observability/src/storage-telemetry.test.ts	4	0	4	437	
+LOAD	packages/observability/src/telemetry-store.test.ts	0	0	0	824	
+FAIL	packages/observability/src/tracing/tracing.test.ts	15	2	17	885	✗ spans › withSpan nests: the child shares the trace and names its parent
+PASS	packages/observability/src/webhook-counters.test.ts	2	0	2	354	
+PASS	packages/permissions/src/decision.test.ts	22	0	22	479	
+FAIL	packages/permissions/src/feature-entitlement.test.ts	9	3	12	619	✗ FeatureEntitlementGuard › reads                 from the controller (class-level) metadata
+PASS	packages/permissions/src/field-policy.test.ts	6	0	6	564	
+PASS	packages/permissions/src/guards/role-permission.test.ts	9	0	9	569	
+PASS	packages/permissions/src/guards/signed-in-user.test.ts	1	0	1	301	
+PASS	packages/permissions/src/guards/tenant-auth-integration.test.ts	1	0	1	438	
+PASS	packages/permissions/src/permission-registry.test.ts	16	0	16	714	
+PASS	packages/permissions/src/platform-roles.test.ts	11	0	11	602	
+PASS	packages/permissions/src/request-schema-strict.test.ts	12	0	12	358	
+PASS	packages/permissions/src/request-schema.test.ts	8	0	8	403	
+PASS	packages/permissions/src/role-templates.test.ts	10	0	10	408	
+PASS	packages/permissions/src/security-core.test.ts	17	0	17	401	
+PASS	packages/permissions/src/suspension-policy.test.ts	4	0	4	274	
+ENV_FAIL	packages/realtime-client/src/client.test.ts	11	8	19	459	✗ the shared client on a fake stream › §37 an error closes the socket, reports RECONNECTING, and reopens after a backoff; the reopen reconciles (§34–36)
+ENV_FAIL	packages/realtime-client/src/sync-policy.test.ts	7	6	13	494	✗ SafetySync › §4/§37: ticks every 15 s ± 2 s while visible, on the screen's own refetch only
+PASS	packages/realtime-contracts/src/realtime-core.test.ts	4	0	4	357	
+PASS	packages/security/src/aes-gcm.test.ts	7	0	7	321	
+PASS	packages/security/src/anon-rate-limit.test.ts	8	0	8	420	
+PASS	packages/security/src/code-lookup-limit.test.ts	9	0	9	384	
+PASS	packages/security/src/content-disposition.test.ts	1	0	1	210	
+PASS	packages/security/src/safe-outbound.test.ts	8	0	8	301	
+PASS	packages/tenant-context/src/context.test.ts	4	0	4	236	
+PASS	packages/ui/src/app-wiring.test.ts	22	0	22	272	
+LOAD	packages/ui/src/avatar-url.test.ts	0	0	0	233	ERR_MODULE_NOT_FOUND]: Cannot find module '/home/claude/work/aipowersalon/packages/ui/src/ProfileAvatarWithPreview' imported from /home/claude/work/aipowersalon/packages/ui/src/avatar-url.test.ts
+PASS	packages/ui/src/money-input.test.ts	5	0	5	260	
+PASS	packages/web-push/src/web-push.test.ts	10	0	10	282	
+PASS	modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting-rbac.vitest.spec.ts	3	0	3	558	
+PASS	modules/ai/src/ai-analytics-forecasting/anomaly-detect.core.vitest.spec.ts	5	0	5	298	
+PASS	modules/ai/src/ai-analytics-forecasting/anomaly-detect.vitest.spec.ts	3	0	3	709	
+PASS	modules/ai/src/ai-analytics-forecasting/appointment-forecast.vitest.spec.ts	5	0	5	831	
+PASS	modules/ai/src/ai-analytics-forecasting/busy-period.core.vitest.spec.ts	3	0	3	288	
+PASS	modules/ai/src/ai-analytics-forecasting/busy-period.vitest.spec.ts	3	0	3	761	
+PASS	modules/ai/src/ai-analytics-forecasting/forecast-core.vitest.spec.ts	13	0	13	297	
+PASS	modules/ai/src/ai-analytics-forecasting/forecast-run.vitest.spec.ts	6	0	6	694	
+PASS	modules/ai/src/ai-analytics-forecasting/noshow-risk.core.vitest.spec.ts	6	0	6	261	
+TIMEOUT	packages/media/src/clamav-scanner.vitest.spec.ts	5	0	5	60048	clamav-scanner.vitest.spec.ts: 5 passed, 0 failed (of 5)
+PASS	modules/ai/src/ai-analytics-forecasting/noshow-risk.vitest.spec.ts	5	0	5	1106	
+PASS	modules/ai/src/ai-analytics-forecasting/product-demand-forecast.vitest.spec.ts	6	0	6	1518	
+PASS	modules/ai/src/ai-analytics-forecasting/revenue-forecast.vitest.spec.ts	5	0	5	1328	
+PASS	modules/ai/src/ai-analytics-forecasting/seasonal-trend.core.vitest.spec.ts	5	0	5	351	
+PASS	modules/ai/src/ai-analytics-forecasting/seasonal-trend.vitest.spec.ts	3	0	3	812	
+PASS	modules/ai/src/ai-center/ai-center-copilot.vitest.spec.ts	4	0	4	6856	
+LOAD	modules/ai/src/ai-center/ai-center-core.spec.ts	0	0	0	599	ai-center-core: 37 passed, 0 failed
+ENV_FAIL	modules/ai/src/ai-analytics-forecasting/product-demand-local-day.pgtest.vitest.spec.ts	0	1	1	11761	✗ the demand series › ends on the branch's today (Monday) and files each sale under the day it happened there
+FAIL	modules/ai/src/ai-center/copilot-holds.controller.vitest.spec.ts	2	1	3	9282	✗ Reception Copilot hold routes › hold + release are behind pos.booking.create; reading availability stays a read
+TIMEOUT	packages/mobile-sdk/src/network/transport.test.ts	11	5	16	60042	✗ mobile transport › sends the client headers on every call (app, version, platform, device, request id) and /api/v1 on the base
+PASS	modules/ai/src/ai-center/copilot-settings.vitest.spec.ts	8	0	8	2358	
+PASS	modules/ai/src/ai-center/copilot-usage.vitest.spec.ts	3	0	3	918	
+PASS	modules/ai/src/ai-center/reception-copilot-action.vitest.spec.ts	29	0	29	8891	
+FAIL	modules/ai/src/ai-center/copilot-settings.pgtest.vitest.spec.ts	0	8	8	14445	✗ the resolution hierarchy › with nothing stored, every capability is on (the product defaults)
+FAIL	modules/ai/src/ai-center/copilot-holds.pgtest.vitest.spec.ts	0	4	4	22586	✗ Reception Copilot — "Hold this time" › desk A holds Ava at 10:00 for the salon's hold time; desk B cannot hold it, is not offered it, cannot book it, cannot release it
+PASS	modules/ai/src/ai-center/reception-copilot-feedback.vitest.spec.ts	4	0	4	1689	
+PASS	modules/ai/src/ai-center/reception-copilot-assist.vitest.spec.ts	10	0	10	13033	
+EMPTY	modules/ai/src/ai-center/reception-copilot-learning.postgres-race.vitest.spec.ts	0	0	0	12415	reception-copilot-learning.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/ai/src/ai-center/reception-copilot-context.vitest.spec.ts	41	0	41	14275	
+PASS	modules/ai/src/ai-center/reception-copilot-takeover.vitest.spec.ts	9	0	9	2883	
+EMPTY	modules/ai/src/ai-customer-profile/ai-customer-profile-scan.postgres-race.vitest.spec.ts	0	0	0	4480	ai-customer-profile-scan.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+PASS	modules/ai/src/ai-center/reception-copilot-learning.vitest.spec.ts	3	0	3	12203	
+PASS	modules/ai/src/ai-customer-profile/ai-customer-profile.load.vitest.spec.ts	2	0	2	4436	
+PASS	modules/ai/src/ai-center/reception-copilot-session.vitest.spec.ts	1	0	1	12340	
+PASS	modules/ai/src/ai-customer-profile/ai-customer-profile.security.vitest.spec.ts	9	0	9	3838	
+PASS	modules/ai/src/ai-entitlement/ai-entitlement.guard.vitest.spec.ts	20	0	20	989	
+LOAD	modules/ai/src/ai-governance/ai-governance-core.spec.ts	0	0	0	1115	ai-governance-core: 16 passed, 0 failed
+PASS	modules/ai/src/ai-customer-profile/ai-customer-profile.vitest.spec.ts	37	0	37	3976	
+PASS	modules/ai/src/ai-inventory/ai-inventory-position.vitest.spec.ts	12	0	12	998	
+PASS	modules/ai/src/ai-inventory/ai-inventory-core.vitest.spec.ts	9	0	9	2693	
+PASS	modules/ai/src/ai-inventory/ai-inventory-recipe.core.vitest.spec.ts	11	0	11	404	
+PASS	modules/ai/src/ai-inventory/ai-inventory-rbac.vitest.spec.ts	7	0	7	951	
+PASS	modules/ai/src/ai-inventory/ai-inventory-reorder.core.vitest.spec.ts	12	0	12	719	
+PASS	modules/ai/src/ai-inventory/ai-inventory-recipe.vitest.spec.ts	8	0	8	1341	
+PASS	modules/ai/src/ai-inventory/ai-inventory-slowmoving.core.vitest.spec.ts	10	0	10	463	
+PASS	modules/ai/src/ai-inventory/ai-inventory-reorder.vitest.spec.ts	6	0	6	1218	
+PASS	modules/ai/src/ai-inventory/ai-inventory-slowmoving.vitest.spec.ts	6	0	6	1276	
+PASS	modules/ai/src/ai-gateway-booking-session-length.vitest.spec.ts	4	0	4	8902	
+FAIL	modules/ai/src/ai-marketing/ai-marketing-adapters-pgtest.vitest.spec.ts	0	4	4	12106	✗ KyselyRecipientSource (real SQL, PGlite) › enumerates only eligible tenant-A recipients and never crosses tenants
+PASS	modules/ai/src/ai-marketing/ai-marketing-audience.vitest.spec.ts	9	0	9	917	
+FAIL	modules/ai/src/ai-marketing/ai-marketing-campaign.vitest.spec.ts	8	1	9	5207	✗ submitForApproval › creates a draft campaign via the existing service and returns a checklist
+PASS	modules/ai/src/ai-marketing/ai-marketing-content.vitest.spec.ts	17	0	17	878	
+ENV_FAIL	modules/ai/src/ai-lifecycles.pgtest.vitest.spec.ts	2	6	8	25400	✗ the machines on the real schema › a CLOSED follow-up is not re-opened by assigning it (the assignee changes, the status stays); an open one moves to assigned
+PASS	modules/ai/src/ai-marketing/ai-marketing-send-adapters-core.vitest.spec.ts	6	0	6	261	
+ENV_FAIL	modules/ai/src/ai-local-day.pgtest.vitest.spec.ts	1	2	3	24973	✗ the branch's day › Call Intelligence: two AI-answered calls today
+PASS	modules/ai/src/ai-marketing/ai-marketing-results.vitest.spec.ts	6	0	6	4766	
+PASS	modules/ai/src/ai-marketing/ai-marketing-send-sweep.vitest.spec.ts	8	0	8	1321	
+PASS	modules/ai/src/ai-marketing/ai-marketing.vitest.spec.ts	9	0	9	1207	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-baselines.vitest.spec.ts	6	0	6	466	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-catalog.vitest.spec.ts	5	0	5	1215	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-explain.vitest.spec.ts	11	0	11	1557	
+PASS	modules/ai/src/ai-marketing/ai-marketing-send.vitest.spec.ts	11	0	11	6611	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-plans.vitest.spec.ts	9	0	9	1253	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-reconciliation.vitest.spec.ts	9	0	9	622	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-settings.vitest.spec.ts	8	0	8	1137	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection.vitest.spec.ts	21	0	21	1268	
+PASS	modules/ai/src/ai-money-protection/money-protection-coded-text.vitest.spec.ts	5	0	5	1356	
+PASS	modules/ai/src/ai-money-protection/ai-money-protection-investigations.vitest.spec.ts	9	0	9	11876	
+ENV_FAIL	modules/ai/src/ai-money-protection/ai-money-protection-pgtest.vitest.spec.ts	0	4	4	12472	✗ KyselyMoneyProtectionRepository (real SQL, PGlite) › detects, dedups, aggregates, and isolates tenants end-to-end
+FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-adapters.vitest.spec.ts	7	1	8	14369	✗ QUEUE_RECOMMENDER is bound globally (Nest) › a provider in ANOTHER module (the queue) receives the engine recommender, resolved lazily
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-analytics.vitest.spec.ts	4	0	4	12415	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-appointment.vitest.spec.ts	9	0	9	11187	
+EMPTY	modules/ai/src/ai-queue-assignment/ai-queue-assignment-auto.postgres-race.vitest.spec.ts	0	0	0	13059	ai-queue-assignment-auto.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-alerts.vitest.spec.ts	11	3	14	27068	✗ PostgreSQL (real migrated schema) › raise → auto-resolve in one transaction each, with queue.alert_raised / queue.alert_resolved in the outbox; tenant-isolated
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-auto.vitest.spec.ts	19	0	19	12712	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-detection.vitest.spec.ts	14	0	14	12671	
+ENV_FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-explanation.vitest.spec.ts	7	1	8	1019	✗ QueueExplanationService › falls back gracefully when the platform throws (outage, unentitled, or invalid output)
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-engine-inputs.vitest.spec.ts	19	0	19	14433	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-exact-eligibility.vitest.spec.ts	3	0	3	13848	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-foundation.vitest.spec.ts	10	0	10	11741	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.emitter.vitest.spec.ts	6	0	6	14073	
+EMPTY	modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.postgres-race.vitest.spec.ts	0	0	0	11472	ai-queue-assignment-ops.postgres-race.vitest.spec.ts: 0 passed, 0 failed (of 0)
+ENV_FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.jobs.vitest.spec.ts	1	5	6	26409	✗ dispatch › one scan per branch with work (open queue OR unresolved alert), one auto-run where auto is on and someone waits — only active salons with the package
+ENV_FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.queue-integration.vitest.spec.ts	0	4	4	25520	✗ repair through the real QueueService › the background scan (system context) reads the real queue and finds the stuck assignments

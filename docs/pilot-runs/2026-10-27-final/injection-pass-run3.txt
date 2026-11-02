@@ -1,0 +1,9 @@
+signed in: owner login 200 SUCCESS · sa login 200 SUCCESS
+cases: 2422 routes (1234 with a body, 604 with query parameters, 1380 with path parameters)
+
+§163 local dynamic injection pass: 22250 requests · 0 failing responses {}
+  sqli       {"2xx":608,"4xx":3842}
+  xss        {"2xx":580,"4xx":3870}
+  traversal  {"2xx":581,"4xx":3869}
+  header     {"2xx":580,"4xx":3870}
+  template   {"2xx":609,"4xx":3841}

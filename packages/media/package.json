@@ -1,0 +1,33 @@
+{
+  "name": "@aipowersalon/media",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Media storage (Constitution 13 \u00a7115: purpose-specific, not 'utils'): the MediaStorage PORT, the local-disk and S3 adapters, MEDIA_URL_PREFIX, and makeMediaStorage (MEDIA_STORE / MEDIA_S3_* from an env the caller passes). Technician profiles, the nail showcase and support attachments all store files through it.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/observability": "*"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-s3": "*"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    }
+  }
+}

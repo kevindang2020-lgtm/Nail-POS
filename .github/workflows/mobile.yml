@@ -1,0 +1,88 @@
+# AI PowerSalon — mobile CI lane (BUILD_PLAN Phase 13, Constitution 6 §213, audit bug 13).
+#
+# The security workflow already runs, for every app: install, lint, the vitest suites (`tests` matrix: apps + packages —
+# mobile-sdk, api-client, realtime-client included), `app types` (tsc --noEmit for every SPA) and the production Vite
+# builds (`frontend builds` gate). What never ran anywhere was the NATIVE side: `cap sync` and an Android build. This lane
+# adds them for the four store apps:
+#   1. vite build → `npx cap sync android` → the committed native project must not drift from package.json (a plugin
+#      added to package.json but never synced means the native app ships without it — exactly how push shipped only in
+#      tech-web);
+#   2. `./gradlew assembleDebug` on GitHub's runner (it has the Android SDK; the sandbox this was written in does not).
+# iOS needs a macOS runner + Xcode + CocoaPods; `cap sync ios` is checked on macos-latest but the signed build, the
+# entitlements and TestFlight are Kevin's (Apple Developer account) — see MOBILE_ARCHITECTURE_AUDIT.md "Only Kevin".
+# No signing material is used or needed: debug builds sign with the runner's throw-away debug keystore.
+name: mobile
+
+permissions:
+  contents: read
+
+on:
+  push:
+    paths: ['apps/customer-web/**', 'apps/tech-web/**', 'apps/owner-web/**', 'apps/manager-pay-web/**', 'packages/**', 'package-lock.json', '.github/workflows/mobile.yml']
+  pull_request:
+    paths: ['apps/customer-web/**', 'apps/tech-web/**', 'apps/owner-web/**', 'apps/manager-pay-web/**', 'packages/**', 'package-lock.json', '.github/workflows/mobile.yml']
+  workflow_dispatch:
+
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [customer-web, tech-web, owner-web, manager-pay-web]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # Security Deep Scan A10/B15: the committed gradle-wrapper.jar must be an official Gradle build (checked against
+      # Gradle's published checksums) before ./gradlew runs it
+      - uses: gradle/actions/wrapper-validation@ed408507eac070d1f99cc633dbcf757c94c7933a # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: npm }
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with: { distribution: temurin, java-version: '21' }
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - run: npm ci
+      - run: npm run build:packages
+      - name: typecheck + unit tests + web build
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          npx tsc --noEmit -p tsconfig.json
+          npx vitest run
+          npx vite build
+      - name: cap sync (native project must match package.json plugins)
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          npx cap sync android
+          # Generated plugin wiring is committed; a diff here means a plugin was added or removed without a sync.
+          git diff --exit-code -- android/capacitor.settings.gradle android/app/capacitor.build.gradle || \
+            (echo "::error::apps/${{ matrix.app }}: run 'npx cap sync android' and commit the result" && exit 1)
+      - name: Android debug assemble
+        working-directory: apps/${{ matrix.app }}/android
+        run: ./gradlew --no-daemon assembleDebug
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ${{ matrix.app }}-debug-apk
+          path: apps/${{ matrix.app }}/android/app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  ios-sync:
+    # The unsigned half of iOS: the web build syncs into the Xcode project and CocoaPods / SPM resolve. Archiving,
+    # signing and upload need Kevin's Apple Developer team and stay manual (apple-readiness/*).
+    runs-on: macos-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        app: [customer-web, tech-web, owner-web, manager-pay-web]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:packages
+      - name: web build + cap sync ios
+        working-directory: apps/${{ matrix.app }}
+        run: |
+          npx vite build
+          npx cap sync ios

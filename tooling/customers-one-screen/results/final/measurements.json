@@ -1,0 +1,1567 @@
+{
+ "label": "final",
+ "at": "2026-10-29T10:47:02.498Z",
+ "rows": [
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:4 panel-members:5 panel-redemptions:5",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:2 panel-members:3 panel-redemptions:3",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:3 panel-members:3 panel-redemptions:3",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:2 panel-members:2 panel-redemptions:2",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:7 panel-activity:7 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:4 panel-activity:4 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:5 panel-activity:5 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:2 panel-members:2 panel-activity:2 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:10",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:6",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:7",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:4",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:4 panel-members:5 panel-redemptions:5",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:2 panel-members:3 panel-redemptions:3",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:3 panel-members:3 panel-redemptions:3",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:2 panel-members:2 panel-redemptions:2",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:7 panel-activity:7 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:4 panel-activity:4 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:3 panel-members:5 panel-activity:5 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:2 panel-members:2 panel-activity:2 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:10",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:6",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:7",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:4",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:0 panel-members:0 panel-redemptions:0",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:0 panel-members:0 panel-redemptions:0",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:0 panel-members:0 panel-redemptions:0",
+   "errors": []
+  },
+  {
+   "page": "loyalty",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-members": true,
+    "kpi-points": true,
+    "kpi-rewards": true,
+    "kpi-redemptions": true,
+    "kpi-points-redeemed": true,
+    "panel-tiers": true,
+    "panel-catalog": true,
+    "panel-members": true,
+    "panel-redemptions": true,
+    "loyalty-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-catalog",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-redemptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-tiers:0 panel-catalog:0 panel-members:0 panel-redemptions:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:0 panel-members:0 panel-activity:0 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:0 panel-members:0 panel-activity:0 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:0 panel-members:0 panel-activity:0 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "memberships",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-active": true,
+    "kpi-revenue": true,
+    "kpi-expiring": true,
+    "kpi-canceled": true,
+    "panel-plans": true,
+    "panel-members": true,
+    "panel-activity": true,
+    "ana-revenue": true,
+    "ana-status": true,
+    "ana-plans": true,
+    "ana-services": true,
+    "membership-quick": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-plans",
+     "ok": true
+    },
+    {
+     "panel": "panel-members",
+     "ok": true
+    },
+    {
+     "panel": "panel-activity",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-plans:0 panel-members:0 panel-activity:0 ana-revenue:0 ana-status:0 ana-plans:0 ana-services:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:0",
+   "errors": []
+  },
+  {
+   "page": "retention",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-rate": true,
+    "kpi-returning": true,
+    "kpi-new": true,
+    "kpi-at-risk": true,
+    "kpi-lapsed": true,
+    "seg-all": true,
+    "seg-contactable": true,
+    "panel-winback": true,
+    "selection-bar": true,
+    "send-sms": true
+   },
+   "pagers": [
+    {
+     "panel": "panel-winback",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "panel-winback:0",
+   "errors": []
+  }
+ ],
+ "unhandledRoutes": []
+}

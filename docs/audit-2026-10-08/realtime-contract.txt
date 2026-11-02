@@ -1,0 +1,3 @@
+Realtime CI contract (§246): 92 events · 92 versioned · 89 routed · 7 client channels
+  · NO PRODUCER (1): settings_updated — nothing emits these; a screen waiting for them waits forever
+OK — no duplicate names, every event versioned and routed, client contract identical, channels name registry events only, no off-registry emissions

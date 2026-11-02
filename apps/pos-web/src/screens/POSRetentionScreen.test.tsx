@@ -1,0 +1,137 @@
+// POSRetentionScreen — Customer Retention Complete Build Guide (Oct 30 2026): the eight KPIs (the five original + Never
+// Visited / Recovered / Campaign Recoveries), the segment tabs, the win-back list with Segment + Smart Priority + "why",
+// Never Visited rows are never selectable for a win-back text, "select all eligible" sends the filters (not ids) to the
+// server, the period / basis reach the API, the Recovery dialog states its definitions, and Settings saves with a version.
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), customers: vi.fn(), customer: vi.fn(), recovery: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(), exportCsv: vi.fn(),
+  readiness: vi.fn(), preview: vi.fn(), confirm: vi.fn(), campaigns: vi.fn(), campaign: vi.fn(),
+  snapshotDay: vi.fn(), snapshotMembers: vi.fn(), snapshotCompare: vi.fn(), snapshotRuns: vi.fn(), backfill: vi.fn(), smsPricing: vi.fn(), setSmsPricing: vi.fn() } }));
+const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
+vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
+vi.mock('../api/posRetentionApi', () => ({ posRetentionApi: api }));
+import { POSRetentionScreen } from './POSRetentionScreen';
+
+const period = { preset: 'month', from: '2026-10-01', to: '2026-10-31', today: '2026-10-30', timeZone: 'America/New_York', riskDays: 60, approachingDays: 45, observationWindowDays: 30, settingsVersion: 0, segmentationVersion: 'retention-v2', priorityFormulaVersion: 'winback-v1' };
+const SUM = { period, kpis: { returningRatePercent: 62, returningCustomers: 124, visitedInPeriod: 200, newThisMonth: 18, newRegisteredThisMonth: 25, atRisk: 2, lapsedValueCents: 57000, neverVisited: 13, recovered: 4, campaignRecoveries: 1 },
+  segments: { all: 240, returning: 124, approaching: 9, at_risk: 2, never: 13, recovered: 4, active: 100, at_risk_90: 1, at_risk_180: 1, returned: 4, contactable: 1, new_visitors: 18 }, priorityBands: { high: 1, medium: 0, low: 1 } };
+const prio = (score: number, band: string) => ({ score, band, formulaVersion: 'winback-v1', components: { inactivity: 40, frequency: 30, spend: 22 }, topDriver: 'inactivity', explanation: 'x' });
+const row = (id: string, name: string, o: Record<string, unknown>) => ({ customerId: id, customerName: name, avatarUrl: null, maskedPhone: '(•••) •••-0101', phoneStatus: 'ok', smsStatus: 'eligible', segment: 'at_risk', returningInPeriod: false, recoveredInPeriod: false,
+  lastVisitAt: '2026-01-01T15:00:00Z', firstVisitAt: '2025-01-01T15:00:00Z', daysAway: 302, visits: 12, lifetimeSpendCents: 42000, createdAt: '2025-01-01T00:00:00Z', lastOutreachAt: null, lastOutreachStatus: null, nextAppointmentDate: null, priority: prio(92, 'high'), ...o });
+const AT_RISK = [row('c1', 'Ana Rivera', {}), row('c2', 'Bo Chen', { smsStatus: 'no_consent', daysAway: 70, visits: 1, lifetimeSpendCents: 15000, priority: prio(15, 'low') })];
+const NEVER = [row('n1', 'Nora Never', { segment: 'never_visited', lastVisitAt: null, firstVisitAt: null, daysAway: null, visits: 0, lifetimeSpendCents: 0, priority: null })];
+const list = (items: unknown[], o: Record<string, unknown> = {}) => ({ period, segment: 'at_risk', sort: 'priority', items, page: 1, pageSize: 10, totalItems: items.length, totalPages: 1, eligibleOnPage: 1, eligibleMatching: 1, filters: {}, ...o });
+beforeEach(() => {
+  for (const f of Object.values(api)) f.mockReset();
+  api.summary.mockResolvedValue(SUM);
+  api.customers.mockImplementation(async (q: any) => (q.segment === 'never' ? list(NEVER, { segment: 'never', sort: 'created_desc', eligibleOnPage: 0, eligibleMatching: 0 }) : list(AT_RISK)));
+  api.readiness.mockResolvedValue({ sender: { route: 'simulated', from: null, a2pStatus: null }, quietHours: { start: null, end: null, until: null }, canSend: true });
+  api.preview.mockResolvedValue({ previewId: 'p1', finalBody: 'Lotus: Hi Reply STOP to opt out.', segments: { segments: 1, encoding: 'GSM-7', characters: 30 }, selected: 1, eligible: 1, excluded: 0, excludedReasons: {},
+    sender: { route: 'simulated', from: null, a2pStatus: null }, canSend: true, blockedReason: null, quietHours: null, estimatedSegments: 1, costEstimateCents: null, roster: [], expiresInMinutes: 20 });
+  api.recovery.mockResolvedValue({ period, definitions: {}, totals: { recoveredCustomers: 4, returnVisits: 5, observedReturnRevenueCents: 30000, campaignObserved: { customers: 1, visits: 1, revenueCents: 6000, avgDaysToReturn: 3 }, unmessagedRecovered: 3 },
+    campaigns: [{ campaignId: 'cmp-1', label: 'Fall', confirmedAt: '2026-10-20T15:00:00Z', eligible: 10, sent: 10, delivered: 8, failed: 0, bookedAfterContact: 2, returnedCustomers: 1, returnRevenueCents: 6000 }],
+    returns: { items: [{ ticketId: 't1', ticketNumber: '1001', customerId: 'c9', customerName: 'Cleo', returnedAt: '2026-10-29T15:00:00Z', previousVisitAt: '2026-06-01T15:00:00Z', daysAwayBefore: 150, netCents: 6000, campaignId: 'cmp-1', messageSentAt: '2026-10-25T15:00:00Z' }], page: 1, pageSize: 6, totalItems: 1, totalPages: 1 },
+    trend: [{ month: '2026-10', visited: 200, returning: 124, newVisitors: 18, recovered: 4, returningRatePercent: 62 }] });
+  api.settings.mockResolvedValue({ riskDays: 60, approachingDays: 45, observationWindowDays: 30, version: 0, isDefault: true, updatedAt: null, updatedByUserId: null, canEdit: true });
+  api.saveSettings.mockResolvedValue({ riskDays: 90, approachingDays: 60, observationWindowDays: 30, version: 1 });
+});
+
+describe('POSRetentionScreen', () => {
+  it('renders the eight KPIs and the win-back list with Segment and Smart Priority', async () => {
+    render(<POSRetentionScreen />);
+    expect(await screen.findByRole('heading', { name: 'Customer Retention' })).toBeInTheDocument();
+    expect(await screen.findByText('62%')).toBeInTheDocument();
+    expect(screen.getByTestId('kpi-never')).toHaveTextContent('13');
+    expect(screen.getByTestId('kpi-recovered')).toHaveTextContent('4');
+    expect(screen.getByTestId('kpi-campaign-recoveries')).toHaveTextContent('1');
+    expect(await screen.findByText('Ana Rivera')).toBeInTheDocument();
+    const prios = screen.getAllByTestId('rt-prio'); expect(prios[0]).toHaveTextContent('92');
+    expect(prios[0]!.getAttribute('title')).toMatch(/Why this priority\?/);
+    expect(api.customers).toHaveBeenCalledWith(expect.objectContaining({ segment: 'at_risk', preset: 'month' }));
+  });
+
+  it('Never Visited rows are listed on their own tab and cannot be selected for a win-back text', async () => {
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('seg-never'));
+    expect(await screen.findByText('Nora Never')).toBeInTheDocument();
+    const cb = screen.getByRole('checkbox', { name: /Nora Never/ }); expect(cb).toBeDisabled();
+    expect(screen.queryAllByTestId('rt-prio')).toHaveLength(0);
+  });
+
+  it('"Select all eligible" sends the filters, not a page of ids, to the preview', async () => {
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.click(screen.getByTestId('select-all-matching'));
+    fireEvent.click(await screen.findByTestId('select-all-confirm'));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    fireEvent.change(await screen.findByRole('textbox', { name: /message/i }), { target: { value: 'We miss you, come back soon!' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    await waitFor(() => expect(api.preview).toHaveBeenCalled());
+    const b = api.preview.mock.calls[0]![0];
+    expect(b.customerIds).toBeUndefined();
+    expect(b.selection).toMatchObject({ segment: 'at_risk', sms: 'eligible', preset: 'month', excludeIds: [] });
+  });
+
+  it('the Recovery dialog shows observed returns with their definitions', async () => {
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('open-recovery'));
+    const d = await screen.findByTestId('dlg-recovery');
+    expect(await screen.findByTestId('rt-recovery-totals')).toHaveTextContent('4');
+    expect(d).toHaveTextContent(/not proven cause/);
+    expect(screen.getByTestId('rt-returns')).toHaveTextContent('Cleo');
+  });
+
+  it('Settings save with the version they were read at', async () => {
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('open-settings'));
+    fireEvent.change(await screen.findByTestId('set-risk'), { target: { value: '90' } });
+    fireEvent.change(screen.getByTestId('set-approaching'), { target: { value: '60' } });
+    fireEvent.click(screen.getByTestId('settings-save'));
+    await waitFor(() => expect(api.saveSettings).toHaveBeenCalledWith({ riskDays: 90, approachingDays: 60, observationWindowDays: 30, expectedVersion: 0 }));
+  });
+
+  // ── Four-Module Completion Guide (Oct 30 2026) ─────────────────────────────────────────────────────────────────────
+  it('CR-02: the branch selector lists the authorized branches, labels the scope and sends ?branch= to the server', async () => {
+    api.summary.mockResolvedValue({ ...SUM, scope: { mode: 'tenant', label: 'tenant_wide', selectedBranchId: null, confined: false, unknownBranchVisits: 3,
+      branches: [{ branchId: 'b-a', name: 'Alpha' }, { branchId: 'b-b', name: 'Beta' }] } });
+    render(<POSRetentionScreen />);
+    expect(await screen.findByTestId('rt-scope')).toHaveTextContent('Tenant-wide customer retention');
+    expect(screen.getByTestId('rt-unknown-branch')).toHaveTextContent('Unknown branch: 3');
+    fireEvent.change(screen.getByTestId('flt-branch'), { target: { value: 'b-b' } });
+    await waitFor(() => expect(api.customers).toHaveBeenCalledWith(expect.objectContaining({ branch: 'b-b' })));
+    await waitFor(() => expect(api.summary).toHaveBeenCalledWith(expect.objectContaining({ branch: 'b-b' })));
+  });
+
+  it('CR-01: As of Date reads the STORED snapshot; a day without one is "Incomplete / unverifiable"', async () => {
+    api.snapshotRuns.mockResolvedValue({ from: '2026-09-30', to: '2026-10-30', items: [], page: 1, pageSize: 5, totalItems: 0, totalPages: 1 });
+    api.snapshotDay.mockResolvedValue({ date: '2026-10-29', today: '2026-10-30', state: 'missing', unverifiable: true, run: null, counts: null });
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByTestId('open-history'));
+    const st = await screen.findByTestId('hist-state');
+    expect(st).toHaveTextContent(/Incomplete \/ unverifiable/); expect(st.getAttribute('data-state')).toBe('missing');
+    expect(api.snapshotDay).toHaveBeenCalledWith('2026-10-29');
+    expect(api.snapshotMembers).not.toHaveBeenCalled();   // no stored day → nothing listed, nothing invented
+  });
+
+  it('CR-03: the preview shows "Price unknown — cannot estimate" when no SMS price is configured (never $0)', async () => {
+    api.preview.mockResolvedValueOnce({ previewId: 'p1', finalBody: 'Lotus: Hi Reply STOP to opt out.', segments: { segments: 1, encoding: 'GSM-7', characters: 30 }, selected: 1, eligible: 1, excluded: 0, excludedReasons: {},
+      sender: { route: 'simulated', from: null, a2pStatus: null }, canSend: true, blockedReason: null, quietHours: null, estimatedSegments: 1, costEstimateCents: null, roster: [], expiresInMinutes: 20,
+      estimate: { status: 'price_unknown', recipients: 1, segmentsPerMessage: 1, encoding: 'GSM-7', totalSegments: 1, currency: null, unitPrice: null, pricingEffectiveFrom: null, subtotalCents: null, carrierFeesCents: null,
+        carrierFeesKnown: false, taxCents: null, taxKnown: false, totalCents: null, totalIsLowerBound: false } });
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Ana Rivera/ }));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    fireEvent.change(await screen.findByRole('textbox', { name: /Message/ }), { target: { value: 'We miss you! Come back.' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    const est = await screen.findByTestId('sms-estimate');
+    expect(est).toHaveTextContent('Price unknown — cannot estimate'); expect(est).not.toHaveTextContent('$0.00');
+  });
+
+  it('CR-04: Book appointment opens the existing New Appointment flow with ?customerId= only (no name / phone in the URL)', async () => {
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.click(screen.getAllByTestId('rt-row-book')[0]!);
+    expect(navigate).toHaveBeenCalledWith('/booking/new?customerId=c1&from=retention');
+    expect(String(navigate.mock.calls.at(-1)?.[0])).not.toMatch(/Ana|0101|customerName|customerPhone/);
+  });
+});

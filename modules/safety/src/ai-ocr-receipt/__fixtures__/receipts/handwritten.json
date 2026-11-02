@@ -1,0 +1,71 @@
+{
+ "name": "handwritten",
+ "type": "receipt",
+ "condition": "handwritten",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a handwritten receipt: every field below the 0.8 field threshold → LOW_CONFIDENCE review, the values still offered",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Mai's Flowers",
+       "Confidence": 71.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "10/18/26",
+       "Confidence": 64.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$45",
+       "Confidence": 78.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Receipt. Thank you. Paid cash",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Mai's Flowers",
+  "date": "2026-10-18",
+  "totalCents": 4500,
+  "lines": 0,
+  "type": "receipt",
+  "validation": "needs_review"
+ },
+ "minOverallConfidence": 0.6,
+ "reviewExpected": "LOW_CONFIDENCE",
+ "syntheticText": null
+}

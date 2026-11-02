@@ -1,0 +1,30 @@
+# Security Deep Scan B5/B6 (Oct 23 2026): dependency update proposals — every PR still passes the full gate set
+# (ci:gates, security:deps, tests, race, mobile). Majors of the framework stack are reviewed by hand (ignored here).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule: { interval: weekly }
+    open-pull-requests-limit: 10
+    groups:
+      security-patches:
+        applies-to: security-updates
+        patterns: ['*']
+    ignore:
+      - dependency-name: '@nestjs/*'
+        update-types: ['version-update:semver-major']
+      - dependency-name: kysely
+        update-types: ['version-update:semver-minor', 'version-update:semver-major']
+      - dependency-name: vite
+        update-types: ['version-update:semver-major']
+      - dependency-name: vitest
+        update-types: ['version-update:semver-major']
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: gradle
+    directories: ['/apps/customer-web/android', '/apps/tech-web/android', '/apps/owner-web/android', '/apps/manager-pay-web/android']
+    schedule: { interval: monthly }
+  - package-ecosystem: docker
+    directory: /
+    schedule: { interval: weekly }

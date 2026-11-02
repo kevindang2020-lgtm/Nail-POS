@@ -1,0 +1,233 @@
+{
+ "name": "retail-clean",
+ "type": "receipt",
+ "condition": "clean",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a clean retail receipt with three priced lines; everything reconciles",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "THE HOME DEPOT #4102",
+       "Confidence": 99.2
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "10/14/2026",
+       "Confidence": 98.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$84.97",
+       "Confidence": 99.1
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$5.63",
+       "Confidence": 98.8
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$90.60",
+       "Confidence": 99.4
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "4102 00057 81233",
+       "Confidence": 96.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Thank you for your purchase. Change due $0.00 Auth code 48211",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "PVC CEMENT 8OZ",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.98",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.98",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "DRYWALL ANCHORS 50PK",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$12.99",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$12.99",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "LED BULB 4PK",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$64.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "2",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$32.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "THE HOME DEPOT #4102",
+  "date": "2026-10-14",
+  "totalCents": 9060,
+  "subtotalCents": 8497,
+  "taxCents": 563,
+  "documentNumber": "4102 00057 81233",
+  "lines": 3,
+  "type": "receipt",
+  "validation": "valid"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

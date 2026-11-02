@@ -1,0 +1,36 @@
+22:46:48 resume of final run #2 — commit 890aa4f0 (product code = 3c5ae402) — node v22.22.0
+22:46:48 START tests-modules-rest
+23:04:49 END   tests-modules-rest rc=0 :: PASS  modules/support: Test Files 5 passed (5) | Tests 34 passed (34) PASS  modules/tenants: Test Files 19 passed (19) | Tests 152 passed (152) PASS  modules/workforce: Test Files 123 passed | 7 skipped (130) | Tests 1091 passed | 23 skipped (1114) 
+23:04:49 START tests-apps
+23:18:51 END   tests-apps rc=0 :: PASS  apps/pos-web: Test Files  348 passed (348) | Tests  1649 passed (1649) PASS  apps/tech-web: Test Files  41 passed (41) | Tests  201 passed (201) all suites passed 
+23:18:51 START tests-api
+23:37:33 END   tests-api rc=1 ::       FAIL  src/common/state-machines.pgtest.vitest.spec.ts > each machine reproduces its domain's table (allowed / refused) > payroll period: draft → review → finali       FAIL  src/common/validated-body.vitest.spec.ts > ValidatedBody over HTTP (the standard envelope) > a dangerous field (statu
+23:37:33 START migrations-harness
+23:37:38 END   migrations-harness rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (58 ms) migrate: applying 673_payroll_paychecks.sql ... ok (32 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+23:37:38 START harnesses
+23:38:56 END   harnesses rc=1 ::   ✅ verify-owner-tz.ts — 🎉 verify-owner-tz: 9 passed, 0 failed   ❌ verify-terminal-capture.ts (rc=1) — ⚠️ verify-terminal-capture: 12 passed, 5 failed harnesses: 8 passed, 1 failed, 1 skipped 
+23:38:56 START migrations-race
+23:38:59 END   migrations-race rc=0 :: migrate: WARNING 702_schedule_explanation_language.sql changed since it was applied — the change is NOT applied to this database; put it in a new migration migrate: complete — 0 applied, 642 already present (642 total). 
+23:38:59 START race-lane
+23:44:16 END   race-lane rc=0 :: PASS  modules/super-admin    files: 3 passed (3)   tests: 9 passed (9) PASS  modules/workforce      files: 7 passed (7)   tests: 23 passed (23) race lane: 99 files, 336 tests passed, 0 skipped across 15 packages 
+23:44:16 START migrations-live
+23:44:21 END   migrations-live rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (81 ms) migrate: applying 673_payroll_paychecks.sql ... ok (32 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+23:44:21 START live-route-sweep
+23:44:48 END   live-route-sweep rc=1 :: PASS  every preview POST answers without a 5xx (a 4xx here is the input validation answering a minimal body) —  4xx: POST /owner/compensation/preview 400 | POST /owner/compensation/compliance-preview 400 | POST /pos/ai-queue-assignment/fair-turn/simulate 400 | POST /pos/ai-marketing/audience/previ
+23:44:48 START live-api-harnesses
+23:44:57 END   live-api-harnesses rc=0 ::   ✅ verify-customer-import.mjs — ✅ BULK CUSTOMER IMPORT VERIFIED: 9 passed, 0 failed harnesses: 1 passed, 0 failed, 0 skipped 
+23:44:57 START seed-pilot01
+23:44:59 END   seed-pilot01 rc=0 :: ⚠️  Using DEFAULT seed passwords. Set SEED_SUPER_ADMIN_PASSWORD and SEED_OWNER_PASSWORD to your own before seeding production. ✅ Seed complete. 
+23:44:59 START live-event-wiring
+23:46:50 END   live-event-wiring rc=0 :: PASS  no consumer dead-lettered an event of the flows PASS  the publisher delivers promptly (p95 outbox → published under 3 s) — p95 922 ms 19/19 checks passed 
+23:46:50 START live-display-lifecycle
+23:46:54 END   live-display-lifecycle rc=0 :: PASS  a second release is harmless — 201 PASS  a forged device token is refused — 403 all 30 live checks passed 
+23:46:54 START migrations-pilot
+23:46:59 END   migrations-pilot rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (53 ms) migrate: applying 673_payroll_paychecks.sql ... ok (30 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+23:46:59 START live-pilot-day
+00:02:26 END   live-pilot-day rc=1 :: PASS  [9 api log] the API logged no unexpected errors during the day PASS  [9 postgres log] PostgreSQL logged no unexpected ERROR for fr_pilot during the day (an error the code swallowed is a lost write or an empty read) 230/235 checks passed 
+00:02:26 START drill-restore
+00:02:35 END   drill-restore rc=0 :: {"timestamp":"2026-10-28T00:02:34.750Z","level":"info","service":"job","environment":"development","deploymentVersion":"1.0.0","requestId":"job_8df82cbb-a70a-48ae-9de2-0e812c322436","correlationId":"job_8df82cbb-a70a-48ae-9de2-0e812c322436","traceId":"c4161e7f5c834932981315845ba284b7","spanId":"c2e7
+00:02:35 START e2e-html
+00:02:39 END   e2e-html rc=0 :: === PUBLIC BOOKING — booking-public/index.html in real Chromium (no account, signed link) === OK — both single-file HTML apps (the kiosk and the public booking link) completed their primary journeys in a real browser (24 API calls verified). 
+00:02:39 DONE

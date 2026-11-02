@@ -1,0 +1,82 @@
+[
+  {
+    "key": "modules/ai/src/ai-marketing/ai-marketing-send.adapters.ts|setStatus|patch",
+    "why": "private; its three callers (markSent/markSkipped/markFailed) pass fixed { provider_id, skip_reason } literals",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/platform/src/super-admin-plans/plans.kysely.repository.ts|updatePlanDetails|patch",
+    "why": "only caller PlansService.updatePlanDetails passes normalizePlanDetailsPatch(input): per-field allow-list that also refuses the price fields",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/queue/src/tech-queue/tech-queue.kysely.repository.ts|upd|set",
+    "why": "private; every caller passes a literal or a locally built field-by-field object (assign, setServices, setPriority, setDelay, notify stamps, serving key)",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|createApplication|input",
+    "why": "callers build explicit rows: SuperAdminPlatformService.createApplication (named fields, coerced) and the public intake `base` (pubField/intIn per field)",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|updateApplication|patch",
+    "why": "callers: touchApp (literals from 4 named actions) + record_version, status conversions with literal patches",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|appendApplicationNote|note",
+    "why": "spread is inside a jsonb note value, not the column list; every caller passes { text, by } built explicitly",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|createLead|input",
+    "why": "both callers (super-admin createLead, public lead intake) build named fields; kind checked against LEAD_KINDS/KINDS",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|updateLead|patch",
+    "why": "callers pass literal { status } (validated) or { status, application_id } from the conversion flow",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|createHardware|input",
+    "why": "callers pass named fields (application_id, imac_color, status checked against HW_STATUSES)",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts|updateHardware|patch",
+    "why": "only caller SuperAdminPlatformService.updateHardware builds `allowed` from a fixed key list with enum checks",
+    "reviewed": "2026-10-04"
+  },
+  {
+    "key": "modules/workforce/src/turn-queue/turn-ledger.ts|(top)|patch",
+    "why": "module-private saveRow(); every caller is a ledger command in the same file passing a literal object of turn-state columns computed by turn-core (status, positions, units, minutes) — no request body reaches it",
+    "reviewed": "2026-10-12"
+  },
+  {
+    "key": "modules/finance/src/expense.repository.ts|insert|values",
+    "why": "only caller ExpenseService.create builds the row field by field from the validated FIN_EXPENSE_CREATE_BODY (status/approved_by/version derived server-side; tenant_id from the session)",
+    "reviewed": "2026-10-21"
+  },
+  {
+    "key": "modules/finance/src/expense.repository.ts|updateAtVersion|set",
+    "why": "every ExpenseService caller passes a literal or a patch assembled column by column (update() maps each allowed field; state columns only via their state machine); the WHERE pins tenant_id + id + version",
+    "reviewed": "2026-10-21"
+  },
+  {
+    "key": "modules/finance/src/expense.repository.ts|saveSettings|set",
+    "why": "only caller ExpenseService.saveSettings builds `set` from a fixed field→column map (booleans only), a range-checked billReminderDays and a writable-branch-checked defaultBranchId",
+    "reviewed": "2026-10-21"
+  },
+  {
+    "key": "modules/analytics/src/owner/owner.kysely.repository.ts|updateExpense|expensePatch",
+    "why": "DEPRECATED path (OwnerService now edits through the finance module); expensePatch is built field by field from six named fields of the validated patch, never writes status, and bumps version",
+    "reviewed": "2026-10-21"
+  },
+  {
+    "key": "modules/workforce/src/payroll/payroll-paycheck.service.ts|withPayout|patch",
+    "why": "Weekly Paycheck (Oct 21 2026): setPayout() is private; every caller (issue/deliver/clear/void check, prepare/handoff/acknowledge/dispute/resolve cash) passes a fixed literal of check_* / cash_* / failure_reason columns built in the service, never a client object",
+    "reviewed": "2026-10-21"
+  }
+]

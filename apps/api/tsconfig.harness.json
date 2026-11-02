@@ -1,0 +1,13 @@
+{
+  "//": "Oct 20 2026 \u2014 used ONLY by scripts/run-harnesses.sh (tsx). tsconfig.json maps every @aipowersalon/* to a dist .d.ts for tsc; tsx applies `paths` at RUNTIME too, so `@aipowersalon/security/nest` resolved to the .d.ts and the controller got an undefined guard (`Invalid guard passed to @UseGuards()`). With no paths, Node's package exports resolve the built dist. `include` also covers ../../modules/*/src and ../../packages/*/src: several harnesses import module SOURCE, and tsx only applies experimentalDecorators to included files (\"Parameter decorators only work when experimental decorators are enabled\").",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "paths": {}
+  },
+  "include": [
+    "src/**/*.ts",
+    "scripts/**/*.ts",
+    "../../modules/*/src/**/*.ts",
+    "../../packages/*/src/**/*.ts"
+  ]
+}

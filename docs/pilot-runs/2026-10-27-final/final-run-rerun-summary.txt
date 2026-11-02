@@ -1,0 +1,16 @@
+00:05:08 rerun lanes — commit 94ba69e9
+00:05:08 START gates
+00:10:34 END   gates rc=1 :: PASS  vi-glossary PASS  admin-english-only 1 FAILED: check:role-checks 
+00:10:34 START migrations-live
+00:10:38 END   migrations-live rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (45 ms) migrate: applying 673_payroll_paychecks.sql ... ok (45 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+00:10:38 START live-route-sweep
+00:11:04 END   live-route-sweep rc=0 :: PASS  every preview POST answers without a 5xx (a 4xx here is the input validation answering a minimal body) —  4xx: POST /owner/compensation/preview 400 | POST /owner/compensation/compliance-preview 400 | POST /pos/ai-queue-assignment/fair-turn/simulate 400 | POST /pos/ai-marketing/audience/previ
+00:11:04 START migrations-pilot
+00:11:08 END   migrations-pilot rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (39 ms) migrate: applying 673_payroll_paychecks.sql ... ok (36 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+00:11:08 START live-pilot-day
+00:26:58 END   live-pilot-day rc=0 :: PASS  [9 api log] the API logged no unexpected errors during the day PASS  [9 postgres log] PostgreSQL logged no unexpected ERROR for fr_pilot2 during the day (an error the code swallowed is a lost write or an empty read) 235/235 checks passed 
+00:26:58 START drill-restore
+00:27:06 END   drill-restore rc=0 :: {"timestamp":"2026-10-28T00:27:06.244Z","level":"info","service":"job","environment":"development","deploymentVersion":"1.0.0","requestId":"job_877adf49-c56a-40e3-b0fc-3f58ba904822","correlationId":"job_877adf49-c56a-40e3-b0fc-3f58ba904822","traceId":"6f17d8ea147045d4a393d7b50e504a7f","spanId":"946e
+00:27:06 START tests-api
+00:45:48 END   tests-api rc=0 :: PASS  apps/api: Test Files  380 passed | 27 skipped (407) | Tests  3110 passed | 137 skipped (3247) all suites passed 
+00:45:48 DONE

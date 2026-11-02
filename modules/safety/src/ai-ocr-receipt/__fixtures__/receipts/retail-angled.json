@@ -1,0 +1,222 @@
+{
+ "name": "retail-angled",
+ "type": "receipt",
+ "condition": "angled",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "an angled picture: 03/04/2026 is ambiguous (DMY vs MDY) → DATE_AMBIGUOUS for a person; the money reconciles",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Costco Wholesale #1021",
+       "Confidence": 91.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "03/04/2026",
+       "Confidence": 80.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$212.40",
+       "Confidence": 89.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$14.07",
+       "Confidence": 88.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$226.47",
+       "Confidence": 93.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Thank you for your purchase. Subtotal",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Nitrile gloves 400ct",
+           "Confidence": 86.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$89.99",
+           "Confidence": 86.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "2",
+           "Confidence": 86.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$44.99",
+           "Confidence": 86.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Paper towels 12pk",
+           "Confidence": 88.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$24.99",
+           "Confidence": 88.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 88.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$24.99",
+           "Confidence": 88.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Bottled water 40pk",
+           "Confidence": 70.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$97.42",
+           "Confidence": 70.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "14",
+           "Confidence": 70.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.96",
+           "Confidence": 70.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Costco Wholesale #1021",
+  "date": "2026-03-04",
+  "totalCents": 22647,
+  "subtotalCents": 21240,
+  "taxCents": 1407,
+  "lines": 3,
+  "type": "receipt",
+  "validation": "needs_review",
+  "dateAmbiguous": true
+ },
+ "minOverallConfidence": 0.8,
+ "reviewExpected": "DATE_AMBIGUOUS",
+ "syntheticText": null
+}

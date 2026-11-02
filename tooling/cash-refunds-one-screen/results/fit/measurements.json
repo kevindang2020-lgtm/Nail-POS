@@ -1,0 +1,1452 @@
+{
+ "label": "fit",
+ "at": "2026-10-30T00:43:48.231Z",
+ "rows": [
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:3",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:9",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:5",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:5",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:3",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "ledger:11",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:6",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:7",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:3",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:9",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:5",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:5",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:3",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "ledger:11",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:6",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:7",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:4",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "record-handoff": true,
+    "refresh": true,
+    "export": true,
+    "open-drawer": true,
+    "kpi-expected": true,
+    "kpi-counted": true,
+    "kpi-technicians": true,
+    "kpi-reconciled": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "search": true,
+    "status": true,
+    "technician": true,
+    "sort": true,
+    "preset-today": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "cash-handoffs-month",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-awaiting": true,
+    "difference-strip": true,
+    "handoffs": true
+   },
+   "pagers": [
+    {
+     "panel": "handoffs",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "handoffs:0",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "ledger:0",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:0",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:0",
+   "errors": []
+  },
+  {
+   "page": "refunds-voids",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "find-payment": true,
+    "refresh": true,
+    "export": true,
+    "kpi-refunds": true,
+    "kpi-voids": true,
+    "kpi-total": true,
+    "kpi-pending": true,
+    "kpi-review": true,
+    "search": true,
+    "type": true,
+    "status": true,
+    "method": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "date-basis": true,
+    "ledger": true
+   },
+   "pagers": [
+    {
+     "panel": "ledger",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "ledger:0",
+   "errors": []
+  }
+ ],
+ "unhandledRoutes": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 12
+  }
+ ]
+}

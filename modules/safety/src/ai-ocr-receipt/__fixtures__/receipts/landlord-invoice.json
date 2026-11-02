@@ -1,0 +1,95 @@
+{
+ "name": "landlord-invoice",
+ "type": "invoice",
+ "condition": "clean",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "rent: no breakdown, one amount due; high amount → review priority",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Riverside Plaza Properties",
+       "Confidence": 97.8
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-01",
+       "Confidence": 97.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "RENT-2026-10",
+       "Confidence": 96.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "AMOUNT_DUE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$3,200.00",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "DUE_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "10/05/2026",
+       "Confidence": 95.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Invoice. Bill to Lotus Nails Suite 4. Rent October 2026. Amount due. Remit to Riverside Plaza Properties",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Riverside Plaza Properties",
+  "date": "2026-10-01",
+  "totalCents": 320000,
+  "documentNumber": "RENT-2026-10",
+  "lines": 0,
+  "type": "invoice",
+  "validation": "valid",
+  "reviewPriority": "high"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

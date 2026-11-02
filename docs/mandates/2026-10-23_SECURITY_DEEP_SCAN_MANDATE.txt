@@ -1,0 +1,776 @@
+                                                         AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+
+
+                                        AI PowerSalon
+             Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+POS + Super Admin + APIs + Mobile Apps + Infrastructure Security Master Completion Mandate
+                                        for Claude
+
+Primary security objective
+Deep-scan the existing AI PowerSalon codebase and deployment for exploitable holes, backdoors, malicious persistence,
+exposed secrets, unsafe APIs, tenant/branch isolation failures, payment weaknesses, unsafe uploads, supply-chain risk and
+Super Admin takeover paths. Fix what is internally fixable, add layered defenses, verify through security tests, then leave an
+exact developer handoff.
+
+
+
+Security reality
+Do not claim that AI PowerSalon is unhackable. The production goal is deny-by-default access, strong isolation, least
+privilege, rapid detection, independent revocation, secure recovery and containment even if one security layer fails.
+
+
+
+
+                                         Claude / Developer Security Completion Mandate | 1
+                                                              AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+Executive Defense-in-Depth Architecture
+INTERNET
+ ↓
+DNS / HTTPS ONLY
+ ↓
+CDN / REVERSE PROXY
+ ↓
+EDGE WAF / DDoS / BOT PROTECTION
+ ↓
+LOAD BALANCER / API EDGE
+ ↓
+GLOBAL REQUEST SECURITY
+ ↓
+AUTHENTICATION / MFA / SESSION SECURITY
+ ↓
+TENANT + BRANCH CONTEXT
+ ↓
+DENY-BY-DEFAULT AUTHORIZATION
+ ↓
+INPUT VALIDATION / RATE LIMIT / POLICY
+ ↓
+DOMAIN INVARIANTS / PAYMENT CONTROLS
+ ↓
+SCOPED DATABASE ACCESS
+ ↓
+PRIVATE POSTGRESQL
+
+
+
+
+Do not build one fake firewall function
+The protection must exist at the edge, network, session, API, authorization, domain, database, logging, supply-chain and
+recovery layers. WAF is one layer; application security is another; neither replaces the other.
+
+
+
+
+Claude Execution Workflow
+DISCOVER EXISTING SECURITY ARCHITECTURE
+     ↓
+MAP ATTACK SURFACE
+     ↓
+THREAT MODEL
+     ↓
+SCAN CODE / DEPENDENCIES / SECRETS / CONFIG
+     ↓
+REPRODUCE FINDINGS SAFELY
+     ↓
+CLASSIFY P0 / P1 / P2 / P3
+     ↓
+FIX ROOT CAUSE
+     ↓
+ADD DEFENSE + REGRESSION TEST
+     ↓
+RUN SECURITY / TENANT / PAYMENT TESTS
+     ↓
+RUN FULL PILOT
+     ↓
+UPDATE SECURITY HANDOFF
+
+
+
+
+                                              Claude / Developer Security Completion Mandate | 2
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+1. Security Program, Attack Surface & Threat Model
+1. Security scope. Audit POS Web, Super Admin, API, Owner App, Technician App, Customer App, Online Booking, Customer Display,
+Payment App, workers, realtime, database, migrations, scripts, CI/CD, containers, cloud configuration and third-party integrations.
+2. Security baseline. Use OWASP ASVS 5.0, OWASP Top 10 2025, OWASP API Security guidance, NIST SSDF and applicable PCI-aligned
+payment practices as verification baselines, not paperwork-only checklists.
+3. Attack-surface inventory. Create SECURITY_ATTACK_SURFACE.md with every public/protected route, webhook, upload, WebSocket
+channel, worker, scheduler, admin surface, database connection and external integration, including auth, scope, rate limit and risk
+classification.
+4. Threat model. Model anonymous attackers, credential stuffing, malicious customers, malicious employees/managers, stolen
+devices/sessions, compromised owners/Super Admins, malicious dependencies, compromised CI credentials and cloud/database
+insiders.
+5. Crown-jewel assets. Treat Super Admin, platform credentials, merchant configuration, payment authority, payroll,
+customer/technician PII, provider secrets, refresh tokens, device identities, audit records and production infrastructure as highest-value
+assets.
+6. P0 classification. Remote code execution, Super Admin takeover, auth bypass, cross-tenant access, payment manipulation, database
+compromise, privilege escalation and secret extraction are P0 and must block normal feature work until remediated.
+7. No report-only completion. Claude must not stop after finding vulnerabilities; internally fixable findings require code/config fixes,
+regression tests and retesting before completion.
+8. Safe testing. Run active security testing only in local/development/staging or dedicated security environments, not destructively
+against production.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 3
+                                                                AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+2. Backdoor, Malware, Persistence & Supply Risk
+9. Suspicious-code scan. Search for eval, Function constructors, child_process, exec/spawn/shell calls, runtime downloads, base64/hex
+obfuscation, reverse-shell patterns, crypto-mining code, hard-coded outbound sockets and unexplained network egress.
+10. Startup/persistence scan. Inspect npm lifecycle scripts, package.json, Docker entrypoints, PM2/systemd/cron, CI scripts, Git hooks,
+startup shell scripts, cloud user-data, serverless initialization and scheduled workers for unexpected persistence.
+11. Hidden privilege paths. Audit every code path that creates platform users, owners, roles, permissions, tokens, invitations,
+password resets, impersonation or MFA bypass for proper authorization and audit.
+12. Outbound destination inventory. Enumerate expected outbound providers and flag unknown domains/IPs, tunnels, paste sites,
+unapproved file hosts or analytics endpoints.
+13. Dependency malware scan. Audit lockfiles, native/mobile dependencies, Git dependencies, Docker images and GitHub Actions for
+vulnerabilities, typosquatting, abandoned packages, dangerous install scripts and unexpected binary downloads.
+14. SBOM. Generate an SBOM for backend, frontend, mobile and containers, including package/version/source/license and current
+security status.
+15. Malware finding standard. For suspicious code report FOUND, NOT FOUND or SUSPICIOUS/REQUIRES REVIEW with file paths and
+evidence; never claim malware-free merely because a source scan passed.
+16. Developer-machine risk. If prior developer-machine compromise is suspected, require clean rebuild plus credential/key rotation
+rather than trusting only malware removal.
+
+
+
+
+                                                Claude / Developer Security Completion Mandate | 4
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+3. Secrets & Credential Protection
+17. Secret scan. Search repository and history for DB passwords, JWT secrets, AWS keys, Firebase service accounts,
+Twilio/Fiserv/CardPointe/CommerceHub credentials, SendGrid keys, AI provider keys, APNs keys, webhook secrets and private keys.
+18. Exposed secret policy. Any credential ever committed or exposed is considered compromised until rotated; deletion from Git
+history alone is not remediation.
+19. Secret locations. Production secrets must not appear in Git, client bundles, mobile bundles, Docker images, logs, docs or test
+fixtures.
+20. Secret manager. Use a supported secret-management system such as AWS Secrets Manager or SSM Parameter Store with KMS-
+backed encryption, matching the actual infrastructure.
+21. Frontend environment review. Audit build-time environment variables to ensure server secrets cannot be bundled into
+React/Vite/mobile clients.
+22. Log redaction. Redact Authorization headers, cookies, refresh tokens, passwords, API keys, provider secrets and raw payment data
+from application/security logs.
+23. CI secret scope. CI jobs receive only required secrets; untrusted pull-request code must not automatically access production
+credentials.
+24. Rotation documentation. Document environment-variable names and rotation status only - never secret values - in
+SECURITY_REVIEW.md and DEVELOPER_HANDOFF.md.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 5
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+4. Edge Firewall, WAF & Network Security
+25. Edge WAF. Deploy/configure AWS WAF or the actual hosting provider equivalent in front of public AI PowerSalon surfaces.
+26. WAF coverage. Protect POS API, Super Admin API, public booking, customer APIs, authentication and appropriate webhook
+surfaces.
+27. Managed WAF rules. Enable and tune managed protections for common exploits, SQL injection patterns, scanners, bad bots,
+account-takeover behavior and application-layer DDoS signals.
+28. Rate-based WAF rules. Apply stronger rate controls to login, password reset, OTP/MFA, public booking, customer search, device
+registration and payment verification endpoints.
+29. Super Admin edge protection. Support stronger Super Admin policies such as VPN/identity-aware proxy, trusted device, IP/region
+restrictions where operationally appropriate, mandatory MFA and account-takeover protection.
+30. TLS only. Production must use HTTPS only with correct certificates; redirect or block plaintext HTTP.
+31. HSTS. Enable HSTS only after HTTPS is correctly deployed and validated.
+32. Private database. PostgreSQL must not be exposed publicly on unrestricted port 5432; place it behind private networking/firewall
+rules.
+33. Network segmentation. Prefer Internet -> WAF/ALB -> app/private compute -> private database, with explicit service-to-service
+access.
+34. Administrative access. Avoid unrestricted SSH; use controlled administrative access and least privilege.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 6
+                                                              AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+5. Internal Application Security Gateway
+35. Application Security Gateway. Create or consolidate a cross-cutting SecurityGateway/ApplicationSecurityGuard that coordinates
+request ID, identity, session/device validity, realm, tenant/branch context, request limits and security logging without becoming a
+business-logic god object.
+36. Trusted SecurityContext. Build trusted server-derived SecurityContext containing requestId, userId, realm, tenantId, authorized
+branches, active branch, permissions, device/session ID and support-mode context where applicable.
+37. Deny by default. If realm, tenant, resource ownership or permission cannot be established, deny access.
+38. Route security metadata. Every sensitive route declares required realm, permission, resource scope and step-up requirement
+where applicable.
+39. Automated route audit. Add a test that inventories routes/controllers and fails when sensitive routes lack required security
+metadata.
+40. Input validation. Validate request schemas on the server; reject unexpected fields, invalid content types, oversized bodies and
+malformed identifiers.
+41. Body limits. Apply global JSON/body limits plus tighter endpoint-specific limits; use dedicated file-upload limits.
+42. Pagination limits. Enforce bounded pagination on every list API; reject/limit attempts to request massive result sets.
+43. Rate limits. Implement global and endpoint-specific rate limiting appropriate to cost and risk.
+44. Expensive endpoints. Protect customer search, availability, reports, exports, AI calls and OCR from resource-exhaustion abuse.
+45. Error handling. Return safe structured errors and correlation IDs without leaking stack traces, SQL, secrets, internal paths or
+infrastructure details.
+46. Security headers. Deploy Content-Security-Policy, X-Content-Type-Options, Referrer-Policy, Permissions-Policy, HSTS and frame-
+ancestors as appropriate.
+47. Clickjacking. Prevent unauthorized framing of POS and Super Admin.
+48. CORS. Use explicit approved origins for protected/credentialed APIs; never wildcard credentialed CORS.
+
+
+
+
+                                              Claude / Developer Security Completion Mandate | 7
+                                                              AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+6. Authentication & Session Security
+49. Authentication realms. Keep EMPLOYEE, PLATFORM, CUSTOMER, PUBLIC_BOOKING, SERVICE and INTEGRATION realms strictly
+separated.
+50. Super Admin MFA. Require MFA for all production Super Admin/platform accounts with no normal opt-out.
+51. Password storage. Use a current strong one-way password hashing algorithm and safe parameters; never plaintext or reversible
+passwords.
+52. Access tokens. Use short-lived access tokens consistent with the existing architecture; do not grant long-lived bearer
+payment/admin authority.
+53. Refresh rotation. Use rotating refresh-token families with expiration, device/session association and reuse detection.
+54. Refresh-token reuse. A reused rotated refresh token must trigger the configured family/session security response and audit alert.
+55. Logout. Logout invalidates the server-side refresh session/family, not only local storage.
+56. Remote session revocation. Owners/platform admins can revoke appropriate sessions/devices; revocation is enforced server-side.
+57. Employment termination. Terminated/disabled employees promptly lose POS, queue, payment and session authority.
+58. Credential stuffing. Protect login with rate limits, progressive response controls, MFA and security alerts without making attacker-
+triggered permanent lockout easy.
+59. Step-up authentication. Require fresh authentication for merchant changes, refunds, role/permission changes, new platform
+admins, Support Mode, device revocation, payment/security settings and other high-risk actions.
+60. Step-up freshness. Enforce a bounded freshness window and server-side proof rather than a frontend-only timer.
+61. Super Admin sessions. Provide session/device visibility, last activity and revocation for platform accounts.
+62. Biometric boundary. If mobile biometrics are used, OS biometrics unlock device-bound credentials; backend never stores
+biometric templates.
+63. Session expiry in realtime. Expired/revoked sessions stop receiving realtime data and cannot continue authorization through an
+existing WebSocket connection.
+64. Service credentials. Service/integration identities use separate credentials/scopes from human accounts and minimal permissions.
+65. Account recovery. Audit password reset/account recovery for enumeration resistance, token expiry, single use and audit logging.
+66. Security notifications. Notify appropriate owners/platform operators about high-risk login/session events without leaking secrets.
+
+
+
+
+                                              Claude / Developer Security Completion Mandate | 8
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+7. Authorization, Tenant & Branch Isolation
+67. Frontend is not authority. Hiding a button is UX only; every privileged operation is authorized on the backend.
+68. RBAC plus scope. Use RBAC + resource scope + policy conditions with OWN, ASSIGNED, BRANCH, SELECTED_BRANCHES, TENANT
+and PLATFORM as applicable.
+69. Mass-assignment defense. Audit direct object spreading/body-to-entity updates; clients cannot set tenantId, platformAdmin, role,
+permissions, merchantId, approved/paid status or other privileged fields unless explicitly authorized.
+70. Super Admin escalation tests. Attempt tenant/admin roles against platform routes, platform users, billing, tenant management,
+merchant configuration and Support Mode; expect denial without explicit platform authority.
+71. Tenant isolation P0. Tenant A must never read or mutate Tenant B customers, appointments, employees, payments, payroll,
+receipts, inventory, memberships, messages, devices or reports.
+72. Server-derived tenant. Do not trust req.body.tenantId, query tenantId or a custom tenant header as authority without
+authenticated verification.
+73. Scoped repositories. Tenant-owned repository queries require trusted tenant scope so object IDs cannot be used across tenants.
+74. IDOR tests. Systematically substitute IDs across customers, appointments, employees, payments, payroll, receipts, expenses,
+inventory, gift cards, memberships, messages, devices and reports.
+75. Branch isolation. Repeat equivalent tests for branch-scoped resources and manager access.
+76. Support Mode. Platform support access to tenant-private data requires explicit reason, tenant/scope, expiration and tamper-
+resistant audit.
+77. Cross-tenant exports. Exports and report jobs must re-enforce tenant/branch scope, including background-worker execution.
+78. Worker isolation. Background jobs carry trusted tenant context and cannot process arbitrary tenant IDs supplied by untrusted
+clients.
+79. File isolation. Signed file URLs/object access must enforce tenant ownership and expire appropriately.
+80. AI isolation. AI processing must receive only data permitted for the active tenant/branch and must not cross-contaminate tenant
+prompts/context.
+81. Cache isolation. Cache keys include tenant/branch scope where relevant to prevent cross-tenant collisions.
+82. Realtime isolation. Realtime channels/subscriptions are authorized server-side, not trusted from client channel names.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 9
+                                                            AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+8. Injection, Browser & Request Security
+83. SQL injection. Use parameterized Kysely queries; audit raw SQL/sql.raw/string concatenation and unsafe dynamic identifiers.
+84. Dynamic sorting. Whitelist sort columns and direction; never concatenate arbitrary client expressions into SQL.
+85. DB privileges. Application database user must not run as PostgreSQL superuser and should have only required privileges.
+86. Database TLS. Use encrypted DB connections where appropriate for deployed topology.
+87. XSS audit. Search dangerouslySetInnerHTML, innerHTML, rich text, markdown renderers, notes and announcement rendering for
+unsafe execution.
+88. Output escaping. Treat customer, employee and platform-entered content as untrusted and render safely.
+89. CSP. Deploy a strict practical Content Security Policy and remove unsafe-inline/unsafe-eval where possible.
+90. CSRF. If cookies carry authentication, implement robust CSRF defenses; review browser credential behavior even with bearer
+tokens.
+91. SSRF audit. Audit every server-side URL fetch influenced by users, including receipt/image imports, webhook testers, AI fetches and
+integration setup.
+92. SSRF private ranges. Block attacker-controlled access to localhost, RFC1918/private ranges, link-local/cloud metadata and internal
+service hostnames unless explicitly required.
+93. Egress allowlist. Where practical, restrict high-risk server egress to approved destinations such as Fiserv, Twilio, AWS, SendGrid
+and approved AI providers.
+94. Command injection. Audit exec/spawn/shell usage and never pass untrusted user values through a shell.
+95. Dynamic code. Remove unnecessary eval/Function usage, especially around untrusted input.
+96. Template injection. Audit server/client templating and report-generation paths for unsafe expression execution.
+97. Path traversal. Validate filesystem/object keys; never derive server paths directly from user-supplied filenames.
+98. Open redirects. Validate redirect/return URLs used in auth, booking or integrations.
+99. Header injection. Sanitize values written into response headers, filenames and content-disposition.
+100. Prototype pollution. Audit unsafe object merges and dependency exposure to prototype pollution.
+101. Deserialization. Avoid unsafe deserialization of untrusted objects or provider payloads.
+
+
+
+
+                                            Claude / Developer Security Completion Mandate | 10
+                                                            AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+9. Upload, Webhook & Realtime Security
+102. Hostile upload model. Treat receipts, portfolio images, ads, documents and avatars as hostile until validated.
+103. Upload validation. Validate extension, MIME, magic bytes, size, ownership and supported format.
+104. Quarantine. Upload -> quarantine -> malware scan -> clean -> process; unscanned documents are never treated as trusted.
+105. Object storage. Use private bucket/container, randomized keys, encryption, signed URLs with short TTL and tenant-safe
+authorization.
+106. Malware scanner failure. If malware scanning is unavailable, keep the file quarantined rather than assuming it is clean.
+107. Webhook authenticity. Verify provider-supported signatures/authentication for Fiserv/CardPointe, Clover, Twilio and every
+webhook integration.
+108. Webhook replay. Use timestamps/event IDs/idempotency/replay checks where supported.
+109. Webhook tenant resolution. Resolve tenant through trusted merchant/provider configuration, not attacker-controlled payload
+fields alone.
+110. Webhook schemas. Strictly validate webhook payload shape and reject unexpected types/fields where appropriate.
+111. Realtime auth. Authenticate every WebSocket/realtime connection.
+112. Realtime subscription auth. Authorize subscriptions server-side against trusted tenant/branch scope.
+113. Realtime event validation. Validate inbound client events; never allow a client to forge server-authoritative business events.
+114. Realtime revocation. Revoked/expired sessions must lose realtime access even if the socket remains open until the server closes it.
+115. Realtime payload minimization. Send only the data required for the subscriber surface; avoid leaking other tenants or
+unnecessary PII.
+116. Reconnect safety. On reconnect, fetch authorized snapshots and resume newer events without exposing stale/unauthorized state.
+
+
+
+
+                                            Claude / Developer Security Completion Mandate | 11
+                                                            AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+10. Payment Security
+117. Payment high-risk review. Deep-audit CardPointe, Fiserv, Clover, Tap to Pay, wallet top-up, refunds, voids and split tender.
+118. No raw card data. Never store/log PAN, CVV, track data or raw NFC/card payloads; use certified provider SDKs and
+token/reference data.
+119. Merchant isolation. Merchant config is derived from trusted tenant + branch and cannot be selected by arbitrary client merchant
+IDs.
+120. Stable idempotency. Financial retry identity is stable per logical intent; never use Date.now/random retry values that create a
+new payment.
+121. Unknown payment rule. UNKNOWN is not DECLINED; block conflicting tenders, verify provider state and reconcile before retry.
+122. Unsettled guard. Check payments, payment_attempts, app/mobile payment intents and wallet/top-up intents before allowing
+another conflicting tender.
+123. Refund idempotency. Repeated refund/verify commands must not produce duplicate processor effects.
+124. Payment concurrency. Use transaction/locking/version/claim constraints so POS and phone cannot charge the same Checkout
+concurrently.
+125. Provider secrets. Payment provider secrets remain server-side and never in POS/mobile bundles.
+126. Webhook payment reconciliation. Processor webhooks are authenticated, idempotent and correlated to trusted merchant/intent
+records.
+127. Payment audit. Every payment/refund/void records tenant, branch, user, device where applicable, Checkout, intent and provider
+reference without raw card data.
+128. Payment log scan. Security test searches logs/telemetry for PAN-like data, CVV, Authorization headers, provider keys and refresh
+tokens; expected none.
+129. Wallet/top-up recovery. Unknown top-up results use stable intent + provider inquiry and credit the wallet exactly once.
+130. Tap to Pay device trust. Each payment phone uses unique device identity/session, secure storage, branch authorization and
+independent remote revocation.
+
+
+
+
+                                            Claude / Developer Security Completion Mandate | 12
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+11. Super Admin Maximum Protection
+131. Super Admin crown jewel. Treat Super Admin compromise as P0 and apply stricter controls than normal POS.
+132. Mandatory platform MFA. All platform/Super Admin accounts require MFA in production.
+133. Critical-action step-up. Require fresh authentication for merchant credentials, platform admins, role changes, tenant
+suspension/deletion, Support Mode, device revocation and security settings.
+134. Platform admin creation. Creating/promoting platform admins requires explicit permission, fresh step-up and audit; consider
+dual approval for highest privilege if operationally appropriate.
+135. Super Admin rate limits. Apply aggressive but safe rate limits/account-takeover controls on platform login/MFA/recovery.
+136. Super Admin network controls. Support VPN/IP/identity-aware proxy/trusted-device policies as configurable stronger protection,
+without hard-coding a brittle geography rule.
+137. Platform audit. Audit login, MFA, role changes, tenant operations, merchant changes, Support Mode and secret/config changes.
+138. Emergency security mode. Provide controlled, audited kill switches such as revoking platform sessions, disabling a compromised
+tenant session/provider/payment operation or temporarily restricting login.
+139. Tenant privacy. Platform users do not browse tenant-private data by default; Support Mode is time/scope limited and audited.
+140. Admin session review. Expose active sessions/devices/last activity and revoke controls for platform operators.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 13
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+12. CI/CD, Cloud, Backups & Operational Security
+141. Branch protection. Protect main/release branches with code review and required CI checks.
+142. SAST. Add static application security testing for TypeScript/JavaScript/NestJS/React and infrastructure definitions.
+143. SCA. Run software composition analysis against production dependencies.
+144. Secret scanning. Run secret scanning in CI and repository history; add pre-commit protection where practical.
+145. Container scanning. Scan base images, OS packages and application dependencies in containers.
+146. Artifact provenance. Where supported, maintain release artifact integrity/provenance and trusted build pipelines.
+147. IAM least privilege. Audit cloud IAM; app workloads should not have broad AdministratorAccess.
+148. Bucket permissions. Application roles access only required storage buckets/prefixes and operations.
+149. Encryption. Use encryption in transit and at rest for sensitive systems.
+150. Backups. Maintain encrypted, access-controlled backups with retention and multiple recovery points.
+151. Restore test. Actually restore to an isolated database/environment, boot representative services and verify
+tenant/customer/payment/payroll records.
+152. Backup blast radius. A compromised application credential should not automatically have authority to delete all backups.
+153. Monitoring. Monitor auth failures, WAF spikes, cross-tenant denials, token reuse, admin creation, merchant changes, suspicious
+payment retries and malware uploads.
+154. Security alerts. Route critical alerts to appropriate operators with correlation IDs and actionable context.
+155. Patch posture. Keep OS/runtime/container/dependencies on supported patched versions and document exceptions.
+156. Environment separation. Separate development/staging/production credentials and infrastructure boundaries.
+157. Production data in lower env. Do not copy unredacted production PII/secrets into development/testing without deliberate
+controls.
+158. Developer access. Use individual MFA-protected accounts, least privilege and avoid unnecessary production credentials on
+laptops.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 14
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+13. Incident Response & Security Testing
+159. Incident runbook. Create SECURITY_INCIDENT_RUNBOOK.md covering stolen Super Admin, DB/AWS/Twilio/merchant credential
+leak, malicious dependency, developer malware, ransomware, cross-tenant exposure and payment incident.
+160. Incident flow. Use DETECT -> CONTAIN -> REVOKE -> PRESERVE EVIDENCE -> ERADICATE -> ROTATE -> RECOVER -> VERIFY ->
+POSTMORTEM.
+161. Authentication test suite. Test invalid credentials, brute-force/rate behavior, expired/revoked tokens, refresh reuse, wrong realm,
+disabled/terminated employees and account recovery.
+162. Authorization test suite. Test every role against forbidden functions and sensitive resource scopes.
+163. Injection tests. Safely test SQL injection, XSS, command injection and template injection against staging.
+164. SSRF tests. Use controlled targets to prove private networks/cloud metadata/internal hosts are blocked from attacker-influenced
+URL fetches.
+165. Upload security tests. Test wrong MIME/extension, oversized files, polyglot/path traversal names and a safe malware-test fixture.
+166. API abuse tests. Test huge page limits, oversized JSON, rapid requests, duplicate requests and concurrent operations.
+167. Super Admin tests. Test tenant user -> platform route, stale MFA, expired Support Mode and revoked platform sessions.
+168. Realtime tests. Attempt unauthorized tenant/branch channel subscriptions and forged client events.
+169. Payment security tests. Test double submit, lost response/unknown state, concurrent card/cash, duplicate refund and wrong-
+tenant merchant attempts.
+170. Security regression policy. Every meaningful vulnerability fix must add a regression test that fails before the fix and passes after
+it where practical.
+171. Penetration test. Before broad production rollout, commission an independent penetration test and track
+Critical/High/Medium/Low remediation status.
+172. No fake PASS. Use PASS only with executed evidence; use NOT_TESTED or BLOCKED_EXTERNAL honestly.
+173. Residual risk. Final report must list remaining risks instead of claiming zero risk.
+174. Pilot after hardening. Run the full AI PowerSalon pilot after security changes to catch regressions in Booking, Checkout,
+Payments, Payroll, Communications, Customer Display and Super Admin.
+175. Performance safety. Security controls must not silently disable core workflows or create unacceptable latency; measure critical
+endpoints after hardening.
+176. Change rollback. Document safe rollback/feature-flag strategy for high-risk security changes where applicable.
+
+
+
+
+                                             Claude / Developer Security Completion Mandate | 15
+                                                                  AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+14. Documentation, Acceptance & Developer Handoff
+177. Required security docs. Create/update SECURITY_REVIEW.md, SECURITY_THREAT_MODEL.md, SECURITY_ATTACK_SURFACE.md,
+SECURITY_FIX_REGISTER.md, SECURITY_TEST_REPORT.md, SECURITY_INCIDENT_RUNBOOK.md,
+DEPENDENCY_SECURITY_REPORT.md, SBOM, DEVELOPER_HANDOFF.md and NEXT_STEPS.md.
+178. Security fix register. Every issue records ID, severity, app/module/route, vulnerability, exploit precondition, impact, root cause,
+fix, files changed, regression test and status.
+179. Severity model. Use P0 Critical, P1 High, P2 Medium, P3 Low and prioritize data/security/financial integrity ahead of cosmetic
+work.
+180. Files changed. Final handoff lists exact created/modified/deprecated/deleted repository paths.
+181. Migrations. List every security-related migration, constraints/indexes, purpose, execution status and compatibility considerations.
+182. Infrastructure actions. Separate IMPLEMENTED, REQUIRES KEVIN and BLOCKED_EXTERNAL for WAF, network, secrets, backup,
+MFA/provider-console actions.
+183. Test commands. Record exact commands actually executed for build, security, tenant isolation, dependency, secret, SAST/SCA,
+pilot and restore tests.
+184. Backdoor/malware conclusion. Report FOUND, NOT FOUND or SUSPICIOUS/REQUIRES REVIEW with evidence and limitations.
+185. Final security architecture. Document edge WAF -> API security -> auth -> session -> tenant/branch -> permission -> domain ->
+database controls as actually implemented.
+186. Super Admin report. Document MFA, session controls, step-up, network/edge controls, Support Mode, auditing and emergency
+revocation.
+187. Tenant isolation evidence. Include executed cross-tenant and cross-branch regression evidence for representative domains.
+188. Payment security evidence. Include idempotency, unknown-state recovery, merchant isolation, refund protection and
+concurrency evidence.
+189. Supply-chain evidence. Include SBOM, dependency scan, SAST/SCA, secret scan, container scan and outstanding vulnerable
+dependencies/exceptions.
+190. Backup evidence. Include actual restore-test result, not only backup configuration screenshots.
+191. Developer continuation. NEXT_STEPS.md must distinguish internal remaining work from external actions and include exact
+acceptance criteria.
+192. Stop condition. Claude may stop only when internally fixable assigned security work is remediated/tested, remaining items are
+clearly BLOCKED_EXTERNAL, or an irreversible production decision requires explicit owner approval.
+
+
+
+
+                                                  Claude / Developer Security Completion Mandate | 16
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+Application Security Gateway - Reference Architecture
+EDGE WAF / DDoS
+ ↓
+TLS / REVERSE PROXY
+ ↓
+Request ID + body/content limits
+ ↓
+Authentication
+ ↓
+Session / device validation
+ ↓
+Realm guard
+ ↓
+Trusted tenant + branch context
+ ↓
+Permission / policy guard
+ ↓
+DTO validation
+ ↓
+Domain invariants
+ ↓
+Tenant-scoped repository
+ ↓
+PostgreSQL
+
+
+
+
+Do not create a giant god middleware
+SecurityGateway coordinates cross-cutting protections. Booking, payments, payroll and other business rules remain in their
+domain services/policies. The goal is layered enforcement, not one monolithic security function.
+
+
+
+
+Super Admin Maximum Protection Profile
+ • Mandatory MFA for every platform account.
+ • Shorter sessions and rotating refresh-token families with reuse detection.
+ • Fresh step-up for platform-user/role changes, merchant changes, tenant suspension/deletion, Support Mode and security settings.
+ • WAF/account-takeover controls and aggressive rate limits on login/MFA/recovery.
+ • Active session/device visibility and remote revocation.
+ • Support Mode reason + tenant + scope + expiration + audit.
+ • Optional VPN/IP/identity-aware proxy/trusted-device policy for especially privileged operator accounts.
+ • Tamper-resistant audit and alerts for unusual platform activity.
+
+
+Security Acceptance Matrix
+Control                                                                Required Result
+
+MALWARE / BACKDOOR SCAN                                               PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SECRET SCAN                                                           PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+DEPENDENCY SCAN                                                       PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SBOM                                                                  PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+EDGE WAF                                                              PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+DDoS PROTECTION                                                       PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+                                            Claude / Developer Security Completion Mandate | 17
+                                                AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+BOT / ACCOUNT-TAKEOVER PROTECTION                         PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+APPLICATION SECURITY GATEWAY                              PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+AUTHENTICATION                                            PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SUPER ADMIN MFA                                           PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SESSION ROTATION                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+REFRESH REUSE DETECTION                                   PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+AUTHORIZATION                                             PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+TENANT ISOLATION                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+BRANCH ISOLATION                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+IDOR TESTS                                                PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SQL INJECTION                                             PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+XSS                                                       PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+CSRF                                                      PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+CORS                                                      PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SSRF                                                      PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+COMMAND INJECTION                                         PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+FILE UPLOAD SECURITY                                      PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+WEBHOOK SECURITY                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+REALTIME SECURITY                                         PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+PAYMENT SECURITY                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SUPER ADMIN HARDENING                                     PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+AUDIT LOGGING                                             PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SECURITY ALERTING                                         PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+DATABASE NETWORK SECURITY                                 PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+BACKUP ENCRYPTION                                         PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+RESTORE TEST                                              PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+CI/CD SECURITY                                            PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SAST                                                      PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SCA                                                       PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+SECRET SCANNING                                           PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+CONTAINER SCANNING                                        PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+PENETRATION TEST                                          PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL
+
+
+
+                                Claude / Developer Security Completion Mandate | 18
+                                                             AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+Definition of Done
+ • All P0 findings are fixed or explicitly blocked by an external/irreversible requirement.
+ • All externally reachable routes are inventoried and protected according to realm/scope.
+ • Tenant and branch isolation regression suites pass.
+ • Super Admin MFA and critical-action step-up are enforced.
+ • Refresh rotation, reuse detection and revocation work.
+ • Secrets are removed from source/client bundles and exposed credentials are rotated.
+ • Production database is private and least-privilege.
+ • WAF/rate/security headers/CSP/CORS are configured where infrastructure permits.
+ • SQL is parameterized; XSS/SSRF/command/file/webhook/realtime protections are tested.
+ • Unknown-payment and idempotency rules remain safe.
+ • Audit and alerting cover critical security events.
+ • SAST/SCA/secret/dependency/container scanning is automated as applicable.
+ • Backup restore is actually tested.
+ • Full product pilot passes after hardening.
+ • Security documentation and developer handoff are updated.
+
+
+Permanent AI PowerSalon Security Rules
+NEVER TRUST THE CLIENT.
+NEVER TRUST A TENANT ID FROM THE CLIENT.
+NEVER TRUST A BRANCH ID WITHOUT AUTHORIZATION.
+NEVER TRUST FRONTEND PERMISSIONS.
+DENY BY DEFAULT.
+EVERY SENSITIVE ROUTE REQUIRES BACKEND AUTHORIZATION.
+SUPER ADMIN IS A CROWN-JEWEL SYSTEM.
+MFA IS MANDATORY FOR SUPER ADMIN.
+CRITICAL ADMIN CHANGES REQUIRE STEP-UP.
+NO PLAINTEXT PASSWORDS.
+REFRESH TOKENS ROTATE AND STOLEN SESSIONS ARE REVOCABLE.
+NO CROSS-TENANT DATA.
+NO UNAUTHORIZED CROSS-BRANCH ACCESS.
+NO RAW CARD DATA.
+NO PROVIDER SECRETS IN CLIENT APPS.
+NO PUBLIC DATABASE.
+NO RAW SQL STRING CONCATENATION.
+NO UNTRUSTED HTML EXECUTION.
+NO UNSCANNED UPLOAD TREATED AS TRUSTED.
+NO ATTACKER-CONTROLLED URL FETCH WITHOUT SSRF DEFENSE.
+NO ARBITRARY SHELL EXECUTION WITH USER INPUT.
+NO WEBHOOK WITHOUT AUTHENTICITY CHECK.
+NO REALTIME SUBSCRIPTION WITHOUT AUTHORIZATION.
+NO FINANCIAL RETRY WITHOUT STABLE IDEMPOTENCY.
+UNKNOWN PAYMENT IS NOT DECLINED.
+NO SECRET COMMITTED TO GIT.
+NO PRODUCTION MOCK SECURITY.
+POSTGRESQL REMAINS BUSINESS TRUTH.
+REALTIME IS DELIVERY, NOT AUTHORIZATION TRUTH.
+
+                                             Claude / Developer Security Completion Mandate | 19
+                                                               AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+WAF IS ONE LAYER, NOT THE ONLY LAYER.
+BACKUPS MUST ACTUALLY BE RESTORABLE.
+
+
+Final Instruction to Claude
+ Build defense in depth
+ Do not implement one fake "power firewall" function and declare AI PowerSalon secure. Deep-scan the real repository, fix
+ exploitable holes, add layered edge/network/session/authorization/domain/database/supply-chain/recovery protections, then
+ prove the controls with executed tests and update the developer handoff.
+
+
+
+ FIND THE HOLES
+ FIND BACKDOORS / PERSISTENCE
+ FIND EXPOSED SECRETS
+ FIND AUTH BYPASSES
+ FIND TENANT / BRANCH LEAKS
+ FIND PRIVILEGE ESCALATION
+ FIND INJECTION / SSRF / XSS / COMMAND RISKS
+ FIND UNSAFE UPLOADS / WEBHOOKS / REALTIME
+ FIND PAYMENT / SESSION RACE CONDITIONS
+ FIX ROOT CAUSE
+ ADD DEFENSE
+ ADD TESTS
+ RUN THE FULL PILOT
+ DOCUMENT WHAT REMAINS
+
+
+
+The final objective is that if one security layer is bypassed, another layer still stops the attacker, limits blast radius, produces a
+useful alert, and allows AI PowerSalon to revoke or contain the compromise quickly.
+
+
+Required Developer Handoff
+  • SECURITY_REVIEW.md - final architecture, findings, residual risk.
+  • SECURITY_THREAT_MODEL.md - assets, actors, attack paths and mitigations.
+  • SECURITY_ATTACK_SURFACE.md - routes, channels, integrations and controls.
+  • SECURITY_FIX_REGISTER.md - exact P0/P1/P2/P3 issues and remediation evidence.
+  • SECURITY_TEST_REPORT.md - exact commands, environments and results.
+  • SECURITY_INCIDENT_RUNBOOK.md - containment/revocation/recovery procedures.
+  • DEPENDENCY_SECURITY_REPORT.md + SBOM - dependency/supply-chain status.
+  • DEVELOPER_HANDOFF.md - exact code/config/migrations changed and how to continue.
+  • NEXT_STEPS.md - ordered remaining internal vs BLOCKED_EXTERNAL work with acceptance tests.
+
+
+Required Claude Final Security Report
+A. Existing Security Architecture
+Exact auth/session/device/permission/WAF/network/realtime/payment/security modules found.
+
+B. Findings
+Every P0/P1/P2/P3 issue with root cause, exploit precondition, impact and status.
+
+C. Backdoor/Malware Review
+FOUND / NOT FOUND / SUSPICIOUS-REQUIRES-REVIEW with evidence and limitations.
+
+D. Security Architecture After Changes
+Actual Internet -> WAF -> API -> Auth -> Tenant/Branch -> Permission -> Domain -> DB design.
+
+                                               Claude / Developer Security Completion Mandate | 20
+                                                         AI PowerSalon | Full Security Deep Scan, Anti-Hack Hardening & Zero-Trust Protection
+
+E. Super Admin Protection
+MFA, step-up, sessions/devices, Support Mode, rate/network controls and audit.
+
+F. Tenant/Branch Isolation
+Executed IDOR/cross-tenant/cross-branch evidence.
+
+G. Payment Security
+Stable idempotency, unknown-state recovery, merchant isolation, refund/void and concurrency.
+
+H. Supply Chain
+SBOM, dependency/SAST/SCA/secret/container results and remaining exceptions.
+
+I. Infrastructure Actions
+IMPLEMENTED / REQUIRES KEVIN / BLOCKED_EXTERNAL.
+
+J. Files & Migrations
+Exact repository paths and schema changes.
+
+K. Test Evidence
+Exact commands and PASS/FAIL/NOT_TESTED/BLOCKED_EXTERNAL results.
+
+L. Residual Risk
+Honest remaining risks; never claim zero risk.
+
+
+
+
+                                         Claude / Developer Security Completion Mandate | 21
+

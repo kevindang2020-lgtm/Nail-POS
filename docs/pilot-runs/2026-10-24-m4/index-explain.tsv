@@ -1,0 +1,36 @@
+before	blocked: board day (tenant, branch-or-null, date)	0.158 ms	74 buf	40 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech
+before	blocked: one tech one day (availability port)	0.093 ms	70 buf	0 rows	Index Scan idx_technician_blocked_times_tenant_branch_tech
+before	blocked: 200 techs one day (go check-in / queue state)	0.107 ms	71 buf	40 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech
+before	blocked: 200 techs 14-day range (payroll autobuild)	0.254 ms	96 buf	599 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech
+before	queue: last served today per tech (queue state)	18.300 ms	3472 buf	0 rows	Bitmap Heap Scan on pos_queue_items / Bitmap Index Scan idx_pos_queue_items_tenant_branch / Bitmap Index Scan idx_pos_queue_items_tenant_branch
+before	queue: tech in_service (identity transfer)	0.010 ms	2 buf	0 rows	Index Scan idx_pos_queue_items_branch_active
+before	queue: by appointment (booking reassign / check-in)	12.053 ms	3472 buf	1 rows	Bitmap Heap Scan on pos_queue_items / Bitmap Index Scan idx_pos_queue_items_tenant_branch / Bitmap Index Scan idx_pos_queue_items_tenant_branch
+before	queue: by ticket (service done)	9.977 ms	3469 buf	1 rows	Bitmap Heap Scan on pos_queue_items / Bitmap Index Scan idx_pos_queue_items_tenant_branch
+before	techq: by appointment (booking detail)	3.604 ms	1508 buf	1 rows	Bitmap Heap Scan on pos_tech_queue_tickets / Bitmap Index Scan idx_pos_tech_queue_tenant / Bitmap Index Scan idx_pos_tech_queue_tenant
+before	techq: 50 page appointments (booking list)	4.873 ms	1508 buf	22 rows	Bitmap Heap Scan on pos_tech_queue_tickets / Bitmap Index Scan idx_pos_tech_queue_tenant / Bitmap Index Scan idx_pos_tech_queue_tenant
+before	techq: by ticket (service done)	6.518 ms	1525 buf	1 rows	Bitmap Heap Scan on pos_tech_queue_tickets / Bitmap Index Scan idx_pos_tech_queue_tech
+before	technicians: email duplicate at create	0.130 ms	8 buf	1 rows	Bitmap Heap Scan on technicians / Bitmap Index Scan idx_technicians_tenant_branch
+before	appointments: day, 12 visible techs	0.094 ms	42 buf	60 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_updated
+before	appointments: day, whole salon	0.289 ms	34 buf	1000 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appts_tenant_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date
+before	appointments: day, 200 techs (queue state)	0.908 ms	628 buf	1000 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_updated
+after	blocked: board day (tenant, branch-or-null, date)	0.160 ms	74 buf	40 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech
+after	blocked: one tech one day (availability port)	0.015 ms	3 buf	0 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_date
+after	blocked: 200 techs one day (go check-in / queue state)	0.031 ms	3 buf	40 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_date
+after	blocked: 200 techs 14-day range (payroll autobuild)	0.288 ms	96 buf	599 rows	Bitmap Heap Scan on technician_blocked_times / Bitmap Index Scan idx_technician_blocked_times_tenant_branch_tech
+after	queue: last served today per tech (queue state)	0.338 ms	600 buf	0 rows	Index Scan idx_pos_queue_items_tenant_tech_started
+after	queue: tech in_service (identity transfer)	0.010 ms	2 buf	0 rows	Index Scan idx_pos_queue_items_branch_active
+after	queue: by appointment (booking reassign / check-in)	0.012 ms	4 buf	1 rows	Index Scan idx_pos_queue_items_tenant_appointment
+after	queue: by ticket (service done)	0.022 ms	7 buf	1 rows	Bitmap Heap Scan on pos_queue_items / Bitmap Index Scan idx_pos_queue_items_tenant_ticket / Bitmap Index Scan pos_queue_items_pkey
+after	techq: by appointment (booking detail)	0.011 ms	4 buf	1 rows	Index Scan idx_pos_tech_queue_tenant_appointment
+after	techq: 50 page appointments (booking list)	0.054 ms	170 buf	22 rows	Index Scan idx_pos_tech_queue_tenant_appointment
+after	techq: by ticket (service done)	0.010 ms	4 buf	1 rows	Index Scan idx_pos_tech_queue_tenant_ticket
+after	technicians: email duplicate at create	0.070 ms	8 buf	1 rows	Bitmap Heap Scan on technicians / Bitmap Index Scan idx_technicians_tenant_branch
+after	appointments: day, 12 visible techs	0.041 ms	42 buf	60 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_updated
+after	appointments: day, whole salon	0.188 ms	34 buf	1000 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appts_tenant_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date
+after	appointments: day, 200 techs (queue state)	0.598 ms	628 buf	1000 rows	Bitmap Heap Scan on pos_tech_appointments / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_tech_date / Bitmap Index Scan idx_pos_tech_appointments_tenant_branch_updated
+size	idx_pos_queue_items_tenant_appointment	23 MB
+size	idx_pos_queue_items_tenant_tech_started	35 MB
+size	idx_pos_queue_items_tenant_ticket	33 MB
+size	idx_pos_tech_queue_tenant_appointment	11 MB
+size	idx_pos_tech_queue_tenant_ticket	11 MB
+size	idx_technician_blocked_times_tenant_date	600 kB

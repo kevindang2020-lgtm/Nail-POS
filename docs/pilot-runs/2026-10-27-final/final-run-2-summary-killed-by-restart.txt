@@ -1,0 +1,23 @@
+21:41:54 final run — commit 3c5ae402 (2026-10-27 17:41:31 -0400) — node v22.22.0
+21:41:54 git status: 0 uncommitted file(s)
+21:41:54 START install
+21:42:32 END   install rc=0 :: 
+21:42:33 START migrations-fresh
+21:42:44 END   migrations-fresh rc=0 :: migrate: applying 529_safety_community_complete.sql ... ok (107 ms) migrate: applying 673_payroll_paychecks.sql ... ok (52 ms) migrate: complete — 642 applied, 0 already present (642 total). 
+21:42:44 START build-packages
+21:43:24 END   build-packages rc=0 :: 
+21:43:24 START build-modules
+21:50:13 END   build-modules rc=0 :: 
+21:50:13 START build-api
+21:50:39 END   build-api rc=0 :: 
+21:50:39 START build-frontends
+21:54:54 END   build-frontends rc=0 :: 
+21:54:54 START typecheck-api
+21:55:18 END   typecheck-api rc=0 :: 
+21:55:18 START lint
+21:56:25 END   lint rc=0 :: 
+21:56:25 START gates
+22:05:13 END   gates rc=0 :: PASS  vi-glossary PASS  admin-english-only all 54 gates + 21 audits passed 
+22:05:13 START tests-packages
+22:07:00 END   tests-packages rc=0 :: PASS  packages/ui: Test Files  6 passed (6) | Tests  78 passed (78) PASS  packages/web-push: Test Files  1 passed (1) | Tests  10 passed (10) all suites passed 
+22:07:00 START tests-modules

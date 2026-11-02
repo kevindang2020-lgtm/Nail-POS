@@ -1,0 +1,17 @@
+{
+  "note": "Reviewed HIGH/CRITICAL production advisories that are accepted for a bounded time (Security Deep Scan B6/B10, Oct 23 2026). Each entry says why it is not reachable here. The gate fails when an entry passes its reviewBy date or no longer matches an advisory. Upgrading is always the preferred fix.",
+  "advisories": [
+    {
+      "package": "kysely", "id": "GHSA-WMRF-HV6W-MR66", "reviewBy": "2027-01-31",
+      "reason": "JSON-path key injection (JSONPathBuilder.key()/.at() / eb.ref('col->...')). No code uses the JSON path builder (grep of apps/api/src, modules/*/src, packages/*/src). Fix is kysely >=0.28.17, a minor-version API change across ~700 query files — scheduled with the Nest 11 upgrade."
+    },
+    {
+      "package": "kysely", "id": "GHSA-8CPQ-38P9-67GX", "reviewBy": "2027-01-31",
+      "reason": "MySQL backslash escaping in sql.lit(string). The only dialect here is PostgreSQL. Every non-literal sql.lit/sql.raw/sql.ref call site is frozen by the check:raw-sql-inputs gate (apps/api/security/raw-sql-inputs.baseline.json) and each takes a constant, an allow-listed identifier or a validated zone name."
+    },
+    {
+      "package": "kysely", "id": "GHSA-PV5W-4P9Q-P3V2", "reviewBy": "2027-01-31",
+      "reason": "JSON-path traversal via path-leg metacharacters in JSONPathBuilder.key()/.at(). Not used (see GHSA-wmrf-hv6w-mr66)."
+    }
+  ]
+}

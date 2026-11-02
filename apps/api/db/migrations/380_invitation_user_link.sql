@@ -1,0 +1,36 @@
+-- 380_invitation_user_link.sql — an invitation must know WHO it is for.
+--
+-- == THE BUG THIS CLOSES ===================================================================================
+--
+-- `acceptInvitation` resolves the account being activated like this:
+--
+--     select id from users where lower(email) = lower(${inv.email}) and tenant_id = …
+--
+-- EMAIL ONLY. That was fine while `user_invitations.email` was NOT NULL — it was built for platform staff, who
+-- all have one.
+--
+-- Migration 379 let a technician be invited by SMS, because a nail technician frequently has a phone and no
+-- email. And it walked straight into this: for an SMS invitation `inv.email` IS NULL, `lower(email) = lower(NULL)`
+-- matches nothing, `found` comes back undefined — and the accept path falls into its ELSE branch and **INSERTS A
+-- SECOND `users` ROW**.
+--
+-- The consequences all arrive quietly, which is the worst part:
+--
+--   • two `users` rows for one technician at one salon
+--   • the NEW row has no `global_tech_profile_id`, so she is no longer linked to her own account
+--   • `technicians.user_id` still points at the ORIGINAL row, so `where user_id = ctx.userId` never matches and
+--     THE TECH APP STILL DOES NOT OPEN — the exact failure the whole global-identity arc exists to fix
+--   • cross-salon Face ID stops working, because that too keys on the global profile
+--
+-- She would accept the invitation, set a password, and be told she was all set. And nothing would work.
+--
+-- == THE FIX ==============================================================================================
+--
+-- Stop guessing. BOTH invite paths already know the `users` row when they mint the token — the platform's
+-- `sendInvitation` does a find-or-create immediately before, and the technician path has just created it. So the
+-- invitation records it, and `acceptInvitation` activates THAT row instead of trying to re-derive it from a
+-- column that may be null.
+--
+-- The email lookup stays as a fallback for invitations minted before this column existed.
+ALTER TABLE user_invitations ADD COLUMN IF NOT EXISTS user_id UUID;
+CREATE INDEX IF NOT EXISTS idx_user_invitations_user ON user_invitations (user_id) WHERE user_id IS NOT NULL;

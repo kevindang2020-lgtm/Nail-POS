@@ -1,0 +1,1695 @@
+                            AI PowerSalon | Full Platform Architecture & Completion Mandate
+
+
+
+                           AI POWERSALON
+       FULL PLATFORM ARCHITECTURE
+   Code Audit, Repair, Completion & Production Takeover Mandate
+                              Developer + Claude Master Build Guide
+             FRONTEND                               BACKEND
+                                                                                        INTEGRATIONS
+        POS, Super Admin, Owner,              NestJS, Domains, Kysely,
+                                                                                  Fiserv, CardPointe, Clover, Twilio,
+      Technician, Customer, Booking,        PostgreSQL, Events, Workers,
+                                                                                       AI, Storage, Push, Email
+       Customer Display, Mobile Pay                   Realtime
+
+
+
+Core mandate: inspect the real codebase first, preserve what works, merge duplicates, fix
+     gaps, wire every module end-to-end, run the builds/tests, and report truthfully.
+
+
+
+
+                                   AI PowerSalon Developer / Claude Build Guide | 1
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+
+Executive Implementation Map
+This document is the canonical whole-platform takeover guide. It consolidates the architecture and build
+requirements across every AI PowerSalon application and domain. Claude should use it as a repository-wide
+completion mandate, not as a greenfield design brief.
+ 01 Platform, repository, architecture                            07 Customer display and mobile Tap to Pay
+ 02 Identity, auth, permissions, API                              08 Payroll, inventory, loyalty, gift cards
+ 03 Events, workers, realtime                                     09 Twilio, AI, analytics, apps
+ 04 Customers, booking, check-in, visit                           10 Super Admin, observability, security
+ 05 Queues, fair turns, workforce, technicians                    11 DR, migrations, QA and builds
+ 06 Checkout and payments                                         12 Required final engineering reports
+
+
+
+
+                                         AI PowerSalon Developer / Claude Build Guide | 2
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+
+Master Instruction for Claude
+Claude,
+You are taking over an existing, large, production-oriented multi-tenant nail-salon SaaS/POS platform called AI
+PowerSalon.
+Your responsibility is not to redesign it from scratch.
+Your responsibility is to:
+   INSPECT
+    -> UNDERSTAND
+    -> MAP
+    -> CLASSIFY
+    -> PRESERVE
+    -> FIX
+    -> MERGE
+    -> COMPLETE
+    -> WIRE
+    -> MIGRATE
+    -> TEST
+    -> HARDEN
+    -> BUILD
+    -> DOCUMENT
+
+the entire existing AI PowerSalon codebase.
+You must inspect the real repository first. Do not create duplicate modules because something appears
+incomplete. Do not replace functioning architecture merely because you would have designed it differently. Do
+not stop with an audit report.
+After discovering gaps, continue implementing and repairing the code until everything that can be completed
+internally is completed.
+Only mark something BLOCKED_EXTERNAL when completion genuinely requires an outside dependency such as
+Fiserv production credentials, a Clover production device, Twilio/A2P approval, Apple Tap-to-Pay entitlement, App
+Store credentials, or external vendor certification. Internal incomplete work must not be mislabeled as external
+blockage.
+
+1. Platform Mission
+AI PowerSalon is a multi-tenant salon operating platform designed to scale from the current salon footprint to
+10,000+ tenants, hundreds of thousands of technicians, and millions of customers.
+It combines:
+
+
+
+
+                                       AI PowerSalon Developer / Claude Build Guide | 3
+                                    AI PowerSalon | Full Platform Architecture & Completion Mandate
+  POS
+  Booking
+  Customer Management
+  Technician / Workforce Management
+  Check-In
+  Customer Queue
+  Technician Fair Turn Queue
+  Serving
+  Checkout
+  Payments
+  Payroll
+  Inventory
+  Memberships
+  Gift Cards
+  Loyalty
+  Promotions
+  Marketing
+  Communications
+  AI
+  Analytics
+  Reporting
+  Customer Display
+  Mobile Apps
+  Super Admin
+
+into one coherent platform.
+
+2. Core Architecture Principle
+The platform architecture is:
+  MODULAR MONOLITH
+  +
+  DISTRIBUTED WORKERS
+  +
+  REALTIME GATEWAY
+  +
+  DURABLE EVENTS
+
+Do not prematurely convert the system into dozens of microservices. Domain boundaries must still be strong.
+
+3. Existing Core Technology Direction
+Preserve the existing healthy stack. Target architecture includes:
+  Backend: NestJS 10
+  Database Access: Kysely
+  Database: PostgreSQL 16+
+  POS Web: React 18 + Vite
+  Realtime: existing WebSocket / realtime architecture
+  Workers: dedicated worker processes
+  Redis: cache, session assistance, rate limiting, coordination, realtime fanout, short-lived locks
+  Object Storage: media, documents, receipts where appropriate
+  Secrets Manager: provider credentials
+  OpenTelemetry: logs, metrics, traces
+
+If exact package versions differ in the real repository, inspect first. Do not unnecessarily upgrade major
+frameworks while finishing business functionality.
+
+4. PostgreSQL Is Authoritative
+Permanent rule:
+  POSTGRESQL = BUSINESS TRUTH
+
+
+
+
+                                            AI PowerSalon Developer / Claude Build Guide | 4
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+Redis is never the authoritative source for appointments, payments, queue assignments, payroll, gift cards, loyalty
+balances, inventory, customer data, or employee records.
+
+5. Repository Discovery Comes First
+Before writing new architecture, inspect /apps, /modules, /packages, /libs, /services, /src and locate controllers,
+DTOs, services, domain services, repositories, ports, adapters, Kysely tables, migrations, events, workers, realtime
+gateways, API clients, React hooks, query hooks, stores, mobile clients, permissions, feature flags, and tests.
+Search especially for:
+  TODO
+  FIXME
+  HACK
+  TEMP
+  PLACEHOLDER
+  MOCK
+  NOT_IMPLEMENTED
+  throw new Error
+  fake
+  demo
+  stub
+  later
+  deprecated
+
+Also locate dead routes, dead buttons, duplicate APIs, duplicate services, duplicate tables, unused components,
+legacy endpoints, and hardcoded data.
+
+6. Classify Everything
+Every major feature must be marked:
+  COMPLETE
+  PARTIAL
+  BROKEN
+  NOT_WIRED
+  PLACEHOLDER
+  MOCK
+  DUPLICATE
+  LEGACY
+  DEPRECATED
+  UNSAFE
+  DEAD
+  MISSING
+  BLOCKED_EXTERNAL
+
+Do this at frontend, API, domain, repository, database, events, workers, realtime, permissions, audit, and tests
+levels.
+
+7. Golden Rule: One Business Concept = One Authority
+Do not allow AppointmentService, NewAppointmentService, AppointmentManager, and
+BookingAppointmentService to independently own appointments. Likewise avoid duplicate authorities for
+Customers, Technicians, Queue, Checkout, Payments, Payroll, Inventory, Loyalty, Gift Cards, Twilio, or AI. Find the
+correct authority and migrate all callers toward it.
+
+8. Canonical Platform Apps
+Target applications include:
+
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 5
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+  1. API
+  2. POS Web
+  3. Super Admin Web
+  4. Technician App
+  5. Owner App
+  6. Customer App
+  7. Online Booking
+  8. Customer Display
+  9. Owner / Manager Payment App
+  10. Workers
+  11. Realtime Gateway
+
+The AI Receptionist is another client/integration into the same business domains, not another database.
+
+9. Recommended Monorepo Ownership
+Move gradually toward this structure where practical:
+
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 6
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+  /apps
+   api
+   pos-web
+   super-admin
+   customer-app
+   technician-app
+   owner-app
+   customer-display
+   owner-manager-pay
+   workers
+   realtime
+
+  /modules
+   identity
+   tenants
+   branches
+   customers
+   booking
+   appointments
+   workforce
+   queue
+   servicing
+   catalog
+   inventory
+   checkout
+   payments
+   loyalty
+   memberships
+   gift-cards
+   deals
+   communications
+   ai
+   analytics
+   reports
+   security
+   audit
+   support
+
+  /packages
+   database
+   auth
+   permissions
+   tenant-context
+   api-contracts
+   events
+   realtime-contracts
+   notifications
+   payments
+   ai-platform
+   observability
+   security
+   feature-flags
+   config
+   errors
+   money
+   date-time
+   ui
+   mobile-sdk
+   testing
+
+Do not force restructuring if equivalent organization already exists.
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 7
+                                 AI PowerSalon | Full Platform Architecture & Completion Mandate
+10. Dependency Direction
+Apps may consume API contracts, SDKs, and UI packages. Business modules own domain rules. Infrastructure
+packages implement cross-cutting concerns.
+Never allow:
+  React Component -> PostgreSQL
+  Technician App -> Kysely
+  Appointment Module -> Twilio directly
+  Checkout Module -> Clover SDK directly
+  Queue Module -> socket room directly
+  AI Module -> unrestricted SQL
+
+11. Trusted Request Context
+Every authenticated request must create a trusted server context. Conceptually:
+  RequestContext {
+    requestId
+    correlationId
+    identityId
+    authRealm
+    tenantId?
+    branchId?
+    roles[]
+    permissions[]
+    scopes[]
+    deviceId?
+    sessionId
+  }
+
+Tenant and branch authorization must never depend only on req.body.tenantId, req.query.tenantId, or frontend
+localStorage.
+
+12. Multi-Tenant Isolation
+Every tenant-owned business entity must be tied to trusted tenant context. Tenant A must never access Tenant B
+customers, appointments, employees, payments, payroll, merchant account, Twilio, advertising, or reports.
+
+13. Branch Isolation
+Branch-scoped resources must include branch_id where applicable, including appointments, queues, terminals,
+technician shifts, merchant accounts, inventory, customer displays, and advertising.
+
+14. Tenant-Aware Database Integrity
+Use database constraints wherever possible. Do not depend only on application queries to prevent cross-tenant
+associations. An Appointment for Tenant A must not reference a Technician from Tenant B even if a bug bypasses
+service validation.
+
+15. Identity Architecture
+Separate GLOBAL IDENTITY from TENANT MEMBERSHIP. A user may belong to multiple tenants/branches.
+
+16. Authentication Realms
+Maintain separate authentication domains:
+  EMPLOYEE
+  PLATFORM
+  CUSTOMER
+  PUBLIC_BOOKING
+  SERVICE
+  INTEGRATION
+
+Do not create a universal token usable everywhere.
+                                           AI PowerSalon Developer / Claude Build Guide | 8
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+17. Employee Authentication
+Support existing implemented methods such as email/password, phone OTP, passkey, MFA, trusted device, and
+device biometric unlock depending on real code.
+
+18. Face ID / Touch ID
+Biometrics unlock a device-bound credential. The backend must never store Face ID templates or Touch ID
+fingerprint templates.
+
+19. Sessions
+Use short-lived access tokens, rotating refresh tokens, refresh-token families, reuse detection, session records,
+device trust, and revocation where already implemented.
+
+20. Employment Termination
+When employment ends, revoke tenant sessions, refresh tokens, device access, permission cache, and realtime
+connections. Professional/global identity may remain.
+
+21. Authorization Model
+Use:
+  RBAC + RESOURCE SCOPE + POLICY CONDITIONS
+
+Deny by default.
+
+22. Tenant Roles
+Possible built-ins include Owner, Admin, Manager, Receptionist, Technician, Accounting, Inventory, and
+Marketing plus custom roles.
+
+23. Platform Roles
+Super Admin roles are separate from tenant roles. A platform role must not automatically become Salon Owner
+inside every tenant.
+
+24. Permission Scopes
+Support OWN, ASSIGNED, BRANCH, SELECTED_BRANCHES, TENANT, and PLATFORM.
+
+25. Field-Level Authorization
+Even if a user may view Technician Profile, that does not mean they may see commission, payroll, private notes,
+or tax information. Use separate DTO projections.
+
+26. Feature Entitlement Is Not Permission
+Separate Plan allows feature from User has permission. Both may be required.
+
+27. API Architecture
+Use versioned domain APIs under /api/v1 and separate tenant, customer, public booking, platform, webhooks,
+integrations, and internal namespaces where appropriate.
+
+28. Standard API Envelope
+Normalize success, data, meta, requestId and a standard error structure.
+
+29. Runtime Validation
+All mutation DTOs require strict runtime validation. No mass assignment.
+
+30. Pagination
+Use cursor pagination for large datasets. Avoid SELECT every customer for normal pages.
+
+                                       AI PowerSalon Developer / Claude Build Guide | 9
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+31. Idempotency
+Critical mutations require idempotency, including payment, refund, check-in, appointment creation, gift-card
+redemption, payroll adjustment, and queue assignment.
+
+32. Optimistic Concurrency
+Use resource versions for appointment, customer, schedule, queue, checkout, inventory, payroll, and membership
+where simultaneous edits matter.
+
+33. Money
+Permanent rule:
+  NO FLOATING-POINT MONEY
+
+Use integer minor units or the existing precise NUMERIC convention consistently.
+
+34. Dates and Time
+Use UTC for stored timestamps where appropriate plus tenant/branch timezone for business interpretation.
+Handle DST, business day, pay periods, appointments, and reports correctly.
+
+35. Event Architecture
+Events mean something happened, not please do this. Keep commands/jobs separate.
+
+36. Event Envelope
+Normalize:
+  eventId
+  eventType
+  eventVersion
+  tenantId?
+  branchId?
+  aggregateType
+  aggregateId
+  correlationId
+  causationId
+  occurredAt
+  payload
+
+37. Transactional Outbox
+Critical domain mutation plus Outbox Event must commit in the same transaction. Workers/event dispatcher
+publish later.
+
+38. Delivery Semantics
+Assume AT-LEAST-ONCE DELIVERY. Consumers must be idempotent.
+
+39. Consumer Deduplication
+Persist processed-event keys for critical financial and side-effect consumers.
+
+40. Dead-Letter Handling
+Workers need retry, backoff, jitter, DLQ, and manual replay.
+
+41. Realtime Architecture
+Permanent flow:
+
+
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 10
+                                   AI PowerSalon | Full Platform Architecture & Completion Mandate
+  User Action
+   -> API
+   -> Domain
+   -> PostgreSQL Commit
+   -> Event
+   -> Realtime Projection
+   -> Client
+
+Never treat a socket event as business truth.
+
+42. Snapshot + Stream
+On reconnect: Get Snapshot -> Subscribe/Resume Stream -> Apply Events Newer Than Snapshot.
+
+43. Realtime Resource Version
+Events should contain resourceVersion. Clients ignore stale updates.
+
+44. Realtime Channels
+Authorize server-side. Examples: tenant:{tenantId}, branch:{branchId}, user:{userId}, technician:{technicianId},
+device:{deviceId}, checkout:{checkoutId}. Never trust arbitrary client room names.
+
+45. POS Safety Sync
+Operational screens use Realtime as primary and 15-second silent sync as fallback. No page reload, shading, or
+giant spinner on background fetch.
+
+46. Server Reconciliation
+Use targeted approximately 20-second server/client reconciliation where already planned. This is a safety layer,
+not primary state propagation.
+
+47. Customer Domain
+One customer platform identity may interact with multiple salons, but private salon customer data belongs to
+each tenant.
+
+48. Customer Data Model
+Separate global customer identity from tenant_customer where current architecture supports this.
+
+49. Customer History
+Tenant-private services, preferences, notes, appointments, loyalty, membership, and spending must not leak to
+another salon.
+
+50. Booking
+Booking must support Customer, Service, Technician, Any Technician, Branch, Date, Time, Add-ons, Duration,
+Pricing, Deposits where enabled, and Phone verification.
+
+51. Booking Conflict Prevention
+Never rely on polling alone. Use server transaction plus narrow scheduling conflict control:
+  BEGIN
+  Validate Technician
+  Validate Schedule
+  Validate Time Off
+  Validate Skills
+  Validate Existing Appointments
+  Reserve Slot
+  Create Appointment
+  Create Outbox
+  COMMIT
+
+                                         AI PowerSalon Developer / Claude Build Guide | 11
+                                 AI PowerSalon | Full Platform Architecture & Completion Mandate
+52. Booking Conflict Error
+Normalize APPOINTMENT_CONFLICT and return updated availability.
+
+53. Booking Phone Verification
+Keep booking verification separate from full customer-account authentication.
+
+54. Late Booking Reminder Logic
+If an appointment is created too close to a reminder window, skip missed reminder. Example: created 90 minutes
+before appointment -> confirmation now, 24-hour reminder skip, 2-hour reminder skip, 30-minute reminder
+schedule.
+
+55. Check-In
+Check-In can originate from POS, Customer App, or Customer Display, but all use the same Check-In / Visit domain.
+
+56. Visit Is Canonical Customer Journey
+Use:
+   Appointment / Walk-In
+    -> Visit
+    -> Check-In
+    -> Queue
+    -> Service
+    -> Checkout
+    -> Payment
+
+Do not create disconnected records at each app.
+
+57. Check-In Idempotency
+Ten rapid taps must create one Visit, one active Check-In, and one Queue entry.
+
+58. Customer Queue
+Customer Queue answers: Who should be served next? It is not the same as Technician Queue.
+
+59. Technician Queue
+Technician Queue answers: Which eligible technician should receive the next opportunity?
+
+60. Fair Turn Engine
+Support AUTOMATIC, RECOMMEND_AND_CONFIRM, and MANUAL manager-selected operating modes.
+
+61. Default Turn Mode
+Recommended onboarding default: RECOMMEND_AND_CONFIRM.
+
+62. Fairness Default
+Recommended: WEIGHTED TRADITIONAL ROTATION with full turns, half turns, service weights, skill eligibility,
+appointment protection, and break handling.
+
+63. Hard Eligibility Before Fairness
+Filter candidates first: active employment, correct branch, clocked in, on shift, skill eligible, certification valid, not
+serving, not unavailable, appointment safe. Then rank eligible technicians.
+
+64. Skill Ineligibility Never Costs a Turn
+If a technician cannot perform the requested service: SKIP WITHOUT PENALTY and preserve position.
+
+
+
+
+                                       AI PowerSalon Developer / Claude Build Guide | 12
+                                  AI PowerSalon | Full Platform Architecture & Completion Mandate
+65. Requested Client Policy
+Support tenant rules:
+  DO_NOT_CONSUME_ROTATION_TURN
+  COUNT_FULL_TURN
+  COUNT_WEIGHTED_TURN
+  MANAGER_DECIDES
+
+Recommended default: DO_NOT_CONSUME_ROTATION_TURN.
+
+66. Appointment Turn Policy
+Support explicit configuration rather than hidden assumptions.
+
+67. Appointment Protection
+Before walk-in assignment:
+  now + estimated service duration + cleanup buffer <= next appointment
+
+Otherwise skip without penalty.
+
+68. Technician Queue States
+Separate OFF_SHIFT, READY, NEXT_UP, ASSIGNED, SERVING, APPOINTMENT_SOON, BREAK, HOLD,
+UNAVAILABLE, CLOCKED_OUT.
+
+69. Clock Status vs Queue Status
+Do not merge CLOCKED_IN and READY into one field.
+
+70. Time Clock
+Track CLOCK_IN, BREAK_START, BREAK_END, CLOCK_OUT with server timestamps.
+
+71. Time Clock Correction
+Preserve original, corrected, reason, manager, timestamp, and audit. Never silently overwrite.
+
+72. Break vs Queue Hold
+Queue Hold = do not assign now. Time Clock Break = work-time event. They may interact but must remain
+separate concepts.
+
+73. Technician Metrics
+Track Today, Week, Month for clocked hours, break time, service time, ready time, walk-ins, appointments,
+completed services, turn units, sales, tips, commission, and estimated earnings. Payroll remains authoritative for
+money.
+
+74. Technician Profile Architecture
+Separate GLOBAL PROFESSIONAL IDENTITY from TENANT EMPLOYMENT.
+
+75. Portable Technician Data
+May include professional name, photo, bio, skills, public certifications, portfolio, public ratings, languages, and
+professional reputation.
+
+76. Tenant-Private Employment Data
+Includes commission, payroll, schedule, time clock, private manager notes, roles, permissions, employment status,
+and private customer relationships.
+
+
+
+
+                                        AI PowerSalon Developer / Claude Build Guide | 13
+                                  AI PowerSalon | Full Platform Architecture & Completion Mandate
+77. Technician Transfer
+When technician changes salons: Professional Identity remains; Old Employment remains historical/private; New
+Tenant Employment is created. Never move old salon payroll/customer data.
+
+78. Technician Skills
+Skills determine booking eligibility, queue eligibility, AI scheduling eligibility, and public technician profile.
+
+79. Skill Request Workflow
+Support SUBMITTED, UNDER_REVIEW, MORE_INFO_REQUIRED, APPROVED, REJECTED. Technician cannot self-
+approve.
+
+80. Technician App
+Must include working versions of Home, Schedule, Queue, Tickets, Customers where authorized, Service History,
+Earnings, Tips, Payroll, Time Clock, Portfolio, Ratings, Skills, Notifications, Profile, Settings.
+
+81. Technician Service Flow
+Assignment -> Accept where required -> Start Service -> Serving -> Add approved changes -> Service Done.
+Backend validates every transition.
+
+82. Service Done
+This is an important financial boundary. Snapshot services, technician ownership, prices, discount allocation,
+duration, products, add-ons, and commission rule before financial calculation.
+
+83. Checkout
+Checkout is canonical. All payment surfaces use the same Checkout. Checkout includes services, technicians,
+products, discounts, promotions, membership, loyalty, gift cards, subtotal, tax, customer-facing fees, tip, total,
+paid, balance due.
+
+84. Checkout Is Server-Calculated
+Clients send intent/choice/selection. Backend returns authoritative totals.
+
+85. Split Payment
+Each tender is separate. Example Cash $40 + Card $60 = one Checkout, two payment records.
+
+86. Payments Architecture
+Permanent architecture:
+   Checkout
+    -> Payment Domain
+    -> Payment Provider Router
+    -> Tenant / Branch Merchant Configuration
+    -> Provider Adapter
+
+87. Supported Payment Direction
+Existing product direction includes Fiserv, CardPointe, Bolt, and Clover. Do not add Stripe/Square as default
+architecture.
+
+88. Existing Fiserv Integration
+Inspect current implementation carefully for the real integration path already underway, including existing
+CardPointe gateway/tokenization, terminal/P2PE, Clover onboarding, merchant boarding, and UAT/integration-
+validation work. Do not replace a real Fiserv integration with a generic fake payment abstraction.
+
+
+
+
+                                         AI PowerSalon Developer / Claude Build Guide | 14
+                                 AI PowerSalon | Full Platform Architecture & Completion Mandate
+89. Merchant Isolation
+Each salon has its own merchant configuration. Potentially each branch has its own merchant:
+  Tenant -> Branch -> Merchant Account -> Terminal
+
+90. Payments Must Settle to Correct Merchant
+Salon A Checkout must never process through Salon B.
+
+91. No Raw Card Storage
+Never store PAN, CVV, PIN, track data, or raw NFC payload.
+
+92. Saved Cards
+Only provider-tokenized references: token/reference, brand, last4, safe expiry metadata.
+
+93. Payment Intent
+Create internal intent before processor operation.
+
+94. Payment Idempotency
+Double-click/retry must not create duplicate charge.
+
+95. Unknown Payment State
+Network failure after card presentation: PAYMENT_STATUS_UNKNOWN, not FAILED.
+
+96. Unknown Payment Recovery
+Use processor lookup, webhook, and recovery worker before retry.
+
+97. Refund
+Default original tender with reason, permission, audit, and idempotency.
+
+98. Void vs Refund
+Keep separate.
+
+99. Settlement
+Payment completion is different from Settlement, Payout, and Bank Deposit.
+
+100. Reconciliation
+Trace Checkout -> Payment -> Processor Transaction -> Settlement -> Payout -> Bank Deposit.
+
+101. Clover Compact
+Treat Clover Compact as a semi-integrated customer payment terminal, not the primary business POS.
+
+102. Terminal Pairing
+Support POS-01 -> CLOVER-COMPACT-01. Dedicated pairing default.
+
+103. Shared Terminal
+If shared, reserve terminal and return TERMINAL_BUSY for concurrent attempts.
+
+104. Owner / Manager Payment App
+Build/finish a secure iPhone payment app integrated into canonical Checkout:
+
+
+
+
+                                       AI PowerSalon Developer / Claude Build Guide | 15
+                                   AI PowerSalon | Full Platform Architecture & Completion Mandate
+   Checkout Queue
+   -> Ticket
+   -> Tip / Split
+   -> Tap to Pay
+   -> Payment
+   -> Receipt
+   -> POS Sync
+   -> History
+
+105. Tap to Pay
+Tap-to-Pay iPhone is a payment surface only. Use actual Apple/PSP integration. Never fake contactless success.
+
+106. Tap-to-Pay Customer Handoff
+Hide manager navigation, other customers, history, reports, and settings during customer payment interaction.
+
+107. Mobile Checkout Claim
+Before mobile payment, claim Checkout so POS and phone cannot charge simultaneously.
+
+108. Dual-Screen POS
+Main workstation:
+   Large Left Display = Employee POS
+   Small Right Display = Customer Display
+
+Use EXTEND DISPLAYS, not Duplicate.
+
+109. Customer Display
+Dedicated customer-only app/window. No sidebar, admin menus, employee information, or browser navigation
+where avoidable.
+
+110. Customer Display Modes
+Use explicit states:
+   ADVERTISEMENT
+   CHECK_IN
+   CHECK_IN_SUCCESS
+   CHECKOUT
+   PAYMENT_PROCESSING
+   PAYMENT_VERIFYING
+   PAYMENT_COMPLETE
+   OFFLINE
+   MAINTENANCE
+
+111. Customer Display Priority
+1 Checkout; 2 Payment state; 3 Check-In; 4 System message; 5 Advertising. Advertising never interrupts Checkout.
+
+112. Customer Display Checkout
+Show customer-safe services, technicians, products, discounts, membership, loyalty, gift card, subtotal, tax, tip,
+total, payment status, receipt.
+
+113. Three-Second Privacy Rule
+After confirmed Checkout completion:
+   PAYMENT COMPLETE
+    -> 3000 ms
+    -> CLEAR CUSTOMER STATE
+    -> ADVERTISEMENT
+
+Actually destroy sensitive UI state. Do not simply put ad over it.
+
+                                            AI PowerSalon Developer / Claude Build Guide | 16
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+114. Customer Display Advertising
+Tenant manages from Marketing & Growth -> Customer Display Advertising.
+
+115. Advertising Features
+Support image, headline, description, CTA, QR, branches, schedule, duration, priority, status.
+
+116. Ad Status
+DRAFT, SCHEDULED, ACTIVE, PAUSED, EXPIRED, ARCHIVED.
+
+117. Tenant Ad Isolation
+Tenant A ads must never render for Tenant B.
+
+118. Offline Advertising
+Previously validated cached ad assets may continue while network is unavailable. No private Checkout state
+should survive merely to show ads.
+
+119. Payroll Architecture
+Payroll is not one total. Use traceable earning components:
+  Service Commission
+  Tips
+  Retail Commission
+  Hourly Pay
+  Salary
+  Bonuses
+  Guarantee Top-Up
+  Adjustments
+  Deductions
+  Reversals
+
+120. Commission Per Service Line
+Never entire ticket x technician rate when multiple technicians participate.
+
+121. Commission Rule Hierarchy
+Support deterministic precedence such as Technician + Service, Technician + Category, Technician, Service,
+Category, Tenant Default adapted to actual code.
+
+122. Commission Snapshot
+Historical transactions preserve eligible revenue, rate, rule, amount, version. Changing future rate never changes
+old payroll.
+
+123. Tips
+Tips remain separate from service commission.
+
+124. Two-Technician Tip Rule
+Where current AI PowerSalon policy applies: two participating technicians + no explicit allocation = 50/50. Odd
+cents allocated deterministically.
+
+125. Explicit Tip Wins
+Customer-selected allocation overrides default split.
+
+126. Tips Lock After Payment
+Corrections require adjustment, not silent mutation.
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 17
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+127. Payroll Ledger
+Use append-oriented entries:
+  SERVICE_COMMISSION
+  TIP
+  RETAIL_COMMISSION
+  HOURLY_PAY
+  SALARY_PAY
+  BONUS
+  GUARANTEE_TOP_UP
+  ADJUSTMENT
+  REFUND_REVERSAL
+
+128. Refunds Reverse Payroll
+Original entry remains. Create reversal linked to original.
+
+129. Locked Payroll
+After pay period lock, normal edit is blocked. Corrections go to controlled adjustment workflow.
+
+130. Pay Period
+Support OPEN, READY_FOR_REVIEW, IN_REVIEW, APPROVED, LOCKED, PAID or equivalent existing states.
+
+131. Payroll Approval
+Require proper permission and step-up authentication where appropriate.
+
+132. Guaranteed Earnings
+Example: Earned $720, Guarantee $800, Top-Up $80. Top-Up is a separate earning component.
+
+133. Retail Commission
+Separate from service commission.
+
+134. Payroll Privacy
+Technician sees only own pay by default. Receptionist does not manage payroll. Manager/Owner permissions
+follow scope.
+
+135. Payroll Transfer Privacy
+Technician moving salons does not carry old payroll, old commission, old tips, or old private employment notes to
+new salon.
+
+136. Inventory
+Use inventory movement ledger. Do not store only currentQuantity without traceability. Movements include
+purchase, sale, usage, adjustment, return, transfer, waste where supported.
+
+137. Negative Inventory
+Default BLOCK NEGATIVE STOCK unless tenant explicitly permits.
+
+138. Low Stock
+Configurable per product and branch.
+
+139. Products in Checkout
+Product sale updates inventory through canonical Inventory domain after appropriate financial/business
+transition. No mobile-only or POS-only inventory calculations.
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 18
+                                 AI PowerSalon | Full Platform Architecture & Completion Mandate
+140. Catalog
+Tenant owns master catalog. Branches may override price, duration, availability where configured.
+
+141. Add-Ons
+Add-ons may change price and duration, and scheduling/Checkout must update correctly.
+
+142. Gift Cards
+Use ledger architecture. Do not directly overwrite balance. Track issue, load, redeem, refund, adjust.
+
+143. Multi-Location Gift Cards
+Track selling branch, redeeming branch, liability, and revenue recognition appropriately.
+
+144. Loyalty
+Points use ledger. No direct balance editing without adjustment.
+
+145. Memberships
+Membership benefits are backend-authoritative. Checkout applies eligibility based on current membership state.
+
+146. Deals / Promotions
+Use centralized Deals/Promotions engine. Do not scatter promotion calculations in Checkout UI.
+
+147. Discount Stacking
+Define controlled stacking rules. Gift card is payment, not discount.
+
+148. Communications Platform
+Business domains must not import Twilio SDK directly.
+  Domain Event / Communication Intent
+   -> Communications Domain
+   -> Tenant Messaging Configuration
+   -> Twilio Adapter
+
+149. Tenant Twilio Isolation
+Preferred:
+  AI PowerSalon Parent Twilio
+   Tenant A Subaccount
+   Tenant B Subaccount
+   Tenant C Subaccount
+
+plus tenant-specific Messaging Service, Phone Number, A2P, Usage.
+
+150. Twilio Secrets
+Database stores secretReference. Secrets Manager stores actual credentials.
+
+151. SMS Use Cases
+OTP, Appointment Confirmation, Appointment Reminder, Check-In Confirmation, Queue Ready, Receipt, Review
+Request, Loyalty, Membership, Marketing.
+
+152. Marketing vs Transactional Messaging
+Keep consent/policy separate. A phone number supplied for an appointment is not automatic unlimited marketing
+consent.
+
+153. STOP / Opt-Out
+Respect suppression/consent state.
+
+                                        AI PowerSalon Developer / Claude Build Guide | 19
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+154. OTP
+OTP must be short-lived, single-use, attempt-limited, resend-limited, phone-bound, session-bound. Never log OTP.
+
+155. SMS Segment Accounting
+Track segments, not merely logical messages.
+
+156. Twilio Failure
+If appointment saves but Twilio fails: Appointment remains valid; Message failed/retry. Do not roll back booking.
+
+157. AI Platform
+Create/complete one central AI Platform. Domain modules must not import random AI provider SDKs directly.
+
+158. AI Platform Responsibilities
+provider routing, model registry, prompt registry, task registry, tool registry, tenant settings, usage, cost, rate limit,
+budgets, safety, evaluation, fallback.
+
+159. Existing AI Modules
+Preserve/integrate existing/planned modules:
+   ai_review_reputation
+   ai_voice_transcription
+   ai_ocr_receipt
+   ai_analytics_forecasting
+   ai_deposit_reconciliation
+   ai_queue_assignment
+   ai_scheduling_optimizer
+   AI Receptionist
+
+160. AI Is Not Domain Authority
+AI can recommend, summarize, classify, forecast, explain. It may not become authority for payments, payroll,
+permissions, queue hard eligibility, appointment conflicts, gift-card balance, or inventory truth.
+
+161. AI Structured Outputs
+Validate AI outputs against schemas. Never trust free-form model text as a database mutation.
+
+162. AI Tools
+Any agent/tool action must use the same auth, tenant context, permissions, and audit as normal APIs.
+
+163. AI Receptionist
+AI Receptionist must call the same Customer, Booking, Appointment, Availability, and Communication domains.
+No separate AI receptionist database.
+
+164. AI Receptionist Failover
+Support human transfer, callback, message when AI cannot safely complete request.
+
+165. AI Scheduling
+AI may recommend schedule changes. Confirmed customer appointments should not move automatically without
+appropriate confirmation.
+
+166. AI Queue
+Deterministic queue rules come first. AI may explain/recommend, not override hard skills/schedule constraints.
+
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 20
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+167. Analytics Architecture
+Operational transaction database remains OLTP source. Do not run huge analytical workloads directly against hot
+transaction paths unnecessarily.
+
+168. Reports
+Reports must use canonical data. Do not duplicate business formulas in frontend.
+
+169. Financial Reports
+Separate Sales, Payments, Refunds, Processor Settlements, Payouts, Bank Deposits, Payroll.
+
+170. Gross Sales != Payout
+Never label $10,000 Gross Card Sales as $10,000 Payout unless processor payout actually equals that.
+
+171. Owner App
+Owner App must support All My Salons, Live Operations, Appointments, Walk-Ins, Customer Queue, Technician
+Queue, Sales, Payments, Tips, Refunds, Technicians, Schedules, Payroll, Customers, Reports, Analytics, AI Insights,
+Marketing, Notifications, Settings based on permissions.
+
+172. Multi-Location Owner
+Owner can switch/filter All Locations, Branch A, Branch B without cross-tenant access.
+
+173. Customer App
+Must support Salon Discovery, Technician Discovery, Favorites, Booking, Reschedule, Cancel, Check-In, Live
+Queue, Service Status, Checkout Status, Rewards, Deals, Membership, Profile, History, Receipts, Notifications as
+existing product scope permits.
+
+174. Customer App Authentication
+Use customer realm. Do not reuse employee auth.
+
+175. Customer Self Scope
+Customer can access their own data only.
+
+176. Online Booking
+Public booking is a narrow realm. It must not expose full customer/employee APIs.
+
+177. Super Admin
+Super Admin is PLATFORM CONTROL PLANE, not simply a tenant dashboard with more buttons.
+
+178. Super Admin Navigation
+Include platform oversight areas such as Overview, Live Ops, Analytics, Tenants, Branches, Users/Roles,
+Onboarding, Plans/Limits, Appointments, Customers, Workforce, Booking/Queues, Catalog, Payments, Marketing,
+Promotions, Loyalty, Communications, AI, Platform Settings, Support, System Status, Security, Audit.
+
+179. Super Admin UI
+Preferred: compact cards, one-page overview where practical, View All -> detail page, consistent top bar/sidebar.
+Avoid oversized cards that force unnecessary scrolling.
+
+180. Support Mode
+Platform staff must not silently impersonate tenants. Use Support Session, Tenant, Reason, Actor, Expiration,
+Audit.
+
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 21
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+181. Super Admin System Status
+Show safe health for API, PostgreSQL, Redis, Workers, Queues, Realtime, Payment Providers, Twilio, AI Providers,
+Storage, Backups, Deployments.
+
+182. Observability
+All services must emit structured logs, metrics, traces, business workflow telemetry.
+
+183. Correlation
+Propagate requestId, correlationId, tenantId, branchId, eventId, jobId, providerRequestId where safe.
+
+184. Logging Redaction
+Never log password, OTP, auth token, Twilio token, merchant secret, PAN, CVV, private key.
+
+185. Business SLIs
+Monitor login, customer search, booking, phone verification, check-in, queue assignment, checkout, payment,
+refund, SMS.
+
+186. Health States
+Normalize HEALTHY, DEGRADED, OUTAGE, UNKNOWN, MAINTENANCE.
+
+187. Incidents
+Support SEV1, SEV2, SEV3, SEV4 with runbooks/postmortems.
+
+188. Security Architecture
+Apply defense-in-depth across network, identity, tenant isolation, authorization, secrets, payments, webhooks,
+files, AI, workers, realtime, mobile.
+
+189. Encryption
+Use TLS in transit, database/storage encryption at rest, KMS-managed keys, and selective application-level
+encryption where justified.
+
+190. Secrets
+No secrets in Git, frontend, mobile source, logs, or database plaintext. Use Secrets Manager.
+
+191. WAF / Abuse
+Protect public APIs from credential stuffing, OTP pumping, SMS abuse, booking abuse, rate attacks.
+
+192. Input Security
+Defend against SQL injection, XSS, CSRF, SSRF, mass assignment, malicious file upload appropriate to surface.
+
+193. Payment Webhooks
+Every payment webhook must authenticate/verify signature, verify freshness, deduplicate, resolve integration,
+resolve tenant, validate schema, process idempotently.
+
+194. Twilio Webhooks
+Verify Twilio signatures. Do not trust tenant ID in inbound payload. Resolve through subaccount, number,
+Messaging Service configuration.
+
+195. Webhook Inbox
+Use durable inbox where beneficial. Track provider, externalEventId, receivedAt, status, attempts, integration,
+tenant.
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 22
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+196. Files / Media
+All uploads must validate MIME, magic bytes, size, dimensions where relevant, ownership, and malware pipeline
+where available.
+
+197. Object Storage
+Use object storage for portfolio, ads, documents, receipts, evidence, media, not PostgreSQL blobs by default.
+
+198. Technician Portfolio
+Support photos/video, service, style, tags, caption, public/private status, Book This Look with consent/privacy rules.
+
+199. Nail Showcase
+Customer-facing portfolio can integrate with Technician Profile, Booking, Book This Look without exposing tenant-
+private data.
+
+200. Ratings / Reviews
+Reviews link to real service/visit where appropriate. No review gating.
+
+201. Review Moderation
+Support report, moderation, response according to permissions.
+
+202. Notifications
+Centralize SMS, Email, Push, In-App through communication infrastructure. Do not scatter provider calls
+throughout modules.
+
+203. Workers
+Run separate worker workloads for communications, AI, media, analytics, reconciliation, payment recovery,
+reminders, payroll where needed.
+
+204. Queue Separation
+High priority jobs such as payment recovery, OTP, transactional notifications must not be blocked by large
+marketing campaign or heavy analytics.
+
+205. Noisy Tenant Protection
+Use per-tenant concurrency, rate limits, fair worker scheduling where necessary.
+
+206. Caching
+Cache only what is safe and reconstructible. Cache keys must include correct tenant, branch, resource, version
+context.
+
+207. Configuration
+Use validated environment configuration. Application should fail fast on critical invalid startup configuration.
+
+208. Feature Flags
+Use feature flags for controlled rollout, including mobile_tap_to_pay, customer_display_ads, ai_queue_assignment,
+new_payroll_engine.
+
+209. Kill Switches
+Provide provider/module kill switches. Example: disable Tap to Pay without disabling Clover Compact.
+
+210. Backup & Disaster Recovery
+Implement database backups, PITR, object storage protection, configuration backup, restore tests.
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 23
+                                  AI PowerSalon | Full Platform Architecture & Completion Mandate
+211. Restore Tests
+A backup is not considered trustworthy until restore has been tested.
+
+212. DR Financial Warning
+After database restore, do not replay payments, refunds, or SMS blindly. External systems may already contain
+newer transactions. Reconcile first.
+
+213. Migration Safety
+No big-bang destructive migration. Use EXPAND -> BACKFILL -> VALIDATE -> CUTOVER -> CONTRACT.
+
+214. Historical Data
+Preserve appointments, customers, visits, payments, refunds, payroll, tips, inventory, loyalty, gift cards, reviews,
+audit during migrations.
+
+215. Frontend Data Architecture
+Each frontend should use typed API client, server-state query cache, shared realtime client, local UI state. Do not
+copy server truth into multiple unrelated client stores.
+
+216. Background Fetch UX
+Do not show full page loading overlay because a query is silently refreshing. Initial loading may use skeleton.
+Background refresh should preserve screen.
+
+217. Dead Buttons
+Every visible control must work, be intentionally disabled with explanation, or be removed. No decorative
+production buttons.
+
+218. Routes
+Every sidebar/menu entry must point to a valid route. Audit POS, Super Admin, Owner App, Technician App,
+Customer App navigation.
+
+219. Responsive POS
+Optimize for large touchscreen POS hardware including the current preferred desktop setup. Avoid giant empty
+panels, unnecessary vertical scroll, tiny touch targets.
+
+220. Accessibility
+Support keyboard, touch, screen readers, contrast, font scaling, large tap targets as appropriate.
+
+221. Localization
+Preserve architecture for English and Vietnamese at minimum. Do not hard-code customer-facing strings
+throughout components.
+
+222. Testing Strategy
+Every major module needs unit tests, integration tests, API tests, permission tests, tenant-isolation tests,
+concurrency tests, failure-mode tests where appropriate.
+
+223. Critical Concurrency Tests
+Test two people book same slot, duplicate Check-In, duplicate queue assignment, same terminal used twice,
+duplicate card charge, duplicate refund, gift-card double redemption, loyalty double redemption, inventory race,
+payroll approval race.
+
+224. Tenant Isolation Tests
+For every major domain, Tenant A attempts Tenant B resource. Expected DENIED.
+                                  AI PowerSalon Developer / Claude Build Guide | 24
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+225. Branch Isolation Tests
+Branch managers only affect authorized branches.
+
+226. Financial Invariants
+Verify Checkout totals reconcile, Tender totals reconcile, Tip allocations reconcile, Gift-card ledger reconciles,
+Loyalty ledger reconciles, Commission reconciles, Refund reversals reconcile, Settlement expected payout
+reconciles.
+
+227. Performance Tests
+Test Booking, Customer Search, Queue, Checkout, Payments, Realtime, Reports at realistic salon load.
+
+228. Provider Failure Tests
+Simulate Fiserv timeout, Clover offline, Twilio outage, Redis unavailable, worker restart, AI provider unavailable,
+storage failure. Core POS should degrade safely.
+
+229. Core POS Must Survive AI Failure
+If AI is down, booking, check-in, queue, checkout, payment must continue using deterministic logic.
+
+230. Core POS Must Survive Twilio Failure
+Messages may fail/retry. Core operations remain valid.
+
+231. Customer Display Failure
+Customer-display failure must not block main POS.
+
+232. Payment Provider Outage
+Offer other configured tenders. Do not label provider outage as customer card decline.
+
+233. Final Build Validation
+Build every deployable application. At minimum API, POS, Super Admin, Technician App, Owner App, Customer
+App, Customer Display, Owner/Manager Payment App, Workers, Realtime using actual repository targets.
+
+234. Typecheck
+Run full repository typecheck. Fix real issues. Do not simply disable strict typing to get green build.
+
+235. Lint
+Fix meaningful lint failures. Do not suppress entire directories without justification.
+
+236. Tests
+Run all existing tests plus new critical tests. Never claim PASS if you did not execute the test.
+
+237. No Fake Completion
+Do not report 100% Complete if screens do not call API, worker is not registered, migration was not run, provider
+is mocked, or tests were not executed. Report truthfully.
+
+238. Required Architecture Status File
+Create/update ARCHITECTURE_STATUS.md containing Domain, Owner, Status, Database, APIs, Events, Realtime,
+Apps, Tests, Known Issues.
+
+239. Required Project Status
+Create/update PROJECT_STATUS.md. Classify Complete, Partial, Blocked, Deprecated.
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 25
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+240. Developer Handoff
+Create/update DEVELOPER_HANDOFF.md explaining how system runs, how apps communicate, environment
+setup, database setup, workers, realtime, payments, Twilio, AI, local development, production deployment.
+
+241. Test Report
+Create TEST_REPORT.md with actual commands and results.
+
+242. Change Report
+Create CHANGELOG_HANDOFF.md including files changed, migrations, behavior changes, removed legacy code,
+new APIs, new events, new permissions.
+
+243. Security Report
+Create SECURITY_REVIEW.md documenting tenant isolation, auth, permissions, secrets, payments, Twilio,
+webhooks, mobile, AI, files.
+
+244. Integration Status
+Create INTEGRATION_STATUS.md for Fiserv, CardPointe, Clover, Twilio, Email, Push, AI Providers, Storage.
+Classify LIVE, READY_FOR_SANDBOX, PARTIAL, BLOCKED_EXTERNAL, NOT_IMPLEMENTED.
+
+245. Database Status
+Create DATABASE_STATUS.md including tables, migrations, indexes, constraints, legacy schema, data migrations.
+
+246. API Inventory
+Create API_INVENTORY.md listing route, realm, permission, tenant scope, controller, domain service, status.
+
+247. Realtime Inventory
+Create REALTIME_INVENTORY.md listing event, publisher, channel, authorization, consumer apps, resource
+version.
+
+248. Frontend Route Inventory
+Create FRONTEND_ROUTE_STATUS.md for every app with route, screen, API, permission, status.
+
+249. Final Claude Report - Executive Summary
+When finished, begin final report with Overall Platform Status, P0 Issues Fixed, P1 Issues Fixed, Remaining
+Blocked External Dependencies, Remaining Risks, Production Readiness.
+
+250. Final Claude Report - Domain Matrix
+Report:
+
+
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 26
+                                  AI PowerSalon | Full Platform Architecture & Completion Mandate
+  Identity
+  Tenants
+  Branches
+  Customers
+  Booking
+  Appointments
+  Check-In
+  Visits
+  Customer Queue
+  Technician Queue
+  Workforce
+  Skills
+  Scheduling
+  Time Clock
+  Serving
+  Checkout
+  Payments
+  Payroll
+  Inventory
+  Catalog
+  Gift Cards
+  Loyalty
+  Memberships
+  Deals
+  Marketing
+  Communications
+  AI
+  Analytics
+  Reports
+  Security
+  Audit
+  Support
+
+as PASS, PARTIAL, FAIL, BLOCKED_EXTERNAL.
+
+251. Final App Matrix
+Return:
+  API             PASS / FAIL
+  POS Web            PASS / FAIL
+  Super Admin          PASS / FAIL
+  Technician App        PASS / FAIL
+  Owner App           PASS / FAIL
+  Customer App         PASS / FAIL
+  Online Booking        PASS / FAIL
+  Customer Display       PASS / FAIL
+  Owner/Manager Pay App       PASS / FAIL
+  Workers           PASS / FAIL
+  Realtime          PASS / FAIL
+
+252. Final Build Matrix
+Return actual:
+
+
+
+
+                                        AI PowerSalon Developer / Claude Build Guide | 27
+                                  AI PowerSalon | Full Platform Architecture & Completion Mandate
+  Install           PASS / FAIL
+  Database Migrations       PASS / FAIL
+  Backend Build           PASS / FAIL
+  Frontend Build          PASS / FAIL
+  Mobile Builds          PASS / FAIL
+  Typecheck             PASS / FAIL
+  Lint              PASS / FAIL
+  Unit Tests          PASS / FAIL
+  Integration Tests       PASS / FAIL
+  E2E Tests           PASS / FAIL
+  Security Tests         PASS / FAIL
+  Tenant Isolation Tests    PASS / FAIL
+  Concurrency Tests        PASS / FAIL
+
+253. Final Provider Matrix
+Report Fiserv / CardPointe, Clover, Clover Compact, Tap to Pay, Twilio SMS, Twilio Verify, Email, Push, AI
+Providers, Object Storage with WORKING, SANDBOX READY, PARTIAL, BLOCKED_EXTERNAL, NOT CONFIGURED.
+
+254. Final Database Matrix
+For every domain list authoritative table, tenant ownership, branch ownership, foreign keys, indexes, versioning,
+audit, migration status.
+
+255. Final Bug Report
+List every unresolved bug with ID, Severity, Module, Description, Root Cause, Required Fix, External/Internal,
+Workaround. Do not hide failures.
+
+256. Final Files Changed
+Provide exact paths.
+
+257. Final Files Removed
+List duplicates, legacy, dead code, obsolete routes, unused components.
+
+258. Final Migrations
+List migration names and purpose.
+
+259. Final Permissions Added/Changed
+Document each.
+
+260. Final Events Added/Changed
+Document every event and consumer.
+
+261. Final APIs Added/Changed
+Document routes and breaking changes.
+
+262. Final External Dependencies
+Only include genuine dependencies, such as Fiserv production MID, Clover production device, Twilio A2P
+approval, Apple Tap-to-Pay entitlement, App Store signing. Do not use this section to hide incomplete internal
+code.
+
+
+Final Canonical AI PowerSalon Customer Journey
+The entire platform should ultimately behave like:
+
+
+
+
+                                          AI PowerSalon Developer / Claude Build Guide | 28
+                                AI PowerSalon | Full Platform Architecture & Completion Mandate
+  CUSTOMER
+   -> DISCOVER SALON / TECHNICIAN
+   -> BOOK or WALK IN
+   -> CHECK-IN
+   -> VISIT
+   -> CUSTOMER QUEUE
+   -> FAIR TURN / TECHNICIAN ASSIGNMENT
+   -> TECHNICIAN
+   -> SERVICE START
+   -> SERVING
+   -> SERVICE DONE
+   -> CHECKOUT
+   -> DISCOUNTS / MEMBERSHIP / LOYALTY / GIFT CARD
+   -> TIP
+   -> PAYMENT
+   -> Fiserv / Clover / Tap to Pay / Cash / Split
+   -> PAYMENT CONFIRMED
+   -> RECEIPT
+   -> LOYALTY / MEMBERSHIP
+   -> PAYROLL / COMMISSION / TIPS
+   -> INVENTORY
+   -> ANALYTICS / REPORTS
+   -> REVIEW / REBOOKING
+
+Every application sees the appropriate projection of the same underlying business journey.
+
+
+Final Canonical System Architecture
+              CLIENT APPLICATIONS
+
+      POS | OWNER APP | TECH APP | CUSTOMER APP | BOOKING
+                   |
+                   v
+              AI POWERSALON API
+                   |
+      +----------------+----------------+
+      |             |              |
+      v             v              v
+    DOMAIN MODULES SECURITY/AUTH API CONTRACTS
+      |
+      v
+              POSTGRESQL
+      |
+      +--> TRANSACTIONAL OUTBOX --> EVENTS
+                         |         |
+                         v         v
+                       WORKERS REALTIME
+                         |         |
+                         v         v
+                  PROVIDERS/JOBS CLIENTS
+
+  Providers: PAYMENTS / TWILIO / AI / STORAGE
+
+
+Final Permanent Engineering Rules
+Claude, these are non-negotiable unless the existing product has a deliberately documented alternative:
+
+
+
+
+                                      AI PowerSalon Developer / Claude Build Guide | 29
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+  ONE AUTHORITY FOR EACH BUSINESS CONCEPT.
+  POSTGRESQL IS BUSINESS TRUTH.
+  REDIS IS NOT BUSINESS TRUTH.
+  BACKEND IS FINANCIAL AUTHORITY.
+  FRONTENDS DO NOT CALCULATE AUTHORITATIVE MONEY.
+  NO FLOATING-POINT MONEY.
+  EVERY TENANT IS ISOLATED.
+  EVERY BRANCH IS SCOPED.
+  AUTH REALMS ARE SEPARATE.
+  FEATURE ENTITLEMENT IS NOT PERMISSION.
+  PROVIDER SECRETS NEVER GO TO NORMAL CLIENTS.
+  NO RAW CARD STORAGE.
+  NO SILENT CROSS-TENANT PROVIDER ROUTING.
+  NO DUPLICATE CHARGE ON RETRY.
+  NO DUPLICATE REFUND ON RETRY.
+  NO DUPLICATE CHECK-IN.
+  NO DUPLICATE BOOKING.
+  NO DUPLICATE QUEUE ASSIGNMENT.
+  NO SILENT HISTORICAL PAYROLL REWRITE.
+  REFUNDS CREATE REVERSALS.
+  FINANCIAL HISTORY IS TRACEABLE.
+  EVENTS ARE DURABLE.
+  EVENT CONSUMERS ARE IDEMPOTENT.
+  REALTIME IS PRESENTATION, NOT AUTHORITY.
+  AI IS ADVISORY, NOT DOMAIN AUTHORITY.
+  CUSTOMER DISPLAY IS PRESENTATION, NOT PAYMENT AUTHORITY.
+  TECHNICIAN PROFESSIONAL IDENTITY IS SEPARATE FROM TENANT EMPLOYMENT.
+  CUSTOMER GLOBAL IDENTITY IS SEPARATE FROM TENANT-PRIVATE CUSTOMER DATA.
+  TWILIO IS CENTRALIZED THROUGH COMMUNICATIONS.
+  PAYMENT PROVIDERS ARE CENTRALIZED THROUGH PAYMENTS.
+  AI PROVIDERS ARE CENTRALIZED THROUGH AI PLATFORM.
+  NO DEAD BUTTONS.
+  NO MOCK DATA IN PRODUCTION.
+  NO PLACEHOLDER PRODUCTION PROVIDERS.
+  NO SILENT TODO FEATURES.
+  NO BIG-BANG REWRITE.
+  NO CLAIM OF PASS WITHOUT RUNNING THE TEST.
+  NO CLAIM OF COMPLETE WHILE WIRING IS MISSING.
+
+
+Final Instruction to Claude
+Claude,
+Start by scanning the entire existing AI PowerSalon repository. Do not begin by generating new folders or
+replacing architecture. Find every existing implementation and determine what already works.
+Then complete the system in this priority:
+
+
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 30
+                              AI PowerSalon | Full Platform Architecture & Completion Mandate
+  P0
+  Security
+  Tenant Isolation
+  Authentication
+  Permissions
+  Financial Integrity
+  Payment Duplication
+  Data Corruption
+
+  P1
+  Booking
+  Appointments
+  Check-In
+  Queues
+  Serving
+  Checkout
+  Payments
+  Realtime
+
+  P2
+  Workforce
+  Technician Profile
+  Fair Turns
+  Schedules
+  Time Clock
+  Payroll
+  Tips
+  Inventory
+
+  P3
+  Customer App
+  Technician App
+  Owner App
+  Customer Display
+  Tap-to-Pay App
+  Super Admin
+
+  P4
+  Twilio
+  Marketing
+  Loyalty
+  Membership
+  Gift Cards
+  AI
+  Analytics
+  Reports
+
+  P5
+  Performance
+  Observability
+  DR
+  Documentation
+  Cleanup
+
+For every major feature verify the complete wiring:
+
+
+
+
+                                    AI PowerSalon Developer / Claude Build Guide | 31
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+  UI
+  -> API CLIENT
+  -> ROUTE
+  -> AUTH
+  -> TENANT / BRANCH CONTEXT
+  -> PERMISSION
+  -> CONTROLLER
+  -> APPLICATION SERVICE
+  -> DOMAIN SERVICE
+  -> PORT
+  -> REPOSITORY
+  -> KYSELY
+  -> POSTGRESQL
+  -> OUTBOX / AUDIT
+  -> EVENT / WORKER
+  -> REALTIME
+  -> OTHER APPS
+
+A screen is not complete merely because it renders. An API is not complete merely because the route returns 200.
+A feature is complete only when the entire chain works correctly and has been tested.
+Keep all good existing AI PowerSalon implementation. Fix broken code. Merge duplicates. Finish partial modules.
+Wire disconnected modules. Replace mocks with real internal implementations. Protect tenant and branch
+boundaries. Complete database migrations. Complete events and workers. Complete realtime synchronization.
+Complete mobile and web applications. Run the builds. Run the tests. Fix the failures. Then give me the truthful
+final status of the entire platform.
+
+
+Do not stop until AI PowerSalon operates as one connected system from
+frontend to backend and across every application.
+
+
+
+
+                                     AI PowerSalon Developer / Claude Build Guide | 32
+                               AI PowerSalon | Full Platform Architecture & Completion Mandate
+
+Developer Sign-Off Checklist
+☐ Repository discovery completed before new architecture was introduced.
+☐ Every major domain has one authoritative owner and duplicate authorities are removed or deprecated.
+☐ Tenant and branch isolation tests pass across all major domains.
+☐ Critical financial mutations are idempotent and concurrency-tested.
+☐ All deployable apps build successfully and their routes/buttons are wired to real APIs.
+☐ Migrations are safe, historical financial/business data is preserved, and rollback/forward strategy is
+documented.
+☐ Workers, outbox, events and realtime subscriptions are registered and verified.
+☐ Payments, Twilio, AI, storage and other external integrations are classified truthfully as working, sandbox-
+ready, partial or blocked externally.
+☐ No production mock payment provider, placeholder API, fake data path or dead button remains.
+☐ Final status documents and test reports contain actual command results, not assumptions.
+
+Final completion standard: AI PowerSalon must operate as one connected system from frontend to
+backend and across every application, with PostgreSQL-backed business truth, tenant isolation, safe
+financial behavior, durable events, authorized realtime, and truthful test/build evidence.
+
+
+
+
+                                        AI PowerSalon Developer / Claude Build Guide | 33
+

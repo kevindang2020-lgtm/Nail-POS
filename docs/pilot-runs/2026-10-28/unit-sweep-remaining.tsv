@@ -1,0 +1,738 @@
+ERROR	apps/api/src/account/account-core.spec.ts	0	0	380	
+PASS	apps/api/src/ai-booking/ai-booking-admin.vitest.spec.ts	2	0	530	
+PASS	apps/api/src/ai-booking/ai-booking-foreign-id.vitest.spec.ts	2	0	3569	
+PASS	apps/api/src/ai-booking/ai-booking-metrics.vitest.spec.ts	4	0	110	
+PASS	apps/api/src/ai-booking/ai-booking-mutation.vitest.spec.ts	18	0	1949	
+PASS	apps/api/src/ai-booking/ai-booking-public-ratelimit.vitest.spec.ts	3	0	3686	
+PASS	apps/api/src/ai-booking/ai-booking-public-verification.vitest.spec.ts	7	0	3575	
+PASS	apps/api/src/ai-booking/ai-booking-session-length.vitest.spec.ts	4	0	2066	
+PASS	apps/api/src/ai-booking/ai-booking-signed-context.vitest.spec.ts	15	0	3812	
+PASS	apps/api/src/ai-booking/ai-booking.vitest.spec.ts	8	0	3737	
+FAIL	apps/api/src/api-webhooks/api-webhooks-core.spec.ts	[api-webhooks-core] 26 passed, 0 failed	[api-webhooks-core] 26 passed, 0 failed	201	
+PASS	apps/api/src/api-webhooks/api-webhooks.service.vitest.spec.ts	10	0	561	
+FAIL	apps/api/src/api-webhooks/webhook-delivery-core.spec.ts	[webhook-delivery-core] 21 passed, 0 failed	[webhook-delivery-core] 21 passed, 0 failed	110	
+FAIL	apps/api/src/api-webhooks/webhook-dispatch-core.spec.ts	[webhook-dispatch-core] 14 passed, 0 failed	[webhook-dispatch-core] 14 passed, 0 failed	114	
+PASS	apps/api/src/api-webhooks/webhook-dispatch.service.vitest.spec.ts	4	0	497	
+ERROR	apps/api/src/api/api-contract.vitest.spec.ts	0	0	347	  const err = new Error(message);
+FAIL	apps/api/src/api/critical-step-up-gate.vitest.spec.ts	3	1	122	✗ check:critical-step-up › fails a critical route without step-up (the pre-fix manifest shape)
+PASS	apps/api/src/api/cursor.vitest.spec.ts	7	0	287	
+FAIL	apps/api/src/api/openapi-manifest.vitest.spec.ts	5	9	681	✗ route collector — controller and decorator parsing › finds a controller whose class-level decorator carries a trailing // comment (11 voice routes were invisible)
+ERROR	apps/api/src/api/route-domains.vitest.spec.ts	0	0	328	  const err = new Error(message);
+PASS	apps/api/src/common/absolute-prohibitions.vitest.spec.ts	25	0	4209	
+PASS	apps/api/src/common/actor-stamp.vitest.spec.ts	2	0	361	
+PASS	apps/api/src/common/ai-dod-tests-predicate.vitest.spec.ts	11	0	116	
+PASS	apps/api/src/common/ai-provider-crypto.vitest.spec.ts	5	0	403	
+PASS	apps/api/src/common/ai-queue-assignment-registration.guard.vitest.spec.ts	4	0	3910	
+ERROR	apps/api/src/common/anon-rate-limit.vitest.spec.ts	0	0	205	TypeError: NestFactory.create is not a function
+PASS	apps/api/src/common/api-hardening.vitest.spec.ts	25	0	6134	
+FAIL	apps/api/src/common/api-request-schemas.vitest.spec.ts	0	77	5321	✗ apps/api areas — validated bodies, route by route › POST /customer/me/delete-account-request
+PASS	apps/api/src/common/api-version.vitest.spec.ts	6	0	353	
+FAIL	apps/api/src/common/app-headers.vitest.spec.ts	20	2	270	✗ every app shell has a generated, up-to-date _headers file › 'booking-public'
+PASS	apps/api/src/common/app-version.vitest.spec.ts	5	0	121	
+FAIL	apps/api/src/common/async-export/async-export.vitest.spec.ts	19	1	1313	✗ the decorator › stores its options and refuses a bad kind / table / limit
+PASS	apps/api/src/common/auth-boundary.vitest.spec.ts	4	0	113	
+PASS	apps/api/src/common/auth-wiring.vitest.spec.ts	10	0	1192	
+FAIL	apps/api/src/common/authz-declared.vitest.spec.ts	0	1	5767	✗ §27 every route declares its authorization › no NEW undeclared route; the baseline only shrinks
+PASS	apps/api/src/common/c12-guards.vitest.spec.ts	4	0	160	
+FAIL	apps/api/src/common/client-ip.vitest.spec.ts	5	4	491	✗ through a REAL Express server behind one proxy hop › the address Railway's edge appended is the client — the one real hop
+FAIL	apps/api/src/common/code-lookup-limit.vitest.spec.ts	0	2	3956	✗ lookup-by-code limit wiring › the customer gift-claim route is limited as a gift_claim lookup
+PASS	apps/api/src/common/conflict-telemetry-coverage.vitest.spec.ts	1	0	113	
+PASS	apps/api/src/common/container-image.vitest.spec.ts	27	0	129	
+PASS	apps/api/src/common/cors-native-origins.vitest.spec.ts	18	0	1142	
+PASS	apps/api/src/common/db-constraint-retrier.vitest.spec.ts	2	0	4738	
+FAIL	apps/api/src/common/db-ownership.vitest.spec.ts	6	1	249	✗ the committed registry against the real schema › introspect sees append-only triggers / rules and every migrated table is in the committed registry with a class and a domain
+PASS	apps/api/src/common/dod-predicates.vitest.spec.ts	9	0	19695	
+PASS	apps/api/src/common/failsoft.vitest.spec.ts	12	0	128	
+PASS	apps/api/src/common/field-minimization.vitest.spec.ts	2	0	241	
+PASS	apps/api/src/common/file-safety.vitest.spec.ts	13	0	3075	
+PASS	apps/api/src/common/html-escape-gate.vitest.spec.ts	2	0	102	
+FAIL	apps/api/src/common/http-cache-headers.vitest.spec.ts	1	3	2487	✗ HTTP caching headers on public GETs (Phase 2.3) › platform branding is publicly cacheable (fetched by every app before auth)
+ERROR	apps/api/src/common/http-compression.vitest.spec.ts	0	0	130	
+PASS	apps/api/src/common/idor-route-coverage.vitest.spec.ts	8	0	139	
+PASS	apps/api/src/common/image-assets.vitest.spec.ts	10	0	142	
+PASS	apps/api/src/common/incident-vocabulary.vitest.spec.ts	7	0	5019	
+FAIL	apps/api/src/common/key-fallback-reporter.vitest.spec.ts	1	1	4120	✗ KeyFallbackReporter › is provided by the global SecurityEventsModule
+PASS	apps/api/src/common/key-ring.vitest.spec.ts	22	0	466	
+PASS	apps/api/src/common/keyed-rate-limit.vitest.spec.ts	11	0	215	
+PASS	apps/api/src/common/legacy-cipher-rows.vitest.spec.ts	2	0	4855	
+PASS	apps/api/src/common/list-query/list-queries-gate.vitest.spec.ts	8	0	1598	
+FAIL	apps/api/src/common/list-query/list-query.interceptor.vitest.spec.ts	2	10	450	✗ ListQueryInterceptor › lets a valid request through and writes the canonical form back under the handler's own names
+ERROR	apps/api/src/common/maintenance-break-glass.vitest.spec.ts	0	0	134	
+PASS	apps/api/src/common/mfa-enrollment.guard.vitest.spec.ts	1	0	351	
+PASS	apps/api/src/common/migrate-runtime.vitest.spec.ts	3	0	109	
+PASS	apps/api/src/common/migration-safety-gate.vitest.spec.ts	8	0	136	
+PASS	apps/api/src/common/mobile-client-guard.vitest.spec.ts	3	0	104	
+PASS	apps/api/src/common/mobile-native-config.vitest.spec.ts	11	0	275	
+PASS	apps/api/src/common/module-reachability.vitest.spec.ts	2	0	134	
+PASS	apps/api/src/common/native-auth-coverage.vitest.spec.ts	31	0	123	
+PASS	apps/api/src/common/network-posture-db.vitest.spec.ts	2	0	139	
+PASS	apps/api/src/common/network-posture.vitest.spec.ts	10	0	113	
+PASS	apps/api/src/common/no-orphaned-controllers.vitest.spec.ts	3	0	297	
+PASS	apps/api/src/common/no-secret-logging.vitest.spec.ts	1	0	222	
+FAIL	apps/api/src/common/offset-cursor.interceptor.vitest.spec.ts	6	1	265	✗ OffsetCursorInterceptor › refuses a tampered cursor and a cursor that disagrees with ?page=
+PASS	apps/api/src/common/one-appointment-writer.vitest.spec.ts	1	0	140	
+PASS	apps/api/src/common/outbox-wiring.guard.vitest.spec.ts	2	0	196	
+PASS	apps/api/src/common/owner-branch-filter.vitest.spec.ts	6	0	1225	
+PASS	apps/api/src/common/password-write-sites.vitest.spec.ts	3	0	379	
+PASS	apps/api/src/common/permission-reachability.vitest.spec.ts	4	0	396	
+ERROR	apps/api/src/common/platform-alias.vitest.spec.ts	0	0	118	TypeError: NestFactory.create is not a function
+PASS	apps/api/src/common/platform-domain-coverage.vitest.spec.ts	3	0	447	
+ERROR	apps/api/src/common/platform-domain-guard.vitest.spec.ts	0	0	1175	Error: connect ECONNREFUSED 127.0.0.1:55432
+ERROR	apps/api/src/common/platform-network-policy.vitest.spec.ts	0	0	4924	TypeError: NestFactory.create is not a function
+PASS	apps/api/src/common/pre-commit-hook.vitest.spec.ts	7	0	524	
+PASS	apps/api/src/common/process-role-schedulers.vitest.spec.ts	4	0	504	
+PASS	apps/api/src/common/production-config.vitest.spec.ts	10	0	4031	
+PASS	apps/api/src/common/programme-dod.vitest.spec.ts	5	0	101	
+FAIL	apps/api/src/common/provider-secrets.vitest.spec.ts	2	3	774	✗ ProviderSecrets port › is provided globally under the package token
+FAIL	apps/api/src/common/push-producers.vitest.spec.ts	3	1	325	✗ every push producer (bug 9 / §61) › every call site is on the reviewed inventory — a new producer is read before it ships
+FAIL	apps/api/src/common/r2e-state-machines.vitest.spec.ts	47	1	2997	✗ R2-E machines — vocabulary and the static scan › every transition table, written out (a changed move is a reviewed snapshot change)
+FAIL	apps/api/src/common/realm.guard.vitest.spec.ts	11	1	5754	✗ the sweep — EVERY real route, from the framework's own metadata › no route under /pos, /owner, /tenant or /tech is reachable by a customer session; no /customer route by staff
+PASS	apps/api/src/common/realtime-delivery-path.vitest.spec.ts	15	0	4030	
+PASS	apps/api/src/common/realtime-isolation.vitest.spec.ts	3	0	214	
+PASS	apps/api/src/common/redis-down.vitest.spec.ts	3	0	429	
+FAIL	apps/api/src/common/request-guards.vitest.spec.ts	5	1	1225	✗ body parsers › anonymous JSON over the public limit is 413; the same body signed in is accepted; a form body is parsed only on callback paths; rawBody is kept
+ERROR	apps/api/src/common/revalidation.vitest.spec.ts	0	0	135	
+FAIL	apps/api/src/common/rls-cross-salon-reads.vitest.spec.ts	0	3	2632	✗ cross-salon reads run with no tenant on the database session › the owner portfolio's reads cross salons even inside salon t1's request
+FAIL	apps/api/src/common/role-checks-gate.vitest.spec.ts	10	1	1197	✗ check:perms — service-level permission keys › route keys come from                    on handlers
+ERROR	apps/api/src/common/role-matrix.vitest.spec.ts	0	0	1194	  const err = new Error(message);
+PASS	apps/api/src/common/route-collision.vitest.spec.ts	3	0	217	
+ERROR	apps/api/src/common/route-keys-phase9.vitest.spec.ts	0	0	458	  const err = new Error(message);
+PASS	apps/api/src/common/schema-guard.vitest.spec.ts	5	0	250	
+PASS	apps/api/src/common/secure-random.vitest.spec.ts	8	0	317	
+PASS	apps/api/src/common/security-events-wiring.vitest.spec.ts	10	0	119	
+PASS	apps/api/src/common/security-headers.vitest.spec.ts	7	0	188	
+PASS	apps/api/src/common/security-runbooks.vitest.spec.ts	21	0	508	
+PASS	apps/api/src/common/select-branch-body.vitest.spec.ts	2	0	1172	
+PASS	apps/api/src/common/session-401-coverage.vitest.spec.ts	12	0	102	
+PASS	apps/api/src/common/session-fail-closed.vitest.spec.ts	17	0	1176	
+FAIL	apps/api/src/common/session-lock.vitest.spec.ts	8	2	1187	✗ server-side session lock (Decision 35) › a lock older than 8 hours revokes the session — even the unlock path is refused, and it stays revoked
+PASS	apps/api/src/common/session-revocation.vitest.spec.ts	9	0	1218	
+PASS	apps/api/src/common/session-sid-coverage.vitest.spec.ts	9	0	187	
+PASS	apps/api/src/common/sessionless-routes.vitest.spec.ts	42	0	1156	
+PASS	apps/api/src/common/sql-schema-consistency.vitest.spec.ts	2	0	543	
+FAIL	apps/api/src/common/strict-bodies.vitest.spec.ts	2	2	8278	✗ S-A14 strict request bodies (§40) › non-strict routes are only the reviewed exceptions (new body routes are strict)
+FAIL	apps/api/src/common/super-admin-authz-reconciliation.vitest.spec.ts	5	3	4887	✗ §39 · AUTHZ — Super Admin reporting controllers are guard-gated › SuperAdminAnalyticsController requires SuperAdminGuard
+PASS	apps/api/src/common/supply-chain-gates.vitest.spec.ts	10	0	724	
+FAIL	apps/api/src/common/support-session-gate.vitest.spec.ts	0	14	1332	✗ assertLiveSupportSession — the one check a support grant passes › a live session of the caller, for this salon, passes
+PASS	apps/api/src/common/tenant-cache.vitest.spec.ts	11	0	392	
+PASS	apps/api/src/common/tenant-context.middleware.vitest.spec.ts	4	0	1248	
+PASS	apps/api/src/common/tenant-isolation.vitest.spec.ts	3	0	541	
+FAIL	apps/api/src/common/tenant-rate-limit.vitest.spec.ts	29	1	649	✗ makeTenantRateLimiter (Phase 11: ON by default) › REDIS_URL → the shared Redis limiter; RATE_LIMIT_STORE=memory forces in-memory
+PASS	apps/api/src/common/ticket-deletion-crypto.vitest.spec.ts	4	0	4990	
+PASS	apps/api/src/common/upload-routes.vitest.spec.ts	8	0	5627	
+FAIL	apps/api/src/common/utc-clock.vitest.spec.ts	0	3	166	✗ the process runs on UTC › a host set to New York: once loaded, the evening of Oct 5 there reads as Oct 6, 02:00 — UTC
+ERROR	apps/api/src/common/validated-body.vitest.spec.ts	0	0	377	TypeError: NestFactory.create is not a function
+ERROR	apps/api/src/common/validation.vitest.spec.ts	0	0	329	TypeError: NestFactory.create is not a function
+PASS	apps/api/src/common/version-precondition.vitest.spec.ts	6	0	129	
+PASS	apps/api/src/common/worker-role.vitest.spec.ts	5	0	286	
+ERROR	apps/api/src/customer-display/customer-display-core.spec.ts	0	0	3927	
+PASS	apps/api/src/customer-display/display-ads-device.vitest.spec.ts	4	0	4185	
+FAIL	apps/api/src/customer-display/display-check-in.vitest.spec.ts	7	1	3993	✗ the public door (§8, §18) — what anyone on the internet can reach › a display may start a few dozen sessions a minute (one per guest); the next is 429 — another display is unaffected, and 
+FAIL	apps/api/src/customer-display/display-devices.vitest.spec.ts	20	1	4123	✗ the public door (§8, §12) — what anyone on the internet can reach › a network may ask for a few pairing codes a minute; the next is 429 — another network is unaffected, and a minute later 
+PASS	apps/api/src/customer-display/display-lifecycle.vitest.spec.ts	28	0	4007	
+PASS	apps/api/src/customer-display/display-phone-code.vitest.spec.ts	4	0	4120	
+PASS	apps/api/src/customer-display/display-receipt.vitest.spec.ts	14	0	4072	
+PASS	apps/api/src/customer-display/display-telemetry.vitest.spec.ts	3	0	4099	
+PASS	apps/api/src/customer/customer-core.vitest.spec.ts	9	0	127	
+PASS	apps/api/src/customer/customer-extras.vitest.spec.ts	7	0	2858	
+ERROR	apps/api/src/customer/customer-giftcard-send-core.spec.ts	0	0	3306	
+PASS	apps/api/src/customer/customer-notifications.vitest.spec.ts	3	0	3279	
+PASS	apps/api/src/customer/customer-queue-alternates.vitest.spec.ts	2	0	3535	
+PASS	apps/api/src/customer/customer-queue.vitest.spec.ts	5	0	3471	
+PASS	apps/api/src/customer/customer-sms-messenger.vitest.spec.ts	2	0	3614	
+PASS	apps/api/src/customer/customer.service.vitest.spec.ts	8	0	3346	
+FAIL	apps/api/src/deployments/deployments-core.spec.ts	[deployments-core] 19 passed, 0 failed	[deployments-core] 19 passed, 0 failed	108	
+PASS	apps/api/src/deployments/deployments.service.vitest.spec.ts	6	0	253	
+FAIL	apps/api/src/domain-streams/customer-realtime.vitest.spec.ts	1	3	1382	✗ CustomerRealtimeController (SSE) › streams a connected hello, forwards tenant+branch events as NAME ONLY (no payload leak)
+PASS	apps/api/src/domain-streams/owner-realtime.vitest.spec.ts	7	0	4543	
+PASS	apps/api/src/domain-streams/tech-realtime.vitest.spec.ts	5	0	3994	
+PASS	apps/api/src/events/approval-projection.vitest.spec.ts	3	0	525	
+PASS	apps/api/src/events/community-projection.vitest.spec.ts	6	0	467	
+PASS	apps/api/src/events/consumers/ai-job-realtime.vitest.spec.ts	9	0	456	
+PASS	apps/api/src/events/consumers/realtime-projection.b14.vitest.spec.ts	14	0	457	
+PASS	apps/api/src/events/consumers/realtime-projection.board-scope.vitest.spec.ts	6	0	457	
+PASS	apps/api/src/events/consumers/realtime-projection.platform-announcements.vitest.spec.ts	3	0	453	
+PASS	apps/api/src/events/customer-phone-projection.vitest.spec.ts	3	0	461	
+PASS	apps/api/src/events/event-producers-gate.vitest.spec.ts	12	0	4959	
+FAIL	apps/api/src/events/events-pipeline-pool.vitest.spec.ts	7	3	809	✗ the production wiring (events.module metadata) › EVENT_PIPELINE_DB is the PRIMARY pool only — never the least-privilege worker role (no grants on event / consumer tables)
+PASS	apps/api/src/events/queue-assignment-projection.vitest.spec.ts	4	0	454	
+PASS	apps/api/src/events/schedule-projection.vitest.spec.ts	6	0	459	
+PASS	apps/api/src/events/time-off-projection.vitest.spec.ts	1	0	468	
+PASS	apps/api/src/health/health.controller.vitest.spec.ts	7	0	2575	
+PASS	apps/api/src/health/metrics.vitest.spec.ts	15	0	432	
+PASS	apps/api/src/load/control-plane.load.vitest.spec.ts	0	0	5249	
+PASS	apps/api/src/load/pilot-large-salon-blocks.vitest.spec.ts	2	0	122	
+PASS	apps/api/src/load/pilot-large-salon-owner.vitest.spec.ts	4	0	109	
+FAIL	apps/api/src/logs/logs-core.spec.ts	[logs-core] 16 passed, 0 failed	[logs-core] 16 passed, 0 failed	104	
+PASS	apps/api/src/logs/logs.service.vitest.spec.ts	4	0	247	
+PASS	apps/api/src/media/media-lifecycle-telemetry.vitest.spec.ts	1	0	488	
+PASS	apps/api/src/mobile-links/mobile-links.vitest.spec.ts	4	0	255	
+PASS	apps/api/src/observability/alert-rules.vitest.spec.ts	13	0	135	
+PASS	apps/api/src/observability/backup-and-report-script.vitest.spec.ts	11	0	927	
+PASS	apps/api/src/observability/client-errors.vitest.spec.ts	19	0	567	
+PASS	apps/api/src/observability/client-events.vitest.spec.ts	7	0	622	
+PASS	apps/api/src/observability/correlation-propagation.vitest.spec.ts	5	0	443	
+PASS	apps/api/src/observability/end-to-end-telemetry.vitest.spec.ts	7	0	488	
+PASS	apps/api/src/observability/health-core.vitest.spec.ts	33	0	175	
+PASS	apps/api/src/observability/job-telemetry-coverage.vitest.spec.ts	66	0	301	
+PASS	apps/api/src/observability/release-readiness.vitest.spec.ts	1	0	107	
+PASS	apps/api/src/observability/report-backup-script.vitest.spec.ts	5	0	462	
+PASS	apps/api/src/observability/request-telemetry-wiring.vitest.spec.ts	2	0	113	
+PASS	apps/api/src/observability/runbook-links.vitest.spec.ts	28	0	190	
+FAIL	apps/api/src/observability/runtime-safety.vitest.spec.ts	1	1	5430	✗ RuntimeSafetyService without a database › is a Super Admin route behind super_admin.system_operations.view
+PASS	apps/api/src/observability/schema-version.vitest.spec.ts	7	0	457	
+FAIL	apps/api/src/observability/sli.vitest.spec.ts	46	1	528	✗ the domain code — normalised, bounded, never a message › falls back to the exception class, normalised to snake_case
+PASS	apps/api/src/observability/slo-core.vitest.spec.ts	14	0	347	
+FAIL	apps/api/src/observability/telemetry-permissions.vitest.spec.ts	18	1	554	✗ the controller › every handler requires super_admin.telemetry.view (not the broad system_operations key)
+PASS	apps/api/src/payments/gateway-uat.live.vitest.spec.ts	0	0	3856	
+PASS	apps/api/src/payments/terminal-probe.vitest.spec.ts	4	0	3735	
+PASS	apps/api/src/pos-account/pos-account-overview.vitest.spec.ts	3	0	283	
+ERROR	apps/api/src/pos-project-status/pos-project-status-core.spec.ts	0	0	217	
+ERROR	apps/api/src/pos/pos-search-core.spec.ts	0	0	241	
+PASS	apps/api/src/pos/pos-search-isolation.vitest.spec.ts	7	0	227	
+PASS	apps/api/src/profile/profile-backup.vitest.spec.ts	6	0	4809	
+PASS	apps/api/src/profile/profile-billing.vitest.spec.ts	5	0	4868	
+PASS	apps/api/src/profile/profile-login-alerts.vitest.spec.ts	8	0	4833	
+PASS	apps/api/src/profile/profile-notification-prefs.vitest.spec.ts	8	0	6438	
+PASS	apps/api/src/profile/profile-service.spec.ts	9	0	4919	
+PASS	apps/api/src/profile/profile-sessions.vitest.spec.ts	8	0	5905	
+PASS	apps/api/src/profile/profile-ui-prefs.vitest.spec.ts	9	0	4901	
+PASS	apps/api/src/project-status/project-status-core.spec.ts	17	0	119	
+FAIL	apps/api/src/realtime/authz-revalidation.vitest.spec.ts	2	4	137	✗ §42/§128 the operator on a live stream › ends the stream on the first poll after the role changes — not at next login
+FAIL	apps/api/src/realtime/constitution-9-named-tests.vitest.spec.ts	5	11	4160	✗ §220 tenant isolation — Tenant A user cannot receive Tenant B across every domain › tenant, branch, queue, appointments, technicians, checkout: nothing of B reaches A
+PASS	apps/api/src/realtime/display-nudge.vitest.spec.ts	8	0	183	
+PASS	apps/api/src/realtime/gateway-security.vitest.spec.ts	5	0	4046	
+FAIL	apps/api/src/realtime/graceful-shutdown.vitest.spec.ts	0	1	1180	✗ graceful shutdown with live SSE clients › app.close() completes promptly, the client is told to reconnect first, and readiness reports shutting_down
+PASS	apps/api/src/realtime/mobile-transport-gate.vitest.spec.ts	2	0	105	
+ERROR	apps/api/src/realtime/payment-device-room.vitest.spec.ts	0	0	4006	
+FAIL	apps/api/src/realtime/platform-live-ops.vitest.spec.ts	1	2	1276	✗ §59/§146 the platform stream › publishes ONLY while a Super Admin is listening, and the snapshot carries counts + health, no identities
+ERROR	apps/api/src/realtime/presence.vitest.spec.ts	0	0	4020	
+PASS	apps/api/src/realtime/realtime-bus.vitest.spec.ts	7	0	209	
+PASS	apps/api/src/realtime/realtime-catalog-gate.vitest.spec.ts	4	0	241	
+PASS	apps/api/src/realtime/realtime-envelope-at-port.vitest.spec.ts	6	0	202	
+FAIL	apps/api/src/realtime/realtime-envelope.vitest.spec.ts	5	1	171	✗ §31 burst coalescing › 15 queue events in one window produce exactly one refetch per screen
+PASS	apps/api/src/realtime/realtime-health.vitest.spec.ts	6	0	157	
+PASS	apps/api/src/realtime/realtime-isolation.vitest.spec.ts	11	0	312	
+PASS	apps/api/src/realtime/realtime-metrics.vitest.spec.ts	3	0	168	
+PASS	apps/api/src/realtime/realtime-producer-gate.vitest.spec.ts	6	0	1315	
+ERROR	apps/api/src/realtime/realtime-resync.vitest.spec.ts	0	0	4046	
+PASS	apps/api/src/realtime/realtime-sequence.vitest.spec.ts	4	0	174	
+ERROR	apps/api/src/realtime/realtime-stream.vitest.spec.ts	0	0	1286	
+PASS	apps/api/src/realtime/realtime.vitest.spec.ts	7	0	171	
+PASS	apps/api/src/realtime/settings-changed-coverage.vitest.spec.ts	12	0	232	
+ERROR	apps/api/src/realtime/slow-client.vitest.spec.ts	0	0	4184	
+FAIL	apps/api/src/realtime/sse-session-guard.vitest.spec.ts	0	7	1123	✗ an open SSE stream dies when its session is revoked › keeps streaming while the session is live
+FAIL	apps/api/src/realtime/still-valid.vitest.spec.ts	0	1	1174	✗ untilStillValid › completes the stream once the check answers false (or throws); no check = untouched
+FAIL	apps/api/src/realtime/stream-tickets.vitest.spec.ts	14	1	1196	✗ stream factory: a revoked session ends the open stream even when SessionStore is only in another module › resolves SessionStore from the container (ModuleRef, strict: false) and completes the st
+ERROR	apps/api/src/realtime/support-session-realtime.vitest.spec.ts	0	0	165	
+ERROR	apps/api/src/session/auto-logout-core.spec.ts	0	0	113	
+PASS	apps/api/src/super-admin-system-status/system-status-core.vitest.spec.ts	13	0	160	
+FAIL	apps/api/src/super-admin-system-status/system-status.kysely.repository.vitest.spec.ts	0	8	492	✗ KyselySystemStatusRepo (pglite) › reads seeded components
+PASS	apps/api/src/super-admin-system-status/system-status.service.vitest.spec.ts	14	0	163	
+ERROR	apps/api/src/worker-entry.vitest.spec.ts	0	0	6255	ReferenceError: require is not defined in ES module scope, you can use import instead
+FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.vitest.spec.ts	13	2	5920	✗ KyselyQueueOpsRead (real migrated schema) › decisions, waits, names, usage — tenant-scoped, no guest names selected
+FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-plan-controller.vitest.spec.ts	1	1	2519	✗ AI queue plan routes › plan reads need ai_queue_assignment.recommend; the decision needs ai_queue_assignment.assign
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-plan-service.vitest.spec.ts	23	0	2714	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-plan.vitest.spec.ts	25	0	2488	
+PASS	modules/ai/src/ai-queue-assignment/ai-queue-assignment-rotation.vitest.spec.ts	7	0	2674	
+FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-service.vitest.spec.ts	17	7	5752	✗ decision → assignment through the REAL QueueService (PGlite, every migration) › the engine reads the real inputs; accepted assigns through the queue (version 1 → 2, history source ai_suggest
+FAIL	modules/ai/src/ai-queue-assignment/ai-queue-assignment-superadmin.vitest.spec.ts	2	5	5323	✗ platform overview (bug 12) › salons with auto on are counted BY SALON on the effective switch (location value, else salon value; killed = off)
+PASS	modules/ai/src/ai-queue-assignment/fair-turn-200.vitest.spec.ts	6	0	2474	
+PASS	modules/ai/src/ai-queue-assignment/fair-turn-engine.vitest.spec.ts	17	0	2576	
+PASS	modules/ai/src/ai-queue-assignment/queue-alert-coded-text.vitest.spec.ts	3	0	2462	
+PASS	modules/ai/src/ai-readiness/ai-readiness.vitest.spec.ts	4	0	101	
+PASS	modules/ai/src/ai-revenue/ai-revenue-core.spec.ts	7	0	119	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-analytics.vitest.spec.ts	4	0	137	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-core.vitest.spec.ts	7	0	127	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-drafting.vitest.spec.ts	5	0	284	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-errors.vitest.spec.ts	3	0	120	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-escalation.vitest.spec.ts	5	0	2492	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-hardening.vitest.spec.ts	3	0	155	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-ingest.vitest.spec.ts	2	0	143	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-requests.vitest.spec.ts	4	0	153	
+PASS	modules/ai/src/ai-review-reputation/ai-review-reputation-settings.vitest.spec.ts	6	0	144	
+PASS	modules/ai/src/ai-review-reputation/review-request-language.vitest.spec.ts	2	0	281	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-application.vitest.spec.ts	4	0	154	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-audit.vitest.spec.ts	2	0	2697	
+FAIL	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-automation.vitest.spec.ts	16	2	2480	✗ SchedAutomationRunner › a recommendation that changed meanwhile (CAS lost) is not reported automated and emits nothing
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-coded-text.vitest.spec.ts	7	0	2536	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-constraints.vitest.spec.ts	4	0	151	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-core.vitest.spec.ts	3	0	124	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-day.vitest.spec.ts	17	0	2612	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-detection.vitest.spec.ts	3	0	140	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-exact-skills.vitest.spec.ts	5	0	2553	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-explanation.vitest.spec.ts	9	0	251	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.receptionist.vitest.spec.ts	7	0	3008	
+FAIL	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.vitest.spec.ts	17	1	2471	✗ technician changes › resolves the technician from the session; none linked → 403; date default = branch business day
+FAIL	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.wiring.vitest.spec.ts	0	2	3332	✗ Phase 7 operations wiring (Nest) › ports are the ops implementations; the engine resolves lazily; receptionist + copilot get the bound finder
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-optimizer.vitest.spec.ts	3	0	134	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-permissions.vitest.spec.ts	2	0	235	
+FAIL	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-proposals.vitest.spec.ts	16	4	2642	✗ open › a failed text leaves it proposed with the attempt counted
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-recommendation.vitest.spec.ts	4	0	119	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-settings.vitest.spec.ts	8	0	168	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-stats.vitest.spec.ts	3	0	132	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling-workflow.vitest.spec.ts	5	0	134	
+PASS	modules/ai/src/ai-scheduling-optimizer/ai-scheduling.service.vitest.spec.ts	26	0	2557	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-admin.vitest.spec.ts	4	0	2040	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-integration.vitest.spec.ts	14	0	1902	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-intelligence.vitest.spec.ts	11	0	2119	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-redaction.vitest.spec.ts	11	0	2148	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-retention.vitest.spec.ts	6	0	2082	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-search.vitest.spec.ts	9	0	2042	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription-settings.vitest.spec.ts	6	0	2047	
+PASS	modules/ai/src/ai-voice-transcription/ai-voice-transcription.vitest.spec.ts	15	0	2009	
+PASS	modules/ai/src/ai/ai-access-kysely.vitest.spec.ts	4	0	237	
+PASS	modules/ai/src/ai/ai-backbone.vitest.spec.ts	13	0	193	
+PASS	modules/ai/src/ai/ai-billing-webhook-verify.vitest.spec.ts	9	0	2584	
+PASS	modules/ai/src/ai/ai-budget-scheduler.vitest.spec.ts	21	0	162	
+PASS	modules/ai/src/ai/ai-cardpointe-billing.vitest.spec.ts	8	0	2518	
+PASS	modules/ai/src/ai/ai-context-builder.vitest.spec.ts	36	0	139	
+PASS	modules/ai/src/ai/ai-control-enforcement.vitest.spec.ts	3	0	167	
+PASS	modules/ai/src/ai/ai-control-plane-service.vitest.spec.ts	14	0	615	
+PASS	modules/ai/src/ai/ai-control-plane.vitest.spec.ts	12	0	438	
+PASS	modules/ai/src/ai/ai-evaluation.vitest.spec.ts	23	0	208	
+PASS	modules/ai/src/ai/ai-feedback.vitest.spec.ts	35	0	337	
+PASS	modules/ai/src/ai/ai-gated-completion.vitest.spec.ts	14	0	150	
+PASS	modules/ai/src/ai/ai-knowledge.vitest.spec.ts	18	0	350	
+PASS	modules/ai/src/ai/ai-model-router.vitest.spec.ts	18	0	159	
+PASS	modules/ai/src/ai/ai-module-registry.vitest.spec.ts	6	0	178	
+PASS	modules/ai/src/ai/ai-output-schemas.vitest.spec.ts	21	0	165	
+PASS	modules/ai/src/ai/ai-plans.vitest.spec.ts	15	0	138	
+PASS	modules/ai/src/ai/ai-platform.vitest.spec.ts	36	0	1757	
+PASS	modules/ai/src/ai/ai-pricing-versions.vitest.spec.ts	11	0	150	
+PASS	modules/ai/src/ai/ai-pricing.vitest.spec.ts	5	0	200	
+PASS	modules/ai/src/ai/ai-prompt-registry.vitest.spec.ts	24	0	184	
+PASS	modules/ai/src/ai/ai-provider-health.vitest.spec.ts	8	0	396	
+PASS	modules/ai/src/ai/ai-provider-task-gateway.vitest.spec.ts	9	0	518	
+PASS	modules/ai/src/ai/ai-providers.vitest.spec.ts	9	0	146	
+PASS	modules/ai/src/ai/ai-receipt.vitest.spec.ts	8	0	186	
+PASS	modules/ai/src/ai/ai-response-language.vitest.spec.ts	13	0	525	
+PASS	modules/ai/src/ai/ai-safety-policy.vitest.spec.ts	21	0	241	
+PASS	modules/ai/src/ai/ai-settings-store.vitest.spec.ts	22	0	664	
+PASS	modules/ai/src/ai/ai-subscription-billing.vitest.spec.ts	9	0	2576	
+PASS	modules/ai/src/ai/ai-task-registry.vitest.spec.ts	12	0	142	
+PASS	modules/ai/src/ai/ai-tool-registry.vitest.spec.ts	20	0	240	
+PASS	modules/ai/src/ai/ai-trial-sweep.vitest.spec.ts	3	0	2541	
+PASS	modules/ai/src/ai/ai-usage-unknown.vitest.spec.ts	9	0	121	
+PASS	modules/ai/src/ai/prompt-injection-eval.vitest.spec.ts	60	0	192	
+PASS	modules/ai/src/cache/cache.vitest.spec.ts	4	0	120	
+PASS	modules/ai/src/call-intelligence/call-intelligence-core.spec.ts	11	0	154	
+PASS	modules/ai/src/call-intelligence/call-intelligence-recent.vitest.spec.ts	2	0	146	
+PASS	modules/ai/src/malformed-input-4xx.vitest.spec.ts	5	0	2570	
+FAIL	modules/ai/src/request-schemas.vitest.spec.ts	1	104	3566	✗ ai — validated bodies, route by route › POST /internal/ai-billing/event (service caller)
+PASS	modules/ai/src/voice-booking/ai-agent.vitest.spec.ts	9	0	2527	
+PASS	modules/ai/src/voice-booking/ai-faq.vitest.spec.ts	4	0	302	
+PASS	modules/ai/src/voice-booking/ai-follow-up.vitest.spec.ts	6	0	2592	
+PASS	modules/ai/src/voice-booking/ai-provisioning.vitest.spec.ts	4	0	2560	
+PASS	modules/ai/src/voice-booking/ai-receptionist-booking-verification.vitest.spec.ts	9	0	2782	
+PASS	modules/ai/src/voice-booking/ai-receptionist-gateway.e2e.vitest.spec.ts	12	0	2592	
+PASS	modules/ai/src/voice-booking/ai-receptionist-gateway.vitest.spec.ts	19	0	2509	
+PASS	modules/ai/src/voice-booking/ai-receptionist-verification.vitest.spec.ts	10	0	1901	
+PASS	modules/ai/src/voice-booking/ai-settings.vitest.spec.ts	7	0	225	
+PASS	modules/ai/src/voice-booking/provider-ports.vitest.spec.ts	5	0	241	
+PASS	modules/ai/src/voice-booking/provisioning-metrics.vitest.spec.ts	4	0	2521	
+PASS	modules/ai/src/voice-booking/retell-voice.adapter.vitest.spec.ts	12	0	130	
+PASS	modules/ai/src/voice-booking/retell-voice.vitest.spec.ts	5	0	244	
+PASS	modules/ai/src/voice-booking/tenant-isolation.vitest.spec.ts	6	0	2488	
+PASS	modules/ai/src/voice-booking/tenant-receptionist-audit.vitest.spec.ts	3	0	2499	
+PASS	modules/ai/src/voice-booking/tenant-receptionist.vitest.spec.ts	5	0	1302	
+PASS	modules/ai/src/voice-booking/twilio-telephony.vitest.spec.ts	10	0	278	
+PASS	modules/ai/src/voice-booking/voice-analytics.vitest.spec.ts	7	0	128	
+PASS	modules/ai/src/voice-booking/voice-booking-write.vitest.spec.ts	7	0	1892	
+FAIL	modules/ai/src/voice-booking/voice-booking.controller.vitest.spec.ts	11	1	1968	✗ VoiceBookingController.tool dispatch (read tools) › BUILD_PLAN Phase 5: get_deals reads the ONE deals domain for the phone channel, in the guard's tenant
+FAIL	modules/ai/src/voice-booking/voice-booking.service.vitest.spec.ts	6	1	1991	✗ VoiceBookingService read adapters › services(): reuses getOptions and returns integer-cent prices + safe fields
+PASS	modules/ai/src/voice-booking/voice-call-outcome.vitest.spec.ts	7	0	135	
+PASS	modules/ai/src/voice-booking/voice-caller-id.vitest.spec.ts	10	0	1985	
+PASS	modules/ai/src/voice-booking/voice-fleet.vitest.spec.ts	2	0	368	
+PASS	modules/ai/src/voice-booking/voice-gateway-metrics.vitest.spec.ts	7	0	143	
+FAIL	modules/ai/src/voice-booking/voice-holds.vitest.spec.ts	5	1	2024	✗ AI receptionist holds (tool route) › hold_slot holds the EXACT time on the ai_receptionist channel under the call's session; a taken time is relayed honestly
+PASS	modules/ai/src/voice-booking/voice-key.vitest.spec.ts	9	0	135	
+PASS	modules/ai/src/voice-booking/voice-learning.vitest.spec.ts	10	0	146	
+PASS	modules/ai/src/voice-booking/voice-manage.vitest.spec.ts	16	0	2010	
+PASS	modules/ai/src/voice-booking/voice-slot-conflict.vitest.spec.ts	2	0	2053	
+PASS	modules/ai/src/voice-booking/voice-tools.vitest.spec.ts	3	0	137	
+PASS	modules/ai/src/workflow-runs/workflow-runs-core.spec.ts	7	0	130	
+ERROR	modules/ai/src/workflow/workflow-core.spec.ts	0	0	139	
+PASS	modules/audit/src/audit-partitions.vitest.spec.ts	6	0	373	
+PASS	modules/audit/src/audit-sink.vitest.spec.ts	5	0	345	
+PASS	modules/audit/src/audit.service.vitest.spec.ts	13	0	355	
+PASS	modules/catalog/src/catalog-lifecycles.vitest.spec.ts	1	0	371	
+FAIL	modules/catalog/src/request-schemas.vitest.spec.ts	0	15	532	✗ catalog — validated bodies, route by route › POST /pos/services
+PASS	modules/catalog/src/service-add-ons/service-add-ons.vitest.spec.ts	4	0	270	
+PASS	modules/catalog/src/services/backend-filter-gap.vitest.spec.ts	5	0	100	
+PASS	modules/catalog/src/services/category-status-400.vitest.spec.ts	2	0	513	
+PASS	modules/catalog/src/services/services-cache.vitest.spec.ts	4	0	446	
+PASS	modules/catalog/src/services/services-commission-validation.vitest.spec.ts	7	0	327	
+ERROR	modules/catalog/src/services/services-core.spec.ts	0	0	326	
+PASS	modules/catalog/src/services/services-import.vitest.spec.ts	6	0	333	
+PASS	modules/catalog/src/services/v5-coded-refusals.vitest.spec.ts	3	0	347	
+PASS	modules/deals/src/bundles/bundles-core.spec.ts	33	0	123	
+PASS	modules/deals/src/bundles/v5-coded-refusals.vitest.spec.ts	2	0	311	
+PASS	modules/deals/src/deals/deals-approvals-engine.vitest.spec.ts	7	0	922	
+PASS	modules/deals/src/deals/deals-checkout-core.vitest.spec.ts	5	0	107	
+PASS	modules/deals/src/deals/deals-engine-kill-switch.vitest.spec.ts	3	0	933	
+PASS	modules/deals/src/deals/deals-nearby-core.vitest.spec.ts	6	0	930	
+PASS	modules/deals/src/deals/deals-public-limiter.vitest.spec.ts	4	0	924	
+PASS	modules/deals/src/deals/deals-redemption-core.vitest.spec.ts	3	0	116	
+PASS	modules/deals/src/deals/deals.core.vitest.spec.ts	33	0	145	
+PASS	modules/deals/src/engine/coupons.vitest.spec.ts	6	0	132	
+PASS	modules/deals/src/engine/deal-lifecycles-r2.vitest.spec.ts	3	0	363	
+PASS	modules/deals/src/engine/eligibility.vitest.spec.ts	14	0	171	
+PASS	modules/deals/src/engine/pricing.vitest.spec.ts	23	0	186	
+PASS	modules/deals/src/promotions/promotion-redemption-core.spec.ts	24	0	114	
+PASS	modules/deals/src/promotions/promotions.vitest.spec.ts	6	0	133	
+FAIL	modules/deals/src/request-schemas.vitest.spec.ts	0	23	986	✗ deals — validated bodies, route by route › POST /pos/deals
+PASS	modules/deals/src/salon-promotions/salon-promotions.vitest.spec.ts	8	0	268	
+PASS	modules/finance/src/expense-version-races.vitest.spec.ts	3	0	507	
+FAIL	modules/finance/src/finance-core.vitest.spec.ts	36	1	405	✗ export (§97–100, §202) › XLSX is a real workbook (zip) whose total equals the CSV total
+PASS	modules/inventory/src/inventory-core.spec.ts	68	0	137	
+PASS	modules/inventory/src/inventory-cost-visibility.vitest.spec.ts	4	0	503	
+FAIL	modules/inventory/src/request-schemas.vitest.spec.ts	0	21	657	✗ inventory — validated bodies, route by route › POST /tenant/inventory/categories
+PASS	modules/loyalty/src/loyalty-rewards.vitest.spec.ts	4	0	326	
+FAIL	modules/loyalty/src/request-schemas.vitest.spec.ts	0	2	368	✗ loyalty — validated bodies, route by route › POST /pos/loyalty/rewards
+PASS	modules/marketing/src/display-advertising/display-ads-core.vitest.spec.ts	56	0	299	
+FAIL	modules/marketing/src/display-advertising/display-ads-media-core.vitest.spec.ts	6	8	423	✗ magic bytes and header dimensions (§70) › PNG
+FAIL	modules/marketing/src/request-schemas.vitest.spec.ts	0	10	641	✗ marketing — validated bodies, route by route › POST /pos/marketing/display-ads
+PASS	modules/platform/src/platform-lifecycles.vitest.spec.ts	23	0	378	
+FAIL	modules/platform/src/request-schemas.vitest.spec.ts	1	24	658	✗ platform — validated bodies, route by route › POST /super-admin/plans
+FAIL	modules/platform/src/super-admin-automation/automation-boundary.vitest.spec.ts	4	2	492	✗ Automation Rules — backend boundary › is SuperAdminGuard-gated
+PASS	modules/platform/src/super-admin-automation/automation-core.vitest.spec.ts	9	0	138	
+PASS	modules/platform/src/super-admin-automation/automation-engine.vitest.spec.ts	4	0	469	
+PASS	modules/platform/src/super-admin-automation/automation.service.vitest.spec.ts	5	0	146	
+PASS	modules/platform/src/super-admin-plans/entitlements-cache.vitest.spec.ts	3	0	359	
+PASS	modules/platform/src/super-admin-plans/entitlements-core.vitest.spec.ts	5	0	126	
+PASS	modules/platform/src/super-admin-plans/entitlements-technicians-unlimited.vitest.spec.ts	4	0	380	
+PASS	modules/platform/src/super-admin-plans/overage-core.vitest.spec.ts	6	0	150	
+PASS	modules/platform/src/super-admin-plans/plan-mutations-core.vitest.spec.ts	9	0	145	
+PASS	modules/platform/src/super-admin-plans/plans-overview-core.vitest.spec.ts	5	0	125	
+PASS	modules/platform/src/super-admin-plans/proration-core.vitest.spec.ts	6	0	105	
+PASS	modules/platform/src/super-admin-plans/tenant-offers.vitest.spec.ts	4	0	123	
+PASS	modules/reports/src/booking-checkin-events/booking-checkin-recorder.vitest.spec.ts	4	0	111	
+PASS	modules/reports/src/kpi-snapshots/kpi-snapshots.vitest.spec.ts	4	0	373	
+PASS	modules/reports/src/marketing-report/marketing-report.vitest.spec.ts	3	0	109	
+PASS	modules/reports/src/menu-insights/menu-insights-core.spec.ts	30	0	133	
+ERROR	modules/reports/src/reports/reports-core.spec.ts	0	0	224	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-accuracy.vitest.spec.ts	17	0	165	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-branch-scope.vitest.spec.ts	3	0	3600	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-core.vitest.spec.ts	6	0	125	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-correct-amounts.vitest.spec.ts	4	0	3636	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-dedup.vitest.spec.ts	4	0	119	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-matching.vitest.spec.ts	3	0	115	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-phash.vitest.spec.ts	6	0	212	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-pipeline.vitest.spec.ts	8	0	3677	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-posting.vitest.spec.ts	4	0	120	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-preview-key.vitest.spec.ts	1	0	3549	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-quality.vitest.spec.ts	8	0	601	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-rescan.vitest.spec.ts	8	0	3584	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-review.vitest.spec.ts	4	0	116	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-settings-save.vitest.spec.ts	3	0	3545	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-settings.vitest.spec.ts	4	0	138	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-upload-bytes.vitest.spec.ts	2	0	3543	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-upload-policy.vitest.spec.ts	3	0	3597	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-upload.vitest.spec.ts	5	0	168	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-usage.vitest.spec.ts	20	0	3603	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt-validation.vitest.spec.ts	5	0	118	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.blob.vitest.spec.ts	13	0	184	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.posting-binding.vitest.spec.ts	4	0	471	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.store-writes.vitest.spec.ts	8	0	467	
+PASS	modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.textract.vitest.spec.ts	26	0	3565	
+FAIL	modules/safety/src/request-schemas.vitest.spec.ts	1	44	3567	✗ safety — validated bodies, route by route › POST /community/rules/acknowledge
+PASS	modules/safety/src/tenant-safety-community/community-abuse.vitest.spec.ts	17	0	3418	
+PASS	modules/safety/src/tenant-safety-community/community-ai-assist.vitest.spec.ts	12	0	3578	
+PASS	modules/safety/src/tenant-safety-community/community-appeals.vitest.spec.ts	10	0	3680	
+FAIL	modules/safety/src/tenant-safety-community/community-audit.vitest.spec.ts	3	2	6476	✗ audit sink (in-memory service wiring) › the KyselyCommunityAuditSink never writes a fabricated case id into the moderation trail (bugs 2/3)
+FAIL	modules/safety/src/tenant-safety-community/community-bugs.vitest.spec.ts	7	2	3689	✗ bug 7 — the repository throws on a failed write (no phantom rows with id "") › createIncident rejects when the insert returns nothing
+PASS	modules/safety/src/tenant-safety-community/community-core.vitest.spec.ts	24	0	3670	
+PASS	modules/safety/src/tenant-safety-community/community-events.vitest.spec.ts	2	0	341	
+PASS	modules/safety/src/tenant-safety-community/community-evidence.vitest.spec.ts	9	0	126	
+FAIL	modules/safety/src/tenant-safety-community/community-interactions.controller.vitest.spec.ts	2	10	3546	✗ route permissions › every route carries exactly its community.* key
+PASS	modules/safety/src/tenant-safety-community/community-interactions.vitest.spec.ts	29	0	329	
+ERROR	modules/safety/src/tenant-safety-community/community-moderation.controller.vitest.spec.ts	0	0	3578	TypeError: NestFactory.create is not a function
+PASS	modules/safety/src/tenant-safety-community/community-moderation.service.vitest.spec.ts	25	0	3520	
+PASS	modules/safety/src/tenant-safety-community/community-notify.vitest.spec.ts	14	0	331	
+PASS	modules/safety/src/tenant-safety-community/community-privacy-scan.vitest.spec.ts	16	0	3560	
+PASS	modules/safety/src/tenant-safety-community/community-risk-matching.vitest.spec.ts	12	0	135	
+PASS	modules/safety/src/tenant-safety-community/community-search.vitest.spec.ts	14	0	3508	
+PASS	modules/safety/src/tenant-safety-community/community-workflow.vitest.spec.ts	18	0	3706	
+ERROR	modules/safety/src/tenant-safety-community/community.controller.http.vitest.spec.ts	0	0	3565	TypeError: NestFactory.create is not a function
+PASS	modules/safety/src/tenant-safety-community/community.service.vitest.spec.ts	33	0	3685	
+PASS	modules/safety/src/tenant-safety-community/evidence-scanner.vitest.spec.ts	17	0	140	
+PASS	modules/super-admin/src/lifecycles.vitest.spec.ts	75	0	786	
+PASS	modules/super-admin/src/malformed-input-4xx.vitest.spec.ts	3	0	3796	
+PASS	modules/super-admin/src/onboarding/onboarding-core.vitest.spec.ts	35	0	223	
+PASS	modules/super-admin/src/onboarding/onboarding.repository.vitest.spec.ts	10	0	230	
+PASS	modules/super-admin/src/onboarding/onboarding.service.vitest.spec.ts	12	0	787	
+FAIL	modules/super-admin/src/request-schemas-ai.vitest.spec.ts	0	24	3639	✗ super-admin ai — validated bodies, route by route › POST /super-admin/ai/tenants/:tenantId/subscriptions
+FAIL	modules/super-admin/src/request-schemas-audit.vitest.spec.ts	0	12	1705	✗ super-admin audit — validated bodies, route by route › POST /super-admin/alerts/:id/notes
+FAIL	modules/super-admin/src/request-schemas-billing.vitest.spec.ts	0	17	769	✗ super-admin billing — validated bodies, route by route › POST /super-admin/billing/cycle/run
+FAIL	modules/super-admin/src/request-schemas-catalog.vitest.spec.ts	0	11	1697	✗ super-admin catalog — validated bodies, route by route › POST /super-admin/booking-checkin/failed-events/:id/retry
+FAIL	modules/super-admin/src/request-schemas-finance.vitest.spec.ts	0	31	812	✗ super-admin finance — validated bodies, route by route › POST /super-admin/revenue-residuals/agreements
+FAIL	modules/super-admin/src/request-schemas-onboarding.vitest.spec.ts	0	10	818	✗ super-admin onboarding — validated bodies, route by route › POST /super-admin/onboarding/applications
+FAIL	modules/super-admin/src/request-schemas-ops.vitest.spec.ts	0	26	3628	✗ super-admin ops — validated bodies, route by route › POST /super-admin/product-catalog/imports
+FAIL	modules/super-admin/src/request-schemas-oversight.vitest.spec.ts	0	37	950	✗ super-admin oversight — validated bodies, route by route › POST /super-admin/customer-data-oversight/sync/merge
+FAIL	modules/super-admin/src/request-schemas-platform.vitest.spec.ts	0	53	3695	✗ super-admin platform — validated bodies, route by route › POST /super-admin/platform/applications
+FAIL	modules/super-admin/src/request-schemas-programs.vitest.spec.ts	0	47	3721	✗ super-admin programs — validated bodies, route by route › POST /super-admin/integrations/connections
+FAIL	modules/super-admin/src/request-schemas-tenants.vitest.spec.ts	0	23	3782	✗ super-admin tenants — validated bodies, route by route › POST /super-admin/tenants/:id/payment-gateway
+FAIL	modules/super-admin/src/request-schemas-workforce.vitest.spec.ts	0	32	3767	✗ super-admin workforce — validated bodies, route by route › POST /super-admin/smart-reminders/templates
+PASS	modules/super-admin/src/super-admin-ai-insights/ai-insights-core.vitest.spec.ts	6	0	136	
+PASS	modules/super-admin/src/super-admin-ai-insights/ai-insights.service.vitest.spec.ts	5	0	162	
+PASS	modules/super-admin/src/super-admin-ai-ocr-receipt/super-admin-ai-ocr-receipt-core.vitest.spec.ts	3	0	111	
+PASS	modules/super-admin/src/super-admin-ai-reports/ai-reports-core.spec.ts	29	0	128	
+PASS	modules/super-admin/src/super-admin-ai-reports/ai-reports.vitest.spec.ts	4	0	145	
+PASS	modules/super-admin/src/super-admin-ai-reports/narrative-provenance-core.spec.ts	9	0	108	
+PASS	modules/super-admin/src/super-admin-ai-reports/narrative-provenance.vitest.spec.ts	5	0	781	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-delivery-core.spec.ts	21	0	128	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-delivery.vitest.spec.ts	5	0	143	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-run-core.spec.ts	15	0	121	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-run.vitest.spec.ts	6	0	154	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-schedule-core.spec.ts	20	0	133	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-schedule.vitest.spec.ts	6	0	159	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-template-core.spec.ts	17	0	125	
+PASS	modules/super-admin/src/super-admin-ai-reports/report-template.vitest.spec.ts	6	0	760	
+PASS	modules/super-admin/src/super-admin-ai-review-reputation/super-admin-ai-review-reputation.vitest.spec.ts	4	0	134	
+PASS	modules/super-admin/src/super-admin-ai-scheduling-optimizer/super-admin-ai-scheduling-optimizer-core.vitest.spec.ts	10	0	194	
+PASS	modules/super-admin/src/super-admin-ai-usage/ai-global-prompt-core.vitest.spec.ts	4	0	110	
+PASS	modules/super-admin/src/super-admin-ai-usage/ai-usage-analytics-core.vitest.spec.ts	5	0	122	
+PASS	modules/super-admin/src/super-admin-ai-usage/ai-usage-config-core.vitest.spec.ts	3	0	129	
+PASS	modules/super-admin/src/super-admin-ai-usage/ai-usage-config.service.vitest.spec.ts	8	0	235	
+PASS	modules/super-admin/src/super-admin-ai/ai-admin.vitest.spec.ts	6	0	3643	
+ERROR	modules/super-admin/src/super-admin-alerts/alerts-service.spec.ts	0	0	137	  PASS  cannot set same status
+PASS	modules/super-admin/src/super-admin-analytics/super-admin-analytics.vitest.spec.ts	17	0	3855	
+PASS	modules/super-admin/src/super-admin-appointment-oversight/super-admin-appointment-oversight.vitest.spec.ts	18	0	175	
+PASS	modules/super-admin/src/super-admin-audit-logs/audit-logs-core.vitest.spec.ts	11	0	139	
+PASS	modules/super-admin/src/super-admin-billing/billing-analytics-core.vitest.spec.ts	3	0	115	
+ERROR	modules/super-admin/src/super-admin-billing/billing-core.spec.ts	0	0	128	
+PASS	modules/super-admin/src/super-admin-billing/billing-cycle-core.vitest.spec.ts	17	0	138	
+PASS	modules/super-admin/src/super-admin-billing/billing-export-core.vitest.spec.ts	5	0	123	
+FAIL	modules/super-admin/src/super-admin-billing/billing-export.scheduler.vitest.spec.ts	2	1	360	✗ exportWorkerTick › never throws — a failing tick is swallowed and logged
+PASS	modules/super-admin/src/super-admin-billing/billing-invoice-core.vitest.spec.ts	7	0	119	
+PASS	modules/super-admin/src/super-admin-billing/billing-lifecycle-core.vitest.spec.ts	6	0	106	
+PASS	modules/super-admin/src/super-admin-billing/billing-proration-core.vitest.spec.ts	5	0	111	
+PASS	modules/super-admin/src/super-admin-billing/billing-trend-core.vitest.spec.ts	6	0	112	
+PASS	modules/super-admin/src/super-admin-booking-checkin/booking-checkin-core.vitest.spec.ts	15	0	125	
+PASS	modules/super-admin/src/super-admin-booking-checkin/booking-checkin-export-core.vitest.spec.ts	6	0	1677	
+PASS	modules/super-admin/src/super-admin-business-categories/business-categories.vitest.spec.ts	7	0	147	
+PASS	modules/super-admin/src/super-admin-catalog/catalog-overview-core.vitest.spec.ts	3	0	137	
+PASS	modules/super-admin/src/super-admin-catalog/deploy-core.vitest.spec.ts	6	0	105	
+PASS	modules/super-admin/src/super-admin-catalog/template-mutations-core.vitest.spec.ts	8	0	128	
+PASS	modules/super-admin/src/super-admin-checkin/super-admin-checkin.vitest.spec.ts	2	0	395	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-data-governance-core.vitest.spec.ts	14	0	147	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-data-overview.vitest.spec.ts	7	0	186	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-deletion.service.vitest.spec.ts	6	0	913	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-import-core.vitest.spec.ts	6	0	153	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-import.scheduler.vitest.spec.ts	3	0	348	
+PASS	modules/super-admin/src/super-admin-customer-data/customer-import.service.vitest.spec.ts	7	0	157	
+PASS	modules/super-admin/src/super-admin-customer-data/deletion-workflow.vitest.spec.ts	4	0	166	
+PASS	modules/super-admin/src/super-admin-customer-data/super-admin-customer-data.service.vitest.spec.ts	9	0	929	
+PASS	modules/super-admin/src/super-admin-dashboard/dashboard-core.vitest.spec.ts	6	0	116	
+PASS	modules/super-admin/src/super-admin-dashboard/dashboard.service.vitest.spec.ts	3	0	128	
+PASS	modules/super-admin/src/super-admin-database/database-core.vitest.spec.ts	11	0	142	
+PASS	modules/super-admin/src/super-admin-database/database.service.vitest.spec.ts	15	0	551	
+PASS	modules/super-admin/src/super-admin-device-management/device-management-core.vitest.spec.ts	4	0	1294	
+PASS	modules/super-admin/src/super-admin-device-management/device-management.integration.vitest.spec.ts	0	0	107	
+PASS	modules/super-admin/src/super-admin-device-management/device-management.kysely.repository.vitest.spec.ts	3	0	107	
+PASS	modules/super-admin/src/super-admin-device-management/device-management.service.vitest.spec.ts	6	0	1293	
+PASS	modules/super-admin/src/super-admin-disputes/deadline-core.vitest.spec.ts	9	0	121	
+FAIL	modules/super-admin/src/super-admin-disputes/dispute-outcome-idempotent.vitest.spec.ts	0	1	463	✗ dispute outcome is idempotent › the outcome route carries              
+PASS	modules/super-admin/src/super-admin-disputes/disputes-actions-core.vitest.spec.ts	10	0	120	
+PASS	modules/super-admin/src/super-admin-disputes/disputes-overview-core.vitest.spec.ts	8	0	116	
+PASS	modules/super-admin/src/super-admin-disputes/evidence-policy-core.vitest.spec.ts	10	0	102	
+PASS	modules/super-admin/src/super-admin-disputes/export-core.vitest.spec.ts	8	0	111	
+PASS	modules/super-admin/src/super-admin-disputes/patterns-core.vitest.spec.ts	5	0	110	
+PASS	modules/super-admin/src/super-admin-forecasting/forecasting-oversight.vitest.spec.ts	4	0	123	
+PASS	modules/super-admin/src/super-admin-gift-card-programs/gift-card-programs.vitest.spec.ts	6	0	679	
+PASS	modules/super-admin/src/super-admin-gift-card-settlement/gift-card-settlement.vitest.spec.ts	6	0	706	
+PASS	modules/super-admin/src/super-admin-hardware-packages/hardware-packages.vitest.spec.ts	15	0	185	
+PASS	modules/super-admin/src/super-admin-health/system-health.vitest.spec.ts	3	0	104	
+PASS	modules/super-admin/src/super-admin-integrations/integration-lifecycle.service.vitest.spec.ts	6	0	749	
+PASS	modules/super-admin/src/super-admin-integrations/integration-permission.guard.vitest.spec.ts	9	0	265	
+PASS	modules/super-admin/src/super-admin-integrations/integration-scheduler.service.vitest.spec.ts	3	0	146	
+PASS	modules/super-admin/src/super-admin-integrations/provider-reliability.service.vitest.spec.ts	5	0	331	
+PASS	modules/super-admin/src/super-admin-integrations/super-admin-integrations.service.vitest.spec.ts	4	0	732	
+PASS	modules/super-admin/src/super-admin-integrations/sync-engine.service.vitest.spec.ts	5	0	696	
+PASS	modules/super-admin/src/super-admin-integrations/webhook-ingest.service.vitest.spec.ts	4	0	772	
+PASS	modules/super-admin/src/super-admin-legal/legal-document-core.vitest.spec.ts	5	0	106	
+PASS	modules/super-admin/src/super-admin-legal/legal-documents.vitest.spec.ts	6	0	693	
+FAIL	modules/super-admin/src/super-admin-loyalty/loyalty-boundary.vitest.spec.ts	2	3	459	✗ Loyalty Programs — backend boundary › is SuperAdminGuard-gated
+PASS	modules/super-admin/src/super-admin-loyalty/loyalty-config.vitest.spec.ts	3	0	125	
+PASS	modules/super-admin/src/super-admin-loyalty/loyalty-core.vitest.spec.ts	7	0	132	
+PASS	modules/super-admin/src/super-admin-loyalty/loyalty-corrections-core.vitest.spec.ts	4	0	106	
+PASS	modules/super-admin/src/super-admin-loyalty/loyalty-dashboard.vitest.spec.ts	6	0	136	
+PASS	modules/super-admin/src/super-admin-loyalty/loyalty-suspicious-core.vitest.spec.ts	5	0	102	
+PASS	modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.vitest.spec.ts	2	0	369	
+PASS	modules/super-admin/src/super-admin-maintenance/maintenance-core.vitest.spec.ts	10	0	116	
+PASS	modules/super-admin/src/super-admin-maintenance/maintenance.vitest.spec.ts	6	0	140	
+PASS	modules/super-admin/src/super-admin-membership-programs/membership-actions-core.vitest.spec.ts	11	0	126	
+PASS	modules/super-admin/src/super-admin-membership-programs/membership-controls-core.vitest.spec.ts	7	0	117	
+PASS	modules/super-admin/src/super-admin-membership-programs/membership-export-core.vitest.spec.ts	10	0	123	
+PASS	modules/super-admin/src/super-admin-membership-programs/membership-trend-core.vitest.spec.ts	6	0	124	
+PASS	modules/super-admin/src/super-admin-memberships/super-admin-memberships.vitest.spec.ts	3	0	365	
+PASS	modules/super-admin/src/super-admin-merchant-accounts/merchant-accounts-core.vitest.spec.ts	11	0	131	
+PASS	modules/super-admin/src/super-admin-merchant-accounts/merchant-accounts-export-core.vitest.spec.ts	4	0	1686	
+FAIL	modules/super-admin/src/super-admin-overview-aggregate/overview-aggregate.vitest.spec.ts	3	1	3749	✗ OverviewAggregateService › is fail-soft: a rejected dependency becomes null, the rest still resolve
+FAIL	modules/super-admin/src/super-admin-overview/overview-snapshot.scheduler.vitest.spec.ts	2	2	404	✗ overview-snapshot scheduler › tick captures and reports the result
+PASS	modules/super-admin/src/super-admin-overview/overview.service.vitest.spec.ts	11	0	236	
+ERROR	modules/super-admin/src/super-admin-owners/super-admin-owners-core.spec.ts	0	0	474	
+PASS	modules/super-admin/src/super-admin-platform-staff/platform-staff-core.vitest.spec.ts	6	0	240	
+PASS	modules/super-admin/src/super-admin-platform/access-request-core.vitest.spec.ts	11	0	132	
+PASS	modules/super-admin/src/super-admin-platform/application-confirmation.vitest.spec.ts	5	0	3599	
+PASS	modules/super-admin/src/super-admin-platform/applications-lifecycle.vitest.spec.ts	14	0	3595	
+ERROR	modules/super-admin/src/super-admin-platform/appointment-support-core.spec.ts	0	0	3779	
+PASS	modules/super-admin/src/super-admin-platform/branch-bulk-core.spec.ts	11	0	103	
+PASS	modules/super-admin/src/super-admin-platform/branch-bulk.vitest.spec.ts	2	0	3716	
+PASS	modules/super-admin/src/super-admin-platform/branch-create-core.spec.ts	16	0	115	
+PASS	modules/super-admin/src/super-admin-platform/branch-create.vitest.spec.ts	4	0	3569	
+PASS	modules/super-admin/src/super-admin-platform/branch-device-core.spec.ts	11	0	115	
+PASS	modules/super-admin/src/super-admin-platform/branch-device.vitest.spec.ts	3	0	3574	
+PASS	modules/super-admin/src/super-admin-platform/branch-directory-core.spec.ts	30	0	121	
+PASS	modules/super-admin/src/super-admin-platform/branch-export-core.spec.ts	15	0	104	
+PASS	modules/super-admin/src/super-admin-platform/branch-export.vitest.spec.ts	2	0	3725	
+PASS	modules/super-admin/src/super-admin-platform/branch-health-core.spec.ts	30	0	120	
+PASS	modules/super-admin/src/super-admin-platform/branch-hours-core.spec.ts	14	0	123	
+PASS	modules/super-admin/src/super-admin-platform/branch-hours.vitest.spec.ts	3	0	3704	
+PASS	modules/super-admin/src/super-admin-platform/branch-lifecycle-core.spec.ts	21	0	122	
+PASS	modules/super-admin/src/super-admin-platform/branch-lifecycle.vitest.spec.ts	6	0	3643	
+PASS	modules/super-admin/src/super-admin-platform/branch-manager-core.spec.ts	11	0	105	
+PASS	modules/super-admin/src/super-admin-platform/branch-manager.vitest.spec.ts	4	0	3544	
+PASS	modules/super-admin/src/super-admin-platform/branch-transfer-core.spec.ts	15	0	105	
+PASS	modules/super-admin/src/super-admin-platform/branch-transfer.vitest.spec.ts	4	0	3664	
+ERROR	modules/super-admin/src/super-admin-platform/branches-dashboard-core.spec.ts	0	0	1204	
+ERROR	modules/super-admin/src/super-admin-platform/category-duplicates-core.spec.ts	0	0	1278	
+ERROR	modules/super-admin/src/super-admin-platform/customer-duplicates-core.spec.ts	0	0	1264	
+ERROR	modules/super-admin/src/super-admin-platform/customer-merge-core.spec.ts	0	0	3646	
+PASS	modules/super-admin/src/super-admin-platform/invite-identifier.vitest.spec.ts	10	0	3789	
+ERROR	modules/super-admin/src/super-admin-platform/invite-lifecycle-core.spec.ts	0	0	3816	
+ERROR	modules/super-admin/src/super-admin-platform/invite-user-core.spec.ts	0	0	3916	
+PASS	modules/super-admin/src/super-admin-platform/payments-core.spec.ts	49	0	132	
+PASS	modules/super-admin/src/super-admin-platform/payments-transactions.vitest.spec.ts	6	0	3948	
+ERROR	modules/super-admin/src/super-admin-platform/privacy-requests-core.spec.ts	0	0	3754	
+ERROR	modules/super-admin/src/super-admin-platform/product-category-merge-core.spec.ts	0	0	3932	
+PASS	modules/super-admin/src/super-admin-platform/public-intake.vitest.spec.ts	12	0	3784	
+PASS	modules/super-admin/src/super-admin-platform/salon-staff-invite.vitest.spec.ts	9	0	3735	
+PASS	modules/super-admin/src/super-admin-platform/scheduled-reports-core.vitest.spec.ts	5	0	113	
+ERROR	modules/super-admin/src/super-admin-platform/service-category-merge-core.spec.ts	0	0	3844	
+ERROR	modules/super-admin/src/super-admin-platform/service-revenue-core.spec.ts	0	0	1358	
+ERROR	modules/super-admin/src/super-admin-platform/session-revocation-core.spec.ts	0	0	3674	
+PASS	modules/super-admin/src/super-admin-platform/support-mode-start.vitest.spec.ts	4	0	3984	
+PASS	modules/super-admin/src/super-admin-platform/tenant-performance.vitest.spec.ts	8	0	3790	
+PASS	modules/super-admin/src/super-admin-platform/top-performing.vitest.spec.ts	3	0	3583	
+PASS	modules/super-admin/src/super-admin-platform/transfer-preflight-missing-dest.vitest.spec.ts	1	0	1237	
+PASS	modules/super-admin/src/super-admin-platform/usage-limits.vitest.spec.ts	4	0	3730	
+ERROR	modules/super-admin/src/super-admin-platform/user-branch-access-core.spec.ts	0	0	3671	
+ERROR	modules/super-admin/src/super-admin-platform/user-mfa-core.spec.ts	0	0	3930	  PASS  already-required is a no-op (changed:false), not an error
+ERROR	modules/super-admin/src/super-admin-platform/user-role-change-core.spec.ts	0	0	3702	
+ERROR	modules/super-admin/src/super-admin-platform/users-dashboard-core.spec.ts	0	0	1294	
+PASS	modules/super-admin/src/super-admin-platform/users-export-core.vitest.spec.ts	5	0	1675	
+PASS	modules/super-admin/src/super-admin-platform/users-reference-core.vitest.spec.ts	10	0	1304	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-barcode-core.vitest.spec.ts	3	0	118	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-barcode.service.vitest.spec.ts	5	0	173	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-catalog-core.vitest.spec.ts	9	0	157	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-distribution-core.vitest.spec.ts	4	0	105	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-distribution.service.vitest.spec.ts	4	0	121	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-import-core.vitest.spec.ts	5	0	126	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-import.service.vitest.spec.ts	4	0	128	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-master-core.vitest.spec.ts	5	0	123	
+PASS	modules/super-admin/src/super-admin-product-catalog/product-master.service.vitest.spec.ts	5	0	130	
+PASS	modules/super-admin/src/super-admin-product-catalog/super-admin-product-catalog.service.vitest.spec.ts	5	0	178	
+PASS	modules/super-admin/src/super-admin-promotions/promotion-lifecycle-core.spec.ts	24	0	138	
+PASS	modules/super-admin/src/super-admin-promotions/promotion-management.vitest.spec.ts	6	0	982	
+PASS	modules/super-admin/src/super-admin-promotions/promotions-core.spec.ts	32	0	137	
+PASS	modules/super-admin/src/super-admin-promotions/promotions-oversight.vitest.spec.ts	3	0	135	
+ERROR	modules/super-admin/src/super-admin-queue/live-queue-actions.vitest.spec.ts	0	0	3630	
+FAIL	modules/super-admin/src/super-admin-queue/live-queue-boundary.vitest.spec.ts	3	2	3600	✗ Live Queue Monitor — backend-enforced monitoring boundary › is SuperAdminGuard-gated at the controller (platform role boundary)
+PASS	modules/super-admin/src/super-admin-queue/live-queue-core.vitest.spec.ts	12	0	3740	
+PASS	modules/super-admin/src/super-admin-queue/live-queue.service.vitest.spec.ts	11	0	3542	
+PASS	modules/super-admin/src/super-admin-queue/queue-pii-mask.vitest.spec.ts	3	0	122	
+PASS	modules/super-admin/src/super-admin-queue/super-admin-queue.vitest.spec.ts	2	0	383	
+PASS	modules/super-admin/src/super-admin-reconciliation/super-admin-reconciliation.vitest.spec.ts	2	0	117	
+PASS	modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.vitest.spec.ts	9	0	3735	
+PASS	modules/super-admin/src/super-admin-revenue-residuals/residual-eligible-expenses.vitest.spec.ts	12	0	127	
+PASS	modules/super-admin/src/super-admin-revenue-residuals/revenue-split.vitest.spec.ts	14	0	130	
+PASS	modules/super-admin/src/super-admin-revenue-residuals/super-admin-revenue-residuals.service.vitest.spec.ts	35	0	781	
+FAIL	modules/super-admin/src/super-admin-scheduled-reports/scheduled-reports.scheduler.vitest.spec.ts	3	2	3752	✗ Super Admin scheduled reports are actually run › a tick already running is not re-entered
+PASS	modules/super-admin/src/super-admin-scheduled-reports/super-admin-scheduled-reports.vitest.spec.ts	10	0	3785	
+PASS	modules/super-admin/src/super-admin-security/audit-engine.vitest.spec.ts	10	0	362	
+PASS	modules/super-admin/src/super-admin-security/grant-core.spec.ts	20	0	113	
+PASS	modules/super-admin/src/super-admin-security/grant.vitest.spec.ts	7	0	135	
+PASS	modules/super-admin/src/super-admin-security/incident-core.spec.ts	21	0	125	
+PASS	modules/super-admin/src/super-admin-security/incident.vitest.spec.ts	6	0	141	
+PASS	modules/super-admin/src/super-admin-security/ip-block-core.spec.ts	22	0	118	
+PASS	modules/super-admin/src/super-admin-security/ip-block.vitest.spec.ts	7	0	151	
+PASS	modules/super-admin/src/super-admin-security/lockdown-core.spec.ts	20	0	119	
+PASS	modules/super-admin/src/super-admin-security/lockdown.vitest.spec.ts	9	0	162	
+PASS	modules/super-admin/src/super-admin-security/network-policy.vitest.spec.ts	13	0	168	
+PASS	modules/super-admin/src/super-admin-security/policy-core.spec.ts	16	0	116	
+PASS	modules/super-admin/src/super-admin-security/policy.vitest.spec.ts	6	0	131	
+PASS	modules/super-admin/src/super-admin-security/retention-core.spec.ts	15	0	115	
+PASS	modules/super-admin/src/super-admin-security/retention.vitest.spec.ts	7	0	145	
+PASS	modules/super-admin/src/super-admin-security/security-core.spec.ts	26	0	122	
+PASS	modules/super-admin/src/super-admin-security/security.vitest.spec.ts	3	0	151	
+PASS	modules/super-admin/src/super-admin-security/session-revoke-core.spec.ts	11	0	104	
+PASS	modules/super-admin/src/super-admin-security/session-revoke.vitest.spec.ts	7	0	142	
+PASS	modules/super-admin/src/super-admin-settings/platform-urls-consistency.vitest.spec.ts	5	0	291	
+PASS	modules/super-admin/src/super-admin-settings/setting-override-core.vitest.spec.ts	6	0	107	
+PASS	modules/super-admin/src/super-admin-settings/super-admin-settings.vitest.spec.ts	15	0	354	
+ERROR	modules/super-admin/src/super-admin-settlements/settlements-boundary.vitest.spec.ts	0	0	503	
+PASS	modules/super-admin/src/super-admin-settlements/settlements-core.vitest.spec.ts	10	0	133	
+PASS	modules/super-admin/src/super-admin-settlements/settlements.service.vitest.spec.ts	5	0	151	
+PASS	modules/super-admin/src/super-admin-smart-reminders/smart-reminders-core.vitest.spec.ts	6	0	125	
+PASS	modules/super-admin/src/super-admin-staff/global-tech-admin-core.vitest.spec.ts	13	0	118	
+PASS	modules/super-admin/src/super-admin-staff/global-tech-admin-perms.vitest.spec.ts	3	0	213	
+PASS	modules/super-admin/src/super-admin-staff/super-admin-staff.vitest.spec.ts	4	0	2544	
+PASS	modules/super-admin/src/super-admin-staff/workforce-access-core.spec.ts	20	0	109	
+PASS	modules/super-admin/src/super-admin-staff/workforce-access.vitest.spec.ts	4	0	194	
+PASS	modules/super-admin/src/super-admin-staff/workforce-connectivity-core.spec.ts	17	0	105	
+PASS	modules/super-admin/src/super-admin-staff/workforce-connectivity.vitest.spec.ts	3	0	189	
+PASS	modules/super-admin/src/super-admin-staff/workforce-core.spec.ts	56	0	133	
+PASS	modules/super-admin/src/super-admin-staff/workforce-cross-transfer-core.spec.ts	21	0	106	
+PASS	modules/super-admin/src/super-admin-staff/workforce-cross-transfer.vitest.spec.ts	9	0	214	
+PASS	modules/super-admin/src/super-admin-staff/workforce-deactivation-core.spec.ts	14	0	104	
+PASS	modules/super-admin/src/super-admin-staff/workforce-deactivation.vitest.spec.ts	5	0	202	
+PASS	modules/super-admin/src/super-admin-staff/workforce-directory-core.spec.ts	22	0	114	
+PASS	modules/super-admin/src/super-admin-staff/workforce-duplicate-core.spec.ts	10	0	112	
+PASS	modules/super-admin/src/super-admin-staff/workforce-duplicate.vitest.spec.ts	4	0	195	
+PASS	modules/super-admin/src/super-admin-staff/workforce-overview.vitest.spec.ts	4	0	209	
+PASS	modules/super-admin/src/super-admin-staff/workforce-payroll-core.spec.ts	28	0	125	
+PASS	modules/super-admin/src/super-admin-staff/workforce-payroll.vitest.spec.ts	5	0	204	
+PASS	modules/super-admin/src/super-admin-staff/workforce-profile.vitest.spec.ts	2	0	199	
+PASS	modules/super-admin/src/super-admin-staff/workforce-savedview-core.spec.ts	17	0	108	
+PASS	modules/super-admin/src/super-admin-staff/workforce-savedview.vitest.spec.ts	6	0	192	
+PASS	modules/super-admin/src/super-admin-staff/workforce-security-core.spec.ts	19	0	114	
+PASS	modules/super-admin/src/super-admin-staff/workforce-security.vitest.spec.ts	4	0	197	
+PASS	modules/super-admin/src/super-admin-staff/workforce-transfer-core.spec.ts	19	0	107	
+PASS	modules/super-admin/src/super-admin-staff/workforce-transfer.vitest.spec.ts	7	0	211	
+FAIL	modules/super-admin/src/super-admin-support/support-boundary.vitest.spec.ts	2	2	3615	✗ Support Center — backend boundary › is SuperAdminGuard-gated
+PASS	modules/super-admin/src/super-admin-support/support-center-core.vitest.spec.ts	7	0	179	
+PASS	modules/super-admin/src/super-admin-tenant-activity/tenant-activity.service.vitest.spec.ts	13	0	236	
+PASS	modules/super-admin/src/super-admin-tenant-health/tenant-health-score.vitest.spec.ts	10	0	140	
+PASS	modules/super-admin/src/super-admin-tenant-presets/tenant-presets.vitest.spec.ts	7	0	159	
+FAIL	modules/super-admin/src/super-admin-tenant-warnings/tenant-warning-dispatch.vitest.spec.ts	6	2	356	✗ TenantWarningDispatchJob › sends over configured channels and marks sent
+PASS	modules/super-admin/src/super-admin-tenants/bulk-status.service.vitest.spec.ts	7	0	785	
+PASS	modules/super-admin/src/super-admin-tenants/directory-enrichment.vitest.spec.ts	7	0	145	
+PASS	modules/super-admin/src/super-admin-tenants/directory-overview.service.vitest.spec.ts	3	0	757	
+PASS	modules/super-admin/src/super-admin-tenants/payment-merchant-audit.vitest.spec.ts	5	0	3676	
+PASS	modules/super-admin/src/super-admin-tenants/salon-code.vitest.spec.ts	8	0	124	
+ERROR	modules/super-admin/src/super-admin-tenants/super-admin-tenants-core.spec.ts	0	0	724	  PASS  error->failed
+ERROR	modules/super-admin/src/super-admin-tenants/super-admin-tenants-service.spec.ts	0	0	775	  PASS  suspend unknown tenant -> not found
+PASS	modules/super-admin/src/super-admin-tenants/suspension-reason.vitest.spec.ts	2	0	738	
+PASS	modules/super-admin/src/super-admin-tenants/tenant-directory-aggregates.vitest.spec.ts	10	0	718	
+FAIL	modules/super-admin/src/super-admin-tenants/tenant-lifecycle-core.vitest.spec.ts	2	3	263	✗ tenant lifecycle moves › onboarding goes DRAFT → ONBOARDING → PENDING_APPROVAL → ACTIVE, and cannot skip to ACTIVE
+PASS	modules/super-admin/src/super-admin-tenants/tenant-pos-language.vitest.spec.ts	3	0	3692	
+PASS	modules/super-admin/src/super-admin-tenants/tenant-status-realtime.vitest.spec.ts	4	0	744	
+PASS	modules/super-admin/src/super-admin-ticket-removal/ticket-removal-core.vitest.spec.ts	4	0	195	
+PASS	modules/super-admin/src/super-admin-tickets/super-admin-tickets-core.vitest.spec.ts	4	0	118	
+PASS	modules/super-admin/src/super-admin-voice/super-admin-voice.controller.vitest.spec.ts	7	0	3575	
+PASS	modules/super-admin/src/super-admin-website-leads/website-leads.vitest.spec.ts	12	0	169	
+FAIL	modules/super-admin/src/support-mode/support-extension.vitest.spec.ts	1	2	123	✗ support session extension (§78) › needs a reason, a sane length, and a live session
+PASS	modules/super-admin/src/tenant-ai/tenant-ai.vitest.spec.ts	6	0	3595	
+PASS	modules/support/src/help/help-articles-core.spec.ts	9	0	141	
+PASS	modules/support/src/help/help-assistant-core.spec.ts	18	0	3602	
+PASS	modules/support/src/help/help-engagement-core.spec.ts	8	0	128	
+PASS	modules/support/src/help/help-videos-core.spec.ts	4	0	123	
+PASS	modules/support/src/help/sla-breach-sweep-core.spec.ts	13	0	488	
+PASS	modules/support/src/help/status-core.spec.ts	11	0	109	
+PASS	modules/support/src/help/support-attachments-core.vitest.spec.ts	11	0	131	
+FAIL	modules/support/src/help/support-attachments-upload.vitest.spec.ts	2	1	510	✗ POST /tenant/help/tickets/:id/attachments › a real screenshot is stored without its EXIF; CSV text passes; the quota is charged
+PASS	modules/support/src/help/support-sessions-core.spec.ts	11	0	473	
+PASS	modules/support/src/help/support-tickets-core.spec.ts	51	0	421	
+FAIL	modules/support/src/request-schemas.vitest.spec.ts	0	13	3602	✗ support — validated bodies, route by route › POST /tenant/help/articles/:id/feedback

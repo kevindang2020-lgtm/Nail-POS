@@ -1,0 +1,206 @@
+{
+  "label": "e2e",
+  "at": "2026-10-30T02:20:15.567Z",
+  "results": [
+    {
+      "step": "stock: the sidebar badge and Open Alerts are the SAME number (11 low products, 1 acknowledged → 10)",
+      "ok": true,
+      "detail": "sidebar 10 = Open Alerts 10 · 11 at risk, 1 acknowledged · the old page counted 1 persisted rows",
+      "ms": 104
+    },
+    {
+      "step": "stock: Show acknowledged lists all 11; Last Used By shows the technician or \"No recorded use\"",
+      "ok": true,
+      "detail": "11 rows · Cherry Bomb → Anna Lee (0.5) · Ballet Slipper → No recorded use",
+      "ms": 1079
+    },
+    {
+      "step": "stock: one search box — SKU, vendor phone, PO number, technician",
+      "ok": true,
+      "detail": "GEL-405 → 1 · (609) 555-0188 → 6 · PO-1042 → Rose Petal Gel (6 on order)",
+      "ms": 1959
+    },
+    {
+      "step": "stock: acknowledging a product low since setup (no alert row) drops both counts by one, and it is audited",
+      "ok": true,
+      "detail": "badge 10 → 9 · Open Alerts 9 · audit inventory_alert_acknowledged",
+      "ms": 613
+    },
+    {
+      "step": "stock: Record Product Use — Base Coat 0.5 for Anna Lee (the owner records it, with a reason): stock before → after, one event, ONE movement",
+      "ok": true,
+      "detail": "Stock before 3.65 Use −0.5 Stock after 3.15 · \"Recorded: 0.5 of Base Coat used by Anna Lee.\" · movement → product_usage_event cbae94",
+      "ms": 1328
+    },
+    {
+      "step": "stock: a retry with the same Idempotency-Key replays — nothing is taken twice; a new key for another amount records anew",
+      "ok": true,
+      "detail": "first 200 · second 200 replay:true · ONE event · key reused for 1.0 → 422 IDEMPOTENCY_KEY_REUSED",
+      "ms": 107
+    },
+    {
+      "step": "stock: product overlay — every technician who used Base Coat, Last Used By = latest by when it happened",
+      "ok": true,
+      "detail": "Last Used By Anna LeeOct 29, 10:19 PM · 0.25 · Anna Lee 1.25 3 Oct 29, 10:19 PM | Bao Tran 0.25 1 Oct 29, 4:19 PM",
+      "ms": 1594
+    },
+    {
+      "step": "stock: a correction gives stock back (never an edit) — the use shows corrected, a usage_correction movement",
+      "ok": true,
+      "detail": "Oct 29, 10:19 PM Anna Lee recorded for them: double tap test  0 corrected from 0.25  Manager (for technician) reversed  Oct 29, 10:19 PM  · movement product_usage_adjustment",
+      "ms": 1438
+    },
+    {
+      "step": "stock: All Technicians keeps the two \"Anna Lee\"s apart; Alert History lists the acknowledged alert",
+      "ok": true,
+      "detail": "2 rows named Anna Lee · history 3 rows, acknowledged ones shown",
+      "ms": 1574
+    },
+    {
+      "step": "stock: Reorder opens a DRAFT purchase order prefilled with the suggestion (a draft adds no stock)",
+      "ok": true,
+      "detail": "/tenant/inventory/purchase-orders?new=1&productId=c4950000-0000-4000-8000-000000000008&qty=6&vendorId=c3950000-0000-4000-8000-000000000002",
+      "ms": 577
+    },
+    {
+      "step": "transactions: Today reproduces the photo — 3 · $168.15 · $9.60 · $168.15, partial labelled, declined not counted",
+      "ok": true,
+      "detail": "3 · $168.15 · $9.60 · $168.15 · 4 rows (the $51.72 split part + the declined $30.00 attempt listed, not counted)",
+      "ms": 602
+    },
+    {
+      "step": "transactions: a phone in three formats finds the same payments — never the other salon's John Smith",
+      "ok": true,
+      "detail": "7 identical results in all three formats · other salon's $99.99 never shown",
+      "ms": 2465
+    },
+    {
+      "step": "transactions: details — the split ticket's tenders, lines and technicians, refund position, no edit / charge action",
+      "ok": true,
+      "detail": "Captured $60.00 Refunded −$15.00 Pending −$5.00 Still refundable $40.00 · 2 tenders · lines by Anna Lee + Bao Tran · no edit / charge",
+      "ms": 1843
+    },
+    {
+      "step": "transactions: a receipt resend goes to the existing Checkout route (SIMULATED here — nothing is sent)",
+      "ok": true,
+      "detail": "settlement BATCH-201 linked · \"Receipt sent by email.\"",
+      "ms": 1836
+    },
+    {
+      "step": "transactions: Custom Range from the month calendar (yesterday → today) and numbered pages newest first",
+      "ok": true,
+      "detail": "Oct 28, 2026 – Oct 29, 2026 → 5 tenders · page 2 continues page 1",
+      "ms": 1843
+    },
+    {
+      "step": "transactions: export carries every matching tender with masked contact and the totals",
+      "ok": true,
+      "detail": "transactions.csv · 79 lines · masked",
+      "ms": 133
+    },
+    {
+      "step": "money: the photo's $116.43 vs $168.15 — Collections $168.15 (every confirmed tender), Revenue = the two paid tickets",
+      "ok": true,
+      "detail": "Revenue $108.83 · Collections $168.15 (= Transactions Gross) · Outstanding $90.00 as of now · 3 tenders · Avg $54.42 ÷ 2 paid tickets · Failed 1 · Pending payouts $112.93",
+      "ms": 120
+    },
+    {
+      "step": "money: all six all-time totals and all eight Quick Actions are on screen without scrolling",
+      "ok": true,
+      "detail": "6 totals · Record Payment · Issue Refund · New Invoice · Add Tip · Process Payout · Financial Report · Reconcile · Settings",
+      "ms": 92
+    },
+    {
+      "step": "money: Transactions workspace keeps the six filters — Refunds (this month) shows the partly refunded card tender",
+      "ok": true,
+      "detail": "Refunds → 1 (the $60.00 card, −$15.00) · Voids → 1",
+      "ms": 2055
+    },
+    {
+      "step": "money: Revenue & Services ranks services (once per line) and Payouts & Health shows pending vs bank-confirmed",
+      "ok": true,
+      "detail": "4 services ranked · BATCH-201 pending (not confirmed by bank) · BATCH-200 deposit recorded · health \"Needs attention\"",
+      "ms": 2084
+    },
+    {
+      "step": "money: universal search — an invoice number and a phone find their records (typed results)",
+      "ok": true,
+      "detail": "INV-0042 found · phone → 7 payments",
+      "ms": 1746
+    },
+    {
+      "step": "money: Quick Action Reconcile opens the deposit reconciliation workflow (not Transactions)",
+      "ok": true,
+      "detail": "/tenant/payments/deposit-reconciliation",
+      "ms": 2050
+    },
+    {
+      "step": "front desk: Transactions open with no refund action; the finance Overview says the role cannot see it",
+      "ok": true,
+      "detail": "Transactions: 4 rows, no Refund in details · Overview: \"Your role cannot see this information\"",
+      "ms": 3879
+    },
+    {
+      "step": "a read failure is an honest error, never $0.00 (Stock Alerts · Transactions · Overview)",
+      "ok": true,
+      "detail": "three honest errors, no figures",
+      "ms": 4216
+    },
+    {
+      "step": "empty salon: verified-zero empty states",
+      "ok": true,
+      "detail": "No product at its reorder level · No transactions in this period · Collections $0.00",
+      "ms": 4476
+    },
+    {
+      "step": "vietnamese: the three pages switch language",
+      "ok": true,
+      "detail": "Lượng sản phẩm đã dùng · Tip · Tiền đã thu",
+      "ms": 4623
+    },
+    {
+      "step": "no page errors across the run",
+      "ok": true,
+      "detail": "none",
+      "ms": 50
+    }
+  ],
+  "errors": [],
+  "unhandled": [
+    {
+      "route": "POST /auth/session-activity",
+      "n": 4
+    },
+    {
+      "route": "GET /tenant/inventory/purchase-orders",
+      "n": 1
+    },
+    {
+      "route": "GET /tenant/inventory/vendors",
+      "n": 1
+    },
+    {
+      "route": "GET /tenant/inventory/products",
+      "n": 1
+    },
+    {
+      "route": "GET /pos/deposit-reconciliation/workspace/settlements",
+      "n": 2
+    },
+    {
+      "route": "GET /pos/deposit-reconciliation/workspace/deposits",
+      "n": 2
+    },
+    {
+      "route": "GET /pos/deposit-reconciliation/workspace/kpis",
+      "n": 1
+    },
+    {
+      "route": "GET /pos/deposit-reconciliation/workspace/bank-accounts",
+      "n": 1
+    }
+  ],
+  "simulated": [
+    "SIMULATED receipt d0950000-0000-4000-8000-000000000001 {\"channels\":[\"email\"]} — nothing sent"
+  ]
+}

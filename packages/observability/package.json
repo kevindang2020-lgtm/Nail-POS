@@ -1,0 +1,31 @@
+{
+  "name": "@aipowersalon/observability",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The observability kernel (Constitution 13 \u00a780): structured redacted logging, the metrics registry, request/correlation ids and async context, build info, and the telemetry adapters (jobs, providers, database, Redis, realtime, HTTP requests). Health aggregation, SLOs, alerts and the System Operations surface stay in apps/api \u2014 they are the platform's operations DOMAIN, not the kernel.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./nest": {
+      "types": "./dist/nest/index.d.ts",
+      "default": "./dist/nest/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/api-contracts": "*",
+    "@nestjs/common": "^10.4.22",
+    "pino": "^9.14.0"
+  }
+}

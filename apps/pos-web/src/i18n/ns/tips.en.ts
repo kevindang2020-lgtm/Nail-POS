@@ -1,0 +1,52 @@
+// ns/tips.en.ts — the POS "tp" namespace, English: Payments & Money → Tips & Gratuity (Tips mandate, Oct 29 2026). Staff-facing.
+// Collected (the customer's tip, once) · allocated (to technicians) · unallocated · reversed (refund / void) · paid out
+// (payroll) are distinct and never interchanged.
+export const TIPS_EN = {
+  'tp.subtitle': 'What was tipped, who earned it, how it was collected, and what is still owed or paid out',
+  'tp.exportTips': 'Export Tips', 'tp.tipsSearchPh': 'Search customer, phone, technician, ticket #, transaction ID or amount…', 'tp.chip.search': 'Search: {q}',
+  'tp.allTechnicians': 'All technicians', 'tp.methodLabel': 'Collection method', 'tp.allMethods': 'All methods', 'tp.noTechnician': 'No technician',
+  'tp.method.card': 'Card', 'tp.method.cash': 'Cash', 'tp.method.split': 'Card + cash', 'tp.method.none': 'No tip', 'tp.method.gift': 'Gift card',
+  'tp.status.tipped': 'Tipped', 'tp.status.no_tip': 'No tip', 'tp.status.unallocated': 'Unallocated', 'tp.status.partial': 'Partly allocated', 'tp.status.mismatch': 'Snapshot mismatch', 'tp.status.reversed': 'Reversed / refunded', 'tp.status.paid_out': 'Paid out', 'tp.status.pending_payout': 'Pending payout',
+  'tp.basis.collected': 'Tip collected date', 'tp.basis.checkout': 'Checkout date', 'tp.basis.allocation': 'Allocation date', 'tp.basis.adjustment': 'Adjustment date', 'tp.basis.payout': 'Payout date',
+  // KPIs
+  'tp.kpi.total': 'Total Tips', 'tp.kpi.totalSub': 'Collected on {n} tipped tickets', 'tp.kpi.totalSubRev': 'Collected on {n} tipped tickets · {r} reversed since',
+  'tp.kpi.card': 'Card Tips', 'tp.kpi.cardSub': 'Settled card rows · never a declined attempt', 'tp.kpi.cash': 'Cash Tips', 'tp.kpi.cashSub': 'Cash recorded at the register',
+  'tp.kpi.avg': 'Average Tip', 'tp.kpi.avgSub': '{a} per tipped ticket · rate = tips ÷ pre-tip sales', 'tp.kpi.avgSubNone': 'Tips ÷ pre-tip sales (tax excluded)',
+  'tp.kpi.noTip': 'No-Tip Count', 'tp.kpi.noTipSub': 'Paid tickets with no tip · of {n} eligible',
+  // views + reconciliation strip
+  'tp.views': 'Tip views', 'tp.tab.overview': 'Overview', 'tp.tab.transactions': 'Tip Transactions', 'tp.tab.distribution': 'Technician Distribution', 'tp.tab.adjustments': 'Adjustments & Reports',
+  'tp.recon.collected': 'Collected', 'tp.recon.allocated': 'Allocated', 'tp.recon.unallocated': 'Unallocated', 'tp.recon.paidOut': 'Paid out', 'tp.recon.pending': 'Pending payout', 'tp.recon.reversed': 'Reversed', 'tp.recon.manual': 'Manual corrections (net)',
+  'tp.recon.snapshot': 'Payroll snapshot', 'tp.recon.mismatch': '{n} ticket(s) disagree with payroll snapshot', 'tp.recon.ok': 'matches',
+  'tp.reconRule': 'Collected + corrections = allocated + unallocated. A payout draws down what a technician is owed; it never adds a tip. A ticket whose frozen payroll snapshot disagrees with its collected tip is flagged here, never silently changed.',
+  // overview
+  'tp.byTechnician': 'Tips by Technician', 'tp.viewAll': 'View all', 'tp.distribution': 'Distribution', 'tp.recentTitle': 'Recent tip transactions',
+  'tp.barsAlt': 'Allocated tips by technician: {list}', 'tp.ticketsN': '{n} tickets', 'tp.onePerson': 'Only one technician has allocated tips in this period ({a}).',
+  'tp.noDistribution': 'No technician tips in this period', 'tp.noDistributionHint': 'Change the date range, or check the filters above.',
+  'tp.d.card': 'Card', 'tp.d.cash': 'Cash', 'tp.d.allocated': 'Allocated', 'tp.d.payout': 'Paid out / pending', 'tp.d.share': 'Share', 'tp.d.corrections': 'Corrections', 'tp.d.paidOut': 'Paid out', 'tp.d.pending': 'Pending', 'tp.d.tickets': 'Tickets', 'tp.d.snapshot': 'Payroll snapshot', 'tp.d.net': 'Net',
+  'tp.paidOut': 'paid', 'tp.pending': 'pending', 'tp.noTips': 'No tips in this period', 'tp.noTipsHint': 'Change the date range or clear the filters.',
+  // transactions
+  'tp.noMatches': 'No tips match your search or filters', 'tp.noMatchesHint': 'Nothing in {p} with these filters.',
+  'tp.col.collected': 'Collected', 'tp.col.ticket': 'Ticket / transaction', 'tp.col.customer': 'Customer', 'tp.col.technicians': 'Technicians', 'tp.col.method': 'Method', 'tp.col.amount': 'Tip', 'tp.col.allocation': 'Allocation', 'tp.col.payout': 'Payout',
+  'tp.sort.collected_desc': 'Newest first', 'tp.sort.collected_asc': 'Oldest first', 'tp.sort.amount_desc': 'Largest tip', 'tp.sort.amount_asc': 'Smallest tip', 'tp.sort.ticket_desc': 'Ticket number',
+  'tp.splitTender': '{n} tenders', 'tp.matched.reference': 'matched reference', 'tp.matched.name': 'matched name', 'tp.techCount': '{n} technicians', 'tp.reversed': 'reversed',
+  'tp.alloc.allocated': 'Allocated', 'tp.alloc.partial': 'Partly allocated', 'tp.alloc.unallocated': 'Unallocated', 'tp.alloc.over': 'Over-allocated', 'tp.alloc.none': 'No tip',
+  'tp.payout.paid': 'Paid out', 'tp.payout.approved': 'Approved', 'tp.payout.open': 'Pending', 'tp.payout.none': 'Not in a pay period',
+  'tp.mismatch': 'Snapshot mismatch', 'tp.mismatchLong': 'Payroll snapshot {s} ≠ collected {c} — review before payroll',
+  // distribution
+  'tp.dsort.allocated_desc': 'Most allocated', 'tp.dsort.allocated_asc': 'Least allocated', 'tp.dsort.name_asc': 'Name A–Z', 'tp.dsort.tickets_desc': 'Most tickets', 'tp.archived': 'Archived', 'tp.viewTips': 'View tips',
+  // adjustments & reports
+  'tp.reportsTitle': 'Reconciliation & reports', 'tp.exportMatching': 'Export all matching tips (CSV)', 'tp.adjustmentsTitle': 'Adjustments & reversals', 'tp.adjSearchPh': 'Technician, ticket # or reason',
+  'tp.kindLabel': 'Kind', 'tp.kind.all': 'Corrections and reversals', 'tp.kind.correction': 'Manual correction', 'tp.kind.reversal': 'Refund / void reversal',
+  'tp.source.refund': 'refund', 'tp.source.void': 'void', 'tp.source.chargeback': 'chargeback',
+  'tp.noAdjustments': 'No tip adjustments in this period', 'tp.noAdjustmentsHint': 'Corrections made from a tip\'s details and refund reversals appear here.',
+  'tp.a.date': 'Date', 'tp.a.kind': 'Kind', 'tp.a.reason': 'Reason', 'tp.a.by': 'By',
+  'tp.astatus.posted': 'Posted', 'tp.astatus.approved': 'Approved', 'tp.astatus.applied': 'Applied', 'tp.astatus.pending': 'Pending', 'tp.astatus.pending_review': 'Pending review', 'tp.astatus.rejected': 'Rejected',
+  // detail
+  'tp.detailTitle': 'Tip on ticket #{n}', 'tp.detailTitleBare': 'Tip', 'tp.stepup': 'Confirm your password to adjust a tip allocation.',
+  'tp.f.tipEvent': 'Tip event', 'tp.f.payments': 'Payments', 'tp.f.tipPart': '{a} tip', 'tp.f.cardCash': 'Card / cash', 'tp.f.pretip': 'Pre-tip sales · rate', 'tp.f.collected': 'Collected', 'tp.f.checkout': 'Checkout', 'tp.f.splitRule': 'Split rule', 'tp.f.reversed': 'Reversed', 'tp.f.payout': 'Payout',
+  'tp.rule.none': 'Not allocated', 'tp.rule.single': 'One technician', 'tp.rule.equal': 'Equal shares', 'tp.rule.weighted_or_directed': 'Weighted / directed shares',
+  'tp.allocTitle': 'Technician allocations', 'tp.noAllocations': 'No technician allocation recorded for this tip.',
+  'tp.adjust': 'Adjust allocation', 'tp.reason': 'Reason', 'tp.saveAdjustment': 'Record adjustment', 'tp.sumCheck': 'Allocations total {s} · tip collected {t}', 'tp.adjusted': 'Tip allocation on #{n} recorded.',
+  'tp.adjustNote': 'The split must equal the collected tip. On a paid ticket this records signed correction entries; the frozen payroll snapshot and the card charge are never changed. Refund the card from Refunds & Voids.',
+  'tp.audit.ticket.tip_allocation_set': 'Tip allocation set', 'tp.audit.tips_exported': 'Tips exported',
+} as const;

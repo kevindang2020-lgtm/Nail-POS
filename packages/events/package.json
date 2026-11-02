@@ -1,0 +1,33 @@
+{
+  "name": "@aipowersalon/events",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Domain event infrastructure (Constitution 13 \u00a775): the event envelope and registry (event-contract), the consumer helpers, and the OutboxWriter every domain module writes through inside its own transaction (Constitution 8 \u00a718-19). The publisher pipeline, replay, retention and the Super Admin event operations stay in apps/api. ./nest exports EventsCoreModule, which provides OutboxWriter.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./nest": {
+      "types": "./dist/nest/index.d.ts",
+      "default": "./dist/nest/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/database": "*",
+    "@aipowersalon/observability": "*",
+    "@aipowersalon/realtime-contracts": "*",
+    "@nestjs/common": "^10.4.22",
+    "kysely": "^0.27.4"
+  }
+}

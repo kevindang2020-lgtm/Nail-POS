@@ -1,0 +1,22 @@
+{
+  "name": "@aipowersalon/config",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Typed application configuration (Constitution 13 \u00a783\u201384): values DERIVED from the environment in one place, every function taking the env as a parameter (default process.env) so it is testable and never read ad hoc. Starts with the platform URLs (the tenant portal base every invite link and branded email uses).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

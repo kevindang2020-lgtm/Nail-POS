@@ -1,0 +1,6 @@
+{
+  "$comment": "check:uploads (apps/api/scripts/audit-uploads.mjs) — BUILD_PLAN Phase 12 / Constitution 5 §158–166 (#34). storeSites: a file that writes upload bytes to a store WITHOUT running the upload policy itself, with the caller that does. Only shrinks.",
+  "storeSites": {
+    "modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.blob.ts": "the private evidence-bucket adapter (FileStorePort); its only caller, AiOcrReceiptService.upload, runs acceptUpload(UPLOAD_POLICIES.ocrReceipt) and validateUpload before store()"
+  }
+}

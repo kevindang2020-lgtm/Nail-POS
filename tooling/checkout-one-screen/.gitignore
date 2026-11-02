@@ -1,0 +1,20 @@
+# build output and the bulk of the screenshots stay local; the committed evidence is listed in CHECKOUT_ONE_SCREEN_STATUS.md
+out/
+out-admin/
+out-owner/
+out-customer/
+results/**/*.png
+!results/before/checkout-*-1920x945.png
+!results/after/checkout-*-1920x945.png
+!results/after/checkout-busy-1600x900.png
+!results/after/checkout-busy-2560x1440.png
+!results/after-chrome/checkout-busy-1600x765.png
+!results/after-chrome/checkout-busy-1366x633.png
+!results/after-chrome/checkout-busy-2560x1305.png
+!results/sd-before/service-done-*-1920x945.png
+!results/sd-after/service-done-*-1920x945.png
+!results/sd-after/service-done-busy-1600x900.png
+!results/sd-after/service-done-busy-2560x1440.png
+!results/sd-after-chrome/service-done-busy-1600x765.png
+!results/sd-after-chrome/service-done-busy-2560x1305.png
+!results/sd-after-chrome/service-done-busy-1366x633.png

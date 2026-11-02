@@ -1,0 +1,39 @@
+{
+  "name": "aipowersalon-manager-pay-web",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aipowersalon/api-client": "*",
+    "@aipowersalon/api-contracts": "*",
+    "@aipowersalon/date-time": "*",
+    "@aipowersalon/mobile-sdk": "*",
+    "@aipowersalon/money": "*",
+    "@aipowersalon/realtime-contracts": "*",
+    "@aipowersalon/ui": "*",
+    "@capacitor/android": "^8.4.3",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/cli": "^8.4.3",
+    "@capacitor/core": "^8.4.3",
+    "@capacitor/ios": "^8.4.3",
+    "@capacitor/push-notifications": "^8.1.1",
+    "@capgo/capacitor-native-biometric": "^8.6.6",
+    "@tanstack/react-query": "5.103.2",
+    "capacitor-secure-storage-plugin": "^0.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "~5.4.5",
+    "vite": "^5.4.8"
+  }
+}

@@ -1,0 +1,211 @@
+// catalog-screens.pgtest — Services & Products · Service Categories · Service Pricing · Add-Ons (Oct 30 2026) against the
+// REAL schema, seeded with the photographed catalog: six services (Gel Manicure 45m $55 · Classic Pedicure 50m $48 ·
+// CD Mani 4432 30m $50 · CD Mani 6805 30m $50 · Haircut 30m $45 · Hair Coloring 120m $150), categories Nails 4 / CD 4432 1 /
+// CD 6805 1, and "French tips" ($10, +10m, taxable) offered on Gel Manicure, Classic Pedicure, Haircut and Hair Coloring.
+import { describe, it, expect, beforeAll } from 'vitest';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { CatalogScreensRepository } from './catalog-screens.repository';
+import { KyselyServicesRepository } from '../services/services.kysely.repository';
+
+const P = 'ca7a0000-0000-4000-8000-0000000';
+const id = (n: string) => P + n.padStart(5, '0');
+const T = id('a1'), T2 = id('a2'), B = id('b1'), B2 = id('b2'), BX = id('b9'), U = id('e1');
+const ctx = { tenantId: T, branchId: B, userId: U, role: 'OWNER', permissions: ['pos.services.view'] };
+const ctxAll = { ...ctx, branchId: '' };
+const ctx2 = { ...ctx, tenantId: T2, branchId: BX };
+const NAILS = id('c1'), CD4432 = id('c2'), CD6805 = id('c3'), EMPTY = id('c4');
+const GEL = id('d1'), PEDI = id('d2'), M4432 = id('d3'), M6805 = id('d4'), CUT = id('d5'), COLOR = id('d6'), OLD = id('d7');
+let pg: any; let repo: CatalogScreensRepository; let svcRepo: KyselyServicesRepository;
+const q = (s: string, p: unknown[] = []) => pg.query(s, p);
+
+beforeAll(async () => {
+  pg = await migratedPglite();
+  await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','cat-a','CTA001','active'), ($2,'Other LLC','Other','cat-b','CTB001','active')`, [T, T2]);
+  await q(`insert into branches (id, tenant_id, name, status, timezone, created_at) values ($1,$3,'Main','active','America/New_York', now() - interval '2 days'), ($2,$3,'Uptown','active','America/New_York', now() - interval '1 day'), ($4,$5,'Elsewhere','active','America/New_York', now())`, [B, B2, T, BX, T2]);
+  await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'owner@cat.test','Pat Owner','OWNER','active')`, [U, T]);
+  await q(`insert into service_categories (id, tenant_id, branch_id, name, status, sort_order, created_at) values ($1,$5,$6,'Nails','active',1, now() - interval '30 days'), ($2,$5,$6,'CD 4432','active',2, now() - interval '20 days'),
+    ($3,$5,$6,'CD 6805','active',3, now() - interval '10 days'), ($4,$5,$6,'Brows','active',4, now() - interval '1 day')`, [NAILS, CD4432, CD6805, EMPTY, T, B]);
+  await q(`insert into service_categories (id, tenant_id, branch_id, name, status) values ($1,$2,$3,'Other Nails','active')`, [id('c9'), T2, BX]);
+  const svc = (sid: string, cat: string, name: string, mins: number, cents: number, daysAgo: number, extra = '') =>
+    q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, online_booking_enabled, commission_type, commission_value, created_at ${extra ? ', ' + extra.split('=')[0] : ''})
+       values ($1,$2,$8,$3,$4,$5,$6,'active', true, 'percent', 40, now() - make_interval(days => $7) ${extra ? ', ' + extra.split('=')[1] : ''})`, [sid, T, cat, name, mins, cents, daysAgo, B]);
+  await svc(GEL, NAILS, 'Gel Manicure', 45, 5500, 6); await svc(PEDI, NAILS, 'Classic Pedicure', 50, 4800, 5); await svc(M4432, CD4432, 'CD Mani 4432', 30, 5000, 4);
+  await svc(M6805, CD6805, 'CD Mani 6805', 30, 5000, 3); await svc(CUT, NAILS, 'Haircut', 30, 4500, 2); await svc(COLOR, NAILS, 'Hair Coloring', 120, 15000, 1);
+  await q(`update services set online_booking_enabled = false where id = $1`, [COLOR]);
+  await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at) values ($1,$2,$3,$4,'Old Polish Change',15,1500,'archived', now())`, [OLD, T, B2, NAILS]);
+  // Uptown's own Gel Manicure row: the same service at another branch, at its own price
+  await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values ($1,$2,$3,$4,'Gel Manicure',45,6000,'active')`, [id('d8'), T, B2, NAILS]);
+  await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values ($1,$2,$3,$4,'Gel Manicure',45,9900,'active')`, [id('d9'), T2, BX, id('c9')]);
+  for (const s of [GEL, PEDI, CUT, COLOR]) await q(`insert into service_add_ons (tenant_id, branch_id, service_id, add_on_key, name, price_cents, duration_delta_minutes, is_taxable, is_active) values ($1,$3,$2,'ao_french','French tips',1000,10,true,true)`, [T, s, B]);
+  await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values ($1,$2,$3,'Vy','Tran','Vy Tran','active',true)`, [id('f1'), T, B]);
+  await q(`insert into technician_services (tenant_id, branch_id, technician_id, service_id, is_primary) values ($1,$2,$3,$4,true)`, [T, B, id('f1'), GEL]);
+  await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_display) values ($1,$2,$3,'Mai','Le','Mai Le','+18565551234','(856) 555-1234')`, [id('aa1'), T, B]);
+  await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone) values ($1,$2,$3,'Mai','Other','Mai Other','+18565551234')`, [id('aa9'), T2, BX]);
+  // ticket 1 (paid today): Gel Manicure $55 + French tips $10 + a $12 retail item · ticket 2 (paid): Classic Pedicure · ticket 3: open
+  const tk = (tid: string, num: number, paid: boolean, tenant = T, br = B, cust = id('aa1')) => q(`insert into tickets (id, tenant_id, branch_id, customer_id, ticket_number, status, paid_at, subtotal_cents, total_cents) values ($1,$2,$3,$4,$5,$6, ${paid ? 'now()' : 'null'}, 0, 0)`, [tid, tenant, br, cust, num, paid ? 'paid' : 'in_service']);
+  await tk(id('7a1'), 101, true); await tk(id('7a2'), 102, true); await tk(id('7a3'), 103, false); await tk(id('7a9'), 101, true, T2, BX, id('aa9'));
+  const line = (tid: string, sid: string | null, name: string, cat: string | null, cents: number, kind: string, addOn = false, tenant = T, br = B) =>
+    q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, category_snapshot, is_add_on, line_kind, quantity, status)
+       values ($1,$2,$3,$4,$5,$6,$7,45,$7,$8,$9,$10,1,'done')`, [tenant, br, tid, sid ?? '00000000-0000-0000-0000-000000000000', tenant === T ? id('f1') : null, name, cents, cat, addOn, kind]);
+  await line(id('7a1'), GEL, 'Gel Manicure', 'Nails', 5500, 'service'); await line(id('7a1'), null, 'French tips', 'Nails', 1000, 'add_on', true); await line(id('7a1'), null, 'Cuticle Oil', null, 1200, 'retail');
+  await line(id('7a2'), PEDI, 'Classic Pedicure', 'Nails', 4800, 'service'); await line(id('7a3'), GEL, 'Gel Manicure', 'Nails', 5500, 'service');
+  await line(id('7a9'), id('d9'), 'Gel Manicure', 'Other Nails', 9900, 'service', false, T2, BX);
+  const db = kyselyFor(pg); repo = new CatalogScreensRepository(db as never); svcRepo = new KyselyServicesRepository(db as never);
+}, 180_000);
+
+describe('Services & Products — the ten KPIs and four charts', () => {
+  it('counts the catalog once, prices from active priced services, revenue only from paid tickets', async () => {
+    const d = await repo.dashboard(ctx, { preset: 'month' });
+    expect(d.kpis).toMatchObject({ totalServices: 6, activeServices: 6, onlineBookable: 5, avgServicePriceCents: 6633, pricedServices: 6 });   // $398 / 6 = $66.33
+    expect(d.kpis.retailRevenueTodayCents).toBe(1200);
+    expect(d.kpis).toMatchObject({ topCategory: 'Nails', topCategoryBasis: 'realized', topCategoryCents: 10300 });   // 55 + 48 (the open ticket is not revenue)
+    expect(d.kpis).toMatchObject({ addOnConversionPct: 50, addOnTickets: 1, serviceTickets: 2, serviceMixMargin: null, packageSales: null });
+    const c = await repo.charts(ctx, { preset: 'month' });
+    expect(c.serviceMix.map((x) => [x.label, x.cents])).toEqual([['Gel Manicure', 5500], ['Classic Pedicure', 4800]]);
+    expect(c.retailMix).toEqual([{ label: 'Cuticle Oil', cents: 1200, count: 1 }]);
+    expect(c.categoryRevenue).toEqual([{ label: 'Nails', cents: 10300, count: 2 }]);
+    expect((await repo.dashboard(ctx2, {})).kpis.totalServices).toBe(1);
+  });
+});
+
+describe('Service Menu / Service Pricing list', () => {
+  it('newest first, one search box (name exact first, category, $ price, minutes, id), filters, paging', async () => {
+    const l = await repo.services(ctx, { page: 1, pageSize: 4 });
+    expect(l.items.map((x) => x.name)).toEqual(['Hair Coloring', 'Haircut', 'CD Mani 6805', 'CD Mani 4432']);
+    expect(l.totalItems).toBe(6); expect(l.totalPages).toBe(2); expect(l.stats).toMatchObject({ averagePriceCents: 6633, lowestPriceCents: 4500, highestPriceCents: 15000, priceSumCents: 39800 });
+    expect((await repo.services(ctx, { page: 9, pageSize: 4 })).page).toBe(2);
+    const gel = await repo.services(ctx, { q: 'gel manicure', page: 1, pageSize: 10 });
+    expect(gel.items[0]).toMatchObject({ name: 'Gel Manicure', matchedVia: 'name_exact', durationMinutes: 45, priceCents: 5500, addOns: 1, qualifiedTechnicians: 1, sold30d: 1 });
+    expect((await repo.services(ctx, { q: '$50', page: 1, pageSize: 10 })).items.map((x) => x.name).sort()).toEqual(['CD Mani 4432', 'CD Mani 6805']);
+    expect((await repo.services(ctx, { q: '50 min', page: 1, pageSize: 10 })).items.map((x) => x.name)).toEqual(['Classic Pedicure']);
+    expect((await repo.services(ctx, { q: 'cd 6805', page: 1, pageSize: 10 })).totalItems).toBe(1);
+    expect((await repo.services(ctx, { q: GEL, page: 1, pageSize: 10 })).items[0]!.matchedVia).toBe('id');
+    // the technician scope: services an active qualified technician of that name performs (never another salon's)
+    expect((await repo.services(ctx, { technician: 'vy tr', page: 1, pageSize: 10 })).items.map((x) => x.name)).toEqual(['Gel Manicure']);
+    expect((await repo.services(ctx, { technician: 'nobody', page: 1, pageSize: 10 })).totalItems).toBe(0);
+    expect((await repo.services(ctx, { categoryId: NAILS, page: 1, pageSize: 10 })).totalItems).toBe(4);
+    expect((await repo.services(ctx, { status: 'archived', page: 1, pageSize: 10 })).totalItems).toBe(0);   // the archived one belongs to the Uptown branch
+    expect((await repo.services(ctxAll, { status: 'archived', page: 1, pageSize: 10 })).items.map((x) => x.name)).toEqual(['Old Polish Change']);
+    expect((await repo.services(ctx, { minPrice: 5000, maxPrice: 5500, sort: 'price_asc', page: 1, pageSize: 10 })).items.map((x) => x.priceCents)).toEqual([5000, 5000, 5500]);
+    expect((await repo.services(ctx2, { q: 'gel', page: 1, pageSize: 10 })).items.map((x) => x.priceCents)).toEqual([9900]);
+  });
+
+  it('Service Detail: add-ons, qualified technician, where it is offered (salon-wide = every branch), sales', async () => {
+    const d = await repo.serviceDetail(ctxAll, GEL);
+    expect(d.addOns).toEqual([{ key: 'ao_french', name: 'French tips', priceCents: 1000, durationMinutes: 10, taxable: true, active: true, source: 'offering' }]);
+    expect(d.technicians.map((t) => t.name)).toEqual(['Vy Tran']);
+    expect(d.branches.map((b) => [b.name, b.current, b.offered, b.priceCents, b.differsFromThis])).toEqual([['Main', true, true, 5500, false], ['Uptown', false, true, 6000, true]]);
+    expect(d.sales90d).toMatchObject({ lines: 1, cents: 5500, lastChargedCents: 5500 });
+    await expect(repo.serviceDetail(ctx, id('d9'))).rejects.toThrow(/not found/i);
+  });
+});
+
+describe('Service Pricing — audited edits and history', () => {
+  it('a price change needs a reason, refuses a stale edit, writes an append-only history row; the Services edit path writes history too', async () => {
+    await expect(repo.updatePricing(ctx, GEL, { priceCents: 6000 })).rejects.toThrow(/why/);
+    await expect(repo.updatePricing(ctx, GEL, { priceCents: 6000, reason: 'x', expectedUpdatedAt: '2001-01-01T00:00:00.000Z' })).rejects.toThrow(/Someone else/);
+    const cur = await repo.serviceDetail(ctx, GEL);
+    const r = await repo.updatePricing(ctx, GEL, { priceCents: 6000, reason: 'Gel prices up', expectedUpdatedAt: cur.updatedAt });
+    expect(r.changed).toBe(1);
+    expect((await repo.updatePricing(ctx, GEL, { priceCents: 6000, reason: 'again' })).changed).toBe(0);
+    // the Services screen's own edit path (KyselyServicesRepository.update). Its final read-back uses the query builder, which
+    // this raw-SQL stand-in does not provide — the write and its history rows (what is under test) happen before it.
+    await svcRepo.update(ctx as never, PEDI, { durationMinutes: 55, priceCents: 4800 } as never).catch((e: Error) => { if (!/query builder/.test(e.message)) throw e; });
+    expect(Number((await q(`select duration_minutes from services where id = $1`, [PEDI])).rows[0].duration_minutes)).toBe(55);
+    const h = await repo.history(ctx, { field: 'pricing', page: 1, pageSize: 10 });
+    expect(h.items.map((x) => [x.serviceName, x.field, x.oldValue, x.newValue])).toEqual([['Classic Pedicure', 'duration_minutes', '50', '55'], ['Gel Manicure', 'price_cents', '5500', '6000']]);
+    expect(h.items[1]).toMatchObject({ reason: 'Gel prices up', actor: 'Pat Owner', source: 'pricing_editor' });
+    expect((await repo.history(ctx, { q: '$60', page: 1, pageSize: 10 })).totalItems).toBe(1);
+    await expect(q(`update catalog_change_log set new_value = '1'`)).rejects.toThrow(/append-only/);
+    await expect(q(`delete from catalog_change_log`)).rejects.toThrow(/append-only/);
+    // the completed ticket keeps what it was charged
+    expect(Number((await q(`select price_cents_snapshot from ticket_service_lines where ticket_id = $1 and service_id = $2`, [id('7a1'), GEL])).rows[0].price_cents_snapshot)).toBe(5500);
+    expect((await repo.history(ctx2, { page: 1, pageSize: 10 })).totalItems).toBe(0);
+  });
+
+  it('customer history: phone in any format, name, ticket number → the charged snapshot; never a list of everyone', async () => {
+    expect((await repo.customerHistory(ctx, { q: '' })).needsQuery).toBe(true);
+    for (const p of ['8565551234', '(856) 555-1234', '856-555-1234', '+1 856 555 1234']) expect((await repo.customerHistory(ctx, { q: p, page: 1, pageSize: 10 })).totalItems).toBe(5);
+    const add = await repo.customerHistory(ctx, { q: 'mai le', kind: 'add_on', page: 1, pageSize: 10 });
+    expect(add.items.map((x) => [x.item, x.chargedCents, x.kind, x.maskedPhone])).toEqual([['French tips', 1000, 'add_on', '••• 1234']]);
+    expect((await repo.customerHistory(ctx, { q: '#102', page: 1, pageSize: 10 })).items.map((x) => x.item)).toEqual(['Classic Pedicure']);
+    expect((await repo.customerHistory(ctx2, { q: '8565551234', page: 1, pageSize: 10 })).items.map((x) => x.chargedCents)).toEqual([9900]);
+  });
+});
+
+describe('Service Categories', () => {
+  it('KPIs, chart and Breakdown from one aggregate (4/6 = 66.7 %), review flags never auto-fixed', async () => {
+    const s = await repo.categorySummary(ctx);
+    expect(s).toMatchObject({ categories: 4, totalServices: 6, unassigned: 0 });
+    expect(s.breakdown.map((b) => [b.name, b.services, b.sharePct])).toEqual([['Nails', 4, 66.7], ['CD 4432', 1, 16.7], ['CD 6805', 1, 16.7], ['Brows', 0, 0]]);
+    expect(s.review.filter((r) => r.kind === 'code_like_name').map((r) => r.categoryName)).toEqual(['CD 4432', 'CD 6805']);
+    expect(s.review.filter((r) => r.kind === 'service_category_mismatch').map((r) => r.serviceName).sort()).toEqual(['Hair Coloring', 'Haircut']);
+    expect(s.review.filter((r) => r.kind === 'empty').map((r) => r.categoryName)).toEqual(['Brows']);
+  });
+
+  it('directory newest first; searching a service finds its category; reassignment previews then moves with history', async () => {
+    const d = await repo.categories(ctx, { page: 1, pageSize: 10 });
+    expect(d.items.map((x) => x.name)).toEqual(['Brows', 'CD 6805', 'CD 4432', 'Nails']);
+    const g = await repo.categories(ctx, { q: 'Gel Manicure', page: 1, pageSize: 10 });
+    expect(g.items.map((x) => [x.name, x.matchedVia, x.matchedServices.map((m) => m.name)])).toEqual([['Nails', 'service', ['Gel Manicure']]]);
+    expect((await repo.categories(ctx, { page: 2, pageSize: 3 })).items.map((x) => x.name)).toEqual(['Nails']);
+    await expect(repo.reassign(ctx, NAILS, { serviceIds: [CUT], toCategoryId: NAILS })).rejects.toThrow(/different/);
+    await expect(repo.reassign(ctx, NAILS, { serviceIds: [], toCategoryId: EMPTY })).rejects.toThrow(/at least one/);
+    const pv = await repo.reassign(ctx, NAILS, { serviceIds: [CUT, COLOR], toCategoryId: EMPTY });
+    expect(pv).toMatchObject({ preview: true, moved: 0, to: { name: 'Brows' } }); expect(pv.services.map((x) => [x.name, x.priceCents, x.durationMinutes])).toEqual([['Hair Coloring', 15000, 120], ['Haircut', 4500, 30]]);
+    expect((await repo.categorySummary(ctx)).breakdown[0]!.services).toBe(4);   // a preview writes nothing
+    await expect(repo.reassign(ctx, NAILS, { serviceIds: [CUT, COLOR], toCategoryId: EMPTY, confirm: true })).rejects.toThrow(/why/);
+    const mv = await repo.reassign(ctx, NAILS, { serviceIds: [CUT, COLOR], toCategoryId: EMPTY, confirm: true, reason: 'Hair services are not nails' });
+    expect(mv.moved).toBe(2);
+    const after = await repo.categorySummary(ctx);
+    expect(after.breakdown.map((b) => [b.name, b.services])).toEqual([['Nails', 2], ['CD 4432', 1], ['CD 6805', 1], ['Brows', 2]]);
+    expect((await repo.services(ctx, { q: 'haircut', page: 1, pageSize: 5 })).items[0]).toMatchObject({ priceCents: 4500, durationMinutes: 30, categoryName: 'Brows' });   // price / duration untouched
+    const h = await repo.history(ctx, { categoryId: EMPTY, page: 1, pageSize: 10 });
+    expect(h.items.map((x) => [x.serviceName, x.oldValue, x.newValue])).toEqual(expect.arrayContaining([['Haircut', 'Nails', 'Brows'], ['Hair Coloring', 'Nails', 'Brows']]));
+    await expect(repo.reassign(ctx2, NAILS, { serviceIds: [CUT], toCategoryId: EMPTY })).rejects.toThrow(/not found/i);
+  });
+
+  it('archiving a category with active services and no confirmation writes nothing (it used to archive first)', async () => {
+    const r = await svcRepo.archiveCategory(ctx as never, CD4432, false);
+    expect(r).toEqual({ ok: false, activeServices: 1 });
+    expect((await q(`select status from service_categories where id = $1`, [CD4432])).rows[0].status).toBe('active');
+  });
+});
+
+describe('Add-Ons', () => {
+  it('KPIs state their unit (4 offerings of 1 add-on on 4 services, $10 average); hair-service offerings are flagged, not changed', async () => {
+    expect(await repo.addOnSummary(ctx)).toMatchObject({ offerings: 4, activeOfferings: 4, definitions: 1, servicesOffering: 4, averagePriceCents: 1000, categoryAddOnServices: 0 });
+    const l = await repo.addOns(ctx, { page: 1, pageSize: 10 });
+    expect(l.items).toHaveLength(4); expect(l.items.every((x) => x.sharedWith === 4)).toBe(true);
+    expect(l.items.filter((x) => x.reviewFlag).map((x) => x.serviceName).sort()).toEqual(['Hair Coloring', 'Haircut']);
+    expect((await repo.addOns(ctx, { q: 'pedicure', page: 1, pageSize: 10 })).items.map((x) => x.serviceName)).toEqual(['Classic Pedicure']);
+    expect((await repo.addOns(ctx, { q: '$10', page: 1, pageSize: 10 })).totalItems).toBe(4);
+    const d = await repo.addOnDetail(ctx, 'ao_french');
+    expect(d.offerings.find((o) => o.serviceName === 'Gel Manicure')).toMatchObject({ withServicePriceCents: 7000, withServiceMinutes: 55 });   // $60 (after the edit above) + $10, 45 + 10 min
+    expect(d.usage).toMatchObject({ paidLines: 1, cents: 1000 });
+    const u = await repo.addOnUsage(ctx, { q: '856-555-1234', page: 1, pageSize: 10 });
+    expect(u.items.map((x) => [x.addOn, x.chargedCents, x.mainServices, x.ticketNumber])).toEqual([['French tips', 1000, 'Gel Manicure', '101']]);
+    expect((await repo.addOnUsage(ctx2, { q: '8565551234', page: 1, pageSize: 10 })).totalItems).toBe(0);
+  });
+
+  it('create needs chosen services and refuses a duplicate name; edits are scoped (one offering vs the definition); archive is soft', async () => {
+    await expect(repo.createAddOn(ctx, { name: 'Chrome', priceCents: 1500, durationMinutes: 10 })).rejects.toThrow(/Choose the services/);
+    await expect(repo.createAddOn(ctx, { name: 'french TIPS', priceCents: 1000, durationMinutes: 10, serviceIds: [M4432] })).rejects.toThrow(/already exists/);
+    const c = await repo.createAddOn(ctx, { name: 'Chrome', priceCents: 1500, durationMinutes: 10, taxable: true, serviceIds: [GEL, M4432] });
+    expect(c.offerings).toBe(2);
+    expect((await repo.addOns(ctx, { page: 1, pageSize: 2 })).items.map((x) => x.name)).toEqual(['Chrome', 'Chrome']);   // newest first
+    await repo.updateAddOn(ctx, 'ao_french', { scope: 'offering', serviceId: PEDI, priceCents: 800, reason: 'pedicure tips are smaller' });
+    let d = await repo.addOnDetail(ctx, 'ao_french');
+    expect(d.offerings.map((o) => o.priceCents).sort()).toEqual([1000, 1000, 1000, 800].sort()); expect(d.differsByService).toBe(true);
+    await repo.updateAddOn(ctx, 'ao_french', { scope: 'definition', name: 'French Tips', durationMinutes: 15 });
+    d = await repo.addOnDetail(ctx, 'ao_french');
+    expect(d.offerings.every((o) => o.durationMinutes === 15 && /French Tips/.test(d.name))).toBe(true);
+    expect(d.offerings.find((o) => o.serviceName === 'Classic Pedicure')!.priceCents).toBe(800);   // the definition edit did not touch the price it did not name
+    await repo.setAddOnActive(ctx, 'ao_french', false, { serviceId: CUT, reason: 'not for hair' });
+    expect((await repo.addOnSummary(ctx)).activeOfferings).toBe(5);
+    await repo.setAddOnActive(ctx, 'ao_french', true, { serviceId: CUT });
+    const h = await repo.history(ctx, { addOnKey: 'ao_french', page: 1, pageSize: 20 });
+    expect(h.items.map((x) => x.field)).toEqual(expect.arrayContaining(['price_cents', 'name', 'duration_delta_minutes', 'is_active']));
+    await expect(repo.updateAddOn(ctx2, 'ao_french', { scope: 'definition', name: 'x' })).rejects.toThrow(/not found/);
+  });
+});

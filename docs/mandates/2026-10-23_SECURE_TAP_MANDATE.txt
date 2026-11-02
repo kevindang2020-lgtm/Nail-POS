@@ -1,0 +1,1151 @@
+                                              AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+
+
+                                       AI PowerSalon
+      Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+       Master Audit, Build, Fix, Upgrade & Production Completion Mandate for Claude
+
+Primary objective
+Build Tap to Pay as secure production payment infrastructure inside the existing AI PowerSalon architecture. Every mobile
+payment device gets its own identity, cryptographic trust, revocable session, branch authorization, checkout claim,
+payment-intent linkage, provider recovery path, audit trail and realtime POS update. One salon may authorize many
+devices, but no two devices share a permanent password or reusable permanent token.
+
+
+
+Critical trust model
+AUTHORIZED EMPLOYEE + AUTHORIZED DEVICE + AUTHORIZED TENANT + AUTHORIZED BRANCH + AUTHORIZED
+CHECKOUT + AUTHORIZED PAYMENT INTENT = TAP TO PAY
+
+
+
+
+                                      Claude / Developer Production Completion Mandate | 1
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+Executive Build Flow
+DISCOVER EXISTING CODE
+ ↓
+UNDERSTAND AUTH / DEVICE / CHECKOUT / PAYMENT DOMAINS
+ ↓
+KEEP CORRECT IMPLEMENTATION
+ ↓
+FIX SECURITY GAPS
+ ↓
+MERGE DUPLICATE AUTHORITY
+ ↓
+ADD DEVICE-BOUND IDENTITY + REGISTRATION
+ ↓
+BIND DEVICE TO TENANT / BRANCH
+ ↓
+ADD SECURE SESSION + BIOMETRIC UNLOCK
+ ↓
+WIRE POS CHECKOUT CLAIM
+ ↓
+WIRE TAP TO PAY PROVIDER ADAPTER
+ ↓
+WIRE UNKNOWN-PAYMENT RECOVERY
+ ↓
+WIRE REALTIME BACK TO POS / CUSTOMER DISPLAY
+ ↓
+ADD REMOTE DEVICE REVOCATION
+ ↓
+AUDIT EVERYTHING
+ ↓
+RUN SECURITY / CONCURRENCY / MULTI-DEVICE PILOT
+ ↓
+DOCUMENT FOR DEVELOPER
+
+
+
+
+0. Execution Rules Before Coding
+ • Inspect the real repository first. Reuse existing EMPLOYEE auth, refresh-token families, device-trust, Checkout, Payment,
+  PaymentIntent, realtime, audit and provider abstractions wherever they already exist.
+ • Do not create TapToPayAuthV2, PaymentDeviceV2, PaymentsV2 or a second Checkout authority beside working domains.
+ • Never store salon passwords on the phone. Never store provider server secrets in the mobile app.
+ • Never let the mobile app authoritatively choose tenant, branch, merchant configuration, final checkout amount or payment
+  result.
+ • Never call an unknown processor result declined. Never blind-retry a payment whose processor state is uncertain.
+ • PostgreSQL remains authoritative business truth. Realtime is delivery, not payment truth.
+ • Every sensitive operation must be attributable to tenant, branch, employee, device, session, checkout and payment
+  transaction.
+
+
+
+
+                                        Claude / Developer Production Completion Mandate | 2
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART I - Authentication and Device Identity
+1. Existing Authentication Remains Authority
+Tap to Pay must extend the existing AI PowerSalon EMPLOYEE authentication realm. A salon signs in with a real authorized
+employee account - Owner, Manager or explicitly authorized employee - not one shared salon credential used by everyone.
+
+ LOGIN
+     ↓
+ AUTHENTICATE EMPLOYEE
+     ↓
+ RESOLVE TENANT
+     ↓
+ RESOLVE EMPLOYMENT
+     ↓
+ RESOLVE AUTHORIZED BRANCHES
+     ↓
+ CHECK PAYMENT PERMISSION
+     ↓
+ REGISTER / VERIFY DEVICE
+     ↓
+ ISSUE DEVICE-BOUND SESSION
+     ↓
+ READY FOR CHECKOUT CLAIMS
+
+
+
+
+2. Password and Token Rules
+ • Never persist employee/owner passwords or PIN plaintext on device.
+ • Issue short-lived access tokens using the existing auth architecture; 5-15 minutes is a reasonable target only if compatible
+      with current policy.
+ • Use rotating refresh-token families with reuse detection, expiration, revocation and device association.
+ • If a rotated refresh token is reused, trigger the existing token-family security response and revoke as policy requires.
+ • On iOS store reusable authentication material only in Keychain; use Secure Enclave where appropriate for device-held
+      private keys. On Android use Android Keystore if a supported Android payment app exists.
+
+3. Unique Payment Device Identity
+ PaymentDevice {
+     id
+     tenantId
+     devicePublicId
+     platform
+     deviceName
+     appVersion
+     osVersion?
+     devicePublicKey?
+     attestationStatus?
+     status
+     registeredByUserId
+     registeredAt
+     lastSeenAt
+     revokedAt?
+     revokedByUserId?
+     revokeReason?
+ }
+
+
+
+Adapt the existing Device / RegisteredDevice / TrustedDevice / PaymentTerminal model rather than duplicating it.
+
+
+
+                                          Claude / Developer Production Completion Mandate | 3
+                                                         AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+4. Device Key Pair
+ FIRST REGISTRATION
+  ↓
+ GENERATE DEVICE KEYPAIR
+  ↓
+ PRIVATE KEY → stays in secure device hardware/storage
+ PUBLIC KEY → registered with AI PowerSalon backend
+
+
+
+Never upload the private key to AI PowerSalon. Use established OS cryptographic APIs; do not invent custom cryptography.
+
+5. Device Attestation / Integrity
+ • Where practical, integrate platform application/device attestation as one trust signal.
+ • Do not claim attestation or jailbreak/root detection is infallible.
+ • A severe integrity failure may block payment operations or require administrative review according to tenant policy.
+ • Backend may enforce a minimum supported payment-app version for critical security fixes.
+
+
+
+
+                                              Claude / Developer Production Completion Mandate | 4
+                                                   AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART II - Device Registration, Pairing and Branch Authorization
+6. Registration Requires Authorization
+ EMPLOYEE LOGIN
+  ↓
+ DEVICE NOT REGISTERED
+  ↓
+ REQUEST REGISTRATION
+  ↓
+ CHECK TENANT + ROLE + PERMISSION + BRANCH + DEVICE POLICY
+  ↓
+ STEP-UP AUTHENTICATION
+  ↓
+ OPTIONAL OWNER APPROVAL
+  ↓
+ REGISTER DEVICE
+
+
+
+
+7. Optional POS QR Pairing
+ AUTHORIZED POS
+  ↓
+ Devices & Integrations
+  ↓
+ Add Tap to Pay Device
+  ↓
+ Generate short-lived single-use QR
+  ↓
+ Phone scans QR
+  ↓
+ Employee authenticates
+  ↓
+ Backend validates both sides
+  ↓
+ Device registered
+
+
+
+ • Pairing reference is cryptographically strong, single-use, short-lived, tenant-scoped, branch-scoped and purpose-scoped.
+ • Do not put passwords, merchant credentials, refresh tokens, Fiserv secrets or payment-provider secrets in the QR.
+ • Expired or replayed pairing tokens must fail.
+
+8. Device Lifecycle
+ PENDING
+ ACTIVE
+ SUSPENDED
+ REVOKED
+ REPLACED
+
+
+
+Only ACTIVE devices may initiate payment operations.
+
+9. Branch Binding
+Each device has explicit location authorization. A device bound to Downtown Branch must not process Uptown Branch
+payments unless the backend authorizes that branch for the device.
+
+ EFFECTIVE ACCESS =
+ USER AUTHORIZED BRANCHES
+ INTERSECT
+ DEVICE AUTHORIZED BRANCHES
+
+
+                                         Claude / Developer Production Completion Mandate | 5
+                                        AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+
+
+10. Store Switching
+ CHANGE STORE
+ ↓
+ CHECK USER AUTHORIZATION
+ ↓
+ CHECK DEVICE AUTHORIZATION
+ ↓
+ STEP-UP AUTHENTICATION
+ ↓
+ CHECK MERCHANT CONFIGURATION
+ ↓
+ SWITCH ACTIVE BRANCH
+ ↓
+ REFRESH PAYMENT CONTEXT
+ ↓
+ AUDIT
+
+
+
+
+                                Claude / Developer Production Completion Mandate | 6
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART III - Biometrics, Sessions and Local App Security
+11. Face ID / Touch ID
+Biometrics unlock device-held credentials. Biometrics do not replace backend authentication and authorization. AI PowerSalon
+must never store biometric templates, raw face data or fingerprint data.
+
+ AUTHENTICATED SESSION
+     ↓
+ APP BACKGROUNDED
+     ↓
+ APP REOPENED
+     ↓
+ FACE ID / TOUCH ID
+     ↓
+ UNLOCK KEYCHAIN / DEVICE CREDENTIALS
+     ↓
+ REFRESH / VALIDATE BACKEND SESSION
+
+
+
+
+12. App Lock
+ • Lock after inactivity according to policy.
+ • Lock after application restart, device reboot, session expiration or security event.
+ • After repeated biometric failures, require full authentication.
+ • Obscure sensitive checkout/payment content in the operating-system app switcher where practical.
+
+13. Sensitive Action Step-Up
+ • Register or approve device.
+ • Change branch.
+ • Refund.
+ • Void where policy requires.
+ • Change payment settings.
+ • Change merchant configuration.
+ • Suspend/revoke/reactivate device.
+ • Change high-risk payment permissions.
+Use the existing fresh-authentication/step-up architecture. Do not invent a separate weak payment-app PIN if a stronger
+existing mechanism exists.
+
+14. Device Session Model
+ DeviceSession {
+     id
+     deviceId
+     userId
+     tenantId
+     activeBranchId
+     refreshTokenFamilyId
+     issuedAt
+     lastUsedAt
+     expiresAt
+     revokedAt?
+     revokeReason?
+ }
+
+
+
+If a shared salon phone supports multiple employees, the device identity remains constant while the user session changes. Each
+payment remains attributable to the employee who was actually signed in.
+
+                                          Claude / Developer Production Completion Mandate | 7
+                                                   AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART IV - Device Management and Remote Revocation
+15. Owner Device Dashboard
+ • Show device name, platform, branch authorization, registered user, status, last seen, app version and registration date.
+ • Provide View, Rename, Change Allowed Branches, Suspend and Revoke actions based on permission.
+ • Never expose cryptographic private keys or provider credentials.
+
+16. Remote Revocation Must Be Real
+ OWNER / ADMIN REVOKES DEVICE
+  ↓
+ DEVICE.status = REVOKED
+  ↓
+ REVOKE REFRESH-TOKEN FAMILY
+  ↓
+ INVALIDATE / DENY FUTURE ACCESS
+  ↓
+ INVALIDATE OPEN CHECKOUT CLAIMS WHEN SAFE
+  ↓
+ REALTIME device.revoked (best effort)
+  ↓
+ APP CLEARS SENSITIVE STATE AND LOCKS
+
+
+
+
+ Backend authority
+ Even if realtime is disconnected, the next API request from the revoked phone must fail. Revocation is not merely a UI state.
+
+
+
+17. Lost Phone Scenario
+ Phone stolen
+  ↓
+ Owner App / Super Admin
+  ↓
+ Revoke Device
+  ↓
+ Backend marks REVOKED
+  ↓
+ Refresh token family revoked
+  ↓
+ New requests denied with DEVICE_REVOKED
+
+
+
+
+18. Replacement Device
+A replacement phone gets a new device identity, new key pair, new session and new audit history. Never copy the old phone's
+permanent token/key to a new device.
+
+
+
+
+                                           Claude / Developer Production Completion Mandate | 8
+                                                       AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART V - POS Checkout Claim and Payment Request Authority
+19. Tap to Pay Must Originate From an Authorized Checkout
+Primary architecture: the mobile app processes only payment requests generated by the authoritative AI PowerSalon Checkout.
+The phone should not be a free-form card terminal where an employee types arbitrary amounts outside a controlled workflow
+unless AI PowerSalon explicitly designs a separate quick-payment product.
+
+ POS CHECKOUT
+     ↓
+ BACKEND CHECKOUT
+     ↓
+ MOBILE-ELIGIBLE PAYMENT REQUEST
+     ↓
+ AUTHORIZED DEVICE CLAIM
+     ↓
+ TAP TO PAY
+
+
+
+
+20. Atomic Checkout Claim
+ Checkout #CHK-48391
+ Amount Due: $126.50
+ Branch: Downtown
+
+
+ [ TAKE PAYMENT ]
+     ↓
+ BACKEND ATOMIC CLAIM
+     ↓
+ claimedDeviceId + claimedUserId + expiresAt
+
+
+
+If Phone A and Phone B claim simultaneously, only one succeeds. The other receives CHECKOUT_ALREADY_CLAIMED.
+
+21. Payment Request Model
+ PaymentRequest {
+     id
+     checkoutId
+     tenantId
+     branchId
+     claimedDeviceId
+     claimedUserId
+     amountCents
+     currency
+     checkoutVersion
+     status
+     expiresAt
+     idempotencyKey
+     createdAt
+ }
+
+
+
+Reuse an existing PaymentIntent / MobileCheckoutClaim abstraction where possible.
+
+22. Backend Derivation Rules
+ • Tenant is derived from authenticated session + device registration + checkout ownership.
+ • Branch is derived/authorized on server.
+ • Merchant configuration is resolved from tenant/branch, never from a client-provided merchant ID.
+ • Final amount is derived from authoritative Checkout balance; client cannot invent it.
+ • Checkout version is included so stale claims cannot charge an outdated amount.
+
+                                               Claude / Developer Production Completion Mandate | 9
+                                                 AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+23. Claim Expiration
+Claims should expire after a short safe period (for example 2-5 minutes if compatible with existing design). Never auto-release
+a claim while a processor attempt is unresolved or may still settle.
+
+
+
+
+                                        Claude / Developer Production Completion Mandate | 10
+                                                       AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART VI - Merchant Routing and Provider Boundary
+24. Per-Tenant / Per-Branch Merchant Routing
+ CHECKOUT
+  ↓
+ TENANT
+  ↓
+ BRANCH
+  ↓
+ MERCHANT CONFIGURATION
+  ↓
+ PAYMENT PROVIDER
+  ↓
+ TAP TO PAY SESSION
+
+
+
+Preserve AI PowerSalon's model where salons/branches may have their own merchant configuration. Never silently route
+Tenant A through Tenant B's MID.
+
+25. Mobile App Never Receives Server Secrets
+ • No CardPointe API credentials.
+ • No Fiserv server secret.
+ • No CommerceHub server secret.
+ • No webhook secret.
+ • No merchant backend password.
+If the provider SDK requires a short-lived session credential, the backend mints or retrieves it according to provider rules and
+scopes it as narrowly as supported.
+
+26. Provider Adapter Boundary
+ TapToPayProviderPort (or existing payment-provider interface)
+  createSession()
+  startPayment()
+  getPaymentStatus()
+  cancelPayment()
+  refund()
+  void()
+
+
+
+Do not hard-wire payment business logic to a single mobile SDK. If Fiserv CommerceHub entitlement/SDK/certification is not
+available, finish internal architecture and mark actual provider execution BLOCKED_EXTERNAL - never fake success.
+
+27. One Payment Domain
+POS card, Clover, Tap to Pay and other tenders should normalize into the same AI PowerSalon Payment / PaymentIntent /
+Checkout / Refund / Audit / Reporting domain with method/provider metadata.
+
+
+
+
+                                              Claude / Developer Production Completion Mandate | 11
+                                                       AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART VII - Tap to Pay Payment Flow and Financial Integrity
+28. Authoritative Payment Flow
+ AUTHORIZED CHECKOUT
+  ↓
+ PHONE CLAIMS CHECKOUT
+  ↓
+ BACKEND VALIDATES USER + DEVICE + TENANT + BRANCH + MERCHANT + CHECKOUT + AMOUNT
+  ↓
+ CREATE / REUSE STABLE PAYMENT INTENT
+  ↓
+ MINT PROVIDER SESSION
+  ↓
+ PRESENT TAP TO PAY UI
+  ↓
+ CUSTOMER TAPS CONTACTLESS CARD / WALLET
+  ↓
+ PROVIDER PROCESSES
+  ↓
+ BACKEND CONFIRMS RESULT
+  ↓
+ PAYMENT RECORDED
+  ↓
+ CHECKOUT RECALCULATED / COMPLETED
+  ↓
+ OUTBOX / REALTIME
+  ↓
+ POS + CUSTOMER DISPLAY + REPORTS
+
+
+
+
+29. Do Not Trust Mobile "Approved"
+The phone may report SDK success, but authoritative payment state belongs to backend + provider result/webhook/inquiry.
+Mobile UI is presentation, not financial truth.
+
+30. Stable Idempotency
+ • One logical payment gets one durable idempotency identity.
+ • Never construct an idempotency key from Date.now() or a new random value on every retry.
+ • Repeated Pay taps for the same logical intent must produce one processor effect according to provider semantics.
+
+31. Checkout Version Protection
+ Phone claims $150 at Checkout version 7
+  ↓
+ POS changes services / discount / tip
+  ↓
+ Checkout becomes version 8, balance $165
+  ↓
+ Old mobile PaymentRequest = STALE
+  ↓
+ Phone refreshes authoritative amount before payment
+
+
+
+
+32. Tip and Split Tender
+If tip is chosen on mobile, backend recalculates the authoritative balance. For split tender, phone receives only the remaining
+amount. Example: Checkout $200, POS cash $50, Tap to Pay request $150. Phone cannot charge $200.
+
+
+
+
+                                             Claude / Developer Production Completion Mandate | 12
+                                                     AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART VIII - Unknown Payment State, Recovery and Unsettled-
+Tender Guard
+33. Unknown Is Not Declined
+ NETWORK / PROVIDER RESPONSE LOST
+  ↓
+ PAYMENT_STATUS_UNKNOWN
+  ↓
+ DO NOT CHARGE AGAIN
+  ↓
+ VERIFY / PROVIDER INQUIRY / WEBHOOK / RECOVERY WORKER
+
+
+
+
+ Critical anti-double-charge rule
+ If the processor may already have received the charge, AI PowerSalon blocks a new conflicting tender until the original
+ attempt is reconciled.
+
+
+
+34. Unsettled-Tender Guard
+Before starting a new Tap to Pay, card, cash override, gift card, wallet or other conflicting tender, inspect all relevant
+unresolved sources: payments, payment_attempts, app/mobile payment intents and active processor attempts.
+
+ ANY unresolved card/payment attempt for Checkout?
+ YES → BLOCK conflicting tender
+ NO → continue
+
+
+
+
+35. Recovery States
+ UNKNOWN
+  ↓ Provider inquiry / webhook
+ APPROVED
+ DECLINED
+ NOT_FOUND
+ STILL_PENDING
+
+
+
+
+36. Durable Recovery Worker
+  • Find unresolved payment intents.
+  • Use bounded retry and backoff.
+  • Consumers are idempotent.
+  • Alert or DLQ when appropriate.
+  • Manual Verify and automatic recovery must converge on the same authoritative state transition.
+
+37. Verify Does Not Re-Charge
+Authorized mobile/POS Verify Payment actions ask the provider about the original order/intent. Verify never creates another
+charge.
+
+
+
+
+                                            Claude / Developer Production Completion Mandate | 13
+                                                         AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART IX - Realtime, Snapshot Reconciliation and Automatic POS
+Update
+38. POS Updates Automatically
+ PAYMENT DOMAIN
+  ↓
+ TRANSACTIONAL OUTBOX
+  ↓
+ REALTIME EVENT
+  ↓
+ POS CHECKOUT
+  ↓
+ Customer Display / Receipt / Reports as applicable
+
+
+
+No browser refresh or manual polling button should be required after a mobile payment state change.
+
+39. Snapshot + Stream
+ APP START / RECONNECT
+  ↓
+ FETCH AUTHORITATIVE SNAPSHOT
+  ↓
+ RENDER
+  ↓
+ SUBSCRIBE TO AUTHORIZED REALTIME
+  ↓
+ PROCESS NEWER EVENTS ONLY
+
+
+
+
+40. Session Expiration / Logout During Payment
+ • PaymentIntent survives access-token expiration or user logout.
+ • Recovery continues on server.
+ • User may reauthenticate while backend reconciles the processor state.
+ • Revoking a device during an already-started provider transaction does not erase that transaction; safely reconcile it, then
+   deny new operations.
+
+
+
+
+                                                Claude / Developer Production Completion Mandate | 14
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART X - Refunds, Voids and Sensitive Payment Operations
+41. Refund Security
+ REFUND REQUEST
+  ↓
+ refund permission
+  ↓
+ user + device + tenant + branch scope
+  ↓
+ fresh step-up authentication
+  ↓
+ original payment reference
+  ↓
+ backend validates refundable amount
+  ↓
+ provider refund
+  ↓
+ audit + recovery semantics
+
+
+
+
+42. Unknown Refund
+UNKNOWN refund result is not DECLINED. Reconcile the original refund via provider inquiry before any retry.
+
+43. Void
+Void behavior follows provider state and existing Payment domain. The mobile client does not invent processor lifecycle state.
+
+
+
+
+                                         Claude / Developer Production Completion Mandate | 15
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XI - Permissions and Separation of Duties
+44. Suggested Permission Set
+ payments.tap_to_pay
+ payments.refund
+ payments.void
+ payment_devices.register
+ payment_devices.approve
+ payment_devices.revoke
+ payment_devices.manage
+ payment_branch.switch
+
+
+
+Adapt names to the current permission registry.
+
+45. Role Defaults
+ • Owner: view/manage devices, approve/revoke, manage branch authorization, review security activity; step-up required for
+   sensitive actions.
+ • Manager: Tap to Pay yes by permission; device registration/refund according to tenant policy.
+ • Receptionist: no automatic device management/refund; payment use only if explicitly granted.
+ • Technician: no automatic Tap to Pay permission simply because they are a technician.
+ • Super Admin: platform support does not automatically gain authority to process tenant payments; use controlled Support
+   Mode where necessary.
+
+
+
+
+                                       Claude / Developer Production Completion Mandate | 16
+                                                 AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XII - Payment Data Security, Privacy and Logging
+46. Prohibited Data
+ • Never store full PAN, CVV, track data, raw NFC payload, card PIN or provider-sensitive cardholder data in AI PowerSalon
+   databases/logs.
+ • Use provider tokenization/reference data. Do not build your own card vault.
+ • Do not intentionally expand PCI scope by capturing raw cardholder data.
+
+47. Safe Logs
+Logs may contain payment intent ID, checkout ID, provider transaction reference, device ID, status and safe error codes. They
+must not contain PAN, CVV, password, refresh token, provider secret, Authorization header or raw SDK/card payload.
+
+48. Crash/Analytics Sanitization
+Sanitize crash reports and telemetry so authentication headers, payment credentials and sensitive customer/payment data are
+not uploaded to third-party analytics/crash systems.
+
+
+
+
+                                        Claude / Developer Production Completion Mandate | 17
+                                                       AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XIII - Audit, Observability and Device Operations
+49. Mandatory Audit Events
+ • User login/logout.
+ • Device registration/approval.
+ • Branch assignment/change.
+ • Device suspension/revocation/reactivation.
+ • Checkout claim/release.
+ • Payment initiated/approved/declined/unknown/verified.
+ • Refund/void.
+ • Payment setting or permission changes.
+
+50. Audit Record
+ tenantId
+ branchId
+ userId
+ deviceId
+ action
+ resourceId
+ checkoutId?
+ paymentId?
+ before / after where appropriate
+ reason
+ timestamp
+ correlationId
+ safe session / network metadata where appropriate
+
+
+
+Audit is append-oriented. Normal users cannot rewrite historical payment/device audit events.
+
+51. Operational Metrics and Alerts
+ • Active payment devices, registrations, revocations, claim conflicts.
+ • Tap to Pay success rate, declines, unknown states, recovery duration, provider errors, app-version distribution.
+ • Alert on refresh-token reuse, revoked-device attempts, unusual registration, repeated auth failures, long-running unknown
+   payments and unsupported critical app versions.
+ • Do not treat normal card declines as security alerts.
+
+
+
+
+                                              Claude / Developer Production Completion Mandate | 18
+                                                 AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XIV - Payment App UX and Customer Handoff Mode
+52. Payment App Home
+ AI PowerSalon Pay
+
+
+ Luxe Nails & Spa
+ Downtown Branch
+
+
+ Signed in: Sophia Nguyen
+ Device: Manager iPhone
+ Status: Ready for payment
+
+
+ CHECKOUT QUEUE
+
+
+
+
+53. Customer Handoff Mode
+When the phone is handed to the customer, hide employee navigation, history, reports, other customers and settings. Show
+only the payment-required UI. Exiting Customer Handoff Mode requires employee biometric/authentication.
+
+54. Tap to Pay Wording
+For Tap to Pay on iPhone, use provider-approved contactless wording such as "Hold card or contactless device near iPhone." Do
+not show Insert or Swipe unless a separate certified reader truly supports those methods.
+
+55. Result Screens
+ • Approved: amount, safe transaction reference and checkout reference; no full card data.
+ • Declined: safe decline message; retry only after definitive provider decline and when safe.
+ • Unknown: "Payment status is being verified. Do not charge the customer again." plus Verify Status.
+ • Revoked device: clear message that the payment device has been disabled and must contact owner/admin.
+
+
+
+
+                                        Claude / Developer Production Completion Mandate | 19
+                                                       AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XV - APIs, Error Codes and Database Constraints
+56. Potential API Surface
+ POST /api/v1/payment-devices/register
+ GET /api/v1/payment-devices
+ GET /api/v1/payment-devices/{id}
+ POST /api/v1/payment-devices/{id}/suspend
+ POST /api/v1/payment-devices/{id}/revoke
+ POST /api/v1/payment-devices/{id}/branches
+ GET /api/v1/mobile-checkouts
+ POST /api/v1/checkouts/{id}/claim
+ POST /api/v1/checkouts/{id}/release
+ POST /api/v1/checkouts/{id}/payments/tap-to-pay
+ POST /api/v1/payments/{id}/verify
+ POST /api/v1/payments/{id}/refund
+
+
+
+Adapt to existing routes. Do not create duplicates if equivalent endpoints already exist.
+
+57. Error Codes
+ DEVICE_NOT_REGISTERED
+ DEVICE_PENDING_APPROVAL
+ DEVICE_SUSPENDED
+ DEVICE_REVOKED
+ DEVICE_BRANCH_NOT_AUTHORIZED
+ PAYMENT_PERMISSION_DENIED
+ STEP_UP_REQUIRED
+ CHECKOUT_ALREADY_CLAIMED
+ CHECKOUT_STALE
+ PAYMENT_ALREADY_PROCESSING
+ PAYMENT_STATUS_UNKNOWN
+ MERCHANT_NOT_CONFIGURED
+ TAP_TO_PAY_NOT_AVAILABLE
+ TOKEN_REUSE_DETECTED
+
+
+
+
+58. Database / Concurrency Constraints
+  • Prevent duplicate device public identity.
+  • Prevent duplicate business effect for same PaymentIntent.
+  • Prevent duplicate active checkout claim where prohibited.
+  • Prevent cross-tenant payment/checkout relationships.
+  • Use optimistic version/concurrency controls on Checkout, PaymentIntent/PaymentRequest and Device where appropriate.
+
+
+
+
+                                              Claude / Developer Production Completion Mandate | 20
+                                                   AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XVI - Mandatory Security, Concurrency and Multi-Device
+Tests
+59. Tenant Isolation
+Tenant A device requests Tenant B checkout -> NOT FOUND / DENIED with no metadata leakage.
+
+60. Branch Isolation
+Branch A-only device requests Branch B checkout -> DENIED.
+
+61. Revoked Device
+Refresh, checkout list, claim, payment and refund from revoked phone -> all denied.
+
+62. Multiple Devices
+Register Phone A/B/C for same salon; unique IDs, sessions, keypairs, audit histories and independent revocation.
+
+63. Same Checkout Concurrency
+Phone A and B claim simultaneously -> one succeeds, one CHECKOUT_ALREADY_CLAIMED.
+
+64. POS vs Phone Concurrency
+Phone processing; POS attempts another card -> blocked. POS card processing; phone attempts -> blocked.
+
+65. Split Tender
+Checkout $200, POS cash $50, mobile receives $150 and cannot charge $200.
+
+66. Checkout Mutation
+Claim at version 7 / $150, POS edits to version 8 / $165 -> old request stale.
+
+67. Refund Security
+Unauthorized receptionist denied; manager with stale step-up gets STEP_UP_REQUIRED; manager after step-up allowed.
+
+68. Store Switch
+Unauthorized branch switch denied; authorized multi-branch switch requires permission + step-up + merchant refresh + audit.
+
+69. Refresh Reuse
+Reuse old rotated refresh token -> TOKEN_REUSE_DETECTED and session-family response.
+
+70. Pairing Replay
+Reuse pairing QR/token -> invalid/already used. Expired token -> denied.
+
+71. Device Key Mismatch
+Valid user token from wrong device key/signature -> sensitive request denied.
+
+72. Realtime Revocation Failure
+Disconnect realtime, revoke phone, next API request still denied.
+
+73. Unknown Payment
+Processor receives charge, network drops -> PAYMENT_STATUS_UNKNOWN, no second charge, Verify reconciles.
+
+74. Logging Security
+Search logs for PAN/CVV/passwords/refresh tokens/provider secrets/Auth headers -> none.
+
+75. Audit Completeness
+Full journey traces login -> session -> claim -> intent -> provider result -> checkout completion -> receipt.
+
+
+                                          Claude / Developer Production Completion Mandate | 21
+                                                   AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XVII - Full Multi-Device Pilot
+76. Pilot Devices
+ Front Desk iPhone
+ Manager iPhone
+ Mobile Checkout iPhone
+
+
+
+All belong to the same pilot salon but have different device IDs, keypairs, sessions and audit trails.
+
+77. Pilot Scenarios
+  • Register and authorize all three devices through the real flow.
+  • Process separate checkouts concurrently without token/session sharing.
+  • Revoke Mobile Checkout iPhone while other two remain active; revoked device fails, others continue.
+  • Logout Manager A and login Manager B on same registered device; new payments are attributed to Manager B.
+  • Perform authorized branch switch on a multi-branch device and prove merchant/reporting context changes correctly.
+  • Tamper request to another branch/tenant and prove denial.
+  • Drop network during active payment and reconcile without duplicate charge.
+  • Verify POS updates automatically after mobile approval.
+  • Verify Customer Display follows existing Checkout/Payment projection.
+  • Verify Owner reports show method, safe device name, employee, branch and provider without sensitive card data.
+
+
+
+
+                                          Claude / Developer Production Completion Mandate | 22
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XVIII - Definition of Done
+ • Existing auth, device, Checkout, payment and realtime code audited.
+ • No duplicate authentication/payment authority created.
+ • Unique device registration and device-bound cryptographic identity work.
+ • Secure token storage, access-token expiry, refresh rotation and reuse detection work.
+ • Tenant/branch binding and multiple devices per salon work.
+ • Owner approval/remote revocation/lost-device lockout work.
+ • Face ID / Touch ID reopening works without sending biometric templates to backend.
+ • Step-up authentication and branch switching work.
+ • POS checkout claim and concurrent-claim protection work.
+ • Mobile cannot invent tenant, branch, merchant or final amount.
+ • Checkout version protection and claim expiration work.
+ • Payment idempotency and unknown-payment recovery work.
+ • No blind retry and Provider Verify work.
+ • Refund/void authorization and recovery work.
+ • POS and Customer Display update through existing realtime/snapshot model.
+ • Tenant/branch/revoked-device/multiple-device/token-replay/pairing-replay tests pass.
+ • Logging security and audit completeness pass.
+ • No raw card data stored; provider secrets stay server-side.
+ • Build, typecheck, lint, unit, integration, concurrency, security and pilot suites pass.
+
+
+
+
+                                         Claude / Developer Production Completion Mandate | 23
+                                                  AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+PART XIX - Required Claude Final Engineering Report
+Existing Code Found
+Authentication modules; device/trusted-device modules; Payment/PaymentIntent; Checkout claim logic; mobile payment app;
+provider adapters; realtime; permissions; DB tables/migrations; tests.
+
+Security Gaps Found
+Classify P0 Payment Security, P0 Session Security, P0 Tenant Isolation, P1 Device Security, P1 Concurrency, P1 Provider
+Recovery, P2 UX/Observability, P3 Cleanup.
+
+Final Device Architecture
+User -> Device -> Session -> Tenant -> Branch -> Checkout Claim -> Payment Intent -> Provider.
+
+Database Changes
+Tables, columns, indexes, constraints and exact migrations.
+
+Authentication
+Login, access token, refresh token family, device binding, biometrics, step-up and revocation.
+
+Payment Flow
+Exact mobile payment lifecycle and merchant resolution.
+
+Unknown Payment Recovery
+UNKNOWN -> provider Verify/inquiry/webhook -> resolved state; no re-charge.
+
+Device Revocation
+Exact server and client behavior including offline/realtime-failure case.
+
+APIs / Realtime / Permissions
+Every changed route, event, channel, authorization rule, subscriber and exact permission name.
+
+Provider Status
+Fiserv/CommerceHub and CardPointe: WORKING / SANDBOX_READY / BLOCKED_EXTERNAL; Tap to Pay entitlement status.
+
+Files Changed
+Exact repository paths: created, modified, deprecated, removed.
+
+Tests
+Actual PASS / FAIL / NOT_TESTED / BLOCKED_EXTERNAL evidence.
+
+Developer Handoff
+Update existing DEVELOPER_HANDOFF.md, PROJECT_STATUS.md, NEXT_STEPS.md, TEST_REPORT.md,
+INTEGRATION_STATUS.md and SECURITY_REVIEW.md with exact continuation state.
+
+
+Required Build Matrix
+ Component                                                           Result
+
+API                                                                 PASS / FAIL / BLOCKED_EXTERNAL
+
+POS                                                                 PASS / FAIL / BLOCKED_EXTERNAL
+
+Owner/Manager Payment App                                           PASS / FAIL / BLOCKED_EXTERNAL
+
+Owner App                                                           PASS / FAIL / BLOCKED_EXTERNAL
+
+
+                                         Claude / Developer Production Completion Mandate | 24
+                               AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+Realtime                                         PASS / FAIL / BLOCKED_EXTERNAL
+
+Database Migrations                              PASS / FAIL / BLOCKED_EXTERNAL
+
+Unit Tests                                       PASS / FAIL / BLOCKED_EXTERNAL
+
+Integration Tests                                PASS / FAIL / BLOCKED_EXTERNAL
+
+Concurrency Tests                                PASS / FAIL / BLOCKED_EXTERNAL
+
+Security Tests                                   PASS / FAIL / BLOCKED_EXTERNAL
+
+Tenant Isolation                                 PASS / FAIL / BLOCKED_EXTERNAL
+
+Branch Isolation                                 PASS / FAIL / BLOCKED_EXTERNAL
+
+Device Revocation                                PASS / FAIL / BLOCKED_EXTERNAL
+
+Payment Recovery                                 PASS / FAIL / BLOCKED_EXTERNAL
+
+
+
+
+                      Claude / Developer Production Completion Mandate | 25
+                                               AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+
+Permanent AI PowerSalon Tap to Pay Rules
+ONE SALON MAY HAVE MANY PAYMENT DEVICES.
+EVERY DEVICE HAS ITS OWN IDENTITY, KEY AND SESSION.
+EVERY DEVICE CAN BE REVOKED INDEPENDENTLY.
+NEVER SHARE ONE PERMANENT TOKEN ACROSS ALL SALON PHONES.
+PASSWORDS ARE NOT STORED ON THE PHONE.
+TOKENS USE OS SECURE STORAGE.
+BIOMETRICS UNLOCK DEVICE CREDENTIALS; BACKEND DOES NOT STORE BIOMETRIC TEMPLATES.
+USER AUTHORIZATION AND DEVICE AUTHORIZATION ARE BOTH REQUIRED.
+TENANT CONTEXT IS SERVER DERIVED; BRANCH CONTEXT IS SERVER AUTHORIZED.
+THE MOBILE APP DOES NOT SELECT MERCHANT CREDENTIALS OR AUTHORITATIVELY CALCULATE PAYMENT TOTALS.
+TAP TO PAY ONLY PROCESSES AUTHORIZED CHECKOUT PAYMENT REQUESTS.
+ONE CHECKOUT CANNOT BE CHARGED CONCURRENTLY BY POS AND PHONE.
+ONE LOGICAL PAYMENT HAS ONE STABLE IDEMPOTENCY IDENTITY.
+UNKNOWN PAYMENT STATUS IS NEVER CALLED DECLINED AND IS NEVER BLINDLY RETRIED.
+PAYMENT SUCCESS IS CONFIRMED BY BACKEND / PROVIDER AUTHORITY.
+POS UPDATES AUTOMATICALLY AFTER MOBILE PAYMENT.
+DEVICE REVOCATION INVALIDATES FUTURE ACCESS; A LOST PHONE CAN BE KILLED REMOTELY.
+A NEW PHONE RECEIVES A NEW DEVICE IDENTITY.
+NO RAW CARD NUMBER, CVV OR TRACK DATA IS STORED.
+NO PROVIDER SECRET IS STORED IN THE MOBILE APP.
+EVERY PAYMENT IS TRACEABLE TO TENANT, BRANCH, DEVICE, EMPLOYEE, CHECKOUT AND TRANSACTION.
+EVERY DEVICE SECURITY ACTION IS AUDITED.
+POSTGRESQL REMAINS AUTHORITATIVE; REALTIME IS DELIVERY, NOT PAYMENT TRUTH.
+
+
+Final Master Instruction to Claude
+ Build this as production payment infrastructure, not a demo mobile feature.
+ Inspect existing AI PowerSalon authentication, device-management, Checkout, Payment, PaymentIntent, provider-adapter,
+ realtime, audit and permission code first. Keep correct implementation, fix gaps, merge duplicates, wire disconnected
+ pieces, run the complete multi-device security/concurrency pilot, and leave an exact developer handoff.
+
+
+
+ AUTHORIZED EMPLOYEE
+   +
+ AUTHORIZED DEVICE
+   +
+ AUTHORIZED TENANT
+   +
+ AUTHORIZED BRANCH
+   +
+ AUTHORIZED CHECKOUT
+   +
+ AUTHORIZED PAYMENT INTENT
+   =
+ TAP TO PAY
+
+
+
+When a payment completes: Tap to Pay Device -> Provider -> AI PowerSalon Payment Domain -> Checkout -> Transactional
+Outbox -> Realtime -> POS -> Customer Display / Receipt / Reports.
+When payment status is uncertain: PAYMENT_STATUS_UNKNOWN. Do not charge again until the original attempt is reconciled.
+
+                                      Claude / Developer Production Completion Mandate | 26
+                                                 AI PowerSalon | Secure Tap to Pay Device Authentication, POS Pairing & Payment Authorization
+When a device is lost: Owner -> Devices -> Revoke must make that device unusable immediately from the backend perspective,
+even if realtime delivery fails.
+Finish by updating the developer handoff with exact files changed, schema/migrations, APIs, permissions, provider status, test
+evidence, remaining blockers and next steps.
+
+
+
+
+                                        Claude / Developer Production Completion Mandate | 27
+

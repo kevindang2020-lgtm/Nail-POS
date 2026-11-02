@@ -1,0 +1,12 @@
+{
+ "$comment": "check:state-transitions (apps/api/scripts/audit-state-transitions.mjs) \u2014 BUILD_PLAN Phase 12 / Constitution 5 \u00a774\u201378 (#27). unguarded: status writes NOT yet moved onto their lifecycle's state machine, per file|table.column (count). Only shrinks: a new status write outside a machine fails the gate; moving a writer onto its machine requires --update. | Oct 30 2026 (reviewed): global-rewards-checkout.ts voids ONLY the expired hold's own global_reward tender row (approved/partial \u2192 voided, both valid PAYMENT sources) in the same transaction as the hold expiry; loyalty must not import the payments module, so the predicate is spelled out instead of canMoveToSql(PAYMENT).",
+ "unguarded": {
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.bank_status": 1,
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.data_import_status": 1,
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.hardware_status": 1,
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.identity_status": 1,
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.merchant_status": 1,
+  "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.training_status": 1,
+  "modules/loyalty/src/global-rewards/global-rewards-checkout.ts|payments.status": 1
+ }
+}

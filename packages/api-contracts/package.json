@@ -1,0 +1,34 @@
+{
+  "name": "@aipowersalon/api-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "API request/response contracts shared by apps/api and every frontend, split by realm (Constitution 13 \u00a713-15), plus the realm-independent runtime contracts \u00a713 names (pagination bounds, date-range caps). Browser-safe and dependency-free: no imports outside this package.",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./tenant": {
+      "types": "./dist/tenant/index.d.ts",
+      "default": "./dist/tenant/index.js"
+    },
+    "./customer": {
+      "types": "./dist/customer/index.d.ts",
+      "default": "./dist/customer/index.js"
+    },
+    "./platform": {
+      "types": "./dist/platform/index.d.ts",
+      "default": "./dist/platform/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "main": "./dist/index.js",
+  "files": [
+    "dist"
+  ]
+}

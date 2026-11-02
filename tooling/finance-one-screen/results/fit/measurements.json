@@ -1,0 +1,2964 @@
+{
+ "label": "fit",
+ "at": "2026-10-29T19:10:17.249Z",
+ "rows": [
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:11",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:6",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:7",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:4",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:11",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:7",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:7",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:4",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:12 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:6 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:7 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:4 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:12",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:7",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:8",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:4",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:12",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:7",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:8",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:4",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:11",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:11",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:6",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:7",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:4",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:11",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:6",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:7",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:4",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:12 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:6 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:7 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:4 bank-accounts:2 unmatched-deposits:2",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:12",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:7",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:7",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:4",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:2",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:12",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:7",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:7",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:4",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:11",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:3",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "open-recon": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "search": true,
+    "kpi-settlements": true,
+    "kpi-gross": true,
+    "kpi-fees": true,
+    "kpi-net": true,
+    "kpi-refunds": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-settlements": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "settlements-refunds",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-settlements": true,
+    "kpi-refunds-total": true,
+    "recon-strip": true,
+    "records": true,
+    "tab-refunds": true
+   },
+   "pagers": [
+    {
+     "panel": "records",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "records:0",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:0 bank-accounts:0 unmatched-deposits:0",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:0 bank-accounts:0 unmatched-deposits:0",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:0 bank-accounts:0 unmatched-deposits:0",
+   "errors": []
+  },
+  {
+   "page": "recon",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "tab-overview": true,
+    "tab-reports": true,
+    "search": true,
+    "preset-month": true,
+    "kpi-expected": true,
+    "kpi-matched": true,
+    "kpi-settlements": true,
+    "kpi-missing": true,
+    "kpi-difference": true,
+    "settlements-deposits": true,
+    "bank-accounts": true,
+    "unmatched-deposits": true
+   },
+   "pagers": [
+    {
+     "panel": "settlements-deposits",
+     "ok": true
+    },
+    {
+     "panel": "unmatched-deposits",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "settlements-deposits:0 bank-accounts:0 unmatched-deposits:0",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:0",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:0",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:0",
+   "errors": []
+  },
+  {
+   "page": "recon-fees",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "kpi-difference": true,
+    "fees": true
+   },
+   "pagers": [
+    {
+     "panel": "fees",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "fees:0",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:0",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:0",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:0",
+   "errors": []
+  },
+  {
+   "page": "recon-exceptions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "exceptions": true
+   },
+   "pagers": [
+    {
+     "panel": "exceptions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "exceptions:0",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:0",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:0",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:0",
+   "errors": []
+  },
+  {
+   "page": "recon-reports",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-expected": true,
+    "report": true,
+    "report-settlement_summary": true,
+    "report-processor_comparison": true,
+    "report-csv": true,
+    "report-pdf": true
+   },
+   "pagers": [
+    {
+     "panel": "report",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "report:0",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:0",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:0",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:0",
+   "errors": []
+  },
+  {
+   "page": "invoices",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-outstanding": true,
+    "kpi-paid": true,
+    "kpi-drafts": true,
+    "kpi-total": true,
+    "search": true,
+    "status": true,
+    "preset-custom": true,
+    "sort": true,
+    "invoices": true
+   },
+   "pagers": [
+    {
+     "panel": "invoices",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "invoices:0",
+   "errors": []
+  }
+ ],
+ "unhandledRoutes": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 36
+  }
+ ]
+}

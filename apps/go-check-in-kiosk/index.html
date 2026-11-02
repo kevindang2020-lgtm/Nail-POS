@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>AI PowerSalon — Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Hanken+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --aps-cream:#FBF7EF; --aps-cream-2:#F4ECDD; --aps-ink:#2B2620; --aps-ink-soft:#6B6253;
+    --aps-gold:#C2A24A; --aps-gold-d:#A6852F; --aps-gold-soft:#E9DCB8; --aps-line:#E7DcC6;
+    --aps-ok:#3F7D52; --aps-bad:#9B463A; --aps-shadow:0 18px 50px rgba(64,52,28,.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:'Hanken Grotesk',system-ui,sans-serif;color:var(--aps-ink);
+    background:radial-gradient(120% 120% at 50% 0%,#FFFDF8 0%,var(--aps-cream) 45%,var(--aps-cream-2) 100%);
+    display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;
+  }
+  .kiosk{width:min(560px,100%);max-height:100vh;display:flex;flex-direction:column}
+  .card{
+    background:#FFFCF6;border:1px solid var(--aps-line);border-radius:28px;box-shadow:var(--aps-shadow);
+    padding:38px 32px;display:flex;flex-direction:column;gap:18px;min-height:0;
+  }
+  .brand{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:var(--aps-gold-d);text-align:center}
+  h1{font-family:'Playfair Display',serif;font-weight:700;font-size:34px;line-height:1.12;margin:2px 0 0;text-align:center}
+  p.sub{margin:0;text-align:center;color:var(--aps-ink-soft);font-size:17px}
+  .phone-display{font-size:34px;font-weight:700;letter-spacing:.04em;text-align:center;min-height:46px;padding:8px 0;color:var(--aps-ink)}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .key{
+    font-family:'Hanken Grotesk';font-size:28px;font-weight:600;padding:18px 0;border-radius:18px;
+    background:var(--aps-cream);border:1px solid var(--aps-line);color:var(--aps-ink);cursor:pointer;user-select:none;
+    transition:transform .06s ease,background .15s ease;
+  }
+  .key:active{transform:scale(.96);background:var(--aps-gold-soft)}
+  .key.fn{font-size:20px;color:var(--aps-ink-soft)}
+  .btn{
+    font-family:'Hanken Grotesk';font-weight:700;font-size:20px;padding:18px 22px;border-radius:18px;border:0;cursor:pointer;
+    background:linear-gradient(180deg,var(--aps-gold) 0%,var(--aps-gold-d) 100%);color:#fff;box-shadow:0 10px 24px rgba(166,133,47,.34);
+    transition:transform .06s ease,filter .15s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{filter:grayscale(.4) opacity(.55);cursor:default}
+  .btn.ghost{background:transparent;color:var(--aps-ink-soft);box-shadow:none;border:1px solid var(--aps-line)}
+  .btn.full{width:100%}
+  .branch-list{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+  .consent{display:flex;gap:8px;align-items:flex-start;text-align:left;font-size:12.5px;color:var(--aps-ink-soft);margin:4px 0 14px;line-height:1.35}
+  .consent input{margin-top:2px;width:18px;height:18px;flex:none}
+  .row{display:flex;gap:12px}
+  .row>*{flex:1}
+  .list{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:46vh;padding:2px}
+  .opt{
+    text-align:left;background:var(--aps-cream);border:1px solid var(--aps-line);border-radius:16px;padding:16px 18px;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:17px;font-weight:600;transition:background .15s ease,border-color .15s ease;
+  }
+  .opt.sel{background:var(--aps-gold-soft);border-color:var(--aps-gold)}
+  .opt .meta{color:var(--aps-ink-soft);font-weight:500;font-size:14px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:14px;font-weight:600;color:var(--aps-ink-soft)}
+  .field input{font-family:'Hanken Grotesk';font-size:20px;padding:14px 16px;border-radius:14px;border:1px solid var(--aps-line);background:var(--aps-cream);color:var(--aps-ink)}
+  .big-ico{font-size:64px;text-align:center;line-height:1}
+  .ok{color:var(--aps-ok)} .bad{color:var(--aps-bad)}
+  .muted{color:var(--aps-ink-soft);font-size:14px;text-align:center}
+  .hidden{display:none!important}
+  .appt-card{background:var(--aps-cream);border:1px solid var(--aps-gold-soft);border-radius:18px;padding:18px;text-align:center}
+  .appt-card .time{font-family:'Playfair Display',serif;font-size:26px;font-weight:700}
+  .visit{list-style:none;margin:8px 0 0;padding:0;display:flex;flex-direction:column;gap:6px}
+  .visit li{display:flex;flex-direction:column;align-items:center}
+  .visit .svc{font-weight:600}
+  .visit .who{color:var(--aps-ink-soft);font-size:14px}
+  .visit.open{max-height:34vh;overflow:auto}
+  .linkbtn{background:none;border:0;color:var(--aps-gold-d);font-weight:700;font-size:15px;text-decoration:underline;cursor:pointer;min-height:44px;font-family:'Hanken Grotesk'}
+  .section{font-size:14px;font-weight:700;color:var(--aps-ink-soft);margin:6px 2px 0}
+  .opt:disabled{opacity:.5;cursor:default}
+  .spinner{width:34px;height:34px;border:3px solid var(--aps-gold-soft);border-top-color:var(--aps-gold-d);border-radius:50%;margin:8px auto;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+    <!-- AI PowerSalon brand (synced from /brand via scripts/sync-brand.mjs) -->
+    <link rel="icon" href="/brand/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="manifest" href="/brand/manifest.webmanifest" />
+    <meta name="theme-color" content="#A96F22" />
+    <link rel="preload" as="image" href="/brand/aipowersalon-logo.png" />
+    <link rel="stylesheet" href="/brand/brand-tokens.css" />
+  </head>
+<body>
+<div class="kiosk">
+  <div class="card" id="card">
+    <div class="brand">AIPowerSalon</div>
+    <div id="screen"></div>
+  </div>
+</div>
+
+<script>
+// ----------------------------------------------------------------------------------------------------------------
+// AIPowerSalon Go Check-In kiosk. Self-contained: derives the device slug from ?slug=, opens a session, and drives
+// the public API. tenant_id/branch_id are resolved entirely on the server from the slug — the kiosk never sends them.
+// API base: same origin by default; override with ?api=https://your-api.
+// ----------------------------------------------------------------------------------------------------------------
+const qs = new URLSearchParams(location.search);
+const SLUG = qs.get('slug') || (location.pathname.match(/go-check-in\/([^\/]+)/)?.[1]) || '';
+const API = (qs.get('api') || (window.APS_API_BASE || '') || '').replace(/\/+$/,''); // '' => same origin (set window.APS_API_BASE for a packaged/native build)
+const url = (p) => `${API}/api/v1/go-check-in${p}`;   // BUILD_PLAN Phase 12: /api/v1 (kiosks already installed keep the legacy path; the API serves both)
+let SESSION = null, TOKEN = null, CONFIG = null, STATE = {};
+
+const el = document.getElementById('screen');
+// Every word the guest reads lives in ONE dictionary (Oct 14 build plan §221). POSLanguage.pdf §16 (Oct 28 2026): the
+// check-in kiosk is a customer surface — ENGLISH ONLY: no Vietnamese text, no switch, no remembered choice.
+const I18N = {"en": {"welcome": "Welcome", "tapBelow": "Tap below to check in for your visit.", "checkIn": "Check In", "haveAppt": "Have an appointment or walking in — we’ll take care of both.", "enterPhone": "Enter your phone", "findProfile": "We’ll find your profile or appointment.", "back": "Back", "fullPhone": "Enter your full phone number", "lookingUp": "Looking you up…", "moreThanOne": "We found more than one profile with this phone number. Please ask the front desk to check you in.", "apptFound": "Appointment found", "hi": "Hi {name}!", "todayAt": "Today at {time}", "imHere": "I’m Here ✓", "somethingElse": "I’d like something else (walk-in)", "checkingIn": "Checking you in…", "isThisYou": "Is this you?", "welcomeBack": "Welcome back", "setUpHere": "We’ll set up your profile at this salon.", "getChecked": "Let’s get you checked in.", "yesMe": "Yes, that’s me", "notMe": "Not me", "settingUp": "Setting up your profile…", "notFound": "We couldn’t find your profile.", "newHere": "New here? Welcome!", "createProfile": "Create your profile", "firstName": "First name", "lastName": "Last name", "email": "Email (optional)", "consent": "Text me appointment reminders & check-in updates from {salon}. Up to ~6 msgs/mo. Msg & data rates may apply. Reply STOP to opt out, HELP for help.", "thisSalon": "this salon", "continue": "Continue", "creating": "Creating your profile…", "seeFrontDesk": "Please see the front desk to check in.", "loadingServices": "Loading services…", "chooseServices": "Choose your services", "loadingTechs": "Loading technicians…", "anyPreference": "Any preference?", "chooseTech": "Choose a technician, or no preference.", "noPreference": "No preference", "checkedIn": "You’re checked in!", "thanks": "Thanks", "bothChecked": "Both of your appointments are checked in.", "allChecked": "All {n} of your appointments are checked in.", "haveSeat": "Please have a seat — we’ll be with you shortly.", "estimatedWait": "estimated wait", "min": "min", "done": "Done", "freeNow": "free now", "aboutMin": "about {n} min", "yourTech": "Your technician", "withAnother": "{name} is with another guest{when}.", "seeAnother": "Would you like to see another technician sooner?", "see": "See {name}", "anotherTech": "another technician", "keepWaiting": "Keep waiting for {name}", "myTech": "my technician", "nowWaiting": "You’re now waiting for {name}.", "techTaken": "That technician was just taken.", "couldNotSwitch": "We couldn’t switch your technician.", "alreadyChecked": "You’re already checked in", "waitForDesk": "Please wait for the front desk or your technician.", "pleaseSeeDesk": "Please see the front desk", "teamHappy": "Our team will be happy to help you check in.", "startOver": "Start over", "tooManyAttempts": "Too many attempts — please ask the front desk for help.", "connIssue": "Connection issue", "wentWrong": "Something went wrong", "tryAgainOrDesk": "Please try again or ask the front desk.", "tryAgain": "Try again", "askDesk": "Ask front desk", "connecting": "Connecting…", "checkInOff": "Check-in is off", "notAvailable": "Not available", "codeUnknown": "This check-in code isn’t recognized.", "whichLocation": "Which location are you checking in at?", "oneMoment": "One moment…", "showLess": "Show less", "more": "+ {n} more", "with": "with"}};
+const LANG = 'en';
+try { localStorage.removeItem('aps.kiosk.lang'); } catch {}   // a Vietnamese choice saved by an older build is forgotten
+function t(k, vars){ let v = (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k; if (vars) for (const n of Object.keys(vars)) v = v.replace('{' + n + '}', String(vars[n])); return v; }
+const T = t;   // the same, for the callbacks that name a technician `t`
+function render(html){ el.innerHTML = html; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function api(method, path, body, withToken){
+  const headers = { 'Content-Type':'application/json' };
+  if (withToken && TOKEN) headers['x-checkin-token'] = TOKEN;
+  const res = await fetch(url(path), { method, headers, body: body?JSON.stringify(body):undefined });
+  const text = await res.text(); let data; try { data = text?JSON.parse(text):{}; } catch { data = { message:text }; }
+  if (!res.ok) throw Object.assign(new Error(data?.message||('HTTP '+res.status)), { status:res.status, code:data?.code });
+  return data;
+}
+
+function loading(msg){ render(`<div class="spinner"></div><p class="sub">${esc(msg||t('oneMoment'))}</p>`); }
+
+// ---------------- screens ----------------
+function welcome(){
+  render(`
+    <h1>${esc(CONFIG?.salonName||t('welcome'))}</h1>
+    <p class="sub">${t('tapBelow')}</p>
+    <div class="big-ico">💅</div>
+    <button class="btn full" id="go">${t('checkIn')}</button>
+    <p class="muted">${t('haveAppt')}</p>`);
+  document.getElementById('go').onclick = phoneEntry;
+}
+
+function phoneEntry(){
+  STATE.phone = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
+  render(`
+    <h1>${t('enterPhone')}</h1>
+    <p class="sub">${t('findProfile')}</p>
+    <div class="phone-display" id="pd">—</div>
+    <div class="keypad">${keys.map(k=>`<button class="key ${(k==='⌫'||k==='✓')?'fn':''}" data-k="${esc(k)}">${esc(k)}</button>`).join('')}</div>
+    <button class="btn ghost full" id="back">${t('back')}</button>`);
+  const pd = document.getElementById('pd');
+  const fmt = (d)=>{ if(!d) return '—'; const x=d.slice(0,10); if(x.length<=3)return x; if(x.length<=6)return `(${x.slice(0,3)}) ${x.slice(3)}`; return `(${x.slice(0,3)}) ${x.slice(3,6)}-${x.slice(6)}`; };
+  el.querySelectorAll('.key').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;
+    if(k==='⌫') STATE.phone=STATE.phone.slice(0,-1);
+    else if(k==='✓'){ if(STATE.phone.length>=7) doLookup(); else pd.textContent=t('fullPhone'); return; }   // never silent (wave 4)
+    else if(STATE.phone.length<10) STATE.phone+=k;
+    pd.textContent=fmt(STATE.phone);
+  });
+  document.getElementById('back').onclick = welcome;
+}
+
+async function doLookup(){
+  loading(t('lookingUp'));
+  try{
+    const r = await api('POST', `/session/${SESSION}/lookup-phone`, { phone: STATE.phone }, true);
+    STATE.lookup = r;
+    if (r.askFrontDesk || r.ambiguous) return askFrontDesk(t('moreThanOne'));
+    if (r.match && r.match.source==='tenant' && r.appointment) return appointmentFound(r);
+    if (r.match && r.match.source==='tenant') return matchConfirm(r, false);
+    if (r.match && r.match.source==='central') return matchConfirm(r, true);
+    return newCustomer();
+  }catch(e){ return errorScreen(e); }
+}
+
+// 23-inch spec §16–§17 (Unit 7): the visit — every service with its technician (first names), compact: the first few,
+// then "+ N more" opens the rest inside the card (the screen itself never scrolls).
+const VISIT_FIT = 3;
+function visitHtml(a, open){
+  const items = (a.items && a.items.length) ? a.items : [{ serviceName:a.serviceName, technicianName:a.technicianName, startTimeLabel:a.startTimeLabel }];
+  const shown = open ? items : items.slice(0, VISIT_FIT);
+  const more = items.length - VISIT_FIT;
+  return `<ul class="visit${open?' open':''}">${shown.map(it=>`<li><span class="svc">${esc(it.serviceName)}</span>${it.technicianName?`<span class="who">${t('with')} ${esc(it.technicianName)}${it.startTimeLabel&&it.startTimeLabel!==a.startTimeLabel?` · ${esc(it.startTimeLabel)}`:''}</span>`:''}</li>`).join('')}</ul>
+    ${more>0?`<button class="linkbtn" id="more" aria-expanded="${open?'true':'false'}">${open?t('showLess'):esc(t('more',{n:more}))}</button>`:''}`;
+}
+function appointmentFound(r){
+  const a=r.appointment;
+  render(`
+    <div class="brand">${t('apptFound')}</div>
+    <h1>${esc(t('hi',{name:r.match.firstName}))}</h1>
+    <div class="appt-card">
+      <div class="time">${esc(t('todayAt',{time:a.startTimeLabel}))}</div>
+      <div id="visit">${visitHtml(a, false)}</div>
+    </div>
+    <button class="btn full" id="here">${t('imHere')}</button>
+    <button class="btn ghost full" id="walk">${t('somethingElse')}</button>`);
+  const wire = (open)=>{ const m=document.getElementById('more'); if(m) m.onclick=()=>{ document.getElementById('visit').innerHTML=visitHtml(a, !open); wire(!open); }; };
+  wire(false);
+  document.getElementById('here').onclick = async ()=>{
+    loading(t('checkingIn'));
+    try{ const c = await api('POST', `/session/${SESSION}/check-in-appointment`, { appointmentId:a.appointmentId }, true); confirmation(c); }
+    catch(e){ errorScreen(e); }
+  };
+  document.getElementById('walk').onclick = ()=> startWalkIn(r.match.firstName, r.match.customerId);
+}
+
+function matchConfirm(r, isCentral){
+  const m=r.match;
+  render(`
+    <div class="brand">${isCentral?t('isThisYou'):t('welcomeBack')}</div>
+    <h1>${esc(m.firstName)} ${esc(m.lastInitial)}</h1>
+    ${isCentral && m.maskedEmail?`<p class="sub">${esc(m.maskedEmail)}</p>`:''}
+    <p class="sub">${isCentral?t('setUpHere'):t('getChecked')}</p>
+    <button class="btn full" id="yes">${t('yesMe')}</button>
+    <button class="btn ghost full" id="no">${t('notMe')}</button>`);
+  document.getElementById('yes').onclick = async ()=>{
+    if (isCentral){
+      // link: create a profile under THIS tenant from the safe central match, then continue to walk-in
+      loading(t('settingUp'));
+      try{ const c = await api('POST', `/session/${SESSION}/create-customer`, { firstName:m.firstName, phone:STATE.phone }, true); startWalkIn(c.firstName, c.customerId); }
+      catch(e){ errorScreen(e); }
+    } else {
+      startWalkIn(m.firstName, m.customerId);
+    }
+  };
+  document.getElementById('no').onclick = newCustomer;
+}
+
+function newCustomer(){
+  if (CONFIG && CONFIG.settings && CONFIG.settings.newCustomerEnabled===false) return askFrontDesk(t('notFound'));
+  render(`
+    <div class="brand">${t('newHere')}</div>
+    <h1>${t('createProfile')}</h1>
+    <div class="field"><label>${t('firstName')}</label><input id="fn" autocomplete="off" /></div>
+    <div class="field"><label>${t('lastName')}</label><input id="ln" autocomplete="off" /></div>
+    <div class="field"><label>${t('email')}</label><input id="em" autocomplete="off" inputmode="email" /></div>
+    <label class="consent"><input type="checkbox" id="sms" /><span>${esc(t('consent',{salon:CONFIG?.salonName||t('thisSalon')}))}</span></label>
+    <button class="btn full" id="create">${t('continue')}</button>
+    <button class="btn ghost full" id="back">${t('back')}</button>`);
+  document.getElementById('back').onclick = phoneEntry;
+  document.getElementById('create').onclick = async ()=>{
+    const firstName=document.getElementById('fn').value.trim();
+    const lastName=document.getElementById('ln').value.trim();
+    const email=document.getElementById('em').value.trim();
+    const smsConsent=!!document.getElementById('sms').checked;          // explicit opt-in; unchecked = not opted in (never blocks check-in)
+    if(!firstName) return;
+    loading(t('creating'));
+    try{ const c = await api('POST', `/session/${SESSION}/create-customer`, { firstName, lastName, email, phone:STATE.phone, smsConsent }, true); startWalkIn(c.firstName, c.customerId); }
+    catch(e){ errorScreen(e); }
+  };
+}
+
+async function startWalkIn(firstName, customerId){
+  STATE.firstName=firstName; STATE.customerId=customerId; STATE.services=[]; STATE.addOns=[]; STATE.techId=null;
+  if (CONFIG && CONFIG.settings && CONFIG.settings.walkinCheckinEnabled===false) return askFrontDesk(t('seeFrontDesk'));
+  loading(t('loadingServices'));
+  try{
+    const sv = await api('GET', `/session/${SESSION}/services`, null, true);
+    STATE.serviceList = sv.services||[];
+    serviceSelect();
+  }catch(e){ errorScreen(e); }
+}
+
+// 23-inch spec §20–§24 (Unit 7): the BRANCH's services with ITS prices; several may be chosen; add-ons (the salon's
+// "Add-ons" category, flagged by the server) go with a service — they are enabled once one is chosen.
+const money = (c)=> '$' + Math.round((c||0)/100);
+function serviceSelect(){
+  const list = STATE.serviceList;
+  if (!list.length){ return confirmWalkIn(); } // service selection disabled or none → straight to confirm
+  const mains = list.filter(s=>!s.isAddOn), addOns = list.filter(s=>s.isAddOn);
+  const opt = (s, sel, dis, plus)=>`
+      <button class="opt ${sel?'sel':''}" data-id="${esc(s.id)}" data-addon="${s.isAddOn?'1':''}" ${dis?'disabled':''} aria-pressed="${sel?'true':'false'}">
+        <span>${esc(s.name)}</span>
+        <span class="meta">${plus?'+':''}${money(s.priceCents)}${s.durationMinutes?' · '+esc(s.durationMinutes)+' min':''}</span>
+      </button>`;
+  render(`
+    <div class="brand">Hi ${esc(STATE.firstName)}</div>
+    <h1>${t('chooseServices')}</h1>
+    <div class="list">${mains.map(s=>opt(s, STATE.services.includes(s.id), false, false)).join('')}
+      ${addOns.length?`<div class="section">Add-ons ${STATE.services.length?'(optional)':'(with a service)'}</div>${addOns.map(s=>opt(s, STATE.addOns.includes(s.id), !STATE.services.length, true)).join('')}`:''}
+    </div>
+    <button class="btn full" id="next" ${STATE.services.length?'':'disabled'}>${t('continue')}</button>`);
+  el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id; const bag = b.dataset.addon ? STATE.addOns : STATE.services; const i=bag.indexOf(id);
+    if(i>=0) bag.splice(i,1); else bag.push(id);
+    if(!STATE.services.length) STATE.addOns=[];   // add-ons go with a service
+    serviceSelect();
+  });
+  document.getElementById('next').onclick = ()=> (CONFIG.settings.technicianPreferenceEnabled!==false ? techSelect() : confirmWalkIn());
+}
+
+async function techSelect(){
+  loading(t('loadingTechs'));
+  try{
+    // §25: only technicians working today at this branch and qualified for EVERY chosen service
+    const q = STATE.services.length ? `?serviceIds=${encodeURIComponent(STATE.services.join(','))}` : '';
+    const resp = await api('GET', `/session/${SESSION}/technicians${q}`, null, true);
+    const techs = resp.technicians||[];
+    if(!techs.length) return confirmWalkIn();
+    render(`
+      <h1>${t('anyPreference')}</h1>
+      <p class="sub">${t('chooseTech')}</p>
+      <div class="list">
+        <button class="opt ${STATE.techId===null?'sel':''}" data-id="">${t('noPreference')}</button>
+        ${techs.map(x=>`<button class="opt ${STATE.techId===x.technicianId?'sel':''}" data-id="${esc(x.technicianId)}"><span>${esc(x.name)}</span>${x.fromLabel?`<span class="meta">${esc(x.fromLabel)}</span>`:''}</button>`).join('')}
+      </div>
+      <button class="btn full" id="next">${t('continue')}</button>`);
+    el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ STATE.techId=b.dataset.id||null; techSelectRefresh(techs); });
+    document.getElementById('next').onclick = confirmWalkIn;
+  }catch(e){ errorScreen(e); }
+}
+function techSelectRefresh(techs){ el.querySelectorAll('.opt').forEach(b=>b.classList.toggle('sel',(b.dataset.id||null)===STATE.techId)); }
+
+async function confirmWalkIn(){
+  loading(t('checkingIn'));
+  try{
+    const c = await api('POST', `/session/${SESSION}/check-in-walk-in`, {
+      customerId: STATE.customerId, customerName: STATE.firstName, phone: STATE.phone,
+      serviceIds: STATE.services, ...(STATE.addOns&&STATE.addOns.length?{ addOnIds: STATE.addOns }:{}), technicianId: STATE.techId || undefined,
+    }, true);
+    confirmation(c);
+  }catch(e){ errorScreen(e); }
+}
+
+function confirmation(c){
+  if (c.status==='already_checked_in') return alreadyChecked(c);
+  // 23-inch spec §26–§27: the queue engine's band ("25–35 min"), shown as it came — the kiosk computes no wait of its own
+  const w = c.estimatedWait;
+  const wait = (w && CONFIG.settings.showWaitEstimate!==false);
+  const several = (c.appointmentsCheckedIn||0) > 1;
+  render(`
+    <div class="big-ico ok">✓</div>
+    <h1>${t('checkedIn')}</h1>
+    <p class="sub">${t('thanks')}${c.firstName?`, ${esc(c.firstName)}`:''}. ${several?(c.appointmentsCheckedIn===2?t('bothChecked'):esc(t('allChecked',{n:c.appointmentsCheckedIn}))):t('haveSeat')}</p>
+    ${wait?`<div class="appt-card"><div class="time">${esc(w.fromMinutes)}–${esc(w.toMinutes)} ${t('min')}</div><div class="meta" style="color:var(--aps-ink-soft)">${t('estimatedWait')}</div></div>`:''}
+    ${alternateOffer(c)}
+    <button class="btn full" id="done">${t('done')}</button>`);
+  wireAlternateOffer(c);
+  document.getElementById('done').onclick = finish;
+}
+
+// BUILD_PLAN Phase 6 (ai_queue_assignment): the technician the guest asked for is busy → the guest may see another one
+// sooner, or keep waiting. Shown only when the check-in result says so (requestedTechnician.busy + alternates + the
+// guest's queueItemId) — the kiosk never guesses. Only technician names; never another guest. The choice is sent with
+// this kiosk session's token; the server checks the queue item belongs to this session's check-in.
+const aboutMins = (m)=> (m==null ? '' : (m<=0 ? t('freeNow') : t('aboutMin',{n:Math.round(m)})));
+function alternateOffer(c){
+  const r = c && c.requestedTechnician, alts = ((c && c.alternates) || []).slice(0,3);
+  if (!c || !c.queueItemId || !r || !r.busy || !alts.length) return '';
+  return `<div class="appt-card" id="alt" style="text-align:left">
+      <div style="font-weight:700;font-size:18px">${esc(t('withAnother',{name:r.name||t('yourTech'),when:r.availableInMinutes!=null?` (${aboutMins(r.availableInMinutes)})`:''}))}</div>
+      <p class="sub" style="text-align:left;margin:6px 0 10px">${t('seeAnother')}</p>
+      <div class="list" style="max-height:none">${alts.map(t=>`<button class="opt" data-alt="${esc(t.technicianId)}"><span>${esc(T('see',{name:t.name||T('anotherTech')}))}</span>${t.availableInMinutes!=null?`<span class="meta">${esc(aboutMins(t.availableInMinutes))}</span>`:''}</button>`).join('')}
+        <button class="btn ghost full" id="keep">${esc(t('keepWaiting',{name:r.name||t('myTech')}))}</button></div>
+    </div>`;
+}
+function wireAlternateOffer(c){
+  const box = document.getElementById('alt'); if (!box) return;
+  document.getElementById('keep').onclick = ()=> box.remove();
+  box.querySelectorAll('[data-alt]').forEach(b=>b.onclick=async()=>{
+    const t = (c.alternates||[]).find(x=>x.technicianId===b.dataset.alt) || {};
+    box.querySelectorAll('button').forEach(x=>x.disabled=true);
+    try{
+      const r = await api('POST', `/session/${SESSION}/accept-alternate`, { queueItemId: c.queueItemId, technicianId: b.dataset.alt }, true);
+      // the server makes the chosen technician the one the guest waits for (history source 'kiosk' → 'customer')
+      box.innerHTML = `<div style="font-weight:700;font-size:18px" id="alt-done">${esc(T('nowWaiting',{name:(r&&r.technicianName)||t.name||T('anotherTech')}))}</div><p class="sub" style="text-align:left;margin-top:6px">The front desk has been told.</p>`;
+    }catch(e){
+      box.innerHTML = `<div style="font-weight:700;font-size:18px" id="alt-done">${e.status===409?esc(e.message||T('techTaken')):T('couldNotSwitch')}</div><p class="sub" style="text-align:left;margin-top:6px">You’re still checked in — please ask the front desk if you’d like to change.</p>`;
+    }
+  });
+}
+
+function alreadyChecked(c){
+  render(`
+    <div class="big-ico">⏳</div>
+    <h1>${t('alreadyChecked')}</h1>
+    <p class="sub">${t('waitForDesk')}</p>
+    <button class="btn full" id="done">${t('done')}</button>`);
+  document.getElementById('done').onclick = finish;
+}
+
+function askFrontDesk(msg){
+  render(`
+    <div class="big-ico">🔔</div>
+    <h1>${t('pleaseSeeDesk')}</h1>
+    <p class="sub">${esc(msg||t('teamHappy'))}</p>
+    <button class="btn full" id="done">${t('startOver')}</button>`);
+  document.getElementById('done').onclick = finish;
+}
+
+function errorScreen(e){
+  const offline = !e.status; // network error
+  if (e.status===429) return askFrontDesk(t('tooManyAttempts'));
+  render(`
+    <div class="big-ico bad">${offline?'📶':'⚠️'}</div>
+    <h1>${offline?t('connIssue'):t('wentWrong')}</h1>
+    <p class="sub">${esc(e.message||t('tryAgainOrDesk'))}</p>
+    <button class="btn full" id="retry">${t('tryAgain')}</button>
+    <button class="btn ghost full" id="fd">${t('askDesk')}</button>`);
+  document.getElementById('retry').onclick = phoneEntry;
+  document.getElementById('fd').onclick = ()=>askFrontDesk();
+}
+
+async function finish(){
+  try{ await api('POST', `/session/${SESSION}/complete`, null, true); }catch{}
+  boot(); // fresh session for the next guest
+}
+
+// heartbeat to keep the session warm + device "last seen" fresh
+setInterval(()=>{ if(SESSION&&TOKEN) api('POST', `/session/${SESSION}/heartbeat`, null, true).catch(()=>{}); }, 60000);
+
+async function boot(){
+  if(!SLUG){ render(`<h1>Setup needed</h1><p class="sub">This kiosk has no check-in code. Add <code>?slug=YOUR_SLUG</code> to the URL.</p>`); return; }
+  loading(t('connecting'));
+  try{
+    CONFIG = await api('GET', `/${SLUG}/config`);
+    if (CONFIG.branches && CONFIG.branches.length > 1) { branchPicker(); return; } // multi-branch kiosk: pick a location first
+    await startSession(null);
+  }catch(e){
+    if(e.status===403) return render(`<h1>${t('checkInOff')}</h1><p class="sub">${esc(e.message)}</p>`);
+    if(e.status===404) return render(`<h1>${t('notAvailable')}</h1><p class="sub">${t('codeUnknown')}</p>`);
+    errorScreen(e);
+  }
+}
+
+// Multi-branch: let the guest choose which location they're checking in at; the chosen branch is sent to start-session
+// and validated server-side against the device's allow-list.
+function branchPicker(){
+  const bs = CONFIG.branches || [];
+  render(`
+    <h1>${esc(CONFIG.salonName||t('welcome'))}</h1>
+    <p class="sub">${t('whichLocation')}</p>
+    <div class="branch-list">${bs.map(b=>`<button class="btn full branch" data-b="${esc(b.id)}">${esc(b.name)}</button>`).join('')}</div>`);
+  el.querySelectorAll('.branch').forEach(btn=>btn.onclick=()=>startSession(btn.dataset.b));
+}
+
+async function startSession(branchId){
+  loading(t('connecting'));
+  try{
+    const s = await api('POST', `/${SLUG}/start-session`, branchId?{ branchId }:undefined);
+    SESSION = s.sessionId; TOKEN = s.sessionToken; CONFIG = s.config || CONFIG;
+    welcome();
+  }catch(e){
+    if(e.status===403) return render(`<h1>${t('checkInOff')}</h1><p class="sub">${esc(e.message)}</p>`);
+    if(e.status===400 && CONFIG.branches && CONFIG.branches.length>1) return branchPicker(); // branch not allowed — re-pick
+    if(e.status===404) return render(`<h1>${t('notAvailable')}</h1><p class="sub">${t('codeUnknown')}</p>`);
+    errorScreen(e);
+  }
+}
+boot();
+</script>
+</body>
+</html>

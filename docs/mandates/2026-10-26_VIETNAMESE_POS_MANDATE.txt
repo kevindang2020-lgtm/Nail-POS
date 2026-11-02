@@ -1,0 +1,1432 @@
+                                                                    AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+
+
+                                             AI PowerSalon
+           English + Vietnamese POS Localization / i18n Master Build, Audit & Upgrade Mandate
+                Claude-ready engineering specification for bilingual tenant-facing POS with English-only Super Admin
+
+ Non-negotiable product boundary
+ SUPER ADMIN REMAINS ENGLISH-ONLY. Tenant-facing POS users may switch between English and Tiếng Việt. A tenant
+ Owner/Admin may set the salon default language, while each user can override that default for their own POS session/profile.
+
+
+
+ Primary UX requirement
+ Language switching changes presentation only. It must not log the user out, refresh the page, reset a booking, reorder Fair
+ Turn, lose a queue selection, restart a payment, change currency/timezone, or create duplicate realtime subscriptions.
+
+
+
+Target Platform
+ • Tenant-facing AI PowerSalon POS: bilingual English + Vietnamese.
+ • Super Admin: English only.
+ • Primary POS hardware certification: 27-inch touchscreen, 1920 x 1080, 100% browser zoom, browser chrome and Windows
+   taskbar visible.
+ • Future languages may be added later, but production scope now is only en and vi.
+
+Recommended Locale Resolution
+ USER LANGUAGE PREFERENCE
+     ↓ if missing
+ TENANT DEFAULT POS LANGUAGE
+     ↓ if missing
+ ENGLISH FALLBACK
+
+
+
+
+Build Principle
+ INSPECT EXISTING I18N FIRST
+     ↓
+ KEEP WHAT IS CORRECT
+ FIX WHAT IS BROKEN
+ MERGE DUPLICATES
+ COMPLETE PARTIAL IMPLEMENTATION
+ MIGRATE HARD-CODED STRINGS
+ TEST ENGLISH + VIETNAMESE
+ UPDATE DEVELOPER HANDOFF
+
+
+
+
+                                                       Claude Build Mandate | 1
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+Executive Build Contract for Claude
+Treat this as a platform localization project, not a button-label translation exercise. The bilingual layer must be architectural,
+testable, safe for multi-tenant use, and compatible with all previously established POS one-screen layouts.
+
+Area                                                                 Required behavior
+
+Super Admin                                                          English only. No Vietnamese toggle. May manage tenant POS default
+                                                                     language through English UI.
+
+Tenant POS                                                           English and Vietnamese. Switch without logout or page refresh.
+
+User preference                                                      Per user, per tenant where the product identity model requires it. User
+                                                                     preference overrides tenant default.
+
+Tenant default                                                       Owner/Admin configurable. Does not forcibly change users who already have
+                                                                     an explicit preference.
+
+Fallback                                                             English.
+
+Business state                                                       Canonical language-neutral enum/code values. Never store translated status
+                                                                     text as authority.
+
+Currency/timezone                                                    Remain tenant/branch configuration; do not change when language
+                                                                     changes.
+
+Payments                                                             Language switch must never alter payment intent, amount, merchant,
+                                                                     idempotency, or processor state.
+
+Realtime                                                             Canonical events; UI translates presentation. Language switch must not
+                                                                     duplicate subscriptions.
+
+27-inch layouts                                                      Every primary POS module must pass one-screen visual certification in both
+                                                                     languages.
+
+
+
+1. Inspect Existing Localization Code First
+Scan the entire monorepo before installing or introducing a new i18n library. Find existing translation resources, locale utilities,
+language selectors, formatters, localized templates, and hard-coded English user-facing strings.
+Classify every existing implementation as KEEP, FIX, MERGE, COMPLETE, MIGRATE, or REMOVE. Do not create a second competing
+localization system.
+ • Search React/TSX/JSX, shared UI packages, API error contracts, validation schemas, receipts, customer display, communication
+   templates, and POS navigation.
+ • Identify any locale behavior already present in mobile apps or shared packages and reuse it where appropriate.
+
+
+2. Application Scope
+Fully localize tenant-facing POS surfaces and all shared tenant-facing components they use.
+ • Overview; Live Operations; Check-In; Booking; Tech Queue; Customer Queue; Serving; Service Done; Checkout.
+ • Customers; Memberships; Team; Services & Products; Payments & Money; Communications; Marketing & Growth; AI Center;
+   Reports; Management; Devices & Integrations; Account; Settings.
+ • Dialogs, drawers, modals, notifications, validation, errors, charts, tooltips, empty states, status pills, Quick Actions, and
+   confirmation messages.
+
+
+3. Super Admin Is English-Only
+Do not translate the Super Admin application. Do not add a Vietnamese language toggle to Super Admin. Its navigation, tenant
+management, billing, merchant management, audit, security, support, analytics, and operational tooling remain English.
+Super Admin may expose English-labeled controls such as Default POS Language: English / Vietnamese, because it manages
+tenant configuration while staying English itself.
+
+
+
+                                                         Claude Build Mandate | 2
+                                                                                 AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+4. Tenant Language Must Never Affect Super Admin
+A tenant with Vietnamese as its POS default must still appear in English when opened from Super Admin.
+
+
+5. Tenant POS Language Selector
+Add a clean language selector to the tenant-facing POS top bar or the existing user/account area without breaking header density.
+ • Recommended display: English / Tiếng Việt, optionally with a globe icon.
+ • The control must be keyboard accessible and touch friendly.
+ • The selected locale must be immediately visible to the current user.
+
+
+6. Language Switching Must Be Immediate
+Switch English to Vietnamese and Vietnamese to English without logout, browser reload, app restart, or route reset.
+
+ change locale -> rerender translated strings -> preserve route/state -> persist user preference
+
+
+
+
+7. Do Not Reset Operational State During Language Change
+Language is presentation state. It must not alter domain state.
+ • Do not lose selected customer, ticket, appointment, branch, Booking date, Booking technician page, queue selection,
+   modal/form data, payment intent, realtime state, or filter state.
+ • Do not trigger duplicate payment API calls or duplicate websocket subscriptions.
+
+
+8. Locale Resolution Hierarchy
+Resolve locale in this order: explicit user preference, then tenant default, then English fallback.
+
+ user.locale ?? tenant.defaultLocale ?? "en"
+
+
+
+
+9. Tenant Default POS Language
+Tenant Owner/Admin should be able to set the salon default POS language in tenant settings, ideally under Account -> Settings ->
+Language & Region or the closest existing configuration area.
+
+
+10. Tenant Default Does Not Force Every User
+A salon can default to Vietnamese while one receptionist or owner uses English. A personal preference overrides the salon default.
+
+
+11. Top-Bar Switch Changes the Current User
+Changing language from the normal POS selector updates only the current user preference. It must not mutate
+tenant.defaultLocale.
+
+
+12. Changing Salon Default Is a Separate Administrative Action
+Tenant Owner/Admin changes the default language through settings with the appropriate permission. This is separate from My
+Display Language.
+
+
+13. Recommended Persistence Model
+Use the existing settings/preferences architecture where available. Do not persist language only in localStorage.
+
+ tenant_settings
+  tenant_id
+  default_locale
+
+                                                                   Claude Build Mandate | 3
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+
+ user_preferences
+  user_id
+  tenant_id
+  locale
+
+
+ Allowed locales: en, vi
+
+
+
+
+14. Locale Validation
+Backend must validate locale values against the supported set. Reject arbitrary locale strings.
+
+ SUPPORTED_LOCALES = { "en", "vi" }
+
+
+
+
+15. localStorage Is Cache Only
+Browser storage may cache the most recent locale for startup performance, but server/user preference remains the durable
+authority.
+
+
+16. Language Is Not Authorization
+Changing locale must never affect role, permission, tenant, branch, employee identity, payment authority, or manager approval
+logic.
+
+
+17. Recommended Frontend Architecture
+If a mature localization library already exists, keep and finish it. If none exists, use one standard React i18n solution such as
+i18next + react-i18next or the project-standard equivalent.
+
+
+18. Shared Localization Package
+Centralize configuration, translation resources, locale resolution, formatting helpers, and namespaces in a shared package that
+tenant-facing apps can reuse.
+
+ packages/i18n/src/
+  config
+  locale-resolver
+  formatters
+  namespaces
+  translations/en/...
+  translations/vi/...
+
+
+
+
+19. Translation Keys Must Be Stable
+Use semantic stable keys, not full English sentences, as translation identifiers.
+
+ GOOD: checkout.actions.takePayment
+ GOOD: booking.actions.newBooking
+ GOOD: validation.phone.required
+ BAD: "Take Payment" as the primary key
+
+
+
+
+20. Business State Must Remain Canonical
+Never use Vietnamese display text as database or API business state.
+
+ Backend: status = READY_FOR_CHECKOUT
+
+                                                         Claude Build Mandate | 4
+                                                                             AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+ English UI: Ready for Checkout
+ Vietnamese UI: Sẵn sàng thanh toán
+
+
+
+
+21. APIs Return Canonical Codes
+Backend returns language-neutral codes and structured metadata. Frontend translates visible labels.
+
+
+22. Backend Errors Must Be Localizable
+Prefer machine-readable error codes with structured details instead of English prose as the sole contract.
+
+ {
+     "code": "APPOINTMENT_CONFLICT",
+     "details": {}
+ }
+
+
+ EN: This technician already has an appointment at that time.
+ VI: Kỹ thuật viên này đã có lịch hẹn vào thời gian đó.
+
+
+
+
+23. English Is the Final Fallback
+If a Vietnamese key is missing, display the English translation. Never display undefined, raw key names, or [object Object] to salon
+staff.
+
+
+24. Missing Translation Monitoring
+In development/CI, detect missing Vietnamese keys, unused keys, duplicate keys, invalid interpolation variables, and hard-coded
+user-facing English.
+
+
+25. No Hard-Coded English in Tenant POS Components
+Deep-scan JSX/TSX components and shared UI for literal user-facing English, placeholders, aria labels, toasts, titles, empty states,
+and modal content. Replace them with translation keys.
+
+
+26. Do Not Translate Internal Technical Values
+Keep API routes, database enum values, event names, permission codes, role codes, environment variables, JSON field names, and
+table names language-neutral.
+
+
+27. Audit Logs Store Canonical Events
+Audit authority stores canonical event types and structured metadata. Tenant-facing audit displays may localize labels; Super
+Admin shows English/canonical representation.
+
+
+28. Core Vietnamese POS Navigation
+Adopt one consistent approved Vietnamese glossary for primary navigation.
+
+Recommended initial navigation glossary
+ English                                                                    Vietnamese
+
+Overview                                                                    Tổng quan
+
+Live Operations                                                             Vận hành trực tiếp
+
+Check-In                                                                    Tiếp nhận khách
+
+Booking                                                                     Đặt lịch
+
+
+                                                                Claude Build Mandate | 5
+                                                                    AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+English                                                            Vietnamese
+
+Tech Queue                                                         Hàng chờ kỹ thuật viên
+
+Customer Queue                                                     Hàng chờ khách
+
+Serving                                                            Đang phục vụ
+
+Service Done                                                       Hoàn tất dịch vụ
+
+Checkout                                                           Thanh toán
+
+Customers                                                          Khách hàng
+
+Memberships                                                        Hội viên
+
+Team                                                               Nhân viên
+
+Services & Products                                                Dịch vụ & Sản phẩm
+
+Payments & Money                                                   Thanh toán & Tài chính
+
+Communications                                                     Liên lạc
+
+Marketing & Growth                                                 Tiếp thị & Tăng trưởng
+
+AI Center                                                          Trung tâm AI
+
+Reports                                                            Báo cáo
+
+Management                                                         Quản lý
+
+Devices & Integrations                                             Thiết bị & Tích hợp
+
+Account                                                            Tài khoản
+
+
+
+29. Core POS Action Terminology
+Use consistent initial translations and refine them only through one shared glossary.
+
+English                                                            Vietnamese
+
+Save                                                               Lưu
+
+Cancel                                                             Hủy
+
+Close                                                              Đóng
+
+Search                                                             Tìm kiếm
+
+Edit                                                               Chỉnh sửa
+
+Delete                                                             Xóa
+
+View All                                                           Xem tất cả
+
+New Check-In                                                       Tiếp nhận khách mới
+
+New Booking                                                        Đặt lịch mới
+
+Walk-In                                                            Khách vãng lai
+
+Assign Tech                                                        Chỉ định kỹ thuật viên
+
+Start Service                                                      Bắt đầu dịch vụ
+
+Service Done                                                       Hoàn tất dịch vụ
+
+Take Payment                                                       Thu tiền
+
+Send Receipt                                                       Gửi hóa đơn
+
+Print Receipt                                                      In hóa đơn
+
+
+
+                                                       Claude Build Mandate | 6
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+English                                                               Vietnamese
+
+Add Product                                                           Thêm sản phẩm
+
+Add Service                                                           Thêm dịch vụ
+
+Send Message                                                          Gửi tin nhắn
+
+Open Customer                                                         Mở hồ sơ khách
+
+View Reports                                                          Xem báo cáo
+
+Open Cash Drawer                                                      Mở ngăn kéo tiền
+
+
+
+30. Technician Terminology Must Be Consistent
+Primary recommended term: Technician -> Kỹ thuật viên. Do not randomly alternate among thợ, nhân viên nail, kỹ thuật viên nail,
+and technician unless explicitly approved for a different audience.
+
+
+31. Customer / Guest Terminology
+Preserve any domain distinction between Customer and Guest.
+
+English                                                               Vietnamese
+
+Customer                                                              Khách hàng
+
+Guest                                                                 Khách
+
+Waiting Guest                                                         Khách đang chờ
+
+Returning Customer                                                    Khách quay lại
+
+New Customer                                                          Khách mới
+
+VIP Customer                                                          Khách VIP
+
+
+
+32. Booking Terminology
+Use consistent booking vocabulary across calendar, overlays, search, and confirmation.
+
+English                                                               Vietnamese
+
+Appointment                                                           Lịch hẹn
+
+Find an Opening                                                       Tìm giờ trống
+
+Available                                                             Có thể phục vụ
+
+Arriving Soon                                                         Sắp đến
+
+Waitlist                                                              Danh sách chờ
+
+Best Matches                                                          Phù hợp nhất
+
+Working Technicians                                                   Kỹ thuật viên đang làm việc
+
+Book Appointment                                                      Đặt lịch
+
+Check Availability                                                    Kiểm tra giờ trống
+
+
+
+33. Queue Terminology
+Use the same terms across Tech Queue, Customer Queue, Check-In, and realtime status pills.
+
+English                                                               Vietnamese
+
+Waiting                                                               Đang chờ
+
+Ready                                                                 Sẵn sàng
+
+                                                       Claude Build Mandate | 7
+                                                                   AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+English                                                           Vietnamese
+
+
+
+
+Serving                                                           Đang phục vụ
+
+On Break                                                          Đang nghỉ
+
+Queue Hold                                                        Tạm dừng hàng chờ
+
+Assigned                                                          Đã chỉ định
+
+Ready for Assignment                                              Sẵn sàng chỉ định
+
+Ready for Service                                                 Sẵn sàng phục vụ
+
+Wait Time                                                         Thời gian chờ
+
+
+
+34. Checkout Terminology
+Payment terminology must be operationally clear and financially safe.
+
+English                                                           Vietnamese
+
+Subtotal                                                          Tạm tính
+
+Discount                                                          Giảm giá
+
+Tax                                                               Thuế
+
+Tip                                                               Tiền tip
+
+Total                                                             Tổng cộng
+
+Amount Paid                                                       Đã thanh toán
+
+Balance Due                                                       Còn phải trả
+
+Cash                                                              Tiền mặt
+
+Card                                                              Thẻ
+
+Gift Card                                                         Thẻ quà tặng
+
+Split Payment                                                     Chia thanh toán
+
+Split Ticket                                                      Chia hóa đơn
+
+Payment Complete                                                  Thanh toán hoàn tất
+
+Payment Declined                                                  Thanh toán bị từ chối
+
+Verify Payment                                                    Kiểm tra thanh toán
+
+
+
+35. Critical UNKNOWN-Payment Translation
+Vietnamese payment safety language must be unambiguous.
+
+ EN:
+ Payment status is uncertain.
+ Do not pay again.
+ Verify the transaction first.
+
+
+ VI:
+ Trạng thái thanh toán chưa xác định.
+ Không thanh toán lại.
+ Hãy kiểm tra giao dịch trước.
+
+
+
+
+                                                      Claude Build Mandate | 8
+                                                                     AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+36. Translation Must Preserve Business Meaning
+Prefer clear salon-operational Vietnamese over rigid word-for-word translation.
+
+
+37. Central Product Glossary
+Maintain one version-controlled glossary used by all POS translation namespaces and reviewers.
+ • Visit; Customer; Guest; Technician; Appointment; Walk-In; Queue; Fair Turn; Service; Service Line; Checkout; Payment; Tip;
+   Discount; Gift Card; Loyalty; Receipt; Refund; Void; Break; Queue Hold; Service Done; Ready for Checkout.
+
+
+38. Vietnamese Unicode Must Work Everywhere
+Support full Vietnamese diacritics in navigation, names, notes, tables, receipts, charts, and customer-facing surfaces.
+
+ ăâđêôơư|áàảãạ|ấầẩẫậ|ắằẳẵặ|ếềểễệ|ốồổỗộ|ớờởỡợ|ứừửữự
+
+
+
+
+39. Database Must Preserve Vietnamese Text
+Verify PostgreSQL and storage paths preserve UTF-8 correctly.
+
+ Nguyễn Thị Hương
+ Trần Đình Phúc
+ Đặng Minh Tuấn
+ Lê Thị Mỹ Linh
+
+
+
+
+40. Vietnamese IME Input Support
+Inputs must correctly handle compositionstart/compositionupdate/compositionend. Do not run destructive validation/search
+behavior while the IME is still composing Vietnamese text.
+
+
+41. Vietnamese Search
+Where supported, make normalized/case-insensitive and accent-insensitive search able to find names such as Nguyễn from a
+query like nguyen, while preserving the original stored Unicode value.
+
+
+42. Do Not Strip Accents From Stored Data
+Search normalization may use normalized indexes/columns. The authoritative saved display value remains the exact Vietnamese
+name.
+
+
+43. Font Compatibility
+Use font stacks that support Vietnamese glyphs everywhere. Test navigation, KPI cards, buttons, tables, modals, charts, receipts,
+and Customer Display.
+
+
+44. Language and Region Are Separate
+Selecting Tiếng Việt must not switch USD to VND, change timezone to Vietnam, alter tax rules, merchant configuration, or
+business-region behavior.
+
+
+45. Currency Remains Tenant Currency
+A Vietnamese POS in a U.S. salon may still display USD. Locale changes visible text, not monetary authority.
+
+
+46. Timezone Remains Tenant / Branch Timezone
+Language switching must not alter appointment, time clock, service timing, payroll timing, or payment timestamps.
+
+                                                        Claude Build Mandate | 9
+                                                                             AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+47. Date and Time Formatting
+Separate display language from business region/timezone. Use tenant-configured timezone and agreed date/time conventions
+while localizing labels.
+
+
+48. Numbers Preserve Value
+Localization must never change numeric value, rounding, or financial parsing.
+
+
+49. User-Entered Content Is Not Automatically Translated
+Do not translate customer names, technician names, notes, custom service names, custom product names, manager notes, or
+messages without an explicit feature.
+
+
+50. Tenant-Created Services Can Support Optional Bilingual Names
+If catalog localization is needed, use one canonical service plus locale-specific translations. Reuse existing architecture if present.
+
+ services(id, ...)
+ service_translations(service_id, locale, name, description)
+
+
+ locales: en, vi
+
+
+
+
+51. Do Not Duplicate Service Records Per Language
+One service ID should represent the business item. Do not create one English service and one Vietnamese duplicate.
+
+
+52. Products Can Use the Same Pattern
+Optional product/category translations may use the same canonical-ID + locale-label approach.
+
+
+53. Fallback for Tenant Content
+If Vietnamese label is missing, show the English/default service or product name. Do not hide the business item.
+
+
+54. Customer-Facing Content Chooses Language Intentionally
+Receipts, reminders, booking confirmations, wait alerts, and review requests should not automatically inherit the employee UI
+language. Customer communication language is a separate concern.
+
+
+55. Customer Language Preference Is Separate
+Keep employee POS locale and customer communication locale independent.
+
+
+56. Platform Announcement Localization
+Super Admin remains English-only but may provide English Message and Vietnamese Message fields for platform announcements.
+POS displays Vietnamese when available and selected; otherwise fall back to English.
+
+
+57. Critical Platform Announcements Require Review
+Do not rely on uncontrolled runtime machine translation for security, payment outage, maintenance, or emergency platform
+notices.
+
+
+58. Validation Messages
+All visible POS validation messages require English and Vietnamese translations.
+
+
+
+                                                               Claude Build Mandate | 10
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+59. Toasts and Notifications
+Localize success, warning, error, and information toasts.
+
+
+60. Empty States
+Translate every empty state used by the tenant-facing POS.
+
+
+61. Loading States
+Translate visible loading text when present; prefer universal skeletons where possible.
+
+
+62. Status Pills
+Keep canonical state values unchanged while translating display labels.
+
+ CONFIRMED -> Confirmed / Đã xác nhận
+ IN_SERVICE -> In Service / Đang phục vụ
+
+
+
+
+63. Charts
+Localize chart titles, legends, axis labels, tooltips, and empty-chart text. Numerical data remains authoritative.
+
+
+64. Tables
+Localize column headers, filters, pagination, row-empty messages, and action menus.
+
+
+65. Accessibility
+Language switching must update aria-labels, screen-reader text, dialog names, and document lang. Tenant POS uses lang=en or
+lang=vi. Super Admin stays lang=en.
+
+
+66. 27-Inch One-Screen Compatibility
+Every one-screen POS certification must be rerun in Vietnamese because translated text may be longer than English.
+
+
+67. Vietnamese Must Not Break Overview
+Test the complete Overview in English and Vietnamese at 1920x1080, 100% zoom, with zero main-page overflow.
+
+
+68. Vietnamese Must Not Break Live Operations
+Run the same one-screen certification for Live Operations with busy-state data.
+
+
+69. Vietnamese Must Not Break Check-In
+Test KPI cards, Live Check-In Queue, Quick Check-In, appointments, Waiting Lounge, available technicians, analytics, and Quick
+Actions.
+
+
+70. Vietnamese Must Not Break Booking
+Test Booking header, KPIs, Day/Week, filters, Find an Opening, Best Matches, technician paging, calendar headers, New
+Booking/Walk-In overlays, and appointment details.
+
+
+71. Vietnamese Must Not Break Tech Queue
+Test Fair Turn mode, assignment, queue statuses, wait, eligibility reasons, and appointment protection while preserving one-
+screen usability.
+
+
+                                                        Claude Build Mandate | 11
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+72. Vietnamese Must Not Break Customer Queue
+Test Guest Flow Board, priority, available technicians, AI insights, analytics, and Quick Actions.
+
+
+73. Vietnamese Must Not Break Serving
+Test Live Service Floor, Progress Board, Guest Service Details, Available/Finishing Technicians, analytics, and Quick Actions.
+
+
+74. Vietnamese Must Not Break Service Done
+Test Completed Queue, Service Done Board, Guest Review/Confirmation, Ready for Checkout, quality statuses, analytics, and Quick
+Actions.
+
+
+75. Vietnamese Must Not Break Checkout
+Test totals, discount, split ticket/payment, tips, cash, card, gift, UNKNOWN-payment warnings, receipt, signature, and Quick
+Actions.
+
+
+76. Vietnamese Labels Cannot Force Oversized Cards
+Use flexible width, concise approved terminology, ellipsis, and controlled two-line clamp where appropriate. Do not make the
+whole dashboard taller for one long label.
+
+
+77. Do Not Shrink Fonts Until Unreadable
+First remove wasted padding/gaps, use concise glossary terms, allow safe truncation, and adjust flexible widths. Preserve touch
+readability.
+
+
+78. Touch Targets Stay the Same
+Primary targets remain about 44 px where practical. Do not shrink button height because Vietnamese text is longer.
+
+
+79. Responsive Testing
+Test both languages at 2560x1440, 1920x1080, 1600x900, and 1366x768. Primary required certification is 1920x1080 at 100%
+zoom.
+
+
+80. Test Long Vietnamese Strings
+Use realistic long translations during visual QA, not only short labels.
+
+
+81. No Layout Shift During Language Switch
+Repeated EN -> VI -> EN switching must not flash blank, reload, lose data, jump to top, reset selection, or duplicate realtime
+subscriptions.
+
+
+82. Realtime Is Language-Neutral
+Publish canonical event types and structured payloads. Frontend translates presentation. Do not publish different domain events
+by language.
+
+
+83. Workers Are Language-Neutral
+Background workers process canonical data. Localization occurs at presentation/delivery boundaries.
+
+
+84. Payment Processing Is Language-Neutral
+Locale changes must never alter amount, merchant, MID, idempotency key, Payment Intent, processor route, or payment state.
+
+
+                                                        Claude Build Mandate | 12
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+85. Fair Turn Is Language-Neutral
+Changing language must not recalculate queue order, turn units, eligibility, or assignment except for unrelated normal realtime
+changes.
+
+
+86. Booking Is Language-Neutral
+Locale changes must not alter appointment IDs, dates, times, duration, technician, service, or availability.
+
+
+87. No Locale in Business Identity
+Do not include en/vi in business entity IDs, idempotency keys, payment identity, Visit identity, or appointment identity.
+
+
+88. Translation Resource Loading
+Keep language switching fast. Preload common resources or lazy-load namespaces according to the existing architecture; avoid
+visible delay.
+
+
+89. Temporary Network / Offline Behavior
+If translations are already bundled/cached, switching language should not require a fresh network request every time.
+
+
+90. User Language Preference API
+Use the existing preferences API if available. Conceptually a PATCH /me/preferences locale update is appropriate.
+
+
+91. Tenant Default Language API
+Use the existing tenant settings mechanism and permission model. Do not create a duplicate settings service.
+
+
+92. Never Trust Tenant ID From Client
+Locale persistence follows normal tenant-isolation rules. Backend derives tenant scope from trusted authenticated context.
+
+
+93. Super Admin Management
+English-only Super Admin may view/change a tenant Default POS Language through authorized platform controls.
+
+
+94. Audit Tenant Default Language Changes
+Where settings auditing exists, record actor, tenant, old locale, new locale, and timestamp. Personal locale switches usually do not
+need heavyweight audit unless policy requires it.
+
+
+95. Security: Translation Content
+Escape translated text by default. Do not render arbitrary localized HTML unsafely. Avoid XSS through interpolation.
+
+
+96. Translation Interpolation
+Use named variables, not manual string concatenation.
+
+ EN: Waiting {{minutes}} min
+ VI: Đã chờ {{minutes}} phút
+
+
+
+
+97. Pluralization
+Use library plural/formatting facilities rather than English-only concatenation logic.
+
+
+
+                                                        Claude Build Mandate | 13
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+98. Dynamic Names
+Interpolate employee/customer names without translating or normalizing away their original characters.
+
+
+99. Translation Coverage Scanner
+Add CI/developer tooling to report English keys missing Vietnamese, Vietnamese keys missing English, unused keys, duplicate
+keys, and hard-coded user-facing strings. Required POS scope should trend to zero hard-coded strings.
+
+
+100. Development vs Production Missing Keys
+Development should warn clearly about missing keys. Production should fall back safely to English.
+
+
+101. Unit Tests
+Test locale resolution, user preference, tenant default, English fallback, interpolation, status/error mapping, Unicode, and
+separation of language from currency/timezone.
+
+
+102. Integration Tests
+Test login with tenant default Vietnamese, user override English, persistence across refresh/login, independent users, tenant
+default change, and new users inheriting the default.
+
+
+103. Super Admin Isolation Test
+Set a tenant default to Vietnamese, open Super Admin, and verify every Super Admin surface remains English.
+
+
+104. POS Language Switch Test
+Open Overview in English, switch to Tiếng Việt, preserve route/branch/data, and render Vietnamese immediately.
+
+
+105. Operational State Preservation Test
+With a Checkout ticket selected, switch locale and verify the same ticket, amount, payment state, and balance remain intact.
+
+
+106. Booking Preservation Test
+While viewing a specific date, technician page, and service filter, switch locale and preserve them all.
+
+
+107. Queue Preservation Test
+With a Visit selected in Customer Queue, switch locale and preserve the same Visit, assignment state, and queue order.
+
+
+108. Payment Safety Test
+During an UNKNOWN payment, switch EN/VI. The payment remains UNKNOWN, new tender remains blocked, Verify Payment
+remains available, and no retry occurs.
+
+
+109. Vietnamese Unicode E2E
+Create, save, search, edit, realtime-sync, and display Vietnamese names and notes without corruption.
+
+ Customer: Nguyễn Thị Hương
+ Technician: Trần Mỹ Linh
+ Note: Khách muốn sơn màu đỏ và thêm thiết kế hoa.
+
+
+
+
+                                                        Claude Build Mandate | 14
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+110. Vietnamese Search E2E
+Where accent-insensitive search is supported, query nguyen and locate Nguyễn while preserving the stored canonical Unicode
+string.
+
+
+111. One-Screen Visual Regression Tests
+Capture English and Vietnamese screenshots for all primary POS modules at 1920x1080 and 100% zoom.
+ • Overview
+ • Live Operations
+ • Check-In
+ • Booking
+ • Tech Queue
+ • Customer Queue
+ • Serving
+ • Service Done
+ • Checkout
+
+
+112. Busy-State Visual Tests
+Do not test only empty states. Populate realistic operational data and verify Vietnamese still fits.
+
+
+113. 200-Technician Tests
+Use the established 200-technician large-salon target for Booking, Tech Queue, Customer Queue, Serving, Service Done, and
+Checkout in both languages.
+
+
+114. Performance
+Measure bundle/resource impact, language-switch time, render time, memory, and realtime subscriptions after repeated switches.
+Localization must not materially degrade POS performance.
+
+
+115. No Duplicate Subscriptions
+Switch EN -> VI -> EN -> VI repeatedly and verify one websocket subscription/listener set, no duplicated polling, and no memory
+leak.
+
+
+116. Do Not Remount the Entire App if Avoidable
+Use reactive translation updates. Avoid destroying and rebuilding operational state on locale changes.
+
+
+117. Customer Display
+If Customer Display uses shared localization, support English and Vietnamese independently from Super Admin. Its language may
+follow tenant display default, customer preference, or explicit display setting according to existing design.
+
+
+118. Receipts
+Receipt language, where configurable, is separate from employee POS language. A Vietnamese-speaking receptionist may serve
+an English-speaking customer.
+
+
+119. SMS / Email Templates
+Use separate localized template variants such as appointment_confirmation.en and appointment_confirmation.vi. Do not
+automatically send bilingual paragraphs unless the tenant configures that behavior.
+
+                                                        Claude Build Mandate | 15
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+120. AI Features
+AI output shown to employees may follow their locale, but structured AI/domain output must use canonical codes.
+
+ risk = HIGH
+ reasonCode = LONG_WAIT
+
+
+ EN display: Long wait
+ VI display: Chờ lâu
+
+
+
+
+121. Static UI Must Not Depend on Runtime AI Translation
+Reviewed translation files are the source for Save, Cancel, Checkout, and all static product UI. Do not call an AI provider to render
+basic UI labels.
+
+
+122. Translation Reviewability
+Keep translation resources organized and human-reviewable in version control.
+
+
+123. Feature Completion Rule
+Any new tenant-facing POS feature must include English and Vietnamese strings before being considered complete.
+
+
+124. Future Language Expansion
+Architecture should allow later languages such as es, ko, or zh without redesign, but do not expose or build those languages now.
+Current production scope is en + vi only.
+
+
+125. Definition of Done
+ • existing localization architecture audited
+ • no duplicate i18n system created
+ • Super Admin remains English-only
+ • Super Admin has no Vietnamese toggle
+ • tenant POS supports English
+ • tenant POS supports Vietnamese
+ • top-bar language selector works
+ • language switches without logout
+ • language switches without full refresh
+ • user language preference persists
+ • tenant default language persists
+ • user override wins over tenant default
+ • English fallback works
+ • locale values validated
+ • language does not change permissions
+ • language does not change tenant/branch
+ • language does not change currency/timezone/tax/payment state
+ • no hard-coded English remains in required POS scope
+ • navigation/buttons/forms/validation/errors/toasts/empty states/status pills/charts/tables/tooltips/dialogs/drawers/Quick
+   Actions are localized
+ • Vietnamese Unicode works
+
+                                                        Claude Build Mandate | 16
+                                                                      AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+ • Vietnamese IME input works
+ • Vietnamese search works according to policy
+ • names remain unmodified
+ • tenant content fallback works
+ • Super Admin can manage tenant default through English UI
+ • platform announcements support reviewed English/Vietnamese variants
+ • Overview fits one screen in Vietnamese
+ • Live Operations fits one screen in Vietnamese
+ • Check-In fits one screen in Vietnamese
+ • Booking fits one screen in Vietnamese
+ • Tech Queue fits one screen in Vietnamese
+ • Customer Queue fits one screen in Vietnamese
+ • Serving fits one screen in Vietnamese
+ • Service Done fits one screen in Vietnamese
+ • Checkout fits one screen in Vietnamese
+ • 1920x1080 @ 100% passes
+ • busy-state Vietnamese layouts pass
+ • 200-tech Vietnamese tests pass
+ • no unintended horizontal/vertical overflow
+ • touch targets remain usable
+ • realtime remains correct after switch
+ • no duplicate websocket subscriptions
+ • performance acceptable
+ • unit/integration/E2E/visual regression tests pass
+ • build/typecheck/lint pass
+
+
+126. Required Claude Final Engineering Report
+A. Existing Localization Code Found
+ • Exact paths for i18n config, locale provider, translation files, user preference, tenant settings, formatters, error mapping,
+  validation mapping, language selector, Customer Display localization, and communication templates.
+
+B. Hard-Coded String Audit
+Metric                                                               Report
+
+Total files/components scanned                                       value
+
+Hard-coded user-facing strings found                                 value
+
+Migrated                                                             value
+
+Remaining in required POS scope                                      0 or documented exception
+
+
+C. Final Locale Architecture
+ • Document user preference, tenant default, English fallback, resource loading, persistence, frontend provider, backend error-
+  code mapping, and formatting rules.
+
+D. Super Admin Boundary
+
+ Required confirmation
+
+
+                                                        Claude Build Mandate | 17
+                                                                               AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+ SUPER ADMIN LANGUAGE = ENGLISH ONLY
+
+
+
+E. Translation Coverage
+ Namespace                      EN keys                        VI keys                        Missing                      Unused
+
+common                          value                          value                          0                            value
+
+navigation                      value                          value                          0                            value
+
+checkIn                         value                          value                          0                            value
+
+booking                         value                          value                          0                            value
+
+techQueue                       value                          value                          0                            value
+
+customerQueue                   value                          value                          0                            value
+
+serving                         value                          value                          0                            value
+
+serviceDone                     value                          value                          0                            value
+
+checkout                        value                          value                          0                            value
+
+
+F. Vietnamese Glossary
+ • Provide final approved translations for Customer, Guest, Technician, Booking, Appointment, Walk-In, Queue, Service, Serving,
+   Service Done, Checkout, Payment, Tip, Discount, Receipt, Refund, Break, Queue Hold.
+
+G. One-Screen Test Matrix
+ Test                                                                         Result
+
+OVERVIEW EN                                                                   PASS / FAIL
+
+OVERVIEW VI                                                                   PASS / FAIL
+
+LIVE OPS EN                                                                   PASS / FAIL
+
+LIVE OPS VI                                                                   PASS / FAIL
+
+CHECK-IN EN                                                                   PASS / FAIL
+
+CHECK-IN VI                                                                   PASS / FAIL
+
+BOOKING EN                                                                    PASS / FAIL
+
+BOOKING VI                                                                    PASS / FAIL
+
+TECH QUEUE EN                                                                 PASS / FAIL
+
+TECH QUEUE VI                                                                 PASS / FAIL
+
+CUSTOMER QUEUE EN                                                             PASS / FAIL
+
+CUSTOMER QUEUE VI                                                             PASS / FAIL
+
+SERVING EN                                                                    PASS / FAIL
+
+SERVING VI                                                                    PASS / FAIL
+
+SERVICE DONE EN                                                               PASS / FAIL
+
+SERVICE DONE VI                                                               PASS / FAIL
+
+CHECKOUT EN                                                                   PASS / FAIL
+
+CHECKOUT VI                                                                   PASS / FAIL
+
+Primary viewport for this matrix: 1920 x 1080, 100% browser zoom, browser chrome visible, Windows taskbar visible.
+
+
+
+
+                                                                Claude Build Mandate | 18
+                                             AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+H. Persistence Matrix
+Test                                        Result
+
+USER SWITCH EN -> VI                        PASS / FAIL
+
+USER SWITCH VI -> EN                        PASS / FAIL
+
+REFRESH PERSISTS LANGUAGE                   PASS / FAIL
+
+LOGOUT / LOGIN PERSISTS                     PASS / FAIL
+
+USER OVERRIDE TENANT DEFAULT                PASS / FAIL
+
+SECOND USER INDEPENDENT                     PASS / FAIL
+
+TENANT DEFAULT CHANGE                       PASS / FAIL
+
+SUPER ADMIN REMAINS ENGLISH                 PASS / FAIL
+
+
+I. Unicode Matrix
+Test                                        Result
+
+VIETNAMESE NAME CREATE                      PASS / FAIL
+
+VIETNAMESE NAME EDIT                        PASS / FAIL
+
+VIETNAMESE NAME SEARCH                      PASS / FAIL
+
+VIETNAMESE NOTES                            PASS / FAIL
+
+REALTIME VIETNAMESE TEXT                    PASS / FAIL
+
+RECEIPT PREVIEW                             PASS / FAIL
+
+
+J. Operational Preservation
+Test                                        Result
+
+BOOKING STATE PRESERVED                     PASS / FAIL
+
+QUEUE STATE PRESERVED                       PASS / FAIL
+
+SERVING STATE PRESERVED                     PASS / FAIL
+
+CHECKOUT STATE PRESERVED                    PASS / FAIL
+
+UNKNOWN PAYMENT PRESERVED                   PASS / FAIL
+
+NO DUPLICATE REALTIME SUBS                  PASS / FAIL
+
+
+K. Build Matrix
+Validation                                  Required result
+
+POS BUILD                                   PASS / FAIL
+
+TYPECHECK                                   PASS / FAIL
+
+LINT                                        PASS / FAIL
+
+I18N UNIT TESTS                             PASS / FAIL
+
+INTEGRATION TESTS                           PASS / FAIL
+
+E2E ENGLISH                                 PASS / FAIL
+
+E2E VIETNAMESE                              PASS / FAIL
+
+VISUAL REGRESSION EN                        PASS / FAIL
+
+VISUAL REGRESSION VI                        PASS / FAIL
+
+                               Claude Build Mandate | 19
+                                                                       AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+Validation                                                            Required result
+
+TENANT ISOLATION                                                      PASS / FAIL
+
+USER LANGUAGE PERSISTENCE                                             PASS / FAIL
+
+TENANT DEFAULT LANGUAGE                                               PASS / FAIL
+
+SUPER ADMIN ENGLISH ONLY                                              PASS / FAIL
+
+1920x1080 VIETNAMESE FIT                                              PASS / FAIL
+
+200-TECH VIETNAMESE TEST                                              PASS / FAIL
+
+
+L. Files Changed
+ • List every modified frontend file, translation file, backend file, migration, test, and configuration file using exact repository
+   paths.
+
+
+127. Developer Handoff Requirement
+Before finishing, update the project handoff so the next developer can continue without rediscovering localization architecture.
+ • Localization architecture and library choice.
+ • Super Admin English-only rule.
+ • Tenant default vs user preference behavior.
+ • Translation-file locations and namespace conventions.
+ • Glossary and review process.
+ • Missing-key scanner/CI behavior.
+ • Migrations and APIs.
+ • Tests/screenshots performed.
+ • Remaining gaps and exact next developer action.
+ • Never include secrets or credentials in handoff documents.
+
+
+Permanent AI PowerSalon Language Rules
+ AI POWERSALON TENANT POS SUPPORTS TWO LANGUAGES:
+ ENGLISH
+ VIETNAMESE
+
+
+ SUPER ADMIN REMAINS ENGLISH ONLY.
+
+
+ TENANT-FACING USERS MAY SWITCH BETWEEN ENGLISH AND VIETNAMESE.
+ TENANT OWNER/ADMIN MAY SET THE DEFAULT POS LANGUAGE.
+ USER LANGUAGE OVERRIDE WINS OVER TENANT DEFAULT.
+ ENGLISH IS THE FINAL FALLBACK.
+
+
+ LANGUAGE DOES NOT CHANGE PERMISSIONS.
+ LANGUAGE DOES NOT CHANGE TENANT OR BRANCH.
+ LANGUAGE DOES NOT CHANGE CURRENCY.
+ LANGUAGE DOES NOT CHANGE TIMEZONE.
+ LANGUAGE DOES NOT CHANGE TAX RULES.
+ LANGUAGE DOES NOT CHANGE PAYMENT STATE.
+ LANGUAGE DOES NOT CHANGE QUEUE ORDER.
+ LANGUAGE DOES NOT CHANGE APPOINTMENT DATA.
+
+
+ DATABASE / API BUSINESS STATES REMAIN CANONICAL.
+ VISIBLE UI LABELS ARE LOCALIZED.
+ SUPER ADMIN PLATFORM INTERFACES REMAIN ENGLISH.
+
+
+ VIETNAMESE UNICODE MUST WORK EVERYWHERE.
+
+                                                         Claude Build Mandate | 20
+                                                                        AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+ DO NOT REMOVE DIACRITICS FROM STORED DATA.
+ DO NOT HARD-CODE USER-FACING ENGLISH IN TENANT POS COMPONENTS.
+ DO NOT STORE TRANSLATED STATUS TEXT AS DATABASE STATE.
+ DO NOT USE RUNTIME AI TO TRANSLATE STATIC UI.
+
+
+ VIETNAMESE MUST PASS THE SAME 27-INCH ONE-SCREEN TESTS AS ENGLISH.
+ LANGUAGE SWITCH MUST NEVER INTERRUPT OR DUPLICATE A PAYMENT.
+ LANGUAGE SWITCH MUST NEVER RESET A BOOKING OR QUEUE.
+ LANGUAGE SWITCH MUST NEVER CHANGE FAIR TURN.
+ LANGUAGE SWITCH MUST NEVER CREATE DUPLICATE REALTIME SUBSCRIPTIONS.
+
+
+ THE POS MUST REMAIN FAST, CLEAN, TOUCH-FRIENDLY, AND EASY TO UNDERSTAND IN BOTH LANGUAGES.
+
+
+
+
+Final Instruction to Claude
+Do not treat this as a simple translation job. Build a real English + Vietnamese localization platform for AI PowerSalon tenant POS
+while preserving English-only Super Admin.
+
+ Employee logs into POS
+     ↓
+ resolve user language preference
+     ↓ if none
+ use tenant default
+     ↓ if none
+ English fallback
+     ↓
+ user may switch English <-> Tiếng Việt instantly
+
+
+
+ Hard boundary
+ SUPER ADMIN = ENGLISH ONLY. Do not add a Vietnamese Super Admin. English-only Super Admin may manage tenant POS
+ default language and bilingual platform announcement variants.
+
+
+When the tenant user switches language, keep the same route, branch, customer, Visit, appointment, queue, service, ticket,
+payment, filters, and realtime subscriptions. Only presentation changes.
+
+ DEEP-SCAN ALL TENANT POS MODULES
+
+
+ IF VISIBLE ENGLISH IS HARD-CODED -> MIGRATE IT
+ IF VIETNAMESE IS MISSING -> ADD IT
+ IF TRANSLATION KEYS ARE DUPLICATED -> MERGE THEM
+ IF STATUS VALUES ARE STORED AS TRANSLATED WORDS -> FIX THEM
+ IF BACKEND ERRORS CANNOT BE LOCALIZED -> ADD MACHINE-READABLE ERROR CODES
+ IF VIETNAMESE CHARACTERS BREAK -> FIX UNICODE SUPPORT
+ IF VIETNAMESE TYPING BREAKS -> FIX IME HANDLING
+ IF VIETNAMESE SEARCH FAILS -> FIX SEARCH NORMALIZATION SAFELY
+ IF VIETNAMESE BREAKS A 27-INCH ONE-SCREEN PAGE -> FIX THE RESPONSIVE LAYOUT
+ IF LANGUAGE SWITCH RESETS OPERATIONAL STATE -> FIX IT
+ IF SWITCHING DUPLICATES WEBSOCKET SUBSCRIPTIONS -> FIX IT
+ IF LOCALE CHANGES MONEY/TIMEZONE/PERMISSIONS/QUEUE/PAYMENT -> FIX IT
+
+
+
+
+Required Final Validation Sequence
+ ENGLISH FULL POS TEST
+ VIETNAMESE FULL POS TEST
+ 27-INCH ENGLISH TEST
+ 27-INCH VIETNAMESE TEST
+ BUSY-STATE ENGLISH TEST
+ BUSY-STATE VIETNAMESE TEST
+
+                                                          Claude Build Mandate | 21
+                                                                   AI PowerSalon | English + Vietnamese POS Localization Master Build Mandate
+
+ 200-TECHNICIAN ENGLISH TEST
+ 200-TECHNICIAN VIETNAMESE TEST
+ UNICODE TEST
+ VIETNAMESE IME TEST
+ SEARCH TEST
+ LANGUAGE PERSISTENCE TEST
+ MULTI-USER LANGUAGE TEST
+ TENANT DEFAULT TEST
+ SUPER ADMIN ENGLISH-ONLY TEST
+ BOOKING STATE PRESERVATION TEST
+ QUEUE STATE PRESERVATION TEST
+ CHECKOUT STATE PRESERVATION TEST
+ UNKNOWN PAYMENT LANGUAGE-SWITCH TEST
+ REALTIME SUBSCRIPTION TEST
+ BUILD
+ TYPECHECK
+ LINT
+ UNIT TESTS
+ INTEGRATION TESTS
+ E2E TESTS
+ VISUAL REGRESSION TESTS
+
+
+
+Only after the required tests pass should Claude mark the Vietnamese POS localization upgrade complete. The finished product
+should feel like one AI PowerSalon platform with two professional tenant-facing POS languages, not an English application with
+Vietnamese text patched on top.
+
+
+
+
+                                                     Claude Build Mandate | 22
+

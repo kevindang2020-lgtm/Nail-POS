@@ -1,0 +1,11 @@
+{
+  "name": "@aipowersalon/money",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Integer-cents money type, exact parsing, the distinct display rules, and largest-remainder allocation — the platform's money kernel (Constitution 13 §86). Pure; consumed compiled by the API (dist/) and as source by the frontends.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": { ".": { "types": "./dist/index.d.ts", "default": "./dist/index.js" } },
+  "files": ["dist"],
+  "scripts": { "build": "tsc -p tsconfig.json", "test": "vitest run", "typecheck": "tsc --noEmit -p tsconfig.json" }
+}

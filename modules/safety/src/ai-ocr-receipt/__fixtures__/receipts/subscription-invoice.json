@@ -1,0 +1,153 @@
+{
+ "name": "subscription-invoice",
+ "type": "subscription_invoice",
+ "condition": "clean",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a zero-tax software subscription",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Google Workspace",
+       "Confidence": 99.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-01",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "4812-9931-2210",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$72.00",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$0.00",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$72.00",
+       "Confidence": 99.2
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Subscription invoice. Billing period Oct 1 – Oct 31 2026. Recurring monthly plan. Renews on Nov 1",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Business Starter — 6 users",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$72.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "6",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$12.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Google Workspace",
+  "date": "2026-10-01",
+  "totalCents": 7200,
+  "subtotalCents": 7200,
+  "taxCents": 0,
+  "documentNumber": "4812-9931-2210",
+  "lines": 1,
+  "type": "subscription_invoice",
+  "validation": "valid"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

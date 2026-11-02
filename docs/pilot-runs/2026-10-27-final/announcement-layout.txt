@@ -1,0 +1,61 @@
+[platform-urls] The tenant portal URL could not be derived (no APP_BASE_URL, and no usable host in WEB_CORS_ORIGINS). Falling back to https://pos.aipowersalon.com. Invite links and branded emails will point there — set APP_BASE_URL if that is not right.
+PASS  owner signs in to the POS — status 200 SUCCESS
+PASS  §114 no message: the slot is empty (no bar, no gap content) — null
+PASS  startup snapshot was requested — 1 request(s)
+PASS  §26 a published message appears without a refresh — snapshot refetches 1
+PASS  §30 a short message takes one line — lines 1
+PASS  §63 an edit of a live message reaches the POS without a refresh
+PASS  §31 a ~150-character message wraps to two lines at 1920 (no clamp) — lines 2 clamped false chars 146
+PASS  §32 a ~500-character message is clamped to two lines — lines 2 clamped true chars 456
+PASS  §33 the clamped message offers More — ["More"]
+PASS  §34 More opens the full message
+PASS  §106 More opens role="dialog" aria-modal="true" with focus moved inside — {"modal":"true","role":"dialog","focusInside":true}
+PASS  §106 Tab / Shift+Tab never leave the open panel (focus trap)
+PASS  §37 Escape closes the panel
+PASS  §106 …and focus returns to More
+PASS  §106 the bar's text is ≥ 4.5:1 and its type icon ≥ 4.5:1 on the tone background (computed) — text 7.92 icon 4.97
+PASS  §34 the type icon is the POS icon library's (react-icons), not a hand-drawn SVG
+PASS  §164 another salon's critical notice is not shown (tenant isolation)
+PASS  1920×1080 no horizontal page scroll — 1920 > 1920
+PASS  1920×1080 Search stays usable (box ≥180 px incl. its button, §111) — search 300px
+PASS  1920×1080 the announcement sits between Search and the clock — bar 762–1471 search ends 750 controls start 1487
+PASS  1920×1080 clock, bell and profile visible, not overlapped — 4 controls
+PASS  1920×1080 the message itself keeps readable room (≥200 px of text) — text 570px
+PASS  1920×1080 at most two lines of text inside the header — lines 2
+PASS  1600×900 no horizontal page scroll — 1600 > 1600
+PASS  1600×900 Search stays usable (box ≥180 px incl. its button, §111) — search 300px
+PASS  1600×900 the announcement sits between Search and the clock — bar 762–1151 search ends 750 controls start 1167
+PASS  1600×900 clock, bell and profile visible, not overlapped — 4 controls
+PASS  1600×900 the message itself keeps readable room (≥200 px of text) — text 250px
+PASS  1600×900 at most two lines of text inside the header — lines 2
+PASS  1366×768 no horizontal page scroll — 1366 > 1366
+PASS  1366×768 Search stays usable (box ≥180 px incl. its button, §111) — search 230px
+PASS  1366×768 the announcement sits between Search and the clock — bar 682–1031 search ends 670 controls start 1047
+PASS  1366×768 clock, bell and profile visible, not overlapped — 4 controls
+PASS  1366×768 the message itself keeps readable room (≥200 px of text) — text 209px
+PASS  1366×768 at most two lines of text inside the header — lines 2
+PASS  1280×800 no horizontal page scroll — 1280 > 1280
+PASS  1280×800 Search stays usable (box ≥180 px incl. its button, §111) — search 200px
+PASS  1280×800 the announcement sits between Search and the clock — bar 642–945 search ends 630 controls start 961
+PASS  1280×800 clock, bell and profile visible, not overlapped — 4 controls
+PASS  1280×800 the message itself keeps readable room (≥150 px of text) — text 163px
+PASS  1280×800 at most two lines of text inside the header — lines 2
+PASS  §18 pause removes the message from the POS without a refresh
+PASS  §151 resume shows it again without a refresh
+PASS  §20 archive removes it without a refresh
+PASS  §149 a scheduled message is not shown before its start — -16986 ms vs start; bar: 
+PASS  §149 …and appears at its start time without a refresh
+PASS  §148 an expiring message is shown while live (high sorts first)
+PASS  §148 …and disappears when its end passes, without a refresh
+PASS  §152 dismiss hides a dismissible message
+PASS  §153 a non-dismissible message has no dismiss control
+PASS  §154 "I understand" is recorded per tenant / user / content version — [{"t":true,"u":true,"v":1}]
+PASS  §158 a message published during a disconnect appears after reconnect
+PASS  the page was never reloaded
+PASS  §159 after a POS reload the active message is back from the snapshot
+PASS  §160 with the announcement API failing, the POS header and screen still work (slot empty, no error shown)
+PASS  §116 the failed snapshot is counted: aipowersalon_client_events_total{app="pos",event="platform_announcement_snapshot_failed"} ≥ 1 — count 1
+PASS  no uncaught page errors
+PASS  §164 the API log never contains an announcement's text (incl. the other salon's critical notice) — 786121 log bytes scanned
+
+58/58 checks passed · screenshots: /tmp/pos-announcement-CzTfIu

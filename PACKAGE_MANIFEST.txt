@@ -1,0 +1,42 @@
+AI PowerSalon — Full Working Handoff
+Package date: 2026-06-26
+=====================================================
+
+IDENTITY
+  AI PowerSalon LLC · aipowersalon.com · multi-tenant nail-salon POS + salon-management SaaS (US).
+  This is ONE combined monorepo (frontend + backend already merged). npm workspaces.
+
+STRUCTURE
+  apps/api               NestJS + Kysely + Postgres 16 backend (102 controllers, 81 modules, 138 migrations)
+  apps/pos-web           staff POS (47 screens)
+  apps/admin-web         super-admin console
+  apps/owner-web         multi-salon owner portal
+  apps/tech-web          technician app
+  apps/customer-web      customer app
+  apps/customer-display  pole/second-screen display
+  apps/go-check-in-kiosk / go-check-in-admin   Capacitor check-in wrappers (static; native android/ios stripped)
+  packages/ui            shared UI package
+  docs/handoff/          handoff documentation (start at NEXT_CHAT_START_HERE.md)
+  scripts/               run-core-specs.sh (backend harness+vitest) and others
+  apps/api/db/migrations 001–138 (append-only)
+  node_modules NOT included — run `npm install` at the repo root.
+
+VERIFICATION AT PACKAGE TIME (actually executed; see docs/handoff/TEST_REPORT.md)
+  apps/api tsc ............... 0 errors
+  Backend suite ............. 65 harness suites + 138 vitest files / 873 tests PASS
+  Frontend tsc (6 TS apps) ... 0 errors each (pos-web, admin-web, owner-web, tech-web, customer-web, customer-display)
+  pos-web .................... vitest 51 files / 139 tests PASS; vite build OK
+  Secret scan ............... no real secrets (only test fixtures + doc references to scan patterns)
+
+SECURITY POSTURE (evidence in tree)
+  - Multi-tenant isolation: tenant derived server-side; 14 isolation specs prove A cannot read/update/search B.
+  - Guards: tenant-auth, role-permission, role-scoped, super-admin.
+  - Payments: Fiserv (CardPointe/Bolt) + Clover only; integer cents; idempotent capture/refund races closed.
+    (The only "stripe" token is the AI-billing webhook signature-scheme NAME — not a payment processor.)
+  - Webhooks: SSRF-guarded URLs, AES-256-GCM encrypted signing secrets, HMAC-SHA256 signed delivery,
+    durable delivery ledger + retry/backoff dispatcher.
+
+EXCLUDED: node_modules, .git, dist/build, native android/ios, **/www, caches/logs, real .env files,
+  *.pem/*.key/*.p12, .DS_Store. Sanitized .env*.example ARE included.
+
+START HERE (new chat): read docs/handoff/NEXT_CHAT_START_HERE.md before changing any code.

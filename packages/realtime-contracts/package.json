@@ -1,0 +1,22 @@
+{
+  "name": "@aipowersalon/realtime-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Client-safe realtime event contracts (Constitution 13 \u00a777): the ONE event registry (names, versions, rooms, event\u2192screen routing) and the envelope shape, shared by apps/api, packages/realtime-client and every app; plus the server-side emitter port (REALTIME token + RealtimeEmitter interface) that domain modules publish through. Dependency-free and browser-safe.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

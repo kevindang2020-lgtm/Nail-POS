@@ -1,0 +1,15 @@
+{
+  "name": "aipowersalon-go-check-in-kiosk",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist && cp index.html dist/ && cp -R public/. dist/",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.3",
+    "@capacitor/cli": "^8.4.3",
+    "@capacitor/core": "^8.4.3",
+    "@capacitor/ios": "^8.4.3"
+  }
+}

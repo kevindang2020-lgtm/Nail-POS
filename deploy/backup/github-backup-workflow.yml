@@ -1,0 +1,53 @@
+# github-backup-workflow.yml — BUILD_PLAN Phase 14 C (Constitution 11 §114–117): a TEMPLATE. It does nothing until Kevin
+# copies it to .github/workflows/backup.yml and adds the repository secrets below (Settings → Secrets and variables →
+# Actions). No secret value is in this file — only their names.
+#
+# It runs deploy/backup/backup-and-report.sh daily: pg_dump → pg_restore --list (the archive is readable) → upload to
+# S3-compatible storage → POST the outcome to the API (scripts/report-backup.mjs). The API's staleness rule raises a high
+# alert, which pages the on-call chain, when no successful backup has been reported for 26 hours.
+#
+# Secrets: BACKUP_DATABASE_URL, BACKUP_S3_URI, BACKUP_S3_ENDPOINT (optional), BACKUP_AWS_ACCESS_KEY_ID,
+#          BACKUP_AWS_SECRET_ACCESS_KEY, BACKUP_AWS_REGION, BACKUP_REPORT_URL, BACKUP_REPORT_TOKEN
+# Variable (not secret): BACKUP_PITR_ENABLED = true|false
+name: backup
+
+on:
+  schedule:
+    - cron: '17 7 * * *'     # daily 07:17 UTC (≈ 3 a.m. New York) — off the hour on purpose
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: backup
+  cancel-in-progress: false
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the PostgreSQL 16 client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y
+          sudo apt-get install -y -qq postgresql-client-16
+          echo "/usr/lib/postgresql/16/bin" >> "$GITHUB_PATH"
+      - name: Back up, verify, upload, report
+        env:
+          BACKUP_DATABASE_URL: ${{ secrets.BACKUP_DATABASE_URL }}
+          BACKUP_S3_URI: ${{ secrets.BACKUP_S3_URI }}
+          BACKUP_S3_ENDPOINT: ${{ secrets.BACKUP_S3_ENDPOINT }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.BACKUP_AWS_REGION }}
+          BACKUP_REPORT_URL: ${{ secrets.BACKUP_REPORT_URL }}
+          BACKUP_REPORT_TOKEN: ${{ secrets.BACKUP_REPORT_TOKEN }}
+          BACKUP_PITR_ENABLED: ${{ vars.BACKUP_PITR_ENABLED }}
+        run: bash deploy/backup/backup-and-report.sh

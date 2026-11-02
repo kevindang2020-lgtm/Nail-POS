@@ -1,0 +1,3491 @@
+                          AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+
+
+
+                         AI POWERSALON
+  Receipt, Expense, Invoice, OCR & Accounting
+                  Intelligence
+    Master Code Audit, Fix, Upgrade, Integration & Production Completion Mandate for Claude
+
+INSPECT EXISTING CODE FIRST. PRESERVE WHAT WORKS. FIX, MERGE, COMPLETE, WIRE, TEST, BUILD,
+                              AND DOCUMENT THE REAL SYSTEM.
+
+
+
+                                         Core Product Principle
+
+       A receipt is evidence. An expense is the business record. Every dollar must be traceable.
+
+
+
+
+                                       Developer & Claude Completion Mandate | 1
+                                 AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+Implementation Summary
+Owner Experience                            Backend Authority                                    Automation & Controls
+Take picture -> Review -> Save              PostgreSQL + object storage +                        OCR/AI extraction, duplicate detection,
+                                            tenant/branch authorization + audit                  category recommendation, human review
+
+ Default salon-owner categories: Rent / Landlord; Supplies; Equipment; Utilities / Bills; Marketing; Repairs /
+ Maintenance; Insurance; Software / Subscriptions; Payroll; Other.
+
+
+
+
+                                              Developer & Claude Completion Mandate | 2
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+Master Code Audit, Fix, Upgrade, Integration & Production Completion Mandate for Claude
+Claude,
+You are responsible for auditing, repairing, upgrading, merging, completing, testing, and production-hardening the complete AI
+PowerSalon Receipt, Expense, Invoice, Bill, OCR, Vendor, Accounting Export, and Expense Intelligence system.
+This is an existing AI PowerSalon platform.
+Do not immediately create another receipt module.
+Do not assume nothing has already been built.
+AI PowerSalon already has or has planned:
+   ai_ocr_receipt
+   Object / Media Storage
+   AI Platform
+   Analytics
+   Reports
+   Payments
+   Tenants
+   Branches
+   Users / Roles
+   Owner App
+   POS
+   Super Admin
+   Audit Logs
+   Events
+   Workers
+   Notifications
+
+Your job is to inspect the real repository and determine exactly what already exists.
+Then:
+   DISCOVER
+        v
+   UNDERSTAND
+        v
+   CLASSIFY
+        v
+   KEEP CORRECT CODE
+        v
+   FIX BROKEN CODE
+        v
+   MERGE DUPLICATES
+        v
+   UPGRADE WEAK IMPLEMENTATION
+        v
+   COMPLETE MISSING FEATURES
+        v
+   WIRE FRONTEND <-> BACKEND
+        v
+   MIGRATE SAFELY
+        v
+   TEST
+        v
+   BUILD
+        v
+   DOCUMENT
+
+Do not stop with another architecture proposal.
+Implement what can be completed internally.
+
+1. Product Goal
+AI PowerSalon should let a salon owner or authorized manager handle expenses as simply as:
+   TAKE PICTURE
+        v
+   AI READS RECEIPT
+        v
+   SYSTEM DETECTS:
+   Vendor
+   Date
+                                                Developer & Claude Completion Mandate | 3
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Amount
+   Tax
+   Items
+   Category
+   Location
+         v
+   OWNER REVIEWS IF NEEDED
+         v
+   SAVE
+
+The owner should not need to manually type accounting information for normal receipts.
+But internally the system must create a reliable, auditable business-expense record.
+
+2. Primary User Experience
+The experience should be:
+   Receipt Picture
+       v
+   Upload
+       v
+   OCR / AI Extraction
+       v
+   Validation
+       v
+   Duplicate Check
+       v
+   Vendor Match
+       v
+   Category Recommendation
+       v
+   High Confidence?
+          |
+          +-- YES -> Ready for Approval
+          |
+          +-- NO -> Needs Review
+       v
+   Approved Expense
+       v
+   Reports / Accounting Export / Tax Records
+
+3. Owner Experience Must Stay Simple
+Do not make salon owners understand accounting terminology just to store a receipt.
+Default workflow should require only:
+   Take Picture
+
+   Review
+
+   Save
+
+Advanced accounting detail belongs behind optional controls.
+
+4. Default Short Expense Categories
+AI PowerSalon should use these simple default categories:
+   Rent / Landlord
+
+   Supplies
+
+   Equipment
+
+   Utilities / Bills
+
+   Marketing
+
+   Repairs / Maintenance
+
+   Insurance
+
+   Software / Subscriptions
+                                                Developer & Claude Completion Mandate | 4
+                                      AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   Payroll
+
+   Other
+
+These should remain the primary easy-to-understand categories presented to salon owners.
+Do not replace them with a complicated 50-category chart of accounts in the normal POS interface.
+
+5. Custom Categories
+Tenants may optionally create additional categories.
+Example:
+   Professional Services
+   Cleaning
+   Education
+   Licenses
+
+But these remain tenant-specific extensions.
+The simple defaults stay available.
+
+6. Accounting Mapping Is Separate
+A salon-facing category such as:
+   Supplies
+
+may later map to an accounting code such as:
+   6200 - Salon Supplies
+
+Keep these separate:
+   OWNER CATEGORY
+         v
+   ACCOUNTING MAPPING
+
+The owner should not need to know GL codes.
+
+7. First Audit Existing Repository
+Before creating anything, search for:
+   receipt
+   receipts
+   expense
+   expenses
+   invoice
+   invoices
+   bill
+   bills
+
+   vendor
+   merchant
+   supplier
+
+   ocr
+   ai_ocr_receipt
+   documentExtraction
+   documentAnalysis
+
+   accounting
+   bookkeeping
+   tax
+   deduction
+
+   attachment
+   document
+   media
+   storage
+
+   expenseCategory
+   category
+
+
+                                                   Developer & Claude Completion Mandate | 5
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   reimbursement
+
+   upload
+   camera
+   scan
+   image
+
+   reports
+   analytics
+   export
+
+   QuickBooks
+   Xero
+   CSV
+
+   payment
+   purchase
+
+   audit
+
+   worker
+   event
+
+Inspect:
+   Database
+   Kysely schemas
+   Migrations
+   Controllers
+   Services
+   Repositories
+   Workers
+   Jobs
+   Events
+   AI modules
+   Object storage
+   POS frontend
+   Owner App
+   Super Admin
+   Reports
+   Tests
+
+8. Classify Existing Code
+For every component classify:
+   COMPLETE
+
+   PARTIAL
+
+   BROKEN
+
+   NOT_WIRED
+
+   DUPLICATE
+
+   PLACEHOLDER
+
+   MOCK
+
+   LEGACY
+
+   UNSAFE
+
+   MISSING
+
+   BLOCKED_EXTERNAL
+
+Then continue fixing it.
+Do not return only the classification.
+
+
+
+                                                  Developer & Claude Completion Mandate | 6
+                                      AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+9. Do Not Create ExpenseV2
+If the repository already contains:
+   ReceiptService
+   ExpenseService
+   OCRService
+   DocumentService
+
+do not automatically add:
+   NewReceiptService
+   ExpenseV2
+   SmartExpense2
+
+Instead:
+   Find existing authority
+           v
+   Understand data model
+           v
+   Preserve good code
+           v
+   Merge overlap
+           v
+   Complete missing behavior
+           v
+   Migrate callers
+           v
+   Remove duplicate authority
+
+10. Separate Receipt From Expense
+This is extremely important.
+A receipt is evidence.
+An expense is the business transaction.
+Do not make them the exact same object.
+Conceptually:
+   ReceiptDocument
+         v
+   ExpenseTransaction
+
+One expense may have:
+   1 receipt
+   multiple receipt pages
+   invoice
+   supporting document
+
+A receipt may also temporarily exist before it has been reviewed into a valid expense.
+
+11. Receipt Document Entity
+Adapt existing schema instead of blindly creating this.
+Conceptually:
+   ReceiptDocument {
+       id
+
+        tenantId
+        branchId?
+
+        storageAssetId
+
+        originalFilename?
+        mimeType
+
+        source
+
+        fileHash
+
+        pageCount
+
+                                                   Developer & Claude Completion Mandate | 7
+                                AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+         processingStatus
+
+         extractionConfidence
+
+         uploadedBy
+         uploadedAt
+
+         approvedAt?
+         archivedAt?
+   }
+
+12. Receipt Source
+Track:
+   MOBILE_CAMERA
+
+   POS_UPLOAD
+
+   OWNER_APP_UPLOAD
+
+   WEB_UPLOAD
+
+   EMAIL_IMPORT
+
+   API_IMPORT
+
+   FORWARDED_DOCUMENT
+
+only as supported.
+
+13. Expense Transaction Entity
+Conceptually:
+   Expense {
+       id
+
+         tenantId
+         branchId?
+
+         vendorId?
+
+         receiptDocumentId?
+
+         expenseDate
+
+         categoryId
+
+         description?
+
+         subtotalCents?
+         taxCents?
+         tipCents?
+         feeCents?
+         totalCents
+
+         currency
+
+         paymentMethod?
+
+         expenseStatus
+
+         reviewStatus
+
+         recurring?
+
+         createdBy
+         approvedBy?
+
+         createdAt
+         updatedAt
+
+                                             Developer & Claude Completion Mandate | 8
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+         version
+   }
+
+Adapt to existing schema.
+
+14. Exact Money
+Use integer minor units or the platform's established exact NUMERIC convention.
+Never use floating-point money.
+Example:
+   $123.45
+   =
+   12345 cents
+
+15. Expense Line Items
+Support detailed extracted items.
+Conceptually:
+   ExpenseLineItem {
+       id
+       expenseId
+
+         description
+
+         quantity?
+         unitPriceCents?
+         totalCents
+
+         suggestedCategoryId?
+         finalCategoryId?
+
+         confidence?
+   }
+
+16. Line Items Are Optional
+Do not block expense creation if a receipt contains only:
+   Vendor
+   Date
+   Total
+
+Line-item extraction improves reporting but is not required for every expense.
+
+17. Multi-Page Receipts and Invoices
+Support:
+   Page 1
+   Page 2
+   Page 3
+
+under one document.
+Do not create three expenses simply because three photos were taken.
+
+18. Combine Receipt Pages
+Allow:
+   Select multiple photos
+   -> Combine into one receipt/invoice
+
+before processing.
+
+19. Preserve Original Receipt
+The original uploaded receipt must remain immutable evidence.
+Do not overwrite the original image after OCR.
+Create derived versions separately.
+
+                                                 Developer & Claude Completion Mandate | 9
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+20. Object Storage
+Receipt images and documents belong in object storage.
+Do not store large image binaries directly in PostgreSQL.
+Store:
+   storage provider
+   storage key
+   content type
+   size
+   checksum/hash
+
+21. Media Storage Port
+Reuse existing:
+   MediaStoragePort
+
+or equivalent platform storage abstraction.
+Business logic must not be tightly coupled to AWS S3.
+
+22. File Validation
+Validate:
+   MIME type
+
+   magic bytes
+
+   file size
+
+   page count
+
+   supported format
+
+   image dimensions
+
+   malware scan status where available
+
+Never trust filename extension alone.
+
+23. Supported Formats
+Recommended initial support:
+   JPEG
+   PNG
+   HEIC
+   PDF
+
+if current media pipeline supports them.
+Convert unsupported viewing formats to safe internal derivatives where necessary.
+
+24. Image Optimization
+Preserve original but generate optimized copies for:
+   OCR
+   thumbnail
+   review screen
+
+Do not repeatedly process a 20 MB phone photo.
+
+25. Image Quality Analysis
+Before OCR detect obvious problems:
+   too dark
+
+   too blurry
+
+   receipt cut off
+
+   extreme perspective
+                                                Developer & Claude Completion Mandate | 10
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   low resolution
+
+   multiple unrelated receipts
+
+26. User Guidance
+If image quality is poor show:
+   Receipt may be difficult to read.
+
+   Retake Photo
+   or
+   Process Anyway
+
+Do not simply fail.
+
+27. OCR Pipeline
+Use:
+   Upload
+      v
+   Storage
+      v
+   Document Validation
+      v
+   OCR Job
+      v
+   Text Extraction
+      v
+   Field Extraction
+      v
+   Confidence Scoring
+      v
+   Normalization
+      v
+   Duplicate Detection
+      v
+   Category Recommendation
+      v
+   Human Review if needed
+
+28. ai_ocr_receipt
+Reuse and upgrade the existing/planned:
+   ai_ocr_receipt
+
+module.
+It should support extraction of:
+   Vendor
+
+   Vendor Address
+
+   Receipt / Invoice Number
+
+   Transaction Date
+
+   Transaction Time
+
+   Subtotal
+
+   Tax
+
+   Tip
+
+   Fees
+
+   Total
+
+   Payment Method
+
+
+                                                Developer & Claude Completion Mandate | 11
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Card Last4 if safely visible
+
+   Line Items
+
+   Quantity
+
+   Unit Price
+
+   Discounts
+
+   PO / Reference Number where present
+
+   Due Date for invoice
+
+   Invoice Number
+
+29. AI Platform Integration
+`ai_ocr_receipt` must use the central AI Platform / AI Gateway.
+It must not independently import random model-provider SDKs throughout the module.
+
+30. OCR Provider Abstraction
+Conceptually:
+   DocumentExtractionPort
+
+Capabilities:
+   extractText()
+
+   extractStructuredFields()
+
+   getConfidence()
+
+   detectDocumentType()
+
+Provider may change later.
+
+31. AI Is Not Accounting Authority
+AI may suggest:
+   vendor
+
+   date
+
+   amount
+
+   category
+
+   line items
+
+But AI is not allowed to silently invent financial data.
+
+32. Structured AI Output
+AI/OCR response must conform to a validated schema.
+Example:
+   {
+       vendorName,
+       transactionDate,
+       subtotalCents,
+       taxCents,
+       totalCents,
+       lineItems[],
+       confidence
+   }
+
+Reject malformed output.
+
+
+
+                                                  Developer & Claude Completion Mandate | 12
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+33. Never Accept Hallucinated Totals
+If AI says:
+   Total = $342.91
+
+but OCR-visible values do not reconcile:
+flag:
+   NEEDS_REVIEW
+
+Do not auto-approve.
+
+34. Deterministic Financial Validation
+Where fields exist verify:
+   Subtotal
+   + Tax
+   + Tip
+   + Fees
+   - Discounts
+   ~ Total
+
+Allow small rounding tolerance only where appropriate.
+
+35. Confidence Per Field
+Do not have only:
+   overall confidence = 82%
+
+Track field confidence where possible:
+   vendor: 99%
+
+   date: 96%
+
+   total: 99%
+
+   tax: 74%
+
+   line item 4: 51%
+
+36. Review Only What Needs Review
+If vendor/date/total are high confidence but one line item is uncertain:
+highlight that line item.
+Do not make owner retype everything.
+
+37. Review UI
+Show:
+   Receipt Image              Extracted Information
+
+   Vendor                     Home Depot
+   Date                       10/21/2026
+   Category                   Repairs / Maintenance
+   Subtotal                   $200.00
+   Tax                         $13.25
+   Total                       $213.25
+
+Allow click/tap editing.
+
+38. Highlight Low Confidence Fields
+Example:
+   Tax
+
+   ⚠
+   $18.37
+       Verify
+
+Use clear visual treatment.
+
+
+                                                  Developer & Claude Completion Mandate | 13
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+39. Expense Categories
+The AI should recommend only valid tenant categories.
+Default categories:
+   Rent / Landlord
+
+   Supplies
+
+   Equipment
+
+   Utilities / Bills
+
+   Marketing
+
+   Repairs / Maintenance
+
+   Insurance
+
+   Software / Subscriptions
+
+   Payroll
+
+   Other
+
+40. Category Recommendation Rules
+Use deterministic rules before AI when possible.
+Examples:
+   Home Depot
+   -> Repairs / Maintenance
+   or Equipment depending line items
+
+   Nail supply distributor
+   -> Supplies
+
+   Electric / Gas / Water
+   -> Utilities / Bills
+
+   Google Workspace
+   -> Software / Subscriptions
+
+   Meta Ads
+   -> Marketing
+
+   Business insurance carrier
+   -> Insurance
+
+Then AI can assist ambiguous classification.
+
+41. Tenant Category Learning
+If salon owner repeatedly changes:
+   Vendor ABC
+   from Other
+   to Supplies
+
+allow a tenant-specific rule:
+   Vendor ABC
+   -> Supplies
+
+Do not retrain a global model on private tenant data without explicit architecture.
+
+42. Category Rule Priority
+Recommended:
+   1. Owner Explicit Rule
+
+   2. Tenant Vendor Rule
+
+
+                                                 Developer & Claude Completion Mandate | 14
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   3. Vendor + Line Item Rule
+
+   4. System Deterministic Rule
+
+   5. AI Recommendation
+
+   6. Other
+
+43. Never Change Approved Historical Category Silently
+If a new category rule is created tomorrow:
+old approved expenses remain unchanged.
+
+44. Vendor Entity
+Normalize vendors.
+Conceptually:
+   Vendor {
+       id
+       tenantId?
+
+         normalizedName
+
+         displayName
+
+         address?
+         phone?
+         website?
+
+         defaultCategoryId?
+
+         vendorType?
+
+         createdAt
+   }
+
+Decide carefully whether vendor identity is global or tenant-scoped.
+Private tenant metadata remains tenant-private.
+
+45. Vendor Normalization
+These may represent one vendor:
+   HOME DEPOT #4102
+
+   THE HOME DEPOT
+
+   HOME DEPOT
+
+Normalize carefully.
+Preserve original receipt vendor text.
+
+46. Original Vendor Text
+Store:
+   vendorNameRaw
+
+and:
+   vendorId
+
+separately.
+This preserves audit evidence.
+
+47. Duplicate Receipt Detection
+This is a major feature.
+Check duplicates using:
+
+
+                                                 Developer & Claude Completion Mandate | 15
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   file hash
+
+   perceptual image hash where available
+
+   tenant
+
+   vendor
+
+   date
+
+   total
+
+   receipt number
+
+   invoice number
+
+   line-item similarity
+
+48. Duplicate Warning
+If possible duplicate:
+   Possible Duplicate
+
+   Home Depot
+   10/21/2026
+   $213.25
+
+   This looks similar to an expense already saved.
+
+Options:
+   View Existing
+
+   Save Anyway
+
+   Cancel
+
+Saving anyway may require reason.
+
+49. Never Auto-Delete Suspected Duplicates
+Duplicate detection can be wrong.
+Mark:
+   POSSIBLE_DUPLICATE
+
+for human decision.
+
+50. Exact Duplicate Protection
+Identical upload for same tenant may safely be deduplicated at storage/processing level.
+Still preserve user-visible upload history if useful.
+
+51. Receipt Status
+Use explicit lifecycle such as:
+   UPLOADED
+
+   PROCESSING
+
+   EXTRACTED
+
+   NEEDS_REVIEW
+
+   READY
+
+   APPROVED
+
+   REJECTED
+
+   DUPLICATE
+
+
+                                                  Developer & Claude Completion Mandate | 16
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   ARCHIVED
+
+   FAILED
+
+Adapt to current domain conventions.
+
+52. Expense Status
+Expense financial/business status is different from OCR status.
+Possible:
+   DRAFT
+
+   PENDING_REVIEW
+
+   APPROVED
+
+   PAID
+
+   PARTIALLY_PAID
+
+   VOIDED
+
+   ARCHIVED
+
+depending on feature scope.
+
+53. Expense vs Bill
+Support both:
+   EXPENSE
+
+already paid and:
+   BILL
+
+payable later.
+
+54. Bills / Accounts Payable
+For an invoice or bill extract:
+   invoice number
+
+   invoice date
+
+   due date
+
+   amount due
+
+   vendor
+
+   payment status
+
+55. Bill Status
+Possible:
+   OPEN
+
+   DUE_SOON
+
+   OVERDUE
+
+   PARTIALLY_PAID
+
+   PAID
+
+   VOIDED
+
+56. Due-Date Reminders
+Owner can receive:
+
+
+                                               Developer & Claude Completion Mandate | 17
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Bill due in 7 days
+
+   Bill due tomorrow
+
+   Bill overdue
+
+through normal AI PowerSalon notification architecture.
+
+57. Recurring Bills
+Detect possible recurring charges such as:
+   rent
+
+   electric
+
+   internet
+
+   software subscription
+
+   insurance
+
+Allow owner to mark:
+   Recurring Expense
+
+58. Recurring Expense Detection
+If same vendor and similar amount recur:
+suggest:
+   This appears to be a monthly recurring expense.
+
+   Create recurring rule?
+
+Do not create automatically without approval.
+
+59. Subscription Tracking
+For Software / Subscriptions show:
+   Vendor
+
+   Monthly Amount
+
+   Annualized Cost
+
+   Last Charge
+
+   Next Expected Charge
+
+when enough data exists.
+
+60. Expense Payment Method
+Optional values:
+   Business Card
+
+   Cash
+
+   Check
+
+   ACH
+
+   Bank Transfer
+
+   Personal Card / Reimbursement
+
+   Other
+
+Do not infer sensitive bank information unnecessarily.
+
+
+
+
+                                                  Developer & Claude Completion Mandate | 18
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+61. Safe Card Metadata
+If printed receipt contains:
+   Visa **** 4242
+
+storing:
+   brand
+   last4
+
+can be acceptable where needed.
+Never store:
+   full PAN
+   CVV
+   track data
+
+62. Connect Expenses to Existing Payment Data
+Where AI PowerSalon has matching transaction information:
+   Expense Receipt
+         <->
+   Payment / Bank Transaction
+
+may be linked.
+But do not fabricate matches.
+
+63. Matching Confidence
+Use:
+   MATCHED
+
+   POSSIBLE_MATCH
+
+   UNMATCHED
+
+for external/card transaction reconciliation.
+
+64. Reimbursement Workflow
+Support employee/manager reimbursement if needed.
+Example:
+   Manager buys salon supplies using personal card
+           v
+   Uploads receipt
+           v
+   Expense approved
+           v
+   Marked Reimbursement Due
+
+65. Reimbursement Status
+Possible:
+   NOT_REQUIRED
+
+   PENDING
+
+   APPROVED
+
+   PAID
+
+   REJECTED
+
+66. Do Not Mix Payroll With Expense Reimbursement
+Payroll and expense reimbursement are related but separate accounting concepts.
+Link them only where needed for payout/export.
+
+
+
+                                                  Developer & Claude Completion Mandate | 19
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+67. Branch Assignment
+Every expense may belong to:
+      Entire Tenant
+
+or:
+      Specific Branch
+
+Examples:
+      Corporate insurance
+      -> Tenant
+
+      Cherry Hill electric bill
+      -> Cherry Hill Branch
+
+68. Shared Expense Allocation
+Optional advanced feature:
+Allow one expense to be allocated across branches.
+Example:
+      Software Subscription
+      $300
+
+      Cherry Hill 50%
+      Marlton    30%
+      Deptford   20%
+
+69. Expense Allocation
+Conceptually:
+      ExpenseAllocation {
+          expenseId
+          branchId
+          amountCents
+          percentage?
+      }
+
+Require:
+      SUM allocations = total expense
+
+exactly.
+
+70. Multi-Tenant Privacy
+Tenant A must never see:
+      Tenant B receipts
+
+      Tenant B vendors
+
+      Tenant B expenses
+
+      Tenant B invoices
+
+      Tenant B accounting exports
+
+This includes AI processing context.
+
+71. AI Tenant Isolation
+AI request payloads must include only the minimum receipt information required.
+Do not combine receipts from multiple salons into one uncontrolled model context.
+
+72. Branch Permissions
+Branch manager may see only authorized branch expenses if tenant owner chooses.
+
+
+
+
+                                                 Developer & Claude Completion Mandate | 20
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+73. Permissions
+Recommended permission capabilities:
+   expenses.read
+
+   expenses.read_own
+
+   expenses.create
+
+   expenses.update
+
+   expenses.approve
+
+   expenses.delete_draft
+
+   expenses.archive
+
+   expenses.export
+
+   expenses.categories.manage
+
+   expenses.vendors.manage
+
+   expenses.reimbursements.manage
+
+   bills.read
+
+   bills.manage
+
+Use existing registry naming where possible.
+
+74. Receptionist Access
+Receptionist should normally not see all business expenses.
+Optional permission may allow:
+   upload receipt
+
+without allowing:
+   view payroll bills
+   view owner expenses
+   export accounting
+   approve expenses
+
+75. Technician Access
+Technicians normally should not see salon financial expenses.
+They may upload reimbursement receipts only if tenant enables it.
+
+76. Owner Access
+Owner has tenant-wide expense management according to role/security policy.
+
+77. Manager Access
+Manager access can be:
+   branch only
+
+by default.
+
+78. Super Admin
+Super Admin should normally see:
+   feature health
+
+   OCR processing failures
+
+   storage health
+
+   AI usage
+
+                                                Developer & Claude Completion Mandate | 21
+                                      AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   tenant feature status
+
+not unrestricted tenant receipts.
+Detailed access requires Support Mode.
+
+79. Support Mode
+Private receipt/expense access requires:
+   Tenant
+
+   Reason
+
+   Actor
+
+   Expiration
+
+   Audit
+
+80. Audit Trail
+Audit:
+   receipt uploaded
+
+   OCR completed
+
+   expense created
+
+   vendor changed
+
+   category changed
+
+   amount changed
+
+   expense approved
+
+   expense rejected
+
+   duplicate overridden
+
+   receipt archived
+
+   expense exported
+
+   reimbursement approved
+
+   bill marked paid
+
+81. Historical Changes
+For approved expenses preserve change history.
+Do not silently overwrite financial records.
+
+82. Approval
+Tenant may choose:
+   AUTO_READY
+
+for high-confidence extraction but:
+   AUTO_APPROVE
+
+should be separately controlled.
+Recommended default:
+   AI EXTRACTS
+   OWNER/MANAGER APPROVES
+
+83. Low-Risk Auto Approval Future Option
+For trusted recurring vendors under a threshold:
+                                                   Developer & Claude Completion Mandate | 22
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+      electric bill
+      software subscription
+
+tenant may optionally enable approval rules.
+But do not make AI alone the approval authority.
+
+84. Immutable Original Financial Evidence
+After expense approval:
+do not allow ordinary users to replace the original receipt image invisibly.
+A replacement must create:
+      new document version
+
+or:
+      additional supporting attachment
+
+with audit.
+
+85. Delete Rules
+Draft uploads may be removable according to policy.
+Approved financial records should generally use:
+      ARCHIVED
+      VOIDED
+
+rather than hard deletion.
+
+86. Search
+Allow search by:
+      Vendor
+
+      Amount
+
+      Date
+
+      Category
+
+      Branch
+
+      Invoice Number
+
+      Receipt Number
+
+      Description
+
+      Status
+
+87. Filters
+Provide:
+      Today
+
+      This Week
+
+      This Month
+
+      This Year
+
+      Custom Range
+
+and:
+      Branch
+
+      Category
+
+      Vendor
+
+      Status
+                                                 Developer & Claude Completion Mandate | 23
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   Payment Method
+
+88. Expense Dashboard
+Owner sees compact summary:
+   Expenses This Month
+
+   Expenses This Year
+
+   Bills Due
+
+   Overdue Bills
+
+   Needs Review
+
+   Possible Duplicates
+
+89. Category Summary
+Example:
+   October 2026
+
+   Rent / Landlord           $8,500.00
+   Supplies                  $3,425.16
+   Equipment                 $1,820.00
+   Utilities / Bills         $2,114.53
+   Marketing                 $1,050.00
+   Repairs / Maintenance       $840.27
+   Insurance                   $620.00
+   Software / Subscriptions    $782.44
+   Payroll                  $28,500.00
+   Other                       $312.90
+
+90. Do Not Double Count Payroll
+If Payroll module already produces payroll expense totals:
+do not also add uploaded payroll documentation as a second expense automatically.
+Use linking/reconciliation.
+
+91. Expense Trends
+Show:
+   This Month vs Last Month
+
+   This Year vs Last Year
+
+   Category Changes
+
+   Vendor Changes
+
+92. Vendor Spend
+Example:
+   Home Depot
+
+   This Month:
+   $1,240
+
+   This Year:
+   $8,920
+
+   Category:
+   Repairs / Maintenance
+
+93. Branch Comparison
+Multi-location owner can compare:
+
+                                                 Developer & Claude Completion Mandate | 24
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Cherry Hill
+
+   Marlton
+
+   Deptford
+
+using normalized expense metrics.
+
+94. Expense-to-Revenue Ratio
+Optional analytics:
+   Operating Expense
+   /
+   Revenue
+
+But clearly label methodology.
+Do not mix payroll, processor fees, taxes, or capital equipment incorrectly.
+
+95. AI Expense Insights
+AI may provide explanations such as:
+   "Supply spending increased 18% this month."
+
+   "Software subscriptions increased by $220/month."
+
+   "Three possible duplicate receipts need review."
+
+   "Electric costs are 12% above the prior three-month average."
+
+These are advisory.
+
+96. AI Anomaly Detection
+Flag unusual situations:
+   same receipt uploaded twice
+
+   unusually high amount
+
+   new unknown vendor
+
+   duplicate invoice number
+
+   unexpected recurring charge
+
+   same vendor charged multiple times same day
+
+Never accuse a user of fraud solely from AI.
+Use:
+   REVIEW RECOMMENDED
+
+97. Tax / Accountant Export
+Owner should be able to export business expense records for:
+   Accountant
+
+   Bookkeeper
+
+   Tax Preparation
+
+98. Export Formats
+Support:
+   CSV
+
+   XLSX
+
+   PDF summary
+
+where appropriate.
+
+                                                 Developer & Claude Completion Mandate | 25
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+PDF packages may include receipt images if explicitly requested.
+
+99. Export Fields
+Typical export:
+   Date
+
+   Vendor
+
+   Category
+
+   Branch
+
+   Description
+
+   Subtotal
+
+   Tax
+
+   Total
+
+   Payment Method
+
+   Receipt Number
+
+   Invoice Number
+
+   Receipt Attached?
+
+   Status
+
+100. Export Security
+Expense exports contain sensitive business data.
+Require:
+   permission
+
+   authentication
+
+   audit
+
+Do not publish them to public URLs.
+
+101. Accountant View
+Optional read-only role:
+   ACCOUNTANT
+
+Can view/export financial records without salon operational permissions.
+
+102. Accounting Integration Architecture
+Do not hard-wire accounting logic into ExpenseService.
+Create:
+   AccountingExportPort
+
+or equivalent.
+Future adapters might support:
+   QuickBooks
+
+   Xero
+
+   CSV
+
+   other accounting provider
+
+Do not implement a provider unless required.
+
+
+                                               Developer & Claude Completion Mandate | 26
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+103. AI PowerSalon Is Not Automatically a Full General Ledger
+This module tracks:
+   business expenses
+   receipt evidence
+   bills
+   vendor spend
+   accounting exports
+
+Do not claim full double-entry accounting unless intentionally implemented.
+
+104. Daily Report
+Owner can see:
+   Today
+
+   New Expenses
+
+   Total Spent
+
+   Receipts Uploaded
+
+   Needs Review
+
+   Bills Due
+
+105. Weekly Report
+Show:
+   Week Total
+
+   Category Totals
+
+   Top Vendors
+
+   Branch Totals
+
+   Needs Review
+
+   Duplicates
+
+   Upcoming Bills
+
+106. Monthly Report
+Show:
+   Monthly Total
+
+   Category Breakdown
+
+   Vendor Breakdown
+
+   Branch Breakdown
+
+   Recurring Costs
+
+   Comparison to Prior Month
+
+107. Annual Report
+Show:
+   Year Total
+
+   Monthly Trend
+
+   Category Totals
+
+   Top Vendors
+
+   Branch Totals
+                                                Developer & Claude Completion Mandate | 27
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   Tax / Accounting Export
+
+108. Running Expense Tracker
+The system must maintain continuous totals as receipts are approved.
+Example:
+   October 2026
+
+   Supplies                  $1,420.55
+
+   Equipment                 $2,850.00
+
+   Utilities / Bills              $684.22
+
+   Repairs / Maintenance     $3,240.18
+
+   Software / Subscriptions       $329.00
+
+   Other                          $125.40
+
+   TOTAL                     $8,649.35
+
+109. Receipt Inbox
+Create:
+   Finance
+   -> Receipts & Expenses
+
+or equivalent location.
+Tabs:
+   Inbox
+
+   Needs Review
+
+   Approved
+
+   Bills
+
+   Duplicates
+
+   Archived
+
+110. Quick Upload
+Prominent:
+   + Add Receipt
+
+Options:
+   Take Photo
+
+   Upload Image
+
+   Upload PDF
+
+   Multiple Pages
+
+111. Owner App Receipt Capture
+Owner App should support:
+   Camera
+
+   Gallery
+
+   PDF Upload
+
+with immediate upload progress.
+
+
+                                                 Developer & Claude Completion Mandate | 28
+                                     AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+112. POS Receipt Upload
+Authorized staff can upload from POS if tenant permits.
+
+113. Background Processing
+User should not need to wait on screen for OCR.
+Flow:
+   Upload Complete
+         v
+   Processing in Background
+         v
+   Push / In-App Notification
+         v
+   Receipt Ready
+
+114. OCR Worker
+Run extraction in a worker.
+Do not block the main API thread with long OCR processing.
+
+115. OCR Retry
+Use:
+   retry
+
+   backoff
+
+   DLQ
+
+for transient provider failures.
+
+116. Provider Failure
+If AI/OCR provider is unavailable:
+   Receipt remains uploaded.
+
+   Status:
+   PROCESSING_FAILED
+
+   User may:
+   Retry
+   or
+   Enter Manually
+
+Never lose the uploaded receipt.
+
+117. Manual Entry Fallback
+Support:
+   Vendor
+
+   Date
+
+   Total
+
+   Category
+
+minimum manual entry.
+AI is an accelerator, not a requirement for expense tracking.
+
+118. Event Architecture
+Potential events:
+   receipt.uploaded
+
+   receipt.processing_started
+
+
+                                                  Developer & Claude Completion Mandate | 29
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+      receipt.extracted
+
+      receipt.review_required
+
+      receipt.approved
+
+      expense.created
+
+      expense.updated
+
+      expense.approved
+
+      expense.archived
+
+      bill.due_soon
+
+      bill.overdue
+
+Use existing platform event conventions.
+
+119. Transactional Outbox
+Critical database state + internal event should use existing Transactional Outbox architecture.
+
+120. Realtime
+Realtime may update:
+      Receipt Processing
+
+      Needs Review Count
+
+      Expense Dashboard
+
+      Bill Status
+
+but is never financial authority.
+
+121. Notifications
+Notify owner when:
+      receipt needs review
+
+      OCR failed
+
+      duplicate detected
+
+      bill due soon
+
+      bill overdue
+
+      reimbursement awaiting approval
+
+through existing notification system.
+
+122. Communications
+Do not let Expense module directly call Twilio.
+Use:
+      Expense Domain
+      -> Communication Intent
+      -> Communications Platform
+      -> Twilio / Push / Email
+
+123. Duplicate Processing Idempotency
+If:
+      receipt.uploaded
+
+event runs twice:
+do not create two expenses.
+                                                 Developer & Claude Completion Mandate | 30
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+124. File Hash
+Generate:
+   SHA-256
+
+or existing cryptographic content hash for exact file duplicate detection.
+
+125. Perceptual Hash
+Optional:
+use perceptual hashing to detect:
+   same receipt
+   different crop
+   different brightness
+   different photo
+
+Do not use it as sole proof.
+
+126. Privacy
+Receipt images can contain:
+   customer information
+
+   employee information
+
+   credit-card last4
+
+   address
+
+   business account information
+
+Treat them as private tenant documents.
+
+127. Encryption
+Use:
+   TLS in transit
+
+   encrypted object storage
+
+   encrypted database/storage at rest
+
+through platform infrastructure.
+
+128. Signed Access
+Receipt images should be served using authenticated/signed short-lived access.
+Do not create permanent public receipt URLs.
+
+129. Logging Redaction
+Do not put entire OCR text blobs into general logs.
+Especially avoid logging:
+   card data
+
+   bank account
+
+   customer address
+
+   private account identifiers
+
+130. AI Logging
+Do not log raw private receipt contents to observability systems unless specifically required and secured.
+
+131. Retention
+Support tenant/platform retention policy.
+
+                                                 Developer & Claude Completion Mandate | 31
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+Financial records may require long retention periods depending on accounting/legal requirements.
+Do not hard-delete automatically using arbitrary short retention.
+
+132. Archive
+Allow:
+   ARCHIVE
+
+without destroying the record.
+
+133. Restore
+Archived expenses can be restored if permissions allow.
+
+134. Corrections
+If an approved expense amount/category needs correction:
+store audit history.
+Do not silently rewrite the record with no trace.
+
+135. Versioning
+Use:
+   version
+
+for concurrent expense editing.
+
+136. Concurrent Review
+If two managers open the same receipt:
+Manager A approves.
+Manager B edits stale data.
+Expected:
+   VERSION_CONFLICT
+
+not silent overwrite.
+
+137. Batch Upload
+Allow multiple receipts to be uploaded together.
+Each document gets its own processing job unless pages are explicitly grouped.
+
+138. Batch Review
+Owner may:
+   Approve All High Confidence
+
+only if permissions/policy allow.
+Still expose exceptions.
+
+139. Bulk Category Update
+Authorized owner may select multiple draft/review items and categorize together.
+Approved historical items require controlled correction behavior.
+
+140. Import Historical Expenses
+Support CSV import if needed.
+Validate:
+   date
+
+   vendor
+
+   amount
+
+
+                                                 Developer & Claude Completion Mandate | 32
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   category
+
+   branch
+
+and report rejected rows.
+
+141. Historical Receipt Linking
+After CSV import, owner may upload receipt evidence later and attach it to the imported expense.
+
+142. Receipt-to-Expense Matching
+When a receipt arrives later, attempt match using:
+   vendor
+
+   date
+
+   amount
+
+   reference number
+
+Suggest link.
+Do not auto-link uncertain matches.
+
+143. Error Codes
+Standardize:
+   RECEIPT_NOT_FOUND
+
+   RECEIPT_PROCESSING_FAILED
+
+   RECEIPT_UNSUPPORTED_FORMAT
+
+   RECEIPT_TOO_LARGE
+
+   RECEIPT_DUPLICATE
+
+   RECEIPT_POSSIBLE_DUPLICATE
+
+   EXPENSE_NOT_FOUND
+
+   EXPENSE_VERSION_CONFLICT
+
+   EXPENSE_ALREADY_APPROVED
+
+   EXPENSE_ACCESS_DENIED
+
+   EXPENSE_CATEGORY_NOT_FOUND
+
+   VENDOR_NOT_FOUND
+
+   OCR_PROVIDER_UNAVAILABLE
+
+   OCR_LOW_CONFIDENCE
+
+   EXPENSE_ALLOCATION_INVALID
+
+144. Friendly Errors
+Example:
+   OCR_LOW_CONFIDENCE
+
+   "We could not confidently read some information from this receipt. Please review the highlighted fields."
+
+145. Receipt Analytics Metrics
+Track:
+   receipts uploaded
+
+   OCR success rate
+
+                                                Developer & Claude Completion Mandate | 33
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   OCR failure rate
+
+   average processing time
+
+   review rate
+
+   auto-category accuracy
+
+   duplicate detection rate
+
+   manual correction rate
+
+146. Do Not Use Tenant Names in Metric Labels
+Avoid high-cardinality/sensitive telemetry.
+Use controlled IDs only where necessary.
+
+147. AI Quality Evaluation
+Maintain test sets for:
+   retail receipt
+
+   restaurant receipt
+
+   utility bill
+
+   equipment invoice
+
+   subscription invoice
+
+   landlord invoice
+
+   nail supply invoice
+
+   handwritten receipt
+
+Evaluate extraction accuracy.
+
+148. Low Confidence Threshold
+Threshold must be configurable in AI/OCR settings.
+Example behavior:
+   >= 0.95
+   high confidence
+
+   0.80–0.949
+   review selected fields
+
+   < 0.80
+   full review
+
+Do not assume these exact numbers without validation.
+
+149. Vendor Category Accuracy
+Measure:
+   recommended category
+   vs
+   owner final category
+
+to improve deterministic tenant rules.
+
+150. Do Not Globally Learn Private Business Rules Without Control
+Tenant-specific corrections stay tenant-specific unless anonymized/product-approved learning exists.
+
+151. Expense Dashboard Performance
+Do not load every receipt image to display monthly totals.
+                                                 Developer & Claude Completion Mandate | 34
+                                       AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+Use:
+   aggregated queries
+
+   proper indexes
+
+   pagination
+
+   thumbnails
+
+152. Database Indexes
+Review indexes around:
+   tenant_id
+
+   branch_id
+
+   expense_date
+
+   category_id
+
+   vendor_id
+
+   status
+
+   total_cents
+
+   receipt_hash
+
+   invoice_number
+
+   created_at
+
+based on actual query plans.
+
+153. Unique Constraints
+Use appropriate constraints for:
+   tenant + document hash
+
+   tenant + vendor + invoice number
+
+where business-safe.
+Do not over-constrain legitimate duplicate invoices.
+
+154. Search Indexing
+For large tenants consider indexed normalized fields for:
+   vendor
+   invoice number
+   receipt number
+   description
+
+without introducing unnecessary search infrastructure prematurely.
+
+155. Mobile Offline Capture
+If Owner App is temporarily offline:
+it may queue:
+   receipt photo upload
+
+locally using secure device storage.
+But the expense is not considered saved until backend confirms upload.
+
+156. Offline Privacy
+Do not keep unencrypted receipt photos permanently in app cache.
+
+
+
+                                                    Developer & Claude Completion Mandate | 35
+                                      AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+157. Automatic Cleanup
+After successful server upload and verification:
+remove temporary local capture files according to mobile security policy.
+
+158. Receipt Camera UX
+Support:
+   edge detection
+
+   crop assistance
+
+   perspective correction
+
+   flash
+
+   multiple-page capture
+
+where practical.
+Do not block Phase 1 on advanced scanning features.
+
+159. Receipt Thumbnail
+Expense list should show small receipt thumbnail only when helpful.
+Avoid large image downloads on scrolling lists.
+
+160. Owner Review Speed
+An experienced owner should be able to review a clean receipt in seconds.
+Recommended actions:
+   Approve
+
+   Edit
+
+   Duplicate
+
+   Reject
+
+   Archive
+
+161. Tax Flagging
+Do not automatically claim:
+   "Tax Deductible"
+
+as legal fact merely because something is categorized.
+You may support:
+   Tax Review Status
+
+   Accounting Category
+
+   Accountant Note
+
+for accountant workflows.
+
+162. Tax Export Disclaimer Architecture
+Reports can assist tax preparation.
+They should not claim AI PowerSalon replaces:
+   CPA
+
+   tax preparer
+
+   legal advice
+
+unless an authorized professional service exists.
+
+                                                   Developer & Claude Completion Mandate | 36
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+163. Capital Equipment
+Equipment may need different accounting treatment from ordinary supplies.
+Keep:
+   Equipment
+
+as a separate simple category.
+Allow accountant mapping later.
+
+164. Repairs vs Equipment
+AI recommendation example:
+   Replacement HVAC filter
+   -> Repairs / Maintenance
+
+   New pedicure chair
+   -> Equipment
+
+But human approval controls final category.
+
+165. Supplies
+Typical examples:
+   polish
+
+   acetone
+
+   gloves
+
+   files
+
+   buffers
+
+   disposable liners
+
+   sanitation consumables
+
+166. Utilities / Bills
+Examples:
+   electric
+
+   gas
+
+   water
+
+   internet
+
+   phone
+
+167. Marketing
+Examples:
+   Google Ads
+
+   Meta Ads
+
+   print ads
+
+   flyers
+
+   promotional materials
+
+168. Software / Subscriptions
+Examples:
+   cloud software
+
+
+                                               Developer & Claude Completion Mandate | 37
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   email
+
+   booking subscription
+
+   business software
+
+   domain
+
+   hosting
+
+169. Rent / Landlord
+Examples:
+   monthly rent
+
+   CAM where owner chooses to group it
+
+   landlord-related recurring charges
+
+Tenant may manually override classification.
+
+170. Insurance
+Examples:
+   business liability
+
+   workers compensation where applicable
+
+   property insurance
+
+Do not infer legal coverage type from ambiguous receipt.
+
+171. Payroll Category
+Use carefully.
+If expense comes directly from AI PowerSalon Payroll:
+link to payroll system.
+Do not require uploading a receipt for every payroll period.
+
+172. Other
+`Other` is the safe fallback.
+Do not force AI into a wrong category just to avoid Other.
+
+173. Category Recommendation Explanation
+Optional:
+   Suggested: Repairs / Maintenance
+
+   Reason:
+   Vendor is Home Depot and items appear to be building repair materials.
+
+This improves trust.
+
+174. Manual Category Lock
+Owner may set:
+   Always categorize Verizon Business as Utilities / Bills
+
+for that tenant.
+
+175. Category Rule Management
+Provide:
+   Finance
+   -> Expense Settings
+   -> Categorization Rules
+
+Keep normal owner workflow simple.
+                                                Developer & Claude Completion Mandate | 38
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+176. Expense Settings
+Possible settings:
+   Default branch
+
+   Require approval
+
+   Auto-category
+
+   Duplicate detection
+
+   OCR confidence threshold
+
+   Bill reminders
+
+   Receipt retention
+
+   Custom categories
+
+   Accounting mappings
+
+177. Notifications Settings
+Owner can choose:
+   Needs Review
+
+   Bill Due
+
+   Duplicate Found
+
+   Weekly Expense Summary
+
+   Monthly Expense Summary
+
+178. Weekly Owner Summary
+Example:
+   This Week
+
+   Expenses:
+   $4,820
+
+   Receipts:
+   23
+
+   Needs Review:
+   2
+
+   Bills Due:
+   3
+
+179. Monthly Owner Summary
+Example:
+   October
+
+   Total Expenses:
+   $38,420
+
+   Up 6.2% from September
+
+   Largest Category:
+   Payroll
+
+   Largest Vendor:
+   ABC Nail Supply
+
+180. Eventual Budgeting
+Architect data so future budgeting can compare:
+                                               Developer & Claude Completion Mandate | 39
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Budget
+
+   Actual
+
+   Variance
+
+Do not make budget engine mandatory for receipt Phase 1.
+
+181. Eventual Purchase Orders
+Future:
+   Purchase Order
+   -> Vendor Invoice
+   -> Receipt
+   -> Expense
+
+Do not create a full procurement system unless already required.
+
+182. Eventual Bank Reconciliation
+Future connector may match:
+   bank/card transaction
+   <->
+   receipt expense
+
+Design IDs and matching architecture to support this.
+
+183. Eventual Accounting Sync
+Future integrations can map:
+   AI PowerSalon Category
+   -> Accounting Account
+
+without changing owner-facing categories.
+
+184. Existing AI Deposit Reconciliation
+Do not merge:
+   ai_deposit_reconciliation
+
+with:
+   ai_ocr_receipt
+
+They solve different problems.
+But both may feed Finance analytics.
+
+185. Repository Boundaries
+Recommended conceptual ownership:
+   /modules
+     expenses
+     vendors
+     documents
+     accounting
+
+   /modules/ai
+     ai_ocr_receipt
+
+   /packages
+     media-storage
+     ai-platform
+     permissions
+     events
+     observability
+
+Adapt to the existing repository.
+
+186. No OCR Logic in React Components
+Wrong:
+
+                                                 Developer & Claude Completion Mandate | 40
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   ReceiptUploadPage
+   -> AI Provider
+
+Correct:
+   ReceiptUploadPage
+   -> API
+   -> Expense / Document Domain
+   -> Worker
+   -> AI Platform
+
+187. No Provider SDK in Expense Domain
+Expense business rules should not directly depend on one OCR provider.
+
+188. API Examples
+Adapt to current API conventions.
+Possible:
+   POST /api/v1/expenses/receipts
+
+   GET /api/v1/expenses/receipts/{id}
+
+   POST /api/v1/expenses/receipts/{id}/process
+
+   POST /api/v1/expenses/receipts/{id}/approve
+
+   GET /api/v1/expenses
+
+   GET /api/v1/expenses/{id}
+
+   PATCH /api/v1/expenses/{id}
+
+   POST /api/v1/expenses/{id}/archive
+
+   GET /api/v1/expense-categories
+
+   GET /api/v1/vendors
+
+   GET /api/v1/expenses/reports
+
+   POST /api/v1/expenses/export
+
+Do not create duplicates if equivalent endpoints exist.
+
+189. Thin Controllers
+Controllers:
+   authenticate
+
+   authorize
+
+   validate
+
+   call application service
+
+   serialize
+
+Business rules stay in domain/application services.
+
+190. Expense DTO Security
+Never expose:
+   storage secret
+
+   internal AI prompt
+
+   provider credentials
+
+   private support metadata
+
+to clients.
+                                                 Developer & Claude Completion Mandate | 41
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+191. Audit Correlation
+Every OCR/expense process should retain:
+      requestId
+
+      correlationId
+
+      jobId
+
+      receiptId
+
+      expenseId
+
+where appropriate.
+
+192. Failure Recovery
+If:
+      image saved
+      OCR job crashes
+
+the receipt must remain recoverable.
+A retry should continue from stored document.
+
+193. Idempotent OCR
+Running OCR twice should update processing state safely.
+It must not create duplicate expenses automatically.
+
+194. Idempotent Approval
+Double-tapping Approve should produce one approval effect.
+
+195. Tenant Isolation Tests
+Tenant A requests Tenant B:
+      receipt
+
+      expense
+
+      vendor
+
+      export
+
+Expected:
+      DENIED
+
+196. Branch Isolation Tests
+Branch Manager A attempts Branch B expense.
+Expected:
+      DENIED
+
+unless explicitly authorized.
+
+197. OCR Accuracy Tests
+Test real-world:
+      crumpled receipt
+
+      faded thermal receipt
+
+      angled picture
+
+      long receipt
+
+      multi-page invoice
+
+
+                                                Developer & Claude Completion Mandate | 42
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   handwritten receipt
+
+   receipt with discount
+
+   receipt with tax
+
+   receipt with tip
+
+198. Duplicate Tests
+Upload:
+   same file
+
+   same image cropped
+
+   same receipt re-photographed
+
+   same amount/date but different receipt
+
+Verify system distinguishes:
+   EXACT DUPLICATE
+
+   POSSIBLE DUPLICATE
+
+   NOT DUPLICATE
+
+199. Category Tests
+Known vendor rule should win over AI recommendation.
+Owner correction should persist for future matching where rule is enabled.
+
+200. Financial Reconciliation Tests
+If receipt contains:
+   Subtotal $100
+
+   Tax $6.625
+
+   Total $106.63
+
+verify money normalization and rounding.
+
+201. Concurrency Test
+Two reviewers edit same expense.
+Expected:
+   one succeeds
+
+   one receives VERSION_CONFLICT
+
+202. Export Tests
+Verify:
+   CSV total
+
+   XLSX total
+
+   dashboard total
+
+   expense query total
+
+all reconcile.
+
+203. Attachment Access Test
+Expired signed receipt URL must stop working.
+Tenant B must never use Tenant A receipt URL.
+
+
+                                                Developer & Claude Completion Mandate | 43
+                                    AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+204. Audit Test
+Change:
+   Category:
+   Supplies
+   -> Equipment
+
+Expected:
+   before
+
+   after
+
+   actor
+
+   reason where required
+
+   timestamp
+
+205. Performance Test
+Test:
+   10 receipts
+
+   1,000 receipts
+
+   100,000 expenses
+
+using pagination/indexed queries.
+Do not load all receipts into frontend memory.
+
+206. Security Scan
+Check for:
+   public object bucket
+
+   hardcoded storage keys
+
+   AI provider secrets
+
+   receipt text in logs
+
+   unsafe upload parsing
+
+   cross-tenant file access
+
+207. Production Mock Protection
+Production must not use:
+   FakeOCRProvider
+
+   MockExpenseData
+
+   HardcodedReceipt
+
+unless explicitly development/test environment.
+
+208. Definition of Done
+Do not call this system complete until:
+   Existing receipt/expense code audited
+
+   Duplicate receipt systems merged
+
+   Receipt upload works
+
+   Camera upload works
+
+   Image/PDF upload works
+
+
+                                                 Developer & Claude Completion Mandate | 44
+                              AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+Multi-page receipt works
+
+Original document is preserved
+
+Object storage works
+
+File validation works
+
+OCR worker works
+
+ai_ocr_receipt is wired to AI Platform
+
+Structured extraction works
+
+Vendor extraction works
+
+Date extraction works
+
+Subtotal extraction works
+
+Tax extraction works
+
+Total extraction works
+
+Line-item extraction works
+
+Confidence scoring works
+
+Low-confidence review works
+
+Manual entry fallback works
+
+Vendor normalization works
+
+Duplicate detection works
+
+Exact duplicates work
+
+Possible duplicates work
+
+Owner override works
+
+Short default categories work
+
+Custom categories work
+
+Vendor categorization rules work
+
+Owner correction learning works
+
+Historical categories remain stable
+
+Branch assignment works
+
+Shared expense allocation works if enabled
+
+Bills work if implemented
+
+Due dates work
+
+Bill reminders work
+
+Recurring expense detection works
+
+Subscription tracking works where enabled
+
+Reimbursements work where enabled
+
+Expense approval works
+
+Version conflicts work
+
+                                           Developer & Claude Completion Mandate | 45
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Audit works
+
+   Archive works
+
+   Search works
+
+   Filtering works
+
+   Daily reporting works
+
+   Weekly reporting works
+
+   Monthly reporting works
+
+   Yearly reporting works
+
+   Vendor reporting works
+
+   Category reporting works
+
+   Branch reporting works
+
+   Accounting export works
+
+   CSV works
+
+   XLSX works
+
+   Secure file access works
+
+   Tenant isolation passes
+
+   Branch isolation passes
+
+   Permissions pass
+
+   Super Admin privacy works
+
+   Support Mode works
+
+   Workers recover from failure
+
+   Realtime works where needed
+
+   Notifications work
+
+   No OCR text leaks into unsafe logs
+
+   No production mock data remains
+
+   Build passes
+
+   Typecheck passes
+
+   Lint passes
+
+   Unit tests pass
+
+   Integration tests pass
+
+   Security tests pass
+
+209. Required Claude Final Report
+After actually implementing/fixing the module, provide:
+
+A. Existing Code Discovered
+List:
+   Database tables
+
+
+                                                Developer & Claude Completion Mandate | 46
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   Migrations
+
+   Receipt services
+
+   Expense services
+
+   OCR services
+
+   AI modules
+
+   Workers
+
+   Storage adapters
+
+   APIs
+
+   Frontend screens
+
+   Owner App screens
+
+   Reports
+
+   Tests
+
+B. Problems Found
+Classify:
+   P0 TENANT DATA LEAK
+
+   P0 FINANCIAL DATA CORRUPTION
+
+   P0 FILE SECURITY
+
+   P1 OCR / EXPENSE WIRING
+
+   P1 DUPLICATE DETECTION
+
+   P1 REPORTING ERROR
+
+   P2 MISSING FEATURE
+
+   P3 CLEANUP
+
+C. Final Domain Architecture
+Explain relationship between:
+   Receipt Document
+
+   Expense
+
+   Vendor
+
+   Category
+
+   Line Items
+
+   Bill
+
+   Reimbursement
+
+   Accounting Export
+
+D. OCR Architecture
+Document:
+   provider
+
+   AI Gateway
+
+   worker
+
+
+                                               Developer & Claude Completion Mandate | 47
+                                AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   structured output
+
+   confidence
+
+   retry
+
+   failure handling
+
+E. Receipt Storage
+Document:
+   original storage
+
+   derived assets
+
+   hashing
+
+   signed URLs
+
+   retention
+
+F. Categorization
+Document exact priority:
+   Owner Rule
+
+   Tenant Vendor Rule
+
+   System Rule
+
+   AI Recommendation
+
+   Fallback
+
+G. Duplicate Detection
+Document:
+   file hash
+
+   image similarity
+
+   vendor/date/total
+
+   invoice number
+
+   override behavior
+
+H. Vendor Architecture
+Explain:
+   raw vendor text
+
+   normalized vendor
+
+   tenant vendor preferences
+
+   default category
+
+I. Branch / Tenant Isolation
+Show actual tests.
+
+J. Permissions
+List implemented permissions and scopes.
+
+K. Frontend
+List finished screens:
+   Expense Dashboard
+
+   Receipt Inbox
+                                             Developer & Claude Completion Mandate | 48
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+   Receipt Review
+
+   Expense Detail
+
+   Bills
+
+   Vendors
+
+   Categories
+
+   Reports
+
+   Settings
+
+as applicable.
+
+L. Owner App
+Document:
+   camera
+
+   upload
+
+   review
+
+   approval
+
+   search
+
+   reports
+
+M. Reports
+Show formulas/data sources for:
+   day
+
+   week
+
+   month
+
+   year
+
+   category
+
+   vendor
+
+   branch
+
+N. Accounting Export
+Document fields and formats.
+
+O. AI Expense Insights
+Document implemented advisory features.
+
+P. Database
+List exact:
+   tables
+
+   columns
+
+   indexes
+
+   constraints
+
+   migrations
+
+
+
+
+                                               Developer & Claude Completion Mandate | 49
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+Q. APIs
+List every new/changed API.
+
+R. Events & Workers
+List:
+   events
+
+   jobs
+
+   workers
+
+   retry
+
+   DLQ
+
+   idempotency
+
+S. Files Changed
+Exact repository paths.
+
+T. Tests
+Report actual:
+   PASS
+
+   FAIL
+
+   BLOCKED_EXTERNAL
+
+not guesses.
+
+U. Build Matrix
+Return:
+   API                        PASS / FAIL
+
+   POS                        PASS / FAIL
+
+   Owner App                  PASS / FAIL
+
+   Super Admin                PASS / FAIL
+
+   Workers                    PASS / FAIL
+
+   AI OCR                     PASS / FAIL
+
+   Object Storage             PASS / FAIL
+
+   Database Migrations        PASS / FAIL
+
+   Unit Tests                 PASS / FAIL
+
+   Integration Tests          PASS / FAIL
+
+   Security Tests             PASS / FAIL
+
+   Tenant Isolation           PASS / FAIL
+
+210. Final AI PowerSalon Receipt Flow
+The completed experience should behave like:
+   OWNER / MANAGER
+          |
+          ▼
+   TAKE RECEIPT PICTURE
+          |
+          ▼
+   UPLOAD
+
+                                                Developer & Claude Completion Mandate | 50
+                                 AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+         |
+         ▼
+   SECURE OBJECT STORAGE
+         |
+         ▼
+   OCR / AI WORKER
+         |
+         +--------------- Vendor
+         +--------------- Date
+         +--------------- Receipt Number
+         +--------------- Line Items
+         +--------------- Subtotal
+         +--------------- Tax
+         +--------------- Total
+         +--------------- Payment Metadata
+         |
+         ▼
+   VALIDATION
+         |
+         ▼
+   DUPLICATE DETECTION
+         |
+         ▼
+   VENDOR NORMALIZATION
+         |
+         ▼
+   CATEGORY ENGINE
+         |
+         ▼
+   Rent / Landlord
+   Supplies
+   Equipment
+   Utilities / Bills
+   Marketing
+   Repairs / Maintenance
+   Insurance
+   Software / Subscriptions
+   Payroll
+   Other
+         |
+         ▼
+   CONFIDENCE CHECK
+         |
+         +-- HIGH -> READY
+         |
+         +-- LOW -> REVIEW
+         |
+         ▼
+   OWNER / MANAGER APPROVAL
+         |
+         ▼
+   EXPENSE LEDGER
+         |
+         +-- Daily Report
+         +-- Weekly Report
+         +-- Monthly Report
+         +-- Annual Report
+         +-- Category Report
+         +-- Vendor Report
+         +-- Branch Report
+         +-- Accountant Export
+
+211. Permanent Product Rules
+These rules should remain foundational:
+   A RECEIPT IS EVIDENCE.
+
+   AN EXPENSE IS THE BUSINESS RECORD.
+
+   THE ORIGINAL RECEIPT MUST BE PRESERVED.
+
+
+                                              Developer & Claude Completion Mandate | 51
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   AI MAY EXTRACT AND RECOMMEND.
+
+   AI MUST NOT INVENT FINANCIAL DATA.
+
+   POSTGRESQL IS BUSINESS TRUTH.
+
+   OBJECT STORAGE HOLDS RECEIPT FILES.
+
+   MONEY MUST BE EXACT.
+
+   EVERY EXPENSE BELONGS TO A TENANT.
+
+   BRANCH EXPENSES MUST BE BRANCH-SCOPED.
+
+   TENANT A CAN NEVER SEE TENANT B RECEIPTS.
+
+   HIGH-CONFIDENCE AUTOMATION SHOULD REDUCE OWNER WORK.
+
+   LOW-CONFIDENCE INFORMATION MUST BE REVIEWABLE.
+
+   DUPLICATE DETECTION MUST NEVER SILENTLY DELETE RECORDS.
+
+   OWNER CORRECTIONS MUST BE AUDITED.
+
+   APPROVED HISTORICAL RECORDS MUST NOT CHANGE SILENTLY.
+
+   SHORT CATEGORIES SHOULD STAY SIMPLE FOR SALON OWNERS.
+
+   ACCOUNTING CODES SHOULD BE MAPPED BEHIND THE SIMPLE CATEGORIES.
+
+   REPORTS MUST USE THE SAME AUTHORITATIVE EXPENSE DATA.
+
+   PAYROLL MUST NOT BE DOUBLE COUNTED AS AN EXPENSE.
+
+   OCR FAILURE MUST NOT LOSE THE RECEIPT.
+
+   TWILIO / EMAIL / PUSH FAILURES MUST NOT LOSE THE EXPENSE.
+
+   NO PUBLIC RECEIPT URLS.
+
+   NO PRIVATE RECEIPT TEXT IN UNSAFE LOGS.
+
+   NO CROSS-TENANT AI CONTEXT.
+
+   NO PRODUCTION MOCK OCR.
+
+   NO DUPLICATE EXPENSE SYSTEM.
+
+   EVERY DOLLAR MUST BE TRACEABLE BACK TO A RECEIPT,
+   BILL, TRANSACTION, OR APPROVED MANUAL RECORD.
+
+
+Final Instruction to Claude
+Claude,
+Do not respond by designing another theoretical receipt scanner.
+Inspect my actual AI PowerSalon repository first.
+Find everything already built around:
+   Receipts
+
+   Expenses
+
+   Invoices
+
+   Bills
+
+   Vendors
+
+   Categories
+
+
+                                                Developer & Claude Completion Mandate | 52
+                                   AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+   OCR
+
+   ai_ocr_receipt
+
+   AI Gateway
+
+   Storage
+
+   Reports
+
+   Accounting
+
+   Owner App
+
+   POS
+
+   Super Admin
+
+Then:
+   KEEP WHAT IS CORRECT
+
+   FIX WHAT IS BROKEN
+
+   MERGE WHAT IS DUPLICATED
+
+   UPGRADE WHAT IS WEAK
+
+   COMPLETE WHAT IS PARTIAL
+
+   WIRE WHAT IS DISCONNECTED
+
+   MIGRATE WHAT IS LEGACY
+
+   REMOVE WHAT IS DEAD
+
+   TEST EVERYTHING
+
+Use my simple salon-owner expense categories:
+   Rent / Landlord
+   Supplies
+   Equipment
+   Utilities / Bills
+   Marketing
+   Repairs / Maintenance
+   Insurance
+   Software / Subscriptions
+   Payroll
+   Other
+
+Make receipt capture extremely easy for owners while building rigorous backend accounting evidence, tenant isolation, OCR
+confidence, duplicate protection, vendor normalization, branch tracking, audit, reporting, and export underneath it.
+The final result should let an AI PowerSalon owner photograph a receipt and have the system intelligently convert it into a clean,
+categorized, searchable, auditable expense record with minimal manual work.
+The system must continuously track expenses by:
+   DAY
+
+   WEEK
+
+   MONTH
+
+   YEAR
+
+   CATEGORY
+
+   VENDOR
+
+   BRANCH
+
+and remain reliable enough for owners, accountants, bookkeepers, reports, and future accounting integrations.
+Build or repair this as one integrated AI PowerSalon Finance capability - not as a disconnected receipt app.
+                                            Developer & Claude Completion Mandate | 53
+                                  AI PowerSalon | Receipt, Expense, Invoice, OCR & Accounting Intelligence
+
+Claude Execution Checklist
+   Inspect existing receipt/expense/OCR code before creating new modules.
+   Preserve original receipt evidence in secure object storage.
+   Keep ReceiptDocument separate from Expense business records.
+   Use exact money and authoritative PostgreSQL state.
+   Route OCR through workers and the central AI Platform.
+   Validate structured extraction and field-level confidence.
+   Run duplicate detection without silently deleting suspected duplicates.
+   Keep owner-facing categories simple and map accounting codes behind them.
+   Enforce tenant and branch isolation on every API, file, job, and report.
+   Audit approved financial corrections and preserve historical evidence.
+   Verify day/week/month/year/category/vendor/branch reports reconcile.
+   Run migrations, builds, typecheck, lint, integration, security, and tenant-isolation tests.
+   Return exact files changed, APIs, migrations, events, workers, test results, and remaining blockers.
+
+
+
+
+                                               Developer & Claude Completion Mandate | 54
+

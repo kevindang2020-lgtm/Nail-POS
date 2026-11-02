@@ -1,0 +1,997 @@
+{
+ "_doc": "check:audit-writers allowlist (BUILD_PLAN Phase 10, Constitution 1 \u00a732-\u00a733). Every raw INSERT into audit_events / audit_logs outside modules/audit that existed on Oct 8 2026, file -> count. Only shrinks: a new file or a higher count fails the gate; lower a count / remove an entry when a writer moves to AuditService.",
+ "entries": [
+  {
+   "file": "apps/api/src/customer-display/display-pairing.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "apps/api/src/events/event-replay.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "apps/api/src/pos/pos-search.module.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "apps/api/src/profile/profile.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "apps/api/src/super-admin-system-status/system-status.kysely.repository.ts",
+   "count": 4,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/ai/src/ai-inventory/ai-inventory-recipe.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/ai/src/ai-queue-assignment/ai-queue-assignment-alerts.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/ai/src/ai-queue-assignment/ai-queue-assignment-settings.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/ai/src/ai-queue-assignment/ai-queue-assignment-superadmin.controller.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/ai/src/ai/ai-subscription-billing.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/booking/src/customer-booking/booking-verification-fraud.adapters.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/checkout/src/checkout/checkout.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/campaigns/campaign-compliance.kysely.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/campaigns/campaign-templates.kysely.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/campaigns/platform-announcements.kysely.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/communications/communications-announcements.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "tenant module wrote audit_events directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/communications/communications-limits.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "tenant module wrote audit_events directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/communications/communications-overview.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "tenant module wrote audit_events directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/communications/communications-templates.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "tenant module wrote audit_events directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/end-of-day-followups/end-of-day-followups.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/sms-packages/sms-packages.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/sms-packages/sms-platform-controls.service.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/communications/src/sms-packages/sms-tenant-plan.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/customers/src/legal-hold/legal-hold.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/deals/src/deals/deals-marketplace.kysely.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/deals/src/deals/deals.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/deals/src/engine/deals-lifecycle.scheduler.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/identity/src/auth/account.controller.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/identity/src/auth/mfa-recovery.controller.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/identity/src/auth/webauthn.kysely.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/identity/src/staff-roles/staff-roles.controller.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "tenant module wrote audit_events directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/inventory/src/inventory.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/marketing/src/display-advertising/display-ads.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/platform/src/platform-approvals/platform-approvals.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/platform/src/super-admin-automation/automation-actions.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-automation/automation-engine.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/entitlements.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/feature-registry.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/grandfather.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/overage.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/plans.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/subscription-change.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/platform/src/super-admin-plans/tenant-offers.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/queue/src/live-technician-schedule/live-technician-schedule.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/queue/src/technician-help/technician-help.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.kysely.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-audit.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-moderation.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai-insights/ai-insights.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai-scheduling-optimizer/super-admin-ai-scheduling-optimizer.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai-usage/ai-usage-config.kysely.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai/ai-admin.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai/ai-plans-admin.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-alerts/alerts.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-analytics/super-admin-analytics.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-audit-logs/audit-evidence.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-audit-logs/audit-investigations.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-audit-logs/audit-legal-holds.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-billing/billing.kysely.repository.ts",
+   "count": 18,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-booking-checkin/super-admin-booking-checkin.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-business-categories/business-categories.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-catalog/service-templates.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-customer-data/customer-deletion.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-customer-data/customer-import.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-disputes/disputes.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-hardware-packages/hardware-packages.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-integrations/integration-lifecycle.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-integrations/provider-reliability.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-integrations/super-admin-integrations.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-integrations/sync-engine.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-integrations/webhook-ingest.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-kill-switches/kill-switches.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-legal/legal-documents.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-loyalty/loyalty-actions.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-loyalty/loyalty-config.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-loyalty/loyalty-corrections.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-loyalty/loyalty-suspicious.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-maintenance/maintenance.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-membership-programs/membership-programs.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-merchant-accounts/super-admin-merchant-accounts.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform-staff/platform-staff.repository.ts",
+   "count": 4,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/super-admin-platform.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-product-catalog/product-barcode.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-product-catalog/product-distribution.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-product-catalog/product-master.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-queue/live-queue-actions.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-scheduled-reports/super-admin-scheduled-reports.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/grant.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/incident.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/ip-block.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/lockdown.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/policy.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/retention.kysely.repository.ts",
+   "count": 2,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/session-revoke.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-settings/super-admin-settings.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-settlements/settlements-actions.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/reminder-channel.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/reminder-flow-state.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/reminder-overrides.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/reminder-templates.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/reminder-timing.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-smart-reminders/smart-reminders.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_events"
+   ],
+   "reason": "Super Admin action logged straight to audit_events before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-staff/global-tech-admin.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-staff/super-admin-staff.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-support/support-actions.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-tenant-presets/tenant-presets.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-tenants/super-admin-tenants.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ticket-removal/ticket-removal.module.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-website-leads/website-leads.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/tenants/src/branding/branding.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/tenants/src/owner-portfolio/owner-portfolio.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/tenants/src/tenant-locations/super-admin-location.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "Super Admin action logged straight to audit_logs before Phase 10 (platform / cross-tenant writes; AuditService.recordPlatform is the replacement)"
+  },
+  {
+   "file": "modules/tenants/src/tenant-locations/tenant-location.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/approvals/approvals.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/compensation/compensation-retail-policy.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/compensation/compensation-tip-policy.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/nail-showcase/nail-photo-consent.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/nail-showcase/nail-showcase-social.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/nail-showcase/nail-showcase.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/tech-profile/tech-workplaces.service.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/technician-clock-pin/technician-clock-management.kysely.repository.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  },
+  {
+   "file": "modules/workforce/src/technicians/technicians-audit.kysely.ts",
+   "count": 1,
+   "tables": [
+    "audit_logs"
+   ],
+   "reason": "tenant module wrote audit_logs directly before Phase 10 (no request/correlation/session ids, no before/after); move to AuditService.record / auditSinkFor"
+  }
+ ]
+}

@@ -1,0 +1,32 @@
+== modules/communications/src/inbox/inbox.pgtest.vitest.spec.ts
+inbox.pgtest.vitest.spec.ts: 19 passed, 0 failed (of 19)
+== modules/communications/src/inbox/inbox-core.vitest.spec.ts
+inbox-core.vitest.spec.ts: 14 passed, 0 failed (of 14)
+== apps/pos-web/src/screens/commsInboxCore.test.ts
+commsInboxCore.test.ts: 8 passed, 0 failed (of 8)
+== modules/communications/src/communications/communications-activity.pgtest.vitest.spec.ts
+communications-activity.pgtest.vitest.spec.ts: 5 passed, 0 failed (of 5)
+== modules/communications/src/communications/communications-activity.vitest.spec.ts
+communications-activity.vitest.spec.ts: 12 passed, 0 failed (of 12)
+== modules/communications/src/communications/communications.vitest.spec.ts
+communications.vitest.spec.ts: 7 passed, 0 failed (of 7)
+== modules/communications/src/messaging-inbound/twilio-tenant-binding.pgtest.vitest.spec.ts
+twilio-tenant-binding.pgtest.vitest.spec.ts: 11 passed, 0 failed (of 11)
+== modules/communications/src/messaging-inbound/twilio-webhook-counters.vitest.spec.ts
+twilio-webhook-counters.vitest.spec.ts: 1 passed, 0 failed (of 1)
+== modules/communications/src/notifications/sender-not-configured.vitest.spec.ts
+sender-not-configured.vitest.spec.ts: 3 passed, 0 failed (of 3)
+== modules/communications/src/notifications/notifications-core.spec.ts
+──────────── 29/29 passed ────────────
+== modules/communications/src/notifications/notifications.sender-numbers.vitest.spec.ts
+notifications.sender-numbers.vitest.spec.ts: 2 passed, 0 failed (of 2)
+== modules/communications/src/notifications/messaging-metrics.vitest.spec.ts
+messaging-metrics.vitest.spec.ts: 2 passed, 0 failed (of 2)
+== modules/communications/src/tenant-messaging/phone-messaging-round2.pgtest.vitest.spec.ts
+phone-messaging-round2.pgtest.vitest.spec.ts: 28 passed, 0 failed (of 28)
+== modules/communications/src/tenant-messaging/phone-messaging-readiness.pgtest.vitest.spec.ts
+phone-messaging-readiness.pgtest.vitest.spec.ts: 31 passed, 0 failed (of 31)
+== modules/customers/src/retention/retention-round2.pgtest.vitest.spec.ts
+retention-round2.pgtest.vitest.spec.ts: 14 passed, 0 failed (of 14)
+== packages/realtime-contracts/src/realtime-core.test.ts
+realtime-core.test.ts: 4 passed, 0 failed (of 4)

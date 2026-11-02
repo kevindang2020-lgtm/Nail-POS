@@ -1,0 +1,78 @@
+DONE      Existing observability fully inspected
+DONE      Logging standardized
+DONE      Structured logging implemented
+DONE      Sensitive redaction implemented
+DONE      Request IDs implemented
+DONE      Correlation IDs implemented
+PARTIAL   Trace IDs integrated  — W3C-shaped ids; no exporter attached (D7)
+DONE      Context propagates through HTTP
+DONE      Context propagates through Events
+DONE      Context propagates through Workers
+DONE      Context propagates through Providers
+DONE      API metrics implemented
+DONE      Database metrics implemented  — pool wrapper verified against a pg-shaped fake; not a real Postgres client
+DONE      Redis metrics implemented
+PARTIAL   Queue metrics implemented  — no queue product exists: outbox + jobs + 21 schedulers (D2)
+DONE      Worker metrics implemented
+DONE      Event metrics implemented
+DONE      Realtime metrics implemented
+DONE      Twilio metrics implemented
+DONE      Email metrics implemented
+DONE      Push metrics implemented
+DONE      Payment metrics implemented
+DONE      AI metrics implemented  — Constitution 10; read by the aggregator
+NOT DONE  Storage metrics implemented  — NOT DONE — no storage adapter instrumentation; listed in Remaining Risks
+PARTIAL   CPU/memory metrics implemented  — event-loop lag only; RSS/heap remain on the System Health screen, not in the registry
+DONE      Frontend telemetry implemented
+PARTIAL   Mobile telemetry implemented  — the same boundary ships in the Capacitor-wrapped apps; no native crash SDK
+PARTIAL   Distributed tracing implemented  — ids and propagation only; no span exporter (D7)
+DONE      Critical business SLIs implemented
+DONE      Health checks implemented
+DONE      Component health implemented
+DONE      Tenant health implemented
+NOT DONE  Branch health implemented  — NOT DONE — no branch_health_snapshots (§345)
+DONE      Provider health implemented
+PARTIAL   Synthetic monitoring implemented  — readiness + DB-write probes run automatically on Railway; kiosk probe off until a test-salon flag exists; no sandbox-payment or SMS probe (§94–95)
+DONE      Alert severity implemented
+DONE      Alert deduplication implemented
+PARTIAL   Alert routing to a human (§262–265)  — email to active Super Admins works with SendGrid alone; SMS needs ONCALL_PHONE; no escalation chain beyond one reminder
+DONE      Runbooks created
+PARTIAL   SLOs defined where measured  — all five PROPOSED; none validated by production data yet (§80)
+DONE      Error budgets implemented where appropriate
+PARTIAL   Backup monitoring implemented  — reports must be posted by the provider's job; none exists yet
+DONE      Restore-test monitoring implemented
+DONE      Deployment markers implemented
+DONE      Incident Management implemented
+PARTIAL   Security observability implemented  — existing security domain; observability emits nothing new into it (D8)
+DONE      Cross-tenant alerts implemented
+DONE      Super Admin System Operations implemented
+DONE      API dashboard works
+PARTIAL   Database dashboard works  — as a component card + history; no dedicated page
+PARTIAL   Redis dashboard works  — component card only
+DONE      Queue dashboard works  — Constitution 8 Events screen
+DONE      Realtime dashboard works  — Constitution 9 live-ops screen
+PARTIAL   Payments dashboard works  — component card only
+PARTIAL   Communications dashboard works  — component card only
+DONE      AI dashboard works  — Constitution 10 control plane
+NOT DONE  Storage dashboard works  — NOT DONE
+NOT DONE  Mobile dashboard works  — NOT DONE — client errors are counted by app (aipowersalon_client_errors_total) but no screen
+NOT DONE  Deployment dashboard works  — NOT DONE
+PARTIAL   Incident dashboard works  — existing System Status screen; timeline/commander not yet surfaced in the UI
+NOT DONE  Request search works  — NOT DONE — needs a log store (§291); logs go to stdout
+NOT DONE  Correlation search works  — NOT DONE — as above (§292)
+NOT DONE  Trace/log linking works  — NOT DONE — no trace store
+PARTIAL   Sensitive telemetry permissions work  — one permission; no field-level split (§181)
+DONE      Telemetry export failure does not break POS
+DONE      High-cardinality safeguards implemented
+DONE      Log-redaction tests pass
+DONE      Context-leak tests pass
+DONE      Health tests pass
+DONE      Alert tests pass
+DONE      Failure-injection tests pass
+NOT DONE  Load tests pass  — NOT DONE — no load harness in this tree (§283)
+DONE      Build passes  — tsc --noEmit clean (verified each phase)
+DONE      Type checking passes
+NOT DONE  Lint passes  — NOT RUN — the repo has no lint script wired to the gates
+DONE      Tests pass  — see the final battery
+
+§396: 50 DONE · 16 PARTIAL · 10 NOT DONE of 76

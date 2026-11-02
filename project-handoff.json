@@ -1,0 +1,143 @@
+{
+  "project": {
+    "name": "AIPowerSalon",
+    "description": "Multi-tenant nail-salon POS SaaS. NestJS + Postgres(Kysely) backend serving six React/Vite front-end surfaces in one monorepo. Tenant/branch scope is ALWAYS derived server-side from the session; frontends never send tenantId/branchId.",
+    "version": "monorepo (npm workspaces)",
+    "packageManager": "npm",
+    "architecture": "npm-workspaces monorepo: apps/* (1 backend + 6 web frontends + 2 empty kiosk scaffolds), packages/* (shared ui)",
+    "applications": [
+      "apps/api (NestJS, Kysely, Postgres 16) \u2014 backend for all surfaces",
+      "apps/pos-web (Tenant POS, ~140 src files)",
+      "apps/admin-web (Super Admin, ~120 src files)",
+      "apps/owner-web (Owner app, ~55 src files)",
+      "apps/tech-web (Technician app, ~53 src files)",
+      "apps/customer-web (Customer app, ~117 src files)",
+      "apps/customer-display (in-store display, ~12 src files)",
+      "apps/go-check-in-kiosk (EMPTY scaffold \u2014 0 src)",
+      "apps/go-check-in-admin (EMPTY scaffold \u2014 0 src, no package.json)"
+    ]
+  },
+  "commands": {
+    "install": "npm install (root)",
+    "dev_api": "cd apps/api && npm run start:dev",
+    "dev_frontend": "cd apps/<app> && npm run dev",
+    "build_api": "cd apps/api && npm run build",
+    "build_frontend": "cd apps/<app> && npx vite build",
+    "test_vitest": "cd apps/<app> && npx vitest run",
+    "test_api_core_specs": "cd apps/api && npm test  (runs scripts/run-core-specs.sh for the 43 Nest-free *-core.spec.ts)",
+    "test_api_harness": "cd apps/api && npm run test:harness",
+    "typecheck": "cd apps/<app> && npx tsc --noEmit -p tsconfig.json",
+    "migrate": "Kysely migrations live in apps/api/db/migrations (run via the api's migrate script)"
+  },
+  "verifiedState_2026_06_22": {
+    "typecheck": "all 7 real apps clean (0 TS errors)",
+    "vitest": "280 files / 1356 tests passing, 0 failures (api 112/733, admin-web 50/191, customer-web 42/136, pos-web 41/107, owner-web 18/85, tech-web 14/74, customer-display 3/30)",
+    "api_core_specs": "43 Nest-free *-core.spec.ts files, all passing",
+    "builds": "all 7 apps build for production, 0 failures (pos-web main bundle ~758kB, admin-web ~659kB, customer-web ~552kB, tech-web ~255kB, owner-web ~253kB, customer-display ~156kB)",
+    "e2e_money_path": "PASS \u2014 live-Postgres run drove the real canonical services check-in -> queue -> assign(override) -> serve -> markDone -> qualityCheck(approved) -> sendToCheckout -> payCash; $30 service charged $32.33 tax-inclusive, payment persisted, ticket paid; every business gate (skill match, quality approval, per-step permission, cash tender) enforced; baseline rolled back clean"
+  },
+  "architectureRules": {
+    "tenantIsolation": "Every tenant request: TenantAuthGuard authenticates -> tenantId/branchId derived from session (req.ctx), NEVER from the browser -> RolePermissionGuard checks granular pos.* permission -> repositories apply tenant (and branch) scoping in SQL.",
+    "money": "Always integer cents. Never floating point.",
+    "payments": "Fiserv (CardPointe/Bolt) + Clover ONLY. Stripe and Square are permanently removed and must not return.",
+    "noDuplication": "Repair canonical files; never create V2/New/Final/Fixed/Copy/Backup variants. Confirmed: 0 duplicate-named files in repo.",
+    "realtime": "useRealtime(channel, refetch) on live operational screens; backend realtime-core.ts maps each domain event to the screens that should refetch.",
+    "design": "Cream/gold luxury system (page #F7EFE3, gold #A96F22, Playfair Display + Hanken Grotesque). Mac-fit fixed shell (1440x900 min, 1920x1080 @100%), sidebar/topbar identical across every screen.",
+    "workflowStateMachine": "apps/api/src/common/pos-workflow-core.ts \u2014 the single shared ticket lifecycle: serving -> service_done -> ready_checkout -> paid (+ cancelled)."
+  },
+  "canonicalFiles": {
+    "backend_entry": "apps/api/src/main.ts (NestJS, setGlobalPrefix(''))",
+    "workflow_state_machine": "apps/api/src/common/pos-workflow-core.ts",
+    "security_core": "apps/api/src/common/security-core.ts (hasPermission, requiredCapability)",
+    "realtime_map": "apps/api/src/realtime/realtime-core.ts",
+    "money_path_services": [
+      "check-in/check-in.service.ts",
+      "queue/queue.service.ts",
+      "serving/serving.service.ts",
+      "service-done/service-done.service.ts",
+      "checkout/checkout.service.ts"
+    ],
+    "pos_routes": "apps/pos-web/src/App.tsx (literal routes + data-driven allNavItems() -> gated FeaturePage for not-yet-built sub-pages)",
+    "admin_routes": "apps/admin-web/src/App.tsx",
+    "shared_ui": "packages/ui/src"
+  },
+  "modules": [
+    {
+      "name": "Tenant POS money path (check-in,queue,serving,service-done,checkout,payment)",
+      "status": "working",
+      "note": "End-to-end verified live this session; every gate enforced.",
+      "tests": [
+        "api *.vitest.spec.ts per domain",
+        "*-core.spec.ts"
+      ]
+    },
+    {
+      "name": "Tenant POS Dashboard + Overview",
+      "status": "working",
+      "note": "Rebuilt to reference image w/ live-Postgres enrichment; realtime wired."
+    },
+    {
+      "name": "Super Admin console (S-series)",
+      "status": "partial",
+      "note": "S01-S15 rebuilt to mockups (Option A, live data or honest empty states). S16 Automation Rules and beyond remain.",
+      "remainingWork": [
+        "S16 Automation Rules",
+        "remaining S-series screens"
+      ]
+    },
+    {
+      "name": "Owner / Technician / Customer web",
+      "status": "working",
+      "note": "Typecheck + tests + prod build all green."
+    },
+    {
+      "name": "Customer display",
+      "status": "working"
+    },
+    {
+      "name": "Payments (Fiserv CardPointe/Bolt + Clover)",
+      "status": "working",
+      "note": "Integer cents; split/surcharge/refund hardened; cash path verified."
+    },
+    {
+      "name": "Go Check-In kiosk apps",
+      "status": "missing",
+      "note": "apps/go-check-in-kiosk and apps/go-check-in-admin are empty scaffolds (0 src). Go-check-in backend logic exists under apps/api/src/go-check-in.",
+      "remainingWork": [
+        "Build the kiosk/admin front-ends if these surfaces are needed"
+      ]
+    }
+  ],
+  "knownIssues": [
+    {
+      "priority": "medium",
+      "issue": "checkout recordPayment wraps its INSERT in .catch(()=>undefined) and the ticket is still marked paid even if the insert fails. Only triggers on invalid FK data (never in prod with a real user UUID), but the failure mode is silent missing revenue.",
+      "files": [
+        "apps/api/src/checkout/checkout.kysely.repository.ts (recordPayment)"
+      ],
+      "recommendation": "Surface the insert failure, or do not flip the ticket to 'paid' when the payment row did not persist."
+    },
+    {
+      "priority": "low",
+      "issue": "pos-web main bundle ~758kB (largest frontend). Consider route-level code splitting.",
+      "files": [
+        "apps/pos-web"
+      ]
+    },
+    {
+      "priority": "low",
+      "issue": "Two empty kiosk app scaffolds (go-check-in-*) ship in the tree.",
+      "files": [
+        "apps/go-check-in-kiosk",
+        "apps/go-check-in-admin"
+      ]
+    }
+  ],
+  "auditsNotYetExecutedAtDepth_2026_06_22": [
+    "Full security pen-test (SQLi/XSS/CSRF/IDOR across all 6 apps) \u2014 partial reviews exist in docs/code-audit/SECURITY_AND_TENANT_REVIEW.md and PAYMENT_SECURITY_REPORT.md; a fresh end-to-end pass was NOT run this session",
+    "Full accessibility audit (keyboard/focus/ARIA/contrast) \u2014 not run this session",
+    "Full performance audit (bundle/render/N+1) \u2014 only bundle sizes captured this session",
+    "Automated headless multi-role browser route testing (open every route as 5 roles, check console/network) \u2014 NOT run this session; the dead-link audit was static (route-graph) for pos-web"
+  ],
+  "existingDocCorpus": "~250 .md docs already in the repo root + docs/ (e.g. FULL_CODEBASE_AUDIT.md, docs/code-audit/*, TENANT_ISOLATION_TEST_REPORT.md, FRONTEND_BACKEND_CONNECTION_MAP.md, DUPLICATE_CODE_RESOLUTION.md, MONEY_PATH_QA.md, per-module audits). These were NOT re-generated to avoid duplication; numbers in TEST_BASELINE.md + the primary NEW_CHAT_HANDOFF.md were refreshed to this session's verified state."
+}

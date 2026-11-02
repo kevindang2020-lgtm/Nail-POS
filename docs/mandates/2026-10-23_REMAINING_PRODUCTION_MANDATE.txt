@@ -1,0 +1,887 @@
+                                                                   AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+
+                                            AI PowerSalon
+Remaining Production Work, Payment Recovery, Security, Integrations & Final Completion
+                                     Mandate
+           Master Build / Fix / Upgrade / Production-Readiness Instruction for Claude
+Mission
+Close the remaining production gaps without regressing the working pilot. Focus on P0 security, financial recovery,
+payment concurrency, exact-service eligibility, OCR production infrastructure, real provider validation, 200-technician
+scale, privacy assertions, code quality, and complete developer handoff.
+
+
+
+Do not restart the project
+The core pilot already passed. Inspect and preserve working Booking, Fair Turn, Checkout, Payroll, Owner Approval,
+Technician Cash Confirmation, Platform Announcements, tenant-specific Twilio routing and the Receipt/Expense business
+flow.
+
+
+
+
+                                       Claude / Developer Production Completion Mandate | 1
+                                                                           AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+Executive Priority Order
+ P0 SECURITY + REAL MERCHANT VALIDATION
+  ↓
+ 1. Wallet top-up recovery
+ 2. Skip-the-Line recovery
+ 3. Split-payment unsettled guard
+ 4. Exact-service eligibility everywhere
+ 5. Receipt/OCR production pipeline
+ 6. CardPointe refund UAT recovery
+ 7. Twilio default-sender ledger
+ 8. Shared-expense allocation capability
+ 9. 200-technician real Technician App pilot
+ 10. Customer Display 3-second privacy assertion
+ 11. Lint / type-quality cleanup
+  ↓
+ FULL REGRESSION + PILOT + DEVELOPER HANDOFF
+
+
+
+
+1. Execution Rules
+Inspect existing code first, run existing tests, reproduce the gap, fix the root cause, add a regression test, run related suites, then
+update handoff documents.
+  • Do not stop with recommendations.
+  • Do not create duplicate V2 systems.
+  • PASS requires executed evidence.
+  • Use BLOCKED_EXTERNAL only for real outside dependencies.
+
+
+2. Preserve Working Authorities
+  • Keep working core POS, Booking, Fair Turn, Checkout, Payroll, 50/50 Check/Cash, Owner approval, Technician cash
+   confirmation, Platform Announcements, tenant Twilio routing, and Receipt/Expense business flow unless a remaining
+   defect proves they are the root cause.
+
+
+3. Status Vocabulary
+ PASS
+ FAIL
+ PARTIAL
+ NOT_TESTED
+ BLOCKED_EXTERNAL
+
+
+
+
+4. K-12 Security Sequence
+Complete the security sequence in the exact order below. Rewriting history is not a substitute for revoking/rotating secrets.
+
+ 1. Rebuild the machine
+ 2. Rotate credentials
+ 3. Revoke old/exposed Firebase key
+ 4. Create new Play upload keys
+ 5. Change PostgreSQL credentials
+ 6. Close public PostgreSQL port 5432
+ 7. Validate new environment
+ 8. Only then push rewritten Git history
+
+
+
+
+                                               Claude / Developer Production Completion Mandate | 2
+                                                                      AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+ Highest priority
+ Do not push rewritten history before the earlier containment and rotation steps are complete.
+
+
+
+
+5. K-12 Internal vs External Ownership
+ • Do everything possible inside the repo.
+ • Prepare exact external steps for Kevin/provider consoles.
+ • Never mark an external action PASS without evidence.
+ • Update SECURITY_REVIEW.md, DEVELOPER_HANDOFF.md, NEXT_STEPS.md and hosting action docs.
+
+
+6. Credential Inventory
+ • Audit references to database, JWT, Firebase, Google, Twilio, Fiserv/CardPointe, CommerceHub, SendGrid, AWS, AI provider,
+   APNs and webhook secrets.
+ • Never write secret values into handoff files; document environment-variable names and ownership only.
+
+
+7. Database Network Security
+ • Production PostgreSQL must not be open to 0.0.0.0/0 on 5432.
+ • Use private networking / restrictive firewall rules.
+ • Rotate DB password.
+ • Verify application, backups and monitoring still connect.
+
+
+8. Git History Rewrite Gate
+ • Before force-pushing rewritten history, prove old secrets are invalid, replacement credentials exist, Firebase is revoked,
+   Play upload keys are ready, DB password is rotated, and public DB exposure is closed.
+
+
+9. Real CardPointe / Fiserv Configuration
+Each salon/tenant needs its own actual MID and gateway credentials through Super Admin -> Payment Gateways.
+ • Tenant/branch merchant routing must remain authoritative.
+ • Missing configuration must return NOT_CONFIGURED, never fake approval or another salon's merchant.
+
+
+10. CardPointe UAT Smoke Test
+ Configure UAT merchant
+  ↓
+ $1 sale / authorization
+  ↓
+ processor success
+  ↓
+ local payment record
+  ↓
+ void
+  ↓
+ processor confirmation
+  ↓
+ local reconciliation
+
+
+
+
+                                          Claude / Developer Production Completion Mandate | 3
+                                                                           AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+11. Developer Priority #1 - Wallet Top-Up Recovery
+Unknown processor state must never become a decline without evidence.
+ • Remove Date.now() from financial idempotency keys.
+ • Use a durable stable intent identifier.
+ • Credit wallet exactly once after processor-confirmed approval.
+
+
+12. TopUpIntent State Model
+ CREATED
+ PROCESSING
+ APPROVED
+ DECLINED
+ UNKNOWN
+ FAILED
+ CANCELED
+
+
+
+
+13. Wallet Top-Up Processing
+ Create durable intent/order ID
+  ↓
+ submit processor request
+  ↓
+ APPROVED -> credit wallet once
+ DECLINED -> no credit
+ UNKNOWN -> no credit, no blind retry, start recovery
+
+
+
+
+14. Wallet Recovery
+ UNKNOWN intent
+  ↓
+ inquireByOrderid
+  ↓
+ APPROVED / DECLINED / NOT_FOUND / STILL UNKNOWN
+
+
+
+
+15. Wallet Credit Idempotency
+ • Webhook, worker, manual Verify and client retry may race.
+ • All paths must converge on one approved intent and one wallet ledger credit.
+
+
+16. Wallet Race Test
+ Response disappears
+ + client retries
+ + recovery worker runs
+ + staff Verify runs
+ + webhook arrives
+
+
+ Expected:
+ ONE processor charge
+ ONE approved intent
+ ONE wallet credit
+
+
+                                               Claude / Developer Production Completion Mandate | 4
+                                                                                AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+
+
+
+17. Skip-the-Line Unknown Payment Recovery
+Keep the safe 'do not pay again' behavior for unknown state.
+ • Add staff Verify.
+ • Add automatic recovery sweep for stale PROCESSING/UNKNOWN intents.
+ • Show stuck app payments in POS Checkout.
+
+
+18. Skip-the-Line Verify Flow
+ App Payment Intent
+  ↓
+ UNKNOWN / stale PROCESSING
+  ↓
+ CardPointe inquireByOrderid
+  ↓
+ APPROVED / DECLINED / NOT_FOUND
+
+
+
+
+19. Block Conflicting Tenders During Unknown State
+ • While app payment may still settle: no second card, cash, gift card, wallet, or second app payment unless a controlled
+   recovery policy proves the attempt is no longer chargeable.
+
+
+20. Split-Payment Unsettled Guard
+The authoritative guard must inspect both payments and payment_attempts, plus other processor intent tables if applicable.
+
+ if ANY unresolved attempt exists for ticket:
+ BLOCK cash
+ BLOCK second card
+ BLOCK gift card
+ BLOCK wallet
+ BLOCK conflicting tender
+
+
+
+
+21. Transactional Concurrency Protection
+ • Do not implement check-then-insert with a race window.
+ • Use transaction, locking, unique constraints, checkout versioning and/or payment claim architecture already present.
+
+
+22. Split-Payment Race Test
+ Card attempt starts
+ processor response lost
+  + employee tries cash
+  + another employee tries card
+  + app tries payment
+
+
+ Expected: all conflicting tenders blocked until original attempt is settled.
+
+
+
+
+23. Exact-Service Eligibility - One Authority
+There must be one backend answer to: Can technician X perform service Y?
+                                                   Claude / Developer Production Completion Mandate | 5
+                                                                     AI PowerSalon | Remaining Production Work & Final Completion Mandate
+ • Use/complete exactSkilled() or existing eligibility domain.
+ • Do not use broad category membership as service approval.
+
+
+24. Replace Remaining Category-Based Paths
+ • requested-tech busy -> eligibleAlternates()
+ • Go Check-In pre-filter / requiredCategories()
+ • Search repo for any additional category-based service eligibility.
+
+
+25. Use the Same Rule Everywhere
+ • Booking
+ • Find an Opening
+ • Best Matches
+ • New Booking
+ • Add Walk-In
+ • Go Check-In
+ • Requested-tech alternatives
+ • Fair Turn
+ • Manual assignment
+ • AI Receptionist
+ • Scheduling optimizer
+
+
+26. Backend Authority for Eligibility
+ • Frontend may display eligible choices; backend performs the final exact-service check on every assignment/booking
+   mutation.
+
+
+27. Receipt/OCR Production Pipeline
+Preserve the working expense submission, duplicate detection, approval and reporting flow. Complete the production
+upload/OCR infrastructure.
+
+ UPLOAD
+  ↓
+ MIME / magic-byte / size validation
+  ↓
+ PRIVATE OBJECT STORAGE
+  ↓
+ QUARANTINE
+  ↓
+ MALWARE SCAN
+  ↓
+ CLEAN
+  ↓
+ TEXTRACT / OCR
+  ↓
+ STRUCTURED EXTRACTION
+  ↓
+ DETERMINISTIC VALIDATION
+  ↓
+ OWNER REVIEW
+  ↓
+ EXPENSE POSTED
+
+
+
+
+                                         Claude / Developer Production Completion Mandate | 6
+                                                                     AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+28. OCR External Configuration
+ • EVIDENCE_S3_BUCKET / approved equivalent
+ • MEDIA_STORE=s3 / approved equivalent
+ • CLAMAV_HOST / malware scanner endpoint
+ • AWS Textract access + IAM
+ • Private bucket + encryption + signed read URLs
+
+
+29. Quarantine Rules
+ • If malware scanner is unavailable, remain quarantined.
+ • If OCR provider is unavailable, never generate fake extraction.
+ • Unscanned uploads must never become trusted documents.
+
+
+30. OCR Gateway Architecture
+ • Route OCR through ai_ocr_receipt / central AI-OCR gateway rather than scattering provider SDK logic through Expense
+      business code.
+
+
+31. OCR Duplicate Detection
+ • Preserve file hash/perceptual hash where used, tenant/vendor/date/total/invoice checks, and test against the real S3/Textract
+      path.
+
+
+32. CardPointe Refund UAT Recovery
+Validate refund lookup semantics against real UAT rather than only loopback behavior.
+
+ refund request
+     ↓
+ response timeout/lost
+     ↓
+ local UNKNOWN
+     ↓
+ inquireByOrderid
+     ↓
+ processor refund located
+     ↓
+ local refund reconciled exactly once
+
+
+
+
+33. Refund Provider Semantics
+ • Confirm how inquireByOrderid represents refund, void, sale and authorization.
+ • Repeated Verify must never create another refund.
+
+
+34. Twilio Default-Sender Ledger
+Do not regress tenant-specific Twilio routing. Fix only the shared_default sender metadata gap.
+
+ TwilioSmsSender.send() -> {
+     providerMessageId,
+     senderRoute,
+     senderFrom,
+     status
+ }
+
+                                         Claude / Developer Production Completion Mandate | 7
+                                                                           AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+
+ Never return auth tokens.
+
+
+
+
+35. SMS Ledger Completeness
+  • Every SMS ledger row should record tenant, recipient, sender_route, sender_from, provider message id, purpose, status and
+       timestamps subject to privacy policy.
+
+
+36. Shared Salon Expense Allocation Capability
+This is configurable accounting/reporting capability, not an automatic policy change.
+
+ Expense Allocation Policy:
+ NONE            (default)
+ MANUAL_PERCENTAGE (optional)
+
+
+
+
+37. Manual Allocation Rules
+ $1,000 salon-wide software expense
+ Branch A 50% = $500
+ Branch B 30% = $300
+ Branch C 20% = $200
+
+
+ Validate total = 100% when fully allocated.
+
+
+
+
+38. No Duplicate Expense Records
+  • One salon-wide expense remains one source expense.
+  • Branch allocation should be reporting/accounting allocation or explicit child allocation entries per existing finance design -
+       not duplicate standalone expense creation.
+
+
+39. Code Quality Ratchets
+  • Reduce react-hooks/exhaustive-deps warnings without globally disabling the rule.
+  • The as-any baseline may only shrink.
+  • Prioritize payments, checkout, payroll, permissions, tenant context, booking and webhooks.
+
+
+40. Upgrade Pilot to 200 Technicians
+Replace the old 24-tech pilot expectation with 200 technicians, 12 per Booking page, 17 pages.
+
+ ceil(200 / 12) = 17
+
+
+ Page 1: 1-12
+ Page 2: 13-24
+ ...
+ Page 16: 181-192
+ Page 17: 193-200
+
+
+
+
+                                               Claude / Developer Production Completion Mandate | 8
+                                                                       AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+41. Do Not Hard-Code 200
+ • 200 is the validation target, not the product maximum.
+ • Architecture should continue scaling to 300, 500, 1,000+ without rewrite.
+
+
+42. Real Technician App Accounts
+ • At minimum activate and authenticate representative technicians #1, #25, #100, #193 and #200.
+ • Use the real invite -> accept -> activate -> login -> refresh -> logout -> relogin flow.
+
+
+43. Technician App Mobile Validation
+ • Home
+ • Schedule
+ • Queue
+ • Current Ticket
+ • Time Clock
+ • Earnings
+ • Payroll
+ • Notifications
+ • Profile
+ • Test at realistic phone dimensions.
+
+
+44. Technician Privacy Tests
+ • Technician #100 cannot access #101 earnings/payroll/private schedule.
+ • Technician cannot access Owner payroll APIs.
+ • Tenant and branch scopes are enforced server-side.
+
+
+45. 200-Tech Performance Tests
+ • Booking
+ • Tech Queue
+ • Fair Turn
+ • Team
+ • Owner App
+ • Payroll
+ • Reports
+ • Measure latency, payload size, browser memory and DB query plans.
+
+
+46. 200-Tech Payroll Test
+200 pay statements
+Default 50% CHECK / 50% CASH
+=> 200 check payout instructions
+=> 200 cash payout instructions
+=> 400 payout instructions
+
+
+Every cent must reconcile.
+
+
+
+
+                                           Claude / Developer Production Completion Mandate | 9
+                                                                      AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+47. Customer Display 3-Second Privacy Assertion
+Move the existing browser-only proof into the main pilot.
+
+ Payment Complete
+  ↓
+ wait 3000ms + allowed render tolerance
+  ↓
+ assert customer name absent
+ assert ticket absent
+ assert services absent
+ assert amount absent
+ assert idle / advertising visible
+
+
+
+
+48. Customer Display State Clearing
+ • Do not merely hide a component. Remove sensitive ticket/customer/payment state from the active display store/memory
+    after completion.
+
+
+49. External Production Services - Twilio
+ • Platform account
+ • A2P brand/campaign
+ • Appropriate number/Messaging Service per salon setup
+ • Twilio Verify service
+ • Webhook validation
+
+
+50. External Production Services - SendGrid
+ • API key
+ • Verified sender/domain
+ • Production delivery test
+ • Bounce/error handling where implemented
+
+
+51. External Production Services - Firebase/APNs
+ • New Firebase service account
+ • Old/exposed Firebase key revoked
+ • APNs key
+ • Push-delivery validation
+
+
+52. External Production Services - AI
+ • Provider keys
+ • Central AI gateway configuration
+ • Quota/spend controls
+ • Health visibility
+ • Safe fallback behavior
+
+
+53. External Production Services - Tap to Pay
+ • Apple entitlement
+
+                                          Claude / Developer Production Completion Mandate | 10
+                                                                    AI PowerSalon | Remaining Production Work & Final Completion Mandate
+ • Fiserv CommerceHub SDK
+ • Credentials
+ • Webhook secret
+ • Merchant enrollment
+ • Supported iPhone
+ • Certification/sandbox/production test
+
+
+54. Production Hosting Security
+ • TLS
+ • WAF
+ • Private database
+ • KMS/secret management
+ • Encrypted backups
+ • Monitoring/alerts
+ • Restore procedure
+
+
+55. Real Backup Restore Test
+backup
+ ↓
+new isolated database
+ ↓
+restore
+ ↓
+boot application
+ ↓
+verify representative records
+
+
+
+
+56. Native iOS Builds
+ • Use a Mac environment to validate Technician App, Owner App, Customer App and Payment App where applicable.
+
+
+57. Penetration Test
+ • Run an independent security assessment before broad rollout and track Critical/High/Medium/Low findings to remediation
+  closure.
+
+
+58. Wallet Top-Up Test Matrix
+ • approved
+ • declined
+ • processor unavailable
+ • unknown response
+ • dropped connection
+ • verify approved/declined/not found
+ • retry same intent
+ • concurrent verify
+ • webhook + verify race
+ • wallet credits exactly once
+
+                                        Claude / Developer Production Completion Mandate | 11
+                                                                   AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+59. Skip-the-Line Test Matrix
+ • approved
+ • declined
+ • unknown
+ • stuck processing
+ • manual Verify
+ • automatic sweep
+ • second payment blocked
+ • recovery after reconnect
+
+
+60. Split-Tender Test Matrix
+ • processing card blocks cash
+ • processing card blocks gift card
+ • processing payment_attempt row is detected
+ • concurrent race test
+
+
+61. Exact-Service Test Matrix
+ • Technician approved for Gel Manicure but not Acrylic Full Set is excluded from Acrylic Booking, Alternates, Go Check-In,
+  Fair Turn, Best Match and Find Opening.
+
+
+62. OCR Test Matrix
+ • valid image
+ • PDF
+ • unsupported file
+ • infected result
+ • scanner unavailable
+ • Textract unavailable
+ • duplicate receipt
+ • successful extraction
+ • owner correction
+ • expense posting
+
+
+63. Refund Recovery Test Matrix
+ • refund success
+ • refund decline
+ • response timeout
+ • Verify finds refund
+ • Verify not found
+ • duplicate Verify
+ • duplicate refund request
+
+
+64. SMS Ledger Test Matrix
+ • tenant_account route has sender_from
+
+                                       Claude / Developer Production Completion Mandate | 12
+                                                                      AI PowerSalon | Remaining Production Work & Final Completion Mandate
+  • shared_default route has sender_from
+  • provider message ID persisted
+  • no credential leakage
+
+
+65. Expense Allocation Test Matrix
+  • NONE
+  • 50/30/20
+  • invalid 110%
+  • negative allocation
+  • branch removal
+  • expense update
+  • historical reporting
+
+
+66. Technician App Test Matrix
+  • #1/#25/#100/#193/#200 login
+  • own schedule/queue/earnings/payroll
+  • cross-tech denied
+  • cross-tenant denied
+  • session refresh/logout/relogin
+
+
+67. Customer Display Main Pilot Test
+  • Payment Complete -> 3 seconds -> private state cleared -> idle/advertising visible.
+
+
+68. Full Pilot Regression
+After all internally fixable work, run the entire Pilot Nail Salon suite again, not only the new tests.
+  • Onboarding
+  • Tenant setup
+  • 200 technicians / 17 pages
+  • Booking / Find Opening / Best Matches
+  • Exact-service eligibility
+  • Concurrent booking
+  • Check-In / Fair Turn / Serving
+  • Multi-tech service
+  • Checkout
+  • Normal + unknown card recovery
+  • Wallet top-up recovery
+  • Skip-the-Line recovery
+  • Split payment
+  • Refund recovery
+  • Customer Display
+  • Receipt/OCR where configured
+  • Inventory/Loyalty
+  • Payroll 50/50
+  • Owner approval
+
+                                          Claude / Developer Production Completion Mandate | 13
+                                                                   AI PowerSalon | Remaining Production Work & Final Completion Mandate
+ • Technician cash confirmation
+ • Real Technician App login
+ • Twilio routing
+ • Platform Announcement
+ • Reports
+
+
+69. Full Engineering Regression
+ • build
+ • typecheck
+ • lint
+ • unit
+ • integration
+ • E2E
+ • concurrency
+ • tenant isolation
+ • branch isolation
+ • security
+ • pilot validation
+
+
+70. Developer Handoff Files
+ • DEVELOPER_HANDOFF.md
+ • PROJECT_STATUS.md
+ • NEXT_STEPS.md
+ • TEST_REPORT.md
+ • PILOT_VALIDATION_REPORT.md
+ • CHANGELOG_HANDOFF.md
+ • SECURITY_REVIEW.md
+ • INTEGRATION_STATUS.md
+ • DATABASE_STATUS.md
+ • API_INVENTORY.md
+ • REALTIME_INVENTORY.md
+ • PERFORMANCE_REPORT.md
+
+
+71. Exact Change Documentation
+ • Exact files changed
+ • Schema/migrations
+ • API changes
+ • Events/workers
+ • Realtime changes
+ • UI changes
+ • Tests
+ • Commands run
+ • External blockers and exact next validation steps
+
+
+
+                                       Claude / Developer Production Completion Mandate | 14
+                                                                   AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+72. Secret-Safe Handoff
+ • Document variable names like CARDPOINTE_API_KEY, never actual values.
+ • For BLOCKED_EXTERNAL, record owner, exact missing credential/device/approval, internal code status, and next test steps.
+
+
+73. Keep NEXT_STEPS Accurate
+ • When an item passes with evidence, mark it DONE or remove it from the active queue.
+ • Do not leave completed work listed as open.
+
+
+
+
+                                       Claude / Developer Production Completion Mandate | 15
+                                                         AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+Final Acceptance Matrix
+Workstream                                               Required truthful result
+
+K-12 SECURITY                                           PASS / PARTIAL / BLOCKED_EXTERNAL
+
+REAL CARDPOINTE UAT                                     PASS / BLOCKED_EXTERNAL
+
+WALLET TOP-UP RECOVERY                                  PASS / FAIL
+
+SKIP-LINE RECOVERY                                      PASS / FAIL
+
+SPLIT PAYMENT GUARD                                     PASS / FAIL
+
+EXACT SERVICE ELIGIBILITY                               PASS / FAIL
+
+RECEIPT OBJECT STORAGE                                  PASS / BLOCKED_EXTERNAL
+
+MALWARE SCANNING                                        PASS / BLOCKED_EXTERNAL
+
+TEXTRACT OCR                                            PASS / BLOCKED_EXTERNAL
+
+REFUND UAT RECOVERY                                     PASS / BLOCKED_EXTERNAL
+
+TWILIO DEFAULT FROM LEDGER                              PASS / FAIL
+
+EXPENSE ALLOCATION                                      PASS / FAIL
+
+200-TECH BOOKING                                        PASS / FAIL
+
+REAL TECH APP LOGIN                                     PASS / FAIL
+
+200-TECH PAYROLL                                        PASS / FAIL
+
+CUSTOMER DISPLAY CLEAR                                  PASS / FAIL
+
+LINT RATCHET                                            PASS / FAIL
+
+TYPE SAFETY RATCHET                                     PASS / FAIL
+
+NATIVE IOS BUILD                                        PASS / BLOCKED_EXTERNAL
+
+TAP TO PAY                                              PASS / BLOCKED_EXTERNAL
+
+HOSTING SECURITY                                        PASS / PARTIAL / BLOCKED_EXTERNAL
+
+BACKUP RESTORE TEST                                     PASS / FAIL
+
+PENETRATION TEST                                        PASS / BLOCKED_EXTERNAL
+
+
+
+
+                             Claude / Developer Production Completion Mandate | 16
+                                                                            AI PowerSalon | Remaining Production Work & Final Completion Mandate
+
+Final Instruction to Claude
+ Move AI PowerSalon from successful pilot to production-ready platform
+ Do not restart the project. Close the remaining internal gaps, prepare exact external actions, run the entire pilot again, and
+ leave a complete handoff. Never fake providers, never call UNKNOWN a decline, never allow duplicate financial effects, and
+ never regress tenant isolation or exact-service eligibility.
+
+
+
+ IMMEDIATE INTERNAL PRIORITY
+
+
+ 1. Wallet top-up payment recovery
+ 2. Skip-the-Line payment recovery
+ 3. Split-payment unsettled-attempt guard
+ 4. Exact-service eligibility everywhere
+ 5. Receipt/OCR production pipeline
+ 6. CardPointe refund recovery validation
+ 7. Twilio default-sender ledger
+ 8. Configurable shared-expense allocation
+ 9. Real 200-technician Technician App login pilot
+ 10. Customer Display 3-second privacy assertion
+ 11. Lint / type-quality cleanup
+
+
+
+At the same time, prepare exact external requirements for K-12 security, real CardPointe credentials, Twilio A2P, SendGrid,
+Firebase/APNs, AWS S3/ClamAV/Textract, AI provider keys, Tap to Pay, production hosting, native iOS builds and penetration
+testing.
+The large-salon validation target is 200 technicians, 12 technicians per Booking page, 17 pages, plus real Technician App
+authentication for representative technicians from the beginning, middle and end of the dataset.
+
+ Final success standard
+ RUN EVERYTHING AGAIN. Then tell the developer exactly what was fixed, what changed, what was tested, what passed,
+ what failed, what requires Kevin, what requires a provider, and what to do next.
+
+
+
+
+                                                Claude / Developer Production Completion Mandate | 17
+

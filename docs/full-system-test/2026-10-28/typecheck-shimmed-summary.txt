@@ -1,0 +1,156 @@
+# Whole-backend type-check with untyped stand-ins — TypeScript 6.0.2, target ES2021, strict, 2,800 files (apps/api/src + modules/*/src + packages/*/src, no specs, no .tsx)
+# 47 shimmed modules = `declare module 'x';` for every package missing from node_modules (38 real + 9 false-positive string literals; harmless).
+# Totals by code (5,336 errors):
+#      4034 error TS2709
+#      1113 error TS7006
+#        96 error TS2339
+#        54 error TS2347
+#        11 error TS2345
+#        10 error TS2322
+#         4 error TS7031
+#         4 error TS18046
+#         3 error TS2694
+#         2 error TS7052
+#         1 error TS2635
+#         1 error TS2591
+#         1 error TS2554
+#         1 error TS2352
+#         1 error TS2344
+# TS2709 / TS7006 / TS2347 = using an untyped module's export as a type / implicit any from it / type arguments on an untyped call — shim effects by construction.
+# The other 135, triaged: DOM-vs-Node artifacts (setTimeout().unref, Reflect.getMetadata, Express Request/Response/Headers typed as DOM) and values widened to {} / unknown because a Kysely row is 'any' under the shim. 0 errors in the repository's own types.
+
+apps/api/src/common/async-export/async-export.service.ts(105,16): error TS2339: Property 'unref' does not exist on type 'number'.
+apps/api/src/common/async-export/async-export.service.ts(116,28): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+apps/api/src/common/async-export/async-export.service.ts(120,62): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+apps/api/src/common/async-export/async-export.service.ts(122,21): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+apps/api/src/common/async-export/async-export.service.ts(123,46): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+apps/api/src/common/async-export/async-export.service.ts(235,30): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+apps/api/src/common/async-export/operations.controller.ts(36,9): error TS2339: Property 'setHeader' does not exist on type 'Response'.
+apps/api/src/common/async-export/operations.controller.ts(37,9): error TS2339: Property 'setHeader' does not exist on type 'Response'.
+apps/api/src/common/async-export/operations.controller.ts(38,9): error TS2339: Property 'setHeader' does not exist on type 'Response'.
+apps/api/src/common/async-export/operations.controller.ts(39,9): error TS2339: Property 'setHeader' does not exist on type 'Response'.
+apps/api/src/common/async-export/operations.controller.ts(40,9): error TS2339: Property 'setHeader' does not exist on type 'Response'.
+apps/api/src/common/async-export/operations.controller.ts(41,9): error TS2339: Property 'end' does not exist on type 'Response'.
+apps/api/src/common/export-snapshot.interceptor.ts(36,42): error TS2339: Property 'length' does not exist on type '{}'.
+apps/api/src/common/export-snapshot.interceptor.ts(36,107): error TS2554: Expected 0 arguments, but got 1.
+apps/api/src/common/http-compression.ts(16,82): error TS2344: Type '"getHeader"' does not satisfy the constraint 'keyof Response'.
+apps/api/src/common/http-compression.ts(17,21): error TS18046: 'res.getHeader' is of type 'unknown'.
+apps/api/src/common/http-compression.ts(19,38): error TS2339: Property 'accept' does not exist on type 'Headers'.
+apps/api/src/common/http-compression.ts(24,7): error TS7052: Element implicitly has an 'any' type because type 'Headers' has no index signature. Did you mean to call 'req.headers.get'?
+apps/api/src/common/http-compression.ts(25,26): error TS2345: Argument of type 'Response' is not assignable to parameter of type 'Pick<Response, "getHeader">'.
+apps/api/src/common/request-body-limits.ts(23,19): error TS2339: Property 'authorization' does not exist on type 'Headers'.
+apps/api/src/common/request-body-limits.ts(23,36): error TS7052: Element implicitly has an 'any' type because type 'Headers' has no index signature. Did you mean to call 'req.headers.get'?
+apps/api/src/common/request-body-limits.ts(24,32): error TS2339: Property 'cookie' does not exist on type 'Headers'.
+apps/api/src/common/request-body-limits.ts(41,78): error TS2339: Property 'path' does not exist on type 'Request'.
+apps/api/src/common/request-body-limits.ts(42,78): error TS2339: Property 'path' does not exist on type 'Request'.
+apps/api/src/media/media-lifecycle.ts(145,27): error TS2339: Property 'unref' does not exist on type 'number'.
+apps/api/src/media/media-lifecycle.ts(145,60): error TS2339: Property 'unref' does not exist on type 'number'.
+apps/api/src/observability/schema-version.ts(80,179): error TS2339: Property 'unref' does not exist on type 'number'.
+apps/api/src/realtime/platform-live-ops.ts(99,135): error TS2339: Property 'unref' does not exist on type 'number'.
+apps/api/src/realtime/realtime-stream.ts(199,20): error TS2352: Conversion of type '{ id: string; data: { event: EventName; v: number; screens: string[]; payload: unknown; seq: number | null; stream: string; } | { event: EventName; v: number; screens: string[]
+apps/api/src/realtime/realtime.controller.ts(34,5): error TS2322: Type 'PaymentDeviceRooms | null | undefined' is not assignable to type 'PaymentDeviceRooms | null'.
+modules/ai/src/ai-customer-profile/ai-customer-profile-scan.scheduler.ts(45,28): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai-customer-profile/ai-customer-profile-scan.scheduler.ts(45,61): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai-marketing/ai-marketing-send-sweep.ts(166,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai-marketing/ai-marketing-send-sweep.ts(166,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai-voice-transcription/ai-voice-transcription-retention.scheduler.ts(31,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai-voice-transcription/ai-voice-transcription-retention.scheduler.ts(31,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai/ai-control-plane.service.ts(91,61): error TS7031: Binding element 'fn' implicitly has an 'any' type.
+modules/ai/src/ai/ai-control-plane.service.ts(96,67): error TS7031: Binding element 'fn' implicitly has an 'any' type.
+modules/ai/src/ai/ai-control-plane.service.ts(113,71): error TS7031: Binding element 'fn' implicitly has an 'any' type.
+modules/ai/src/ai/ai-trial-sweep.ts(55,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/ai/src/ai/ai-trial-sweep.ts(55,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/analytics/src/owner/owner.kysely.repository.ts(609,76): error TS2635: Type 'any' has no signatures for which the type argument list is applicable.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(58,5): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(58,59): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(58,115): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(89,5): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(89,59): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/checkout/src/mobile-checkout/payment-device-oversight.ts(89,115): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/communications/src/platform-announcements/platform-notice.service.ts(441,28): error TS7031: Binding element '_p' implicitly has an 'any' type.
+modules/communications/src/push/push-providers.ts(19,41): error TS2591: Cannot find name 'node:http2'. Do you need to install type definitions for node? Try `npm i --save-dev @types/node` and then add 'node' to the types field in your tsconfig.
+modules/customers/src/customer-identity/customer-reconciliation.service.ts(241,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/customers/src/customer-identity/customer-reconciliation.service.ts(241,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/customers/src/loyalty/loyalty-reconcile.scheduler.ts(31,213): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/customers/src/loyalty/loyalty-reconcile.scheduler.ts(32,236): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/finance/src/expense.service.ts(173,142): error TS2339: Property 'accountingCode' does not exist on type '{}'.
+modules/memberships/src/membership-renewal.scheduler.ts(36,16): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/payments/src/deposit-reconciliation/deposit-reconciliation.sweep.scheduler.ts(19,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/payments/src/deposit-reconciliation/deposit-reconciliation.sweep.scheduler.ts(19,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/payments/src/hardware-payment/hardware-payment.scheduler.ts(24,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/payments/src/hardware-payment/hardware-payment.scheduler.ts(24,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/platform/src/super-admin-automation/automation-scheduler.ts(37,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/platform/src/super-admin-automation/automation-scheduler.ts(37,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/queue/src/tech-queue/tech-queue-acceptance.scheduler.ts(28,28): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/queue/src/tech-queue/tech-queue-acceptance.scheduler.ts(28,61): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/queue/src/tech/certification-expiry.scheduler.ts(59,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/queue/src/tech/certification-expiry.scheduler.ts(59,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/queue/src/tech/tech.kysely.repository.ts(465,14): error TS2322: Type 'unknown[]' is not assignable to type 'string[]'.
+modules/safety/src/tenant-safety-community/community-moderation.repository.ts(542,55): error TS2339: Property 'value' does not exist on type '{}'.
+modules/super-admin/src/super-admin-billing/billing-cycle.scheduler.ts(42,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-billing/billing-cycle.scheduler.ts(42,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-billing/billing-export.scheduler.ts(44,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-billing/billing-export.scheduler.ts(44,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-customer-data/customer-import.scheduler.ts(47,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-customer-data/customer-import.scheduler.ts(47,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-database/database-snapshot.scheduler.ts(26,15): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-database/database-snapshot.scheduler.ts(26,37): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-database/slow-query-flush.scheduler.ts(39,16): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.controller.ts(58,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.controller.ts(63,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-overview/daily-summaries.scheduler.ts(31,203): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-overview/daily-summaries.scheduler.ts(32,224): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-overview/overview-snapshot.scheduler.ts(51,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-overview/overview-snapshot.scheduler.ts(51,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-queue/super-admin-queue.controller.ts(58,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-queue/super-admin-queue.controller.ts(64,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-queue/super-admin-queue.controller.ts(70,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-scheduled-reports/scheduled-reports.scheduler.ts(43,16): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-security/audit-engine.service.ts(132,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-security/audit-engine.service.ts(132,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-security/retention-executor.scheduler.ts(35,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-security/retention-executor.scheduler.ts(35,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-settlements/super-admin-settlements.controller.ts(33,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-settlements/super-admin-settlements.controller.ts(38,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-settlements/super-admin-settlements.controller.ts(43,9): error TS2339: Property 'set' does not exist on type 'Response'.
+modules/super-admin/src/super-admin-tenant-warnings/tenant-warning-dispatch.scheduler.ts(22,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/super-admin/src/super-admin-tenant-warnings/tenant-warning-dispatch.scheduler.ts(22,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/support/src/help/sla-breach-sweep.scheduler.ts(19,27): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/support/src/help/sla-breach-sweep.scheduler.ts(19,60): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/workforce/src/approvals/approvals.service.ts(219,90): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'string'.
+modules/workforce/src/approvals/approvals.service.ts(219,127): error TS2345: Argument of type 'unknown' is not assignable to parameter of type 'TenantApprovalKind'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(259,32): error TS2345: Argument of type 'string | null' is not assignable to parameter of type 'string'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(261,21): error TS2322: Type 'string | null' is not assignable to type 'string'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(444,109): error TS2322: Type '{}' is not assignable to type 'number'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(448,17): error TS2339: Property 'status' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(448,43): error TS2339: Property 'status' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(450,17): error TS2339: Property 'line_hash' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(450,55): error TS2339: Property 'already_paid_cents' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(450,117): error TS2339: Property 'approved_payable_cents' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(451,44): error TS2339: Property 'id' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(452,54): error TS2339: Property 'id' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(761,85): error TS2345: Argument of type 'Map<unknown, unknown>' is not assignable to parameter of type 'Map<string, string | null>'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(809,69): error TS2345: Argument of type '{} | null' is not assignable to parameter of type 'string | null'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(842,74): error TS2339: Property 'line_hash' does not exist on type '{}'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(1607,71): error TS2345: Argument of type 'Map<unknown, unknown>' is not assignable to parameter of type 'Map<string, string | null>'.
+modules/workforce/src/payroll/payroll-paycheck.service.ts(1644,84): error TS2345: Argument of type 'Map<unknown, unknown>' is not assignable to parameter of type 'Map<string, string | null>'.
+modules/workforce/src/tech-cash-handoff/tech-cash-handoff.repository.ts(110,33): error TS2345: Argument of type '{}' is not assignable to parameter of type 'string'.
+modules/workforce/src/technicians/commission-security.service.ts(13,48): error TS18046: 'x' is of type 'unknown'.
+modules/workforce/src/technicians/commission-security.service.ts(110,40): error TS2345: Argument of type 'ValidationError' is not assignable to parameter of type 'Error'.
+modules/workforce/src/technicians/commission-security.service.ts(111,31): error TS2345: Argument of type 'ValidationError' is not assignable to parameter of type 'Error'.
+modules/workforce/src/turn-queue/turn-queue-day-close.scheduler.ts(25,28): error TS2339: Property 'unref' does not exist on type 'number'.
+modules/workforce/src/turn-queue/turn-queue-day-close.scheduler.ts(25,61): error TS2339: Property 'unref' does not exist on type 'number'.
+packages/database/src/list-query.ts(432,13): error TS2339: Property 'defineMetadata' does not exist on type 'typeof Reflect'.
+packages/database/src/list-query.ts(444,15): error TS2339: Property 'defineMetadata' does not exist on type 'typeof Reflect'.
+packages/database/src/list-query.ts(451,18): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+packages/media/src/media-storage.ts(107,38): error TS2694: Namespace '"node:fs"' has no exported member 'Dirent'.
+packages/observability/src/pino-logger.ts(14,33): error TS2694: Namespace '"pino"' has no exported member 'Logger'.
+packages/observability/src/pino-logger.ts(15,34): error TS2694: Namespace '"pino"' has no exported member 'DestinationStream'.
+packages/observability/src/request-telemetry.ts(135,57): error TS18046: 'exception' is of type 'unknown'.
+packages/observability/src/request-telemetry.ts(151,63): error TS18046: 'exception' is of type 'unknown'.
+packages/observability/src/storage-telemetry.ts(30,63): error TS2339: Property 'byteLength' does not exist on type '{}'.
+packages/permissions/src/guards/validated-body.ts(42,63): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+packages/security/src/nest/anon-rate-limit.guard.ts(27,28): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+packages/security/src/nest/anon-rate-limit.guard.ts(27,84): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+packages/security/src/nest/code-lookup-limit.interceptor.ts(32,26): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.
+packages/security/src/nest/code-lookup-limit.interceptor.ts(35,26): error TS2339: Property 'getMetadata' does not exist on type 'typeof Reflect'.

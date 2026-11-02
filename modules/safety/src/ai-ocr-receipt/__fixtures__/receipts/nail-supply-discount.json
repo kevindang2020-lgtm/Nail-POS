@@ -1,0 +1,246 @@
+{
+ "name": "nail-supply-discount",
+ "type": "invoice",
+ "condition": "discount",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a 10 % discount: subtotal − discount + tax = total reconciles to the cent; high amount → review",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "ABC Nail Supply Inc.",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-12",
+       "Confidence": 98.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "A-77812",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$640.00",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "DISCOUNT",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$64.00",
+       "Confidence": 97.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$38.16",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$614.16",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Invoice. Bill to Lotus Nails. 10% loyalty discount applied. Amount due",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "OPI Gel Color 15ml",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$360.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "24",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$15.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Acetone 1 gal",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$120.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "6",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$20.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Nail files 100pk",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$160.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "4",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$40.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "ABC Nail Supply Inc.",
+  "date": "2026-10-12",
+  "totalCents": 61416,
+  "subtotalCents": 64000,
+  "taxCents": 3816,
+  "discountCents": 6400,
+  "documentNumber": "A-77812",
+  "lines": 3,
+  "type": "invoice",
+  "validation": "valid",
+  "reviewPriority": "high"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

@@ -1,0 +1,162 @@
+{
+  "label": "e2e",
+  "at": "2026-10-29T21:33:18.640Z",
+  "results": [
+    {
+      "step": "terminals: the four physical KPIs are the server counts; Tap to Pay is counted apart",
+      "ok": true,
+      "detail": "physical 5 · online 1 · attention 3 (1 offline · 1 never tested · 1 no serial) · phones 2/6",
+      "ms": 112
+    },
+    {
+      "step": "terminals: every terminal the KPIs count is listed — incl. the no-location reader the old list hid",
+      "ok": true,
+      "detail": "5 rows · first: Pedicure Lounge Mini",
+      "ms": 73
+    },
+    {
+      "step": "terminals: search by serial, then status filter \"Needs attention\" — server answers, Clear filters resets",
+      "ok": true,
+      "detail": "serial → 1 · attention → 3 · cleared → 5",
+      "ms": 2060
+    },
+    {
+      "step": "terminals: details explain why (troubleshooting), Test Connection reports the answer without charging",
+      "ok": true,
+      "detail": "Offline — Check power and network, then press Test Connection. · test: Not probed: The terminal did not answer — check that it is powered on, online an",
+      "ms": 936
+    },
+    {
+      "step": "terminals: disable asks for a reason inline, is audited, and moves the KPI",
+      "ok": true,
+      "detail": "disabled 1 → 2 · audit pos_settings_terminal_disabled",
+      "ms": 1835
+    },
+    {
+      "step": "terminals: Pair Terminal wizard (model → identify → register → verify) — the new reader lands on Page 1, unverified",
+      "ok": true,
+      "detail": "verify: Could not verify the connection · first row: Nail Bar Flex · note: Nail Bar Flex paired but not verified — see Needs Attention.\nView devi",
+      "ms": 1309
+    },
+    {
+      "step": "tap to pay: revoked phones are listed apart from active ones; revoke needs a reason and is final",
+      "ok": true,
+      "detail": "6 phones · iphone-reg-0001 revoked · re-approve → 409 (never auto-reactivated)",
+      "ms": 1881
+    },
+    {
+      "step": "payment activity: payment → ticket → device → customer; a payment with no device says \"Not linked\"",
+      "ok": true,
+      "detail": "Card payment $81.00 · Oct 29, 1:38 PM · ✕ · Status · Approved approved · Amount",
+      "ms": 1864
+    },
+    {
+      "step": "routing: Terminal-Driven ↔ Front Desk Manual is confirmed, saved, audited, and shows who changed it",
+      "ok": true,
+      "detail": "mode → front_desk · Last changed by Linh Owner · Oct 29, 5:32 PM",
+      "ms": 1119
+    },
+    {
+      "step": "technician: no pair / routing / revoke controls; the API refuses the change",
+      "ok": true,
+      "detail": "pair button 0 · routing PATCH 403",
+      "ms": 1601
+    },
+    {
+      "step": "gift cards: five KPIs are the server aggregates over every card; liability = the ledger-backed balances",
+      "ok": true,
+      "detail": "liability 331700 (db 331700) · active 39 · issued 487500 · redeemed 156700 · total 50",
+      "ms": 89
+    },
+    {
+      "step": "gift cards: only masked identifiers; the list pages on the server, newest issued first",
+      "ok": true,
+      "detail": "11 rows on page 1 · pager \"Showing 1–11 of 53 · Page 1 of 5 ‹ Previous 1 2 3 4 5 Next ›\"",
+      "ms": 73
+    },
+    {
+      "step": "gift cards: universal search — recipient phone in any format finds Mai Tran's card (purchaser John Smith)",
+      "ok": true,
+      "detail": " · •••• 7919",
+      "ms": 546
+    },
+    {
+      "step": "gift cards: the detail ledger shows the worked example — $100 issued, $65 redeemed, $35 left",
+      "ok": true,
+      "detail": "Balance $35.00 Active",
+      "ms": 639
+    },
+    {
+      "step": "gift cards: status tab Void + date field filter show chips; Clear All resets",
+      "ok": true,
+      "detail": "void 2 · cleared",
+      "ms": 1082
+    },
+    {
+      "step": "issue: payment-first — purchaser required, amount within limits, a double tap makes ONE card, number shown once",
+      "ok": true,
+      "detail": "one card (53 → 54) · pending_payment · number shown once (…6158) · → /checkout?ticket=58e6c699-851…",
+      "ms": 2860
+    },
+    {
+      "step": "issue: unpaid card carries no liability; after Checkout takes the payment it is Active on Page 1 with its ledger",
+      "ok": true,
+      "detail": "liability 331700 → 341700 · ledger activate",
+      "ms": 1557
+    },
+    {
+      "step": "check balance: the protected lookup answers masked for the exact number only",
+      "ok": true,
+      "detail": "partial number → \"No card matches\"",
+      "ms": 889
+    },
+    {
+      "step": "front desk cannot void (no button, API 403)",
+      "ok": true,
+      "detail": "void button 0 · API 403",
+      "ms": 875
+    },
+    {
+      "step": "manager: reload opens its own ticket (value only after payment); void needs a reason, keeps history, zeroes the balance",
+      "ok": true,
+      "detail": "ledger activate:10000 hold:2500 adjust:-10000",
+      "ms": 5120
+    },
+    {
+      "step": "empty salon: honest empty states for both screens, no fake $0 rows, no errors",
+      "ok": true,
+      "detail": "No register | No gift cards yet",
+      "ms": 3122
+    },
+    {
+      "step": "vietnamese: both screens switch language without losing state",
+      "ok": true,
+      "detail": "SỐ DƯ CÒN NỢ · CẦN XỬ LÝ",
+      "ms": 3230
+    },
+    {
+      "step": "no page errors across the run",
+      "ok": true,
+      "detail": "none",
+      "ms": 61
+    }
+  ],
+  "errors": [],
+  "unhandled": [
+    {
+      "route": "POST /auth/session-activity",
+      "n": 6
+    }
+  ],
+  "simulated": [
+    "SIMULATED test term_cp_00002 → false",
+    "SIMULATED disable term_cp_00004",
+    "SIMULATED pair term_482913_7rc7",
+    "SIMULATED rename term_482913_7rc7",
+    "SIMULATED test term_482913_7rc7 → false",
+    "SIMULATED revoke iphone-reg-0001",
+    "SIMULATED routing → front_desk",
+    "SIMULATED checkout payment 58e6c699-851f-48b4-8045-c032ab768ea5 (1)",
+    "SIMULATED gift-card lookup → miss"
+  ]
+}

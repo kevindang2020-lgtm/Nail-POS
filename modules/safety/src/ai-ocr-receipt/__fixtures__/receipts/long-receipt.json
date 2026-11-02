@@ -1,0 +1,1701 @@
+{
+ "name": "long-receipt",
+ "type": "receipt",
+ "condition": "long",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a 40-line receipt: every line kept, the line sum reconciles with the subtotal",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Beauty Supply Warehouse",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-03",
+       "Confidence": 97.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$193.75",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$12.84",
+       "Confidence": 97.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$206.59",
+       "Confidence": 98.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Thank you for your purchase. Subtotal",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 01",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 02",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 03",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 04",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 05",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 06",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 07",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 08",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 09",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 10",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 11",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 12",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 13",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 14",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 15",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 16",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 17",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 18",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 19",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 20",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 21",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 22",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 23",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 24",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 26",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 27",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 28",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 29",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 30",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 31",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 32",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 33",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 34",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$7.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 35",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$8.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 36",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 37",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2.50",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 38",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$3.75",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 39",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$5.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       },
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Item 40",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$6.25",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Beauty Supply Warehouse",
+  "date": "2026-10-03",
+  "totalCents": 20659,
+  "subtotalCents": 19375,
+  "taxCents": 1284,
+  "lines": 40,
+  "type": "receipt",
+  "validation": "valid"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

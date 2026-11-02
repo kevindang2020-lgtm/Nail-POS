@@ -1,0 +1,166 @@
+{
+ "name": "multi-page-invoice",
+ "type": "invoice",
+ "condition": "multi-page",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "a two-page invoice in one document: the totals sit on page 2; pages = 2 (§17); high amount → review",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Salon Equipment Direct LLC",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-05",
+       "Confidence": 97.5
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "INV-21004",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$1,180.00",
+       "Confidence": 98.0
+      },
+      "PageNumber": 2
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$78.18",
+       "Confidence": 97.0
+      },
+      "PageNumber": 2
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$1,258.18",
+       "Confidence": 98.6
+      },
+      "PageNumber": 2
+     },
+     {
+      "Type": {
+       "Text": "DUE_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-11-04",
+       "Confidence": 95.0
+      },
+      "PageNumber": 2
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Invoice. Bill to Lotus Nails. Net 30. Amount due. Page 1 of 2",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Manicure table — Model MT40",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$1,180.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "2",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$295.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Salon Equipment Direct LLC",
+  "date": "2026-10-05",
+  "totalCents": 125818,
+  "subtotalCents": 118000,
+  "taxCents": 7818,
+  "documentNumber": "INV-21004",
+  "lines": 1,
+  "type": "invoice",
+  "validation": "valid",
+  "pages": 2,
+  "reviewPriority": "high"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

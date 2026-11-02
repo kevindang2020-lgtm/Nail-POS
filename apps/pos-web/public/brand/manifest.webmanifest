@@ -1,0 +1,13 @@
+{
+  "name": "AI PowerSalon",
+  "short_name": "AI PowerSalon",
+  "description": "Smarter Salon. Stronger Business.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F7EFE3",
+  "theme_color": "#A96F22",
+  "icons": [
+    { "src": "/brand/app-icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/brand/app-icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" }
+  ]
+}

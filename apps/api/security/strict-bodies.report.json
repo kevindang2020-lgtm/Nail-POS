@@ -1,0 +1,225 @@
+{
+ "generated": "STRICT_BODIES_REPORT=1 vitest run src/common/strict-bodies.vitest.spec.ts",
+ "calls": 2312,
+ "unresolvedCalls": 103,
+ "strict": 1246,
+ "total": 1268,
+ "nonStrict": [
+  {
+   "key": "PATCH /tenant/ai/receptionist/settings",
+   "verdict": "open-schema",
+   "callers": 1,
+   "file": "modules/ai/src/voice-booking/tenant-receptionist.controller.ts",
+   "handler": "TenantReceptionistController.updateSettings",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/appointments",
+   "verdict": "unverifiable",
+   "callers": 3,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-gateway.controller.ts",
+   "handler": "AiReceptionistGatewayController.book",
+   "bad": [],
+   "unverifiable": [
+    "apps/api/scripts/live-phase4-booking-verification.mjs:298",
+    "apps/api/scripts/live-phase4-booking-verification.mjs:310"
+   ]
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/appointments/:appointmentId/cancel",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-gateway.controller.ts",
+   "handler": "AiReceptionistGatewayController.cancel",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/appointments/:appointmentId/reschedule",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-gateway.controller.ts",
+   "handler": "AiReceptionistGatewayController.reschedule",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/customers/lookup-or-create",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-gateway.controller.ts",
+   "handler": "AiReceptionistGatewayController.lookupOrCreateCustomer",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/handoff",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-gateway.controller.ts",
+   "handler": "AiReceptionistGatewayController.handoff",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/verification/dtmf",
+   "verdict": "unverifiable",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-verification.controller.ts",
+   "handler": "AiReceptionistVerificationController.dtmf",
+   "bad": [],
+   "unverifiable": [
+    "path mentioned in a client but the call was not parsed"
+   ]
+  },
+  {
+   "key": "POST /api/ai-receptionist/v1/verification/send",
+   "verdict": "unverifiable",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/ai-receptionist-verification.controller.ts",
+   "handler": "AiReceptionistVerificationController.send",
+   "bad": [],
+   "unverifiable": [
+    "path mentioned in a client but the call was not parsed"
+   ]
+  },
+  {
+   "key": "POST /integrations/inbound/:connectionId",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/super-admin/src/super-admin-integrations/integration-webhook.controller.ts",
+   "handler": "IntegrationWebhookInboundController.receive",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /oauth/authorize",
+   "verdict": "unverifiable",
+   "callers": 1,
+   "file": "apps/api/src/oauth/oauth.controller.ts",
+   "handler": "OAuthController.approve",
+   "bad": [],
+   "unverifiable": [
+    "apps/pos-web/src/screens/OAuthConsentScreen.tsx:21"
+   ]
+  },
+  {
+   "key": "POST /oauth/revoke",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "apps/api/src/oauth/oauth.controller.ts",
+   "handler": "OAuthController.revoke",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /oauth/token",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "apps/api/src/oauth/oauth.controller.ts",
+   "handler": "OAuthController.token",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /pos/ai-marketing/audience/preview",
+   "verdict": "open-schema",
+   "callers": 2,
+   "file": "modules/ai/src/ai-marketing/ai-marketing.controller.ts",
+   "handler": "AiMarketingController.previewAudience",
+   "bad": [],
+   "unverifiable": [
+    "apps/pos-web/src/screens/POSAIAudienceBuilderScreen.tsx:48",
+    "apps/pos-web/src/screens/POSAICampaignBuilderScreen.tsx:57"
+   ]
+  },
+  {
+   "key": "POST /voice-transcription/webhook",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts",
+   "handler": "VoiceTranscriptionWebhookController.webhook",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /voice/calls/:callId/outcome",
+   "verdict": "no-caller",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/voice-booking.controller.ts",
+   "handler": "VoiceBookingController.recordOutcome",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /voice/tool",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/ai/src/voice-booking/voice-booking.controller.ts",
+   "handler": "VoiceBookingController.tool",
+   "bad": [],
+   "unverifiable": [
+    "path mentioned in a client but the call was not parsed"
+   ]
+  },
+  {
+   "key": "POST /webhooks/bank/:token",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.controller.ts",
+   "handler": "BankWebhookController.ingest",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /webhooks/payments/:processor",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/payments/src/payments/payment-webhook.controller.ts",
+   "handler": "PaymentWebhookController.handle",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /webhooks/twilio/booking-verification/status",
+   "verdict": "unverifiable",
+   "callers": 0,
+   "file": "modules/booking/src/customer-booking/booking-verification-webhook.controller.ts",
+   "handler": "BookingVerificationWebhookController.status",
+   "bad": [],
+   "unverifiable": [
+    "path mentioned in a client but the call was not parsed"
+   ]
+  },
+  {
+   "key": "POST /webhooks/twilio/sms/inbound",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/communications/src/messaging-inbound/twilio-inbound.controller.ts",
+   "handler": "TwilioInboundController.inbound",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "POST /webhooks/twilio/sms/status",
+   "verdict": "open-schema",
+   "callers": 0,
+   "file": "modules/communications/src/messaging-inbound/twilio-inbound.controller.ts",
+   "handler": "TwilioInboundController.status",
+   "bad": [],
+   "unverifiable": []
+  },
+  {
+   "key": "PUT /community/settings",
+   "verdict": "open-schema",
+   "callers": 2,
+   "file": "modules/safety/src/tenant-safety-community/community.controller.ts",
+   "handler": "CommunityController.updateSettings",
+   "bad": [],
+   "unverifiable": [
+    "apps/pos-web/src/api/posCommunityApi.ts:87"
+   ]
+  }
+ ]
+}

@@ -1,0 +1,448 @@
+// invoices-ledger.repository.ts — Invoices mandate (Oct 29 2026): the server side of POS Payments & Money → Invoices
+// (/tenant/payments/invoices). Raw, parameterised SQL; the tenant is the session's and is written in every statement.
+//
+// ROOT CAUSES FIXED HERE (spec §15):
+//   "Invalid Date"   until Oct 23 the repository sent `String(issue_date).slice(0, 10)` — node-postgres hands a DATE back as
+//                    a JS Date, so the API answered "Wed Oct 28" and the POS built `new Date("Wed Oct 28T00:00:00")` →
+//                    Invalid Date. Dates now leave the server ONLY as 'YYYY-MM-DD' (or null), and the POS formats them with
+//                    one timezone-free helper that shows "Not set" for a missing value (never "Invalid Date").
+//   "—" customer     the New Invoice form never sent a customer, so the invoices were genuinely unlinked. New invoices
+//                    require a customer chosen from this salon's records; the bill-to snapshot (name / phone / email as
+//                    they were) is stored with the invoice; an older unlinked invoice says "Unlinked customer" and a
+//                    manager can link it (audited) — the system never guesses an identity from a name.
+//   Mark Paid        was a status toggle with no money. Payment is now an immutable invoice_payments entry (amount ≤
+//                    balance, idempotent), and the status follows the balance: partially_paid, then paid.
+//
+// DEFINITIONS (spec §10; INVOICE_DEFINITIONS in the handoff):
+//   balance          total − Σ posted invoice_payments (integer cents)
+//   Overdue          DERIVED: status sent / partially_paid, a due date before today (salon time) and a balance > 0.
+//                    The list, the filter and the KPIs use this one definition; it is never stored.
+//   Outstanding      Σ balance of issued, non-void invoices (sent / partially_paid) with a balance, in scope
+//   Paid             cash collected = Σ invoice_payments by PAYMENT date in the period (+ the count of fully paid invoices)
+//   Drafts / Total   counts in scope (Total includes void, shown separately)
+//   scope            the selected period on the selected date basis (Issued by default) + search + amount range; the
+//                    status filter narrows the list only, so the cards keep describing the whole period.
+import { sql, type Kysely, type RawBuilder } from 'kysely';
+import { logException } from '@aipowersalon/observability';
+import { assertTransition } from '@aipowersalon/database';
+import { INVOICE } from '../payments-lifecycles';
+import { normalizeLines, nextInvoiceNumber, type InvoiceLineInput } from './invoices.dto';
+import {
+  FinanceError, isUuid, N, iso, ymd, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
+  positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, type AuditRecorder, type FinanceCtx, type Period, type PageReq,
+} from '../finance-screens/finance-scope';
+
+export const INVOICE_LIST_STATUSES = ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'void'] as const;
+export type InvoiceListStatus = (typeof INVOICE_LIST_STATUSES)[number];
+export const INVOICE_DATE_BASES = ['issued', 'due', 'created', 'paid'] as const;
+export const INVOICE_SORTS = ['created_desc', 'created_asc', 'issue_desc', 'issue_asc', 'due_asc', 'due_desc', 'amount_desc', 'amount_asc', 'customer_asc'] as const;
+export const PAYMENT_METHODS = ['cash', 'check', 'card_external', 'bank_transfer', 'other'] as const;
+export const MAX_INVOICE_CENTS = 100_000_000;
+
+export interface InvoiceFilters {
+  period: Period; basis: (typeof INVOICE_DATE_BASES)[number]; q: string; status?: InvoiceListStatus; amountMin?: number; amountMax?: number;
+  sort: (typeof INVOICE_SORTS)[number]; customerId?: string;
+}
+const phoneShown = (display: unknown, normalized: unknown): string | null => {
+  const d = String(display ?? '').trim(); if (d) return d;
+  const n = String(normalized ?? '').replace(/\D/g, '');
+  if (n.length === 11 && n.startsWith('1')) return `(${n.slice(1, 4)}) ${n.slice(4, 7)}-${n.slice(7)}`;
+  if (n.length === 10) return `(${n.slice(0, 3)}) ${n.slice(3, 6)}-${n.slice(6)}`;
+  return n || null;
+};
+
+export class InvoicesLedgerRepository {
+  constructor(private readonly db: Kysely<any>, private readonly auditor: AuditRecorder | null = null) {}
+  private log = (ctx: FinanceCtx) => (e: unknown) => logException(e, { where: 'invoices-ledger.audit', tenantId: ctx.tenantId });
+
+  async period(ctx: FinanceCtx, q: { preset?: unknown; from?: unknown; to?: unknown }): Promise<Period> {
+    return resolvePeriod(q, await salonTimeZone(this.db, ctx.tenantId), { defaultPreset: 'all', allowAll: true });
+  }
+  filters(period: Period, q: Record<string, unknown>): InvoiceFilters {
+    const amt = (v: unknown, field: string) => {
+      if (v == null || v === '') return undefined;
+      const n = Number(v); if (!Number.isInteger(n) || n < 0 || n > MAX_INVOICE_CENTS) throw new FinanceError('Enter a valid amount.', 'VALIDATION_FAILED', 400, { field });
+      return n;
+    };
+    const amountMin = amt(q.amountMin, 'amountMin'), amountMax = amt(q.amountMax, 'amountMax');
+    if (amountMin != null && amountMax != null && amountMin > amountMax) throw new FinanceError('The minimum amount must not be more than the maximum.', 'AMOUNT_RANGE_INVALID');
+    const customerId = typeof q.customerId === 'string' && q.customerId ? q.customerId : undefined;
+    if (customerId && !isUuid(customerId)) throw new FinanceError('Some fields are invalid.', 'VALIDATION_FAILED', 400, { field: 'customerId' });
+    return {
+      period, basis: oneOf(q.dateField, INVOICE_DATE_BASES, 'dateField') ?? 'issued', q: searchText(q.search), status: oneOf(q.status, INVOICE_LIST_STATUSES, 'status'),
+      amountMin, amountMax, sort: oneOf(q.sort, INVOICE_SORTS, 'sort') ?? 'created_desc', customerId,
+    };
+  }
+
+  /** Every invoice of the tenant with its payments, balance, derived display status and the customer as linked. */
+  private base(ctx: FinanceCtx, tz: string) {
+    const T = ctx.tenantId;
+    return sql`with pay as (select ip.invoice_id, coalesce(sum(ip.amount_cents), 0)::bigint as paid, count(*)::int as n, max(ip.paid_on) as last_paid_on
+          from invoice_payments ip where ip.tenant_id = ${T} group by ip.invoice_id),
+      ib as (
+        select i.id, i.invoice_number, i.status, i.issue_date, i.due_date, to_char(i.issue_date, 'YYYY-MM-DD') as issue_ymd, to_char(i.due_date, 'YYYY-MM-DD') as due_ymd, i.subtotal_cents, i.tax_cents, i.discount_cents, i.total_cents, i.notes, i.created_at, i.updated_at,
+               i.sent_at, i.paid_at, i.voided_at, i.void_reason, i.customer_id, i.bill_to_name, i.bill_to_phone, i.bill_to_phone_digits, i.bill_to_email, i.created_by_user_id,
+               c.id as linked_customer_id, c.full_name as customer_name, c.phone_display as customer_phone_display, c.normalized_phone as customer_phone, c.email as customer_email,
+               c.archived_at as customer_archived_at,
+               coalesce(pay.paid, 0)::bigint as paid_cents, coalesce(pay.n, 0)::int as payments_n, pay.last_paid_on,
+               (i.total_cents - coalesce(pay.paid, 0))::bigint as balance_cents,
+               case when i.status in ('sent', 'partially_paid') and i.due_date is not null and i.due_date < (now() at time zone ${tz})::date
+                         and i.total_cents - coalesce(pay.paid, 0) > 0 then 'overdue' else i.status end as display_status,
+               coalesce(c.full_name, i.bill_to_name, '') as sort_name
+        from invoices i
+        left join customers c on c.id = i.customer_id and c.tenant_id = i.tenant_id
+        left join pay on pay.invoice_id = i.id
+        where i.tenant_id = ${T})`;
+  }
+  private search(raw: string): { where: RawBuilder<boolean>; rank: RawBuilder<number> } {
+    if (!raw) return { where: sql<boolean>`true`, rank: sql<number>`0` };
+    const lower = raw.toLowerCase(), upper = raw.toUpperCase().replace(/\s+/g, ''), digits = digitsOf(raw), hasLetters = /[a-z]/i.test(raw);
+    // an all-digit query shorter than a phone number is an invoice-number fragment ("0002" → INV-0002), never a phone match
+    const numberish = /^(inv-?)?\d{1,6}$/i.test(raw.trim());
+    const asNumber = numberish ? `INV-${digits.padStart(4, '0')}` : upper;
+    const numExact = sql<boolean>`(upper(ib.invoice_number) = ${upper} or upper(ib.invoice_number) = ${asNumber})`;
+    const numPartial = sql<boolean>`upper(ib.invoice_number) like ${likeOf(numberish ? digits : upper)}`;
+    const conds: RawBuilder<boolean>[] = [numExact, numPartial];
+    let exactContact: RawBuilder<boolean> = sql<boolean>`false`, exactName: RawBuilder<boolean> = sql<boolean>`false`;
+    if (!hasLetters && digits.length >= 7) {
+      const phoneLike = sql<boolean>`(coalesce(ib.bill_to_phone_digits, '') like ${likeOf(digits)} or regexp_replace(coalesce(ib.customer_phone, ''), '\\D', '', 'g') like ${likeOf(digits)})`;
+      conds.push(phoneLike);
+      // exact = the same number once the country code is set aside (8565551234 ≡ +1 856 555 1234)
+      const tail = digits.length > 10 ? digits.slice(-10) : digits;
+      exactContact = sql<boolean>`(right(coalesce(ib.bill_to_phone_digits, ''), ${tail.length}) = ${tail} or right(regexp_replace(coalesce(ib.customer_phone, ''), '\\D', '', 'g'), ${tail.length}) = ${tail})`;
+    }
+    if (raw.includes('@')) {
+      conds.push(sql<boolean>`(lower(coalesce(ib.bill_to_email, '')) like ${likeOf(lower)} or lower(coalesce(ib.customer_email, '')) like ${likeOf(lower)})`);
+      exactContact = sql<boolean>`(lower(coalesce(ib.bill_to_email, '')) = ${lower} or lower(coalesce(ib.customer_email, '')) = ${lower})`;
+    } else if (hasLetters && raw.length >= 2) {
+      conds.push(sql<boolean>`(coalesce(ib.bill_to_name, '') ilike ${likeOf(raw)} or coalesce(ib.customer_name, '') ilike ${likeOf(raw)})`);
+      exactName = sql<boolean>`(lower(coalesce(ib.bill_to_name, '')) = ${lower} or lower(coalesce(ib.customer_name, '')) = ${lower})`;
+    }
+    void prefixOf;
+    return { where: sql<boolean>`(${sql.join(conds, sql` or `)})`, rank: sql<number>`case when ${numExact} then 0 when ${exactContact} then 1 when ${exactName} then 2 else 3 end` };
+  }
+  private where(f: InvoiceFilters, opts: { withStatus: boolean }) {
+    const p = f.period;
+    const date = f.basis === 'due' ? dateInPeriod(sql`ib.due_date`, p) : f.basis === 'created' ? tsInPeriod(sql`ib.created_at`, p)
+      : f.basis === 'paid' ? tsInPeriod(sql`ib.paid_at`, p) : dateInPeriod(sql`ib.issue_date`, p);
+    const s = this.search(f.q);
+    const parts: RawBuilder<boolean>[] = [date, s.where];
+    if (opts.withStatus && f.status) parts.push(sql<boolean>`ib.display_status = ${f.status}`);
+    if (f.amountMin != null) parts.push(sql<boolean>`ib.total_cents >= ${f.amountMin}`);
+    if (f.amountMax != null) parts.push(sql<boolean>`ib.total_cents <= ${f.amountMax}`);
+    if (f.customerId) parts.push(sql<boolean>`ib.customer_id = ${f.customerId}::uuid`);
+    return { where: sql<boolean>`${sql.join(parts, sql` and `)}`, rank: s.rank };
+  }
+  private order(f: InvoiceFilters) {
+    return {
+      created_desc: sql`ib.created_at desc, ib.id desc`, created_asc: sql`ib.created_at asc, ib.id asc`, issue_desc: sql`ib.issue_date desc, ib.created_at desc, ib.id desc`,
+      issue_asc: sql`ib.issue_date asc, ib.created_at asc, ib.id asc`, due_asc: sql`ib.due_date asc nulls last, ib.id desc`, due_desc: sql`ib.due_date desc nulls last, ib.id desc`,
+      amount_desc: sql`ib.total_cents desc, ib.id desc`, amount_asc: sql`ib.total_cents asc, ib.id desc`, customer_asc: sql`lower(ib.sort_name) asc, ib.created_at desc, ib.id desc`,
+    }[f.sort];
+  }
+  row(r: any) {
+    const linked = r.linked_customer_id != null;
+    const customerState = linked ? (r.customer_archived_at ? 'archived' : 'linked') : r.customer_id ? 'missing' : r.bill_to_name ? 'snapshot_only' : 'unlinked';
+    const status = String(r.status), display = String(r.display_status);
+    const balance = N(r.balance_cents);
+    return {
+      id: String(r.id), invoiceNumber: String(r.invoice_number), status, displayStatus: display as InvoiceListStatus,
+      issueDate: ymd(r.issue_ymd), dueDate: ymd(r.due_ymd), createdAt: iso(r.created_at), sentAt: iso(r.sent_at), paidAt: iso(r.paid_at), voidedAt: iso(r.voided_at), voidReason: r.void_reason ?? null,
+      subtotalCents: N(r.subtotal_cents), discountCents: N(r.discount_cents), taxCents: N(r.tax_cents), totalCents: N(r.total_cents), paidCents: N(r.paid_cents), balanceCents: status === 'void' ? 0 : balance,
+      payments: N(r.payments_n),
+      customer: {
+        id: linked ? String(r.linked_customer_id) : null, state: customerState as 'linked' | 'archived' | 'missing' | 'snapshot_only' | 'unlinked',
+        // the bill-to snapshot is what the invoice was issued to; the live profile name is shown beside it when they differ
+        name: (r.bill_to_name ?? r.customer_name ?? null) as string | null, profileName: linked ? String(r.customer_name || '') : null,
+        phone: r.bill_to_phone ?? phoneShown(r.customer_phone_display, r.customer_phone), email: r.bill_to_email ?? r.customer_email ?? null,
+      },
+      notes: r.notes ?? null,
+      actions: {
+        edit: status === 'draft', send: status === 'draft', recordPayment: (status === 'sent' || status === 'partially_paid') && balance > 0,
+        void: (status === 'draft' || status === 'sent') && N(r.payments_n) === 0, linkCustomer: !linked,
+      },
+    };
+  }
+
+  async list(ctx: FinanceCtx, f: InvoiceFilters, pr: PageReq) {
+    const tz = f.period.tz; const w = this.where(f, { withStatus: true });
+    const total = N((await sql<any>`${this.base(ctx, tz)} select count(*)::int as n from ib where ${w.where}`.execute(this.db)).rows[0]?.n);
+    const pg = clampPage(pr, total);
+    const rows = (await sql<any>`${this.base(ctx, tz)} select ib.* from ib where ${w.where} order by ${f.q ? sql`${w.rank} asc, ${this.order(f)}` : this.order(f)} limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
+    return { items: rows.map((r: any) => this.row(r)), total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount };
+  }
+
+  async summary(ctx: FinanceCtx, f: InvoiceFilters) {
+    const T = ctx.tenantId, tz = f.period.tz; const w = this.where(f, { withStatus: false });
+    const k = (await sql<any>`${this.base(ctx, tz)} select count(*)::int as total, count(*) filter (where ib.status = 'void')::int as void_n,
+        count(*) filter (where ib.status = 'draft')::int as drafts, coalesce(sum(ib.total_cents) filter (where ib.status = 'draft'), 0)::bigint as draft_cents,
+        count(*) filter (where ib.status in ('sent', 'partially_paid') and ib.balance_cents > 0)::int as outstanding_n,
+        coalesce(sum(ib.balance_cents) filter (where ib.status in ('sent', 'partially_paid') and ib.balance_cents > 0), 0)::bigint as outstanding,
+        count(*) filter (where ib.display_status = 'overdue')::int as overdue_n, coalesce(sum(ib.balance_cents) filter (where ib.display_status = 'overdue'), 0)::bigint as overdue_cents,
+        count(*) filter (where ib.status = 'paid')::int as paid_n, count(*) filter (where ib.status = 'partially_paid')::int as partial_n,
+        count(*) filter (where ib.display_status = 'sent')::int as sent_n
+      from ib where ${w.where}`.execute(this.db)).rows[0] || {};
+    // cash collected is by PAYMENT date (whatever the list's date basis) — the card says so
+    const cash = (await sql<any>`select coalesce(sum(ip.amount_cents), 0)::bigint as cents, count(*)::int as n from invoice_payments ip where ip.tenant_id = ${T} and ${dateInPeriod(sql`ip.paid_on`, f.period)}`.execute(this.db)).rows[0] || {};
+    return {
+      period: f.period, dateBasis: f.basis, scope: f.q || f.amountMin != null || f.amountMax != null ? 'period_and_filters' : 'period',
+      kpis: {
+        outstandingCents: N(k.outstanding), outstandingInvoices: N(k.outstanding_n), overdueInvoices: N(k.overdue_n), overdueCents: N(k.overdue_cents),
+        cashCollectedCents: N(cash.cents), paymentsRecorded: N(cash.n), paidInvoices: N(k.paid_n), partiallyPaidInvoices: N(k.partial_n),
+        drafts: N(k.drafts), draftCents: N(k.draft_cents), total: N(k.total), voided: N(k.void_n), sent: N(k.sent_n),
+      },
+      dataAsOf: new Date().toISOString(),
+    };
+  }
+
+  async detail(ctx: FinanceCtx, id: string) {
+    if (!isUuid(id)) return null;
+    const tz = await salonTimeZone(this.db, ctx.tenantId);
+    const r = (await sql<any>`${this.base(ctx, tz)} select ib.* from ib where ib.id = ${id}::uuid`.execute(this.db)).rows[0];
+    if (!r) return null;
+    const T = ctx.tenantId;
+    const lines = (await sql<any>`select id, description, quantity, unit_price_cents, line_total_cents, position from invoice_lines where tenant_id = ${T} and invoice_id = ${id}::uuid order by position asc, id asc`.execute(this.db)).rows;
+    const payments = (await sql<any>`select ip.id, ip.amount_cents, to_char(ip.paid_on, 'YYYY-MM-DD') as paid_on, ip.method, ip.reference, ip.note, ip.created_at, coalesce(u.full_name, u.email) as recorded_by
+      from invoice_payments ip left join users u on u.id = ip.recorded_by_user_id where ip.tenant_id = ${T} and ip.invoice_id = ${id}::uuid order by ip.created_at asc, ip.id asc`.execute(this.db)).rows;
+    return {
+      invoice: this.row(r),
+      lines: lines.map((l: any) => ({ id: String(l.id), description: String(l.description), quantity: N(l.quantity), unitPriceCents: N(l.unit_price_cents), lineTotalCents: N(l.line_total_cents), position: N(l.position) })),
+      payments: payments.map((p: any) => ({ id: String(p.id), amountCents: N(p.amount_cents), paidOn: ymd(p.paid_on), method: String(p.method), reference: p.reference ?? null, note: p.note ?? null, createdAt: iso(p.created_at), recordedBy: p.recorded_by ?? null })),
+      delivery: { email: 'not_connected', sms: 'not_connected', note: 'Invoice delivery to customers is not connected. Sending marks the invoice issued; share the PDF with the customer.' },
+    };
+  }
+
+  /** Customer lookup for New Invoice / Link Customer: this salon's live customers by name, phone or email. */
+  async customerLookup(ctx: FinanceCtx, raw: unknown) {
+    const q = searchText(raw); if (q.length < 2) return { items: [] };
+    const T = ctx.tenantId, lower = q.toLowerCase(), digits = digitsOf(q), hasLetters = /[a-z]/i.test(q);
+    const conds: RawBuilder<boolean>[] = [];
+    if (hasLetters && !q.includes('@')) conds.push(sql<boolean>`c.full_name ilike ${likeOf(q)}`);
+    if (q.includes('@')) conds.push(sql<boolean>`lower(coalesce(c.email, '')) like ${likeOf(lower)}`);
+    if (!hasLetters && digits.length >= 4) conds.push(sql<boolean>`regexp_replace(coalesce(c.normalized_phone, ''), '\\D', '', 'g') like ${likeOf(digits)}`);
+    if (!conds.length) return { items: [] };
+    const rows = (await sql<any>`select c.id, c.full_name, c.phone_display, c.normalized_phone, c.email,
+        (select count(*)::int from invoices i where i.tenant_id = ${T} and i.customer_id = c.id) as invoices
+      from customers c where c.tenant_id = ${T} and c.archived_at is null and (${sql.join(conds, sql` or `)})
+      order by (lower(c.full_name) = ${lower}) desc, lower(c.full_name) asc, c.id asc limit 8`.execute(this.db)).rows;
+    return { items: rows.map((c: any) => ({ id: String(c.id), name: String(c.full_name || ''), phone: phoneShown(c.phone_display, c.normalized_phone), email: c.email ?? null, invoices: N(c.invoices) })) };
+  }
+
+  private async customerSnapshot(trx: Kysely<any>, ctx: FinanceCtx, customerId: string) {
+    const c = (await sql<any>`select id, full_name, phone_display, normalized_phone, email from customers where tenant_id = ${ctx.tenantId} and id = ${customerId}::uuid and archived_at is null`.execute(trx)).rows[0];
+    if (!c) throw new FinanceError('Choose a customer from this salon.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);
+    const phone = phoneShown(c.phone_display, c.normalized_phone);
+    return { id: String(c.id), name: String(c.full_name || '').trim() || null, phone, phoneDigits: digitsOf(String(c.normalized_phone ?? phone ?? '')) || null, email: c.email ? String(c.email) : null };
+  }
+  private draftFields(b: Record<string, unknown>, today: string) {
+    const lines = normalizeLines((Array.isArray(b.lines) ? b.lines : []) as InvoiceLineInput[]);
+    if (!lines.length) throw new FinanceError('Add at least one line with a description and a quantity.', 'INVOICE_LINES_REQUIRED');
+    for (const l of lines) if (l.quantity > 10_000 || l.unitPriceCents > MAX_INVOICE_CENTS) throw new FinanceError('A line amount is too large.', 'INVOICE_AMOUNT_INVALID');
+    const issueDate = b.issueDate ? String(b.issueDate) : today;
+    if (!isValidYmd(issueDate)) throw new FinanceError('Enter a valid issue date.', 'DATE_INVALID', 400, { field: 'issueDate' });
+    const dueDate = b.dueDate ? String(b.dueDate) : null;
+    if (dueDate != null && !isValidYmd(dueDate)) throw new FinanceError('Enter a valid due date.', 'DATE_INVALID', 400, { field: 'dueDate' });
+    if (dueDate != null && dueDate < issueDate) throw new FinanceError('The due date must be on or after the issue date.', 'INVOICE_DATES_INVALID');
+    const subtotal = lines.reduce((a, l) => a + l.lineTotalCents, 0);
+    const tax = b.taxCents == null || b.taxCents === '' ? 0 : Math.round(Number(b.taxCents));
+    const discount = b.discountCents == null || b.discountCents === '' ? 0 : Math.round(Number(b.discountCents));
+    if (!Number.isFinite(tax) || tax < 0 || tax > MAX_INVOICE_CENTS) throw new FinanceError('Enter a valid tax amount.', 'INVOICE_AMOUNT_INVALID', 400, { field: 'taxCents' });
+    if (!Number.isFinite(discount) || discount < 0 || discount > subtotal) throw new FinanceError('The discount must be between $0.00 and the subtotal.', 'INVOICE_AMOUNT_INVALID', 400, { field: 'discountCents' });
+    const total = subtotal - discount + tax;
+    if (total <= 0) throw new FinanceError('The invoice total must be more than $0.00.', 'INVOICE_AMOUNT_INVALID');
+    if (total > MAX_INVOICE_CENTS) throw new FinanceError('The invoice total is too large.', 'INVOICE_AMOUNT_INVALID');
+    const notes = b.notes ? String(b.notes).trim().slice(0, 5000) : null;
+    return { lines, issueDate, dueDate, subtotal, tax, discount, total, notes };
+  }
+
+  /** New Invoice: Save Draft or Send. Idempotent on the request key (a double tap creates one invoice). */
+  async create(ctx: FinanceCtx, b: Record<string, unknown>) {
+    const key = String(b.idempotencyKey ?? '');
+    if (!isUuid(key)) throw new FinanceError('This action needs a request id. Try again.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const customerId = String(b.customerId ?? '');
+    if (!isUuid(customerId)) throw new FinanceError('Choose a customer from this salon.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);
+    const tz = await salonTimeZone(this.db, ctx.tenantId); const today = resolvePeriod({ preset: 'today' }, tz).today;
+    const d = this.draftFields(b, today);
+    const send = b.send === true;
+    const T = ctx.tenantId;
+    const out = await this.db.transaction().execute(async (trx) => {
+      const prior = (await sql<any>`select id from invoices where tenant_id = ${T} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      if (prior) return { id: String(prior.id), duplicate: true };
+      const c = await this.customerSnapshot(trx, ctx, customerId);
+      // the number: one writer at a time per salon (advisory lock), then the next INV-#### — the unique index backs it
+      await sql`select pg_advisory_xact_lock(hashtext(${'invoice_number:' + T}))`.execute(trx);
+      const nums = (await sql<any>`select invoice_number from invoices where tenant_id = ${T} and invoice_number like 'INV-%'`.execute(trx)).rows.map((x: any) => String(x.invoice_number));
+      const number = nextInvoiceNumber(nums);
+      const status = send ? 'sent' : 'draft';
+      if (send) assertTransition(INVOICE, 'draft', 'sent');
+      const ins = (await sql<any>`insert into invoices (tenant_id, branch_id, customer_id, invoice_number, status, issue_date, due_date, subtotal_cents, tax_cents, discount_cents, total_cents, notes,
+          created_by_user_id, bill_to_name, bill_to_phone, bill_to_phone_digits, bill_to_email, idempotency_key, sent_at)
+        values (${T}, ${isUuid(ctx.branchId) ? ctx.branchId : null}, ${c.id}::uuid, ${number}, ${status}, ${d.issueDate}::date, ${d.dueDate}::date, ${d.subtotal}, ${d.tax}, ${d.discount}, ${d.total}, ${d.notes},
+          ${isUuid(ctx.userId) ? ctx.userId : null}, ${c.name}, ${c.phone}, ${c.phoneDigits}, ${c.email}, ${key}, ${send ? sql`now()` : null})
+        returning id`.execute(trx)).rows[0];
+      const id = String(ins.id);
+      for (const l of d.lines) {
+        await sql`insert into invoice_lines (invoice_id, tenant_id, description, quantity, unit_price_cents, line_total_cents, position)
+          values (${id}::uuid, ${T}, ${l.description}, ${l.quantity}, ${l.unitPriceCents}, ${l.lineTotalCents}, ${l.position})`.execute(trx);
+      }
+      return { id, duplicate: false, number, status };
+    });
+    if (!out.duplicate) await audit(this.auditor, ctx, 'payments', send ? 'invoice_created_and_sent' : 'invoice_created', 'invoice', out.id, { invoiceNumber: out.number, totalCents: d.total, customerId }, this.log(ctx));
+    return { duplicate: out.duplicate, ...(await this.detail(ctx, out.id))! };
+  }
+
+  /** Edit a DRAFT (an issued invoice is never rewritten — it is voided or credited). */
+  async edit(ctx: FinanceCtx, id: string, b: Record<string, unknown>) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const tz = await salonTimeZone(this.db, ctx.tenantId); const today = resolvePeriod({ preset: 'today' }, tz).today;
+    const d = this.draftFields(b, today);
+    const T = ctx.tenantId;
+    await this.db.transaction().execute(async (trx) => {
+      const cur = (await sql<any>`select id, status, customer_id from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!cur) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      if (String(cur.status) !== 'draft') throw new FinanceError('Only a draft can be edited. Void or credit an issued invoice instead.', 'INVOICE_NOT_EDITABLE', 409);
+      const customerId = b.customerId ? String(b.customerId) : cur.customer_id ? String(cur.customer_id) : '';
+      if (!isUuid(customerId)) throw new FinanceError('Choose a customer from this salon.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);
+      const c = await this.customerSnapshot(trx, ctx, customerId);
+      await sql`update invoices set customer_id = ${c.id}::uuid, bill_to_name = ${c.name}, bill_to_phone = ${c.phone}, bill_to_phone_digits = ${c.phoneDigits}, bill_to_email = ${c.email},
+          issue_date = ${d.issueDate}::date, due_date = ${d.dueDate}::date, subtotal_cents = ${d.subtotal}, tax_cents = ${d.tax}, discount_cents = ${d.discount}, total_cents = ${d.total}, notes = ${d.notes},
+          updated_at = now(), updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}
+        where tenant_id = ${T} and id = ${id}::uuid and status = 'draft'`.execute(trx);
+      await sql`delete from invoice_lines where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx);
+      for (const l of d.lines) {
+        await sql`insert into invoice_lines (invoice_id, tenant_id, description, quantity, unit_price_cents, line_total_cents, position)
+          values (${id}::uuid, ${T}, ${l.description}, ${l.quantity}, ${l.unitPriceCents}, ${l.lineTotalCents}, ${l.position})`.execute(trx);
+      }
+    });
+    await audit(this.auditor, ctx, 'payments', 'invoice_edited', 'invoice', id, { totalCents: d.total, lines: d.lines.length }, this.log(ctx));
+    return (await this.detail(ctx, id))!;
+  }
+
+  /** Send = issue: draft → sent. Delivery to the customer is not connected for invoices — the answer says so. */
+  async send(ctx: FinanceCtx, id: string) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const T = ctx.tenantId;
+    const moved = await this.db.transaction().execute(async (trx) => {
+      const cur = (await sql<any>`select status, customer_id from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!cur) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      if (String(cur.status) === 'sent') return false;   // a second tap: already issued
+      if (!cur.customer_id) throw new FinanceError('Link a customer before sending this invoice.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);
+      try { assertTransition(INVOICE, String(cur.status), 'sent'); } catch { throw new FinanceError('This invoice cannot be sent in its current state.', 'INVOICE_STATE_INVALID', 409, { status: cur.status }); }
+      await sql`update invoices set status = 'sent', sent_at = now(), updated_at = now() where tenant_id = ${T} and id = ${id}::uuid and status = ${String(cur.status)}`.execute(trx);
+      return true;
+    });
+    if (moved) await audit(this.auditor, ctx, 'payments', 'invoice_sent', 'invoice', id, { delivery: 'not_connected' }, this.log(ctx));
+    return { ...(await this.detail(ctx, id))!, sent: moved };
+  }
+
+  /** Record Payment: an immutable entry (cash / check / external card / bank transfer) — NOT a card charge. */
+  async recordPayment(ctx: FinanceCtx, id: string, b: Record<string, unknown>) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const key = String(b.idempotencyKey ?? '');
+    if (!isUuid(key)) throw new FinanceError('This action needs a request id. Try again.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const amount = positiveCents(b.amountCents, MAX_INVOICE_CENTS);
+    if (amount == null) throw new FinanceError('Enter a payment amount greater than $0.00.', 'INVOICE_PAYMENT_INVALID', 400, { field: 'amountCents' });
+    const method = oneOf(b.method, PAYMENT_METHODS, 'method');
+    if (!method) throw new FinanceError('Choose how it was paid.', 'INVOICE_PAYMENT_INVALID', 400, { field: 'method' });
+    const tz = await salonTimeZone(this.db, ctx.tenantId); const today = resolvePeriod({ preset: 'today' }, tz).today;
+    const paidOn = String(b.paidOn ?? '');
+    if (!isValidYmd(paidOn)) throw new FinanceError('Enter a valid payment date.', 'DATE_INVALID', 400, { field: 'paidOn' });
+    if (paidOn > today) throw new FinanceError('The payment date cannot be in the future.', 'INVOICE_PAYMENT_INVALID', 400, { field: 'paidOn' });
+    const reference = b.reference ? String(b.reference).trim().slice(0, 120) : null;
+    const note = b.note ? String(b.note).trim().slice(0, 1000) : null;
+    const T = ctx.tenantId;
+    const out = await this.db.transaction().execute(async (trx) => {
+      const prior = (await sql<any>`select id, invoice_id from invoice_payments where tenant_id = ${T} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      if (prior) { if (String(prior.invoice_id) !== id) throw new FinanceError('This request id was already used.', 'IDEMPOTENCY_KEY_REQUIRED'); return { duplicate: true, paymentId: String(prior.id), status: null as string | null, balance: null as number | null }; }
+      const inv = (await sql<any>`select id, status, total_cents, issue_date from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!inv) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      const st = String(inv.status);
+      if (st === 'draft') throw new FinanceError('Send the invoice before recording a payment.', 'INVOICE_NOT_PAYABLE', 409);
+      if (st !== 'sent' && st !== 'partially_paid') throw new FinanceError('This invoice cannot be paid.', 'INVOICE_NOT_PAYABLE', 409, { status: st });
+      const paid = N((await sql<any>`select coalesce(sum(amount_cents), 0)::bigint as p from invoice_payments where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.p);
+      const balance = N(inv.total_cents) - paid;
+      if (amount > balance) throw new FinanceError('That is more than the balance due.', 'INVOICE_PAYMENT_EXCEEDS_BALANCE', 409, { balanceCents: balance });
+      const pay = (await sql<any>`insert into invoice_payments (tenant_id, invoice_id, amount_cents, currency, paid_on, method, reference, note, idempotency_key, recorded_by_user_id)
+        values (${T}, ${id}::uuid, ${amount}, 'USD', ${paidOn}::date, ${method}, ${reference}, ${note}, ${key}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id`.execute(trx)).rows[0];
+      const after = balance - amount;
+      const next = after === 0 ? 'paid' : 'partially_paid';
+      assertTransition(INVOICE, st, next);
+      await sql`update invoices set status = ${next}, paid_at = ${next === 'paid' ? sql`now()` : sql`paid_at`}, updated_at = now() where tenant_id = ${T} and id = ${id}::uuid and status = ${st}`.execute(trx);
+      return { duplicate: false, paymentId: String(pay.id), status: next, balance: after };
+    });
+    if (!out.duplicate) await audit(this.auditor, ctx, 'payments', 'invoice_payment_recorded', 'invoice', id, { paymentId: out.paymentId, amountCents: amount, method, paidOn, statusAfter: out.status }, this.log(ctx));
+    return { duplicate: out.duplicate, paymentId: out.paymentId, ...(await this.detail(ctx, id))! };
+  }
+
+  /** Void with a reason. An invoice with posted payments is NOT voided — it needs a refund / credit (spec §13). */
+  async void(ctx: FinanceCtx, id: string, reason: unknown) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const why = String(reason ?? '').trim();
+    if (why.length < 3) throw new FinanceError('Give a reason for voiding this invoice.', 'INVOICE_VOID_REASON_REQUIRED');
+    const T = ctx.tenantId;
+    const prev = await this.db.transaction().execute(async (trx) => {
+      const cur = (await sql<any>`select status, invoice_number from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!cur) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      const st = String(cur.status);
+      if (st === 'void') return null;
+      const n = N((await sql<any>`select count(*)::int as n from invoice_payments where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.n);
+      if (n > 0 || st === 'paid' || st === 'partially_paid') throw new FinanceError('This invoice has payments. Issue a refund or a credit instead of voiding it.', 'INVOICE_HAS_PAYMENTS', 409);
+      try { assertTransition(INVOICE, st, 'void'); } catch { throw new FinanceError('This invoice cannot be voided in its current state.', 'INVOICE_STATE_INVALID', 409, { status: st }); }
+      await sql`update invoices set status = 'void', voided_at = now(), voided_by_user_id = ${isUuid(ctx.userId) ? ctx.userId : null}, void_reason = ${why.slice(0, 500)}, updated_at = now()
+        where tenant_id = ${T} and id = ${id}::uuid and status = ${st}`.execute(trx);
+      return { from: st, number: String(cur.invoice_number) };
+    });
+    if (prev) await audit(this.auditor, ctx, 'payments', 'invoice_voided', 'invoice', id, { from: prev.from, invoiceNumber: prev.number, reason: why.slice(0, 200) }, this.log(ctx));
+    return (await this.detail(ctx, id))!;
+  }
+
+  /** Repair an unlinked invoice: link it to a chosen customer of this salon (audited). The snapshot is filled only if empty
+   *  unless the manager asks to update it — an issued invoice keeps the name it was issued to. */
+  async linkCustomer(ctx: FinanceCtx, id: string, b: { customerId?: unknown; updateBillTo?: unknown }) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const customerId = String(b.customerId ?? '');
+    if (!isUuid(customerId)) throw new FinanceError('Choose a customer from this salon.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);
+    const T = ctx.tenantId;
+    const prev = await this.db.transaction().execute(async (trx) => {
+      const cur = (await sql<any>`select i.customer_id, i.bill_to_name, (select count(*)::int from customers c where c.tenant_id = i.tenant_id and c.id = i.customer_id) as live
+        from invoices i where i.tenant_id = ${T} and i.id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!cur) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      if (cur.customer_id && N(cur.live) > 0) throw new FinanceError('This invoice is already linked to a customer.', 'INVOICE_ALREADY_LINKED', 409);
+      const c = await this.customerSnapshot(trx, ctx, customerId);
+      const fill = b.updateBillTo === true || !cur.bill_to_name;
+      await sql`update invoices set customer_id = ${c.id}::uuid,
+          bill_to_name = ${fill ? c.name : sql`bill_to_name`}, bill_to_phone = ${fill ? c.phone : sql`bill_to_phone`}, bill_to_phone_digits = ${fill ? c.phoneDigits : sql`bill_to_phone_digits`}, bill_to_email = ${fill ? c.email : sql`bill_to_email`},
+          updated_at = now() where tenant_id = ${T} and id = ${id}::uuid`.execute(trx);
+      return { from: cur.customer_id ? String(cur.customer_id) : null, snapshotUpdated: fill };
+    });
+    await audit(this.auditor, ctx, 'payments', 'invoice_customer_linked', 'invoice', id, { customerId, previousCustomerId: prev.from, snapshotUpdated: prev.snapshotUpdated }, this.log(ctx));
+    return (await this.detail(ctx, id))!;
+  }
+
+  /** The PDF (preview / print / download) carries the customer's name and contact — its generation is recorded. */
+  async auditDocument(ctx: FinanceCtx, id: string, disposition: 'inline' | 'attachment') {
+    await audit(this.auditor, ctx, 'payments', 'invoice_pdf_generated', 'invoice', id, { disposition }, this.log(ctx));
+  }
+
+  async salonIdentity(ctx: FinanceCtx) {
+    const t = (await sql<any>`select coalesce(display_name, legal_name) as name from tenants where id = ${ctx.tenantId}`.execute(this.db)).rows[0];
+    const b = (await sql<any>`select name, address, city, state, zip, phone from branches where tenant_id = ${ctx.tenantId} and deleted_at is null
+      ${isUuid(ctx.branchId) ? sql`order by (id = ${ctx.branchId}::uuid) desc, created_at asc` : sql`order by created_at asc`} limit 1`.execute(this.db)).rows[0];
+    const addr = b ? [b.address, [b.city, b.state].filter(Boolean).join(', '), b.zip].filter(Boolean).join(' ').trim() : '';
+    return { name: String(t?.name || b?.name || 'Salon'), address: addr || null, phone: b?.phone ?? null };
+  }
+
+  async exportCsv(ctx: FinanceCtx, f: InvoiceFilters): Promise<string> {
+    const tz = f.period.tz; const w = this.where(f, { withStatus: true });
+    const rows = (await sql<any>`${this.base(ctx, tz)} select ib.* from ib where ${w.where} order by ${this.order(f)} limit 20000`.execute(this.db)).rows.map((r: any) => this.row(r));
+    const p = f.period;
+    const doc = csvDocument('Invoices',
+      [['Generated', new Date().toISOString()], ['Period', p.from && p.to ? `${p.from} to ${p.to} (${p.tz})` : 'All time'], ['Date basis', f.basis], ['Status', f.status ?? 'All'], ['Search', f.q ? 'yes' : '—'], ['Currency', 'USD (amounts in dollars)'],
+       ['Definition', 'Balance = total − recorded payments. Overdue = issued, past its due date, with a balance.']],
+      ['Invoice #', 'Customer', 'Issued', 'Due', 'Status', 'Total', 'Paid', 'Balance'],
+      rows.map((r) => [r.invoiceNumber, r.customer.name ?? 'Unlinked customer', r.issueDate ?? 'Not set', r.dueDate ?? 'Not set', r.displayStatus, usd(r.totalCents), usd(r.paidCents), usd(r.balanceCents)]),
+      [['Invoices', String(rows.length)], ['Total', usd(rows.reduce((a, r) => a + r.totalCents, 0))], ['Balance due', usd(rows.reduce((a, r) => a + r.balanceCents, 0))]]);
+    await audit(this.auditor, ctx, 'payments', 'invoices_exported', 'invoice_report', null, { rows: rows.length, from: p.from, to: p.to, status: f.status ?? null }, this.log(ctx));
+    return doc;
+  }
+}

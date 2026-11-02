@@ -1,0 +1,2076 @@
+{
+ "label": "fit",
+ "at": "2026-10-29T22:46:16.194Z",
+ "rows": [
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "transactions:9",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:4",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:5",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:3",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "distribution:5",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:4",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:5",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:3",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "tickets:11",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:6",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:7",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:4",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:5 recent:6",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "transactions:9",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:5",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:5",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:3",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "distribution:5",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:5",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:5",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:3",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:1",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "tickets:11",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:6",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:7",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:4",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "by-technician:0 distribution-mini:0 recent:0",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:0 recent:0",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:0 recent:0",
+   "errors": []
+  },
+  {
+   "page": "tips",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "search": true,
+    "technician": true,
+    "method": true,
+    "status": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "kpi-total": true,
+    "kpi-card": true,
+    "kpi-cash": true,
+    "kpi-avg": true,
+    "kpi-notip": true,
+    "tab-overview": true,
+    "tab-transactions": true,
+    "tab-distribution": true,
+    "tab-adjustments": true,
+    "by-technician": true,
+    "distribution-mini": true,
+    "recent": true
+   },
+   "pagers": [],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "by-technician:0 distribution-mini:0 recent:0",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "transactions:0",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:0",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:0",
+   "errors": []
+  },
+  {
+   "page": "tips-transactions",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "kpi-notip": true,
+    "transactions": true,
+    "sort": true
+   },
+   "pagers": [
+    {
+     "panel": "transactions",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "transactions:0",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "distribution:0",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:0",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:0",
+   "errors": []
+  },
+  {
+   "page": "tips-distribution",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "distribution": true
+   },
+   "pagers": [
+    {
+     "panel": "distribution",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "distribution:0",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "reports:0 adjustments:0",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:0",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:0",
+   "errors": []
+  },
+  {
+   "page": "tips-adjustments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "kpi-total": true,
+    "reports": true,
+    "adjustments": true
+   },
+   "pagers": [
+    {
+     "panel": "adjustments",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "reports:0 adjustments:0",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x945",
+   "pass": true,
+   "vw": 1920,
+   "vh": 945,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 885,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 14,
+   "rowsPerPanel": "tickets:0",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x729",
+   "pass": true,
+   "vw": 1536,
+   "vh": 729,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 669,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:0",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x765",
+   "pass": true,
+   "vw": 1440,
+   "vh": 765,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 705,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:0",
+   "errors": []
+  },
+  {
+   "page": "split-payments",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x633",
+   "pass": true,
+   "vw": 1366,
+   "vh": 633,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 573,
+   "modules": {
+    "refresh": true,
+    "kpi-tickets": true,
+    "kpi-total": true,
+    "kpi-avg": true,
+    "kpi-completed": true,
+    "kpi-outstanding": true,
+    "search": true,
+    "status": true,
+    "methods": true,
+    "register": true,
+    "sort": true,
+    "preset-month": true,
+    "preset-custom": true,
+    "tickets": true
+   },
+   "pagers": [
+    {
+     "panel": "tickets",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 13,
+   "rowsPerPanel": "tickets:0",
+   "errors": []
+  }
+ ],
+ "unhandledRoutes": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 36
+  }
+ ]
+}

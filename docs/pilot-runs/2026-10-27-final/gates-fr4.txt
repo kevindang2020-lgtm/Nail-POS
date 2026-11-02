@@ -1,0 +1,75 @@
+PASS  check:tenant
+PASS  check:tenant-builder
+PASS  check:perms
+PASS  check:public
+PASS  check:sql
+PASS  check:sql:select
+PASS  check:impossible
+PASS  check:crosswire
+PASS  check:di
+PASS  check:types-drift
+PASS  check:unreached
+PASS  check:dead-client
+PASS  check:nav
+PASS  check:html
+PASS  check:no-print
+PASS  check:realtime-contract
+PASS  check:realtime-infra-duplicates
+PASS  check:ai-platform
+PASS  check:ai-infra-duplicates
+PASS  check:silent-sql
+PASS  check:sql-identifiers
+PASS  check:dialogs
+PASS  check:money
+PASS  check:event-producers
+PASS  check:realtime-catalog
+PASS  check:lint
+PASS  check:secrets
+PASS  check:error-codes
+PASS  check:openapi
+PASS  check:critical-step-up
+PASS  check:mass-assignment
+PASS  check:api-contract
+PASS  check:v1-clients
+PASS  check:mobile-transport
+PASS  check:validated-bodies
+FAIL  check:role-checks
+PASS  check:permission-docs
+PASS  check:audit-writers
+PASS  check:db-ownership
+PASS  check:actor-stamp
+PASS  check:list-queries
+PASS  check:async-exports
+PASS  check:response-exposure
+PASS  check:uploads
+PASS  check:state-transitions
+PASS  check:unique-tenant-review
+PASS  check:one-payroll-calculation
+PASS  check:one-tax-calculation
+PASS  check:silent-catch
+PASS  check:as-any
+PASS  check:supply-chain-injection
+PASS  check:raw-sql-inputs
+PASS  check:attack-surface
+PASS  check:migration-safety
+PASS  architecture tests
+PASS  module entries
+PASS  spec imports
+PASS  hidden code
+PASS  auth logging
+PASS  db credentials
+PASS  gradle wrapper
+PASS  lockfile hygiene
+PASS  outbound hosts
+PASS  audit wiring
+PASS  frontend builds
+PASS  app types
+PASS  mobile versions
+PASS  mobile native config
+PASS  stale mocks
+PASS  inert controls
+PASS  zoom
+PASS  i18n
+PASS  pos-i18n
+PASS  vi-glossary
+PASS  admin-english-only

@@ -1,0 +1,28 @@
+/* Canonical AI PowerSalon design tokens — single source of truth for both the tenant POS (cream/gold) and the Super
+   Admin (bright-white) shells. Components reference the semantic --aps-* variables; the two theme classes only swap the
+   surface colours so one component set serves both apps. Import once at each app root, then add the theme class to the
+   shell root: <div class="theme-tenant"> or <div class="theme-superadmin">. */
+:root {
+  --aps-orange: #E8852B;          /* primary action / highlight */
+  --aps-orange-strong: #D9741C;
+  --aps-gold: #A96F22;            /* logo + premium accents */
+  --aps-gold-soft: #CAA45A;
+  --aps-grad: linear-gradient(180deg, rgba(202,164,90,.22), rgba(202,164,90,.12));
+  --aps-text: #2C2118;            /* primary charcoal text */
+  --aps-muted: #8A7E70;           /* secondary text */
+  --aps-line: #ECE3D5;            /* soft border */
+  --aps-ok: #3F9D62;              /* success / positive trend */
+  --aps-danger: #B85B4D;          /* failed / critical / destructive */
+  --aps-warn: #C98A2B;            /* warning / pending */
+  --aps-info: #4C7BD9;            /* informational / chart blue */
+  --aps-purple: #7C5CCB;
+  --aps-teal: #2FA8A0;
+  --aps-radius: 12px;
+  --aps-radius-sm: 8px;
+  --aps-shadow: 0 1px 2px rgba(44,33,24,.05), 0 2px 8px rgba(44,33,24,.04);
+  --aps-font-head: 'Playfair Display', Georgia, serif;
+  --aps-font-body: 'Hanken Grotesk', system-ui, -apple-system, sans-serif;
+}
+.theme-tenant { --aps-page: #F7EFE3; --aps-card: #FFFCF6; }
+.theme-superadmin { --aps-page: #F4F6F8; --aps-card: #FFFFFF; }
+@keyframes aps-shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }

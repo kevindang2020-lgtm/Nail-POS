@@ -1,0 +1,327 @@
+{
+ "$comment": "Hand decisions for the ownership registry (apps/api/scripts/db-ownership.mjs). Each entry overrides the heuristic class (A-E) and/or domain and MUST say why. Remove an entry when its table is dropped (the gate fails on a stale one).",
+ "tables": {
+  "process_heartbeats": {
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 B (Constitution 11 \u00a7154, \u00a749): one row per API / worker process boot (build labels, memory / CPU, the registry digest the System Operations dashboards read) \u2014 platform telemetry like system_health_snapshots"
+  },
+  "device_biometric_credentials": {
+   "ownership": "D",
+   "domain": "IDENTITY",
+   "reason": "BUILD_PLAN Phase 13 D (Constitution 6 \u00a737-39): a person's Face ID device credential (hashed secret bound to a device id), owned by the user like sessions / refresh_tokens / auth_devices; tenant_id only records the salon of the enrolling session (NULL for a cross-salon customer identity); redeemed by credential id before any tenant context exists"
+  },
+  "realtime_stream_tickets": {
+   "ownership": "D",
+   "domain": "IDENTITY",
+   "reason": "BUILD_PLAN Phase 13 (Constitution 6 \u00a728-32): single-use 60 s tickets bound to a person's SESSION (like sessions / refresh_tokens) that open a realtime stream from a native app; redeemed by hash before any tenant context exists"
+  },
+  "api_operations": {
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 12: the async operation records (exports today) - the job-queue side of the API, beside jobs; tenant_id NULL = a platform (Super Admin) operation"
+  },
+  "community_appeals": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_comment_reports": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_comment_versions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_disputes": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_post_versions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_posts": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_redactions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_related_posts": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_reports": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_risk_fingerprints": {
+   "ownership": "A",
+   "domain": "SECURITY",
+   "reason": "platform moderation signal (hashed fingerprints) used by Super Admin only; never shown to a salon"
+  },
+  "gift_card_settlement_batches": {
+   "ownership": "E",
+   "reason": "cross-salon gift card clearing: a batch nets redemptions between issuing and redeeming tenants (program-level, see gift_card_clearing_entries)"
+  },
+  "nail_showcase_comments": {
+   "ownership": "E",
+   "reason": "public nail showcase: a comment/reaction on a published post is visible across salons; the post's own visibility rules apply"
+  },
+  "nail_showcase_photos": {
+   "ownership": "E",
+   "reason": "public nail showcase: published rows are cross-salon by design; tenant_id (nullable) records the originating salon, not the audience"
+  },
+  "nail_showcase_posts": {
+   "ownership": "E",
+   "reason": "public nail showcase: published rows are cross-salon by design; tenant_id (nullable) records the originating salon, not the audience"
+  },
+  "nail_showcase_reactions": {
+   "ownership": "E",
+   "reason": "public nail showcase: a comment/reaction on a published post is visible across salons; the post's own visibility rules apply"
+  },
+  "reviews": {
+   "ownership": "B",
+   "reason": "a salon's review of its own visit: tenant-owned; global_tech_profile_id only attributes it to the technician's platform profile"
+  },
+  "tenants": {
+   "ownership": "A",
+   "domain": "TENANTS",
+   "reason": "the tenant registry itself: platform-global, keyed by id (no tenant_id by definition)"
+  },
+  "mobile_app_versions": {
+   "ownership": "A",
+   "domain": "PLATFORM",
+   "reason": "BUILD_PLAN Phase 13 B (Constitution 6 \u00a755-57): the store apps' version policy (minimum / recommended / latest per app and native platform) - the same binaries serve every salon, so it is platform-global and Super Admin-owned"
+  },
+  "mobile_app_installs_seen": {
+   "ownership": "A",
+   "domain": "PLATFORM",
+   "reason": "BUILD_PLAN Phase 13 B (Constitution 6 \u00a7150): hashed install id -> app version for the version distribution; no tenant, no user, no raw device id"
+  },
+  "telemetry_log_events": {
+   "ownership": "E",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 A (Constitution 11 \u00a7291-292): the platform's own redacted log store - lines from every salon's requests and from platform work, read only by Super Admin request search (super_admin.telemetry.*); tenant_id is a NULLable label for filtering, never a scope; written only by the telemetry sink through the worker pool; 14-day retention"
+  },
+  "telemetry_spans": {
+   "ownership": "E",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 A: the trace half of the same store (spans of sampled traces), same readers, same writer, same window"
+  },
+  "oncall_contacts": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (Constitution 11 \u00a7262-264): the platform on-call chain (who is paged, in what order, quiet hours) - platform configuration, edited only by Super Admin with step-up"
+  },
+  "alert_escalations": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a7264-265): each step of a PLATFORM alert's escalation and its acknowledgement (screen or signed single-use link); platform alerts only (tenant_id IS NULL)"
+  },
+  "slo_validations": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a780): the platform SLO verdicts computed from platform_request_metrics_minute - one row per SLO, no tenant data"
+  },
+  "synthetic_monitoring_settings": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a792-95): single-row platform setting; test_tenant_id NAMES the one salon Kevin designates for the kiosk probe - a reference, not a scope (the row belongs to the platform)"
+  },
+  "synthetic_probe_results": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C: latest result per synthetic probe (rows = probes); platform health, no tenant data"
+  },
+  "observability_signal_state": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (D8): last-seen platform signal values (break-glass mode) so a toggle opens one security incident fleet-wide"
+  },
+  "code_lookup_attempts": {
+   "domain": "SECURITY",
+   "reason": "BUILD_PLAN Phase 14 D (Constitution 12): the lookup-by-code limiter's attempt ledger (gift-card / coupon / deal code guesses) - one weighted row per attempt, keyed by hashed caller / IP and the salon, read only by the limiter; minutes-long window, swept by the central retention executor"
+  },
+  "turn_unit_rules": {
+   "domain": "WORKFORCE",
+   "reason": "Fair Turn Engine (wave 2, migration 601): versioned turn-unit weights per service / category / duration \u2014 read and written only by the workforce turn-queue module (turn-queue.service saveRule / retireRule, turn-ledger loadTurnRules)"
+  },
+  "health_check_runs": {
+   "domain": "OPERATIONS",
+   "reason": "Setup Health (Four-Module guide, migration 729): one row per platform setup-health run, written by the Super Admin health service"
+  },
+  "health_check_results": {
+   "domain": "OPERATIONS",
+   "reason": "Setup Health (migration 729): the per-check results of a health run"
+  },
+  "health_check_alerts": {
+   "domain": "OPERATIONS",
+   "reason": "Setup Health (migration 729): open / resolved alerts raised from health results, handled in Super Admin"
+  },
+  "release_evidence": {
+   "domain": "OPERATIONS",
+   "reason": "Setup Health (migration 729): recorded release evidence (gate runs, checks) shown to Super Admin before a deploy"
+  },
+  "performance_score_snapshots": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 719): stored staff performance score snapshots, owned by the workforce module"
+  },
+  "retention_sms_campaigns": {
+   "domain": "CUSTOMERS",
+   "reason": "Customer Retention round 2: win-back SMS campaigns created from the retention screen (modules/customers/src/retention)"
+  },
+  "retention_sms_recipients": {
+   "domain": "CUSTOMERS",
+   "reason": "Customer Retention round 2: one row per customer in a retention SMS campaign; the worker sends each once"
+  },
+  "team_data_alert_runs": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2: runs of the team data-quality alert scan (team-data-alerts.repository)"
+  },
+  "team_data_alerts": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2: team data-quality alerts reviewed by managers"
+  },
+  "team_data_alert_events": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2: append-only history of each team data alert"
+  },
+  "team_data_nightly_runs": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2: the nightly team data job, one row per salon and night"
+  },
+  "team_onboarding_requests": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): new-staff onboarding requests"
+  },
+  "team_staff_profiles": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): extended staff profile data (birthday, onboarding) owned by workforce"
+  },
+  "team_staff_certifications": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): staff licences / certifications and their verification"
+  },
+  "team_training_courses": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): the salon's training courses"
+  },
+  "team_training_assignments": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): training assigned to staff and its progress"
+  },
+  "team_training_events": {
+   "domain": "WORKFORCE",
+   "reason": "Team Management round 2 (migration 727): append-only history of training assignments"
+  },
+  "global_rewards_program": {
+   "ownership": "A",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): the ONE central program row \u2014 redemption value, token value, pauses and platform limits \u2014 set by Super Admin only (LoyaltyRules.pdf \u00a71.2)"
+  },
+  "global_earning_rule_versions": {
+   "ownership": "A",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): Super Admin global default earning-rate versions, read live by every global-mode salon; no tenant_id by design (addendum \u00a71.3)"
+  },
+  "global_rewards_accounts": {
+   "ownership": "D",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): a verified customer identity's network points (customer_identities, keyed by the proven phone) \u2014 owned by the person across salons, never a salon row"
+  },
+  "global_points_ledger": {
+   "ownership": "E",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): one identity's points history across participating salons; tenant_id records the salon whose sale / redemption caused the row, and a salon reads only its own rows (LoyaltyTokens.pdf \u00a76.3 privacy)"
+  },
+  "global_rewards_enrollments": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): a salon's participation (enrolled / suspended / withdrawn), managed by Super Admin"
+  },
+  "token_purchase_intents": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): Buy Tokens \u2014 one logical prepaid purchase per idempotency key, spendable only at FUNDS_VERIFIED"
+  },
+  "token_purchase_events": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): append-only status history of a token purchase"
+  },
+  "token_wallet_ledger": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): append-only prepaid token wallet ledger of one salon"
+  },
+  "tenant_token_wallets": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): ONE prepaid token wallet per salon \u2014 a projection of token_wallet_ledger (LoyaltyTokens.pdf \u00a75.1)"
+  },
+  "tenant_earning_policy_versions": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): a salon's GLOBAL / CUSTOM earning transitions, versioned and immutable once activated (LoyaltyRules.pdf \u00a74)"
+  },
+  "reward_earn_transactions": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): one earning judgement per paid ticket of the EARNING salon, with its full rule + funding snapshot; identity_id only links the customer's network account"
+  },
+  "reward_redemptions": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): a checkout reward reservation / redemption at the REDEEMING salon"
+  },
+  "merchant_reimbursements": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): what the network owes the redeeming salon (PAYABLE \u2260 PAID); not a card payment"
+  },
+  "rewards_journal_entries": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): balanced journal entry; tenant_id is the salon it concerns (NULL for platform cash lines)"
+  },
+  "rewards_journal_lines": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 733): journal lines of a balanced entry (deferred balance trigger)"
+  },
+  "payout_attempts": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 734): payout instructions for a salon payable; SETTLED only with verified provider settlement proof"
+  },
+  "reimbursement_adjustments": {
+   "ownership": "B",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 734): append-only payable reductions / post-payout offset (recovery) claims"
+  },
+  "rewards_recon_runs": {
+   "ownership": "A",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 734): platform books-check runs (daily + manual); no salon owns a run"
+  },
+  "rewards_recon_findings": {
+   "ownership": "E",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 734): books-check findings; tenant_id names the salon a finding concerns (NULL platform-wide)"
+  },
+  "loyalty_fraud_alerts": {
+   "ownership": "E",
+   "domain": "LOYALTY",
+   "reason": "Global Rewards Network (migration 734): review-first fraud signals seen by Super Admin only (cross-salon platform data)"
+  },
+  "retention_health_runs": {
+   "domain": "CUSTOMERS",
+   "reason": "Customer Retention & Win-Back guide (Oct 30 2026) \u00a709: one row per read-only \"Check Retention Data\" run of a salon (overall status, per-check results with sample customer ids of that salon, ruleset / settings version, who ran it) \u2014 retention data-quality evidence next to retention_sms_campaigns"
+  },
+  "birthday_message_claims": {
+   "domain": "CUSTOMERS",
+   "reason": "Birthday Campaigns guide (Oct 31 2026) \u00a713\u2013\u00a714: the send-time claim behind \"one birthday message per customer per occasion year per channel\" (salon + customer + year + channel, the campaign that claimed it, claimed / sent / released) \u2014 next to customers.birthday"
+  }
+ }
+}

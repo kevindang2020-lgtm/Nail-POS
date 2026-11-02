@@ -1,0 +1,312 @@
+{
+ "at": "2026-10-30T17:50:59.690Z",
+ "results": [
+  {
+   "step": "loyalty: KPIs are the server numbers",
+   "ok": true,
+   "detail": "members 88, points 21,280, reconciled true",
+   "ms": 156
+  },
+  {
+   "step": "loyalty: Enroll Member → the new member is first on Page 1",
+   "ok": true,
+   "detail": "Anh Nguyễn enrolled; profiles 88 → 89; note: Anh Nguyễn is now a loyalty member.\n✕",
+   "ms": 2715
+  },
+  {
+   "step": "loyalty: Create Reward → it is first on Page 1 of the catalog",
+   "ok": true,
+   "detail": "first catalog row: E2E $7 off",
+   "ms": 707
+  },
+  {
+   "step": "loyalty: Adjust points — a double tap posts ONE ledger entry",
+   "ok": true,
+   "detail": "2 POST(s) sent, ledger +1 (415 → 416); Anh Nguyễn now 50 pts",
+   "ms": 658
+  },
+  {
+   "step": "loyalty: Redeem → the code is first in Recent Redemptions; balance checked server-side",
+   "ok": true,
+   "detail": "redeemed \"E2E $7 off\"; Linh Nguyễn redeemed E2E $7 off — balance 165.\n✕",
+   "ms": 1162
+  },
+  {
+   "step": "loyalty: Redemption detail → Void restores the points (audited)",
+   "ok": true,
+   "detail": "status Voided; audit member_enrolled, points_adjusted, reward_redeemed, redemption_voided",
+   "ms": 991
+  },
+  {
+   "step": "loyalty: numbered pages — Page 2 shows the next rows, Previous / Next bounds",
+   "ok": true,
+   "detail": "range on page 2: 5–8 of 89",
+   "ms": 861
+  },
+  {
+   "step": "loyalty: Points Ledger + Manage Tiers open, Escape closes, focus returns",
+   "ok": true,
+   "detail": "ledger rows 10; tiers 4; focus back on \"Points Ledger\"",
+   "ms": 586
+  },
+  {
+   "step": "retention: Never Visited is its own segment (no last visit, not at risk)",
+   "ok": true,
+   "detail": "never 37, at risk 204 (every at-risk row has a completed visit)",
+   "ms": 593
+  },
+  {
+   "step": "retention (guide §10/§11): At Risk defaults to Smart Priority (highest first, with a why); \"Longest absence\" sorts by days",
+   "ok": true,
+   "detail": "priority page 1: 93, 93, 93, 93, 93, 93, 93, 93, 93 · \"Why this priority? Mostly a long absence: 479 days since the last completed visit, 9 visit…\" · longest absence: 479, 478, 468, 467, 467, 453, 452, 451, 450",
+   "ms": 1329
+  },
+  {
+   "step": "retention (guide §06): eight KPIs — Never Visited / Recovered / Campaign Recoveries equal the server",
+   "ok": true,
+   "detail": "cards {\"never\":\"37\",\"recovered\":\"0\",\"campaign\":\"0\",\"atRisk\":\"204\"} · thresholds 60/45 v0",
+   "ms": 227
+  },
+  {
+   "step": "retention (guide §04): Never Visited rows cannot be picked for a win-back text and carry no priority",
+   "ok": true,
+   "detail": "9 never-visited rows, 0 selectable, 0 scored",
+   "ms": 512
+  },
+  {
+   "step": "retention (guide §09): period presets + a custom range + date basis reach the server",
+   "ok": true,
+   "detail": "/pos/retention/customers?segment=all&preset=week&basis=created&page=1&pageSize=9 · shown \"Oct 26, 2026 – Nov 1, 2026\"",
+   "ms": 1662
+  },
+  {
+   "step": "retention (guide §08): search reaches the whole salon — a service name and a ticket number",
+   "ok": true,
+   "detail": "\"gel\" → 0 customer(s) server-side, 0 on the page",
+   "ms": 2093
+  },
+  {
+   "step": "retention (guide §14): the customer overlay explains the segment, lists visit evidence, closes back to the same list",
+   "ok": true,
+   "detail": "\"At Risk 60+ days — 479 days since the last completed visit (At Risk from 60).\" · \"Why this priority? 93 · High — Mostly a long absence: 479 days since the last co…\" · 9 visit(s) · list unchanged",
+   "ms": 1020
+  },
+  {
+   "step": "retention (guide §13): Recovery & Trend — totals, definitions, six months, per campaign",
+   "ok": true,
+   "detail": "0 Recovered customers 0 Completed return visits $0.00 Observed return revenue (net) 0 Returned after a text · $0.00 · trend 6 months · year: 58 recovered, 0 after a text",
+   "ms": 673
+  },
+  {
+   "step": "retention (guide §05): Settings — 90 days moves customers out of At Risk; a stale version is refused; restored",
+   "ok": true,
+   "detail": "At Risk 204 → 195 at 90 days; stale save 409; restored (v2); 2 audit rows",
+   "ms": 1183
+  },
+  {
+   "step": "retention: Export downloads the filtered list — masked phones, formula-safe, audited",
+   "ok": true,
+   "detail": "customer-retention-at_risk-2026-10-01-to-2026-10-31.csv: 204 rows; header \"Customer ID,Customer,Phone (masked),Segment,Last completed visit,Days …\"; audit retention.export.requested, retention.export.succeeded",
+   "ms": 422
+  },
+  {
+   "step": "retention: select across pages → preview (exclusions explained) → confirm → individual texts",
+   "ok": true,
+   "detail": "Selected 3; 3 individual text(s) through the recorder; body: \"Pilot Nail Salon: We miss you! Book your next visit this week. Reply STOP to opt out.\"",
+   "ms": 4549
+  },
+  {
+   "step": "retention: campaign history shows per-recipient status (no invented \"delivered\")",
+   "ok": true,
+   "detail": "status completed; counts {\"excluded\":0,\"queued\":0,\"sent\":3,\"delivered\":0,\"undelivered\":0,\"blocked\":0,\"failed\":0,\"unknown\":0,\"simulated\":0}; tiles 3 Selected | 0 Queued | 3 Sent | 0 Delivered | 0 Undelivered | 0 Blocked at send time | 0 Failed | 0 Unknown — not re-sent | 0 Excluded",
+   "ms": 5592
+  },
+  {
+   "step": "retention: a confirmed campaign re-sent with the same key is the same campaign (no new jobs)",
+   "ok": true,
+   "detail": "duplicate=true; jobs unchanged [{\"status\":\"succeeded\",\"n\":9}]",
+   "ms": 94
+  },
+  {
+   "step": "retention: \"Select all matching\" needs an explicit second confirmation and stays a server-side selection",
+   "ok": true,
+   "detail": "Select the 91 At Risk customers of “At Risk 60+ days” who can be texted under the current filters. The server checks every one again at preview and again at send. → \"All matching in At Risk 60+ days: 91 (checked again at preview)\" → cleared",
+   "ms": 751
+  },
+  {
+   "step": "retention CR-02: Branch selector — tenant-wide vs branch activity; one customer once; Unknown branch counted; another salon's branch 403",
+   "ok": true,
+   "detail": "\"Tenant-wide customer retention\" → \"Branch activity retention · Voorhees\"; Emily Davis: 9 visits salon-wide, 2 at Voorhees (one row each); Unknown branch 2; other salon's / unknown branch → 403/403",
+   "ms": 1161
+  },
+  {
+   "step": "retention CR-01: As of Date — a day without a snapshot is \"Incomplete / unverifiable\"; Rebuild history queues one job per day (audited)",
+   "ok": true,
+   "detail": "before: \"Incomplete / unverifiable — no snapshot was stored for Oct 29, 2026. Rebuild history to reconstruct it from ti…\"; \"30 day(s) queued for reconstruction.\"; runs [{\"status\":\"completed\",\"coverage\":\"reconstructed\",\"n\":30}]; jobs [{\"status\":\"succeeded\",\"n\":30}]",
+   "ms": 2851
+  },
+  {
+   "step": "retention CR-01: the stored snapshot — counts = server, member drill-down, compare two dates (deltas + who moved)",
+   "ok": true,
+   "detail": "2026-10-29: Stored snapshot — Oct 29, 2026 · Reconstructed from ticket history · At Risk from 60 days, Approaching from 45 · definit · tiles {\"at_risk\":\"204\",\"never_visited\":\"37\",\"active\":\"17\"} · 6 at-risk member row(s) · 2026-10-01→2026-10-29 delta {\"total\":0,\"never_visited\":0,\"active\":-2,\"approaching\":-7,\"at_risk\":9} · 4 movement row(s)",
+   "ms": 1211
+  },
+  {
+   "step": "retention CR-03: SMS estimate — \"Price unknown — cannot estimate\" with no price; after Settings sets a price the preview shows the estimate (audited)",
+   "ok": true,
+   "detail": "before: \"Price unknown — cannot estimate\"; settings: \"In force: 0.03500 USD per segment since Oct 30, 2026\"; after: \"Cost estimate 2 recipients × 1 segment(s) = 2 segments (GSM-7) Unit price 0.03500 USD per segment (from Oct 30, 2026) Subtotal $0.07 Carrier fees Unknown — not \"",
+   "ms": 3305
+  },
+  {
+   "step": "retention CR-04: Book appointment opens the EXISTING New Appointment flow with that customer (loaded by id); nothing is saved by opening it",
+   "ok": true,
+   "detail": "row → /booking/new?customerId=e0510000-0000-4000-8000-0000000000aa&from=retention shows \"DS\" (Customer chosen from Customer Retention — pick services, technician and time, then confirm.); 0 writes, appointments 0 unchanged; unknown id → \"This customer could not be loaded — the profile may have been deleted or belong …\"; overlay → \"DS\"",
+   "ms": 7101
+  },
+  {
+   "step": "memberships: quick action \"Add New Member\" works",
+   "ok": true,
+   "detail": "\"Add New Member\" opened; Escape closed it",
+   "ms": 1169
+  },
+  {
+   "step": "memberships: quick action \"Create Plan\" works",
+   "ok": true,
+   "detail": "\"Plan Builder\" opened; Escape closed it",
+   "ms": 1119
+  },
+  {
+   "step": "memberships: quick action \"Send Reminder\" works",
+   "ok": true,
+   "detail": "Send 14 reminder(s) → 14 reminder(s) sent (0 by text) · 0 already reminded.\n✕",
+   "ms": 1298
+  },
+  {
+   "step": "memberships: quick action \"Manage Discounts\" works",
+   "ok": true,
+   "detail": "PLAN BENEFIT TYPE SERVICE VALUE MAX / CYCLE Basic Glow v1 Monthly gel manicure Service credit Gel Manicure $45.00 1 Pedi Club v1 10% off add",
+   "ms": 871
+  },
+  {
+   "step": "memberships: quick action \"Membership Report\" works",
+   "ok": true,
+   "detail": "Total Members 54 · +4 joined this month Active Members 36 · 67% Revenue · this month $1,764.00 · 36 payment(s) collected · -5.3% vs last mon",
+   "ms": 840
+  },
+  {
+   "step": "memberships: quick action \"Export Members\" works",
+   "ok": true,
+   "detail": "membership-members-2026-10-30.csv: 64 line(s), BOM true, formula-safe",
+   "ms": 171
+  },
+  {
+   "step": "memberships: quick action \"Export Payments\" works",
+   "ok": true,
+   "detail": "membership-payments-2026-10-30.csv: 76 line(s), BOM true, formula-safe",
+   "ms": 138
+  },
+  {
+   "step": "memberships: quick action \"Export Redemptions\" works",
+   "ok": true,
+   "detail": "membership-redemptions-2026-10-30.csv: 12 line(s), BOM true, formula-safe",
+   "ms": 150
+  },
+  {
+   "step": "memberships: quick action \"Plan Performance\" works",
+   "ok": true,
+   "detail": "PLAN ACTIVE NOW JOINED CANCELED REVENUE (MONTH) LAST MONTH RENEWALS FAILED PAYMENTS REDEMPTIONS Pedi Club 12 0 2 $1,062.00 $1,121.00 18 1 6 ",
+   "ms": 820
+  },
+  {
+   "step": "memberships: quick action \"Membership Settings\" works",
+   "ok": true,
+   "detail": "/settings?section=loyalty-memberships",
+   "ms": 2017
+  },
+  {
+   "step": "memberships: Expiring Soon opens Members filtered to the next 7 days (count = the card)",
+   "ok": true,
+   "detail": "Expiring KPI 6; Members tab \"Showing 1–6 of 6 · Page 1 of 1\"",
+   "ms": 507
+  },
+  {
+   "step": "memberships: phone search in four formats finds the same member (all tenant records, not Page 1)",
+   "ok": true,
+   "detail": "Emily Phạm: 2155551173 → 1 · (215) 555-1173 → 1 · 215-555-1173 → 1 · +1 215 555 1173 → 1",
+   "ms": 5886
+  },
+  {
+   "step": "memberships: similar names stay separate people (two rows, two membership IDs)",
+   "ok": true,
+   "detail": "5 row(s): Linh Bùi #M1003 | Linh Johnson #M1027 | Linh Hoàng #M1006 | Linh Phạm #M1010 | Linh Nguyễn #M1043",
+   "ms": 1719
+  },
+  {
+   "step": "memberships: numbered pages are newest enrolment first; Page 2 continues Page 1",
+   "ok": true,
+   "detail": "page 1 starts Rosa Hoàng, page 2 starts Linh Bùi; 64 total",
+   "ms": 814
+  },
+  {
+   "step": "memberships: a period filters the event list only — the current-state cards do not move",
+   "ok": true,
+   "detail": "activity all \"Showing 1–10 of 76 · Page 1 of 8\" → today \"Showing 1–2 of 2 · Page 1 of 1\" (server 2); KPIs unchanged",
+   "ms": 1214
+  },
+  {
+   "step": "memberships: Custom Range opens a month calendar; Apply filters Payments by payment date",
+   "ok": true,
+   "detail": "range \"Oct 1, 2026 – Oct 31, 2026\" · Collected $1,764.00 Refunded $0.00 Net collected $1,764.00 Failed charges 2 Totals cover every payment matching the sear",
+   "ms": 1338
+  },
+  {
+   "step": "memberships: Member Details — identity, lifecycle, billing, benefits, activity + audit",
+   "ok": true,
+   "detail": "Member Linh Bùi Phone No phone on file Customer ID e0510000-0000-4000-8000-00000000000b Me || billing: Overview Billing Benefits Activity & audit No payments with  || benefits: Overview Billing Benefits Activity & audit BENEFIT SERVICE P || activity: Overview Billing Benefits Activity & audit WHEN CUSTOMER EVE",
+   "ms": 1756
+  },
+  {
+   "step": "memberships: the sidebar highlights Memberships, not Service Packages",
+   "ok": true,
+   "detail": "active: Memberships",
+   "ms": 1677
+  },
+  {
+   "step": "vi: Loyalty renders in Vietnamese (no English UI labels)",
+   "ok": true,
+   "detail": "Thân thiết & Phần thưởng — Đăng ký thành viên | Tạo phần thưởng | Cài đặt | Sổ điểm | Quản lý hạng | Báo cáo thân thiết | Cài đặt",
+   "ms": 92
+  },
+  {
+   "step": "vi (CR-01/02): the scope line, branch selector and As of Date are Vietnamese",
+   "ok": true,
+   "detail": "Giữ chân khách toàn tiệm · Theo ngày · Mọi chi nhánh được phép",
+   "ms": 79
+  },
+  {
+   "step": "vi: the SMS composer is Vietnamese, the customer-facing text stays English",
+   "ok": true,
+   "detail": "title \"Gửi SMS giữ chân khách\", message placeholder (customer-facing, English): \"Hi! We miss seeing you. Book your next appointment with us!\"",
+   "ms": 613
+  }
+ ],
+ "errors": [],
+ "unhandled": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 7
+  },
+  {
+   "route": "GET /pos/services",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/technicians/salon-commission",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/settings/state",
+   "n": 1
+  }
+ ]
+}

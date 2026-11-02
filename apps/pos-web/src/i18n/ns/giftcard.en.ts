@@ -1,0 +1,54 @@
+// ns/giftcard.en.ts — the POS "gc" namespace, English: Customers → Gift Cards (Gift Cards mandate, Oct 29 2026). Staff-facing;
+// gift-card messages sent to customers stay English on the server.
+export const GIFTCARD_EN = {
+  'gc.subtitle': 'Every card the salon has sold — balances, purchasers and recipients, full history',
+  'gc.issue': 'Issue Gift Card', 'gc.checkBalance': 'Check Balance', 'gc.branchLiability': 'Branch liability', 'gc.cards': 'Gift cards', 'gc.card': 'Gift card', 'gc.viewCard': 'View card',
+  // KPIs
+  'gc.kpi.liability': 'Outstanding Liability', 'gc.kpi.liabilitySub': 'Value still owed on cards · as of now',
+  'gc.kpi.active': 'Active Cards', 'gc.kpi.activeSub': 'Spendable with a balance · as of now',
+  'gc.kpi.issued': 'Total Issued', 'gc.kpi.issuedSub': '{n} cards activated · {p}',
+  'gc.kpi.redeemed': 'Redeemed Value', 'gc.kpi.redeemedSub': '{n} redemptions · net of {r} refunded back',
+  'gc.kpi.total': 'Total Cards', 'gc.kpi.totalSub': 'All time · {p} waiting for payment',
+  // toolbar
+  'gc.tab.all': 'All', 'gc.tab.active': 'Active', 'gc.tab.redeemed': 'Redeemed', 'gc.tab.void': 'Void',
+  'gc.searchPh': 'Search card ref or last 4, name, phone or email (purchaser or recipient)',
+  'gc.roleLabel': 'Purchaser or recipient', 'gc.role.all': 'Purchaser or recipient', 'gc.role.purchaser': 'Purchaser', 'gc.role.recipient': 'Recipient',
+  'gc.sort.issued_desc': 'Newest issued', 'gc.sort.issued_asc': 'Oldest issued', 'gc.sort.activity_desc': 'Last activity', 'gc.sort.balance_desc': 'Balance high–low',
+  'gc.sort.balance_asc': 'Balance low–high', 'gc.sort.name_asc': 'Name A–Z', 'gc.sort.status': 'Status',
+  'gc.basis.issued': 'Issued date', 'gc.basis.redemption': 'Redemption date', 'gc.basis.created': 'Created date', 'gc.basis.activity': 'Last activity', 'gc.basis.expiration': 'Expiration date',
+  'gc.moreFilters': 'More filters', 'gc.clearAll': 'Clear All', 'gc.f.delivery': 'Card type', 'gc.delivery.all': 'Digital or physical', 'gc.delivery.digital': 'Digital', 'gc.delivery.physical': 'Physical',
+  'gc.f.balanceMin': 'Balance from ($)', 'gc.f.balanceMax': 'Balance to ($)', 'gc.f.denomination': 'Original amount ($)',
+  'gc.chip.search': 'Search: {q}', 'gc.chip.date': '{basis}: {p}', 'gc.chip.balance': 'Balance ${a}–${b}', 'gc.chip.denomination': 'Original ${a}',
+  'gc.matched.purchaser': 'matched purchaser', 'gc.matched.recipient': 'matched recipient', 'gc.matched.card': 'matched card',
+  // table
+  'gc.empty': 'No gift cards yet', 'gc.emptyHint': 'Issue a gift card to sell stored value to a customer.',
+  'gc.col.card': 'Card', 'gc.col.purchaser': 'Purchaser', 'gc.col.recipient': 'Recipient', 'gc.col.issued': 'Issued', 'gc.col.original': 'Original', 'gc.col.balance': 'Balance',
+  'gc.noPurchaser': 'No purchaser recorded', 'gc.sameAsPurchaser': 'Purchaser',
+  'gc.status.active': 'Active', 'gc.status.partially_redeemed': 'Active (partly used)', 'gc.status.redeemed': 'Redeemed', 'gc.status.pending_payment': 'Waiting for payment',
+  'gc.status.frozen': 'Frozen', 'gc.status.suspended': 'Suspended', 'gc.status.void': 'Void', 'gc.status.canceled': 'Canceled', 'gc.status.refunded': 'Refunded', 'gc.status.expired': 'Expired',
+  'gc.status.replaced': 'Replaced', 'gc.status.lost_stolen': 'Lost / stolen', 'gc.status.draft': 'Draft',
+  // detail
+  'gc.notReconciled': 'Ledger shows {a} — review', 'gc.pendingNote': 'This card holds no value until Checkout takes the payment.',
+  'gc.f.lastActivity': 'Last activity', 'gc.f.expires': 'Expires', 'gc.noExpiry': 'No expiry', 'gc.f.pin': 'PIN', 'gc.pinSet': 'Set', 'gc.noPin': 'None',
+  'gc.t.reloaded': 'Reloaded', 'gc.t.pendingReload': '{a} waiting for payment', 'gc.t.redeemed': 'Redeemed', 'gc.t.refundedBack': '{a} refunded back', 'gc.t.adjusted': 'Adjustments / void',
+  'gc.t.transferred': 'Transferred', 'gc.t.transactions': 'Ledger entries',
+  'gc.reload': 'Reload', 'gc.reloadAmount': 'Reload amount ($)', 'gc.reloadNote': 'Opens a ticket for this amount; the balance grows only after Checkout takes the payment.',
+  'gc.reloadToCheckout': 'Continue to Checkout', 'gc.reloadStarted': 'Reload of {a} started on ticket #{n} — take the payment at Checkout.', 'gc.enterAmount': 'Enter an amount.',
+  'gc.void': 'Void card', 'gc.voidConfirm': 'Void this card? Its {a} balance can no longer be spent. History is kept and a voiding entry is added.', 'gc.voidReason': 'Reason',
+  'gc.voided': '{card} voided.', 'gc.stepupVoid': 'Confirm your password to void this gift card.', 'gc.goToCheckout': 'Go to Checkout',
+  'gc.ledger': 'Ledger', 'gc.noLedger': 'No ledger entries yet.', 'gc.l.date': 'Date', 'gc.l.type': 'Type', 'gc.l.amount': 'Amount', 'gc.l.before': 'Balance before', 'gc.l.after': 'Balance after',
+  'gc.l.reference': 'Reference', 'gc.lstatus.pending': 'Pending payment', 'gc.lstatus.completed': 'Completed',
+  'gc.ltype.activate': 'Activated', 'gc.ltype.issue': 'Issued', 'gc.ltype.redeem': 'Redeemed', 'gc.ltype.redemption': 'Redeemed', 'gc.ltype.reload': 'Reloaded', 'gc.ltype.reload_pending': 'Reload (waiting for payment)',
+  'gc.ltype.void_or_adjustment': 'Void / adjustment', 'gc.ltype.adjustment': 'Adjustment', 'gc.ltype.refund': 'Refunded back to card', 'gc.ltype.transfer': 'Transfer', 'gc.ltype.expire': 'Expired',
+  // balance
+  'gc.balanceSub': 'Exact card number or code — protected and recorded', 'gc.balanceInput': 'Card number or code', 'gc.check': 'Check',
+  'gc.balanceNote': 'Only an exact number or code is answered. Lookups are limited and recorded.', 'gc.notFound': 'No card matches that number or code.', 'gc.notRedeemableHere': 'not redeemable at this location',
+  // issue
+  'gc.issueSub': 'Payment first — the card activates when Checkout takes the payment', 'gc.f.purchaser': 'Purchaser', 'gc.customerPh': 'Search customer name or phone',
+  'gc.changeCustomer': 'Change customer', 'gc.f.amount': 'Amount ($)', 'gc.amountRange': 'Between {a} and {b}', 'gc.amountInvalid': 'That amount is outside the salon\'s gift card limits.',
+  'gc.f.cardNumber': 'Physical card number (16 digits)', 'gc.isGift': 'This card is a gift for someone else', 'gc.f.rName': 'Recipient name', 'gc.f.rPhone': 'Recipient phone',
+  'gc.f.rEmail': 'Recipient email', 'gc.f.rMsg': 'Message', 'gc.paymentFirst': 'No value is created until the payment is taken. Tapping twice never makes two cards.',
+  'gc.issueToCheckout': 'Create and go to Checkout', 'gc.salesOff': 'Gift card sales are turned off', 'gc.salesOffHint': 'Turn them on in Gift Card Settings.',
+  'gc.issuedTitle': 'Gift card created', 'gc.issuedSub': 'Ticket #{n} is ready for payment', 'gc.numberOnce': 'Card number — shown only once. Give it to the customer now.',
+  'gc.issuedHidden': '{ref} was created but your filters hide it.',
+} as const;

@@ -1,0 +1,2 @@
+# Constitution 5 §45: the full spec is generated on demand (npm run openapi -w @aipowersalon/api); the manifest is committed
+openapi.json

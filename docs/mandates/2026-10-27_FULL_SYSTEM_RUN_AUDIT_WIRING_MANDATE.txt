@@ -1,0 +1,2264 @@
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+                                                  AI POWERSALON
+
+ Full System Run, Audit, Repair, Wiring &
+                                 Completion Mandate
+       Developer Execution Guide for Claude - Frontend, Backend, Database, Workers,
+                                         Realtime, All Apps & Integrations
+
+         MISSION: Run the existing AI PowerSalon codebase, find broken wiring and gaps, fix the actual code,
+         retest, and continue until everything that can be completed internally is finished and verified.
+         DECISION RULE: For ordinary engineering choices, use the recommended production-safe option instead
+         of stopping to ask. Preserve working architecture, tenant isolation, financial correctness, data integrity and
+         maintainability.
+         COMPLETION RULE: A feature is not complete because a screen renders or an API returns 200. The full
+         UI -> API -> auth -> tenant/branch -> permission -> domain -> database -> events/workers -> realtime ->
+         relevant apps chain must work.
+  Execution focus: recommended choices, no blind rewrites, no fake success, no unwired modules, no hidden
+                                                 failures.
+
+
+
+
+                                                                                                                          Page 1
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+Execution Map
+• Part I - Repository discovery, clean startup, database and tenant/branch integrity (Sections 1-15)
+• Part II - Authentication, permissions, customers, booking, check-in, queues, workforce and technician apps (Sections
+16-42)
+• Part III - Checkout, payments, Clover, Tap to Pay, settlement, payroll and commerce modules (Sections 43-69)
+• Part IV - Twilio, customer display, owner/customer/super-admin apps, AI, workers and realtime (Sections 70-90)
+• Part V - Frontend QA, security, observability, performance, failure tests and repair priorities (Sections 91-119)
+• Part VI - Required documentation, final reports, exact change inventories and unresolved-bug disclosure (Sections
+120-130)
+• Final Claude Instruction - Run it, fix it, wire it, test it, and run it again.
+
+
+
+
+                                                                                                                      Page 2
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+Claude: Take Ownership of the Existing System and Finish It
+Claude,
+You are now responsible for running, auditing, debugging, repairing, integrating, and completing my entire existing
+AI PowerSalon platform.
+This is not a request for another architecture proposal.
+I already have substantial frontend and backend implementation.
+Your responsibility is to inspect the actual repository and make the existing system work correctly from end to end.
+Your operating sequence is:
+  DISCOVER EXISTING CODE
+      ->
+  UNDERSTAND ARCHITECTURE
+      ->
+  INSTALL / BOOT ENVIRONMENT
+      ->
+  RUN DATABASE
+      ->
+  RUN MIGRATIONS
+      ->
+  RUN BACKEND
+      ->
+  RUN WORKERS
+      ->
+  RUN REALTIME
+      ->
+  RUN ALL FRONTENDS / APPS
+      ->
+  TEST EVERY MAJOR WORKFLOW
+      ->
+  TRACE BROKEN WIRING
+      ->
+  FIX ERRORS
+      ->
+  MERGE DUPLICATES
+      ->
+  COMPLETE PARTIAL MODULES
+      ->
+  RETEST
+      ->
+  RUN FULL BUILD
+      ->
+  SECURITY / TENANT TESTS
+      ->
+  PERFORMANCE / FAILURE TESTS
+      ->
+  DOCUMENT EXACT FINAL STATUS
+
+Do not stop because the application compiles.
+Do not stop because the API starts.
+Do not stop because the screen renders.
+The platform is complete only when the entire business workflow is connected and functioning.
+
+1. Very Important: Use the Recommended Option
+For ordinary technical decisions, do not stop development to ask me which implementation I want.
+When multiple reasonable technical approaches exist, use the recommended option that best satisfies:
+  1. Preserve existing working architecture
+  2. Security
+  3. Tenant isolation
+
+                                                                                                                 Page 3
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   4. Financial correctness
+   5. Data integrity
+   6. Server authority
+   7. Backward compatibility
+   8. Simplicity
+   9. Maintainability
+   10. Performance
+   11. Scalability
+   12. Operational reliability
+
+Use the safest production-quality option and continue.
+Document the decision afterward.
+Only stop and ask me when the decision requires something that cannot safely be inferred, such as:
+  Production credentials
+  Merchant-provider approval
+  Apple entitlement
+  Twilio/A2P approval
+  Irreversible destructive production operation
+  A real legal/compliance policy decision
+  A business pricing decision
+  Deleting real production information
+  Changing a major product rule that conflicts with an existing rule
+
+Routine coding decisions should not block progress.
+
+2. Never Blindly Rewrite My System
+Before creating anything new, search the repository.
+Do not create:
+  PaymentServiceV2
+  NewBookingService
+  Queue2
+  NewPayroll
+  CustomerV2
+  TwilioService2
+  TechnicianProfileV2
+
+just because an existing implementation has bugs.
+Instead:
+  FIND EXISTING IMPLEMENTATION
+      ->
+  TRACE IT
+      ->
+  UNDERSTAND ITS RESPONSIBILITY
+      ->
+  KEEP GOOD CODE
+      ->
+  FIX BAD CODE
+      ->
+  COMPLETE MISSING PIECES
+      ->
+  MERGE DUPLICATES
+      ->
+  MIGRATE CALLERS
+      ->
+  REMOVE OBSOLETE IMPLEMENTATION
+
+There should be one authoritative implementation per business concept.
+
+3. Start With Complete Repository Discovery
+Before editing, identify:
+  workspace / monorepo configuration
+  package manager
+
+                                                                                                     Page 4
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   package.json files
+   build orchestrator
+   TypeScript configs
+   NestJS configuration
+   Vite configuration
+   mobile configuration
+   Docker / Compose
+   CI/CD
+   database configuration
+   Redis configuration
+   environment schemas
+   migration framework
+   test framework
+   linting
+   formatting
+   deployment configuration
+
+Inspect:
+  /apps
+  /modules
+  /packages
+  /libs
+  /src
+  /database
+  /migrations
+  /tests
+  /scripts
+  /docs
+
+or equivalent real repository structure.
+Do not assume folder names.
+
+4. Search for Known Incomplete Code
+Search globally for:
+  TODO
+  FIXME
+  HACK
+  TEMP
+  TEMPORARY
+  PLACEHOLDER
+  MOCK
+  FAKE
+  STUB
+  NOT_IMPLEMENTED
+  throw new Error
+  coming soon
+  later
+  disabled
+  deprecated
+  legacy
+
+Also search for:
+  hard-coded API responses
+  hard-coded tenant IDs
+  hard-coded branch IDs
+  hard-coded merchant IDs
+  hard-coded Twilio numbers
+  fake payment success
+  fake queue data
+  fake payroll values
+  test credentials
+  demo customer records
+  unused API routes
+  dead buttons
+
+
+
+                                                                              Page 5
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   broken links
+   empty click handlers
+
+Production code must not rely on these.
+
+5. Create an Internal System Inventory
+Classify each major implementation as:
+  COMPLETE
+  PARTIAL
+  BROKEN
+  NOT_WIRED
+  DUPLICATE
+  PLACEHOLDER
+  MOCK
+  LEGACY
+  DEPRECATED
+  UNSAFE
+  DEAD
+  MISSING
+  BLOCKED_EXTERNAL
+
+Do this across:
+  UI
+  API Client
+  API
+  Authentication
+  Permission
+  Domain
+  Repository
+  Database
+  Events
+  Workers
+  Realtime
+  Audit
+  Tests
+
+Then continue fixing.
+Do not finish by giving me only the inventory.
+
+6. Run the System From a Clean State
+Test whether another developer could start this platform.
+Verify:
+  dependency installation
+  environment validation
+  database startup
+  Redis startup
+  migration execution
+  API startup
+  worker startup
+  realtime startup
+  POS startup
+  Super Admin startup
+  mobile apps
+  customer display
+  online booking
+  payment app
+
+Do not depend on undocumented local-machine state.
+
+7. Never Destroy Production Data
+Do not run:
+
+
+                                                                              Page 6
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   DROP DATABASE
+   reset production
+   delete migrations
+   truncate production tables
+   force destructive migration
+
+unless explicitly authorized.
+Development/testing fixes must use safe environments.
+Production migration plans must use:
+  EXPAND
+    ->
+  BACKFILL
+    ->
+  VALIDATE
+    ->
+  CUTOVER
+    ->
+  CONTRACT
+
+when appropriate.
+
+8. Core Stack
+Preserve the healthy existing architecture.
+Current expected architecture is broadly:
+  Backend
+  NestJS
+
+  Database layer
+  Kysely
+
+  Database
+  PostgreSQL
+
+  POS / Web
+  React + Vite
+
+  Redis
+  Cache / coordination / realtime assistance
+
+  Workers
+  Background processing
+
+  Realtime
+  WebSocket / SSE architecture
+
+  Object Storage
+  Media / documents
+
+  Secrets Manager
+  External credentials
+
+  OpenTelemetry
+  Observability
+
+If the repository differs, inspect before changing it.
+
+9. PostgreSQL Is Business Truth
+Permanent rule:
+  POSTGRESQL = AUTHORITATIVE BUSINESS STATE
+
+Never make Redis authoritative for:
+  appointments
+  queue
+                                                                              Page 7
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   payments
+   payroll
+   customers
+   inventory
+   gift cards
+   loyalty
+   memberships
+
+Redis may assist with:
+  cache
+  rate limits
+  realtime fanout
+  short-lived coordination
+
+
+10. Run Database Validation
+Inspect every migration.
+Verify:
+  migration order
+  missing migrations
+  migration conflicts
+  duplicate columns
+  wrong foreign keys
+  missing indexes
+  bad constraints
+  nullable columns that should not be nullable
+  tenant ownership
+  branch ownership
+  version columns
+  money precision
+  timestamp precision
+  timezone behavior
+
+Then run migrations in a clean development database.
+
+11. Validate Tenant Isolation at the Database Level
+Every tenant-owned entity must be tenant-scoped.
+Examples:
+  customers
+  employees
+  appointments
+  visits
+  queue entries
+  checkout
+  payments
+  payroll
+  inventory
+  gift cards
+  loyalty
+  memberships
+  campaigns
+  Twilio configuration
+  merchant configuration
+
+Whenever possible, use tenant-aware constraints.
+Example:
+  Tenant A appointment
+
+must never reference:
+  Tenant B technician.
+
+even if a bug bypasses service validation.
+
+
+                                                                              Page 8
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+12. Validate Branch Isolation
+Branch-owned entities should correctly include:
+  branchId
+
+when necessary.
+Examples:
+  appointments
+  technician schedules
+  queues
+  inventory
+  terminals
+  merchant accounts
+  customer displays
+  advertising
+
+
+13. Trace Every Feature Through the Full Stack
+For every important module, verify this chain:
+  SCREEN / COMPONENT
+      ->
+  USER ACTION
+      ->
+  FRONTEND HANDLER
+      ->
+  API CLIENT
+      ->
+  HTTP / RPC ROUTE
+      ->
+  AUTHENTICATION
+      ->
+  TRUSTED TENANT CONTEXT
+      ->
+  TRUSTED BRANCH CONTEXT
+      ->
+  PERMISSION
+      ->
+  DTO VALIDATION
+      ->
+  CONTROLLER
+      ->
+  APPLICATION SERVICE
+      ->
+  DOMAIN LOGIC
+      ->
+  REPOSITORY / PORT
+      ->
+  KYSELY
+      ->
+  POSTGRESQL
+      ->
+  AUDIT
+      ->
+  OUTBOX EVENT
+      ->
+  WORKER / CONSUMER
+      ->
+  REALTIME EVENT
+      ->
+  OTHER CLIENTS
+
+If any link is missing:
+FIX THE WIRING.
+
+
+
+                                                                              Page 9
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+14. Do Not Call a Module Complete Because the Screen Exists
+A screen is not complete when:
+  button does nothing
+  button modifies only local state
+  fake table data appears
+  network call fails silently
+  backend endpoint does not exist
+  database is never updated
+  realtime does not update other apps
+
+Test the full chain.
+
+15. Do Not Call an API Complete Because It Returns 200
+Verify:
+  authorization
+  tenant isolation
+  branch isolation
+  validation
+  correct domain rules
+  database write
+  transaction
+  audit
+  events
+  idempotency
+  concurrency
+  error handling
+
+
+16. Authentication Audit
+Inspect:
+  Employee auth
+  Customer auth
+  Platform/Super Admin auth
+  Public booking
+  Service accounts
+  Integration credentials
+
+Keep the realms separate.
+Do not create one universal authentication token.
+
+17. Employee Realm
+Technician, receptionist, manager, and owner use employee authentication.
+Verify:
+  login
+  refresh
+  logout
+  session expiration
+  device trust
+  password reset
+  MFA where configured
+  session revocation
+
+
+18. Customer Realm
+Customer App uses separate customer authentication.
+Customers can access only their own data.
+
+19. Super Admin Realm
+Super Admin is a separate platform-security domain.
+
+                                                                              Page 10
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+A platform administrator is not automatically a tenant Owner.
+
+20. Public Booking Realm
+Online/public booking receives only narrowly scoped access.
+Never give public booking a normal employee/customer API token.
+
+21. Permissions Audit
+Use:
+  RBAC
+  +
+  RESOURCE SCOPE
+  +
+  POLICY CONDITIONS
+
+Verify every sensitive backend mutation.
+Do not rely on frontend visibility.
+
+22. Permission Scopes
+Support current architecture such as:
+  OWN
+  ASSIGNED
+  BRANCH
+  SELECTED_BRANCHES
+  TENANT
+  PLATFORM
+
+
+23. Frontend Permission Checking Is Not Security
+Frontend can hide controls.
+Backend must enforce access independently.
+
+24. Customer Module
+Verify:
+  Create customer
+  Search
+  Edit
+  History
+  Preferences
+  Duplicates
+  Tenant isolation
+  Phone
+  Email
+  Visit history
+  Receipts
+  Loyalty
+  Membership
+  Gift cards
+
+Make sure large customer datasets use server-side search/pagination.
+
+25. Booking Module
+Run actual Booking flows.
+Test:
+  new appointment
+  edit appointment
+  move appointment
+  cancel
+  reschedule
+                                                                              Page 11
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   specific technician
+   any technician
+   multiple services
+   add-ons
+   branch pricing
+   technician-specific duration if supported
+   schedule conflict
+   lunch conflict
+   time-off conflict
+   skill conflict
+
+
+26. Booking Concurrency
+Open the same time slot from two sessions.
+Attempt simultaneous booking.
+Expected:
+  ONE appointment succeeds
+
+  OTHER receives APPOINTMENT_CONFLICT
+
+No double booking.
+
+27. Phone Verification
+Verify:
+  OTP generation
+  rate limiting
+  expiration
+  single use
+  attempt limits
+  Twilio routing
+  tenant configuration
+
+Never log OTP.
+
+28. Check-In Module
+Test:
+  Reception Check-In
+  Customer Display Check-In
+  Customer App Check-In
+  Appointment Check-In
+  Walk-In
+
+All must feed the same:
+  Visit
+  -> Queue
+
+architecture.
+
+29. Duplicate Check-In Test
+Tap Check-In repeatedly.
+Expected:
+  1 Visit
+  1 Check-In
+  1 Queue Entry
+
+
+30. Customer Queue
+Verify:
+  waiting
+  assigned
+
+                                                                              Page 12
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   serving
+   done
+   checkout-ready
+
+transitions.
+
+31. Technician Fair Turn Queue
+Verify:
+  Manual
+  Recommend-and-Confirm
+  Automatic
+
+operation.
+Use the recommended configuration when tenant has no custom rules.
+
+32. Recommended Fair Turn Defaults
+Use:
+  Mode
+  RECOMMEND_AND_CONFIRM
+
+  Fairness
+  WEIGHTED TRADITIONAL ROTATION
+
+  Clock-In
+  JOIN_BACK
+
+  Skill-ineligible skip
+  KEEP POSITION
+
+  Customer requests another technician
+  KEEP POSITION
+
+  Requested technician client
+  DO NOT CONSUME SHARED TURN
+
+  Appointment protection
+  ON
+
+  Manager overrides
+  ALLOWED WITH REASON + AUDIT
+
+
+33. Fair Turn Eligibility
+Before ranking:
+  employment active
+  correct tenant
+  correct branch
+  clocked in
+  working shift
+  skill eligible
+  not serving
+  not unavailable
+  not on protected break
+  appointment safe
+
+
+34. Fair Turn Must Be Explainable
+Every automatic/recommended decision must have:
+  selected technician
+  candidate ranking
+  reason
+  skipped technicians
+
+
+
+                                                                              Page 13
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   skip reasons
+   policy version
+
+
+35. Time Clock
+Test:
+  Clock In
+  Break Start
+  Break End
+  Clock Out
+
+Server timestamps remain authoritative.
+
+36. Break vs Queue Hold
+Do not merge these concepts.
+  BREAK
+  =
+  time/payroll event
+
+  QUEUE HOLD
+  =
+  assignment availability state
+
+
+37. Workforce Scheduling
+Test:
+  shift
+  lunch
+  breaks
+  time off
+  vacation
+  unavailable blocks
+  multi-branch assignment
+
+Booking and Fair Turn must use authoritative schedule state.
+
+38. Technician Profile
+Verify global professional identity is separate from tenant employment.
+Professional/portable:
+  profile
+  photo
+  bio
+  portfolio
+  public skills
+  public reputation
+
+Tenant-private:
+  commission
+  payroll
+  manager notes
+  schedule
+  employment
+  permissions
+  customers
+
+
+39. Skill Requests
+Verify:
+  submit
+  review
+  approve
+  reject
+
+
+                                                                              Page 14
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+Technician cannot self-approve.
+Approved skill affects:
+  booking eligibility
+  queue eligibility
+
+
+40. Technician App
+Run:
+  Home
+  Schedule
+  Queue
+  Tickets
+  Service
+  Customers where permitted
+  Time Clock
+  Earnings
+  Tips
+  Payroll
+  Portfolio
+  Ratings
+  Skills
+  Notifications
+  Profile
+  Settings
+
+Every screen must connect to real APIs.
+
+41. Service Workflow
+Test complete:
+  ASSIGNED
+    ->
+  ACCEPT if required
+    ->
+  START SERVICE
+    ->
+  SERVING
+    ->
+  ADD / MODIFY AUTHORIZED ITEMS
+    ->
+  SERVICE DONE
+
+
+42. Service Done
+Service Done must produce/lock the appropriate operational financial snapshot.
+This is important for:
+  Checkout
+  Commission
+  Payroll
+  Reporting
+
+
+43. Checkout Module
+Run actual Checkout with:
+  services
+  multiple technicians
+  products
+  add-ons
+  discount
+  promotion
+  membership
+  loyalty
+  gift card
+  tax
+                                                                                 Page 15
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   tip
+   split payment
+   receipt
+
+
+44. Backend Calculates Checkout
+Frontend must never be authoritative for:
+  subtotal
+  tax
+  fees
+  discount
+  tip total
+  balance due
+  final total
+
+Frontend submits choices.
+Backend calculates.
+
+45. Checkout Versioning
+If POS and mobile modify the same ticket:
+use:
+  VERSION_CONFLICT
+
+instead of silently overwriting.
+
+46. Payment Module
+Inspect all existing:
+  Fiserv
+  CardPointe
+  Bolt
+  Clover
+  Clover Compact
+  Tap to Pay
+
+code.
+Do not create new fake providers.
+
+47. Merchant Routing
+Every payment resolves:
+  Authenticated Tenant
+      ->
+  Branch
+      ->
+  Merchant Account
+      ->
+  Payment Provider
+      ->
+  Payment Device
+
+Frontend never chooses an arbitrary merchant credential.
+
+48. Payment Intent
+Every card attempt begins with an internal:
+  PaymentIntent
+
+containing:
+  tenant
+  branch
+  checkout
+  amount
+                                                                              Page 16
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   currency
+   provider
+   idempotency
+   status
+
+
+49. Duplicate Charge Test
+Send the same payment request repeatedly.
+Expected:
+  ONE processor business effect
+
+
+50. Unknown Payment State
+If communication disappears after card presentation:
+  PAYMENT_STATUS_UNKNOWN
+
+Do not:
+  mark failed
+  immediately charge again
+
+Verify provider status first.
+
+51. Clover Compact
+Test:
+  device registration
+  branch mapping
+  POS pairing
+  online/offline
+  terminal reservation
+  payment
+  cancel
+  refund
+  void
+  disconnect recovery
+
+
+52. Tap to Pay / Owner Manager Pay App
+Run:
+  Checkout Queue
+  Ticket Details
+  Tip
+  Split
+  Checkout Claim
+  Tap to Pay
+  Payment Processing
+  Payment Success
+  Receipt
+  History
+  Reports
+
+The phone is a payment surface, not a separate Checkout database.
+
+53. Mobile Payment Claim
+Verify POS and phone cannot charge the same Checkout simultaneously.
+
+54. Split Payments
+Test:
+  Cash + Card
+  Card + Card
+  Gift Card + Card
+
+Each is a separate tender.
+                                                                              Page 17
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+Checkout completes only when authoritative balance reaches zero.
+
+55. Refund
+Test:
+  full refund
+  partial refund
+  duplicate refund request
+  refund permissions
+  original tender
+  payroll reversal
+
+
+56. Settlement / Reconciliation
+Verify the chain:
+  Checkout
+  -> Payment
+  -> Processor Transaction
+  -> Settlement
+  -> Payout
+  -> Bank Deposit
+
+Do not label gross sales as payout.
+
+57. Payroll
+Run actual payroll calculations.
+Test:
+  service commission
+  multi-technician ticket
+  tip allocation
+  retail commission
+  hourly
+  salary
+  guarantee/top-up
+  bonus
+  deduction
+  adjustment
+  refund reversal
+
+
+58. Service-Line Commission
+Commission belongs to the technician who performed each service line.
+Never calculate a multi-tech ticket using one whole-ticket rate.
+
+59. Historical Commission Snapshot
+Change a technician's rate after old services exist.
+Old payroll must remain unchanged.
+
+60. Tip Split
+Verify current business rules including:
+  exactly two eligible technicians
+  -> default 50/50 when no explicit allocation
+
+  odd cent
+  -> deterministic
+
+  explicit customer allocation
+  -> wins
+
+
+
+
+                                                                              Page 18
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+61. Refund Payroll Reversal
+Never edit the original earning.
+Create:
+  REVERSAL / ADJUSTMENT
+
+linked to original.
+
+62. Pay Period
+Run:
+  Open
+  Prepare
+  Review
+  Approve
+  Lock
+  Paid / Payout
+
+
+63. Locked Payroll
+After lock:
+  normal edit = DENIED
+
+Correction uses adjustment.
+
+64. Inventory
+Run:
+  purchase
+  receive
+  sale
+  usage
+  adjustment
+  return
+  transfer
+  waste
+
+if these exist.
+Use movement ledger.
+
+65. Prevent Negative Inventory
+Use recommended default:
+  BLOCK NEGATIVE STOCK
+
+unless tenant deliberately enabled another policy.
+
+66. Loyalty
+Test:
+  earn
+  redeem
+  refund reversal
+  history
+
+Use ledger.
+
+67. Gift Cards
+Test:
+  issue
+  load
+  redeem
+  partial redeem
+                                                                              Page 19
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   refund
+   multi-location
+   history
+
+Use ledger.
+
+68. Membership
+Verify:
+  purchase
+  renew
+  cancel
+  benefit
+  checkout application
+  branch rules
+
+as implemented.
+
+69. Deals / Promotions
+Run:
+  eligibility
+  date rules
+  branch rules
+  service/product rules
+  stacking
+  checkout
+
+Do not implement discount formulas only in frontend.
+
+70. Twilio
+Inspect all SMS/Verify code.
+Business modules should use:
+  Communications Domain
+  -> Twilio Adapter
+
+not directly import Twilio everywhere.
+
+71. Tenant Twilio Routing
+Verify:
+  Tenant A
+  -> Twilio A
+
+  Tenant B
+  -> Twilio B
+
+No cross-tenant SMS.
+
+72. Communications Tests
+Run:
+  OTP
+  appointment confirmation
+  reminder
+  Check-In
+  queue ready
+  receipt
+  review request
+  marketing where allowed
+
+
+73. SMS Failure
+Twilio outage must not invalidate:
+
+                                                                              Page 20
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   appointment
+   payment
+   checkout
+
+Communication retries independently.
+
+74. Customer Display
+Run dual-screen flow:
+  Check-In
+  Advertising
+  Checkout takeover
+  Tip
+  Payment state
+  Receipt
+  Payment Complete
+  3 seconds
+  clear customer state
+  Advertising
+
+
+75. Customer Display Privacy Test
+After payment completion:
+verify previous customer's:
+  name
+  phone
+  services
+  total
+  tip
+  payment
+  receipt
+
+is actually removed.
+Do not merely overlay advertisement.
+
+76. Advertising
+Run:
+  upload
+  preview
+  publish
+  schedule
+  pause
+  expire
+  branch target
+  playlist
+  cache
+
+Tenant A advertisement must never reach Tenant B.
+
+77. Owner App
+Run and fix:
+  Dashboard
+  Live Operations
+  Appointments
+  Walk-Ins
+  Queues
+  Sales
+  Payments
+  Tips
+  Refunds
+  Technicians
+  Schedules
+  Payroll
+
+                                                                              Page 21
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Customers
+   Reports
+   AI Insights
+   Marketing
+   Settings
+
+
+78. Customer App
+Run:
+  Authentication
+  Profile
+  Salon
+  Technician Profile
+  Portfolio
+  Booking
+  Reschedule
+  Cancel
+  Check-In
+  Queue
+  Loyalty
+  Membership
+  Deals
+  Receipts
+  Notifications
+
+
+79. Super Admin
+Run all platform-control pages.
+Verify:
+  Overview
+  Tenants
+  Branches
+  Users/Roles
+  Onboarding
+  Plans
+  Live Operations
+  Appointments
+  Customers
+  Workforce
+  Queues
+  Payments
+  Communications
+  AI
+  Security
+  Audit
+  System Status
+
+
+80. Super Admin Is Not a Universal Tenant Session
+Private tenant access must use controlled Support Mode.
+
+81. Support Mode
+Verify:
+  tenant
+  reason
+  actor
+  expiration
+  audit
+
+No invisible tenant impersonation.
+
+82. AI Platform
+Inspect all AI calls.
+
+                                                                              Page 22
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+Provider SDKs should be centralized.
+Verify:
+  AI Gateway
+  Provider Router
+  Prompt Registry
+  Model Registry
+  Tenant Settings
+  Usage
+  Cost
+  Rate Limits
+  Safety
+  Failover
+
+
+83. AI Modules
+Audit the existing/planned AI modules:
+  AI Receptionist
+  Review/Reputation
+  Voice Transcription
+  OCR Receipt
+  Analytics Forecasting
+  Deposit Reconciliation
+  Queue Assignment
+  Scheduling Optimizer
+
+
+84. AI Is Advisory
+Never let AI alone:
+  charge card
+  refund payment
+  change payroll
+  change permissions
+  change gift card balance
+  override hard booking conflict
+  override hard queue eligibility
+
+
+85. Events and Workers
+List every:
+  event
+  publisher
+  consumer
+  queue
+  worker
+  retry rule
+  DLQ
+
+Verify consumers actually start with the application deployment.
+A worker file that is never registered is not complete.
+
+86. Transactional Outbox
+Critical mutations should use durable Outbox behavior.
+Test worker restart after committed transaction.
+Event must still process.
+
+87. Duplicate Event Test
+Deliver important events multiple times.
+Expected:
+  one business effect
+
+
+                                                                              Page 23
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+Test especially:
+  payment.completed
+  payment.refunded
+  appointment.completed
+  tip.finalized
+  gift_card.redeemed
+
+
+88. Realtime
+Verify end-to-end updates between:
+  POS
+  Technician App
+  Owner App
+  Customer Display
+  Payment App
+  Super Admin
+
+as appropriate.
+
+89. Reconnect
+Disconnect/reconnect realtime.
+Client must:
+  fetch snapshot
+  resume stream
+  reject stale events
+
+
+90. No Full-Page Refresh
+Search for:
+  window.location.reload
+  global loading overlay on refetch
+  full-screen spinner for background fetch
+
+Remove inappropriate use.
+Background data sync must remain silent.
+
+91. Frontend Route Audit
+For every application:
+  sidebar item
+  navigation item
+  button
+  menu
+  View All
+  quick action
+
+must lead to a real route/action.
+No dead navigation.
+
+92. Dead Button Audit
+Every production button must:
+  WORK
+
+  or
+
+  BE INTENTIONALLY DISABLED WITH EXPLANATION
+
+  or
+
+  BE REMOVED
+
+
+                                                                              Page 24
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+93. Frontend Error Handling
+Do not swallow API errors.
+Provide:
+  safe user message
+  retry where appropriate
+  logging/correlation
+  correct state recovery
+
+
+94. Loading States
+Use:
+  initial skeleton
+
+for initial load.
+Use:
+  stale existing data + silent update
+
+for background refresh.
+
+95. POS Screen Layout
+Keep the primary POS usable at default zoom.
+Avoid unnecessary vertical scrolling.
+Use compact cards and View All pages for detail.
+
+96. Logging
+Verify structured logs include appropriate:
+  requestId
+  correlationId
+  tenantId
+  branchId
+  service
+  operation
+  duration
+  status
+
+Never log:
+  password
+  OTP
+  token
+  PAN
+  CVV
+  Twilio secret
+  merchant secret
+
+
+97. Observability
+Run/verify:
+  logs
+  metrics
+  traces
+  health
+  alerts
+
+for:
+  API
+  PostgreSQL
+  Redis
+  Workers
+  Realtime
+
+                                                                              Page 25
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Payments
+   Twilio
+   AI
+   Storage
+
+
+98. Security Scan
+Search codebase for:
+  hardcoded secrets
+  API keys
+  passwords
+  private keys
+  Twilio tokens
+  merchant secrets
+  JWT secrets
+
+Move secrets to proper secret storage.
+
+99. Dependency Security
+Run existing:
+  dependency audit
+  SAST
+  secret scan
+
+where configured.
+Fix meaningful high-risk issues without casually performing major framework rewrites.
+
+100. Webhook Security
+Audit:
+  Fiserv
+  Clover
+  Twilio
+  other providers
+
+Verify:
+  signature/authentication
+  freshness
+  replay protection
+  deduplication
+  schema validation
+  tenant resolution
+  idempotency
+
+
+101. File Upload Security
+Validate:
+  MIME
+  magic bytes
+  size
+  ownership
+  allowed extension
+  storage location
+
+for:
+  portfolio
+  advertising
+  receipts
+  documents
+  OCR
+
+
+102. Performance
+Profile:
+                                                                                        Page 26
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Customer search
+   Booking
+   Queue
+   Checkout
+   Payment
+   Dashboard
+   Reports
+
+Look for:
+  N+1 queries
+  missing indexes
+  huge payloads
+  unbounded lists
+  duplicate API requests
+  request waterfalls
+  unnecessary rerenders
+
+
+103. Do Not Optimize Blindly
+Measure first.
+Then optimize actual bottlenecks.
+
+104. Failure Testing
+Simulate:
+  Redis unavailable
+  worker restart
+  Twilio unavailable
+  payment provider timeout
+  Clover offline
+  AI provider down
+  customer display offline
+  mobile network loss
+  database transient failure
+
+Core operations must degrade safely.
+
+105. Recommended Failure Philosophy
+If optional system fails:
+  AI
+  SMS
+  advertising
+  analytics
+
+core POS should continue.
+If authoritative financial operation is uncertain:
+  STOP
+  VERIFY
+  RECOVER
+
+never guess.
+
+106. Priority Order for Fixing Everything
+Use this order.
+
+P0 - Immediate
+  Tenant data leakage
+  Branch leakage
+  Authentication bypass
+  Permission bypass
+  Payment duplication
+  Refund duplication
+  Financial corruption
+                                                                              Page 27
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Payroll corruption
+   Gift-card double spend
+   Secret exposure
+   Broken migrations
+   Raw card storage
+
+P1 - Core Salon Operations
+  Login
+  Customers
+  Booking
+  Appointments
+  Check-In
+  Visit
+  Customer Queue
+  Technician Queue
+  Serving
+  Service Done
+  Checkout
+  Payments
+  Realtime
+
+P2 - Workforce & Money
+  Technician Profile
+  Skills
+  Schedule
+  Time Clock
+  Fair Turns
+  Payroll
+  Tips
+  Commission
+  Inventory
+
+P3 - Applications
+  Technician App
+  Owner App
+  Customer App
+  Customer Display
+  Owner/Manager Payment App
+  Super Admin
+
+P4 - Growth Platform
+  Twilio
+  Loyalty
+  Gift Cards
+  Membership
+  Deals
+  Marketing
+  Advertising
+  AI
+  Analytics
+  Reports
+
+P5 - Hardening
+  Performance
+  Observability
+  Backups
+  DR
+  Documentation
+  Cleanup
+
+
+107. Do Not Stop After the First Error
+When build/test fails:
+  Read error
+    ->
+  Trace root cause
+                                                                              Page 28
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+     ->
+   Fix root cause
+     ->
+   Run again
+
+Continue until:
+  PASS
+
+or genuinely:
+  BLOCKED_EXTERNAL
+
+
+108. Never Hide Errors
+Do not fix builds by:
+  disabling TypeScript strictness
+  adding @ts-ignore everywhere
+  commenting out failing tests
+  removing tests
+  swallowing exceptions
+  turning off lint
+  returning fake successful responses
+
+Fix the actual problem.
+
+109. Clean Build Requirement
+When repair is complete, run from clean state:
+  clean install
+  migrations
+  typecheck
+  lint
+  unit tests
+  integration tests
+  security tests
+  concurrency tests
+  build
+
+Then start the actual applications.
+
+110. Run Every Deployable App
+Verify actual startup for:
+  API
+  POS Web
+  Super Admin
+  Technician App
+  Owner App
+  Customer App
+  Online Booking
+  Customer Display
+  Owner/Manager Payment App
+  Workers
+  Realtime
+
+If a target does not exist yet but is required, classify and implement appropriately.
+
+111. Perform End-to-End Salon Test
+Create a safe development/staging scenario.
+Example:
+  Owner logs in
+
+  Technicians clock in
+
+  Customer books
+
+                                                                                        Page 29
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+  Customer arrives
+
+  Customer checks in
+
+  Customer enters queue
+
+  Fair Turn assigns technician
+
+  Technician accepts
+
+  Service starts
+
+  Add service/add-on/product
+
+  Service Done
+
+  Checkout opens
+
+  Discount applied
+
+  Tip selected
+
+  Payment processed
+
+  Receipt sent
+
+  Customer Display completes
+
+  Inventory updates
+
+  Loyalty updates
+
+  Payroll/commission updates
+
+  Owner sees report
+
+Everything must reconcile.
+
+112. Run Multi-Technician Test
+Example:
+  Customer
+
+  Gel Manicure
+  -> Lisa
+
+  Pedicure
+  -> Mary
+
+  Nail Art
+  -> Lisa
+
+Verify:
+  service ownership
+  commission
+  tip allocation
+  checkout
+  payroll
+  reporting
+
+
+113. Run Multi-Branch Test
+Example:
+  Tenant A
+
+
+
+                                                                              Page 30
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Branch 1
+   Branch 2
+
+Verify:
+  merchant routing
+  technician branch access
+  booking
+  inventory
+  queues
+  reports
+  permissions
+
+
+114. Run Cross-Tenant Attack Tests
+Create:
+  Tenant A
+  Tenant B
+
+Attempt to cross-access:
+  customers
+  appointments
+  employees
+  payroll
+  payments
+  merchant accounts
+  Twilio
+  ads
+  gift cards
+  reports
+
+All must fail.
+
+115. Run Concurrency Suite
+Test simultaneously:
+  same appointment slot
+  same Check-In
+  same technician assignment
+  same Checkout
+  same Clover terminal
+  same payment intent
+  same refund
+  same gift-card redemption
+  same payroll approval
+
+
+116. Recommended Implementation Rule
+When existing code offers a safe recommended solution:
+USE IT.
+When no implementation exists:
+use the architecture already established for AI PowerSalon.
+When multiple options are equivalent:
+choose:
+  simpler
+  safer
+  more deterministic
+  more maintainable
+  more compatible with existing code
+
+rather than introducing complexity.
+
+
+
+
+                                                                              Page 31
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+117. No Premature Microservices
+Do not split AI PowerSalon into dozens of services during this completion project.
+Keep:
+  Modular Monolith
+  +
+  Workers
+  +
+  Realtime
+  +
+  Strong Boundaries
+
+unless an existing workload clearly requires independent service separation.
+
+118. No Premature Kafka
+Use existing event infrastructure if it works.
+Do not introduce Kafka solely because the system may eventually scale.
+Abstract transport appropriately.
+
+119. No Premature New Database
+PostgreSQL remains primary.
+Do not add:
+  MongoDB
+  DynamoDB
+  Cassandra
+
+because one feature seems easier there.
+
+120. Documentation Claude Must Produce
+At the end, create/update:
+  PROJECT_STATUS.md
+  ARCHITECTURE_STATUS.md
+  DEVELOPER_HANDOFF.md
+  TEST_REPORT.md
+  CHANGELOG_HANDOFF.md
+  SECURITY_REVIEW.md
+  INTEGRATION_STATUS.md
+  DATABASE_STATUS.md
+  API_INVENTORY.md
+  REALTIME_INVENTORY.md
+  FRONTEND_ROUTE_STATUS.md
+
+
+121. PROJECT_STATUS.md
+For every major domain report:
+  COMPLETE
+  PARTIAL
+  FAILED
+  BLOCKED_EXTERNAL
+  DEPRECATED
+
+
+122. ARCHITECTURE_STATUS.md
+For every domain list:
+  Owner Module
+  Database
+  API
+  Events
+  Workers
+
+                                                                                     Page 32
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Realtime
+   Apps
+   Tests
+   Known Problems
+
+
+123. TEST_REPORT.md
+Do not write generic:
+  Tests look good.
+
+Provide:
+  Command
+  Result
+  Passed
+  Failed
+  Skipped
+  Failure Details
+
+
+124. INTEGRATION_STATUS.md
+Include:
+  Fiserv
+  CardPointe
+  Clover
+  Clover Compact
+  Tap to Pay
+  Twilio SMS
+  Twilio Verify
+  Email
+  Push
+  AI Providers
+  Object Storage
+
+Status:
+  WORKING
+  SANDBOX_READY
+  PARTIAL
+  BLOCKED_EXTERNAL
+  NOT_IMPLEMENTED
+
+
+125. Required Final Claude Report
+At the end of the actual implementation, provide:
+
+Executive Summary
+  What was broken
+  What was fixed
+  What was merged
+  What was completed
+  P0 issues fixed
+  P1 issues fixed
+  Remaining risks
+  Remaining external dependencies
+  Production readiness
+
+Application Matrix
+  API            PASS / FAIL
+  POS            PASS / FAIL
+  Super Admin         PASS / FAIL
+  Technician App       PASS / FAIL
+  Owner App          PASS / FAIL
+  Customer App        PASS / FAIL
+  Online Booking       PASS / FAIL
+  Customer Display      PASS / FAIL
+  Owner/Manager Pay App PASS / FAIL
+
+                                                                              Page 33
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   Workers          PASS / FAIL
+   Realtime         PASS / FAIL
+
+Domain Matrix
+  Identity
+  Tenants
+  Branches
+  Customers
+  Booking
+  Appointments
+  Check-In
+  Visits
+  Customer Queue
+  Technician Queue
+  Fair Turn
+  Workforce
+  Technician Profile
+  Skills
+  Schedules
+  Time Clock
+  Serving
+  Checkout
+  Payments
+  Payroll
+  Inventory
+  Catalog
+  Gift Cards
+  Loyalty
+  Memberships
+  Deals
+  Communications
+  Marketing
+  Advertising
+  AI
+  Analytics
+  Reports
+  Security
+  Audit
+  Support
+
+Each:
+  PASS / PARTIAL / FAIL / BLOCKED_EXTERNAL
+
+Engineering Validation
+  Install         PASS / FAIL
+  Migrations         PASS / FAIL
+  Typecheck          PASS / FAIL
+  Lint            PASS / FAIL
+  Unit Tests        PASS / FAIL
+  Integration Tests    PASS / FAIL
+  E2E Tests         PASS / FAIL
+  Security Tests      PASS / FAIL
+  Tenant Isolation     PASS / FAIL
+  Branch Isolation      PASS / FAIL
+  Concurrency Tests      PASS / FAIL
+  Production Build      PASS / FAIL
+
+
+126. Exact Files Changed
+At completion list:
+  Files created
+  Files modified
+  Files deleted
+  Files deprecated
+
+with exact repository paths.
+
+                                                                              Page 34
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+127. Exact Database Changes
+List:
+  Migration
+  Table
+  Column
+  Index
+  Constraint
+  Reason
+  Rollback / compatibility notes
+
+
+128. Exact API Changes
+List:
+  Method
+  Route
+  Realm
+  Permission
+  Request
+  Response
+  Breaking change?
+
+
+129. Exact Realtime Changes
+List:
+  Event
+  Publisher
+  Channel
+  Subscriber
+  Authorization
+  Payload version
+
+
+130. Remaining Bugs
+Never hide bugs.
+For each unresolved issue:
+  Severity
+  Module
+  Description
+  Root Cause
+  Internal or External
+  Recommended Fix
+  Workaround
+
+
+
+Final Claude Instruction
+Claude,
+Your task is not:
+  review the code and tell me what should be done
+
+Your task is:
+
+
+
+
+                                                                              Page 35
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+RUN IT.
+
+FIND WHAT IS BROKEN.
+
+TRACE WHY IT IS BROKEN.
+
+FIX IT.
+
+WIRE IT.
+
+TEST IT.
+
+RUN IT AGAIN.
+Use the recommended architecture when an ordinary engineering decision is required.
+Do not wait for me to select between equally reasonable coding approaches.
+Keep all working code.
+Do not create duplicate business systems.
+Do not replace production architecture with mocks.
+Do not create fake provider success.
+Do not ignore TypeScript errors.
+Do not disable tests to obtain a green result.
+Do not leave dead buttons.
+Do not leave unwired screens.
+Do not leave unused endpoints pretending to be finished.
+Do not leave workers unregistered.
+Do not leave realtime events unconsumed.
+Do not leave database tables without application wiring.
+Do not leave frontend screens disconnected from APIs.
+Do not leave backend APIs disconnected from domain logic.
+Do not leave domain logic disconnected from PostgreSQL.
+Do not leave financial operations without idempotency.
+Do not leave tenant-owned data without tenant isolation.
+Do not leave branch-owned operations without branch scope.
+Do not mark something `COMPLETE` until the complete path works:
+  UI
+  ->
+  API CLIENT
+  ->
+  API
+  ->
+  AUTH
+  ->
+                                                                                      Page 36
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+   TENANT / BRANCH
+    ->
+   PERMISSION
+    ->
+   DOMAIN
+    ->
+   DATABASE
+    ->
+   AUDIT / OUTBOX
+    ->
+   EVENT / WORKER
+    ->
+   REALTIME
+    ->
+   ALL RELEVANT APPS
+
+The final result I want is:
+
+
+AI PowerSalon running as one complete connected platform -
+frontend, backend, database, workers, realtime, payments,
+communications, mobile apps, customer display, Super
+Admin, workforce, payroll, and AI - with every important
+module correctly wired and every remaining gap clearly
+identified.
+Continue fixing the system until everything that can be fixed internally is finished and verified.
+
+
+
+
+                                                                                                     Page 37
+AI PowerSalon | Full System Run, Audit, Repair, Wiring & Completion Mandate
+
+Developer Sign-Off Checklist
+☐ Clean install and environment validation completed.
+☐ PostgreSQL and Redis boot cleanly; migrations run on a clean development database.
+☐ API, workers, realtime, POS, Super Admin, Technician App, Owner App, Customer App, Online Booking, Customer
+   Display and Owner/Manager Payment App all start successfully or are truthfully classified.
+☐ Full salon journey passes end to end from booking/walk-in through payment, payroll, loyalty, inventory and
+   reporting.
+☐ Tenant-isolation, branch-isolation and concurrency suites pass.
+☐ No duplicate payment/refund/check-in/booking/queue assignment effects occur under retries or races.
+☐ No production mocks, fake provider successes, dead buttons, unwired routes, unregistered workers or unconsumed
+   required realtime events remain.
+☐ All required status, handoff, security, integration, database, API, realtime and route inventory documents are
+   updated.
+☐ Every unresolved bug is disclosed with severity, root cause, internal/external classification and recommended fix.
+☐ Claude final report includes actual commands/results rather than unsupported PASS claims.
+
+
+
+
+                                                                                                                   Page 38
+

@@ -1,0 +1,14 @@
+— building dist for live-socket —
+
+──────── harness summary ────────
+  ⏭  verify-customer-import.mjs — SKIPPED: needs a running API (HARNESS_API_BASE)
+  ✅ verify-live-socket.ts — 🎉 verify-live-socket: 26 passed, 0 failed
+  ✅ verify-migrations-pglite.mjs — ok
+  ✅ verify-nail-showcase-social.ts — ✅ ALL PASS — 52 passed, 0 failed
+  ✅ verify-nail-showcase.ts — NAIL-SHOWCASE BACKEND ALL GREEN: 40 passed, 0 failed
+  ✅ verify-owner-expenses.ts — 🎉 verify-owner-expenses: 19 passed, 0 failed
+  ✅ verify-owner-multisalon.ts — 🎉 verify-owner-multisalon: 39 passed, 0 failed
+  ✅ verify-owner-scope.ts — 🎉 verify-owner-scope: 17 passed, 0 failed
+  ✅ verify-owner-tz.ts — 🎉 verify-owner-tz: 9 passed, 0 failed
+  ✅ verify-terminal-capture.ts — 🎉 verify-terminal-capture: 17 passed, 0 failed
+harnesses: 9 passed, 0 failed, 1 skipped

@@ -1,0 +1,10 @@
+# Migration rehearsal — 2026-10-30T17:09:01-04:00
+NOTICE:  database "aps_reh730" does not exist, skipping
+database: aps_reh730 (copy of the local test template 'aps'; NOT staging, NOT production)
+730 objects already in template: t
+dry-run (begin … rollback) apps/api/db/migrations/730_communications_inbox.sql: exit 0 40ms
+re-apply (idempotency) apps/api/db/migrations/730_communications_inbox.sql: exit 0 37ms
+second re-apply: exit 0
+columns on communication_threads: awaiting_reply_since, closed_at, contact_normalized, customer_match, follow_up_due_at, last_inbound_at, last_outbound_at, record_version
+notifications.purpose present: 1
+apps/api/db/migrations/730_communications_inbox.sql: 0 destructive-looking lines; 1 drop-if-exists (re-create of trigger/function/index/constraint)

@@ -1,0 +1,21 @@
+{
+  "entries": [
+    {
+      "file": "modules/booking/src/customer-booking/booking-hold-sweep.scheduler.ts",
+      "lineText": "void runTick(",
+      "reason": "the sweep timer's tick: runTick logs its own failure; a timer callback has nowhere to throw"
+    },
+    {
+      "file": "modules/booking/src/customer-booking/booking-hold.kysely.ts",
+      "lineText": ".execute(this.db as any).catch(() => undefined);",
+      "near": "SET expires_at = to_timestamp(",
+      "reason": "refresh: a failed extension leaves the hold to expire on time \u2014 fails closed (the slot stays held, never freed early)"
+    },
+    {
+      "file": "modules/booking/src/customer-booking/booking-hold.kysely.ts",
+      "lineText": ".execute(this.db as any).catch(() => undefined);",
+      "near": "SET released_at = now(), release_reason =",
+      "reason": "release: a failed release leaves the hold until it expires or the sweep takes it \u2014 fails closed (never a slot freed by mistake)"
+    }
+  ]
+}

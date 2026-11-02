@@ -1,0 +1,1278 @@
+                                                                 AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+
+
+                                              AI PowerSalon
+                Weekly Technician Paycheck, Cash Payout & Owner Approval System
+Master Code Audit, Fix, Upgrade, Integration & Production Completion Mandate for Claude
+
+
+ Primary objective
+ Store managers prepare weekly technician payroll, choose the approved payout split (for example 50% check / 50%
+ cash or a permitted manual split), and submit the complete pay run to the Owner App for final approval. Every cent
+ remains traceable from earnings through payout and technician confirmation.
+
+
+ Manager                             Owner                                 Technician                        System
+
+Prepare, review, choose payout      Review, return/reject, approve, lock   View own pay statement, confirm   Calculate, reconcile, audit, prevent
+split, submit                                                              cash receipt                      duplicate or hidden payouts
+
+
+
+
+Architecture principle: earnings, approval, pay statement, payout plan, payout transaction, and paid status are separate authoritative concepts.
+
+
+
+
+                                             Developer / Claude Production Completion Mandate | 1
+                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+Implementation Index
+• 1. Mission & takeover rules
+• 2. Repository audit and merge strategy
+• 3. Weekly payroll schedule and pay-period lifecycle
+• 4. Earnings calculation and already-paid handling
+• 5. Pay statements and immutable snapshots
+• 6. Payout plans and exact 50/50 check/cash splitting
+• 7. Manual payout overrides and partial payouts
+• 8. Store manager weekly payroll workflow
+• 9. Owner App approval workflow
+• 10. Check payout lifecycle
+• 11. Cash payout and technician acknowledgment
+• 12. Cash drawer integration and physical cash controls
+• 13. Mixed check/cash reconciliation
+• 14. Multi-branch technicians and consolidated statements
+• 15. Technician App payroll and pay history
+• 16. Permissions, separation of duties, privacy and tenant isolation
+• 17. Events, workers, realtime and notifications
+• 18. APIs, concurrency and idempotency
+• 19. Reports, accounting integration and audit
+• 20. Test matrix, Definition of Done and Claude final report
+
+
+
+
+                                        Developer / Claude Production Completion Mandate | 2
+                                                                 AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+1. Mission & Takeover Rules
+Claude must inspect the actual AI PowerSalon repository first. This is an existing platform with payroll, commissions,
+tips, time clock, pay periods, Owner App, Technician App, events, workers, realtime, permissions and audit concepts
+already designed or partially implemented.
+
+   DISCOVER
+    ↓
+   UNDERSTAND
+    ↓
+   CLASSIFY
+    ↓
+   KEEP WORKING CODE
+    ↓
+   FIX BROKEN CODE
+    ↓
+   MERGE DUPLICATES
+    ↓
+   UPGRADE WEAK IMPLEMENTATION
+    ↓
+   COMPLETE MISSING FEATURES
+    ↓
+   WIRE FRONTEND     ↔ BACKEND
+    ↓
+   MIGRATE SAFELY
+    ↓
+   TEST / BUILD / DOCUMENT
+
+
+
+
+Non-negotiable execution rules
+ • Do not create a second payroll system.
+ • Do not create PayrollV2, PaycheckSystem2, NewPayoutService, or duplicate financial authority simply because current code
+   is incomplete.
+ • Preserve working implementation and existing production data.
+ • Use the existing Payroll/Earnings ledger as the source of technician earnings.
+ • Frontends never become financial authority.
+ • PostgreSQL remains authoritative business and financial truth.
+ • Use exact money representation (integer minor units or the platform's established precise NUMERIC convention).
+ • Do not mark anything COMPLETE until the full UI → API → auth → tenant/branch → permission → domain → database →
+   audit/outbox → event/worker → realtime path has been tested.
+
+ Critical compliance rule
+ Cash is a recorded payroll payout method. It must never be used as off-book compensation or excluded from pay
+ statements, payroll reports, audit history, or required accounting/tax reporting.
+
+
+
+
+2. Repository Audit & Merge Strategy
+Search the entire repository for
+   payroll / payPeriod / payRun / paycheck / payStatement / payout
+   commission / tips / earnings / hourly / salary / bonus / guarantee / topUp
+   cashPending / cashHandoff / cashPayout
+   checkNumber / checkPayment
+
+                                             Developer / Claude Production Completion Mandate | 3
+                                                             AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   adjustment / deduction / reversal
+   technicianEmployment / workforce
+   timeClock / clockIn / clockOut
+   ownerApproval / approvalRequest
+   paid / unpaid / partialPayment / payoutHistory
+
+
+
+Also inspect database schemas, Kysely models, migrations, services, repositories, controllers, workers, schedulers,
+events, realtime contracts, permissions, audit logs, POS pages, Owner App, Technician App, reports and tests.
+
+Classify every implementation
+   COMPLETE
+   PARTIAL
+   BROKEN
+   NOT_WIRED
+   DUPLICATE
+   PLACEHOLDER
+   MOCK
+   LEGACY
+   UNSAFE
+   MISSING
+   BLOCKED_EXTERNAL
+
+
+
+Then continue fixing. Do not stop after producing the inventory.
+
+
+3. Weekly Payroll Schedule & Pay-Period Lifecycle
+Weekly payroll is a first-class supported workflow. The exact work-week boundaries, payroll timezone, and pay date
+are tenant-configurable.
+
+   Example:
+   Work Period: Monday Oct 12 → Sunday Oct 18
+   Pay Date: Friday Oct 23
+
+
+
+
+PayrollSchedule
+   PayrollSchedule {
+       tenantId
+       frequency
+       weekStartDay
+       weekEndDay
+       paydayOffsetDays?
+       timezone
+       active
+   }
+
+
+
+Potential frequencies may include WEEKLY, BIWEEKLY, SEMIMONTHLY and MONTHLY, but the manager UX must be
+optimized for weekly salon payroll.
+
+Recommended pay-period states
+   OPEN
+   CALCULATING
+
+
+                                           Developer / Claude Production Completion Mandate | 4
+                                                               AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   READY_FOR_MANAGER_REVIEW
+   MANAGER_REVIEW
+   SUBMITTED_TO_OWNER
+   OWNER_REVIEW
+   RETURNED_FOR_CHANGES
+   APPROVED
+   LOCKED
+   PARTIALLY_PAID
+   PAID
+   CANCELED
+
+
+
+Do not reduce this workflow to vague booleans such as isPaid or isApproved.
+
+
+4. Earnings Calculation & Already-Paid Handling
+The paycheck screen must read technician earnings from the existing authoritative payroll ledger, not recalculate
+commission independently.
+
+Supported earning components
+   SERVICE_COMMISSION
+   TIP
+   RETAIL_COMMISSION
+   HOURLY_PAY
+   SALARY_PAY
+   BONUS
+   GUARANTEE_TOP_UP
+   ADJUSTMENT
+   DEDUCTION
+   REFUND_REVERSAL
+   TIP_ADJUSTMENT
+   RETAIL_REVERSAL
+
+
+
+
+Weekly payable formula
+   Service Commission
+   + Hourly / Salary
+   + Tips Owed
+   + Retail Commission
+   + Bonuses
+   + Guarantee Top-Up
+   + Positive Adjustments
+   - Approved Deductions
+   - Refund / Reversal Adjustments
+   - Amounts Already Paid
+   = CURRENT AMOUNT PAYABLE
+
+
+
+
+Earned is not the same as still owed
+   Example:
+   Total Earnings:            $2,100
+   Cash Tips Already Handed to Tech:       -300
+   Approved Correction:              +50
+
+
+                                             Developer / Claude Production Completion Mandate | 5
+                                                                             AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   ------------------------------------------------
+   Current Amount Still Payable:                      $1,850
+
+
+
+ • Cash tips already handed over must not be paid again.
+ • Payroll advances or earlier partial payroll payouts must reduce current amount payable.
+ • Already-paid money remains visible in earnings history; it is not erased.
+ • Negative net payable must trigger REVIEW_REQUIRED, never a negative cash/check payout.
+
+
+5. Technician Pay Statements & Immutable Financial Snapshots
+A technician's approved statement is a locked historical snapshot. It must not be dynamically reconstructed from
+today's commission rates, service prices, or technician settings.
+
+Conceptual TechnicianPayStatement
+   TechnicianPayStatement {
+       id
+       tenantId
+       technicianEmploymentId
+       payPeriodId
+       statementNumber
+
+
+       grossEarningsCents
+       serviceCommissionCents
+       hourlyPayCents
+       salaryPayCents
+       tipsCents
+       retailCommissionCents
+       bonusesCents
+       guaranteeTopUpCents
+       positiveAdjustmentsCents
+       deductionsCents
+       reversalsCents
+       alreadyPaidCents
+
+
+       approvedPayableCents
+       paidCents
+       unpaidCents
+
+
+       status
+       version
+
+
+       createdAt
+       approvedAt?
+       lockedAt?
+   }
+
+
+
+
+Recommended statement statuses
+   DRAFT
+   READY_FOR_REVIEW
+   SUBMITTED
+   APPROVED
+   LOCKED
+   ISSUED
+
+                                                           Developer / Claude Production Completion Mandate | 6
+                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   PARTIALLY_PAID
+   PAID
+   VOIDED
+
+
+
+ • Generate a human-readable immutable reference such as PAY-2026-000128.
+ • Normal users cannot silently rewrite a locked statement.
+ • Post-lock corrections use a new correction/reversal entry or future-period adjustment linked to the original.
+
+
+6. Payout Plans & Exact 50% Check / 50% Cash Splitting
+Separate what the technician is owed from how the technician will be paid.
+
+   EARNINGS LEDGER
+            ↓
+   PAY PERIOD
+            ↓
+   PAY STATEMENT
+            ↓
+   PAYOUT PLAN
+            ↓
+   OWNER APPROVAL
+            ↓
+   PAYOUT TRANSACTION(S)
+            ↓
+   PAID / UNPAID
+
+
+
+
+Conceptual payout data
+   TechnicianPayoutPlan {
+       id
+       payStatementId
+       policyType
+       payableAmountCents
+       status
+       createdBy
+       submittedBy?
+       approvedBy?
+       version
+   }
+
+
+   PayoutInstruction {
+       id
+       payoutPlanId
+       method
+       amountCents
+       percentageBasisPoints?
+       sequence
+       status
+   }
+
+
+
+
+Supported methods
+   CHECK
+
+
+                                        Developer / Claude Production Completion Mandate | 7
+                                                           AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   CASH
+   ACH
+   DIRECT_DEPOSIT
+   EXTERNAL_TRANSFER
+   PAYROLL_PROVIDER
+
+
+
+Only methods enabled for the tenant may appear.
+
+Default 50 / 50 preset
+   Approved Payable: $2,000.00
+
+
+   CHECK: $1,000.00
+   CASH: $1,000.00
+
+
+
+
+Odd-cent rule
+   Approved Payable: $2,000.01
+
+
+   CHECK: $1,000.01
+   CASH: $1,000.00
+
+
+   Rule:
+   primary payout method receives deterministic remainder cent
+
+
+
+
+ Payout invariant
+ SUM(all payout instructions) MUST equal the approved payable amount exactly before the manager can submit
+ payroll to the owner.
+
+
+
+
+7. Manual Payout Overrides & Partial Payouts
+Managers may use the tenant default split or manually propose another permitted split. Manual changes remain
+subject to tenant policy and owner approval.
+
+Manual split examples
+   Payable: $2,000
+
+
+   Option A:
+   CHECK $1,500
+   CASH    $500
+
+
+   Option B:
+   CHECK 75%
+   CASH 25%
+
+
+
+ • Support both percentage entry and dollar entry.
+ • Internally store authoritative minor-unit amounts.
+ • UI continuously shows remaining/unallocated amount.
+ • Block under-allocation and overpayment.
+
+                                         Developer / Claude Production Completion Mandate | 8
+                                                                         AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+ • A manual split that differs from the tenant default should be highlighted to the owner.
+ • Tenant may restrict maximum cash percentage or disable cash payroll entirely.
+
+Partial payout is not an invalid split
+   Amount Owed: $2,000
+   Paid Now:          $1,500
+   Outstanding:           $500
+
+
+   Statement Status: PARTIALLY_PAID
+
+
+
+Never mark the whole statement paid simply because one payout method completed.
+
+
+8. Store Manager Weekly Payroll Workflow
+The store manager prepares and reviews the weekly payroll but does not provide final owner approval.
+
+Manager payroll table
+ • Technician
+ • Branch
+ • Service Commission
+ • Tips
+ • Retail Commission
+ • Hourly / Salary
+ • Bonus
+ • Guarantee Top-Up
+ • Adjustments
+ • Already Paid
+ • Amount Payable
+ • Payout Plan
+ • Status
+Use compact summary columns plus a detail drawer/page instead of an unreadably wide table.
+
+Technician detail example
+   Lisa Nguyen
+   Pay Period: Oct 12 - Oct 18
+
+
+   Service Commission                     $1,420.00
+   Tips                     $610.00
+   Retail Commission                      $75.00
+   Bonus                       $100.00
+   Adjustments                     -$25.00
+   Already Received                      -$200.00
+   -----------------------------------
+   AMOUNT PAYABLE                          $1,980.00
+
+
+
+
+Evidence drill-down
+ • Service commission → service/date/visit/eligible revenue/rate/commission amount.
+ • Tips → ticket/total tip/technician allocation/allocation method/already-paid status.
+ • Hourly earnings → scheduled hours/clocked hours/paid and unpaid break/approved hours/rate.
+ • Adjustments → amount/reason/actor/supporting reference.
+
+                                                       Developer / Claude Production Completion Mandate | 9
+                                                         AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+Blocking exceptions
+ • Missing clock-out or unresolved time correction
+ • Missing commission rule
+ • Unallocated tip
+ • Missing service-line technician ownership
+ • Duplicate earning
+ • Negative payable
+ • Refund against closed period requiring correction
+ • Payout split not equal to approved payable
+Manager cannot submit to owner while blocking exceptions remain.
+
+
+9. Owner App Approval Workflow
+When the manager submits payroll, the Owner App becomes the approval surface.
+
+Owner notification example
+   Payroll Approval Required
+
+
+   Cherry Hill
+   Weekly Payroll
+   Oct 12 - Oct 18
+
+
+   12 Technicians
+
+
+   Total Payable: $24,820
+   Check:        $12,410
+   Cash:      $12,410
+
+
+   Submitted by: Store Manager
+
+
+   [ REVIEW ]
+
+
+
+
+Owner summary
+ • Total Gross Earnings
+ • Total Already Paid
+ • Current Payable
+ • Check Total
+ • Cash Total
+ • Other Payout Total
+ • Number of Technicians
+ • Exceptions
+ • Changes from prior week
+
+Owner actions
+   APPROVE ALL
+   APPROVE SELECTED
+   RETURN FOR CHANGES
+   REJECT
+
+
+
+ • Owner can drill into services, tips, hours, bonuses, adjustments and reversals.
+
+                                       Developer / Claude Production Completion Mandate | 10
+                                                         AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+ • Returned payroll requires an owner note and increments the workflow version.
+ • Manager cannot silently edit after submission; owner must return it first.
+ • Approval should use step-up authentication (Face ID/Touch ID or reauthentication) using the existing auth architecture.
+ • Manager who is also a technician may not self-approve their own payout.
+ • If the business delegates payroll approval, use an explicit elevated payroll-approver permission.
+
+
+10. Check Payout Lifecycle
+Conceptual CheckPayout
+   CheckPayout {
+       payoutId
+       checkNumber
+       amountCents
+       bankAccountReference?
+       issuedAt
+       deliveredAt?
+       clearedAt?
+       voidedAt?
+   }
+
+
+
+
+Recommended lifecycle
+   PLANNED
+   ISSUED
+   DELIVERED
+   CLEARED
+   VOIDED
+   RETURNED
+
+
+
+ • Creating or printing a check does not automatically mean it cleared.
+ • For payroll status, a properly delivered check may count as paid/delivered while bank clearance remains separate.
+ • Do not store unnecessary raw banking information.
+ • Protect against accidental duplicate active check numbers within a tenant/check series.
+ • A voided check is preserved historically.
+ • Replacement checks reference the original voided payout.
+
+   Example:
+   Check #4812 VOIDED
+   Replacement:
+   Check #4831 ISSUED
+
+
+
+
+11. Cash Payout & Technician Acknowledgment
+Cash payout is a first-class, fully recorded payout transaction.
+
+Conceptual CashPayout
+   CashPayout {
+       payoutId
+       amountCents
+       cashSource
+
+                                       Developer / Claude Production Completion Mandate | 11
+                                                       AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+       preparedBy
+       handedOffBy?
+       receivedByTechnicianAt?
+       acknowledgmentMethod?
+       status
+   }
+
+
+
+
+Lifecycle
+   PLANNED
+   READY_FOR_HANDOFF
+   HANDED_OFF
+   ACKNOWLEDGED
+   DISPUTED
+   CANCELED
+
+
+
+Planning $900 in cash does not mean $900 has been paid. Paid status advances only when the configured
+handoff/confirmation rules are satisfied.
+
+Recommended technician confirmation
+ • Technician 4-digit PIN
+ • Technician App confirmation
+ • QR handoff
+ • Signature where supported
+ • Manager + technician dual confirmation
+
+Cash handoff audit
+ • Technician
+ • Amount
+ • Pay Period
+ • Who prepared the cash
+ • Who handed it over
+ • Technician confirmation
+ • Date/time
+ • Branch
+ • Cash source
+ • Device / audit ID
+
+
+12. Cash Drawer Integration & Physical Cash Controls
+If payroll cash comes from a POS cash drawer, the withdrawal must create a non-sale cash movement linked to the
+payout.
+
+   Cash Drawer
+       ↓
+   PAYROLL_CASH_PAYOUT -$990
+       ↓
+   Expected Drawer Balance Updated
+       ↓
+   Payout Record Linked
+
+
+
+
+                                     Developer / Claude Production Completion Mandate | 12
+                                                        AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+Cash sources
+   REGISTER_DRAWER
+   SAFE
+   BANK_WITHDRAWAL
+   OTHER_RECORDED_SOURCE
+
+
+
+
+Insufficient cash protection
+   Available Drawer Cash: $300
+   Required Payroll Cash: $500
+
+
+   Result:
+   INSUFFICIENT_CASH
+
+
+   No silent negative drawer.
+
+
+
+Allow a separate cash preparation report and check preparation report after owner approval.
+
+
+13. Mixed Check/Cash Reconciliation
+   Lisa Payable: $1,980
+
+
+   CHECK:
+   $990
+   DELIVERED
+
+
+   CASH:
+   $990
+   READY_FOR_HANDOFF
+
+
+   Statement:
+   PARTIALLY_PAID
+
+
+   Paid: $990
+   Unpaid: $990
+
+
+
+After the cash is acknowledged:
+
+   Paid: $1,980
+   Unpaid: $0
+   Status: PAID
+
+
+
+
+Core invariants
+   SUM(PAYOUT PLAN) = APPROVED PAYABLE
+
+
+   PAID + UNPAID = APPROVED PAYABLE
+
+
+   CHECK_COMPLETED
+   + CASH_COMPLETED
+   + OTHER_COMPLETED
+
+
+                                      Developer / Claude Production Completion Mandate | 13
+                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+   = PAID
+
+
+
+
+14. Multi-Branch Technicians & Consolidated Pay Statements
+A technician may work multiple branches in the same tenant. Preserve branch contribution detail without accidentally
+generating duplicate payroll.
+
+   Lisa:
+   Cherry Hill contribution: $800
+   Marlton contribution:       $600
+
+
+   Recommended final statement:
+   ONE tenant pay statement = $1,400
+   with branch breakdown
+
+
+
+
+ Recommended policy
+ ONE TECHNICIAN + ONE TENANT + ONE PAY STATEMENT PER PAY PERIOD, with branch contribution detail. This
+ avoids accidental double-pay.
+
+
+ • Branch manager sees only their authorized branch contribution by default.
+ • Owner sees the consolidated tenant-wide statement.
+ • Do not allow owner approval to overlook a required branch contribution still not submitted, unless a strong authorized
+   override exists.
+
+
+15. Technician App - Payroll, Pay Statement & History
+Payroll home
+   PAYROLL
+
+
+   Current Pay Period
+   Oct 12 - Oct 18
+
+
+   Estimated Earnings:
+   $1,980
+
+
+   Status:
+   Owner Review
+
+
+
+After approval, replace estimated label with approved pay.
+
+Pay statement
+   AI POWERSALON
+   Lisa Nguyen
+   Pay Period: Oct 12 - Oct 18
+
+
+   Service Commission      $1,420.00
+   Tips              $610.00
+   Retail Commission           $75.00
+   Bonus              $100.00
+
+
+                                        Developer / Claude Production Completion Mandate | 14
+                                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+  Adjustments                     -$25.00
+  Already Received                      -$200.00
+  -----------------------------------
+  APPROVED PAYABLE                          $1,980.00
+
+
+  PAYMENT
+  Check #4812                     $990.00 DELIVERED
+  Cash                      $990.00 ACKNOWLEDGED
+
+
+  Paid                    $1,980.00
+  Unpaid                        $0.00
+  STATUS: PAID
+
+
+
+
+Technician permissions
+ • Read own pay statement.
+ • Read own payout status and history.
+ • Confirm own cash receipt.
+ • Cannot edit commission, hours, payout split, pay-period status or another technician's payroll.
+ • Private manager/owner notes are not shown to technician.
+
+
+16. Permissions, Separation of Duties & Privacy
+Recommended permissions
+  payroll.prepare
+  payroll.review
+  payroll.submit
+  payroll.approve
+  payroll.lock
+  payroll.adjust
+  payroll.issue_check
+  payroll.cash_handoff
+  payroll.payout.manage
+  payroll.export
+  payroll.read_own
+
+
+
+
+Default role behavior
+ • Store Manager: prepare, review, submit. Payout execution only if tenant policy allows and owner approval is complete.
+ • Owner: review, approve, return, reject, lock, override payout policy, report and export.
+ • Receptionist: no payroll control by default.
+ • Technician: own payroll only.
+ • Branch Manager: authorized branch scope only.
+ • Tenant A can never access Tenant B payroll, payouts, checks or cash handoffs.
+
+ Separation of duties
+ Manager prepares. Owner approves. A manager who is also on the payroll must not approve their own payout.
+
+
+
+
+                                                        Developer / Claude Production Completion Mandate | 15
+                                                               AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+17. Events, Workers, Realtime & Notifications
+Potential events
+  payroll.period.opened
+  payroll.calculated
+  payroll.manager_review_started
+  payroll.submitted_to_owner
+  payroll.returned
+  payroll.approved
+  payroll.locked
+  pay_statement.created
+  payout.planned
+  payout.check_issued
+  payout.cash_ready
+  payout.cash_handed_off
+  payout.cash_acknowledged
+  payroll.partially_paid
+  payroll.paid
+
+
+
+ • Critical payroll state + event must use the platform's Transactional Outbox.
+ • Consumers must be idempotent under at-least-once delivery.
+ • Realtime updates POS, Owner App and Technician App but never becomes financial authority.
+ • Workers may handle weekly payroll preparation, document generation, notifications, and external payout-provider work.
+ • Automatic weekly preparation may run on one controlled scheduler, but manager review and owner approval remain
+   required.
+
+Notifications
+ • Manager: weekly payroll is ready for review.
+ • Owner: payroll is awaiting approval.
+ • Manager: owner returned payroll for changes.
+ • Technician: pay statement ready / payout completed.
+ • Do not expose sensitive pay amounts in push notifications unless product privacy policy explicitly permits it.
+
+
+18. APIs, Concurrency, Idempotency & Versioning
+Potential tenant payroll routes
+  GET /api/v1/payroll/current
+  GET /api/v1/payroll/periods/{id}
+  POST /api/v1/payroll/periods/{id}/calculate
+  POST /api/v1/payroll/periods/{id}/submit
+  POST /api/v1/payroll/periods/{id}/return
+  POST /api/v1/payroll/periods/{id}/approve
+  GET /api/v1/payroll/periods/{id}/statements
+  GET /api/v1/payroll/statements/{id}
+  PUT /api/v1/payroll/statements/{id}/payout-plan
+  POST /api/v1/payroll/payouts/{id}/issue-check
+  POST /api/v1/payroll/payouts/{id}/cash-ready
+  POST /api/v1/payroll/payouts/{id}/cash-handoff
+  POST /api/v1/payroll/payouts/{id}/acknowledge
+
+
+
+
+                                             Developer / Claude Production Completion Mandate | 16
+                                                              AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+Technician routes
+  GET /api/v1/technicians/me/payroll
+  GET /api/v1/technicians/me/pay-statements
+  GET /api/v1/technicians/me/pay-statements/{id}
+  POST /api/v1/technicians/me/cash-payouts/{id}/acknowledge
+
+
+
+ • Adapt to existing route conventions; do not create duplicates.
+ • Controllers remain thin: authenticate, authorize, validate, resolve trusted tenant/branch, call domain service, serialize DTO.
+ • No payroll math in React/mobile clients.
+ • Use optimistic versioning on PayPeriod, PayrollRun, PayStatement and PayoutPlan.
+ • Duplicate submit, duplicate approve, duplicate check issue and duplicate cash acknowledgment must each have one
+   business effect.
+
+
+19. Reports, Accounting Integration & Audit
+Owner dashboard
+ • Total Approved Payable
+ • Paid
+ • Unpaid
+ • Check Total
+ • Cash Total
+ • Pending Owner Approval
+ • Cash Awaiting Handoff
+ • Checks Awaiting Delivery
+ • Failed / Exception Payouts
+
+Reports
+ • Weekly payroll
+ • Monthly payroll
+ • Year-to-date payroll
+ • By technician
+ • By branch contribution
+ • By payout method
+ • Cash payout report
+ • Check register
+
+Accounting rule
+
+ Do not double count
+ Payroll expense is the compensation liability. Check and cash are settlement methods of the same liability; they are
+ not separate additional expenses.
+
+
+
+  Correct:
+  Payroll Expense: $2,000
+   Paid by Check: $1,000
+   Paid by Cash: $1,000
+
+
+  Incorrect:
+  Payroll Expense: $4,000
+
+
+                                         Developer / Claude Production Completion Mandate | 17
+                                                           AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+
+
+Audit all sensitive actions
+ • Payroll calculation
+ • Manager adjustment
+ • Payout-plan change
+ • Submission
+ • Owner approval/rejection/return
+ • Check issue/void/replacement
+ • Cash preparation/handoff/acknowledgment
+ • Correction
+ • Export
+
+
+20. Required Test Matrix
+Financial tests
+ • $100.00 → $50.00 / $50.00
+ • $100.01 → $50.01 / $50.00 using deterministic remainder rule
+ • $0.01 → $0.01 / $0.00
+ • 25/75, 10/90, 100/0, 0/100 and custom-dollar split
+ • Under-allocation blocked
+ • Overpayment blocked
+ • Already-paid cash tips not paid twice
+ • Partial payout preserves outstanding balance
+
+Concurrency/idempotency
+ • Manager submits 10 times → one submission.
+ • Owner approves repeatedly → one approval, one lock, one payout-plan materialization.
+ • Cash acknowledgment retries → one acknowledgment.
+ • Check issue retries → no accidental duplicate checks.
+ • Stale manager edit after owner review → PAYROLL_VERSION_CONFLICT.
+
+Security
+ • Tenant A cannot access Tenant B payroll, statements, payouts, checks or cash handoffs.
+ • Branch A manager cannot mutate Branch B contribution without scope.
+ • Technician A cannot read Technician B payroll.
+ • Receptionist cannot approve payroll or change payout split by default.
+ • Manager cannot self-approve own payout.
+
+Cash drawer
+ • Payroll cash movement updates expected drawer balance.
+ • Insufficient drawer cash blocks payout from that source.
+ • Canceled/unhanded cash does not count as paid.
+
+
+21. Definition of Done
+ • Existing payroll code audited and duplicate payroll authority removed.
+ • Weekly pay-period configuration and automatic preparation work.
+ • Manager review works with service commission, tips, retail commission, hourly/salary, guarantees, adjustments and
+   already-paid amounts.
+ • Pay statements are immutable historical snapshots.
+                                        Developer / Claude Production Completion Mandate | 18
+                                                            AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+ • Manager can apply 50% check / 50% cash preset.
+ • Odd-cent split is deterministic and exact.
+ • Manual percentage and dollar splits work under tenant policy.
+ • Invalid under/over-allocation is blocked.
+ • Manager submission and owner approval/return/reject work in the Owner App.
+ • Step-up authentication works for owner approval.
+ • Payroll locks after approval.
+ • Check payout lifecycle, check number, void and replacement work.
+ • Cash preparation, handoff, technician acknowledgment and dispute state work.
+ • Cash drawer integration and insufficient-cash protection work.
+ • Mixed payout supports PARTIALLY_PAID until all required payouts complete.
+ • Paid/unpaid reconciliation is exact.
+ • Multi-branch technician aggregation does not create duplicate paychecks.
+ • Technician App displays own pay statements and history only.
+ • Owner dashboard and weekly/monthly/YTD reporting work.
+ • Accounting/export does not double-count check and cash as separate payroll expense.
+ • Permissions, tenant isolation, branch isolation and technician privacy pass.
+ • Events, Outbox, workers, realtime and notifications work.
+ • Version conflicts and idempotency tests pass.
+ • No production mock payroll/payout provider remains.
+ • Database migrations, build, typecheck, lint, unit, integration, concurrency and security tests pass.
+
+
+22. Required Claude Final Engineering Report
+After actually implementing and fixing the system, Claude must provide a concrete engineering report rather than
+another proposal.
+
+A. Existing Payroll Code Found
+Exact tables, migrations, services, repositories, controllers, workers, events, POS screens, Owner App screens,
+Technician App screens and tests.
+
+B. Problems Found
+Classify P0 Financial Integrity, P0 Tenant Isolation, P0 Security, P1 Payroll Calculation, P1 Payout Wiring, P1 Approval
+Flow, P2 Missing Feature, P3 Cleanup.
+
+C. Final Weekly Payroll Architecture
+Earnings → Pay Period → Payroll Run → Pay Statement → Manager Review → Owner Approval → Payout Plan → Payout.
+
+D. Manager Workflow
+Review, corrections, payout choice, exceptions and submit.
+
+E. Owner App Workflow
+Notification, review, approve, return, reject, lock.
+
+F. 50/50 Check/Cash
+Rounding, deterministic remainder, validation and payout creation.
+
+G. Manual Split
+Percentage, dollar amount, policy, override reason and owner approval.
+
+
+
+
+                                          Developer / Claude Production Completion Mandate | 19
+                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+H. Check Payout
+Check number, issue, delivery, clearance, void and replacement.
+
+I. Cash Payout
+Source, preparation, drawer movement, handoff, technician acknowledgment and dispute.
+
+J. Multi-Branch Payroll
+Branch contribution, consolidated technician statement and privacy.
+
+K. Pay Statements
+Immutable financial snapshots and statement numbering.
+
+L. Reports
+Weekly, monthly, YTD, technician, branch and payout method.
+
+M. Permissions & Audit
+Exact permissions, scopes and audited actions.
+
+N. Database
+Tables, columns, indexes, constraints and migrations.
+
+O. APIs
+Every changed/added route and contract.
+
+P. Events / Workers / Realtime
+Events, consumers, jobs, retry, idempotency and client updates.
+
+Q. Files Changed
+Exact repository paths.
+
+R. Tests
+Actual PASS / FAIL / BLOCKED_EXTERNAL results.
+
+S. Financial Invariants
+Earnings reconcile; already-paid reconciles; payout plan equals payable; paid + unpaid equals payable; payout methods
+equal paid; no double-pay.
+
+T. Build Matrix
+API, POS, Owner App, Technician App, Workers, Realtime, migrations, unit, integration, concurrency and security tests.
+
+
+23. Final Weekly AI PowerSalon Paycheck Flow
+   TECHNICIAN WORKS
+      ↓
+   SERVICES / HOURS
+      ↓
+   COMMISSION / TIPS / RETAIL / BONUS / TOP-UP
+      ↓
+   EARNINGS LEDGER
+      ↓
+   WEEKLY PAY PERIOD
+      ↓
+   PAYROLL CALCULATION
+
+                                        Developer / Claude Production Completion Mandate | 20
+                                                          AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+
+        ↓
+   STORE MANAGER REVIEW
+        ↓
+   ADJUSTMENTS / EXCEPTIONS
+        ↓
+   PAYOUT METHOD
+    ┌───────────────┬───────────────┐
+    ▼       ▼
+   CHECK        CASH
+   50%       50%
+    └─────── or CUSTOM SPLIT ───────┘
+        ↓
+   SUBMIT TO OWNER
+        ↓
+   OWNER APP REVIEW
+        ↓
+   APPROVE / RETURN / REJECT
+        ↓
+   LOCK PAYROLL
+        ↓
+   PAY STATEMENT
+        ↓
+   CHECK PAYOUT + CASH PAYOUT
+        ↓
+   DELIVERY / HANDOFF / TECH CONFIRMATION
+        ↓
+   PAID / UNPAID
+        ↓
+   TECHNICIAN PAY HISTORY
+        ↓
+   OWNER PAYROLL REPORTS
+
+
+
+
+24. Permanent Product Rules
+Earnings and payouts are different concepts.
+Manager prepares; owner approves.
+Owner approval is audited and versioned.
+50% check / 50% cash must reconcile exactly.
+Manual payout splits must reconcile exactly.
+Cash is a recorded payroll method, never off-book compensation.
+Cash must appear on pay statements and reports.
+Check payments require traceable check records.
+Cash payments require traceable handoff records.
+Technician cash receipt should be confirmed.
+A planned payout is not a paid payout.
+A printed check is not the same as a cleared check.
+Paid and unpaid must always reconcile.
+Already-paid cash tips must not be paid twice.
+Multi-branch work must not create duplicate paychecks.
+Locked payroll must not be silently rewritten.
+Refunds after lock create linked future adjustments.
+Technicians can view only their own payroll.
+
+                                        Developer / Claude Production Completion Mandate | 21
+                                                            AI PowerSalon | Weekly Technician Paycheck, Cash Payout & Owner Approval
+Store managers can access only authorized branches.
+Tenant A can never access Tenant B payroll.
+Receptionists do not control payroll by default.
+Frontend is never financial authority.
+PostgreSQL remains financial truth.
+Every cent must be traceable.
+
+
+25. Final Instruction to Claude
+ Build or upgrade the existing system - do not create a separate paycheck app.
+ Inspect Payroll, Pay Periods, Commission, Tips, Technician Earnings, Time Clock, Guarantee, Adjustments, Cash
+ Pending, Cash Handoff, Payout History, Owner App and Technician App. Keep what is correct; fix what is broken;
+ merge duplicates; complete partial features; wire disconnected modules; migrate safely; remove dead code; and test
+ the full system.
+
+
+
+The finished AI PowerSalon system must let a store manager calculate and review each technician's weekly paycheck,
+use a tenant default such as 50% check / 50% cash, manually change the split when authorized, and submit the
+complete weekly payroll to the Owner App for final approval.
+After owner approval, create traceable check and cash payout instructions. Do not mark payroll paid until the required
+payout has actually been issued/confirmed.
+
+   At any moment AI PowerSalon must be able to answer:
+
+
+   How much did this technician earn?
+   How was the amount calculated?
+   How much did the owner approve?
+   How much will be paid by check?
+   How much will be paid by cash?
+   Which check number was used?
+   Was the cash actually handed to the technician?
+   How much has been paid?
+   How much remains unpaid?
+   Who prepared the payroll?
+   Who approved it?
+   Who handed over the cash?
+   When did the technician confirm receipt?
+
+
+
+
+ Final standard
+ Every answer must come from authoritative, auditable backend records - never memory, local frontend state, or an
+ unexplained editable total.
+
+
+
+
+                                          Developer / Claude Production Completion Mandate | 22
+

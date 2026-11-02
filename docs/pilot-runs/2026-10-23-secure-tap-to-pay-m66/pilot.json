@@ -1,0 +1,2393 @@
+{
+  "salonCode": "PLT234875",
+  "ctx": {
+    "reference": "APS-HAZY-6HZM",
+    "applicationId": "62d51ec5-410a-49e6-9b29-1c3d38875b14",
+    "onboardingId": "df9bc40d-ee02-4dcb-8720-12d7becf5e60",
+    "tenantId": "c1a6b5de-4d3f-48bf-a91a-ecb0010ea709",
+    "branchId": "f404a5b7-0a02-475f-8d50-0f0ba0cd46e9",
+    "ownerUserId": "38a1a5b3-c46a-4753-9222-2910d8447ed8",
+    "services": {
+      "gel": "ca894ead-c4c5-43ce-bf90-1c6e779bb2e7",
+      "pedi": "2da4fbbe-396c-483f-a480-d809d6c8828e",
+      "acrylic": "75a36e3c-55da-40cb-9078-e8ba7d9a4587",
+      "addOn": "a983c44a-cf17-4560-b98b-d734f50b3122",
+      "screenAddOn": "ao_be9943810d6a",
+      "category": "6bb66b20-441c-430a-8681-ce377e755260"
+    },
+    "techs": {
+      "lisa": "ae559b72-8300-46b6-9efb-66f96bc2672e",
+      "mary": "ec40ac87-0597-4dde-a475-e71aec249118",
+      "anna": "1276bc7a-b95c-4052-bea6-eff1e01538a5"
+    },
+    "stationId": "e4b2c015-a7a5-4cd7-a117-58c58ee24bd3",
+    "displayToken": "CLXzO121CaTB3si_sN-Y-lSn0G_mYuet7A6UF0ZcuTI",
+    "displayDeviceId": "9529e242-cd46-46d0-a79a-7fbab877a2fa",
+    "oilId": "b0a3e02b-1267-4182-bc98-d18580c89c2a",
+    "polishId": "24a2fb91-48ea-4c75-ad5d-d13933a051bc",
+    "inv0": {
+      "oil": 10,
+      "polish": 6
+    },
+    "kioskSlug": "j4wo6ra0mj4b",
+    "queue": {
+      "jenny": "a581df2f-0255-423b-a14f-51ef5ef6b76f",
+      "kim": "84a02e6e-4f46-4047-ba10-a0c446bf7fac",
+      "nina": "1a693f53-c5fe-4ec6-bb61-e23f4fb35bbf",
+      "olivia": "f469c988-1301-4a54-b93c-35b9f43e076d"
+    },
+    "onlineAppointmentId": "e7bc2297-f784-409b-a332-aee42ef51cd8",
+    "voiceAppointmentId": "1f61bea6-6051-4b72-ac36-a2643886e22e",
+    "tickets": {
+      "jenny": "316c32c1-a058-4b8e-89d6-553c97785f7e",
+      "kim": "b6f5ca21-e5cf-4f5d-bd00-36fe4cd73eb3",
+      "olivia": "5334ce50-1355-4e54-bd14-f427688c73d1",
+      "nina": "9c33bb76-ae75-4789-a9bc-ae768641cc15"
+    },
+    "giftCard": "GC-TVWLQQKDJK",
+    "kimMembershipId": "6bf4ef45-ddcb-486e-99b3-44dadb91761e"
+  },
+  "numbers": {
+    "kimMemberDiscountCents": 1200,
+    "snapshots": [
+      {
+        "ticket": "jenny",
+        "tech": "Lisa",
+        "earnCents": 3105,
+        "tipCents": 1000
+      },
+      {
+        "ticket": "olivia",
+        "tech": "Lisa",
+        "earnCents": 2700,
+        "tipCents": 1000
+      },
+      {
+        "ticket": "olivia",
+        "tech": "Mary",
+        "earnCents": 3000,
+        "tipCents": 1000
+      },
+      {
+        "ticket": "kim",
+        "tech": "Mary",
+        "earnCents": 3150,
+        "tipCents": 0
+      }
+    ],
+    "refund": {
+      "amountCents": 1500,
+      "reversal": [
+        {
+          "tech": "Lisa",
+          "category": "refund_reversal",
+          "cents": -675,
+          "status": "posted"
+        }
+      ]
+    },
+    "inventory": {
+      "before": {
+        "oil": 10,
+        "polish": 6
+      },
+      "after": {
+        "oil": 9,
+        "polish": 4
+      }
+    },
+    "loyalty": [
+      {
+        "name": "Jenny Walker",
+        "pts": 69,
+        "n": 1
+      },
+      {
+        "name": "Kim Pham",
+        "pts": 67,
+        "n": 1
+      },
+      {
+        "name": "Nina Online",
+        "pts": 90,
+        "n": 2
+      },
+      {
+        "name": "Olivia Both",
+        "pts": 134,
+        "n": 2
+      }
+    ],
+    "payments": [
+      {
+        "method": "card",
+        "status": "approved",
+        "amt": 11961,
+        "sur": 203
+      },
+      {
+        "method": "cash",
+        "status": "approved",
+        "amt": 6717,
+        "sur": 0
+      },
+      {
+        "method": "card",
+        "status": "approved",
+        "amt": 8442,
+        "sur": 246
+      },
+      {
+        "method": "gift_card",
+        "status": "approved",
+        "amt": 5000,
+        "sur": 0
+      },
+      {
+        "method": "cash",
+        "status": "partial",
+        "amt": 2000,
+        "sur": 0
+      },
+      {
+        "method": "card",
+        "status": "approved",
+        "amt": 7005,
+        "sur": 262
+      },
+      {
+        "method": "card",
+        "status": "refunded",
+        "amt": 1500,
+        "sur": 0
+      }
+    ],
+    "collectedCents": 41125,
+    "refundedCents": 1500,
+    "giftCardsSoldCents": 5000,
+    "snapshotsByTech": [
+      {
+        "tech": "Anna",
+        "gross": 7000,
+        "earn": 4550,
+        "tip": 0
+      },
+      {
+        "tech": "Lisa",
+        "gross": 10500,
+        "earn": 5805,
+        "tip": 2000
+      },
+      {
+        "tech": "Mary",
+        "gross": 13500,
+        "earn": 6150,
+        "tip": 1000
+      }
+    ],
+    "reports": {
+      "sales": {
+        "grossSalesCents": 32200,
+        "netSalesCents": 30400,
+        "serviceSalesCents": 31000,
+        "productSalesCents": 1200,
+        "tipsCents": 3000,
+        "taxCollectedCents": 2014,
+        "cardSurchargeCents": 711,
+        "discountsCents": 1800,
+        "refundsCents": 1500,
+        "ticketsCount": 4,
+        "customersCount": 4,
+        "averageTicketCents": 8050
+      },
+      "payments": {
+        "cardCents": 27408,
+        "cashCents": 8717,
+        "giftCardCents": 5000,
+        "splitCount": 0,
+        "refundsCents": 1500,
+        "cardSurchargeCents": 711,
+        "processorStatus": "active"
+      },
+      "tips": {
+        "total": 3000,
+        "byTechnician": [
+          {
+            "technicianId": "ae559b72-8300-46b6-9efb-66f96bc2672e",
+            "name": "Lisa Tran",
+            "tipsCents": 2000
+          },
+          {
+            "technicianId": "ec40ac87-0597-4dde-a475-e71aec249118",
+            "name": "Mary Nguyen",
+            "tipsCents": 1000
+          },
+          {
+            "technicianId": "1276bc7a-b95c-4052-bea6-eff1e01538a5",
+            "name": "Anna Le",
+            "tipsCents": 0
+          }
+        ]
+      },
+      "commission": {
+        "technicianCount": 3,
+        "totalServiceRevenueCents": 31000,
+        "totalCommissionCents": 15830,
+        "totalTipsCents": 3000,
+        "totalPayoutCents": 18830,
+        "averageRatePercent": 51.1
+      },
+      "ownerFinance": {
+        "totalRevenueCents": 41125,
+        "tipsCents": 3000,
+        "discountsCents": 1800,
+        "taxCollectedCents": 2014,
+        "totalCommissionCents": 15830,
+        "averageTicketCents": 8050
+      }
+    },
+    "techApp": {
+      "lisa": {
+        "todaySalesCents": 10500,
+        "tipsCents": 2000,
+        "estimatedCommissionCents": 5130
+      },
+      "mary": {
+        "todaySalesCents": 13500,
+        "tipsCents": 1000,
+        "estimatedCommissionCents": 6150
+      },
+      "anna": {
+        "todaySalesCents": 7000,
+        "tipsCents": 0,
+        "estimatedCommissionCents": 4550
+      }
+    },
+    "timeClock": [
+      {
+        "tech": "Anna Le",
+        "state": "clocked_out",
+        "shifts": [
+          {
+            "start": "2026-10-24T03:57:32.863Z",
+            "end": "2026-10-24T03:57:45.646Z",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "tech": "Lisa Tran",
+        "state": "clocked_out",
+        "shifts": [
+          {
+            "start": "2026-10-24T03:57:32.603Z",
+            "end": "2026-10-24T03:57:45.485Z",
+            "status": "completed"
+          }
+        ]
+      },
+      {
+        "tech": "Mary Nguyen",
+        "state": "clocked_out",
+        "shifts": [
+          {
+            "start": "2026-10-24T03:57:32.753Z",
+            "end": "2026-10-24T03:57:45.552Z",
+            "status": "completed"
+          }
+        ]
+      }
+    ],
+    "payroll": {
+      "period": {
+        "status": "review",
+        "previewHash": "2fb9a8b7ca4fbf6a67222978391f0822c3bb9d4fd92b20134613e76d11a127f6"
+      },
+      "lines": [
+        {
+          "tech": "Mary",
+          "commissionCents": 6150,
+          "tipsCents": 1000,
+          "adjustmentCents": 0,
+          "payableCents": 7150
+        },
+        {
+          "tech": "Lisa",
+          "commissionCents": 5805,
+          "tipsCents": 2000,
+          "adjustmentCents": -675,
+          "payableCents": 7130
+        },
+        {
+          "tech": "Anna",
+          "commissionCents": 4550,
+          "tipsCents": 0,
+          "adjustmentCents": 0,
+          "payableCents": 4550
+        }
+      ],
+      "csvHead": [
+        "\"period_id\",\"period_start\",\"period_end\",\"period_status\",\"period_version\",\"technician_id\",\"technician_name\",\"services\",\"worked_minutes\",\"potential_overtime_minutes\",\"gross_service_sales_cents\",\"gross_service_sales_usd\",\"service_commission_cents\",\"service_commission_usd\",\"retail_commission_cents\",\"retail_commission_usd\",\"card_tips_cents\",\"card_tips_usd\",\"cash_tips_cents\",\"cash_tips_usd\",\"tips_total_cents\",\"tips_total_usd\",\"guarantee_top_up_cents\",\"guarantee_top_up_usd\",\"hourly_pay_cents\",\"hourly_pay_usd\",\"salary_pay_cents\",\"salary_pay_usd\",\"bonuses_cents\",\"bonuses_usd\",\"deductions_cents\",\"deductions_usd\",\"adjustments_cents\",\"adjustments_usd\",\"net_cents\",\"net_usd\",\"payable_cents\",\"payable_usd\",\"paid_cents\",\"paid_usd\",\"approval_hash\"\r",
+        "\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"2026-10-23\",\"2026-10-25\",\"finalized\",4,\"1276bc7a-b95c-4052-bea6-eff1e01538a5\",\"Anna Le\",1,0,0,7000,70.00,4550,45.50,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,4550,45.50,4550,45.50,0,0.00,\"2fb9a8b7ca4fbf6a67222978391f0822c3bb9d4fd92b20134613e76d11a127f6\"\r",
+        "\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"2026-10-23\",\"2026-10-25\",\"finalized\",4,\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"Lisa Tran\",2,0,0,10500,105.00,5805,58.05,0,0.00,2000,20.00,0,0.00,2000,20.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,-675,-6.75,7130,71.30,7130,71.30,0,0.00,\"2fb9a8b7ca4fbf6a67222978391f0822c3bb9d4fd92b20134613e76d11a127f6\"\r",
+        "\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"2026-10-23\",\"2026-10-25\",\"finalized\",4,\"ec40ac87-0597-4dde-a475-e71aec249118\",\"Mary Nguyen\",2,0,0,13500,135.00,6150,61.50,0,0.00,1000,10.00,0,0.00,1000,10.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,0,0.00,7150,71.50,7150,71.50,0,0.00,\"2fb9a8b7ca4fbf6a67222978391f0822c3bb9d4fd92b20134613e76d11a127f6\"\r"
+      ],
+      "afterLockRefund": {
+        "refundCents": 1200,
+        "adjustments": [
+          {
+            "tech": "Mary",
+            "cents": -630,
+            "status": "pending",
+            "inNextPeriod": true,
+            "fromLockedPeriod": true
+          }
+        ],
+        "maryNextPeriodAdjustment": -630
+      },
+      "ownerApp": {
+        "periodId": "6a5b322f-c7c3-47f3-b953-0a3fb948fc6e",
+        "branchId": "f404a5b7-0a02-475f-8d50-0f0ba0cd46e9",
+        "label": "Pilot week 234875",
+        "periodStart": "2026-10-23",
+        "periodEnd": "2026-10-25",
+        "status": "paid",
+        "finalizedAt": "2026-10-24T03:57:45.814Z",
+        "paidAt": "2026-10-24T03:57:45.844Z",
+        "totalPayableCents": 18830,
+        "totalCommissionCents": 16505,
+        "totalTipsCents": 3000
+      }
+    },
+    "mandate": {
+      "availability": {
+        "gelTechsWithSlots": 21,
+        "pediOnlyWithSlots": 0,
+        "bestMatch": {
+          "t": "1276bc7a-b95c-4052-bea6-eff1e01538a5",
+          "s": "09:00"
+        }
+      },
+      "busyDay": {
+        "created": 110,
+        "pagination": {
+          "page": 1,
+          "pageSize": 100,
+          "totalItems": 110,
+          "totalPages": 2
+        },
+        "distinctOnTwoPages": 110
+      },
+      "cardT1": {
+        "decline": "declined",
+        "replay": "declined",
+        "busy": [
+          503,
+          "CARD_PROCESSOR_UNAVAILABLE"
+        ],
+        "good": "approved",
+        "rows": [
+          "declined",
+          "declined",
+          "failed",
+          "approved"
+        ]
+      },
+      "cardT2": {
+        "unknown": [
+          409,
+          "PAYMENT_STATUS_UNKNOWN"
+        ],
+        "rowWhileUnknown": "processing",
+        "secondAttempt": [
+          409,
+          "PAYMENT_STATUS_UNKNOWN"
+        ],
+        "verify": [
+          201,
+          "approved"
+        ],
+        "after": {
+          "status": "paid",
+          "pays": "approved"
+        }
+      },
+      "cardT3": {
+        "dropped": [
+          409,
+          "PAYMENT_STATUS_UNKNOWN"
+        ],
+        "row": "processing",
+        "verify": [
+          201,
+          "pending"
+        ]
+      },
+      "expense": {
+        "scan": 201,
+        "created": [
+          201,
+          "pending_review",
+          "94b0cc37-1cab-4c52-9838-a38531092e07"
+        ],
+        "duplicate": [
+          409,
+          "RECEIPT_DUPLICATE"
+        ],
+        "approve": [
+          201,
+          "approved",
+          null
+        ],
+        "reportHasIt": true
+      },
+      "ocrPipeline": {
+        "upload": [
+          201,
+          "quarantined"
+        ],
+        "settings": [
+          200,
+          30000
+        ]
+      },
+      "paycheck": {
+        "period": "cff3515f-9242-40d9-b9ee-bd6e55964e0d",
+        "plans": [
+          {
+            "tech": "Lisa",
+            "payable": 20000,
+            "plan": [
+              "check:10000",
+              "cash:10000"
+            ]
+          },
+          {
+            "tech": "Mary",
+            "payable": 16000,
+            "plan": [
+              "check:8000",
+              "cash:8000"
+            ]
+          },
+          {
+            "tech": "Anna",
+            "payable": 12000,
+            "plan": [
+              "check:6000",
+              "cash:6000"
+            ]
+          }
+        ],
+        "totals": {
+          "technicians": 3,
+          "grossEarningsCents": 48000,
+          "alreadyPaidCents": 0,
+          "payableCents": 48000,
+          "checkCents": 24000,
+          "cashCents": 24000,
+          "otherCents": 0,
+          "paidCents": 0,
+          "unpaidCents": 48000,
+          "exceptions": 0,
+          "overrides": 0
+        },
+        "after": {
+          "issued": [
+            201,
+            201,
+            201
+          ],
+          "reuse": [
+            409,
+            "CHECK_NUMBER_IN_USE"
+          ],
+          "cashSteps": [
+            {
+              "tech": "Lisa",
+              "prepare": 201,
+              "handoff": 201,
+              "ack": 201,
+              "replay": 201
+            },
+            {
+              "tech": "Mary",
+              "prepare": 201,
+              "handoff": 201,
+              "ack": 201,
+              "replay": 201
+            },
+            {
+              "tech": "Anna",
+              "prepare": 201,
+              "handoff": 201,
+              "ack": 201,
+              "replay": 201
+            }
+          ],
+          "notMine": 404,
+          "totals": {
+            "technicians": 3,
+            "grossEarningsCents": 48000,
+            "alreadyPaidCents": 0,
+            "payableCents": 48000,
+            "checkCents": 24000,
+            "cashCents": 24000,
+            "otherCents": 0,
+            "paidCents": 24000,
+            "unpaidCents": 24000,
+            "exceptions": 0,
+            "overrides": 0
+          }
+        }
+      },
+      "twilio": {
+        "setA": 200,
+        "setB": 200,
+        "sendA": 201,
+        "sendB": 201,
+        "rowA": {
+          "sender_route": "tenant_account",
+          "sender_from": "+16095534875",
+          "provider_id": "SMaa48750001",
+          "status": "sent"
+        },
+        "rowB": {
+          "sender_route": "tenant_account",
+          "sender_from": "+18565534875",
+          "provider_id": "SMbb48750002",
+          "status": "sent"
+        },
+        "wireA": {
+          "account": true,
+          "from": "+16095534875"
+        },
+        "wireB": {
+          "account": true,
+          "from": "+18565534875"
+        }
+      }
+    },
+    "secureTtp": {
+      "steps": {
+        "S0": {
+          "pass": 1,
+          "fail": 0
+        },
+        "S1": {
+          "pass": 2,
+          "fail": 0
+        },
+        "S2": {
+          "pass": 3,
+          "fail": 0
+        },
+        "S3": {
+          "pass": 3,
+          "fail": 0
+        },
+        "S4": {
+          "pass": 1,
+          "fail": 0
+        },
+        "S6": {
+          "pass": 6,
+          "fail": 0
+        },
+        "S7": {
+          "pass": 4,
+          "fail": 0
+        },
+        "S5": {
+          "pass": 2,
+          "fail": 0
+        },
+        "S8": {
+          "pass": 4,
+          "fail": 0
+        },
+        "S9": {
+          "pass": 3,
+          "fail": 0
+        }
+      },
+      "phones": {
+        "front": {
+          "id": "aps-front-234875-99e58e613431",
+          "label": "Front Desk iPhone"
+        },
+        "manager": {
+          "id": "aps-manager-234875-d169baa701cf",
+          "label": "Bea's iPhone"
+        },
+        "checkout": {
+          "id": "aps-checkout-234875-039ebdc769b5",
+          "label": "Checkout iPhone 3"
+        }
+      },
+      "payments": [
+        {
+          "phone": "front",
+          "user": "Max Floor",
+          "ticketId": "b505c10c-b7fd-4ba1-8c86-d4fbd827f007",
+          "paymentId": "b98ca3ef-9adb-433c-8cfd-76ccbfe7ea18",
+          "amountCents": 4942
+        },
+        {
+          "phone": "manager",
+          "user": "Bea Shift",
+          "ticketId": "b1be02e6-d700-46ab-97fe-a763b4633af5",
+          "paymentId": "94acb496-c4dd-4fe2-bf0f-f2800847d824",
+          "amountCents": 4942
+        },
+        {
+          "phone": "checkout",
+          "user": "Cal Runner",
+          "ticketId": "f18b8cac-edc1-457d-ad73-a929bb3332e3",
+          "paymentId": "10571a7f-94a9-49b2-988d-168fa5a86a5f",
+          "amountCents": 4942
+        },
+        {
+          "phone": "front",
+          "user": "Bea Shift",
+          "ticketId": "ae9ac375-b540-4ba7-b4fc-76022e900fcb",
+          "paymentId": "1c73f5fb-4748-4651-b046-5128bc09707b",
+          "amountCents": 4942
+        }
+      ],
+      "refusals": {
+        "tamper": {
+          "baseline": 200,
+          "alteredBody": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "replayFirst": 200,
+          "replay": [
+            409,
+            "DEVICE_REQUEST_REPLAYED"
+          ],
+          "stale": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "unsignedLock": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "unsignedAttempt": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "unsignedCapture": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "unsignedCancel": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "attemptAfterUnsigned": "ready",
+          "deviceIdNoSig": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "wrongKey": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "copiedKeySigned": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "copiedKeyOtherSigner": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "copiedKeyUnsigned": [
+            403,
+            "DEVICE_KEY_MISMATCH"
+          ],
+          "copyRowCreated": 0
+        },
+        "personal": {
+          "signIn": {
+            "ok": true,
+            "l": 200,
+            "sel": 200,
+            "lb": null
+          },
+          "lock": [
+            403,
+            "DEVICE_NOT_AUTHORIZED",
+            "This phone is registered to another user."
+          ],
+          "attempt": [
+            409,
+            "CONFLICT"
+          ],
+          "heartbeat": [
+            403,
+            "DEVICE_NOT_AUTHORIZED"
+          ],
+          "capability": [
+            200,
+            null
+          ],
+          "paymentsOnT4": 0
+        }
+      },
+      "devices": [
+        {
+          "device_id": "Checkout iPhone 3",
+          "status": "active",
+          "shared": false,
+          "bound_user_id": "f2aba8c0-d1ab-425f-b414-2f50cc01dfd5",
+          "has_key": true,
+          "key_alg": "ES256",
+          "fpl": 64,
+          "paired_via": null,
+          "branches": [
+            "f404a5b7-0a02-475f-8d50-0f0ba0cd46e9"
+          ]
+        },
+        {
+          "device_id": "Front Desk iPhone",
+          "status": "active",
+          "shared": true,
+          "bound_user_id": "4d445df2-8bb8-4154-b0e4-0f265b502cbb",
+          "has_key": true,
+          "key_alg": "ES256",
+          "fpl": 64,
+          "paired_via": "pos_qr",
+          "branches": [
+            "f404a5b7-0a02-475f-8d50-0f0ba0cd46e9"
+          ]
+        },
+        {
+          "device_id": "Bea's iPhone",
+          "status": "active",
+          "shared": false,
+          "bound_user_id": "43fadce3-36ba-4722-a68e-60793b63f2b4",
+          "has_key": true,
+          "key_alg": "ES256",
+          "fpl": 64,
+          "paired_via": "pos_qr",
+          "branches": [
+            "f404a5b7-0a02-475f-8d50-0f0ba0cd46e9"
+          ]
+        }
+      ],
+      "concurrentMs": 558,
+      "concurrent": [
+        {
+          "phone": "front",
+          "user": "Max Floor",
+          "ticketId": "b505c10c-b7fd-4ba1-8c86-d4fbd827f007",
+          "lock": 201,
+          "serverRemaining": 4942,
+          "proceed": [
+            201,
+            true,
+            null
+          ],
+          "key": "ttp_d4beaf2eeaccc6a17f0023b08de85e3aa782790b",
+          "oversize": [
+            409,
+            "CONFLICT"
+          ],
+          "attempt": [
+            201,
+            4942,
+            null
+          ],
+          "ready": [
+            201,
+            "ready"
+          ],
+          "session": 201,
+          "capture": [
+            201,
+            "confirmed",
+            "approved",
+            null
+          ],
+          "paymentId": "b98ca3ef-9adb-433c-8cfd-76ccbfe7ea18",
+          "SID": "sess-front-b505c10c",
+          "db": {
+            "rows": [
+              {
+                "id": "b98ca3ef-9adb-433c-8cfd-76ccbfe7ea18",
+                "amt": 4942,
+                "method": "card",
+                "status": "approved",
+                "payment_surface": "tap_to_pay_iphone",
+                "device_id": "aps-front-234875-99e58e613431",
+                "created_by_user_id": "4d445df2-8bb8-4154-b0e4-0f265b502cbb"
+              }
+            ],
+            "ticket": "paid",
+            "charges": [
+              49.42
+            ]
+          }
+        },
+        {
+          "phone": "manager",
+          "user": "Bea Shift",
+          "ticketId": "b1be02e6-d700-46ab-97fe-a763b4633af5",
+          "lock": 201,
+          "serverRemaining": 4942,
+          "proceed": [
+            201,
+            true,
+            null
+          ],
+          "key": "ttp_1d6f4049b7b65eaae746bc73f50bfe7790b3c3f7",
+          "attempt": [
+            201,
+            4942,
+            null
+          ],
+          "ready": [
+            201,
+            "ready"
+          ],
+          "session": 201,
+          "capture": [
+            201,
+            "confirmed",
+            "approved",
+            null
+          ],
+          "paymentId": "94acb496-c4dd-4fe2-bf0f-f2800847d824",
+          "SID": "sess-manager-b1be02e6",
+          "db": {
+            "rows": [
+              {
+                "id": "94acb496-c4dd-4fe2-bf0f-f2800847d824",
+                "amt": 4942,
+                "method": "card",
+                "status": "approved",
+                "payment_surface": "tap_to_pay_iphone",
+                "device_id": "aps-manager-234875-d169baa701cf",
+                "created_by_user_id": "43fadce3-36ba-4722-a68e-60793b63f2b4"
+              }
+            ],
+            "ticket": "paid",
+            "charges": [
+              49.42
+            ]
+          }
+        },
+        {
+          "phone": "checkout",
+          "user": "Cal Runner",
+          "ticketId": "f18b8cac-edc1-457d-ad73-a929bb3332e3",
+          "lock": 201,
+          "serverRemaining": 4942,
+          "proceed": [
+            201,
+            true,
+            null
+          ],
+          "key": "ttp_21b3ca962aea3d0b892212f2ca0fde02271a36dc",
+          "attempt": [
+            201,
+            4942,
+            null
+          ],
+          "ready": [
+            201,
+            "ready"
+          ],
+          "session": 201,
+          "capture": [
+            201,
+            "confirmed",
+            "approved",
+            null
+          ],
+          "paymentId": "10571a7f-94a9-49b2-988d-168fa5a86a5f",
+          "SID": "sess-checkout-f18b8cac",
+          "db": {
+            "rows": [
+              {
+                "id": "10571a7f-94a9-49b2-988d-168fa5a86a5f",
+                "amt": 4942,
+                "method": "card",
+                "status": "approved",
+                "payment_surface": "tap_to_pay_iphone",
+                "device_id": "aps-checkout-234875-039ebdc769b5",
+                "created_by_user_id": "f2aba8c0-d1ab-425f-b414-2f50cc01dfd5"
+              }
+            ],
+            "ticket": "paid",
+            "charges": [
+              49.42
+            ]
+          }
+        }
+      ],
+      "race": {
+        "M": [
+          409,
+          "CHECKOUT_ALREADY_CLAIMED"
+        ],
+        "C": [
+          201,
+          null
+        ],
+        "openClaims": 1
+      },
+      "revoke": {
+        "revokeWithoutStepUp": [
+          403,
+          "STEP_UP_REQUIRED"
+        ],
+        "revoke": [
+          201,
+          "revoked"
+        ],
+        "sessionsBefore": 1,
+        "sessionsAfter": [
+          {
+            "status": "revoked",
+            "revoked": true,
+            "rt": 1,
+            "rt_live": 0
+          }
+        ],
+        "oldSession": [
+          401,
+          "AUTH_REQUIRED"
+        ],
+        "refresh": [
+          401,
+          "REFRESH_INVALID"
+        ],
+        "resignIn": {
+          "ok": true,
+          "l": 200,
+          "sel": 200,
+          "lb": null
+        },
+        "routes": {
+          "capability": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "readiness": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "queue": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "ticket": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "lock": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "attempt": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "heartbeat": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "register": [
+            403,
+            "DEVICE_REVOKED"
+          ],
+          "history": [
+            403,
+            "DEVICE_REVOKED"
+          ]
+        },
+        "unsignedAfter": [
+          409,
+          "CONFLICT"
+        ],
+        "db": {
+          "status": "revoked",
+          "revoke_reason": "Pilot: phone left in a cab",
+          "at": true
+        },
+        "others": {
+          "front": 200,
+          "manager": 200
+        }
+      },
+      "shift": {
+        "logout": 200,
+        "maxOldCookie": 401,
+        "beaSignIn": {
+          "ok": true,
+          "l": 200,
+          "sel": 200,
+          "lb": null
+        },
+        "pay": {
+          "phone": "front",
+          "user": "Bea Shift",
+          "ticketId": "ae9ac375-b540-4ba7-b4fc-76022e900fcb",
+          "lock": 201,
+          "serverRemaining": 4942,
+          "proceed": [
+            201,
+            true,
+            null
+          ],
+          "key": "ttp_b7be7021587aef0f68747ae8879e0440ff1fa4c6",
+          "attempt": [
+            201,
+            4942,
+            null
+          ],
+          "ready": [
+            201,
+            "ready"
+          ],
+          "session": 201,
+          "capture": [
+            201,
+            "confirmed",
+            "approved",
+            null
+          ],
+          "paymentId": "1c73f5fb-4748-4651-b046-5128bc09707b",
+          "SID": "sess-front-ae9ac375"
+        },
+        "rows": [
+          {
+            "id": "1c73f5fb-4748-4651-b046-5128bc09707b",
+            "amt": 4942,
+            "method": "card",
+            "status": "approved",
+            "payment_surface": "tap_to_pay_iphone",
+            "device_id": "aps-front-234875-99e58e613431",
+            "created_by_user_id": "43fadce3-36ba-4722-a68e-60793b63f2b4"
+          }
+        ]
+      },
+      "unknown": {
+        "pending": {
+          "capture": [
+            201,
+            "unknown",
+            "unknown",
+            null
+          ],
+          "attemptView": [
+            200,
+            "unknown",
+            true,
+            "PAYMENT_STATUS_UNKNOWN"
+          ],
+          "retry": [
+            409,
+            "CONFLICT"
+          ],
+          "newIntent": [
+            409,
+            "PAYMENT_STATUS_UNKNOWN"
+          ],
+          "reconcile": [
+            201,
+            "unknown",
+            "wait",
+            "no inquiry API — waiting for a webhook / manual reconcile"
+          ],
+          "after": [
+            200,
+            "unknown"
+          ],
+          "charges": 1,
+          "payments": [],
+          "ticket": "service_done",
+          "db": {
+            "status": "unknown",
+            "last_error_code": "PAYMENT_STATUS_UNKNOWN"
+          }
+        },
+        "dropped": {
+          "capture": [
+            201,
+            "unknown",
+            "unknown",
+            null
+          ],
+          "attemptView": [
+            200,
+            "unknown",
+            true,
+            "PAYMENT_STATUS_UNKNOWN"
+          ],
+          "retry": [
+            409,
+            "CONFLICT"
+          ],
+          "newIntent": [
+            409,
+            "PAYMENT_STATUS_UNKNOWN"
+          ],
+          "reconcile": [
+            201,
+            "unknown",
+            "wait",
+            "no inquiry API — waiting for a webhook / manual reconcile"
+          ],
+          "after": [
+            200,
+            "unknown"
+          ],
+          "charges": 1,
+          "payments": [],
+          "ticket": "service_done",
+          "db": {
+            "status": "unknown",
+            "last_error_code": "PAYMENT_STATUS_UNKNOWN"
+          }
+        }
+      },
+      "blockedExternal": [
+        "S8 verified final state after reconcile: CommerceHub transaction inquiry (sandbox credentials) — the adapter answers no_inquiry"
+      ],
+      "outboxPublishWaitMs": 1003,
+      "pos": {
+        "tickets": {
+          "b505c10c-b7fd-4ba1-8c86-d4fbd827f007": {
+            "phone": "front",
+            "detail": 200,
+            "commissionSource": "snapshot",
+            "posListStatus": "paid",
+            "db": "paid",
+            "events": [
+              "payment.captured",
+              "checkout.completed"
+            ],
+            "published": [
+              "published",
+              "published"
+            ]
+          },
+          "b1be02e6-d700-46ab-97fe-a763b4633af5": {
+            "phone": "manager",
+            "detail": 200,
+            "commissionSource": "snapshot",
+            "posListStatus": "paid",
+            "db": "paid",
+            "events": [
+              "payment.captured",
+              "checkout.completed"
+            ],
+            "published": [
+              "published",
+              "published"
+            ]
+          },
+          "f18b8cac-edc1-457d-ad73-a929bb3332e3": {
+            "phone": "checkout",
+            "detail": 200,
+            "commissionSource": "snapshot",
+            "posListStatus": "paid",
+            "db": "paid",
+            "events": [
+              "payment.captured",
+              "checkout.completed"
+            ],
+            "published": [
+              "published",
+              "published"
+            ]
+          },
+          "ae9ac375-b540-4ba7-b4fc-76022e900fcb": {
+            "phone": "front",
+            "detail": 200,
+            "commissionSource": "snapshot",
+            "posListStatus": "paid",
+            "db": "paid",
+            "events": [
+              "payment.captured",
+              "checkout.completed"
+            ],
+            "published": [
+              "published",
+              "published"
+            ]
+          }
+        },
+        "claims": [
+          200,
+          0
+        ],
+        "phones": [
+          200,
+          [
+            [
+              "Bea's iPhone",
+              "active"
+            ],
+            [
+              "Front Desk iPhone",
+              "active"
+            ],
+            [
+              "Max's iPhone",
+              "active"
+            ]
+          ]
+        ]
+      },
+      "history": [
+        {
+          "phone": "front",
+          "user": "Max Floor",
+          "amountCents": 4942,
+          "history": {
+            "deviceLabel": "Front Desk iPhone",
+            "employeeName": "Max Floor",
+            "amountCents": 4942,
+            "status": "PAID"
+          }
+        },
+        {
+          "phone": "manager",
+          "user": "Bea Shift",
+          "amountCents": 4942,
+          "history": {
+            "deviceLabel": "Bea's iPhone",
+            "employeeName": "Bea Shift",
+            "amountCents": 4942,
+            "status": "PAID"
+          }
+        },
+        {
+          "phone": "checkout",
+          "user": "Cal Runner",
+          "amountCents": 4942,
+          "history": {
+            "deviceLabel": "Checkout iPhone 3",
+            "employeeName": "Cal Runner",
+            "amountCents": 4942,
+            "status": "PAID"
+          }
+        },
+        {
+          "phone": "front",
+          "user": "Bea Shift",
+          "amountCents": 4942,
+          "history": {
+            "deviceLabel": "Front Desk iPhone",
+            "employeeName": "Bea Shift",
+            "amountCents": 4942,
+            "status": "PAID"
+          }
+        }
+      ],
+      "ownerDevices": [
+        {
+          "label": "Checkout iPhone 3",
+          "status": "revoked",
+          "bound": "Cal Runner",
+          "lastPaymentAt": true,
+          "lastErrorCode": null
+        },
+        {
+          "label": "Bea's iPhone",
+          "status": "active",
+          "bound": "Bea Shift",
+          "lastPaymentAt": true,
+          "lastErrorCode": "DEVICE_KEY_MISMATCH"
+        },
+        {
+          "label": "Front Desk iPhone",
+          "status": "active",
+          "bound": "Max Floor",
+          "lastPaymentAt": true,
+          "lastErrorCode": null
+        }
+      ]
+    }
+  },
+  "timeline": [
+    {
+      "at": 3438,
+      "phase": "0 boot",
+      "check": "the API booted against PostgreSQL (card processor = the sandbox fake; Twilio / SendGrid unset)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "at": 3521,
+      "phase": "1 onboarding",
+      "check": "the salon applies on the public website form → a reference number (no internal id); the double-tap returns the SAME reference",
+      "ok": true,
+      "detail": "201 {\"ok\":true,\"reference\":\"APS-HAZY-6HZM\"} / 201"
+    },
+    {
+      "at": 3838,
+      "phase": "1 onboarding",
+      "check": "the Super Admin signs in and enrols her authenticator app (TOTP confirmed — critical actions need it)",
+      "ok": true,
+      "detail": "login 200 \"SUCCESS\" enroll 200 confirm 200 {\"ok\":true,\"confirmed\":true}"
+    },
+    {
+      "at": 3852,
+      "phase": "1 onboarding",
+      "check": "the application is in the Super Admin's Applications list (status new, EIN never in clear)",
+      "ok": true,
+      "detail": "200 found true status new {\"status\":\"new\",\"reference_number\":\"APS-HAZY-6HZM\",\"ein_encrypted\":null,\"ein_last4\":\"6789\"}"
+    },
+    {
+      "at": 3901,
+      "phase": "1 onboarding",
+      "check": "review → APPROVE (note required)",
+      "ok": true,
+      "detail": "201 null / 201 \"approved\""
+    },
+    {
+      "at": 3924,
+      "phase": "1 onboarding",
+      "check": "approved → an onboarding case (Onboarding & Approvals) linked to the application",
+      "ok": true,
+      "detail": "201 {\"id\":\"62d51ec5-410a-49e6-9b29-1c3d38875b14\",\"salon_name\":\"Pilot Day Nails 234875\",\"owner_name\":\"Grace Pilot\",\"phone\":\"6095554875\",\"email\":\"owner.234875@pilot-day.test\",\"city\":\"Merchantville\",\"state\":\"NJ\",\"technicians_count\":4,\"current_pos\":\"paper\",\"current_processor\":null,\"monthly_card_volume_cents\":null,\"preferred_imac_color\":null,\"status\":\"converted_onboa"
+    },
+    {
+      "at": 3963,
+      "phase": "1 onboarding",
+      "check": "the Super Admin creates the tenant (salon code, one branch, the owner as an INVITED user, a pending sandbox gateway)",
+      "ok": true,
+      "detail": "201 {\"ok\":true,\"tenant\":{\"lifecycleState\":\"ONBOARDING\",\"lifecycleMoves\":[\"PENDING_APPROVAL\",\"CLOSED\"],\"suspensionReasonCode\":null,\"suspensionPolicy\":null,\"id\":\"c1a6b5de-4d3f-48bf-a91a-ecb0010ea709\",\"n\":\"Pilot Day Nails 234875\",\"code\":\"PLT234875\",\"owner\":\"Grace Pilot\",\"email\":\"owner.234875@pilot-day.test\",\"phone\":\"6095554875\",\"city\":\"Merchantville\",\"state\":\"NJ\",\""
+    },
+    {
+      "at": 3967,
+      "phase": "1 onboarding",
+      "check": "DB: one tenant, one branch, the owner user invited (no password yet)",
+      "ok": true,
+      "detail": "{\"status\":\"pending\",\"owner_user_id\":\"38a1a5b3-c46a-4753-9222-2910d8447ed8\",\"branches\":1,\"owner_status\":\"invited\"}"
+    },
+    {
+      "at": 4002,
+      "phase": "1 onboarding",
+      "check": "the application is linked to the new tenant (converted)",
+      "ok": true,
+      "detail": "201 {\"id\":\"62d51ec5-410a-49e6-9b29-1c3d38875b14\",\"salon_name\":\"Pilot Day Nails 234875\",\"owner_name\":\"Grace Pilot\",\"phone\":\"6095554875\",\"email\":\"owner.234875@pilot-day.test\",\"city\":\"Merchantville\",\"state\":\"NJ\",\"technicians_count\":4,\"current_pos\":\"paper\",\"current_processor\":null,\"monthly_card_volume_cents\":null,\"preferred_imac_color\":null,\"status\":\"converted\",\"not"
+    },
+    {
+      "at": 4366,
+      "phase": "1 onboarding",
+      "check": "the Super Admin (fresh step-up + a reason) has a first-sign-in temporary password SENT to the owner — the response names the channel and a masked address, never the password",
+      "ok": true,
+      "detail": "step-up 201 reset 201 {\"ok\":true,\"delivery\":\"email\",\"sentTo\":\"o***@pilot-day.test\",\"expiresAt\":\"2026-10-24T04:57:18.985Z\"} inbox true password-in-response false"
+    },
+    {
+      "at": 4366,
+      "phase": "1 onboarding",
+      "check": "the owner exchanges it at /auth/temp-password-login and sets her own password — no session is minted by the change (mustSignIn)",
+      "ok": true,
+      "detail": "temp-login 200 {\"changePasswordSessionId\":\"<id>\"} change 200 {\"ok\":true,\"mustSignIn\":true,\"redirect\":\"/pos/dashboard\",\"role\":\"OWNER\",\"userId\":\"38a1a5b3-c46a-4753-9222-2910d8447ed8\"}"
+    },
+    {
+      "at": 4448,
+      "phase": "1 onboarding",
+      "check": "the owner signs in with her OWN password at her salon (the temporary one is gone) and opens her branch; her account is active",
+      "ok": true,
+      "detail": "login 200 \"SUCCESS\" select 200 status active"
+    },
+    {
+      "at": 15590,
+      "phase": "1 onboarding",
+      "check": "with a fresh step-up the Super Admin moves the salon ONBOARDING → PENDING_APPROVAL → ACTIVE (tenant status active)",
+      "ok": true,
+      "detail": "step-up 201 null → 201 {\"ok\":true,\"from\":\"ONBOARDING\",\"to\":\"PENDING_APPROVAL\",\"status\":\"pending\"} → 201 {\"ok\":true,\"from\":\"PENDING_APPROVAL\",\"to\":\"ACTIVE\",\"status\":\"active\"} db active"
+    },
+    {
+      "at": 15595,
+      "phase": "1 onboarding",
+      "info": "onboarding case after the tenant exists: 200 {\"id\":\"df9bc40d-ee02-4dcb-8720-12d7becf5e60\",\"applicationId\":\"62d51ec5-410a-49e6-9b29-1c3d38875b14\",\"applicationType\":\"new_tenant\",\"parentTenantId\":null,\"tenantId\":\"c1a6b5de-4d3f-48bf-a91a-ecb0010ea709\",\"salonName\":\"Pilot Day Nails 234875\",\"ownerName\":\"Grace Pilot\",\"ownerEmail\":\"owner.234875@pilot-day.test\",\"branchCount\":0,\"currentStage\":\"application_receive"
+    },
+    {
+      "at": 15595,
+      "phase": "1 onboarding",
+      "check": "the onboarding case now belongs to the new tenant",
+      "ok": true,
+      "detail": "tenantId c1a6b5de-4d3f-48bf-a91a-ecb0010ea709"
+    },
+    {
+      "at": 15596,
+      "phase": "1 onboarding",
+      "check": "the application row records the whole path: converted to the tenant, with its onboarding case linked",
+      "ok": true,
+      "detail": "{\"status\":\"converted\",\"onboarding_id\":\"df9bc40d-ee02-4dcb-8720-12d7becf5e60\",\"converted_tenant_id\":\"c1a6b5de-4d3f-48bf-a91a-ecb0010ea709\"}"
+    },
+    {
+      "at": 15627,
+      "phase": "2 setup",
+      "info": "the salon's zone for the pilot: Etc/GMT-7 — local time now Sat 10:57 AM"
+    },
+    {
+      "at": 15644,
+      "phase": "2 setup",
+      "check": "business details + the salon's zone (Etc/GMT-7) and NJ sales tax 6.625 % saved; the branch row carries the zone",
+      "ok": true,
+      "detail": "biz 200 null tax 200 null branch {\"timezone\":\"Etc/GMT-7\",\"address\":null}"
+    },
+    {
+      "at": 15778,
+      "phase": "2 setup",
+      "check": "RECEPTIONIST: invited by the OWNER from her salon (e-mail not configured → delivery \"not_connected\", the link handed over), accepted with her own password, signs in at the branch",
+      "ok": true,
+      "detail": "invite 201 {\"d\":\"not_connected\",\"n\":\"No email/SMS notifier configured — deliver the link manually.\"} accept 201 null login 200 null select 200"
+    },
+    {
+      "at": 15993,
+      "phase": "2 setup",
+      "check": "MANAGER: invited by the OWNER from her salon (a manager invite first answers 403 STEP_UP_REQUIRED; she confirms her password) (e-mail not configured → delivery \"not_connected\", the link handed over), accepted with her own password, signs in at the branch",
+      "ok": true,
+      "detail": "step-up {\"first\":403,\"code\":\"STEP_UP_REQUIRED\",\"su\":201} invite 201 {\"d\":\"not_connected\",\"n\":\"No email/SMS notifier configured — deliver the link manually.\"} accept 201 null login 200 null select 200"
+    },
+    {
+      "at": 16007,
+      "phase": "2 setup",
+      "check": "the owner's two staff invitations are audited against the salon; the receptionist cannot invite anyone (403)",
+      "ok": true,
+      "detail": "audit [{\"n\":2}] rec 403 {\"code\":\"PERMISSION_DENIED\",\"reason\":\"missing_permission\",\"permission\":\"roles.manage\",\"message\":\"Missing permission: roles.manage\",\"error\":{\"code\":\"PERMISSION_DENIED\",\"message\":\"Missing permission: roles.manage\",\"details\":{},\"action\":\"CONTACT_MANAGER\"},\"statusCode\":403,\"requestId\":\"req_01M5P0WYTZCXPZPGXH4GH34RQ8\",\"reference\":\"req_01M5P0WYTZCXPZPGXH4GH34RQ8\"}"
+    },
+    {
+      "at": 16018,
+      "phase": "2 setup",
+      "check": "store hours: open 7 days, 9:00–7:30",
+      "ok": true,
+      "detail": "200 null"
+    },
+    {
+      "at": 16027,
+      "phase": "2 setup",
+      "check": "RBAC: the receptionist cannot change the sales tax (403) and the rate stays 6.625 %",
+      "ok": true,
+      "detail": "403 {\"code\":\"PERMISSION_DENIED\",\"reason\":\"missing_permission\",\"permission\":\"settings.view\",\"message\":\"Missing permission: settings.view\",\"error\":{\"code\":\"PERMISSION_DENIED\",\"message\":\"Missing permission: settings.view\",\"details\":{},\"action\":\"CONTACT_MANAGER\"},\"statusCode\":403,\"requestId\":\"req_01M5P0WYVEKG9RFXMFZXG7M0AV\",\"reference\":\"req_01M5P0WYVEKG9RFXMFZXG7M0A now {\"enabled\":true,\"taxRatePercent"
+    },
+    {
+      "at": 16089,
+      "phase": "2 setup",
+      "check": "the floor add-on \"Nail Art (2 nails)\" $15.00 (50 %) in the \"Add-ons\" category",
+      "ok": true,
+      "detail": "cat 201 svc 201 null"
+    },
+    {
+      "at": 16091,
+      "phase": "2 setup",
+      "check": "the menu: category \"Nails\", Gel Manicure $45.00 (60 %), Spa Pedicure $60.00 (50 %), Acrylic Full Set $70.00 (55 %), Nail Art add-on $15.00 on the gel",
+      "ok": true,
+      "detail": "cat 201 null svcs 201,201,201 addon 201 null db [{\"name\":\"Acrylic Full Set\",\"price\":7000,\"commission_type\":\"percent\",\"pct\":55},{\"name\":\"Gel Manicure\",\"price\":4500,\"commission_type\":\"percent\",\"pct\":60},{\"name\":\"Nail Art (2 nails)\",\"price\":1500,\"commission_type\":\"percent\",\"pct\":50},{\"name\":\"Spa Pedicure\",\"price\":6000,\"commission_type\":\"percent\",\"pct\":50}]"
+    },
+    {
+      "at": 16414,
+      "phase": "2 setup",
+      "check": "Lisa: hired on the POS (invite \"not_connected\" → link handed over → accepted), skills, services, 7-day 9–7 schedule, clock PIN; she signs in to the Tech App",
+      "ok": true,
+      "detail": "create 201 {\"created\":true,\"channel\":\"email\",\"deliveryStatus\":\"not_connected\",\"acceptUrl\":\"https://pos.aipowersalon.com/accept-invite?token=sUEgUh2hEaWpavhFV6lJY4_s_YnmXDyBgdev4LXTMyQ\",\"reason\":null} accept 201 null skills 200 svcs 200 sched 200 null pin 201 null login 200 null sel 200"
+    },
+    {
+      "at": 16722,
+      "phase": "2 setup",
+      "check": "Mary: hired on the POS (invite \"not_connected\" → link handed over → accepted), skills, services, 7-day 9–7 schedule, clock PIN; she signs in to the Tech App",
+      "ok": true,
+      "detail": "create 201 {\"created\":true,\"channel\":\"email\",\"deliveryStatus\":\"not_connected\",\"acceptUrl\":\"https://pos.aipowersalon.com/accept-invite?token=KzH9GC-jEYCImLyETIhHLj9q2GdugqrgLCcTYBJdoWo\",\"reason\":null} accept 201 null skills 200 svcs 200 sched 200 null pin 201 null login 200 null sel 200"
+    },
+    {
+      "at": 16990,
+      "phase": "2 setup",
+      "check": "Anna: hired on the POS (invite \"not_connected\" → link handed over → accepted), skills, services, 7-day 9–7 schedule, clock PIN; she signs in to the Tech App",
+      "ok": true,
+      "detail": "create 201 {\"created\":true,\"channel\":\"email\",\"deliveryStatus\":\"not_connected\",\"acceptUrl\":\"https://pos.aipowersalon.com/accept-invite?token=Rk1Knp20CS1QTlbSn-Rt0BCKzm85ocm4CFH9PIEQKbg\",\"reason\":null} accept 201 null skills 200 svcs 200 sched 200 null pin 201 null login 200 null sel 200"
+    },
+    {
+      "at": 17042,
+      "phase": "2 setup",
+      "check": "commission rules: without the Super Admin's code a personal rate is refused (403); with the one-time code Anna gets 65 % on the Acrylic Full Set — an ACTIVE \"Technician + Service\" rule of the one engine; the code does not work twice",
+      "ok": true,
+      "detail": "no-code 403 code 201 set 200 null reuse 400 read {\"defaultPercent\":50,\"byService\":[{\"serviceId\":\"75a36e3c-55da-40cb-9078-e8ba7d9a4587\",\"percent\":65}],\"byCategory\":[],\"tipHandling\":\"keep\",\"payrollPeriod\":\"biweekly\"} rule [{\"v\":65,\"status\":\"active\"}]"
+    },
+    {
+      "at": 17399,
+      "phase": "2 setup",
+      "check": "PAYMENTS: before setup the owner sees \"setup required\"; the Super Admin sets the salon's own CardPointe gateway (sandbox → the loopback fake), the live test connection passes, the owner now sees it active; the password is stored encrypted, never in clear",
+      "ok": true,
+      "detail": "before \"pending\" set 201 null test 201 {\"ok\":true,\"configured\":true,\"status\":\"active\",\"environment\":\"sandbox\",\"merchantIdMasked\":\"•••• •••• 3888\",\"tested\":true,\"note\":\"Merchant 496160873888 reachable and enabled on pilot-fake\",\"gateway\":{\"merchantEnabled\":true,\"avsSupported\":false,\"cvvSupported\":false}} after {\"processorType\":\"cardpointe\",\"environment\":\"sandbox\",\"merchantIdMasked\":\"•••• •••• 3888\""
+    },
+    {
+      "at": 17419,
+      "phase": "2 setup",
+      "info": "SMS plan (tenant): 200 {\"balance\":{\"hasPackage\":true,\"packageName\":\"SMS Essential\",\"packageCode\":\"sms_starter\",\"cycleStart\":\"2026-10-01T00:00:00.000Z\",\"cycleEnd\":\"2026-10-31T00:00:00.000Z\",\"includedAllowance\":100,\"usedIncluded\":0,\"remainingIncluded\":100,\"overageCount\":0,\"overageUnitPriceCents\":15,\"overageEnabled\":true,\"hardLimitEnabled\":false,\"failedCount\":0,\"estimatedOverageCents; messaging credentials (SA): 200 {\"tenantId\":\"c1a6b5de-4d3f-48bf-a91a-ecb0010ea709\",\"branchId\":null,\"provider\":\"twilio\",\"status\":\"not_configured\",\"accountSid\":null,\"fromNumber\":null,\"authTokenLast4\":null,\"verifyServiceSid\":null,\"apiKeySid\":null,\"hasApiKeySecret\":false,\"lastValidatedAt\":null,\"lastValidationError\":null,\"branchOverride\":false}"
+    },
+    {
+      "at": 17458,
+      "phase": "2 setup",
+      "check": "customer display: the Front Desk register, the display shows a pairing code, the owner claims it on the POS, the display picks up its credential (paired)",
+      "ok": true,
+      "detail": "station 201 null start 201 claim 201 null poll 201 paired"
+    },
+    {
+      "at": 17541,
+      "phase": "2 setup",
+      "check": "INVENTORY set up: Cuticle Oil (retail $12.00, 10 in stock), Gel Polish (6 in stock) and the Gel Manicure's recipe (1 polish per service)",
+      "ok": true,
+      "detail": "oil 201 null polish 201 stock 201/201 null recipe 200 null onHand {\"oil\":10,\"polish\":6}"
+    },
+    {
+      "at": 17604,
+      "phase": "2 setup",
+      "check": "Go Check-In kiosk provisioned by the Super Admin (slug + one-time device token) and switched on (Super Admin master switch; the owner's walk-in toggles)",
+      "ok": true,
+      "detail": "device 201 {\"slug\":\"j4wo6ra0mj4b\"} enable 200 null"
+    },
+    {
+      "at": 17684,
+      "phase": "3 day opens",
+      "check": "Fair Turn: the package is on (Super Admin) and the owner sets traditional weighted rotation in RECOMMEND_AND_CONFIRM",
+      "ok": true,
+      "detail": "pkg 201 null settings 200 put 200 null"
+    },
+    {
+      "at": 17697,
+      "phase": "3 day opens",
+      "check": "the Go Check-In kiosk starts a session for the salon (name from the server, nothing from the device)",
+      "ok": true,
+      "detail": "201 {\"salonName\":\"Pilot Day Nails 234875\",\"branchName\":\"Pilot Day Nails 234875\",\"settings\":{\"appointmentCheckinEnabled\":true,\"walkinCheckinEnabled\":true,\"newCustomerEnabled\":true,\"serviceSelectionEnabled\":true,\"technicianPreferenceEnabled\":true,\"tenantPhoneLookupEnabled\":true,\"centralLookupEnabled\":true,\"customerLinkingEnabled\":true,\"showWaitEstimate\":true,\"auto"
+    },
+    {
+      "at": 18088,
+      "phase": "3 day opens",
+      "check": "clock-in by PIN on the kiosk: a wrong PIN is refused; Lisa, Mary and Anna clock in (server time) and JOIN the Fair Turn rotation in that order; the replayed tap writes nothing new",
+      "ok": true,
+      "detail": "wrong 401 201,201,201 replay 201 joins [\"Lisa\",\"Mary\",\"Anna\"] openShifts 3"
+    },
+    {
+      "at": 18238,
+      "phase": "3 day opens",
+      "check": "two walk-ins check in on the kiosk (new customer profiles from name + phone) and land in the POS queue",
+      "ok": true,
+      "detail": "jenny 201/201 {\"status\":\"checked_in\",\"firstName\":\"Jenny\",\"estimatedWaitMinutes\":0,\"estimatedWait\":{\"fromMinutes\":0,\"toMinutes\":10},\"estimatedServiceMinutes\":60,\"checkInId\":\"a581df2f-0255-423b-a14f-51ef5ef6b76f\",\"queueItemId\":\"a581df2f-0255-423b-a14f-51ef5ef6b76f\",\"requestedTechnician\":null,\"alternates\":[]} kim 201 queue [[\"Jenny Walker\",\"waiting\"],[\"Kim Pham\",\"waiting\"]]"
+    },
+    {
+      "at": 18573,
+      "phase": "3 day opens",
+      "check": "Fair Turn recommends Lisa for Jenny and Mary for Kim (the rotation, with the \"why\"); the front desk confirms each",
+      "ok": true,
+      "detail": "jenny 201 → Lisa acc 201 null kim 201 → Mary acc 201"
+    },
+    {
+      "at": 18575,
+      "phase": "3 day opens",
+      "info": "salon local time 10:57 on 2026-10-24"
+    },
+    {
+      "at": 18583,
+      "phase": "3 day opens",
+      "check": "booking phone verification (OTP) cannot be switched on while the salon's Twilio Verify is not configured (409 — no fake codes)",
+      "ok": true,
+      "detail": "409 {\"code\":\"provider_required\",\"message\":\"Connect and verify your Twilio account before enabling Booking Phone Verification.\",\"error\":{\"code\":\"provider_required\",\"message\":\"Connect and verify your Twilio account before enabling Booking Phone Verification.\",\"details\":{},\"action\":\"RETRY\"},\"statusCode\":409,\"requestId\":\"req_01M5P0X1BB7QZN7GQFZ7PJVTQ3\",\"reference\":\""
+    },
+    {
+      "at": 18792,
+      "phase": "3 day opens",
+      "check": "ONLINE BOOKING: Nina registers in the customer app, sees the menu, books the Acrylic Full Set with Anna today at 11:30; the retried request (same key) books nothing twice; the slot is no longer offered",
+      "ok": true,
+      "detail": "reg {\"ok\":true} login 200 opts 200 slots 200 10 pick 11:30 book 201 null replay 201 row {\"status\":\"booked\",\"phone_verification\":null,\"technician_id\":\"1276bc7a-b95c-4052-bea6-eff1e01538a5\",\"source\":\"customer_app\",\"start_time\":\"11:30\"} after false"
+    },
+    {
+      "at": 18792,
+      "phase": "3 day opens",
+      "info": "the online appointment's phone verification label: — (OTP not available without Twilio Verify)"
+    },
+    {
+      "at": 18906,
+      "phase": "3 day opens",
+      "check": "AI RECEPTIONIST: with the Super Admin's voice key the AI lists the services, finds Mary free at 13:30 and books Vera's pedicure (no verification code without Twilio); the time it hands the voice platform is in the SALON's zone (+07:00)",
+      "ok": true,
+      "detail": "key 201 null services 200 avail 200 [\"13:30\",\"14:00\",\"14:30\"] book 201 {\"success\":true,\"data\":{\"appointment\":{\"id\":\"1f61bea6-6051-4b72-ac36-a2643886e22e\",\"status\":\"BOOKED\",\"date\":\"2026-10-24\",\"startAt\":\"2026-10-24T13:30:00+07:00\",\"endAt\":\"2026-10-24T14:30:00+07:00\",\"displayTime\":\"13:30\",\"technician\":{\"name\":\"Mary Nguyen\"},\"services\":[{\"id\":\"2da4fbbe-396c-483f-a480-d809d6c8828e\",\"name\":\"Spa Pedicur"
+    },
+    {
+      "at": 18942,
+      "phase": "3 day opens",
+      "check": "the appointment arrives: the front desk checks Nina in → she is in the queue for Anna (her booked technician)",
+      "ok": true,
+      "detail": "201 \"checked_in\" q {\"id\":\"1a693f53-c5fe-4ec6-bb61-e23f4fb35bbf\",\"status\":\"waiting\",\"assigned_technician_id\":\"1276bc7a-b95c-4052-bea6-eff1e01538a5\",\"requested_technician_id\":null,\"appointment_id\":\"e7bc2297-f784-409b-a332-aee42ef51cd8\"}"
+    },
+    {
+      "at": 19056,
+      "phase": "3 day opens",
+      "check": "MULTI-TECHNICIAN: Olivia's visit is split — the gel to Lisa, the pedicure to Mary — in ONE assignment",
+      "ok": true,
+      "detail": "create 201 null plan 201 null lines []"
+    },
+    {
+      "at": 22781,
+      "phase": "3 day opens",
+      "check": "SCREEN: the POS Queue (receptionist, Chromium) shows the kiosk walk-ins; the Check-In screen renders; no page errors",
+      "ok": true,
+      "detail": "{\"q\":\"TODAY Overview Check-In 1 Booking Tech Queue Customer Queue 1 Serving Service Done Checkout Approvals Safety Community CUSTOMERS MEMBERSHIPS COMMUNICATIONS SYST\",\"qe\":[],\"c\":[]}"
+    },
+    {
+      "at": 23510,
+      "phase": "4 service + checkout",
+      "check": "SERVICE: every part accepted → started → Service Done in the Tech App; Mary adds the nail-art add-on mid-service; Olivia's ONE ticket carries Lisa's gel and Mary's pedicure; four service_done tickets; Fair Turn credits the technicians",
+      "ok": true,
+      "detail": "[[201,[\"Lisa:201/201/201\"],null],[201,[\"Mary:201/201/201/201\"],null],[201,[\"Lisa:201/201/201\",\"Mary:201/201/201\"],null],[201,[\"Anna:201/201/201\"],null]] tickets [[\"service_done\",[\"Gel Manicure:Lisa:4500\",\"Nail Art (2 nails):Lisa:1500\"]],[\"service_done\",[\"Spa Pedicure:Mary:6000\",\"Nail Art (2 nails):Mary:1500\"]],[\"service_done\",[\"Gel Manicure:Lisa:4500\",\"Spa Pedicure:Mary:6000\"]],[\"service_done\",[\"A"
+    },
+    {
+      "at": 23543,
+      "phase": "4 service + checkout",
+      "info": "Jenny's ticket before checkout: {\"sub\":6000,\"tax\":398,\"tip\":0,\"due\":6590} lines []"
+    },
+    {
+      "at": 23951,
+      "phase": "4 service + checkout",
+      "info": "Jenny's ticket at payment: {\"sub\":5400,\"tax\":358,\"tip\":1000,\"due\":11961}; customer display shows \"ticket_review\""
+    },
+    {
+      "at": 26473,
+      "phase": "4 service + checkout",
+      "check": "SCREEN: the POS Checkout workspace (receptionist, Chromium) opens Jenny with Total Due $119.61; the paired 23-inch customer display (Chromium, its device credential) shows her total $119.61",
+      "ok": true,
+      "detail": "{\"co\":\"TODAY Overview Check-In Booking Tech Queue 5 Customer Queue Serving Service Done 4 Checkout 4 Approvals Safety Community\",\"d\":\"P Pilot Day Nails 234875 Technician clock-in Welcome, Check In Here Enter your phone number ✆ (555) 123-4567 1 2 3 4 5 6 7 8 9 Clear 0 ⌫ Find My Appointment No Appointment? Enter your phone number on \",\"e\":[[],[]]}"
+    },
+    {
+      "at": 26473,
+      "phase": "4 service + checkout",
+      "check": "JENNY at the desk: the receptionist may not discount (403) — the manager applies the $6.00 first-visit discount; $10.00 tip and a $50.00 gift card for Olivia go on her ticket; sent to the customer display, which shows the same total the POS shows",
+      "ok": true,
+      "detail": "disc 201 null tip 201 gc 201 \"pending_payment\" send 201 null display 200 due 11961 in-display true"
+    },
+    {
+      "at": 28473,
+      "phase": "4 service + checkout",
+      "check": "SCREEN: after \"Clear Display\" the customer display no longer shows Jenny's $119.61 — it is back to the check-in screen",
+      "ok": true,
+      "detail": "{\"t\":\"P Pilot Day Nails 234875 Technician clock-in Welcome, Check In Here Enter your phone number ✆ (555) 123-4567 1 2 3 4 5 6 7 8 9 Clear 0 ⌫ Find My Appointment No Appointment? Enter your phone number on \",\"e\":[]}"
+    },
+    {
+      "at": 28521,
+      "phase": "4 service + checkout",
+      "check": "JENNY pays by card through the salon's own gateway (CardPointe client → the loopback fake): approved ONCE (the retry replays it); her gift card for Olivia is ACTIVE with $50.00 only now that it is paid; the display shows the payment complete, the receptionist clears it and it leaves the checkout; the SMS receipt is recorded as SIMULATED (no texting provider — nothing claimed as sent)",
+      "ok": true,
+      "detail": "pay 201 {\"paymentId\":\"9cbe73f5-a922-4ac7-9a9b-2b24e9bc8517\",\"ticketId\":\"316c32c1-a058-4b8e-89d6-553c97785f7e\",\"status\":\"approved\",\"processorTransactionId\":\"CP-AUTH-2\",\"approvedAmountCents\":11961} replay 201 gc {\"status\":\"active\",\"bal\":5000} display after pay \"payment_success\" close 201 null then \"idle\" receipt 201 {\"channel\":\"sms\",\"configured\":true,\"delivery\":\"simulated\",\"providerRef\":\"SM-MOCK-1\","
+    },
+    {
+      "at": 28619,
+      "phase": "4 service + checkout",
+      "info": "Kim's ticket: {\"sub\":6300,\"tax\":417,\"tip\":0,\"due\":6919} discounts [[\"membership\",1200,\"Member discount: 20 % off pedicures\"]]"
+    },
+    {
+      "at": 28619,
+      "phase": "4 service + checkout",
+      "check": "KIM: the owner publishes the \"Pedi Club\" plan (20 % off pedicures) and enrolls Kim; at checkout the membership benefit comes off her ticket automatically",
+      "ok": true,
+      "detail": "plan 201 null k_ver 201 null enroll 201 \"active\" k_recalc 201 disc 1200"
+    },
+    {
+      "at": 28681,
+      "phase": "4 service + checkout",
+      "check": "KIM pays cash — change computed by the server",
+      "ok": true,
+      "detail": "201 {\"payment\":{\"paymentId\":\"054c1c79-1266-444b-8262-0188059f692d\",\"ticketId\":\"b6f5ca21-e5cf-4f5d-bd00-36fe4cd73eb3\",\"method\":\"cash\",\"amountCents\":6717,\"tipCents\":0,\"status\":\"approved\",\"changeDueCents\":3283,\"createdAt\":\"2026-10-24T03:57:43.487Z\"},\"changeDueCents\":3283}"
+    },
+    {
+      "at": 28864,
+      "phase": "4 service + checkout",
+      "check": "OLIVIA: a $20.00 tip; the gift card (balance $50.00) pays $50.00 and a card pays the rest of $131.96 — two payments, the card's balance is now $0.00",
+      "ok": true,
+      "detail": "tip 201 lookup 201 5000 split 201 {\"payments\":[{\"paymentId\":\"4af4af44-2ad6-40b5-b139-868f1a8667b3\",\"ticketId\":\"5334ce50-1355-4e54-bd14-f427688c73d1\",\"method\":\"gift_card\",\"amountCents\":5000,\"tipCents\":0,\"surchargeCents\":0,\"status\":\"approved\",\"createdAt\":\"2026-10-24T03:57:43.635Z\",\"giftCardLast4\":\"5778\"},{\"paymentId\":\"b978e9de-6db1-472b-93a5-144ee1e0efeb\",\"ticketId\":\"5334ce50-1355-4e54-bd14-f4 gc 0 "
+    },
+    {
+      "at": 28866,
+      "phase": "4 service + checkout",
+      "info": "compensation snapshots: [{\"ticket\":\"jenny\",\"tech\":\"Lisa\",\"earnCents\":3105,\"tipCents\":1000},{\"ticket\":\"olivia\",\"tech\":\"Lisa\",\"earnCents\":2700,\"tipCents\":1000},{\"ticket\":\"olivia\",\"tech\":\"Mary\",\"earnCents\":3000,\"tipCents\":1000},{\"ticket\":\"kim\",\"tech\":\"Mary\",\"earnCents\":3150,\"tipCents\":0}]"
+    },
+    {
+      "at": 28866,
+      "phase": "4 service + checkout",
+      "check": "TIP SPLIT + COMMISSION: Olivia's $20.00 tip is split between Lisa and Mary with no lost cent; Jenny's $10.00 tip is all Lisa's; every paid ticket wrote its immutable snapshot",
+      "ok": true,
+      "detail": "[{\"ticket\":\"jenny\",\"tech\":\"Lisa\",\"earnCents\":3105,\"tipCents\":1000},{\"ticket\":\"olivia\",\"tech\":\"Lisa\",\"earnCents\":2700,\"tipCents\":1000},{\"ticket\":\"olivia\",\"tech\":\"Mary\",\"earnCents\":3000,\"tipCents\":1000},{\"ticket\":\"kim\",\"tech\":\"Mary\",\"earnCents\":3150,\"tipCents\":0}]"
+    },
+    {
+      "at": 29008,
+      "phase": "5 tap to pay",
+      "check": "Tap to Pay set up: the Super Admin records the salon's onboarding (Apple entitlement + PSP active); the manager registers her iPhone; the owner approves it; the phone reports Tap to Pay available (sandbox)",
+      "ok": true,
+      "detail": "onb 201 null reg 201 \"pending\" approve 201 null cap 200 {\"provider\":\"fiserv_commercehub\",\"environment\":\"sandbox\",\"capabilities\":{\"tapToPay\":true,\"cardPresentTerminal\":false,\"refunds\":true,\"voids\":true,\"partialRefunds\":true,\"splitPayments\":true,\"tokenization\":false,\"offlinePayments\":false,\"statusLookup\":true},\"state\":\"ready\"}"
+    },
+    {
+      "at": 29121,
+      "phase": "5 tap to pay",
+      "info": "Nina's ticket on the phone: {\"v\":\"fc1424f5d5551c2b\",\"total\":{\"subtotalCents\":7000,\"discountCents\":0,\"tipCents\":0,\"taxCents\":464,\"surchargeCents\":224,\"totalDueCents\":7688}}; POS tried to take cash while the phone held the claim → 400 \"This ticket is being checked out on a mobile device. Finish or cancel there before charging on the POS.\""
+    },
+    {
+      "at": 29121,
+      "phase": "5 tap to pay",
+      "check": "the manager opens Nina's ticket from the phone's queue and CLAIMS it; while the phone holds the claim the front desk cannot take a second payment (no duplicate charge)",
+      "ok": true,
+      "detail": "queue 200 lock 201 null pos 400 ticket 200"
+    },
+    {
+      "at": 29237,
+      "phase": "5 tap to pay",
+      "info": "retail on the phone: Nina takes a Cuticle Oil home → 201 true"
+    },
+    {
+      "at": 29584,
+      "phase": "5 tap to pay",
+      "check": "TAP TO PAY split: $20.00 cash on the phone, then $70.05 by Tap to Pay — proceed → intent → readiness → session (CommerceHub fake, signed) → capture: ONE charge at the server-checked amount, the retried result changes nothing; the ticket is paid with two payments",
+      "ok": true,
+      "detail": "cash 201 null bal {\"totalDueCents\":9005,\"confirmedCents\":2000,\"inFlightCents\":0,\"remainingCents\":7005,\"isFullyPaid\":false} proceed 201 {\"canProceed\":true,\"balanceCents\":7005,\"idempotencyKey\":\"ttp_a3822b0aaf05bfe3cfef203bc15e57e6029cd514\",\"attemptState\":\"created\",\"version\":\"8ad7b3cc9425e747\"} attempt 201 null ready 201 null session 201 null capture 201 {\"idempotencyKey\":\"ttp_a3822b0aaf05bfe3cfef203"
+    },
+    {
+      "at": 29590,
+      "phase": "5 tap to pay",
+      "info": "claim released → 201"
+    },
+    {
+      "at": 29702,
+      "phase": "6 refund + inventory + loyalty",
+      "check": "REFUND: the owner refunds Jenny's $15.00 nail-art line to her card (the CardPointe refund, ONCE — the retry replays); the receptionist may not refund (403); Lisa's commission on that line is reversed as a ledger adjustment (never by editing the paid snapshot)",
+      "ok": true,
+      "detail": "preview 200 {\"ticketId\":\"316c32c1-a058-4b8e-89d6-553c97785f7e\",\"amountCents\":1500,\"refundableCents\":11961,\"allocations\":[{\"paymentId\":\"9cbe73f5-a922-4ac7-9a9b-2b24e9bc8517\",\"method\":\"card\",\"amountToRefundCents\":1500,\"action\":\"refund\"}],\"tenders\":[{\"paymentId\":\"9cbe73f5-a922-4ac7-9a9b-2b24e9bc8517\",\"method\":\"card\",\"amountCents\":11961,\"refundedCents\":0,\"captured\":true,\"re refund 201 {\"ticketId\":\"316"
+    },
+    {
+      "at": 29710,
+      "phase": "6 refund + inventory + loyalty",
+      "check": "INVENTORY: the Cuticle Oil sold on the phone left the shelf (10 → 9); today's two gel manicures took 2 polish by the recipe at Service Done (6 → 4), one movement per ticket line, nothing recorded by hand",
+      "ok": true,
+      "detail": "consume 200 {\"serviceUsageMovements\":2} {\"before\":{\"oil\":10,\"polish\":6},\"after\":{\"oil\":9,\"polish\":4}}"
+    },
+    {
+      "at": 30476,
+      "phase": "6 refund + inventory + loyalty",
+      "check": "LOYALTY (D3): every paid tender — the partial cash part of a split included — earned 1 point per whole ELIGIBLE dollar for its customer, exactly once (the payment event consumer); Jenny's $50 gift-card purchase earned nothing (excluded_cents 5000); the POS customer card shows her balance NET of the refund reversal (earned − 15)",
+      "ok": true,
+      "detail": "[{\"name\":\"Jenny Walker\",\"pts\":69,\"n\":1},{\"name\":\"Kim Pham\",\"pts\":67,\"n\":1},{\"name\":\"Nina Online\",\"pts\":90,\"n\":2},{\"name\":\"Olivia Both\",\"pts\":134,\"n\":2}] pos 200 {\"points\":54,\"earned\":54}"
+    },
+    {
+      "at": 30517,
+      "phase": "7 end of day",
+      "info": "commission report: {\"kpis\":{\"technicianCount\":3,\"totalServiceRevenueCents\":31000,\"totalCommissionCents\":15830,\"totalTipsCents\":3000,\"totalPayoutCents\":18830,\"averageRatePercent\":51.1},\"rows\":3}"
+    },
+    {
+      "at": 30547,
+      "phase": "7 end of day",
+      "info": "collected $411.25 (refunded $15.00); sales KPIs {\"grossSalesCents\":32200,\"netSalesCents\":30400,\"serviceSalesCents\":31000,\"productSalesCents\":1200,\"tipsCents\":3000,\"taxCollectedCents\":2014,\"cardSurchargeCents\":711,\"discountsCents\":1800,\"refundsCents\":1500,\"ticketsCount\":4,\"customersCount\":4,\"averageTicketCents\":8050}; owner finance {\"totalRevenueCents\":41125,\"tipsCents\":3000,\"discountsCents\":1800,\"taxCollectedCents\":2014,\"totalCommissionCents\":15830}"
+    },
+    {
+      "at": 30547,
+      "phase": "7 end of day",
+      "check": "PAYMENTS = PAYMENTS MIX: the POS payments report's card + cash + gift card ($411.25) is exactly what was collected ($411.25); refunds $15.00 reported separately",
+      "ok": true,
+      "detail": "{\"cardCents\":27408,\"cashCents\":8717,\"giftCardCents\":5000,\"splitCount\":0,\"refundsCents\":1500,\"cardSurchargeCents\":711,\"processorStatus\":\"active\"}"
+    },
+    {
+      "at": 30547,
+      "phase": "7 end of day",
+      "check": "SALES = PAYMENTS: sales $322.00 − discounts $18.00 + tax $20.14 + tips $30.00 + card surcharge $7.11 + gift cards sold $50.00 = $411.25 = collected $411.25",
+      "ok": true,
+      "detail": "identity 41125 vs 41125"
+    },
+    {
+      "at": 30547,
+      "phase": "7 end of day",
+      "check": "SALES = PAYROLL BASIS: the report's service sales ($310.00) are the compensation snapshot's service gross ($310.00); tips: report $30.00 = snapshot $30.00 = commission report $30.00",
+      "ok": true,
+      "detail": "31000/31000 tips 3000/3000/3000"
+    },
+    {
+      "at": 30548,
+      "phase": "7 end of day",
+      "check": "TIPS BY TECHNICIAN: the POS tips report, the commission report and the payroll snapshot agree per technician (Olivia's split tip split)",
+      "ok": true,
+      "detail": "{\"report\":{\"ae559b72-8300-46b6-9efb-66f96bc2672e\":2000,\"ec40ac87-0597-4dde-a475-e71aec249118\":1000,\"1276bc7a-b95c-4052-bea6-eff1e01538a5\":0},\"snapshot\":[{\"tech\":\"Anna\",\"gross\":7000,\"earn\":4550,\"tip\":0},{\"tech\":\"Lisa\",\"gross\":10500,\"earn\":5805,\"tip\":2000},{\"tech\":\"Mary\",\"gross\":13500,\"earn\":6150,\"tip\":1000}]}"
+    },
+    {
+      "at": 30548,
+      "phase": "7 end of day",
+      "check": "OWNER APP = POS: the Owner app's finance (month to date) shows revenue $411.25 = collected, tips $30.00, discounts $18.00, commission $158.30 = the commission report",
+      "ok": true,
+      "detail": "{\"totalRevenueCents\":41125,\"tipsCents\":3000,\"discountsCents\":1800,\"taxCollectedCents\":2014,\"totalCommissionCents\":15830}"
+    },
+    {
+      "at": 30548,
+      "phase": "7 end of day",
+      "check": "OWNER APP = POS: the Owner app's average ticket today ($80.50, sales ÷ paid tickets) is the POS sales report's ($80.50: $322.00 ÷ 4)",
+      "ok": true,
+      "detail": "{\"owner\":{\"avg\":8050,\"txns\":4},\"pos\":{\"avg\":8050,\"gross\":32200,\"n\":4}}"
+    },
+    {
+      "at": 30568,
+      "phase": "7 end of day",
+      "check": "TECH APP = PAYROLL: each technician's Tech App earnings today (commission + tips) equal her row in the commission report",
+      "ok": true,
+      "detail": "{\"lisa\":{\"todaySalesCents\":10500,\"tipsCents\":2000,\"estimatedCommissionCents\":5130},\"mary\":{\"todaySalesCents\":13500,\"tipsCents\":1000,\"estimatedCommissionCents\":6150},\"anna\":{\"todaySalesCents\":7000,\"tipsCents\":0,\"estimatedCommissionCents\":4550}}"
+    },
+    {
+      "at": 30575,
+      "phase": "7 end of day",
+      "check": "CASH DRAWER: tonight's expected register cash ($87.17) is every cash payment taken today incl. the $20.00 cash part of Nina's split ($87.17)",
+      "ok": true,
+      "detail": "{\"branchId\":\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\",\"registerId\":\"main\",\"businessDate\":\"2026-10-24\",\"openingFloatCents\":0,\"expectedSalesCents\":8717,\"refundsCents\":0,\"paidInCents\":0,\"paidOutCents\":0,\"expectedCashCents\":8717,\"countedCents\":null,\"varianceCents\":null,\"cashPaymentCount\":2,\"status\":\"open\",\"openedAt\":null,\"reconciledAt\":null,\"notes\":null}"
+    },
+    {
+      "at": 30836,
+      "phase": "7 end of day",
+      "check": "TIME CLOCK closes: Lisa, Mary and Anna clock out by PIN on the kiosk; nobody is left clocked in and every shift has an end time",
+      "ok": true,
+      "detail": "201,201,201 {\"technicianCount\":3,\"clockedInCount\":0,\"totalHoursToday\":0}"
+    },
+    {
+      "at": 30900,
+      "phase": "7 end of day",
+      "check": "PAYROLL PREPARE: the refund's commission reversal for Lisa rides in the period as an adjustment; the period's lines are exactly the commission report per technician (commission incl. the reversal, tips) — no other calculation",
+      "ok": true,
+      "detail": "201 201 {\"period\":{\"status\":\"review\",\"previewHash\":\"2fb9a8b7ca4fbf6a67222978391f0822c3bb9d4fd92b20134613e76d11a127f6\"},\"lines\":[{\"tech\":\"Mary\",\"commissionCents\":6150,\"tipsCents\":1000,\"adjustmentCents\":0,\"payableCents\":7150},{\"tech\":\"Lisa\",\"commissionCents\":5805,\"tipsCents\":2000,\"adjustmentCents\":-675,\"payableCents\":7130},{\"tech\":\"Anna\",\"commissionCents\":4550,\"tipsCe decided 0/0"
+    },
+    {
+      "at": 31023,
+      "phase": "7 end of day",
+      "check": "PAYROLL APPROVE → EXPORT → PAY → LOCK: approved with the owner's fresh step-up and the hash she reviewed; the CSV carries every technician's exact cents; marked paid; the paid lines are refused at the DATABASE",
+      "ok": true,
+      "detail": "step-up 201 approve 201 null export 201 pay 201 \"paid\" lock payroll period 6a5b322f-c7c3-47f3-b953-0a3fb948fc6e is paid;"
+    },
+    {
+      "at": 31152,
+      "phase": "7 end of day",
+      "check": "REFUND AFTER THE LOCK: Kim's $12.00 refund (cash) the next morning reverses Mary's commission ONCE as an adjustment in the NEXT open period, linked to the locked one; the locked lines are byte-for-byte unchanged; next period's preparation carries it",
+      "ok": true,
+      "detail": "p2 201 refund 201 null {\"refundCents\":1200,\"adjustments\":[{\"tech\":\"Mary\",\"cents\":-630,\"status\":\"pending\",\"inNextPeriod\":true,\"fromLockedPeriod\":true}],\"maryNextPeriodAdjustment\":-630}"
+    },
+    {
+      "at": 31165,
+      "phase": "7 end of day",
+      "check": "TECH APP shows the same payroll: Mary sees the paid period with exactly her payable, nothing outstanding",
+      "ok": true,
+      "detail": "200 {\"periodId\":\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"label\":\"Pilot week 234875\",\"periodStart\":\"2026-10-23\",\"periodEnd\":\"2026-10-25\",\"status\":\"paid\",\"paidAt\":\"2026-10-24T03:57:45.844Z\",\"servicesCount\":2,\"grossCents\":13500,\"commissionCents\":6150,\"tipsCents\":1000,\"adjustmentCents\":0,\"payableCents\":7150,\"paidCents\":7150,\"outstandingCents\":0}"
+    },
+    {
+      "at": 31171,
+      "phase": "7 end of day",
+      "check": "OWNER APP shows the same payroll: the paid period's total payable ($188.30) is the sum of the technicians' lines ($188.30); its dates are calendar days (2026-10-23 → 2026-10-25)",
+      "ok": true,
+      "detail": "200 {\"periodId\":\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"branchId\":\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\",\"label\":\"Pilot week 234875\",\"periodStart\":\"2026-10-23\",\"periodEnd\":\"2026-10-25\",\"status\":\"paid\",\"finalizedAt\":\"2026-10-24T03:57:45.814Z\",\"paidAt\":\"2026-10-24T03:57:45.844Z\",\"totalPayableCents\":18830,\"totalCommissionCents\":16505,\"totalTipsCents\":3000}"
+    },
+    {
+      "at": 35011,
+      "phase": "8 screens at close",
+      "check": "SCREEN: Lisa's Tech App (Chromium, phone size) Earnings shows $71.30 (commission $51.30 after the −$6.75 refund reversal + $20.00 tips) — the same as the commission report and payroll",
+      "ok": true,
+      "detail": "{\"t\":\"Earnings Oct 19 – Oct 25 Estimated $71.30 Total Earnings Services $58.05 Tips $20.00 Retail $0.00 Bonuses — Adjustments −$6.75 Service Breakdown Gel Manicure 2 $90.00 Nail Art (2 nails) 1 $15.00 Estimated from completed work. Final payroll is confirmed by the salon. Home Schedule Tickets Earnings Mo\",\"e\":[]}"
+    },
+    {
+      "at": 44142,
+      "phase": "8 screens at close",
+      "check": "SCREEN: the Owner app dashboard renders; POS Reports render the day (net sales $304.00, no invented rating); the Owner app Reports tab shows total revenue $411.25 (rounded to dollars) (Chromium)",
+      "ok": true,
+      "detail": "{\"od\":\"Pilot Day Nails 234875 Owner ◈ Pilot Day Nails 234875 O Good Evening, Owner ⌄ Today’s Overview LOCATIONS 1 STAFF ON DUTY SERVICES TODAY TODAY’S REVENUE CHECK-IN\",\"of\":true,\"ofT\":\"Pilot Day Nails 234875 Owner ◈ Pilot Day Nails 234875 Finance & Reports Summary Reports Today Week Month Quarter Year Manage expenses TOTAL REVENUE · THIS MONTH $411 ▲ 100.0%"
+    },
+    {
+      "at": 44143,
+      "phase": "8 screens at close",
+      "info": "screenshots (9) in /tmp/pilot-day-shots/: pilot-01-pos-queue.png, pilot-02-pos-check-in.png, pilot-03-pos-checkout-jenny.png, pilot-04-customer-display-totals.png, pilot-05-customer-display-cleared.png, pilot-06-tech-app-earnings-lisa.png, pilot-07-owner-app-dashboard.png, pilot-08-owner-app-reports.png, pilot-09-pos-reports.png"
+    },
+    {
+      "at": 45646,
+      "phase": "10 handoff mandate",
+      "check": "24 TECHNICIANS: 21 more hired on the POS (3 pedicure-only); tomorrow's day grid has a column for each of the 24 — the POS pages them 12 at a time (2 pages, POSBookingScreen technician paging)",
+      "ok": true,
+      "detail": "created 21/21 null columns 24"
+    },
+    {
+      "at": 45666,
+      "phase": "10 handoff mandate",
+      "check": "OPEN TIMES / BEST MATCHES: availability for a Gel Manicure offers times ONLY to the 21 technicians who do it (the 3 pedicure-only get none); Best Matches = the earliest of those — the same API New Booking now shows",
+      "ok": true,
+      "detail": "{\"gelTechsWithSlots\":21,\"pediOnlyWithSlots\":0,\"bestMatch\":{\"t\":\"1276bc7a-b95c-4052-bea6-eff1e01538a5\",\"s\":\"09:00\"}}"
+    },
+    {
+      "at": 48506,
+      "phase": "10 handoff mandate",
+      "check": "A BUSY DAY: 110 appointments tomorrow are all booked; the day comes in 2 pages of up to 100 (110 distinct) — the board now follows the pages (it drew only the first 50)",
+      "ok": true,
+      "detail": "{\"created\":110,\"pagination\":{\"page\":1,\"pageSize\":100,\"totalItems\":110,\"totalPages\":2},\"distinctOnTwoPages\":110}"
+    },
+    {
+      "at": 48613,
+      "phase": "10 handoff mandate",
+      "check": "BOOKING RULES: two simultaneous bookings of one technician at 4:00 PM → one booked, one 409 APPOINTMENT_CONFLICT; Gel + Nail Art runs 17:00–18:00 (60 min from the catalog); a pedicure-only technician cannot be booked for a manicure (400)",
+      "ok": true,
+      "detail": "race 201:,409:APPOINTMENT_CONFLICT dur 201 {\"s\":\"17:00\",\"e\":\"18:00\",\"m\":60} unskilled 400 {\"message\":\"Pedi19 Floor is not currently approved for this service.\",\"code\":\"BAD_REQUEST\",\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Pedi19 Floor is not currently approved for this service.\",\"details\":{},\"action\":\"NONE\"},\"statusCode\":400,\"requestId\":\"req_01M5P0XYNPGNG3VJVHNC58RDKC\",\"reference\":\"req_01M5P0XYNPG"
+    },
+    {
+      "at": 48689,
+      "phase": "10 handoff mandate",
+      "check": "FAIR TURN — ON BREAK: Lisa starts a break; for the next gel walk-in the engine does not recommend her and says why (break)",
+      "ok": true,
+      "detail": "break 201 {\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"technicianName\":null,\"state\":\"on_break\",\"clockedInAt\":\"2026-10-24T03:57:58.994Z\",\"onBreakSince\":\"2026-10-24T03:58:03.459Z\",\"lastClockOutAt\":\"2026-10-24T03:57:45.485Z\",\"hoursToday\":0,\"shiftCount\":2,\"shifts\":[{\"id\":\"723bdf10-9e96-451e-9b8b-072c2bb27c07\",\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e → Mary {\"skips\":[{\"technician"
+    },
+    {
+      "at": 48750,
+      "phase": "10 handoff mandate",
+      "check": "FAIR TURN — CANNOT DO THE SERVICE: for an acrylic full set Mary (no acrylic) is never offered; the reason is her skills",
+      "ok": true,
+      "detail": "→ Anna {\"skips\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"reason\":\"ON_BREAK\"},{\"technicianId\":\"ec40ac87-0597-4dde-a475-e71aec249118\",\"reason\":\"SKILL_INELIGIBLE\"}],\"ineligible\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"name\":\"Lisa Tran\",\"reasons\":[\"on break\"]},{\"technicianId\":\""
+    },
+    {
+      "at": 48807,
+      "phase": "10 handoff mandate",
+      "check": "FAIR TURN — THE GUEST ASKED FOR ANNA: the engine recommends Anna, and the others are passed over for the customer's request",
+      "ok": true,
+      "detail": "→ Anna {\"skips\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"reason\":\"ON_BREAK\"},{\"technicianId\":\"ec40ac87-0597-4dde-a475-e71aec249118\",\"reason\":\"CUSTOMER_REQUEST\"}],\"ineligible\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"name\":\"Lisa Tran\",\"reasons\":[\"on break\"]},{\"technicianId\":\""
+    },
+    {
+      "at": 48889,
+      "phase": "10 handoff mandate",
+      "check": "FAIR TURN — APPOINTMENT SOON: Mary is booked at 11:17; a pedicure walk-in now is not given to her (it would run into the appointment) and the reason says so",
+      "ok": true,
+      "detail": "appt 201 null → Anna {\"skips\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"reason\":\"SKILL_INELIGIBLE\"},{\"technicianId\":\"ec40ac87-0597-4dde-a475-e71aec249118\",\"reason\":\"APPOINTMENT_CONFLICT\"}],\"ineligible\":[{\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"name\":\"Lisa Tran\",\"reasons\":[\"missing required "
+    },
+    {
+      "at": 49458,
+      "phase": "10 handoff mandate",
+      "check": "CARD — DECLINE: the gateway declines (C) → \"declined\", recorded as a decline; the guest may try the same card again (a decline is never replayed — by design, checkout-card-idempotency spec) → a second real attempt, declined again",
+      "ok": true,
+      "detail": "{\"decline\":\"declined\",\"replay\":\"declined\",\"busy\":[503,\"CARD_PROCESSOR_UNAVAILABLE\"],\"good\":\"approved\",\"rows\":[\"declined\",\"declined\",\"failed\",\"approved\"]} gateway calls 2"
+    },
+    {
+      "at": 49458,
+      "phase": "10 handoff mandate",
+      "check": "CARD — PROCESSOR BUSY (B): 503 CARD_PROCESSOR_UNAVAILABLE, nothing charged and recorded as FAILED, never as a decline; a good card then pays the ticket (2 declines, 1 failed, 1 approved)",
+      "ok": true,
+      "detail": "{\"decline\":\"declined\",\"replay\":\"declined\",\"busy\":[503,\"CARD_PROCESSOR_UNAVAILABLE\"],\"good\":\"approved\",\"rows\":[\"declined\",\"declined\",\"failed\",\"approved\"]}"
+    },
+    {
+      "at": 49868,
+      "phase": "10 handoff mandate",
+      "check": "CARD — UNKNOWN ANSWER: 409 PAYMENT_STATUS_UNKNOWN (\"do not run the card again\"), the attempt stays processing; ANOTHER card on the ticket is refused while it is open and never reaches the gateway (before Oct 22 it was charged: the guest paid twice); VERIFY asks the processor, which says approved → the ticket is paid with exactly ONE approved payment",
+      "ok": true,
+      "detail": "{\"unknown\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"rowWhileUnknown\":\"processing\",\"secondAttempt\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"verify\":[201,\"approved\"],\"after\":{\"status\":\"paid\",\"pays\":\"approved\"}}"
+    },
+    {
+      "at": 50237,
+      "phase": "10 handoff mandate",
+      "check": "CARD — CONNECTION DROPPED mid-charge: 409 PAYMENT_STATUS_UNKNOWN (it was a raw 500 before Oct 22), the attempt stays processing; Verify finds no record at the processor yet → still pending, nothing re-charged",
+      "ok": true,
+      "detail": "{\"dropped\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"row\":\"processing\",\"verify\":[201,\"pending\"]}"
+    },
+    {
+      "at": 50255,
+      "phase": "10 handoff mandate",
+      "info": "receipt scan (DEV MOCK provider — no OCR key in development; production answers 503): 201 {\"ok\":true,\"receipt\":{\"vendor\":\"Sample Beauty Supply\",\"date\":\"2026-06-23\",\"items\":[{\"name\":\"Gel Polish\",\"quantity\":2,\"unitPriceCents\":1200,\"totalCents\":2400},{\"name\":\"Acetone 1gal\",\"quantity\":1,\"unitPriceCents\":1800,\"totalCents\":1800}],\"subtotalCents\":4200,\"taxCents\":290,\"totalCents\":4490,\"currency\":\"USD\"},\"decision\":{\"allowed\":true,\"reason\":\"ok\",\"subscripti"
+    },
+    {
+      "at": 50334,
+      "phase": "10 handoff mandate",
+      "check": "RECEIPT → EXPENSE: the AI package switched on, the scan reads the receipt (DEV MOCK — labelled), the owner files it ($44.90, submitted); the same receipt again is 409 RECEIPT_DUPLICATE; approved; the month's finance report carries it",
+      "ok": true,
+      "detail": "{\"scan\":201,\"created\":[201,\"pending_review\",\"94b0cc37-1cab-4c52-9838-a38531092e07\"],\"duplicate\":[409,\"RECEIPT_DUPLICATE\"],\"approve\":[201,\"approved\",null],\"reportHasIt\":true}"
+    },
+    {
+      "at": 50365,
+      "phase": "10 handoff mandate",
+      "check": "RECEIPT PIPELINE without its external services: the upload is accepted and QUARANTINED (no malware scanner / object store / Textract — BLOCKED_EXTERNAL), never shown as extracted; the OCR settings save persists (high-amount 300.00 read back)",
+      "ok": true,
+      "detail": "{\"upload\":[201,\"quarantined\"],\"settings\":[200,30000]}"
+    },
+    {
+      "at": 50373,
+      "phase": "10 handoff mandate",
+      "check": "PAYROLL — NO DOUBLE PAY: a second pay period over today (already paid above) is refused, 409 PAYROLL_PERIOD_OVERLAP — before Oct 22 it was created and paid the same tickets again",
+      "ok": true,
+      "detail": "409 {\"code\":\"PAYROLL_PERIOD_OVERLAP\",\"message\":\"These dates overlap the pay period \\\"Pilot week 234875\\\" (2026-10-23 – 2026-10-25). The same sales would be paid twice — pick dates after it.\",\"details\":{\"periodId\":\"6a5b322f-c7c3-47f3-b953-0a3fb948fc6e\",\"periodStart\":\"2026-10-23\",\"periodEnd\":\"2026-10-25\"},\"error\":{\"code\":\"PAYROLL_PERIOD_OVERLAP\",\"message\":\"These d"
+    },
+    {
+      "at": 50536,
+      "phase": "10 handoff mandate",
+      "info": "week adjustments: created 201:{\"adjustment\":{\"id\":\"61f60e62-8f19-422f-9c90-33fd66acefd6\",\"technicianId\":\"ae559b72-8300-46b6-9efb-66f96bc2672e\",\"ticketId\":null,\"periodId\":\"cff3515f-9242-40d9-b9ee-bd6e55964e0d\",\"originalPeriodId\":null,\"category\":\"bonus\",\"amountCents\":20000,\"reason\":\"Pilot week: busy-day bonus\",\"reasonCode\":\"performance_bonus\",\"deductionType\":null,\"status\":\"pending\",\"source, 201:{\"adjustment\":{\"id\":\"5b5375bb-5945-4a95-b560-d1f1521282cb\",\"technicianId\":\"ec40ac87-0597-4dde-a475-e71aec249118\",\"ticketId\":null,\"periodId\":\"cff3515f-9242-40d9-b9ee-bd6e55964e0d\",\"originalPeriodId\":null,\"category\":\"bonus\",\"amountCents\":16000,\"reason\":\"Pilot week: busy-day bonus\",\"reasonCode\":\"performance_bonus\",\"deductionType\":null,\"status\":\"approved\",\"sourc, 201:{\"adjustment\":{\"id\":\"4456262c-45b0-408f-95bf-56331e8d3bf5\",\"technicianId\":\"1276bc7a-b95c-4052-bea6-eff1e01538a5\",\"ticketId\":null,\"periodId\":\"cff3515f-9242-40d9-b9ee-bd6e55964e0d\",\"originalPeriodId\":null,\"category\":\"bonus\",\"amountCents\":12000,\"reason\":\"Pilot week: busy-day bonus\",\"reasonCode\":\"performance_bonus\",\"deductionType\":null,\"status\":\"approved\",\"sourc; pending decided 201"
+    },
+    {
+      "at": 50587,
+      "phase": "10 handoff mandate",
+      "check": "PAYCHECK CALCULATE: three statements (each technician's approved bonus); the default payout plan splits every one 50 % check / 50 % cash (to the cent)",
+      "ok": true,
+      "detail": "period 201 adj 201,201,201 decide 201 calc 201 {\"plans\":[{\"tech\":\"Lisa\",\"payable\":20000,\"plan\":[\"check:10000\",\"cash:10000\"]},{\"tech\":\"Mary\",\"payable\":16000,\"plan\":[\"check:8000\",\"cash:8000\"]},{\"tech\":\"Anna\",\"payable\":12000,\"plan\":[\"check:6000\",\"cash:6000\"]}],\"totals\":{\"technicians\":3,\"grossEarningsCents\":48000,\"alreadyPaidCents\":0,\"payableCents\":48000,\"checkCents\":24000,\"cashCents\":24000,\"otherCent"
+    },
+    {
+      "at": 50734,
+      "phase": "10 handoff mandate",
+      "check": "MANAGER SUBMITS → OWNER APPROVES: before the manager submits, the owner's approve is refused (409 PAYROLL_PERIOD_NOT_READY — an unsubmitted week used to be finalized); the manager submits; the owner approves with a fresh step-up; six payouts exist (a check and a cash for each)",
+      "ok": true,
+      "detail": "submit 201 \"review\" early 409 \"PAYROLL_PERIOD_NOT_READY\" approve 201 \"finalized\" payouts 6"
+    },
+    {
+      "at": 51002,
+      "phase": "10 handoff mandate",
+      "check": "CHECK + CASH: each check is numbered and issued; reusing a check number is refused (CHECK_NUMBER_IN_USE); each cash half is prepared from the safe, handed over and CONFIRMED by its technician in the Tech App (a repeat replays; another technician cannot confirm it — refused)",
+      "ok": true,
+      "detail": "{\"issued\":[201,201,201],\"reuse\":[409,\"CHECK_NUMBER_IN_USE\"],\"cashSteps\":[{\"tech\":\"Lisa\",\"prepare\":201,\"handoff\":201,\"ack\":201,\"replay\":201},{\"tech\":\"Mary\",\"prepare\":201,\"handoff\":201,\"ack\":201,\"replay\":201},{\"tech\":\"Anna\",\"prepare\":201,\"handoff\":201,\"ack\":201,\"replay\":201}],\"notMine\":404,\"totals\":{\"technicians\":3,\"grossEarningsCents\":48000,\"alreadyPaidCents\""
+    },
+    {
+      "at": 51002,
+      "phase": "10 handoff mandate",
+      "check": "PAID / UNPAID: after the cash is confirmed the week shows the cash halves PAID ($240.00) and the issued, not yet cleared checks UNPAID ($240.00); paid + unpaid = payable ($480.00)",
+      "ok": true,
+      "detail": "{\"technicians\":3,\"grossEarningsCents\":48000,\"alreadyPaidCents\":0,\"payableCents\":48000,\"checkCents\":24000,\"cashCents\":24000,\"otherCents\":0,\"paidCents\":24000,\"unpaidCents\":24000,\"exceptions\":0,\"overrides\":0}"
+    },
+    {
+      "at": 51474,
+      "phase": "10 handoff mandate",
+      "check": "a second salon (B) is onboarded the same way; its owner signs in to her own branch",
+      "ok": true,
+      "detail": "create 201 null login 200 select 200"
+    },
+    {
+      "at": 75663,
+      "phase": "10 handoff mandate",
+      "check": "PLATFORM ANNOUNCEMENT: the Super Admin publishes a maintenance notice (fresh step-up) for THIS salon only → its POS shows it; salon B's POS does not",
+      "ok": true,
+      "detail": "create 201 null publish 201 null A 200 true B 200 false"
+    },
+    {
+      "at": 75708,
+      "phase": "10 handoff mandate",
+      "check": "TWILIO PER SALON: each salon has its own Twilio account (Super Admin, token encrypted); salon A's text went out on A's account FROM A's number and salon B's on B's — never each other's; the ledger row records the route and the From (migration 678)",
+      "ok": true,
+      "detail": "{\"setA\":200,\"setB\":200,\"sendA\":201,\"sendB\":201,\"rowA\":{\"sender_route\":\"tenant_account\",\"sender_from\":\"+16095534875\",\"provider_id\":\"SMaa48750001\",\"status\":\"sent\"},\"rowB\":{\"sender_route\":\"tenant_account\",\"sender_from\":\"+18565534875\",\"provider_id\":\"SMbb48750002\",\"status\":\"sent\"},\"wireA\":{\"account\":true,\"from\":\"+16095534875\"},\"wireB\":{\"account\":true,\"from\":\"+185"
+    },
+    {
+      "at": 75708,
+      "phase": "11 large salon",
+      "info": "PILOT_SKIP=11: the large-salon phase was skipped in this run"
+    },
+    {
+      "at": 76017,
+      "phase": "12 secure tap to pay",
+      "info": "managers for the three phones: Max true, Bea true, Cal true"
+    },
+    {
+      "at": 77391,
+      "phase": "12 secure tap to pay",
+      "check": "S0 seven gel tickets reach Service Done through the queue + Tech App (the checkouts the phones will take)",
+      "ok": true,
+      "detail": "[\"b505c10c-b7fd-4ba1-8c86-d4fbd827f007\",\"b1be02e6-d700-46ab-97fe-a763b4633af5\",\"f18b8cac-edc1-457d-ad73-a929bb3332e3\",\"827f20a1-eba7-4492-bc89-11490bcb3446\",\"ae9ac375-b540-4ba7-b4fc-76022e900fcb\",\"e3b00b18-935c-4264-9a46-fc13e7cc5b0e\",\"a409970d-86e7-4b7d-bf88-5bc8751ff3d6\"]"
+    },
+    {
+      "at": 77468,
+      "phase": "12 secure tap to pay",
+      "check": "S1 the POS pairing code needs a fresh owner step-up (403 STEP_UP_REQUIRED without); with it the owner creates a SHARED code (front desk) and a PERSONAL code (manager) — single-use, 5 minutes, this branch, only the sha256 stored",
+      "ok": true,
+      "detail": "no-step-up 403 STEP_UP_REQUIRED shared 201 {\"pairingCode\":\"<code>\",\"qrPayload\":\"<qr>\",\"expiresAt\":\"2026-10-24T04:03:32.299Z\",\"branchId\":\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\",\"shared\":true} personal 201 rows [{\"shared\":true,\"branch_id\":\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\",\"purpose\":\"tap_to_pay_device\",\"hl\":64,\"used_at\":null,\"ttl\":{\"minutes\":4,\"seconds\":59,\"milliseconds\":999.472}},{\"shared\":false"
+    },
+    {
+      "at": 77711,
+      "phase": "12 secure tap to pay",
+      "check": "S2 three managers sign in ON their phones (the session carries the payment device id) and open the branch",
+      "ok": true,
+      "detail": "{\"sF\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"sM\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"sC\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null}}"
+    },
+    {
+      "at": 77835,
+      "phase": "12 secure tap to pay",
+      "check": "S2 the FRONT DESK phone registers with the shared code (signed by its own key — proof of possession) → ACTIVE at once, shared; the MANAGER phone with the personal code → ACTIVE, personal; the shared code used again on another phone → PAIRING_CODE_INVALID",
+      "ok": true,
+      "detail": "F 201 {\"s\":\"active\",\"sh\":true,\"via\":\"pos_qr\",\"e\":null} M 201 {\"s\":\"active\",\"sh\":false,\"e\":null} replay 400 PAIRING_CODE_INVALID"
+    },
+    {
+      "at": 77907,
+      "phase": "12 secure tap to pay",
+      "check": "S1 the CHECKOUT phone registers normally (signed, with its key) → PENDING; approval without a fresh step-up is refused (403 STEP_UP_REQUIRED); with it the owner approves → ACTIVE",
+      "ok": true,
+      "detail": "register 201 {\"s\":\"pending\",\"e\":null} approve-no-step-up 403 STEP_UP_REQUIRED pending-capability 200 approve 201 \"active\""
+    },
+    {
+      "at": 77988,
+      "phase": "12 secure tap to pay",
+      "check": "S2 the owner (step-up) sets each phone's locations through POST devices/:id/branches; DB: three ACTIVE phones, each with its own ES256 key + fingerprint, the branch rows written, the front desk SHARED, the manager phone bound to Bea, the checkout phone bound to Cal",
+      "ok": true,
+      "detail": "branches {\"front\":[201,[\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\"]],\"manager\":[201,[\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\"]],\"checkout\":[201,[\"f404a5b7-0a02-475f-8d50-0f0ba0cd46e9\"]]} db [{\"device_id\":\"Checkout iPhone 3\",\"status\":\"active\",\"shared\":false,\"bound_user_id\":\"f2aba8c0-d1ab-425f-b414-2f50cc01dfd5\",\"has_key\":true,\"key_alg\":\"ES256\",\"fpl\":64,\"paired_via\":null,\"branches\":[\"f404a5b7-0a02-475f-8d"
+    },
+    {
+      "at": 78549,
+      "phase": "12 secure tap to pay",
+      "check": "S3 three phones take three checkouts AT THE SAME TIME (558 ms for all three): each lock → proceed → intent → readiness → provider session → capture succeeds; each ticket is PAID with ONE approved Tap to Pay payment and ONE processor charge",
+      "ok": true,
+      "detail": "[[\"front\",201,[201,true,null],[201,4942],[201,\"ready\"],201,[201,\"confirmed\",\"approved\"],\"paid\",1,[49.42]],[\"manager\",201,[201,true,null],[201,4942],[201,\"ready\"],201,[201,\"confirmed\",\"approved\"],\"paid\",1,[49.42]],[\"checkout\",201,[201,true,null],[201,4942],[201,\"ready\"],201,[201,\"confirmed\",\"approved\"],\"paid\",1,[49.42]]]"
+    },
+    {
+      "at": 78549,
+      "phase": "12 secure tap to pay",
+      "check": "S3 AMOUNTS ARE THE SERVER'S: the intent carries the ticket's remaining balance (no client amount sent), the processor is charged exactly that, the payment row records exactly that although each phone reported capturedAmountCents = 1; a client amount above the balance is refused",
+      "ok": true,
+      "detail": "{\"remaining\":[4942,4942,4942],\"intent\":[4942,4942,4942],\"rows\":[4942,4942,4942],\"charged\":[49.42,49.42,49.42],\"oversize\":[409,\"CONFLICT\"]}"
+    },
+    {
+      "at": 78549,
+      "phase": "12 secure tap to pay",
+      "check": "S3 ATTRIBUTION: each payment row names the signed-in employee (created_by_user_id) and the phone (device_id) — Max on the front desk phone, Bea on hers, Cal on the checkout phone",
+      "ok": true,
+      "detail": "[[\"front\",true,true],[\"manager\",true,true],[\"checkout\",true,true]]"
+    },
+    {
+      "at": 78596,
+      "phase": "12 secure tap to pay",
+      "check": "S4 the SAME ticket claimed from two phones at the same instant → exactly ONE claim wins; the other gets 409 CHECKOUT_ALREADY_CLAIMED (the friendly \"being processed on another payment device\")",
+      "ok": true,
+      "detail": "{\"M\":[409,\"CHECKOUT_ALREADY_CLAIMED\"],\"C\":[201,null],\"openClaims\":1}"
+    },
+    {
+      "at": 78603,
+      "phase": "12 secure tap to pay",
+      "info": "race winner checkout released the claim → 201"
+    },
+    {
+      "at": 78800,
+      "phase": "12 secure tap to pay",
+      "info": "S6 probe set-up on the manager phone: claim 201, proceed 201, intent 201 null, readiness 201 ready, signed cancel 201 canceled, release 201"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 ALTERED BODY after signing → 403 DEVICE_KEY_MISMATCH (the same signed request, untouched, is accepted)",
+      "ok": true,
+      "detail": "{\"baseline\":200,\"alteredBody\":[403,\"DEVICE_KEY_MISMATCH\"],\"replayFirst\":200,\"replay\":[409,\"DEVICE_REQUEST_REPLAYED\"],\"stale\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedLock\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedAttempt\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCapture\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"attemptAfterUnsigned\":\"rea"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 REPLAYED NONCE → the first is accepted, the identical second 409 DEVICE_REQUEST_REPLAYED",
+      "ok": true,
+      "detail": "{\"baseline\":200,\"alteredBody\":[403,\"DEVICE_KEY_MISMATCH\"],\"replayFirst\":200,\"replay\":[409,\"DEVICE_REQUEST_REPLAYED\"],\"stale\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedLock\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedAttempt\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCapture\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"attemptAfterUnsigned\":\"rea"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 STALE TIMESTAMP (10 minutes old, validly signed) → 403 DEVICE_KEY_MISMATCH",
+      "ok": true,
+      "detail": "{\"baseline\":200,\"alteredBody\":[403,\"DEVICE_KEY_MISMATCH\"],\"replayFirst\":200,\"replay\":[409,\"DEVICE_REQUEST_REPLAYED\"],\"stale\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedLock\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedAttempt\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCapture\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"attemptAfterUnsigned\":\"rea"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 UNSIGNED requests from a keyed phone are refused: the claim and the intent with no proof → DEVICE_KEY_MISMATCH; the device header without a signature → DEVICE_KEY_MISMATCH; a stolen session signing with another key → DEVICE_KEY_MISMATCH",
+      "ok": true,
+      "detail": "{\"baseline\":200,\"alteredBody\":[403,\"DEVICE_KEY_MISMATCH\"],\"replayFirst\":200,\"replay\":[409,\"DEVICE_REQUEST_REPLAYED\"],\"stale\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedLock\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedAttempt\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCapture\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"attemptAfterUnsigned\":\"rea"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 an UNSIGNED capture result (\"declined\") and an UNSIGNED cancel for the phone's READY intent → DEVICE_KEY_MISMATCH; the intent stays ready (only the phone that holds the key reports on its own payment)",
+      "ok": true,
+      "detail": "{\"capture\":[403,\"DEVICE_KEY_MISMATCH\"],\"cancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"after\":\"ready\",\"signedCancel\":201}"
+    },
+    {
+      "at": 78886,
+      "phase": "12 secure tap to pay",
+      "check": "S6 a SECOND DEVICE registering the SAME public key is refused — signed with the copied private key (DEVICE_KEY_MISMATCH \"already belongs to another device\"), signed by another key, or unsigned — and no device row is created",
+      "ok": true,
+      "detail": "{\"baseline\":200,\"alteredBody\":[403,\"DEVICE_KEY_MISMATCH\"],\"replayFirst\":200,\"replay\":[409,\"DEVICE_REQUEST_REPLAYED\"],\"stale\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedLock\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedAttempt\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCapture\":[403,\"DEVICE_KEY_MISMATCH\"],\"unsignedCancel\":[403,\"DEVICE_KEY_MISMATCH\"],\"attemptAfterUnsigned\":\"rea"
+    },
+    {
+      "at": 79082,
+      "phase": "12 secure tap to pay",
+      "check": "S7 the owner revokes the checkout phone mid-day (403 STEP_UP_REQUIRED without a fresh step-up; with it → revoked, the reason kept)",
+      "ok": true,
+      "detail": "{\"revokeWithoutStepUp\":[403,\"STEP_UP_REQUIRED\"],\"revoke\":[201,\"revoked\"],\"sessionsBefore\":1,\"sessionsAfter\":[{\"status\":\"revoked\",\"revoked\":true,\"rt\":1,\"rt_live\":0}],\"oldSession\":[401,\"AUTH_REQUIRED\"],\"refresh\":[401,\"REFRESH_INVALID\"],\"resignIn\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"routes\":{\"capability\":[403,\"DEVICE_REVOKED\"],\"readiness\":[403,\"DEVICE_REVO"
+    },
+    {
+      "at": 79082,
+      "phase": "12 secure tap to pay",
+      "check": "S7 DB: every session opened on that phone is REVOKED and every refresh token of those sessions is revoked; the phone's old session is refused at once and its refresh token cannot mint a new one",
+      "ok": true,
+      "detail": "{\"before\":[{\"n\":1}],\"after\":[{\"status\":\"revoked\",\"revoked\":true,\"rt\":1,\"rt_live\":0}],\"old\":[401,\"AUTH_REQUIRED\"],\"refresh\":[401,\"REFRESH_INVALID\"]}"
+    },
+    {
+      "at": 79082,
+      "phase": "12 secure tap to pay",
+      "check": "S7 signed in again on the revoked phone, EVERY route it signs answers 403 DEVICE_REVOKED (capability, readiness, queue, ticket, claim, intent, heartbeat, re-register, history); an unsigned intent naming it is refused too (no claim — the claim itself needs the phone)",
+      "ok": true,
+      "detail": "{\"resignIn\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"routes\":{\"capability\":[403,\"DEVICE_REVOKED\"],\"readiness\":[403,\"DEVICE_REVOKED\"],\"queue\":[403,\"DEVICE_REVOKED\"],\"ticket\":[403,\"DEVICE_REVOKED\"],\"lock\":[403,\"DEVICE_REVOKED\"],\"attempt\":[403,\"DEVICE_REVOKED\"],\"heartbeat\":[403,\"DEVICE_REVOKED\"],\"register\":[403,\"DEVICE_REVOKED\"],\"history\":[403,\"DEVICE_REVOKED\"]"
+    },
+    {
+      "at": 79082,
+      "phase": "12 secure tap to pay",
+      "check": "S7 the other two phones keep working (signed capability 200 on the front desk and the manager phone)",
+      "ok": true,
+      "detail": "{\"front\":200,\"manager\":200}"
+    },
+    {
+      "at": 79410,
+      "phase": "12 secure tap to pay",
+      "check": "S5 SHARED phone, shift change: Max signs out (his old cookie is dead), Bea signs in on the SAME front desk phone (same device id + key) and takes a payment → PAID, attributed to BEA on the front desk phone",
+      "ok": true,
+      "detail": "{\"logout\":200,\"old\":401,\"signIn\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"pay\":[201,201,[201,\"confirmed\"]],\"row\":[[\"Bea\",true]]}"
+    },
+    {
+      "at": 79524,
+      "phase": "12 secure tap to pay",
+      "check": "S5 PERSONAL phone: Max signs in on Bea's phone (sign-in itself is allowed) — the claim is refused 403 DEVICE_NOT_AUTHORIZED, the intent 409 CONFLICT (no claim), the heartbeat 403 DEVICE_NOT_AUTHORIZED; no payment is taken",
+      "ok": true,
+      "detail": "{\"signIn\":{\"ok\":true,\"l\":200,\"sel\":200,\"lb\":null},\"lock\":[403,\"DEVICE_NOT_AUTHORIZED\",\"This phone is registered to another user.\"],\"attempt\":[409,\"CONFLICT\"],\"heartbeat\":[403,\"DEVICE_NOT_AUTHORIZED\"],\"capability\":[200,null],\"paymentsOnT4\":0}"
+    },
+    {
+      "at": 80003,
+      "phase": "12 secure tap to pay",
+      "check": "S8 a DROPPED connection on the capture → the attempt is UNKNOWN (\"verifying\", recoverable), never declined; the ticket stays open, no payment row",
+      "ok": true,
+      "detail": "{\"capture\":[201,\"unknown\",\"unknown\",null],\"attemptView\":[200,\"unknown\",true,\"PAYMENT_STATUS_UNKNOWN\"],\"retry\":[409,\"CONFLICT\"],\"newIntent\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"reconcile\":[201,\"unknown\",\"wait\",\"no inquiry API — waiting for a webhook / manual reconcile\"],\"after\":[200,\"unknown\"],\"charges\":1,\"payments\":[],\"ticket\":\"service_done\",\"db\":{\"status\":\"unkno"
+    },
+    {
+      "at": 80003,
+      "phase": "12 secure tap to pay",
+      "check": "S8 a provider answer that is neither approved nor declined (200, transactionState PENDING) → UNKNOWN / verifying — NOT declined (an unknown payment is never a decline)",
+      "ok": true,
+      "detail": "{\"capture\":[201,\"unknown\",\"unknown\",null],\"attemptView\":[200,\"unknown\",true,\"PAYMENT_STATUS_UNKNOWN\"],\"retry\":[409,\"CONFLICT\"],\"newIntent\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"reconcile\":[201,\"unknown\",\"wait\",\"no inquiry API — waiting for a webhook / manual reconcile\"],\"after\":[200,\"unknown\"],\"charges\":1,\"payments\":[],\"ticket\":\"service_done\",\"db\":{\"status\":\"unkno"
+    },
+    {
+      "at": 80003,
+      "phase": "12 secure tap to pay",
+      "check": "S8 NO DOUBLE CHARGE: the phone re-sends its result and tries a NEW intent on the same ticket — both refused while the first is unresolved; the processor saw exactly ONE charge per ticket",
+      "ok": true,
+      "detail": "{\"pending\":{\"retry\":[409,\"CONFLICT\"],\"newIntent\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"charges\":1},\"dropped\":{\"retry\":[409,\"CONFLICT\"],\"newIntent\":[409,\"PAYMENT_STATUS_UNKNOWN\"],\"charges\":1}}"
+    },
+    {
+      "at": 80003,
+      "phase": "12 secure tap to pay",
+      "check": "S8 POST payment-attempts/:key/reconcile asks the PROVIDER (the phone's \"confirmed\" + forged reference + amount are ignored): the CommerceHub adapter has no transaction inquiry → decision \"wait\" (no_inquiry), the attempt stays UNKNOWN, nothing is recorded or charged",
+      "ok": true,
+      "detail": "{\"pending\":[201,\"unknown\",\"wait\",\"no inquiry API — waiting for a webhook / manual reconcile\"],\"dropped\":[201,\"unknown\",\"wait\",\"no inquiry API — waiting for a webhook / manual reconcile\"]}"
+    },
+    {
+      "at": 80003,
+      "phase": "12 secure tap to pay",
+      "info": "BLOCKED_EXTERNAL S8: reconcile → a VERIFIED FINAL state needs the CommerceHub transaction inquiry (inquireByOrderId), which is deliberately not implemented until it is verified against the CommerceHub sandbox (credentials) — fiserv-commercehub-ttp.adapter.ts lookupTransaction answers no_inquiry, so the attempt correctly stays \"verifying\" for a human / the recovery worker."
+    },
+    {
+      "at": 81098,
+      "phase": "12 secure tap to pay",
+      "check": "S9 the POS sees every mobile payment on the ONE canonical ticket: the receptionist's checkout list shows it PAID, its checkout view now carries the paid ticket's immutable commission SNAPSHOT, the ticket is paid; each wrote payment.captured + checkout.completed to the outbox and both were PUBLISHED (the POS / display update path)",
+      "ok": true,
+      "detail": "{\"tickets\":{\"b505c10c-b7fd-4ba1-8c86-d4fbd827f007\":{\"phone\":\"front\",\"detail\":200,\"commissionSource\":\"snapshot\",\"posListStatus\":\"paid\",\"db\":\"paid\",\"events\":[\"payment.captured\",\"checkout.completed\"],\"published\":[\"published\",\"published\"]},\"b1be02e6-d700-46ab-97fe-a763b4633af5\":{\"phone\":\"manager\",\"detail\":200,\"commissionSource\":\"snapshot\",\"posListStatus\":\"paid\","
+    },
+    {
+      "at": 81098,
+      "phase": "12 secure tap to pay",
+      "check": "S9 the POS \"Mobile Payments\" card lists the two working phones and not the revoked one; no claim is left open",
+      "ok": true,
+      "detail": "[200,[[\"Bea's iPhone\",\"active\"],[\"Front Desk iPhone\",\"active\"],[\"Max's iPhone\",\"active\"]]]"
+    },
+    {
+      "at": 81105,
+      "phase": "12 secure tap to pay",
+      "check": "S9 the OWNER's payment history lists each mobile payment with its DEVICE LABEL and its EMPLOYEE (Front Desk iPhone · Max, Bea's iPhone · Bea, Checkout iPhone 3 · Cal, Front Desk iPhone · Bea) at the server's amount, PAID",
+      "ok": true,
+      "detail": "[{\"phone\":\"front\",\"user\":\"Max Floor\",\"amountCents\":4942,\"history\":{\"deviceLabel\":\"Front Desk iPhone\",\"employeeName\":\"Max Floor\",\"amountCents\":4942,\"status\":\"PAID\"}},{\"phone\":\"manager\",\"user\":\"Bea Shift\",\"amountCents\":4942,\"history\":{\"deviceLabel\":\"Bea's iPhone\",\"employeeName\":\"Bea Shift\",\"amountCents\":4942,\"status\":\"PAID\"}},{\"phone\":\"checkout\",\"user\":\"Cal Ru"
+    },
+    {
+      "at": 81108,
+      "phase": "12 secure tap to pay",
+      "info": "owner device list: [{\"label\":\"Checkout iPhone 3\",\"status\":\"revoked\",\"bound\":\"Cal Runner\",\"lastPaymentAt\":true,\"lastErrorCode\":null},{\"label\":\"Bea's iPhone\",\"status\":\"active\",\"bound\":\"Bea Shift\",\"lastPaymentAt\":true,\"lastErrorCode\":\"DEVICE_KEY_MISMATCH\"},{\"label\":\"Front Desk iPhone\",\"status\":\"active\",\"bound\":\"Max Floor\",\"lastPaymentAt\":true,\"lastErrorCode\":null}]"
+    },
+    {
+      "at": 81109,
+      "phase": "9 api log",
+      "check": "the API logged no unexpected errors during the day",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "at": 82549,
+      "phase": "9 postgres log",
+      "check": "PostgreSQL logged no unexpected ERROR for pilot_m66 during the day (an error the code swallowed is a lost write or an empty read)",
+      "ok": true,
+      "detail": ""
+    }
+  ],
+  "shots": [
+    {
+      "name": "pos-queue",
+      "app": "pos-web",
+      "path": "/queue",
+      "file": "pilot-01-pos-queue.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "pos-check-in",
+      "app": "pos-web",
+      "path": "/check-in",
+      "file": "pilot-02-pos-check-in.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "pos-checkout-jenny",
+      "app": "pos-web",
+      "path": "/checkout",
+      "file": "pilot-03-pos-checkout-jenny.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "customer-display-totals",
+      "app": "customer-display",
+      "path": "/?device=CLXzO121CaTB3si_sN-Y-lSn0G_mYuet7A6UF0ZcuTI",
+      "file": "pilot-04-customer-display-totals.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "customer-display-cleared",
+      "app": "customer-display",
+      "path": "/?device=CLXzO121CaTB3si_sN-Y-lSn0G_mYuet7A6UF0ZcuTI",
+      "file": "pilot-05-customer-display-cleared.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "tech-app-earnings-lisa",
+      "app": "tech-web",
+      "path": "/",
+      "file": "pilot-06-tech-app-earnings-lisa.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "owner-app-dashboard",
+      "app": "owner-web",
+      "path": "/",
+      "file": "pilot-07-owner-app-dashboard.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "owner-app-reports",
+      "app": "owner-web",
+      "path": "/",
+      "file": "pilot-08-owner-app-reports.png",
+      "matched": true,
+      "pageErrors": []
+    },
+    {
+      "name": "pos-reports",
+      "app": "pos-web",
+      "path": "/reports",
+      "file": "pilot-09-pos-reports.png",
+      "matched": true,
+      "pageErrors": []
+    }
+  ],
+  "apiErrors": []
+}

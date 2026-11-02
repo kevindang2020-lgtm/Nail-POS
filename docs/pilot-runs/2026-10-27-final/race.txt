@@ -1,0 +1,17 @@
+PASS  apps/api               files: 33 passed (33)   tests: 132 passed (132)
+PASS  modules/ai             files: 6 passed (6)   tests: 14 passed (14)
+PASS  modules/booking        files: 12 passed (12)   tests: 47 passed (47)
+PASS  modules/checkout       files: 14 passed (14)   tests: 51 passed (51)
+PASS  modules/customers      files: 2 passed (2)   tests: 5 passed (5)
+PASS  modules/deals          files: 2 passed (2)   tests: 8 passed (8)
+PASS  modules/gift-cards     files: 2 passed (2)   tests: 2 passed (2)
+PASS  modules/identity       files: 2 passed (2)   tests: 2 passed (2)
+PASS  modules/inventory      files: 3 passed (3)   tests: 5 passed (5)
+PASS  modules/marketing      files: 1 passed (1)   tests: 4 passed (4)
+PASS  modules/payments       files: 1 passed (1)   tests: 4 passed (4)
+PASS  modules/queue          files: 8 passed (8)   tests: 27 passed (27)
+PASS  modules/safety         files: 3 passed (3)   tests: 3 passed (3)
+PASS  modules/super-admin    files: 3 passed (3)   tests: 9 passed (9)
+PASS  modules/workforce      files: 7 passed (7)   tests: 23 passed (23)
+
+race lane: 99 files, 336 tests passed, 0 skipped across 15 packages

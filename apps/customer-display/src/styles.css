@@ -1,0 +1,576 @@
+/* styles.css — AIPowerSalon Customer Display (kiosk/iPad). Champagne-gold brand, full-screen, touch-scale. One centered
+   column that reads well in both iPad orientations; the page never scrolls — content is sized to fit. */
+:root {
+  --gold: #C58A2E; --gold-dark: #8B5A18; --gold-soft: #E7C986; --gold-pale: #F4E3BF;
+  --bg: #FBF7F0; --surface: #FFFFFF; --surface-soft: #FFFDF8; --panel: #FCF8F0;
+  --text: #2C2118; --text-2: #6D5F50; --text-muted: #9B8B78;
+  --border: #E9DAC4; --border-gold: #DFC37B;
+  --ok: #31905A; --ok-bg: #EDF8F0; --bad: #D84E45; --bad-bg: #FFF0EE;
+  --shadow: 0 10px 30px rgba(82, 53, 26, 0.10); --shadow-lg: 0 18px 50px rgba(82, 53, 26, 0.16);
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body, #root { height: 100%; margin: 0; }
+body {
+  background: radial-gradient(1200px 800px at 50% -10%, #F6ECD8 0%, #EDE3D1 60%, #E6DAC4 100%);
+  font-family: 'Hanken Grotesk', system-ui, -apple-system, sans-serif; color: var(--text);
+  -webkit-font-smoothing: antialiased; overflow: hidden; user-select: none;
+}
+.serif { font-family: 'Playfair Display', Georgia, serif; font-variant-numeric: lining-nums; }
+/* the serif face's default old-style figures sit at uneven heights — keypads, totals and tip buttons use lining figures */
+.kiosk-key, .gci-key, .kiosk-pay, .kiosk-tip-opt .pct, .kiosk-method .m-name, .ck-due-amt, .kiosk-amount { font-variant-numeric: lining-nums tabular-nums; }
+
+.kiosk-app {
+  height: 100%; max-width: 860px; margin: 0 auto; background: var(--bg);
+  display: flex; flex-direction: column; box-shadow: 0 0 80px rgba(60, 40, 15, .14);
+}
+.kiosk-main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 40px 40px; overflow: hidden; }
+.kiosk-center { align-items: center; justify-content: center; text-align: center; }
+
+/* brand header */
+.kiosk-brand { display: flex; align-items: center; gap: 16px; padding: 28px 40px 18px; }
+.kiosk-mono {
+  width: 54px; height: 54px; border-radius: 15px; flex: none; color: #fff; font-family: 'Playfair Display', serif;
+  font-weight: 700; font-size: 26px; display: grid; place-items: center;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark)); box-shadow: var(--shadow);
+}
+.kiosk-salon { font-size: 28px; font-weight: 700; letter-spacing: .01em; }
+
+/* status screens */
+.kiosk-status { display: flex; flex-direction: column; align-items: center; gap: 18px; max-width: 540px; }
+.kiosk-glyph { width: 132px; height: 132px; border-radius: 50%; display: grid; place-items: center; font-size: 64px; font-weight: 800; }
+.kiosk-glyph.ok { background: var(--ok-bg); color: var(--ok); }
+.kiosk-glyph.bad { background: var(--bad-bg); color: var(--bad); }
+.kiosk-glyph.muted { background: #F1E9DA; color: var(--text-muted); font-size: 56px; }
+.kiosk-welcome { font-size: 58px; font-weight: 700; color: var(--gold-dark); }
+.kiosk-h { font-size: 40px; font-weight: 700; }
+.kiosk-sub { font-size: 21px; color: var(--text-2); line-height: 1.45; }
+
+.kiosk-spinner {
+  width: 84px; height: 84px; border-radius: 50%; border: 7px solid var(--gold-pale); border-top-color: var(--gold);
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* review layout */
+.kiosk-review { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 22px; justify-content: center; }
+.kiosk-ticket { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; padding: 26px 30px; box-shadow: var(--shadow); }
+.kiosk-hi { font-size: 30px; font-weight: 700; margin-bottom: 2px; }
+.kiosk-order { font-size: 14px; letter-spacing: .12em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; margin-bottom: 14px; }
+.kiosk-lines { list-style: none; margin: 0 0 14px; padding: 0; }
+.kiosk-lines li { display: flex; justify-content: space-between; gap: 16px; padding: 11px 0; font-size: 21px; border-bottom: 1px dashed var(--border); }
+.kiosk-lines li span:last-child { font-variant-numeric: tabular-nums; font-weight: 600; }
+
+.kiosk-totals { margin-top: 6px; }
+.kiosk-row { display: flex; justify-content: space-between; padding: 7px 0; font-size: 19px; color: var(--text-2); }
+.kiosk-row span:last-child { font-variant-numeric: tabular-nums; }
+.kiosk-row.total { margin-top: 8px; padding-top: 16px; border-top: 2px solid var(--border-gold); font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px; color: var(--text); }
+
+/* tip section */
+.kiosk-tip { background: var(--surface-soft); border: 1px solid var(--border); border-radius: 22px; padding: 24px 28px; box-shadow: var(--shadow); }
+.kiosk-tip-title { font-size: 28px; font-weight: 700; text-align: center; }
+.kiosk-tip-sub { font-size: 16px; color: var(--text-muted); text-align: center; margin: 4px 0 18px; }
+.kiosk-tip-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.kiosk-tip-opt {
+  appearance: none; cursor: pointer; border: 2px solid var(--border-gold); background: var(--surface); border-radius: 18px;
+  padding: 22px 10px; display: flex; flex-direction: column; align-items: center; gap: 4px; transition: transform .05s ease, box-shadow .15s ease;
+}
+.kiosk-tip-opt:active { transform: scale(.97); }
+.kiosk-tip-opt .pct { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 34px; color: var(--gold-dark); }
+.kiosk-tip-opt .amt { font-size: 17px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.kiosk-tip-opt.on { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); border-color: var(--gold-dark); box-shadow: var(--shadow-lg); }
+.kiosk-tip-opt.on .pct, .kiosk-tip-opt.on .amt { color: #fff; }
+
+.kiosk-tip-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+.kiosk-btn {
+  appearance: none; cursor: pointer; border-radius: 16px; font-size: 20px; font-weight: 700; padding: 18px 16px;
+  font-family: inherit; transition: transform .05s ease;
+}
+.kiosk-btn:active { transform: scale(.98); }
+.kiosk-btn.ghost { background: var(--surface); border: 2px solid var(--border); color: var(--text); }
+.kiosk-btn.ghost.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+.kiosk-btn.solid { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); border: none; color: #fff; }
+.kiosk-btn:disabled { opacity: .55; cursor: default; }
+
+.kiosk-confirm { margin-top: 18px; text-align: center; background: var(--ok-bg); border: 1px solid #CFE9D7; border-radius: 16px; padding: 16px 18px; }
+.kiosk-confirm-line { font-size: 21px; font-weight: 700; color: #1f7a48; }
+.kiosk-confirm-sub { font-size: 15px; color: var(--text-2); margin-top: 4px; }
+.kiosk-err { margin-top: 14px; text-align: center; background: var(--bad-bg); border: 1px solid #F3C9C5; color: var(--bad); border-radius: 14px; padding: 12px 16px; font-size: 17px; font-weight: 600; }
+
+.kiosk-pay {
+  appearance: none; cursor: pointer; width: 100%; margin-top: 16px; border: none; border-radius: 18px;
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #fff;
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 30px; padding: 24px 16px; box-shadow: var(--shadow-lg);
+  transition: transform .05s ease;
+}
+.kiosk-pay:active { transform: scale(.985); }
+.kiosk-pay:disabled { opacity: .6; cursor: default; }
+
+/* custom tip keypad */
+.kiosk-custom { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+.kiosk-amount { font-size: 56px; font-weight: 700; color: var(--gold-dark); font-variant-numeric: tabular-nums; }
+.kiosk-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; max-width: 420px; }
+.kiosk-key {
+  appearance: none; cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 16px;
+  font-size: 28px; font-weight: 700; padding: 18px 0; font-family: 'Playfair Display', serif; color: var(--text);
+}
+.kiosk-key:active { background: var(--gold-pale); }
+.kiosk-key:disabled { opacity: .5; }
+.kiosk-custom-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; width: 100%; max-width: 420px; }
+
+@media (max-height: 780px) {
+  .kiosk-tip-opt { padding: 16px 8px; }
+  .kiosk-tip-opt .pct { font-size: 28px; }
+  .kiosk-lines li { padding: 8px 0; font-size: 19px; }
+  .kiosk-row.total { font-size: 26px; }
+}
+
+/* customer_pays — payment-method chooser (card vs cash) shown above the Pay button */
+.kiosk-pay-wrap { display: flex; flex-direction: column; gap: 14px; }
+.kiosk-method-title { font-size: 22px; font-weight: 700; color: var(--gold-dark); }
+.kiosk-method-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; }
+.kiosk-method {
+  display: flex; flex-direction: column; gap: 6px; align-items: flex-start; text-align: left;
+  padding: 18px 20px; border-radius: 18px; border: 2px solid var(--gold-pale); background: #fff; cursor: pointer;
+  transition: transform .08s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.kiosk-method:active { transform: scale(.97); }
+.kiosk-method .m-name { font-family: 'Playfair Display', serif; font-weight: 700; font-size: 28px; color: var(--gold-dark); }
+.kiosk-method .m-hint { font-size: 15px; color: var(--text-2); }
+.kiosk-method.on { background: linear-gradient(135deg, var(--gold), var(--gold-dark)); border-color: var(--gold-dark); box-shadow: var(--shadow-lg); }
+.kiosk-method.on .m-name, .kiosk-method.on .m-hint { color: #fff; }
+.kiosk-method-note { font-size: 15px; color: var(--text-2); text-align: center; }
+
+/* === 23-inch spec §13: the SALON's brand heads its display (logo or initial, name, tagline · branch) === */
+.kiosk-brand{display:flex;align-items:center;gap:14px}
+.salon-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.salon-mark { width: 54px; height: 54px; border-radius: 14px; flex: none; }
+img.salon-logo { object-fit: contain; width: auto; max-width: 200px; }
+.salon-mono { display: grid; place-items: center; background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #fff;
+  font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: 26px; box-shadow: var(--shadow); }
+.salon-text { min-width: 0; }
+.salon-name { font-size: 26px; font-weight: 700; line-height: 1.1; padding-bottom: .1em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }   /* padding: the y of "Luxury" was cut off */
+.salon-sub { font-size: 15px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.powered-by { font-size: 12px; color: var(--text-muted); letter-spacing: .04em; white-space: nowrap; }
+.gci-appt-logo.salon-mono { border-radius: 50%; font-size: 30px; }
+
+/* post-payment satisfaction rating (Success screen) */
+.kiosk-rate{margin-top:30px;display:flex;flex-direction:column;align-items:center;gap:12px}
+.kiosk-rate-q{font-size:21px;color:var(--text)}
+.kiosk-rate-stars{display:flex;gap:10px}
+.kiosk-star{font-size:46px;line-height:1;background:none;border:none;cursor:pointer;color:var(--gold-soft);padding:6px 8px;border-radius:12px;transition:transform .08s ease,color .12s ease}
+.kiosk-star:hover:not(:disabled),.kiosk-star:active:not(:disabled){color:var(--gold);transform:scale(1.12)}
+.kiosk-star:disabled{opacity:.5;cursor:default}
+.kiosk-rate-thanks{margin-top:30px;font-size:21px;color:var(--gold-dark);font-weight:600}
+
+/* ===== Go Check-In (idle dual-purpose display) ===== */
+.gci-app { max-width: 1180px; }
+.gci-main { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; align-items: stretch; }
+.gci-col { background: var(--surface); border: 1px solid var(--border); border-radius: 22px; box-shadow: var(--shadow);
+  padding: 30px 32px; display: flex; flex-direction: column; min-height: 0; overflow: auto; }
+.gci-lookup { align-items: center; text-align: center; }
+.gci-welcome { font-size: 40px; font-weight: 700; color: var(--text); line-height: 1.1; }
+.gci-label { color: var(--text-2); font-size: 18px; margin: 12px 0 14px; }
+.gci-phone { display: flex; align-items: center; gap: 10px; width: 100%; border: 1.5px solid var(--border-gold);
+  border-radius: 14px; padding: 14px 16px; background: var(--surface-soft); }
+.gci-phone-ico { color: var(--gold); font-size: 20px; }
+.gci-phone-val { flex: 1; text-align: left; font-size: 24px; font-weight: 600; color: var(--text); font-variant-numeric: tabular-nums; }
+.gci-phone-x { border: none; background: none; color: var(--text-muted); font-size: 20px; cursor: pointer; }
+.gci-keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; width: 100%; margin: 18px 0; }
+.gci-key { border: 1px solid var(--border); background: var(--surface-soft); border-radius: 14px; color: var(--text);
+  font-family: 'Playfair Display', serif; font-weight: 700; font-size: 26px; padding: 16px 0; cursor: pointer; }
+.gci-key:active { background: var(--gold-pale); }
+.gci-find, .gci-imhere, .gci-done-btn { width: 100%; margin-top: auto; }
+.gci-result { justify-content: center; }
+.gci-appt { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.gci-appt-badge { display: inline-flex; align-items: center; gap: 8px; color: var(--gold-dark); font-weight: 700; font-size: 18px; }
+.gci-appt-badge .dot { color: var(--gold); }
+.gci-appt-logo { height: 74px; width: 74px; border-radius: 50%; border: 3px solid var(--gold-pale); padding: 8px; margin: 8px 0; }
+.gci-appt-name { font-size: 30px; font-weight: 700; }
+.gci-appt-when { font-size: 20px; font-weight: 600; color: var(--text); }
+.gci-appt-svc { font-size: 22px; color: var(--gold-dark); margin-top: 4px; }
+.gci-appt-tech { color: var(--text-2); font-size: 17px; margin-bottom: 10px; }
+.gci-walkin { display: flex; flex-direction: column; gap: 12px; }
+.gci-walkin-title { font-size: 26px; font-weight: 700; }
+.gci-walkin-sub { color: var(--text-2); font-size: 16px; margin-top: -6px; }
+.gci-field { display: flex; flex-direction: column; gap: 6px; font-size: 15px; color: var(--text-2); font-weight: 600; }
+.gci-field-label { font-size: 15px; color: var(--text-2); font-weight: 600; }
+.gci-field-label .opt, .opt { color: var(--text-muted); font-weight: 500; }
+.gci-input { border: 1.5px solid var(--border); border-radius: 12px; padding: 13px 14px; font-size: 18px; font-family: inherit;
+  color: var(--text); background: var(--surface-soft); }
+.gci-input:focus { outline: none; border-color: var(--gold); }
+.gci-svc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.gci-svc { border: 1.5px solid var(--border); border-radius: 12px; background: var(--surface-soft); padding: 12px 8px;
+  display: flex; flex-direction: column; gap: 3px; cursor: pointer; text-align: center; }
+.gci-svc .n { font-weight: 700; font-size: 14px; color: var(--text); }
+.gci-svc .p { color: var(--gold-dark); font-weight: 700; font-size: 14px; }
+.gci-svc.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+/* 23-inch spec Unit 7 (§17, §20): a long menu scrolls inside its own box; the visit's services, compact */
+.gci-svc-scroll { max-height: 300px; overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.gci-svc:disabled { opacity: .55; cursor: default; }
+.gci-visit { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 4px; margin: 4px 0 10px; }
+.gci-visit-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: 6px; }
+.gci-visit-list.open { max-height: 240px; overflow-y: auto; overscroll-behavior: contain; }
+.gci-visit-list li { display: flex; flex-direction: column; align-items: center; }
+.gci-visit-list .n { font-size: 20px; color: var(--gold-dark); }
+.gci-visit-list .t { color: var(--text-2); font-size: 15px; }
+.gci-visit-list .w { color: var(--text-muted); font-size: 13px; }
+.gci-visit-more { background: none; border: none; color: var(--gold-dark); font-weight: 700; font-size: 15px; min-height: 44px; padding: 0 8px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.gci-confirmed { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px; }
+.gci-wait { margin-top: 8px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.gci-wait-label { color: var(--text-2); font-size: 16px; }
+.gci-wait-value { font-size: 38px; font-weight: 700; color: var(--gold-dark); }
+.gci-wait-note { color: var(--text-muted); font-size: 14px; }
+.gci-done { margin-top: 18px; }
+.gci-welcome span { display: block; }
+.gci-place { font-size: 20px; color: var(--gold-dark); font-weight: 700; margin-top: 6px; }
+.gci-place b { font-size: 26px; }
+.gci-place-btn { margin-top: 8px; }
+
+/* ── 23-inch spec §30–§33, §91–§95: the live checkout ticket (CheckoutTicket.tsx) ──
+   The line list is a bounded region that scrolls on its own for an unusually long ticket; the totals and TOTAL DUE are
+   pinned below it and never leave the screen. The page itself never scrolls. */
+.kiosk-review > .ck { flex: 1 1 auto; min-height: 0; }
+.ck { display: flex; flex-direction: column; min-height: 0; }
+.ck-head { flex: none; }
+.ck-intro { font-size: 17px; color: var(--text-2); margin: 2px 0 8px; }
+.ck-lines { flex: 1 1 auto; min-height: 64px; overflow-y: auto; list-style: none; margin: 0; padding: 0 2px 0 0; overscroll-behavior: contain; }
+.ck-line { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding: 10px 0; border-bottom: 1px dashed var(--border); }
+.ck-line-main { display: flex; flex-direction: column; min-width: 0; }
+.ck-line-name { font-size: 21px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ck-line-tech { font-size: 15px; color: var(--text-muted); }
+.ck-add_on .ck-line-name { font-weight: 500; color: var(--text-2); }
+.ck-line-amt { display: flex; gap: 10px; align-items: baseline; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ck-was { font-size: 16px; font-weight: 500; color: var(--text-muted); }
+.ck-totals { flex: none; margin-top: 10px; }
+.ck-row { display: flex; justify-content: space-between; padding: 5px 0; font-size: 18px; color: var(--text-2); }
+.ck-row span:last-child { font-variant-numeric: tabular-nums; }
+.ck-save span:last-child { color: var(--ok); font-weight: 600; }
+.ck-paid span:last-child { color: var(--text); font-weight: 600; }
+.ck-due { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; padding-top: 14px; border-top: 2px solid var(--border-gold);
+  font-size: 18px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--text); }
+.ck-due-amt { font-size: 42px; letter-spacing: 0; text-transform: none; color: var(--gold-dark); font-variant-numeric: tabular-nums; }
+
+/* §44 completed summary */
+.kiosk-done { font-size: 18px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--ok); }
+.kiosk-paid { display: flex; align-items: baseline; gap: 16px; font-size: 20px; color: var(--text-2); }
+.kiosk-paid .serif { font-size: 40px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.kiosk-points { font-size: 19px; color: var(--gold-dark); font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   23-INCH DUAL-SCREEN LAYOUT (spec §2–§7, §87–§95, §121) — Display23.tsx
+   One unit, --u, = 1 px of the 1920×1080 reference, scaled to the screen by BOTH its width and its height (§88: the
+   viewport and density decide, never physical inches). 1600×900 and 1366×768 keep the same hierarchy, just smaller; a
+   non-16:9 screen scales to its tighter side. The page never scrolls; only a long ticket's line list does (§93–§95).
+   Touch targets never fall below 44 px (§89).
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+.d23 {
+  --u: min(calc(100vw / 1920), calc(100vh / 1080));
+  --tap: max(44px, calc(var(--u) * 64));
+  position: fixed; inset: 0; display: grid; grid-template-columns: minmax(0, 65fr) minmax(0, 35fr);
+  background: radial-gradient(calc(var(--u) * 1400) calc(var(--u) * 900) at 30% -10%, #F7EEDC 0%, var(--bg) 60%);
+  overflow: hidden; color: var(--text);
+}
+:where(.d23) button { font-family: inherit; touch-action: manipulation; }
+.d23-main { display: grid; grid-template-rows: calc(var(--u) * 104) minmax(0, 1fr) calc(var(--u) * 132); min-width: 0; min-height: 0; }
+
+/* header: the salon's brand */
+.d23-head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 20); padding: 0 calc(var(--u) * 40); min-width: 0; }
+.d23 .salon-brand { gap: calc(var(--u) * 18); }
+.d23 .salon-mark { width: calc(var(--u) * 68); height: calc(var(--u) * 68); border-radius: calc(var(--u) * 18); }
+.d23 img.salon-logo { max-width: calc(var(--u) * 240); }
+.d23 .salon-mono { font-size: calc(var(--u) * 32); }
+.d23 .salon-name { font-size: calc(var(--u) * 36); }
+.d23 .salon-sub { font-size: calc(var(--u) * 19); margin-top: calc(var(--u) * 2); }
+.d23-clockbtn { flex: none; min-height: var(--tap); padding: 0 calc(var(--u) * 22); border-radius: 999px; border: 1px solid var(--border-gold);
+  background: rgba(255, 255, 255, .75); color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 18); cursor: pointer; }
+
+/* the two check-in columns */
+.d23-cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr); gap: calc(var(--u) * 24); padding: 0 calc(var(--u) * 32); min-height: 0; }
+.d23-cols-one { grid-template-columns: minmax(0, 1fr); }
+.d23-card { background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--u) * 26); box-shadow: var(--shadow);
+  padding: calc(var(--u) * 28) calc(var(--u) * 32); min-height: 0; min-width: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+/* LEFT — phone + keypad (§14) */
+.d23-lookup { display: flex; flex-direction: column; gap: calc(var(--u) * 14); height: 100%; min-height: 0; }
+.d23-welcome { font-size: calc(var(--u) * 46); font-weight: 700; line-height: 1.06; text-align: center; color: var(--text); }
+.d23-welcome span { display: block; }
+.d23-welcome span:last-child { color: var(--gold-dark); }
+.d23-label { text-align: center; color: var(--text-2); font-size: calc(var(--u) * 21); }
+.d23-phone { display: flex; align-items: center; gap: calc(var(--u) * 12); border: 2px solid var(--border-gold); border-radius: calc(var(--u) * 16);
+  padding: calc(var(--u) * 12) calc(var(--u) * 20); background: var(--surface-soft); min-height: var(--tap); }
+.d23-phone .ico { color: var(--gold); font-size: calc(var(--u) * 26); }
+.d23-phone .val { flex: 1; font-size: calc(var(--u) * 34); font-weight: 700; letter-spacing: .02em; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; }
+.d23-phone .val.ph { color: var(--text-muted); font-weight: 500; }
+.d23-keys { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: minmax(var(--tap), 1fr); gap: calc(var(--u) * 12); }
+.d23-key { border: 1px solid var(--border); background: var(--surface-soft); border-radius: calc(var(--u) * 16); color: var(--text); cursor: pointer;
+  font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: calc(var(--u) * 36); min-height: var(--tap); }
+.d23-key.fn { font-family: inherit; font-size: calc(var(--u) * 22); color: var(--text-2); }
+.d23-key:active { background: var(--gold-pale); }
+.d23-key:disabled { opacity: .5; }
+.d23-primary { appearance: none; border: none; cursor: pointer; border-radius: calc(var(--u) * 18); min-height: var(--tap);
+  background: linear-gradient(135deg, var(--gold), var(--gold-dark)); color: #fff; box-shadow: var(--shadow-lg);
+  font-family: 'Playfair Display', Georgia, serif; font-weight: 700; font-size: calc(var(--u) * 30); padding: calc(var(--u) * 18) calc(var(--u) * 16); }
+.d23-primary:active { transform: scale(.985); }
+.d23-primary:disabled { opacity: .6; cursor: default; }
+.d23-ghost { min-height: var(--tap); padding: 0 calc(var(--u) * 22); border-radius: calc(var(--u) * 14); border: 2px solid var(--border-gold);
+  background: var(--surface); color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 19); cursor: pointer; white-space: nowrap; }
+.d23-link { align-self: flex-start; background: none; border: none; color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 18);
+  min-height: var(--tap); padding: 0 calc(var(--u) * 4); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+
+/* CENTRE — appointment found (§16) or walk-in (§20–§25) */
+.d23-col-center { justify-content: center; }
+.d23-appt { display: flex; flex-direction: column; align-items: center; text-align: center; gap: calc(var(--u) * 10); }
+.d23-appt-badge { display: inline-flex; align-items: center; gap: calc(var(--u) * 10); color: var(--ok); font-weight: 800; font-size: calc(var(--u) * 22);
+  letter-spacing: .06em; text-transform: uppercase; background: var(--ok-bg); padding: calc(var(--u) * 8) calc(var(--u) * 18); border-radius: 999px; }
+.d23-appt-mark { width: calc(var(--u) * 92); height: calc(var(--u) * 92); border-radius: 50%; margin: calc(var(--u) * 6) 0; }
+.d23-appt-mark.salon-mono { font-size: calc(var(--u) * 40); }
+.d23-appt-name { font-size: calc(var(--u) * 44); font-weight: 700; line-height: 1.1; overflow-wrap: anywhere; }
+.d23-appt-when { font-size: calc(var(--u) * 26); font-weight: 600; }
+.d23-appt-svc { font-size: calc(var(--u) * 30); color: var(--gold-dark); margin-top: calc(var(--u) * 4); }
+.d23-appt-tech { color: var(--text-2); font-size: calc(var(--u) * 22); }
+.d23-imhere { width: 100%; margin-top: calc(var(--u) * 18); font-size: calc(var(--u) * 36); padding: calc(var(--u) * 24); }
+.d23-walkin { display: flex; flex-direction: column; gap: calc(var(--u) * 14); height: 100%; min-height: 0; }
+.d23-walkin-title { font-size: calc(var(--u) * 36); font-weight: 700; }
+.d23-walkin-sub { color: var(--text-2); font-size: calc(var(--u) * 20); margin-top: calc(var(--u) * -8); }
+.d23-field { display: flex; flex-direction: column; gap: calc(var(--u) * 6); font-size: calc(var(--u) * 17); color: var(--text-2); font-weight: 600; }
+.d23-field-label { font-size: calc(var(--u) * 17); color: var(--text-2); font-weight: 600; margin-bottom: calc(var(--u) * 6); }
+.d23 .opt { color: var(--text-muted); font-weight: 500; }
+.d23-input { border: 1.5px solid var(--border); border-radius: calc(var(--u) * 14); padding: calc(var(--u) * 12) calc(var(--u) * 16); min-height: var(--tap);
+  font-size: calc(var(--u) * 24); font-family: inherit; color: var(--text); background: var(--surface-soft); width: 100%; }
+.d23-input:focus { outline: none; border-color: var(--gold); }
+.d23-svc-block { min-height: 0; display: flex; flex-direction: column; }
+.d23-svc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: calc(var(--u) * 10); }
+.d23-svc-grid.all { max-height: calc(var(--u) * 260); overflow-y: auto; overscroll-behavior: contain; padding-right: 2px; }
+.d23-svc { border: 1.5px solid var(--border); border-radius: calc(var(--u) * 14); background: var(--surface-soft); min-height: var(--tap);
+  padding: calc(var(--u) * 10) calc(var(--u) * 8); display: flex; flex-direction: column; justify-content: center; gap: calc(var(--u) * 3); cursor: pointer; text-align: center; }
+/* Hanken Grotesk's descenders (y, p, g) were cut off by the ellipsis clip once the real typeface loaded (Oct 6 2026):
+   the name's box was squeezed (a clipped flex item may shrink to nothing) — flex: none keeps its full line, and the line
+   leaves the descenders room */
+.d23-svc .n { flex: none; font-weight: 700; font-size: calc(var(--u) * 18); line-height: 1.3; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d23-svc .p { color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 18); }
+.d23-svc.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+.d23-svc:disabled, .d23-addon:disabled { opacity: .55; cursor: default; }
+/* §20 add-ons: a row of chips under the services — enabled once a service is chosen */
+.d23-field-row { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 12); margin-bottom: calc(var(--u) * 6); }
+.d23-field-row .d23-field-label { margin-bottom: 0; }
+.d23-field-row .d23-link { align-self: center; }   /* still a 44 px touch target (§89) */
+.d23-addons { display: flex; flex-direction: column; gap: calc(var(--u) * 6); min-height: 0; }
+.d23-addons .d23-field-label { margin-bottom: 0; }
+/* flex: none — the row keeps its chips' full height (it is a scroller, so a squeezed row clipped their bottoms) */
+.d23-addon-row { flex: none; display: flex; gap: calc(var(--u) * 10); overflow-x: auto; overscroll-behavior: contain; padding-bottom: 2px; }
+.d23-addon { flex: none; display: inline-flex; align-items: center; gap: calc(var(--u) * 10); min-height: var(--tap); padding: 0 calc(var(--u) * 18);
+  border: 1.5px solid var(--border); border-radius: 999px; background: var(--surface-soft); cursor: pointer; white-space: nowrap; }
+.d23-addon .n { font-weight: 700; font-size: calc(var(--u) * 18); color: var(--text); }
+.d23-addon .p { color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 17); }
+.d23-addon.on { border-color: var(--gold-dark); background: var(--gold-pale); }
+/* §17 the visit's services: compact rows, "+ N more" opens the rest inside its own box (the screen never scrolls) */
+.d23-appt.several { gap: calc(var(--u) * 8); }
+.d23-visit { width: 100%; display: flex; flex-direction: column; align-items: center; gap: calc(var(--u) * 4); }
+.d23-visit-list { list-style: none; margin: 0; padding: 0; width: 100%; display: flex; flex-direction: column; gap: calc(var(--u) * 8); }
+.d23-visit-list.open { max-height: calc(var(--u) * 250); overflow-y: auto; overscroll-behavior: contain; }
+.d23-visit-list li { display: flex; flex-direction: column; align-items: center; line-height: 1.2; }
+.d23-visit-list .n { font-size: calc(var(--u) * 28); color: var(--gold-dark); }
+.d23-visit-list .t { color: var(--text-2); font-size: calc(var(--u) * 20); }
+.d23-visit-list .w { color: var(--text-muted); font-size: calc(var(--u) * 17); }
+.d23-visit-more { background: none; border: none; color: var(--gold-dark); font-weight: 700; font-size: calc(var(--u) * 19); min-height: var(--tap);
+  padding: 0 calc(var(--u) * 10); cursor: pointer; text-decoration: underline; text-underline-offset: 4px; }
+.d23-walkin-go { margin-top: auto; }
+.d23-note { margin: auto 0; text-align: center; display: flex; flex-direction: column; gap: calc(var(--u) * 10); }
+.d23-note-h { font-size: calc(var(--u) * 36); font-weight: 700; }
+.d23-note-s { font-size: calc(var(--u) * 22); color: var(--text-2); }
+.d23 .kiosk-err { margin-top: calc(var(--u) * 10); font-size: calc(var(--u) * 18); padding: calc(var(--u) * 12) calc(var(--u) * 16); border-radius: calc(var(--u) * 12); }
+.d23-welcome-card { align-items: center; justify-content: center; text-align: center; gap: calc(var(--u) * 18); }
+.d23-welcome-mark { width: calc(var(--u) * 120); height: calc(var(--u) * 120); border-radius: calc(var(--u) * 28); }
+.d23-welcome-mark.salon-mono { font-size: calc(var(--u) * 56); }
+.d23-welcome-card .d23-welcome { font-size: calc(var(--u) * 72); }
+
+/* technician time clock, inside the check-in area */
+.d23-clock { align-items: center; justify-content: center; overflow-y: auto; }
+.d23 .gci-clock { width: 100%; }
+.d23 .gci-clock .gci-keys { gap: calc(var(--u) * 12); }
+.d23 .gci-clock .gci-key { min-height: var(--tap); font-size: calc(var(--u) * 30); }
+
+/* FOOTER — check-in result (§26–§28), then the salon's quiet line */
+.d23-foot { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 18); padding: calc(var(--u) * 16) calc(var(--u) * 32) calc(var(--u) * 20); min-width: 0; }
+.d23-foot-idle { color: var(--text-2); font-size: calc(var(--u) * 22); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.d23 .powered-by { font-size: calc(var(--u) * 14); }
+.d23-result { flex: 1; min-width: 0; display: flex; align-items: center; gap: calc(var(--u) * 22); background: var(--ok-bg); border: 1px solid #CFE9D7;
+  border-radius: calc(var(--u) * 22); padding: calc(var(--u) * 12) calc(var(--u) * 24); height: 100%; }
+.d23-result-ok { flex: none; width: calc(var(--u) * 64); height: calc(var(--u) * 64); border-radius: 50%; display: grid; place-items: center;
+  background: var(--ok); color: #fff; font-size: calc(var(--u) * 36); font-weight: 800; }
+.d23-result-text { min-width: 0; flex: 1; }
+.d23-result-text .t { font-size: calc(var(--u) * 30); font-weight: 800; color: #1f7a48; letter-spacing: .02em; }
+.d23-result-text .s { font-size: calc(var(--u) * 20); color: var(--text-2); line-height: 1.2; overflow: hidden;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }   /* two lines: "Both of your appointments are checked in." is never cut */
+.d23-result-wait { flex: none; text-align: center; }
+.d23-result-wait .l { font-size: calc(var(--u) * 16); color: var(--text-2); }
+.d23-result-wait .v { font-size: calc(var(--u) * 34); font-weight: 700; color: var(--gold-dark); white-space: nowrap; }
+.d23-result-place { flex: none; font-size: calc(var(--u) * 22); color: var(--gold-dark); font-weight: 700; white-space: nowrap; }
+.d23-result-place b { font-size: calc(var(--u) * 30); }
+
+/* RIGHT — the dynamic panel (§5): advertising, or the customer's checkout */
+.d23-right { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #1b1410; }
+.d23-checkout { position: absolute; inset: 0; display: flex; flex-direction: column; gap: calc(var(--u) * 14); padding: calc(var(--u) * 24);
+  background: linear-gradient(180deg, #FFFCF6 0%, var(--panel) 100%); border-left: 1px solid var(--border); overflow: hidden; }
+.d23-checkout .kiosk-ticket { flex: 1 1 auto; min-height: 0; padding: calc(var(--u) * 22) calc(var(--u) * 24); border-radius: calc(var(--u) * 22); display: flex; flex-direction: column; }
+.d23-checkout .kiosk-ticket:not(.ck) .kiosk-lines { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.d23-checkout .kiosk-tip { flex: none; padding: calc(var(--u) * 18) calc(var(--u) * 20); border-radius: calc(var(--u) * 22); }
+.d23-center { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; text-align: center; }
+.d23-pay-status { flex: none; background: var(--surface); border: 1px solid var(--border); border-radius: calc(var(--u) * 22); padding: calc(var(--u) * 22); display: flex; justify-content: center; }
+/* the ticket, sized by the unit (CheckoutTicket.tsx) */
+.d23 .kiosk-hi { font-size: calc(var(--u) * 36); }
+.d23 .ck-intro { font-size: calc(var(--u) * 19); margin: calc(var(--u) * 2) 0 calc(var(--u) * 6); }
+.d23 .kiosk-order { font-size: calc(var(--u) * 14); margin-bottom: calc(var(--u) * 6); }
+.d23 .ck-lines { min-height: calc(var(--u) * 70); }
+.d23 .ck-line { padding: calc(var(--u) * 9) 0; gap: calc(var(--u) * 14); }
+.d23 .ck-line-name { font-size: calc(var(--u) * 22); }
+.d23 .ck-line-tech { font-size: calc(var(--u) * 16); }
+.d23 .ck-line-amt { font-size: calc(var(--u) * 22); gap: calc(var(--u) * 10); }
+.d23 .ck-was { font-size: calc(var(--u) * 17); }
+.d23 .ck-totals { margin-top: calc(var(--u) * 8); }
+.d23 .ck-row, .d23 .kiosk-row { font-size: calc(var(--u) * 19); padding: calc(var(--u) * 2.5) 0; }   /* 2.5 (was 3): see .ck-line below */
+.d23 .kiosk-row.total { font-size: calc(var(--u) * 30); padding-top: calc(var(--u) * 12); }
+.d23 .kiosk-lines li { font-size: calc(var(--u) * 21); padding: calc(var(--u) * 9) 0; }
+.d23 .ck-due { font-size: calc(var(--u) * 18); padding-top: calc(var(--u) * 12); margin-top: calc(var(--u) * 6); }
+.d23 .ck-due-amt { font-size: calc(var(--u) * 48); }
+/* the tip, sized by the unit */
+.d23 .kiosk-tip-title { font-size: calc(var(--u) * 28); }
+.d23 .kiosk-tip-sub { font-size: calc(var(--u) * 15); margin: 0 0 calc(var(--u) * 10); }
+.d23 .kiosk-tip-grid { grid-template-columns: repeat(auto-fit, minmax(calc(var(--u) * 120), 1fr)); gap: calc(var(--u) * 12); }
+.d23 .kiosk-tip-opt { padding: calc(var(--u) * 8) calc(var(--u) * 6); border-radius: calc(var(--u) * 16); min-height: max(56px, calc(var(--u) * 84)); justify-content: center; gap: calc(var(--u) * 2); }
+.d23 .kiosk-tip-opt .pct { font-size: calc(var(--u) * 32); }
+.d23 .kiosk-tip-opt .amt { font-size: calc(var(--u) * 17); }
+.d23 .kiosk-tip-row { gap: calc(var(--u) * 12); margin-top: calc(var(--u) * 10); }
+.d23 .kiosk-btn { font-size: calc(var(--u) * 20); padding: calc(var(--u) * 10) calc(var(--u) * 14); border-radius: calc(var(--u) * 14); min-height: var(--tap); }
+.d23 .kiosk-confirm { margin-top: calc(var(--u) * 12); padding: calc(var(--u) * 12) calc(var(--u) * 14); border-radius: calc(var(--u) * 14); }
+.d23 .kiosk-confirm-line { font-size: calc(var(--u) * 20); }
+.d23 .kiosk-confirm-sub { font-size: calc(var(--u) * 15); }
+.d23 .kiosk-pay-wrap { gap: calc(var(--u) * 10); margin-top: calc(var(--u) * 12); }
+.d23 .kiosk-method-title { font-size: calc(var(--u) * 19); }
+.d23 .kiosk-method-grid { gap: calc(var(--u) * 10); }
+.d23 .kiosk-method { padding: calc(var(--u) * 10) calc(var(--u) * 14); border-radius: calc(var(--u) * 14); min-height: var(--tap); }
+.d23 .kiosk-method .m-name { font-size: calc(var(--u) * 24); }
+.d23 .kiosk-method .m-hint { font-size: calc(var(--u) * 13); }
+.d23 .kiosk-method-note { font-size: calc(var(--u) * 14); }
+.d23 .kiosk-pay { font-size: calc(var(--u) * 28); padding: calc(var(--u) * 16); margin-top: calc(var(--u) * 6); border-radius: calc(var(--u) * 18); min-height: var(--tap); }
+.d23 .kiosk-custom { gap: calc(var(--u) * 12); }
+.d23 .kiosk-amount { font-size: calc(var(--u) * 48); }
+.d23 .kiosk-keys { gap: calc(var(--u) * 10); max-width: none; }
+.d23 .kiosk-key { font-size: calc(var(--u) * 28); padding: calc(var(--u) * 10) 0; min-height: var(--tap); border-radius: calc(var(--u) * 14); }
+.d23 .kiosk-custom-actions { max-width: none; gap: calc(var(--u) * 12); }
+/* statuses, the completed summary (§44) */
+.d23 .kiosk-status { gap: calc(var(--u) * 16); max-width: 100%; }
+.d23 .kiosk-glyph { width: calc(var(--u) * 120); height: calc(var(--u) * 120); font-size: calc(var(--u) * 60); }
+.d23 .kiosk-spinner { width: calc(var(--u) * 72); height: calc(var(--u) * 72); border-width: calc(var(--u) * 7); }
+.d23 .kiosk-h { font-size: calc(var(--u) * 40); line-height: 1.15; }
+.d23 .kiosk-sub { font-size: calc(var(--u) * 21); }
+.d23 .kiosk-done { font-size: calc(var(--u) * 20); }
+.d23 .kiosk-paid { font-size: calc(var(--u) * 22); gap: calc(var(--u) * 16); }
+.d23 .kiosk-paid .serif { font-size: calc(var(--u) * 48); }
+.d23 .kiosk-points { font-size: calc(var(--u) * 21); }
+.d23 .kiosk-rate { margin-top: calc(var(--u) * 20); gap: calc(var(--u) * 10); }
+.d23 .kiosk-rate-q { font-size: calc(var(--u) * 21); }
+.d23 .kiosk-star { font-size: calc(var(--u) * 46); min-width: var(--tap); min-height: var(--tap); }
+
+/* logos keep their own shape (a wide wordmark is never squeezed into a square or a circle) */
+img.salon-logo.salon-mark { height: 54px; }
+img.gci-appt-logo.salon-logo { width: auto; height: 74px; max-width: 240px; border: none; border-radius: 0; padding: 0; }
+.d23 img.salon-logo.salon-mark { width: auto; height: calc(var(--u) * 68); max-width: calc(var(--u) * 260); border-radius: 0; box-shadow: none; }
+.d23 img.salon-logo.d23-appt-mark { width: auto; height: calc(var(--u) * 96); max-width: calc(var(--u) * 320); border-radius: 0; }
+.d23 img.salon-logo.d23-welcome-mark { width: auto; height: calc(var(--u) * 150); max-width: calc(var(--u) * 460); border-radius: 0; }
+.d23-key, .d23-primary, .d23-result-wait .v, .d23-result-place b { font-variant-numeric: lining-nums tabular-nums; }
+
+/* §93–§95 the line list scrolls inside the ticket; a soft shadow appears at the edge that has more lines behind it */
+.d23 .ck-lines {
+  background:
+    linear-gradient(var(--surface) 30%, rgba(255, 255, 255, 0)) top / 100% calc(var(--u) * 28) no-repeat local,
+    linear-gradient(rgba(255, 255, 255, 0), var(--surface) 70%) bottom / 100% calc(var(--u) * 28) no-repeat local,
+    radial-gradient(farthest-side at 50% 0, rgba(60, 40, 15, .22), rgba(60, 40, 15, 0)) top / 100% calc(var(--u) * 12) no-repeat scroll,
+    radial-gradient(farthest-side at 50% 100%, rgba(60, 40, 15, .22), rgba(60, 40, 15, 0)) bottom / 100% calc(var(--u) * 12) no-repeat scroll;
+}
+/* one line per item on the 23-inch panel: "Gel Manicure  with Olivia ··· $45.00" */
+.d23 .ck-line-main { flex-direction: row; align-items: baseline; gap: calc(var(--u) * 10); min-width: 0; }
+.d23 .ck-line-name { flex: 0 1 auto; min-width: 0; }
+.d23 .ck-line-tech { flex: none; white-space: nowrap; }
+/* 6 (was 7): with the real typeface (taller than the fallback it replaced, Oct 6 2026) a four-line ticket still fits
+   whole at 1366×768 while the customer pays (§93) */
+.d23 .ck-line { padding: calc(var(--u) * 6) 0; }
+.d23-pay-status { text-align: center; }
+/* the customer pays on the display (tip + method + Pay): the two explanatory lines step aside so a normal ticket still
+   shows every line (§93) — the buttons say what they do */
+.d23 .kiosk-tip.with-pay .kiosk-tip-sub, .d23 .kiosk-tip.with-pay .kiosk-method .m-hint { display: none; }
+.d23 .kiosk-tip.with-pay .kiosk-tip-title { margin-bottom: calc(var(--u) * 8); }
+
+/* §7 optional full-screen idle advertising — any touch returns to check-in */
+.d23-fullscreen { position: fixed; inset: 0; z-index: 50; background: #1b1410; cursor: pointer; transition: opacity .4s ease; }
+.d23-fullscreen.leaving { opacity: 0; }
+.d23-fullscreen-hint { position: absolute; left: 50%; bottom: calc(var(--u) * 30); transform: translateX(-50%); z-index: 3; pointer-events: none;
+  background: rgba(20, 14, 10, .62); color: #fff; padding: calc(var(--u) * 12) calc(var(--u) * 26); border-radius: 999px; font-size: calc(var(--u) * 22); font-weight: 600; }
+
+/* ── 23-inch spec §8–§12: the pairing screen — the code is the only thing that matters, readable from across a desk ── */
+.pair-screen { height: 100%; display: grid; place-items: center; padding: 24px; background: radial-gradient(1200px 800px at 50% -10%, #F6ECD8 0%, #EDE3D1 60%, #E6DAC4 100%); }
+.pair-card {
+  width: min(880px, 100%); background: var(--surface); border: 1px solid var(--border); border-radius: 28px; box-shadow: var(--shadow-lg);
+  padding: clamp(24px, 5vh, 56px) clamp(24px, 5vw, 64px); display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vh, 18px); text-align: center;
+}
+.pair-kicker { font-size: 14px; letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); font-weight: 700; }
+.pair-title { font-size: clamp(30px, 5vh, 46px); font-weight: 700; color: var(--text); }
+.pair-sub { font-size: 20px; color: var(--text-2); }
+.pair-steps { margin: 0; padding-left: 1.2em; text-align: left; font-size: clamp(17px, 2.4vh, 22px); color: var(--text-2); line-height: 1.6; }
+.pair-code {
+  font-family: 'Playfair Display', Georgia, serif; font-variant-numeric: lining-nums tabular-nums; font-weight: 700;
+  font-size: clamp(56px, 12vh, 112px); letter-spacing: .08em; color: var(--gold-dark); padding: 8px 28px; border-radius: 20px;
+  background: var(--panel); border: 2px dashed var(--border-gold); user-select: text;
+}
+.pair-wait { min-height: clamp(80px, 14vh, 140px); display: grid; place-items: center; }
+.pair-expiry { font-size: 16px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.pair-problem { font-size: 17px; color: var(--bad); background: var(--bad-bg); border-radius: 12px; padding: 10px 16px; }
+.pair-note { font-size: 14px; color: var(--text-muted); max-width: 560px; line-height: 1.5; }
+.pair-done { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+
+/* ── §97–§98: the receipt choice — big, plain buttons; destinations are masked by the server ── */
+.kiosk-receipt-opts { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 520px; margin-top: 6px; }
+.kiosk-receipt-opt {
+  appearance: none; cursor: pointer; min-height: 64px; border-radius: 16px; border: 2px solid var(--gold); background: linear-gradient(135deg, var(--gold), var(--gold-dark));
+  color: #fff; font: 700 20px/1.2 'Hanken Grotesk', system-ui, sans-serif; padding: 14px 18px;
+}
+.kiosk-receipt-opt.none { background: var(--surface); color: var(--text-2); border-color: var(--border-gold); }
+.kiosk-receipt-opt:disabled { opacity: .6; }
+.kiosk-receipt-auto { font-size: 15px; color: var(--text-muted); }
+.kiosk-receipt-done { font-size: 17px; color: var(--text-2); }
+.d23 .kiosk-receipt .kiosk-glyph { width: calc(var(--u) * 96); height: calc(var(--u) * 96); font-size: calc(var(--u) * 48); }
+.d23 .kiosk-receipt .kiosk-h { font-size: calc(var(--u) * 34); }
+.d23 .kiosk-receipt-opt { min-height: var(--tap); font-size: calc(var(--u) * 22); }
+
+/* ── §122, §125: one tap to full screen in a browser (the POS's second monitor) ── */
+.fs-btn {
+  position: fixed; top: 12px; right: 12px; z-index: 50; appearance: none; cursor: pointer; border-radius: 999px;
+  border: 1px solid var(--border-gold); background: rgba(255, 253, 248, .92); color: var(--text-2);
+  font: 600 13px/1 'Hanken Grotesk', system-ui, sans-serif; padding: 0 16px; box-shadow: var(--shadow);
+  /* §89: a 44 px touch target like every other control (it was 33 px — found by the layout regression in Unit 7) */
+  min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center;
+}
+
+/* Dual-Screen mandate §118–§119: the guest's language switch — shown only when the salon offers more than one language.
+   Touch-sized (44 px minimum, §93); the pressed language is marked by weight and a border, not colour alone (§92). */
+.lang-switch { display: inline-flex; gap: 6px; flex: none; margin-left: auto; }
+.lang-opt { min-height: 44px; padding: 0 16px; border-radius: 999px; border: 1px solid var(--border, #E7DBC6); background: rgba(255, 255, 255, .75);
+  color: var(--ink, #2B2118); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
+.lang-opt.on { border: 2px solid var(--gold-dark, #8A5A14); font-weight: 800; }
+.d23 .lang-switch { gap: calc(var(--u) * 8); }
+.d23 .lang-opt { min-height: var(--tap); padding: 0 calc(var(--u) * 20); font-size: calc(var(--u) * 18); }
+.d23-head .lang-switch + .d23-clockbtn { margin-left: 0; }
+
+/* 23-inch: the checkout companion — the left side while a checkout is on the right and this display has no check-in */
+.d23-checkout-companion { background: linear-gradient(145deg, #FFFFFF 0%, #FDFBF7 100%); border: 1.5px solid rgba(212, 175, 55, .35); box-shadow: 0 calc(var(--u) * 12) calc(var(--u) * 36) rgba(184, 134, 45, .08); }
+.d23-checkout-companion .d23-companion-title { font-size: calc(var(--u) * 56); color: #2C2118; }
+.d23-companion-sub { font-size: calc(var(--u) * 22); color: #6D5F50; max-width: calc(var(--u) * 640); margin: 0 auto; line-height: 1.5; }
+.d23-companion-summary { width: 100%; max-width: calc(var(--u) * 560); background: rgba(255, 255, 255, .95); border: 1px solid rgba(212, 175, 55, .28); border-radius: calc(var(--u) * 16); padding: calc(var(--u) * 16) calc(var(--u) * 22); display: flex; flex-direction: column; gap: calc(var(--u) * 10); box-shadow: 0 4px 14px rgba(0, 0, 0, .03); }
+.d23-companion-summary-head { display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #F0E6D6; padding-bottom: calc(var(--u) * 8); }
+.d23-companion-summary-head .lbl { font-size: calc(var(--u) * 16); font-weight: 700; color: #A96F22; letter-spacing: .03em; text-transform: uppercase; }
+.d23-companion-summary-head .num { font-size: calc(var(--u) * 15); color: #8B7A68; font-weight: 600; }
+.d23-companion-line { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 12); text-align: left; }
+.d23-companion-line .nm { font-weight: 700; font-size: calc(var(--u) * 20); color: #2C2118; }
+.d23-companion-line .tech { font-size: calc(var(--u) * 16); color: #7A6852; margin-top: 2px; }
+.d23-companion-line .amt { font-weight: 800; font-size: calc(var(--u) * 21); color: #2C2118; }
+.d23-companion-pill { display: inline-flex; align-items: center; gap: 8px; padding: calc(var(--u) * 8) calc(var(--u) * 20); border-radius: 999px; background: rgba(169, 111, 34, .08); color: #8B5A18; font-size: calc(var(--u) * 17); font-weight: 700; }

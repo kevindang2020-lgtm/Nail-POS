@@ -1,0 +1,10 @@
+{
+  "_doc": "Reviewed exceptions to check:one-payroll-calculation (ONE-PAY, Oct 13 2026). Each entry: file + rule + reason. Only shrinks — a stale entry fails the gate.",
+  "entries": [
+    {
+      "file": "modules/memberships/src/memberships-core.ts",
+      "rule": "R5",
+      "reason": "Membership redemption technician/owner split. It calls THE shared percent split (@aipowersalon/money splitByPercent) — the same primitive the compensation engine's technician/salon split uses — because modules/memberships cannot import @aipowersalon/workforce (workforce -> super-admin -> memberships would be a cycle). The frozen techCents is credited to payroll as a compensation adjustment (membership-compensation-core), never recomputed."
+    }
+  ]
+}

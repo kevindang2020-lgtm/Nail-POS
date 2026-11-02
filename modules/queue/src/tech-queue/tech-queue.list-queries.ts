@@ -1,0 +1,12 @@
+// tech-queue.list-queries.ts — BUILD_PLAN Phase 12 (Constitution 5 §47–§52, DoD #21/#22/#23): the declared filters, sorts,
+// search and date-range cap of each list endpoint in tech-queue.controller.ts (@ListQueries on the controller). The legacy
+// parameter names are the handlers' own and keep working; filter[x], q, sort, limit and from/to are the canonical forms
+// (packages/api-contracts/src/list-query.ts). Unknown filter[x] / sort → 400; a range over maxDays → 400.
+import type { ListQuerySpec } from '@aipowersalon/database';
+
+export const TechQueueControllerListQueries = {
+  // 200-technician §2: lanePage / lanePageSize / laneSearch / laneStatus page the technician lanes; roster=none drops the name list
+  state: { filters: { status: { type: 'text' }, source: { type: 'text' }, technicianId: { type: 'id' }, serviceCategory: { type: 'text' }, priority: { type: 'text' }, station: { type: 'text' }, delayStatus: { type: 'text' }, laneStatus: { type: 'text' } }, limitParams: ['pageSize', 'lanePageSize'], search: { params: ['search', 'laneSearch'] }, params: ['page', 'lanePage', 'roster'] },
+  // (the tickets list shares the state's filter reader, so it accepts the same lane parameters — they do not change the list)
+  list: { filters: { status: { type: 'text' }, source: { type: 'text' }, technicianId: { type: 'id' }, serviceCategory: { type: 'text' }, priority: { type: 'text' }, station: { type: 'text' }, delayStatus: { type: 'text' }, laneStatus: { type: 'text' } }, limitParams: ['pageSize', 'lanePageSize'], search: { params: ['search', 'laneSearch'] }, params: ['page', 'lanePage', 'roster'] },
+} satisfies Record<string, ListQuerySpec>;

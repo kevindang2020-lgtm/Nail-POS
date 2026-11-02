@@ -1,0 +1,16 @@
+# Trivy config for the IaC scan in .github/workflows/build-image.yml (Phase 11, Constitution 4 §78–80).
+# Scans the Dockerfile and deploy/ (the LEGACY AWS Terraform — see deploy/terraform/README.md). railway*.json has no
+# Trivy scanner; container-image.vitest.spec.ts lints it instead. App source is skipped (not infrastructure).
+scan:
+  skip-dirs:
+    - apps
+    - modules
+    - packages
+    - tooling
+    - docs
+    - node_modules
+    - "**/node_modules"
+misconfiguration:
+  scanners:
+    - dockerfile
+    - terraform

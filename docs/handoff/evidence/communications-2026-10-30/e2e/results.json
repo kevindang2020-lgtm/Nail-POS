@@ -1,0 +1,161 @@
+{
+ "label": "inbox-e2e",
+ "at": "2026-10-30T21:16:44.390Z",
+ "results": [
+  {
+   "step": "inbox: the original modules stay — 13 KPI tiles, the split inbox, 6 lower modules, 7 quick actions; counts = the server",
+   "ok": true,
+   "detail": "open 19 · unread 20 · total 29 · waiting 20",
+   "ms": 1825
+  },
+  {
+   "step": "inbox: newest activity first; 10 per page → pages 1 / 2 / 3 disjoint; page + size in the URL, search text never",
+   "ok": true,
+   "detail": "p1 10 · p2 10 · p3 9",
+   "ms": 3935
+  },
+  {
+   "step": "inbox: one search box — name, phone in 3 formats, message text; another salon never appears",
+   "ok": true,
+   "detail": "Mai Le→5 · 8565551200→3 · (856) 555-1200→3 · +1 856 555 1200→3 · gel manicure→1",
+   "ms": 12363
+  },
+  {
+   "step": "inbox: Longest unanswered puts the oldest waiting customer first; an answered conversation never outranks it",
+   "ok": true,
+   "detail": "first: Mai Le (Waiting 5 d 23 h)",
+   "ms": 1491
+  },
+  {
+   "step": "inbox: Mai Le — identity, appointment, chronological messages with evidence-based delivery; the timeline joins every source in order",
+   "ok": true,
+   "detail": "customer_message → staff_reply → customer_message → appointment_booked → appointment_reminder → customer_message → ai_call → review_request → customer_message → staff_reply → customer_message",
+   "ms": 4880
+  },
+  {
+   "step": "inbox: a customer text arrives while staff type — the draft, the selection and the reading position stay; the new message appears",
+   "ok": true,
+   "detail": "4 → 5 messages · draft kept · live mode live",
+   "ms": 3596
+  },
+  {
+   "step": "inbox: sending is truthfully BLOCKED while carrier registration is pending (Pilot fixtures) — no provider call",
+   "ok": true,
+   "detail": "Carrier registration is still pending.\nOpen Text Messaging Setup",
+   "ms": 3265
+  },
+  {
+   "step": "inbox: template fills an editable draft (never sends); one Send = one message even on a double click; Submitted → Delivered only from the signed callback",
+   "ok": true,
+   "detail": "one message · SM000000… submitted → delivered (callback)",
+   "ms": 4324
+  },
+  {
+   "step": "inbox: the carrier-failed reply says so (30007) and the customer still counts as waiting",
+   "ok": true,
+   "detail": "Not delivered — the carrier could not deliver it (30007)",
+   "ms": 3261
+  },
+  {
+   "step": "inbox: Unknown contact — Book asks for the verified customer first; linking is audited; Book then opens New Appointment with only the id",
+   "ok": true,
+   "detail": "/booking/new?customerId=:id&from=communications&conversationId=:id",
+   "ms": 4251
+  },
+  {
+   "step": "inbox: possible match (shared number) is never linked by guess; email and call conversations explain why they cannot be answered",
+   "ok": true,
+   "detail": "ambiguous · EMAIL_NOT_CONFIGURED · CALL_THREAD",
+   "ms": 9762
+  },
+  {
+   "step": "inbox: assign, follow-up and close are version-checked, evented and audited; Follow-up due sort brings it first",
+   "ok": true,
+   "detail": "events status_changed, snoozed, assigned, read, customer_linked · stale write → INBOX_VERSION_CONFLICT",
+   "ms": 6588
+  },
+  {
+   "step": "inbox: custom From/To month calendar in the salon zone; end before start impossible; filter + page reset",
+   "ok": true,
+   "detail": "2026-10-28 → 2026-10-30: 17 conversations (America/New_York)",
+   "ms": 2063
+  },
+  {
+   "step": "inbox: New Message opens (or reuses) the customer conversation without sending anything",
+   "ok": true,
+   "detail": "Rosa Tran",
+   "ms": 2406
+  },
+  {
+   "step": "inbox: the seven quick actions go to the real screens",
+   "ok": true,
+   "detail": "/tenant/marketing/campaigns · /tenant/communications/reminders · /tenant/communications/ai-receptionist · /tenant/ai/reviews · /tenant/communications/templates · /reports · New Message dialog",
+   "ms": 10189
+  },
+  {
+   "step": "inbox: an empty salon shows a guided empty state with real zeros; a technician is refused",
+   "ok": true,
+   "detail": "empty salon total 0 · technician 403 · front desk 200",
+   "ms": 1641
+  },
+  {
+   "step": "inbox: Vietnamese — the same screen, every label translated, no English codes",
+   "ok": true,
+   "detail": "vi ok",
+   "ms": 3051
+  }
+ ],
+ "errors": [
+  "ApiError: not in the harness\n    at Object.mapError (http://127.0.0.1:4511/app.js:62102:313)\n    at posHttp (http://127.0.0.1:4511/app.js:61064:29)"
+ ],
+ "unhandled": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 14
+  },
+  {
+   "route": "GET /pos/booking/technicians",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/customers/:id",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/booking/drafts",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/booking/state",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/booking/availability",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/campaigns/state",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/reminders",
+   "n": 1
+  },
+  {
+   "route": "GET /tenant/ai/receptionist/overview",
+   "n": 1
+  },
+  {
+   "route": "GET /tenant/ai/receptionist/calls",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/settings/notifications-reminders/templates",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/reports/state",
+   "n": 1
+  }
+ ]
+}

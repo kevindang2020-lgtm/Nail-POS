@@ -1,0 +1,77 @@
+Constitution 10 §304 Definition of Done — 72 items
+
+  ✓ All existing AI integrations inspected
+  ✓ All provider calls inventoried
+  ✓ All prompts inventoried
+  ✓ All AI modules identified
+  ✓ Central AI Platform implemented
+  ✓ AI Gateway implemented
+  ✓ Task Registry implemented
+  ✓ Provider Registry implemented
+  ✓ Provider adapters implemented
+  ✓ No domain module directly imports provider SDK
+  ✓ Model Registry implemented
+  ✓ Model Router implemented
+  ✓ Routing policies versioned
+  ✓ Prompt Registry implemented
+  ✓ Prompt versions immutable
+  ✓ Prompt rollout works
+  ✓ Prompt rollback works
+  ✓ Tenant AI Settings implemented
+  ✓ Branch AI Settings implemented where needed
+  ✓ Feature entitlements integrated
+  ✓ AI permissions integrated
+  ✓ Structured output schemas implemented
+  ✓ Output validation implemented
+  ✓ Context Builder implemented
+  ✓ Tenant-safe context retrieval implemented
+  ✓ PII redaction implemented
+  ✓ Safety Policy Engine implemented
+  ✓ AI Tool Registry implemented
+  ✓ Tool authorization implemented
+  ✓ Tool tenant context server-derived
+  ✓ Human approval policies implemented
+  ✓ Automation levels implemented
+  ✓ Usage tracking implemented
+  ✓ Cost tracking implemented
+  ✓ Pricing versions implemented
+  ✓ Budget controls implemented
+  ✓ Rate limits implemented
+  ✓ Noisy-neighbor protection implemented
+  ✓ AI job framework implemented
+  ✓ AI attempts tracked
+  ✓ Provider timeouts implemented
+  ✓ Retries implemented
+  ✓ Circuit breakers implemented
+  ✓ Provider health implemented
+  ✓ Provider failover implemented
+  ✓ Idempotency implemented
+  ✓ AI Event Architecture integrated
+  ✓ Realtime progress integrated where needed
+  ✓ Notification integration implemented
+  ✓ Evaluation framework implemented
+  ✓ Golden datasets created
+  ✓ Prompt regression tests implemented
+  ✓ Model regression tests implemented
+  ✓ Prompt injection tests pass
+  ✓ Tool authorization tests pass
+  ✓ Tenant isolation tests pass
+  ✓ Structured-output tests pass
+  ✓ Provider-failure tests pass
+  ✓ Failover tests pass
+  ✓ Cost tests pass
+  ✓ Budget tests pass
+  ✓ Rate-limit tests pass
+  ◐ Load tests pass
+      PARTIAL: decision-path capacity is measured (11.8 µs/request; scheduler linear in queue depth, 9.63 ms at 100k). No concurrency load test against a real provider.
+  ✓ Super Admin AI control plane works
+  ✓ Tenant AI settings UI works
+  ✓ Tenant AI usage UI works
+  ✓ No provider secret exposed
+  ✓ No known cross-tenant AI data leak exists
+  ✓ Build passes
+  ✓ Type checking passes
+  ✓ Lint passes
+  ✓ Tests pass
+
+DONE 71 · PARTIAL 1 · NOT DONE 0

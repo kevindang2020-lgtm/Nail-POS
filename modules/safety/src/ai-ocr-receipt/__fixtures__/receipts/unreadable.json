@@ -1,0 +1,22 @@
+{
+ "name": "unreadable",
+ "type": "unknown",
+ "condition": "dark",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "Textract answered with an empty document: honest 'unavailable' → manual entry, never an empty expense",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [],
+    "LineItemGroups": []
+   }
+  ]
+ },
+ "expected": {
+  "unavailable": true
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

@@ -1,0 +1,75 @@
+DONE      Existing Super Admin fully inspected
+DONE      Control Plane separated from Tenant Operational Plane
+DONE      Platform authentication realm enforced
+DONE      Platform roles implemented
+DONE      Platform permissions implemented
+DONE      Default deny works
+DONE      Step-up authentication works
+DONE      Self-escalation prevention works
+PARTIAL   Platform API separated under /platform  — served under /api/v1/platform/* as an ALIAS of /super-admin/* (decision D1)
+DONE      Tenant lifecycle implemented
+DONE      Tenant creation works
+DONE      Activation works
+DONE      Suspension works  — reason code + reason + step-up; §19 per-cause policy table built and shown; verified: enforced per cause for staff sign-in, customer booking, scheduled messages, owner billing access and data export (billing-only session); settlements are paid by the processor to the salon's own merchant account, so holding them is processor-side and shown as "not gated"
+DONE      Reactivation works  — verified: reason required; SECURITY / FRAUD suspensions need super_admin.security.manage to reactivate; integrations disabled as compromised stay disabled and are reported (§20)
+DONE      Closure workflow exists  — verified: CLOSED → 90-day retention → ARCHIVED, blocked by any active legal hold; no hard delete (§21)
+DONE      Branches oversight works
+DONE      Users & Roles works  — verified: platform roles, invite with a named role (grant ceiling), suspend / reactivate, sessions view and revoke, and MFA reset through a secure workflow (one-time token + own password + live code) (§24)
+DONE      Onboarding works
+DONE      Plan architecture works
+DONE      Feature registry works  — verified: one registry (§30) with §31 metadata and §33 status, kill-switch links, and the §32 resolver (registry → status → kill switch → plan entitlement + tenant override) returning structured reasons
+DONE      Plan entitlements work
+DONE      Tenant overrides work
+DONE      Temporary overrides work
+DONE      Kill switches work  — verified: one centre — AI automatic actions, SMS emergency stop (mass SMS), booking verification, Deals engine, CardPointe and Clover card payments; all with permission, step-up, reason and audit (§34)
+DONE      Usage limits work
+DONE      Usage metering works
+DONE      Usage alerts work
+DONE      Appointment oversight works
+DONE      Customer Data Oversight works safely
+DONE      Workforce Oversight works
+DONE      Booking Monitor works
+DONE      Queue Monitor works
+DONE      Catalog Management works
+DONE      Payments Oversight works
+DONE      Marketing oversight works
+DONE      Deals oversight works
+DONE      Loyalty oversight works
+DONE      Communications oversight works
+DONE      AI & Automation oversight works
+DONE      Platform Settings works
+DONE      Support Center works
+DONE      Support Mode works  — verified: one store (support_access_sessions) for all three entries with realtime scoping; field-level minimisation (§82) masks compensation, bank, customer contact and private notes for roles lacking each class's permission
+DONE      Support Mode expires
+DONE      Support actions are audited
+DONE      System Status works
+DONE      Security module works
+DONE      Platform Audit works
+DONE      Incident Management works
+DONE      Provider Health works
+DONE      Job retry works
+DONE      Realtime operations works
+DONE      Cross-tenant analytics privacy protections work  — verified: no tenant-facing report compares salons today; privacySafeBenchmark (aggregates only, cohort ≥ 5, viewer excluded) is the rule for any future one; unscoped cross-tenant queries in tenant-facing code are refused by the tenant-isolation test
+DONE      Large lists use pagination
+DONE      Platform search is permission-aware
+DONE      Bulk operations are safe
+DONE      Critical actions use confirmation
+DONE      Approval workflows work  — verified: maker/checker framework (§119/§120/§182) — per-action policy (off by default), separation enforced in code and by CHECK, expiry, audit; first action: plan-limit overrides (more register the same way); customer-data deletion keeps its own two-person rule
+PARTIAL   Super Admin frontend modularized  — permission-aware navigation; 148 screens in one app (not split into packages)
+DONE      Super Admin API client isolated
+DONE      No direct database administration remains  — verified by the Phase 1 audit (no query console; 22 sql.raw sites interpolate allowlisted identifiers only)
+DONE      No raw secrets exposed  — verified: a gate scans every read of the 28 secret-bearing tables (select * / selectAll / named columns); all 59 reads are reviewed in-process uses with reasons; a probe that selects a sealed credential fails it
+DONE      No tenant token can call Platform API
+DONE      No customer token can call Platform API
+DONE      Cross-tenant tests pass
+DONE      Support isolation tests pass
+DONE      Privilege escalation tests pass
+DONE      Feature entitlement tests pass
+DONE      Plan-limit tests pass
+DONE      Audit tests pass
+DONE      Load tests pass  — verified: harness at §289 scale passes on PGlite (10k tenants, 200k audit rows, 240k snapshots, 500 sessions; Salon Health paged: 100 per page, 377 ms); real-Postgres races (opt-in PG_RACE_URL) 2/2 on a fresh 484-migration PG16 — and with the changeRole lock removed the 50-round race left ZERO Super Admins in round 1, 3 runs out of 3 (Sep 30 2026)
+DONE      Build passes  — verified each unit
+DONE      Type checking passes  — verified each unit
+DONE      Lint passes  — verified: a gate — 0 errors (9 fixed), per-rule warnings may only shrink below the baseline (153)
+
+§303: 71 DONE · 2 PARTIAL · 0 NOT DONE of 73

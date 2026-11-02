@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book an Appointment</title>
+<style>
+  :root { --bg:#F7EFE3; --card:#FFF; --ink:#241C14; --muted:#7A6E5F; --accent:#A96F22; --line:#E7DCC9; --err:#B3261E; --ok:#1E6B3A; }
+  * { box-sizing:border-box; margin:0; }
+  body { background:var(--bg); color:var(--ink); font:16px/1.45 "Hanken Grotesk", system-ui, sans-serif; min-height:100vh; display:flex; justify-content:center; padding:24px 12px; }
+  .wrap { width:100%; max-width:560px; }
+  h1 { font-family:"Playfair Display", Georgia, serif; font-size:28px; }
+  .sub { color:var(--muted); margin:4px 0 18px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:18px; margin-bottom:14px; }
+  label { display:block; font-size:13px; color:var(--muted); margin:10px 0 4px; }
+  input, select { width:100%; padding:12px; border:1px solid var(--line); border-radius:10px; font-size:16px; background:#fff; }
+  .row { display:flex; gap:10px; } .row > * { flex:1; }
+  button { padding:13px 16px; border:0; border-radius:10px; font-size:16px; cursor:pointer; }
+  .primary { background:var(--accent); color:#fff; width:100%; margin-top:14px; }
+  .ghost { background:transparent; color:var(--accent); width:100%; margin-top:6px; }
+  .slots { display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; margin-top:10px; }
+  .slot { background:#F7F1E6; border:1px solid var(--line); border-radius:10px; padding:10px 4px; text-align:center; font-size:15px; }
+  .slot.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .msg { margin-top:10px; font-size:14px; min-height:18px; }
+  .msg.err { color:var(--err); } .msg.ok { color:var(--ok); }
+  .hide { display:none; }
+  .confirm b { display:block; font-size:20px; margin-bottom:6px; }
+  .rev { background:#FBF6EC; border:1px dashed var(--line); border-radius:10px; padding:12px; margin-top:12px; font-size:15px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 id="title" data-i18n="title">Book an Appointment</h1>
+  <div class="sub" id="sub" data-i18n="sub">No account needed — just your name and mobile number.</div>
+
+  <!-- SCREEN: pick -->
+  <div id="scrPick" class="card hide">
+    <label data-i18n="service">Service</label><select id="selService"></select>
+    <label data-i18n="date">Date</label><input id="selDate" type="date">
+    <button id="loadTimes" class="primary" data-i18n="seeTimes">See available times</button>
+    <div class="slots" id="slotGrid"></div>
+    <div class="msg err" id="pickMsg"></div>
+  </div>
+
+  <!-- SCREEN: details -->
+  <div id="scrWho" class="card hide">
+    <div class="row"><div><label data-i18n="firstName">First name</label><input id="fName"></div><div><label data-i18n="lastName">Last name</label><input id="lName"></div></div>
+    <label data-i18n="phone">Mobile phone</label><input id="phone" type="tel" inputmode="tel" placeholder="(555) 123-4567">
+    <div class="rev" id="review"></div>
+    <button id="doBook" class="primary" data-i18n="confirm">Confirm booking</button>
+    <button id="backPick" class="ghost" data-i18n="changeTime">Change time</button>
+    <div class="msg err" id="whoMsg"></div>
+  </div>
+
+  <!-- SCREEN: verify the phone (BUILD_PLAN Phase 4) -->
+  <div id="scrCode" class="card hide">
+    <b data-i18n="confirmPhone">Confirm it's your phone</b>
+    <div class="sub" id="codeSent" style="margin-top:6px"></div>
+    <div class="sub" id="holdNote"></div>
+    <div id="captchaBox" class="hide" style="margin-top:10px"></div>
+    <label for="code" data-i18n="code">6-digit code</label>
+    <input id="code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="[0-9]*" aria-describedby="codeMsg">
+    <button id="checkCode" class="primary" data-i18n="verifyBook">Verify and book</button>
+    <button id="resend" class="ghost" disabled data-i18n="resend">Resend code</button>
+    <button id="changePhone" class="ghost" data-i18n="otherNumber">Use a different number</button>
+    <div class="msg err" id="codeMsg" role="alert" aria-live="assertive"></div>
+  </div>
+
+  <!-- SCREEN: done -->
+  <div id="scrDone" class="card confirm hide">
+    <b data-i18n="booked">You're booked! ✅</b>
+    <div id="doneDetail"></div>
+    <div class="sub" style="margin-top:10px" data-i18n="willText">The salon will text you if anything changes.</div>
+    <button id="again" class="primary" data-i18n="again">Book another appointment</button>
+  </div>
+
+  <!-- SCREEN: link problem -->
+  <div id="scrBad" class="card hide">
+    <b id="badTitle" data-i18n="linkInvalid">This booking link isn't valid</b>
+    <div class="sub" id="badMsg" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  'use strict';
+  // Guest booking — NO login. Trust comes from the signed link (`t`), which the API verifies server-side.
+  // `s` is the public salon id, used only to list the salon's services through the public discovery endpoint.
+  const P = new URLSearchParams(location.search);
+  const API = P.get('api') || window.APS_API_BASE || '';
+  const TOKEN = P.get('t') || '';
+  const $ = (id) => document.getElementById(id);
+  // Every string the guest reads lives in ONE dictionary (Oct 14 build plan §221) — English only since Oct 28 2026.
+  const I18N = {"en": {"title": "Book an Appointment", "sub": "No account needed — just your name and mobile number.", "service": "Service", "date": "Date", "seeTimes": "See available times", "firstName": "First name", "lastName": "Last name", "phone": "Mobile phone", "confirm": "Confirm booking", "changeTime": "Change time", "confirmPhone": "Confirm it's your phone", "code": "6-digit code", "verifyBook": "Verify and book", "resend": "Resend code", "resendIn": "Resend code in {s}s", "otherNumber": "Use a different number", "booked": "You're booked! ✅", "willText": "The salon will text you if anything changes.", "again": "Book another appointment", "linkInvalid": "This booking link isn't valid", "linkIncomplete": "This booking link is incomplete", "askFresh": "Ask the salon for a fresh booking link.", "linkExpired": "This booking link has expired", "tooMany": "Too many requests", "waitReload": "Please wait a minute and reload this page.", "noSalon": "We could not load this salon", "tryOrCall": "Please try again shortly, or call the salon to book.", "noOnline": "Online booking is not available", "noServices": "This salon has no bookable services listed right now.", "pickServiceDate": "Pick a service and a date.", "tooManyMoment": "Too many requests just now — try again in a moment.", "noTimes": "Could not load times for that day.", "enterName": "Enter your first and last name.", "enterMobile": "Enter a mobile number we can reach you on.", "tooManyBooking": "Too many booking requests — please try again in a moment.", "yourService": "Your service", "with": "with", "verifyFirst": "This salon verifies phone numbers before booking online. Please call the salon to finish this booking.", "verifyUnavailable": "We can’t verify phone numbers right now, so this booking can’t be taken online. Please call the salon.", "badPhone": "That phone number doesn’t look right — please check it.", "timeTaken": "That time was just taken. Pick another time.", "notBookable": "This link can’t book that service.", "couldNotBook": "We could not complete this booking. Please call the salon.", "tooManyAttempts": "Too many attempts. Please choose your time again.", "waitCode": "Please wait a moment before asking for another code.", "noCode": "We could not send a code right now. Please try again, or call the salon.", "loadingCheck": "Loading the security check…", "robotCheck": "We need to confirm you’re not a robot, and we can’t show that check right now. Please call the salon to book.", "enterCode": "Enter the 6-digit code we texted you.", "codeWrong": "That code didn’t work. Please try again.", "texted": "We texted a 6-digit code to {phone}."}};
+  // POSLanguage.pdf §15 (Oct 28 2026): online booking is ENGLISH ONLY — no Vietnamese text, no switch, no browser-language
+  // detection, whatever the salon's POS language. Salon / service / technician names are shown exactly as the salon saved them.
+  const LANG = 'en';
+  const t = (k, vars) => { let v = (I18N[LANG] && I18N[LANG][k]) || I18N.en[k] || k; if (vars) for (const [n, x] of Object.entries(vars)) v = v.replace('{' + n + '}', String(x)); return v; };
+  // Security Deep Scan §87: every value from the API that lands in innerHTML goes through esc() (check:html enforces it)
+  const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  const applyLang = () => { document.documentElement.lang = LANG; document.querySelectorAll('[data-i18n]').forEach((el) => { el.textContent = t(el.getAttribute('data-i18n')); }); };
+  applyLang();
+  const show = (id) => { for (const s of ['scrPick','scrWho','scrCode','scrDone','scrBad']) $(s).classList.toggle('hide', s !== id); };
+  const msg = (id, text, ok) => { const el = $(id); el.textContent = text || ''; el.className = 'msg ' + (ok ? 'ok' : 'err'); };
+  const api = async (path, opts = {}) => {
+    const res = await fetch(API + path, { headers: { 'Content-Type': 'application/json' }, ...opts });
+    let body = null; try { body = await res.json(); } catch {}
+    return { status: res.status, body };
+  };
+  const bad = (title, text) => { $('badTitle').textContent = title; $('badMsg').textContent = text; show('scrBad'); };
+  // A booking submission is retried at most once per attempt; the key makes a retry safe (never double-books).
+  const newKey = () => 'pub-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+
+  let services = [];
+  let chosen = { serviceId: '', date: '', startTime: '', technicianId: '', technicianName: '' };
+  // Phase 4: the booking session a "verify first" refusal issued (sealed by the API for this link), and whether its
+  // code has been entered. The retry carries it; the API claims the proof for exactly one appointment.
+  let verify = null;   // { session, mask, holdExpiresAt, phone, verified }
+  let resendTimer = null;
+  // A per-browser id, so a proof made here is trusted only here. Storage can be blocked — then there is simply none.
+  const deviceId = (() => { try { let d = localStorage.getItem('aps.device'); if (!d) { d = 'web-' + Math.random().toString(36).slice(2) + Date.now().toString(36); localStorage.setItem('aps.device', d); } return d; } catch { return undefined; } })();
+  const fmtTime = (iso) => { try { return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); } catch { return ''; } };
+
+  async function start() {
+    if (!TOKEN) return bad(t('linkIncomplete'), t('askFresh'));
+    // The services come from the signed link itself (Phase 4) — not public discovery, which needs a listed salon and a
+    // branch id the link does not carry. `s` is no longer needed (old links still carry it; it is ignored).
+    const r = await api('/api/ai-booking/v1/public/services', { method: 'POST', body: JSON.stringify({ token: TOKEN }) });
+    if (r.status === 401) return bad(t('linkExpired'), t('askFresh'));
+    if (r.status === 429) return bad(t('tooMany'), t('waitReload'));
+    if (r.status !== 200 && r.status !== 201) return bad(t('noSalon'), t('tryOrCall'));
+    const list = Array.isArray(r.body) ? r.body : (r.body?.services || r.body?.data || []);
+    services = list.filter((s) => s && s.id);
+    if (!services.length) return bad(t('noOnline'), t('noServices'));
+    $('selService').innerHTML = services.map((s) => `<option value="${esc(s.id)}">${esc(s.name)}${s.durationMinutes ? ' · ' + esc(s.durationMinutes) + ' min' : ''}</option>`).join('');
+    const today = new Date().toISOString().slice(0, 10);
+    $('selDate').value = today; $('selDate').min = today;
+    show('scrPick');
+  }
+
+  $('loadTimes').onclick = async () => {
+    msg('pickMsg', ''); $('slotGrid').innerHTML = ''; chosen.startTime = '';
+    chosen.serviceId = $('selService').value; chosen.date = $('selDate').value;
+    if (!chosen.serviceId || !chosen.date) { msg('pickMsg', t('pickServiceDate')); return; }
+    const r = await api('/api/ai-booking/v1/public/availability/search', { method: 'POST', body: JSON.stringify({ token: TOKEN, date: chosen.date, serviceIds: [chosen.serviceId] }) });
+    if (r.status === 401) return bad(t('linkExpired'), t('askFresh'));
+    if (r.status === 429) { msg('pickMsg', t('tooManyMoment')); return; }
+    if (r.status !== 200 && r.status !== 201) { msg('pickMsg', r.body?.message || t('noTimes')); return; }
+    // options = [{ technicianId, technicianName, slots: [...] }] — flatten to (time → first free technician)
+    const byTime = new Map();
+    for (const o of (r.body?.options || [])) {
+      for (const s of (o.slots || [])) {
+        const t = typeof s === 'string' ? s : (s.startTime || s.time);
+        const free = typeof s === 'string' ? true : (s.available !== false);
+        if (!t || !free || byTime.has(t)) continue;
+        byTime.set(t, { technicianId: o.technicianId, technicianName: o.technicianName });
+      }
+    }
+    const times = [...byTime.keys()].sort();
+    if (!times.length) { $('slotGrid').innerHTML = '<div class="msg">No open times that day — try another date.</div>'; return; }
+    $('slotGrid').innerHTML = times.map((tm) => `<button class="slot" data-t="${esc(tm)}">${esc(tm)}</button>`).join('');
+    for (const b of $('slotGrid').querySelectorAll('.slot')) b.onclick = () => {
+      for (const x of $('slotGrid').querySelectorAll('.slot')) x.classList.remove('on');
+      b.classList.add('on');
+      const info = byTime.get(b.dataset.t);
+      chosen.startTime = b.dataset.t; chosen.technicianId = info.technicianId; chosen.technicianName = info.technicianName || '';
+      const svc = services.find((s) => s.id === chosen.serviceId);
+      $('review').textContent = `${svc ? svc.name : 'Service'} · ${chosen.date} at ${chosen.startTime}` + (chosen.technicianName ? ` · with ${chosen.technicianName}` : '');
+      msg('whoMsg', ''); show('scrWho');
+    };
+  };
+
+  $('backPick').onclick = () => show('scrPick');
+
+  async function book() {
+    msg('whoMsg', '');
+    const first = $('fName').value.trim(), last = $('lName').value.trim(), phone = $('phone').value.trim();
+    if (!first || !last) { msg('whoMsg', t('enterName')); return; }
+    if (phone.replace(/\D/g, '').length < 10) { msg('whoMsg', t('enterMobile')); return; }
+    if (verify && verify.phone !== phone) verify = null;   // a different number starts over
+    const r = await api('/api/ai-booking/v1/public/appointments', { method: 'POST', body: JSON.stringify({
+      token: TOKEN, customerName: `${first} ${last}`, customerPhone: phone,
+      serviceIds: [chosen.serviceId], date: chosen.date, startTime: chosen.startTime,
+      technicianId: chosen.technicianId || undefined,
+      confirm: true,               // the API refuses any write without explicit confirmation
+      idempotencyKey: newKey(),    // a retry can never double-book
+      bookingSessionId: verify ? verify.session : undefined, deviceId,
+    }) });
+    if (r.status === 401) return bad(t('linkExpired'), t('askFresh'));
+    if (r.status === 429) { msg(verify ? 'codeMsg' : 'whoMsg', t('tooManyBooking')); return; }
+    const b = r.body || {};
+    if (b.ok === true) {
+      verify = null;
+      const svc = services.find((s) => s.id === chosen.serviceId);
+      $('doneDetail').textContent = `${svc ? svc.name : t('yourService')} · ${chosen.date} · ${chosen.startTime}` + (chosen.technicianName ? ` · ${t('with')} ${chosen.technicianName}` : '');
+      show('scrDone'); return;
+    }
+    // Honest, specific failures — each of these is a real API outcome, not a guess.
+    const code = b.errorCode || b.code || '';
+    if (code === 'PHONE_VERIFICATION_REQUIRED' && b.bookingSessionId) {
+      verify = { session: b.bookingSessionId, mask: b.maskedPhone || '', holdExpiresAt: b.holdExpiresAt || null, phone, verified: false };
+      $('codeSent').textContent = '';
+      $('holdNote').textContent = verify.holdExpiresAt ? `We're holding this time for you until ${fmtTime(verify.holdExpiresAt)}.` : '';
+      $('code').value = ''; msg('codeMsg', ''); show('scrCode');
+      await sendCode();
+      return;
+    }
+    if (code === 'PHONE_VERIFICATION_REQUIRED') { msg('whoMsg', b.message || t('verifyFirst')); return; }
+    if (code === 'PHONE_VERIFICATION_UNAVAILABLE') { msg('whoMsg', b.message || t('verifyUnavailable')); show('scrWho'); return; }
+    if (code === 'INVALID_PHONE') { msg('whoMsg', t('badPhone')); show('scrWho'); return; }
+    if (code === 'APPOINTMENT_CONFLICT') { verify = null; msg('pickMsg', t('timeTaken')); show('scrPick'); $('loadTimes').onclick(); return; }
+    if (code === 'SERVICE_NOT_BOOKABLE') { msg('whoMsg', t('notBookable')); show('scrWho'); return; }
+    msg(verify ? 'codeMsg' : 'whoMsg', b.message || t('couldNotBook'));
+  }
+  $('doBook').onclick = () => { void book(); };
+
+  // ── the code ─────────────────────────────────────────────────────────────────────────────────────────────
+  function cooldown(seconds) {
+    clearInterval(resendTimer);
+    let left = seconds; $('resend').disabled = true;
+    const tick = () => { $('resend').textContent = left > 0 ? t('resendIn', { s: left }) : t('resend'); $('resend').disabled = left > 0; left--; if (left < -1) clearInterval(resendTimer); };
+    tick(); resendTimer = setInterval(tick, 1000);
+  }
+  async function sendCode(captchaToken) {
+    if (!verify) return;
+    msg('codeMsg', '');
+    const r = await api('/api/ai-booking/v1/public/verification/send', { method: 'POST', body: JSON.stringify({
+      token: TOKEN, bookingSessionId: verify.session, customerPhone: verify.phone, deviceId, captchaToken: captchaToken || undefined }) });
+    const b = r.body || {};
+    if (r.status === 200 || r.status === 201) {
+      $('captchaBox').classList.add('hide');
+      if (b.status === 'already_verified') { verify.verified = true; return book(); }
+      $('codeSent').textContent = t('texted', { phone: b.maskedPhone || verify.mask });
+      cooldown(30); $('code').focus(); return;
+    }
+    if (b.status === 'captcha_required') return showCaptcha();
+    if (r.status === 429 && b.status === 'too_many_attempts') { verify = null; msg('pickMsg', b.message || t('tooManyAttempts')); show('scrPick'); return; }
+    if (r.status === 429) { msg('codeMsg', b.message || t('waitCode')); if (b.retryAfterSeconds) cooldown(Math.min(Number(b.retryAfterSeconds), 3600)); return; }
+    if (r.status === 400 && /expired/i.test(b.message || '')) { verify = null; msg('whoMsg', b.message); show('scrWho'); return; }
+    msg('codeMsg', b.message || t('noCode'));
+  }
+  async function showCaptcha() {
+    const box = $('captchaBox'); box.classList.remove('hide'); box.textContent = t('loadingCheck');
+    const cfg = (await api('/api/ai-booking/v1/public/verification/captcha')).body || {};
+    const P2 = { turnstile: ['https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit', 'turnstile'], hcaptcha: ['https://js.hcaptcha.com/1/api.js?render=explicit', 'hcaptcha'], recaptcha: ['https://www.google.com/recaptcha/api.js?render=explicit', 'grecaptcha'] }[cfg.provider];
+    const unavailable = () => { box.textContent = t('robotCheck'); };
+    if (!P2 || !cfg.siteKey) return unavailable();
+    const el = document.createElement('script'); el.src = P2[0]; el.async = true;
+    el.onerror = unavailable;
+    el.onload = () => {
+      const g = window[P2[1]]; if (!g || !g.render) return unavailable();
+      box.textContent = '';
+      const render = () => g.render(box, { sitekey: cfg.siteKey, callback: (t) => sendCode(t) });
+      if (cfg.provider === 'recaptcha' && g.ready) g.ready(render); else render();
+    };
+    document.head.appendChild(el);
+  }
+  async function checkCode() {
+    if (!verify) return;
+    const code = $('code').value.replace(/\D/g, '');
+    if (code.length !== 6) { msg('codeMsg', t('enterCode')); return; }
+    $('checkCode').disabled = true;
+    try {
+      const r = await api('/api/ai-booking/v1/public/verification/check', { method: 'POST', body: JSON.stringify({ token: TOKEN, bookingSessionId: verify.session, customerPhone: verify.phone, code }) });
+      const b = r.body || {};
+      if ((r.status === 200 || r.status === 201) && b.status === 'phone_verified') { verify.verified = true; await book(); return; }
+      $('code').value = '';
+      if (b.status === 'too_many_attempts') { verify = null; msg('pickMsg', b.message || t('tooManyAttempts')); show('scrPick'); return; }
+      msg('codeMsg', b.message || t('codeWrong'));
+    } finally { $('checkCode').disabled = false; }
+  }
+  $('checkCode').onclick = () => { void checkCode(); };
+  $('code').oninput = () => { const v = $('code').value.replace(/\D/g, '').slice(0, 6); $('code').value = v; if (v.length === 6) void checkCode(); };
+  $('resend').onclick = () => { void sendCode(); };
+  $('changePhone').onclick = () => { verify = null; clearInterval(resendTimer); msg('whoMsg', ''); show('scrWho'); $('phone').focus(); };
+
+  $('again').onclick = () => { verify = null; $('slotGrid').innerHTML = ''; chosen.startTime = ''; show('scrPick'); };
+
+  start();
+})();
+</script>
+</body>
+</html>

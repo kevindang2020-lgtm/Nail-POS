@@ -1,0 +1,228 @@
+{
+ "at": "2026-10-30T04:12:11.001Z",
+ "results": [
+  {
+   "step": "loyalty: KPIs are the server numbers",
+   "ok": true,
+   "detail": "members 88, points 21,280, reconciled true",
+   "ms": 106
+  },
+  {
+   "step": "loyalty: Enroll Member → the new member is first on Page 1",
+   "ok": true,
+   "detail": "Anh Nguyễn enrolled; profiles 88 → 89; note: Anh Nguyễn is now a loyalty member.\n✕",
+   "ms": 2277
+  },
+  {
+   "step": "loyalty: Create Reward → it is first on Page 1 of the catalog",
+   "ok": true,
+   "detail": "first catalog row: E2E $7 off",
+   "ms": 605
+  },
+  {
+   "step": "loyalty: Adjust points — a double tap posts ONE ledger entry",
+   "ok": true,
+   "detail": "2 POST(s) sent, ledger +1 (415 → 416); Anh Nguyễn now 50 pts",
+   "ms": 597
+  },
+  {
+   "step": "loyalty: Redeem → the code is first in Recent Redemptions; balance checked server-side",
+   "ok": true,
+   "detail": "redeemed \"E2E $7 off\"; Linh Nguyễn redeemed E2E $7 off — balance 165.\n✕",
+   "ms": 1013
+  },
+  {
+   "step": "loyalty: Redemption detail → Void restores the points (audited)",
+   "ok": true,
+   "detail": "status Voided; audit member_enrolled, points_adjusted, reward_redeemed, redemption_voided",
+   "ms": 987
+  },
+  {
+   "step": "loyalty: numbered pages — Page 2 shows the next rows, Previous / Next bounds",
+   "ok": true,
+   "detail": "range on page 2: 5–8 of 89",
+   "ms": 874
+  },
+  {
+   "step": "loyalty: Points Ledger + Manage Tiers open, Escape closes, focus returns",
+   "ok": true,
+   "detail": "ledger rows 10; tiers 4; focus back on \"Points Ledger\"",
+   "ms": 427
+  },
+  {
+   "step": "retention: Never Visited is its own segment (no last visit, not at risk)",
+   "ok": true,
+   "detail": "never 37, at risk 204 (every at-risk row has a completed visit)",
+   "ms": 492
+  },
+  {
+   "step": "retention: At Risk is the longest absence first",
+   "ok": true,
+   "detail": "days away on page 1: 480, 479, 469, 468, 468, 454, 453, 452, 451, 451",
+   "ms": 449
+  },
+  {
+   "step": "retention: select across pages → preview (exclusions explained) → confirm → individual texts",
+   "ok": true,
+   "detail": "Selected 3; 3 individual text(s) through the recorder; body: \"Pilot Nail Salon: We miss you! Book your next visit this week. Reply STOP to opt out.\"",
+   "ms": 4491
+  },
+  {
+   "step": "retention: campaign history shows per-recipient status (no invented \"delivered\")",
+   "ok": true,
+   "detail": "status completed; counts {\"excluded\":0,\"queued\":0,\"sent\":3,\"delivered\":0,\"undelivered\":0,\"blocked\":0,\"failed\":0,\"unknown\":0,\"simulated\":0}; tiles 3 Selected | 0 Queued | 3 Sent | 0 Delivered | 0 Undelivered | 0 Blocked at send time | 0 Failed | 0 Unknown — not re-sent | 0 Excluded",
+   "ms": 5599
+  },
+  {
+   "step": "retention: a confirmed campaign re-sent with the same key is the same campaign (no new jobs)",
+   "ok": true,
+   "detail": "duplicate=true; jobs unchanged [{\"status\":\"succeeded\",\"n\":9}]",
+   "ms": 95
+  },
+  {
+   "step": "retention: \"Select all matching\" needs an explicit second confirmation and stays a server-side selection",
+   "ok": true,
+   "detail": "This selects all 204 customers in “At Risk 60+ days” across every page — not just this page. → \"All matching in At Risk 60+ days: 204 (checked again at preview)\" → cleared",
+   "ms": 606
+  },
+  {
+   "step": "memberships: quick action \"Add New Member\" works",
+   "ok": true,
+   "detail": "\"Add New Member\" opened; Escape closed it",
+   "ms": 1091
+  },
+  {
+   "step": "memberships: quick action \"Create Plan\" works",
+   "ok": true,
+   "detail": "\"Plan Builder\" opened; Escape closed it",
+   "ms": 1093
+  },
+  {
+   "step": "memberships: quick action \"Send Reminder\" works",
+   "ok": true,
+   "detail": "Send 14 reminder(s) → 14 reminder(s) sent (0 by text) · 0 already reminded.\n✕",
+   "ms": 1260
+  },
+  {
+   "step": "memberships: quick action \"Manage Discounts\" works",
+   "ok": true,
+   "detail": "PLAN BENEFIT TYPE SERVICE VALUE MAX / CYCLE Basic Glow v1 Monthly gel manicure Service credit Gel Manicure $45.00 1 Pedi Club v1 Monthly spa",
+   "ms": 843
+  },
+  {
+   "step": "memberships: quick action \"Membership Report\" works",
+   "ok": true,
+   "detail": "Total Members 54 · +4 joined this month Active Members 36 · 67% Revenue · this month $1,764.00 · 36 payment(s) collected · -5.3% vs last mon",
+   "ms": 858
+  },
+  {
+   "step": "memberships: quick action \"Export Members\" works",
+   "ok": true,
+   "detail": "membership-members-2026-10-30.csv: 64 line(s), BOM true, formula-safe",
+   "ms": 136
+  },
+  {
+   "step": "memberships: quick action \"Export Payments\" works",
+   "ok": true,
+   "detail": "membership-payments-2026-10-30.csv: 76 line(s), BOM true, formula-safe",
+   "ms": 113
+  },
+  {
+   "step": "memberships: quick action \"Export Redemptions\" works",
+   "ok": true,
+   "detail": "membership-redemptions-2026-10-30.csv: 12 line(s), BOM true, formula-safe",
+   "ms": 160
+  },
+  {
+   "step": "memberships: quick action \"Plan Performance\" works",
+   "ok": true,
+   "detail": "PLAN ACTIVE NOW JOINED CANCELED REVENUE (MONTH) LAST MONTH RENEWALS FAILED PAYMENTS REDEMPTIONS Pedi Club 12 0 2 $1,062.00 $1,121.00 18 1 6 ",
+   "ms": 854
+  },
+  {
+   "step": "memberships: quick action \"Membership Settings\" works",
+   "ok": true,
+   "detail": "/settings?section=loyalty-memberships",
+   "ms": 2067
+  },
+  {
+   "step": "memberships: Expiring Soon opens Members filtered to the next 7 days (count = the card)",
+   "ok": true,
+   "detail": "Expiring KPI 6; Members tab \"Showing 1–6 of 6 · Page 1 of 1\"",
+   "ms": 516
+  },
+  {
+   "step": "memberships: phone search in four formats finds the same member (all tenant records, not Page 1)",
+   "ok": true,
+   "detail": "Emily Phạm: 2155551173 → 1 · (215) 555-1173 → 1 · 215-555-1173 → 1 · +1 215 555 1173 → 1",
+   "ms": 5920
+  },
+  {
+   "step": "memberships: similar names stay separate people (two rows, two membership IDs)",
+   "ok": true,
+   "detail": "5 row(s): Linh Bùi #M1003 | Linh Johnson #M1027 | Linh Hoàng #M1006 | Linh Phạm #M1010 | Linh Nguyễn #M1043",
+   "ms": 1743
+  },
+  {
+   "step": "memberships: numbered pages are newest enrolment first; Page 2 continues Page 1",
+   "ok": true,
+   "detail": "page 1 starts Rosa Hoàng, page 2 starts Linh Bùi; 64 total",
+   "ms": 882
+  },
+  {
+   "step": "memberships: a period filters the event list only — the current-state cards do not move",
+   "ok": true,
+   "detail": "activity all \"Showing 1–10 of 76 · Page 1 of 8\" → today \"Showing 0–0 of 0 · Page 1 of 1\" (server 0); KPIs unchanged",
+   "ms": 1271
+  },
+  {
+   "step": "memberships: Custom Range opens a month calendar; Apply filters Payments by payment date",
+   "ok": true,
+   "detail": "range \"Oct 1, 2026 – Oct 31, 2026\" · Collected $1,764.00 Refunded $0.00 Net collected $1,764.00 Failed charges 2 Totals cover every payment matching the sear",
+   "ms": 1449
+  },
+  {
+   "step": "memberships: Member Details — identity, lifecycle, billing, benefits, activity + audit",
+   "ok": true,
+   "detail": "Member Linh Bùi Phone No phone on file Customer ID e0510000-0000-4000-8000-00000000000b Me || billing: Overview Billing Benefits Activity & audit No payments with  || benefits: Overview Billing Benefits Activity & audit BENEFIT SERVICE P || activity: Overview Billing Benefits Activity & audit WHEN CUSTOMER EVE",
+   "ms": 1833
+  },
+  {
+   "step": "memberships: the sidebar highlights Memberships, not Service Packages",
+   "ok": true,
+   "detail": "active: Memberships",
+   "ms": 1955
+  },
+  {
+   "step": "vi: Loyalty renders in Vietnamese (no English UI labels)",
+   "ok": true,
+   "detail": "Thân thiết & Phần thưởng — Đăng ký thành viên | Tạo phần thưởng | Cài đặt | Sổ điểm | Quản lý hạng | Báo cáo thân thiết | Cài đặt",
+   "ms": 87
+  },
+  {
+   "step": "vi: the SMS composer is Vietnamese, the customer-facing text stays English",
+   "ok": true,
+   "detail": "title \"Gửi SMS giữ chân khách\", message placeholder (customer-facing, English): \"Hi! We miss seeing you. Book your next appointment with us!\"",
+   "ms": 613
+  }
+ ],
+ "errors": [],
+ "unhandled": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 5
+  },
+  {
+   "route": "GET /pos/services",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/technicians/salon-commission",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/settings/state",
+   "n": 1
+  }
+ ]
+}

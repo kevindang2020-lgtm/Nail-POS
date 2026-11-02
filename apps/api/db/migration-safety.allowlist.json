@@ -1,0 +1,77 @@
+{
+  "$comment": "check:migration-safety (apps/api/scripts/check-migration-safety.mjs) — B-15 (Oct 20 2026). Every destructive migration statement, reviewed per file with a reason; `rules` caps the count per rule (D1 DROP TABLE, D2 DROP COLUMN, D3 RENAME, D4 SET NOT NULL, D5 column TYPE, D6 copy-and-drop in one file, D7 TRUNCATE / bare DELETE / NOT NULL add without default). A D1 whose file has no empty check / archive needs `archived` or `provenEmpty` with the how in the reason. Pre-gate baseline (≤ 666): reviewed Oct 20 2026 — no production database exists (HOSTING A: nothing is hosted), so none of these ever ran against data that matters; the counts only shrink. New migrations: expand → backfill → contract across releases (DEPLOYMENT.md), a DROP TABLE proven empty or archived in the same file.",
+  "migrations": {
+    "041_drop_legacy_appointments.sql": {
+      "rules": {
+        "D1": 2
+      },
+      "provenEmpty": true,
+      "reason": "Pre-gate. Legacy `appointments` / `appointment_service_lines` superseded by pos_tech_appointments (zero readers / writers, no FKs, per the file's audit); DROP IF EXISTS. No database that ran 041 held a row in them (no production database has ever existed)."
+    },
+    "376_global_tech_identity.sql": {
+      "rules": {
+        "D4": 1
+      },
+      "reason": "Pre-gate. tech_code SET NOT NULL immediately after the in-file backfill (UPDATE … WHERE tech_code IS NULL) — the backfill and the constraint ship in one release, which the gate would now split; accepted as the baseline."
+    },
+    "451_hash_plaintext_tokens.sql": {
+      "rules": {
+        "D2": 1,
+        "D3": 1,
+        "D6": 1
+      },
+      "reason": "Pre-gate. RENAME download_token → download_token_hash with the hash rewrite in the same file (every reader shipped with it); DROP COLUMN public_token (no reader); the file adds token_hash and drops public_token (D6). Accepted as the baseline; 542 finished its deferred part."
+    },
+    "463_tenant_lifecycle_state.sql": {
+      "rules": {
+        "D4": 1
+      },
+      "reason": "Pre-gate. lifecycle_state SET NOT NULL after the in-file backfill and the sync trigger that fills it on every write — one release, accepted as the baseline."
+    },
+    "526_ai_queue_recommendation_config_version.sql": {
+      "rules": {
+        "D5": 1
+      },
+      "reason": "Pre-gate. INTEGER → TEXT on a column added two migrations earlier in the same phase that nothing had written yet (the file says so); no data to rewrite."
+    },
+    "540_loyalty_ledger_truth.sql": {
+      "rules": {
+        "D4": 3
+      },
+      "reason": "Pre-gate. entry_type / delta / balance_after SET NOT NULL after the in-file backfill and the fill-columns trigger; one release, accepted as the baseline."
+    },
+    "541_audit_fields_and_duplicate_stores.sql": {
+      "rules": {
+        "D1": 4,
+        "D6": 1
+      },
+      "reason": "Pre-gate. The four duplicate stores are each archived into the canonical table (INSERT … SELECT, proven in-file) before their DROP; copy-and-drop in one file (D6) is the exact case the gate now refuses for a new migration (expand in one release, contract in the next). No production database existed below 541, so no pre-flight archive is owed (B-15)."
+    },
+    "542_unused_audit_tables_and_451_cleanup.sql": {
+      "rules": {
+        "D1": 3,
+        "D2": 4
+      },
+      "provenEmpty": true,
+      "reason": "Pre-gate. Three per-screen audit tables with no reader or writer (grep of Oct 8 2026 in the file) dropped with NO empty check — the B-15 finding. Attested provenEmpty: no database that ran 542 was a production database (nothing has ever been hosted), so no audit row was lost. D2 ×4 = the two guarded column drops (token after its hash is filled; signing_secret only when no plaintext row remains, else deferred), each appearing in its EXECUTE and its retry_sql."
+    },
+    "631_technician_service_eligibility_backcompat.sql": {
+      "rules": {
+        "D4": 1
+      },
+      "reason": "Pre-gate. service_eligibility_mode SET NOT NULL after the in-file backfill (legacy_unconfigured / exact) and SET DEFAULT; one release, accepted as the baseline."
+    },
+    "703_audit_no_truncate.sql": {
+      "rules": {
+        "D7": 5
+      },
+      "reason": "Oct 28 2026 (Security Deep Scan §137): not a TRUNCATE — the word appears only in a BEFORE TRUNCATE statement trigger and its error text, which REFUSE truncation of the audit tables. No data is touched."
+    },
+    "751_referral_program_center.sql": {
+      "rules": {
+        "D4": 1
+      },
+      "reason": "Oct 31 2026 (Referral Program guide): referral_redemptions.state is ADDED in this same file, every existing row is backfilled from the legacy status in the UPDATE just above (pending → PENDING_QUALIFICATION, void → CANCELLED, rewarded → UNDER_REVIEW), and the column gets a DEFAULT before SET NOT NULL — no row can be NULL. Legacy status / reward_cents are kept untouched."
+    }
+  }
+}

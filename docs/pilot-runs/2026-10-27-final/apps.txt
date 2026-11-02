@@ -1,0 +1,10 @@
+PASS  apps/admin-web: Test Files  179 passed (179) | Tests  1066 passed (1066)
+PASS  apps/customer-display: Test Files  21 passed (21) | Tests  203 passed (203)
+PASS  apps/customer-web: Test Files  66 passed (66) | Tests  282 passed (282)
+PASS  apps/go-check-in-kiosk: Test Files  3 passed (3) | Tests  8 passed (8)
+PASS  apps/manager-pay-web: Test Files  20 passed (20) | Tests  120 passed (120)
+PASS  apps/owner-web: Test Files  67 passed (67) | Tests  368 passed (368)
+PASS  apps/pos-web: Test Files  348 passed (348) | Tests  1649 passed (1649)
+PASS  apps/tech-web: Test Files  41 passed (41) | Tests  201 passed (201)
+
+all suites passed

@@ -1,0 +1,65 @@
+﻿Customer,Plan,Status,Member #,Joined,Next Billing,Auto-Renew,Lifetime Paid
+Rosa Hoàng,Basic Glow,Past Due,M1040,2026-10-20,2026-11-12,Yes,78.00
+Fiona Brown,Basic Glow,Trial,M1019,2026-10-11,2026-11-19,Yes,0.00
+Rosa Lê,Basic Glow,Active,M1037,2026-10-09,2026-11-09,Yes,78.00
+Ngoc Davis,Basic Glow,Active,M1046,2026-10-06,2026-11-18,Yes,78.00
+Emily Nguyễn,Pedi Club,Canceled,M1053,2026-09-25,2026-11-25,Yes,118.00
+Vy Smith,Pedi Club,Active,M1023,2026-09-21,2026-11-23,Yes,118.00
+Anh Johnson,Basic Glow,Active,M1025,2026-09-17,2026-11-25,Yes,78.00
+Trang Smith,Basic Glow,Active,M1058,2026-09-14,2026-11-02,Yes,78.00
+Rosa Martinez,VIP Nail Club,Expired,M1054,2026-09-14,2026-11-26,Yes,0.00
+Hoa Lê,Basic Glow,Canceled,M1031,2026-09-14,2026-11-03,Yes,78.00
+Linh Bùi,VIP Nail Club,Active,M1003,2026-09-12,2026-11-03,Yes,0.00
+Grace Garcia,Pedi Club,Active,M1047,2026-09-08,2026-11-19,Yes,118.00
+Grace Wilson,Basic Glow,Active,M1055,2026-09-01,2026-11-27,Yes,78.00
+Chloe Johnson,Basic Glow,Active,M1013,2026-09-01,2026-11-13,Yes,39.00
+Bao Võ,Pedi Club,Past Due,M1029,2026-08-23,2026-11-01,Yes,118.00
+Thao Wilson,Pedi Club,Active,M1044,2026-08-22,2026-11-16,Yes,118.00
+Thao Võ,VIP Nail Club,Active,M1036,2026-08-17,2026-11-08,Yes,0.00
+Diana Garcia,Basic Glow,Paused,M1028,2026-07-31,2026-10-31,Yes,78.00
+Ivy Martinez,Basic Glow,Active,M1022,2026-07-29,2026-11-22,Yes,78.00
+Ivy Võ,Pedi Club,Paused,M1050,2026-07-24,2026-11-22,Yes,118.00
+Mai Johnson,VIP Nail Club,Active,M1060,2026-07-23,2026-11-04,Yes,0.00
+Trang Võ,VIP Nail Club,Trial,M1063,2026-07-22,2026-11-07,Yes,0.00
+Lan Garcia,Pedi Club,Active,M1014,2026-07-12,2026-11-14,Yes,118.00
+Rosa Đặng,VIP Nail Club,Past Due,M1051,2026-07-10,2026-11-23,Yes,0.00
+Anh Johnson,Pedi Club,Active,M1005,2026-07-09,2026-11-05,Yes,118.00
+Quinn Martinez,Basic Glow,Active,M1034,2026-07-06,2026-11-06,Yes,78.00
+Jessica Nguyễn,Pedi Club,Active,M1002,2026-06-17,2026-11-02,Yes,118.00
+Ivy Phạm,Pedi Club,Expired,M1032,2026-06-14,2026-11-04,Yes,118.00
+Olivia Phạm,Pedi Club,Canceled,M1020,2026-06-09,2026-11-20,Yes,118.00
+Grace Phạm,VIP Nail Club,Canceled,M1009,2026-06-04,2026-11-09,Yes,0.00
+Ngoc Bùi,VIP Nail Club,Paused,M1039,2026-06-02,2026-11-11,Yes,0.00
+Emily Nguyễn,VIP Nail Club,Active,M1015,2026-06-01,2026-11-15,Yes,0.00
+Hoa Nguyễn,Pedi Club,Active,M1059,2026-05-28,2026-11-03,Yes,118.00
+Vy Nguyễn,VIP Nail Club,Active,M1012,2026-05-27,2026-11-12,Yes,0.00
+Ivy Trần,Basic Glow,Paused,M1061,2026-05-23,2026-11-05,Yes,78.00
+Ivy Brown,VIP Nail Club,Past Due,M1018,2026-05-23,2026-11-18,Yes,0.00
+Linh Johnson,VIP Nail Club,Active,M1027,2026-05-21,2026-11-27,Yes,0.00
+Diana Smith,Pedi Club,Active,M1056,2026-05-18,2026-10-31,Yes,118.00
+Nora Hoàng,VIP Nail Club,Active,M1045,2026-05-15,2026-11-17,Yes,0.00
+Chloe Brown,Basic Glow,Active,M1016,2026-05-13,2026-11-16,Yes,78.00
+Kim Võ,VIP Nail Club,Expired,M1021,2026-05-10,2026-11-21,Yes,0.00
+Sarah Hoàng,Basic Glow,Active,M1001,2026-05-01,2026-11-01,Yes,78.00
+Sarah Martinez,Basic Glow,Past Due,M1007,2026-04-30,2026-11-07,Yes,78.00
+Sarah Brown,Pedi Club,Trial,M1041,2026-04-15,2026-11-13,Yes,0.00
+Olivia Garcia,Pedi Club,Active,M1035,2026-04-07,2026-11-07,Yes,118.00
+Anh Trần,Basic Glow,Active,M1049,2026-04-03,2026-11-21,Yes,78.00
+Emily Hoàng,VIP Nail Club,Trial,M1030,2026-03-26,2026-11-02,Yes,0.00
+Lan Davis,VIP Nail Club,Active,M1033,2026-03-15,2026-11-05,Yes,0.00
+Lan Phạm,Pedi Club,Past Due,M1062,2026-03-07,2026-11-06,Yes,118.00
+Emily Phạm,VIP Nail Club,Active,M1057,2026-03-04,2026-11-01,Yes,0.00
+Nora Lê,Pedi Club,Active,M1011,2026-03-01,2026-11-11,Yes,118.00
+Nora Bùi,VIP Nail Club,Active,M1000,2026-02-24,2026-10-31,Yes,0.00
+Linh Hoàng,VIP Nail Club,Paused,M1006,2026-02-22,2026-11-06,Yes,0.00
+Ivy Smith,Pedi Club,Active,M1038,2026-01-26,2026-11-10,Yes,118.00
+Mai Bùi,Pedi Club,Paused,M1017,2026-01-25,2026-11-17,Yes,118.00
+Ngoc Trần,VIP Nail Club,Active,M1048,2026-01-19,2026-11-20,Yes,0.00
+Sarah Wilson,Pedi Club,Trial,M1008,2026-01-19,2026-11-08,Yes,0.00
+Ngoc Brown,VIP Nail Club,Canceled,M1042,2026-01-13,2026-11-14,Yes,0.00
+Bao Võ,VIP Nail Club,Active,M1024,2026-01-12,2026-11-24,Yes,0.00
+Mai Davis,Basic Glow,Active,M1004,2026-01-11,2026-11-04,Yes,78.00
+Linh Phạm,Basic Glow,Expired,M1010,2026-01-07,2026-11-10,Yes,78.00
+Lan Phạm,Basic Glow,Trial,M1052,2026-01-05,2026-11-24,Yes,0.00
+Rosa Bùi,Pedi Club,Active,M1026,2026-01-03,2026-11-26,Yes,59.00
+Linh Nguyễn,Basic Glow,Expired,M1043,2026-01-02,2026-11-15,Yes,78.00

@@ -1,0 +1,55 @@
+// Payments & Money → Refunds & Voids (Oct 29 2026 one-screen rebuild): five server KPIs, one row per reversal, server filters,
+// Find Original Payment with each tender's refundable amount and eligibility, a refund of ONE tender through Checkout.
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), facets: vi.fn(), find: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
+vi.mock('../api/posRefundsVoidsApi', () => ({ posRefundsVoidsApi: api }));
+const co = vi.hoisted(() => ({ refund: vi.fn(), void: vi.fn() }));
+vi.mock('../api/posCheckoutApi', () => ({ posCheckoutApi: co }));
+import { POSRefundsVoidsScreen } from './POSRefundsVoidsScreen';
+
+const PERIOD = { preset: 'month', from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York', today: '2026-10-29' };
+const summary = { period: PERIOD, basis: 'requested', permissions: { refund: true, void: true, export: true, customer: true },
+  kpis: { refunds: 3, refundedCents: 8000, partialRefunds: 2, voids: 1, voidedCents: 4500, totalReversed: 4, totalReversedCents: 12500, pending: 1, pendingCents: 2000, needsReview: 2, needsReviewCents: 7500, unknown: 1, failed: 1, cancelled: 0, listed: 7, byMethod: {} } };
+const rev = { id: 'r1aaaaaa-0000-4000-8000-000000000001', kind: 'refund', type: 'partial_refund', state: 'pending', rawStatus: 'reserved', requestedAt: '2026-10-29T13:00:00Z', completedAt: null, paymentId: 'p1', reversalPaymentId: null, ticketId: 't1', ticketNumber: '6001',
+  customer: { id: 'c1', name: 'John Smith', phone: '(856) 555-1234' }, originalCents: 10000, reversedCents: 2000, method: 'card', processor: 'cardpointe', providerRef: null, originalRef: 'RR6001', card: 'VISA ••4242', giftCardLast4: null, reason: 'Goodwill', actor: 'Mai', reviewReason: null, lastError: null, settlementId: null, branch: null, register: null, originalAt: null };
+const tender = { id: 'p1', ticketId: 't1', ticketNumber: '6001', method: 'card', amountCents: 10000, tipCents: 0, status: 'approved', captured: true, processor: 'cardpointe', processorRef: 'RR6001', card: 'VISA ••4242', giftCardLast4: null, at: '2026-10-26T12:00:00Z',
+  refundedCents: 3000, pendingCents: 2000, refundableCents: 5000, settlementId: 's1', customer: { id: 'c1', name: 'John Smith', phone: '(856) 555-1234' }, eligibility: { refund: true, refundWhy: null, void: false, voidWhy: 'already_refunded' } };
+const mount = () => render(<MemoryRouter><POSRefundsVoidsScreen /></MemoryRouter>);
+beforeEach(() => { Object.values(api).forEach((f) => f.mockReset()); Object.values(co).forEach((f) => f.mockReset());
+  api.summary.mockResolvedValue(summary); api.list.mockResolvedValue({ items: [rev], page: 1, pageSize: 10, total: 1, pageCount: 1, period: PERIOD }); api.facets.mockResolvedValue({ processors: ['cardpointe'], registers: [] }); });
+
+describe('POSRefundsVoidsScreen', () => {
+  it('shows the five server KPIs and one row per reversal; filters go to the server', async () => {
+    mount();
+    expect(await screen.findByTestId('kpi-refunds')).toHaveTextContent('$80.00'); expect(screen.getByTestId('kpi-total')).toHaveTextContent('$125.00'); expect(screen.getByTestId('kpi-review')).toHaveTextContent('2');
+    expect(screen.getByTestId('reversal-row')).toHaveTextContent('Partial refund'); expect(screen.getByTestId('reversal-row')).toHaveTextContent('Pending');
+    fireEvent.change(screen.getByTestId('type'), { target: { value: 'void' } });
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ type: 'void', preset: 'month', dateField: 'requested', page: 1 })));
+  });
+  it('Find Original Payment refunds ONE tender, capped at what it can still return, through Checkout with a key', async () => {
+    api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] }); co.refund.mockResolvedValue({ status: 'refunded', refundId: 'x' });
+    mount(); await screen.findByTestId('reversal-row');
+    fireEvent.click(screen.getByTestId('find-payment')); fireEvent.change(screen.getByTestId('find-query'), { target: { value: '#6001' } });
+    fireEvent.click(await screen.findByTestId('find-refund'));
+    expect(screen.getByTestId('refund-amount')).toHaveValue('50.00'); expect(screen.queryByTestId('find-void')).toBeNull();
+    fireEvent.change(screen.getByTestId('refund-amount'), { target: { value: '60' } }); expect(screen.getByTestId('review-refund')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('refund-amount'), { target: { value: '10' } }); fireEvent.change(screen.getByTestId('refund-reason'), { target: { value: 'Chipped' } });
+    fireEvent.click(screen.getByTestId('review-refund')); fireEvent.click(screen.getByTestId('confirm-refund'));
+    await waitFor(() => expect(co.refund).toHaveBeenCalledWith('p1', { reason: 'Chipped', amountCents: 1000 }, expect.any(String)));
+    expect(await screen.findByTestId('note')).toHaveTextContent('Refund of $10.00 completed.');
+  });
+  it('a lost processor answer is said plainly and never retried', async () => {
+    api.find.mockResolvedValue({ query: '6001', period: PERIOD, items: [tender] }); co.refund.mockRejectedValue(Object.assign(new Error('lost'), { status: 409, body: { code: 'REFUND_STATUS_UNKNOWN' } }));
+    mount(); await screen.findByTestId('reversal-row');
+    fireEvent.click(screen.getByTestId('find-payment')); fireEvent.change(screen.getByTestId('find-query'), { target: { value: '#6001' } });
+    fireEvent.click(await screen.findByTestId('find-refund')); fireEvent.change(screen.getByTestId('refund-reason'), { target: { value: 'x' } });
+    fireEvent.click(screen.getByTestId('review-refund')); fireEvent.click(screen.getByTestId('confirm-refund'));
+    expect(await screen.findByTestId('note')).toHaveTextContent(/answer was lost/); expect(co.refund).toHaveBeenCalledTimes(1);
+  });
+  it('a read failure is an error state, never a verified $0.00', async () => {
+    api.summary.mockRejectedValue({ status: 503 }); api.list.mockRejectedValue({ status: 503 });
+    mount(); expect((await screen.findAllByText(/could not be reached/i)).length).toBeGreaterThan(0); expect(screen.queryByTestId('kpi-refunds')).toBeNull();
+  });
+});

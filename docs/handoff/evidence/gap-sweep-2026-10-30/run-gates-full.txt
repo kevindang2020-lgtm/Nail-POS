@@ -1,0 +1,181 @@
+PASS  check:tenant
+PASS  check:tenant-builder
+PASS  check:perms
+PASS  check:public
+FAIL  check:sql
+          at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+          at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+          at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+PASS  check:sql:select
+PASS  check:impossible
+PASS  check:crosswire
+PASS  check:di
+FAIL  check:types-drift
+          at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:36)
+          at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+          at ModuleLoader.import (node:internal/modules/esm/loader:679:21) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+PASS  check:unreached
+PASS  check:dead-client
+PASS  check:nav
+PASS  check:html
+PASS  check:no-print
+PASS  check:realtime-contract
+PASS  check:realtime-infra-duplicates
+PASS  check:ai-platform
+PASS  check:ai-infra-duplicates
+PASS  check:silent-sql
+FAIL  check:sql-identifiers
+          at onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:680:36)
+          at TracingChannel.tracePromise (node:diagnostics_channel:350:14)
+          at ModuleLoader.import (node:internal/modules/esm/loader:679:21) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+PASS  check:dialogs
+PASS  check:money
+PASS  check:event-producers
+PASS  check:realtime-catalog
+FAIL  check:lint
+      lint-ratchet: eslint produced no JSON report (did it run?)
+PASS  check:secrets
+PASS  check:error-codes
+FAIL  check:error-text
+      error-text: NEW free-text refusal in modules/tenants/src/settings/settings.service.ts (5 > 3) — throw withCode(new XError('…'), 'CODE', { params }):
+        modules/tenants/src/settings/settings.service.ts:316  ValidationError('template name and body are required')
+        modules/tenants/src/settings/settings.service.ts:317  ValidationError('template channel must be sms or email')
+PASS  check:openapi
+PASS  check:critical-step-up
+PASS  check:mass-assignment
+FAIL  check:api-contract
+          at wrapModuleLoad (node:internal/modules/cjs/loader:254:19)
+          at Module.require (node:internal/modules/cjs/loader:1527:12) {
+        code: 'MODULE_NOT_FOUND',
+        path: '/home/claude/aipowersalon/node_modules/@aipowersalon/permissions'
+      }
+      Node.js v22.23.4
+PASS  check:v1-clients
+PASS  check:mobile-transport
+PASS  check:validated-bodies
+FAIL  check:strict-bodies-types
+      Error: the strict-bodies spec did not write the route schemas
+          at file:///home/claude/aipowersalon/apps/api/scripts/strict-bodies-typeproof.mjs:42:67
+          at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+          at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+          at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5)
+      Node.js v22.23.4
+PASS  check:role-checks
+PASS  check:permission-docs
+PASS  check:audit-writers
+FAIL  check:db-ownership
+          at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+          at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+          at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+FAIL  check:actor-stamp
+          at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+          at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+          at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+PASS  check:list-queries
+PASS  check:async-exports
+PASS  check:response-exposure
+PASS  check:uploads
+PASS  check:state-transitions
+FAIL  check:unique-tenant-review
+          at ModuleLoader.resolve (node:internal/modules/esm/loader:724:38)
+          at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:320:38)
+          at ModuleJob._link (node:internal/modules/esm/module_job:182:49) {
+        code: 'ERR_MODULE_NOT_FOUND'
+      }
+      Node.js v22.23.4
+PASS  check:one-payroll-calculation
+PASS  check:one-tax-calculation
+PASS  check:silent-catch
+PASS  check:as-any
+PASS  check:supply-chain-injection
+PASS  check:raw-sql-inputs
+PASS  check:attack-surface
+PASS  check:migration-safety
+FAIL  architecture tests
+      architecture: api dirs 32, edges 53, largest cycle 4 (baseline 4), back-edges 0 (baseline 0), provider dirs 26, identical groups 0 (baseline 0), deep imports 0, nested lockfiles 0, mirrored API types 0 (baseline 0)
+PASS  module entries
+PASS  spec imports
+PASS  hidden code
+PASS  auth logging
+PASS  db credentials
+PASS  gradle wrapper
+PASS  lockfile hygiene
+PASS  outbound hosts
+PASS  audit wiring
+FAIL  frontend builds
+              throw err;
+              ^
+            Error: Cannot find module '/home/claude/aipowersalon/node_modules/vite/bin/vite.js'
+              code: 'MODULE_NOT_FOUND',
+              requireStack: []
+      frontend builds: 7 FAILED (pos-web, admin-web, owner-web, tech-web, customer-web, customer-display, manager-pay-web)
+FAIL  app types
+            src/App.tsx(133,42): error TS7026: JSX element implicitly has type 'any' because no interface 'JSX.IntrinsicElements' exists.
+            src/App.tsx(135,88): error TS7006: Parameter 'n' implicitly has an 'any' type.
+            src/api/apiV1.test.ts(4,53): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+            src/api/transport.test.ts(4,65): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+            src/device/device.test.ts(4,54): error TS2307: Cannot find module 'vitest' or its corresponding type declarations.
+      app types: 7 FAILED (pos-web, admin-web, owner-web, tech-web, customer-web, customer-display, manager-pay-web)
+PASS  mobile versions
+PASS  mobile native config
+PASS  stale mocks
+PASS  inert controls
+PASS  zoom
+PASS  i18n
+PASS  pos-i18n
+PASS  vi-glossary
+PASS  admin-english-only
+PASS  english-only-apps
+
+13 FAILED: check:sql, check:types-drift, check:sql-identifiers, check:lint, check:error-text, check:api-contract, check:strict-bodies-types, check:db-ownership, check:actor-stamp, check:unique-tenant-review, architecture tests, frontend builds, app types
+
+# After that run: check:error-text fixed (template validation messages coded). Re-run of every gate on the final tree:
+PASS  check:tenant
+PASS  check:response-exposure
+PASS  check:secrets
+PASS  check:state-transitions
+PASS  check:raw-sql-inputs
+PASS  check:silent-catch
+PASS  check:as-any
+PASS  check:error-codes
+PASS  check:error-text
+PASS  check:list-queries
+PASS  check:permission-docs
+PASS  check:dead-client
+PASS  check:unreached
+PASS  check:openapi
+PASS  check:attack-surface
+PASS  check:realtime-contract
+PASS  check:realtime-catalog
+PASS  check:event-producers
+PASS  check:migration-safety
+PASS  check:critical-step-up
+PASS  check:dialogs
+PASS  check:no-print
+PASS  check-inert-controls
+PASS  check-i18n
+PASS  check-pos-i18n
+PASS  check-vi-glossary
+# through the stand-in loader (env FST_PG_TEMPLATE=aps … --import tooling/full-system-test/unit-standin/register.mjs):
+PASS  sql-prepare-check.mjs
+PASS  audit-sql-identifiers.mjs
+PASS  introspect-schema.mjs
+PASS  gen-actor-columns.mjs --check
+PASS  audit-unique-tenant-review.mjs
+PASS  db-ownership.mjs --check
+PASS  api-contracts strict type-check (--ignoreDeprecations 6.0)

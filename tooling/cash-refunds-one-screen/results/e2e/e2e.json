@@ -1,0 +1,175 @@
+{
+  "label": "e2e",
+  "at": "2026-10-30T00:44:41.553Z",
+  "results": [
+    {
+      "step": "cash: the five KPIs and the difference strip are the server aggregates for Today",
+      "ok": true,
+      "detail": "expected $670 · counted $545.00 · Net difference",
+      "ms": 106
+    },
+    {
+      "step": "cash: a $100 split paid $40 cash to Mai + $60 card counts $40 of custody — never the ticket",
+      "ok": true,
+      "detail": "Thu, Oct 29, 2026 Mai Nguyen 1 cash tickets · Cherry Hill $40.00 Not counted — Awaiting — ",
+      "ms": 431
+    },
+    {
+      "step": "cash: 11:30 PM last night belongs to yesterday's business date, not today",
+      "ok": true,
+      "detail": "Dee Park listed under 2026-10-28",
+      "ms": 1244
+    },
+    {
+      "step": "cash: one search box — customer name, ticket #, technician phone — across every unit",
+      "ok": true,
+      "detail": "John Smith → Anna Lee, Mai Nguyen · #5003 → Bao · (609) 555-0103 → Chi",
+      "ms": 1957
+    },
+    {
+      "step": "cash: This Month pages on the server — Page 1 newest, Page 2 older, no row twice",
+      "ok": true,
+      "detail": "Showing 1–9 of 71 · Page 1 of 8 ‹ Previo → Showing 10–18 of 71 · Page 2 of 8 ‹ Prev",
+      "ms": 1601
+    },
+    {
+      "step": "cash: count Chi's $80 with the count sheet ($50 + $20 + $10) — balanced, one event with the count sheet",
+      "ok": true,
+      "detail": "Chi Pham: $80.00 counted — balanced.\n✕ · db counted 8000 v1 · events counted",
+      "ms": 897
+    },
+    {
+      "step": "cash: two partial hand-offs for Mai ($25, then $15 into the drawer) reconcile $40 once — a custody move, not a sale",
+      "ok": true,
+      "detail": "events partial:2500, partial:1500, drawer_transfer:1500 · drawer in $15 · cash sales 2 → 2",
+      "ms": 1465
+    },
+    {
+      "step": "cash: the same submission twice (double tap / retry) is ONE event",
+      "ok": true,
+      "detail": "second call replayed · 1 event",
+      "ms": 89
+    },
+    {
+      "step": "cash: a second counter cannot silently overwrite — the stale count is refused and the current figure shown",
+      "ok": true,
+      "detail": "Someone else saved a count first (accepted now: $240.00). Review it, then count again if n · db keeps $240",
+      "ms": 2430
+    },
+    {
+      "step": "cash: a manager resolves Bao's shortage with a reason — the figures stay, the state says Resolved",
+      "ok": true,
+      "detail": "Thu, Oct 29, 2026 Bao Tran 1 cash tickets · Cherry Hill $250.00 $240.00 −$10.00  · db variance -1000 kept",
+      "ms": 2229
+    },
+    {
+      "step": "cash: Record Hand-Off for a technician who never owed cash says so — no phantom hand-off",
+      "ok": true,
+      "detail": "No cash collected by this technician on this day · Save disabled",
+      "ms": 875
+    },
+    {
+      "step": "cash: front desk counts but cannot resolve; a technician sees the permission state, not the data",
+      "ok": true,
+      "detail": "front desk: Count ×4, no Review, no Export · technician: Your role cannot see this information.",
+      "ms": 3030
+    },
+    {
+      "step": "cash: export carries every matching unit and the calculation basis; a read failure is an error, not $0",
+      "ok": true,
+      "detail": "end-of-day-cash.csv · failure → \"The server could not be reached. Nothing is shown as $0.00 until it answers.\"",
+      "ms": 3151
+    },
+    {
+      "step": "refunds: the five KPIs are the server aggregates — completed refunds, voids at face value, pending and needs review apart",
+      "ok": true,
+      "detail": "refunds 21 · voids 7 · pending 1 · review 2",
+      "ms": 99
+    },
+    {
+      "step": "refunds: search by phone in any format, ticket #, provider reference — one row per reversal",
+      "ok": true,
+      "detail": "(856) 555-1234 → 3 rows · #6003 → Void · RF6002 → #6002 · other salon's RF9999 → none",
+      "ms": 2438
+    },
+    {
+      "step": "refunds: type and status filters, numbered pages",
+      "ok": true,
+      "detail": "voids 7 · needs review → #6004 · Showing 12–22 of 32 · Page 2 of 3 ‹ Prev",
+      "ms": 2485
+    },
+    {
+      "step": "refunds: the detail shows the original tender — $100 − $30 refunded − $20 pending = $50 still refundable; void refused",
+      "ok": true,
+      "detail": "Captured $100.00 Refunded −$30.00 Pending −$20.00 Still refundable $50.00",
+      "ms": 1394
+    },
+    {
+      "step": "refunds: a split ticket lists each tender with its own refundable amount; a gift-card refund links its ledger, never the code",
+      "ok": true,
+      "detail": "card $60 → $30 left · cash $40 → $40 · gift •••• 7719 restored",
+      "ms": 2201
+    },
+    {
+      "step": "refunds: Find Original Payment → refund $10 of ONE card tender (review, confirm) — first on Page 1, cap enforced",
+      "ok": true,
+      "detail": "Refund of $10.00 completed.\n✕ · page 1 row: Oct 29, 8:44 PM Partial refund 0ACA699A #6200 John Smith · (856) 555-1",
+      "ms": 1696
+    },
+    {
+      "step": "refunds: void an unsettled card payment with a reason; a settled one offers only a refund",
+      "ok": true,
+      "detail": "#6201 (settled) no Void · #6202 voided · ledger: Oct 29, 8:44 PM Void 00000174 #6202 Jessica Nguyễn · (856) 5",
+      "ms": 2002
+    },
+    {
+      "step": "refunds: a lost processor answer holds the amount and blocks a second refund — never a silent retry",
+      "ok": true,
+      "detail": "The processor’s answer was lost. The amount is held and will be verified — do no · Find now: \"a refund on it is waiting for the processor’s answer\"",
+      "ms": 2703
+    },
+    {
+      "step": "refunds: front desk can look up but not refund or void (the reason is said); export needs its permission",
+      "ok": true,
+      "detail": "no Refund / Void · \"your role cannot do this\" · no Export",
+      "ms": 2804
+    },
+    {
+      "step": "refunds: export is every matching reversal, masked, no card numbers; a read failure is an error, not $0.00",
+      "ok": true,
+      "detail": "refunds-voids.csv · failure → honest error, no KPI figures",
+      "ms": 3370
+    },
+    {
+      "step": "empty salon: verified-zero empty states on both pages",
+      "ok": true,
+      "detail": "No technician cash hand-offs found for this period · No refunds or voids recorded",
+      "ms": 2997
+    },
+    {
+      "step": "vietnamese: both pages switch language",
+      "ok": true,
+      "detail": "DỰ KIẾN (TIỀN MẶT) · HOÀN TIỀN",
+      "ms": 3119
+    },
+    {
+      "step": "no page errors across the run",
+      "ok": true,
+      "detail": "none",
+      "ms": 66
+    }
+  ],
+  "errors": [],
+  "unhandled": [
+    {
+      "route": "POST /auth/session-activity",
+      "n": 7
+    }
+  ],
+  "simulated": [
+    "SIMULATED reconcile replay e2e-double-tap-1",
+    "SIMULATED refund 91820000-0000-4000-8000-000000000170 1000 (card)",
+    "SIMULATED void 91820000-0000-4000-8000-000000000174",
+    "SIMULATED refund 91820000-0000-4000-8000-000000000172 2000 — processor answer LOST (held as processing)"
+  ]
+}

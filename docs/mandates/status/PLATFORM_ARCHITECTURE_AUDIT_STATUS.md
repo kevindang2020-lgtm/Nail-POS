@@ -1,0 +1,402 @@
+# PLATFORM_ARCHITECTURE_AUDIT_STATUS.md — Full Platform Architecture & Code Audit mandate, section by section
+
+**Mandate:** `docs/mandates/2026-10-27_PLATFORM_ARCHITECTURE_CODE_AUDIT_MANDATE.txt` (Kevin, Oct 27 2026).
+**Audited tree:** branch `merge-github-main`, HEAD `f90c183d` (docs) on `2dbeb916` (last product commit, payments wallet-webhook leg), Oct 27 2026. Read-only audit; nothing was built or fixed in this pass.
+
+**Section count.** The mandate is numbered **1–262** (the "273" in its filename / upload note does not match the numbering in the text; the unnumbered "Final Canonical Journey / Architecture / Permanent Rules / Final Instruction / Sign-Off" blocks are not numbered sections). Every numbered section has a row below.
+
+**How "run X" sections were judged.** The last **full logged regression** (every lane: builds, gates, lint, packages / modules / apps / api suites, race lane, harnesses, 24 live proofs, pilot day, restore drill) ran on **Oct 26 at `634ba8e1` / `1c03e996`** (`TEST_REPORT.md` "Oct 26 2026 — M7 full regression on HEAD"). **95 commits** sit between that and today's HEAD. The **Oct 27 WP-J run at `dd92f860`** (2 commits behind HEAD) re-ran builds, `ci:gates` (54 gates + 19 audits), typecheck, pos-web / owner-web / admin-web / API suites, 7 module suites and the full pilot day **224 / 224** — but **not** lint, packages, the other 20 module suites (incl. `modules/payments`), the race lane, harnesses, live proofs or the restore drill. Commit `2dbeb916` (payments) has no logged run. Four build agents are editing the working tree right now (uncommitted: migration 698 platform device approval, identity auth-devices, admin-web device screens, a new split-tender race spec); on that working tree `node tooling/architecture-tests/run.mjs` **fails** today (`modules/identity/src/auth/platform-device-trust.pgtest.vitest.spec.ts` locates `db/migrations` by a relative path — in-flight agent work, not on HEAD). So: a lane run at `dd92f860` = **DONE on current HEAD minus one payments commit**; a lane last run at `634ba8e1` = **PARTIAL**.
+
+**Oct 27 final pass.** A full regression ran on the final-pass code (`3c5ae402` / `b01f8d71`, `TEST_REPORT.md` "Oct 27 2026 — final pass"); §233, §236, §245, §255, §258 moved to DONE on it, §234 / §235 refreshed (still PARTIAL on the warning / `as any` debt). Commits by other agents after it (`6a1a76e8`) and their uncommitted work are not covered, and `ci:gates` on the branch HEAD fails because of them.
+
+**Status words:** DONE · PARTIAL (a named piece missing) · NOT DONE · BLOCKED_EXTERNAL (only a real outside dependency: hosting, provider credentials, devices, Kevin's accounts / decisions).
+
+---
+
+## Re-audit — Oct 28 2026 (the attached 33-page PDF is this mandate)
+
+The header above ("nothing built") is stale: 146+ commits have landed since `2dbeb916`. An independent re-audit found §142 false
+(an unpaid gift-card mint route — retired Oct 28, `8a6f5ce2`) and §233 / §236 DONE only on the Oct 27 code (PARTIAL until V-28),
+and several PARTIAL rows already built (§11, §24, §29, §68, §80, §215, §219, §221 — annotated). Internal items still open from the
+re-audit: §32 version-conflict race tests (§43 client `resourceVersion` was built later on Oct 28), §89 per-location Tap to Pay MID (decision first), §149
+Twilio offboarding, §151 membership SMS (decisions: consent, cost, sender), §196 image quarantine (only meaningful once a scanner
+is configured — otherwise every image would be held), §188 / §192 egress allowlist and `style-src-elem 'unsafe-inline'`. The
+eligibility authority is now required at boot in booking, customer booking, check-in, Go check-in and the Tech Queue (Oct 28),
+as it already was in the queue. `decision.ts:142` (a BRANCH principal with null `branchIds`) stays the documented legacy decision.
+
+## Part 1 — Platform, repository, architecture (§1–§10)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 1 | Platform mission: one coherent platform (POS … Super Admin) | DONE | 27 domain modules under `modules/` (ai, analytics, appointments, audit, booking, catalog, checkout, communications, customers, deals, finance, gift-cards, identity, inventory, loyalty, marketing, memberships, payments, platform, queue, reports, safety, security-center, super-admin, support, tenants, workforce); 10 apps under `apps/`; `PROJECT_STATUS.md` §2 status by area |
+| 2 | Modular monolith + workers + realtime gateway + durable events | DONE | `tooling/architecture-tests/run.mjs` (module cycles, back-edges 0, largest cycle 4); `apps/api/src/worker.ts` (worker process); `apps/api/src/realtime/realtime.gateway.ts`; `packages/events/src/outbox-writer.ts` |
+| 3 | Preserve stack: NestJS 10, Kysely, PG16, React 18 + Vite, Redis, object storage, Secrets Manager, OTel | PARTIAL | NestJS/Kysely/PG16/Vite present (`apps/api`, `packages/database`); Redis `packages/cache/src/redis.ts` (optional, fail-open); S3 `packages/media/src/private-store.ts:109`; OTel `packages/observability` (+ `live-tracing` proof 16/16). **Missing:** no external Secrets Manager — provider secrets are AES-256-GCM sealed columns keyed from env (`packages/security/src/aes-gcm.ts`, `provider-secrets.ts`); `NEXT_STEPS.md` S-A2 Nest 10 → 11 still open (allow-listed audit finding, deadline 2027-01-31) |
+| 4 | PostgreSQL is business truth; Redis never authoritative | DONE | `packages/cache/src/index.ts` (tenant cache port, reconstructible); `INTEGRATION_STATUS.md` Redis row "the API runs without it"; `drill-redis-loss.mjs` 13/13 (`apps/api/scripts/drills/`) |
+| 5 | Repository discovery first; search TODO/FIXME/mock/dead routes/duplicates | DONE | `ARCHITECTURE_AUDIT.md`, `FULL_CODEBASE_AUDIT.md`, `REPOSITORY_ARCHITECTURE_AUDIT.md`; marker scan "TODO / FIXME / HACK / @ts-ignore in product code **0**" (`TEST_REPORT.md` Oct 22 totals); `docs/DEAD_CODE_REPORT.md` batches 1+2 (69 files / 27,195 LOC, then 683 lines across 118 files removed); `check:unreached`, `check:dead-client` gates (`tooling/ci/run-gates.mjs`) |
+| 6 | Classify every major feature at every level | DONE | `PROJECT_STATUS.md` (Complete / Partial / Blocked / Deprecated), `ARCHITECTURE_STATUS.md` (PASS / PARTIAL / BLOCKED_EXTERNAL per domain, DB / API / events / realtime / apps / tests columns), `INTEGRATION_STATUS.md` (WORKING / SANDBOX_READY / PARTIAL / BLOCKED_EXTERNAL / NOT_IMPLEMENTED) |
+| 7 | One business concept = one authority; migrate callers | PARTIAL | One appointment writer (`BUG_REGISTER.md` B-39, `one-appointment-writer.vitest`); one eligibility authority (B-82, `modules/workforce/src/eligibility`); one payroll calculation gate `check:one-payroll-calculation`; one tax `taxCents()`; one Twilio client (B-14). **Still named as debt** in `ARCHITECTURE_STATUS.md`: "two global customer identity layers" (`customer_identities` + `global_customers`), "~13 `technician_statuses` readers; 3 PIN stores" |
+| 8 | Canonical apps (API, POS, SA, Tech, Owner, Customer, Booking, Display, Owner/Manager Pay, Workers, Realtime) | DONE | `apps/{api,pos-web,admin-web,tech-web,owner-web,customer-web,booking-public,customer-display,manager-pay-web,go-check-in-kiosk}`; Workers = `apps/api/src/worker.ts` (own process, `DATABASE_WORKER` role); Realtime = `apps/api/src/realtime` (SSE gateway in the API process, Redis backbone) — equivalent organisation, not forced into separate packages (§9 "do not force restructuring") |
+| 9 | Recommended monorepo ownership (/apps, /modules, /packages) | DONE | 27 `modules/*`, 20 `packages/*` (api-client, api-contracts, auth, cache, config, database, date-time, events, media, mobile-sdk, money, notifications, observability, permissions, realtime-client, realtime-contracts, security, tenant-context, testing, ui, web-push); `REPOSITORY_ARCHITECTURE_AUDIT.md` |
+| 10 | Dependency direction (no React→PG, no module→Twilio/Clover SDK, no queue→socket room, no AI→raw SQL) | DONE (on HEAD) | `tooling/architecture-tests/run.mjs`: `frontendToBackend`, `sdkImports`, `frontendProviderCalls`, `moduleRealtimeLeaks`, `modulesImportingApps` are absolute rules; no `from 'twilio'` / `from 'openai'` anywhere (grep, 0 hits); `check:raw-sql-inputs` gate. Passed in the Oct 27 `ci:gates` at `dd92f860`; **fails on today's uncommitted working tree** (in-flight agent spec file, see header) **Re-audit (Oct 28):** the architecture test runs, but its type-check step needs TypeScript (not installed here) — confirm under V-28. The deep-import / cycle / UTC-idiom checks pass on HEAD. |
+
+## Part 2 — Identity, auth, permissions, API (§11–§34)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 11 | Trusted RequestContext {requestId, correlationId, identityId, authRealm, tenantId, branchId, roles, permissions, scopes, deviceId, sessionId}; never trust body/query tenantId | PARTIAL | `packages/tenant-context/src/context.ts:23` `RequestContext` (tenant, branch, role, sessionId, restriction) built by `contextFromSession`; `check:tenant` / `check:tenant-builder` gates; salon switch server-verified (TEST_REPORT "tampered salonId → 403"). **Missing:** `realm` and `deviceId` are not fields of `Ctx` and `@ResourceScope` is not implemented — `NEXT_STEPS.md` I-8 (Security §36 / §38 / §68) **Re-audit (Oct 28):** stale: `realm` and `deviceId` are on `Ctx` (`67eec1dc`); only `@ResourceScope` route metadata remains. |
+| 12 | Multi-tenant isolation on every tenant entity | DONE | `check:tenant` (static predicate on every query); migration `666_tenant_consistency_every_fk.sql`; RLS `544_rls_core_tables.sql`, `458_rls_customers.sql` (`live-rls-trial` 20/20); live IDOR 178 cases 0 LEAK (TEST_REPORT Oct 22); `checkout-giftcard-crosstenant.pgtest` |
+| 13 | Branch isolation (branch_id on appointments, queues, terminals, shifts, merchants, inventory, displays, ads) | DONE | `014_tech_appointments.sql` branch_id; `pos_payment_terminals`, `payment_merchant_accounts`, `inventory_location_stock`, `customer_display_devices`, `display_ad_branches` (`ARCHITECTURE_STATUS.md` DB column); `apps/api/src/common/cross-branch-suite.pgtest.vitest.spec.ts` (Oct 26) |
+| 14 | DB constraints prevent cross-tenant associations | DONE | `666_tenant_consistency_every_fk.sql` (same-tenant trigger on every tenant FK, B-12); `538_core_constraints.sql`; `check:db-ownership`, `check:unique-tenant-review` gates |
+| 15 | Global identity separate from tenant membership | DONE | `users` + `tech_salon_memberships` + `user_branch_access` (`ARCHITECTURE_STATUS.md` Identity row); `modules/workforce/src/tech-profile/global-tech-identity-core.ts` |
+| 16 | Separate realms EMPLOYEE / PLATFORM / CUSTOMER / PUBLIC_BOOKING / SERVICE / INTEGRATION; no universal token | DONE | `AUTHENTICATION_AUDIT.md` rows 1, 6, 7: signed `iss`/`typ`/`actorType`, one cookie per realm `aps_session` / `aps_platform` / `aps_customer` / `aps_booking`, verifier refuses a wrong realm; `packages/auth/src/service-principals.ts` (realm 'service', never a user session); `tenant_api_keys` → integration realm |
+| 17 | Employee auth: password, phone OTP, passkey, MFA, trusted device, biometric unlock | DONE | `modules/identity/src/auth/` (webauthn.controller, auth-devices, refresh-device-guard, step-up); `AUTHENTICATION_AUDIT.md`; guards `webauthn-wiring`, `native-auth-coverage` (TEST_REPORT) |
+| 18 | Face ID / Touch ID unlock a device-bound credential; no templates stored | DONE | `biometric_credentials` table (device-bound, `ARCHITECTURE_STATUS.md`); forged ceremonies rejected (8 tests); ships behind `FACE_ID_ENABLED` because the success path needs a physical device (`FACE_ID_ENABLEMENT_RUNBOOK.md`) |
+| 19 | Short access tokens, rotating refresh, families, reuse detection, sessions, device trust, revocation | DONE | `modules/identity/src/auth/refresh-session.ts:4-5` (reuse burns the family), migration 689; `AUTH_ACCESS_TTL` 15 min; `sid` on every session (`session-sid-coverage` guard) |
+| 20 | Employment end revokes sessions, refresh, device, permission cache, realtime; identity remains | DONE | `modules/workforce/src/technicians/revoke-technician-access.ts` (used by `technicians.service.ts:24`); B-13 end employment for non-technician staff (`BUG_REGISTER.md`); realtime streams ended on role/branch/status change (`realtime.gateway.ts:28` §42-44); `employment-history.ts` keeps 'terminated' / 'transferred' |
+| 21 | RBAC + resource scope + policy conditions, deny by default | DONE | `packages/permissions/src/decision.ts:119` (DENY override wins), `permission-registry.ts`; `check:role-checks` gate (no role-name auth in backend); `check:perms` |
+| 22 | Tenant roles incl. custom roles | DONE | `modules/workforce/src/team-permissions` (custom role templates); `docs/PERMISSIONS.md` (regenerated by `check:permission-docs`) |
+| 23 | Platform roles separate from tenant roles | DONE | `SuperAdminGuard` + platform audience (`AUTHENTICATION_AUDIT.md`); support mode required for tenant access (§180); `check:api-contract` classifies every `/super-admin` path |
+| 24 | Scopes OWN, ASSIGNED, BRANCH, SELECTED_BRANCHES, TENANT, PLATFORM | PARTIAL | `packages/permissions/src/permission-registry.ts:20` `PermissionScope = 'OWN' \| 'BRANCH' \| 'SELECTED_BRANCHES' \| 'TENANT'`. **Missing:** `ASSIGNED` is not a scope value; `PLATFORM` is implied by the super-admin realm, not a scope **Re-audit (Oct 28):** stale: `ASSIGNED` and `PLATFORM` scopes exist (`permission-registry.ts:21`, `decision.ts:138`); only a test run remains (V-28). |
+| 25 | Field-level authorization via DTO projections | DONE | separate keys `owner.staff.earnings.view`, `owner.finance.view` (`permission-registry.ts:61-62`); `modules/workforce/src/tech-profile/media-access-core.ts` (private vs public objects); `check:response-exposure` gate (no sensitive column reaches a response unreviewed) |
+| 26 | Entitlement ≠ permission | DONE | `modules/platform/src/super-admin-plans/feature-registry.ts:11-17` (plan entitlement → `NOT_ENTITLED`, separate from `RequirePermission`); `modules/ai/src/ai-entitlement/ai-entitlement.guard.ts` |
+| 27 | Versioned `/api/v1` with tenant / customer / public / platform / webhooks / integrations / internal namespaces | DONE | `check:v1-clients` gate (every app calls `/api/v1/<path>`); `packages/api-contracts/src/operations.ts:23` realms pos/owner/tech/super-admin/customer; `/webhooks/*`, `/internal/*`, `/public/*` (`API_INVENTORY.md`) |
+| 28 | Standard envelope (success, data, meta, requestId) + standard error | PARTIAL | Error envelope + code registry DONE (`API_ARCHITECTURE_AUDIT.md` G2/G3, `packages/api-contracts/src/errors.ts`, `check:error-codes`). **Missing:** success envelope is "mandatory for v1-native modules only — NOT a bulk rewrite of 2,569 handlers" (`API_ARCHITECTURE_AUDIT.md` G7) |
+| 29 | Strict runtime validation on every mutation DTO; no mass assignment | PARTIAL | `@Body(ValidatedBody(schema))` + `check:validated-bodies` (shrinking allowlist), `check:mass-assignment` gate (`run-gates.mjs`). **Missing:** "strict bodies schema by schema (§40, S-A14)" still open in `NEXT_STEPS.md` I-8 **Re-audit (Oct 28):** strict bodies on 1,246 / 1,268 routes, `check:validated-bodies` 100 %; the type-proof JSON was hand-edited on Oct 28 — regenerate with `strict-bodies-types` under V-28. |
+| 30 | Cursor pagination; no SELECT-all | DONE | `packages/api-contracts/src/cursor.ts` (one keyset/offset codec); `check:list-queries` gate (every list handler declares filters / range cap); B-28 paged salon browse in SQL |
+| 31 | Idempotency on payment, refund, check-in, appointment, gift card, payroll adjustment, queue assignment | DONE | `packages/database/src/nest/idempotency` (`@Idempotent`, `api_idempotency`, migration 502); booking create + both check-ins durable keys (B-50/`5d6dc0ca`, migration 665); `refund-race` (`c2a344f9`); gift-card ledger atomic pgtest; queue assignment `VERSION_CONFLICT`; audit engine flags approved payments without a key (`audit-engine.service.ts:53`) |
+| 32 | Optimistic concurrency / resource versions where edits collide | PARTIAL | Proven: appointment row version (B-39), queue `VERSION_CONFLICT` (`api-contracts/tenant/queue.ts:125`), `CHECKOUT_VERSION_CONFLICT`, mobile claim version (migration 690), announcements versions. **Not verified** for customer, schedule, inventory, membership edits |
+| 33 | No floating-point money | DONE | `packages/money/src/index.ts` (integer cents); `check:money` gate (no `parseFloat * 100`); `check:one-tax-calculation`; "no float money columns" (`PROJECT_STATUS.md` engineering matrix) |
+| 34 | UTC storage + tenant/branch timezone; DST, business day, pay periods | DONE | `packages/date-time/src/index.ts:35` `businessDate(tz)`; architecture test ratchets `inlineUtcDayIdioms` / `serverUtcDayIdioms`; B-31 fix (owner attendance per salon zone); `checkout-local-day.pgtest`, `live-local-day` 13/13 |
+
+## Part 3 — Events, workers, realtime (§35–§46)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 35 | Events = facts; commands/jobs separate | DONE | `outbox_events` (facts) vs `jobs` table + `JOB_QUEUE_CLASSES` (`packages/database/src/job-queue.ts:14`); `EVENT_ARCHITECTURE_AUDIT.md` |
+| 36 | Event envelope fields | DONE | `packages/events/src/event-contract.ts:305-317` (eventVersion, aggregateType, aggregateId, correlationId, causationId, traceparent); `outbox-writer.ts:55-65` |
+| 37 | Transactional outbox in same transaction | DONE | `packages/events/src/outbox-writer.ts:33` ("SAME connection as the business write"); `check:event-producers` gate; `live-event-wiring` 19/19 (280 events of 48 types published + consumed) |
+| 38 | At-least-once; idempotent consumers | DONE | `packages/events/src/event-consumer.ts:11` (processed_events row commits with the handler's writes) |
+| 39 | Persisted processed-event keys for financial consumers | DONE | `processed_events` keyed by consumer_name + event_id (`apps/api/src/events/event-replay.service.ts:100`) |
+| 40 | Retry, backoff, jitter, DLQ, manual replay | DONE | `event-consumer.ts:1` (error classification, backoff); `event_dead_letters` table; `event-replay.service.ts` (original eventId preserved); Super Admin event operations (`packages/events/src/index.ts:4`) |
+| 41 | Realtime flow API → domain → commit → event → projection → client; socket never business truth | DONE | architecture test `moduleDirectEmissions` / `moduleRealtimeLeaks`; "direct emitters 0" (B-14, `331b5b67`); `projectionDeliversRealtime` (`packages/config`) |
+| 42 | Snapshot → subscribe/resume → apply newer | DONE | `packages/realtime-client/src/core.ts:100-106` (adopt server position, never accept a gap); `realtime-transport-core.ts:61`; `RESYNC_REQUIRED` + snapshot reload (`sync-policy.ts:184`); Last-Event-ID (`realtime.gateway.ts:28`) |
+| 43 | Events carry resourceVersion; clients ignore stale | BUILT Oct 28 (verify V-28) | Server side DONE: projected payloads carry `resourceType / resourceId / resourceVersion` (B-43). **Missing:** "no client reads `resourceVersion` yet" — `NEXT_STEPS.md` I-5 (grep of `packages/realtime-client`, pos-web, tech-web, owner-web, customer-display: 0 reads) **Re-audit (Oct 28):** still true: no client reads `resourceVersion` (grep finds it only in API projection code), so stale frames are not dropped. Open internal item (M). **Re-audit (Oct 28):** client half built later on Oct 28 (`28062a34`): frames now say where the version came from (`resourceVersionSource`) and the shared realtime client drops a frame whose AGGREGATE version is strictly older than one already seen for that resource (equal versions and payload-sourced versions never drop). |
+| 44 | Server-authorised channels (tenant/branch/user/technician/device/checkout); no arbitrary rooms | DONE | `packages/realtime-contracts/src/realtime-core.ts:150-163` (room builders); `REALTIME_INVENTORY.md` channel/permission table; `check:realtime-catalog` (UNCLASSIFIED event fails); role/branch revalidation cuts streams |
+| 45 | POS: realtime primary + 15 s silent sync; no reload/spinner | DONE | `apps/pos-web/src/realtime/useRealtime.ts:6` (15 s ± 2 s visible, 60 s hidden, immediate on focus); `packages/realtime-client/src/sync-policy.ts:15` `operationalMs: 15_000` |
+| 46 | ~20 s server reconciliation as safety layer | DONE | `sync-policy.ts:7,26` (server reconciliation ~20 s in the worker — `SyncReconciliationWorker`); migration `484_sync_reconciliation_indexes.sql` |
+
+## Part 4 — Customers, booking, check-in, visit (§47–§57)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 47 | One customer platform identity; private data per tenant | DONE | `modules/customers/src/customer-identity/customer-identity.repository.ts`; `customers.tenant_id` (`005_customers.sql:76`); cross-tenant isolation pgtest (5) |
+| 48 | Global identity separate from tenant_customer | PARTIAL | Separation exists (`customer_identities`, `global_customers`, `customers`) but **two global layers coexist** — `ARCHITECTURE_STATUS.md` Customers row "P3: two global identity layers" (not merged) |
+| 49 | Tenant-private history never leaks | DONE | RLS `458_rls_customers.sql`; `check:tenant`; live IDOR 0 leaks; 7 PM sync never copies across tenants (`customer-identity` reconciliation tests) |
+| 50 | Booking fields (customer, service, tech, any tech, branch, date/time, add-ons, duration, pricing, deposits, phone verification) | DONE | `modules/booking/src/booking/booking.service.ts:216-226` (catalog durations/prices, add-ons); first-available (`booking-first-available.pgtest`); branch price/duration (B-38); deposits migration 669 (B-36); phone verification 367 |
+| 51 | Conflict prevention in one transaction (technician, schedule, time off, skills, existing appts, reserve, create, outbox, commit) | DONE | `booking_holds` exclusion constraint (`538_core_constraints.sql`); time-off authority (`27e3b997`, `booking-time-off.postgres-race`); eligibility authority (B-82); `AppointmentWriter` writes the row + `appointment.created` inside the caller's transaction (B-39); deadlock retry B-32 |
+| 52 | Normalised APPOINTMENT_CONFLICT + updated availability | DONE | `packages/api-contracts/src/errors.ts` `APPOINTMENT_CONFLICT`; `modules/booking/src/booking/booking.controller.ts`, `booking.dto.ts`; race lane "ONE succeeds, other APPOINTMENT_CONFLICT" (307–328 race tests) |
+| 53 | Booking phone verification separate from account auth | DONE | `aps_booking` realm cookie (`AUTHENTICATION_AUDIT.md` row 1); `367_booking_phone_verification.sql`; `BOOKING_PHONE_VERIFICATION_AUDIT.md` |
+| 54 | Late booking: skip missed reminder rungs, schedule remaining | DONE | `modules/communications/src/reminders/reminders.service.ts:38-59` (ladder 24 h / 2 h / 30 min, each rung its own pass + sent-set, firing window capped at the rung → a rung already behind "now" never fires); `reminder-ladder.scheduler.ts` (5-min tick, `REMINDER_CRON_ENABLED`); migration 670 |
+| 55 | Check-in from POS, Customer App, Display → one Check-In/Visit domain | DONE | `modules/queue/src/check-in/check-in.service.ts` (one service; kiosk `/public/check-in/*`, display, POS, customer app routes in `ARCHITECTURE_STATUS.md`); `live-display-checkin-browser` 39/39 |
+| 56 | Visit canonical journey, no disconnected records | DONE | `pos_queue_items` → `tickets` → `ticket_service_lines` → payments (`ARCHITECTURE_STATUS.md`); pilot day 224/224 walks the whole chain (`docs/pilot-runs/2026-10-27-vietnamese/pilot.log`) |
+| 57 | Ten rapid taps = one Visit, one Check-In, one Queue entry | DONE | durable idempotency on both check-ins + walk-in key on the row (`5d6dc0ca`, migration 665); `check-in.kysely.repository.ts`; race lane queue 27 incl. walk-in replica retry |
+
+## Part 5 — Queues, fair turns, workforce, technicians (§58–§82)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 58 | Customer queue ≠ technician queue | DONE | `modules/queue/src/queue` (customer) vs `modules/queue/src/tech-queue` + `modules/workforce/src/turn-queue` |
+| 59 | Technician queue answers "who gets the next opportunity" | DONE | `modules/workforce/src/turn-queue/turn-queue.service.ts`, `turn-ledger.ts` |
+| 60 | Modes AUTOMATIC / RECOMMEND_AND_CONFIRM / MANUAL | DONE | `turn-core.ts:34` `ASSIGNMENT_MODES` |
+| 61 | Default RECOMMEND_AND_CONFIRM | DONE | `turn-core.ts:129` "Recommended Nail Salon Default — what an owner gets without configuring anything" |
+| 62 | Weighted traditional rotation (full/half turns, weights, skill, appointment protection, breaks) | DONE | `turn_unit_rules`, `technician_turn_state` (`ARCHITECTURE_STATUS.md`); `turn-core.ts` defaultTurnUnits; fair turn proof 22/22 (`live-event-wiring`) |
+| 63 | Hard eligibility before fairness | DONE | `modules/workforce/src/eligibility` (`TechnicianEligibilityService`: exact service + certification + employment + branch — B-71, B-82); `queue-exact-eligibility` spec |
+| 64 | Skill-ineligible skip without penalty | DONE | `turn-core.ts` KEEP POSITION rule (Fair Turn §123–124 defaults) |
+| 65 | Requested-client policies (DO_NOT_CONSUME…, COUNT_FULL, COUNT_WEIGHTED, MANAGER_DECIDES) | DONE | `modules/workforce/src/turn-queue/turn-core.ts` (grep hits for all four) |
+| 66 | Explicit appointment turn policy | DONE | `turn-core.ts` turn policy object (defaults §124, validation §166, branch merge) |
+| 67 | Appointment protection before walk-in | DONE | `modules/ai/src/ai-queue-assignment/ai-queue-assignment-appointment.ts`; `tech-queue.kysely.repository.ts` appointment-safe |
+| 68 | Queue states OFF_SHIFT … CLOCKED_OUT separated | PARTIAL | `tech-queue.dto.ts` / `turn-core.ts` carry APPOINTMENT_SOON, NEXT_UP, etc. **Missing:** "Appointment Soon / Hold as real lane states in the Tech Queue (today the POS filter offers Ready / Serving / Break / Off shift only)" — `NEXT_STEPS.md` I-12 **Re-audit (Oct 28):** stale: the server sends Hold and Appointment Soon (`9ded9435`). |
+| 69 | Clock status ≠ queue status | DONE | `technician_workforce_state` (queue) vs `time_clock_*` (`ARCHITECTURE_STATUS.md` Workforce row) |
+| 70 | Time clock events with server timestamps | DONE | `modules/workforce/src/time-clock/` (punches, breaks); pilot phase "Technicians clock in" |
+| 71 | Corrections keep original + reason + manager + audit | DONE | `603_time_clock_break_classification.sql:13-14` (`technician_timecard_adjustments`: original, new, reason, manager, time — append-only) |
+| 72 | Break ≠ queue hold | DONE | 603 break classification (time/payroll) vs turn-state HOLD (`turn-core.ts`) |
+| 73 | Technician metrics today/week/month | PARTIAL | Today utilisation `modules/workforce/src/tech-utilization/tech-utilization.ts`; earnings / tips / payroll screens by period (`apps/tech-web/src/screens/TechEarningsScreen.tsx`, `TechTipsScreen`); `TECH_WEB_EARNINGS_QUEUE_AUDIT.md`. **Not verified:** ready time, break time and turn-unit counters per Today/Week/Month as one metrics surface |
+| 74 | Global professional identity vs tenant employment | DONE | `global_tech_profiles` + `tech_salon_memberships` (`global-tech-identity-core.ts`, `tech-workplaces.service.ts`) |
+| 75 | Portable data (name, photo, bio, skills, certs, portfolio, ratings) | DONE | `apps/tech-web/src/screens/TechProfileScreen.tsx:1-3` (portable public profile); `tech_portfolio_photos`, `TechCertificationsScreen` |
+| 76 | Tenant-private employment data | DONE | commission / payroll / schedule / time clock / notes keyed to tenant (`compensation_*`, `payroll_*`, `technician_schedules`); `owner.staff.earnings.view` |
+| 77 | Transfer: identity remains, old employment historical, no data moves | DONE | `employment-history.ts:13,50,86` ('terminated', 'transferred'); "Connect to New Salon" (`TechProfileScreen.tsx:3`); `MULTI_SALON_CODE_AUDIT.md` |
+| 78 | Skills drive booking, queue, AI, public profile | DONE | `583_skill_requests_and_service_eligibility.sql` (ONE eligibility row); B-75 availability by skill; B-82 kiosk/AI lists |
+| 79 | Skill request SUBMITTED … REJECTED; no self-approval | DONE | `583_…sql:15` vocabulary (legacy 'pending' folded into 'submitted'); `modules/workforce/src/technicians/technician-skills.ts:28` (`via: 'skill_request' \| 'manager_patch'`); Owner App `approvals` tab |
+| 80 | Technician App screens (Home … Settings) | PARTIAL | Present: `TechDashboardScreen`, `TechScheduleScreen`, `QueueScreen`, `TicketsListScreen`/`TicketDetailScreen`, `TechServiceHistoryScreen`, `TechEarningsScreen`, `TechTipsScreen`, `TechPayrollScreen`, Time Clock (`MoreScreen.tsx:171`), Portfolio + Ratings (`TechProfileScreen`), Skills (`MoreScreen.tsx:73`), `NotificationsScreen`, `SettingsScreen` (`apps/tech-web/src/screens/`). **Missing:** no Customers screen ("where authorized"); native store shell = BLOCKED_EXTERNAL (keys / Mac) **Re-audit (Oct 28):** stale: `TechCustomersScreen` is wired to `techApi.myCustomers` (`TechMyWorkScreens.tsx:122`); the native shell is external. |
+| 81 | Service flow transitions validated by backend | DONE | `modules/queue/src/serving` state machine; `check:state-transitions` gate; accepted offer → `ready_to_start` (Oct 26) |
+| 82 | Service Done financial snapshot | DONE | `ticket_compensation_snapshots` (`tech-self-service.ts`, `membership-compensation.kysely.repository.ts`); `compensation.service.ts:3-5`; pilot D4 (polish 6 → 4 at Service Done) |
+
+## Part 6 — Checkout and payments (§83–§107)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 83 | Checkout canonical for every surface | DONE | `modules/checkout/src/checkout/checkout.service.ts`; mobile (`mobile-checkout`) and skip-the-line reuse it |
+| 84 | Server-calculated totals | DONE | `checkout-final-totals.vitest.spec.ts`; `checkout-discount-engine.ts`; `check:one-tax-calculation`; `check:money` in all 7 apps |
+| 85 | Split payment = one checkout, N payment records | DONE | split tender in `checkout.service.ts`; B-81 unsettled-guard over payments + attempts; pilot "split" phase; in-flight `split-tender-lost-card.postgres-race` (uncommitted, I-4) |
+| 86 | Checkout → payment domain → router → merchant config → adapter | DONE | `modules/payments/src/payments/payment-gateway.resolver.ts`; booking never imports payments (`PAYMENT_GATEWAY` token, B-36) |
+| 87 | Fiserv / CardPointe / Bolt / Clover; no Stripe/Square default | DONE | `cardpointe.client.ts`, `cardpointe-bolt.client.ts`, `clover.client.ts`, `fiserv-commercehub-ttp.adapter.ts`; no stripe/square packages |
+| 88 | Inspect/keep the real Fiserv integration | DONE | `INTEGRATION_STATUS.md` CardPointe SANDBOX_READY (UAT $1 sale/void Sep 27, `PAYMENTS_UAT.md`); CardSecure hosted tokenisation; Bolt terminal |
+| 89 | Merchant isolation tenant → branch → merchant → terminal | BUILT Oct 28 (verify V-28) | `payment_merchant_accounts` per branch, `pos_payment_terminals` (`ARCHITECTURE_STATUS.md`). **Missing:** Tap to Pay uses ONE `COMMERCEHUB_TTP_MERCHANT_ID` for every location (`INTEGRATION_STATUS.md` Oct 26 finding) — per-location MID selection is a code change once Fiserv onboards locations **Re-audit (Oct 28):** Per-location Tap to Pay MID built on Kevin's decision (`e574752d`). |
+| 90 | Payments settle to the correct merchant | DONE | resolver + pilot S14 (reports follow the per-location merchant); store switch refused `MERCHANT_NOT_CONFIGURED`; TTP caveat as §89 |
+| 91 | No raw PAN/CVV/track/NFC storage | DONE | `looksLikeRawPan` (`checkout.service.ts`, `request-schemas.ts`); `card-data.pgtest`; CardSecure iframe |
+| 92 | Saved cards = tokens + brand + last4 + expiry | DONE | `INTEGRATION_STATUS.md` CardSecure row; POS Saved Cards screen |
+| 93 | Internal intent before processor call | DONE | `payment_attempts`, `wallet_topup_intents` (679), skip-the-line intents (680) |
+| 94 | No duplicate charge on retry | DONE | `checkout-card-idempotency.vitest`, `checkout-concurrency.postgres-race`; CardPointe idempotency key per attempt; B-79 key fix |
+| 95 | PAYMENT_STATUS_UNKNOWN, not FAILED | DONE | `errors.ts` `PAYMENT_STATUS_UNKNOWN` (409); `checkout.service.ts`, `mobile-checkout.service.ts`; `cef689c8` (B/pending/timeout never a decline) |
+| 96 | Unknown recovery: lookup, webhook, worker before retry | DONE (internal) | `inquireByOrderid` Verify + stranded sweep (B-79/B-80); wallet webhook leg `2dbeb916` (`payment-webhook.service.ts`); `mobile-attempt-recovery.ts`. External remainder: B-23 UAT confirmation of the refund listing shape; CommerceHub `inquireByOrderId` needs sandbox credentials |
+| 97 | Refund: original tender, reason, permission, audit, idempotent | DONE | `payroll`/`checkout` refund routes `@RequireStepUp` (`check:critical-step-up`); `refund-race` (c2a344f9); `checkout-giftcard-tender-refund.pgtest`; B-33 refund to the paying gift card |
+| 98 | Void ≠ refund | DONE | `cardpointe.client.ts:147` `voidTransaction`; `checkout-refund-atomic` vs void paths; approval kinds 'refund','void' (`533_tenant_approvals.sql:14`) |
+| 99 | Payment ≠ settlement ≠ payout ≠ bank deposit | DONE | migrations `038_payment_settlements_refunds`, `211_settlements_deposits`, `224_partner_payouts`, `351_bank_accounts_deposits` |
+| 100 | Reconciliation chain traceable | DONE | `modules/payments/src/payments/payment-reconciliation.service.ts` (settlement batches, gross/fee/net); `modules/payments/src/deposit-reconciliation/*` (sweep scheduler, webhook controller, reports); `353_reconciliation_exceptions`, `354_reconciliation_periods` |
+| 101 | Clover Compact = semi-integrated terminal, not POS | DONE | `docs/integrations/clover-compact.md`; `INTEGRATION_STATUS.md` Clover Compact row (registration, branch mapping, pairing, reservation, pay/cancel/refund/void, disconnect recovery); real device = Kevin |
+| 102 | Terminal pairing POS-01 → CLOVER-COMPACT-01 | DONE | terminal registry + pairing (`packages/api-contracts/src/payment-terminals.ts`; `live-display-devices-browser` 29/29 for displays; Bolt pairing proven) |
+| 103 | Shared terminal → TERMINAL_BUSY | DONE | `errors.ts` `TERMINAL_BUSY`; `payment_terminal_leases` (`checkout.service.ts`) |
+| 104 | Owner/Manager Payment App flow (queue → ticket → tip/split → tap → payment → receipt → POS sync → history) | DONE (loopback) | `apps/manager-pay-web` (120 tests, build OK); `modules/checkout/src/mobile-checkout/*`; pilot phase 12 133/133 (`docs/pilot-runs/2026-10-26-secure-tap/`); `SECURE_TAP_STATUS.md` 66 DONE / 11 PARTIAL / 1 BLOCKED |
+| 105 | Tap to Pay = real Apple/PSP; never fake success | BLOCKED_EXTERNAL | `fiserv-commercehub-ttp.adapter.ts` throws NotConfigured / NotImplemented; `lookupTransaction` answers `no_inquiry`; needs Apple TTP entitlement, CommerceHub iOS SDK + sandbox credentials, Mac + iPhones (`INTEGRATION_STATUS.md`, `NEXT_STEPS.md` E-TTP) |
+| 106 | Customer handoff hides manager navigation | DONE | manager-pay customer-facing pay step (`SECURE_TAP_STATUS.md`; `apps/manager-pay-web/src/screens/PayScreen*`); pilot phase 12 |
+| 107 | Claim checkout before mobile payment | DONE | `checkout.payment_claimed` event; claim version + `CHECKOUT_STALE` (migration 690); `checkout-mobile-lock-guard.vitest` |
+
+## Part 7 — Customer display and advertising (§108–§118)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 108 | Dual-screen: large POS + small customer display, EXTEND | DONE | `DUAL_SCREEN_DISPLAY_AUDIT.md`, `DUAL_SCREEN_FINAL_REPORT.md`; `Display23.tsx`; physical 23" test = Kevin |
+| 109 | Dedicated customer-only app, no admin chrome | DONE | `apps/customer-display` (own app, device credential `useCredentials.ts`, no sidebar component) |
+| 110 | Explicit modes ADVERTISEMENT … MAINTENANCE | DONE | `packages/api-contracts/src/display-mode.ts:21-24` `CUSTOMER_DISPLAY_MODES` (all nine named states + check-in sub-states); `apps/customer-display/src/App.tsx:130-172` |
+| 111 | Priority checkout > payment > check-in > system > ads | DONE | `App.tsx:158` ("a checkout still outranks" MAINTENANCE); `display-mode.ts` ordering comment |
+| 112 | Display shows customer-safe checkout content | DONE | `CheckoutTicket.tsx`, `CheckoutPanel.tsx`; `live-display-journeys-browser` 43/43 |
+| 113 | 3-second privacy rule, state destroyed | DONE | `useDisplay.ts:24-25` `COMPLETED_HOLD_MS = 3000`, "customer state is cleared"; `live-display-lifecycle` 30/30 |
+| 114 | Ads managed from Marketing & Growth → Customer Display Advertising | DONE | `modules/marketing/src/display-advertising/`; POS display-advertising screen (EN/VI, WP-C4) |
+| 115 | Ad fields (image, headline, description, CTA, QR, branches, schedule, duration, priority, status) | DONE | `display_ads`, `display_ad_branches` (`ARCHITECTURE_STATUS.md`); `packages/api-contracts/src/tenant/display-ads.ts`; `live-display-ads` 42/42 |
+| 116 | DRAFT / SCHEDULED / ACTIVE / PAUSED / EXPIRED / ARCHIVED | DONE | `display-ads-core.ts:7` (SCHEDULED/ACTIVE/EXPIRED derived from schedule, never swept; DRAFT/PAUSED/ARCHIVED stored) |
+| 117 | Tenant A ads never render for Tenant B | DONE | `live-display-ads` 42/42, `live-display-ads-browser` 14/14 (tenant isolation checks); `check:tenant` on the ads queries |
+| 118 | Offline: cached validated ads continue; no private state survives | DONE | `apps/customer-display/src/adAssets.ts`, `adPlaylist.ts`; `App.tsx:161-172` OFFLINE; `live-phase13-offline` 13/13 |
+
+## Part 8 — Payroll, inventory, catalog, gift cards, loyalty, memberships, deals (§119–§147)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 119 | Traceable earning components | DONE | `compensation-adjustments.ts` (`GUARANTEE_TOP_UP`, `RETAIL_COMMISSION`, `REFUND_REVERSAL` …); `COMMISSION_REPORT_AND_AUDIT.md` |
+| 120 | Commission per service line | DONE | `compensation-line-allocations.ts`; multi-tech proof 21/21 (`live-event-wiring`) |
+| 121 | Deterministic rule precedence | DONE | `6f37bab4` ladder (Service > service row rate > Category > Branch Default > Salon Default) |
+| 122 | Commission snapshot immutable | DONE | `compensation.service.ts:3-5` (snapshot written post-payment, never rolls back a payment); B-59 "old payroll unchanged" pinned |
+| 123 | Tips separate from commission | DONE | `TIP` component, `compensation-line-allocations.ts` |
+| 124 | Two techs, no allocation → 50/50, odd cent deterministic | DONE | `compensation.service.ts`, `compensation-line-allocations.ts` (grep 50/50, odd cent) |
+| 125 | Explicit tip allocation wins | DONE | same files (explicit allocation set replaces default) |
+| 126 | Tips lock after payment; corrections = adjustment | DONE | `compensation-line-allocations.ts:54,78` (row locked, atomic replace); `compensation_adjustments` |
+| 127 | Append-oriented payroll ledger | DONE | `compensation_*` + `payroll_lines` + `compensation_adjustments` (`ARCHITECTURE_STATUS.md`) |
+| 128 | Refunds create linked reversals | DONE | `checkout-partial-refund-reversal.vitest`; pilot "refund → payroll reversal" |
+| 129 | Locked payroll blocks edits | DONE | `payroll-workflow.service.ts`; `workforce-lifecycles.ts` (conditional `where status = from`); pay-period overlap lock (B-67) |
+| 130 | Pay period states | DONE | `payroll.dto.ts:64` OPEN · NEEDS_REVIEW · READY_TO_APPROVE · HAS_EXCEPTIONS · LOCKED · PAID (+ statements SUBMITTED / APPROVED / PARTIALLY_PAID / PAID, `payroll-paycheck.ts:15`) — the mandate's "or equivalent" |
+| 131 | Payroll approval needs permission + step-up | DONE | `payroll.controller.ts:72,80` `@RequirePermission('payroll.approve') @RequireStepUp()` |
+| 132 | Guarantee top-up as separate component | DONE | `GUARANTEE_TOP_UP`; guarantee-proration fail-safe (TEST_REPORT Jul 28) |
+| 133 | Retail commission separate | DONE | `RETAIL_COMMISSION`; `apps/owner-web/src/screens/RetailCommissionCard.tsx` |
+| 134 | Payroll privacy by role/scope | DONE | `owner.staff.earnings.view` (SELECTED_BRANCHES/TENANT); tech sees own (`/tech/pay/*`) |
+| 135 | Transfer never carries old payroll | DONE | §77 + tenant-keyed payroll tables; `MULTI_SALON_CODE_AUDIT.md` |
+| 136 | Inventory movement ledger | DONE | `inventory_stock_movements` (`modules/inventory/src/inventory.service.ts`); `inventory-core.ts:77` (after = before + change) |
+| 137 | Block negative stock by default unless tenant allows | DONE | `products.allow_negative_stock` (`serving.kysely.repository.ts:503-508`); `inventory.service.ts:1131`; manager override audited (B-19) |
+| 138 | Low stock per product and branch | DONE | `inventory.service.ts:161-162,353` (`reorder_level_override`, `critical_level_override` per location); `inventory-core.ts:41` |
+| 139 | Product sale → canonical inventory after the right transition | DONE | `recordRetailSale` / `reverseRetailSale` unit-stamped (B-17, migration 667); recipes leave the shelf at Service Done (K-03) |
+| 140 | Tenant master catalog; branch overrides | DONE | B-38 branch price / duration / availability (`BUG_REGISTER.md`, `branch-service-price.pgtest`) |
+| 141 | Add-ons change price + duration everywhere | DONE | `booking.service.ts:216-226`; open times count add-ons (B-75); category = the one add-on model (K-01) |
+| 142 | Gift card ledger | BUILT Oct 28 (verify V-28) | `gift_card_transactions` (`gift-cards.kysely.repository.ts`, `gift-card-charge.ts`); payment-less reload removed (B-02); `checkout-giftcard-ledger-atomic.pgtest` **Re-audit (Oct 28):** FALSE on Oct 27: `POST /pos/checkout/gift-cards` minted an active, funded card with no payment, no ticket and no approval (front desk held the permission), and wrote card and ledger outside one transaction (the B-02 defect on the issue route). Fixed in `8a6f5ce2`: the route answers 410 `ENDPOINT_RETIRED`; the repository writes card + ledger in one transaction (`checkout-giftcard-issue-retired.vitest.spec.ts`). `apps/api/scripts/e2e-giftcard.mjs` still calls the retired route — update it. |
+| 143 | Multi-location: selling/redeeming branch, liability | DONE | `489_gift_card_transaction_branch.sql`; `gift-cards.service.ts:31` liability report (Decision 31) |
+| 144 | Loyalty ledger | DONE | `modules/customers/src/loyalty/loyalty-ledger.service.ts`; `loyalty_ledger`, `loyalty_point_earnings` |
+| 145 | Membership benefits backend-authoritative | DONE | `checkout-membership-discount.vitest`, `checkout-membership-comp-hook.vitest`; renewals need two env switches (hosting F3) |
+| 146 | Central deals/promotions engine | DONE | `modules/deals/src/deals/deals.core.ts`; `checkout-apply-deal`, `checkout-apply-promotion`; `live-phase5-deals` 40/40 |
+| 147 | Controlled stacking; gift card is payment | DONE | `deals.core.ts` stacking rules; gift card is a tender (`checkout-giftcard-charge`) |
+
+## Part 9 — Communications, AI, analytics, apps (§148–§179)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 148 | Domains never import Twilio SDK; Communications domain → config → adapter | DONE | grep `from 'twilio'`: **0 files** (adapters use raw fetch: `twilio-subaccount-client.ts:11-15`); architecture test `sdkImports` absolute rule; one Twilio client (B-14) |
+| 149 | Parent account + per-tenant subaccounts, Messaging Service, number, A2P, usage | BUILT Oct 28 (verify V-28) | `platform-messaging-provisioner.ts` (subaccount → Messaging Service → number, resumable, migration 668, B-16). **Missing (internal):** A2P campaign on a platform-managed salon's service; offboarding (release number, close subaccount). External: never run against a real Twilio account **Re-audit (Oct 28):** Kevin decided YES: a cancelled salon's platform number is released and its subaccount closed after 30 days or at once from Super Admin (`f9ff96c4`, migration 705). |
+| 150 | DB stores secretReference; Secrets Manager stores credentials | PARTIAL | tokens sealed with AES-GCM (`packages/security/src/provider-secrets.ts`, `communications-providers.service.ts`); no external Secrets Manager (see §3) |
+| 151 | SMS use cases (OTP, confirmation, reminder, check-in, queue ready, receipt, review, loyalty, membership, marketing) | BUILT Oct 28 (verify V-28) | OTP, confirmation, reminder ladder, check-in, queue ready, receipt, review request, marketing campaigns present (`modules/communications`, `modules/marketing`). **Missing:** membership messages are in-app only (`ARCHITECTURE_STATUS.md` Memberships row) **Re-audit (Oct 28):** Kevin decided YES: membership renewal / expiry reminders by SMS, English, transactional, through the salon messenger (`cf4af25b`). |
+| 152 | Marketing vs transactional consent separate | DONE | `notifications.service.ts:53-56` (opt-out enforced); campaign compliance flags cross-tenant tests (TEST_REPORT); `notification_opt_outs` |
+| 153 | STOP / opt-out honoured | DONE | STOP/START/HELP + `notification_opt_outs` (`INTEGRATION_STATUS.md` Twilio SMS row) |
+| 154 | OTP short-lived, single-use, limited, phone/session-bound, never logged | DONE | booking verification TTL / attempts / caps (`INTEGRATION_STATUS.md` Verify row); `tooling/security/check-auth-logging.py` (no console output in sign-in code); `mfaAttemptLimiter` (`keyed-rate-limit.ts:3`) |
+| 155 | Segment accounting | DONE | `notifications.service.ts:106-129` (provider segment count, never guessed); `sms-segments.pgtest`; migration 678 |
+| 156 | Twilio failure never rolls back booking | DONE | `booking.service.ts:194` (send after the write, outside the transaction); `docs/runbooks/twilio-outage.md`; pilot Twilio phase |
+| 157 | One central AI platform; no provider SDKs in domains | DONE | `modules/ai/src/ai/ai-gateway.ts`, `ai-providers.ts`; grep `from 'openai'`: 0 files |
+| 158 | Routing, model/prompt/task/tool registries, tenant settings, usage, cost, rate limit, budgets, safety, evaluation, fallback | DONE | `ai-model-router.ts`, `ai-prompts.ts`, `ai-evaluation.ts`, `ai-governance/`, budgets + kill switch (`ai-platform-kill-switch.pgtest`); `AI_PLATFORM_AUDIT.md` |
+| 159 | Existing AI modules preserved | DONE | `modules/ai/src/{ai-review-reputation, ai-voice-transcription, ai-analytics-forecasting, ai-queue-assignment, ai-scheduling-optimizer, voice-booking}`; OCR receipt in `modules/safety` (`ai-ocr-receipt.textract.ts`); deposit reconciliation in `modules/payments/src/deposit-reconciliation`; receptionist `apps/api/src/ai-booking` |
+| 160 | AI never domain authority | DONE | `ai-booking-public.resolver.ts:30` (delegates to BookingService, confirm-gated); AI queue advisory (B-71 hard rule exact); Fair Turn deterministic first |
+| 161 | Structured outputs validated | DONE | `ai-evaluation.ts`, `ai-model-router.ts` schema validation (zod/safeParse hits) |
+| 162 | AI tools use normal auth/tenant/permission/audit | DONE | `ai-booking-public.resolver.ts` (idempotent + caller-verified); `ai-entitlement.guard.ts`; same controllers/guards |
+| 163 | AI receptionist calls the same domains; no separate DB | DONE | `ai-booking.module.ts:1` ("Reuses BookingService (authoritative engine)"); no `ai_receptionist_*` business tables |
+| 164 | Failover: human transfer, callback, message | DONE | `INTEGRATION_STATUS.md` Twilio Voice row (transfer / callback rules; copilot transfer through the one telephony adapter) |
+| 165 | AI scheduling needs confirmation for confirmed appointments | DONE | `ai-scheduling-recommendation.ts:86` ("touches a confirmed appointment always needs review + customer approval") |
+| 166 | Deterministic queue rules first; AI explains | DONE | `ai-queue-assignment-exact-eligibility` spec; B-14 (recommendations recorded as events) |
+| 167 | OLTP stays hot; analytics off the hot path | DONE | rollups (`ARCHITECTURE_STATUS.md` Analytics row); `DATABASE_READ` replica handle (architecture test `writersOnReadReplica`); `report`/`ai` job classes separated |
+| 168 | Reports use canonical data; no FE formulas | DONE | `check:money` in 7 apps; `check:one-tax-calculation`; reports modules (`modules/reports`, `modules/analytics`) |
+| 169 | Sales / payments / refunds / settlements / payouts / deposits / payroll separated | DONE | migrations 038/211/224/351; `payment-reconciliation.service.ts:12` (gross / fee / net); finance reports (B-54 profit from APPROVED expenses) |
+| 170 | Gross sales ≠ payout | DONE | `payment-reconciliation.service.ts` netCents vs grossCents; `payroll.dto.ts:35` "earned ≠ paid" |
+| 171 | Owner App areas | PARTIAL | `apps/owner-web/src/App.tsx` tabs home / live / staff / reports / branches / approvals + bookings, tickets, customers, payments, payroll, marketing, notifications, settings, expenses, inventory, AI (`AiCenterScreen`, `OwnerAiQueueCard`). **Missing:** Owner App at 200 technicians not yet proven in the pilot (`NEXT_STEPS.md` I-6); native build = external |
+| 172 | Multi-location owner switch without cross-tenant | DONE | `modules/tenants/src/owner-portfolio` (`owner.branches.compare`); `ALL_BRANCHES` finance filter (B-73); `live-multibranch` 12/12 |
+| 173 | Customer App scope | DONE (web) | `apps/customer-web/src/App.tsx` routes `/queue`, `/deals`, `/membership`, `/check-in`, `/receipts` + `FindSalonsScreen`, `FindTechsScreen`, `BookScreen`, `RescheduleScreen`, `RateTechScreen`, `NotificationsScreen`, `TransactionHistoryScreen` (282 tests); native = external |
+| 174 | Customer realm, not employee auth | DONE | `aps_customer` cookie / audience (§16); customer-realm architecture rule `realmViolations` |
+| 175 | Customer self scope | DONE | `/customer/*` routes keyed to the session's customer; live IDOR 0 leaks |
+| 176 | Public booking narrow realm | DONE | `aps_booking`; `apps/booking-public` static page; `e2e:html` public booking 24 API calls |
+| 177 | Super Admin = control plane | DONE | `modules/super-admin` (1,997 tests), `modules/platform`; `CONTROL_PLANE_AUDIT.md` |
+| 178 | SA navigation areas (Overview … Audit) | DONE | 153 routes in `apps/admin-web/src/App.tsx`; `SUPER_ADMIN_SIDEBAR_AUDIT.md`, `DEEP_SIDEBAR_AUDIT.md` |
+| 179 | Compact cards, View All → detail | DONE | `SUPER_ADMIN_OVERVIEW_CODE_AUDIT.md`, `SUPER_ADMIN_OVERVIEW_WIRING_AUDIT.md`, `SUPER_ADMIN_LIST_PAGINATION_AUDIT.md` |
+
+## Part 10 — Super Admin, observability, security (§180–§201)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 180 | Support Mode (session, tenant, reason, actor, expiry, audit) | DONE | `modules/support/src/help/support-sessions.service.ts`; `support-center-core.ts:40` (expiry / revoked); `support-actions.service.ts:4` (reason + time-limit + step-up + audit) |
+| 181 | System Status: API, PG, Redis, workers, queues, realtime, payments, Twilio, AI, storage, backups, deployments | DONE | `apps/api/src/super-admin-system-status/system-status-core.ts`; storage + deployments panels (B-46, `/super-admin/system-status/infrastructure`); `post_restore_hold` component |
+| 182 | Structured logs, metrics, traces, workflow telemetry | DONE | `packages/observability` (pino logger, tracer, OTLP exporter; 300 tests); `live-tracing` 16/16, `live-phase14-telemetry` 22/22; OTLP endpoint = hosting C4 |
+| 183 | Correlation ids propagated | DONE | `traceparent` on `outbox_events` (migration 548, `event-contract.ts:317`); `requestId` + `reference` on every error (`API_ARCHITECTURE_AUDIT.md` row 26) |
+| 184 | Redaction of secrets in logs | DONE | `packages/observability/src/pino-logger.ts` redaction; `check-auth-logging.py`; `check:secrets` gate |
+| 185 | Business SLIs | DONE | `WORKFLOW_ROUTES` incl. `sms_send`, `tap_to_pay_capture`, `fair_turn_confirm` (B-20) |
+| 186 | HEALTHY / DEGRADED / OUTAGE / UNKNOWN / MAINTENANCE | DONE | `apps/api/src/observability/health-core.ts:13` |
+| 187 | SEV1–4 incidents, runbooks, postmortems | DONE | `incident-core.ts:11-14` `sevLevel`; `docs/runbooks/` (payment-status-unknown, refund-status-unknown, payments-provider-outage, clover-terminal-offline, twilio-outage, twilio-a2p-failure); `alert-notifier.ts` |
+| 188 | Defence in depth across every layer | PARTIAL | `SECURITY_DEEP_SCAN_STATUS.md` 140 DONE / 34 PARTIAL / 1 NOT DONE / 17 external; `SECURITY_REVIEW.md`. **Missing (internal):** the I-8 list in `NEXT_STEPS.md` (quarantine unscanned images, strict bodies, lockfile gate, outbound-host gate, egress allowlist, CSP `unsafe-inline`, log-capture scan, pre-commit hook, platform-admin invite approval, `realm`/`deviceId` in Ctx, lower-env data policy, rollback table, ASVS map, mobile SBOM) |
+| 189 | TLS, at-rest encryption, KMS keys, app-level encryption | BLOCKED_EXTERNAL | App-level AES-256-GCM DONE (`packages/security/src/aes-gcm.ts`); TLS / DB at-rest / private networking = hosting (`NEXT_STEPS.md` S-B3, S-B4; `docs/HOSTING_ACTIONS_FOR_KEVIN.md`); no KMS |
+| 190 | No secrets in git / frontend / mobile / logs / DB plaintext; Secrets Manager | PARTIAL | gate R7 `check:supply-chain-injection`, `db credentials` + `hidden code` audits, `MALWARE_SCAN_REPORT.md` (no `.jks/.pem/.key`, no real `.env`); K-12 rotation = Kevin. **Missing:** no Secrets Manager (env-keyed sealed columns, §3/§150) |
+| 191 | WAF / abuse protection | PARTIAL | app layer DONE: `@AnonRateLimit` per-IP (Redis-backed), login throttle, `mfaAttemptLimiter`, `voiceKeyLimiter`, tenant limiter (`keyed-rate-limit.ts`, `tenant-rate-limit.ts`), OTP caps. **External:** edge WAF / bot / DDoS = S-B2 (Kevin) |
+| 192 | SQLi, XSS, CSRF, SSRF, mass assignment, malicious upload | PARTIAL | `check:raw-sql-inputs`, `check:mass-assignment`, `csrfVerdict` (`allowed-origins.ts:51`), CSP `_headers`, upload policy. **Missing:** outbound-host gate / egress allowlist (SSRF, I-8 §12 / §93); drop `style-src 'unsafe-inline'` (§89) |
+| 193 | Payment webhooks: signature, freshness, dedupe, integration, tenant, schema, idempotent | PARTIAL | `payment-webhook.service.ts` + `payment_gateway_events` inbox (signature, dedupe, tenant via integration, `ValidatedBody`). **Missing:** timestamp-freshness tolerance (S-A7, "blocked on the processor spec" — needs the processor's signing-header documentation) |
+| 194 | Twilio webhooks verified; tenant resolved via subaccount/number | DONE | `twilio-inbound.controller.ts:3,13,22-25` (signature verified, `bad_signature` / `account_mismatch` recorded, proxy-aware URL) |
+| 195 | Durable webhook inbox | DONE | `payment_gateway_events` (provider, external id, status, attempts — `payment-gateways-core.ts`); `inbound_messages` |
+| 196 | Uploads validate MIME, magic bytes, size, dimensions, ownership, malware | BUILT (needs CLAMAV_HOST — BLOCKED_EXTERNAL) | `packages/media/src/upload-policy.ts:5-17` (size, sniffed type, extension from bytes, metadata strip, tenant key, quota) + `check:uploads` gate; `clamav-scanner.ts`. **Missing (internal):** unscanned *images* not quarantined (Security §104 / §106). External: ClamAV service **Re-audit (Oct 28):** Kevin decided YES: image screening is already built (`251b24d2`) — with `CLAMAV_HOST` set every image is scanned and an infected or unscannable one refused. Hosting ClamAV: BLOCKED_EXTERNAL. |
+| 197 | Object storage, not PG blobs | DONE | `private-store.ts`; production refuses to boot without `MEDIA_STORE=s3` (`ef303be2`); avatars / exports moved out of Postgres (B-18 closed); bucket = Kevin |
+| 198 | Portfolio: media, service, tags, caption, public/private, Book This Look | DONE | `tech_portfolio_photos` (moderation_status, is_public — `media-access-core.ts:108`); `apps/customer-web/src/lib/bookThisLook.ts` |
+| 199 | Nail Showcase integrates with profile/booking without private data | DONE | `modules/workforce/src/nail-showcase`; `NailShowcasePostDetailScreen.tsx`; `media-access-core.ts:60` private namespace never served unsigned |
+| 200 | Reviews linked to real service/visit; no gating | DONE | `reviews.appointment_id` (`343_ai_review_reputation.sql:7`); `modules/customers/src/reviews`; `RateTechScreen` |
+| 201 | Report / moderation / response by permission | DONE | `moderation_status` (`media-access-core.ts:109`); `tech-profile.service.ts:325` (manager view, any moderation state); review responses (`TECH_WEB_PROFILE_AUDIT.md`) |
+
+## Part 11 — Notifications, workers, config, DR, migrations, frontend (§202–§221)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 202 | SMS / email / push / in-app centralised | DONE | `modules/communications/src/notifications/notifications.service.ts`; `packages/notifications`, `packages/web-push`; architecture test refuses provider SDKs elsewhere |
+| 203 | Separate worker workloads | DONE | `apps/api/src/worker.ts`; `JOB_QUEUE_CLASSES` critical / standard / ai / report / import / reconciliation (`job-queue.ts:14`); 21 job handlers, 10 consumers registered once (`live-event-wiring`) |
+| 204 | High-priority jobs never behind marketing / analytics | DONE | `job-worker.ts:137` (one loop per class); `critical` class |
+| 205 | Noisy-tenant protection | DONE | `job-worker.ts:20,84` `perTenantCap`; `tenant-partitioned-scheduling.postgres-race`; tenant rate limiter |
+| 206 | Cache only safe data; keys carry tenant/branch/version | DONE | `packages/cache/src/index.ts` tenant cache port; `redis.ts:10` (label never a key / tenant) |
+| 207 | Validated env config; fail fast | DONE | `apps/api/src/common/production-config.ts:44-48` (production never starts on a mock payment / SMS sender); `ef303be2` (no S3 → refuse); `check:boot` gate; `ENV_INVENTORY.md` |
+| 208 | Feature flags incl. mobile_tap_to_pay, customer_display_ads, ai_queue_assignment, new_payroll_engine | DONE | `671_rollout_flags_tap_to_pay_payroll.sql` (`mobile_tap_to_pay`, `new_payroll_engine`, fail CLOSED); `customer_display_ads` platform setting (`platform-settings-defaults.ts:33`); `ai_queue_assignment` in `ai-module-registry.ts` |
+| 209 | Kill switches per provider / module | DONE | `modules/super-admin/src/super-admin-kill-switches/kill-switches.ts`; AI kill switch pgtest; 671 flags "Kill here" |
+| 210 | Backups, PITR, storage protection, config backup, restore tests | BLOCKED_EXTERNAL | code side: `apps/api/scripts/drills/drill-restore.mjs`, `drill-db-failover.mjs`, `DR_DRILLS_2026-10-08.md`. Hosted backups / PITR / off-site = `docs/HOSTING_ACTIONS_FOR_KEVIN.md` A3 (nothing is hosted) |
+| 211 | Restore tested before trusted | PARTIAL | local drill 12/12 on every full run (dump, restore, 750 tables row-identical, sealed columns open). **Missing:** a hosted production-backup restore (S-B12, Kevin) |
+| 212 | After restore, reconcile before replaying payments / refunds / SMS | DONE | `POST_RESTORE_HOLD` (`job-worker.ts`, `outbox-publisher.ts`, `health-core.ts`); drill proves "claims nothing; hold cleared → job runs once" |
+| 213 | Expand → backfill → validate → cutover → contract | DONE | `check:migration-safety` gate (B-15); `validate-not-valid-547.pgtest`; `DEPLOYMENT.md` |
+| 214 | Historical data preserved through migrations | DONE | 638 migration files applied in order on fresh DBs (697 latest committed; 698 uncommitted); restore drill row-identical; no destructive migration unreviewed |
+| 215 | Typed client + server-state cache + shared realtime client + local UI state | PARTIAL | typed clients (`posHttp()` B-41, `@aipowersalon/api-client`, `api-contracts` — architecture test `contractRedeclarations`); shared `packages/realtime-client`; `packages/mobile-sdk/src/query/cache` for the Capacitor apps. **Missing:** no shared server-state query cache in the web apps (no react-query/SWR; screens fetch per component) **Re-audit (Oct 28):** stale: owner-, tech-, customer- and manager-pay-web use `@tanstack/react-query`; only pos-web and admin-web have no query cache (build it or record per-screen fetch as the design). |
+| 216 | No full-page overlay on background refresh | DONE | safety sync preserves screen (`useRealtime.ts`); `window.location.reload` only on deliberate salon/branch switch (`POSLayout.tsx:251`, `TechWorkplacesScreen.tsx:19-23`, `ClaimGiftCardScreen`); M5-4 grid reload on unknown change is "watch" |
+| 217 | No dead buttons | DONE | `inert controls` audit (`tooling/ci/check-inert-controls.mjs`) with **empty baseline** `inert-controls.baseline.json` = `[]`; `check:dialogs`, `check:no-print` |
+| 218 | Every nav entry → valid route (all apps) | DONE | `check:nav`; crosswire 2,637 / 2,637 wired, 0 orphaned; `check:unreached` 0 new; `FRONTEND_ROUTE_STATUS.md` |
+| 219 | Responsive large-touchscreen POS | PARTIAL | viewport audit 60/60 shell controls ≥ 40 px; one-screen 54/54 at 1920×945. **Missing:** V-2 (Overview Notify overlaps View All at 1366/1280; Checkout VI row buttons at 1280), V-3 compact buttons 15–25 px (`NEXT_STEPS.md`, `TEST_REPORT.md` Oct 27 "Not passing") **Re-audit (Oct 28):** V-2 / V-3 done; I-18 (busy-state report 55 / 90) remains. |
+| 220 | Accessibility | PARTIAL | axe tests on five screens (`packages/testing/src/a11y.ts`), pinch-zoom audit `check-zoom.mjs` on person-facing apps; WCAG contrast / focus for announcements open (I-11); no platform-wide screen-reader / contrast pass |
+| 221 | EN + VI, no hard-coded strings | PARTIAL | POS 12,754 keys / 11 dictionaries, `check-i18n`, `check-pos-i18n` ratchet (tier-4 = 11), `vi-glossary`, pilot phase 13 14/14. **Missing (internal):** V-4 AI prose in Vietnamese, V-5 server validation prose as codes, V-6 customer language picker; Super Admin English by Kevin's decision; **external:** V-1 Kevin reviews 3,465 strings **Re-audit (Oct 28):** V-4 / V-5 / V-6 done; Kevin's review of the Vietnamese strings (V-1) remains. Oct 28 Vietnamese re-audit fixes: see `VIETNAMESE_POS_STATUS.md`. |
+
+## Part 12 — Testing, builds, reports (§222–§262)
+
+| § | Requirement (short) | Status | Evidence |
+|---|---|---|---|
+| 222 | Unit, integration, API, permission, isolation, concurrency, failure tests per module | DONE | 18,671 unit/pgtest (Oct 26 full run), 114 race / cross-tenant / IDOR spec files, 40 `verify-*` harnesses, 24 live proofs (`TEST_REPORT.md`) |
+| 223 | Concurrency: same slot, duplicate check-in, duplicate assignment, same terminal, duplicate charge, duplicate refund, gift-card, loyalty, inventory race, payroll approval race | DONE | race lane 96 files / 328 tests (Oct 26): booking 47 (`booking-hold-deadlock`), queue 27, checkout 49 (`refund-race`, `gift-card-machine`, `checkout-concurrency`), inventory 5, workforce 20 (pay-period overlap), gift-cards 2, api 131 (`api-key-auth`, `code-lookup-limit`, `branch-day`) |
+| 224 | Tenant A → Tenant B denied, every domain | DONE | live IDOR 178 cases 0 LEAK; `check:tenant`; cross-tenant pgtests (checkout gift card, customers, campaigns, templates) |
+| 225 | Branch managers only their branches | DONE | `cross-branch-suite.pgtest.vitest.spec.ts` (Oct 26); `live-phase9-permissions` 28/28; `live-multibranch` 12/12 |
+| 226 | Financial invariants reconcile | DONE | `checkout-final-totals`, `checkout-giftcard-ledger-atomic.pgtest`, money chain 25/25, multi-tech 21/21, loyalty netting (M4), restore drill checksums identical |
+| 227 | Performance at realistic load | PARTIAL | `PERFORMANCE_REPORT.md` (200-tech dataset, p95 per route, EXPLAIN); `api-load-test.mjs`, `booking-verification-load-test.mjs`, `m4-*-bench.mjs`. **Missing:** realtime lag p95 < 2 s target (I-5), Owner App reports at 200 (I-6), clock-in burst read-back on the pilot host (I-16) |
+| 228 | Provider failure tests (Fiserv timeout, Clover offline, Twilio, Redis, worker restart, AI, storage) | DONE | drills `drill-redis-loss` 13/13, `drill-worker-loss`, `drill-db-failover`; `checkout-provider-unavailable.vitest`; `FAILSOFT_AUDIT.md`; pilot card phase (decline / B / unknown / dropped); storage: production refuses to boot without S3 (fail fast rather than degrade) |
+| 229 | Core POS survives AI failure | DONE | pilot runs with no AI provider (deterministic fallbacks, `PROJECT_STATUS.md` AI row) |
+| 230 | Core POS survives Twilio failure | DONE | §156; `docs/runbooks/twilio-outage.md`; unconfigured channel → `blocked / not_configured`, never metered |
+| 231 | Display failure never blocks POS | DONE | display is a projection consumer (`live-display-lifecycle`); POS checkout completes without a display (pilot phases without screens, `PILOT_SKIP`) |
+| 232 | Provider outage → other tenders, never "declined" | DONE | `cef689c8` (B / pending / timeout → 503 not a decline); `docs/runbooks/payments-provider-outage.md` |
+| 233 | Build every deployable app | PARTIAL | Final pass at `3c5ae402` (`TEST_REPORT.md` "Oct 27 2026 — final pass"): `build:packages`, `build:modules`, `build:api`, `build:frontends` rc 0; `frontend builds` audit (all 7 SPAs) inside `ci:gates` passed at `3c5ae402`; workforce / super-admin dists rebuilt after `3f299d0a`. Later commits by other agents (`6a1a76e8` payments types, in-flight pay-stub work) are not covered by this run. Mobile native store builds: BLOCKED_EXTERNAL (upload keys, Mac) — under §262 **Re-audit (Oct 28):** DONE on the Oct 27 code, not on HEAD: since then the `as any` sweep (`c2292a19`, ~200 files) and the Oct 28 fixes landed without a typecheck, and eslint is not installed here (`check:lint` now fails honestly). PARTIAL until V-28 runs. |
+| 234 | Full typecheck, no strictness disabled | PARTIAL | `npm run -s typecheck` rc 0 and the `app types` audit at `3c5ae402` (final pass); `check:as-any` ratchet only shrinks. **Missing (internal):** the `as any` debt itself (I-15; another agent's `6a1a76e8` removed 107 in payments after the final pass) |
+| 235 | Lint fixed, no blanket suppression | PARTIAL | Final pass at `3c5ae402`: `lint-ratchet.mjs` rc 0 — **0 errors**, 192 warnings, no rule above its baseline (exhaustive-deps locked at 75); `check:lint` inside `ci:gates` passed. **Missing (internal):** the 192 baseline warnings (I-15) |
+| 236 | Run all tests; never claim unexecuted PASS | PARTIAL | Every lane on the final-pass code (`3c5ae402`; API lane / pilot / proofs at `94ba69e9` = `b01f8d71`): packages 1,247 · modules 11,027 (27 suites) · apps 3,897 (8) · API 3,110 · **19,281 passed, 0 failed**; race 99 files / 336; harnesses 9 / 0 / 1; route sweep 15 / 15; event wiring 19 / 19; display lifecycle 30 / 30; **24 / 24 live proofs (606 checks)**; announcement proof 58 / 58; one-screen matrix; **pilot 235 / 235** (fresh DB, no PILOT_SKIP); drill 12 / 12. First-pass failures and their fixes are kept in `TEST_REPORT.md`. Not run: anything after `275e975e` by other agents; `ci:gates` on the branch HEAD is red from that work (7 FAIL, attributed in `TEST_REPORT.md`) **Re-audit (Oct 28):** DONE on the Oct 27 code, not on HEAD: since then the `as any` sweep (`c2292a19`, ~200 files) and the Oct 28 fixes landed without a typecheck, and eslint is not installed here (`check:lint` now fails honestly). PARTIAL until V-28 runs. |
+| 237 | No fake completion | DONE | `TEST_REPORT.md` "What could NOT be verified" sections; `INTEGRATION_STATUS.md` honest statuses; `PROJECT_STATUS.md` "Not yet run"; adapters throw NotConfigured rather than fake success |
+| 238 | ARCHITECTURE_STATUS.md (domain, owner, status, DB, APIs, events, realtime, apps, tests, issues) | PARTIAL | exists with every column (`ARCHITECTURE_STATUS.md`) but dated **Oct 20 + Oct 22 update**; does not reflect Oct 23–27 (device auth 687–690, network policy 692, finance 672, announcements 674, Vietnamese POS, wallet webhook) |
+| 239 | PROJECT_STATUS.md (Complete / Partial / Blocked / Deprecated) | DONE (Oct 27 final pass) | `PROJECT_STATUS.md` "Current status (Oct 27 2026 — final pass)": the final-pass regression numbers, the red gates on the branch HEAD and their cause, what closed, what is open, the nine mandate counts (Full System Run skipped by Kevin); the Oct 26 status and the area / Deprecated tables are kept below it |
+| 240 | DEVELOPER_HANDOFF.md | DONE | `DEVELOPER_HANDOFF.md` (Oct 27, 273 lines: run, apps, env, DB, workers, realtime, payments, Twilio, AI, local dev, deploy checklist) |
+| 241 | TEST_REPORT.md with commands + results | DONE | `TEST_REPORT.md` (every lane with command, counts, first-pass failures kept) |
+| 242 | CHANGELOG_HANDOFF.md | DONE | `CHANGELOG_HANDOFF.md` (Oct 26, 2,959 lines: files, migrations, behaviour, removed legacy, APIs, events, permissions) |
+| 243 | SECURITY_REVIEW.md | DONE | `SECURITY_REVIEW.md` (Oct 26) + `docs/security/MALWARE_SCAN_REPORT.md` (Oct 26, clean) |
+| 244 | INTEGRATION_STATUS.md with LIVE / READY_FOR_SANDBOX / PARTIAL / BLOCKED / NOT_IMPLEMENTED | DONE | `INTEGRATION_STATUS.md` (Oct 26; WORKING / SANDBOX_READY vocabulary = the mandate's LIVE / READY_FOR_SANDBOX) |
+| 245 | DATABASE_STATUS.md | DONE (Oct 27 final pass) | `DATABASE_STATUS.md` "Oct 27 2026 — migrations 693 → 702" (`890aa4f0`): one row each for 693–702 with purpose and expand-safety; measured on a fresh DB: 642 migrations, 773 tables, 2,466 indexes, 206 triggers |
+| 246 | API_INVENTORY.md (route, realm, permission, scope, controller, service, status) | PARTIAL | `API_INVENTORY.md` (3,141 lines, Oct 23). **Missing:** routes added Oct 23–27 (device approval, wallet webhook, finance / announcement additions) — regenerate from the manifest (`check:openapi`, `attack-surface.mjs`) |
+| 247 | REALTIME_INVENTORY.md | PARTIAL | `REALTIME_INVENTORY.md` (Oct 20, channels / actors / permission / snapshot API); `REALTIME_EVENT_CATALOG.md` is gate-generated and current (`check:realtime-catalog`). **Missing:** the inventory's resource-version column and the Oct 24–26 lane / per-aggregate-order changes |
+| 248 | FRONTEND_ROUTE_STATUS.md | PARTIAL | `FRONTEND_ROUTE_STATUS.md` (Oct 20 + Oct 22 update). **Missing:** admin-web device screens / Oct 23–27 screens; counts (153 SA routes, 220 POS routes) not refreshed |
+| 249 | Final report — executive summary | PARTIAL | `TAKEOVER_MANDATE_FINAL_REPORT.md` §249 (Oct 23) — predates the Oct 24–27 mandates (200-tech, security deep scan, announcements, Vietnamese POS) and the Oct 26 regression |
+| 250 | Domain matrix PASS / PARTIAL / FAIL / BLOCKED | PARTIAL | `TAKEOVER_MANDATE_FINAL_REPORT.md` §250 (32 domains, Oct 23); `ARCHITECTURE_STATUS.md` — same staleness |
+| 251 | App matrix | PARTIAL | §251 (Oct 23) + `PROJECT_STATUS.md` app matrix (Oct 22 numbers); Oct 26 counts in `TEST_REPORT.md` only |
+| 252 | Build matrix (install … concurrency tests) | PARTIAL | §252 (Oct 23) — the Oct 26 M7 run is the current truth and is in `TEST_REPORT.md`, not in the matrix; Mobile Builds = BLOCKED_EXTERNAL |
+| 253 | Provider matrix | DONE | `INTEGRATION_STATUS.md` (Oct 26) covers Fiserv / CardPointe, Clover, Clover Compact, Tap to Pay, Twilio SMS, Verify, Email, Push, AI, Object Storage with the required vocabulary |
+| 254 | Database matrix per domain | PARTIAL | `DATABASE_STATUS.md` + `apps/api/db/ownership/registry.generated.json` (`check:db-ownership`) give table → ownership class / tenant / branch; indexes / versioning / audit per domain are spread across `DB_INDEX_AUDIT.md`, `UNIQUE_INDEX_TENANT_REVIEW.md` — not one matrix |
+| 255 | Final bug report (ID, severity, module, root cause, fix, internal/external, workaround) | DONE (Oct 27 final pass) | `BUG_REGISTER.md` "Found and fixed Oct 26–27" (`53c852ad`): B-94 … B-105 with root cause, fix commit and test (SD-21, the 13 malformed-input 5xx routes, 10e2 handoff code, API-lane drift, pilot-harness bugs …); B-93 (OCR store swallows writes) recorded OPEN |
+| 256 | Files changed, exact paths | DONE | `CHANGELOG_HANDOFF.md` + per-mandate reports (`docs/i18n/VIETNAMESE_POS_ENGINEERING_REPORT.md` §126) |
+| 257 | Files removed (duplicates, legacy, dead) | DONE | `docs/DEAD_CODE_REPORT.md` batches 1 + 2 (69 files; 113 exports; 89 client methods; 7 deps); `PROJECT_STATUS.md` §3 Deprecated; `PRINT_FEATURES_REMOVED.md` |
+| 258 | Migrations list with purpose | DONE (Oct 27 final pass) | `DATABASE_STATUS.md` one line each through 692 plus the Oct 27 table 693–702; §258 of the final report through 603 (the DATABASE_STATUS list is the current one) |
+| 259 | Permissions added/changed | DONE | `docs/PERMISSIONS.md` regenerated by `check:permission-docs`; `CHANGELOG_HANDOFF.md` |
+| 260 | Events added/changed with consumers | DONE | `REALTIME_EVENT_CATALOG.md` (gate-generated), `check:event-producers`, `EVENT_ARCHITECTURE_REPORT.md`; `CHANGELOG_HANDOFF.md` |
+| 261 | APIs added/changed, breaking changes | PARTIAL | OpenAPI manifest diff required per commit (`check:openapi`); `docs/security/attack-surface-routes.csv` current. **Missing:** a human list of Oct 23–27 route changes (`API_INVENTORY.md` is Oct 23) |
+| 262 | External dependencies, genuine only | DONE | `NEXT_STEPS.md` §2 "External — Kevin" (K-12, P0-2, E-TTP, E-OCR, E-MSG, S-B2…S-B12, D-*); `docs/HOSTING_ACTIONS_FOR_KEVIN.md`; no internal work hidden there (the internal list is §1 of the same file) |
+
+---
+
+## Counts (262 numbered sections)
+
+| Status | Count |
+|---|---|
+| DONE | 218 |
+| PARTIAL | 41 |
+| NOT DONE | 0 |
+| BLOCKED_EXTERNAL | 3 (§105 Tap to Pay, §189 TLS / at-rest / KMS, §210 hosted backups & PITR) |
+
+(§189 and §210 have a finished code side — drills, AES-GCM, POST_RESTORE_HOLD — and wait on hosting; §105 waits on Apple + Fiserv. §3's missing Secrets Manager is counted under PARTIAL. Of the 41 PARTIAL rows, 12 are "run / document on current HEAD" rows (§234–§235 — debt, not a missing run — §238, §246–§252, §254, §261) and 29 are product gaps. Oct 27 final pass: §233, §236, §239, §245, §255, §258 → DONE (was 212 / 47).)
+
+## INTERNAL — buildable now (priority order)
+
+| Pri | § | Exact missing part | Files |
+|---|---|---|---|
+| P0 | 233–236 | **Run the full regression on HEAD** (`final-run.sh` + `live-proofs.sh` + pilot without `PILOT_SKIP`); the last full run is 95 commits behind and `2dbeb916` (payments webhook leg) has no logged run; commit or finish the in-flight agent work first (the architecture gate fails on `platform-device-trust.pgtest.vitest.spec.ts`'s relative migrations path) | `tooling/ci/final-run.sh`, `tooling/ci/live-proofs.sh`, `apps/api/scripts/live-pilot-day.mjs`, `modules/identity/src/auth/platform-device-trust.pgtest.vitest.spec.ts` (use `MIGRATIONS_DIR`) |
+| P0 | 96, 85 | Wallet-webhook race proof + the split-tender lost-card race (I-3 / I-4) — the new race spec is uncommitted | `modules/payments/src/payments/payment-webhook.service.ts`, `modules/checkout/src/checkout/split-tender-lost-card.postgres-race.vitest.spec.ts` |
+| P1 | 11 | `realm` + `deviceId` on `Ctx`; `@ResourceScope` | `packages/tenant-context/src/context.ts`, `packages/permissions/src/guards.ts` |
+| P1 | 24 | `ASSIGNED` scope (and explicit `PLATFORM`) in `PermissionScope` + decision | `packages/permissions/src/permission-registry.ts`, `decision.ts` |
+| P1 | 29, 192, 196, 188 | Security remainder I-8: strict bodies schema by schema; outbound-host gate + egress allowlist (SSRF); quarantine unscanned images; drop `style-src 'unsafe-inline'`; lockfile gate; log-capture scan | `apps/api/scripts/check-validated-bodies.mjs` allowlist, `packages/media/src/upload-policy.ts`, `apps/*/public/_headers`, `tooling/security/` |
+| P1 | 43 | Clients drop stale frames by `resourceVersion` (or correct the M4 claim) | `packages/realtime-client/src/core.ts`, `apps/pos-web/src/realtime/useRealtime.ts`, tech-web / owner-web / customer-display realtime hooks |
+| P1 | 149 | A2P campaign on a platform-managed salon's Messaging Service; offboarding (release number, close subaccount) | `modules/communications/src/tenant-messaging/platform-messaging-provisioner.ts`, `twilio-subaccount-client.ts` |
+| P1 | 89 | Pick the CommerceHub MID per location once Fiserv onboards them (code change ready to make now: read the location's merchant instead of `COMMERCEHUB_TTP_MERCHANT_ID`) | `modules/payments/src/payments/fiserv-commercehub-ttp.adapter.ts`, `payment-gateway.resolver.ts` |
+| P2 | 28 | Success envelope `{success, data, meta, requestId}` for the remaining legacy handlers (incremental, module by module) | `apps/api/src/common/`, `packages/api-contracts/src/` |
+| P2 | 32 | Row versions / `VERSION_CONFLICT` on customer, schedule, inventory, membership edits | `modules/customers`, `modules/workforce/src/availability`, `modules/inventory`, `modules/memberships` |
+| P2 | 48, 7 | Merge the two global customer identity layers; collapse the ~13 `technician_statuses` readers and 3 PIN stores | `modules/customers/src/customer-identity/`, `modules/workforce/src/technicians/`, `technician-clock-pin/` |
+| P2 | 68 | Appointment Soon / Hold as real Tech Queue lane states (I-12) | `modules/queue/src/tech-queue/`, `apps/pos-web/src/screens/POSTechQueueScreen.tsx` |
+| P2 | 73 | One Today / Week / Month technician metrics surface (ready time, break time, turn units, walk-ins vs appointments) | `modules/workforce/src/tech-utilization/`, `apps/tech-web/src/screens/TechDashboardScreen.tsx` |
+| P2 | 80 | Technician App "Customers where authorised" screen | `apps/tech-web/src/screens/`, `modules/customers` (tech-scoped read) |
+| P2 | 151 | Membership SMS (renewal / expiry) through the notifications path, not in-app only | `modules/memberships`, `modules/communications/src/notifications` |
+| P2 | 171, 227 | Owner App at 200 technicians in the pilot (I-6); realtime lag p95 bench (I-5); clock-in read-back (I-16) | `apps/api/scripts/lib/pilot-large-salon-m5.mjs`, `m4-outbox-burst-bench.mjs`, `PERFORMANCE_REPORT.md` |
+| P2 | 215 | A shared server-state cache for the web apps (one fetch per resource, stale-while-revalidate) — or document the per-screen fetch as the chosen design | `packages/api-client`, `apps/pos-web/src/api/posHttp.ts` |
+| P2 | 219, 220, 221 | V-2 overlaps at 1366 / 1280; V-3 touch targets (after Kevin's size decision); axe on more screens; V-4 AI prose in VI; V-5 validation codes; V-6 language picker | `apps/pos-web/src/styles.css`, `POSCheckoutScreen.tsx`, `modules/ai/src/ai/ai-prompt-registry.ts`, `packages/api-contracts/src/errors.ts` |
+| P2 | 193 | Webhook timestamp freshness (as soon as the processor's signing header is documented) | `modules/payments/src/payments/payment-webhook.service.ts` |
+| P3 | 238, 239, 245–248, 249–252, 254, 255, 258, 261 | Refresh the status documents to HEAD: ARCHITECTURE_STATUS (Oct 20/22), PROJECT_STATUS (Oct 26, "regression pending" line), DATABASE_STATUS (693–698), API_INVENTORY / REALTIME_INVENTORY / FRONTEND_ROUTE_STATUS (Oct 20–23), the final-report matrices (Oct 23), BUG_REGISTER (Oct 23: add B-93, `092ceac3`, the Oct 27 bugs, V-2 / V-3) | the named root `.md` files; regenerate inventories from `check:openapi` / `check:realtime-catalog` / `audit-routes.js` |
+| P3 | 235, 234 | Lint warning ratchet (196) and `as any` ratchet in payments / checkout / payroll / permissions (I-15) | `tooling/ci/lint-ratchet.mjs`, `apps/api/scripts/as-any.baseline.json` |
+| P3 | 3 | Nest 10 → 11 / kysely ≥ 0.28.17 (S-A2, before 2027-01-31) | root `package.json`, workspaces |
+
+## EXTERNAL — needs Kevin
+
+| § | Dependency |
+|---|---|
+| 105, 89, 96 | Apple Tap-to-Pay entitlement; Fiserv CommerceHub iOS SDK + sandbox credentials + webhook secret (to implement `inquireByOrderId`); per-location CommerceHub merchant onboarding; Mac + iPhones |
+| 88, 96 | Real CardPointe MIDs per salon + UAT run (`npm run uat:cardpointe`); confirm the `inquireByOrderid` refund listing shape (B-23) |
+| 101, 102 | A physical Clover Compact on a salon's MID |
+| 149–151, 154 | Twilio platform account, A2P brand / campaign approval, Verify service; SendGrid key + domain; Firebase (new service account) + APNs; AI provider keys |
+| 189, 190, 210, 211 | Hosting: TLS, DB at-rest encryption / private networking, Redis, S3 bucket + IAM, ClamAV, Textract, backups + PITR + off-site + a hosted restore test, OTLP endpoint, edge WAF (S-B2 … S-B12, `docs/HOSTING_ACTIONS_FOR_KEVIN.md`) |
+| 190 | K-12 security sequence (machine rebuild, rotate credentials, revoke the Firebase key, new Play upload keys, DB password / port 5432, history rewrite) before anything is pushed |
+| 3, 150, 190 | Decision: adopt an external Secrets Manager (or accept env-keyed sealed columns) |
+| 80, 171, 173, 233 | Store builds: Play upload keys, a Mac for iOS |
+| 108 | A real 23-inch second display test |
+| 219, 221 | V-3 touch-target size decision; V-1 review of 3,465 Vietnamese strings |

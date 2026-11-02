@@ -1,0 +1,241 @@
+{
+  "label": "e2e",
+  "at": "2026-10-29T19:03:58.396Z",
+  "results": [
+    {
+      "step": "settlements: KPI cards are the server aggregates (This Month, salon time zone)",
+      "ok": true,
+      "detail": "29 batches · gross 769630 · period 2026-10-01…2026-10-31 (America/New_York)",
+      "ms": 126
+    },
+    {
+      "step": "settlements: reconciliation strip — expected payout = gross − fees − in-batch refunds (refunds not subtracted twice)",
+      "ok": true,
+      "detail": "gross 769630 − fees 21758 − in batch 1500 = 746372; bank 578704",
+      "ms": 75
+    },
+    {
+      "step": "settlements: presets — This Year and Today are resolved by the server",
+      "ok": true,
+      "detail": "year 63 · today 1 (2026-10-29)",
+      "ms": 1157
+    },
+    {
+      "step": "settlements: Custom Range calendar — Cancel applies nothing; From/To + Apply filters the list",
+      "ok": true,
+      "detail": "Oct 5, 2026 – Oct 12, 2026 → 8 batches, rows 8",
+      "ms": 1549
+    },
+    {
+      "step": "settlements: To before From is impossible — picking an earlier day restarts From",
+      "ok": true,
+      "detail": "From restarted at Oct 10; Apply disabled until To",
+      "ms": 924
+    },
+    {
+      "step": "settlements: paging — numbered server pages, newest created first, page 2 differs",
+      "ok": true,
+      "detail": "p1 CP-20260063…CP-20260053 · p2 CP-20260052… · \"Showing 12–22 of 63 · Page 2 of 6\"",
+      "ms": 1126
+    },
+    {
+      "step": "settlements: universal search — settlement ID, transaction, amount and customer, all server-side",
+      "ok": true,
+      "detail": "id 1 · txn 1 · customer 2 (\"CardPointe · Customer (via payment)\")",
+      "ms": 2508
+    },
+    {
+      "step": "settlements: settlement detail — amounts, related transactions with their own pages, detail export",
+      "ok": true,
+      "detail": "3 transactions on the first page · settlement-CP-20260063.csv 797 bytes · audited",
+      "ms": 983
+    },
+    {
+      "step": "settlements: Export Report = the filtered set, audited",
+      "ok": true,
+      "detail": "settlements-2026-01-01-2026-12-31.csv: 63 batches",
+      "ms": 159
+    },
+    {
+      "step": "settlements: Refunds tab — its own pages, status filter, refund detail is view-only",
+      "ok": true,
+      "detail": "10 refunds on page 1 · failed only: 3",
+      "ms": 1733
+    },
+    {
+      "step": "settlements: a new batch arriving — first on Page 1 when it qualifies, a note when it is filtered out",
+      "ok": true,
+      "detail": "CP-NEW-901 first (highlighted 1) · filtered-out note: \"A new settlement arrived that your current filters hide.\"",
+      "ms": 3502
+    },
+    {
+      "step": "recon: five KPIs are server aggregates; Net Difference counts due payouts only",
+      "ok": true,
+      "detail": "expected 765772 · matched 578704 · missing 2 · diff -65432",
+      "ms": 208
+    },
+    {
+      "step": "recon: universal search finds the $1,000 Sep 16 credit and opens it",
+      "ok": true,
+      "detail": "Bank deposit ACH CREDIT 0916 $1,000.00 · Sep 16, 2026",
+      "ms": 1199
+    },
+    {
+      "step": "recon: Record a Deposit — a record only; it lands in Unmatched Deposits; audited",
+      "ok": true,
+      "detail": "103.42 · CARDPOINTE CP-20260054",
+      "ms": 730
+    },
+    {
+      "step": "recon: a duplicate reference is caught before it is saved",
+      "ok": true,
+      "detail": "A deposit with this bank reference is already recorded on this account ($103.42, Oct 29, 2026).",
+      "ms": 310
+    },
+    {
+      "step": "recon: suggestion (exact reference, high) → person reviews → match; settlement becomes Matched",
+      "ok": true,
+      "detail": "CP-20260054 matched 10342 via exact_reference",
+      "ms": 865
+    },
+    {
+      "step": "recon: split payout — two deposits allocated to one settlement (partially matched → matched)",
+      "ok": true,
+      "detail": "CP-20260053: 13523 + 13524 → matched · 2 allocations shown",
+      "ms": 5433
+    },
+    {
+      "step": "recon: unmatch needs a reason; the allocation is kept in history (never deleted)",
+      "ok": true,
+      "detail": "history keeps 2 rows; status back to partially_matched",
+      "ms": 1309
+    },
+    {
+      "step": "recon: bank accounts — add (last 4 only) and deactivate; a label, never a payout destination",
+      "ok": true,
+      "detail": "Operating:active* Savings:active E2E Reserve:inactive",
+      "ms": 1293
+    },
+    {
+      "step": "recon: Settlements → Deposits paging (newest created first)",
+      "ok": true,
+      "detail": "p1 starts CP-NEW-902 · p2 starts CP-20260055",
+      "ms": 1137
+    },
+    {
+      "step": "recon: Exceptions — view evidence, Under Review, resolve with a reason (history recorded)",
+      "ok": true,
+      "detail": "resolved · audited: exception_under_review, exception_resolved (the case history reads audit_logs; the harness audit is in memory)",
+      "ms": 1777
+    },
+    {
+      "step": "recon: Fees tab — per-batch fees, components \"not supplied\" when the processor does not send them",
+      "ok": true,
+      "detail": "10 rows on page 1",
+      "ms": 589
+    },
+    {
+      "step": "recon: Reports — all nine open; CSV and PDF exports carry the totals and are audited",
+      "ok": true,
+      "detail": "settlement_summary:10 matched_deposits:10 unmatched_deposits:4 missing_overdue:1 processing_fees:4 exceptions_aging:1 net_difference_trend:10 bank_accounts:3 processor_comparison:1 · reconciliation-settlement_summary.csv · reconciliation-settlement_summary.pdf (37235 B)",
+      "ms": 5715
+    },
+    {
+      "step": "recon: server unavailable — an error state with Retry, never $0.00",
+      "ok": true,
+      "detail": "The server could not be reached. Nothing is shown as $0.00 until it answers.",
+      "ms": 2199
+    },
+    {
+      "step": "invoices: KPIs are server aggregates with their scope written on them; no \"Invalid Date\"",
+      "ok": true,
+      "detail": "outstanding 538475 · collected 231775 · 44 invoices",
+      "ms": 92
+    },
+    {
+      "step": "invoices: search — INV number, phone, email, name (server-side)",
+      "ok": true,
+      "detail": "INV-0002 first · phone 1 · email 1 · name 5",
+      "ms": 2512
+    },
+    {
+      "step": "invoices: Custom Range on the issue date + amount range + chips",
+      "ok": true,
+      "detail": "11 Oct invoices ≥ $50 · 2 chips",
+      "ms": 1862
+    },
+    {
+      "step": "invoices: New Invoice — a salon customer is required; saved draft is first on Page 1; audited",
+      "ok": true,
+      "detail": "INV-0045 draft for John Smith, $45.00",
+      "ms": 2229
+    },
+    {
+      "step": "invoices: Send → Sent (delivery not connected is stated); partial payment → Partially Paid; rest → Paid",
+      "ok": true,
+      "detail": "INV-0045: sent → $20 partial → $25 by check → paid · 2 payments in history · void hidden",
+      "ms": 2128
+    },
+    {
+      "step": "invoices: PDF — preview in the page, download is an English invoice with the number",
+      "ok": true,
+      "detail": "INV-0045.pdf 3578 B: \"2000 Route 38 Cherry Hill, NJ 08002                                               INV-0045\"",
+      "ms": 494
+    },
+    {
+      "step": "invoices: void a draft with a reason (kept in history); a reason is required",
+      "ok": true,
+      "detail": "INV-0038 voided",
+      "ms": 2342
+    },
+    {
+      "step": "invoices: INV-0002 (no customer) — says so, a manager links a salon customer (never guessed by name)",
+      "ok": true,
+      "detail": "INV-0002 → John Smith (sent)",
+      "ms": 2621
+    },
+    {
+      "step": "invoices: export CSV = the filtered set, audited",
+      "ok": true,
+      "detail": "45 invoices",
+      "ms": 169
+    },
+    {
+      "step": "front desk: Invoices — can create and record a payment; no export, edit, link or void",
+      "ok": true,
+      "detail": "{\"pay\":1,\"void\":0,\"link\":0,\"edit\":0} · export API 403",
+      "ms": 2782
+    },
+    {
+      "step": "front desk: Settlements and Reconciliation show an access message, not data",
+      "ok": true,
+      "detail": "both pages: access message",
+      "ms": 3145
+    },
+    {
+      "step": "manager: reconciliation can match and record, but cannot unmatch or resolve (owner approval)",
+      "ok": true,
+      "detail": "no Unmatch · bank-account API 403",
+      "ms": 2786
+    },
+    {
+      "step": "empty salon: empty states, no fake $0 rows, no errors",
+      "ok": true,
+      "detail": "No processor data — connect the card processor to receive settlements. | No settlements received for this period. | No invoices yet.",
+      "ms": 4666
+    },
+    {
+      "step": "no page errors across the run",
+      "ok": true,
+      "detail": "none",
+      "ms": 57
+    }
+  ],
+  "errors": [],
+  "unhandled": [
+    {
+      "route": "POST /auth/session-activity",
+      "n": 6
+    }
+  ]
+}

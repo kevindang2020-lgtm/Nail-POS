@@ -1,0 +1,188 @@
+{
+ "name": "equipment-invoice",
+ "type": "invoice",
+ "condition": "clean",
+ "synthetic": true,
+ "source": "hand-written AnalyzeExpense-shaped response — no real customer data",
+ "notes": "an equipment invoice over the default high-amount threshold ($500): reconciles, but a high amount is review-priority (§96)",
+ "textract": {
+  "ExpenseDocuments": [
+   {
+    "SummaryFields": [
+     {
+      "Type": {
+       "Text": "VENDOR_NAME",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Salon Equipment Direct LLC",
+       "Confidence": 98.6
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-09-28",
+       "Confidence": 98.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "INVOICE_RECEIPT_ID",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "INV-20931",
+       "Confidence": 98.8
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SUBTOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$2,450.00",
+       "Confidence": 99.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TAX",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$162.31",
+       "Confidence": 98.4
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "SHIPPING_HANDLING_CHARGE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$85.00",
+       "Confidence": 97.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "TOTAL",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "$2,697.31",
+       "Confidence": 99.1
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "DUE_DATE",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "2026-10-28",
+       "Confidence": 96.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "PAYMENT_TERMS",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Net 30",
+       "Confidence": 95.0
+      },
+      "PageNumber": 1
+     },
+     {
+      "Type": {
+       "Text": "OTHER",
+       "Confidence": 99.0
+      },
+      "ValueDetection": {
+       "Text": "Invoice. Bill to: Lotus Nails. Remit to: Salon Equipment Direct. Net 30. Amount due",
+       "Confidence": 90.0
+      },
+      "PageNumber": 1
+     }
+    ],
+    "LineItemGroups": [
+     {
+      "LineItems": [
+       {
+        "LineItemExpenseFields": [
+         {
+          "Type": {
+           "Text": "ITEM"
+          },
+          "ValueDetection": {
+           "Text": "Pedicure spa chair — Model PX200",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2,450.00",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "QUANTITY"
+          },
+          "ValueDetection": {
+           "Text": "1",
+           "Confidence": 97.0
+          }
+         },
+         {
+          "Type": {
+           "Text": "UNIT_PRICE"
+          },
+          "ValueDetection": {
+           "Text": "$2,450.00",
+           "Confidence": 97.0
+          }
+         }
+        ]
+       }
+      ]
+     }
+    ]
+   }
+  ]
+ },
+ "expected": {
+  "vendor": "Salon Equipment Direct LLC",
+  "date": "2026-09-28",
+  "totalCents": 269731,
+  "subtotalCents": 245000,
+  "taxCents": 16231,
+  "feesCents": 8500,
+  "documentNumber": "INV-20931",
+  "lines": 1,
+  "type": "invoice",
+  "validation": "valid",
+  "reviewPriority": "high"
+ },
+ "minOverallConfidence": 0.9,
+ "reviewExpected": null,
+ "syntheticText": null
+}

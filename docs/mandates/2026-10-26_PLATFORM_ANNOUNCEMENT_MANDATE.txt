@@ -1,0 +1,604 @@
+                                                                 AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+
+                                          AI PowerSalon
+          Super Admin POS Top-Bar Announcement & Platform Broadcast System
+
+      Master Audit, Build, Fix, Upgrade & Production Completion Mandate for Claude
+
+Primary objective
+Allow AI PowerSalon Super Admin to type, target, schedule, publish, pause, expire and archive platform messages
+that appear in realtime on the POS top bar between Global Search and the Date/Clock/notification/Owner controls.
+Long text wraps cleanly and very long text exposes a More view without disrupting salon operations.
+
+
+
+
+           Current AI PowerSalon POS UI reference. Announcement region is inserted between the Search button and the right-side
+                                            Date/Clock/Notifications/Messages/Owner controls.
+
+
+
+
+                                          Developer / Claude Production Completion Mandate | 1
+                                                                     AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+Executive Architecture
+ SUPER ADMIN
+   ↓
+ PLATFORM ANNOUNCEMENT API
+   ↓
+ POSTGRESQL
+   ↓
+ TRANSACTIONAL OUTBOX / DOMAIN EVENT
+   ↓
+ REALTIME GATEWAY
+   ↓
+ AUTHORIZED TENANT / BRANCH POS CLIENTS
+   ↓
+ SHARED POS TOP BAR
+
+
+
+
+ Do not build a decorative banner.
+ Build one authoritative Platform Announcement domain integrated with Super Admin, tenant/branch targeting,
+ realtime, snapshot-on-load, audit, versioning, scheduling, security and the shared POS header.
+
+
+
+
+Visual Placement Requirement
+ [ SALON / LOCATION ] [ Search anything... ][ Search ]
+
+
+           [ PLATFORM ANNOUNCEMENT ]
+
+
+ [ Date / Time ] [ Notifications ] [ Messages ] [ OWNER ]
+
+
+
+Production should remain one clean horizontal header where width allows. The announcement owns the flexible
+center region and must not cover search or the right-side utilities.
+
+
+
+
+                                               Developer / Claude Production Completion Mandate | 2
+                                                               AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+1. Platform Domain & Lifecycle
+1. Primary product goal. Super Admin can publish a platform message that active matching POS clients receive without
+refresh, logout, restart or redeploy.
+2. No hard-coded banner. Announcement content must be backend-driven and editable without code deployment.
+3. Repository audit first. Inspect shared POS header, search, notifications, platform admin, tenant/branch context, events,
+outbox, realtime, permissions and audit before adding code.
+4. Reuse existing infrastructure. If NotificationService, BroadcastService, PlatformNotificationService or SystemAlertService
+already owns this responsibility, merge/upgrade it instead of creating a parallel system.
+5. Product naming. Use Platform Announcements as the primary product/domain name.
+6. Platform-only publisher. Only authorized platform/Super Admin identities can create/publish platform announcements.
+7. Separate platform vs tenant security. Publishing originates from the PLATFORM realm. Salon Owners/Managers do not
+get global platform-publish authority.
+8. Audience modes. Minimum audience modes: ALL_TENANTS, SELECTED_TENANTS, SELECTED_BRANCHES. Future groups
+may include plan/feature/environment targeting.
+9. All-tenant use case. A platform maintenance/update message can reach every eligible POS.
+10. Selected tenant use case. A tenant-specific support/payment/onboarding message reaches only the selected tenant.
+11. Selected branch use case. A branch-specific operational message reaches only the selected branch.
+12. Announcement entity. Persist message, optional title, type, priority, status, audience, schedule, dismissibility,
+acknowledgement requirement, platform actors, timestamps and version.
+13. Target entity. Normalize selected target records rather than storing arbitrary client-supplied strings.
+14. Status lifecycle. Use DRAFT, SCHEDULED, ACTIVE, PAUSED, EXPIRED and ARCHIVED.
+15. Draft rule. Drafts are visible only to authorized platform users and never render on POS.
+16. Scheduled rule. Future start/end times are evaluated server-side using authoritative time.
+17. Active rule. Only active and target-eligible announcements render on POS.
+18. Paused rule. Pause hides an announcement without deleting it.
+19. Expired rule. Expired history remains retained and auditable.
+20. Archive rule. Archive published history instead of hard deleting it.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 3
+                                                                AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+2. POS Top-Bar UX & Message Behavior
+21. Announcement types. Support INFO, UPDATE, MAINTENANCE, WARNING and URGENT.
+22. Visual severity. Normal/Update use subtle or gold treatment; Maintenance/Warning use amber; Urgent uses strong red
+accent, consistent with the AI PowerSalon design system.
+23. Exact top-bar placement. Insert the shared announcement region after Global Search/Search button and before
+Date/Time/Notifications/Messages/Owner.
+24. Header layout. Model top bar as left salon context, center-left search, flexible center announcement, and right utilities.
+25. Responsive priority. Critical announcement and right-side account controls remain usable; search may shrink within
+reasonable minimums.
+26. Announcement width. Use flex/grid, not hard-coded coordinates. Prefer a flexible center width suited to current design
+tokens.
+27. Long-message wrapping. Long text must wrap naturally to a second line. Do not use a marquee.
+28. Maximum inline height. Normally one line; allow two lines; beyond that clamp and expose More.
+29. More behavior. More opens a popover/modal/drawer containing full text without navigating away from the current POS
+workflow.
+30. Short-message behavior. Short messages stay one line and compact.
+31. Long-message behavior. Long normal messages may occupy two lines without overlapping content.
+32. Very-long behavior. Very long text clamps to two lines plus More/full detail.
+33. Optional title. Allow title but keep top-bar rendering compact, e.g. 'Maintenance: ...'.
+34. Icon. Use existing icon library for type/severity rather than inconsistent emoji in production.
+35. Dismissibility. Super Admin controls whether the announcement is dismissible.
+36. Normal dismissal. Routine update/info messages may be dismissible.
+37. Urgent persistence. High/urgent incidents may be non-dismissible.
+38. Per-user dismissal. Dismissal affects that user/session policy, not every tenant user.
+39. Acknowledgement mode. Optional requiresAcknowledgement shows an I Understand action and records
+acknowledgement.
+40. Non-blocking default. Routine announcements never block Check-In, Booking, Queue, Checkout or Payments.
+41. Critical incident mode. Critical notices can be visually prominent but must not disable unrelated safe POS functions by
+default.
+42. Multiple active announcements. Do not stack many vertical banners. Show the highest-priority item with a compact
+indicator/view-all pattern.
+43. Priority order. Use deterministic LOW/NORMAL/HIGH/CRITICAL ordering.
+44. Rotation. Equal-priority normal messages may rotate at a readable interval; CRITICAL remains pinned.
+45. No marquee. Never use fast horizontally scrolling ticker text.
+46. Hover/focus behavior. Pause optional rotation while hovered/focused.
+47. Expanded behavior. Do not rotate the active item while its full message is open.
+
+
+
+
+                                          Developer / Claude Production Completion Mandate | 4
+                                                               AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+3. Super Admin Authoring & Governance
+48. Super Admin create screen. Build Platform Announcements > New Announcement.
+49. Safe message editor. Phase 1 uses plain text with line breaks; no arbitrary HTML/JS/iframes/CSS.
+50. Character limit. Enforce a backend message length limit appropriate to existing conventions, e.g. about 2,000 characters.
+51. Preview. Show Desktop POS preview before publish.
+52. Preview widths. Preview standard desktop and smaller desktop/laptop behavior.
+53. Audience UI. Use All Tenants / Selected Tenants / Selected Branches choices.
+54. Tenant selector. Use server-side searchable/paginated tenant selection for large platform scale.
+55. Branch selector. Branch selection follows tenant selection and uses authoritative branch data.
+56. Publish now. Server sets startsAt using authoritative current time.
+57. Schedule. Allow future start date/time.
+58. Expiration. Support no-expiration or explicit end time; maintenance should normally expire.
+59. Stale-message prevention. Do not leave old maintenance messages active days later.
+60. Super Admin list. List message, type, priority, audience, status, starts, ends, creator and updated time.
+61. Optimistic editing. Use versioning to prevent simultaneous platform-admin overwrite.
+62. Version conflict. Return PLATFORM_ANNOUNCEMENT_VERSION_CONFLICT on stale writes.
+63. Audit. Audit create/edit/publish/pause/resume/audience/priority/schedule/archive with actor, before/after, time and
+correlation.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 5
+                                                                AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+4. Realtime Delivery, Targeting & Shared Header
+64. Realtime architecture. Publish through API -> domain -> PostgreSQL commit -> outbox/event -> realtime projection ->
+matching POS clients.
+65. Event naming. Use current event conventions, e.g. platform.announcement.published/changed.
+66. Client-safe payload. Send only id/title/message/type/priority/dismissibility/ack requirement/schedule/version, not
+platform-admin metadata.
+67. Server-side targeting. Server decides recipients. Never broadcast all target lists to every POS and rely on client filtering.
+68. Tenant isolation. A Tenant A-only message must never reach Tenant B via API, realtime, cache or logs.
+69. Branch isolation. A Branch 1-only message must not reach Branch 2 unless explicitly included.
+70. All-tenant fanout. All-tenants broadcasts reach every eligible active tenant POS.
+71. Startup snapshot. POS fetches active announcements on load; do not rely on realtime history alone.
+72. Snapshot + stream. Fetch snapshot, render, then subscribe; accept only newer versions.
+73. Reconnect. On reconnect refetch authoritative snapshot and resume events.
+74. Safety sync. Participate in the existing silent background reconciliation; never full-page refresh.
+75. No header flicker. Update announcement state without reloading or flashing the whole top bar.
+76. Layout stability. Reserve only needed announcement space; collapse naturally when no message exists.
+77. Height transition. One-to-two-line change may smoothly adjust header height without overlap.
+78. POS screen fit. No horizontal overflow or content collision.
+79. All POS pages. Announcement appears on every authenticated POS page that uses the shared header.
+80. Shared component. Implement once in the shared POS layout/header, not duplicated per route.
+
+
+
+
+                                          Developer / Claude Production Completion Mandate | 6
+                                                                AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+5. API, Security, Performance & Future Extensibility
+81. Future app support. Architecture may later support Owner/Technician/Customer apps without exposing internal notices
+to customers by default.
+82. Surface targeting future. Potential surfaces: POS, OWNER_APP, TECHNICIAN_APP, CUSTOMER_APP, SUPER_ADMIN.
+83. POS default. Current task defaults target surface to POS.
+84. System-status integration future. System Status may prefill/suggest announcements, but auto-publish only if a deliberate
+policy exists.
+85. Platform APIs. Provide platform CRUD/publish/pause/archive endpoints under the existing platform namespace.
+86. Platform realm. Mutation APIs require PLATFORM authentication.
+87. POS read security. Active-announcement reads use EMPLOYEE realm plus trusted tenant/branch context.
+88. Never trust tenant query. Resolve tenant/branch from authenticated trusted context, not arbitrary query/body tenant IDs.
+89. Sanitization. Normalize line endings, remove unsupported control characters and reject unsafe markup.
+90. XSS protection. Render escaped text; do not use uncontrolled dangerouslySetInnerHTML.
+91. Links. Phase 1 may omit links; if later allowed, validate schemes and destinations.
+92. Error taxonomy. Standardize not-found/access-denied/invalid-audience/invalid-schedule/version-conflict/already-
+archived errors.
+93. Schedule validation. Reject endsAt earlier than startsAt.
+94. Empty message rejection. Trim and reject empty/whitespace-only announcements.
+95. Idempotent publish. Repeated Publish actions produce one logical state transition.
+96. Version field. Use version for stale-write prevention and client update ordering.
+97. Performance. Use initial fetch + realtime + safety sync; no one-request-per-second polling.
+98. Indexes. Review status/start/end/audience/target/published indexes based on actual query plans.
+99. Caching. Short-lived cache may help but PostgreSQL remains authoritative.
+100. Redis role. Redis may assist cache/fanout; never hold the only copy of an active announcement.
+101. Scheduler discipline. If activation/expiration needs a scheduler, use one controlled scheduler rather than duplicate cron
+effects across replicas.
+102. Simpler schedule evaluation. If queries can reliably calculate active status from startsAt/endsAt, prefer that over
+unnecessary mutation jobs.
+103. Time handling. Store timestamps consistently and render admin schedule in the appropriate platform/admin timezone.
+104. Localization future. Design for future English/Vietnamese variants without blocking Phase 1.
+105. Localized data model. Follow existing localization architecture rather than prematurely hard-coding
+message_en/message_vi.
+106. Accessibility. Support keyboard, focus, screen reader labels, contrast, reduced motion and readable text.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 7
+                                                               AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+6. Accessibility, Responsive UI, Analytics & History
+107. ARIA live. Use controlled aria-live behavior for newly-arriving important notices; avoid aggressively speaking every
+rotating routine message.
+108. Supported widths. Test 1920x1080, 1600x900, 1366x768 and 1280x800.
+109. Wide-screen behavior. Prefer one-line normal announcement on 1920x1080 when content permits.
+110. Small-screen behavior. Allow two-line/clamp/More without covering right-side utilities.
+111. Search preservation. Keep a usable minimum Global Search width.
+112. No-message state. When no active announcement exists, collapse the component so header space is naturally reclaimed.
+113. Loading state. Do not show 'Loading announcement...'; show nothing until the snapshot is available.
+114. Fetch failure. Announcement failure never breaks the POS; log telemetry and continue.
+115. Realtime failure. Realtime announcement failure never blocks core salon operations.
+116. Observability. Track create/publish/deliver/fetch failure/realtime failure/dismissal/acknowledgement with safe
+dimensions.
+117. Delivery analytics. Measure eligible sessions/delivery/ack/dismiss aggregates without claiming the message was actually
+read.
+118. Realistic preview. Super Admin preview should show Search + Announcement + Clock + notifications + Owner in a
+layout matching the real header.
+119. Preview safety. Preview never publishes.
+120. Global confirmation. All-Tenants publish requires a confirmation prompt with preview.
+121. High/critical confirmation. High/critical publish may require a second confirmation.
+122. System update example. Support normal all-tenant update announcements with explicit schedule/end.
+123. POS result. Message appears in the center between Search and right utilities in realtime.
+124. Maintenance example. Support two-line maintenance notices.
+125. Payment incident example. Support clear high-priority degradation notices.
+126. New feature example. Support dismissible new-feature announcements.
+127. Tenant-specific example. Support targeted onboarding/support messages.
+128. History. Retain active/scheduled/expired/paused/archived history with filters.
+129. History search. Search title/message/target with server-side filtering.
+130. Duplicate to draft. Allow cloning an old announcement into DRAFT, never automatic republish.
+131. No historical deletion. Archive rather than deleting published history.
+132. Dismissal persistence. Dismissal persists across page navigation according to user policy.
+133. Versioned dismissal. A materially updated announcement version may legitimately reappear.
+134. Acknowledgement record. If enabled, record announcement, user, tenant, branch, version and acknowledged time.
+135. User over device. Prefer user-level acknowledgement over browser-local state when identity exists.
+136. Shared terminal. Associate acknowledgement with the logged-in employee session when using shared POS terminals.
+137. Platform security. Protect powerful publish capability with platform permission, strong auth/MFA, preview,
+confirmation and audit.
+138. No tenant injection. Tenant users cannot mutate platform announcements.
+139. Tenant-staff announcements future. A future Salon Owner -> Staff announcement is a different feature/domain; do not
+mix it into Platform Announcements.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 8
+                                                               AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+7. Mandatory Test Suite
+140. Test global publish. All-tenants message reaches eligible Tenant A/B/C.
+141. Test selected tenant. Tenant A receives; Tenant B does not.
+142. Test selected branch. Branch 1 receives; Branch 2 does not.
+143. Test long text. 300-500 characters wraps/clamps correctly and More opens full content.
+144. Test screen sizes. No horizontal overflow at all supported desktop resolutions.
+145. Test search. Global Search remains usable while message is active.
+146. Test right utilities. Clock, notifications, messages and Owner profile remain visible and clickable.
+147. Test priorities. Normal, High and Critical ordering is deterministic.
+148. Test expiration. Message disappears when endsAt passes without a browser refresh.
+149. Test scheduling. Future message does not appear early and appears at start time.
+150. Test pause. Pause removes active announcement in realtime.
+151. Test resume. Resume redisplays it correctly.
+152. Test dismissal. Dismissible item disappears for the allowed user scope.
+153. Test non-dismissible. No dismiss control is available.
+154. Test acknowledgement. Acknowledgement stores user/announcement/version/tenant/time correctly.
+155. Test XSS. Script/HTML input never executes.
+156. Test unauthorized platform user. Publish without permission is denied.
+157. Test tenant user publish. Tenant Owner/Manager cannot call platform-publish mutation API.
+158. Test disconnected realtime. Publish during disconnect; reconnect snapshot restores correct active message.
+159. Test POS reload. Active message reappears from authoritative snapshot.
+160. Test backend failure. Announcement failure does not break core POS workflows.
+161. Test version conflict. Concurrent Super Admin edits return conflict for stale writer.
+162. Test duplicate publish. Repeated publish clicks create one logical publication.
+163. Test audit. Create/edit/publish/pause/resume/archive all generate audit records.
+164. Test data leakage. Targeted content never appears in another tenant's API response, realtime payload, client cache or
+logs.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 9
+                                                               AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+8. Definition of Done & Claude Handoff
+165. Definition of Done. Feature is done only when repository/header audit, domain, Super Admin UI,
+create/edit/preview/publish/pause/resume/schedule/expiration/archive, targeting, sanitization/XSS, priority,
+dismissal/acknowledgement, top-bar placement, long-message handling, snapshot/realtime/reconnect/safety sync, isolation,
+permissions, audit, versioning, responsive UI and all tests/builds pass.
+166. Required Claude final report. Claude must report existing code, problems by severity, final architecture, top-bar
+component path, long-message behavior, targeting, Super Admin workflow, DB/migrations, APIs, events/realtime, permissions,
+audit, files changed, tests and build matrix.
+167. Final reference layout. Production header must preserve Salon + Search + flexible Announcement + Date/Time +
+Notifications + Messages + Owner. Wide screens remain horizontal; long text may use two lines.
+168. Permanent rules. Super Admin is publisher; PostgreSQL authoritative; realtime is delivery; snapshot on startup; server-
+side targeting; no cross-tenant leakage; no marquee; no overlap; no raw HTML/JS; routine messages non-blocking;
+deterministic priority; audited publish; schedule/expiration correctness; delivery failure cannot break POS.
+
+
+
+
+                                         Developer / Claude Production Completion Mandate | 10
+                                                                  AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+Detailed Super Admin Workflow
+SUPER ADMIN
+ ↓
+Platform Announcements
+ ↓
+New Announcement
+ ↓
+Title (optional)
+Message
+Type
+Priority
+Audience
+Start / End
+Dismissible?
+Acknowledgement?
+ ↓
+Preview
+ ↓
+Publish Now / Schedule
+ ↓
+Confirmation
+ ↓
+Backend Commit + Audit + Outbox
+ ↓
+Realtime to matching POS clients
+
+
+
+
+Recommended create form
+ • Title (optional)
+ • Message (required plain text)
+ • Type: Info / Update / Maintenance / Warning / Urgent
+ • Priority: Low / Normal / High / Critical
+ • Audience: All Tenants / Selected Tenants / Selected Branches
+ • Start: Publish Now or scheduled timestamp
+ • End: explicit expiration or no expiration
+ • Dismissible: Yes/No
+ • Requires acknowledgement: Yes/No
+ • Desktop preview
+
+
+Detailed POS Rendering Logic
+ON POS LOAD:
+ 1. Authenticate employee.
+ 2. Resolve trusted tenant + branch.
+ 3. GET active announcement snapshot.
+ 4. Render highest-priority eligible message.
+ 5. Subscribe to authorized realtime updates.
+ 6. Ignore stale versions.
+ 7. On reconnect, refetch snapshot.
+
+
+RENDER:
+ - 1 line when short.
+
+
+                                            Developer / Claude Production Completion Mandate | 11
+                                                                           AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+  - Up to 2 lines when needed.
+  - Clamp beyond 2 lines.
+  - Show More for full message.
+  - Never overlap Search or right-side utilities.
+
+
+
+
+ Failure isolation
+ If the announcement endpoint, realtime channel or scheduling worker is degraded, Booking, Check-In, Queue,
+ Checkout, Payments and other POS functions continue normally.
+
+
+
+
+Responsive Header Reference
+ WIDE:
+ [Salon] [Search........][   🔍] [Announcement....................] [Date/Time][🔔][✉][Owner]
+ MEDIUM:
+ [Salon] [Search....][   🔍] [Announcement..............] [Clock][🔔][Owner]
+ SMALLER DESKTOP:
+ [Salon] [Search][   🔍] [Announcement (2 lines / clamp + More)] [Clock][Owner]
+
+Error Codes
+ PLATFORM_ANNOUNCEMENT_NOT_FOUND
+ PLATFORM_ANNOUNCEMENT_ACCESS_DENIED
+ PLATFORM_ANNOUNCEMENT_INVALID_AUDIENCE
+ PLATFORM_ANNOUNCEMENT_INVALID_SCHEDULE
+ PLATFORM_ANNOUNCEMENT_VERSION_CONFLICT
+ PLATFORM_ANNOUNCEMENT_ALREADY_ARCHIVED
+
+
+
+
+Potential API Surface
+ PLATFORM / SUPER ADMIN
+
+
+ GET    /api/v1/platform/announcements
+ POST /api/v1/platform/announcements
+ GET    /api/v1/platform/announcements/{id}
+ PATCH /api/v1/platform/announcements/{id}
+ POST /api/v1/platform/announcements/{id}/publish
+ POST /api/v1/platform/announcements/{id}/pause
+ POST /api/v1/platform/announcements/{id}/archive
+
+
+ POS
+
+
+ GET    /api/v1/announcements/active
+
+
+
+Adapt routes to the actual repository. Do not create duplicate endpoints if equivalent contracts already exist.
+
+
+
+
+                                                    Developer / Claude Production Completion Mandate | 12
+                                                           AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+Potential Database Model
+ PlatformAnnouncement {
+     id
+     title?
+     message
+     type
+     priority
+     status
+     audienceType
+     startsAt?
+     endsAt?
+     dismissible
+     requiresAcknowledgement
+     createdByPlatformUserId
+     publishedByPlatformUserId?
+     createdAt
+     updatedAt
+     publishedAt?
+     pausedAt?
+     archivedAt?
+     version
+ }
+
+
+ PlatformAnnouncementTarget {
+     id
+     announcementId
+     targetType
+     tenantId?
+     branchId?
+ }
+
+
+ PlatformAnnouncementAcknowledgement {
+     announcementId
+     userId
+     tenantId
+     branchId?
+     announcementVersion
+     acknowledgedAt
+ }
+
+
+
+Use the existing schema/domain conventions where possible. These are conceptual reference models, not instructions
+to duplicate equivalent tables.
+
+
+
+
+                                     Developer / Claude Production Completion Mandate | 13
+                                                      AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+Required Claude Final Build Matrix
+ Component                                                 Result
+
+API                                                        PASS / FAIL
+
+POS                                                        PASS / FAIL
+
+Super Admin                                                PASS / FAIL
+
+Realtime                                                   PASS / FAIL
+
+Database Migrations                                        PASS / FAIL
+
+Unit Tests                                                 PASS / FAIL
+
+Integration Tests                                          PASS / FAIL
+
+Security Tests                                             PASS / FAIL
+
+Tenant Isolation                                           PASS / FAIL
+
+Responsive UI Tests                                        PASS / FAIL
+
+
+
+Permanent Product Rules
+SUPER ADMIN IS THE PLATFORM PUBLISHER.
+POS DOES NOT HARD-CODE ANNOUNCEMENTS.
+POSTGRESQL IS AUTHORITATIVE.
+REALTIME IS DELIVERY, NOT BUSINESS TRUTH.
+POS FETCHES A SNAPSHOT ON STARTUP.
+SERVER DECIDES WHICH TENANT / BRANCH RECEIVES THE MESSAGE.
+CLIENT DOES NOT FILTER SECURITY-SENSITIVE TARGETING.
+TENANT A MUST NEVER RECEIVE TENANT B'S TARGETED MESSAGE.
+LONG TEXT MUST WRAP CLEANLY.
+NORMAL MESSAGES MAY USE TWO LINES.
+VERY LONG MESSAGES USE MORE / EXPANDED VIEW.
+DO NOT USE FAST MARQUEE TEXT.
+DO NOT COVER SEARCH, CLOCK, NOTIFICATIONS, MESSAGES OR OWNER PROFILE.
+NO HORIZONTAL PAGE OVERFLOW.
+NO FULL-PAGE REFRESH.
+NO RAW HTML / JAVASCRIPT ANNOUNCEMENTS.
+NORMAL ANNOUNCEMENTS MUST NOT BLOCK POS OPERATIONS.
+URGENT ANNOUNCEMENTS MUST BE VISUALLY DISTINCT.
+MULTIPLE ANNOUNCEMENTS MUST HAVE DETERMINISTIC PRIORITY.
+PUBLISHED ANNOUNCEMENTS MUST BE AUDITED.
+SCHEDULED ANNOUNCEMENTS MUST EXPIRE CORRECTLY.
+ANNOUNCEMENT DELIVERY FAILURE MUST NEVER BREAK CORE POS.
+
+
+
+
+                                Developer / Claude Production Completion Mandate | 14
+                                                           AI PowerSalon | Super Admin POS Top-Bar Announcement & Platform Broadcast
+
+
+Final Instruction to Claude
+ Build this inside the existing AI PowerSalon architecture.
+ Inspect the real POS Top Bar, Global Search, Clock/Date, Notifications, Messages, Owner Profile, Super Admin
+ Communications, Platform Permissions, Events, Realtime, Tenant Context and Branch Context first. Keep correct
+ code, fix broken code, merge duplicates, build missing parts, wire frontend to backend to events to realtime to POS,
+ then test targeting, responsiveness, security and failure isolation.
+
+
+
+The finished experience must let AI PowerSalon Super Admin type a message, choose All Tenants / Selected Tenants /
+Selected Branches, publish immediately or schedule it, and have the message appear automatically in the POS between
+Search and the right-side Date/Clock controls.
+Short message: one line. Long message: two lines. Very long message: clean two-line preview plus More. No browser
+refresh. No layout overlap. No tenant leakage. Full audit/history/versioning.
+
+
+
+
+                                     Developer / Claude Production Completion Mandate | 15
+

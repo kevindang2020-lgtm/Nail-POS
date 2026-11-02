@@ -1,0 +1,753 @@
+                                                                                    AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+
+
+                                          AI PowerSalon
+                           200-Technician Large Salon / Tenant Scale Upgrade
+
+ Booking Board, Workforce, Fair Turn, Technician App Login, Performance & Pilot Validation
+                                   Mandate for Claude
+
+Primary objective
+Upgrade and validate the existing AI PowerSalon platform for a large salon or tenant with 200 technicians while preserving
+the existing 12-technician Booking page density. Claude must inspect current code first, remove hidden limits, repair
+unwired modules, optimize backend/realtime/database behavior, run real Technician App login tests, stress test the system,
+and leave exact developer handoff notes.
+
+
+
+Critical math correction
+At 12 technicians per booking page, 200 technicians requires 17 pages: 16 full pages of 12 plus a final page of 8. The old 24-
+technician pilot had two pages; the 200-technician pilot must explicitly prove 17 pages.
+
+
+
+DISCOVER EXISTING CODE
+↓
+RUN CURRENT SYSTEM
+↓
+MEASURE BASELINE
+↓
+FIND LIMITS / BUGS / UNWIRED MODULES
+↓
+FIX + MERGE + OPTIMIZE
+↓
+BUILD 200-TECHNICIAN PILOT DATASET
+↓
+RUN BOOKING / FAIR TURN / TECH APP / PAYROLL / REALTIME
+↓
+STRESS TEST + PERFORMANCE MEASURE
+↓
+DOCUMENT FOR HUMAN DEVELOPER
+
+
+
+
+                                                 Claude / Developer Build Mandate | 1
+                                                                                      AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+1. Primary product goal
+AI PowerSalon must support a large salon or tenant with 200 technicians without Booking, Tech Queue, Fair Turn, Team,
+Technician App, payroll, realtime or backend APIs becoming slow or unstable.
+
+
+2. Do not hard-code 200
+200 is the required certification/stress target, not the architectural maximum. Design for 300, 500 and 1,000+ technicians
+without another rewrite.
+
+
+3. Audit existing technician limits
+Search for hard-coded 12/24/50/100/200 assumptions, maxTechnicians, pageSize, slices and SQL LIMITs. The earlier pilot
+already exposed hidden record limits, so treat this as a formal defect class.
+
+
+4. Booking board pagination
+Keep 12 visible technicians per page. For 200 technicians the system must report page 1 = 1-12, page 16 = 181-192, page 17 = 193-
+200.
+
+
+5. Pagination controls
+Support First, Previous, Next 12, Last and Page X of 17. Direct page selection is optional if it fits the current design.
+
+
+6. Preserve existing booking design
+Keep Day/Week/Today, date navigation, 15-minute grid, Find an Opening, Best Matches, filters, Working Technicians, 12 per
+page, Fit Day, Full Screen, Add Walk-In, New Booking, Print Schedule and Block Time.
+
+
+7. Never render all 200 columns
+Do not create 200 technician columns in the DOM and hide 188 with CSS. Only render the active 12 plus minimal navigation
+metadata.
+
+
+8. Server-side technician paging
+Backend must page technicians using trusted tenant/branch context and return total/pageSize/page/totalPages or cursor
+equivalents.
+
+ GET /booking/technicians
+  trusted tenant/branch
+  date
+  pageSize=12
+  page/cursor
+  filters
+
+
+ Response concept:
+ technicians[]
+ total=200
+ pageSize=12
+ page=1
+ totalPages=17
+
+
+
+
+9. Never trust tenant or branch from client
+Resolve scope from authenticated employee context. Client pagination must never permit cross-tenant browsing by modifying
+tenantId.
+
+
+                                                   Claude / Developer Build Mandate | 2
+                                                                                     AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+10. Working-technician count
+Differentiate 200 total technicians from those working today. Pagination applies to the filtered total, e.g. 164 working = 14
+pages.
+
+
+11. Technician search
+With 200 technicians provide efficient server-side search by name, employee number if supported, skill/service and status.
+
+
+12. Jump to technician
+Search result selection should jump to the technician's page and briefly highlight the column while preserving date and filters.
+
+
+13. Service filtering
+Selecting a service should efficiently filter/recommend exact-skilled technicians without fetching 200 full calendars first.
+
+
+14. Exact-service eligibility
+Use one authoritative exact-service eligibility rule across Booking, Find Opening, Best Matches, Add Walk-In, Fair Turn,
+requested-tech alternatives and kiosk pre-filtering.
+
+
+15. Find an Opening at scale
+Run eligibility and availability server-side. Do not download 200 calendars and scan them in React.
+
+
+
+
+                                                  Claude / Developer Build Mandate | 3
+                                                                                     AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+16. Best Matches at scale
+Filter hard eligibility first, then rank. Ineligible technicians must never enter the ranking stage.
+
+
+17. Candidate result limit
+Best Matches may return top 5 or top 10 plus View More rather than 200 results.
+
+
+18. Appointment queries for visible technicians
+For a 12-tech page, fetch the date range and visible technician IDs rather than every appointment for all 200 staff.
+
+
+19. Adjacent-page prefetch
+Optionally prefetch the next page after the current page stabilizes; do not prefetch all 17 pages.
+
+
+20. Safe booking cache keys
+Cache keys must include tenant, branch, date, service/status/working filters and page/cursor to prevent leakage and stale
+collisions.
+
+
+21. Realtime with 200 technicians
+Avoid 200 unnecessary individual subscriptions. Prefer authorized branch/date/resource projections and invalidate/refetch
+only affected visible data.
+
+
+22. Off-screen realtime changes
+Changes to technician #150 while viewing page 1 should invalidate relevant off-screen cache/metadata, not rerender page 1.
+
+
+23. Page navigation state preservation
+Preserve date, Day/Week mode, service/status/working filters, Fit Day and time scroll where practical across page changes.
+
+
+24. Booking performance targets
+Measure real latency. Suggested initial targets: normal initial load <2s; cached/prefetched page change ~500-750ms perceived;
+filter change typically <1s; moves give immediate feedback and fast server confirmation.
+
+
+25. Database index audit
+Inspect indexes for tenant_id, branch_id, technician_id, employment status, schedule date, appointment date/time, service_id
+and technician-service skills. Use EXPLAIN/EXPLAIN ANALYZE before adding indexes blindly.
+
+
+26. Avoid N+1 queries
+Do not execute 200 schedule + 200 appointment + 200 skill queries. Batch/aggregate data for visible pages and server-side
+search.
+
+
+27. Lightweight technician summary projection
+Booking payload should return id, display name, thumbnail, working/status summary, selected-service eligibility and next-
+opening metadata where needed - never payroll/private notes/tax data.
+
+
+28. Availability strip efficiency
+Calculate only useful openings for currently visible technicians, not their entire future calendars.
+
+
+
+                                                  Claude / Developer Build Mandate | 4
+                                                                                    AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+29. Technician day detail on demand
+View Day may load one technician's detailed daily schedule on demand instead of preloading 200 details.
+
+
+30. Fair Turn scale test
+Create 200 technicians across clocked-in/out, break, serving, appointment-soon, skill-ineligible, hold and ready states; verify
+deterministic, fast Fair Turn.
+
+
+
+
+                                                 Claude / Developer Build Mandate | 5
+                                                                                     AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+31. Fair Turn eligibility first
+Pipeline: correct branch -> active -> clocked in -> ready -> exact-skilled -> appointment-safe -> eligible candidates -> fairness
+ranking.
+
+
+32. Fair Turn explanation
+Record why selected, queue/turn state, candidate context and skip reasons without exposing private payroll data.
+
+
+33. Tech Queue with 200
+Support Ready/Serving/Break/Appointment Soon/Hold/Off Shift plus search/filter/grouping/pagination or virtualization. Do not
+render an uncontrolled giant list.
+
+
+34. Technician management at scale
+Team page needs server-side search/filter/pagination for Active/Inactive, Branch, Skill, Role, Employment, Invitation and Clock
+status.
+
+
+35. Real Technician App login is mandatory
+The old pilot created many technicians without Technician App access. The 200-tech pilot must include real
+account/invitation/authentication testing.
+
+
+36. Representative Technician App accounts
+At minimum activate technicians #1, #25, #100, #193 and #200 to prove auth does not only work for early seeded records.
+
+
+37. Technician invitation flow
+Owner/Manager invite -> technician accepts -> identity/account activates -> employment links -> login -> trusted tenant/branch
+context. No manually injected auth token.
+
+
+38. Real Technician App authentication
+Verify login, refresh, session persistence, logout and relogin using the real app flow.
+
+
+39. Phone-sized Technician App validation
+Test realistic mobile size and Home, Schedule, Queue, Current Ticket, Time Clock, Earnings, Payroll, Notifications, Profile.
+
+
+40. Technician own-data privacy
+Technician #100 cannot see another technician's payroll, earnings, private schedules or private customers unless deliberately
+shared operational data applies.
+
+
+41. Technician branch scope
+A technician only sees authorized branch/employment data. Multi-branch technicians see only permitted memberships.
+
+
+42. Technician schedule API scope
+Technician App fetches MY schedule, not 200 schedules.
+
+
+43. Technician queue API scope
+Return my status/assignment/relevant relative queue context, not a private 200-person dataset.
+
+
+
+                                                  Claude / Developer Build Mandate | 6
+                                                                                   AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+44. Technician App realtime
+Manager assignment, authorized service changes and schedule updates should reach the correct technician app in realtime.
+
+
+45. Technician App reconnect
+Disconnect phone, mutate server state, reconnect, fetch snapshot and restore correct authoritative state.
+
+
+
+
+                                                Claude / Developer Build Mandate | 7
+                                                                                     AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+46. Time Clock scale
+Simulate bursts of at least 50 technicians and later 100 at opening. No duplicate shift records, lost events or corrupted queue
+eligibility.
+
+
+47. PIN identity safety
+If 4-digit PINs are used, scope uniqueness correctly and protect brute-force attempts. Do not assume global uniqueness across
+all tenants.
+
+
+48. Schedule scale
+Generate 200 technicians x 7 days of shifts/lunch/break/time-off/appointment blocks and measure availability queries.
+
+
+49. Busy-day dataset
+Use a realistic 200-tech day with 1,000+ appointments/blocks across services, durations, walk-ins, lunch, breaks and time off.
+
+
+50. Appointment volume tests
+Test 500, 1,000 and up to 2,000 appointment/block records per day where practical. Measure latency, payload size, rendering,
+memory and realtime.
+
+
+51. Remove hidden LIMIT 50/100 defects
+Audit SQL/API/client slices and intentional pagination. Hidden caps may not silently truncate large salons.
+
+
+52. Day-board request strategy
+Prefer date + 12 visible technician IDs + filters -> appointments/availability/breaks/walk-ins rather than a giant all-200 response.
+
+
+53. Week-view scale
+Do not render 200 technicians x 7 days x every 15-minute slot simultaneously. Use paging/summary/on-demand detail.
+
+
+54. Print schedule at scale
+Allow current 12, selected technicians or all staff with paginated printable output if all-staff print is supported.
+
+
+55. Full Screen behavior
+Full Screen may increase useful density but must not render 200 columns. Preserve bounded page model unless a measured
+responsive density rule safely shows more.
+
+
+56. Add Walk-In at scale
+Specific-technician selector must be searchable. Any Technician must use Fair Turn/eligibility services rather than a 200-item
+browser list.
+
+
+57. New Booking selector at scale
+Support search, recommended technicians and Any Technician. Do not force receptionist to scroll 200 names.
+
+
+58. Service-technician compatibility
+Selecting a service should recommend/filter only technicians approved for that exact service.
+
+
+
+
+                                                  Claude / Developer Build Mandate | 8
+                                                                                   AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+59. Appointment protection at scale
+Efficiently verify now + estimated duration + cleanup buffer <= next appointment using indexed/batched data.
+
+
+60. Realtime fanout performance
+Simulate 50+ active POS/manager/tech clients if feasible and verify no uncontrolled N x N broadcast behavior.
+
+
+
+
+                                                Claude / Developer Build Mandate | 9
+                                                                                   AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+61. Noisy technician protection
+Frequent updates from one technician should not trigger all 200 calendars to refetch continuously.
+
+
+62. Owner App scale
+Test Team, Schedules, Performance, Payroll, Time Clock and Reports with 200 technicians using server-side
+pagination/search/filter/aggregates.
+
+
+63. Payroll with 200 technicians
+Generate weekly payroll for 200 technicians including commission, tips, hourly/salary, bonus, guarantee, adjustments,
+statements and 50/50 check/cash payout.
+
+
+64. Payroll batch performance
+Measure 200 pay statements and 400 payout instructions under default 50% check / 50% cash.
+
+
+65. Payroll must not be N+1
+Batch/aggregate earnings, tips and payouts rather than 200 separate query chains.
+
+
+66. Owner approval with 200
+Support Approve All Eligible, Approve Selected, Search Technician, Filter Exceptions and Filter Branch. Do not require opening
+200 individual cards.
+
+
+67. Payroll exception filtering
+Surface missing clock-out, unallocated tip, negative payable, missing commission rule, manual adjustment and payout
+mismatch. Add Show Exceptions Only.
+
+
+68. 200-technician payout test
+For 200 approved statements at 50/50, create and reconcile 200 check + 200 cash instructions = 400 payout instructions.
+
+
+69. Reports at scale
+Test weekly/monthly/YTD, by technician, branch, service and payout method with 200 technicians.
+
+
+70. Server-side analytics
+Do not send all raw technician transactions to the browser to compute sales/services/hours/tips/commission/appointment
+aggregates.
+
+
+71. Technician performance UI
+Support search/rank/filter/pagination and top-performer views instead of 200 giant cards.
+
+
+72. No special deployment for large salon
+A 200-technician tenant must use the same product architecture and configuration path - not a custom fork.
+
+
+73. Pilot seed upgrade
+Upgrade the existing pilot data generator (for example live-pilot-day.mjs or equivalent) with a large-salon phase that creates
+200 technicians efficiently.
+
+
+
+                                                Claude / Developer Build Mandate | 10
+                                                                                     AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+74. Keep pilot realistic but efficient
+Bulk fixture creation may use optimized test setup, but business-critical assertions must still hit the real application/domain/API
+paths being validated.
+
+
+75. Skill distribution
+Do not make every technician skilled for everything. Use realistic mixed skills to test eligibility (generalists plus
+pedicure/acrylic/nail-art/advanced specialists).
+
+
+
+
+                                                  Claude / Developer Build Mandate | 11
+                                                                                      AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+76. Schedule-state distribution
+Include working, off-shift, lunch, break, time-off, appointment-soon, serving and ready states.
+
+
+77. Real Technician App pilot phase
+Invite and activate #1, #25, #100, #193 and #200, authenticate through the real flow, and validate mobile screens.
+
+
+78. Technician App login result matrix
+Report PASS/FAIL for #1, #25, #100, #193 and #200.
+
+
+79. Authentication negative tests
+For sampled accounts verify wrong credential rejected, refresh works, logout invalidates, tenant scope is correct, employment
+is active and branch scope is correct.
+
+
+80. Technician permission attack tests
+Technician #100 cannot access #101 payroll or Owner payroll APIs; expected DENIED.
+
+
+81. Technician App performance independence
+Technician App should query self/assigned resources so performance does not degrade simply because the salon employs 200
+people.
+
+
+82. 200-tech Booking pilot page proof
+Explicitly validate total=200, pageSize=12, totalPages=17, Page 1=1-12, Page 8=85-96 and Page 17=193-200.
+
+
+83. Search technician #200
+From page 1, search #200 -> locate -> jump to page 17 -> highlight -> correct schedule shown.
+
+
+84. Skill filter across 200
+Exact service filter must drive result count, availability and Best Matches.
+
+
+85. Find an Opening stress test
+Search a busy 200-tech day for a 45-minute service; measure and report query latency and returned ranked openings.
+
+
+86. Best Match stress test
+Hard eligibility first, ranking second, deterministic result under identical state.
+
+
+87. Booking concurrency stress
+Run simultaneous attempts for same technician/time, different technicians, same customer and shared resources. Prevent
+double booking.
+
+
+88. Walk-In burst
+Simulate 20-50 rapid walk-ins/check-ins and verify queue, wait-time, Fair Turn, assignment and realtime remain stable.
+
+
+89. Clock-In burst
+Simulate 100 technicians clocking in near opening. No duplicate shifts, lost events or queue corruption.
+
+                                                  Claude / Developer Build Mandate | 12
+                                                                                 AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+90. Realtime burst
+Simulate concurrent clock-ins, bookings, walk-ins and assignments; measure delivery/fanout behavior.
+
+
+
+
+                                              Claude / Developer Build Mandate | 13
+                                                                                   AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+91. Browser memory leak test
+Page through all 17 pages repeatedly and monitor memory, DOM nodes, event listeners, subscriptions and query cache growth.
+
+
+92. Database performance evidence
+Run EXPLAIN ANALYZE on expensive Booking/Fair Turn/Workforce queries with 200-tech data and record before/after timings.
+
+
+93. API payload size
+Measure Booking payload size and ensure lightweight projections; document largest observed payload.
+
+
+94. Pagination correctness edge cases
+Test totals 0,1,11,12,13,24,25,199,200,201 and verify page math/counts.
+
+
+95. Technician deactivation
+Deactivate #50: active count decreases, future assignment blocked, historical appointments/payroll preserved.
+
+
+96. Technician transfer
+Move a technician using the approved employment workflow; preserve old branch privacy/history and new branch eligibility.
+
+
+97. Schedule change invalidation
+Change #150 schedule and update availability without unnecessarily affecting unrelated pages.
+
+
+98. Break change invalidation
+When #120 starts break, remove from Fair Turn eligibility but preserve appropriate schedule/appointment history.
+
+
+99. Off-screen mobile realtime
+Assign #193 while Booking is on page 1. Technician #193 app must update; page number is irrelevant to identity/realtime.
+
+
+100. No page-number business logic
+Business logic must use technicianId/employmentId, never UI page index as identity.
+
+
+101. Large salon Definition of Done
+Complete only after the full 200-tech dataset, 17-page booking, search/jump, exact-service filtering, availability, conflict
+protection, Fair Turn, Tech Queue, Time Clock, realtime, real Technician App login, Owner App, 200-tech payroll, 400 payout
+instructions, reporting, tenant/branch isolation, performance/memory/query-plan checks and no hidden limits all pass.
+
+
+102. Pilot validation report upgrade
+Add a 200-Technician Large Salon phase to PILOT_VALIDATION_REPORT.md with technician count, page math, page 1/8/17,
+search, Find Opening, Best Matches, exact skills, concurrency, Fair Turn, realtime, Tech App login, payroll and performance
+results.
+
+
+103. Performance report
+Create/update PERFORMANCE_REPORT.md with dataset size, technician/appointment counts, booking load/page latency,
+availability, Best Match, Find Opening, Fair Turn, payroll generation, DB query timings, largest payload, memory and realtime
+latency.
+
+
+
+                                                Claude / Developer Build Mandate | 14
+                                                                                  AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+104. Developer handoff updates
+Update DEVELOPER_HANDOFF.md, PROJECT_STATUS.md, NEXT_STEPS.md, TEST_REPORT.md,
+PILOT_VALIDATION_REPORT.md and PERFORMANCE_REPORT.md with actual 200-technician results, exact files changed and
+remaining blockers.
+
+
+105. No false PASS
+Do not claim 200-tech PASS from code review alone. Build the dataset, run APIs/apps, page through the board, search
+technicians, book appointments, run Fair Turn, log into Technician App, generate payroll and measure performance.
+
+
+
+
+                                               Claude / Developer Build Mandate | 15
+                                                                                  AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+
+Required 200-Technician Pilot Matrix
+Technicians created:         200
+Booking page size:          12
+Expected pages:            17
+
+
+Page 1 (1-12):        PASS / FAIL
+Page 8 (85-96):        PASS / FAIL
+Page 17 (193-200):         PASS / FAIL
+Technician Search:           PASS / FAIL
+Jump-to-Tech:              PASS / FAIL
+Find an Opening:            PASS / FAIL
+Best Matches:           PASS / FAIL
+Exact Service Eligibility: PASS / FAIL
+Concurrent Booking:             PASS / FAIL
+Fair Turn:            PASS / FAIL
+Realtime:             PASS / FAIL
+Technician App Login:            PASS / FAIL
+200-Tech Payroll:           PASS / FAIL
+400 Payout Instructions:         PASS / FAIL
+Performance:               PASS / FAIL
+
+
+
+
+Required Technician App Login Matrix
+Technician #1       PASS / FAIL
+Technician #25       PASS / FAIL
+Technician #100      PASS / FAIL
+Technician #193      PASS / FAIL
+Technician #200      PASS / FAIL
+
+
+For each account verify:
+- real invite/activation
+- login
+- token/session refresh
+- logout
+- tenant scope
+- branch scope
+- own-data privacy
+- Schedule
+- Queue
+- Time Clock
+- Earnings
+- Payroll
+- Notifications
+- Profile
+
+
+
+
+Required Performance Report Fields
+ • Dataset size and seed profile
+ • Technician count and active/working count
+ • Appointment/block count per test day
+ • Initial Booking load latency
+ • Technician page-change latency
+ • Filter latency
+ • Find Opening latency
+ • Best Match latency
+                                               Claude / Developer Build Mandate | 16
+                                                                                    AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+ • Fair Turn latency
+ • Payroll generation time for 200 technicians
+ • Database EXPLAIN ANALYZE timings
+ • Largest Booking/API payload
+ • Browser memory before/after 17-page navigation
+ • Realtime event delivery/fanout latency
+
+
+Developer Continuation Handoff
+ Mandatory for Claude
+ The user will hand the code to a human developer. Claude must leave durable repository notes - not only a chat summary -
+ so the developer can continue immediately.
+
+
+ • DEVELOPER_HANDOFF.md: exact architecture/state, changed files, commands, migrations, env-variable NAMES only,
+    known issues and continuation notes.
+ • PROJECT_STATUS.md: module/app status matrix.
+ • NEXT_STEPS.md: ordered P0/P1/P2 continuation queue with acceptance criteria.
+ • TEST_REPORT.md: exact executed commands and PASS/FAIL/NOT_TESTED/BLOCKED_EXTERNAL evidence.
+ • PILOT_VALIDATION_REPORT.md: 200-tech pilot scenarios/results.
+ • PERFORMANCE_REPORT.md: measured latency, memory, payload, DB and realtime metrics.
+
+ Example developer note:
+
+
+ BOOKING - 200 TECH SCALE
+ Status: PASS / PARTIAL / FAIL
+ Frontend: apps/pos-web/...
+ API: ...
+ Domain: ...
+ Database/Migration: ...
+ Realtime: ...
+ Tests executed: ...
+ Performance: ...
+ Known issue: ...
+ Next exact task: ...
+
+
+
+
+Permanent Large-Salon Engineering Rules
+200 is a validation target, not a hard maximum.
+12 technicians per Booking page remains the default density.
+200 technicians at 12/page means 17 pages.
+Do not render 200 calendar columns and hide them.
+Do not use page index as technician identity.
+Do not load private employee/payroll fields into Booking payloads.
+Exact-service eligibility is authoritative.
+Hard eligibility precedes Best Match or AI ranking.
+Find Opening runs server-side against indexed availability data.
+Avoid N+1 queries.
+Use targeted realtime and safe cache invalidation.
+Technician App queries self/assigned data, not all staff.
+Payroll with 200 technicians must reconcile every cent.
+
+
+                                                 Claude / Developer Build Mandate | 17
+                                                                                          AI PowerSalon | 200-Technician Large Salon Scale Upgrade
+Tenant/branch isolation remains mandatory at scale.
+No hidden LIMIT 24/50/100 truncation.
+No production mock data or fake success.
+Measure performance instead of assuming it.
+Do not mark PASS without executing the 200-tech pilot.
+
+
+Final Instruction to Claude
+ Build, fix, wire, run, measure and document
+ Do not stop with recommendations. Inspect the existing AI PowerSalon code, preserve good implementation, remove hidden
+ scale assumptions, repair unwired modules and validate the actual system with 200 technicians. The finished large salon
+ must feel responsive and reliable to receptionist, manager, owner and technician like a much smaller salon.
+
+
+
+ FINAL REQUIRED RESULT
+
+
+ 200 technician records
+ 12 visible technicians per Booking page
+ 17 correct pages
+ real server-side pagination/search/filtering
+ exact-service eligibility
+ Find an Opening at scale
+ Best Matches at scale
+ Fair Turn at scale
+ real Technician App login for #1/#25/#100/#193/#200
+ realtime reconnect + fanout validation
+ 200-tech payroll + 400 payout instructions
+ performance and memory evidence
+ developer handoff notes
+ truthful PASS / FAIL / BLOCKED_EXTERNAL reporting
+
+
+
+
+                                                       Claude / Developer Build Mandate | 18
+

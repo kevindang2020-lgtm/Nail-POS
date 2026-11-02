@@ -1,0 +1,21 @@
+# Migration rehearsal — 2026-10-30T14:50:58-04:00
+database: aps_rehearsal (copy of the local test template 'aps'; NOT staging, NOT production)
+dry-run (begin … rollback) apps/api/db/migrations/724_retention_snapshots_sms_pricing.sql: exit 0 68ms ok
+re-apply (idempotency) apps/api/db/migrations/724_retention_snapshots_sms_pricing.sql: ok 39ms
+dry-run (begin … rollback) apps/api/db/migrations/725_messaging_registration_sync.sql: exit 0 49ms ok
+re-apply (idempotency) apps/api/db/migrations/725_messaging_registration_sync.sql: ok 53ms
+dry-run (begin … rollback) apps/api/db/migrations/727_team_onboarding_birthdays_training.sql: exit 0 64ms ok
+re-apply (idempotency) apps/api/db/migrations/727_team_onboarding_birthdays_training.sql: ok 50ms
+dry-run (begin … rollback) apps/api/db/migrations/728_ai_invoices_branch_settings.sql: exit 0 45ms ok
+re-apply (idempotency) apps/api/db/migrations/728_ai_invoices_branch_settings.sql: ok 42ms
+dry-run (begin … rollback) apps/api/db/migrations/729_setup_health.sql: exit 0 41ms ok
+re-apply (idempotency) apps/api/db/migrations/729_setup_health.sql: ok 66ms
+
+tables present after apply:
+customer_retention_snapshot_runs, customer_retention_daily_snapshots, tenant_retention_settings_history, tenant_sms_pricing, tenant_messaging_registration_sync_runs, tenant_messaging_registration_snapshots, team_data_nightly_runs, ai_billing_invoice_links, ai_billing_invoice_line_snapshots, ai_billing_invoice_events, ai_billing_reconciliation_runs, tenant_ai_branch_settings, tenant_ai_branch_settings_history, health_check_runs, health_check_results, health_check_alerts, release_evidence
+apps/api/db/migrations/724_retention_snapshots_sms_pricing.sql: 0 destructive-looking lines; 3 drop-if-exists (trigger/function re-create)
+apps/api/db/migrations/725_messaging_registration_sync.sql: 0 destructive-looking lines; 1 drop-if-exists (trigger/function re-create)
+apps/api/db/migrations/727_team_onboarding_birthdays_training.sql: 1 destructive-looking lines; 3 drop-if-exists (trigger/function re-create)
+apps/api/db/migrations/728_ai_invoices_branch_settings.sql: 0 destructive-looking lines; 2 drop-if-exists (trigger/function re-create)
+apps/api/db/migrations/729_setup_health.sql: 0 destructive-looking lines; 0 drop-if-exists (trigger/function re-create)
+727 note: line 199 drops and re-adds ck_team_data_alert_type to WIDEN the allowed alert types (adds the two new detectors); no data changes.

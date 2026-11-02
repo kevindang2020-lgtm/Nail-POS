@@ -1,0 +1,2410 @@
+{
+ "note": "V-5 (Oct 27 2026): free-text throws that stay English on purpose (reviewed — reasons per file) and user-facing ones not converted yet (pending, only shrinks). A new free-text refusal fails check:error-text: throw withCode(new XError(…), CODE, params). Regenerate counts with node apps/api/scripts/check-error-text.mjs --update (shrinks only).",
+ "reviewed": {
+  "apps/api/src/ai-booking/ai-booking-public.controller.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "Phone verification is not available.",
+    "This verification has expired. Please choose your time again."
+   ]
+  },
+  "apps/api/src/common/async-export/async-export.service.ts": {
+   "count": 3,
+   "why": "background job (no screen): async export worker",
+   "sentences": [
+    "no database",
+    "bad operation id",
+    "operation gone"
+   ]
+  },
+  "apps/api/src/common/platform-flags.ts": {
+   "count": 1,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "Flag rollouts need the database."
+   ]
+  },
+  "apps/api/src/common/platform-lockdown.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "AI PowerSalon is temporarily locked down by the platform security team. Please try again later."
+   ]
+  },
+  "apps/api/src/common/support-session-gate.ts": {
+   "count": 4,
+   "why": "Super Admin support sessions (English-only, §103)",
+   "sentences": [
+    "the support session could not be verified",
+    "no such support session",
+    "the support session belongs to another admin"
+   ]
+  },
+  "apps/api/src/customer-display/customer-display.controller.ts": {
+   "count": 2,
+   "why": "customer display / check-in device (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Too many pairing codes were requested from this network. Wait a minute and try again.",
+    "Too many check-ins started on this display. Wait a moment and try again."
+   ]
+  },
+  "apps/api/src/customer-display/customer-display.service.ts": {
+   "count": 30,
+   "why": "customer display / check-in device (not a POS / Owner / Tech screen) · Super Admin platform service (English-only, §103)",
+   "sentences": [
+    "Invalid or missing display token.",
+    "The tip can no longer be changed.",
+    "A tip percentage is required.",
+    "tipType must be none, percent, or custom.",
+    "Rating must be between 1 and 5.",
+    "A rating can only be left after payment.",
+    "There is no ticket to rate.",
+    "Payment is not enabled on this display.",
+    "Payment can no longer be started.",
+    "Choose card or cash.",
+    "The payment method can no longer be changed.",
+    "Invalid or missing device token.",
+    "choice must be sms, email, none or auto.",
+    "A receipt can be chosen once the payment is complete.",
+    "There is no receipt to choose for this checkout.",
+    "That receipt option is not available.",
+    "There is no code to enter right now.",
+    "This display is being serviced.",
+    "Check-in is not available on this display.",
+    "sessionId is required.",
+    "This checkout is not complete yet.",
+    "The customer is still choosing a receipt."
+   ]
+  },
+  "apps/api/src/customer-display/display-devices.service.ts": {
+   "count": 7,
+   "why": "client contract: the screen offers the four modes · device contract: the display app sends its version · device contract: the display app reports its screen · device contract: the display app signs in with a display profile · device contract: the display app sends its pairing id and secret · client contract: the screen sends a boolean",
+   "sentences": [
+    "mode must be check_in, checkout, advertisement or idle.",
+    "appVersion must be 1–40 printable characters.",
+    "screen width and height must be whole pixels between 100 and 10000.",
+    "screen pixelRatio must be between 0.5 and 8.",
+    "profile is not a display profile.",
+    "A pairing id and its secret are required.",
+    "maintenance must be true or false."
+   ]
+  },
+  "apps/api/src/customer/customer.controller.ts": {
+   "count": 2,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "No image provided.",
+    "Media storage is not configured."
+   ]
+  },
+  "apps/api/src/customer/customer.service.ts": {
+   "count": 14,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "No customer profile is linked to this account.",
+    "Choose a salon.",
+    "Changing your salon is not available yet.",
+    "Street address is required.",
+    "Gift card not found.",
+    "This gift card can’t be sent — it must be active with a remaining balance.",
+    "Enter the recipient’s phone number or email.",
+    "That phone number doesn’t look right.",
+    "That email address doesn’t look right.",
+    "This claim link is missing its code.",
+    "Phone is not valid.",
+    "Email is not valid.",
+    "Birthday must be YYYY-MM-DD.",
+    "First and last name are required."
+   ]
+  },
+  "apps/api/src/deployments/deployments.service.ts": {
+   "count": 4,
+   "why": "Super Admin deployments console (English-only, §103)",
+   "sentences": [
+    "Component is required",
+    "Deployment not found",
+    "Cannot {0} a deployment in status {1}"
+   ]
+  },
+  "apps/api/src/events/consumers/in-app-notification.consumer.ts": {
+   "count": 6,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ocr document {0} does not belong to the event's tenant",
+    "appointment {0}",
+    "queue item {0}",
+    "ticket {0}",
+    "expense {0} does not belong to the event's tenant",
+    "payment {0}"
+   ]
+  },
+  "apps/api/src/events/consumers/loyalty-points.consumer.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ticket {0} belongs to another tenant"
+   ]
+  },
+  "apps/api/src/events/consumers/mobile-pay-device-revocation.consumer.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "user {0} belongs to another tenant"
+   ]
+  },
+  "apps/api/src/events/consumers/push-notification.consumer.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "appointment {0}"
+   ]
+  },
+  "apps/api/src/events/consumers/receipt-delivery.consumer.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ticket {0} belongs to another tenant"
+   ]
+  },
+  "apps/api/src/events/consumers/recipe-usage.consumer.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ticket {0} belongs to another tenant"
+   ]
+  },
+  "apps/api/src/health/metrics.controller.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "Cannot GET /metrics",
+    "A valid metrics token is required"
+   ]
+  },
+  "apps/api/src/jobs/jobs.controller.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "The job queue needs the database.",
+    "status must be one of {0}",
+    "jobClass must be one of {0}",
+    "tenantId must be a salon id",
+    "job id must be a UUID",
+    "A reason (at least 5 characters) is required — the next person needs to know why."
+   ]
+  },
+  "apps/api/src/mobile-config/mobile-versions.service.ts": {
+   "count": 1,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "Mobile app versions need the database."
+   ]
+  },
+  "apps/api/src/oauth/oauth.service.ts": {
+   "count": 9,
+   "why": "OAuth protocol (machine client; RFC 6749 error body)",
+   "sentences": [
+    "Unknown or disabled application.",
+    "This application's return address is not registered.",
+    "PKCE (S256) is required.",
+    "This application asked for nothing it may have.",
+    "Client authentication failed.",
+    "The code is invalid, expired or already used.",
+    "The code does not match this request.",
+    "The refresh token is invalid.",
+    "The refresh token was already used; access was revoked."
+   ]
+  },
+  "apps/api/src/observability/backup-reports.ts": {
+   "count": 2,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Backup reporting is not configured (SERVICE_TOKEN_SECRET or BACKUP_REPORT_TOKEN).",
+    "Invalid backup report credentials."
+   ]
+  },
+  "apps/api/src/observability/branch-health.ts": {
+   "count": 1,
+   "why": "background job (no screen): branch health snapshot",
+   "sentences": [
+    "branch.health.snapshot.tenant needs a tenant and observedAt"
+   ]
+  },
+  "apps/api/src/observability/capacity-ops.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Capacity data needs the database.",
+    "Tenant not found."
+   ]
+  },
+  "apps/api/src/observability/oncall.ts": {
+   "count": 10,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "No database",
+    "Unknown time zone.",
+    "Quiet hours need both a start and an end.",
+    "A reason is required.",
+    "Contact not found",
+    "Salon not found",
+    "Alert not found"
+   ]
+  },
+  "apps/api/src/observability/ops-dashboards.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Dashboards need the database."
+   ]
+  },
+  "apps/api/src/observability/system-operations.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Unknown component"
+   ]
+  },
+  "apps/api/src/observability/tenant-health.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Tenant not found.",
+    "tenant.health.snapshot.tenant needs a tenant and observedAt"
+   ]
+  },
+  "apps/api/src/project-status/project-status.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "moduleKey is required"
+   ]
+  },
+  "apps/api/src/project-status/project-status.service.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "unknown module: {0}"
+   ]
+  },
+  "apps/api/src/realtime/presence.controller.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "state must be ONLINE|AWAY|BACKGROUND",
+    "presence reports are limited to one per 10s"
+   ]
+  },
+  "apps/api/src/realtime/realtime-stream.ts": {
+   "count": 1,
+   "why": "realtime stream limit (the stream reconnects; no text is shown)",
+   "sentences": [
+    "too many realtime connections"
+   ]
+  },
+  "apps/api/src/realtime/support-session-realtime.ts": {
+   "count": 2,
+   "why": "Super Admin support sessions (English-only, §103)",
+   "sentences": [
+    "no active support session — a super admin needs one to subscribe to a tenant stream",
+    "support session is scoped to a different tenant"
+   ]
+  },
+  "apps/api/src/super-admin-system-status/incident-workflow.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Incident not found.",
+    "A commander is required.",
+    "Invalid timeline entry kind.",
+    "A timeline entry needs text.",
+    "Platform alert not found."
+   ]
+  },
+  "modules/ai/src/ai-analytics-forecasting/product-demand-forecast.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the product id",
+   "sentences": [
+    "productId required"
+   ]
+  },
+  "modules/ai/src/ai-customer-profile/ai-customer-profile-scan.scheduler.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ai.customer.profile.scan.tenant needs a tenant"
+   ]
+  },
+  "modules/ai/src/ai-inventory/ai-inventory-position.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the product id",
+   "sentences": [
+    "productId required"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing-audience.ts": {
+   "count": 2,
+   "why": "client contract: the audience builder sends numbers · client contract: the audience builder offers the known dimensions",
+   "sentences": [
+    "Expected a number",
+    "Unknown audience dimension: {0}"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing-campaign.service.ts": {
+   "count": 7,
+   "why": "impossible state: the route is tenant-scoped by the guard · client contract: the screen sends the submission · client contract: the screen offers sms / email / push only · Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "Missing tenant context",
+    "Campaign submission required",
+    "channel must be sms|email|push",
+    "scheduledAt must be in the future"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing-content.service.ts": {
+   "count": 1,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "Missing tenant context"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing-content.ts": {
+   "count": 3,
+   "why": "client contract: the screen sends the draft request · client contract: the screen offers sms / email / push only · client contract: the screen offers the four tones",
+   "sentences": [
+    "Draft request required",
+    "channel must be sms|email|push",
+    "tone must be friendly|professional|warm|concise"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing-send.service.ts": {
+   "count": 1,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "Missing tenant context"
+   ]
+  },
+  "modules/ai/src/ai-marketing/ai-marketing.service.ts": {
+   "count": 1,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "Missing tenant context"
+   ]
+  },
+  "modules/ai/src/ai-money-protection/ai-money-protection-explain.service.ts": {
+   "count": 1,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "Missing tenant context"
+   ]
+  },
+  "modules/ai/src/ai-money-protection/ai-money-protection-investigations.service.ts": {
+   "count": 3,
+   "why": "impossible state: the route is tenant-scoped by the guard · client contract: the screen offers the known severities · client contract: the screen offers the known resolutions",
+   "sentences": [
+    "Missing tenant context",
+    "Severity must be one of {0}.",
+    "Unknown resolution"
+   ]
+  },
+  "modules/ai/src/ai-money-protection/ai-money-protection.service.ts": {
+   "count": 1,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "Missing tenant context"
+   ]
+  },
+  "modules/ai/src/ai-queue-assignment/ai-queue-assignment-alerts.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends a known alert type",
+   "sentences": [
+    "Unknown alert type."
+   ]
+  },
+  "modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.jobs.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "a queue job needs its tenant and branch"
+   ]
+  },
+  "modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.service.ts": {
+   "count": 4,
+   "why": "client contract: the screen sends salon / branch scope · client contract: the settings screen sends known settings · client contract: the export menu offers the three types",
+   "sentences": [
+    "scope must be 'salon' or 'branch'.",
+    "Unknown setting \"{0}\".",
+    "Export type must be decisions, alerts or history."
+   ]
+  },
+  "modules/ai/src/ai-queue-assignment/ai-queue-assignment-superadmin.controller.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Salon not found.",
+    "Say whether to switch automatic assignment off (killed: true) or back on (killed: false).",
+    "A reason of at least {0} characters is required.",
+    "The kill switch needs the database."
+   ]
+  },
+  "modules/ai/src/ai-queue-assignment/ai-queue-assignment.service.ts": {
+   "count": 15,
+   "why": "client contract: the decision buttons send the known decisions · client contract: the feedback picker sends a known code · client contract: the screen sends a short idempotency key · client contract: the screen routes plan decisions itself · client contract: the settings form sends technician ids · client contract: the settings form sends a boolean · client contract: the settings form constrains the delay · client contract: the screen sends salon / branch scope · client contract: the settings form sends the exclusions object · client contract: the settings form sends booleans · client contract: the settings form sends id lists",
+   "sentences": [
+    "Choose accepted, adjusted, rejected or kept_unassigned.",
+    "feedbackCode must be a short code like \"customer_preference\".",
+    "idempotencyKey is too long (128 characters at most).",
+    "This recommendation is not a plan — decide it with recommendations/:id/decision.",
+    "Choose accepted, rejected, overridden or kept_unassigned.",
+    "fixedOrder must be a list of technician ids.",
+    "enabled must be true or false.",
+    "delaySeconds must be a whole number from 0 to 3600.",
+    "scope must be \"branch\" or \"salon\".",
+    "exclusions must be an object.",
+    "exclusions.{0} must be true or false.",
+    "exclusions.{0} must be a list of ids."
+   ]
+  },
+  "modules/ai/src/ai-scheduling-optimizer/ai-scheduling-jobs.ts": {
+   "count": 3,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "a scheduling scan needs its tenant and location",
+    "an expiry sweep needs its tenant",
+    "an insights run needs its tenant"
+   ]
+  },
+  "modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the call id",
+   "sentences": [
+    "providerCallId required"
+   ]
+  },
+  "modules/ai/src/ai-voice-transcription/ai-voice-transcription.service.ts": {
+   "count": 5,
+   "why": "impossible state: the route is tenant-scoped by the guard · client contract: the screen sends the call id · client contract: the settings form constrains retention · client contract: the list sends the cursor it was given",
+   "sentences": [
+    "Missing tenant context",
+    "providerCallId required",
+    "retentionDays must be 1..3650",
+    "cursor is not valid — restart from the first page"
+   ]
+  },
+  "modules/ai/src/ai/ai-feedback.ts": {
+   "count": 8,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "feedback requires a tenant (§130)",
+    "feedback must reference the AI request it is about",
+    "unknown task {0} (§9)",
+    "feedback must not carry \"{0}\": §129 wants what changed and why, not the text (that is customer content under another name)",
+    "note is limited to 500 characters",
+    "retainedRatio must be between 0 and 1",
+    "an \"edited\" outcome needs retainedRatio — otherwise it carries no more information than \"rejected\"",
+    "an accepted result has no reason code"
+   ]
+  },
+  "modules/ai/src/ai/ai-knowledge.ts": {
+   "count": 8,
+   "why": "internal assertion: AI knowledge retrieval refuses an unsafe query (developer error, 500 path)",
+   "sentences": [
+    "a tenant id",
+    "an actor role",
+    "a branch scope",
+    "status = {0} (§149)",
+    "a visibility class (§150)",
+    "a visibility set that excludes staff_private (§150)"
+   ]
+  },
+  "modules/ai/src/ai/ai-model-router.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "no model of an allowed, integrated provider offers this capability",
+    "every allowed provider is unhealthy or excluded ({0})"
+   ]
+  },
+  "modules/ai/src/ai/ai-output-schemas.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "(parse)"
+   ]
+  },
+  "modules/ai/src/ai/ai-prompt-registry.ts": {
+   "count": 9,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "template of {0} v{1} references undeclared variable {{{2}}}",
+    "{0} v{1} declares variable {2} that the template never uses",
+    "{0} v{1}: systemInstructions must not contain variables (§27 — instructions are static)",
+    "{0}: undeclared variable \"{1}\" supplied",
+    "{0}: missing variable \"{1}\"",
+    "{0}: {1} must be a string",
+    "{0}: {1} must be a finite number",
+    "{0}: {1} must be string[]",
+    "{0}: {1} must be JSON-serializable"
+   ]
+  },
+  "modules/ai/src/ai/ai-settings-store.ts": {
+   "count": 11,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "automation must be an object of taskKey → level",
+    "unknown AI task \"{0}\"",
+    "\"{0}\" is not an automation level ({1})",
+    "{0} cannot be set to {1}: the platform allows at most {2} for this task (§110 — a tenant may tighten safety, never weaken it)",
+    "autoActionsDisabled must be a boolean",
+    "{0} must be an array of strings",
+    "unknown AI tool \"{0}\"",
+    "allowPiiInText must be an array of strings",
+    "unknown setting(s): {0}",
+    "killSwitch must be a boolean"
+   ]
+  },
+  "modules/ai/src/ai/ai-tool-registry.ts": {
+   "count": 4,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "not in the AI Tool Registry (§29)",
+    "task {0} does not declare it",
+    "actor lacks {0}",
+    "a human must approve before this tool runs (§35)"
+   ]
+  },
+  "modules/ai/src/voice-booking/ai-agent-core.ts": {
+   "count": 1,
+   "why": "client contract: the agent form offers the known call types",
+   "sentences": [
+    "Invalid call type."
+   ]
+  },
+  "modules/ai/src/voice-booking/ai-follow-up.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen offers the known follow-up reasons",
+   "sentences": [
+    "Invalid follow-up reason."
+   ]
+  },
+  "modules/ai/src/voice-booking/ai-receptionist-verification.controller.ts": {
+   "count": 2,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "This verification has expired. Please book the time again.",
+    "That phone number does not look valid."
+   ]
+  },
+  "modules/ai/src/voice-booking/ai-settings.service.ts": {
+   "count": 7,
+   "why": "client contract: the settings form sends booleans · client contract: the settings form offers the known languages · client contract: the settings form offers the known behaviors · client contract: the settings form constrains the timeout · client contract: the settings form constrains the duration · client contract: the settings form sends text · client contract: the settings form sends known settings",
+   "sentences": [
+    "{0} must be a boolean.",
+    "defaultLanguage must be a language code.",
+    "Invalid afterHoursBehavior.",
+    "silenceTimeoutSeconds must be 2–30.",
+    "maxCallDurationSeconds must be 60–3600.",
+    "recordingConsentMessage must be text.",
+    "Unknown setting: {0}"
+   ]
+  },
+  "modules/ai/src/voice-booking/retell-voice.provider.ts": {
+   "count": 2,
+   "why": "voice provider response error (502 path)",
+   "sentences": [
+    "Retell did not return an llm_id.",
+    "Retell did not return an agent_id."
+   ]
+  },
+  "modules/ai/src/voice-booking/twilio-telephony.provider.ts": {
+   "count": 1,
+   "why": "deployment configuration: voice webhook URL (operator setting)",
+   "sentences": [
+    "No inbound VoiceUrl configured (set AI_RECEPTIONIST_VOICE_WEBHOOK_URL)."
+   ]
+  },
+  "modules/ai/src/voice-booking/voice-auth.guard.ts": {
+   "count": 1,
+   "why": "voice provider webhook authentication (machine caller, not a person)",
+   "sentences": [
+    "Invalid or missing voice integration key."
+   ]
+  },
+  "modules/ai/src/voice-booking/voice-call-outcome-core.ts": {
+   "count": 1,
+   "why": "voice provider webhook contract (machine caller)",
+   "sentences": [
+    "providerCallId is required"
+   ]
+  },
+  "modules/ai/src/voice-booking/voice-learning.service.ts": {
+   "count": 13,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "The learning loop cannot change '{0}'. Use its POS module.",
+    "Unsupported suggestion target: {0}",
+    "Suggestion not found",
+    "Only an open suggestion can be approved (is '{0}')",
+    "Cannot apply a change to '{0}'",
+    "A new prompt body is required to approve a prompt suggestion",
+    "Only an open suggestion can be rejected",
+    "Prompt version not found",
+    "A '{0}' version cannot be activated",
+    "No prior version to roll back to",
+    "Cannot move a '{0}' version to '{1}'"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-alerts.service.ts": {
+   "count": 4,
+   "why": "client contract: the alert form offers the supported metrics only · client contract: the alert form offers less-than / greater-than only · client contract: the alert form offers the supported channels only · client contract: the alert form offers the supported frequencies only",
+   "sentences": [
+    "Unsupported alert metric",
+    "Operator must be lt or gt",
+    "Unsupported channel",
+    "Unsupported frequency"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-appointments.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-assistant.service.ts": {
+   "count": 1,
+   "why": "client contract: the assistant sends a known intent",
+   "sentences": [
+    "Unknown assistant intent"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-branches.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-brief.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-customers.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-reports.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screen offers the known report types",
+   "sentences": [
+    "Unknown report type"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-revenue.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-saved-questions.service.ts": {
+   "count": 1,
+   "why": "client contract: the assistant sends a known intent",
+   "sentences": [
+    "Unknown assistant intent"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business-technicians.service.ts": {
+   "count": 1,
+   "why": "client contract: the report screens offer the supported periods only",
+   "sentences": [
+    "Unsupported reporting period"
+   ]
+  },
+  "modules/analytics/src/ai-business/ai-business.service.ts": {
+   "count": 2,
+   "why": "client contract: the screen offers the known metric categories · client contract: the screen offers the known metrics",
+   "sentences": [
+    "Unknown metric category",
+    "Unknown metric"
+   ]
+  },
+  "modules/analytics/src/owner/owner.controller.ts": {
+   "count": 1,
+   "why": "deployment without a database (dev / test build) — never production",
+   "sentences": [
+    "Weekly paychecks need the database."
+   ]
+  },
+  "modules/analytics/src/owner/owner.service.ts": {
+   "count": 3,
+   "why": "client contract: the screen always sends the ticket id · client contract: the payroll screen sends the period id",
+   "sentences": [
+    "A ticket id is required.",
+    "A payroll period id is required."
+   ]
+  },
+  "modules/booking/src/booking/booking.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the block id",
+   "sentences": [
+    "blockId is required"
+   ]
+  },
+  "modules/booking/src/customer-activation/customer-activation.service.ts": {
+   "count": 4,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Enter a valid mobile phone number.",
+    "This phone number cannot receive verification codes.",
+    "Please wait {0} seconds before requesting another code.",
+    "We could not send a verification code right now. Please try again or contact support."
+   ]
+  },
+  "modules/booking/src/customer-booking/booking-slot-hold.ts": {
+   "count": 3,
+   "why": "client contract: the booking screen sends a uuid session id · client contract: the booking screen sends a uuid technician id · client contract: the booking screen sends date, HH:MM start and bookable services",
+   "sentences": [
+    "bookingSessionId must be a uuid",
+    "technicianId must be a uuid",
+    "a date, a start time (HH:MM) and bookable services are required"
+   ]
+  },
+  "modules/booking/src/customer-booking/booking-verification-flow.ts": {
+   "count": 1,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "That time is being held for another booking. Please choose another time."
+   ]
+  },
+  "modules/booking/src/customer-booking/booking-verification-oversight.service.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Unavailable.",
+    "A reason is required to disable phone verification platform-wide.",
+    "A reason is required to switch the booking verification module on or off.",
+    "A tenant cannot be both required to verify and blocked from verifying.",
+    "A reason is required when overriding a tenant’s verification policy."
+   ]
+  },
+  "modules/booking/src/customer-booking/booking-verification.controller.ts": {
+   "count": 7,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "We could not send a verification code. Please contact the salon.",
+    "Please complete the verification challenge to continue.",
+    "This account has no customer profile at this salon.",
+    "Add a mobile number to your profile first.",
+    "Not available.",
+    "This verification has expired. Request a new code."
+   ]
+  },
+  "modules/booking/src/customer-booking/customer-booking.module.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "Add a mobile number to your profile to book online — this salon verifies it with a code."
+   ]
+  },
+  "modules/booking/src/customer-booking/customer-booking.service.ts": {
+   "count": 28,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "That salon is not available for booking.",
+    "serviceId is required",
+    "date must be YYYY-MM-DD",
+    "That service is not available for booking.",
+    "That technician is not available.",
+    "serviceId(s) and technicianId are required",
+    "startTime must be HH:MM",
+    "No customer profile is linked to this account.",
+    "One of the selected services is not available for booking.",
+    "That time is no longer available with this technician.",
+    "This deal has sold out.",
+    "That time is being booked by someone else right now. Please pick another time.",
+    "That time is outside the technician's working hours. Please pick another time.",
+    "Pick a future date.",
+    "Appointment not found.",
+    "This appointment can’t be rescheduled.",
+    "That time is outside booking hours."
+   ]
+  },
+  "modules/booking/src/customer-phone/customer-identity-phone.service.ts": {
+   "count": 8,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Not a customer account.",
+    "Set a password before changing your sign-in number.",
+    "That password is not correct.",
+    "That phone number does not look valid.",
+    "That number is already used to sign in to another account. If it is yours, sign in with it instead.",
+    "Verify the new number first: change your phone number in the app and enter the code we text you, then try again.",
+    "We could not send the security notice to your current number, so your sign-in number was not changed. Please try again later or contact the salon.",
+    "We could not change your sign-in number. Please try again."
+   ]
+  },
+  "modules/booking/src/customer-phone/customer-phone-app.controller.ts": {
+   "count": 1,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Not a customer account."
+   ]
+  },
+  "modules/booking/src/deposits/customer-deposit.controller.ts": {
+   "count": 3,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "No customer profile is linked to this account.",
+    "No deposit on this booking."
+   ]
+  },
+  "modules/catalog/src/services/services.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen offers percent / flat only",
+   "sentences": [
+    "{0} type must be 'percent' or 'flat'"
+   ]
+  },
+  "modules/checkout/src/checkout/checkout.kysely.repository.ts": {
+   "count": 4,
+   "why": "internal assertion: a payment row failed to persist (500 path) · internal assertion: ticket missing at payment persistence (500 path) · internal assertion: ticket missing at card completion (500 path)",
+   "sentences": [
+    "payment row failed to persist (ticket={0}, method={1}, amount_cents={2}, status={3})",
+    "ticket not found for payment (ticket={0})",
+    "ticket not found for card completion (ticket={0})"
+   ]
+  },
+  "modules/checkout/src/mobile-checkout/mobile-checkout.service.ts": {
+   "count": 11,
+   "why": "client contract: the app always sends the device id · device contract: the payment app generates the key itself · client contract: the screen offers only the known statuses · device contract: the payment app sends a known attestation format · device contract: the payment app attaches the platform attestation itself · client contract: the app always sends the user id · client contract: the platform screen always sends the salon id · client contract: the app always sends an idempotency key",
+   "sentences": [
+    "A deviceId is required.",
+    "The payment device key must be an ECDSA P-256 public key (SPKI, base64).",
+    "Unknown device status.",
+    "Unknown attestation format. Use one of: {0}.",
+    "The attestation evidence is missing or too large.",
+    "A userId is required.",
+    "A target tenantId is required.",
+    "An idempotencyKey is required."
+   ]
+  },
+  "modules/checkout/src/skip-line-checkout/skip-line-checkout.service.ts": {
+   "count": 2,
+   "why": "client contract: the app calls the cash route for cash · client contract: the card form always sends a token",
+   "sentences": [
+    "Use pay-cash-to-tech for cash payments.",
+    "A tokenized card is required (hosted fields or a saved method)."
+   ]
+  },
+  "modules/checkout/src/ticket-history/ticket-history.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen always sends the ticket id",
+   "sentences": [
+    "A ticket id is required."
+   ]
+  },
+  "modules/communications/src/communications/communications-announcements.service.ts": {
+   "count": 11,
+   "why": "Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "title is required",
+    "body is required",
+    "invalid channel",
+    "invalid priority",
+    "at least one recipient role is required",
+    "platform announcements cannot target tenant customers",
+    "unsupported recipient role(s): {0}",
+    "selected scope requires at least one valid tenant",
+    "one or more target tenants do not exist",
+    "scheduledAt is not a valid date",
+    "scheduledAt must be in the future"
+   ]
+  },
+  "modules/communications/src/communications/communications-limits.service.ts": {
+   "count": 5,
+   "why": "Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "{0} must be a non-negative integer (or blank for unlimited)",
+    "invalid tenantId",
+    "tenant not found",
+    "invalid enforcement"
+   ]
+  },
+  "modules/communications/src/communications/communications-providers.service.ts": {
+   "count": 12,
+   "why": "Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "invalid provider id",
+    "provider not found",
+    "name is required",
+    "invalid channel",
+    "credential is required",
+    "new credential is required"
+   ]
+  },
+  "modules/communications/src/communications/communications-templates.service.ts": {
+   "count": 13,
+   "why": "Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "template not found",
+    "invalid template id",
+    "name is required",
+    "invalid channel",
+    "body is required",
+    "version not found",
+    "cannot publish a retired version"
+   ]
+  },
+  "modules/communications/src/end-of-day-followups/end-of-day-followups.service.ts": {
+   "count": 1,
+   "why": "client contract: the settings screen sends HH:mm",
+   "sentences": [
+    "generationTime must be HH:mm."
+   ]
+  },
+  "modules/communications/src/push/push.service.ts": {
+   "count": 4,
+   "why": "machine caller or platform service (webhook / OAuth / voice provider / metrics / AI gateway)",
+   "sentences": [
+    "Not authenticated.",
+    "platform must be ios, android, or web.",
+    "A valid device token is required.",
+    "app must be customer, tech, owner or manager."
+   ]
+  },
+  "modules/communications/src/reminders/reminders.service.ts": {
+   "count": 2,
+   "why": "impossible state: the route is tenant-scoped by the guard",
+   "sentences": [
+    "No tenant"
+   ]
+  },
+  "modules/communications/src/sms-packages/sms-packages.service.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "{0} must be a non-negative integer",
+    "{0} must be boolean",
+    "name must be a non-empty string",
+    "description must be a string or null",
+    "warning threshold must be below critical threshold"
+   ]
+  },
+  "modules/communications/src/sms-packages/sms-platform-controls.service.ts": {
+   "count": 4,
+   "why": "Super Admin SMS platform controls (English-only, §103)",
+   "sentences": [
+    "A reason is required to change the default package.",
+    "That package code does not exist or is disabled.",
+    "That is not an SMS platform control.",
+    "A reason is required for every master-control change."
+   ]
+  },
+  "modules/communications/src/sms-packages/sms-tenant-plan.service.ts": {
+   "count": 4,
+   "why": "Super Admin SMS package change (English-only, §103) · Super Admin SMS credit (English-only, §103)",
+   "sentences": [
+    "A reason is required for every package change.",
+    "Credit must be a positive whole number of verifications.",
+    "A reason is required for every manual credit.",
+    "Assign a package before adding credit — credit lives on a billing cycle."
+   ]
+  },
+  "modules/communications/src/sms-packages/tenant-sms-plan.controller.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the package id",
+   "sentences": [
+    "packageId is required"
+   ]
+  },
+  "modules/communications/src/tenant-a2p/tenant-a2p.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "phoneNumberSid is required"
+   ]
+  },
+  "modules/communications/src/tenant-messaging/tenant-messaging.controller.ts": {
+   "count": 2,
+   "why": "client contract: the screen sends the phone number field",
+   "sentences": [
+    "phoneNumber is required"
+   ]
+  },
+  "modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the phone number field",
+   "sentences": [
+    "phoneNumber is required"
+   ]
+  },
+  "modules/customers/src/customer-salons/customer-favorites.controller.ts": {
+   "count": 1,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Sign in to manage favorites."
+   ]
+  },
+  "modules/customers/src/customer-salons/customer-salons.service.ts": {
+   "count": 7,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Salon search requires a database.",
+    "cursor is not valid — restart from the first page.",
+    "Salon not found.",
+    "flag must be one of {0}."
+   ]
+  },
+  "modules/customers/src/customers/customers.service.ts": {
+   "count": 3,
+   "why": "client contract: the form sends text fields as text · client contract: the duplicate review offers keep_separate / not_sure only · client contract: the import screen sends the csv field",
+   "sentences": [
+    "{0} must be text",
+    "Decision must be keep_separate or not_sure",
+    "Provide CSV text in the \"csv\" field (or use import/preview first)."
+   ]
+  },
+  "modules/customers/src/pos-referrals/pos-referrals.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the referral id",
+   "sentences": [
+    "Referral id is required"
+   ]
+  },
+  "modules/customers/src/wallet/wallet.service.ts": {
+   "count": 3,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Amount must be a positive whole number of cents.",
+    "Insufficient store credit for this amount."
+   ]
+  },
+  "modules/deals/src/bundles/bundles.service.ts": {
+   "count": 3,
+   "why": "client contract: the bundle form offers the four kinds only · client contract: the bundle form offers the three statuses only · client contract: the bundle form offers service / product only",
+   "sentences": [
+    "kind must be 'bundle', 'package', 'membership', or 'promo'",
+    "status must be 'active', 'inactive', or 'archived'",
+    "Each item type must be 'service' or 'product'"
+   ]
+  },
+  "modules/deals/src/deals/deals.customer.controller.ts": {
+   "count": 3,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Too many requests — try again in a minute.",
+    "Deal not available."
+   ]
+  },
+  "modules/deals/src/deals/deals.service.ts": {
+   "count": 6,
+   "why": "client contract: the approval screen sends the deal id · client contract: the settings screen offers the known stacking policies · client contract: the settings screen offers the known technician-deal policies · client contract: the checkout sends an idempotency key · Super Admin deal suspension (English-only, §103)",
+   "sentences": [
+    "A deal approval names the deal.",
+    "Unknown stacking policy.",
+    "Unknown technician-deal policy.",
+    "An idempotency key is required to reserve a deal.",
+    "A suspension needs a reason (at least 12 characters) — the salon is shown it.",
+    "Deal not found, or already suspended."
+   ]
+  },
+  "modules/deals/src/deals/deals.super-admin.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Unknown salon."
+   ]
+  },
+  "modules/deals/src/promotions/promotions.service.ts": {
+   "count": 4,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Promotion not found for this tenant",
+    "idempotencyKey is required",
+    "redemption limit reached",
+    "Redemption not found for this tenant"
+   ]
+  },
+  "modules/deals/src/salon-promotions/salon-promotions.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen offers only the known statuses",
+   "sentences": [
+    "Invalid status"
+   ]
+  },
+  "modules/identity/src/auth/branch-access.ts": {
+   "count": 1,
+   "why": "client contract: the branch picker sends the branch id",
+   "sentences": [
+    "A branchId is required."
+   ]
+  },
+  "modules/inventory/src/inventory.service.ts": {
+   "count": 2,
+   "why": "client contract: the approval screen sends the purchase order id · client contract: the screen sends the version it read",
+   "sentences": [
+    "A purchase-order approval names the purchase order.",
+    "expectedVersion must be a whole number"
+   ]
+  },
+  "modules/memberships/src/membership-billing.controller.ts": {
+   "count": 3,
+   "why": "internal route or background job (no screen)",
+   "sentences": [
+    "membershipId required",
+    "membershipId and status required",
+    "membershipId and newPriceCents required"
+   ]
+  },
+  "modules/memberships/src/membership-comms.service.ts": {
+   "count": 3,
+   "why": "client contract: the screen sends the membership id",
+   "sentences": [
+    "membershipId is required"
+   ]
+  },
+  "modules/memberships/src/membership-compensation.service.ts": {
+   "count": 1,
+   "why": "client contract: the checkout sends the ticket id",
+   "sentences": [
+    "ticketId is required"
+   ]
+  },
+  "modules/memberships/src/membership-enroll.service.ts": {
+   "count": 6,
+   "why": "client contract: the screen sends the customer id · client contract: the owner screen always sends the plan id · client contract: the screen sends the membership id · client contract: the checkout sends the ticket id · client contract: the checkout sends the reservation reference",
+   "sentences": [
+    "customerId is required",
+    "planId is required",
+    "membershipId is required",
+    "ticketId is required",
+    "reservationRef is required"
+   ]
+  },
+  "modules/memberships/src/memberships.service.ts": {
+   "count": 4,
+   "why": "client contract: the plan form offers the known product types · client contract: the plan form offers the known billing intervals · client contract: the plan form offers the known allocation timings · client contract: the plan form offers the known cancellation policies",
+   "sentences": [
+    "Unknown product type",
+    "Unknown billing interval",
+    "Unknown allocation timing",
+    "Unknown cancellation policy"
+   ]
+  },
+  "modules/payments/src/deposit-reconciliation/deposit-reconciliation.exceptions.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen picks the assignee from the staff list",
+   "sentences": [
+    "Assignee must be a valid user id"
+   ]
+  },
+  "modules/payments/src/hardware-payment/hardware-payment.owner.controller.ts": {
+   "count": 1,
+   "why": "client contract: the owner screen always sends the plan id",
+   "sentences": [
+    "planId is required"
+   ]
+  },
+  "modules/payments/src/hardware-payment/hardware-payment.service.ts": {
+   "count": 1,
+   "why": "client contract: the card form always sends a gateway token",
+   "sentences": [
+    "A tokenized payment method is required (raw card data is never accepted)."
+   ]
+  },
+  "modules/payments/src/hardware-payment/hardware-payment.super-admin.controller.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "planId and billingMonth are required",
+    "billingMonth is required"
+   ]
+  },
+  "modules/payments/src/invoices/invoices.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen offers only the known statuses",
+   "sentences": [
+    "Invalid status"
+   ]
+  },
+  "modules/payments/src/payments/cardpointe-bolt.client.ts": {
+   "count": 3,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "Bolt request to {0} failed: {1}",
+    "Bolt {0} returned HTTP {1}{2}",
+    "Bolt connect did not return a session key (X-CardConnect-SessionKey header missing)."
+   ]
+  },
+  "modules/payments/src/payments/cardpointe.client.ts": {
+   "count": 2,
+   "why": "processor transport failure (502 path) · processor transport failure (502 path; the screen shows the payment-provider registry text)",
+   "sentences": [
+    "CardPointe request to {0} failed: {1}",
+    "CardPointe {0} returned HTTP {1}{2}"
+   ]
+  },
+  "modules/payments/src/payments/clover.client.ts": {
+   "count": 2,
+   "why": "processor transport failure (502 path)",
+   "sentences": [
+    "Clover request to {0} failed: {1}",
+    "Clover {0} returned HTTP {1}{2}"
+   ]
+  },
+  "modules/payments/src/payments/commercehub.client.ts": {
+   "count": 3,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "CommerceHub request to {0} failed: {1}",
+    "CommerceHub {0} returned {1}: {2}",
+    "CommerceHub credentials response did not include a sessionId"
+   ]
+  },
+  "modules/payments/src/payments/payment-gateway.resolver.ts": {
+   "count": 5,
+   "why": "merchant routing read failure (500 path)",
+   "sentences": [
+    "merchant routing: the branch merchant could not be read — {0}",
+    "merchant routing: the salon merchant could not be read — {0}",
+    "merchant routing: {0} could not be read — {1}",
+    "Tap to Pay routing: the location merchant could not be read — {0}",
+    "Tap to Pay routing: the salon merchant could not be read — {0}"
+   ]
+  },
+  "modules/platform/src/platform-approvals/platform-approvals.ts": {
+   "count": 4,
+   "why": "deployment without a database (dev / test build) — never production · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Approvals need the database.",
+    "Approval request not found."
+   ]
+  },
+  "modules/platform/src/super-admin-plans/entitlements.service.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "tenant not found: {0}",
+    "Hard limit for {0}: only {1} of {2} can be added ({3}/{4} used). Upgrade the plan or raise the custom limit."
+   ]
+  },
+  "modules/platform/src/super-admin-plans/feature-registry.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "The feature registry needs the database.",
+    "Unknown feature.",
+    "tenantId is required"
+   ]
+  },
+  "modules/platform/src/super-admin-plans/grandfather.service.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "tenant not found: {0}",
+    "plan version not found: {0}"
+   ]
+  },
+  "modules/platform/src/super-admin-plans/plans.service.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "plan code already exists: {0}",
+    "plan name already exists: {0}",
+    "plan not found: {0}"
+   ]
+  },
+  "modules/platform/src/super-admin-plans/subscription-change.service.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "plan not found: {0}",
+    "strategy must be immediate or end_of_cycle"
+   ]
+  },
+  "modules/platform/src/super-admin-plans/tenant-offers.service.ts": {
+   "count": 8,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "add-on not found: {0}",
+    "no active {0} assignment for tenant",
+    "trial not found: {0}",
+    "promotion not found: {0}",
+    "promotion is not active: {0}",
+    "per-tenant redemption limit reached for {0}",
+    "promotion fully redeemed: {0}"
+   ]
+  },
+  "modules/platform/src/super-admin-plans/usage-alerts.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "usage.alert.tenant needs a tenant and at"
+   ]
+  },
+  "modules/queue/src/queue/queue.service.ts": {
+   "count": 10,
+   "why": "client contract: the screen sends a known assignment source · client contract: the AI screen sends expectedTechnicianId · client contract: the reorder screen sends the order · client contract: the screen sends an idempotency key · client contract: the screen sends expectedVersion · client contract: the screen sends expectedTechnicianId · client contract: the plan screen sends service, technician and expectedTechnicianId per line · client contract: a party plan is sent with its groupId by the screen",
+   "sentences": [
+    "Unknown assignment source",
+    "An AI assignment must say which technician it expects the guest to have (expectedTechnicianId).",
+    "Send the new order of the queue.",
+    "An idempotency key (up to 200 characters) is required.",
+    "Send the version of the guest you saw (expectedVersion).",
+    "Send the technician you saw on the guest (expectedTechnicianId, null = unassigned).",
+    "Every line needs a service, a technician and the technician you saw on it (expectedTechnicianId).",
+    "A plan for several guests is a party plan — send its groupId."
+   ]
+  },
+  "modules/queue/src/tech/tech-self-service.controller.ts": {
+   "count": 1,
+   "why": "deployment without a database (dev / test build) — never production",
+   "sentences": [
+    "Not available without a database"
+   ]
+  },
+  "modules/queue/src/tech/tech.repository.ts": {
+   "count": 3,
+   "why": "deployment without a data source (dev / test build) — never production",
+   "sentences": [
+    "No data source."
+   ]
+  },
+  "modules/queue/src/tech/tech.service.ts": {
+   "count": 2,
+   "why": "client contract: the earnings screen sends payPeriodId with period=pay_period · client contract: the screen offers only the four decisions",
+   "sentences": [
+    "payPeriodId is required for period=pay_period.",
+    "Decision must be under review, more information required, approved or rejected."
+   ]
+  },
+  "modules/queue/src/tech/technician-certifications.ts": {
+   "count": 3,
+   "why": "deployment without a data source (dev / test build) — never production · client contract: the app sends the key of the file it just uploaded · client contract: the screen offers VERIFIED / REVOKED only",
+   "sentences": [
+    "No data source.",
+    "documentKey must be one of your own uploads from skills/upload-document.",
+    "status must be VERIFIED or REVOKED."
+   ]
+  },
+  "modules/queue/src/technician-help/technician-help.service.ts": {
+   "count": 1,
+   "why": "client contract: the help screen sends the ticket, line and helper",
+   "sentences": [
+    "ticketId, serviceLineId and helperTechnicianId are required."
+   ]
+  },
+  "modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.module.ts": {
+   "count": 2,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "ocr.receipt_extract needs a tenant and a document id",
+    "document {0} is gone"
+   ]
+  },
+  "modules/safety/src/tenant-safety-community/community-jobs.ts": {
+   "count": 1,
+   "why": "no route reaches a screen (job, event consumer, provider client, module wiring, internal assertion)",
+   "sentences": [
+    "{0} needs its salon"
+   ]
+  },
+  "modules/super-admin/src/onboarding/onboarding.service.ts": {
+   "count": 15,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "applicationId is required",
+    "Onboarding already started for this application",
+    "This onboarding case already belongs to tenant {0}.",
+    "Note body is required",
+    "A message describing the requested information is required",
+    "A reason is required to return for correction",
+    "Correction requirements are required",
+    "An authenticated approver is required",
+    "A reason is required to reject or return an approval",
+    "Approval not found",
+    "Tenant is already activated",
+    "Activation blocked — unmet prerequisites: {0}",
+    "An authenticated reviewer is required",
+    "Document not found",
+    "Onboarding record not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ai-reports/narrative-provenance.service.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "modelName and promptVersion are required",
+    "promptText is required (to pin the prompt hash)",
+    "Model version not found",
+    "only a draft version can be activated (status \"{0}\")",
+    "no published template for this report"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ai-reports/report-delivery.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "runId is required",
+    "at least one recipient is required",
+    "Delivery not found",
+    "cannot move delivery from \"{0}\" to \"{1}\"",
+    "delivery status \"{0}\" is not retryable"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ai-reports/report-run.service.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "reportKey is required",
+    "Report run not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ai-reports/report-schedule.service.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Schedule not found",
+    "cannot move a schedule from \"{0}\" to \"{1}\"",
+    "schedule is \"{0}\", not active"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ai-reports/report-template.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103) · Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "reportKey is required",
+    "name is required",
+    "Template not found",
+    "only a draft template can be published (status \"{0}\")",
+    "a \"{0}\" template cannot be archived"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-evidence.service.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "evidence pack not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-export-flags.service.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "status must be reviewed or dismissed",
+    "a reason is required to dismiss a flag as a false positive",
+    "flag not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-investigations.service.ts": {
+   "count": 8,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "investigation not found",
+    "an investigation title is required",
+    "eventRef is required",
+    "a note is required",
+    "invalid status"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-legal-holds.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid scopeType",
+    "a reason is required to place a legal hold",
+    "scopeValue is required for a {0} hold",
+    "a reason is required to release a legal hold",
+    "hold not found",
+    "only active holds can be released"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-retention.service.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid category",
+    "hotDays and archiveDays must be non-negative integers"
+   ]
+  },
+  "modules/super-admin/src/super-admin-audit-logs/audit-tamper-controls.service.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid controlKey",
+    "a value is required"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing-export-core.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Forbidden export column: {0}"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing-invoice-core.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "tenantId is required",
+    "At least one line item is required",
+    "Each line needs a description",
+    "Line unit price must be a non-negative integer (cents)",
+    "Line quantity must be a positive integer",
+    "Credit amount must be positive",
+    "Credit amount exceeds the remaining balance"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing-lifecycle-core.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "strategy must be \"immediate\" or \"end_of_period\"",
+    "Cannot pause a subscription in status \"{0}\""
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing-proration-core.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Extension days must be a positive integer",
+    "Cumulative trial extension cannot exceed {0} days"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Export not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing.kysely.repository.ts": {
+   "count": 33,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Invoice not found",
+    "Only draft invoices can be finalized",
+    "Credit not found",
+    "Credit is not active",
+    "Credit and invoice belong to different tenants",
+    "Invoice status {0} is not eligible for retry",
+    "Invoice has no outstanding balance",
+    "Tenant has no subscription",
+    "Target plan not found",
+    "Add-on not found",
+    "Subscription is not in a trial",
+    "Discount code is required",
+    "Percent must be 1–100",
+    "Fixed amount must be positive",
+    "A discount with this code already exists for the tenant",
+    "Only a paused subscription can be resumed",
+    "Request not found",
+    "Request is already {0}",
+    "providerEventId and eventType are required",
+    "Unknown report \"{0}\"",
+    "Tenant not found",
+    "Export not found",
+    "Export is not ready (status {0})",
+    "Download link has expired",
+    "The export file is no longer available"
+   ]
+  },
+  "modules/super-admin/src/super-admin-billing/billing.service.ts": {
+   "count": 1,
+   "why": "Super Admin billing (English-only, §103)",
+   "sentences": [
+    "Tenant not found: {0}"
+   ]
+  },
+  "modules/super-admin/src/super-admin-business-categories/business-categories.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Name must contain letters or numbers.",
+    "A category \"{0}\" already exists.",
+    "Category not found.",
+    "Provide an ordered list of category ids.",
+    "Unknown category: {0}"
+   ]
+  },
+  "modules/super-admin/src/super-admin-catalog/service-templates.service.ts": {
+   "count": 11,
+   "why": "Super Admin communications console (English-only by design, §103) · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "template not found",
+    "category not found: {0}",
+    "deployment not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-customer-data/super-admin-customer-data.controller.ts": {
+   "count": 11,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Two global customer ids are required",
+    "sourceGlobalCustomerId and targetGlobalCustomerId are required",
+    "Unknown conflict status",
+    "tenantId is required when re-syncing one customer",
+    "hold id is required",
+    "import id is required",
+    "deletion id is required"
+   ]
+  },
+  "modules/super-admin/src/super-admin-disputes/disputes.service.ts": {
+   "count": 21,
+   "why": "Super Admin / platform console — English-only by design (§103) · Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "dispute not found",
+    "A risk reason is required to flag a merchant.",
+    "invalid risk level",
+    "invalid tenant id",
+    "tenant not found",
+    "The uploaded file failed the malware scan and was rejected.",
+    "This exact file has already been uploaded for this dispute.",
+    "decision must be accepted, rejected, or incomplete",
+    "evidence not found for this dispute",
+    "idempotencyKey is required for evidence submission.",
+    "channel must be in_app, email, or sms",
+    "result must be one of: {0}",
+    "A manual outcome override requires an override reason."
+   ]
+  },
+  "modules/super-admin/src/super-admin-gift-card-programs/gift-card-programs.controller.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Invalid tenant UUID syntax. Please select or enter a valid salon UUID.",
+    "The specified tenant does not exist in the database."
+   ]
+  },
+  "modules/super-admin/src/super-admin-gift-card-programs/gift-card-programs.service.ts": {
+   "count": 11,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "A program name is required.",
+    "An owner tenant is required.",
+    "Invalid scope.",
+    "Invalid status.",
+    "Program not found.",
+    "A tenant is required.",
+    "Invalid member status.",
+    "Membership not found."
+   ]
+  },
+  "modules/super-admin/src/super-admin-gift-card-settlement/gift-card-settlement.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "No pending clearing entries to settle.",
+    "Could not create the settlement batch.",
+    "Settlement batch not found.",
+    "Cannot move a {0} batch to {1}.",
+    "The settlement batch changed while you were working on it — refresh and try again."
+   ]
+  },
+  "modules/super-admin/src/super-admin-kill-switches/kill-switches.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Kill switches need the database."
+   ]
+  },
+  "modules/super-admin/src/super-admin-legal/legal-documents.service.ts": {
+   "count": 11,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Legal document version not found.",
+    "Unknown document type. One of: {0}.",
+    "Version must look like v2.3.0.",
+    "Version {0} already exists for {1}.",
+    "Version must be newer than the published {0}.",
+    "Could not publish (it may have changed).",
+    "Could not retire the version.",
+    "Unknown document type.",
+    "Published versions are immutable — create a new draft version instead."
+   ]
+  },
+  "modules/super-admin/src/super-admin-maintenance/maintenance.service.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "A reason is required to enable maintenance mode.",
+    "A reason is required to schedule maintenance.",
+    "Start and end times are required.",
+    "This window overlaps an existing scheduled maintenance — duplicate/overlapping windows are not allowed.",
+    "Maintenance event not found.",
+    "Cannot cancel a {0} maintenance event.",
+    "Could not cancel."
+   ]
+  },
+  "modules/super-admin/src/super-admin-membership-programs/membership-programs.controller.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103) · Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "missing permission: {0}",
+    "no active session",
+    "program not found",
+    "membership not found",
+    "correction failed",
+    "template not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-memberships/super-admin-memberships.service.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Plan not found",
+    "Membership not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-merchant-accounts/super-admin-merchant-accounts.service.ts": {
+   "count": 22,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Merchant account not found",
+    "reason is required",
+    "accountNumber is invalid",
+    "routingNumber must be 9 digits",
+    "terminalId and branchId are required",
+    "Terminal not found",
+    "terminal does not belong to this merchant account",
+    "branch does not belong to this tenant",
+    "merchantId must be 3–40 chars (letters, digits, hyphens)",
+    "MID is already assigned to another merchant account",
+    "{0} must be an integer between {1} and {2}",
+    "changeReason is required",
+    "effectiveAt is not a valid date",
+    "Unknown pricingPlanId"
+   ]
+  },
+  "modules/super-admin/src/super-admin-owners/super-admin-owners.service.ts": {
+   "count": 11,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "A branch PIN must be exactly 6 digits.",
+    "Owner user not found.",
+    "This owner has no salon business assigned.",
+    "A salon name is required.",
+    "branchId is required.",
+    "Branch not found.",
+    "That branch belongs to a different salon business than this owner.",
+    "This owner is not assigned to that branch.",
+    "Invalid access level.",
+    "This owner is not assigned to that salon."
+   ]
+  },
+  "modules/super-admin/src/super-admin-platform-staff/platform-staff.controller.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Platform staff changes need a database."
+   ]
+  },
+  "modules/super-admin/src/super-admin-platform/super-admin-platform.controller.ts": {
+   "count": 3,
+   "why": "Super Admin transactions (English-only, §103) · Super Admin platform staff (English-only, §103)",
+   "sentences": [
+    "Transaction not found",
+    "Inviting a platform user requires super_admin.platform_roles.manage."
+   ]
+  },
+  "modules/super-admin/src/super-admin-platform/super-admin-platform.service.ts": {
+   "count": 185,
+   "why": "Super Admin platform service (English-only, §103) · Super Admin platform staff (English-only, §103)",
+   "sentences": [
+    "Authenticated super-admin context required.",
+    "salon_name and owner_name are required.",
+    "status must be one of {0}.",
+    "Application not found.",
+    "Cannot move an application from {0} to {1}.",
+    "priority must be one of {0}.",
+    "follow-up date is not a valid date.",
+    "channel must be one of {0}.",
+    "An approval note is required.",
+    "This application is already linked to a tenant.",
+    "Note text is required.",
+    "tenantId of the created tenant is required.",
+    "This application is already linked to tenant {0}.",
+    "Cannot move an application from {0} to converted.",
+    "Onboarding is not available in this deployment.",
+    "Cannot start onboarding from status {0} — approve the application first.",
+    "Onboarding has already been started for this application.",
+    "Lead not found.",
+    "Lead was already converted.",
+    "agreement_status must be pending|sent|signed.",
+    "payment_setup_status must be pending|in_progress|complete.",
+    "Hardware package not found.",
+    "Step-up confirmation requires the database-backed deployment.",
+    "Password confirmation failed.",
+    "MFA factor could not be read.",
+    "tenantId is required.",
+    "A reason of at least 10 characters is required for support access.",
+    "Support sessions last 15–60 minutes.",
+    "Choose a support scope: READ_ONLY, STANDARD_SUPPORT or ELEVATED_SUPPORT.",
+    "Elevated support needs the tenant-edit permission (super_admin.tenants.edit).",
+    "Extending support sessions needs the database.",
+    "No active support session with that id.",
+    "sessionId is required.",
+    "appointmentId is required.",
+    "Unsupported support action.",
+    "A reason (min 5 characters) is required to record a support action.",
+    "No active support session with that id. Open Appointment Support first.",
+    "Support session does not belong to that tenant.",
+    "customerId is required.",
+    "Unsupported customer support action.",
+    "No active support session with that id. Open Customer Support first.",
+    "sourceCustomerId and targetCustomerId are required.",
+    "A customer cannot be merged into itself.",
+    "A reason (min 5 characters) is required to merge customers.",
+    "Both customers must exist in the tenant and not be archived.",
+    "sourceCategoryId and targetCategoryId are required.",
+    "A category cannot be merged into itself.",
+    "A reason (min 5 characters) is required to merge service categories.",
+    "No active support session with that id. Open tenant support first.",
+    "Both categories must exist in the tenant, and the source must not already be merged.",
+    "A reason (min 5 characters) is required to merge product categories.",
+    "Both categories must exist in the tenant, and the source must be active (not already merged).",
+    "Unsupported privacy request type.",
+    "A requester name or customerId is required.",
+    "Could not create the privacy request.",
+    "id is required.",
+    "Unsupported privacy request status.",
+    "A note (min 5 characters) is required to advance a privacy request.",
+    "No privacy request with that id.",
+    "package must be one of {0}.",
+    "feature must be one of {0}.",
+    "enabled must be true, false, or null (revert to inherit).",
+    "role must be one of {0}.",
+    "Too many submissions from this address — please try again in a few minutes.",
+    "{0} is too long (max {1} characters).",
+    "kind must be one of {0}.",
+    "Newsletter signup requires an email.",
+    "Owner name is required.",
+    "Salon name is required.",
+    "Consent to be contacted is required to submit an application.",
+    "{0} must be 0–{1}.",
+    "ZIP must be 5 digits (or ZIP+4).",
+    "EIN must be 9 digits (XX-XXXXXXX).",
+    "userId is required.",
+    "No active session with that id.",
+    "A tenant is required for a tenant role.",
+    "A platform Super Admin is not scoped to a tenant.",
+    "Inviting a platform user requires super_admin.platform_roles.manage.",
+    "Choose the platform role the invitee will hold.",
+    "That platform role includes permissions you do not hold ({0}).",
+    "An invitation token is required.",
+    "Password must be at least 10 characters.",
+    "requestingUserId is required.",
+    "requestedRole must be one of {0}.",
+    "A business reason (≥5 characters) is required.",
+    "requestedDurationDays must be a positive number, or omitted for a permanent grant.",
+    "Requesting user not found.",
+    "No open access request to cancel.",
+    "Authenticated context required.",
+    "Access request not found.",
+    "This request can no longer be cancelled.",
+    "A report name is required.",
+    "reportKey must be one of: users (got {0}).",
+    "cadence must be one of {0}.",
+    "recipientEmail must be a valid email or omitted.",
+    "Scheduled report not found.",
+    "tenantId, userId and branchId are required.",
+    "A reason (min 5 characters) is required.",
+    "accessLevel must be one of {0}.",
+    "Both the user and the branch must belong to that tenant.",
+    "metric must be one of {0}.",
+    "limitValue must be a number from 0 to 100,000,000."
+   ]
+  },
+  "modules/super-admin/src/super-admin-promotions/promotion-management.service.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Promotion not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.controller.ts": {
+   "count": 2,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Report definition not found."
+   ]
+  },
+  "modules/super-admin/src/super-admin-scheduled-reports/super-admin-scheduled-reports.controller.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "No downloadable artifact for that run.",
+    "Schedule not found."
+   ]
+  },
+  "modules/super-admin/src/super-admin-security/grant.service.ts": {
+   "count": 8,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Grant not found",
+    "cannot approve a grant in status \"{0}\"",
+    "cannot deny a grant in status \"{0}\"",
+    "cannot revoke a grant in status \"{0}\"",
+    "revocation requires a reason"
+   ]
+  },
+  "modules/super-admin/src/super-admin-security/incident.service.ts": {
+   "count": 3,
+   "why": "Super Admin communications console (English-only by design, §103) · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "title is required",
+    "Incident not found"
+   ]
+  },
+  "modules/super-admin/src/super-admin-security/ip-block.service.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "refusing to block a protected source ({0}) — this could lock out trusted access",
+    "Block rule not found",
+    "cannot unblock a rule in status \"{0}\"",
+    "refusing to add {0}: the Super Admin allowlist is enforced, and your own address would be outside it — add your address (or its range) first"
+   ]
+  },
+  "modules/super-admin/src/super-admin-security/lockdown.service.ts": {
+   "count": 13,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "refusing to lock out your own account (self-preservation)",
+    "Lockdown not found",
+    "cannot confirm a lockdown in status \"{0}\"",
+    "cannot execute a lockdown in status \"{0}\" (must be confirmed)",
+    "step-up confirmation missing",
+    "platform lockdown enforcement is not wired in this deployment — refusing to report a lockdown that would not lock anything",
+    "cannot lift a lockdown in status \"{0}\"",
+    "lifting requires a reason",
+    "cannot cancel a lockdown in status \"{0}\""
+   ]
+  },
+  "modules/super-admin/src/super-admin-security/retention.service.ts": {
+   "count": 3,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "unsupported data class \"{0}\"",
+    "No active retention rule for this data class",
+    "dry-run count is not connected for data class \"{0}\" (retention rule is stored; physical purge is a data-plane integration)"
+   ]
+  },
+  "modules/super-admin/src/super-admin-settings/super-admin-settings.service.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103) · client contract: the settings form sends known settings",
+   "sentences": [
+    "No changes provided.",
+    "Unknown setting: {0}",
+    "Type RESET to confirm resetting all platform settings to defaults.",
+    "Unknown operation: {0}"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-channel.service.ts": {
+   "count": 7,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid reminderType",
+    "invalid primaryChannel",
+    "unsupported fallback channel(s): {0}",
+    "primary channel must not appear in the fallback list",
+    "invalid fallbackOn"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-export.service.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid dataset"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-flow-state.service.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid reminderType",
+    "a reason is required to disable a reminder flow"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-overrides.service.ts": {
+   "count": 15,
+   "why": "Super Admin communications console (English-only by design, §103) · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid tenantId",
+    "invalid reminderType",
+    "invalid direction",
+    "offsetMinutes must be a non-negative integer",
+    "offsetMinutes {0} is outside the platform-allowed range [{1}, {2}] and cannot be set by a tenant",
+    "unsupported channel(s): {0}",
+    "channels override must include at least one channel",
+    "invalid quietHoursPolicy",
+    "no tenant customization to revert"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-plan-features.service.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103) · Super Admin communications console (English-only by design, §103)",
+   "sentences": [
+    "planCode is required",
+    "invalid featureKey",
+    "invalid state",
+    "invalid tenantId"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-templates.service.ts": {
+   "count": 12,
+   "why": "Super Admin communications console (English-only by design, §103) · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "invalid template id",
+    "template not found",
+    "at least one channel content (SMS, email, or push) is required",
+    "name is required",
+    "invalid reminderType",
+    "version not found",
+    "cannot publish a retired version",
+    "provide content to preview"
+   ]
+  },
+  "modules/super-admin/src/super-admin-smart-reminders/reminder-timing.service.ts": {
+   "count": 9,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "{0} must be an integer in [{1}, {2}]",
+    "invalid reminderType",
+    "invalid direction",
+    "minOffsetMinutes must be <= maxOffsetMinutes",
+    "offsetMinutes {0} is outside the allowed range [{1}, {2}]",
+    "quiet hours require both start and end (or neither)",
+    "invalid quietHoursPolicy",
+    "invalid timezoneSource"
+   ]
+  },
+  "modules/super-admin/src/super-admin-staff/global-tech-admin.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "action must be 'pause', 'reactivate', 'approve_destination', or 'reject_destination'"
+   ]
+  },
+  "modules/super-admin/src/super-admin-staff/global-tech-admin.service.ts": {
+   "count": 31,
+   "why": "Super Admin / platform console — English-only by design (§103) · client contract: the screen offers approve / reject only",
+   "sentences": [
+    "Technician administration requires a database.",
+    "No such technician account.",
+    "A platform suspension needs a reason on the record.",
+    "This account is {0} and cannot be suspended.",
+    "Only a suspended account can be restored. This one is {0}.",
+    "No such technician profile.",
+    "This account is {0}.",
+    "A pause needs a reason on the record.",
+    "Only an active account can be paused. This one is {0}.",
+    "Only a paused account can be reactivated. This one is {0}.",
+    "A security lock needs a reason on the record.",
+    "Only an active or paused account can be locked. This one is {0}.",
+    "Only a locked account can be unlocked. This one is {0}.",
+    "Pausing a salon membership needs a reason on the record.",
+    "No such salon membership.",
+    "Only an active membership can be paused. This one is {0}.",
+    "Only a paused membership can be reactivated. This one is {0}.",
+    "This membership is {0}, not awaiting destination approval.",
+    "scope must be 'profile', 'messaging', or 'deals'.",
+    "Pausing a profile facet needs a reason on the record.",
+    "A deletion request needs a reason.",
+    "requesterKind must be technician, support or legal.",
+    "A deletion request is already open for this technician.",
+    "Decision must be approve or reject.",
+    "No pending deletion request with that id.",
+    "A merge needs a reason. It cannot be undone.",
+    "This action needs active elevated approval (an approved {0} grant). Request one and have it approved first."
+   ]
+  },
+  "modules/super-admin/src/super-admin-staff/super-admin-staff.service.ts": {
+   "count": 15,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Technician not found",
+    "Worker not found",
+    "the selected profiles are not a confirmed duplicate group",
+    "Transfer request not found",
+    "request is already {0}",
+    "destination tenant not found",
+    "Cross-tenant transfer request not found",
+    "Payroll sync event not found",
+    "a signed-in Super Admin is required to save a view",
+    "a signed-in Super Admin is required"
+   ]
+  },
+  "modules/super-admin/src/super-admin-tenant-presets/tenant-presets.service.ts": {
+   "count": 5,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Preset not found.",
+    "Scope must be one of: {0}.",
+    "Could not set the default preset."
+   ]
+  },
+  "modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "This location has no merchant account of its own.",
+    "status is required",
+    "Commission authorization codes need the database.",
+    "Commission percentage must be between 0 and 100"
+   ]
+  },
+  "modules/super-admin/src/super-admin-ticket-removal/ticket-removal.service.ts": {
+   "count": 12,
+   "why": "client contract: the screen always sends the ticket id · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "A ticket id is required.",
+    "Deletion-code sealing is not wired (SECRET_SEALERS).",
+    "Ticket not found.",
+    "This ticket has already been removed.",
+    "No deletion code has been generated for this ticket.",
+    "The stored deletion code could not be read.",
+    "A reason is required to remove a ticket.",
+    "Generate the deletion authorization code first.",
+    "The deletion authorization code is incorrect."
+   ]
+  },
+  "modules/super-admin/src/super-admin-tickets/super-admin-tickets.service.ts": {
+   "count": 2,
+   "why": "client contract: the screen always sends the ticket id · Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "A ticket id is required.",
+    "Ticket not found."
+   ]
+  },
+  "modules/super-admin/src/super-admin-voice/super-admin-voice.controller.ts": {
+   "count": 1,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "{0} is required"
+   ]
+  },
+  "modules/tenants/src/branding/branding.service.ts": {
+   "count": 6,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Branding store unavailable",
+    "{0} must be a #RRGGBB hex color",
+    "No valid branding fields to update",
+    "The official AI PowerSalon logo is a locked brand asset and cannot be replaced.",
+    "Logo replacement requires the offline brand-asset pipeline (locked by policy)."
+   ]
+  },
+  "modules/tenants/src/pos-social/pos-social.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen offers only the known statuses",
+   "sentences": [
+    "Invalid status"
+   ]
+  },
+  "modules/tenants/src/settings/salon-logo.ts": {
+   "count": 1,
+   "why": "client contract: the app sends the key the upload returned",
+   "sentences": [
+    "Invalid logo key."
+   ]
+  },
+  "modules/tenants/src/settings/settings.service.ts": {
+   "count": 3,
+   "why": "client contract: the form sends text fields as text · client contract: the terminal form offers the known terminal types · client contract: the terminal form offers the known connection types",
+   "sentences": [
+    "{0} must be text",
+    "Unknown terminal type.",
+    "Unknown connection type."
+   ]
+  },
+  "modules/tenants/src/tenant-locations/super-admin-location.service.ts": {
+   "count": 4,
+   "why": "Super Admin / platform console — English-only by design (§103)",
+   "sentences": [
+    "Location store unavailable",
+    "Location not found",
+    "Invalid coordinates"
+   ]
+  },
+  "modules/workforce/src/approvals/approvals.service.ts": {
+   "count": 3,
+   "why": "deployment without a database (dev / test build) — never production · client contract: the screen offers the known status filters · client contract: the screen sends a known approval kind",
+   "sentences": [
+    "Approvals need the database.",
+    "Unknown status filter.",
+    "Unknown approval kind."
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-agreements.service.ts": {
+   "count": 2,
+   "why": "client contract: the screen sends the technician id",
+   "sentences": [
+    "technicianId is required"
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-bonus-rules.service.ts": {
+   "count": 2,
+   "why": "client contract: the screen sends the technician id · client contract: the screen sends the period id",
+   "sentences": [
+    "technicianId is required",
+    "periodId is required"
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-compliance.service.ts": {
+   "count": 4,
+   "why": "client contract: the screen sends the technician id · client contract: the form offers employee / contractor / booth renter only · client contract: the screen sends the period id",
+   "sentences": [
+    "technicianId is required",
+    "classification must be employee, contractor, or booth_renter",
+    "periodId is required"
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-rules.service.ts": {
+   "count": 3,
+   "why": "client contract: the form offers percent / fixed only · client contract: the form offers the known supply methods · client contract: the form offers the known discount funding options",
+   "sentences": [
+    "commissionType must be \"percent\" or \"fixed\"",
+    "invalid supplyMethod",
+    "invalid discountFunding"
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-tier-plans.service.ts": {
+   "count": 2,
+   "why": "client contract: the screen sends the technician id · client contract: the form offers entire / marginal only",
+   "sentences": [
+    "technicianId is required",
+    "mode must be \"entire\" or \"marginal\""
+   ]
+  },
+  "modules/workforce/src/compensation/compensation-tip-allocation.service.ts": {
+   "count": 2,
+   "why": "deployment without a database (dev / test build) — never production",
+   "sentences": [
+    "Tip allocation is unavailable (no database)."
+   ]
+  },
+  "modules/workforce/src/nail-showcase/nail-photo-consent.service.ts": {
+   "count": 4,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "You must be signed in as a customer.",
+    "A photo id is required.",
+    "No active consent of yours was found for this photo."
+   ]
+  },
+  "modules/workforce/src/nail-showcase/nail-showcase-social.controller.ts": {
+   "count": 3,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Media storage is not configured.",
+    "Your profile photo must be a JPG, PNG or WEBP image.",
+    "No avatar image provided."
+   ]
+  },
+  "modules/workforce/src/nail-showcase/nail-showcase-social.service.ts": {
+   "count": 8,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "You must be signed in as a customer.",
+    "You can't follow yourself.",
+    "You can't follow this customer.",
+    "This customer isn't accepting followers.",
+    "You already follow this customer.",
+    "You can't block yourself.",
+    "You can't report your own profile.",
+    "No NailShowcase profile for that customer."
+   ]
+  },
+  "modules/workforce/src/nail-showcase/nail-showcase.controller.ts": {
+   "count": 3,
+   "why": "customer app / public booking (not a POS / Owner / Tech screen)",
+   "sentences": [
+    "Media storage is not configured.",
+    "Upload at most {0} photos at a time.",
+    "That file is not a supported photo or video (JPG, PNG, WEBP, MP4, MOV, WEBM)."
+   ]
+  },
+  "modules/workforce/src/tech-profile/global-tech-identity.service.ts": {
+   "count": 2,
+   "why": "deployment without a database (dev / test build) — never production · deployment configuration (the technician directory is always configured in production)",
+   "sentences": [
+    "Technician identity requires a database.",
+    "Technician directory is not configured."
+   ]
+  },
+  "modules/workforce/src/tech-profile/tech-profile.service.ts": {
+   "count": 10,
+   "why": "deployment without a database (dev / test build) — never production · deployment configuration (technician identity is always configured in production) · client contract: the moderation screen sends a known action · client contract: the screen offers approve / reject only · client contract: the map screen sends lat / lng · client contract: the reorder screen sends the photo ids · client contract: the app sends a known event · client contract: the screen offers the known verification statuses · client contract: the screen sends a known action",
+   "sentences": [
+    "Tech profiles require a database.",
+    "Technician identity is not configured.",
+    "Unknown moderation action.",
+    "Decision must be approve or reject.",
+    "lat and lng are required.",
+    "Send the photo ids in their new order.",
+    "Unsupported event.",
+    "Invalid verification status.",
+    "Invalid action."
+   ]
+  },
+  "modules/workforce/src/tech-profile/tech-workplaces.service.ts": {
+   "count": 1,
+   "why": "deployment without a database (dev / test build) — never production",
+   "sentences": [
+    "Workplaces require a database."
+   ]
+  },
+  "modules/workforce/src/technician-clock-pin/technician-clock-management.service.ts": {
+   "count": 3,
+   "why": "client contract: the screen sends the technician id · deployment without a database (dev / test build) — never production · client contract: the screen sends ISO timestamps",
+   "sentences": [
+    "technicianId is required",
+    "Break corrections need the database.",
+    "Times must be ISO timestamps."
+   ]
+  },
+  "modules/workforce/src/technician-clock-pin/technician-clock-pin.service.ts": {
+   "count": 1,
+   "why": "client contract: the screen sends the technician id",
+   "sentences": [
+    "technicianId is required"
+   ]
+  },
+  "modules/workforce/src/technicians/technicians.kysely.repository.ts": {
+   "count": 1,
+   "why": "client contract: the clock screens call the time-clock routes",
+   "sentences": [
+    "Clock changes go through the time clock (POST /pos/time-clock/clock-in|clock-out|break-start|break-end)."
+   ]
+  },
+  "modules/workforce/src/time-clock/time-clock.service.ts": {
+   "count": 7,
+   "why": "client contract: the screen sends the technician id · deployment without a database (dev / test build) — never production",
+   "sentences": [
+    "technicianId is required",
+    "Break policies need the database.",
+    "Break interruption needs the database."
+   ]
+  },
+  "modules/workforce/src/time-off/technician-time-off.service.ts": {
+   "count": 5,
+   "why": "client contract: the screen sends timestamps · client contract: the screen offers the four kinds only · client contract: the screen offers the known statuses · deployment without a database (dev / test build) — never production · client contract: the screen offers approve / reject only",
+   "sentences": [
+    "startsAt and endsAt must be valid timestamps",
+    "kind must be VACATION, SICK, PERSONAL or UNAVAILABLE",
+    "status must be pending, approved, rejected or cancelled",
+    "Time off is not available without a database",
+    "decision must be approved or rejected"
+   ]
+  }
+ },
+ "pending": {}
+}

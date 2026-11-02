@@ -1,0 +1,11 @@
+{
+  "name": "@aipowersalon/api-client",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Transport core for every frontend API client: URL building, the no-client-tenant guard, error normalisation (Constitution 13 §108, §245). Browser- and mobile-safe.",
+  "main": "src/index.ts",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@aipowersalon/api-contracts": "*" },
+  "scripts": { "test": "vitest run", "typecheck": "tsc --noEmit -p tsconfig.json" }
+}

@@ -1,0 +1,71 @@
+// catalog.ts — the Owner App's own ENGLISH strings (English only — POSLanguage.pdf §1) (Constitution 6 §97, BUILD_PLAN Phase 13 E). Each English value is the
+// exact text the screen showed before the key existed. Shared strings are in @aipowersalon/mobile-sdk i18n/common.ts.
+import { registerCatalog } from '@aipowersalon/mobile-sdk/i18n';
+
+export const OWNER_EN = {
+  'owner.login.appName': 'OWNER APP',
+  'owner.login.requestAccess': 'Request access or contact support',
+  'owner.login.subtitle': 'Manage your salon with confidence.',
+  'owner.login.businessName': 'Business name',
+  'owner.login.yourName': 'Your name',
+  'owner.login.phone': 'Phone',
+  'owner.login.email': 'Email',
+  'owner.login.howHelp': 'How can we help?',
+  'owner.login.message': 'Message',
+  'owner.login.accessCode': 'Owner Access Code',
+  'owner.login.slogan': 'Manage. Grow. Succeed.',
+  'owner.login.dashboard': 'Dashboard',
+  'owner.login.bookings': 'Bookings',
+  'owner.login.manageAppointments': 'Manage Appointments',
+  'owner.login.secureOnly': 'Secure owner access only',
+  // developer merge (Oct 23 2026): the request-access form says where it goes
+  'owner.login.routedToSa': 'Submissions are routed directly to Super Admin for verification and setup.',
+  'owner.login.submitToSa': 'Submit to Super Admin',
+  'owner.login.requestSubmitted': 'Your request has been submitted to Super Admin for priority review. Our executive onboarding team will reach out shortly.',
+  // 200-technician mandate §66 / §71 (Oct 26 2026)
+  'owner.paycheck.branchFilter': 'Filter branch',
+  'owner.paycheck.allBranches': 'All branches',
+  // Weekly Paycheck close-out (Oct 27 2026, §9.3 / §9.5): the missing KPIs and the evidence drill-down
+  'owner.paycheck.gross': 'Gross earnings',
+  'owner.paycheck.alreadyPaid': 'Already paid',
+  'owner.paycheck.otherMethods': 'Other methods',
+  'owner.paycheck.reversals': 'Reversals',
+  'owner.paycheck.reversalDetail': 'refund / void {refund} · tips {tip} · retail {retail}',
+  'owner.paycheck.evidence.show': 'Show evidence',
+  // Weekly Paycheck 17.5 (Oct 27 2026): the approved statement's pay stub PDF
+  'owner.paycheck.stub.download': 'Download pay stub (PDF)',
+  'owner.paycheck.stub.preparing': 'Preparing the pay stub…',
+  'owner.paycheck.stub.done': 'Pay stub downloaded.',
+  'owner.paycheck.stub.failed': 'Could not download the pay stub.',
+  'owner.paycheck.evidence.hide': 'Hide evidence',
+  'owner.paycheck.evidence.loading': 'Loading evidence…',
+  'owner.paycheck.evidence.failed': 'Could not load the evidence.',
+  'owner.paycheck.evidence.services': 'Services ({n})',
+  'owner.paycheck.evidence.tips': 'Tips ({n} tickets)',
+  'owner.paycheck.evidence.hours': 'Hours',
+  'owner.paycheck.evidence.hoursLine': '{date}: clocked {clocked} min · scheduled {scheduled} min · breaks {breaks} min · paid {paid} min',
+  'owner.paycheck.evidence.hoursTotal': 'Paid {hours} h at {rate}/h → {pay}',
+  'owner.paycheck.evidence.openPunch': 'still clocked in',
+  'owner.paycheck.evidence.clockMismatch': 'The time clock changed after this statement was built.',
+  'owner.paycheck.evidence.adjustments': 'Adjustments ({n})',
+  'owner.paycheck.evidence.none': 'none',
+  'owner.paycheck.evidence.more': '… and {n} more',
+  'owner.staff.allTechnicians': 'All technicians',
+  'owner.staff.searchTechnician': 'Search technician or #rank',
+  'owner.staff.sortBy': 'Sort by',
+  'owner.staff.sort.sales': 'Sales',
+  'owner.staff.sort.services': 'Services',
+  'owner.staff.sort.utilization': 'Utilization',
+  'owner.staff.sort.rating': 'Rating',
+  'owner.staff.sort.commission': 'Commission',
+  'owner.staff.sort.name': 'Name',
+  'owner.staff.showingXofY': '{shown} of {total} technicians',
+  'owner.staff.pageXofY': 'Page {page} of {pages}',
+  'owner.staff.prev': 'Previous',
+  'owner.staff.next': 'Next',
+  'owner.staff.noMatch': 'No technician matches.',
+  'owner.staff.loadFailed': 'Could not load technicians.',
+};
+registerCatalog('en', OWNER_EN);
+// POSLanguage.pdf §1 / §20 (Oct 28 2026): this app is ENGLISH ONLY — its Vietnamese catalogue was removed (only the Front
+// Desk POS is bilingual). Do not add one back: check:english-only-apps fails the build on a Vietnamese catalogue here.

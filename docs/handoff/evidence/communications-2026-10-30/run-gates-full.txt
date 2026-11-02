@@ -1,0 +1,110 @@
+# Full gate run — tooling/ci/run-gates.mjs — 2026-10-30T17:16:52-04:00 (local workspace; npm ci impossible here)
+PASS  check:tenant
+PASS  check:tenant-builder
+PASS  check:perms
+PASS  check:public
+FAIL  check:sql
+PASS  check:sql:select
+PASS  check:impossible
+PASS  check:crosswire
+PASS  check:di
+FAIL  check:types-drift
+PASS  check:unreached
+PASS  check:dead-client
+PASS  check:nav
+PASS  check:html
+PASS  check:no-print
+PASS  check:realtime-contract
+PASS  check:realtime-infra-duplicates
+PASS  check:ai-platform
+PASS  check:ai-infra-duplicates
+PASS  check:silent-sql
+FAIL  check:sql-identifiers
+PASS  check:dialogs
+PASS  check:money
+PASS  check:event-producers
+PASS  check:realtime-catalog
+FAIL  check:lint
+PASS  check:secrets
+PASS  check:error-codes
+PASS  check:error-text
+PASS  check:openapi
+PASS  check:critical-step-up
+PASS  check:mass-assignment
+FAIL  check:api-contract
+PASS  check:v1-clients
+PASS  check:mobile-transport
+PASS  check:validated-bodies
+FAIL  check:strict-bodies-types
+PASS  check:role-checks
+PASS  check:permission-docs
+PASS  check:audit-writers
+FAIL  check:db-ownership
+FAIL  check:actor-stamp
+PASS  check:list-queries
+PASS  check:async-exports
+PASS  check:response-exposure
+PASS  check:uploads
+FAIL  check:state-transitions
+      W1  modules/workforce/src/team-screens/team-data-alerts.repository.ts:399,400,401,402,404  5 status write(s) to team_data_alerts.status outside any state machine (declare one in its module) — baseline 0
+      W1  modules/workforce/src/team-staff/team-data-nightly.ts:69,74,59  3 status write(s) to team_data_nightly_runs.status outside any state machine (declare one in its module) — baseline 0
+      W1  modules/workforce/src/team-staff/team-training.repository.ts:108  1 status write(s) to team_training_courses.status outside any state machine (declare one in its module) — baseline 0
+      W1  modules/workforce/src/team-staff/team-training.repository.ts:189,192,194,197  4 status write(s) to team_training_assignments.status outside any state machine (declare one in its module) — baseline 0
+      W1  modules/workforce/src/team-staff/team-training.repository.ts:261  1 status write(s) to team_staff_certifications.verification_status outside any state machine (declare one in its module) — baseline 0
+FAIL  check:unique-tenant-review
+PASS  check:one-payroll-calculation
+PASS  check:one-tax-calculation
+PASS  check:silent-catch
+PASS  check:as-any
+PASS  check:supply-chain-injection
+PASS  check:raw-sql-inputs
+PASS  check:attack-surface
+PASS  check:migration-safety
+FAIL  architecture tests
+PASS  module entries
+PASS  spec imports
+PASS  hidden code
+PASS  auth logging
+PASS  db credentials
+PASS  gradle wrapper
+PASS  lockfile hygiene
+PASS  outbound hosts
+PASS  audit wiring
+FAIL  frontend builds
+FAIL  app types
+PASS  mobile versions
+PASS  mobile native config
+PASS  stale mocks
+PASS  inert controls
+PASS  zoom
+PASS  i18n
+PASS  pos-i18n
+PASS  vi-glossary
+PASS  admin-english-only
+PASS  english-only-apps
+13 FAILED: check:sql, check:types-drift, check:sql-identifiers, check:lint, check:api-contract, check:strict-bodies-types, check:db-ownership, check:actor-stamp, check:state-transitions, check:unique-tenant-review, architecture tests, frontend builds, app types
+
+# After the run: architecture fixes (contract types, §343 exemption, SQL date text) — re-run of the affected checks
+architecture: api dirs 32, edges 53, largest cycle 4 (baseline 4), back-edges 0 (baseline 0), provider dirs 27, identical groups 0 (baseline 0), deep imports 0, nested lockfiles 0, mirrored API types 11 (baseline 0)
+  packages/api-contracts does not type-check strictly (a broken contract becomes 'any' in every app): packages/api-contracts/tsconfig.json(10,25): error TS5107: Option 'moduleResolution=node10' is deprecated and will stop functioning in TypeScript 7.0. Specify compilerOption '"ignoreDeprecations": "6.0"' to silence this error. |   Visit https://aka.ms/ts6 for migration information.
+  frontend type mirroring an API type (§15 backlog): NEW (11) — admin-web:ProviderItem | pos-web:AvailableNumber | pos-web:ConfigItem | pos-web:DayAppointment | pos-web:MessagingReadiness | pos-web:NumberInbound
+  direct realtime emission from a domain module (§343 — emit a domain event, let the projection broadcast): NEW (1) — service-done/service-done.service.ts:1
+  inline UTC-day idiom toISOString().slice(0,10) (§87 — use utcDate() or businessDate(tz)): NEW (16) — ai/ai-billing-invoices.ts:1 (was 0) | booking/shift-overrides.ts:1 (was 0) | overview/overview-floor.ts:1 (was 0) | retention/retention-snapshots.ts:2 (was 0) | retention/retention.repository.ts:1 (was 0) | team-screens/commission-review.repository.ts:1 (was 0)
+  the database's/server's UTC day — date_trunc(…, now()), current_date, now()::date, setHours(0,0,0,0) — NEW (1); a salon's day is the branch's (dayStartMs/businessDate or at time zone): team-screens/commission-review.repository.ts:1 (was 0)
+  hand-built system context (§72: use systemContext() from @aipowersalon/tenant-context): NEW (2) — modules/super-admin/src/setup-health/setup-health.repository.ts | modules/workforce/src/team-staff/team-data-nightly.ts
+  provider endpoint in a new directory (§106): NEW (1) — finance-screens
+## the same check on the clean bundle HEAD 9e41a970 reports the identical NEW lists (older debt)
+PASS  check:tenant
+PASS  check:response-exposure
+PASS  check:raw-sql-inputs
+PASS  check:silent-catch
+PASS  check:as-any
+PASS  check:unreached
+PASS  check:dead-client
+PASS  check:list-queries
+PASS  check:permission-docs
+PASS  check:realtime-catalog
+PASS  check:openapi
+PASS  check:attack-surface
+PASS  check:error-codes
+inert controls: 0 found, 0 on the baseline, 0 NEW, 0 baseline entries now fixed

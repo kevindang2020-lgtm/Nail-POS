@@ -1,0 +1,129 @@
+empty OVERVIEW en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 81ms font:Hanken
+empty OVERVIEW en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 83ms font:Hanken
+empty OVERVIEW en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 80ms font:Hanken
+empty OVERVIEW en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 57ms font:Hanken
+empty OVERVIEW en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:11f/0n/5e/0s 71ms font:Hanken
+empty OVERVIEW en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:13f/0n/3e/0s 59ms font:Hanken
+empty LIVE OPS en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:9f/0n/0e/0s 70ms font:Hanken
+empty LIVE OPS en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:13f/0n/0e/0s 64ms font:Hanken
+empty LIVE OPS en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:13f/0n/0e/0s 65ms font:Hanken
+empty LIVE OPS en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:9f/0n/0e/0s 49ms font:Hanken
+empty LIVE OPS en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:6f/0n/0e/0s 59ms font:Hanken
+empty LIVE OPS en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:6f/0n/0e/0s 54ms font:Hanken
+empty CHECK-IN en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 69ms font:Hanken
+empty CHECK-IN en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 59ms font:Hanken
+empty CHECK-IN en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 63ms font:Hanken
+empty CHECK-IN en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 72ms font:Hanken
+empty CHECK-IN en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 77ms font:Hanken
+empty CHECK-IN en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 65ms font:Hanken
+empty BOOKING en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 69ms font:Hanken
+empty BOOKING en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:22f/0n/4e/0s 82ms font:Hanken
+empty BOOKING en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 64ms font:Hanken
+empty BOOKING en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 61ms font:Hanken
+empty BOOKING en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 69ms font:Hanken
+empty BOOKING en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 58ms font:Hanken
+empty TECH QUEUE en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 57ms font:Hanken
+empty TECH QUEUE en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 50ms font:Hanken
+empty TECH QUEUE en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 63ms font:Hanken
+empty TECH QUEUE en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 56ms font:Hanken
+empty TECH QUEUE en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:8f/3n/0e/0s 100ms font:Hanken
+empty TECH QUEUE en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:8f/3n/0e/0s 54ms font:Hanken
+empty CUSTOMER QUEUE en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 63ms font:Hanken
+empty CUSTOMER QUEUE en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 58ms font:Hanken
+empty CUSTOMER QUEUE en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 65ms font:Hanken
+empty CUSTOMER QUEUE en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 69ms font:Hanken
+empty CUSTOMER QUEUE en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 69ms font:Hanken
+empty CUSTOMER QUEUE en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 55ms font:Hanken
+empty SERVING en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 66ms font:Hanken
+empty SERVING en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 65ms font:Hanken
+empty SERVING en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 67ms font:Hanken
+empty SERVING en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 50ms font:Hanken
+empty SERVING en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 54ms font:Hanken
+empty SERVING en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 54ms font:Hanken
+empty SERVICE DONE en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 69ms font:Hanken
+empty SERVICE DONE en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 61ms font:Hanken
+empty SERVICE DONE en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 64ms font:Hanken
+empty SERVICE DONE en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 54ms font:Hanken
+empty SERVICE DONE en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 65ms font:Hanken
+empty SERVICE DONE en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 58ms font:Hanken
+empty CHECKOUT en 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 49ms font:Hanken
+empty CHECKOUT en 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 56ms font:Hanken
+empty CHECKOUT en 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 60ms font:Hanken
+empty CHECKOUT en 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 55ms font:Hanken
+empty CHECKOUT en 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:9f/0n/0e/0s 69ms font:Hanken
+empty CHECKOUT en 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:9f/0n/0e/0s 70ms font:Hanken
+empty OVERVIEW vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 73ms font:Hanken
+empty OVERVIEW vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 69ms font:Hanken
+empty OVERVIEW vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 69ms font:Hanken
+empty OVERVIEW vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:12f/0n/5e/0s 68ms font:Hanken
+empty OVERVIEW vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:11f/0n/5e/0s 74ms font:Hanken
+empty OVERVIEW vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn19 hit:11f/0n/5e/0s 75ms font:Hanken
+empty LIVE OPS vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:9f/0n/0e/0s 63ms font:Hanken
+empty LIVE OPS vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:13f/0n/0e/0s 76ms font:Hanken
+empty LIVE OPS vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:13f/0n/0e/0s 65ms font:Hanken
+empty LIVE OPS vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:9f/0n/0e/0s 68ms font:Hanken
+empty LIVE OPS vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:6f/0n/0e/0s 60ms font:Hanken
+empty LIVE OPS vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:6f/0n/0e/0s 66ms font:Hanken
+empty CHECK-IN vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 62ms font:Hanken
+empty CHECK-IN vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 76ms font:Hanken
+empty CHECK-IN vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 64ms font:Hanken
+empty CHECK-IN vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 61ms font:Hanken
+empty CHECK-IN vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 67ms font:Hanken
+empty CHECK-IN vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn17 hit:16f/0n/0e/0s 67ms font:Hanken
+empty BOOKING vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 61ms font:Hanken
+empty BOOKING vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:22f/0n/4e/0s 74ms font:Hanken
+empty BOOKING vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 65ms font:Hanken
+empty BOOKING vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 91ms font:Hanken
+empty BOOKING vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 80ms font:Hanken
+empty BOOKING vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn31 hit:21f/0n/2e/0s 82ms font:Hanken
+empty TECH QUEUE vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 70ms font:Hanken
+empty TECH QUEUE vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 77ms font:Hanken
+empty TECH QUEUE vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 64ms font:Hanken
+empty TECH QUEUE vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/3n/0e/0s 76ms font:Hanken
+empty TECH QUEUE vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:8f/3n/0e/0s 72ms font:Hanken
+empty TECH QUEUE vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:8f/3n/0e/0s 65ms font:Hanken
+empty CUSTOMER QUEUE vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 65ms font:Hanken
+empty CUSTOMER QUEUE vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 58ms font:Hanken
+empty CUSTOMER QUEUE vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 66ms font:Hanken
+empty CUSTOMER QUEUE vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 62ms font:Hanken
+empty CUSTOMER QUEUE vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 71ms font:Hanken
+empty CUSTOMER QUEUE vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 74ms font:Hanken
+empty SERVING vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 51ms font:Hanken
+empty SERVING vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 54ms font:Hanken
+empty SERVING vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 57ms font:Hanken
+empty SERVING vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:12f/0n/0e/0s 121ms font:Hanken
+empty SERVING vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 217ms font:Hanken
+empty SERVING vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:10f/0n/0e/0s 80ms font:Hanken
+empty SERVICE DONE vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 60ms font:Hanken
+empty SERVICE DONE vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 70ms font:Hanken
+empty SERVICE DONE vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:13f/0n/0e/0s 54ms font:Hanken
+empty SERVICE DONE vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 86ms font:Hanken
+empty SERVICE DONE vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 71ms font:Hanken
+empty SERVICE DONE vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 61ms font:Hanken
+empty CHECKOUT vi 1920x945 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 61ms font:Hanken
+empty CHECKOUT vi 2560x1440 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 60ms font:Hanken
+empty CHECKOUT vi 1920x1080 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 56ms font:Hanken
+empty CHECKOUT vi 1600x900 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:11f/0n/0e/0s 63ms font:Hanken
+empty CHECKOUT vi 1366x768 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:9f/0n/0e/0s 67ms font:Hanken
+empty CHECKOUT vi 1280x800 v0 h0 doc0/0 clip0 cut0 ovl0 minBtn25 hit:9f/0n/0e/0s 58ms font:Hanken
+
+PASS  OVERVIEW EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  LIVE OPS EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CHECK-IN EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  BOOKING EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  TECH QUEUE EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CUSTOMER QUEUE EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  SERVING EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  SERVICE DONE EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CHECKOUT EN (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  OVERVIEW VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  LIVE OPS VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CHECK-IN VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  BOOKING VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  TECH QUEUE VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CUSTOMER QUEUE VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  SERVING VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  SERVICE DONE VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+PASS  CHECKOUT VI (empty, 1920×945 page = 1920×1080 screen with browser chrome + taskbar)
+
+18/18 primary checks passed · 108/108 incl. responsive · <scratch>

@@ -1,0 +1,27 @@
+// skipLineApi.ts — Skip-the-Line Checkout client (customer app). Same-origin, session cookie; the server derives the
+// customer + all money. The client never sends a tenantId or a final total.
+import type { BillLine, SkipLineSettings, SkipLinePaymentVerifyResult } from '@aipowersalon/api-contracts/customer';   // the wire contract (Constitution 13 §15)
+import { api } from './client';
+
+export interface ActiveBill {
+  ticketId: string; invoiceId: string; ticketNumber: string; customerId: string | null; customerName: string;
+  technicianId: string | null; technicianName: string; services: BillLine[];
+  subtotalCents: number; discountCents: number; taxCents: number; tipCents: number; totalDueCents: number;
+  ticketStatus: string; paid: boolean;
+}
+export interface ActiveBillResponse { bill: ActiveBill | null; enabledMethods: string[]; settings: SkipLineSettings; }
+export interface CashToTechResult { intentId: string; confirmationId: string; technicianId: string | null; technicianName: string; amountCents: number; status: string; }
+export interface StartResult { intentId: string; ticketId: string; method: string; amountCents: number; gateway: string | null; configured: boolean; status: string; }
+export interface ConfirmResult { paid?: boolean; status: string; paymentId?: string; amountCents?: number; processorTransactionId?: string | null; intentId?: string; configured?: boolean; disabledReason?: string; declineReason?: string; }
+export interface PaymentStatus { intentId: string; status: string; amountCents: number; method: string; }
+
+export const skipLineApi = {
+  activeBill: () => api.get<ActiveBillResponse>('/customer/me/active-bill'),
+  payCashToTech: (invoiceId: string) => api.post<CashToTechResult>(`/customer/payments/${invoiceId}/pay-cash-to-tech`),
+  startPayment: (invoiceId: string, method: string, tipCents?: number) => api.post<StartResult>(`/customer/payments/${invoiceId}/start`, tipCents && tipCents > 0 ? { method, tipCents } : { method }),
+  confirmPayment: (invoiceId: string, body: { intentId?: string; method?: string; token?: string; paymentMethodId?: string; expiry?: string }) => api.post<ConfirmResult>(`/customer/payments/${invoiceId}/confirm`, body),
+  paymentStatus: (paymentId: string) => api.get<PaymentStatus>(`/customer/payments/${paymentId}/status`),
+  /** B-80: "Check status" of a card payment the processor did not confirm — asks the processor, never charges */
+  verifyPayment: (paymentId: string) => api.post<SkipLinePaymentVerifyResult>(`/customer/payments/${encodeURIComponent(paymentId)}/verify`, {}),
+};
+export type { BillLine, SkipLineSettings };

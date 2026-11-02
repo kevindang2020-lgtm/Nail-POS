@@ -1,0 +1,40 @@
+# Security Deep Scan B7 (mandate §142, Oct 23 2026): static application security testing (SAST). CodeQL's
+# javascript-typescript analysis over the API, modules, packages and web apps, on every push / PR to main and weekly.
+# Results land in the repository's Security tab (needs GitHub code scanning enabled — Kevin, repo settings; on a
+# private repository that is GitHub Advanced Security / Code Security).
+name: codeql
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '17 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3
+        with:
+          languages: javascript-typescript
+          queries: security-extended
+          config: |
+            paths-ignore:
+              - '**/node_modules/**'
+              - '**/dist/**'
+              - 'apps/pos-web/story/**'
+              - '**/*.spec.ts'
+              - '**/*.test.ts'
+              - '**/*.test.tsx'
+      - uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8 # v3

@@ -1,0 +1,56 @@
+00:56:48 live proofs — commit 22a98978 — node v22.22.0
+00:57:01 pos-web + customer-display built for the display proofs rc=0
+00:57:04 tech-web built for live-phase13-offline rc=0
+00:57:04 START live-checkout-one-payment
+00:57:15 END   live-checkout-one-payment rc=0 :: 32 passed, 0 failed
+00:57:15 START live-display-ads
+00:57:26 END   live-display-ads rc=0 :: 42/42 checks passed
+00:57:26 START live-display-23in-browser
+00:59:12 END   live-display-23in-browser rc=0 :: 37/37 checks passed · screenshots: <scratch>
+00:59:12 START live-display-ads-browser
+00:59:29 END   live-display-ads-browser rc=1 :: 13/14 checks passed · screenshots: <scratch>
+00:59:29 START live-display-checkin-browser
+01:01:37 END   live-display-checkin-browser rc=0 :: 
+01:01:37 START live-display-devices-browser
+01:02:07 END   live-display-devices-browser rc=0 :: 
+01:02:07 START live-display-journeys-browser
+01:02:57 END   live-display-journeys-browser rc=0 :: 
+01:02:57 START live-local-day
+01:03:07 END   live-local-day rc=0 :: 13 passed, 0 failed
+01:03:07 START live-phase10-database
+01:03:51 END   live-phase10-database rc=0 :: 31/31 checks passed
+01:03:51 START live-phase12-async
+01:04:36 END   live-phase12-async rc=0 :: 21/21 checks passed
+01:04:36 START live-phase12-v1
+01:06:09 END   live-phase12-v1 rc=0 :: 19/19 checks passed · network log + screenshots: <scratch>
+01:06:09 START live-phase13-app-version
+01:06:50 END   live-phase13-app-version rc=0 :: all 17 checks passed
+01:06:50 START live-phase13-native-realtime
+01:07:16 END   live-phase13-native-realtime rc=0 :: all 17 checks passed
+01:07:16 START live-phase14-telemetry
+01:07:32 END   live-phase14-telemetry rc=0 :: 22/22 checks passed
+01:07:32 START live-phase2-foundations
+01:09:01 END   live-phase2-foundations rc=0 :: 
+01:09:01 START live-phase5-deals
+01:09:20 END   live-phase5-deals rc=0 :: 40/40 checks passed
+01:09:20 START live-phase7-scheduling
+01:09:49 END   live-phase7-scheduling rc=0 :: 31/31 checks passed
+01:09:49 START live-phase8-community-browser
+01:10:28 END   live-phase8-community-browser rc=0 :: 25/25 checks passed · screenshots: <scratch>
+01:10:28 START live-phase9-permissions
+01:11:10 END   live-phase9-permissions rc=0 :: 28/28 checks passed
+01:11:10 START live-pos-autolock
+01:11:57 END   live-pos-autolock rc=0 :: 25/25 passed
+01:11:57 START live-refresh-authorization
+01:12:08 END   live-refresh-authorization rc=0 :: 10/10 passed
+01:12:08 START live-tracing
+01:12:32 END   live-tracing rc=0 :: 16/16 checks passed — 14 spans received in 2 OTLP post(s)
+01:12:32 START live-rls-trial
+01:12:51 END   live-rls-trial rc=0 :: 20/20 checks passed
+01:12:51 START live-phase13-offline
+01:13:17 END   live-phase13-offline rc=0 :: all 13 checks passed
+01:13:17 LIVE PROOFS DONE
+01:13:45 live proofs — commit 22a98978 — node v22.22.0
+01:13:45 START live-display-ads-browser
+01:14:30 END   live-display-ads-browser rc=0 :: 14/14 checks passed · screenshots: <scratch>
+01:14:30 LIVE PROOFS DONE

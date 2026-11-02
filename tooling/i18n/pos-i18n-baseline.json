@@ -1,0 +1,15 @@
+{
+ "note": "tier-4 POS i18n ratchet (tooling/ci/check-pos-i18n.mjs): per-file count of label-map / tuple / helper / enum / status / module findings. May only go DOWN; --update lowers, never raises. frozenCatalogKeys: the generated catalog.en.ts key count (frozen; only goes down).",
+ "frozenCatalogKeys": 8909,
+ "total": 10,
+ "files": {
+  "apps/pos-web/src/screens/POSAIMessageStudioScreen.tsx": 1,
+  "apps/pos-web/src/screens/POSCheckoutScreen.tsx": 1,
+  "apps/pos-web/src/screens/POSDisplayAdsScreen.tsx": 1,
+  "apps/pos-web/src/screens/POSEmailScreen.tsx": 1,
+  "apps/pos-web/src/screens/POSFeaturesScreen.tsx": 1,
+  "apps/pos-web/src/screens/POSPaymentGatewayScreen.tsx": 3,
+  "apps/pos-web/src/screens/POSTeamPermissionsScreen.tsx": 1,
+  "apps/pos-web/src/screens/display-ads/AdEditor.tsx": 1
+ }
+}

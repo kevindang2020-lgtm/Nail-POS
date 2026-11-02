@@ -1,0 +1,113 @@
+{
+ "at": "2026-10-29T10:45:17.711Z",
+ "counts": {
+  "customers": 100000,
+  "tickets": 350000,
+  "members": 40000,
+  "memberships": 10000
+ },
+ "results": [
+  {
+   "name": "loyalty overview (5 KPIs + tiers)",
+   "medianMs": 145,
+   "maxMs": 191,
+   "total": 40000
+  },
+  {
+   "name": "loyalty members page 1",
+   "medianMs": 22,
+   "maxMs": 23,
+   "total": 40000
+  },
+  {
+   "name": "loyalty members last page",
+   "medianMs": 193,
+   "maxMs": 211,
+   "total": 40000
+  },
+  {
+   "name": "loyalty members search",
+   "medianMs": 90,
+   "maxMs": 144,
+   "total": 14
+  },
+  {
+   "name": "loyalty rewards page 1",
+   "medianMs": 6,
+   "maxMs": 6,
+   "total": 40
+  },
+  {
+   "name": "loyalty redemptions page 1",
+   "medianMs": 2,
+   "maxMs": 3,
+   "total": 2000
+  },
+  {
+   "name": "loyalty ledger page 1",
+   "medianMs": 9,
+   "maxMs": 10,
+   "total": 39200
+  },
+  {
+   "name": "retention summary (KPIs + segment counts)",
+   "medianMs": 639,
+   "maxMs": 664,
+   "total": 65173
+  },
+  {
+   "name": "retention at risk page 1 (oldest first)",
+   "medianMs": 473,
+   "maxMs": 483,
+   "total": 65173
+  },
+  {
+   "name": "retention at risk page 500",
+   "medianMs": 843,
+   "maxMs": 870,
+   "total": 65173
+  },
+  {
+   "name": "retention never visited page 1",
+   "medianMs": 413,
+   "maxMs": 462,
+   "total": 12500
+  },
+  {
+   "name": "retention SMS-eligible page 1",
+   "medianMs": 678,
+   "maxMs": 789,
+   "total": 40834
+  },
+  {
+   "name": "retention search",
+   "medianMs": 299,
+   "maxMs": 400,
+   "total": 10
+  },
+  {
+   "name": "memberships overview",
+   "medianMs": 66,
+   "maxMs": 68,
+   "total": 8333
+  },
+  {
+   "name": "memberships members page 1",
+   "medianMs": 66,
+   "maxMs": 71,
+   "total": 5000
+  },
+  {
+   "name": "memberships activity page 1",
+   "medianMs": 5,
+   "maxMs": 7,
+   "total": 10000
+  },
+  {
+   "name": "memberships plan performance",
+   "medianMs": 21,
+   "maxMs": 21,
+   "total": null
+  }
+ ]
+}

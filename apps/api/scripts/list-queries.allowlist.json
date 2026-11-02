@@ -1,0 +1,201 @@
+{
+  "_doc": "check:list-queries allowlist (BUILD_PLAN Phase 12, DoD #21-#23). GET handlers that read the query string but are NOT lists. Only shrinks. kind: not-a-list | fixed-size.",
+  "entries": {
+    "modules/customers/src/reviews/reviews-center.controller.ts#ReviewsCenterController.summary": {
+      "kind": "not-a-list",
+      "reason": "Reviews & Reputation (Oct 31 2026): ONE card set (the KPIs + the 5..1 rating distribution) for one period; ?preset/from/to pick the period, never a filter of rows"
+    },
+    "modules/customers/src/reviews/reviews-center.controller.ts#ReviewsCenterController.insights": {
+      "kind": "not-a-list",
+      "reason": "Reviews & Reputation (Oct 31 2026): ONE assistant fact sheet (written-comment counts + at most 10 stored themes) for one period; ?preset/from/to pick the period, never a filter of rows"
+    },
+    "modules/communications/src/email/email-public.controller.ts#EmailPublicController.unsubscribePage": {
+      "kind": "not-a-list",
+      "reason": "Email guide (Oct 31 2026): the public unsubscribe confirmation page — its only query parameter is the signed HMAC token (?token=), never a filter"
+    },
+    "modules/customers/src/retention/retention.controller.ts#RetentionController.snapshotDay": {
+      "kind": "not-a-list",
+      "reason": "Customer Retention CR-01 (Oct 30 2026): ONE stored salon day (?date=) — its state, run and five segment counts; the members are the paged snapshots/members list"
+    },
+    "modules/customers/src/retention/retention.controller.ts#RetentionController.snapshotCompare": {
+      "kind": "fixed-size",
+      "reason": "Customer Retention CR-01 (Oct 30 2026): two stored days (?a=&b=) — five counts each, their deltas and at most 20 segment-to-segment transition rows"
+    },
+    "modules/workforce/src/team-screens/team-data-alerts.controller.ts#TeamDataAlertsController.assignees": {
+      "kind": "fixed-size",
+      "reason": "Team Management data alerts (Oct 30 2026): the assignee picker — at most 25 active staff users of this salon matching ?q; never a browsable list"
+    },
+    "modules/workforce/src/team-screens/team-members-lookup.controller.ts#TeamMembersLookupController.preferredCheck": {
+      "kind": "not-a-list",
+      "reason": "Team Management TM-04 (Oct 30 2026): ONE verdict for one preferred technician at one start plus at most five qualified alternatives; never a browsable list"
+    },
+    "modules/workforce/src/team-screens/team-members-screen.controller.ts#TeamMembersScreenController.dashboard": {
+      "kind": "not-a-list",
+      "reason": "Team Management (Oct 30 2026): ONE card set (eight KPIs, attendance, bands, top five, today's first eight shifts, productivity, approvals, certifications) for one period; never a browsable list"
+    },
+    "modules/workforce/src/team-screens/team-members-screen.controller.ts#TeamMembersScreenController.performance": {
+      "kind": "not-a-list",
+      "reason": "Team Management profile (Oct 30 2026): ONE member's verified rating (all time and period) with the latest five reviews; a detail, not a list"
+    },
+    "modules/workforce/src/team-screens/team-members-screen.controller.ts#TeamMembersScreenController.earnings": {
+      "kind": "not-a-list",
+      "reason": "Team Management profile (Oct 30 2026): ONE member's earned / tips / adjustments / payable / paid totals for one period with the latest five payouts; a detail, not a list"
+    },
+    "modules/workforce/src/team-screens/tech-appointments-screen.controller.ts#TechAppointmentsScreenController.kpis": {
+      "kind": "not-a-list",
+      "reason": "Tech Appointments (Oct 30 2026): ONE card set (nine KPIs) for one salon day; ?date picks the day, never a filter of rows"
+    },
+    "modules/workforce/src/team-screens/tech-appointments-screen.controller.ts#TechAppointmentsScreenController.conflicts": {
+      "kind": "not-a-list",
+      "reason": "Tech Appointments (Oct 30 2026): ONE conflict verdict (ok + the reasons) for one proposed technician/date/start/length; never a list of rows"
+    },
+    "modules/workforce/src/team-screens/live-schedule-screen.controller.ts#LiveScheduleScreenController.kpis": {
+      "kind": "not-a-list",
+      "reason": "Live Technician Schedule (Oct 30 2026): ONE card set (six KPIs with definitions) for one salon day; ?date picks the day, never a filter of rows"
+    },
+    "modules/workforce/src/team-screens/live-schedule-screen.controller.ts#LiveScheduleScreenController.shiftImpact": {
+      "kind": "not-a-list",
+      "reason": "Live Technician Schedule (Oct 30 2026): ONE impact verdict for one proposed weekly shift (at most 200 booked appointments, 120 days, one technician, one weekday); never a browsable list"
+    },
+    "modules/workforce/src/team-screens/commission-screen.controller.ts#CommissionScreenController.summary": {
+      "kind": "not-a-list",
+      "reason": "Commission Report (Oct 30 2026): ONE card set (the five KPIs + their parts and recorded payments) for one period; ?preset/from/to pick the period, never a filter of rows"
+    },
+    "modules/workforce/src/team-screens/team-performance-screen.controller.ts#TeamPerformanceScreenController.dashboard": {
+      "kind": "not-a-list",
+      "reason": "Team Performance (Oct 30 2026): ONE card set (three KPIs, the tier counts and the top five) for one period; never a browsable list"
+    },
+    "modules/workforce/src/team-screens/team-performance-screen.controller.ts#TeamPerformanceScreenController.technician": {
+      "kind": "not-a-list",
+      "reason": "Team Performance (Oct 30 2026): ONE technician's details (score, sample, rank, previous-period comparison) for one period; a detail, not a list"
+    },
+    "modules/workforce/src/team-screens/commission-review.controller.ts#CommissionReviewController.assignees": {
+      "kind": "fixed-size",
+      "reason": "Commission review (F1, Oct 30 2026): the assignee picker — at most 25 active users of this salon matching ?q; never a browsable list"
+    },
+    "modules/workforce/src/team-screens/commission-review.controller.ts#CommissionReviewController.detail": {
+      "kind": "not-a-list",
+      "reason": "Commission review (F1, Oct 30 2026): ONE finding's evidence and state; its append-only history rides along paged (page / pageSize, 8 by default, newest first)"
+    },
+    "modules/workforce/src/team-screens/shift-override.controller.ts#ShiftOverrideController.editor": {
+      "kind": "not-a-list",
+      "reason": "Date shift editor (F4, Oct 30 2026): ONE technician on ONE date — baseline, override, effective day, that day's bookings and the month's override dates (≤ 31)"
+    },
+    "modules/workforce/src/team-screens/team-performance-screen.controller.ts#TeamPerformanceScreenController.composite": {
+      "kind": "not-a-list",
+      "reason": "Composite score (F5, Oct 30 2026): ONE technician's four components for one period, plus her last five snapshots"
+    },
+    "modules/workforce/src/team-screens/technicians-screen.controller.ts#TechniciansScreenController.dashboard": {
+      "kind": "not-a-list",
+      "reason": "Technicians (Oct 30 2026): ONE card set (eight KPIs + the overview panels) for one period; ?preset/from/to pick the period, never a filter of rows"
+    },
+    "modules/catalog/src/catalog-screens/catalog-screens.controller.ts#CatalogScreensController.dashboard": {
+      "kind": "not-a-list",
+      "reason": "Services & Products (Oct 30 2026): ONE card set (the ten KPIs) for one period; ?preset/from/to pick the sales period, never a filter of rows"
+    },
+    "modules/catalog/src/catalog-screens/catalog-screens.controller.ts#CatalogScreensController.charts": {
+      "kind": "not-a-list",
+      "reason": "Services & Products (Oct 30 2026): four fixed aggregates (service / retail / category mix, add-on conversion) for one period; ?preset/from/to pick the period"
+    },
+    "modules/finance/src/expense.controller.ts#ExpenseController.dashboard": {
+      "kind": "not-a-list",
+      "reason": "Receipt/Expense mandate (Oct 21 2026): ONE summary card set (totals + counts for today/month/year); ?branchId= picks the branch scope, never a filter of rows"
+    },
+    "modules/finance/src/expense.controller.ts#ExpenseController.report": {
+      "kind": "not-a-list",
+      "reason": "Receipt/Expense mandate (Oct 21 2026): ONE aggregate report (category/vendor/branch/series totals) for one period window; period/from/to choose the window, not rows of a list"
+    },
+    "modules/finance/src/expense.controller.ts#ExpenseController.exportFile": {
+      "kind": "not-a-list",
+      "reason": "Receipt/Expense mandate (Oct 21 2026): the accountant export: @AsyncExport, period-bounded (periodWindow) and capped by maxSyncRows — a file, not a paged list"
+    },
+    "modules/finance/src/expense.controller.ts#ExpenseController.vendorSpend": {
+      "kind": "not-a-list",
+      "reason": "Receipt/Expense mandate (Oct 21 2026): ONE vendor's month/year totals; ?branchId= picks the branch scope"
+    },
+    "modules/workforce/src/tech-profile/media.controller.ts#MediaController.serve": {
+      "kind": "not-a-list",
+      "reason": "Technician Profile merge (WF, Oct 12 2026): serves ONE media object; ?exp=&sig= are the signed-URL proof for a private object (media-access-core verifyMediaSignature), never a filter"
+    },
+    "observability/oncall.ts#AlertAckPublicController.confirm": {
+      "kind": "not-a-list",
+      "reason": "BUILD_PLAN Phase 14 C: the confirmation page for ONE alert-acknowledgement link; ?t= is the signed single-use token, never a filter"
+    },
+    "mobile-config/app-config.controller.ts#AppConfigController.get": {
+      "kind": "not-a-list",
+      "reason": "BUILD_PLAN Phase 13 B: ONE config object for one app; ?app=&platform=&version= identify the caller build, never a filter"
+    },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.state": {
+      "kind": "not-a-list",
+      "reason": "one checkout session; ?token= is the display's session token, not a filter"
+    },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.stream": {
+      "kind": "not-a-list",
+      "reason": "an SSE stream of one checkout session; ?token= authenticates the display"
+    },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceCurrent": {
+      "kind": "not-a-list",
+      "reason": "the paired device's current state; ?deviceToken= authenticates the device"
+    },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceStream": {
+      "kind": "not-a-list",
+      "reason": "an SSE stream for one paired device; ?deviceToken= authenticates it"
+    },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceAds": {
+      "kind": "fixed-size",
+      "reason": "the ad playlist for one paired device (bounded by the display-ads rules); ?deviceToken= authenticates it"
+    },
+    "oauth/oauth.controller.ts#OAuthController.describe": {
+      "kind": "not-a-list",
+      "reason": "OAuth 2.1 authorize request — the query string is the protocol's (client_id, redirect_uri, scope, state, PKCE)"
+    },
+    "ai-booking/ai-booking.controller.ts#AiBookingController.getAppointment": {
+      "kind": "not-a-list",
+      "reason": "one appointment by id; ?source= names the calling integration"
+    },
+    "common/platform-flags.ts#FlagRolloutController.get": {
+      "kind": "not-a-list",
+      "reason": "one feature flag's rollout; ?tenantId= asks for that salon's resolution"
+    },
+    "modules/workforce/src/payroll/payroll.controller.ts#PayrollController.weeklyStatementPayStub": {
+      "kind": "not-a-list",
+      "reason": "Weekly Paycheck 17.5 (Oct 27 2026): ONE pay-stub PDF of one statement; ?lang= picks the document language (en | vi), never a filter or page of rows"
+    },
+    "modules/analytics/src/owner/owner.controller.ts#OwnerController.paycheckPayStub": {
+      "kind": "not-a-list",
+      "reason": "Weekly Paycheck 17.5 (Oct 27 2026): ONE pay-stub PDF of one statement; ?lang= picks the document language (en | vi), never a filter or page of rows"
+    },
+    "modules/queue/src/tech/tech.controller.ts#TechController.myPayStub": {
+      "kind": "not-a-list",
+      "reason": "Weekly Paycheck 17.5 (Oct 27 2026): ONE pay-stub PDF of one statement; ?lang= picks the document language (en | vi), never a filter or page of rows"
+    },
+    "modules/workforce/src/payroll/payroll.controller.ts#PayrollController.weeklyReport": {
+      "kind": "not-a-list",
+      "reason": "Weekly Paycheck (Oct 21 2026): ONE aggregate payroll report (totals by technician / branch / method, the check register and cash payouts of the chosen window); ?range/from/to pick the window, never a filter or page of rows"
+    },
+    "modules/ai/src/voice-booking/receptionist-center.controller.ts#ReceptionistCenterController.kpis": {
+      "kind": "not-a-list",
+      "reason": "AI Receptionist (Oct 31 2026): ONE set of the five KPI cards for one period; ?period/from/to pick the salon-local window, never a filter of rows"
+    },
+    "modules/ai/src/voice-booking/ai-calls-center.controller.ts#AiCallsCenterController.kpis": {
+      "kind": "not-a-list",
+      "reason": "AI Calls (Oct 31 2026): ONE summary strip (seven counters + definitions) for one period; ?period/from/to pick the salon-local window, never a filter or page of rows"
+    },
+    "modules/ai/src/ai-center/ai-calendar-center.controller.ts#AiCalendarCenterController.summary": {
+      "kind": "not-a-list",
+      "reason": "AI Calendar (Oct 31 2026): ONE set of the four counters (+ definitions and reconciliation) for one salon-local day; ?date picks the day, never a filter or page of rows"
+    },
+    "modules/ai/src/ai-center/ai-calendar-center.controller.ts#AiCalendarCenterController.day": {
+      "kind": "not-a-list",
+      "reason": "AI Calendar (Oct 31 2026): ONE day board — Booking's fixed 12-technician column page (?techPage, the board's own paging) and that day's appointments in service-time order; not a searchable list"
+    },
+    "modules/ai/src/ai-center/ai-calendar-center.controller.ts#AiCalendarCenterController.range": {
+      "kind": "not-a-list",
+      "reason": "AI Calendar (Oct 31 2026): fixed-size per-day totals for ONE week (7) or ONE month (28–31); ?view/date pick which, never a filter or page of rows"
+    },
+    "modules/ai/src/ai-center/ai-calendar-center.controller.ts#AiCalendarCenterController.assistant": {
+      "kind": "not-a-list",
+      "reason": "AI Calendar (Oct 31 2026): a bounded set of evidence-backed suggestion cards for one day (at most ~15); ?date picks the day"
+    }
+  }
+}

@@ -1,0 +1,751 @@
+{
+ "label": "final-4m-e2e",
+ "at": "2026-10-30T19:25:16.795Z",
+ "results": [
+  {
+   "step": "products: the three KPIs come from the server and Need Reorder is the Stock Alerts scope (sidebar badge)",
+   "ok": true,
+   "detail": "products 30 · need reorder 14 = badge 14 · retail $1,104.49",
+   "ms": 143
+  },
+  {
+   "step": "products: newest first, 12 per page, numbered pages 1 · 2 · 3",
+   "ok": true,
+   "detail": "p1 Drift Base Coat … p3 6 rows",
+   "ms": 1621
+  },
+  {
+   "step": "products: universal search — exact SKU first, barcode, colour, supplier phone in 3 formats, never another salon",
+   "ok": true,
+   "detail": "phone formats → 7 = 7 = 7 products",
+   "ms": 6567
+  },
+  {
+   "step": "products: + New Product saves through the server and lands first on page 1",
+   "ok": true,
+   "detail": "first on page 1",
+   "ms": 721
+  },
+  {
+   "step": "products: a duplicate SKU is refused and said so (no second record)",
+   "ok": true,
+   "detail": "Another product already uses that SKU.",
+   "ms": 1067
+  },
+  {
+   "step": "products: Add Stock updates the same row (no duplicate product), one movement",
+   "ok": true,
+   "detail": "E2E Cuticle Serum E2E-SER-1 — 3 bottle Low $9.00 No recorded use DetailsAdd stoc",
+   "ms": 1538
+  },
+  {
+   "step": "products: details overlay — Overview · Pricing · Inventory (bottles) · Suppliers · Technician Usage · History",
+   "ok": true,
+   "detail": "six tabs",
+   "ms": 5273
+  },
+  {
+   "step": "products: archive → Archived view → Restore (history kept)",
+   "ok": true,
+   "detail": "archived and restored",
+   "ms": 3941
+  },
+  {
+   "step": "products: date field Expiration + a custom month-view range finds the bottles expiring within 30 days",
+   "ok": true,
+   "detail": "Cuticle Oil Pen · Bond Primer 0.5 oz",
+   "ms": 1317
+  },
+  {
+   "step": "products: Vietnamese — title, KPIs, columns in Vietnamese; prices stay $",
+   "ok": true,
+   "detail": "Sản phẩm",
+   "ms": 1608
+  },
+  {
+   "step": "inventory: eight KPIs + value from the server, with units (bottles split by unit) and the drift banner",
+   "ok": true,
+   "detail": "products 31 · bottles 149 (1 open + 148 unopened) · expiring 7 bottles · drift 1",
+   "ms": 138
+  },
+  {
+   "step": "inventory: Recount fixes the stale stock row (11 → 3) with one correction movement; drift gone",
+   "ok": true,
+   "detail": "cache 11 → 3",
+   "ms": 2367
+  },
+  {
+   "step": "inventory: each tab keeps its own search; tabs, KPIs and AI notice preserved",
+   "ok": true,
+   "detail": "12 Gelish rows kept across tabs",
+   "ms": 3066
+  },
+  {
+   "step": "inventory: purchase orders — expected date as a calendar date, active ≠ draft, receive the rest of the partial order",
+   "ok": true,
+   "detail": "expected 2026-11-06 · gloves 58 → 68 after the last 10",
+   "ms": 2115
+  },
+  {
+   "step": "inventory: technician reports — usage by technician → the products they used; approve a bottle report",
+   "ok": true,
+   "detail": "3 technicians · Anna used 2 products · 2 → 1 pending",
+   "ms": 2636
+  },
+  {
+   "step": "inventory: alerts tab = the Stock Alerts list (same count as the badge); catalog brands searchable; a count opens",
+   "ok": true,
+   "detail": "alerts 16 = badge 16",
+   "ms": 3158
+  },
+  {
+   "step": "inventory: row ⋯ → Usage History opens the product on its Technician Usage tab",
+   "ok": true,
+   "detail": "usage tab",
+   "ms": 3112
+  },
+  {
+   "step": "suppliers: four KPIs explain the photo (inactive supplier with a draft; drafts are not active; a real $ value)",
+   "ok": true,
+   "detail": "12 active (+1 inactive) · 1 active POs · 11 drafts · open $83.68",
+   "ms": 109
+  },
+  {
+   "step": "suppliers: search — contact phone (3 formats), supplier SKU, brand, PO number, with what matched; inactive only under All",
+   "ok": true,
+   "detail": "phone · SKU · inactive",
+   "ms": 6142
+  },
+  {
+   "step": "suppliers: details beside the directory — contacts (one primary, inactive kept), products, orders, receiving",
+   "ok": true,
+   "detail": "3 contacts",
+   "ms": 3086
+  },
+  {
+   "step": "suppliers: add a contact as primary — the old primary steps down (audited)",
+   "ok": true,
+   "detail": "Hana Vu is primary",
+   "ms": 1165
+  },
+  {
+   "step": "suppliers: link a product with supplier SKU / cost / pack, then unlink (catalog data, stock untouched)",
+   "ok": true,
+   "detail": "16 → 17 → 16",
+   "ms": 2664
+  },
+  {
+   "step": "suppliers: + Add Supplier — a duplicate phone warns with the match; Save as separate lands first on page 1",
+   "ok": true,
+   "detail": "warned, saved separately, first",
+   "ms": 2049
+  },
+  {
+   "step": "suppliers: purchase orders workspace — no-supplier order linked to a supplier (history kept)",
+   "ok": true,
+   "detail": "linked to Beauty Source",
+   "ms": 3084
+  },
+  {
+   "step": "suppliers: deactivate → shown under Inactive with its orders kept → reactivate",
+   "ok": true,
+   "detail": "deactivated and back",
+   "ms": 4915
+  },
+  {
+   "step": "suppliers: 1366 × 633 — details open as an overlay instead of beside the list; no page scroll",
+   "ok": true,
+   "detail": "overlay",
+   "ms": 2361
+  },
+  {
+   "step": "discounts: the five cards are the server definitions; the photo coupon ••••NG20 keeps its seven columns",
+   "ok": true,
+   "detail": "cards 14/10/7/16/1; row: ••••NG20 Spring Glow 20% off −$20.00 $10.00 No end date 0 used · Unlimited Active DetailsRedemptions",
+   "ms": 1790
+  },
+  {
+   "step": "discounts: numbered pages, newest created first; a card filters the list (Fixed-Amount)",
+   "ok": true,
+   "detail": "page 1 \"••••NG20 Spring Glow 20% off −…\", page 2 \"••••O3A3 Referral Reward 4 $6.…\"; Fixed-Amount 7 → Showing 1–7 of 7 · Page 1 of 1",
+   "ms": 1156
+  },
+  {
+   "step": "discounts: one search box — exact code (any case), last four, service, customer phone in any format",
+   "ok": true,
+   "detail": "spring 20 → 1 · ng20 → 1 · spa pedicure → 1 · (856) 555-1200 → 1 · +1 856 555 1200 → 1 · 8565551200 → 1 · no match → \"Nothing matches “zzzz-nothing”. Clear filters\"",
+   "ms": 7527
+  },
+  {
+   "step": "discounts: Redemption History is confirmed-only, newest first, paged; pending and reversed are kept apart",
+   "ok": true,
+   "detail": "confirmed 16 (Showing 1–10 of 16 · Page 1 of 2); pending 1; reversed 1; first: Oct 30, 2026, 12:18 PM d6970000 Mai Le ••• 1200 ••••DI15 Pedicure Week #3001 Anna Lee $55.00 −$8.25 $46.75 Confirmed View coupon",
+   "ms": 1997
+  },
+  {
+   "step": "discounts: Custom Range (month calendar) filters by redemption date; the cards do not move",
+   "ok": true,
+   "detail": "today: 1 confirmed (Showing 1–1 of 1 · Page 1 of 1); cards unchanged",
+   "ms": 1217
+  },
+  {
+   "step": "discounts: ticket search finds the redemption; details open from the history with all six sections",
+   "ok": true,
+   "detail": "#3001 → Pedicure Week; eligibility: Overview Eligibility Validity & limits Applicable  || limits: Overview Eligibility Validity & limits Applicable  || items: Overview Eligibility Validity & limits Applicable  || redemptions: Overview Eligibility Validity & limits Applicable  || history: Overview Eligibility Validity & limits Applicable ",
+   "ms": 4297
+  },
+  {
+   "step": "discounts: Performance totals reconcile with the history; Manage in Promotions opens the rule editor",
+   "ok": true,
+   "detail": "Confirmed redemptions 16 Unique customers 10 Customer savings $184.25 For the redemption period. Ticket sales  → /tenant/marketing/promotions",
+   "ms": 1283
+  },
+  {
+   "step": "services: the ten KPIs are the server's; margin and package sales say why they are \"—\"; no cookie branch overrides",
+   "ok": true,
+   "detail": "6 services · $66.33 · online 5 · top Nails (realized) · conversion 44.4% · retail today $18.00",
+   "ms": 1703
+  },
+  {
+   "step": "services: the branch panel shows each branch's own row (Voorhees Gel Manicure $60) for the selected service",
+   "ok": true,
+   "detail": "Cherry Hill This branch $55.00 45 min Active Configure | Voorhees Different price, time or status $60.00 45 min Active",
+   "ms": 587
+  },
+  {
+   "step": "services: a phone search in any format finds what the customer was charged; the technician scope finds Bao's services",
+   "ok": true,
+   "detail": "(856) 555-1201 → 3, 856-555-1201 → 3, 8565551201 → 3; technician \"bao\" → Gel Manicure Online booking on · Add-ons: 1 Nails 45 min $55.00 Active",
+   "ms": 4346
+  },
+  {
+   "step": "services: Create Bundle saves a real bundle with real items; it shows in the panel",
+   "ok": true,
+   "detail": "Mani + Pedi Bundle · saves $8.00 $95.00 Live",
+   "ms": 1734
+  },
+  {
+   "step": "pricing: the four cards are the whole catalog; \"$50\" filters the list and the cards say so without changing",
+   "ok": true,
+   "detail": "6 · $66.33 · $45.00 · $150.00; \"$50\" → 2 rows (cards unchanged)",
+   "ms": 2998
+  },
+  {
+   "step": "pricing: Edit Pricing refuses without a reason, saves with one (Classic Pedicure stays 50 min), records history, refuses a stale save",
+   "ok": true,
+   "detail": "Classic Pedicure exact name Nails 50 min $52.00 Active DetailsEdit Pricing; history: Oct 30, 2026, 3:20 PM Classic Pedicure Edit Pricing Price $48.00 → $52.00 Supplier price increase Pat Owner; stale save → 409 CATALOG_EDIT_CONFLICT",
+   "ms": 3143
+  },
+  {
+   "step": "categories: two cards, chart + Breakdown 66.7 / 16.7 / 16.7; CD 4432, CD 6805 and the hair services are flagged, not fixed",
+   "ok": true,
+   "detail": "Nails 4 66.7% · CD 4432 1 16.7% · CD 6805 1 16.7%; review 4; \"gel\" → Nails Matches: Gel Manicure 4 4 66.7% Active Oct 30, 2026 DetailsEditArchive",
+   "ms": 2968
+  },
+  {
+   "step": "categories: Manage Services previews, needs a reason, then moves Haircut + Hair Coloring (prices and times unchanged)",
+   "ok": true,
+   "detail": "Moving from “Nails” to “CD 6805” (2): Hair Coloring, Haircut → Nails 2 33.3% · CD 4432 1 16.7% · CD 6805 3 50.0%",
+   "ms": 3046
+  },
+  {
+   "step": "add-ons: four cards, eight columns; French tips is one add-on on four services; the hair rows are flagged (kept)",
+   "ok": true,
+   "detail": "4 · 4 · 4 · $10.00; 4 offerings, 2 flagged",
+   "ms": 1610
+  },
+  {
+   "step": "add-ons: editing one offering changes only that service; a new add-on must name its services; archive + restore one offering",
+   "ok": true,
+   "detail": "Classic Pedicure:1000, Gel Manicure:1000, Hair Coloring:1000, Haircut:1200; Chrome powder on 1 service; Haircut offering archived → restored (5/5)",
+   "ms": 3326
+  },
+  {
+   "step": "technicians: the eight KPIs are the server's; Active Accounts is not \"working today\"; open positions say not configured",
+   "ok": true,
+   "detail": "team 15 · active accounts 15 · scheduled 5 · on shift 3 · available 1 · 4.5/5 (4)",
+   "ms": 1541
+  },
+  {
+   "step": "technicians: phone in any format finds Vishal; \"gel\" says which service matched; the directory is newest first and pages",
+   "ok": true,
+   "detail": "3 phone formats → Vishal verma; page 1 \"CP Chi Pham Nail tec…\", page 2 7 rows of 15",
+   "ms": 4346
+  },
+  {
+   "step": "technicians: attendance and bands drill into the directory; Missing Service Mapping filters",
+   "ok": true,
+   "detail": "available → Vishal; unrated 12; missing mapping 9",
+   "ms": 2657
+  },
+  {
+   "step": "technicians: the Profile overlay opens the right record with every tab, and Close returns to the same search",
+   "ok": true,
+   "detail": "services: Overview Qualified Services Schedule App || schedule: Overview Qualified Services Schedule App || appointments: Overview Qualified Services Schedule App || performance: Overview Qualified Services Schedule App || earnings: Overview Qualified Services Schedule App || gallery: Overview Qualified Services Schedule App || history: Overview Qualified Services Schedule App",
+   "ms": 5490
+  },
+  {
+   "step": "technicians: the Mapping Assistant lists unmapped technicians and never pre-ticks a service; the Finder needs a service first",
+   "ok": true,
+   "detail": "unmapped list 8; 6 services, none pre-ticked; save enabled only after a tick",
+   "ms": 1464
+  },
+  {
+   "step": "tech appointments: the nine KPIs are the selected day's; the two overlapping Kevin bookings are the conflicts",
+   "ok": true,
+   "detail": "{\"today\":6,\"booked\":2,\"checkedIn\":1,\"inService\":1,\"completed\":0,\"cancelled\":1,\"noShows\":1,\"online\":2,\"conflicts\":2}",
+   "ms": 2636
+  },
+  {
+   "step": "tech appointments: phone search in three formats; start-time order; the week board; the conflict warning explains the overlap",
+   "ok": true,
+   "detail": "phone ×3 → 2 rows; 8 in start order; week ok; conflict: Schedule Conflict Warning Technician Choose a technician Anna Lee Bao Tran CD T6805 Chi Pham Hoa Ta Ivy Ngo Jen Ly Kevin Dang Kim Do Lan Vo ",
+   "ms": 5418
+  },
+  {
+   "step": "tech appointments: recent booking changes newest first; details open with the original actions",
+   "ok": true,
+   "detail": "history 2 rows newest first; details actions: check-in, no-show, start, assign, reschedule, cancel, check-conflict",
+   "ms": 490
+  },
+  {
+   "step": "live schedule: the six KPIs are the server's, with definitions; a past day shows no live counts",
+   "ok": true,
+   "detail": "{\"workingToday\":5,\"clockedIn\":3,\"availableNow\":1,\"inService\":1,\"onBreak\":1,\"bookedMinutes\":185,\"bookedHours\":3.1,\"appointments\":4,\"scheduledMinutes\":2100,\"utilizationPercent\":9,\"utilizationBasis\":\"forecast\"}",
+   "ms": 2554
+  },
+  {
+   "step": "live schedule: one search finds the technician and the customer's appointment; the full-day overlay opens and closes (button and Esc)",
+   "ok": true,
+   "detail": "appointment hit: Mai Le · 2026-10-30 10:00 AM Gel Manicure · Kevin Dang · Confirmed · ••• 1201; tech hit; overlay for Ava Chen opens/closes",
+   "ms": 3543
+  },
+  {
+   "step": "live schedule: activity newest first, filters by type; the conflict warning explains blocked time",
+   "ok": true,
+   "detail": "activity 6 newest first; blocked 1; conflict: Schedule Conflict Warning Technician Choose a technician Anna Lee Bao Tran CD T6805 Chi Pham Hoa Ta Ivy Ngo Jen Ly Kevin Dang Kim Do Lan Vo ",
+   "ms": 1105
+  },
+  {
+   "step": "tech queue: Live tabs count from the one ticket table; Service Done today pages on the server and never inflates live",
+   "ok": true,
+   "detail": "{\"live\":3,\"waiting\":2,\"accepted\":0,\"in_service\":1,\"delayed\":0,\"done_today\":12,\"checkout_pending\":0}; waiting in assigned order: 1 Mai Le +18565551201 Gel Manicure Vishal verma Assigned 22m Details → 2 Tina Vo",
+   "ms": 2445
+  },
+  {
+   "step": "tech queue: History is a real switch — live board hidden, newest first, an expired wait stops at expiry; a row opens its timeline",
+   "ok": true,
+   "detail": "14 closed, newest first; expired waited 15 min; timeline 3 events",
+   "ms": 2111
+  },
+  {
+   "step": "tech queue: one search with scopes; a technician hit opens Assignment Details (on break is never assignable)",
+   "ok": true,
+   "detail": "live hit Mai Le; Vishal: Yes — clocked in, free and not on break; Kevin: No — not clocked in or not available",
+   "ms": 4416
+  },
+  {
+   "step": "commission: the five KPIs and the two rows equal the photo ($1,881.00 / $258.80 / $333.00 / $591.80, 13.8%)",
+   "ok": true,
+   "detail": "KPIs ok; VV Vishal verma 27 $1,831.00 $238.80 13% $323.00 $561.80 — | CT CD T6805 1 $50.00 $20.00 40% $10.00 $30.00 —",
+   "ms": 1604
+  },
+  {
+   "step": "commission: Vishal's row opens his details — 27 lines at the captured 13%, the tip that does not add up; Esc closes",
+   "ok": true,
+   "detail": "summary ok; 8 lines on page 1 of 4 at 13%; mismatched tips on page 1: 1",
+   "ms": 1653
+  },
+  {
+   "step": "commission: one search reaches a ticket number and the customer's phone",
+   "ok": true,
+   "detail": "ticket → Vishal; CD → CD T6805",
+   "ms": 2411
+  },
+  {
+   "step": "commission review (F1/F2): Run Check persists the findings; Assign → Investigate → Resolve survive a reload with their history; no money moves",
+   "ok": true,
+   "detail": "Check finished: 1 new findings, 0 already known, 28 lines could not be verified, 28 lines  · history: Resolved Investigating → Resolved Oct 30, 2026, 3:21 PM · Pat Owner Tip was split by the customer at the desk No action needed ← Investigation started Assigned → Investigating Oct 30, 2026, 3:21 PM · Pat Owner Checking the tip split with the front desk ← Assigned Open → Assigned Oct 30, 2026, 3:21 PM · Pat Owner ← Detected Oct 30, 2026, 3:21 PM · Pat Owner",
+   "ms": 6011
+  },
+  {
+   "step": "commission export (F3): the CSV comes from the server, keeps its columns, and the attempt is in the export history",
+   "ok": true,
+   "detail": "commission-2026-10-01-2026-10-30.csv · Oct 30, 2026, 3:21 PM Commission Succeeded Pat Owner 2 | Oct 30, 2026, 3:21 PM Commission Requested Pat Owner —",
+   "ms": 567
+  },
+  {
+   "step": "team performance: scores read \"x.x / 5\" with their samples (never \"5%\"); Unrated has its own bar and filters the directory",
+   "ok": true,
+   "detail": "overall 4.5 / 5 · 4 reviews · services 10; unrated 8; top: 1 VV Vishal verma 5.0 / 5 1low sample",
+   "ms": 2518
+  },
+  {
+   "step": "team performance: search by phone; Vishal opens Performance Details with score, sample and rank; Esc closes",
+   "ok": true,
+   "detail": "Score 5.0 / 5 · 1 review · low sample All time 5.0 / 5 · 1 review Rank #1 of 3 rated Completed services 1 · last Oct 27, 2026, 3:18 PM Score source Average of v",
+   "ms": 2140
+  },
+  {
+   "step": "composite score (F5): a separate 0–100 panel in comparison mode; insufficient evidence says so (never 0); Top Performers says it ranks by the 0–5 rating",
+   "ok": true,
+   "detail": "6 technicians compared; details: Insufficient Data – Composite Score Not Available · Verified customer satisfaction (40%) Verified reviews only (rating 1–5 for this technician, not hidden, not spam): average ÷ 5 × 100. Needs at least 5. 40% — 1 (needs 5) Not enough evidence, Service completion reliability (30%) Tech Queue offers: service done ÷ (done + declined + expired). Customer cancellations and no-shows are excluded. Needs at least 10. 30% — 5 (needs 10) Not enough evidence, On-time service starts (20%) Appointments with a planned start, the guest's arrival and the actual start: started within the 10-minute grace. A late guest or a missing time is excluded. Needs at least 10. 20% — 0 (needs 10) Not enough evidence, Verified service correction rate (10%) Substantiated, technician-attributable rework ÷ completed services. A refund or an unreviewed complaint alone never counts. No evidence source is recorded yet. 10% — 0 (needs 20) Not supported yet",
+   "ms": 2041
+  },
+  {
+   "step": "date shift (F4): one Friday only — 10:00–18:00 saved with the calendar, baseline unchanged, conflicts listed, a stale second save refused",
+   "ok": true,
+   "detail": "2026-11-06: 10:00 AM – 6:00 PM · baseline \"No weekly row — follows store hours\" · stale save refused, typed value kept, reload shows 11:00",
+   "ms": 4751
+  },
+  {
+   "step": "the three new overlays fit every target window (1920×945 · 1536×729 · 1440×765 · 1366×633): inside the viewport, no sideways scroll, 44px actions",
+   "ok": true,
+   "detail": "review@1920 · composite@1920 · date-shift@1920 · review@1536 · composite@1536 · date-shift@1536 · review@1440 · composite@1440 · date-shift@1440 · review@1366 · composite@1366 · date-shift@1366",
+   "ms": 28649
+  },
+  {
+   "step": "team management: the eight KPIs are the server's, Commission says Earned (Paid from payouts), Open Positions not configured",
+   "ok": true,
+   "detail": "team 18 · active today 5 (scheduled 5, clocked 4) · on shift 3 · 4.5/5 (4) · services 10 · earned 25880 paid 0",
+   "ms": 1673
+  },
+  {
+   "step": "team management: one server search (phone in 3 formats, a mapped service), unique role tabs, newest first, numbered pages",
+   "ok": true,
+   "detail": "phone ×3 → Vishal; tabs {\"all\":18,\"stylists\":0,\"nail_technicians\":14,\"receptionists\":2,\"assistants\":0,\"managers\":2}; page 2 8 rows of 18",
+   "ms": 4985
+  },
+  {
+   "step": "team management: the profile overlay opens the right person with every tab; Close returns to the same search",
+   "ok": true,
+   "detail": "tabs: access, schedule, attendance, skills, work, performance, earnings, training, history, overview",
+   "ms": 7641
+  },
+  {
+   "step": "team management: Find Qualified & Available Staff — ranked openings with reasons, desired time, Open Booking (the booking engine's two responses are STUBBED here: the harness stand-in has no query builder for it)",
+   "ok": true,
+   "detail": "2 ranked with reasons; 15:00 → Vishal 3:30 PM, Kevin 4:00 PM; 17:00 → explained empty; Open Booking → /booking/new?technicianId=e1970000-0000-4000-8000-00000000000b&date=2026-10-30&t",
+   "ms": 3445
+  },
+  {
+   "step": "team management: Edit Selected Date Shift from the header opens the one-date editor for the chosen technician",
+   "ok": true,
+   "detail": "Shift for one date — Vishal verma",
+   "ms": 1653
+  },
+  {
+   "step": "team management: Data Accuracy Alerts — Run Check persists data-backed alerts; Assign → Investigate → Resolve with history; nothing it points at moves",
+   "ok": true,
+   "detail": "8 new alerts · 0 already known · history: Resolved ← Investigation ← Assigned ← Detected",
+   "ms": 3699
+  },
+  {
+   "step": "team management: Export downloads the server-built CSV and the attempt is in the audited export history",
+   "ok": true,
+   "detail": "team-members-2026-10-01-2026-10-30.csv · succeeded ← requested · rows 18",
+   "ms": 142
+  },
+  {
+   "step": "team management: the profile overlay, the finder and the alert review fit every target window (inside the viewport, no sideways scroll, 44px actions)",
+   "ok": true,
+   "detail": "profile:schedule@1920 · profile:attendance@1920 · profile:work@1920 · finder@1920 · alert@1920 · profile:schedule@1536 · profile:attendance@1536 · profile:work@1536 · finder@1536 · alert@1536 · profile:schedule@1440 · profile:attendance@1440 · profile:work@1440 · finder@1440 · alert@1440 · profile:schedule@1366 · profile:attendance@1366 · profile:work@1366 · finder@1366 · alert@1366",
+   "ms": 27014
+  },
+  {
+   "step": "team management round 2: + Add Team Member — technician fields only for providers; a receptionist is created, the list returns with ?created and has her on page 1 as a receptionist",
+   "ok": true,
+   "detail": "receptionist EMP-BCBBF96E · created=fd12f8ed-524b-45fd-a5ec-d406bcbbf96e",
+   "ms": 2571
+  },
+  {
+   "step": "team management round 2: an optional birthday (month/day, no year) — private by default: the owner sees it, the front desk does not",
+   "ok": true,
+   "detail": "11/4 private · owner sees 1 · front desk sees 0",
+   "ms": 4296
+  },
+  {
+   "step": "team management round 2: training — a course in the catalog, assigned → in progress → completed, a certification stays \"awaiting verification\"; the panel counts are real",
+   "ok": true,
+   "detail": "completed 1 · in progress 0 · certifications unverified 1",
+   "ms": 5059
+  },
+  {
+   "step": "team management round 2: the data check lists the new detector types and shows each finding's category, first / last seen",
+   "ok": true,
+   "detail": "first Oct 30, 2026, 3:22 PM · last Oct 30, 2026, 3:22 PM · 1 checks",
+   "ms": 3249
+  },
+  {
+   "step": "team management: the front desk sees no money, cannot export (audited denial) and has no alerts button",
+   "ok": true,
+   "detail": "You do not have permission to export the team list. The attempt was recorded.\n✕",
+   "ms": 3289
+  },
+  {
+   "step": "team management TM-01: Customer search by phone (3 formats) and name finds every technician of the shared ticket + the booked one, with why; no PII in the URL",
+   "ok": true,
+   "detail": "4 staff × 4 queries; Vishal \"VV Vishal vermaEMP-0000000B · Nail Technician Available Performed the service + Primary te…\"; matched customers 1 (tenant B's twin excluded)",
+   "ms": 6480
+  },
+  {
+   "step": "team management TM-02: 10/20/50 per page + filters in the URL; filter change → page 1; Back / Forward / refresh restore; a bad page clamps",
+   "ok": true,
+   "detail": "sizes 10/20/50 = server rows; page 2 → role filter → page 1; Back/Forward/refresh restored; page=999 → page 2",
+   "ms": 11283
+  },
+  {
+   "step": "team management TM-03: + Add Team Member → create → back on page 1, newest first, highlighted; filters that hide her offer View / Clear; a retried create makes no second row",
+   "ok": true,
+   "detail": "Nora Quinn first + highlighted (created=b5168fca…); hidden by Receptionist → View / Clear; retried create → 1 row",
+   "ms": 4439
+  },
+  {
+   "step": "team management TM-04: preferred technician — a booked overlap names the appointment and offers qualified alternatives; a valid preferred comes first (engine responses STUBBED, the checks are the REAL SQL)",
+   "ok": true,
+   "detail": "11:15 → \"Overlaps a booked appointment: 11:00 AM–11:45 AM (#e2970000)\"; alternatives Kevin Dang, Lan Vo; 10:00 → preferred first; Open Booking hand-off, nothing booked",
+   "ms": 4602
+  },
+  {
+   "step": "team management TM-05: a live event refreshes the directory in place (page size, open overlay kept); a stale version is ignored; stream down → Reconnecting/Polling, never Live; back → Live + reconcile",
+   "ok": true,
+   "detail": "event → On Break in place (overlay open, size=20, search kept); stale rv ignored; down → reconnecting → \"Polling every 30 s\"; back → Live + reconcile refetch",
+   "ms": 11878
+  },
+  {
+   "step": "phone: four independent statuses straight from the server readiness (connected ≠ registered)",
+   "ok": true,
+   "detail": "account connected AC…a1a1 · sender assigned +18565550123 · A2P pending (brand approved, campaign pending, provider-confirmed) · outbound blocked [A2P_PENDING]",
+   "ms": 1575
+  },
+  {
+   "step": "phone: Run health check records an authenticated provider check; Verify readiness follows it",
+   "ok": true,
+   "detail": "checks 1 → 2; verify Ready (salon toggle on + Verify probe passed)",
+   "ms": 604
+  },
+  {
+   "step": "phone: the checklist deep-links into the setup section that fixes it",
+   "ok": true,
+   "detail": "/tenant/communications/messaging-setup#registration",
+   "ms": 622
+  },
+  {
+   "step": "setup: an API key SID without its secret cannot be saved (a SID is not a secret)",
+   "ok": true,
+   "detail": "blocked in the form (the server refuses it too — pgtest)",
+   "ms": 1643
+  },
+  {
+   "step": "setup: a wrong auth token is refused by Twilio and the working setup is untouched",
+   "ok": true,
+   "detail": "Twilio did not accept these credentials. Nothing was changed.",
+   "ms": 638
+  },
+  {
+   "step": "setup: search never buys; Review shows the provider price; Buy uses the server confirmation once",
+   "ok": true,
+   "detail": "1.15 USD per month (quoted by Twilio) · purchased once · the new sender is Unknown until checked",
+   "ms": 1212
+  },
+  {
+   "step": "setup: test SMS needs a confirmation, sends once, and reports Accepted — not Delivered",
+   "ok": true,
+   "detail": "Twilio accepted the message (…000002). It shows Delivered only after Twilio's delivery callback.",
+   "ms": 3352
+  },
+  {
+   "step": "PM-02 setup: the SIDs are masked everywhere; \"Show full SID\" is the audited reveal",
+   "ok": true,
+   "detail": "GET AC…a1a1 · page masked · reveal → full SID (audit rows 0 → 1)",
+   "ms": 3570
+  },
+  {
+   "step": "PM-03 setup: Refresh Status reads Twilio (read-only) and shows what it confirmed",
+   "ok": true,
+   "detail": "runs 1 → 2 (ok); brand approved / campaign pending, provider-confirmed; status callback URL Validhttps://api.pilot.test/webhooks/twilio/sms/status",
+   "ms": 599
+  },
+  {
+   "step": "PM-01 setup: a branch test shows and uses that branch’s effective configuration; another salon’s branch is refused",
+   "ok": true,
+   "detail": "Cherry Hill · This branch inherits the salon default · AC…a1a1 · row branch=Cherry Hill source=tenant_default ••a1a1 accepted · other salon's branch → 404 BRANCH_NOT_FOUND",
+   "ms": 4306
+  },
+  {
+   "step": "isolation + Vietnamese: the other salon never appears; the dashboard renders in VI",
+   "ok": true,
+   "detail": "Trung tâm Điện thoại & Tin nhắn",
+   "ms": 1679
+  },
+  {
+   "step": "setup: disconnect shows the impact and needs the typed word; then nothing is connected",
+   "ok": true,
+   "detail": "2 branch(es) inherit this setup and will stop texting through it: Cherry Hill, Voorhees Booking phone verification is on — new online bookings cannot be verifie",
+   "ms": 2127
+  },
+  {
+   "step": "ai usage: the four KPIs are the server summary; cards carry the server states (no false \"Trial\")",
+   "ok": true,
+   "detail": "15 packages / 4 active / 4 trials+pending / $265.00 (subscription_records) · 8 cards on this page · stored \"trialing\" past its end shows \"Trial expired\" + Upgrade",
+   "ms": 1633
+  },
+  {
+   "step": "ai usage: search, status and category filters cover the whole catalog; Clear resets to page 1",
+   "ok": true,
+   "detail": "\"receipt\" → ai_checkout_upsell_assistant, ai_ocr_receipt_scanner · Trial expired → ai_analytics_forecasting, ai_business_assistant · + Finance → 0 · cleared: Showing 1–8 of 15 · Page 1 of 2 ‹ Previo",
+   "ms": 4436
+  },
+  {
+   "step": "ai usage: one click on a card opens Details (also Enter); Escape closes it and keeps the page",
+   "ok": true,
+   "detail": "ai_fraud_money_protection: 6 tabs · Escape → focus back on the card · Enter opens · still Page 2 of 2",
+   "ms": 2810
+  },
+  {
+   "step": "ai usage: Start Trial needs a confirmation, writes one trial + event + audit; the card is then Trialing",
+   "ok": true,
+   "detail": "confirm: \"Start a 14-day free trial of AI Phone Call Assistant? Nothing is charged now. Af…\" → trialing, 1 event, 1 audit row; Details re-read: Trialing",
+   "ms": 2170
+  },
+  {
+   "step": "ai usage: Cancel shows the impact and confirms; afterwards no Cancel is offered",
+   "ok": true,
+   "detail": "\"Cancel AI Marketing Assistant (now Active)? It stops working right away for the whole salo…\" → cancelled; Cancel no longer offered",
+   "ms": 2285
+  },
+  {
+   "step": "ai usage: the 100 % alert is one line per package; Got it acknowledges 80/90/100 and the sidebar badge drops",
+   "ok": true,
+   "detail": "\"100% AI Checkout + Upsell Assistant: all 3,000 calls used — new requests are stopped until the perio\" · badge 6 → 3",
+   "ms": 1996
+  },
+  {
+   "step": "ai usage: the cost breakdown lists subscription prices (yearly ÷ 12), trials apart, past due flagged",
+   "ok": true,
+   "detail": "$206.00 · 4 lines · AI Booking Assistant, AI Customer Profile Assistant, AI Checkout + Upsell Assistant, AI Fraud / Money ProtectionPast due",
+   "ms": 1648
+  },
+  {
+   "step": "ai usage: Usage History — newest first, Failed filter, audited CSV with redacted references",
+   "ok": true,
+   "detail": "8 rows (first Oct 30, 9:18 AM) · Failed → 1 · CSV 15 rows, references masked · audit ai.usage.export.requested → ai.usage.export.succeeded",
+   "ms": 2567
+  },
+  {
+   "step": "ai usage: Disabled by admin offers no trial; a manager sees no costs and no Cancel",
+   "ok": true,
+   "detail": "voice: Disabled by admin → View Details · manager: cost Restricted, Cancel 0, billing restricted",
+   "ms": 3669
+  },
+  {
+   "step": "ai usage r2 (AI-01): Billing tab — Re-check invoices records the provider invoice: finalized $52, paid $0, due $52 (not $59 paid)",
+   "ok": true,
+   "detail": "before: \"Finalized invoiced amount No finalized invoice yet No invoic\" · \"Re-checked 2 invoice(s): 2 new, 0 updated, 0 unchanged. Nothing was ch\" · recurring $59.00 · finalized $52.00 · paid $0.00 · due $52.00 · 2nd re-check: 2 unchanged, 2 invoices (no duplicates)",
+   "ms": 3196
+  },
+  {
+   "step": "ai usage r2 (AI-01): the cost overview shows the same five figures from the server summary",
+   "ok": true,
+   "detail": "finalized $101.00 (2 invoices) · paid $49.00 · outstanding $52.00 · \"Estimate assumptions: subscription prices · yearly plans as a monthly …\"",
+   "ms": 1731
+  },
+  {
+   "step": "ai usage r2 (AI-02): Settings tab — Voorhees Off, Cherry Hill inherits; one subscription; On is not offered for an expired trial",
+   "ok": true,
+   "detail": "Voorhees Off — this branch · Cherry Hill On · 1 subscription row · history v1 · audit 1 · Business (trial expired): Off — not subscribed, \"On\" disabled",
+   "ms": 2707
+  },
+  {
+   "step": "setup health: opens on the stored nightly run; every Ready row carries a verification time",
+   "ok": true,
+   "detail": "overall action_required · 18 rows · \"Nightly check 2026-10-30 finished Oct 30, 3:18 PM\"",
+   "ms": 1474
+  },
+  {
+   "step": "setup health: Run Health Check stores a run; the screen counts match the server; CI / staging / touchscreen stay unverified",
+   "ok": true,
+   "detail": "overall action_required · {\"ready\":10,\"warning\":0,\"action_required\":1,\"pending_external\":4,\"unknown\":3,\"disabled\":0,\"error\":0} · release rows: pending_external/pending_external/pending_external",
+   "ms": 2260
+  },
+  {
+   "step": "setup health: a second run inside a minute is refused (rate limit) and says so",
+   "ok": true,
+   "detail": "A health check ran a moment ago. Try again in a minute.\n✕",
+   "ms": 1575
+  },
+  {
+   "step": "setup health: a guided action opens the fixing module; technical view shows the source",
+   "ok": true,
+   "detail": "Open registration → /tenant/communications/messaging-setup#registration",
+   "ms": 2054
+  },
+  {
+   "step": "setup health: alerts can be acknowledged and the row is stored per salon",
+   "ok": true,
+   "detail": "2 alerts stored (ai.entitlement:high:acked, booking.verification:high)",
+   "ms": 1924
+  }
+ ],
+ "errors": [
+  "ApiError: not in the harness\n    at Object.mapError (http://127.0.0.1:4496/app.js:61577:313)\n    at posHttp (http://127.0.0.1:4496/app.js:60539:29)"
+ ],
+ "unhandled": [
+  {
+   "route": "POST /auth/session-activity",
+   "n": 66
+  },
+  {
+   "route": "GET /pos/salon-promotions/state",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/technicians/qualified",
+   "n": 3
+  },
+  {
+   "route": "GET /pos/technician-profile-changes",
+   "n": 2
+  },
+  {
+   "route": "GET /pos/technicians/time-off/pending",
+   "n": 2
+  },
+  {
+   "route": "GET /pos/technician-profile-policy",
+   "n": 2
+  },
+  {
+   "route": "GET /pos/technicians/:id/profile",
+   "n": 2
+  },
+  {
+   "route": "GET /pos/technicians/:id/ratings",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/technicians/:id",
+   "n": 1
+  },
+  {
+   "route": "GET /pos/commission-report/state",
+   "n": 6
+  },
+  {
+   "route": "GET /pos/booking/technicians",
+   "n": 4
+  },
+  {
+   "route": "GET /pos/booking/drafts",
+   "n": 2
+  },
+  {
+   "route": "GET /pos/booking/state",
+   "n": 2
+  },
+  {
+   "route": "GET /tenant/ai/receptionist/overview",
+   "n": 2
+  }
+ ]
+}

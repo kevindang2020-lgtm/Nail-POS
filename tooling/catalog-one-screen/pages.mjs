@@ -1,0 +1,93 @@
+// pages.mjs — what measure.mjs certifies on each page: the container, the mode (`fit` = no page scroll; `scroll` = vertical page
+// scroll allowed by the spec, never sideways), the modules that must be painted on arrival, and (scroll pages) what must be
+// reachable by scrolling.
+export const PAGES = {
+  'inventory': { url: '/tenant/inventory', container: '.work.inv2', mode: 'scroll',
+    modules: ['refresh', 'scan-receipt', 'add-product', 'kpi-products', 'kpi-bottles', 'kpi-open', 'kpi-unopened', 'kpi-low', 'kpi-out', 'kpi-expiring', 'kpi-pending', 'kpi-value', 'tab-products', 'tab-reports', 'tab-purchaseOrders', 'tab-transfers', 'tab-counts', 'tab-catalog', 'tab-recipes', 'tab-alerts'],
+    below: ['@pager'] },
+  'inventory-pos': { url: '/tenant/inventory?tab=purchaseOrders', container: '.work.inv2', mode: 'scroll', modules: ['refresh', 'kpi-products', 'tab-purchaseOrders'], below: ['@pager'] },
+  'inventory-reports': { url: '/tenant/inventory?tab=reports', container: '.work.inv2', mode: 'scroll', modules: ['refresh', 'tab-reports'], below: ['@pager'] },
+  'products': { url: '/tenant/products', container: '.work.prd', mode: 'scroll',
+    modules: ['refresh', 'new-product', 'kpi-products', 'kpi-reorder', 'kpi-retail', 'search', 'life-active', 'life-archived', 'status', 'brand', 'category', 'supplier', 'sort', 'preset-all', 'preset-custom', 'date-basis'],
+    below: ['@pager'] },
+  'suppliers': { url: '/tenant/inventory/vendors', container: '.work.fit', mode: 'fit',
+    modules: ['refresh', 'add-supplier', 'kpi-suppliers', 'kpi-active-pos', 'kpi-open-value', 'kpi-brands', 'work-directory', 'work-orders', 'search', 'status', 'brand', 'sort', 'directory'] },
+  'suppliers-orders': { url: '/tenant/inventory/vendors', tab: 'work-orders', container: '.work.fit', mode: 'fit',
+    modules: ['add-supplier', 'kpi-suppliers', 'work-orders', 'po-search', 'po-status', 'unlinked', 'preset-all', 'preset-custom', 'date-basis', 'orders'] },
+  // Membership Overview (served by the customers harness: SERVER=tooling/customers-one-screen/live-server.mjs)
+  'memberships': { url: '/tenant/customers/memberships', container: '.work.mos', mode: 'scroll',
+    modules: ['refresh', 'create-plan', 'kpi-total', 'kpi-active', 'kpi-revenue', 'kpi-expiring', 'kpi-canceled', 'search', 'preset-all', 'preset-custom', 'tab-overview', 'tab-members', 'tab-plans', 'tab-payments', 'tab-benefits', 'tab-activity'],
+    below: ['panel-plans', 'panel-members', 'panel-activity', 'membership-quick', 'ana-revenue', 'ana-status', 'ana-plans', 'ana-services'] },
+  'memberships-members': { url: '/tenant/customers/memberships?tab=members', container: '.work.mos', mode: 'scroll', modules: ['search', 'date-basis', 'tab-members', 'member-filter', 'member-plan'], below: ['?member-row', '@pager', 'membership-quick'] },
+  'memberships-payments': { url: '/tenant/customers/memberships?tab=payments', container: '.work.mos', mode: 'scroll', modules: ['search', 'date-basis', 'pay-totals', 'pay-status'], below: ['?payment-row', '@pager', 'membership-quick'] },
+  'memberships-benefits': { url: '/tenant/customers/memberships?tab=benefits', container: '.work.mos', mode: 'scroll', modules: ['search', 'tab-benefits'], below: ['?redemption-row', '@pager', 'benefit-defs', 'membership-quick'] },
+  'memberships-activity': { url: '/tenant/customers/memberships?tab=activity', container: '.work.mos', mode: 'scroll', modules: ['search', 'act-type'], below: ['?activity-row', '@pager', 'membership-quick'] },
+  'memberships-plans': { url: '/tenant/customers/memberships?tab=plans', container: '.work.mos', mode: 'scroll', modules: ['search', 'plan-status'], below: ['?plan-row', '@pager', 'membership-quick'] },
+  // Services → Discounts (the catalog harness: extra.mjs seeds the coupons and the ledger)
+  'discounts': { url: '/tenant/services/discounts', container: '.work.dsc', mode: 'scroll',
+    modules: ['refresh', 'manage-promotions', 'kpi-active', 'kpi-percent', 'kpi-fixed', 'kpi-redemptions', 'kpi-expiring', 'explain', 'search', 'status', 'type', 'preset-all', 'preset-custom', 'date-basis', 'tab-discounts', 'tab-redemptions', 'tab-performance'],
+    below: ['?discount-row', '@pager'] },
+  'discounts-redemptions': { url: '/tenant/services/discounts?tab=redemptions', container: '.work.dsc', mode: 'scroll', modules: ['search', 'red-state', 'tab-redemptions', 'red-totals'], below: ['?redemption-row', '@pager'] },
+  'discounts-performance': { url: '/tenant/services/discounts?tab=performance', container: '.work.dsc', mode: 'scroll', modules: ['search', 'tab-performance', 'perf-totals'], below: ['?perf-row', '@pager'] },
+  // Services & Products · Service Pricing · Service Categories · Add-Ons (Oct 30 2026; extra.mjs reshapes the catalog to the photo's)
+  'services': { url: '/services', container: '.work.svp', mode: 'scroll',
+    modules: ['refresh', 'export', 'import', 'add-new', 'search', 'scope', 'preset-month', 'preset-custom', 'date-basis', 'kpi-total-services', 'kpi-active-products', 'kpi-online', 'kpi-low-stock', 'kpi-avg-price', 'kpi-retail-today', 'kpi-margin', 'kpi-top-category', 'kpi-packages', 'kpi-add-on-conversion'],
+    below: ['service-menu', 'product-catalog', '?service-row', 'bundles', 'insights', 'inventory-alerts', 'detail', 'branches', 'chart-service-mix', 'chart-retail-mix', 'chart-category', 'chart-conversion', 'quick-actions'] },
+  'service-pricing': { url: '/tenant/services/pricing', container: '.work.cgp', mode: 'scroll',
+    modules: ['refresh', 'export', 'kpi-services', 'kpi-average', 'kpi-lowest', 'kpi-highest', 'search', 'category', 'status', 'online', 'sort', 'preset-all', 'preset-custom', 'date-basis', 'tab-list', 'tab-history', 'tab-customers'],
+    below: ['?pricing-row', '@pager', 'pricing-rule'] },
+  'service-pricing-history': { url: '/tenant/services/pricing?tab=history', container: '.work.cgp', mode: 'scroll', modules: ['search', 'field', 'tab-history'], below: ['price-history'] },
+  'service-categories': { url: '/tenant/services/categories', container: '.work.cgc', mode: 'scroll',
+    modules: ['refresh', 'new-category', 'kpi-categories', 'kpi-total-services', 'chart', 'breakdown'],
+    below: ['?review', 'search', 'mode', 'status', 'sort', 'preset-all', 'date-basis', '?category-row', '@pager'] },
+  'service-add-ons': { url: '/tenant/services/add-ons', container: '.work.cga', mode: 'scroll',
+    modules: ['refresh', 'new-add-on', 'kpi-total', 'kpi-active', 'kpi-services', 'kpi-avg', 'search', 'status', 'taxable', 'sort', 'preset-all', 'date-basis', 'tab-catalog', 'tab-usage'],
+    below: ['?add-on-row', '@pager', 'link-services', 'link-categories', 'link-pricing'] },
+  // AI Center → AI Usage & Limits (Oct 30 2026; aiusage-extra.mjs — fixtures, no billing). `fit`: the overview never scrolls.
+  'ai-usage': { url: '/tenant/ai/usage', container: '.work.aiu', mode: 'fit',
+    modules: ['aiu-refresh', 'aiu-open-history', 'aiu-kpi-total', 'aiu-kpi-active', 'aiu-kpi-trials', 'aiu-kpi-cost', 'aiu-search', 'aiu-status-all', 'aiu-status-available', 'aiu-category', 'aiu-sort', 'aiu-card', '@pager'] },
+  // Management → Setup Health (Four-Module Completion Guide §13; health-extra.mjs). `fit`: the page never scrolls; the area grid scrolls inside.
+  'setup-health': { url: '/tenant/management/setup-health', container: '.work.hs', mode: 'fit',
+    modules: ['hs-run', 'hs-history', 'hs-summary', 'hs-overall', 'hs-nightly', '?hs-area-twilio'] },   // the area grid scrolls inside itself; lower areas are reached by scrolling it
+  // Communications → SMS Inbox (Communications guide Oct 30 2026; inbox-extra.mjs). `scroll`: the guide lets the page scroll
+  // vertically; the thread list and the conversation scroll on their own. The thread variant opens the first conversation:
+  // its header, composer, Send and Book must then be reachable (scrolled into view) and painted on top.
+  'sms-inbox': { url: '/tenant/communications/sms', container: '.work.ci-page', mode: 'scroll',
+    modules: ['live-indicator', 'ci-refresh', 'ci-new', 'kpi-sent-today', 'kpi-open', 'kpi-unread', 'kpi-total', 'ci-search', 'ci-channel', 'ci-status', 'ci-sort', 'ci-preset'],
+    below: ['ci-list', '?ci-thread', 'ci-pager', 'ci-size', 'ci-conv', 'ci-mix', 'ci-quick', 'qa-new', 'qa-reports'] },
+  'sms-inbox-thread': { url: '/tenant/communications/sms', container: '.work.ci-page', mode: 'scroll', tab: 'ci-thread',
+    modules: ['live-indicator', 'kpi-open', 'ci-search'],
+    below: ['ci-conv-head', 'ci-book', 'tab-timeline', 'ci-msgs', 'ci-composer', 'ci-text', 'ci-send', 'ci-templates', 'ci-pager'] },
+  // Communications → Phone & Caller ID / Text Messaging Setup (Oct 30 2026; comms-extra.mjs — a fake Twilio)
+  'phone': { url: '/tenant/communications/phone', container: '.work.pmc', mode: 'scroll',
+    modules: ['pm-run-check', 'pm-card-number', 'pm-card-twilio', 'pm-card-registration', 'pm-card-readiness'],
+    below: ['pm-step-connect', 'pm-step-test', '?pm-next', 'pm-verify-state', 'pm-voice', '?pm-check-rows', 'pm-diagnostics', 'pm-number-detail'] },
+  'messaging-setup': { url: '/tenant/communications/messaging-setup', container: '.work.pmc', mode: 'scroll',
+    modules: ['pm-run-check', 'pm-summary'],
+    below: ['twilio-status', 'pm-save-bar', '?verify-status', 'pm-a2p-state', 'pm-inbound-state', 'pm-related', 'pm-audit'] },
+  // Team → Technicians (Oct 30 2026; team-extra.mjs seeds the photo's three technicians beside the harness team)
+  'technicians': { url: '/technicians', container: '.work.tcs', mode: 'scroll',
+    modules: ['refresh', 'open-finder', 'open-mapping', 'new-technician', 'search', 'preset-today', 'kpi-team', 'kpi-active', 'kpi-on-shift', 'kpi-rating', 'kpi-services', 'kpi-commission', 'kpi-approvals', 'kpi-positions'],
+    below: ['insights', 'attendance', 'performance', 'top-performers', 'directory', '?tech-row', 'missing-mapping', 'status', 'shift', '@pager', 'productivity', 'shift-overview', 'birthdays', 'certifications', 'cta-profile', 'cta-finder', 'cta-mapping', 'activity'] },
+  // Team > All Team Members > Team Management (Oct 30 2026): the guide's 4 + 4 KPIs, the full-width directory and the eight panels
+  'team-members': { url: '/tenant/team/members', container: '.work.tmm', mode: 'scroll',
+    modules: ['live-indicator', 'mode-staff', 'mode-customer', 'refresh', 'open-finder', 'open-date-shift', 'open-alerts', 'export', 'add-member', 'search', 'preset-today', 'preset-month', 'preset-custom', 'date-basis',
+      'kpi-team', 'kpi-active-today', 'kpi-on-shift', 'kpi-rating', 'kpi-services', 'kpi-commission', 'kpi-approvals', 'kpi-positions'],
+    below: ['tab-all', 'tab-managers', 'role', 'status', 'shift', 'department', 'more-filters', 'clear-all', 'page-size', '?member-row', '@pager', 'attendance', 'performance', 'top-performers', 'shift-overview',
+      'productivity', 'approvals', 'birthdays', 'training'] },
+  'team-performance': { url: '/tenant/team/performance', container: '.work.tps', mode: 'scroll',
+    modules: ['refresh', 'reports', 'export', 'search', 'sort', 'preset-today', 'preset-month', 'kpi-overall', 'kpi-avg', 'kpi-services'],
+    below: ['distribution', 'top-performers', 'ranked-by', '?top-row', 'composite-comparison', '?composite-row', 'directory', '?dir-row', '@pager'] },
+  'commission': { url: '/tenant/reports/commission', container: '.work.cms', mode: 'scroll',
+    modules: ['refresh', 'export', 'full-view', 'search', 'sort', 'preset-today', 'preset-week', 'preset-month', 'preset-year', 'preset-custom', 'kpi-techs', 'kpi-revenue', 'kpi-commission', 'kpi-tips', 'kpi-payout'],
+    below: ['payout-table', '?payout-row', 'note', 'reconciliation', 'payout-history', 'discrepancies', 'run-check', 'last-run', 'cr-tab-open_all', 'cr-type', 'export-history'] },
+  'tech-queue': { url: '/tech-queue', container: '.work.tqs', mode: 'scroll',
+    modules: ['mode-live', 'mode-history', 'service-filter', 'refresh', 'search', 'kpi-active', 'kpi-available', 'kpi-inProgress', 'kpi-waiting', 'kpi-avgTurn', 'kpi-utilization', 'kpi-laborRevenue', 'kpi-upsell'],
+    below: ['live-queue', 'ai-insights', 'workload', 'assigned-tickets', 'tab-live', 'tab-done_today', 'waiting-guests', 'tech-performance', 'available-technicians', 'e1', 'e2', 'e3', 'e4', 'quick-actions'] },
+  'live-schedule': { url: '/technicians/schedule', container: '.work.lts', mode: 'scroll',
+    modules: ['refresh', 'open-finder', 'open-booking', 'open-queue', 'search', 'day', 'prev-day', 'next-day', 'view-day', 'view-week', 'status', 'skill', 'kpi-working', 'kpi-available', 'kpi-in-service', 'kpi-break', 'kpi-booked', 'kpi-utilization'],
+    below: ['board', 'selected', 'next-available', 'conflict-warning', 'activity', '?activity-row', '@pager'] },
+  'tech-appointments': { url: '/tech-appointments', container: '.work.tas', mode: 'scroll',
+    modules: ['refresh', 'open-finder', 'booking-board', 'new-appointment', 'day', 'prev-day', 'next-day', 'kpi-today', 'kpi-booked', 'kpi-checkedIn', 'kpi-inService', 'kpi-completed', 'kpi-cancelled', 'kpi-noShows', 'kpi-online', 'kpi-conflicts'],
+    below: ['tech-cards', 'ta-lane-pager', 'board', 'view-day', 'view-week', 'search', 'status', 'source', 'appointments-list', '?appt-row', '@pager', 'conflict-warning', 'next-available', 'history'] },
+};

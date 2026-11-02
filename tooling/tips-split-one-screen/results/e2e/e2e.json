@@ -1,0 +1,148 @@
+{
+  "label": "e2e",
+  "at": "2026-10-29T22:42:50.127Z",
+  "results": [
+    {
+      "step": "tips: the five KPIs are the server aggregates (This Month, collection date) — never a page sum",
+      "ok": true,
+      "detail": "total 102760 = card 76960 + cash 25800 · avg 14.2% ($19.39 per tipped ticket) · no-tip 19 of 72",
+      "ms": 138
+    },
+    {
+      "step": "tips: the photo — #1052 collected $9.60; the distribution shows Vishal $9.60 (not $19.20) and the strip flags the doubled payroll snapshot",
+      "ok": true,
+      "detail": "#1052 collected 960 · allocated 960 · snapshot 1920 (2 rows) flagged · Vishal month allocation 16360 · chart row \"Vishal verma\t$123.60\t$40.00\t$163.60\t$163.60 pending\"",
+      "ms": 148
+    },
+    {
+      "step": "tips: reconciliation — collected + corrections = allocated + unallocated; payout never adds a tip",
+      "ok": true,
+      "detail": "collected 102760 + manual 0 = allocated 102760 + unallocated 0 · paid out 0 · pending 102760 · reversed -800",
+      "ms": 68
+    },
+    {
+      "step": "tips: a 3-technician split allocates exactly the one collected tip; the split-tender ticket is one tip",
+      "ok": true,
+      "detail": "#1203: $20 tip · 3 tenders · allocations Anna Lee 1200, Chi Pham 800",
+      "ms": 97
+    },
+    {
+      "step": "tips: search by customer phone (any format), technician, ticket #, payment ref — whole dataset, one row per tip",
+      "ok": true,
+      "detail": "phone → 3 · technician → 9 · #1052 → 1 · RR500093 → 1 · no-results + Clear filters",
+      "ms": 3036
+    },
+    {
+      "step": "tips: Custom Range month calendar applies an inclusive range (salon-local), refetches, resets to Page 1",
+      "ok": true,
+      "detail": "range 2026-10-09…2026-10-28 · total 69760 · Showing 1–9 of 49 · Page 1 of 6 ‹ Previous 1 2 3 4",
+      "ms": 1714
+    },
+    {
+      "step": "tips: date field switches to Checkout date; status filter \"No tip\" and \"Snapshot mismatch\" open the right lists",
+      "ok": true,
+      "detail": "no-tip rows 9 · mismatch → #1052",
+      "ms": 2433
+    },
+    {
+      "step": "tips: pagination — Page 1 newest, Page 2 older, Previous / Next states, no duplicates",
+      "ok": true,
+      "detail": "page 1 9 rows · page 2 9 rows · Showing 10–18 of 72 · Page 2 of 8 ‹ Previous 1 2 3 4 … 8 Nex",
+      "ms": 1546
+    },
+    {
+      "step": "tips: detail separates collected / allocated / snapshot / corrections / payout; a paid-period tip reads Paid out",
+      "ok": true,
+      "detail": "#1052: allocated $9.60 · snapshot $19.20 flagged · #1207: payout paid (Sep 9 – Sep 23), 2 correction entries",
+      "ms": 1863
+    },
+    {
+      "step": "tips: a correction is a reasoned re-allocation (Σ must equal the tip) — posted deltas, snapshot untouched, audited",
+      "ok": true,
+      "detail": "allocations → 1000/1000 · corrections -200, 200 · snapshot Σ 2000 · audit ticket.tip_allocation_set",
+      "ms": 2469
+    },
+    {
+      "step": "tips: Technician Distribution and Adjustments & Reports views; export is permission-gated and masked",
+      "ok": true,
+      "detail": "distribution ok · adjustments list ok · export tips.csv (87 lines, contact masked)",
+      "ms": 1181
+    },
+    {
+      "step": "technician: the tips report is refused (403 → honest permission state, no fake $0)",
+      "ok": true,
+      "detail": "permission state · export 403",
+      "ms": 1579
+    },
+    {
+      "step": "split: KPIs count each ticket once; a declined attempt is never a tender; Outstanding is the partial ticket's balance",
+      "ok": true,
+      "detail": "split 10 (db 19) · total 130200 · avg 2.1 · completed 9 · outstanding 5000",
+      "ms": 108
+    },
+    {
+      "step": "split: one row per ticket; the $150 three-way ticket opens its breakdown IN PLACE — Total · Cash · Card · Gift Card · Remaining $0",
+      "ok": true,
+      "detail": " Total ticket $150.00 Cash $50.00 Credit Card $60.00 Gift Card $40.00 Remaining balance $0.00 3 confirmed of 3 attempt(s) incl. $20.00 tip View every tender",
+      "ms": 1054
+    },
+    {
+      "step": "split: the $120 partial ticket — $70 confirmed, the $50 decline shown as a failed attempt, $50 due, Finish at Checkout",
+      "ok": true,
+      "detail": "row: ▸ #1204 Front Desk Ngoc Johnson (856) 555-1037 Oct 29, 3:52 PM Credit Card 1 failed attempt(s) 1 $120.00 $70.00 $50.00 P",
+      "ms": 1838
+    },
+    {
+      "step": "split: the $30 refund is attributed to its card tender (refundable $30 left), the ticket reads Partially refunded",
+      "ok": true,
+      "detail": "#1205: paid 10000 · refunded 3000 on card (3000 still refundable) · partially_refunded",
+      "ms": 91
+    },
+    {
+      "step": "split: gift-card tender is linked to its ledger entry — the code never appears; search by phone / ticket / ref / amount",
+      "ok": true,
+      "detail": "gift ••••4471 → ledger cc931207… · phone 2 · #1101 1 · RR505022 1 · $40.00 ≥ 2",
+      "ms": 2466
+    },
+    {
+      "step": "split: method combination, register and sort filters; Custom Range; pagination",
+      "ok": true,
+      "detail": "three+ 1 · gift+card 2 · total_desc ok · Showing 1–7 of 7 · Page 1 of 1 ‹ Previous 1 Next ›",
+      "ms": 2765
+    },
+    {
+      "step": "split: export is one row per ticket with the breakdown columns, masked; a read failure is an error, not $0",
+      "ok": true,
+      "detail": "export split-payments.csv · failure → honest error state",
+      "ms": 1548
+    },
+    {
+      "step": "empty salon: honest empty states on both pages",
+      "ok": true,
+      "detail": "No tips in this period | No split-tender tickets match",
+      "ms": 3039
+    },
+    {
+      "step": "vietnamese: both pages switch language",
+      "ok": true,
+      "detail": "TỔNG TIỀN TIP · PHIẾU THANH TOÁN NHIỀU PHẦN",
+      "ms": 3290
+    },
+    {
+      "step": "no page errors across the run",
+      "ok": true,
+      "detail": "none",
+      "ms": 70
+    }
+  ],
+  "errors": [],
+  "unhandled": [
+    {
+      "route": "POST /auth/session-activity",
+      "n": 2
+    }
+  ],
+  "simulated": [
+    "SIMULATED tip-allocation 90810000-0000-4000-8000-000000000092 (2 corrections)"
+  ]
+}

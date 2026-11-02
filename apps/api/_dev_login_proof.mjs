@@ -1,0 +1,23 @@
+const { chromium } = await import('playwright');
+const APPURL = 'http://127.0.0.1:5173';
+const b = await chromium.launch();
+const pg = await b.newPage();
+const apiCalls = [];
+pg.on('response', r => { const u = r.url(); if (u.includes('/auth/') || u.includes('/pos/')) apiCalls.push(`${r.status()} ${u.replace(APPURL,'')}`); });
+await pg.goto(APPURL + '/', { waitUntil: 'domcontentloaded' });
+await pg.waitForTimeout(800);
+// staff login: salon code + email + password
+await pg.getByPlaceholder('Salon code').fill('LUXE');
+await pg.getByPlaceholder('Email or phone').fill('frontdesk@luxenails.test');
+await pg.getByPlaceholder('Password').fill('FrontDesk123!');
+await pg.getByRole('button', { name: /sign in/i }).click();
+await pg.waitForTimeout(2500);
+const bodyText = (await pg.innerText('body')).replace(/\s+/g,' ').slice(0, 140);
+const loginCall = apiCalls.find(c => c.includes('/auth/login')) || '(no /auth/login seen)';
+const authedGet = apiCalls.find(c => c.startsWith('200') && c.includes('/pos/')) || '(no authed /pos GET seen)';
+console.log('POST /auth/login via vite proxy :', loginCall);
+console.log('authenticated /pos GET (proxied):', authedGet);
+console.log('rendered shell text            :', JSON.stringify(bodyText));
+const ok = loginCall.startsWith('200') && /Overview|Dashboard|Check-?In|POS|FRONT DESK/i.test(bodyText);
+console.log(ok ? '✅ DEV-PATH LOGIN WORKS — vite proxy + API:3000 + seeded Luxe account' : '⚠️ see output above');
+await b.close();

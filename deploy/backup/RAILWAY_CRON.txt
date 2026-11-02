@@ -1,0 +1,22 @@
+Railway cron for the off-site backup + report — BUILD_PLAN Phase 14 C (Constitution 11 §114–117)
+
+Use this OR deploy/backup/github-backup-workflow.yml, not both.
+
+1. Railway → the project → New → Empty service, named "backup-cron". Source: this repository (same as the API).
+2. Settings → Deploy:
+     Custom start command:  bash deploy/backup/backup-and-report.sh
+     Cron schedule:         17 7 * * *        (daily 07:17 UTC)
+     Restart policy:        Never             (a cron job runs once and exits)
+   The image needs pg_dump 16 and the aws CLI: set the service's Nixpacks packages (NIXPACKS_PKGS) to
+   "postgresql_16 awscli2", or build from a Dockerfile that installs postgresql-client-16 and awscli.
+3. Settings → Variables (Railway stores them encrypted; never commit them):
+     BACKUP_DATABASE_URL  = ${{Postgres.DATABASE_URL}}   (or a read-only role's URL)
+     BACKUP_S3_URI        = s3://<bucket>/aipowersalon
+     BACKUP_S3_ENDPOINT   = <endpoint for R2 / B2 / MinIO; omit for AWS>
+     AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY / AWS_DEFAULT_REGION = a key that can only PUT into that bucket
+     BACKUP_REPORT_URL    = https://<api domain>/api/v1/internal/backups/report
+     BACKUP_REPORT_TOKEN  = ${{api.BACKUP_REPORT_TOKEN}}
+     BACKUP_PITR_ENABLED  = true|false
+4. After the first successful run, set BACKUP_REPORTS_REQUIRED=1 on the API service: from then on, 26 hours without a
+   successful report raises a high alert and pages the on-call chain (Super Admin → On-call & Monitoring).
+5. Check: Super Admin → On-call & Monitoring → Backups shows the run; the backups component is HEALTHY.

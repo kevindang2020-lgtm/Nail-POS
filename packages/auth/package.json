@@ -1,0 +1,26 @@
+{
+  "name": "@aipowersalon/auth",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Authentication primitives (Constitution 13 \u00a770): credential hashing (scrypt, self-describing, rehash detection) and the password policy (strength rule, temporary-password generator). Framework-free, no business roles. Sessions, MFA, passkeys and the auth services stay in apps/api until each is extracted with its own measurement.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/security": "*",
+    "kysely": "^0.27.4"
+  }
+}
