@@ -189,4 +189,8 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.unknownDetail": "Hiện chưa kiểm tra được — không giả định gì. Mã tham chiếu {trace}.",
   "aiset.version": "Phiên bản",
   "aiset.why": "Lý do:",
+  "aiset.preset.today": "Hôm nay",
+  "aiset.preset.week": "Tuần này",
+  "aiset.preset.month": "Tháng này",
+  "aiset.preset.year": "Năm nay",
 };

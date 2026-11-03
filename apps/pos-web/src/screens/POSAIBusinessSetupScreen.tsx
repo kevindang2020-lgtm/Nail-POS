@@ -23,7 +23,7 @@ const STATUS_TONE: Record<string, string> = { READY: 'ok', NEEDS_SETUP: 'warn', 
 const FAQ_STATUS = ['draft', 'pending_review', 'approved', 'needs_review', 'archived'] as const;
 const SCOPES = ['faqs', 'services', 'technicians', 'tests', 'history'] as const;
 const SAMPLES = ['What time are you open Sunday?', 'How much is a pedicure?', 'Who can perform nail art?', 'Can I book tomorrow at 3 PM?', 'What is your cancellation policy?'];
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };   // the device's day, not UTC
 
 function StatusBadge({ s }: { s: string }) { return <span className={`ais-badge ais-${STATUS_TONE[s] ?? 'muted'}`} data-testid={`ais-status-${s}`}>{t(`aiset.status.${s}`)}</span>; }
 function FaqBadge({ s }: { s: string }) { return <span className={`ais-badge ais-faq-${s}`}>{t(`aiset.faq.${s}`)}</span>; }
@@ -45,6 +45,15 @@ function ReadinessRow({ c, onGo, onRetry }: { c: any; onGo: (r: string) => void;
         : c.action ? <button className="btn ghost" onClick={() => onGo(c.action.route)}>{t('aiset.edit')}</button> : null}
     </div>
   );
+}
+
+function presetDays(p: 'today' | 'week' | 'month' | 'year', today: string): { from: string; to: string } {
+  const d = new Date(today + 'T12:00:00Z');
+  const ymd = (x: Date) => x.toISOString().slice(0, 10);
+  if (p === 'today') return { from: today, to: today };
+  if (p === 'week') { const m = new Date(d); m.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7)); return { from: ymd(m), to: today }; }
+  if (p === 'month') return { from: today.slice(0, 8) + '01', to: today };
+  return { from: today.slice(0, 5) + '01-01', to: today };
 }
 
 export function POSAIBusinessSetupScreen() {
@@ -144,6 +153,11 @@ export function POSAIBusinessSetupScreen() {
             <select aria-label={t('aiset.sort')} value={f.sort} onChange={(e) => setFilter({ sort: e.target.value })}>{['newest', 'oldest', 'updated', 'approved', 'question_az'].map((s) => <option key={s} value={s}>{t(`aiset.sortBy.${s}`)}</option>)}</select>
           </> : null}
           {scope === 'history' ? <select aria-label={t('aiset.dateBasis')} value={f.basis} onChange={(e) => setFilter({ basis: e.target.value })}>{['faq_change', 'approval', 'preview'].map((b) => <option key={b} value={b}>{t(`aiset.hbasis.${b}`)}</option>)}</select> : null}
+          {scope === 'faqs' || scope === 'history' ? (['today', 'week', 'month', 'year'] as const).map((p) => {
+            // Business Setup guide: Today / This week / This month / This year beside the From–To calendar (salon device day)
+            const r = presetDays(p, today());
+            return <button key={p} className={'btn ghost' + (f.from === r.from && f.to === r.to ? ' on' : '')} data-testid={`ais-preset-${p}`} onClick={() => setFilter({ from: r.from, to: r.to })}>{t('aiset.preset.' + p)}</button>;
+          }) : null}
           {scope === 'faqs' || scope === 'history' ? <button className="btn ghost" data-testid="ais-range" onClick={() => setCal(!cal)}>{f.from ? `${f.from} → ${f.to}` : t('aiset.dateRange')}</button> : null}
           <select aria-label={t('aiset.pageSize')} value={f.pageSize} onChange={(e) => setFilter({ pageSize: Number(e.target.value) })} data-testid="ais-size">{[10, 20, 50].map((n) => <option key={n} value={n}>{t('aiset.perPage', { n })}</option>)}</select>
           <button className="btn ghost" onClick={clearAll}>{t('aiset.clearAll')}</button>

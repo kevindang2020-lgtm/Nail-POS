@@ -189,4 +189,8 @@ export const AISETUP_EN: Record<string, string> = {
   "aiset.unknownDetail": "Could not be checked right now — nothing was assumed. Reference {trace}.",
   "aiset.version": "Version",
   "aiset.why": "Why:",
+  "aiset.preset.today": "Today",
+  "aiset.preset.week": "This week",
+  "aiset.preset.month": "This month",
+  "aiset.preset.year": "This year",
 };

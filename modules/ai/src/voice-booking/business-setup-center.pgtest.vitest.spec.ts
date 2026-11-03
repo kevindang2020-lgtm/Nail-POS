@@ -234,3 +234,13 @@ describe('preview, health, assistant (SYNC01–06, SEC04)', () => {
     expect(a.suggestions.find((s) => s.key === 'faq_gap:cancellation')!.action.draftQuestion).toBe('What is your cancellation policy?');
   });
 });
+
+describe('Nov 3 audit — FAQ request keys', () => {
+  it('a key used on one FAQ is refused on another (it used to answer "replayed" and silently do nothing)', async () => {
+    const a = await c.createFaq(own, { question: 'Key test A?', answer: 'A.', category: 'General', idempotencyKey: key() });
+    const b = await c.createFaq(own, { question: 'Key test B?', answer: 'B.', category: 'General', idempotencyKey: key() });
+    const k = key();
+    await c.faqAction(own, a.id, { action: 'archive', expectedVersion: (await c.faq(own, a.id)).version, reason: 'Test', idempotencyKey: k });
+    await expect(c.faqAction(own, b.id, { action: 'archive', expectedVersion: (await c.faq(own, b.id)).version, reason: 'Test', idempotencyKey: k })).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
+  });
+});

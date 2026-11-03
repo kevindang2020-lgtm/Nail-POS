@@ -138,6 +138,7 @@ export class BusinessSetupCenter {
     const b = this.branch(ctx);
     return (await sql<Row>`select t.id, t.full_name,
         exists (select 1 from technician_services ts join services s on s.id = ts.service_id and s.tenant_id = t.tenant_id and s.status = 'active'
+                  and (${b}::uuid is null or s.branch_id = ${b})   -- qualified for a service THIS branch sells (Nov 3 audit)
                 where ts.tenant_id = t.tenant_id and ts.technician_id = t.id) as qualified,
         exists (select 1 from technician_schedules sc where sc.tenant_id = t.tenant_id and sc.technician_id = t.id and sc.is_working) as scheduled
       from technicians t where t.tenant_id = ${ctx.tenantId} and t.is_active = true and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)
@@ -376,7 +377,9 @@ export class BusinessSetupCenter {
     return this.db.transaction().execute(async (trx) => {
       const f: Row = (await sql<Row>`select id, branch_id, status, version, approved_revision_id, draft_revision_id from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and id = ${id} for update`.execute(trx)).rows[0];
       if (!f) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
-      const replay: Row = (await sql<Row>`select id from ai_receptionist_faq_events where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      const replay: Row = (await sql<Row>`select id, faq_id from ai_receptionist_faq_events where tenant_id = ${ctx.tenantId} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      // the same key on ANOTHER FAQ is a different request, refused — it used to answer "replayed" and silently do nothing (Nov 3 audit)
+      if (replay && String(replay.faq_id) !== String(id)) throw new BusinessSetupError('This request key was already used for a different FAQ.', 'IDEMPOTENCY_KEY_REUSED', 422);
       if (replay) return { id, status: f.status, version: N(f.version), replayed: true };
       if (N(f.version) !== expected) throw new BusinessSetupError('This FAQ was changed by someone else. Reload and try again.', 'AI_FAQ_VERSION_CONFLICT', 409, { currentVersion: N(f.version) });
       const from = String(f.status);
