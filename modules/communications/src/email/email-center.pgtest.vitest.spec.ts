@@ -158,6 +158,11 @@ describe('the center — honest KPIs, health, history, isolation (guide §07, §
   it('KPIs: Delivered is a number only because verified events exist; definitions name the bases', async () => {
     const s = await center.summary(owner, { preset: 'today' });
     expect(s.delivered).toBe(1); expect(s.accepted).toBeGreaterThanOrEqual(1); expect(s.bounced).toBe(1);
+    // Nov 3 audit: a bounced email is in the delivery-rate denominator (was dropped: 1 delivered + 1 bounced read as a higher rate)
+    const withEvents = Number((await q(sql`select count(*)::int as n from notifications n where n.tenant_id = ${T} and n.channel = 'email' and exists (select 1 from notification_delivery_events e where e.notification_id = n.id)`))[0].n);
+    expect(s.deliveryRate).toBe(Math.round((1 / withEvents) * 1000) / 10);
+    const bouncedRow = (await q(sql`select id from notifications where tenant_id = ${T} and channel = 'email' and status = 'failed' and failure_reason ~ '^(bounced|blocked)' limit 1`))[0];
+    expect((await center.detail(owner, bouncedRow.id)).canResend).toBe(false);
     const noEvents = await new EmailCenter(db, cn, svc, mail, new KyselyEmailPolicy(db, ENV), { ...ENV, SENDGRID_WEBHOOK_VERIFICATION_KEY: '' }).summary(owner, { preset: 'today' });
     expect(noEvents.delivered).toBeNull(); expect(noEvents.deliveryRate).toBeNull();
   });

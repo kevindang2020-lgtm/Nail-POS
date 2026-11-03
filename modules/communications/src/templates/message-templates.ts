@@ -606,7 +606,7 @@ export class MessageTemplatesCenter {
     if (term) {
       const digits = term.replace(/\D/g, '');
       const phoneLike = /^[\d\s()+.\-]+$/.test(term) && digits.length >= 4;
-      conds.push(sql`(${phoneLike ? sql`right(regexp_replace(coalesce(c.normalized_phone, ''), '\D', '', 'g'), ${Math.min(10, digits.length)}) = right(${digits}, ${Math.min(10, digits.length)})` : sql`false`}
+      conds.push(sql`(${phoneLike ? sql`right(regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g'), ${Math.min(10, digits.length)}) = right(${digits}, ${Math.min(10, digits.length)})` : sql`false`}
         or c.full_name ilike ${like(term)} or lower(coalesce(c.email, '')) = ${term.toLowerCase()} or t.name ilike ${like(term)} or pu.template_id = ${term}
         or n.provider_id = ${term} ${UUID.test(term) ? sql`or pu.id = ${term}::uuid or pu.customer_id = ${term}::uuid or pu.appointment_id = ${term}::uuid or pu.message_id = ${term}::uuid or pu.notification_id = ${term}::uuid or pu.thread_id = ${term}::uuid` : sql``})`);
       // a customer phone / name / email lookup over message history is sensitive: who searched, when, never the raw term

@@ -89,7 +89,7 @@ export class EmailCenter {
         count(*) filter (where n.status = 'failed' and coalesce(n.failure_reason, '') !~ '^(bounced|blocked)')::int as failed, count(*) filter (where n.status = 'failed' and n.failure_reason ~ '^(bounced|blocked)')::int as bounced,
         count(*) filter (where n.status = 'blocked')::int as blocked, count(*) filter (where n.status = 'simulated')::int as simulated,
         count(distinct n.source_id) filter (where n.source_type = 'appointment')::int as booking, count(*) filter (where n.purpose = 'receipt')::int as receipts,
-        count(*) filter (where n.status in ('sent', 'delivered') and exists (select 1 from notification_delivery_events e where e.tenant_id = n.tenant_id and e.notification_id = n.id))::int as with_events
+        count(*) filter (where (n.status in ('sent', 'delivered') or (n.status = 'failed' and n.failure_reason ~ '^(bounced|blocked)')) and exists (select 1 from notification_delivery_events e where e.tenant_id = n.tenant_id and e.notification_id = n.id))::int as with_events
       from notifications n where n.tenant_id = ${T}::uuid and n.channel = 'email' and ${this.inP(sql`n.created_at`, p)}`.execute(this.db)).rows[0] ?? {};
     const everEvents = N((await sql<any>`select count(*)::int as n from notification_delivery_events e join notifications n on n.id = e.notification_id and n.tenant_id = e.tenant_id
         where e.tenant_id = ${T}::uuid and n.channel = 'email'`.execute(this.db)).rows[0]?.n) > 0;
@@ -102,7 +102,7 @@ export class EmailCenter {
       accepted: N(r.accepted), delivered: eventsKnown ? N(r.delivered) : null, failed: N(r.failed), bounced: N(r.bounced), blocked: N(r.blocked), simulated: N(r.simulated),
       bookingConfirmations: N(r.booking), receipts: N(r.receipts),
       deliveryRate: eventsKnown && N(r.with_events) > 0 ? Math.round((N(r.delivered) / N(r.with_events)) * 1000) / 10 : null,
-      deliveryRateDenominator: eventsKnown ? 'accepted emails that have at least one verified provider event (accepted emails with no event yet are excluded as Unknown)' : null,
+      deliveryRateDenominator: eventsKnown ? 'emails the provider accepted that have at least one verified provider event — delivered, still pending, or bounced / blocked by the receiver (emails with no event yet are excluded as Unknown)' : null,
       definitions: { accepted: 'handed to the provider and accepted (not proof of delivery)', delivered: 'verified provider "delivered" events only', bounced: 'provider bounce / block events', blocked: 'never handed to the provider (setting off, suppressed, not configured, invalid address)' },
     };
   }
@@ -226,7 +226,8 @@ export class EmailCenter {
       providerReference: r.provider_id ?? null, deliveredAt: iso(r.delivered_at),
       events: events.map((e: any) => ({ status: e.provider_status, code: e.error_code ?? null, applied: !!e.applied, verified: !!e.signature_verified, at: iso(e.received_at) })),
       attempts: attempts.map((a: any) => ({ id: String(a.id), at: iso(a.created_at), status: emailDisplayStatus(a), reason: a.failure_reason ?? null, isThis: String(a.id) === String(id) })),
-      canResend: full && r.status === 'failed',
+      // a bounce / receiver block is never retried (the resend path refuses it), so the button is not offered
+      canResend: full && r.status === 'failed' && !/^(bounced|blocked)/.test(String(r.failure_reason ?? '')),
     };
   }
 

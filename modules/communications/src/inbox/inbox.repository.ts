@@ -100,8 +100,8 @@ export class InboxRepository {
     parts.push(sql`t.customer_name ILIKE ${like}`, sql`c.full_name ILIKE ${like}`, sql`t.customer_contact ILIKE ${like}`);
     if (s.digits) {
       const dl = likeOf(s.digits);
-      parts.push(sql`right(regexp_replace(COALESCE(t.contact_normalized, t.customer_contact, ''), '\D', '', 'g'), 10) LIKE ${dl}`);
-      parts.push(sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) LIKE ${dl}`);
+      parts.push(sql`right(regexp_replace(COALESCE(t.contact_normalized, t.customer_contact, ''), '[^0-9]', '', 'g'), 10) LIKE ${dl}`);
+      parts.push(sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) LIKE ${dl}`);
     }
     if (s.email) parts.push(sql`lower(c.email) LIKE ${likeOf(s.email)}`);
     if (s.uuid) {
@@ -264,7 +264,7 @@ export class InboxRepository {
     let candidates = 0;
     if (!t.customer_id && t.customer_match === 'ambiguous' && contact) {
       const cr: Row | undefined = (await sql<Row>`SELECT count(*)::int AS n FROM customers c WHERE c.tenant_id = ${tid} AND c.archived_at IS NULL
-        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) = ${last10(contact)}`.execute(this.db)).rows[0];
+        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) = ${last10(contact)}`.execute(this.db)).rows[0];
       candidates = n(cr?.n);
     }
     const br: Row | null | undefined = t.branch_id ? (await sql<Row>`SELECT b.name FROM branches b WHERE b.tenant_id = ${tid} AND b.id = ${t.branch_id}::uuid`.execute(this.db)).rows[0] : null;
@@ -321,7 +321,7 @@ export class InboxRepository {
     }
     if (want.has('call') && (cid || contact)) {
       // AI Receptionist / phone calls — the summary only while the transcript is retained (not deleted, not expired)
-      const who = cid ? sql`ce.customer_id = ${cid}::uuid` : sql`right(regexp_replace(COALESCE(ce.caller_phone, ''), '\D', '', 'g'), 10) = ${last10(contact)}`;
+      const who = cid ? sql`ce.customer_id = ${cid}::uuid` : sql`right(regexp_replace(COALESCE(ce.caller_phone, ''), '[^0-9]', '', 'g'), 10) = ${last10(contact)}`;
       const r = await sql<Row>`SELECT ce.id, ce.direction, ce.status, ce.ai_handled, ce.intent, ce.outcome, ce.duration_seconds, ce.provider_call_id, ce.recovered_appointment_id, COALESCE(ce.started_at, ce.created_at) AS at,
           (SELECT ti.quick_summary FROM call_transcript_intelligence ti JOIN call_transcripts ct ON ct.tenant_id = ${tid} AND ct.id = ti.transcript_id
              WHERE ti.tenant_id = ${tid} AND ti.provider_call_id = ce.provider_call_id AND ct.deleted_at IS NULL AND (ct.retention_expires_at IS NULL OR ct.retention_expires_at > now())
@@ -457,7 +457,7 @@ export class InboxRepository {
     let match = customer ? 'exact_phone' : 'none'; let name: string | null = customer?.full_name ?? null; let cid: string | null = customer ? String(customer.id) : null;
     if (!customer) {
       const m = (await sql<Row>`SELECT c.id, c.full_name FROM customers c WHERE c.tenant_id = ${tid} AND c.archived_at IS NULL
-        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) = ${last10(phone)} LIMIT 2`.execute(this.db)).rows as Row[];
+        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) = ${last10(phone)} LIMIT 2`.execute(this.db)).rows as Row[];
       if (m.length === 1) { match = 'exact_phone'; cid = String(m[0].id); name = m[0].full_name ?? null; } else if (m.length > 1) match = 'ambiguous';
     }
     const branch = ctx.branchId && isUuid(ctx.branchId) && (!this.allowed(ctx) || this.allowed(ctx)!.includes(ctx.branchId)) ? ctx.branchId : null;
@@ -490,7 +490,7 @@ export class InboxRepository {
     const d = q.replace(/\D/g, ''); const digits = /^[\d\s()+.\-]+$/.test(q) && d.length >= 4 ? d.slice(-10) : null;
     const r = await sql<Row>`SELECT c.id, c.full_name, c.normalized_phone, c.phone_display, c.email FROM customers c
       WHERE c.tenant_id = ${ctx.tenantId} AND c.archived_at IS NULL AND (
-        ${digits ? sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) LIKE ${likeOf(digits)}` : sql`c.full_name ILIKE ${likeOf(q)} OR lower(c.email) LIKE ${likeOf(q.toLowerCase())}`}
+        ${digits ? sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) LIKE ${likeOf(digits)}` : sql`c.full_name ILIKE ${likeOf(q)} OR lower(c.email) LIKE ${likeOf(q.toLowerCase())}`}
         ${isUuid(q) ? sql`OR c.id = ${q}::uuid` : sql``})
       ORDER BY c.full_name ASC NULLS LAST, c.id ASC LIMIT 10`.execute(this.db);
     return (r.rows as Row[]).map((x) => ({ id: String(x.id), name: x.full_name ?? null, phoneMasked: maskPhone(x.normalized_phone ?? x.phone_display), hasPhone: !!normalizePhone(x.normalized_phone ?? x.phone_display), emailMasked: maskEmail(x.email) }));
@@ -519,7 +519,7 @@ export async function recordInboundSms(db: Db, i: InboundRecord): Promise<Inboun
     let match = t?.customer_match ?? 'none';
     if (!t || !t.customer_id) {
       const m = (await sql<Row>`SELECT c.id, c.full_name FROM customers c WHERE c.tenant_id = ${i.tenantId} AND c.archived_at IS NULL
-        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '\D', '', 'g'), 10) = ${last10(contact)} LIMIT 2`.execute(trx)).rows as Row[];
+        AND right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) = ${last10(contact)} LIMIT 2`.execute(trx)).rows as Row[];
       const cid = m.length === 1 ? String(m[0].id) : null; const name = m.length === 1 ? (m[0].full_name ?? null) : null;
       match = m.length === 1 ? 'exact_phone' : m.length > 1 ? 'ambiguous' : 'none';
       if (!t) {

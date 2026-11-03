@@ -43,8 +43,8 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 1. ✅ FIXED — Appointment reminders skip `confirmed` appointments (only `booked` eligible).
 2. ✅ FIXED — Loyalty: token purchase reversed/charged back after funding leaves tokens spendable; books check accepts it. (Also: a locked/suspended wallet is reported as a policy block, not "Buy Tokens".)
 3. ✅ FIXED — Loyalty: refunds of tip/tax take back points (refund total vs eligible cents); a refund settled before the earning is no longer earned on.
-4. `'\D'` inside `sql` templates becomes `D` — phone search in phone center, inbox, templates.
-5. Email Delivery Rate drops bounced (failed) emails from the denominator.
+4. ✅ FIXED — `'\D'` inside `sql` templates becomes `D` — phone search in phone center, inbox, templates.
+5. ✅ FIXED — Email Delivery Rate drops bounced (failed) emails from the denominator.
 6. AI Business "why did revenue change" compares this month with this month.
 7. Business alerts: pause/delete not branch-scoped; evaluate uses caller's branch; min sample 0 allowed.
 8. Receptionist settings: failed read then save overwrites stored settings with defaults.

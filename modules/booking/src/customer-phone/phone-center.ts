@@ -235,9 +235,9 @@ export class PhoneCenter {
       const ors: any[] = [sql`c.full_name ilike ${like(q)}`, sql`c.first_name ilike ${like(q)}`, sql`c.last_name ilike ${like(q)}`, sql`c.email ilike ${like(q)}`, sql`u.full_name ilike ${like(q)}`];
       if (UUID.test(q)) ors.push(sql`s.id = ${q}::uuid`, sql`s.customer_id = ${q}::uuid`);
       if (digits.length >= 4) {
-        ors.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '\D', '', 'g') like ${like(digits)}`);
-        ors.push(sql`regexp_replace(coalesce(op.normalized_phone, ''), '\D', '', 'g') like ${like(digits)}`);
-        ors.push(sql`regexp_replace(coalesce(s.proposed_phone, ''), '\D', '', 'g') like ${like(digits)}`);
+        ors.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${like(digits)}`);
+        ors.push(sql`regexp_replace(coalesce(op.normalized_phone, ''), '[^0-9]', '', 'g') like ${like(digits)}`);
+        ors.push(sql`regexp_replace(coalesce(s.proposed_phone, ''), '[^0-9]', '', 'g') like ${like(digits)}`);
       }
       parts.push(sql`(${sql.join(ors, sql` or `)})`);
     }
@@ -415,7 +415,7 @@ export class PhoneCenter {
       const digits = q.replace(/\D/g, '');
       ors.push(sql`c.full_name ilike ${like(q)}`, sql`c.email ilike ${like(q)}`);
       if (UUID.test(q)) ors.push(sql`c.id = ${q}::uuid`);
-      if (digits.length >= 4) ors.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '\D', '', 'g') like ${like(digits)}`);
+      if (digits.length >= 4) ors.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${like(digits)}`);
     }
     const extra = sql`and coalesce(c.status, 'active') <> 'archived' ${ors.length ? sql` and (${sql.join(ors, sql` or `)})` : sql``}`;
     const total = n((await sql<any>`select count(*)::int as n from customers c where c.tenant_id = ${ctx.tenantId} ${extra}`.execute(this.db)).rows[0]?.n);
