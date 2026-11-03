@@ -1852,6 +1852,7 @@ GET /tenant/ai/usage-screen/history  realm=staff  auth=session  domain=ai  perm=
 GET /tenant/ai/usage-screen/history/export  realm=staff  auth=session  domain=ai  perm=ai.use  async=pos.ai-usage.history-export  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/ai/usage-screen/packages  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/ai/usage-screen/packages/{code}  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/ai/usage-screen/reconcile  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/ai/usage-screen/summary  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/ai/workflows/runs/summary  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
 GET /tenant/help/articles  realm=staff  auth=session  domain=support  perm=help.view

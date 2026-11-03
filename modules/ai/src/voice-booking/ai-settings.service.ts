@@ -7,6 +7,7 @@ export type { ReceptionistSettings };   // owned by packages/api-contracts (Cons
 import { Injectable, Inject } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
+import { withCode } from '@aipowersalon/api-contracts';
 
 export interface SettingsCtx { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
 
@@ -49,7 +50,7 @@ export function validatePatch(patch: Record<string, unknown>): Partial<Reception
       case 'recordingConsentMessage':
         if (typeof v !== 'string') throw new SettingsValidationError('recordingConsentMessage must be text.');
         // never silently cut (the body schema allows 2000; this used to keep only the first 500)
-        if (v.length > 2000) throw new SettingsValidationError('recordingConsentMessage must be 2000 characters or fewer.');
+        if (v.length > 2000) throw withCode(new SettingsValidationError('recordingConsentMessage must be 2000 characters or fewer.'), 'FIELD_TOO_LONG', { field: 'recordingConsentMessage', max: 2000 });
         out.recordingConsentMessage = v; break;
       default:
         throw new SettingsValidationError(`Unknown setting: ${k}`);
