@@ -201,8 +201,8 @@ export class CampaignCenter {
       from campaigns c
       left join snap on snap.campaign_id = c.id left join led on led.campaign_id = c.id left join conv on conv.campaign_id = c.id left join red on red.campaign_id = c.id
       left join deals d on d.id = c.deal_id and d.tenant_id = c.tenant_id
-      left join users u on u.id = c.created_by
-      left join users a on a.id = c.approved_by_user_id
+      left join users u on u.id = c.created_by and u.tenant_id = c.tenant_id
+      left join users a on a.id = c.approved_by_user_id and a.tenant_id = c.tenant_id
       where c.tenant_id = ${T} and ${this.branchW(ctx)} and ${where}
       order by ${order} limit ${limit} offset ${offset}`.execute(this.db)).rows;
   }
@@ -241,7 +241,7 @@ export class CampaignCenter {
       conds.push(UUID.test(text) ? sql`(c.id = ${text}::uuid or c.deal_id = ${text}::uuid)`
         : sql`(c.name ilike ${p} or c.offer ilike ${p} or c.goal ilike ${p} or c.audience_label ilike ${p} or c.id::text ilike ${p}
               or exists (select 1 from deals d2 where d2.id = c.deal_id and d2.tenant_id = c.tenant_id and d2.title ilike ${p})
-              or exists (select 1 from users u2 where u2.id = c.created_by and u2.full_name ilike ${p}))`);
+              or exists (select 1 from users u2 where u2.id = c.created_by and u2.tenant_id = c.tenant_id and u2.full_name ilike ${p}))`);
     }
     const where = conds.reduce((a, x) => sql`${a} and ${x}`, sql`true`);
     const total = N((await sql<any>`select count(*)::int as n from campaigns c where c.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${where}`.execute(this.db)).rows[0]?.n);
@@ -433,7 +433,7 @@ export class CampaignCenter {
   async audit(ctx: CampaignsContext, id: string) {
     this.need(ctx, 'pos.marketing.view');
     await this.one(ctx, id);
-    const rows = (await sql<any>`select e.occurred_at, e.action, e.summary, e.actor_role, u.full_name as actor_name, e.metadata from audit_events e left join users u on u.id = e.actor_user_id
+    const rows = (await sql<any>`select e.occurred_at, e.action, e.summary, e.actor_role, u.full_name as actor_name, e.metadata from audit_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id
         where e.tenant_id = ${ctx.tenantId} and e.resource_type = 'campaign' and e.resource_id = ${id} order by e.occurred_at desc, e.id desc limit 100`.execute(this.db)).rows;
     return { items: rows.map((x) => ({ at: iso(x.occurred_at), action: x.action, summary: x.summary ?? null, actor: x.actor_name ?? x.actor_role ?? 'system' })) };
   }
