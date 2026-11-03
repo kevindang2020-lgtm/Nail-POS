@@ -9,7 +9,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A2 | AI Business Alerts (newer) | /tenant/ai/business/alerts | BUILT (core) — edit / duplicate / per-rule history, quarter & year, failed evaluations recorded, archive; incidents, scheduler and notifications listed as not built in docs/ai/AI_BUSINESS_REPORTS_AND_ALERTS.md |
 | A3 | AI Branch Comparison | /tenant/ai/business/branches | BUILT (core) — see docs/ai/AI_BRANCH_COMPARISON.md (health checker, fair scorecard, AI explanation not built) |
 | A4 | AI Business Assistant | /tenant/ai/business | BUILT (core) — see docs/ai/AI_BUSINESS_ASSISTANT.md (stored conversation history, extra ranges, record search not built) |
-| A5 | AI Scheduling Optimizer | /tenant/ai/scheduling-optimizer | AUDITED |
+| A5 | AI Scheduling Optimizer | /tenant/ai/scheduling-optimizer | BUILT (gaps) — Yesterday / Last 7 presets, health checks branch-scoped in salon time, per-branch runs, device-day fallback; technician full-day overlay and neighbour preview still open (owner decision in SCHEDULING_OPTIMIZER.md) |
 | A6 | AI Queue | /tenant/ai/queue | AUDITED |
 | A7 | AI Booking Assistant | /tenant/ai/booking | AUDITED |
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | AUDITED |

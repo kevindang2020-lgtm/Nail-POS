@@ -194,5 +194,7 @@ export const SCHEDCENTER_EN: Record<string, string> = {
   "scx.health.d.tenant_isolation.PASSED": "Every suggestion points at this salon's appointments and technicians.",
   "scx.health.d.tenant_isolation.FAILED": "A suggestion points at another salon's record. Report this immediately.",
   "scx.health.k.no_side_effects": "Nothing changed by this check",
-  "scx.health.d.no_side_effects.PASSED": "This page and this check never move an appointment, apply a change or send a message."
+  "scx.health.d.no_side_effects.PASSED": "This page and this check never move an appointment, apply a change or send a message.",
+  "scx.preset.yesterday": "Yesterday",
+  "scx.preset.last_7": "Last 7 days",
 };

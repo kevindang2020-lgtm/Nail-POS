@@ -194,5 +194,7 @@ export const SCHEDCENTER_VI: Record<string, string> = {
   "scx.health.d.tenant_isolation.PASSED": "Mọi đề xuất đều trỏ tới lịch hẹn và Thợ của tiệm này.",
   "scx.health.d.tenant_isolation.FAILED": "Có đề xuất trỏ tới dữ liệu của tiệm khác. Hãy báo ngay.",
   "scx.health.k.no_side_effects": "Kiểm tra không thay đổi gì",
-  "scx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không dời lịch hẹn, không áp dụng thay đổi, không gửi tin nhắn."
+  "scx.health.d.no_side_effects.PASSED": "Trang này và việc kiểm tra không dời lịch hẹn, không áp dụng thay đổi, không gửi tin nhắn.",
+  "scx.preset.yesterday": "Hôm qua",
+  "scx.preset.last_7": "7 ngày qua",
 };

@@ -140,6 +140,10 @@ describe('Scheduling optimizer — recommendation queue', () => {
     await rec({ status: 'rejected', daysAgo: 40, date: '2026-09-20' });
     expect((await sc.recommendations(ctx(), { preset: 'last_30' }) as any).total).toBe(6);
     expect((await sc.recommendations(ctx(), {}) as any).total).toBe(7);
+    // Scheduling Optimizer guide: Yesterday and Last 7 days are presets too (subsets of the last 30)
+    const y7: any = await sc.recommendations(ctx(), { preset: 'last_7' }); const y1: any = await sc.recommendations(ctx(), { preset: 'yesterday' });
+    expect(y7.total).toBeLessThanOrEqual(6); expect(y1.total).toBeLessThanOrEqual(y7.total);
+    expect(JSON.stringify(y7)).toContain('last_7');
     expect((await sc.recommendations(ctx(), { dateField: 'appointment', from: '2026-09-01', to: '2026-09-30' }) as any).total).toBe(1);
     expect(await code(sc.recommendations(ctx(), { from: '2026-10-05', to: '2026-10-01' }))).toBe('SC_INVALID_PERIOD');
     expect(await code(sc.recommendations(ctx(), { preset: 'custom', from: 'x' }))).toBe('SC_INVALID_PERIOD');

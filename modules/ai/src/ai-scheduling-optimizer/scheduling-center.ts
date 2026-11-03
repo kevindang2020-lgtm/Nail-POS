@@ -40,7 +40,7 @@ export class SchedulingCenterError extends Error {
 
 export const SC_GROUPS = ['all', 'open', 'customer', 'accepted', 'applied', 'failed', 'closed', 'stale'] as const;
 export const SC_DATE_FIELDS = ['created', 'appointment', 'decided', 'applied'] as const;
-export const SC_PRESETS = ['all', 'today', 'week', 'month', 'last_month', 'last_30', 'custom'] as const;
+export const SC_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'custom'] as const;
 export const SC_PAGE_SIZES = [10, 25, 50, 100] as const;
 export const SC_EVENT_KINDS = ['all', 'generated', 'staff', 'customer', 'apply'] as const;
 /** waiting on a person at the salon (review, or accepted and not applied yet) */
@@ -81,6 +81,8 @@ export class SchedulingCenter {
     let from: string; let to = today;
     switch (preset) {
       case 'today': from = today; break;
+      case 'yesterday': from = d(today, -1); to = from; break;
+      case 'last_7': from = d(today, -6); break;
       case 'week': from = d(today, -dow); break;
       case 'month': from = today.slice(0, 8) + '01'; break;
       case 'last_month': { const first = today.slice(0, 8) + '01'; to = d(first, -1); from = to.slice(0, 8) + '01'; break; }
@@ -290,12 +292,14 @@ export class SchedulingCenter {
     let readable = false; try { readable = await this.deps.switchReadable(); } catch { readable = false; }
     checks.push({ key: 'platform_switch_readable', state: readable ? 'PASSED' : 'FAILED' });
     // booking source: appointments the optimizer reads
-    const appts = N((await one(sql<Row>`select count(*)::int as n from pos_tech_appointments where tenant_id = ${T} and ${BS} and appt_date >= current_date - 30`)).n);
+    // the SALON's today (Nov 3 audit: current_date is the database's day) and the branch scope on every read
+    const salonToday = sql`(now() at time zone ${await this.tz(ctx)})::date`;
+    const appts = N((await one(sql<Row>`select count(*)::int as n from pos_tech_appointments where tenant_id = ${T} and ${BS} and appt_date >= ${salonToday} - 30`)).n);
     checks.push({ key: 'booking_source', state: appts ? 'PASSED' : 'INSUFFICIENT_DATA', count: appts });
     // shifts and time off: a time-off row whose end precedes its start would open a false slot
-    const badOff = N((await one(sql<Row>`select count(*)::int as n from technician_time_off where tenant_id = ${T} and status = 'approved' and ends_at <= starts_at`)).n);
+    const badOff = N((await one(sql<Row>`select count(*)::int as n from technician_time_off where tenant_id = ${T} and ${BS} and status = 'approved' and ends_at <= starts_at`)).n);
     checks.push({ key: 'time_off_valid', state: badOff ? 'FAILED' : 'PASSED', count: badOff });
-    const shifts = N((await one(sql<Row>`select count(*)::int as n from technician_shifts where tenant_id = ${T} and shift_date >= current_date - 7 and status <> 'cancelled'`)).n);
+    const shifts = N((await one(sql<Row>`select count(*)::int as n from technician_shifts where tenant_id = ${T} and ${BS} and shift_date >= ${salonToday} - 7 and status <> 'cancelled'`)).n);
     checks.push({ key: 'shift_data', state: shifts ? 'PASSED' : 'INSUFFICIENT_DATA', count: shifts, detail: { fallback: shifts ? null : 'weekly_schedule_or_store_hours' } });
     // the scan worker: a completed run in the last 36 h, failures in 7 days, jobs that failed or are lagging
     const runs = await one(sql<Row>`select max(completed_at) filter (where status = 'completed') as last_ok,

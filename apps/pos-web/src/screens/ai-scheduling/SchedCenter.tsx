@@ -19,7 +19,9 @@ const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Paramet
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 export const SC_GROUPS = ['all', 'open', 'customer', 'accepted', 'applied', 'failed', 'closed', 'stale'] as const;
 const DATE_FIELDS = ['created', 'appointment', 'decided', 'applied'] as const;
-const PRESETS = ['today', 'week', 'month', 'last_month', 'last_30'] as const;
+const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30'] as const;
+// the device's own day until the server says the salon's (Nov 3 audit: the UTC date marked tomorrow every US evening)
+const deviceToday = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const KINDS = ['all', 'generated', 'staff', 'customer', 'apply'] as const;
 const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAILED: 'bad', INSUFFICIENT_DATA: '', UNAVAILABLE: 'bad' };
 const MODULE_TONE: Record<string, 'ok' | 'warn' | 'bad' | undefined> = { enabled: 'ok', disabled: 'warn', emergency_stopped: 'bad', platform_stopped: 'bad', subscription_restricted: 'warn', subscription_unknown: 'warn', unknown: 'warn' };
@@ -129,7 +131,7 @@ export function SchedQueueCard({ tick, group: initialGroup = 'all', compact = fa
           {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`scx-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('scx.preset.' + p)}</button>)}
           <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="scx-preset-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('scx.preset.custom')}</button>
         </div>
-        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
           onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
         <p className="sub">{t('scx.dateNote.' + f.dateField)}</p>
       </> : null}
@@ -188,7 +190,7 @@ export function SchedEventTrailCard({ tick, onSelect }: { tick: number; onSelect
         {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} onClick={() => setPer({ preset: p })}>{t('scx.preset.' + p)}</button>)}
         <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('scx.preset.custom')}</button>
       </div>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
         onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
       {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('scx.loading')}</div> : !Array.isArray(list.items) || list.items.length === 0 ? <Empty title={t('scx.noEvents')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('scx.col.when')}</th><th>{t('scx.col.event')}</th><th>{t('scx.col.by')}</th><th>{t('scx.col.result')}</th><th /></tr></thead>
