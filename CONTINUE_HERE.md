@@ -808,7 +808,13 @@ overdue re-alert after due change / reopen, edit description + due), A14 Front D
 honest handoff / booking counts), A17 Reviews (KPIs follow filters), A18 Referrals (one tab per state), A19 Win-Back (email + accent +
 multi-word search), A20 Birthdays (KPIs follow range, Feb 29 order). Gates: the 6 known failures only (lint 14 hooks warnings,
 api-contract, strict-bodies-types, architecture mirrored types, pos-i18n) — silent-catch baseline re-ratcheted after review.
-Next: batch B — B1–B4 audit bugs in GUIDE_AUDIT_FINDINGS (segments % escape, coupon dollar parsing, atomic draft, ticket lookup
+Later the same evening: batch B audit bugs (B1–B4, B9, B11, B13, B15, B16, B17/18) and batch D audit bugs (D1 Team Performance,
+D2–D8 catalog / discounts, D6 membership renewal sweep, D9 inventory) fixed with tests — see the "Batch B progress" and "Batch D audit
+bugs" sections of docs/GUIDE_QUEUE_2026-11-03.md. D13–D19 money bugs were already fixed in 6a69195. A comment edit had broken
+ai-calendar-center.ts compile (fixed in 8e7cc03) — always run post.sh (it builds every module) before a bundle. Gates: the 5 known
+failures only (lint 14 hooks warnings, api-contract, strict-bodies-types, architecture mirrored types, pos-i18n).
+Next: B5–B8 audits + builds, then C1–C12 (audit inline), then the D guides' NOT-built lists.
+(Older note:) batch B — B1–B4 audit bugs in GUIDE_AUDIT_FINDINGS (segments % escape, coupon dollar parsing, atomic draft, ticket lookup
 branch), then B5–B8 (audit first), B9–B18; then batches C and D (not audited yet — audit inline).
 
 ## External — Kevin / his developer
