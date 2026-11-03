@@ -101,5 +101,6 @@ export const AIPLANS_VI: Record<string, string> = {
   "aic.reason": "Lý do: {r}",
   "aic.unavailable": "Không tải được trạng thái thực của từng trợ lý — các số bên dưới chỉ lấy từ hồ sơ lưu.",
   "aic.check.title": "Kiểm tra hệ thống AI",
-  "aic.check.close": "Đóng"
+  "aic.check.close": "Đóng",
+  "aic.openDetails": "Mở chi tiết {name}",
 };

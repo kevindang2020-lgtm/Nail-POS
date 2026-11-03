@@ -234,7 +234,7 @@ function PackageCard({ c, onOpen, onPrimary }: { c: Card; onOpen: () => void; on
 
 // ── Package Details (owner priority 3) ──────────────────────────────────────────────────────────────────────────────────
 const TABS = ['overview', 'subscription', 'usage', 'billing', 'history', 'settings'] as const;
-function DetailDialog({ code, onClose, onChanged, openHistory, openModule, openBilling }: { code: string; onClose: () => void; onChanged: (t: string) => void; openHistory: (code: string) => void;
+export function DetailDialog({ code, onClose, onChanged, openHistory, openModule, openBilling }: { code: string; onClose: () => void; onChanged: (t: string) => void; openHistory: (code: string) => void;
   openModule: (route: string) => void; openBilling: () => void }) {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<unknown>(null); const [tab, setTab] = useState<(typeof TABS)[number]>('overview');
   const [confirm, setConfirm] = useState<null | 'start_trial' | 'cancel'>(null); const [busy, setBusy] = useState(false); const [actErr, setActErr] = useState<string | null>(null);
@@ -337,7 +337,7 @@ function CostDialog({ cost, onClose, openPackage }: { cost: Extract<Summary['cos
 }
 
 // ── Usage History (§15) ────────────────────────────────────────────────────────────────────────────────────────────────
-function HistoryDialog({ initialCode, canExport, onClose }: { initialCode?: string; canExport: boolean; onClose: () => void }) {
+export function HistoryDialog({ initialCode, canExport, onClose }: { initialCode?: string; canExport: boolean; onClose: () => void }) {
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' }); const [basis, setBasis] = useState('occurred');
   const [code, setCode] = useState(initialCode ?? ''); const [status, setStatus] = useState('all'); const [page, setPage] = useState(1);
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<unknown>(null); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<string | null>(null);

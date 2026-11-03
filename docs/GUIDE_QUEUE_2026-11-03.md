@@ -5,7 +5,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 ## Batch A (10:33) — 20 AI guides
 | # | Guide | Route | Status |
 |---|---|---|---|
-| A1 | AI Center (refreshed) | /tenant/ai/command-center | PARTIAL — P0 counts reconciled with the AI gate, honest KPIs, Check AI System (7a1cec0, 9192e30); the 15-assistant directory redesign is still to do |
+| A1 | AI Center (refreshed) | /tenant/ai/command-center | BUILT — P0 counts reconciled with the AI gate, honest KPIs, Check AI System (7a1cec0, 9192e30); directory in 2–3 columns, every card opens the 6-tab details overlay, Usage & history opens the activity log in place |
 | A2 | AI Business Alerts (newer) | /tenant/ai/business/alerts | AUDITED |
 | A3 | AI Branch Comparison | /tenant/ai/business/branches | AUDITED |
 | A4 | AI Business Assistant | /tenant/ai/business | AUDITED |

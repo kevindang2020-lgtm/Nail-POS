@@ -6,7 +6,8 @@ import { statusLabelOrNull, humanizeCode } from '../i18n/status-label';
 import { fmtMoney, displayLocale } from '../i18n/format';
 import { growthCode } from './growthLabels';
 import { posAiUsageScreenApi } from '../api/posAiUsageApi';
-import { stateLabel } from './POSAiUsageScreen';
+import { stateLabel, DetailDialog, HistoryDialog } from './POSAiUsageScreen';
+import { useCan } from '../components/usePermissions';
 
 // POSAICenterScreen.tsx — T16 AI Center › AI Command Center. Reads the REAL tenant AI access state from
 // /tenant/ai/packages (the same gate decision the backend enforces): every AI assistant with its live subscription
@@ -54,6 +55,10 @@ export function POSAICenterScreen() {
   const [chk, setChk] = useState<any | null>(null);
   const [checking, setChecking] = useState(false);
   const [tick, setTick] = useState(0);
+  // AI Center guide §07: every assistant opens the full details overlay; Activity history opens the searchable log in place
+  const [dlg, setDlg] = useState<null | { kind: 'detail'; code: string } | { kind: 'history'; code?: string }>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const can = useCan();
 
   useEffect(() => {
     posAiApi.packages().then((d) => setPkgs(d?.packages || [])).catch((e: any) => setError(e?.message || t('pos.failed_to_load_ai_center')));
@@ -107,7 +112,7 @@ export function POSAICenterScreen() {
           <button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')}>{t('pos.view_plans_bundles')}</button>
           <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)}>{t('aic.refresh')}</button>
           <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck}>{checking ? t('aic.checking') : t('aic.check')}</button>
-          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/usage')}>{t('aic.history')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setDlg({ kind: 'history' })} data-testid="aic-history">{t('aic.history')}</button>
         </div></div>
 
       {rc === null ? <div className="state" role="alert" style={{ marginBottom: 10 }}>{t('aic.unavailable')}</div> : null}
@@ -140,7 +145,7 @@ export function POSAICenterScreen() {
           <div style={headStyle}>{t('pos.ai_command_center')}</div>
           <span className="pill ok" >{rc ? rc.now.canRunNow : active.length + trialing.length} {t('pos.running')}</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 mt-1">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 mt-1">
           {Object.keys(groups).sort().map((cat) => (
             <div key={cat} className='border rounded-md border-[var(--line)] p-2'>
               <div style={{ fontSize: 11.5, fontWeight: 800, color: '#8A7A66', textTransform: 'uppercase', letterSpacing: 0.4, margin: '4px 0 6px' }}>{CAT_LABEL[cat] || cat}</div>
@@ -150,7 +155,9 @@ export function POSAICenterScreen() {
                 const limit = p.subscription?.usageLimit || p.includedUsageLimit || 0;
                 const usedPct = limit > 0 ? Math.min(100, Math.round((p.used / limit) * 100)) : 0;
                 return (
-                  <div key={p.code} style={{ borderBottom: '1px solid var(--line)', padding: '8px 0' }}>
+                  <div key={p.code} role="button" tabIndex={0} data-testid={`aic-card-${p.code}`} aria-label={t('aic.openDetails', { name: p.name })}
+                    onClick={() => setDlg({ kind: 'detail', code: p.code })} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setDlg({ kind: 'detail', code: p.code }); } }}
+                    style={{ borderBottom: '1px solid var(--line)', padding: '8px 4px', cursor: 'pointer', minHeight: 44 }}>
                     <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{p.name}</div>
                       <span className={'pill ' + st.tone} >{st.label}</span>
@@ -392,6 +399,10 @@ export function POSAICenterScreen() {
           ].map((a) => <button key={a.l} onClick={a.fn} style={{ height: 32, padding: '0 12px', borderRadius: 8, border: '1px solid var(--line)', background: '#FFFCF6', fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{a.l}</button>)}
         </div>
       </section>
+      {note ? <div className="state" role="status" style={{ marginTop: 8 }}>{note}</div> : null}
+      {dlg?.kind === 'detail' ? <DetailDialog code={dlg.code} onClose={() => setDlg(null)} onChanged={(text) => { setNote(text); setTick((x) => x + 1); }}
+        openHistory={(code) => setDlg({ kind: 'history', code })} openModule={(r) => nav(r)} openBilling={() => nav('/tenant/account/subscription')} /> : null}
+      {dlg?.kind === 'history' ? <HistoryDialog initialCode={dlg.code} canExport={can('reports.export') || can('subscription.manage')} onClose={() => setDlg(null)} /> : null}
     </div>
   );
 }

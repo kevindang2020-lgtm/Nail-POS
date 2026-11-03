@@ -65,6 +65,8 @@ vi.mock('../api/posAiUsageApi', () => ({
       ],
     }),
     check: vi.fn().mockResolvedValue({ checks: [{ key: 'gate_matches_state', state: 'PASSED' }] }),
+    detail: vi.fn().mockReturnValue(new Promise(() => {})),
+    history: vi.fn().mockReturnValue(new Promise(() => {})),
   },
 }));
 
@@ -84,5 +86,13 @@ describe('POSAICenterScreen — honest counts (AI Center guide, Nov 3 2026)', ()
     render(<MemoryRouter><POSAICenterScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByText('Check AI System'));
     expect(await screen.findByText('Gate agrees with this page')).toBeInTheDocument();
+  });
+  it('§07 every assistant card opens its details overlay; Usage & history opens the activity log in place', async () => {
+    const { posAiUsageScreenApi } = await import('../api/posAiUsageApi');
+    render(<MemoryRouter><POSAICenterScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('aic-card-ai_booking_assistant'));
+    expect(posAiUsageScreenApi.detail).toHaveBeenCalledWith('ai_booking_assistant');
+    fireEvent.click(screen.getByTestId('aic-history'));
+    expect(posAiUsageScreenApi.history).toHaveBeenCalled();
   });
 });

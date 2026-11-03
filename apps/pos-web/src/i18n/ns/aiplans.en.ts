@@ -101,5 +101,6 @@ export const AIPLANS_EN: Record<string, string> = {
   "aic.reason": "Reason: {r}",
   "aic.unavailable": "Could not load the live state of each assistant — the counts below come from stored records only.",
   "aic.check.title": "AI system check",
-  "aic.check.close": "Close"
+  "aic.check.close": "Close",
+  "aic.openDetails": "Open details for {name}",
 };
