@@ -41,6 +41,12 @@ describe('a counted drawer stays as counted (Cash Drawer guide audit, Nov 3 2026
     const s = await repo.state(ctx, B, 'main', day);
     expect(s).toMatchObject({ status: 'reconciled', expectedCashCents: 18717, varianceCents: 0, liveExpectedCashCents: 19217, changedSinceCount: true });
   });
+  it('Nov 3 audit — re-opening a counted drawer does not change the float it was counted against', async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    await repo.open(ctx, B, 'main', day, 99999);
+    const s = await repo.state(ctx, B, 'main', day);
+    expect(s).toMatchObject({ status: 'reconciled', openingFloatCents: 10000 });
+  });
   it('cash in / out after the count is refused until the drawer is reopened', async () => {
     const day = new Date().toISOString().slice(0, 10);
     await expect(repo.addMovement(ctx, B, 'main', day, 'out', 1000, 'lunch', null)).rejects.toMatchObject({ drawerCode: 'DRAWER_ALREADY_COUNTED' });

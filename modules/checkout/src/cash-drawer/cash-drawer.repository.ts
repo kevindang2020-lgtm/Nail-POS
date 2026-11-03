@@ -98,7 +98,8 @@ export class CashDrawerRepository {
       opening_float_cents: floatCents, status: 'open',
       opened_by_user_id: isUuid(ctx.userId) ? ctx.userId : null, opened_at: sql`now()`,
     }).onConflict((oc: any) => oc.columns(['tenant_id', 'branch_id', 'register_id', 'business_date']).doUpdateSet({
-      opening_float_cents: floatCents,
+      // a counted drawer keeps the float it was counted against (it used to be overwritten, changing a settled result's basis)
+      opening_float_cents: sql`CASE WHEN ${canMoveToSql(CASH_DRAWER_SESSION, 'open', 'cash_drawer_sessions')} THEN ${floatCents}::int ELSE cash_drawer_sessions.opening_float_cents END`,
       // Phase 12 (#27): CASH_DRAWER_SESSION decides — only a drawer that may (re)open becomes open; a counted one keeps its result
       status: sql`CASE WHEN ${canMoveToSql(CASH_DRAWER_SESSION, 'open', 'cash_drawer_sessions')} THEN 'open' ELSE cash_drawer_sessions.status END`,
       opened_by_user_id: isUuid(ctx.userId) ? ctx.userId : null, opened_at: sql`COALESCE(cash_drawer_sessions.opened_at, now())`, updated_at: sql`now()`,
