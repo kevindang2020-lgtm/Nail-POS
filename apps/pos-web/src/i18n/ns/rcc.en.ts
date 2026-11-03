@@ -87,6 +87,7 @@ export const RCC_EN: Record<string, string> = {
   "rcc.period.custom": "Custom range",
   "rcc.period.month": "This month",
   "rcc.period.today": "Today",
+  "rcc.period.yesterday": "Yesterday",
   "rcc.period.week": "This week",
   "rcc.period.year": "This year",
   "rcc.pri.1": "Urgent",

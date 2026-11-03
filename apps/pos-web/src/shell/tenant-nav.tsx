@@ -225,7 +225,7 @@ export const TENANT_NAV: NavSection[] = [
     { id: 'ai-calendar', get label() { return t('pos.ai_calendar'); }, route: '/tenant/ai/receptionist/calendar', icon: 'dot', aiPackageCode: 'ai_reception' },
     { id: 'ai-calls', get label() { return t('pos.ai_calls'); }, route: '/tenant/ai/receptionist/calls', icon: 'dot', aiPackageCode: 'ai_reception' },
     { id: 'ai-settings', get label() { return t('pos.ai_receptionist_settings'); }, route: '/tenant/ai/receptionist/settings', icon: 'dot', aiPackageCode: 'ai_reception' },
-    { id: 'ai-reception', get label() { return t('pos.ai_reception_copilot'); }, route: '/tenant/ai/reception-copilot', icon: 'dot', aiPackageCode: 'ai_reception' },
+    { id: 'ai-reception', get label() { return t('pos.ai_reception_copilot'); }, route: '/tenant/ai/reception-copilot', icon: 'dot', aiPackageCode: 'ai_reception_copilot', permission: 'reception_copilot.use' },   // same screen and APIs as /tenant/ai/copilot (Nov 3 audit: it was gated on another package)
     { id: 'ai-booking', get label() { return t('pos.ai_booking_assistant'); }, route: '/tenant/ai/booking', icon: 'dot', aiPackageCode: 'ai_booking_assistant', permission: 'ai_booking.view' },
     { id: 'ai-queue', get label() { return t('pos.ai_queue_assistant'); }, route: '/tenant/ai/queue', icon: 'dot', aiPackageCode: 'ai_queue_technician_assignment', permission: 'ai_queue_assignment.view' },
     // BUILD_PLAN Phase 7: ONE entry — the optimizer workspace (the old /tenant/ai/scheduling package page redirects here)

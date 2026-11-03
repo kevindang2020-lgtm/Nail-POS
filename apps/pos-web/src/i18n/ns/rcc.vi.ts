@@ -87,6 +87,7 @@ export const RCC_VI: Record<string, string> = {
   "rcc.period.custom": "Tùy chọn",
   "rcc.period.month": "Tháng này",
   "rcc.period.today": "Hôm nay",
+  "rcc.period.yesterday": "Hôm qua",
   "rcc.period.week": "Tuần này",
   "rcc.period.year": "Năm nay",
   "rcc.pri.1": "Khẩn cấp",

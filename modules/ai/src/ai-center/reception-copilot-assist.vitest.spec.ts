@@ -29,8 +29,14 @@ describe('recommendWaitlist (§1 waitlist/standby)', () => {
     const r = await svc.recommendWaitlist(ctx);
     expect(r.recommended).toBe(true);
     expect(r.waiting).toBe(3);
-    expect(r.estimatedWaitMinutes).toBe(25);
-    expect(r.message).toMatch(/standby|waitlist/i);
+    expect(r.estimatedWaitMinutes).toBeNull();          // the longest CURRENT wait is not an estimate
+    expect(r.message).toMatch(/standby/i); expect(r.message).toMatch(/25 min/);
+  });
+  it('Nov 3 audit: an unreadable queue is said so — never "0 waiting, a quick turnaround"', async () => {
+    const svc = new ReceptionCopilotAssistService(null as any, {} as any, { queueSummary: vi.fn(async () => { throw new Error('down'); }) } as any);
+    const r = await svc.recommendWaitlist(ctx);
+    expect(r.recommended).toBe(false); expect(r.message).toMatch(/could not be read/);
+    expect(r.message).not.toMatch(/quick turnaround/);
   });
 });
 

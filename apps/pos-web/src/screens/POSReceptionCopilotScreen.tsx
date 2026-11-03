@@ -34,7 +34,8 @@ function AiPhoneActivityPanel() {
     <section style={cardBox} role="region" aria-label={tx('pos.ai_phone_receptionist_recent_activity')}>
       <h3 style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8, margin: '0 0 8px' }}>{tx('pos.ai_phone_receptionist_recent_activity_2')}</h3>
       <div aria-live="polite">
-      {state.calls.length === 0 && <div style={{ fontSize: 12.5, color: '#9B8B78' }}>{tx('pos.no_recent_ai_phone_calls')}</div>}
+      {!state.available ? <div style={{ fontSize: 12.5, color: '#9B8B78' }} data-testid="rc-phone-unavailable">{tx('pos.copilot_phone_unavailable')}</div>
+        : state.calls.length === 0 && <div style={{ fontSize: 12.5, color: '#9B8B78' }}>{tx('pos.no_recent_ai_phone_calls')}</div>}
       {state.calls.map((c) => (
         <div key={c.callId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
@@ -79,7 +80,7 @@ function ServiceExplainerPanel() {
           <ul style={{ margin: '8px 0 0', paddingLeft: 18 }}>{info.policies.map((p: string, i: number) => <li key={i} style={{ fontSize: 12, color: '#6B5D46', marginBottom: 3 }}>{p}</li>)}</ul>
         </div>
       )}
-      {info && !info.found && sel && <div style={{ fontSize: 12, color: '#9B8B78', marginTop: 8 }}>{tx('pos.no_details_available_for_that_service')}</div>}
+      {info && !info.found && sel && <div style={{ fontSize: 12, color: '#9B8B78', marginTop: 8 }}>{(info as { needsBranch?: boolean }).needsBranch ? tx('pos.copilot_choose_branch_for_service') : tx('pos.no_details_available_for_that_service')}</div>}
       </div>
     </section>
   );
@@ -467,6 +468,7 @@ export function POSReceptionCopilotScreen() {
         {cfResult && !cfBusy && (
           <div style={{ fontSize: 12.5, marginTop: 8, color: cfResult.denied ? '#B4673B' : cfResult.unavailable ? '#8A7A66' : cfResult.hasConflict ? '#B4673B' : '#2E7D5B' }}>
             {cfResult.denied ? tx('pos.you_don_t_have_permission_to_1trb')
+              : cfResult.status === 'error' ? tx('pos.copilot_conflict_check_failed')   /* a network / server failure is not a form mistake (Nov 3 audit) */
               : cfResult.unavailable ? tx('pos.enter_a_technician_start_and_end_rljj')
               : cfResult.hasConflict ? tx('pos.conflict_that_technician_is_already_booked_443t', { v0: String(cfResult.conflictingAppointmentId ? tx('pos.appointment_conflictingappointmentid', { conflictingAppointmentId: String(cfResult.conflictingAppointmentId) }) : '') })
               : tx('pos.no_conflict_that_time_is_clear_rw0j')}

@@ -231,7 +231,8 @@ describe('Check Copilot System, priorities and the customer overlay (CP29–CP33
     const kinds = (p.items as any[]).map((i) => i.kind);
     for (const k of ['queue', 'unanswered_call', 'conflict', 'failed_action']) expect(kinds).toContain(k);
     expect((p.items as any[]).every((i) => i.approvalRequired && i.reason && i.evidence)).toBe(true);
-    expect((p.items as any[]).find((i) => i.kind === 'conflict').proposal.actionType).toBe('reschedule_appointment');
+    // a reschedule needs a new time a person picks — the proposal opens that day in Booking (it was a prepare that always failed)
+    expect((p.items as any[]).find((i) => i.kind === 'conflict').proposal).toMatchObject({ actionType: null, link: expect.stringMatching(/^\/booking\?date=\d{4}-\d{2}-\d{2}$/) });
     const pr = (p.items as any[]).map((i) => i.priority); expect([...pr].sort((a, b) => a - b)).toEqual(pr);
     expect((await q(sql`select count(*)::int c from reception_copilot_action_ledger where tenant_id = ${T}`))[0].c).toBe(l0);
   });

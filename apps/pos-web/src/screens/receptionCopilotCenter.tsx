@@ -16,7 +16,8 @@ import { FitDialog, Pager, Empty, ErrorRetry, useDebounced } from '../components
 import { RangeCalendar } from '../components/FinanceKit';
 
 const when = (v?: string | null) => (v ? fmtDateTime(v) : '—');
-const today = () => new Date().toISOString().slice(0, 10);
+// the device's day (Nov 3 audit: the UTC date marked tomorrow every US evening)
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };
 const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', NOT_CONFIGURED: 'warn', DISABLED: 'muted', UNKNOWN: 'muted',
   completed: 'ok', delivered: 'ok', succeeded: 'ok', pending_verification: 'warn', submitted: 'warn', provider_accepted: 'warn', pending: 'warn', failed: 'bad', unknown: 'muted' };
 function Badge({ s }: { s: string }) { return <span className={`rcc-badge rcc-${TONE[s] ?? 'muted'}`} data-state={s}>{t(`rcc.state.${s}`)}</span>; }
@@ -175,7 +176,7 @@ export function PriorityAssistant({ nav }: { nav: (to: string) => void }) {
 const SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'activity'] as const;
 const STATES = ['pending', 'succeeded', 'failed', 'unknown'] as const;
 const TYPES = ['create_appointment', 'reschedule_appointment', 'cancel_appointment', 'send_message'] as const;
-const PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
+const PERIODS = ['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const;
 export function CopilotWorkspace() {
   const [tab, setTab] = useState<'search' | 'activity'>('activity');
   const [open, setOpen] = useState<string | null>(null);

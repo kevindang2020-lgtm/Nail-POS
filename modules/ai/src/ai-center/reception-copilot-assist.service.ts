@@ -73,9 +73,10 @@ export class ReceptionCopilotAssistService {
 
   /** (3) Explain a service and the approved policies that apply — reusing the real services catalog. Only real fields are
    * returned; nothing is fabricated. Branch-scoped (services are branch-configured). */
-  async explainService(ctx: CopilotCtx, input: { serviceId: string }): Promise<{ found: boolean; service?: any; policies?: string[]; approvedKnowledge?: RetrievedContext }> {
+  async explainService(ctx: CopilotCtx, input: { serviceId: string }): Promise<{ found: boolean; needsBranch?: boolean; service?: any; policies?: string[]; approvedKnowledge?: RetrievedContext }> {
     if (!(await this.allowed(ctx, 'allowExplainServices'))) return { found: false };
-    if (!ctx.branchId) return { found: false };
+    // all-branches view (Nov 3 audit): answer "choose a branch", not "this service does not exist"
+    if (!ctx.branchId) return { found: false, needsBranch: true } as { found: boolean; needsBranch: boolean };
     const sctx = { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
     const list = await this.services.list(sctx as any, {} as any).catch(() => [] as any[]);
     const svc = (Array.isArray(list) ? list : []).find((s: any) => s.serviceId === input.serviceId || s.id === input.serviceId);
@@ -98,15 +99,17 @@ export class ReceptionCopilotAssistService {
   async recommendWaitlist(ctx: CopilotCtx): Promise<{ recommended: boolean; waiting: number; estimatedWaitMinutes: number | null; message: string }> {
     if (!(await this.allowed(ctx, 'allowWaitlist'))) return { recommended: false, waiting: 0, estimatedWaitMinutes: null, message: 'Waitlist suggestions are turned off for this salon.' };
     const q = await this.context.queueSummary(ctx).catch(() => null);
-    const waiting = q?.waiting ?? 0;
-    const est = q?.longestWaitMinutes ?? null;
+    // Nov 3 audit: an unreadable queue used to become "0 waiting — likely a quick turnaround" (an invented claim)
+    if (!q) return { recommended: false, waiting: 0, estimatedWaitMinutes: null, message: 'The queue could not be read right now, so no wait can be quoted. Check the Tech Queue before offering standby.' };
+    const waiting = q.waiting ?? 0;
+    const longest = q.longestWaitMinutes ?? null;
     return {
       recommended: true,
       waiting,
-      estimatedWaitMinutes: est,
-      message: est != null
-        ? `Offer standby: ${waiting} guest(s) currently waiting, roughly ${est} min. Place on the waitlist and we\u2019ll call when a technician frees up.`
-        : `Offer standby: the waitlist is short right now — likely a quick turnaround.`,
+      estimatedWaitMinutes: null,   // nothing here estimates a wait; the longest CURRENT wait is reported as such
+      message: waiting === 0
+        ? 'Nobody is waiting right now. Offer the next open time, or standby if every technician is busy.'
+        : `Offer standby: ${waiting} guest(s) waiting now; the longest has waited ${longest ?? '?'} min. This is not a wait estimate.`,
     };
   }
 

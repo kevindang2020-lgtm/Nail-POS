@@ -31,7 +31,7 @@ export const CC_PACKAGE = 'ai_reception_copilot';
 export const CC_SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'activity'] as const;
 export const CC_ACTION_TYPES = ['create_appointment', 'reschedule_appointment', 'cancel_appointment', 'send_message'] as const;
 export const CC_STATES = ['pending', 'succeeded', 'failed', 'unknown'] as const;
-export const CC_PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
+export const CC_PERIODS = ['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const;
 export const CC_PAGE_SIZES = [10, 20, 50] as const;
 const PREPARE_TTL_MS = 5 * 60 * 1000;
 const HEALTH_GAP_SECONDS = 30;
@@ -259,7 +259,8 @@ export class ReceptionCopilotCenter {
     const today = String((await sql<Row>`select (now() at time zone ${tz})::date::text d`.execute(this.db)).rows[0].d);
     let from = today, to = today;
     const p = (CC_PERIODS as readonly string[]).includes(String(f.period)) ? String(f.period) : (f.from || f.to ? 'custom' : 'month');
-    if (p === 'week') from = String((await sql<Row>`select (date_trunc('week', ${today}::date))::date::text d`.execute(this.db)).rows[0].d);
+    if (p === 'yesterday') { from = String((await sql<Row>`select (${today}::date - 1)::text d`.execute(this.db)).rows[0].d); to = from; }
+    else if (p === 'week') from = String((await sql<Row>`select (date_trunc('week', ${today}::date))::date::text d`.execute(this.db)).rows[0].d);
     else if (p === 'month') from = today.slice(0, 8) + '01';
     else if (p === 'year') from = today.slice(0, 5) + '01-01';
     else if (p === 'custom') {
@@ -347,8 +348,8 @@ export class ReceptionCopilotCenter {
     let queue: Row | null = null;
     try { queue = this.queue ? await this.queue.queueSummary(ctx) : null; } catch { queue = null; }
     const up = (await sql<Row>`select count(*)::int c from pos_tech_appointments where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b})
-        and status = any(${['booked', 'confirmed']}::text[]) and appt_date = (now() at time zone ${tz})::date
-        and start_time::time between (now() at time zone ${tz})::time and ((now() at time zone ${tz}) + interval '2 hours')::time`.execute(this.db)).rows[0];
+        and status = any(${['booked', 'confirmed']}::text[])
+        and (appt_date + start_time::time) between (now() at time zone ${tz}) and (now() at time zone ${tz}) + interval '2 hours'`.execute(this.db)).rows[0];
     const calls = (await sql<Row>`select count(*)::int c from voice_call_outcomes where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b})
         and coalesce(started_at, created_at) > now() - interval '24 hours' and (abandoned or follow_up_required)`.execute(this.db)).rows[0];
     const failed = (await sql<Row>`select count(*) filter (where state = 'failed')::int f, count(*) filter (where state in ('pending', 'unknown'))::int open
@@ -418,8 +419,8 @@ export class ReceptionCopilotCenter {
     });
     await guard('twilio', 'Twilio messaging', 'Salon text sender', async () => {
       const c = (await sql<Row>`select status, from_number is not null or messaging_service_sid is not null has_sender, last_validated_at, last_validation_error
-          from tenant_messaging_credentials where tenant_id = ${T} and offboarded_at is null order by branch_id nulls first limit 1`.execute(this.db)).rows[0];
-      const f = n((await sql<Row>`select count(*)::int c from notifications where tenant_id = ${T} and channel = 'sms' and status = 'failed' and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0]?.c);
+          from tenant_messaging_credentials where tenant_id = ${T} and offboarded_at is null and (branch_id = ${b} or branch_id is null) order by branch_id nulls last limit 1`.execute(this.db)).rows[0];
+      const f = n((await sql<Row>`select count(*)::int c from notifications where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and channel = 'sms' and status = 'failed' and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0]?.c);
       if (!c) add('twilio', 'Twilio messaging', 'Salon text sender', 'NOT_CONFIGURED', 'No salon Twilio account is connected; texts go to the test sender only.', 'tenant_messaging_credentials: none', 'Open Text Messaging Setup to connect the salon’s Twilio account.');
       else if (c.last_validation_error) add('twilio', 'Twilio messaging', 'Salon text sender', 'FAILED', 'The last Twilio check failed.', 'validation error recorded', 'Run Check SMS System in Text Messaging Setup.');
       else if (!c.has_sender) add('twilio', 'Twilio messaging', 'Salon text sender', 'NOT_CONFIGURED', 'Twilio is connected but has no sending number.', 'no from number / messaging service', 'Assign a number in Text Messaging Setup.');
@@ -449,8 +450,8 @@ export class ReceptionCopilotCenter {
         evidence: `Tech Queue: ${q.waiting} waiting, longest wait ${q.longestWaitMinutes ?? '—'} min`, proposal: { label: 'Open Tech Queue', link: '/queue', actionType: null, prefill: null } });
     } catch (e) { unreadable.push(`Tech Queue (${String((e as Error)?.message ?? e).slice(0, 80)})`); }   // reported, never an invented item
     const soon = (await sql<Row>`select id, customer_name, customer_phone, start_time s, created_at from pos_tech_appointments
-        where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and status = any(${['booked', 'confirmed']}::text[]) and appt_date = (now() at time zone ${tz})::date
-          and start_time::time between (now() at time zone ${tz})::time and ((now() at time zone ${tz}) + interval '30 minutes')::time
+        where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and status = any(${['booked', 'confirmed']}::text[])
+          and (appt_date + start_time::time) between (now() at time zone ${tz}) and (now() at time zone ${tz}) + interval '30 minutes'
         order by start_time, id limit 10`.execute(this.db)).rows;
     for (const a of soon) items.push({ id: `appt:${a.id}`, kind: 'appointment_soon', priority: 2, at: null, reason: `${a.customer_name || 'A customer'} is due at ${a.s} and has not arrived.`,
       evidence: `appointment ${String(a.id).slice(0, 8)} · booked`, proposal: a.customer_phone && E164.test(String(a.customer_phone))
@@ -460,7 +461,7 @@ export class ReceptionCopilotCenter {
         and follow_up_required and coalesce(started_at, created_at) > now() - interval '24 hours' order by coalesce(started_at, created_at), id limit 10`.execute(this.db)).rows;
     for (const c of calls) items.push({ id: `call:${c.id}`, kind: 'unanswered_call', priority: 1, at: iso(c.at), reason: 'An AI phone call needs a person to call back.',
       evidence: `call ${c.provider_call_id ?? String(c.id).slice(0, 8)} · follow-up required`, proposal: { label: 'Open the call', link: `/tenant/ai/receptionist/calls?call=${c.id}`, actionType: null, prefill: null } });
-    const clashes = (await sql<Row>`select a.id, b2.id other, coalesce(t.full_name, '') tech, a.start_time s from pos_tech_appointments a
+    const clashes = (await sql<Row>`select a.id, b2.id other, coalesce(t.full_name, '') tech, a.start_time s, to_char(a.appt_date, 'YYYY-MM-DD') d from pos_tech_appointments a
         join pos_tech_appointments b2 on b2.tenant_id = a.tenant_id and b2.technician_id = a.technician_id and b2.appt_date = a.appt_date and b2.id > a.id
           and b2.status = any(${ACTIVE_APPT}::text[]) and b2.start_time::time < a.end_time::time and b2.end_time::time > a.start_time::time
         left join technicians t on t.id = a.technician_id and t.tenant_id = a.tenant_id
@@ -469,7 +470,7 @@ export class ReceptionCopilotCenter {
     // the database refuses an overlap unless a person marked one appointment "overbook" — so every overlap shown here was
     // allowed on purpose and still needs someone to check both guests can really be served
     for (const c of clashes) items.push({ id: `conflict:${c.id}:${c.other}`, kind: 'conflict', priority: 1, at: null, reason: `${c.tech || 'A technician'} has two overlapping appointments at ${c.s} (overbooked).`,
-      evidence: `appointments ${String(c.id).slice(0, 8)} and ${String(c.other).slice(0, 8)}`, proposal: { label: 'Prepare a reschedule', link: null, actionType: 'reschedule_appointment', prefill: { appointmentId: c.other } } });
+      evidence: `appointments ${String(c.id).slice(0, 8)} and ${String(c.other).slice(0, 8)}`, proposal: { label: 'Open the day in Booking', link: `/booking?date=${c.d}`, actionType: null, prefill: null } });   // a reschedule needs a new time a person picks (it was prefilled with the id only and always refused)
     const fails = (await sql<Row>`select id, action_type, summary, error_code, created_at from reception_copilot_action_ledger where tenant_id = ${T} and state in ('failed', 'unknown')
         and created_at > now() - interval '24 hours' order by created_at, id limit 10`.execute(this.db)).rows;
     for (const f of fails) items.push({ id: `action:${f.id}`, kind: 'failed_action', priority: 2, at: iso(f.created_at), reason: `A Copilot action did not complete: ${f.summary ?? f.action_type}.`,
