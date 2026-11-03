@@ -267,10 +267,10 @@ export class SchedulingCenter {
 
   // ── Check Scheduling System (read-only; one run per salon per 30 s) ──────────────────────────────────────────
   async check(ctx: ScCtx) {
-    const T = ctx.tenantId;
+    const T = ctx.tenantId; const HB = isUuid(ctx.branchId) ? ctx.branchId : null;   // runs are per branch (Nov 3 audit)
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from scheduling_optimizer_health_runs where tenant_id = ${T}
-      and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
+      and branch_id is not distinct from ${HB} and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
     if (early) return reusedOut(early);
@@ -349,7 +349,7 @@ export class SchedulingCenter {
       : checks.some((x) => x.state === 'PASSED') ? 'PASSED' : 'INSUFFICIENT_DATA';
     const runId = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('scheduling-optimizer-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('scheduling-optimizer-health:' || ${T} || ':' || coalesce(${HB}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into scheduling_optimizer_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

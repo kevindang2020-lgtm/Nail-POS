@@ -272,7 +272,7 @@ export class CustomerAiSettingsCenter {
   async check(ctx: CasCtx) {
     const T = ctx.tenantId;
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from customer_ai_settings_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from customer_ai_settings_health_runs where tenant_id = ${T} and branch_id is not distinct from ${uuidOrNull(ctx.branchId)}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
@@ -317,7 +317,7 @@ export class CustomerAiSettingsCenter {
       : checks.some((x) => x.state === 'PASSED') ? 'PASSED' : 'INSUFFICIENT_DATA';
     const runId = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('customer-ai-settings-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('customer-ai-settings-health:' || ${T} || ':' || coalesce(${uuidOrNull(ctx.branchId)}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into customer_ai_settings_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

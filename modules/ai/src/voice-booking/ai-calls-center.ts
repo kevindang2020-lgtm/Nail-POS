@@ -231,7 +231,7 @@ export class AiCallsCenter {
   }
 
   async health(ctx: RcCtx) {
-    const recent = (await sql<Row>`select created_at from ai_calls_health_runs where tenant_id = ${ctx.tenantId} and created_at > now() - interval '30 seconds' order by created_at desc limit 1`.execute(this.db)).rows[0];
+    const recent = (await sql<Row>`select created_at from ai_calls_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${this.branch(ctx)} and created_at > now() - interval '30 seconds' order by created_at desc limit 1`.execute(this.db)).rows[0];
     if (recent) throw new ReceptionistCenterError('A check just ran. Wait a few seconds and try again.', 'AI_CALLS_CHECK_RATE_LIMITED', 429);
     const checks = await this.checks(ctx);
     const overall = checks.reduce<RcState>((a, c) => (RANK[c.state] > RANK[a] ? c.state : a), 'READY');
@@ -241,7 +241,7 @@ export class AiCallsCenter {
   }
 
   async lastHealth(ctx: RcCtx) {
-    const r: Row | undefined = (await sql<Row>`select id, overall, checks, created_at from ai_calls_health_runs where tenant_id = ${ctx.tenantId} order by created_at desc limit 1`.execute(this.db)).rows[0];
+    const r: Row | undefined = (await sql<Row>`select id, overall, checks, created_at from ai_calls_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${this.branch(ctx)} order by created_at desc limit 1`.execute(this.db)).rows[0];
     return r ? { id: r.id, ranAt: iso(r.created_at), overall: r.overall, checks: r.checks ?? [] } : null;
   }
 

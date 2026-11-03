@@ -334,7 +334,7 @@ export class MarketingCenter {
     this.need(ctx);
     const T = ctx.tenantId; const B = this.branch(ctx); const CW = this.campaignScope(ctx);
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from ai_marketing_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from ai_marketing_health_runs where tenant_id = ${T} and branch_id is not distinct from ${B}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true, sendsAnything: false });
     const early = await recentRun(this.db);
@@ -383,7 +383,7 @@ export class MarketingCenter {
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
 
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from ai_marketing_health_runs h cross join lateral jsonb_array_elements(h.checks) c
-      where h.tenant_id = ${T} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
+      where h.tenant_id = ${T} and h.branch_id is not distinct from ${B} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
     const checkedAt = new Date(this.now()).toISOString();
     for (const x of checks) x.lastPassedAt = x.state === 'PASSED' ? checkedAt : iso(prev.find((p) => p.key === x.key)?.at);
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
@@ -391,7 +391,7 @@ export class MarketingCenter {
     const overall = checks.some((x) => x.state === 'FAILED' || x.state === 'UNAVAILABLE') ? 'FAILED' : checks.some((x) => x.state === 'WARNING') ? 'WARNING' : 'PASSED';
     const id = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('ai-marketing-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('ai-marketing-health:' || ${T} || ':' || coalesce(${B}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into ai_marketing_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

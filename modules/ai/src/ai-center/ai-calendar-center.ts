@@ -311,8 +311,8 @@ export class AiCalendarCenter {
     const T = ctx.tenantId, b = this.branch(ctx);
     return this.db.transaction().execute(async (trx) => {
       // one run per salon at a time: concurrent clicks serialise here and the second sees the first's run
-      await sql`select pg_advisory_xact_lock(hashtext('ai-calendar-health:' || ${T}))`.execute(trx);
-      const recent = (await sql<Row>`select id, overall, checks, created_at, calendar_date::text d from ai_calendar_health_runs where tenant_id = ${T} and created_at > now() - make_interval(secs => ${HEALTH_GAP_SECONDS})
+      await sql`select pg_advisory_xact_lock(hashtext('ai-calendar-health:' || ${T} || ':' || coalesce(${b}::text, '')))`.execute(trx);
+      const recent = (await sql<Row>`select id, overall, checks, created_at, calendar_date::text d from ai_calendar_health_runs where tenant_id = ${T} and branch_id is not distinct from ${b} and created_at > now() - make_interval(secs => ${HEALTH_GAP_SECONDS})
         order by created_at desc limit 1`.execute(trx)).rows[0];
       if (recent) return { runId: recent.id, overall: recent.overall, checks: recent.checks, checkedAt: iso(recent.created_at), date: recent.d, rateLimited: true };
       const clk = await this.clock(ctx); const date = this.day(dateArg, clk.today);

@@ -382,7 +382,7 @@ export class BusinessCenter {
     const T = ctx.tenantId; const B = this.branch(ctx);
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from ai_business_health_runs where tenant_id = ${T} and area = ${area}
-      and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
+      and branch_id is not distinct from ${B} and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true, changesAnything: false });
     const early = await recentRun(this.db);
     if (early) return reusedOut(early);
@@ -427,7 +427,7 @@ export class BusinessCenter {
     checks.push({ key: 'tenant_isolation', component: 'security', state: N(cross.n) ? 'FAILED' : 'PASSED', count: N(cross.n) });
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from ai_business_health_runs h cross join lateral jsonb_array_elements(h.checks) c
-      where h.tenant_id = ${T} and h.area = ${area} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
+      where h.tenant_id = ${T} and h.area = ${area} and h.branch_id is not distinct from ${B} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
     const checkedAt = new Date(this.now()).toISOString();
     for (const x of checks) x.lastPassedAt = x.state === 'PASSED' ? checkedAt : iso(prev.find((p) => p.key === x.key)?.at);
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
@@ -436,7 +436,7 @@ export class BusinessCenter {
     const overall = checks.some((x) => x.state === 'FAILED') ? 'FAILED' : checks.some((x) => x.state === 'WARNING' || (x.state === 'UNAVAILABLE' && x.component === 'metrics')) ? 'WARNING' : 'PASSED';
     const id = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('ai-business-health:' || ${T} || ${area}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('ai-business-health:' || ${T} || ${area} || ':' || coalesce(${B}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into ai_business_health_runs (id, tenant_id, branch_id, area, actor_user_id, overall, checks)

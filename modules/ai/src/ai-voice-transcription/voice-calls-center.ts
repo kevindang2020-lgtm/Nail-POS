@@ -291,7 +291,7 @@ export class VoiceCallsCenter {
     this.need(ctx);
     const T = ctx.tenantId;
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from voice_system_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from voice_system_health_runs where tenant_id = ${T} and branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
@@ -347,7 +347,7 @@ export class VoiceCallsCenter {
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
 
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from voice_system_health_runs h cross join lateral jsonb_array_elements(h.checks) c
-      where h.tenant_id = ${T} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
+      where h.tenant_id = ${T} and h.branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
     const checkedAt = new Date(this.now()).toISOString();
     for (const c of checks) c.lastPassedAt = c.state === 'PASSED' ? checkedAt : iso(prev.find((p) => p.key === c.key)?.at);
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
@@ -356,7 +356,7 @@ export class VoiceCallsCenter {
       : N(calls.n) ? 'PASSED' : 'INSUFFICIENT_DATA';
     const runId = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('voice-system-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('voice-system-health:' || ${T} || ':' || coalesce(${isUuid(ctx.branchId) ? ctx.branchId : null}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into voice_system_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

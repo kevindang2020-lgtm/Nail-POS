@@ -406,7 +406,7 @@ export class CustomerIntelligenceCenter {
   // ── Check Customer Intelligence System (read-only; records its own evidence; one run per salon per 30 s) ──────
   async check(ctx: CiCtx) {
     const T = ctx.tenantId;
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from customer_intelligence_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from customer_intelligence_health_runs where tenant_id = ${T} and branch_id is not distinct from ${uuidOrNull(ctx.branchId)}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
@@ -453,7 +453,7 @@ export class CustomerIntelligenceCenter {
       : checks.some((x) => x.state === 'PASSED') ? 'PASSED' : 'INSUFFICIENT_DATA';
     const runId = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('customer-intelligence-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('customer-intelligence-health:' || ${T} || ':' || coalesce(${uuidOrNull(ctx.branchId)}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into customer_intelligence_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

@@ -100,7 +100,7 @@ export class VoiceSettingsCenter {
       from call_deletion_events where tenant_id = ${T}`.execute(this.db)).rows[0] ?? {};
     const versions = (await sql<Row>`select coalesce(announcement_version, '') as v, count(*)::int as n from call_consent_records
       where tenant_id = ${T} and created_at > now() - interval '30 days' group by 1 order by n desc limit 5`.execute(this.db)).rows;
-    const lastCheck = (await sql<Row>`select overall, created_at from voice_settings_health_runs where tenant_id = ${T} order by created_at desc limit 1`.execute(this.db)).rows[0];
+    const lastCheck = (await sql<Row>`select overall, created_at from voice_settings_health_runs where tenant_id = ${T} and branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null} order by created_at desc limit 1`.execute(this.db)).rows[0];
     const configured = st?.consentAnnouncementVersion ?? null;
     return {
       asOf: new Date(this.now()).toISOString(), settingsUnreadable: stErr,
@@ -170,7 +170,7 @@ export class VoiceSettingsCenter {
   async check(ctx: VcCtx) {
     const T = ctx.tenantId;
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from voice_settings_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from voice_settings_health_runs where tenant_id = ${T} and branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
@@ -233,7 +233,7 @@ export class VoiceSettingsCenter {
       : checks.some((x) => x.state === 'PASSED') ? 'PASSED' : 'INSUFFICIENT_DATA';
     const runId = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('voice-settings-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('voice-settings-health:' || ${T} || ':' || coalesce(${isUuid(ctx.branchId) ? ctx.branchId : null}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into voice_settings_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)

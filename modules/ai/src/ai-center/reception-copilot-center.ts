@@ -352,9 +352,9 @@ export class ReceptionCopilotCenter {
     const calls = (await sql<Row>`select count(*)::int c from voice_call_outcomes where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b})
         and coalesce(started_at, created_at) > now() - interval '24 hours' and (abandoned or follow_up_required)`.execute(this.db)).rows[0];
     const failed = (await sql<Row>`select count(*) filter (where state = 'failed')::int f, count(*) filter (where state in ('pending', 'unknown'))::int open
-        from reception_copilot_action_ledger where tenant_id = ${T} and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
+        from reception_copilot_action_ledger where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and created_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
     const techs = (await sql<Row>`select count(*)::int c from technicians where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and is_active and archived_at is null`.execute(this.db)).rows[0];
-    const last = (await sql<Row>`select overall, created_at from reception_copilot_health_runs where tenant_id = ${T} order by created_at desc limit 1`.execute(this.db)).rows[0];
+    const last = (await sql<Row>`select overall, created_at from reception_copilot_health_runs where tenant_id = ${T} and branch_id is not distinct from ${b} order by created_at desc limit 1`.execute(this.db)).rows[0];
     return {
       asOf: new Date().toISOString(), timezone: tz, branchScoped: !!b,
       queue: queue && queue.available ? { waiting: n(queue.waiting), inService: n(queue.inService), unassigned: n(queue.unassigned), longestWaitMinutes: queue.longestWaitMinutes ?? null } : null,
@@ -367,7 +367,7 @@ export class ReceptionCopilotCenter {
   // ── Check Copilot System (read-only; recorded) ────────────────────────────────────────────────────────────────────
   async health(ctx: CcCtx) {
     const T = ctx.tenantId, b = this.branch(ctx);
-    const recent = (await sql<Row>`select id, overall, checks, created_at from reception_copilot_health_runs where tenant_id = ${T} and created_at > now() - make_interval(secs => ${HEALTH_GAP_SECONDS})
+    const recent = (await sql<Row>`select id, overall, checks, created_at from reception_copilot_health_runs where tenant_id = ${T} and branch_id is not distinct from ${b} and created_at > now() - make_interval(secs => ${HEALTH_GAP_SECONDS})
       order by created_at desc limit 1`.execute(this.db)).rows[0];
     if (recent) return { runId: recent.id, overall: recent.overall, checks: recent.checks, checkedAt: iso(recent.created_at), rateLimited: true };
     const at = new Date().toISOString(); const out: CcCheck[] = [];

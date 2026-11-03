@@ -504,7 +504,7 @@ export class AiFollowUpCenter {
   async health(ctx: FuCtx) {
     this.needView(ctx);
     const T = ctx.tenantId, b = this.branch(ctx);
-    const last: Row | undefined = (await sql<Row>`select overall, results, ran_at from ai_follow_up_health_runs where tenant_id = ${T} and ran_at > now() - interval '30 seconds' order by ran_at desc limit 1`.execute(this.db)).rows[0];
+    const last: Row | undefined = (await sql<Row>`select overall, results, ran_at from ai_follow_up_health_runs where tenant_id = ${T} and branch_id is not distinct from ${b} and ran_at > now() - interval '30 seconds' order by ran_at desc limit 1`.execute(this.db)).rows[0];
     if (last) return { overall: last.overall, checks: last.results, ranAt: iso(last.ran_at), cached: true };
     const out: Row[] = [];
     const add = (domain: string, status: string, detail: string, evidence: string, next: string | null = null, owner = 'Owner / manager') => out.push({ domain, status, detail, evidence, nextAction: next, responsibleRole: owner, checkedAt: new Date().toISOString() });

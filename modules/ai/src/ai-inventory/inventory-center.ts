@@ -198,7 +198,7 @@ export class InventoryCenter {
     this.need(ctx);
     const T = ctx.tenantId; const B = this.branch(ctx);
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
-    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from inventory_health_runs where tenant_id = ${T}
+    const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from inventory_health_runs where tenant_id = ${T} and branch_id is not distinct from ${B}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
     const early = await recentRun(this.db);
@@ -234,7 +234,7 @@ export class InventoryCenter {
     checks.push({ key: 'no_side_effects', component: 'security', state: 'PASSED' });
 
     const prev = (await sql<Row>`select c->>'key' as key, max(h.created_at) as at from inventory_health_runs h cross join lateral jsonb_array_elements(h.checks) c
-      where h.tenant_id = ${T} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
+      where h.tenant_id = ${T} and h.branch_id is not distinct from ${B} and c->>'state' = 'PASSED' group by 1`.execute(this.db)).rows;
     const checkedAt = new Date(this.now()).toISOString();
     for (const c of checks) c.lastPassedAt = c.state === 'PASSED' ? checkedAt : iso(prev.find((p) => p.key === c.key)?.at);
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
@@ -242,7 +242,7 @@ export class InventoryCenter {
     const overall = checks.some((x) => x.state === 'FAILED' || x.state === 'UNAVAILABLE') ? 'FAILED' : checks.some((x) => x.state === 'WARNING') ? 'WARNING' : n ? 'PASSED' : 'INSUFFICIENT_DATA';
     const id = randomUUID();
     return this.db.transaction().execute(async (trx) => {
-      await sql`select pg_advisory_xact_lock(hashtext('inventory-health:' || ${T}))`.execute(trx);
+      await sql`select pg_advisory_xact_lock(hashtext('inventory-health:' || ${T} || ':' || coalesce(${B}::text, '')))`.execute(trx);
       const raced = await recentRun(trx);
       if (raced) return reusedOut(raced);
       await sql`insert into inventory_health_runs (id, tenant_id, branch_id, actor_user_id, overall, checks)
