@@ -1297,6 +1297,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.NOTIFICATION_RETRY_ALREADY_RESENT': 'Tin nhắn này đã được gửi lại.',
   'errors.NOTIFICATION_RETRY_MARKETING': 'Tin tiếp thị được gửi lại từ Trung tâm chiến dịch, không phải ở đây.',
   'errors.NOTIFICATION_RETRY_ACCOUNT_CODE': 'Mã dùng một lần không bao giờ được gửi lại; khách hãy yêu cầu mã mới.',
+  'errors.NOTIFICATION_RETRY_LIMIT': 'Tin nhắn này đã được gửi lại hai lần. Hãy khắc phục nguyên nhân hoặc gửi tin mới.',
   'errors.NOTIFICATION_RETRY_TOO_OLD': 'Tin nhắn này đã quá 3 ngày và có thể không còn phù hợp. Hãy gửi tin mới.',
   'errors.NOTIFICATION_RETRY_OPTED_OUT': 'Người nhận đã từ chối nhận tin. Chỉ khi họ đồng ý lại hợp lệ mới có thể gửi.',
   'errors.NOTIFICATION_RETRY_INVALID_RECIPIENT': 'Số điện thoại hoặc email không hợp lệ. Hãy sửa thông tin liên lạc của khách trước.',

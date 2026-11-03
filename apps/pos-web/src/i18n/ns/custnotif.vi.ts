@@ -272,4 +272,5 @@ export const CUSTNOTIF_VI = {
   "cn.o.confirm": "Đăng ký lại",
   "cn.o.done": "Đã đăng ký lại. Ghi chú đồng ý được lưu trong lịch sử.",
   "cn.o.rules": "STOP / HELP / START từ điện thoại của khách được xử lý tự động. Nhân viên không thể ghi đè lệnh STOP của khách.",
+  "cn.d.acceptedNoTime": "Nhà cung cấp đã nhận (không ghi thời gian)",
 };

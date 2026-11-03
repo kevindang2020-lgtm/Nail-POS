@@ -201,8 +201,9 @@ export class BookingVerificationCenter {
 
     const e: any = (await sql`select count(*) filter (where ${PROVIDER_ERR})::int as provider, count(*) filter (where s.status = 'locked')::int as locked,
         count(*) filter (where s.status = 'expired')::int as expired, count(*)::int as total,
-        (select failure_reason from booking_verification_sessions x where x.tenant_id = ${ctx.tenantId} and x.status = 'failed' and x.updated_at >= now() - interval '24 hours'
-           and x.failure_reason is not null order by x.updated_at desc limit 1) as last_reason
+        -- the latest PROVIDER error (same rule as the count beside it — it used to show the latest failure of any kind, e.g. a wrong code)
+        (select s.failure_reason from booking_verification_sessions s where s.tenant_id = ${ctx.tenantId} and s.updated_at >= now() - interval '24 hours'
+           and ${PROVIDER_ERR} order by s.updated_at desc limit 1) as last_reason
       from booking_verification_sessions s where s.tenant_id = ${ctx.tenantId} and s.updated_at >= now() - interval '24 hours'`.execute(this.db)).rows[0] ?? {};
     const lastReason = e.last_reason ? String(e.last_reason).replace(/[A-Z]{2}[0-9a-f]{32}/gi, '[id]').replace(/\+?\d{7,}/g, '[number]').slice(0, 120) : null;
     if (n(e.provider) > 0) add('recent_errors', 'degraded', `${n(e.provider)} code(s) could not be delivered in the last 24 hours.`, `latest provider outcome: ${lastReason ?? 'not recorded'}`, 'Open History, filter "Provider error", and check the Twilio account.');
@@ -224,6 +225,7 @@ export class BookingVerificationCenter {
     const pageSize = [10, 20, 50].includes(ps) ? ps : 10;
     return { page, pageSize, offset: (page - 1) * pageSize };
   }
+  private clamp(p: { page: number; pageSize: number }, total: number) { const page = Math.min(p.page, Math.max(1, Math.ceil(total / p.pageSize))); return { page, pageSize: p.pageSize, offset: (page - 1) * p.pageSize }; }
   private base(ctx: BvcContext) {
     return sql`from booking_verification_sessions s
       left join booking_holds h on h.id = s.booking_hold_id and h.tenant_id = s.tenant_id
@@ -277,19 +279,21 @@ export class BookingVerificationCenter {
     const tz = await this.tz(ctx);
     const basis = (f.basis || 'requested') as DateBasis; if (!BASES.includes(basis)) bad('Unknown date basis.');
     const win = this.window(tz, f);
-    const { page, pageSize, offset } = this.paging(f);
+    const pg0 = this.paging(f);
     const where = this.where(f, win, basis);
     const total = n((await sql<any>`select count(*)::int as n ${this.base(ctx)} ${where}`.execute(this.db)).rows[0]?.n);
+    const { page, pageSize, offset } = this.clamp(pg0, total);   // a page past the end shows the last page (it used to show an empty page)
     const rows = (await sql<any>`${this.cols()} ${this.base(ctx)} ${where} order by s.created_at desc, s.id desc limit ${pageSize} offset ${offset}`.execute(this.db)).rows;
     return { items: rows.map((r) => this.row(r)), page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)), basis, period: await this.period(tz, f), order: 'newest_first' };
   }
 
   /** Live — open codes and live holds, NEAREST EXPIRY FIRST (guide §11); recently lapsed ones last. Never a code. */
   async live(ctx: BvcContext, f: BvcListFilters) {
-    const { page, pageSize, offset } = this.paging(f);
+    const pg0 = this.paging(f);
     const liveWhere = sql`and ((s.status in ('pending','sent','locked') and s.consumed_appointment_id is null and s.expires_at > now() - interval '10 minutes')
         or (h.id is not null and h.released_at is null and h.converted_appointment_id is null))`;
     const total = n((await sql<any>`select count(*)::int as n ${this.base(ctx)} ${liveWhere}`.execute(this.db)).rows[0]?.n);
+    const { page, pageSize, offset } = this.clamp(pg0, total);
     const due = sql`least(coalesce(h.expires_at, s.expires_at), s.expires_at)`;
     const rows = (await sql<any>`${this.cols()} ${this.base(ctx)} ${liveWhere}
       order by (${due} <= now()) asc, ${due} asc, s.id asc limit ${pageSize} offset ${offset}`.execute(this.db)).rows;
@@ -301,7 +305,8 @@ export class BookingVerificationCenter {
     if (!UUID.test(id)) notFound();
     const r = (await sql<any>`${this.cols()}, s.policy_version, s.tenant_config_version, s.branch_config_version, s.provider_config_version, s.provider,
         (s.provider_verification_sid is not null) as has_provider_ref, right(coalesce(s.provider_verification_sid, ''), 4) as provider_ref_last4,
-        s.delivered_at, s.consumed_at, s.override_reason, s.override_contact_method, h.created_at as hold_created_at, h.released_at as hold_released_at, h.release_reason
+        s.delivered_at, s.consumed_at, s.override_reason, s.override_contact_method, h.created_at as hold_created_at, h.released_at as hold_released_at, h.release_reason,
+        s.phone_hash, (select c.normalized_phone from customers c where c.id = s.customer_id and c.tenant_id = s.tenant_id) as record_phone
       ${this.base(ctx)} and s.id = ${id}::uuid`.execute(this.db)).rows[0];
     if (!r) notFound();
     const svcIds: string[] = Array.isArray(r.service_ids_json) ? r.service_ids_json.map(String).filter((x: string) => UUID.test(x)) : [];
@@ -320,7 +325,9 @@ export class BookingVerificationCenter {
       policy: { version: r.policy_version ?? null, tenantVersion: r.tenant_config_version ?? null, branchVersion: r.branch_config_version ?? null, providerVersion: r.provider_config_version ?? null, reason: r.policy_reason ?? null, why: reasonText(r.policy_reason) },
       provider: { kind: String(r.provider), reference: r.has_provider_ref ? `…${r.provider_ref_last4}` : null },
       override: r.override_at ? { at: iso(r.override_at), reason: r.override_reason ?? null, contactMethod: r.override_contact_method ?? null } : null,
-      canResend: ['pending', 'sent'].includes(String(r.raw_status)) && !!r.customer_id && new Date(r.expires_at).getTime() > Date.now() && !!this.send,
+      // the same test resend() applies: the customer's number on record must be the number the code was requested for
+      canResend: ['pending', 'sent'].includes(String(r.raw_status)) && !!r.customer_id && new Date(r.expires_at).getTime() > Date.now() && !!this.send
+        && (() => { const e = r.record_phone ? normalizePhone(String(r.record_phone)) : null; return !!e && phoneKey(e) === String(r.phone_hash); })(),
       timeline: t,
     };
   }

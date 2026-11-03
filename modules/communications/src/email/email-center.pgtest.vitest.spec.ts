@@ -191,6 +191,9 @@ describe('the center — honest KPIs, health, history, isolation (guide §07, §
     expect((await center.history(owner, { q: '609-555-0142', preset: 'today' })).total).toBeGreaterThanOrEqual(25);
     expect((await center.history(owner, { q: 'SGmsg001', preset: 'all' })).total).toBe(1);
     const v = await center.history(viewer, { q: 'Paging subject', pageSize: 10, preset: 'today' }); expect(v.masked).toBe(true); expect(v.items[0].to).toBe('a•••@example.com');
+    // Nov 3 audit: a masked viewer cannot find messages by the address they are not allowed to see; the owner can
+    expect((await center.history(owner, { q: 'ava@example', preset: 'today' })).total).toBeGreaterThanOrEqual(25);
+    expect((await center.history(viewer, { q: 'ava@example', preset: 'today' })).total).toBe(0);
     expect((await center.history(owner, { status: 'bounced', preset: 'all' })).total).toBe(1);
   });
   it('date bounds are salon-local and inclusive: 23:30 on the To date is in, 00:10 the next day is out', async () => {

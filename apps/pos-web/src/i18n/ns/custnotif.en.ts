@@ -273,4 +273,5 @@ export const CUSTNOTIF_EN = {
   "cn.o.confirm": "Re-subscribe",
   "cn.o.done": "Re-subscribed. The consent note is kept in the history.",
   "cn.o.rules": "STOP / HELP / START from the customer's phone are handled automatically. A customer's STOP cannot be overridden by staff.",
+  "cn.d.acceptedNoTime": "Accepted by the provider (time not recorded)",
 };

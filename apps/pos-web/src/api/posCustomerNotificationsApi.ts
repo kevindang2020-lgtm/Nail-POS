@@ -22,7 +22,7 @@ export interface CnDetail extends CnRow {
   header: { category: string | null; state: CnState };
   identity: { customer: CnRow['customer']; recipient: string; branch: { id: string; name: string | null } | null; sender: { route: string | null; from: string | null } };
   message: { subject: string | null; body: string | null; bodyHidden: boolean; segments: number | null };
-  timing: { createdAt: string | null; providerAcceptedAt: string | null; deliveredAt: string | null; failedAt: string | null; lastCallbackAt: string | null; unknownSince: string | null };
+  timing: { createdAt: string | null; providerAcceptedAt: string | null; providerAcceptedNote?: string | null; deliveredAt: string | null; failedAt: string | null; lastCallbackAt: string | null; unknownSince: string | null };
   diagnostics: { category: string | null; rootCause: string | null; providerErrorCode: string | null; providerStatus: string | null; message: string | null; providerReference: string | null;
     events: { providerStatus: string; errorCode: string | null; applied: boolean; signatureVerified: boolean; receivedAt: string | null }[] };
   attempts: { id: string; retryOf: string | null; status: string; createdAt: string | null; current: boolean; failure: string | null }[];

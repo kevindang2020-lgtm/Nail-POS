@@ -193,6 +193,8 @@ describe('Verification center (guide §10–§14)', () => {
     expect((await c.history(ctx(), { preset: 'custom', from: tz, to: tz, basis: 'hold_created' })).items.map((i) => i.id)).toEqual([open]);
     await expect(c.history(ctx(), { status: 'nope' })).rejects.toThrow(/Unknown status/);
     await expect(c.history(ctx(), { preset: 'custom', from: '2026-12-02', to: '2026-12-01' })).rejects.toThrow(/on or before/);
+    const far = await c.history(ctx(), { page: 999, pageSize: 10 } as any);   // Nov 3 audit: a page past the end shows the last page, not an empty one
+    expect(far.page).toBe(far.totalPages); if (far.totalItems) expect(far.items.length).toBeGreaterThan(0);
   });
   it('detail: the rule that forced verification, the timeline, masked provider ref; opening it is audited; another salon gets 404', async () => {
     audits = [];
@@ -214,6 +216,7 @@ describe('Verification center (guide §10–§14)', () => {
     await expect(center().resend(ctx(), providerErr)).rejects.toThrow(/no longer open/);
     const moved = await session({ customer: CUST, phone: PHONE2 });   // the session's number is NOT the customer's record
     await expect(center().resend(ctx(), moved)).rejects.toThrow(/not the number this code was requested for/);
+    expect((await center().detail(ctx(), moved)).canResend).toBe(false);   // Nov 3 audit: the overlay no longer offers a resend that would be refused
     await expect(center().resend(ctx(T2), open)).rejects.toThrow(/could not be found/);
     expect(sends).toHaveLength(1);
   });

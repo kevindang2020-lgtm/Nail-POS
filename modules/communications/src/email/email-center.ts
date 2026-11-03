@@ -143,7 +143,7 @@ export class EmailCenter {
     if (recent) throw err('A check ran less than a minute ago. Try again shortly.', 'EMAIL_HEALTH_RATE_LIMITED', 429);
     const configured = !!this.sender && !isNotConfiguredSender(this.sender);
     const v = configured && this.sender?.verify ? await this.sender.verify() : null;
-    const provider = !configured ? 'unknown' : !v ? 'unknown' : v.status === 'healthy' ? 'healthy' : v.status === 'auth_failed' ? 'down' : 'down';
+    const provider = !configured ? 'unknown' : !v ? 'unknown' : v.status === 'healthy' ? 'healthy' : 'down';   // auth_failed and down are both 'down'; issue_code keeps which (the next step differs)
     const cb = await this.callbacksConfigured();
     const overall = !configured ? 'setup_required' : provider === 'healthy' && cb ? 'ready' : 'attention_required';
     await sql`insert into email_health_checks (tenant_id, trigger_type, configuration, sender_identity, provider_health, callbacks, overall, issue_code, detail, checked_by)
@@ -164,7 +164,10 @@ export class EmailCenter {
     if (basis !== 'created') parts.push(sql`${this.basisCol(basis)} is not null`);
     if (text) {
       const like = `%${text.replace(/[\\%_]/g, (m) => '\\' + m)}%`; const digits = text.replace(/\D/g, '');
-      const ors: any[] = [sql`c.full_name ilike ${like}`, sql`n.to_address ilike ${like}`, sql`coalesce(n.subject, '') ilike ${like}`, sql`coalesce(n.provider_id, '') ilike ${like}`,
+      // a masked viewer (no pos.communications.manage) sees e@… only, so the address is not searchable for them either — searching it
+      // would confirm an address they are not allowed to see
+      const unmasked = hasPermission(ctx as unknown as PermCtx, 'pos.communications.manage');
+      const ors: any[] = [sql`c.full_name ilike ${like}`, unmasked ? sql`n.to_address ilike ${like}` : sql`false`, sql`coalesce(n.subject, '') ilike ${like}`, sql`coalesce(n.provider_id, '') ilike ${like}`,
         sql`exists (select 1 from receipts r where r.tenant_id = n.tenant_id and n.source_type = 'ticket' and r.ticket_id::text = n.source_id and r.receipt_number ilike ${like})`];
       if (digits.length >= 4) ors.push(sql`regexp_replace(coalesce(c.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'}`);
       if (UUID.test(text)) ors.push(sql`(n.id = ${text}::uuid or n.customer_id = ${text}::uuid or n.source_id = ${text})`);

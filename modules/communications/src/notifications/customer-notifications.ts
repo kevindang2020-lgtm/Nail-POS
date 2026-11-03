@@ -49,6 +49,8 @@ const oneOf = <T extends readonly string[]>(v: unknown, list: T, d: T[number]): 
 function paging(page: unknown, pageSize: unknown, def = 20) { const ps = Math.trunc(Number(pageSize)) || def; return { page: Math.max(1, Math.min(100_000, Math.trunc(Number(page)) || 1)), pageSize: [10, 20, 50].includes(ps) ? ps : def }; }
 function served(page: number, pageSize: number, total: number) { const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages); return { page: p, totalPages, offset: (p - 1) * pageSize }; }
 
+/** resends allowed per original message (original → resend → resend) */
+const MAX_RESENDS = 2;
 export class CnError extends Error {
   code: string; status: number; extra: Record<string, unknown>;
   constructor(msg: string, code: string, status = 400, extra: Record<string, unknown> = {}) { super(msg); this.name = 'CnError'; this.code = code; this.status = status; this.extra = extra; }
@@ -292,7 +294,7 @@ export class CustomerNotificationsCenter {
       identity: { customer: view.customer, recipient: view.recipient, branch: r.branch_id ? { id: String(r.branch_id), name: r.branch_name ?? null } : null,
         sender: { route: r.sender_route ?? null, from: r.sender_from ? (full ? String(r.sender_from) : maskRecipient('sms', r.sender_from)) : null } },
       message: { subject: r.subject ?? null, body: full ? String(r.body ?? '') : null, bodyHidden: !full, segments: r.segment_count == null ? null : N(r.segment_count) },
-      timing: { createdAt: iso(r.created_at), providerAcceptedAt: r.provider_id ? iso(r.created_at) : null, deliveredAt: iso(r.delivered_at),
+      timing: { createdAt: iso(r.created_at), providerAcceptedAt: null, providerAcceptedNote: r.provider_id ? 'The provider accepted it (it has a provider reference); the exact acceptance time is not recorded.' : null, deliveredAt: iso(r.delivered_at),
         failedAt: r.status === 'failed' ? iso(failedEv?.received_at ?? r.created_at) : null, lastCallbackAt: iso(events.length ? events[events.length - 1].received_at : null),
         unknownSince: view.state === 'unknown' ? new Date(new Date(r.created_at).getTime() + UNKNOWN_AFTER_MS).toISOString() : null },
       diagnostics: { category: view.failure?.category ?? null, rootCause: view.failure?.rootCause ?? null, providerErrorCode: r.provider_error_code ?? null,
@@ -338,6 +340,13 @@ export class CustomerNotificationsCenter {
     if (r.purpose === 'marketing') return { eligible: false, code: 'NOTIFICATION_RETRY_MARKETING', category: f.category };
     if (r.purpose === 'account') return { eligible: false, code: 'NOTIFICATION_RETRY_ACCOUNT_CODE', category: f.category };
     if (this.now() - new Date(r.created_at).getTime() > 72 * 3600_000) return { eligible: false, code: 'NOTIFICATION_RETRY_TOO_OLD', category: f.category };
+    // a resend of a resend of a resend…: at most two resends per original message (the chain used to be unlimited)
+    if (r.retry_of_notification_id) {
+      const d = (await sql<any>`with recursive up as (select id, retry_of_notification_id, 0 as depth from notifications where tenant_id = ${ctx.tenantId}::uuid and id = ${r.id}
+          union all select n.id, n.retry_of_notification_id, up.depth + 1 from notifications n join up on n.id = up.retry_of_notification_id where n.tenant_id = ${ctx.tenantId}::uuid and up.depth < 10)
+        select max(depth)::int as depth from up`.execute(this.db)).rows[0];
+      if (Number(d?.depth ?? 0) >= MAX_RESENDS) return { eligible: false, code: 'NOTIFICATION_RETRY_LIMIT', category: f.category };
+    }
     // whatever the failure family, a recipient that is not a valid address is never resent to (fix the customer first)
     if (r.channel === 'sms' ? !isE164(r.to_address) : !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(r.to_address ?? ''))) return { eligible: false, code: 'NOTIFICATION_RETRY_INVALID_RECIPIENT', category: f.category };
     if (f.retry === 'never') return { eligible: false, code: f.category === 'opted_out' ? 'NOTIFICATION_RETRY_OPTED_OUT' : f.category === 'invalid_destination' ? 'NOTIFICATION_RETRY_INVALID_RECIPIENT' : 'NOTIFICATION_RETRY_NOT_ALLOWED', category: f.category };

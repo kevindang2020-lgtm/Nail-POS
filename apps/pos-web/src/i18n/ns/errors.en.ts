@@ -1297,6 +1297,7 @@ export const ERRORS_EN = {
   'errors.NOTIFICATION_RETRY_ALREADY_RESENT': 'This message was already resent.',
   'errors.NOTIFICATION_RETRY_MARKETING': 'Marketing messages are resent from Campaign Center, not from here.',
   'errors.NOTIFICATION_RETRY_ACCOUNT_CODE': 'One-time codes are never resent; the customer asks for a new code.',
+  'errors.NOTIFICATION_RETRY_LIMIT': 'This message has already been resent twice. Fix the cause or send a new message instead.',
   'errors.NOTIFICATION_RETRY_TOO_OLD': 'This message is older than 3 days and may no longer be relevant. Send a new message instead.',
   'errors.NOTIFICATION_RETRY_OPTED_OUT': 'The recipient is opted out. Only a valid opt-in can make them eligible again.',
   'errors.NOTIFICATION_RETRY_INVALID_RECIPIENT': "The phone number or email is not valid. Fix the customer's contact first.",

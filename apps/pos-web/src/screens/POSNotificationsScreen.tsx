@@ -246,7 +246,7 @@ function DetailDialog({ id, tz, onClose, onTimeline, onGo, onChanged, onNote }: 
           </section>
           <section><h3 className="fk-h">{tx('cn.d.timing')}</h3><dl className="fk-dl">
             <div><dt>{tx('cn.d.created')}</dt><dd>{whenLong(d.timing.createdAt, tz)}</dd></div>
-            <div><dt>{tx('cn.d.accepted')}</dt><dd>{whenLong(d.timing.providerAcceptedAt, tz)}</dd></div>
+            <div><dt>{tx('cn.d.accepted')}</dt><dd>{d.timing.providerAcceptedAt ? whenLong(d.timing.providerAcceptedAt, tz) : d.timing.providerAcceptedNote ? tx('cn.d.acceptedNoTime') : whenLong(null, tz)}</dd></div>
             <div><dt>{tx('cn.d.deliveredAt')}</dt><dd>{whenLong(d.timing.deliveredAt, tz)}</dd></div>
             {d.timing.failedAt ? <div><dt>{tx('cn.d.failedAt')}</dt><dd>{whenLong(d.timing.failedAt, tz)}</dd></div> : null}
             <div><dt>{tx('cn.d.lastCallback')}</dt><dd>{whenLong(d.timing.lastCallbackAt, tz)}</dd></div>

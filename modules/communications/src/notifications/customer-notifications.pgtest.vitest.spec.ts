@@ -189,6 +189,16 @@ describe('smart failed-notification recovery (§10)', () => {
     const d = await center.detail(owner, orig);
     expect(d.attempts.map((a: any) => a.status)).toEqual(['failed', 'sent']); expect(d.retry).toMatchObject({ eligible: false, code: 'NOTIFICATION_RETRY_ALREADY_RESENT' });
   });
+  it('Nov 3 audit — at most two resends per original: a resend of a failed resend is allowed once more, then refused', async () => {
+    twilio.mode = 'net';
+    const o = String((await svc.sendSms({ tenantId: T, branchId: B, to: '+15551230001', body: 'Chain test', purpose: 'receipt', customerId: C2 })).notificationId);
+    const r1 = await center.retry(owner, o, { idempotencyKey: 'chain-key-001', confirm: true });     // fails again (network)
+    const r2 = await center.retry(owner, String(r1.newNotificationId), { idempotencyKey: 'chain-key-002', confirm: true });
+    expect(r2.newNotificationId).toBeTruthy();
+    const r3 = await center.retry(owner, String(r2.newNotificationId), { idempotencyKey: 'chain-key-003', confirm: true });
+    twilio.mode = 'ok';
+    expect(r3).toMatchObject({ outcome: 'refused', refusalCode: 'NOTIFICATION_RETRY_LIMIT' });
+  });
   it('blocked retries: opted-out, invalid number, marketing, setup not re-checked, contact changed — each refused with its reason and audited', async () => {
     const mk = async (o: Partial<Parameters<typeof ledger>[0]>) => ledger({ to: '+15551230001', status: 'failed', customer: C2, at: ago(30), reason: 'fetch failed: ETIMEDOUT', ...o });
     expect((await center.retry(owner, await mk({ purpose: 'marketing' }), { idempotencyKey: 'retry-mkt-001', confirm: true })).refusalCode).toBe('NOTIFICATION_RETRY_MARKETING');

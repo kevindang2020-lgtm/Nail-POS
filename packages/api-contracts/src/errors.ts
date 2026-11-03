@@ -667,6 +667,7 @@ export const ERROR_REGISTRY = {
   NOTIFICATION_RETRY_ALREADY_RESENT: { status: 409, message: 'This message was already resent.', domain: 'communications', retryable: false, severity: 'info', action: 'REFRESH' },
   NOTIFICATION_RETRY_MARKETING: { status: 409, message: 'Marketing messages are resent from Campaign Center, not from here.', domain: 'communications', retryable: false, severity: 'info', action: 'NONE' },
   NOTIFICATION_RETRY_ACCOUNT_CODE: { status: 409, message: 'One-time codes are never resent; the customer asks for a new code.', domain: 'communications', retryable: false, severity: 'info', action: 'NONE' },
+  NOTIFICATION_RETRY_LIMIT: { status: 409, message: 'This message has already been resent twice. Fix the cause or send a new message instead.', domain: 'communications', retryable: false, severity: 'info', action: 'NONE' },
   NOTIFICATION_RETRY_TOO_OLD: { status: 409, message: 'This message is older than 3 days and may no longer be relevant. Send a new message instead.', domain: 'communications', retryable: false, severity: 'info', action: 'NONE' },
   NOTIFICATION_RETRY_OPTED_OUT: { status: 409, message: 'The recipient is opted out. Only a valid opt-in can make them eligible again.', domain: 'communications', retryable: false, severity: 'warning', action: 'NONE' },
   NOTIFICATION_RETRY_INVALID_RECIPIENT: { status: 409, message: 'The phone number or email is not valid. Fix the customer\'s contact first.', domain: 'communications', retryable: false, severity: 'warning', action: 'NONE' },
