@@ -98,3 +98,4 @@ GUIDE_AUDIT_FINDINGS_2026-11-03.md; batch C/D audits have not been run yet.
 Batch B: every guide audited; bugs fixed above; remaining NOT-built items are listed per guide.
 
 ## Batch C — being worked (claim: the session writing this section, from 18:30 Nov 3; another session should pick D-guide builds instead)
+- C6–C12 (Team Management, Technicians, Tech Appointments, Live Schedule, Tech Queue, Commission Report, Five Unfinished Features) — all five C7 workstreams exist (commission review F1, rate/refund checks F2, export audit, one-day shift overrides, versioned 40/30/20/10 score) and workforce team-screens is 97/97. Static sweep FIXED: Team permission screens joined staff names from any salon (granted-by, audit actor / target, override target) — now this salon only; technician utilization showed 0 % when the day's bookings could not be read — now unknown (null), with a test.

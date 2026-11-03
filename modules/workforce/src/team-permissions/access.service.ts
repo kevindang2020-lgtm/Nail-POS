@@ -92,7 +92,7 @@ export class TeamAccessService {
         from user_branch_access uba left join branches b on b.id = uba.branch_id and b.tenant_id = uba.tenant_id
        where uba.tenant_id = ${a.tenantId} and uba.user_id in (${sql.join(ids)}) order by b.name`.execute(this.db)).rows;
     const overrides: any[] = (await sql`select o.*, g.full_name as g_full, g.first_name as g_first, g.last_name as g_last, g.email as g_email
-        from tenant_user_permission_overrides o left join users g on g.id = o.granted_by_user_id
+        from tenant_user_permission_overrides o left join users g on g.id = o.granted_by_user_id and g.tenant_id = o.tenant_id
        where o.tenant_id = ${a.tenantId} and o.user_id in (${sql.join(ids)}) and o.revoked_at is null order by o.created_at desc`.execute(this.db)).rows;
     const now = this.clock();
     return users.map((u) => {
@@ -186,8 +186,8 @@ export class TeamAccessService {
           ac.full_name as a_full, ac.first_name as a_first, ac.last_name as a_last, ac.email as a_email,
           tg.full_name as t_full, tg.first_name as t_first, tg.last_name as t_last, tg.email as t_email
         from authorization_audit_events e
-        left join users ac on ac.id = e.actor_user_id
-        left join users tg on tg.id = e.target_user_id
+        left join users ac on ac.id = e.actor_user_id and ac.tenant_id = e.tenant_id   -- names from THIS salon only (a platform actor shows no other account's details)
+        left join users tg on tg.id = e.target_user_id and tg.tenant_id = e.tenant_id
        where e.tenant_id = ${a.tenantId} and (${target}::uuid is null or e.target_user_id = ${target}::uuid)
        order by e.created_at desc, e.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     const nm = (f: any, fi: any, l: any, e: any) => f || [fi, l].filter(Boolean).join(' ') || e || null;
@@ -317,7 +317,7 @@ export class TeamAccessService {
     const reason = reasonText(req?.reason);
     if (!reason) throw new AccessError(400, 'VALIDATION', 'Say why (reason).');
     if (!UUID.test(String(id))) throw new AccessError(404, 'NOT_FOUND', 'Override not found.');
-    const o: any = (await sql`select o.*, u.role as target_role from tenant_user_permission_overrides o join users u on u.id = o.user_id
+    const o: any = (await sql`select o.*, u.role as target_role from tenant_user_permission_overrides o join users u on u.id = o.user_id and u.tenant_id = o.tenant_id
        where o.id = ${id} and o.tenant_id = ${a.tenantId}`.execute(this.db)).rows[0];
     if (!o) throw new AccessError(404, 'NOT_FOUND', 'Override not found.');
     this.notSelf(a, String(o.user_id), 'permissions');

@@ -17,10 +17,11 @@ export async function loadTechUtilization(db: Kysely<any>, scope: UtilScope, dat
   const out = new Map<string, number | null>();
   // The business day is the BRANCH's day when the caller doesn't pass one (Oct 3 2026 — was the database's UTC date).
   const day = date || businessDate(await branchTimeZone(db, scope.tenantId, scope.branchId ?? null));
+  let busyUnknown = false;   // a failed read of the bookings is unknown utilization, never 0 %
   const busyRows = await db.selectFrom('pos_tech_appointments')
     .where('tenant_id', '=', scope.tenantId).where('appt_date', '=', day).where('status', 'not in', ['cancelled', 'no_show'])
     .$if(!!scope.branchId, (qb: any) => qb.where((eb: any) => eb.or([eb('branch_id', '=', scope.branchId), eb('branch_id', 'is', null)])))
-    .groupBy('technician_id').select((eb: any) => ['technician_id as technicianId', eb.fn.sum('duration_minutes').as('busyMin')]).execute().catch(() => []);
+    .groupBy('technician_id').select((eb: any) => ['technician_id as technicianId', eb.fn.sum('duration_minutes').as('busyMin')]).execute().catch(() => { busyUnknown = true; return [] as any[]; });
   const busyMap = new Map<string, number>(busyRows.map((r) => [String(r.technicianId), Number(r.busyMin || 0)]));
 
   const availMap = new Map<string, number>();
@@ -37,7 +38,7 @@ export async function loadTechUtilization(db: Kysely<any>, scope: UtilScope, dat
       .select(['technician_id as technicianId', sql`extract(epoch from (end_time::time - start_time::time))/60 - coalesce(extract(epoch from (lunch_end_time::time - lunch_start_time::time))/60, 0)`.as('mins')]).execute().catch(() => []);
     for (const r of schedAvail) availMap.set(String(r.technicianId), Number(r.mins || 0));
   }
-  for (const [tid, avail] of availMap) out.set(tid, computeUtilization(busyMap.get(tid) || 0, avail));
+  for (const [tid, avail] of availMap) out.set(tid, busyUnknown ? null : computeUtilization(busyMap.get(tid) || 0, avail));
   // techs with busy time but no availability window → explicit null (no fabricated denominator)
   for (const tid of busyMap.keys()) if (!out.has(tid)) out.set(tid, null);
   return out;
