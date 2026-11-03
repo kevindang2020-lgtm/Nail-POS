@@ -73,6 +73,16 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     await transitionStatus(this.db, CUSTOMER_MEMBERSHIP, { where: { id: membershipId }, to: p.status, set: { next_billing_at: p.nextBillingAt, version: sql`version + 1`, updated_at: sql`now()` } });
   }
 
+  async failedRenewalAttempts(tenantId: string, membershipId: string, periodStart: Date | null): Promise<number> {
+    const r = await sql<{ n: number }>`select count(*)::int as n from membership_payments where tenant_id = ${tenantId} and customer_membership_id = ${membershipId} and kind = 'renewal' and status = 'failed'
+      and period_start is not distinct from ${periodStart}`.execute(this.db);
+    return Number(r.rows[0]?.n ?? 0);
+  }
+  async paymentByKey(tenantId: string, membershipId: string, idempotencyKey: string): Promise<{ id: string; status: string } | null> {
+    const r = await sql<{ id: string; status: string }>`select id, status from membership_payments where tenant_id = ${tenantId} and customer_membership_id = ${membershipId} and idempotency_key = ${idempotencyKey} limit 1`.execute(this.db);
+    return r.rows[0] ?? null;
+  }
+
   async addActivity(a: ActivityArgs): Promise<void> {
     await sql`insert into membership_activity (tenant_id, branch_id, customer_membership_id, customer_id, plan_id, activity_type, customer_name_snapshot, plan_name_snapshot, amount_cents)
       values (${a.tenantId}, ${a.branchId}, ${a.membershipId}, ${a.customerId}, ${a.planId}, ${a.activityType}, ${a.customerName}, ${a.planName}, ${a.amountCents})`.execute(this.db);

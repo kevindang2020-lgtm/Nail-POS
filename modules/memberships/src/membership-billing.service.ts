@@ -59,12 +59,14 @@ export class MembershipBillingService {
     const attempt = Math.max(1, Math.floor(opts.attempt ?? 1));
     const actor = opts.actor ?? SYSTEM;
     const amount = Number.isFinite(result.amountCents as number) ? Math.max(0, Math.round(result.amountCents as number)) : m.priceCents;
-    const dueDate = m.nextBillingAt ?? new Date();
+    // the cycle is anchored on its ORIGINAL due date (the current period's end) — a retry moves next_billing_at, and anchoring on
+    // it shifted the paid period to the retry date and minted a fresh key for every sweep
+    const dueDate = m.currentPeriodEnd ?? m.nextBillingAt ?? new Date();
     const idemKey = renewalIdempotencyKey(membershipId, dueDate.toISOString(), attempt);
     const success = result.status === 'succeeded';
     const alloc = success ? renewalAllocation(amount, m.techSplitPct, m.allocationTiming) : { techCents: 0, ownerCents: 0 };
 
-    const periodStart = success ? (m.nextBillingAt ?? m.currentPeriodEnd ?? new Date()) : (m.currentPeriodStart ?? null);
+    const periodStart = success ? (m.currentPeriodEnd ?? m.nextBillingAt ?? new Date()) : (m.currentPeriodStart ?? null);
     const periodEnd = success ? addInterval(periodStart as Date, m.billingInterval as BillingInterval, m.intervalCount) : (m.currentPeriodEnd ?? null);
 
     const rec = await this.repo.recordPayment({
@@ -109,13 +111,24 @@ export class MembershipBillingService {
     let succeeded = 0, failed = 0, notConfigured = 0;
     const results: Array<{ membershipId: string; outcome: string }> = [];
     for (const m of due) {
-      const dueDate = m.nextBillingAt ?? now;
-      const idemKey = renewalIdempotencyKey(m.membershipId, dueDate.toISOString(), 1);
-      const charge = await this.charger.charge({ tenantId: m.tenantId, amountCents: m.priceCents, currency: 'USD', customerId: m.customerId, membershipId: m.membershipId, idempotencyKey: idemKey, descriptor: m.planName ?? 'Membership' });
-      if (charge.status === 'not_configured') { notConfigured++; results.push({ membershipId: m.membershipId, outcome: 'not_configured' }); continue; }
-      const applied = await this.applyRenewalResult(m.membershipId, { status: charge.status, amountCents: m.priceCents, processor: charge.processor, processorRef: charge.processorRef ?? null, declineReason: charge.declineReason ?? null }, { attempt: 1 });
-      if (charge.status === 'succeeded') succeeded++; else failed++;
-      results.push({ membershipId: m.membershipId, outcome: applied.status ?? charge.status });
+      try {
+        // the dunning attempt of THIS cycle (it was always 1, so a declined card was retried forever and never suspended),
+        // anchored on the cycle's original due date
+        const attempt = 1 + (this.repo.failedRenewalAttempts ? await this.repo.failedRenewalAttempts(m.tenantId, m.membershipId, m.currentPeriodStart ?? null) : 0);
+        const anchor = m.currentPeriodEnd ?? m.nextBillingAt ?? now;
+        const idemKey = renewalIdempotencyKey(m.membershipId, anchor.toISOString(), attempt);
+        // a charge already recorded under this key is never sent to the card again (a crash after charging used to re-charge
+        // on the next hourly sweep)
+        if (this.repo.paymentByKey && await this.repo.paymentByKey(m.tenantId, m.membershipId, idemKey)) { results.push({ membershipId: m.membershipId, outcome: 'already_recorded' }); continue; }
+        const charge = await this.charger.charge({ tenantId: m.tenantId, amountCents: m.priceCents, currency: 'USD', customerId: m.customerId, membershipId: m.membershipId, idempotencyKey: idemKey, descriptor: m.planName ?? 'Membership' });
+        if (charge.status === 'not_configured') { notConfigured++; results.push({ membershipId: m.membershipId, outcome: 'not_configured' }); continue; }
+        const applied = await this.applyRenewalResult(m.membershipId, { status: charge.status, amountCents: m.priceCents, processor: charge.processor, processorRef: charge.processorRef ?? null, declineReason: charge.declineReason ?? null }, { attempt });
+        if (charge.status === 'succeeded') succeeded++; else failed++;
+        results.push({ membershipId: m.membershipId, outcome: applied.status ?? charge.status });
+      } catch (e) {
+        // one membership's failure no longer stops the sweep for every member after it
+        failed++; results.push({ membershipId: m.membershipId, outcome: `error:${String((e as { code?: string })?.code ?? (e as Error)?.message ?? 'unknown').slice(0, 60)}` });
+      }
     }
     return { due: due.length, succeeded, failed, notConfigured, results };
   }

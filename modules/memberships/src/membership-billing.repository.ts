@@ -28,6 +28,10 @@ export interface MembershipBillingRepositoryPort {
   applyDunning(membershipId: string, p: DunningArgs): Promise<void>;
   addActivity(a: ActivityArgs): Promise<void>;
   addAudit(a: AuditArgs): Promise<void>;
+  /** failed renewal attempts recorded for the cycle that started at `periodStart` (the dunning attempt number is this + 1) */
+  failedRenewalAttempts?(tenantId: string, membershipId: string, periodStart: Date | null): Promise<number>;
+  /** a renewal payment already recorded under this key (a charge that went through but was never applied) */
+  paymentByKey?(tenantId: string, membershipId: string, idempotencyKey: string): Promise<{ id: string; status: string } | null>;
 }
 
 let SEQ = 1;
@@ -70,4 +74,9 @@ export class InMemoryMembershipBillingRepository implements MembershipBillingRep
   }
   async addActivity(a: ActivityArgs): Promise<void> { this.activities.push(a); }
   async addAudit(a: AuditArgs): Promise<void> { this.audits.push(a); }
+  async failedRenewalAttempts(tenantId: string, membershipId: string, periodStart: Date | null): Promise<number> {
+    const t = periodStart ? periodStart.getTime() : null;
+    return this.payments.filter((x) => x.tenantId === tenantId && x.membershipId === membershipId && x.kind === 'renewal' && x.status === 'failed' && ((x.periodStart ? new Date(x.periodStart as any).getTime() : null) === t)).length;
+  }
+  async paymentByKey(tenantId: string, membershipId: string, idempotencyKey: string) { const p = this.payments.find((x) => x.tenantId === tenantId && x.membershipId === membershipId && x.idempotencyKey === idempotencyKey); return p ? { id: p.id, status: p.status } : null; }
 }

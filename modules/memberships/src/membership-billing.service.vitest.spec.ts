@@ -116,3 +116,40 @@ describe('payment-failed comms hook', () => {
     expect(calls).toEqual([]);
   });
 });
+
+describe('Nov 3 audit — the renewal sweep', () => {
+  const declining = (calls: string[]) => ({ async charge(req: any) { calls.push(req.idempotencyKey); return { status: 'failed' as const, processor: 'test', processorRef: null, declineReason: 'card_declined' }; } });
+  it('a declined card climbs the dunning ladder (attempt 1, 2, 3 …) and is suspended — it was attempt 1 forever', async () => {
+    repo.seed(base); const keys: string[] = [];
+    const s = new MembershipBillingService(repo, declining(keys));
+    for (let i = 0; i < 6; i++) { const at = repo.snapshot('m1')!.nextBillingAt; if (!at) break; await s.runDueRenewals(new Date(at.getTime() + 1000)); }
+    expect(repo.payments.map((p) => p.attemptNumber)).toEqual([1, 2, 3]);   // active → grace → past_due → suspended
+    expect(new Set(keys).size).toBe(3);
+    expect(keys.every((k) => k.includes(base.currentPeriodEnd!.toISOString()))).toBe(true);   // every attempt is anchored on the ORIGINAL due date
+    expect(repo.snapshot('m1')!.status).toBe('suspended');   // no further sweep charges it
+    expect((await new MembershipBillingService(repo, declining(keys)).runDueRenewals(new Date('2027-01-01T00:00:00Z'))).due).toBe(0);
+  });
+  it('after a retry succeeds, the paid period starts on the original due date, not the retry date', async () => {
+    repo.seed(base); let n = 0;
+    const s = new MembershipBillingService(repo, { async charge() { n++; return n === 1 ? { status: 'failed' as const, processor: 't', processorRef: null, declineReason: 'x' } : { status: 'succeeded' as const, processor: 't', processorRef: 'r2' }; } });
+    await s.runDueRenewals(new Date('2026-07-01T01:00:00Z'));
+    await s.runDueRenewals(new Date(repo.snapshot('m1')!.nextBillingAt!.getTime() + 1000));
+    expect(repo.snapshot('m1')!.currentPeriodStart!.toISOString().slice(0, 10)).toBe('2026-07-01');
+    expect(repo.snapshot('m1')!.currentPeriodEnd!.toISOString().slice(0, 10)).toBe('2026-08-01');
+  });
+  it('a charge already recorded under the key is never sent to the card again; one member\'s error does not stop the sweep', async () => {
+    repo.seed(base); repo.seed({ ...base, membershipId: 'm2', customerId: 'c2' });
+    const sent: string[] = [];
+    const s = new MembershipBillingService(repo, { async charge(req: any) { sent.push(req.membershipId); if (req.membershipId === 'm1') throw new Error('gateway timeout'); return { status: 'succeeded' as const, processor: 't', processorRef: 'ok' }; } });
+    const r = await s.runDueRenewals(new Date('2026-07-01T01:00:00Z'));
+    expect(r.results.map((x) => x.membershipId).sort()).toEqual(['m1', 'm2']);
+    expect(r.results.find((x) => x.membershipId === 'm1')!.outcome).toMatch(/^error:/);
+    expect(repo.snapshot('m2')!.cyclesBilled).toBe(2);
+    // m1: a payment already recorded under this cycle's key → the sweep reports it and does not charge
+    await repo.recordPayment({ membershipId: 'm1', tenantId: 't1', branchId: 'b1', customerId: 'c1', kind: 'renewal', amountCents: 8000, taxCents: 0, status: 'succeeded', processor: 't', processorRef: 'x',
+      idempotencyKey: `renew:m1:${base.currentPeriodEnd!.toISOString()}:1`, attemptNumber: 1, failureReason: null, periodStart: base.currentPeriodEnd, periodEnd: null, techAllocCents: 0, ownerAllocCents: 0, settled: true } as any);
+    sent.length = 0;
+    const r2 = await s.runDueRenewals(new Date('2026-07-01T02:00:00Z'));
+    expect(sent).not.toContain('m1'); expect(r2.results.find((x) => x.membershipId === 'm1')!.outcome).toBe('already_recorded');
+  });
+});
