@@ -136,6 +136,8 @@ describe('§07 search · §08 calendar · §09 pagination', () => {
     expect(names(await repo.members(ctx, { q: 'filler29' }))).toEqual(['Filler29 Kumar']);    // created 229 days ago: page 5 of the list
     expect(names(await repo.members(ctx, { q: '(776) 259-9624' }))).toEqual(['Vishaal Kumar']);  // display formatting is normalized to digits
     expect(names(await repo.members(ctx, { q: '7762599624' }))).toEqual(['Vishaal Kumar']);
+    expect((await repo.members(ctx, { q: '%' })).totalItems).toBe(0);   // Nov 3 audit: % and _ are characters, not wildcards
+    expect((await repo.members(ctx, { q: '_@' })).totalItems).toBe(0);
     expect(names(await repo.members(ctx, { q: 'vishaal@exa' }))).toEqual(['Vishaal Kumar']);
     expect(names(await repo.members(ctx, { q: R15 }))).toEqual(['Vishaal Kumar']);
     expect((await repo.members(ctx, { q: '2155550307' })).totalItems).toBe(2);
@@ -218,7 +220,12 @@ describe('§10 C audience builder — draft only, consent-checked', () => {
     const other = (await q(`insert into campaigns (tenant_id, name, status) values ($1,'Other','draft') returning id`, [T2])).rows[0].id;
     expect((await repo.linkCampaign(ctx, draftId, camp)).campaignId).toBe(camp);
     expect(await code(repo.linkCampaign(ctx, draftId, other))).toBe('CAMPAIGN_NOT_FOUND');
-    expect((await repo.discard(ctx, draftId)).status).toBe('discarded');
+    // Nov 3 audit: the audit row is part of the change — a failed audit leaves the draft untouched
+    expect(await code(repo.discard(ctx, draftId, async () => { throw new Error('audit down'); }))).toBe('audit down');
+    expect((await repo.draft(ctx, draftId)).status).toBe('draft');
+    let audited = false;
+    expect((await repo.discard(ctx, draftId, async () => { audited = true; })).status).toBe('discarded');
+    expect(audited).toBe(true);
     expect(await code(repo.recheck(ctx, draftId))).toBe('AUDIENCE_DRAFT_CLOSED');
     const e = await repo.createDraft(ctx, { channel: 'sms', purpose: 'general', selectionMode: 'selected', customerIds: [TWO], filters: {}, message: null, idempotencyKey: 'seg-aud-0005' }, async () => undefined);
     await q(`update segment_audience_drafts set expires_at = now() - interval '1 minute' where id = $1`, [e.draftId]);

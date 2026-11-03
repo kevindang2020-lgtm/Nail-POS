@@ -11,6 +11,7 @@
 //   overlays   Why This Segment? · Customer History & Marketing (masked; Close; Open Booking with the customer preselected)
 //              · Audience Builder (draft only — consent checked; Campaign Center approves and sends) · As of date · Data health
 // View state (segment, filters, dates, sort, page, page size) lives in the URL; the search text never does (no PII in URLs).
+import { parseDollarsToCents } from '@aipowersalon/money';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -45,7 +46,7 @@ const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', da
 const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const segLabel = (s: string) => tx('sg.seg.' + s);
 const reasonLabel = (s: string) => tx('sg.reason.' + s);
-const cents = (dollars: string) => (dollars.trim() === '' || !Number.isFinite(Number(dollars)) ? undefined : Math.max(0, Math.round(Number(dollars) * 100)));
+const cents = (dollars: string) => (dollars.trim() === '' ? undefined : parseDollarsToCents(dollars) ?? undefined);   // exact digits, never float math (19.99 × 100 ≠ 1999)
 const whole = (v: string) => (v.trim() === '' || !Number.isFinite(Number(v)) ? undefined : Math.max(0, Math.trunc(Number(v))));
 const SEG_TONE: Record<string, string> = { new: 'info', returning: 'ok', never_visited: 'mut', vip: 'gold', inactive: 'warn' };
 

@@ -69,3 +69,9 @@ All 21 wrong-number / money / scope bugs above are fixed, each with a test (comm
 failing before this work (front desk tab, notifications Nov-1 case, coupon slow-day case on Tuesdays, voice holds, forecast history).
 Next: the guide gaps in batch order — A1 directory, A2–A20, then B, C, D. The audit tables for A and B are in
 GUIDE_AUDIT_FINDINGS_2026-11-03.md; batch C/D audits have not been run yet.
+
+## Batch B progress (Nov 3 evening)
+- B1 Segments — FIXED: `%` / `_` in e-mail search were wildcards ("%" matched everyone); discard / link-to-campaign audit now in the same transaction as the change; dollar inputs parsed exactly (no float × 100).
+- B2 Coupons — FIXED: Check-coupon spend parsed exactly; ticket-number lookup was already branch-scoped; assistant stats / removed tickets fixed earlier. NOT fixed: the assistant's draft deal and its provenance row are two writes (DealsService.createDeal has no transaction hook — needs a repository-port change).
+- B3 Deals — FIXED: "technician deals within rules" health check now applies all six rules (min price, redemption cap, new-customer, duration added); approvals active-deal count fixed earlier.
+- B4 Promotions — removed lines fixed earlier. NOT built (B1–B4): health-run history tables, coupon branch filter / Open Ticket / export / created-finalized basis / configurable expiring window, deals branch filter / Open Ticket / approvals search, promotions export / View Receipt.

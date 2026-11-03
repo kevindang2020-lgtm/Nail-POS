@@ -9,6 +9,7 @@
 //   redemptions, codes, financials, related campaigns, audit) with Check / Edit / Duplicate / lifecycle actions.
 // Money is the server's (integer cents); codes are masked (only the last four exist). Creating, duplicating or saving an
 // assistant suggestion makes a DRAFT — activation is the separate, permission-checked lifecycle step; nothing here sends.
+import { parseDollarsToCents } from '@aipowersalon/money';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -249,7 +250,7 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
   const [res, setRes] = useState<CouponCheck | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const run = async () => {
     setBusy(true); setErr(null); setRes(null);
-    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: Math.round((Number(spend) || 0) * 100), serviceIds: svc, codeEntered: showCode && code })); }
+    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: parseDollarsToCents(spend) ?? 0, serviceIds: svc, codeEntered: showCode && code })); }
     catch (e) { setErr(errorTextOf(e, tx('cp.failed'))); } finally { setBusy(false); }
   };
   return <FitDialog title={tx('cp.checkTitle', { name })} subtitle={subtitle ?? tx('cp.checkSub')} onClose={onClose} testId="dlg-check"

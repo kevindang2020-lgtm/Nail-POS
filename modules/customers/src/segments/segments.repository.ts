@@ -100,7 +100,8 @@ export class SegmentsRepository {
     const raw = String(f.q ?? '').trim().slice(0, 100);
     const parts = [this.segWhere(seg)];
     // guide §07: name · phone · e-mail · customer id (+ Retention's ticket / appointment id and service) over the whole salon
-    if (raw) parts.push(raw.includes('@') ? sql`coalesce(b.email, '') ilike ${'%' + raw + '%'}` : sql`(${this.ret.search(ctx, raw)} or coalesce(b.email, '') ilike ${'%' + raw + '%'})`);
+    // the shared Retention search already covers e-mail (with % and _ escaped — they used to act as wildcards here, so "%" matched everyone)
+    if (raw) parts.push(raw.includes('@') ? sql`coalesce(b.email, '') ilike ${'%' + raw.replace(/[\\%_]/g, (m) => '\\' + m) + '%'}` : this.ret.search(ctx, raw));
     const basis = pick(SEGMENT_BASES, f.basis) ?? 'none';
     const inP = (col: ReturnType<typeof sql>) => sql`(${col} >= ${k.start} and ${col} < ${k.end})`;
     if (basis === 'created') parts.push(inP(sql`b.created_at`));
@@ -377,16 +378,20 @@ export class SegmentsRepository {
     for (const [cid, x] of now) { if (x.status === 'eligible') eligibleNow++; const b = before.get(cid); if (b && b !== x.status) changed.push({ customerId: cid, from: b, to: x.status }); }
     return { draftId: id, checkedAt: new Date().toISOString(), eligibleAtCreation: d.eligible, eligibleNow, changed: changed.slice(0, 200), changedCount: changed.length };
   }
-  async discard(ctx: RetentionContext, id: string) {
+  /** the audit row is written in the SAME transaction as the change (it used to be written after, so a failed audit left an unaudited change) */
+  async discard(ctx: RetentionContext, id: string, audit?: (trx: Kysely<any>) => Promise<unknown>) {
     const d = await this.draft(ctx, id);
     if (d.status !== 'draft') throw new SegmentsError('This audience draft is closed.', 'AUDIENCE_DRAFT_CLOSED', 409);
-    const r = (await sql<any>`update segment_audience_drafts set status = 'discarded', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}, updated_at = now()
-      where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(SEGMENT_AUDIENCE_DRAFT, 'discarded')} returning id`.execute(this.db)).rows[0];
-    if (!r) throw new SegmentsError('This audience draft is closed.', 'AUDIENCE_DRAFT_CLOSED', 409);
+    await this.db.transaction().execute(async (trx) => {
+      const r = (await sql<any>`update segment_audience_drafts set status = 'discarded', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}, updated_at = now()
+        where tenant_id = ${ctx.tenantId} and id = ${id} and ${canMoveToSql(SEGMENT_AUDIENCE_DRAFT, 'discarded')} returning id`.execute(trx)).rows[0];
+      if (!r) throw new SegmentsError('This audience draft is closed.', 'AUDIENCE_DRAFT_CLOSED', 409);
+      if (audit) await audit(trx);
+    });
     return this.draft(ctx, id);
   }
   /** record the Campaign Center draft this audience was handed to (the campaign must be this salon's and still a draft) */
-  async linkCampaign(ctx: RetentionContext, id: string, campaignId: string) {
+  async linkCampaign(ctx: RetentionContext, id: string, campaignId: string, audit?: (trx: Kysely<any>) => Promise<unknown>) {
     const d = await this.draft(ctx, id);
     if (d.status === 'expired') throw new SegmentsError('This audience draft expired.', 'AUDIENCE_DRAFT_EXPIRED', 409);
     if (d.status !== 'draft') throw new SegmentsError('This audience draft is closed.', 'AUDIENCE_DRAFT_CLOSED', 409);
@@ -394,7 +399,12 @@ export class SegmentsRepository {
     const c = (await sql<any>`select id, status from campaigns where tenant_id = ${ctx.tenantId} and id = ${campaignId}`.execute(this.db)).rows[0];
     if (!c) throw new SegmentsError('Campaign not found.', 'CAMPAIGN_NOT_FOUND', 404);
     if (String(c.status) !== 'draft') throw new SegmentsError('Only a draft campaign can take this audience.', 'AUDIENCE_DRAFT_CLOSED', 409);
-    await sql`update segment_audience_drafts set campaign_id = ${campaignId}, updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}, updated_at = now() where tenant_id = ${ctx.tenantId} and id = ${id}`.execute(this.db);
+    await this.db.transaction().execute(async (trx) => {
+      const r = (await sql<any>`update segment_audience_drafts set campaign_id = ${campaignId}, updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}, updated_at = now()
+        where tenant_id = ${ctx.tenantId} and id = ${id} and status = 'draft' returning id`.execute(trx)).rows[0];
+      if (!r) throw new SegmentsError('This audience draft is closed.', 'AUDIENCE_DRAFT_CLOSED', 409);
+      if (audit) await audit(trx);
+    });
     return this.draft(ctx, id);
   }
 }

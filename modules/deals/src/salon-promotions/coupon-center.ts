@@ -115,7 +115,13 @@ export class CouponCenter {
         async () => (await sql<any>`select d.id from deals d join deal_settings s on s.tenant_id = d.tenant_id where d.tenant_id = ${T} and ${this.branch(ctx)} and d.owner_type = 'technician'
           and d.status in ('pending_approval', 'approved', 'scheduled', 'active', 'paused')
           and (s.allow_technician_deals = 'off' or (d.discount_type = 'percent' and s.max_discount_percent is not null and d.discount_percent > s.max_discount_percent)
-            or (d.discount_type = 'fixed' and s.max_fixed_discount_cents is not null and d.discount_cents > s.max_fixed_discount_cents)) limit 50`.execute(this.db)).rows);
+            or (d.discount_type = 'fixed' and s.max_fixed_discount_cents is not null and d.discount_cents > s.max_fixed_discount_cents)
+            -- the other four rules Checkout and approval apply (validateTechDealAgainstSettings); the check used to test only the two caps
+            or (s.min_service_price_cents is not null and coalesce(d.original_price_cents, 0) < s.min_service_price_cents)
+            or (s.max_redemptions_cap is not null and d.max_redemptions is not null and d.max_redemptions > s.max_redemptions_cap)
+            or (d.new_customers_only and not s.allowed_new_customer)
+            or (s.max_campaign_duration_days is not null and d.starts_at is not null and d.ends_at is not null
+                and extract(epoch from (d.ends_at - d.starts_at)) / 86400 > s.max_campaign_duration_days)) limit 50`.execute(this.db)).rows);
     }
     if (this.scope === 'all') for (const c of checks) c.detail = c.detail.replace(/\bcoupon(s?)\b/g, 'offer$1');
     const rank: Record<HealthStatus, number> = { ready: 0, unknown: 1, attention: 2, failed: 3 };

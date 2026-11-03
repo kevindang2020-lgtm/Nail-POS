@@ -158,6 +158,14 @@ describe('§9 technician deals: 10% cap and manager approval (server-side)', () 
     await svc.updateSettings(owner, { maxDiscountPercent: 10 } as any);
     expect((await svc.approve(mgr, p.id)).status).toBe('approved');
   });
+  it('Nov 3 audit — the health check also applies the min-price, redemption-cap, new-customer and duration rules', async () => {
+    const before = (await center.health(owner)).checks.find((c: any) => c.key === 'tech_policy');
+    expect(before).toMatchObject({ status: 'ready' });
+    await svc.updateSettings(owner, { minServicePriceCents: 1_000_000 } as any);   // every live technician deal's service is now "too cheap"
+    expect((await center.health(owner)).checks.find((c: any) => c.key === 'tech_policy')).toMatchObject({ status: 'attention' });
+    await svc.updateSettings(owner, { minServicePriceCents: null } as any);
+    expect((await center.health(owner)).checks.find((c: any) => c.key === 'tech_policy')).toMatchObject({ status: 'ready' });
+  });
   it('Nov 3 audit: the active-deal cap counts the technician\'s OTHER deals — in the inbox and at approval', async () => {
     const t2 = { ...tech, technicianId: TECH2, userId: id('e4') };
     await svc.updateSettings(owner, { maxActiveDealsPerTech: 3 } as any);

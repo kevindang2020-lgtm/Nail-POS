@@ -98,9 +98,7 @@ export class SegmentsController {
   discard(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(SEGMENT_EMPTY_BODY, { strict: true })) _b: any) {
     const c = ctxFrom(q); need(c, 'pos.marketing.manage');
     return run(async () => {
-      const out = await this.r().discard(c, id);
-      await recordAuditStrict(this.r().db, actor(c), { module: 'customers', action: 'segments.audience_draft.discarded', resourceType: 'segment_audience_draft', resourceId: id, summary: 'Audience draft discarded' });
-      return out;
+      return this.r().discard(c, id, (trx) => recordAuditStrict(trx, actor(c), { module: 'customers', action: 'segments.audience_draft.discarded', resourceType: 'segment_audience_draft', resourceId: id, summary: 'Audience draft discarded' }));
     });
   }
 
@@ -108,9 +106,7 @@ export class SegmentsController {
   linkCampaign(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(SEGMENT_DRAFT_CAMPAIGN_BODY, { strict: true })) b: any) {
     const c = ctxFrom(q); need(c, 'pos.marketing.manage');
     return run(async () => {
-      const out = await this.r().linkCampaign(c, id, String(b.campaignId));
-      await recordAuditStrict(this.r().db, actor(c), { module: 'customers', action: 'segments.audience_draft.linked', resourceType: 'segment_audience_draft', resourceId: id, summary: 'Audience draft handed to a Campaign Center draft (not sent)', after: { campaignId: b.campaignId } });
-      return out;
+      return this.r().linkCampaign(c, id, String(b.campaignId), (trx) => recordAuditStrict(trx, actor(c), { module: 'customers', action: 'segments.audience_draft.linked', resourceType: 'segment_audience_draft', resourceId: id, summary: 'Audience draft handed to a Campaign Center draft (not sent)', after: { campaignId: b.campaignId } }));
     });
   }
 }
