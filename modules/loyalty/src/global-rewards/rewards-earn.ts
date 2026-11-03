@@ -119,7 +119,7 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   await sql`UPDATE global_rewards_accounts ga SET available_tenths = ${after}, lifetime_earned_tenths = ga.lifetime_earned_tenths + ${tenths}, version = ga.version + 1, updated_at = now()
     WHERE ga.identity_id = ${identityId}::uuid`.execute(trx);
   await postJournal(trx, { entryType: 'earn_allocation', tenantId: T, sourceTable: 'reward_earn_transactions', sourceId: earnId, memo: `Funded ${tenthsLabel(tenths)} points`,
-    lines: [{ account: 'merchant_prepaid_liability', tenantId: T, debit: backing }, { account: 'rewards_liability', tenantId: T, credit: backing }] });
+    lines: [{ account: 'merchant_prepaid_liability', tenantId: T, debit: backing }, { account: 'rewards_liability', tenantId: null, credit: backing }] });   // points are global (earned here, spendable at any salon): the liability is the platform's, like on redeem
   // one owner alert per threshold CROSSING (not every sale below it — guide §5.6 "avoid alert spam")
   const lvlBefore = alertLevel(n(before?.available_cents), program), lvlAfter = alertLevel(debit.balanceAfterCents, program);
   let alertRaised: string | null = null;
@@ -193,7 +193,7 @@ export async function reverseEarnForRefund(trx: Transaction<any>, repo: GlobalRe
     await sql`UPDATE global_rewards_accounts ga SET available_tenths = ${after}, version = ga.version + 1, updated_at = now() WHERE ga.identity_id = ${e.identity_id}::uuid`.execute(trx);
     await repo.creditWallet(trx, { tenantId: T, branchId: e.branch_id ?? null, cents: restoreCents, entryType: 'earn_reversal', sourceTable: 'refunds', sourceId: a.refundId,
       reason: `Refund took back ${tenthsLabel(take)} unused points`, journal: { entryType: 'earn_reversal', memo: `Refund ${a.refundId}`, lines: [
-        { account: 'rewards_liability', tenantId: T, debit: restoreCents }, { account: 'merchant_prepaid_liability', tenantId: T, credit: restoreCents }] } });
+        { account: 'rewards_liability', tenantId: null, debit: restoreCents }, { account: 'merchant_prepaid_liability', tenantId: T, credit: restoreCents }] } });
   }
   const reversedTenths = n(e.reversed_tenths) + take;
   const exception = want - take;

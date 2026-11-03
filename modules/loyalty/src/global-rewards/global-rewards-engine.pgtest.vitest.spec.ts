@@ -174,6 +174,10 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
     expect(await wallet(TA)).toBe(9740 - 25);
     expect((await q(`select count(*)::int as n from token_wallet_ledger where tenant_id = $1 and entry_type = 'earn_allocation'`, [TA]))[0].n).toBe(5);
   });
+  it('Nov 3 audit — the rewards liability is the platform\'s on every line (earn used to tag it to the salon, redeem did not)', async () => {
+    expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability' and tenant_id is not null`))[0].n)).toBe(0);
+    expect(Number((await q(`select count(*)::int n from rewards_journal_lines where account = 'rewards_liability'`))[0].n)).toBeGreaterThan(0);
+  });
   it('T03 custom B $10 = 2: $100 earns 20 points and debits 2.00 tokens from B (not A)', async () => {
     await fund(TB, BB, 10);
     const before = await points();
