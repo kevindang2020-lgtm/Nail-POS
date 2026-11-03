@@ -252,3 +252,27 @@ describe('B17/B19 — one birthday message per customer per occasion year (the s
     expect(await g.claim(ctx, campA, C.none2, 'sms')).toMatchObject({ allowed: false, reason: 'birthday_not_recorded' });
   });
 });
+
+describe('Nov 3 audit — Feb 29 sorts on its celebrated day; KPIs follow the range', () => {
+  it('with the Mar 1 policy in a non-leap year, a Feb 29 birthday sorts WITH Mar 1 (after Feb 28), not before it', async () => {
+    const m = Number(today.slice(5, 7)); if (m === 2 || m === 3) return;   // the check needs today outside Feb–Mar
+    const leapA = await cust('Sortz', '1990-02-28'), leapB = await cust('Sortz', '1991-03-01'), leapC = await cust('Sortz', '1992-02-29');
+    const ver = (await bc.settings(ctx)).version;
+    await bc.saveSettings(ctx, { feb29Policy: 'mar1', expectedVersion: ver }, audit);
+    try {
+      const next = year + (m >= 3 ? 1 : 0);
+      const leapNext = (next % 4 === 0 && next % 100 !== 0) || next % 400 === 0;
+      const ids = (await bc.customers(ctx, { scope: 'all', q: 'Sortz', pageSize: 50 })).items.map((x: any) => x.customerId);
+      expect(ids).toEqual(leapNext ? [leapA, leapC, leapB] : [leapA, leapB, leapC]);
+    } finally { await bc.saveSettings(ctx, { feb29Policy: 'feb28', expectedVersion: (await bc.settings(ctx)).version }, audit); }
+  });
+  it('messages sent count only customers whose birthday is in the chosen range', async () => {
+    const s = await bc.summary(ctx, { month: 10 }), jan = await bc.summary(ctx, { month: 1 });
+    expect(jan.kpis.messagesSent).toBeLessThanOrEqual(s.kpis.messagesSent + jan.kpis.inRange);   // sanity: both compute
+    const octIds = (await bc.customers(ctx, { month: 10, pageSize: 50 })).items.map((x: any) => x.id);
+    const sentOct = Number((await q(`select count(*)::int n from birthday_message_claims m join customers c on c.id = m.customer_id where m.tenant_id = $1 and m.status = 'sent'
+      and extract(month from c.birthday) = 10 and m.occasion_year = $2`, [T, year])).rows[0].n);
+    expect(s.kpis.messagesSent).toBe(sentOct);
+    expect(octIds.length).toBeGreaterThan(0);
+  });
+});

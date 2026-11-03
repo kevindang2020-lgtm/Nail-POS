@@ -128,21 +128,24 @@ export class BirthdayCenter {
         count(*) filter (where c.birthday is not null and ${md} = any(${keysR}::int[]) and ${this.emailEligibleW()})::int as email_eligible,
         count(*)::int as total, count(*) filter (where c.birthday is not null)::int as recorded, count(*) filter (where c.birthday is not null and not c.birthday_year_known)::int as year_unknown
       from customers c where c.tenant_id = ${ctx.tenantId} and ${W} and c.archived_at is null and c.status <> 'archived'`.execute(this.db)).rows[0];
-    // Nov 3 audit: the message / offer / visit KPIs are scoped to the branch like the customer counts
+    // Nov 3 audit: the message / offer / visit KPIs are scoped to the branch like the customer counts, and to the customers whose birthday
+    // falls in the chosen range (they used to count the whole year whatever range was picked)
+    const yrs = [...new Set([Number(r.from.slice(0, 4)), Number(r.to.slice(0, 4))])];
+    const inR = sql`c.birthday is not null and ${md} = any(${keysR}::int[]) and m.occasion_year = any(${yrs}::int[])`;
     const sent = (await sql<any>`select count(*) filter (where m.status = 'sent')::int as sent, count(*) filter (where m.status = 'claimed')::int as in_flight
-      from birthday_message_claims m join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and ${W}`.execute(this.db)).rows[0];
+      from birthday_message_claims m join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id where m.tenant_id = ${ctx.tenantId} and ${inR} and ${W}`.execute(this.db)).rows[0];
     // offers redeemed: a redemption of the deal attached to a birthday campaign, by a customer that campaign messaged, after the message
     const red = (await sql<any>`select count(distinct dr.id)::int as n from birthday_message_claims m
         join campaigns cp on cp.id = m.campaign_id and cp.tenant_id = m.tenant_id
         join deal_redemptions dr on dr.tenant_id = m.tenant_id and dr.deal_id = cp.deal_id and dr.customer_id = m.customer_id and dr.status = 'redeemed' and coalesce(dr.redeemed_at, dr.created_at) >= m.created_at
         join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id
-      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
+      where m.tenant_id = ${ctx.tenantId} and ${inR} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
     // completed visits after a birthday message: an ASSOCIATION (observed), never claimed as caused by the campaign
     const bk = (await sql<any>`select count(distinct t.id)::int as n, coalesce(sum(t.total_cents), 0)::bigint as cents from birthday_message_claims m
         join tickets t on t.tenant_id = m.tenant_id and t.customer_id = m.customer_id and t.status in ('paid', 'closed') and t.removed_at is null
           and t.paid_at >= m.created_at and t.paid_at < m.created_at + make_interval(days => ${ASSOCIATION_DAYS})   -- anchored on the send (claim) time; updated_at moves on any later update
         join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id
-      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
+      where m.tenant_id = ${ctx.tenantId} and ${inR} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
     return {
       asOf: new Date().toISOString(), timezone: b.tz, today: b.today, ruleset: BIRTHDAY_RULESET, feb29Policy: b.policy, range: r,
       kpis: { inRange: N(k.in_range), next7Days: N(k.next7), eligibleSms: N(k.sms_eligible), eligibleEmail: N(k.email_eligible),
@@ -199,7 +202,13 @@ export class BirthdayCenter {
       : sort === 'name_desc' ? sql`lower(coalesce(c.full_name, '')) desc, c.id desc`
       : scope === 'missing' ? sql`c.created_at desc, c.id desc`
       // soonest next occurrence first: this year's remaining month/days, then next year's (Dec 31 → Jan 1 wraps)
-      : sql`case when ${md} >= ${todayKey} then 0 else 1 end, ${md}, c.id`;
+      // a Feb 29 birthday sorts on the day it is celebrated (Feb 28 or Mar 1 by the salon's policy) in a non-leap year — it used to sort
+      // as "Feb 29", so on Mar 1 with the Mar 1 policy that day's celebrant sorted to next year
+      : (() => {
+          const k29 = (y: number) => (isLeap(y) ? 229 : b.policy === 'mar1' ? 301 : 228);
+          const effThis = sql`(case when ${md} = 229 then ${k29(t.y)} else ${md} end)`, effNext = sql`(case when ${md} = 229 then ${k29(t.y + 1)} else ${md} end)`;
+          return sql`case when ${effThis} >= ${todayKey} then 0 else 1 end, case when ${effThis} >= ${todayKey} then ${effThis} else ${effNext} end, c.id`;
+        })();
     const total = N((await sql<any>`select count(*)::int as n from customers c where c.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
     const rows = (await sql<any>`select c.id, c.full_name, c.first_name, c.last_name, c.normalized_phone, c.email, c.created_at, to_char(c.birthday, 'YYYY-MM-DD') as birthday, c.birthday_year_known, c.birthday_source,
         (select max(coalesce(tk.paid_at, tk.created_at)) from tickets tk where tk.tenant_id = c.tenant_id and tk.customer_id = c.id and tk.status in ('paid', 'closed') and tk.removed_at is null) as last_visit,
