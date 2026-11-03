@@ -237,6 +237,13 @@ describe('B17/B19 — one birthday message per customer per occasion year (the s
     expect((await bc.summary(ctx, { month: 10 })).kpis.messagesSent).toBe(1);
     const row = (await q(`select occasion_year y from birthday_message_claims where customer_id = $1 and channel = 'sms'`, [C.ava])).rows[0];
     expect([year, year + 1]).toContain(Number(row.y));
+     // Nov 3 audit: another branch of the SAME salon sees neither the message in its KPIs nor the customer in its history
+    const B3 = id('b3');
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Second','active','America/New_York') on conflict do nothing`, [B3, T]);
+    const other = { ...ctx, branchId: B3 };
+    expect((await bc.history(ctx, {})).items.some((x: any) => x.customerId === C.ava)).toBe(true);
+    expect((await bc.history(other, {})).items.some((x: any) => x.customerId === C.ava)).toBe(false);
+    expect((await bc.summary(other, { month: 10 })).kpis.messagesSent).toBe(0);
   });
   it('a non-birthday campaign is never limited; a cleared birthday is not texted', async () => {
     const g = new KyselyOccasionGuard(db);

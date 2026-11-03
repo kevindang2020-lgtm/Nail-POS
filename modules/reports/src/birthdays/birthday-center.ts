@@ -128,18 +128,21 @@ export class BirthdayCenter {
         count(*) filter (where c.birthday is not null and ${md} = any(${keysR}::int[]) and ${this.emailEligibleW()})::int as email_eligible,
         count(*)::int as total, count(*) filter (where c.birthday is not null)::int as recorded, count(*) filter (where c.birthday is not null and not c.birthday_year_known)::int as year_unknown
       from customers c where c.tenant_id = ${ctx.tenantId} and ${W} and c.archived_at is null and c.status <> 'archived'`.execute(this.db)).rows[0];
-    const sent = (await sql<any>`select count(*) filter (where status = 'sent')::int as sent, count(*) filter (where status = 'claimed')::int as in_flight
-      from birthday_message_claims where tenant_id = ${ctx.tenantId} and occasion_year = ${b.year}`.execute(this.db)).rows[0];
+    // Nov 3 audit: the message / offer / visit KPIs are scoped to the branch like the customer counts
+    const sent = (await sql<any>`select count(*) filter (where m.status = 'sent')::int as sent, count(*) filter (where m.status = 'claimed')::int as in_flight
+      from birthday_message_claims m join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and ${W}`.execute(this.db)).rows[0];
     // offers redeemed: a redemption of the deal attached to a birthday campaign, by a customer that campaign messaged, after the message
     const red = (await sql<any>`select count(distinct dr.id)::int as n from birthday_message_claims m
         join campaigns cp on cp.id = m.campaign_id and cp.tenant_id = m.tenant_id
         join deal_redemptions dr on dr.tenant_id = m.tenant_id and dr.deal_id = cp.deal_id and dr.customer_id = m.customer_id and dr.status = 'redeemed' and coalesce(dr.redeemed_at, dr.created_at) >= m.created_at
-      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent'`.execute(this.db)).rows[0];
+        join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id
+      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
     // completed visits after a birthday message: an ASSOCIATION (observed), never claimed as caused by the campaign
     const bk = (await sql<any>`select count(distinct t.id)::int as n, coalesce(sum(t.total_cents), 0)::bigint as cents from birthday_message_claims m
         join tickets t on t.tenant_id = m.tenant_id and t.customer_id = m.customer_id and t.status in ('paid', 'closed') and t.removed_at is null
-          and t.paid_at >= m.updated_at and t.paid_at < m.updated_at + make_interval(days => ${ASSOCIATION_DAYS})
-      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent'`.execute(this.db)).rows[0];
+          and t.paid_at >= m.created_at and t.paid_at < m.created_at + make_interval(days => ${ASSOCIATION_DAYS})   -- anchored on the send (claim) time; updated_at moves on any later update
+        join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id
+      where m.tenant_id = ${ctx.tenantId} and m.occasion_year = ${b.year} and m.status = 'sent' and ${W}`.execute(this.db)).rows[0];
     return {
       asOf: new Date().toISOString(), timezone: b.tz, today: b.today, ruleset: BIRTHDAY_RULESET, feb29Policy: b.policy, range: r,
       kpis: { inRange: N(k.in_range), next7Days: N(k.next7), eligibleSms: N(k.sms_eligible), eligibleEmail: N(k.email_eligible),
@@ -305,7 +308,7 @@ export class BirthdayCenter {
   async history(ctx: RetentionContext, f: { q?: unknown; page?: unknown; pageSize?: unknown; year?: unknown }) {
     const pageSize = [10, 20, 50].includes(Math.trunc(N(f.pageSize))) ? Math.trunc(N(f.pageSize)) : 20;
     const page = Math.max(1, Math.trunc(N(f.page)) || 1);
-    const conds = [sql`m.tenant_id = ${ctx.tenantId}`];
+    const conds = [sql`m.tenant_id = ${ctx.tenantId}`, this.branchW(ctx)];   // another branch's customers never appear (Nov 3 audit)
     const y = Math.trunc(N(f.year)); if (y >= 2000 && y <= 2200) conds.push(sql`m.occasion_year = ${y}`);
     const q = str(f.q, 100); if (q) conds.push(sql`(c.full_name ilike ${'%' + q + '%'} or cp.name ilike ${'%' + q + '%'})`);
     const where = sql.join(conds, sql` and `);
