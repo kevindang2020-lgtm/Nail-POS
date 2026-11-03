@@ -113,4 +113,28 @@ describe.skipIf(!url)('recipe deduction under the publisher lanes (M4)', () => {
     }
     expect(await auditRows() - audit0).toBe(2);   // one alert audit row per product, none re-written
   });
+
+  it('Nov 3 audit — the SAME ticket line delivered twice at once is deducted once (the check and the write were not under one lock)', async () => {
+    const { P } = await fixture(10, 100);
+    const line = 'a7a00000-0000-4000-8000-00000000ccc1';
+    let release!: () => void; const hold = new Promise<void>((r) => { release = r; });
+    let firstDone = false;
+    const A = db.transaction().execute(async (trx) => { await consume(SVC_A, line, trx); firstDone = true; await hold; });
+    while (!firstDone) await new Promise((r) => setTimeout(r, 10));
+    const B = db.transaction().execute(async (trx) => consume(SVC_A, line, trx));   // waits on the line lock until A commits
+    await new Promise((r) => setTimeout(r, 150)); release();
+    const [, rb] = await Promise.all([A, B]);
+    expect((rb as any).alreadyDeducted).toBe(true);
+    expect((await movements(P)).filter((m) => m.related_id === line)).toHaveLength(1);
+    expect(await onHand(P)).toBe(9);
+  });
+  it('Nov 3 audit — an expired bottle is never used on a client; the soonest-expiring good bottle goes first', async () => {
+    const { P } = await fixture(1, 100);
+    await sql`update inventory_units set expiration_date = '2020-01-01' where tenant_id = ${T} and product_id = ${P}`.execute(db);   // the one bottle on hand has expired
+    await svc.addStock(ctx, P, { quantity: 1, expirationDate: '2099-12-31' });
+    await svc.addStock(ctx, P, { quantity: 1, expirationDate: '2098-06-30' });
+    await db.transaction().execute((trx) => consume(SVC_A, 'a7a00000-0000-4000-8000-00000000ddd1', trx));
+    const left = (await sql<{ d: string; status: string }>`select to_char(expiration_date, 'YYYY-MM-DD') d, status from inventory_units where tenant_id = ${T} and product_id = ${P} order by expiration_date`.execute(db)).rows;
+    expect(left).toEqual([{ d: '2020-01-01', status: 'unopened' }, { d: '2098-06-30', status: 'empty' }, { d: '2099-12-31', status: 'unopened' }]);
+  });
 });

@@ -139,7 +139,12 @@ export class InventoryService {
       const actor = systemActorOf(ctx.userId);
       await sql`INSERT INTO audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, metadata_json)
         VALUES (${ctx.tenantId}, ${ctx.branchId}, ${actor.userId}, ${ctx.role}, ${action}, ${'inventory'}, ${unitId ?? productId}, ${JSON.stringify({ ...(meta || {}), ...(actor.systemActor ? { systemActor: actor.systemActor } : {}) })}::jsonb)`.execute(exec);
-    } catch { /* best effort */ }
+    } catch (e) {
+      // inside the caller's transaction a failed insert has already aborted it: swallowing hid the failure and the next
+      // statement failed with "current transaction is aborted" — rethrow so the whole change rolls back with its audit
+      if (exec !== this.db) throw e;
+      console.warn('[inventory] audit row not written', action, (e as Error)?.message);   // standalone write: the change itself already committed
+    }
   }
 
   /** M4 lanes (Oct 26 2026): serialize every stock change of these products at this branch for the rest of `exec`'s
@@ -835,7 +840,10 @@ export class InventoryService {
         else if (rep.report_type === 'bottle_low') await this.markLow(ctx, rep.inventory_unit_id);
         else if (rep.report_type === 'open_new') await this.openUnit(ctx, rep.inventory_unit_id);
         else if (rep.report_type === 'damaged') await this.markDamaged(ctx, rep.inventory_unit_id);
-      } catch { /* bottle may already be in the target state; approval still records */ }
+      } catch (e) {
+        // the bottle may already be in the target state (a refusal, 4xx): approval still records. Anything else is a real failure.
+        if (!(e instanceof InventoryError) || e.status >= 500) throw e;
+      }
     }
     await this.audit(ctx, 'inventory_technician_report_approved', rep.product_id, rep.inventory_unit_id, { type: rep.report_type });
     return { ok: true };
@@ -1351,7 +1359,9 @@ export class InventoryService {
           SELECT id FROM inventory_units
           WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id}
             AND status IN ('unopened', 'opened', 'low')
-          ORDER BY CASE status WHEN 'low' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END
+            -- an expired bottle is never used on a client (it used to be picked like any other); soonest-expiring first
+            AND (expiration_date IS NULL OR expiration_date >= (now() AT TIME ZONE 'UTC')::date)
+          ORDER BY CASE status WHEN 'low' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END, expiration_date ASC NULLS LAST, id
           LIMIT ${want} FOR UPDATE SKIP LOCKED
         )
         UPDATE inventory_units u SET status = 'empty', updated_at = now() FROM picked WHERE u.id = picked.id`.execute(exec);
@@ -1371,6 +1381,9 @@ export class InventoryService {
    *  Deducts only what is on hand (never negative); the shortfall is in the result. A manager corrects a wrong
    *  deduction through the ordinary stock adjustment (its own audited movement), never by editing this one. */
   async consumeRecipeForTicketLine(ctx: InvCtx, line: { ticketId: string; lineId: string; serviceId: string; quantity?: number | null }, exec: Kysely<DB> = this.need()) {
+    // two deliveries of the same Service Done (two consumers, a replay racing the original) used to both pass the "already
+    // deducted?" check before either wrote its movement — the line was deducted twice. One transaction-scoped lock per line.
+    await sql`SELECT pg_advisory_xact_lock(hashtext(${'inv-line:' + line.lineId}))`.execute(exec);
     const done = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_stock_movements
       WHERE tenant_id = ${ctx.tenantId} AND movement_type = 'service_usage' AND related_type = 'ticket_line' AND related_id = ${line.lineId}`.execute(exec);
     if (Number(done.rows[0]?.n ?? 0) > 0) return { serviceId: line.serviceId, multiplier: 0, deducted: [], alreadyDeducted: true as const };
