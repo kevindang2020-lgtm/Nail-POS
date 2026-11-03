@@ -88,6 +88,10 @@ export class AiUsageScreenController {
   }
 
   /** Check AI Usage & Subscriptions (AI Usage Limits guide, Nov 1 2026) — read-only: never starts, cancels, prices or charges */
+  /** AI Center guide: per assistant — stored status, honest state, the gate's decision now, this month's events — read-only */
+  @Get('reconcile') @RequirePermission('ai.use')
+  reconcileState(@Req() req: any) { return run(() => this.r().reconcile(ctxOf(req))); }
+
   @Post('check') @RequirePermission('ai.use')
   check(@Req() q: any, @Body(ValidatedBody(AI_USAGE_CHECK_BODY, { strict: true })) _b: unknown) { return run(() => this.r().check(ctxOf(q))); }
 

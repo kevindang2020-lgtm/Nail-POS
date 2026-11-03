@@ -49,4 +49,27 @@ describe('Check AI Usage & Subscriptions', () => {
     expect((await q(sql`select count(*)::int as n from tenant_ai_subscriptions where tenant_id = ${T}`))[0].n).toBe(before);
     expect((await q(sql`select status from tenant_ai_subscriptions where tenant_id = ${T} and package_code = 'ai_ocr_receipt_scanner'`))[0].status).toBe('trialing');
   });
+  it('AIC-01 AI Center reconcile: the stale "trialing" row counts as old Trial/Running, but now as trial expired and NOT runnable; the gate agrees', async () => {
+    await sub('ai_booking_assistant', 'active');
+    const r: any = await repo.reconcile(ctx, { AI_ENTITLEMENT_ENFORCEMENT: '' } as any);
+    const row = (c: string) => r.rows.find((x: any) => x.code === c);
+    expect(row('ai_ocr_receipt_scanner')).toMatchObject({ storedStatus: 'trialing', state: 'trial_expired', oldLabel: 'trial', oldCountedRunning: true, mismatch: false });
+    expect(row('ai_ocr_receipt_scanner').gate.allowed).toBe(false);
+    expect(row('ai_voice_transcription').gate.allowed).toBe(false);
+    expect(row('ai_booking_assistant')).toMatchObject({ state: 'active', mismatch: false });
+    expect(row('ai_booking_assistant').gate.allowed).toBe(true);
+    expect(r.old.onTrial).toBe(1);
+    expect(r.now).toMatchObject({ trialing: 0, trialExpired: 1, paidActive: 1, canRunNow: 1, catalog: 15 });
+    expect(r.staleTrialRows).toBe(1);
+    expect(r.gateMismatches).toBe(0);
+    expect(r.enforcement).toEqual({ modelCalls: 'always', featureRoutes: 'observe' });
+    expect(row('ai_ocr_receipt_scanner').monthEvents + row('ai_voice_transcription').monthEvents).toBeGreaterThanOrEqual(0);
+  });
+  it('AIC-02 the check reports gate_matches_state PASSED and warns that feature routes are only observed', async () => {
+    await q(sql`delete from ai_usage_health_runs where tenant_id = ${T}`);
+    const c: any = await repo.check(ctx);
+    const by = (k: string) => c.checks.find((x: any) => x.key === k);
+    expect(by('gate_matches_state').state).toBe('PASSED');
+    expect(by('feature_routes_gated').state).toBe('WARNING');
+  });
 });

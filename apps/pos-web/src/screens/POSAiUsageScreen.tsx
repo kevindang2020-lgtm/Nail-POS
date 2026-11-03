@@ -53,7 +53,7 @@ const nf = (n: number) => fmtNumber(n || 0);
 const day = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) || '—' : '—');
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const unitLabel = (u: string, n?: number) => tx('aiu.unit.' + u, { n: nf(n ?? 0) });
-const stateLabel = (s: string) => tx('aiu.state.' + s);
+export const stateLabel = (s: string) => tx('aiu.state.' + s);
 const STATE_TONE: Record<string, string> = { active: 'ok', trialing: 'info', trial_available: 'gold', available: 'mut', trial_expired: 'warn', cancelled: 'mut', expired: 'mut', past_due: 'bad', suspended: 'bad', disabled_by_admin: 'mut', unable_to_verify: 'warn' };
 const LEVEL_TONE: Record<string, string> = { warn_80: 'warn', critical_90: 'bad', exhausted_100: 'bad' };
 // a 403 reads as a permission message, never the server's raw word ("forbidden") — Nov 2 2026

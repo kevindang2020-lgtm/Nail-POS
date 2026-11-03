@@ -22,6 +22,8 @@ export const posAiUsageScreenApi = {
   acknowledge: (id: string) => api.post<any>(`${US}/alerts/${enc(id)}/acknowledge`, {}),
   /** Check AI Usage & Subscriptions — read-only (AI Usage Limits guide, Nov 1 2026) */
   check: () => api.post<any>(`${US}/check`, {}),
+  /** AI Center guide: stored status vs honest state vs the AI-call gate's decision, per assistant; this month's runs */
+  reconcile: () => api.get<any>(`${US}/reconcile`),
   // Four-Module Completion Guide (Oct 30 2026): AI-02 branch override · AI-01 read-only invoice re-check (never charges)
   setBranch: (code: string, branchId: string, b: { overrideEnabled: boolean | null; settings: Record<string, boolean>; expectedVersion: number; reason?: string | null }) =>
     api.put<any>(`${US}/packages/${enc(code)}/branches/${enc(branchId)}`, b as Record<string, unknown>),

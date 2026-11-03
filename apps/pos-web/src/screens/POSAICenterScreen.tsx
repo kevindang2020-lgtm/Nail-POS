@@ -5,6 +5,8 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabelOrNull, humanizeCode } from '../i18n/status-label';
 import { fmtMoney, displayLocale } from '../i18n/format';
 import { growthCode } from './growthLabels';
+import { posAiUsageScreenApi } from '../api/posAiUsageApi';
+import { stateLabel } from './POSAiUsageScreen';
 
 // POSAICenterScreen.tsx — T16 AI Center › AI Command Center. Reads the REAL tenant AI access state from
 // /tenant/ai/packages (the same gate decision the backend enforces): every AI assistant with its live subscription
@@ -23,7 +25,13 @@ const CAT_LABEL: Record<string, string> = { get front_desk() { return t('growth.
 const cardBox: React.CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line)', borderRadius: 14, padding: 14 };
 const headStyle: React.CSSProperties = { fontWeight: 800, fontSize: 13.5, marginBottom: 10, fontFamily: 'var(--aps-font-head, Playfair Display)' };
 
-function statusOf(p: PosAiPackage): { label: string; tone: string } {
+// AI Center guide (Nov 3 2026, P0): when the live reconcile is available, the pill is the HONEST state plus the AI-call
+// gate's decision — an ended trial whose record still says "trialing" is never shown as Trial or Running.
+function statusOf(p: PosAiPackage, live?: any): { label: string; tone: string } {
+  if (live) {
+    const lbl = stateLabel(live.state);
+    return { label: lbl, tone: live.gate?.allowed ? 'ok' : live.state === 'available' || live.state === 'trial_available' ? '' : 'warn' };
+  }
   const st = p.subscription?.status;
   if (st === 'active') return { label: t('pos.active_3'), tone: 'ok' };
   if (st === 'trialing') return { label: t('pos.trial'), tone: 'warn' };
@@ -42,6 +50,10 @@ export function POSAICenterScreen() {
   const [runs, setRuns] = useState<Record<string, WorkflowStat> | null>(null);
   const [modeNote, setModeNote] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
+  const [rc, setRc] = useState<any | null | undefined>(undefined); // undefined = loading, null = unavailable
+  const [chk, setChk] = useState<any | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     posAiApi.packages().then((d) => setPkgs(d?.packages || [])).catch((e: any) => setError(e?.message || t('pos.failed_to_load_ai_center')));
@@ -50,7 +62,10 @@ export function POSAICenterScreen() {
     posAiApi.controlModes().then(setModes).catch(() => setModes(null)); // human-controlled AI operating model (§3)
     posAiApi.aiRevenueSummary().then(setRev).catch(() => setRev(null)); // AI-attributed revenue (real store)
     posAiApi.workflowRunsSummary().then(setRuns).catch(() => setRuns(null)); // automation run stats (real store)
-  }, []);
+    posAiUsageScreenApi.reconcile().then(setRc).catch(() => setRc(null)); // honest per-assistant state + gate decision
+  }, [tick]);
+  const runCheck = async () => { setChecking(true); try { setChk(await posAiUsageScreenApi.check()); } catch (e: any) { setChk({ error: e?.message || 'error' }); } finally { setChecking(false); } };
+  const liveOf = useMemo(() => new Map<string, any>((rc?.rows || []).map((r: any) => [r.code, r])), [rc]);
 
   const groups = useMemo(() => {
     const g: Record<string, PosAiPackage[]> = {};
@@ -65,7 +80,16 @@ export function POSAICenterScreen() {
   const trialing = pkgs.filter((p) => p.subscription?.status === 'trialing');
   const totalUsed = pkgs.reduce((a, p) => a + (p.used || 0), 0);
   const monthlyCost = pkgs.filter((p) => p.subscription?.status === 'active').reduce((a, p) => a + (p.monthlyPriceCents || 0), 0);
-  const kpis = [
+  const kpis = rc ? [
+    { l: t('aic.kpi.paid'), v: String(rc.now.paidActive) },
+    { l: t('aic.kpi.trial'), v: String(rc.now.trialing) },
+    { l: t('aic.kpi.canRun'), v: `${rc.now.canRunNow} / ${rc.now.catalog}` },
+    { l: t('aic.kpi.runs'), v: Number(rc.monthEvents).toLocaleString(displayLocale()) },
+    { l: t('aic.kpi.blocked'), v: Number(rc.monthBlocked).toLocaleString(displayLocale()) },
+    { l: t('aic.kpi.errors'), v: Number(rc.monthErrors).toLocaleString(displayLocale()) },
+    { l: t('aic.kpi.cost'), v: money(monthlyCost) },
+    { l: t('pos.bookings_by_ai'), v: ov?.kpis.bookingsCapturedByAi.tracked ? String(ov.kpis.bookingsCapturedByAi.value) : '—', note: !ov?.kpis.bookingsCapturedByAi.tracked },
+  ] : [
     { l: t('pos.active_assistants'), v: String(active.length) },
     { l: t('pos.on_trial'), v: String(trialing.length) },
     { l: t('pos.available'), v: String(pkgs.length) },
@@ -79,7 +103,34 @@ export function POSAICenterScreen() {
   return (
     <div className="work">
       <div className="vh flex justify-between gap-3 flex-col sm:flex-row" style={{ display: 'flex', alignItems: 'flex-start' }}><div><h1>{t('pos.ai_center')}</h1>
-        <div className="sub mb-3">{t('pos.manage_ai_assistants_automations_and_intelligence_1tgd')}</div></div><button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')}>{t('pos.view_plans_bundles')}</button></div>
+        <div className="sub mb-3">{t('pos.manage_ai_assistants_automations_and_intelligence_1tgd')}</div></div><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button className="btn w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/plans')}>{t('pos.view_plans_bundles')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => setTick((x) => x + 1)}>{t('aic.refresh')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck}>{checking ? t('aic.checking') : t('aic.check')}</button>
+          <button className="btn ghost w-fit whitespace-nowrap" onClick={() => nav('/tenant/ai/usage')}>{t('aic.history')}</button>
+        </div></div>
+
+      {rc === null ? <div className="state" role="alert" style={{ marginBottom: 10 }}>{t('aic.unavailable')}</div> : null}
+      {rc ? (
+        <section style={{ ...cardBox, marginBottom: 12 }} data-testid="aic-recon">
+          {rc.staleTrialRows > 0 || rc.old.running !== rc.now.canRunNow ? (<>
+            <div style={headStyle}>{t('aic.recon.title')}</div>
+            <div className="s">{t('aic.recon.body', { old: rc.old.onTrial, stale: rc.staleTrialRows, trial: rc.now.trialing, paid: rc.now.paidActive, run: rc.now.canRunNow })}</div>
+          </>) : <div className="s">{t('aic.recon.ok')}</div>}
+          <div className="s" style={{ marginTop: 6, color: '#8A7A66' }}>{t('aic.recon.gate', { mode: t('aic.mode.' + rc.enforcement.featureRoutes) })}</div>
+        </section>
+      ) : null}
+      {chk ? (
+        <section style={{ ...cardBox, marginBottom: 12 }} data-testid="aic-check">
+          <div style={{ display: 'flex', justifyContent: 'space-between' }}><div style={headStyle}>{t('aic.check.title')}</div><button className="btn ghost" onClick={() => setChk(null)}>{t('aic.check.close')}</button></div>
+          {chk.error ? <div className="err">{chk.error}</div> : (chk.checks || []).map((c: any) => (
+            <div key={c.key} style={{ display: 'flex', gap: 8, padding: '4px 0', borderBottom: '1px solid var(--line)' }}>
+              <span className={'pill ' + (c.state === 'PASSED' ? 'ok' : 'warn')}>{t('aiux.state.' + c.state)}</span>
+              <div><div style={{ fontWeight: 700, fontSize: 13 }}>{t('aiux.k.' + c.key)}</div><div className="s">{t(`aiux.d.${c.key}.${c.state}`)}</div></div>
+            </div>
+          ))}
+        </section>
+      ) : null}
 
       <div className="kpis">{kpis.map((c) => (<div className="kpi" key={c.l}><div className="l">{c.l}</div><div className="v" style={(c as any).note ? { color: '#8A7A66' } : undefined}>{c.v}</div>{(c as any).note ? <div className="s" style={{ color: '#8A7A66' }}>{t('pos.activity_feed_pending')}</div> : null}</div>))}</div>
 
@@ -87,14 +138,15 @@ export function POSAICenterScreen() {
       <section style={cardBox} className='mb-3'>
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }}>
           <div style={headStyle}>{t('pos.ai_command_center')}</div>
-          <span className="pill ok" >{active.length + trialing.length} {t('pos.running')}</span>
+          <span className="pill ok" >{rc ? rc.now.canRunNow : active.length + trialing.length} {t('pos.running')}</span>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 mt-1">
           {Object.keys(groups).sort().map((cat) => (
             <div key={cat} className='border rounded-md border-[var(--line)] p-2'>
               <div style={{ fontSize: 11.5, fontWeight: 800, color: '#8A7A66', textTransform: 'uppercase', letterSpacing: 0.4, margin: '4px 0 6px' }}>{CAT_LABEL[cat] || cat}</div>
               {groups[cat].map((p) => {
-                const st = statusOf(p);
+                const live = liveOf.get(p.code);
+                const st = statusOf(p, live);
                 const limit = p.subscription?.usageLimit || p.includedUsageLimit || 0;
                 const usedPct = limit > 0 ? Math.min(100, Math.round((p.used / limit) * 100)) : 0;
                 return (
@@ -103,6 +155,7 @@ export function POSAICenterScreen() {
                       <div style={{ fontWeight: 700, fontSize: 13 }}>{p.name}</div>
                       <span className={'pill ' + st.tone} >{st.label}</span>
                     </div>
+                    {live && !live.gate?.allowed && ['active', 'trialing'].includes(live.state) ? <div className="s" style={{ color: '#A33' }}>{t('aic.reason', { r: humanizeCode(live.gate.reason) })}</div> : null}
                     {limit > 0 ? (
                       <div style={{ marginTop: 4 }}>
                         <div style={{ display: 'flex', fontSize: 11, color: '#8A7A66' }}><span>{p.used.toLocaleString()} / {limit.toLocaleString()} {growthCode(p.usageUnit)}</span><span >{usedPct}%</span></div>

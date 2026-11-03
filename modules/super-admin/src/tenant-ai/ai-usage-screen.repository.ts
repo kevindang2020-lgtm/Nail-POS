@@ -12,7 +12,7 @@
 // overage figure is an ESTIMATE until invoiced; the total is "from subscription records" unless every paying package
 // has a recorded successful payment in its current period ("reconciled").
 import { sql, type Kysely } from 'kysely';
-import { AI_PACKAGES, TENANT_AI_SUBSCRIPTION, getAiPackage, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
+import { AI_PACKAGES, TENANT_AI_SUBSCRIPTION, getAiPackage, evaluateAiAccess, KyselyAiAccessRepo, syncUsageAlerts, AiInvoiceLedger, UnconfiguredInvoiceClient, effectiveBranchAccess, validateBranchSettings, branchSettingFields, type AiInvoiceProviderClient } from '@aipowersalon/ai';
 import { invoiceViewOf, invoicedAmounts, inPeriodFrom, ESTIMATE_ASSUMPTIONS, type InvoiceView } from './ai-usage-invoices.view';
 import { tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
 import { displayStateOf, actionsFor, primaryAction, usageLevelOf, type DisplayState, type PackageAction, type UsageLevel } from './ai-usage-states';
@@ -437,6 +437,55 @@ export class AiUsageScreenRepository {
       and a.period_start = s.current_period_starts_at where a.tenant_id = ${tenantId} and a.acknowledged_at is null`.execute(this.db)).rows[0]?.n);
   }
 
+  // ── AI Center guide (Oct 30 2026, refreshed): reconcile "0 Active / 11 On Trial / 11 Running" ─────────────────────────────
+  // The old AI Center counted a STORED "trialing" row as "On trial" and "Running" whatever its trial end date, and "Active" as
+  // "accessible and not trialing". This returns, per assistant: the stored status, the honest state, the gate's decision right
+  // now (the same evaluateAiAccess the AI platform runs before EVERY model call), what the old page counted it as, and its usage
+  // this calendar month in its own unit — plus the counts both ways and how the gate is enforced. Read-only.
+  async reconcile(ctx: UsageCtx, env: NodeJS.ProcessEnv = process.env) {
+    const T = ctx.tenantId;
+    const { cards } = await this.cards(ctx);
+    const gateRepo = new KyselyAiAccessRepo(this.db);
+    const tz = await tenantTimeZone(this.db, T);
+    const month = (await sql<any>`select to_char(date_trunc('month', now() at time zone ${tz}), 'YYYY-MM-DD') as m`.execute(this.db)).rows[0].m as string;
+    const usage = (await sql<any>`select l.package_code, count(*) filter (where l.status = 'success')::int as ok, count(*) filter (where l.status in ('failed', 'provider_error'))::int as errors,
+        count(*) filter (where l.status like 'blocked%')::int as blocked, coalesce(sum(l.usage_amount) filter (where l.status = 'success'), 0)::bigint as amount,
+        max(l.created_at) filter (where l.status = 'success') as last_ok, max(l.created_at) filter (where l.status in ('failed', 'provider_error')) as last_error
+      from ai_usage_logs l where l.tenant_id = ${T} and l.created_at >= (${month}::date)::timestamp at time zone ${tz} group by l.package_code`.execute(this.db)).rows;
+    const u = new Map(usage.map((r: any) => [String(r.package_code), r]));
+    const rows: any[] = [];
+    for (const c of cards) {
+      // The SALON's entitlement (permission set aside — a role without ai permission is not a package state); `forYou` is the
+      // same gate for the signed-in user, so "your role cannot use it" is told apart from "the salon cannot".
+      let gate: { allowed: boolean; reason: string } = { allowed: false, reason: 'unknown' };
+      let forYou: { allowed: boolean; reason: string } | null = null;
+      try {
+        const snap: any = await gateRepo.loadSnapshot(T, c.code, ctx.userId ?? null, { branchId: null });
+        const d: any = evaluateAiAccess({ ...snap, hasPermission: true }); gate = { allowed: !!d.allowed, reason: String(d.reason ?? (d.allowed ? 'ok' : 'denied')) };
+        const y: any = evaluateAiAccess(snap); forYou = { allowed: !!y.allowed, reason: String(y.reason ?? (y.allowed ? 'ok' : 'denied')) };
+      } catch { gate = { allowed: false, reason: 'unable_to_check' }; }
+      const old = c.storedStatus === 'active' ? 'active' : c.storedStatus === 'trialing' ? 'trial' : null;
+      const x: any = u.get(c.code) ?? {};
+      rows.push({ code: c.code, name: c.name, category: c.category, state: c.state, storedStatus: c.storedStatus, trialEndsAt: c.trial.endsAt, cancelledAt: c.cancelledAt, globallyEnabled: c.globallyEnabled,
+        gate, forYou, oldLabel: old, oldCountedRunning: old != null, unit: c.usage.unit, monthUsage: N(x.amount), monthEvents: N(x.ok), monthErrors: N(x.errors), monthBlocked: N(x.blocked),
+        lastSuccessAt: iso(x.last_ok), lastErrorAt: iso(x.last_error), mismatch: gate.allowed !== ['active', 'trialing'].includes(c.state) });
+    }
+    const count = (f: (r: any) => boolean) => rows.filter(f).length;
+    const mode = String(env.AI_ENTITLEMENT_ENFORCEMENT ?? '').trim().toLowerCase();
+    return {
+      monthStart: month, timeZone: tz,
+      old: { active: count((r) => r.storedStatus === 'active'), onTrial: count((r) => r.storedStatus === 'trialing'), running: count((r) => r.oldCountedRunning) },
+      now: { paidActive: count((r) => r.state === 'active'), trialing: count((r) => r.state === 'trialing'), trialExpired: count((r) => r.state === 'trial_expired'),
+        cancelled: count((r) => r.state === 'cancelled' || r.state === 'expired'), pastDue: count((r) => r.state === 'past_due'), disabled: count((r) => r.state === 'disabled_by_admin' || r.state === 'suspended'),
+        canRunNow: count((r) => r.gate.allowed), catalog: rows.length },
+      staleTrialRows: count((r) => r.storedStatus === 'trialing' && r.state === 'trial_expired'),
+      monthEvents: rows.reduce((a, r) => a + r.monthEvents, 0), monthBlocked: rows.reduce((a, r) => a + r.monthBlocked, 0), monthErrors: rows.reduce((a, r) => a + r.monthErrors, 0),
+      gateMismatches: count((r) => r.mismatch),
+      enforcement: { modelCalls: 'always', featureRoutes: mode === 'enforce' ? 'enforce' : mode === 'off' ? 'off' : 'observe' },
+      rows,
+    };
+  }
+
   // ── Check AI Usage & Subscriptions (AI Usage Limits guide, Nov 1 2026) — read-only; one run per salon per 30 s ─────────────
   // It reconciles what the page shows with the records behind it: the catalog, each package's stored status vs its honest state,
   // calls the gate let through after a trial ended or after a cancellation, the cost basis, the metering, the plans. It never
@@ -488,6 +537,13 @@ export class AiUsageScreenRepository {
     checks.push({ key: 'plans_in_step', state: planGap && planMembers ? 'WARNING' : 'PASSED', count: planGap && planMembers ? planMembers : 0 });
     const disabled = cards.filter((c) => c.state === 'disabled_by_admin').length;
     checks.push({ key: 'admin_switches', state: disabled ? 'WARNING' : 'PASSED', count: disabled });
+    // AI Center guide (P0): the gate the AI platform runs before every model call agrees with what the page shows — an expired trial,
+    // a cancellation, a platform switch-off or an exhausted allowance is refused; a live package is allowed
+    try {
+      const r = await this.reconcile(ctx);
+      checks.push({ key: 'gate_matches_state', state: r.gateMismatches ? 'FAILED' : 'PASSED', count: r.gateMismatches, detail: { canRunNow: r.now.canRunNow } });
+      checks.push({ key: 'feature_routes_gated', state: r.enforcement.featureRoutes === 'enforce' ? 'PASSED' : 'WARNING', detail: { mode: r.enforcement.featureRoutes } });
+    } catch { checks.push({ key: 'gate_matches_state', state: 'UNAVAILABLE' }); }
     checks.push({ key: 'no_side_effects', state: 'PASSED' });
     const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
     checks.sort((a, z) => order.indexOf(a.state) - order.indexOf(z.state));
