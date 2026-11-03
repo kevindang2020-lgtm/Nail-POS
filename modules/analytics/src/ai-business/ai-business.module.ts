@@ -78,7 +78,7 @@ import { BusinessCenterController, BUSINESS_CENTER } from './business-center.con
           getRevenueSummary: (ctx, preset) => revenue.getRevenueSummary(ctx, preset),
           getAppointmentMetrics: (ctx, preset) => appts.getAppointmentMetrics(ctx, preset),
           getCustomerGrowth: (ctx, preset) => customers.getCustomerGrowth(ctx, preset),
-          compareBranches: (ctx, preset) => branches.compareBranches(ctx, preset),
+          compareBranches: (ctx, preset) => branches.compareBranches(ctx, { preset, all: true }),
         }),
       inject: ['ReportsJobRepositoryPort', AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessCustomersService, AiBusinessBranchesService],
     },
@@ -96,7 +96,7 @@ import { BusinessCenterController, BUSINESS_CENTER } from './business-center.con
           getRevenueSummary: (ctx, preset) => revenue.getRevenueSummary(ctx, preset),
           explainRevenueChange: (ctx, preset, comparePreset) => revenue.explainRevenueChange(ctx, preset, comparePreset),
           getAppointmentMetrics: (ctx, preset) => appts.getAppointmentMetrics(ctx, preset),
-          compareBranches: (ctx, preset) => branches.compareBranches(ctx, preset),
+          compareBranches: (ctx, preset) => branches.compareBranches(ctx, { preset, all: true }),
           getCustomerGrowth: (ctx, preset) => customers.getCustomerGrowth(ctx, preset),
           getTechnicianPerformance: (ctx, preset) => techs.getTechnicianPerformance(ctx, preset),
         };

@@ -10,7 +10,8 @@ export const posAiBusinessApi = {
   ask: (body: { question?: string; intent?: string; preset?: string; comparePreset?: string }) =>
     api.post(`/pos/ai-business/ask`, body),
   dailyBrief: (preset?: string) => api.get(`/pos/ai-business/daily-brief`, preset ? { preset } : undefined),
-  compareBranches: (preset?: string) => api.get(`/pos/ai-business/branches/compare`, preset ? { preset } : undefined),
+  compareBranches: (q: { preset?: string; from?: string; to?: string; q?: string; includeInactive?: string; page?: number; pageSize?: number } = {}) =>
+    api.get(`/pos/ai-business/branches/compare`, Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>),
   metrics: () => api.get(`/pos/ai-business/metrics`),
   // Saved questions (§35): create/list/delete/use, tenant + user scoped by the server.
   savedList: () => api.get(`/pos/ai-business/saved-questions`),

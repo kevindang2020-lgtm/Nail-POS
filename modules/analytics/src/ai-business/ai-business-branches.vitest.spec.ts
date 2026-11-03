@@ -98,13 +98,31 @@ describe('compareBranches — single branch + validation', () => {
     catch (e) { expect((e as AiBusinessError).code).toBe(AiBusinessErrorCode.INVALID_DATE_RANGE); }
   });
 
-  it('truncates and notes when authorized branches exceed the fan-out cap', async () => {
-    const many = Array.from({ length: 25 }, (_, i) => ({ branchId: `b${i}`, branchName: `B${i}`, status: 'active' }));
+  it('AI Branch Comparison guide: no 20-branch cap — every authorized branch, searched and paged; totals over all of them', async () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ branchId: `b${i}`, branchName: `B${String(i).padStart(2, '0')}`, status: i === 24 ? 'inactive' : 'active' }));
     const data: Record<string, { kpis: SalesKpis; booking: BookingsOverview }> = {};
-    for (const b of many) data[b.branchId] = { kpis: kpis({}), booking: booking({ totalBookings: 1 }) };
-    const r = await new AiBusinessBranchesService(new FakeBranchSource(data), new FakeScope(many)).compareBranches(CTX(), 'month');
-    expect(r.truncated).toBe(true);
-    expect(r.branchCount).toBe(20);
-    expect(r.notes.some((n) => /first 20/i.test(n))).toBe(true);
+    for (const b of many) data[b.branchId] = { kpis: kpis({ netSalesCents: 1000, ticketsCount: 2 }), booking: booking({ totalBookings: 1, completed: 1 }) };
+    const svc = new AiBusinessBranchesService(new FakeBranchSource(data), new FakeScope(many));
+    const p1 = await svc.compareBranches(CTX(), { preset: 'month', pageSize: 10 });
+    expect([p1.truncated, p1.totalItems, p1.totalPages, p1.branches.length, p1.inactiveHidden]).toEqual([false, 24, 3, 10, 1]);
+    expect(p1.totals).toMatchObject({ netSalesCents: 24000, ticketsCount: 48, averageTicketCents: 500, branches: 24 });
+    const p3 = await svc.compareBranches(CTX(), { preset: 'month', pageSize: 10, page: 3 });
+    expect(p3.branches.map((b) => b.branchName)).toEqual(['B20', 'B21', 'B22', 'B23']);
+    expect((await svc.compareBranches(CTX(), { preset: 'month', q: 'b07' })).branches.map((b) => b.branchName)).toEqual(['B07']);
+    expect((await svc.compareBranches(CTX(), { preset: 'month', includeInactive: true, all: true })).branches).toHaveLength(25);
+  });
+  it('N/A instead of 0: no bookings → completion null; no tickets → average ticket null; average ticket is NET ÷ tickets', async () => {
+    const svc = new AiBusinessBranchesService(new FakeBranchSource({ x: { kpis: kpis({ netSalesCents: 0, grossSalesCents: 0, ticketsCount: 0, averageTicketCents: 0 }), booking: booking({ totalBookings: 0, completed: 0 }) },
+      y: { kpis: kpis({ netSalesCents: 9000, grossSalesCents: 10000, ticketsCount: 2, averageTicketCents: 5000 }), booking: booking({ totalBookings: 2, completed: 2 }) } }),
+      new FakeScope([{ branchId: 'x', branchName: 'X', status: 'active' }, { branchId: 'y', branchName: 'Y', status: 'active' }]));
+    const r = await svc.compareBranches(CTX(), 'month');
+    expect(r.branches.find((b) => b.branchId === 'x')).toMatchObject({ completionRate: null, averageTicketCents: null, revenuePerCompletedAppointmentCents: null });
+    expect(r.branches.find((b) => b.branchId === 'y')!.averageTicketCents).toBe(4500);
+  });
+  it('a custom From / To is checked and passed through', async () => {
+    const svc = new AiBusinessBranchesService(new FakeBranchSource({}), new FakeScope([]));
+    await expect(svc.compareBranches(CTX(), { from: '2026-11-05', to: '2026-11-01' })).rejects.toBeInstanceOf(AiBusinessError);
+    await expect(svc.compareBranches(CTX(), { from: '2025-01-01', to: '2026-11-01' })).rejects.toBeInstanceOf(AiBusinessError);
+    expect((await svc.compareBranches(CTX(), { from: '2026-10-01', to: '2026-10-31' })).range).toEqual({ from: '2026-10-01', to: '2026-10-31' });
   });
 });

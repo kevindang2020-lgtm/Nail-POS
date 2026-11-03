@@ -27,11 +27,20 @@ export interface BranchComparisonRow {
   noShowPercent: number;
   // normalized (null when the denominator or financials are unavailable)
   revenuePerCompletedAppointmentCents: number | null;
-  completionRate: number; // completed / totalBookings, as a percent
+  /** completed / totalBookings as a percent — null (N/A) when the branch had no bookings, never a fake 0 % */
+  completionRate: number | null;
+  status: string;
 }
+export interface BranchCompareQuery { preset?: string; from?: string; to?: string; q?: string; includeInactive?: boolean; page?: number; pageSize?: number; /** internal callers (assistant, saved reports): every branch on one page */ all?: boolean }
 
 export interface BranchComparison {
-  preset: DatePreset;
+  preset: DatePreset | 'custom';
+  range: { from: string; to: string } | null;
+  asOf: string;
+  /** whole-salon totals over every branch that matched (not just this page); ratios are computed from the totals */
+  totals: { netSalesCents: number | null; ticketsCount: number | null; averageTicketCents: number | null; totalBookings: number; completed: number; completionRate: number | null; branches: number };
+  page: number; pageSize: number; totalItems: number; totalPages: number;
+  inactiveHidden: number;
   partialCurrentPeriod: boolean;
   financialsIncluded: boolean;         // false when the caller lacks pos.reports.financial_view
   branches: BranchComparisonRow[];
@@ -42,75 +51,83 @@ export interface BranchComparison {
 }
 
 const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
-const MAX_BRANCHES = 20; // bound the interactive fan-out; larger chains use a queued report (later slice)
+const PAGE_SIZES = [10, 25, 50];
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_CUSTOM_DAYS = 366;
 
 export class AiBusinessBranchesService {
   constructor(private readonly reports: BranchCompareSource, private readonly scope: BranchScopeResolver) {}
 
-  async compareBranches(ctx: AiBusinessContext, presetInput?: string): Promise<BranchComparison> {
+  /**
+   * AI Branch Comparison guide (Nov 3 2026): every authorized branch (no 20-branch cap), searched by name and paged; inactive branches
+   * hidden unless asked for; a preset or a custom From/To; N/A where a ratio has no denominator (it showed 0 % / $0.00); the average
+   * ticket is net ÷ tickets like Net Sales (it was gross ÷ tickets); whole-salon totals over every matching branch.
+   */
+  async compareBranches(ctx: AiBusinessContext, input?: string | BranchCompareQuery): Promise<BranchComparison> {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBusinessForbiddenError('Not authenticated');
-    if (presetInput != null && !VALID_PRESETS.includes(presetInput as DatePreset)) {
-      throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
+    const q: BranchCompareQuery = typeof input === 'string' || input == null ? { preset: input ?? undefined } : input;
+    let filters: ReportFilters; let preset: DatePreset | 'custom'; let range: { from: string; to: string } | null = null;
+    if (q.from || q.to) {
+      if (!YMD.test(String(q.from)) || !YMD.test(String(q.to)) || String(q.from) > String(q.to)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Choose a valid From and To date.');
+      const days = Math.round((Date.parse(String(q.to)) - Date.parse(String(q.from))) / 86_400_000) + 1;
+      if (days > MAX_CUSTOM_DAYS) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, `Choose at most ${MAX_CUSTOM_DAYS} days.`);
+      range = { from: String(q.from), to: String(q.to) }; preset = 'custom'; filters = { preset: 'custom' as DatePreset, from: range.from, to: range.to };
+    } else {
+      if (q.preset != null && !VALID_PRESETS.includes(q.preset as DatePreset)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
+      preset = (q.preset as DatePreset) ?? 'month'; filters = { preset };
     }
-    const preset = (presetInput as DatePreset) ?? 'month';
-    const filters: ReportFilters = { preset };
+    const pageSize = q.all ? 100_000 : PAGE_SIZES.includes(Number(q.pageSize)) ? Number(q.pageSize) : 25;
+    const term = String(q.q ?? '').trim().toLowerCase().slice(0, 80);
 
     const authorized = await this.scope.listAuthorizedBranches(ctx);
-    const truncated = authorized.length > MAX_BRANCHES;
-    const branchList = authorized.slice(0, MAX_BRANCHES);
+    const visible = authorized.filter((b) => q.includeInactive || !b.status || b.status === 'active');
+    const matched = visible.filter((b) => !term || b.branchName.toLowerCase().includes(term)).sort((a, b) => a.branchName.localeCompare(b.branchName));
+    const totalPages = Math.max(1, Math.ceil(matched.length / pageSize));
+    const page = Math.min(totalPages, Math.max(1, Math.trunc(Number(q.page)) || 1));
 
-    // Determine financial availability ONCE using the caller's own scope, so we don't half-populate rows.
     let financialsIncluded = true;
-
-    const rows: BranchComparisonRow[] = [];
-    for (const b of branchList) {
-      // Build a ReportsContext scoped to THIS authorized branch. tenantId stays the caller's — never widened.
+    const all: BranchComparisonRow[] = [];
+    for (const b of matched) {
+      // a ReportsContext scoped to THIS authorized branch; tenantId stays the caller's — never widened
       const bctx: ReportsContext = { tenantId: ctx.tenantId, branchId: b.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };
       let booking: BookingsOverview;
-      try {
-        booking = await this.reports.getBooking(bctx, filters);
-      } catch (e) {
-        if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message);
-        throw e;
-      }
-
+      try { booking = await this.reports.getBooking(bctx, filters); }
+      catch (e) { if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message); throw e; }
       let net: number | null = null, avg: number | null = null, tickets: number | null = null, revPerCompleted: number | null = null;
       if (financialsIncluded) {
         try {
           const { kpis } = await this.reports.getSales(bctx, filters);
-          net = kpis.netSalesCents; avg = kpis.averageTicketCents; tickets = kpis.ticketsCount;
+          net = kpis.netSalesCents; tickets = kpis.ticketsCount;
+          avg = kpis.ticketsCount > 0 ? Math.round(kpis.netSalesCents / kpis.ticketsCount) : null;
           revPerCompleted = booking.completed > 0 ? Math.round(kpis.netSalesCents / booking.completed) : null;
-        } catch (e) {
-          if (e instanceof ForbiddenError) { financialsIncluded = false; }
-          else throw e;
-        }
+        } catch (e) { if (e instanceof ForbiddenError) financialsIncluded = false; else throw e; }
       }
-
-      rows.push({
-        branchId: b.branchId, branchName: b.branchName,
+      all.push({ branchId: b.branchId, branchName: b.branchName, status: b.status ?? 'active',
         netSalesCents: net, averageTicketCents: avg, ticketsCount: tickets,
         totalBookings: booking.totalBookings, completed: booking.completed,
         cancelledPercent: booking.cancelledPercent, noShowPercent: booking.noShowPercent,
         revenuePerCompletedAppointmentCents: revPerCompleted,
-        completionRate: booking.totalBookings > 0 ? Math.round((booking.completed / booking.totalBookings) * 100) : 0,
-      });
+        completionRate: booking.totalBookings > 0 ? Math.round((booking.completed / booking.totalBookings) * 100) : null });
     }
-
-    // If financials became unavailable partway (first branch denied), null them everywhere for consistency.
-    if (!financialsIncluded) {
-      for (const r of rows) { r.netSalesCents = null; r.averageTicketCents = null; r.ticketsCount = null; r.revenuePerCompletedAppointmentCents = null; }
-    }
+    if (!financialsIncluded) for (const r of all) { r.netSalesCents = null; r.averageTicketCents = null; r.ticketsCount = null; r.revenuePerCompletedAppointmentCents = null; }
+    const sum = (f: (r: BranchComparisonRow) => number | null) => all.reduce((a, r) => a + (f(r) ?? 0), 0);
+    const tNet = financialsIncluded ? sum((r) => r.netSalesCents) : null, tTk = financialsIncluded ? sum((r) => r.ticketsCount) : null;
+    const tBk = sum((r) => r.totalBookings), tDone = sum((r) => r.completed);
+    const rows = all.slice((page - 1) * pageSize, page * pageSize);
 
     const notes: string[] = ['Comparison covers only branches you are authorized to view.'];
     if (preset === 'today') notes.push('Figures cover an incomplete current day and are partial.');
-    if (rows.length > 1) notes.push('Compare normalized figures (e.g. revenue per completed appointment, completion rate) rather than totals when branches differ in size or hours.');
-    if (rows.length <= 1) notes.push('You have access to a single branch, so there is nothing to compare.');
+    if (all.length > 1) notes.push('Compare normalized figures (e.g. revenue per completed appointment, completion rate) rather than totals when branches differ in size or hours.');
+    if (authorized.length <= 1) notes.push('You have access to a single branch, so there is nothing to compare.');
     if (!financialsIncluded) notes.push('Revenue columns are hidden because you do not have financial-view permission.');
-    if (truncated) notes.push(`Showing the first ${MAX_BRANCHES} of ${authorized.length} authorized branches; use a generated report for a full chain comparison.`);
+    const inactiveHidden = authorized.length - visible.length;
+    if (inactiveHidden) notes.push(`${inactiveHidden} inactive branch${inactiveHidden === 1 ? ' is' : 'es are'} hidden.`);
 
     return {
-      preset, partialCurrentPeriod: preset === 'today', financialsIncluded,
-      branches: rows, branchCount: rows.length, truncated,
+      preset, range, asOf: new Date().toISOString(), partialCurrentPeriod: preset === 'today', financialsIncluded,
+      totals: { netSalesCents: tNet, ticketsCount: tTk, averageTicketCents: tNet != null && tTk ? Math.round(tNet / tTk) : null, totalBookings: tBk, completed: tDone,
+        completionRate: tBk > 0 ? Math.round((tDone / tBk) * 100) : null, branches: all.length },
+      branches: rows, branchCount: all.length, truncated: false, page, pageSize, totalItems: all.length, totalPages, inactiveHidden,
       drilldownRoute: getMetric('net_sales')!.drilldownRoute, notes,
     };
   }
