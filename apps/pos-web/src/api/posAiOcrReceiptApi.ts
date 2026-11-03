@@ -10,7 +10,7 @@ export const posAiOcrReceiptApi = {
   settings: () => api.get<any>(`/pos/ai-ocr-receipt/settings`),
   saveSettings: (patch: { level?: 'tenant' | 'branch'; branchId?: string | null; enabled?: boolean | null; config?: any }) => api.put<any>(`/pos/ai-ocr-receipt/settings`, patch),
 
-  list: (filters?: Record<string, unknown>) => api.get<any>(`/pos/ai-ocr-receipt/documents`, filters),
+  // list() retired Nov 2 2026 — the queues read posReceiptCenterApi.documents
   detail: (id: string) => api.get<any>(`/pos/ai-ocr-receipt/documents/${enc(id)}`),
   previewUrl: (id: string, key: string) => api.get<any>(`/pos/ai-ocr-receipt/documents/${enc(id)}/preview-url`, { key }),
 

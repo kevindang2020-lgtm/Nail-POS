@@ -13590,7 +13590,7 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rpx.health.k.no_automatic_actions` | No automatic publishing, messages or compensation | Không tự đăng, nhắn tin hay bồi thường |
 | `rpx.health.d.no_automatic_actions.PASSED` | Replies publish only after a person approves and publishes; nothing here sends messages or moves money. | Phản hồi chỉ được đăng sau khi có người duyệt và đăng; không có gì ở đây gửi tin hay chuyển tiền. |
 
-## AI OCR Receipt Scanner (`pkgx.*`, `rcsx.*`) — Nov 2 2026
+## AI OCR Receipt Scanner + Receipt Review (`pkgx.*`, `rcsx.*`, `rrx.*`) — Nov 2 2026
 
 | Key | English | Tiếng Việt |
 |---|---|---|
@@ -13764,6 +13764,20 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rcsx.act.approve` | Approved | Đã duyệt |
 | `rcsx.act.reject` | Rejected | Từ chối |
 | `rcsx.act.return` | Returned for changes | Trả lại để sửa |
+| `rcsx.act.uploaded` | Uploaded | Đã tải lên |
+| `rcsx.act.extracted` | Read | Đã đọc |
+| `rcsx.act.extracted_by_provider` | Read by the reading service | Dịch vụ đọc đã đọc |
+| `rcsx.act.extraction_unavailable` | No reading service — sent to manual entry | Không có dịch vụ đọc — chuyển nhập tay |
+| `rcsx.act.extraction_retried` | Reading retried | Đã đọc lại |
+| `rcsx.act.extraction_retry_scheduled` | Reading retry scheduled | Đã hẹn đọc lại |
+| `rcsx.act.extraction_dead_letter` | Reading gave up after retries | Ngừng đọc sau nhiều lần thử |
+| `rcsx.act.field_corrected` | A field was corrected | Đã sửa một trường |
+| `rcsx.act.page_added` | Page added | Đã thêm trang |
+| `rcsx.act.rescanned` | Safety check run again | Đã kiểm tra an toàn lại |
+| `rcsx.act.posted` | Posted to the books | Đã ghi sổ |
+| `rcsx.act.posting_failed` | Posting failed | Ghi sổ lỗi |
+| `rcsx.act.posting_retried` | Posting retried | Đã ghi sổ lại |
+| `rcsx.act.other` | Other activity | Hoạt động khác |
 | `rcsx.health.PASSED` | Passed | Đạt |
 | `rcsx.health.WARNING` | Warning | Cảnh báo |
 | `rcsx.health.FAILED` | Failed | Lỗi |
@@ -13817,3 +13831,10 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rcsx.health.d.tenant_isolation.FAILED` | A record links to another salon. Report this immediately. | Có bản ghi liên kết với tiệm khác. Hãy báo ngay. |
 | `rcsx.health.k.no_side_effects` | Nothing posted, received or charged | Không ghi sổ, nhận hàng hay tính phí |
 | `rcsx.health.d.no_side_effects.PASSED` | This page and this check never post an expense, receive stock, pay or charge. | Trang này và việc kiểm tra không ghi chi phí, nhận hàng, thanh toán hay tính phí. |
+| `rrx.refresh` | Refresh | Làm mới |
+| `rrx.check` | Check Receipt & Document System | Kiểm tra hệ thống hóa đơn & chứng từ |
+| `rrx.retry` | Try again | Thử lại |
+| `rrx.recent` | Newest documents | Chứng từ mới nhất |
+| `rrx.loadFailed` | Documents could not be loaded. Try again or run the check — this is not "no documents". | Không tải được chứng từ. Hãy thử lại hoặc chạy kiểm tra — đây không phải là "không có chứng từ". |
+| `rrx.reason.reject` | Why is it rejected? (kept in the history) | Vì sao từ chối? (lưu trong lịch sử) |
+| `rrx.reason.return` | What needs correcting? (kept in the history) | Cần sửa gì? (lưu trong lịch sử) |

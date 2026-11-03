@@ -10,8 +10,16 @@ import { webcrypto } from 'node:crypto';
 const m = vi.hoisted(() => ({ list: vi.fn(), detail: vi.fn(), previewUrl: vi.fn(), upload: vi.fn(), addPage: vi.fn(), extract: vi.fn(), retryExtract: vi.fn(), correctField: vi.fn(), startReview: vi.fn(), approve: vi.fn(), reject: vi.fn(), returnForCorrection: vi.fn(), post: vi.fn(), rescan: vi.fn(), retryPost: vi.fn(), settings: vi.fn(), saveSettings: vi.fn() }));
 const fin = vi.hoisted(() => ({ attachReceipt: vi.fn(), suggestedExpense: vi.fn() }));
 vi.mock('../api/posAiOcrReceiptApi', () => ({ posAiOcrReceiptApi: m }));
+const rcm = vi.hoisted(() => ({ summary: vi.fn(), documents: vi.fn(), document: vi.fn(), check: vi.fn() }));
+vi.mock('../api/posReceiptCenterApi', () => ({ posReceiptCenterApi: rcm }));
 vi.mock('../api/posExpensesApi', () => ({ posExpensesApi: fin }));
-import { POSAIOcrReceiptScreen } from './POSAIOcrReceiptScreen';
+import { MemoryRouter } from 'react-router-dom';
+import { POSAIOcrReceiptScreen as Screen } from './POSAIOcrReceiptScreen';
+const POSAIOcrReceiptScreen = () => <MemoryRouter><Screen /></MemoryRouter>;
+/** a receipt-center row (the queue lists read /pos/receipt-center/documents) */
+const row = (o: Record<string, unknown> = {}) => ({ id: 'd1', vendor: 'ABC Nail Supply', number: null, purchaseDate: '2026-10-11', uploadedAt: '2026-11-02T15:00:00Z', totalCents: 8899, currency: 'USD', pipeline: 'review_required', pages: 1,
+  branch: null, uploader: null, expenseId: null, tracks: { reading: 'read', expense: 'awaiting_review', receiving: 'not_applicable', duplicate: 'none' }, documentType: 'receipt', qualityFlags: [], suggestedMatch: null, suggestedExpenseId: null, thumbnailKey: null, ...o });
+const page = (items: unknown[]) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-02' } });
 
 const doc = (o: Record<string, unknown> = {}) => ({ id: 'd1', tenantId: 't', branchId: null, pipelineState: 'review_required', documentType: 'receipt', vendor: 'ABC Nail Supply', totalCents: 8899, category: null, fileHash: 'h', perceptualHash: null, documentNumber: null, documentDate: '2026-10-11', postingVersion: 1, storageKey: null,
   pageCount: 1, qualityFlags: [], extractionAttempts: 1, nextExtractionAt: null, lastExtractionError: null, suggestedExpenseId: null, suggestedMatch: null, sourceChannel: 'pos_upload', thumbnailKey: null, duplicateStatus: 'none',
@@ -22,11 +30,12 @@ const pick = (files: File[]) => { const input = screen.getByLabelText('Choose fi
 const online = (v: boolean) => Object.defineProperty(window.navigator, 'onLine', { value: v, configurable: true });
 
 beforeEach(() => {
-  Object.values(m).forEach((f) => f.mockReset()); Object.values(fin).forEach((f) => f.mockReset());
+  Object.values(m).forEach((f) => f.mockReset()); Object.values(fin).forEach((f) => f.mockReset()); Object.values(rcm).forEach((f) => f.mockReset());
+  rcm.summary.mockResolvedValue({ states: { review_required: 1 }, cards: {}, pipeline: {} });
+  rcm.documents.mockResolvedValue(page([row()]));
   online(true);
   if (!(globalThis as any).crypto?.subtle) Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
-  m.list.mockResolvedValue({ items: [doc()], total: 1 });
-  m.detail.mockResolvedValue(doc());
+    m.detail.mockResolvedValue(doc());
   m.previewUrl.mockResolvedValue({ url: 'notconnected:x' });
   m.upload.mockResolvedValue({ documentId: 'new-1', pipelineState: 'extracting', quality: { flags: [], difficult: false }, thumbnailKey: null, pageCount: 1 });
   m.addPage.mockResolvedValue({ documentId: 'new-1', pageCount: 2, pipelineState: 'extracting', quality: { flags: [], difficult: false } });
@@ -34,7 +43,7 @@ beforeEach(() => {
   m.correctField.mockResolvedValue({ fieldKey: 'total', state: 'manually_confirmed' });
   fin.attachReceipt.mockResolvedValue({ expenseId: 'e9', documentId: 'd1', role: 'receipt' });
 });
-const openUpload = async () => { render(<POSAIOcrReceiptScreen />); fireEvent.click(await screen.findByRole('button', { name: 'Upload' })); await screen.findByText('Upload a receipt or document'); };
+const openUpload = async () => { render(<POSAIOcrReceiptScreen />); fireEvent.click(await screen.findByRole('tab', { name: 'Upload' })); await screen.findByText('Upload a receipt or document'); };
 
 describe('POSAIOcrReceiptScreen — close-out', () => {
   it('§18: three photos ask "one receipt or several?"; Combine uploads page 1 with deferExtraction, appends pages 2–3 under the SAME document, then reads it once', async () => {
@@ -83,7 +92,7 @@ describe('POSAIOcrReceiptScreen — close-out', () => {
   });
   it('§38: the weak field says Verify with its confidence; Confirm stores a confirmation, Edit stores a correction in whole cents', async () => {
     render(<POSAIOcrReceiptScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Review Required' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /Review Required/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Review' }));
     expect(await screen.findByText('What was read (confirm or correct)')).toBeInTheDocument();
     expect(screen.getByText('Verify · 55%')).toBeInTheDocument();
@@ -99,9 +108,9 @@ describe('POSAIOcrReceiptScreen — close-out', () => {
   });
   it('§142: a matched existing expense is offered with "Link to that expense" (attach as the receipt) — and nothing is linked until the person taps; §115 a reading that gave up offers Retry reading', async () => {
     m.detail.mockResolvedValue(doc({ suggestedMatch: 'matched', suggestedExpenseId: 'e9', pageCount: 2, qualityFlags: ['likely_blurry'] }));
-    m.list.mockResolvedValue({ items: [doc({ suggestedMatch: 'matched', suggestedExpenseId: 'e9', pageCount: 2 })], total: 1 });
+    rcm.documents.mockResolvedValue(page([row({ suggestedMatch: 'matched', suggestedExpenseId: 'e9', pages: 2 })]));
     render(<POSAIOcrReceiptScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Review Required' }));
+    fireEvent.click(await screen.findByRole('tab', { name: /Review Required/ }));
     expect(await screen.findByText('2 pages')).toBeInTheDocument();
     expect(screen.getByText('May match an expense')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Review' }));
@@ -112,8 +121,8 @@ describe('POSAIOcrReceiptScreen — close-out', () => {
     await waitFor(() => expect(fin.attachReceipt).toHaveBeenCalledWith('e9', 'd1'));
     // the dead letter
     m.detail.mockResolvedValue(doc({ id: 'd2', pipelineState: 'extraction_failed', nextExtractionAt: null, fields: [] }));
-    m.list.mockResolvedValue({ items: [doc({ id: 'd2', pipelineState: 'extraction_failed' })], total: 1 });
-    fireEvent.click(screen.getByRole('button', { name: 'Reading failed' }));
+    rcm.documents.mockResolvedValue(page([row({ id: 'd2', pipeline: 'extraction_failed', tracks: { reading: 'failed', expense: 'not_linked', receiving: 'not_applicable', duplicate: 'none' } })]));
+    fireEvent.click(screen.getByRole('tab', { name: /Reading failed/ }));
     fireEvent.click(await screen.findByRole('button', { name: 'Review' }));
     expect(await screen.findByText(/Reading gave up after three tries/)).toBeInTheDocument();
     m.retryExtract.mockResolvedValue({ pipelineState: 'review_required', providerKey: 'x', unavailable: false });

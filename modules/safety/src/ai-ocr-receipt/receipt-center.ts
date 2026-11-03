@@ -28,7 +28,9 @@ export class ReceiptCenterError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400) { super(message); }
 }
 
-export const RC_GROUPS = ['all', 'processing', 'needs_review', 'duplicates', 'approved', 'posted', 'failed', 'rejected', 'quarantined'] as const;
+export const RC_GROUPS = ['all', 'processing', 'needs_review', 'duplicates', 'approved', 'posted', 'failed', 'rejected', 'quarantined',
+  // Receipt Review's own tabs (Receipt Document Recognition guide): one exact queue each
+  'review', 'extracting', 'manual_entry', 'reading_failed', 'posting_failed', 'duplicate_hold'] as const;
 export const RC_DATE_FIELDS = ['uploaded', 'purchase', 'posted'] as const;
 export const RC_SORTS = ['newest', 'oldest', 'purchase_date', 'total_high', 'total_low', 'vendor'] as const;
 export const RC_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'last_90', 'year', 'custom'] as const;
@@ -37,11 +39,17 @@ const GROUP_STATES: Record<string, string[]> = {
   processing: ['uploaded', 'scanning', 'extracting', 'validating'],
   needs_review: ['review_required', 'in_review', 'manual_entry_required'],
   duplicates: ['duplicate_hold'],
-  approved: ['approved', 'posting'],
+  approved: ['approved', 'posting', 'failed'],   // approved, not (yet) on the books — a failed posting is still waiting here
   posted: ['posted'],
   failed: ['extraction_failed', 'failed'],
   rejected: ['rejected'],
   quarantined: ['quarantined'],
+  review: ['review_required', 'in_review'],
+  extracting: ['uploaded', 'scanning', 'extracting', 'validating'],
+  manual_entry: ['manual_entry_required'],
+  reading_failed: ['extraction_failed'],
+  posting_failed: ['failed'],
+  duplicate_hold: ['duplicate_hold'],
 };
 const OPEN_STATES = [...GROUP_STATES.processing, ...GROUP_STATES.needs_review, ...GROUP_STATES.duplicates, ...GROUP_STATES.failed, 'quarantined', 'approved', 'posting'];
 const HEALTH_GAP_SECONDS = 30;
@@ -126,6 +134,7 @@ export class ReceiptCenter {
         count(*) filter (where d.pipeline_status = 'approved')::int as approved_not_posted,
         min(d.created_at) filter (where d.pipeline_status = any(${GROUP_STATES.processing}::text[])) as oldest_processing
       from ocr_documents d where d.tenant_id = ${T} and d.deleted_at is null and ${S}`.execute(this.db)).rows[0] ?? {};
+    const states = Object.fromEntries((await sql<Row>`select d.pipeline_status as s, count(*)::int as n from ocr_documents d where d.tenant_id = ${T} and d.deleted_at is null and ${S} group by d.pipeline_status`.execute(this.db)).rows.map((x) => [String(x.s), N(x.n)]));
     // "Approved expenses": expenses the books hold for a receipt, approved, dated by when they were posted from it
     const e = (await sql<Row>`select count(*)::int as n, coalesce(sum(x.amount_cents), 0)::bigint as cents from expenses x join ocr_documents d on d.id = x.receipt_document_id and d.tenant_id = x.tenant_id
       left join lateral (select max(p.posted_at) as posted_at from ocr_postings p where p.tenant_id = d.tenant_id and p.document_id = d.id and p.destination = 'expense' and p.status = 'posted') p on true
@@ -133,6 +142,8 @@ export class ReceiptCenter {
     return {
       period: { preset: per.preset, from: per.from, to: per.to, today: per.today, timeZone: per.tz },
       cards: { scanned: N(r.scanned), needsReview: N(r.needs_review), duplicates: N(r.duplicates), approvedExpenses: N(e.n), approvedExpenseCents: N(e.cents) },
+      // every queue's current size (Receipt Review's tabs and its six cards read these)
+      states,
       pipeline: { processing: N(r.processing), failed: N(r.failed), quarantined: N(r.quarantined), approvedNotPosted: N(r.approved_not_posted), oldestProcessingAt: iso(r.oldest_processing) },
       definitions: { scanned: 'uploaded_in_period', needsReview: 'current_queue', duplicates: 'open_holds', approvedExpenses: 'approved_expense_from_receipt_in_period' },
     };
@@ -175,12 +186,15 @@ export class ReceiptCenter {
       : sort === 'vendor' ? sql`lower(d.vendor) asc nulls last, d.created_at desc, d.id desc` : sql`d.created_at desc, d.id desc`;
     const total = N((await sql<Row>`select count(*)::int as n from ${FROM} where ${W}`.execute(this.db)).rows[0]?.n);
     const rows = (await sql<Row>`select d.id, d.vendor, d.document_number, d.document_date, d.created_at, d.total_cents, d.currency, d.pipeline_status, d.duplicate_status, d.page_count,
+        d.document_type, d.quality_flags, d.suggested_match, d.suggested_expense_id, th.thumbnail_key,
         p.destination as posting_dest, p.status as posting_status, p.posted_at, x.id as expense_id, x.status as expense_status, b.name as branch, coalesce(u.full_name, u.email) as uploader
-      from ${FROM} where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+      from ${FROM} left join lateral (select storage_key as thumbnail_key from ocr_document_files where tenant_id = d.tenant_id and document_id = d.id and kind = 'thumbnail' order by created_at desc limit 1) th on true where ${W} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return {
       items: rows.map((r) => ({ id: String(r.id), vendor: r.vendor ?? null, number: r.document_number ?? null, purchaseDate: day(r.document_date), uploadedAt: iso(r.created_at),
         postedAt: iso(r.posted_at), totalCents: r.total_cents == null ? null : N(r.total_cents), currency: r.currency ?? 'USD', pipeline: r.pipeline_status, pages: N(r.page_count) || 1,
-        branch: r.branch ?? null, uploader: r.uploader ?? null, expenseId: r.expense_id ? String(r.expense_id) : null, tracks: tracks(r) })),
+        branch: r.branch ?? null, uploader: r.uploader ?? null, expenseId: r.expense_id ? String(r.expense_id) : null, tracks: tracks(r),
+        documentType: r.document_type ?? 'unknown', qualityFlags: Array.isArray(r.quality_flags) ? r.quality_flags : [], suggestedMatch: r.suggested_match ?? null,
+        suggestedExpenseId: r.suggested_expense_id ? String(r.suggested_expense_id) : null, thumbnailKey: r.thumbnail_key ?? null })),
       total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)),
       applied: { q: q || null, group, dateField, sort, preset: per.preset, from: per.from, to: per.to }, period: { today: per.today, timeZone: per.tz },
     };
@@ -204,8 +218,9 @@ export class ReceiptCenter {
       sql<Row>`select m.status, m.reason, m.dismissed, m.matched_document_id, o.vendor, o.total_cents, o.document_date, o.pipeline_status from ocr_duplicate_matches m
         join ocr_documents o on o.id = m.matched_document_id and o.tenant_id = m.tenant_id where m.tenant_id = ${T} and m.document_id = ${id}::uuid and ${(await this.inScope(ctx, sql`o.branch_id`)).w} order by m.created_at desc`.execute(this.db),
       sql<Row>`select destination, status, external_ref, error_code, posted_at, created_at from ocr_postings where tenant_id = ${T} and document_id = ${id}::uuid order by created_at desc`.execute(this.db),
-      sql<Row>`select a.action, a.reason, a.created_at, coalesce(u.full_name, u.email) as actor from ocr_approvals a left join users u on u.id = a.actor_user_id and u.tenant_id = a.tenant_id
-        where a.tenant_id = ${T} and a.document_id = ${id}::uuid order by a.created_at desc`.execute(this.db),
+      // the trail is the module's own audit rows (approvals live in ocr_reviews.decision_state; ocr_approvals is never written)
+      sql<Row>`select a.action_type as action, a.metadata_json->>'reason' as reason, a.metadata_json->>'outcome' as outcome, a.created_at, coalesce(u.full_name, u.email) as actor from audit_logs a
+        left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id where a.tenant_id = ${T} and a.entity_type = 'ocr_document' and a.entity_id = ${id} order by a.created_at desc limit 50`.execute(this.db),
       sql<Row>`select provider_key, status, attempt, error_code, requested_at, completed_at from ocr_jobs where tenant_id = ${T} and document_id = ${id}::uuid order by requested_at desc limit 10`.execute(this.db),
       sql<Row>`select suggested_name, score, source, confirmed from ocr_category_suggestions where tenant_id = ${T} and document_id = ${id}::uuid order by created_at desc limit 1`.execute(this.db),
       sql<Row>`select id, status, category, amount_cents, created_at from expenses where tenant_id = ${T} and receipt_document_id = ${id}::uuid order by created_at desc limit 1`.execute(this.db),
@@ -231,7 +246,7 @@ export class ReceiptCenter {
       category: category.rows[0] ? { name: category.rows[0].suggested_name ?? null, source: category.rows[0].source, confirmed: !!category.rows[0].confirmed } : null,
       expense: expense.rows[0] ? { id: String(expense.rows[0].id), status: expense.rows[0].status, category: expense.rows[0].category, amountCents: N(expense.rows[0].amount_cents), at: iso(expense.rows[0].created_at) } : null,
       postings: postings.rows.map((x) => ({ destination: x.destination, status: x.status, ref: x.external_ref ?? null, error: x.error_code ?? null, postedAt: iso(x.posted_at), at: iso(x.created_at) })),
-      trail: approvals.rows.map((x) => ({ action: x.action, reason: x.reason ?? null, by: x.actor ?? null, at: iso(x.created_at) })),
+      trail: approvals.rows.map((x) => ({ action: String(x.action).replace(/^document\./, ''), outcome: x.outcome ?? null, reason: x.reason ?? null, by: x.actor ?? null, at: iso(x.created_at) })),
       jobs: jobs.rows.map((x) => ({ provider: x.provider_key, status: x.status, attempt: N(x.attempt), error: x.error_code ?? null, at: iso(x.requested_at), doneAt: iso(x.completed_at) })),
     };
   }
@@ -267,8 +282,9 @@ export class ReceiptCenter {
     const noHash = N((await one(sql<Row>`select count(*)::int as n from ocr_document_files where tenant_id = ${T} and kind = 'original' and file_hash is null`)).n);
     checks.push({ key: 'originals_fingerprinted', state: noHash ? 'WARNING' : 'PASSED', count: noHash });
     // the core rule: nothing reaches the books without a person's approval
+    // approval is recorded on the review (ocr_reviews.status / decision_state), the record the decide() step writes
     const unapproved = N((await one(sql<Row>`select count(*)::int as n from ocr_postings p where p.tenant_id = ${T} and p.status = 'posted'
-      and not exists (select 1 from ocr_approvals a where a.tenant_id = p.tenant_id and a.document_id = p.document_id and a.action = 'approve')`)).n);
+      and not exists (select 1 from ocr_reviews r where r.tenant_id = p.tenant_id and r.document_id = p.document_id and r.status = 'approved')`)).n);
     checks.push({ key: 'posting_needs_approval', state: unapproved ? 'FAILED' : 'PASSED', count: unapproved });
     const doublePosted = N((await one(sql<Row>`select count(*)::int as n from (select document_id, destination from ocr_postings where tenant_id = ${T} and status = 'posted' group by document_id, destination having count(*) > 1) x`)).n);
     const doubleExpense = N((await one(sql<Row>`select count(*)::int as n from (select receipt_document_id from expenses where tenant_id = ${T} and receipt_document_id is not null and status <> 'voided' group by receipt_document_id having count(*) > 1) x`)).n);

@@ -356,7 +356,6 @@ GET /pos/ai-money-protection/investigations/{id}  realm=staff  auth=session  dom
 GET /pos/ai-money-protection/rules  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-money-protection/settings  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-money-protection/state  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/ai-ocr-receipt/documents  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-ocr-receipt/documents/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-ocr-receipt/documents/{id}/preview-url  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-ocr-receipt/settings  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard

@@ -712,7 +712,12 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Scanner dashboard: four defined cards, stuck/failed counts, searchable history with four status tracks, read-only receipt
     detail linking to Receipt Review, Check OCR System. Nothing posts or changes stock from this page.
   - Tests: pgtest 7/7, screen 5/5, package screen 4/4 + 1. Doc: `docs/ai/RECEIPT_SCANNER.md`.
-- **Next: Receipt Document Recognition** (guide 12, `/tenant/ai/ocr-receipt`, reuse `pos/receipt-center`).
+- **Done: Receipt Document Recognition** (guide 12): the Receipt Review queues read `pos/receipt-center` (no migration).
+  - Fixed: every tab showed every document (the POS sent `status`, the API reads `pipelineState`); "in review" had no tab; the six
+    cards were counted from 200 rows; a failed read showed "Nothing here"; Return/Reject sent fixed English and lost the reason.
+  - Exact queues with search / dates / pages, real counts, error states, reason prompts, check, `?doc=` deep link. Old list retired.
+  - Tests: pgtest 8/8, routes 2/2, screen 6/6 + 4/4. Doc: `docs/ai/RECEIPT_REVIEW.md`.
+- **Next: AI Plans** (guide 13).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

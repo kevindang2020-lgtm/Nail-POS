@@ -42,7 +42,8 @@ describe('Receipt scanner — cards', () => {
     await doc({ vendor: 'OPI Supply', total: 12000, state: 'extraction_failed' });
     const P1 = await doc({ vendor: 'Costco', total: 8800, state: 'posted' });
     await q(sql`insert into ocr_line_items (tenant_id, document_id, line_number, description, sku, quantity, line_total_cents) values (${T}, ${S1}, 1, 'Acetone 16oz', 'ACE-16', 2, 4599)`);
-    await q(sql`insert into ocr_approvals (tenant_id, document_id, action, actor_user_id) values (${T}, ${P1}, 'approve', ${OWNER})`);
+    await q(sql`insert into ocr_reviews (tenant_id, document_id, status, started_by_user_id) values (${T}, ${P1}, 'approved', ${OWNER})`);
+    await q(sql`insert into audit_logs (tenant_id, user_id, action_type, entity_type, entity_id, metadata_json) values (${T}, ${OWNER}, 'document.approve', 'ocr_document', ${P1}, ${JSON.stringify({ outcome: 'approved', reason: 'ok' })}::jsonb)`);
     await q(sql`insert into ocr_postings (tenant_id, document_id, destination, status, idempotency_key, posted_at) values (${T}, ${P1}, 'expense', 'posted', ${'k-' + P1}, now())`);
     await q(sql`insert into expenses (tenant_id, branch_id, category, amount_cents, incurred_on, status, receipt_document_id) values (${T}, ${B1}, 'Supplies', 8800, current_date, 'approved', ${P1})`);
     await doc({ t: X, b: BX, vendor: 'Sally Beauty', total: 4599 });   // another salon
@@ -81,6 +82,19 @@ describe('Receipt scanner — history', () => {
     expect(await code(rc.document(ctx(), other))).toBe('RC_NOT_FOUND');
     scope = null;
     expect((await rc.documents(ctx(), { q: 'North' })).total).toBe(1);
+  });
+});
+
+describe('Receipt Review queues (guide 12)', () => {
+  it('RV-01 each tab is one exact queue (in_review sits with Review Required); the per-state counts match', async () => {
+    await doc({ vendor: 'In Review Co', state: 'in_review' });
+    await doc({ vendor: 'Hand Typed', state: 'manual_entry_required' });
+    expect((await rc.documents(ctx(), { group: 'review' })).items.map((x: any) => x.vendor).sort()).toEqual(['In Review Co', 'North Supply', 'Sally Beauty']);
+    expect((await rc.documents(ctx(), { group: 'manual_entry' })).items.map((x: any) => x.vendor)).toEqual(['Hand Typed']);
+    expect((await rc.documents(ctx(), { group: 'reading_failed' })).items.map((x: any) => x.vendor)).toEqual(['OPI Supply']);
+    expect((await rc.documents(ctx(), { group: 'duplicate_hold' })).total).toBe(1);
+    const s: any = await rc.summary(ctx(), {});
+    expect(s.states).toMatchObject({ review_required: 2, in_review: 1, duplicate_hold: 1, extraction_failed: 1, posted: 1, manual_entry_required: 1 });
   });
 });
 

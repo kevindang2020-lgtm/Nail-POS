@@ -25,7 +25,8 @@ export class AiOcrReceiptController {
 
   @Get('settings') @RequirePermission('pos.ai_ocr_receipt.view') getSettings(@Req() r: any) { return run(() => this.svc.effectiveConfig(ctx(r))); }
 
-  @Get('documents') @RequirePermission('pos.ai_ocr_receipt.view') list(@Req() r: any, @Query() q: any) { return run(() => this.svc.listDocuments(ctx(r), { pipelineState: q?.pipelineState, reviewStatus: q?.reviewStatus })); }   // branch-scoped (audit F2)
+  // GET documents is retired (Receipt Document Recognition guide, Nov 2 2026): the queues read /pos/receipt-center/documents —
+  // server pages, search and dates (this list stopped at 200 rows, and the POS sent a filter name it ignored)
   // Oct 27 2026 (§37/§38): the detail carries the per-field reading (confidence + state per field) and the line items, so the
   // review screen can mark the weak fields "Verify" and show what a person already confirmed / corrected
   @Get('documents/:id') @RequirePermission('pos.ai_ocr_receipt.view') detail(@Req() r: any, @Param('id') id: string) { return run(async () => { const d = await this.svc['docs'].get(ctx(r), id); if (!d) throw new OcrError('NOT_FOUND'); const x = await this.svc.extraction(ctx(r), id); return { ...d, fields: x.fields, lineItems: x.lineItems }; }); }

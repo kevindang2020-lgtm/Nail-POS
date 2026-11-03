@@ -664,7 +664,7 @@ export class AiOcrReceiptService {
     // map decision → pipeline
     const evt = result.state.status === 'approved' ? 'approve' : result.state.status === 'rejected' ? 'reject' : result.state.status === 'returned' ? 'return' : null;
     if (evt) { const next = transition('in_review', evt); if (next.ok) await this.docs.patch(ctx, id, { pipelineState: next.state }); }
-    await this.audit.record(ctx, `document.${action}`, id, { outcome: result.state.status, approvers: result.state.approvals.length, required: requirement.approversRequired });
+    await this.audit.record(ctx, `document.${action}`, id, { outcome: result.state.status, approvers: result.state.approvals.length, required: requirement.approversRequired, reason: reason ? String(reason).slice(0, 500) : null });   // the reason was lost (Nov 2 2026)
     return { outcome: result.state.status, requirement };
   }
 

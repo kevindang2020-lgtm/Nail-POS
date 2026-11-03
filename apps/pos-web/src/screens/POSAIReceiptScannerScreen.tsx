@@ -32,6 +32,7 @@ const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAIL
 const TRACK_TONE: Record<string, string> = { failed: 'bad', quarantined: 'bad', posting_failed: 'bad', receiving_failed: 'bad', exact: 'bad', likely: 'warn', possible: 'warn',
   processing: 'warn', awaiting_review: 'gold', approved_not_posted: 'gold', expense_approved: 'ok', received: 'ok', read: 'ok' };
 const REVIEW = '/tenant/ai/ocr-receipt';
+const ACTS = ['approve', 'reject', 'return', 'uploaded', 'extracted', 'extracted_by_provider', 'extraction_unavailable', 'extraction_retried', 'extraction_retry_scheduled', 'extraction_dead_letter', 'field_corrected', 'page_added', 'rescanned', 'posted', 'posting_failed', 'posting_retried'];
 const FIELDS = ['vendor', 'total', 'subtotal', 'tax', 'document_date', 'document_number', 'discount', 'fees', 'tip', 'due_date', 'payment_terms', 'po_number', 'vendor_address', 'vendor_phone', 'document_time', 'account_number'];
 function errText(e: any, fallbackKey: string) {
   const code = e?.body?.code ?? e?.code;
@@ -166,7 +167,7 @@ function ReceiptOverlay({ id, onClose }: { id: string; onClose: () => void }) {
           <li>{d.expense ? t('rcsx.ov.expense', { s: t('rcsx.trk.expense.expense_' + d.expense.status), a: cents(d.expense.amountCents) }) : t('rcsx.ov.noExpense')}</li>
           {d.postings.map((p: any, i: number) => <li key={i}>{t('rcsx.ov.posting', { d: t('rcsx.dest.' + p.destination), s: t('rcsx.pstatus.' + p.status) })}{p.postedAt ? ` · ${when(p.postedAt)}` : ''}</li>)}
         </ul>
-        {d.trail.length ? <><h4>{t('rcsx.ov.trail')}</h4>{d.trail.map((x: any, i: number) => <div key={i} className="rvw-ev">{when(x.at)} · <b>{t('rcsx.act.' + x.action)}</b>{x.by ? ` · ${x.by}` : ''}{x.reason ? ` · ${x.reason}` : ''}</div>)}</> : null}
+        {d.trail.length ? <><h4>{t('rcsx.ov.trail')}</h4>{d.trail.map((x: any, i: number) => <div key={i} className="rvw-ev">{when(x.at)} · <b>{t('rcsx.act.' + (ACTS.includes(x.action) ? x.action : 'other'))}</b>{x.by ? ` · ${x.by}` : ''}{x.reason ? ` · ${x.reason}` : ''}</div>)}</> : null}
         <p className="sub">{t('rcsx.ov.readOnly')}</p>
       </>}
     </FitDialog>

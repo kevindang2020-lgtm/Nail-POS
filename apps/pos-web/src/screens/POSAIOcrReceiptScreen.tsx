@@ -4,6 +4,12 @@
 // document is approved (the server enforces this too); nothing is finalized from unreviewed AI output.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { posAiOcrReceiptApi as apiO } from '../api/posAiOcrReceiptApi';
+import { posReceiptCenterApi as rc } from '../api/posReceiptCenterApi';
+import { useSearchParams } from 'react-router-dom';
+import { errorTextOf } from '../i18n/error-text';
+import { fmtInZone } from '../i18n/format';
+import { FitDialog, Pager } from '../components/FitKit';
+import { RangeCalendar } from '../components/FinanceKit';
 import { posExpensesApi } from '../api/posExpensesApi';
 import { isOfflineFailure } from '../api/offline-drafts';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -14,24 +20,25 @@ const LINE = 'var(--line,#E7DBC6)';
 const MUTED = 'var(--muted,#7A6C57)';
 
 type Tab = 'overview' | 'quarantined' | 'extracting' | 'manual' | 'failed_reading' | 'review' | 'duplicates' | 'approved' | 'posted' | 'rejected' | 'upload';
-const TABS: { key: Tab; label: string; state?: string }[] = [
+// each tab is one exact server queue (/pos/receipt-center/documents?group=…); `states` sizes its count chip
+const TABS: { key: Tab; label: string; group?: string; states?: string[] }[] = [
   { key: 'overview', get label() { return tx('pos.overview'); } },
   // Quarantine is NOT a dead end, but it was invisible: malwareScanRequired defaults to true and S3-side
   // scanners tag out of band, so a freshly uploaded receipt lands here until the verdict arrives. Without this
   // tab (and the Re-check action below) a tenant would upload a receipt and simply never see it again.
-  { key: 'quarantined', get label() { return tx('pos.quarantined'); }, state: 'quarantined' },
+  { key: 'quarantined', get label() { return tx('pos.quarantined'); }, group: 'quarantined', states: ['quarantined'] },
   // Two more states that had no tab and therefore no way out. 'extracting' is where a clean-scanned receipt
   // waits for OCR; 'manual_entry_required' is where it lands when no provider could read it (which is the
   // honest outcome, not a failure) and a person keys the values in.
-  { key: 'extracting', get label() { return tx('pos.extracting'); }, state: 'extracting' },
-  { key: 'manual', get label() { return tx('pos.manual_entry'); }, state: 'manual_entry_required' },
+  { key: 'extracting', get label() { return tx('pos.extracting'); }, group: 'extracting', states: ['uploaded', 'scanning', 'extracting', 'validating'] },
+  { key: 'manual', get label() { return tx('pos.manual_entry'); }, group: 'manual_entry', states: ['manual_entry_required'] },
   // §115 (Oct 27 2026): a reading that used its automatic retries waits here for a person (Retry reading / Enter by hand)
-  { key: 'failed_reading', get label() { return tx('people.receiptAi.tab.readingFailed'); }, state: 'extraction_failed' },
-  { key: 'review', get label() { return tx('pos.review_required'); }, state: 'review_required' },
-  { key: 'duplicates', get label() { return tx('pos.duplicate_review'); }, state: 'duplicate_hold' },
-  { key: 'approved', get label() { return tx('pos.approved'); }, state: 'approved' },
-  { key: 'posted', get label() { return tx('pos.posted'); }, state: 'posted' },
-  { key: 'rejected', get label() { return tx('pos.rejected_2'); }, state: 'rejected' },
+  { key: 'failed_reading', get label() { return tx('people.receiptAi.tab.readingFailed'); }, group: 'reading_failed', states: ['extraction_failed'] },
+  { key: 'review', get label() { return tx('pos.review_required'); }, group: 'review', states: ['review_required', 'in_review'] },
+  { key: 'duplicates', get label() { return tx('pos.duplicate_review'); }, group: 'duplicate_hold', states: ['duplicate_hold'] },
+  { key: 'approved', get label() { return tx('pos.approved'); }, group: 'approved', states: ['approved', 'posting', 'failed'] },
+  { key: 'posted', get label() { return tx('pos.posted'); }, group: 'posted', states: ['posted'] },
+  { key: 'rejected', get label() { return tx('pos.rejected_2'); }, group: 'rejected', states: ['rejected'] },
   { key: 'upload', get label() { return tx('pos.upload'); } },
 ];
 
@@ -49,115 +56,164 @@ function Badge({ text, tone }: { text: string; tone: 'gold' | 'danger' | 'muted'
 }
 
 export function POSAIOcrReceiptScreen() {
+  const [params] = useSearchParams();
   const [tab, setTab] = useState<Tab>('overview');
-  const [loading, setLoading] = useState(true);
+  const [sum, setSum] = useState<any>(null);
+  const [sumErr, setSumErr] = useState<string | null>(null);
+  const [list, setList] = useState<any>(null);
+  const [listErr, setListErr] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
-  const [rows, setRows] = useState<any[]>([]);
-  const [counts, setCounts] = useState<Record<string, number>>({});
   const [selected, setSelected] = useState<any | null>(null);
   const [busy, setBusy] = useState(false);
+  const [health, setHealth] = useState<any | 'loading' | null>(null);
+  const [draft, setDraft] = useState('');
+  const [f, setF] = useState<{ q?: string; dateField: string; sort: string; preset?: string; from?: string; to?: string; page: number; pageSize: number }>({ dateField: 'uploaded', sort: 'newest', page: 1, pageSize: 25 });
+  const [cal, setCal] = useState(false);
+  const [tick, setTick] = useState(0);
 
-  const load = useCallback(async (t: Tab) => {
-    setLoading(true); setErr(null);
-    try {
-      const state = TABS.find((x) => x.key === t)?.state;
-      const res = await apiO.list(state ? { status: state } : {}).catch(() => ({ items: [], total: 0 }));
-      setRows(res?.items ?? []);
-      if (t === 'overview') {
-        // derive lightweight counts from the unfiltered list (honest: only what the backend returns)
-        const all = await apiO.list({}).catch(() => ({ items: [] }));
-        const by: Record<string, number> = {};
-        for (const d of all?.items ?? []) by[d.pipelineState] = (by[d.pipelineState] || 0) + 1;
-        setCounts(by);
-      }
-    } catch (e: any) { setErr(e?.message || tx('pos.failed_to_load')); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => { load(tab); }, [tab, load]);
+  // the six cards and every queue's size — one tenant-scoped read; a failure is shown, never "0"
+  const loadSum = useCallback(() => { setSumErr(null); rc.summary({}).then(setSum).catch((e) => setSumErr(errorTextOf(e, tx('rrx.loadFailed')))); }, []);
+  useEffect(() => { loadSum(); }, [loadSum, tick]);
+  // the open tab's queue: its exact states, search, which date, presets / range, sort, numbered pages (newest first)
+  const group = TABS.find((x) => x.key === tab)?.group ?? (tab === 'overview' ? 'all' : null);
+  const loadList = useCallback(() => {
+    if (!group) return;
+    setListErr(null);
+    rc.documents({ ...f, group, pageSize: tab === 'overview' ? 10 : f.pageSize }).then(setList).catch((e) => setListErr(errorTextOf(e, tx('rrx.loadFailed'))));
+  }, [group, f, tab]);
+  useEffect(() => { setList(null); loadList(); }, [loadList, tick]);
+  const set = (p: Partial<typeof f>, keepPage = false) => setF((x) => ({ ...x, ...p, page: keepPage ? (p.page ?? x.page) : 1 }));
 
   const openReview = useCallback(async (id: string) => {
     setBusy(true);
-    try { const d = await apiO.detail(id); setSelected(d); } catch (e: any) { setErr(e?.message || tx('pos.failed_to_open')); } finally { setBusy(false); }
+    try { const d = await apiO.detail(id); setSelected(d); } catch (e: any) { setErr(errorTextOf(e, tx('pos.failed_to_open'))); } finally { setBusy(false); }
   }, []);
+  // a receipt opened from the scanner page (?doc=…) opens here directly
+  const deep = params.get('doc');
+  useEffect(() => { if (deep) void openReview(deep); }, [deep, openReview]);
 
   const act = useCallback(async (fn: () => Promise<any>) => {
     setBusy(true); setErr(null);
-    try { await fn(); await load(tab); if (selected) { const d = await apiO.detail(selected.id).catch(() => null); setSelected(d); } }
-    catch (e: any) { setErr(e?.message || tx('pos.action_failed_2')); } finally { setBusy(false); }
-  }, [tab, load, selected]);
+    try { await fn(); setTick((n) => n + 1); if (selected) { const d = await apiO.detail(selected.id); setSelected(d); } }
+    catch (e: any) { setErr(errorTextOf(e, tx('pos.action_failed_2'))); } finally { setBusy(false); }
+  }, [selected]);
 
+  const st = (k: string) => Number(sum?.states?.[k] ?? 0);
+  const kpi = (v: number) => (sum ? v : '—');
+  const rows: any[] = list?.items ?? [];
+  const any = !!(f.q || f.preset);
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0,1fr)', background: 'var(--page,#F7EFE3)' }}>
-      <div style={{ padding: '14px 18px 6px' }}>
-        <h1 style={{ font: '700 20px/1.1 "Playfair Display",serif', margin: 0 }}>{tx('pos.ai_receipt_document_recognition')}</h1>
-        <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{tx('pos.scanned_documents_are_reviewed_and_approved_1al1')}</div>
+    <div style={{ height: '100vh', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0,1fr)', background: 'var(--page,#F7EFE3)' }} data-testid="receipt-review-screen">
+      <div style={{ padding: '14px 18px 6px', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <div>
+          <h1 style={{ font: '700 20px/1.1 "Playfair Display",serif', margin: 0 }}>{tx('pos.ai_receipt_document_recognition')}</h1>
+          <div style={{ fontSize: 12, color: MUTED, marginTop: 2 }}>{tx('pos.scanned_documents_are_reviewed_and_approved_1al1')}</div>
+        </div>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <button onClick={() => setTick((n) => n + 1)} style={btn(GOLD, false)} data-testid="rrx-refresh">{tx('rrx.refresh')}</button>
+          <button onClick={() => setTab('upload')} style={btn(GOLD, false)}>{tx('pos.upload')}</button>
+          <button onClick={() => { setHealth('loading'); rc.check().then(setHealth).catch((e) => setHealth({ error: errorTextOf(e, tx('rrx.loadFailed')) })); }} style={btn(GOLD, true)} data-testid="rrx-check">{tx('rrx.check')}</button>
+        </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, padding: '4px 18px', flexWrap: 'wrap' }}>
-        {TABS.map((t) => (
-          <button key={t.key} onClick={() => { setTab(t.key); setSelected(null); }} style={{ border: `1px solid ${tab === t.key ? GOLD : LINE}`, background: tab === t.key ? GOLD : '#fff', color: tab === t.key ? '#fff' : 'var(--text,#2B2118)', borderRadius: 20, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>{t.label}</button>
-        ))}
+      <div style={{ display: 'flex', gap: 6, padding: '4px 18px', flexWrap: 'wrap' }} role="tablist">
+        {TABS.map((t) => {
+          const n = t.states ? t.states.reduce((a, k) => a + st(k), 0) : null;
+          return <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => { setTab(t.key); setSelected(null); setF((x) => ({ ...x, page: 1 })); }} style={{ border: `1px solid ${tab === t.key ? GOLD : LINE}`, background: tab === t.key ? GOLD : '#fff', color: tab === t.key ? '#fff' : 'var(--text,#2B2118)', borderRadius: 20, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
+            {t.label}{n ? ` (${n})` : ''}</button>;
+        })}
       </div>
 
       <div style={{ overflow: 'auto', padding: '8px 18px 18px' }}>
-        {err && <div style={{ ...card, borderColor: '#B0413E55', color: '#B0413E', marginBottom: 10 }}>{err}</div>}
+        {err && <div role="alert" style={{ ...card, borderColor: '#B0413E55', color: '#B0413E', marginBottom: 10 }}>{err}</div>}
+        {sumErr && <div role="alert" style={{ ...card, borderColor: '#B0413E55', color: '#B0413E', marginBottom: 10 }}>{sumErr} <button onClick={loadSum} style={btn(GOLD, false)}>{tx('rrx.retry')}</button></div>}
 
         {tab === 'overview' && (
-          <div style={{ display: 'grid', gap: 12 }}>
-            <div className='grid grid-cols-2  gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6'>
-              <Kpi label={tx('pos.review_required_2')} value={counts['review_required'] || 0} tone={counts['review_required'] ? 'danger' : 'default'} onClick={() => setTab('review')} />
-              <Kpi label={tx('pos.duplicate_holds')} value={counts['duplicate_hold'] || 0} onClick={() => setTab('duplicates')} />
-              <Kpi label={tx('pos.approved')} value={counts['approved'] || 0} onClick={() => setTab('approved')} />
-              <Kpi label={tx('pos.posted')} value={counts['posted'] || 0} onClick={() => setTab('posted')} />
-              <Kpi label={tx('pos.posting_failures')} value={counts['failed'] || 0} tone={counts['failed'] ? 'danger' : 'default'} />
-              <Kpi label={tx('pos.quarantined')} value={counts['quarantined'] || 0} onClick={() => setTab('quarantined')} />
-            </div>
-            {Object.keys(counts).length === 0 && !loading && <Empty msg={tx('pos.no_documents_yet_upload_a_receipt_1y7x')} />}
+          <div className='grid grid-cols-2  gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' style={{ marginBottom: 12 }} data-testid="rrx-kpis">
+            <Kpi label={tx('pos.review_required_2')} value={kpi(st('review_required') + st('in_review'))} tone={st('review_required') + st('in_review') ? 'danger' : 'default'} onClick={() => setTab('review')} />
+            <Kpi label={tx('pos.duplicate_holds')} value={kpi(st('duplicate_hold'))} onClick={() => setTab('duplicates')} />
+            <Kpi label={tx('pos.approved')} value={kpi(st('approved') + st('posting'))} onClick={() => setTab('approved')} />
+            <Kpi label={tx('pos.posted')} value={kpi(st('posted'))} onClick={() => setTab('posted')} />
+            <Kpi label={tx('pos.posting_failures')} value={kpi(st('failed'))} tone={st('failed') ? 'danger' : 'default'} onClick={() => setTab('approved')} />
+            <Kpi label={tx('pos.quarantined')} value={kpi(st('quarantined'))} onClick={() => setTab('quarantined')} />
           </div>
         )}
 
-        {tab === 'upload' && <UploadPanel onUploaded={() => { setTab('review'); }} onError={setErr} />}
+        {tab === 'upload' && <UploadPanel onUploaded={() => { setTick((n) => n + 1); setTab('review'); }} onError={setErr} />}
 
-        {tab !== 'overview' && tab !== 'upload' && (
-          <div className={"grid gap-[12px] " + (selected ? tx('pos.grid_cols_1_lg_grid_cols_17ya') : "grid-cols-1")} style={{gap: 12 }}>
+        {tab !== 'upload' && (
+          <div className={'grid gap-[12px] ' + (selected ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1')} style={{ gap: 12 }}>
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
-              {loading ? <div style={{ padding: 20, color: MUTED }}>{tx('pos.loading')}</div>
-                : rows.length === 0 ? <Empty msg={tx('pos.nothing_here_right_now')} />
+              <div style={{ padding: 10, display: 'grid', gap: 8 }} data-testid="rrx-filters">
+                {tab === 'overview' ? <div style={{ ...h2 }}>{tx('rrx.recent')}</div> : null}
+                <form style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
+                  <input data-testid="rrx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={tx('rcsx.searchPh')} aria-label={tx('rcsx.searchPh')} style={{ flex: '1 1 260px', border: `1px solid ${LINE}`, borderRadius: 8, padding: '6px 10px', fontSize: 13 }} />
+                  <button type="submit" style={btn(GOLD, true)}>{tx('rcsx.search')}</button>
+                  <select data-testid="rrx-datefield" aria-label={tx('rcsx.dateLabel')} value={f.dateField} onChange={(e) => set({ dateField: e.target.value })}>{['uploaded', 'purchase', 'posted'].map((d) => <option key={d} value={d}>{tx('rcsx.date.' + d)}</option>)}</select>
+                  <select data-testid="rrx-sort" aria-label={tx('rcsx.sortLabel')} value={f.sort} onChange={(e) => set({ sort: e.target.value })}>{['newest', 'oldest', 'purchase_date', 'total_high', 'total_low', 'vendor'].map((x) => <option key={x} value={x}>{tx('rcsx.sort.' + x)}</option>)}</select>
+                  {any ? <button type="button" style={btn(MUTED, false)} onClick={() => { setDraft(''); set({ q: undefined, preset: undefined, from: undefined, to: undefined }); }}>{tx('rcsx.clear')}</button> : null}
+                </form>
+                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                  <button style={btn(GOLD, !f.preset)} onClick={() => set({ preset: undefined, from: undefined, to: undefined })}>{tx('rcsx.preset.all')}</button>
+                  {(['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'year'] as const).map((p) => <button key={p} data-testid={`preset-${p}`} style={btn(GOLD, f.preset === p)} onClick={() => set({ preset: p, from: undefined, to: undefined })}>{tx('rcsx.preset.' + p)}</button>)}
+                  <button data-testid="preset-custom" style={btn(GOLD, f.preset === 'custom')} onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : tx('rcsx.preset.custom')}</button>
+                </div>
+                {cal ? <RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+                  onApply={(r) => { set({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { set({ preset: undefined, from: undefined, to: undefined }); setCal(false); }} /> : null}
+              </div>
+              {listErr ? <div role="alert" style={{ padding: 16, color: '#B0413E' }}>{listErr} <button onClick={loadList} style={btn(GOLD, false)}>{tx('rrx.retry')}</button></div>
+                : !list ? <div style={{ padding: 20, color: MUTED }}>{tx('pos.loading')}</div>
+                : rows.length === 0 ? <Empty msg={any ? tx('rcsx.noMatch') : tab === 'overview' ? tx('pos.no_documents_yet_upload_a_receipt_1y7x') : tx('pos.nothing_here_right_now')} />
                   : (
                     <div className="overflow-x-auto w-full"><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }} className="w-full min-w-max">
                       <thead><tr style={{ textAlign: 'left', color: MUTED, fontSize: 11 }}>
-                        <th style={{ padding: 10 }}>{tx('pos.vendor')}</th><th>{tx('pos.type')}</th><th>{tx('pos.total')}</th><th>{tx('pos.duplicate')}</th><th></th>
+                        <th style={{ padding: 10 }}>{tx('pos.vendor')}</th><th>{tx('rcsx.col.uploaded')}</th><th>{tx('pos.total')}</th><th>{tx('rcsx.col.reading')}</th><th>{tx('rcsx.col.expense')}</th><th>{tx('pos.duplicate')}</th><th></th>
                       </tr></thead>
                       <tbody>
                         {rows.map((d) => (
-                          <tr key={d.id} style={{ borderTop: `1px solid ${LINE}` }}>
+                          <tr key={d.id} data-testid="rrx-row" style={{ borderTop: `1px solid ${LINE}` }}>
                             <td style={{ padding: 10 }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                                 <Thumb doc={d} />
                                 <div>
-                                  <div>{d.vendor || <span style={{ color: MUTED }}>—</span>}</div>
+                                  <div>{d.vendor || <span style={{ color: MUTED }}>—</span>}{d.number ? <span style={{ color: MUTED }}> · #{d.number}</span> : null}</div>
                                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                                    {Number(d.pageCount) > 1 ? <Badge text={tx('people.receiptAi.pages', { n: String(d.pageCount) })} tone="muted" /> : null}
+                                    {Number(d.pages) > 1 ? <Badge text={tx('people.receiptAi.pages', { n: String(d.pages) })} tone="muted" /> : null}
                                     {Array.isArray(d.qualityFlags) && d.qualityFlags.length ? <Badge text={tx('people.receiptAi.quality.hardToRead')} tone="gold" /> : null}
                                     {d.suggestedMatch === 'matched' || d.suggestedMatch === 'possible_match' ? <Badge text={tx('people.receiptAi.suggest.badge')} tone="ok" /> : null}
                                   </div>
                                 </div>
                               </div>
                             </td>
-                            <td>{d.documentType}</td>
+                            <td style={{ whiteSpace: 'nowrap' }}>{d.uploadedAt ? fmtInZone(d.uploadedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</td>
                             <td>{money(d.totalCents)}</td>
-                            <td>{d.duplicateStatus && d.duplicateStatus !== 'none' ? <Badge text={d.duplicateStatus} tone="danger" /> : <span style={{ color: MUTED }}>—</span>}</td>
+                            <td><Badge text={tx('rcsx.trk.reading.' + d.tracks.reading)} tone={d.tracks.reading === 'failed' || d.tracks.reading === 'quarantined' ? 'danger' : d.tracks.reading === 'read' ? 'ok' : 'muted'} /></td>
+                            <td><Badge text={tx('rcsx.trk.expense.' + d.tracks.expense)} tone={d.tracks.expense === 'posting_failed' ? 'danger' : d.tracks.expense === 'expense_approved' ? 'ok' : 'muted'} /></td>
+                            <td>{d.tracks.duplicate !== 'none' ? <Badge text={tx('rcsx.trk.duplicate.' + d.tracks.duplicate)} tone="danger" /> : <span style={{ color: MUTED }}>—</span>}</td>
                             <td style={{ textAlign: 'right', paddingRight: 10 }}><button onClick={() => openReview(d.id)} style={{ border: `1px solid ${GOLD}`, background: '#fff', color: GOLD, borderRadius: 8, padding: '4px 10px', fontSize: 12, cursor: 'pointer' }}>{tx('pos.review')}</button></td>
                           </tr>
                         ))}
                       </tbody>
                     </table></div>
                   )}
+              {tab !== 'overview' ? <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 10, gap: 8, flexWrap: 'wrap' }}>
+                <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(p) => set({ page: p }, true)} />
+                <label style={{ fontSize: 12, color: MUTED }}>{tx('rcsx.rows')} <select value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+              </div> : null}
             </div>
             {selected && <ReviewPanel doc={selected} busy={busy} onClose={() => setSelected(null)} act={act} />}
           </div>
         )}
       </div>
+      {health ? <FitDialog wide testId="rrx-health" title={tx('rrx.check')} subtitle={health !== 'loading' && !health.error ? tx('rcsx.health.overall', { s: tx('rcsx.health.' + health.overall), at: fmtInZone(health.checkedAt, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) }) : undefined}
+        onClose={() => setHealth(null)} footer={<button style={btn(MUTED, false)} onClick={() => setHealth(null)}>{tx('rcsx.close')}</button>}>
+        {health === 'loading' ? <div>{tx('rcsx.health.running')}</div> : health.error ? <div role="alert">{health.error}</div> : <>
+          <p style={{ fontSize: 12, color: MUTED }}>{tx('rcsx.health.readOnly')}{health.reused ? ` ${tx('rcsx.health.recent')}` : ''}</p>
+          {health.checks.map((x: any) => <div key={x.key} data-testid={`chk-${x.key}`} style={{ borderTop: `1px solid ${LINE}`, padding: '6px 0' }}>
+            <div><Badge text={tx('rcsx.health.' + x.state)} tone={x.state === 'FAILED' || x.state === 'UNAVAILABLE' ? 'danger' : x.state === 'WARNING' ? 'gold' : x.state === 'PASSED' ? 'ok' : 'muted'} /> <b>{tx('rcsx.health.k.' + x.key)}</b>{x.count ? ` · ${x.count}` : ''}</div>
+            <div style={{ fontSize: 12, color: MUTED }}>{tx('rcsx.health.d.' + x.key + '.' + x.state)}</div></div>)}
+        </>}
+      </FitDialog> : null}
     </div>
   );
 }
@@ -165,6 +221,9 @@ export function POSAIOcrReceiptScreen() {
 // ── split-screen review panel (left: document, right: fields + actions) ───────
 function ReviewPanel({ doc, busy, onClose, act }: { doc: any; busy: boolean; onClose: () => void; act: (fn: () => Promise<any>) => Promise<void> }) {
   const [preview, setPreview] = useState<string | null>(null);
+  // Return / Reject ask for the reason (it is kept in the audit trail) — they used to send a fixed English word
+  const [deciding, setDeciding] = useState<null | 'reject' | 'return'>(null);
+  const [reason, setReason] = useState('');
   useEffect(() => { let live = true; (async () => { try { if (doc.storageKey) { const r = await apiO.previewUrl(doc.id, doc.storageKey); const u = r?.url ?? null;
     // The blob store is NotConnected: DbFileStore records file METADATA only, and signedPreview returns a
     // `notconnected:<key>` marker rather than fabricating a signed URL. Feeding that to an <img src> would paint a
@@ -226,8 +285,13 @@ function ReviewPanel({ doc, busy, onClose, act }: { doc: any; busy: boolean; onC
         {doc.pipelineState === 'extraction_failed' && <button disabled={busy} onClick={() => act(() => apiO.retryExtract(doc.id))} style={btn(GOLD, true)}>{tx('people.receiptAi.retryReading')}</button>}
         {reviewable && <button disabled={busy} onClick={() => act(() => apiO.startReview(doc.id))} style={btn(GOLD, true)}>{tx('pos.start_review')}</button>}
         {inReview && <button disabled={busy} onClick={() => act(() => apiO.approve(doc.id))} style={btn('#3E7A52', true)}>{tx('pos.approve')}</button>}
-        {inReview && <button disabled={busy} onClick={() => act(() => apiO.returnForCorrection(doc.id, 'needs correction'))} style={btn(GOLD, false)}>{tx('pos.return')}</button>}
-        {inReview && <button disabled={busy} onClick={() => act(() => apiO.reject(doc.id, 'rejected'))} style={btn('#B0413E', false)}>{tx('pos.reject')}</button>}
+        {inReview && !deciding && <button disabled={busy} onClick={() => setDeciding('return')} style={btn(GOLD, false)}>{tx('pos.return')}</button>}
+        {inReview && !deciding && <button disabled={busy} onClick={() => setDeciding('reject')} style={btn('#B0413E', false)}>{tx('pos.reject')}</button>}
+        {inReview && deciding ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', width: '100%' }} data-testid="rrx-reason-box">
+          <input data-testid="rrx-reason" aria-label={tx('rrx.reason.' + deciding)} placeholder={tx('rrx.reason.' + deciding)} maxLength={500} value={reason} onChange={(e) => setReason(e.target.value)} style={{ flex: '1 1 220px', border: `1px solid ${LINE}`, borderRadius: 6, padding: '4px 8px', fontSize: 12 }} />
+          <button disabled={busy} onClick={() => { setDeciding(null); setReason(''); }} style={btn(MUTED, false)}>{tx('people.receiptAi.fields.cancel')}</button>
+          <button data-testid="rrx-reason-go" disabled={busy || !reason.trim()} onClick={() => { const r = reason.trim(); const k = deciding; setDeciding(null); setReason(''); void act(() => (k === 'reject' ? apiO.reject(doc.id, r) : apiO.returnForCorrection(doc.id, r))); }} style={btn(deciding === 'reject' ? '#B0413E' : GOLD, true)}>{deciding === 'reject' ? tx('pos.reject') : tx('pos.return')}</button>
+        </div> : null}
         <button disabled={busy || !approved} title={approved ? '' : tx('pos.approve_the_document_before_posting')} onClick={() => act(() => apiO.post(doc.id, 'expense'))} style={btn(GOLD, approved)}>{tx('pos.post_to_expenses')}</button>
         {postingFailed && <button disabled={busy} title={tx('pos.retry_posting_hint')} onClick={() => act(() => apiO.retryPost(doc.id, 'expense'))} style={btn(GOLD, true)}>{tx('pos.retry_posting')}</button>}
       </div>

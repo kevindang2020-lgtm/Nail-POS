@@ -5,6 +5,5 @@
 import type { ListQuerySpec } from '@aipowersalon/database';
 
 export const AiOcrReceiptControllerListQueries = {
-  list: { filters: { pipelineState: { type: 'text' }, reviewStatus: { type: 'text' } }, search: false },
   preview: { filters: { key: { type: 'text' } }, search: false },
 } satisfies Record<string, ListQuerySpec>;
