@@ -4,7 +4,7 @@
 // error, never "not subscribed".
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-const { api } = vi.hoisted(() => ({ api: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
+const { api } = vi.hoisted(() => ({ api: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn(), history: vi.fn() } }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: api }));
 import { POSAiPackageScreen } from './POSAiPackageScreen';
 beforeEach(() => { Object.values(api).forEach((m) => m.mockReset()); });
@@ -54,5 +54,14 @@ describe('POSAiPackageScreen', () => {
     render(<POSAiPackageScreen code="ai_ocr_receipt_scanner" title="AI Receipt Scanner" />);
     expect(await screen.findByRole('alert')).toBeInTheDocument();
     expect(screen.queryByTestId('pkg-trial-start')).toBeNull();
+  });
+  it('AI Booking Assistant guide: a cancelled package keeps its past usage, labelled; Usage & history opens the activity log', async () => {
+    api.detail.mockResolvedValue(card({ state: 'cancelled', storedStatus: 'cancelled', usage: { used: 142, limit: 500, unit: 'scans', percent: 28, level: 'ok', periodStart: null, periodEnd: null, remaining: null }, actions: ['view_details'] }));
+    api.history.mockReturnValue(new Promise(() => {}));
+    render(<POSAiPackageScreen code="ai_ocr_receipt_scanner" title="AI Receipt Scanner" />);
+    expect(await screen.findByTestId('pkg-usage')).toHaveTextContent('142');
+    expect(screen.getByText(/not counting now/)).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('pkg-history'));
+    await waitFor(() => expect(api.history).toHaveBeenCalled());
   });
 });

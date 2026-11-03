@@ -11,7 +11,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A4 | AI Business Assistant | /tenant/ai/business | BUILT (core) — see docs/ai/AI_BUSINESS_ASSISTANT.md (stored conversation history, extra ranges, record search not built) |
 | A5 | AI Scheduling Optimizer | /tenant/ai/scheduling-optimizer | BUILT (gaps) — Yesterday / Last 7 presets, health checks branch-scoped in salon time, per-branch runs, device-day fallback; technician full-day overlay and neighbour preview still open (owner decision in SCHEDULING_OPTIMIZER.md) |
 | A6 | AI Queue | /tenant/ai/queue | PARTIAL — salon-day ranges + end day (bb92dd5), free-technicians tile, kept-unassigned counted, failed reads shown, scan needs resolve_alerts; health checker, overlay tabs, search and numbered pages not built |
-| A7 | AI Booking Assistant | /tenant/ai/booking | AUDITED |
+| A7 | AI Booking Assistant | /tenant/ai/booking | PARTIAL — invented-slots panel removed (220ee29); past usage kept and labelled after cancel; Usage & history on every AI add-on page. The operations center (requests / holds / verification KPIs, activity overlay, 12-group health check) is NOT built: there is no ai-booking backend module yet |
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | AUDITED |
 | A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | AUDITED |
 | A10 | AI Calls | /tenant/ai/receptionist/calls | AUDITED |

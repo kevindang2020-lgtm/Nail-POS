@@ -4,6 +4,7 @@ export const RECEIPTSCANNER_VI: Record<string, string> = {
   "pkgx.yr": "năm",
   "pkgx.resets": "Đặt lại {d}",
   "pkgx.since": "Từ {d}",
+  "pkgx.pastUsage": "Mức dùng của kỳ gần nhất gói còn chạy — hiện không đếm nữa",
   "pkgx.notMetered": "Không tính — gói chưa chạy",
   "pkgx.quotaUsed": "Đã dùng hết lượt quét có sẵn",
   "pkgx.available": "Sẵn sàng",

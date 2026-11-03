@@ -4,6 +4,7 @@ export const RECEIPTSCANNER_EN: Record<string, string> = {
   "pkgx.yr": "yr",
   "pkgx.resets": "Resets {d}",
   "pkgx.since": "Since {d}",
+  "pkgx.pastUsage": "Usage from the last period the package ran — it is not counting now",
   "pkgx.notMetered": "Not counted — the package is not running",
   "pkgx.quotaUsed": "Included scans used up",
   "pkgx.available": "Available",

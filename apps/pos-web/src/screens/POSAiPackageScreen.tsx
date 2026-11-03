@@ -14,6 +14,8 @@ import { posAiUsageScreenApi } from '../api/posAiUsageApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtInZone } from '../i18n/format';
+import { HistoryDialog } from './POSAiUsageScreen';
+import { useCan } from '../components/usePermissions';
 
 type Card = {
   code: string; name: string; description: string; category: string; posArea: string | null; state: string; storedStatus: string | null;
@@ -37,6 +39,8 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
   const [note, setNote] = useState<string | null>(null);
   const [confirm, setConfirm] = useState<null | 'start_trial' | 'cancel'>(null);
   const [busy, setBusy] = useState(false);
+  const [hist, setHist] = useState(false);
+  const can = useCan();
   const key = useRef(newKey());
 
   const load = useCallback(async () => {
@@ -78,7 +82,7 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
             <span data-testid="pkg-state" style={{ padding: '3px 11px', borderRadius: 8, fontSize: 12, fontWeight: 700, background: tone.bg, color: tone.fg }}>{t('aiu.state.' + c.state)}</span></div>
           {c.category ? <div className="sub">{c.category}</div> : null}
         </div>
-        {actionsSlot ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{actionsSlot}</div> : null}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>{actionsSlot}<button type="button" className="btn ghost" data-testid="pkg-history" onClick={() => setHist(true)}>{t('aic.history')}</button></div>
       </div>
       {note ? <div className="panel" role="status" data-testid="pkg-note" style={{ marginTop: 6, marginBottom: 6, padding: 10 }}>{note}</div> : null}
 
@@ -88,8 +92,8 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
         <div className="kpi w-full" style={{ margin: 0 }}><div className="l">{t('pos.price')}</div><div className="v" style={{ fontSize: 18 }} data-testid="pkg-price">{priceText}</div>
           <div className="sub">{t('aiu.priceSource.' + c.price.source)}</div></div>
         <div className="kpi w-full" style={{ margin: 0 }}><div className="l">{t('pos.usage_this_period')}</div>
-          <div className="v" data-testid="pkg-usage">{live && u.used != null ? u.used.toLocaleString('en-US') : '—'}{u.limit > 0 ? <span className="sub" style={{ fontSize: 13, fontWeight: 400 }}> / {u.limit.toLocaleString('en-US')} {u.unit}</span> : ''}</div>
-          <div className="sub">{live ? (u.periodEnd ? t('pkgx.resets', { d: date(u.periodEnd) }) : u.periodStart ? t('pkgx.since', { d: date(u.periodStart) }) : '') : t('pkgx.notMetered')}</div></div>
+          <div className="v" data-testid="pkg-usage">{u.used != null ? u.used.toLocaleString('en-US') : '—'}{u.limit > 0 ? <span className="sub" style={{ fontSize: 13, fontWeight: 400 }}> / {u.limit.toLocaleString('en-US')} {u.unit}</span> : ''}</div>
+          <div className="sub">{live ? (u.periodEnd ? t('pkgx.resets', { d: date(u.periodEnd) }) : u.periodStart ? t('pkgx.since', { d: date(u.periodStart) }) : '') : u.used != null ? t('pkgx.pastUsage') : t('pkgx.notMetered')}</div></div>
         <div className="kpi w-full" style={{ margin: 0 }}><div className="l">{t('pos.status')}</div><div className="v" style={{ fontSize: 16 }} data-testid="pkg-access">{live && c.state !== 'past_due' ? (u.level === 'exhausted_100' ? t('pkgx.quotaUsed') : t('pkgx.available')) : t('pkgx.notAvailable')}</div></div>
         <div className="kpi w-full" style={{ margin: 0 }}><div className="l">{t('pkgx.trial')}</div><div className="v" style={{ fontSize: 15 }} data-testid="pkg-trial">
           {c.state === 'trialing' && c.trial.endsAt ? t('pkgx.trialEnds', { d: date(c.trial.endsAt), n: String(c.trial.daysLeft ?? 0) }) : c.state === 'trial_expired' && c.trial.endsAt ? t('pkgx.trialEnded', { d: date(c.trial.endsAt) })
@@ -111,6 +115,7 @@ export function AiPackagePanel({ code, title, children, actionsSlot }: { code: s
           : null}
       </div>
       {children ?? <div className="sub" style={{ fontSize: 12, marginTop: 16 }}>{t('pos.this_page_manages_the_add_on_1dv3')}{' '}{c.posArea || t('pos.the_relevant_pos_areas')} {t('pos.its_live_activity_appears_there_and_dtu6')}</div>}
+      {hist ? <HistoryDialog initialCode={c.code} canExport={can('reports.export') || can('subscription.manage')} onClose={() => setHist(false)} /> : null}
     </div>
   );
 }
