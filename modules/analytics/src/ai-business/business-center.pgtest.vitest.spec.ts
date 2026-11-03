@@ -21,7 +21,7 @@ const PERMS = ['pos.ai_business.view', 'pos.reports.view', 'pos.reports.financia
 const ctx = (o: any = {}) => ({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: PERMS, ...o });
 let pg: any; let db: any; let bc: BusinessCenter; let n = 0; let alertsSvc: AiBusinessAlertsService;
 const q = async (text: string, params: unknown[] = []) => (await pg.query(text, params)).rows as any[];
-async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e: any) { return e instanceof BusinessCenterError ? e.code : (e?.code ?? e?.message); } }
+async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e: any) { return e instanceof BusinessCenterError ? e.code : (e?.apiCode ?? e?.code ?? e?.message); } }
 async function paid(cents: number, daysAgo = 0) {
   const t = (await q(`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents, ticket_number, paid_at, created_at)
     values ($1,$2,$3,'paid',$4,$4,$5, now() - make_interval(days => $6), now() - make_interval(days => $6)) returning id`, [T, B, C, cents, String(81000 + ++n), daysAgo]))[0].id;
@@ -158,6 +158,21 @@ describe('AI Business Alerts', () => {
     expect(zero.minSampleSize).toBe(1);
     await alertsSvc.remove(ctx(), zero.id);                           // never evaluated: really deleted
     expect((await q(`select count(*)::int as n from ai_business_alerts where id = $1`, [zero.id]))[0].n).toBe(0);
+  });
+  it('AL-06 (Business Alerts guide) edit is validated like create; an unreadable evaluation is RECORDED as failed; an archived rule leaves the rule list', async () => {
+    const r = await alertsSvc.create(ctx(), { title: 'Quarter sales', metricId: 'net_sales', operator: 'lt', threshold: 1000, preset: 'quarter', minSampleSize: 1 } as any);
+    expect(await code(alertsSvc.create(ctx(), { title: 'Bad', metricId: 'net_sales', operator: 'lt', threshold: 1, preset: 'fortnight' } as any))).toBe('VALIDATION_FAILED');
+    expect((await alertsSvc.update(ctx(), r.id, { preset: 'year', minSampleSize: 3, title: '  Year sales ' })).preset).toBe('year');
+    expect(await code(alertsSvc.update(ctx(), r.id, { minSampleSize: 0 }))).toBe('VALIDATION_FAILED');
+    expect(await code(alertsSvc.update(ctx(), r.id, { title: '   ' }))).toBe('TITLE_REQUIRED');
+    const broken = new BusinessCenter(db, { ...(bc as any).d, alerts: { ...(bc as any).d.alerts, evaluateNow: async () => { throw new Error('reports unavailable'); } } });
+    const f: any = await broken.alertEvaluate(ctx(), r.id);
+    expect(f).toMatchObject({ stateChange: 'failed', value: null, triggered: false });
+    expect((await bc.alertHistory(ctx(), { alertId: r.id, state: 'failed' }) as any).items[0].reason).toMatch(/reports unavailable/);
+    expect((await bc.alertSummary(ctx()) as any).failedEvaluations).toBeGreaterThanOrEqual(1);
+    await alertsSvc.remove(ctx(), r.id);
+    expect((await bc.alertRules(ctx(), { q: 'Year sales' }) as any).items).toHaveLength(0);
+    expect(await code(bc.alertEvaluate(ctx(), r.id))).toBe('BC_ALERT_NOT_FOUND');
   });
   it('AL-04 anomaly: too few comparable weekdays → insufficient history, never a guess', async () => {
     const a: any = await bc.alertAnomaly(ctx());

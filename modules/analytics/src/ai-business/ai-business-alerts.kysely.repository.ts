@@ -55,6 +55,8 @@ export class KyselyAlertsRepository implements AlertsRepositoryPort {
     if (patch.active !== undefined) set.active = patch.active;
     if (patch.threshold !== undefined) set.threshold = patch.threshold;
     if (patch.title !== undefined) set.title = patch.title;
+    if (patch.preset !== undefined) set.preset = patch.preset;
+    if (patch.minSampleSize !== undefined) set.min_sample_size = patch.minSampleSize;
     if (Object.keys(set).length === 0) return this.get(ctx, id);
     if (!UUID_RE.test(id)) return null;
     const row = await this.scoped(this.db.updateTable('ai_business_alerts').set(set)

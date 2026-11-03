@@ -35,4 +35,4 @@ export const AI_BUSINESS_SAVED_QUESTION_BODY: BodySchema = S.object({
 export const AI_BUSINESS_ALERT_CREATE_BODY: BodySchema = S.object({
   title: text(500), metricId: text(64), operator: text(8), threshold: S.number(), preset: text(32), minSampleSize: S.nullable(S.number()), frequency: text(16), channel: text(16),
 });
-export const AI_BUSINESS_ALERT_UPDATE_BODY: BodySchema = S.object({ active: S.boolean(), threshold: S.number(), title: S.text(500) });
+export const AI_BUSINESS_ALERT_UPDATE_BODY: BodySchema = S.object({ active: S.boolean(), threshold: S.number(), title: S.text(500), preset: S.text(32), minSampleSize: S.number() });

@@ -43,7 +43,7 @@ export const BC_REPORT_PRESETS: Record<string, readonly string[]> = {
 };
 export const BC_STATUSES = ['all', 'queued', 'running', 'completed', 'failed', 'viewable', 'content_expired'] as const;
 export const BC_PRESETS = ['all', 'today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_month', 'year', 'custom'] as const;
-export const BC_EVENT_STATES = ['all', 'triggered', 'recovered', 'unchanged', 'not_evaluated', 'unacknowledged'] as const;
+export const BC_EVENT_STATES = ['all', 'triggered', 'recovered', 'unchanged', 'not_evaluated', 'failed', 'unacknowledged'] as const;
 export const BC_RULE_STATUSES = ['all', 'active', 'paused', 'triggered', 'needs_review', 'never_evaluated'] as const;
 export const BC_PAGE_SIZES = [10, 25, 50, 100] as const;
 const HEALTH_GAP_SECONDS = 30;
@@ -232,7 +232,7 @@ export class BusinessCenter {
         evaluatedAt: iso(r.ev_at), acknowledgedAt: iso(r.ev_ack) } : null };
   }
   private static RULE_FROM = (T: string) => sql`ai_business_alerts a
-    left join users u on u.id = a.created_by_user_id
+    left join users u on u.id = a.created_by_user_id and u.tenant_id = a.tenant_id
     left join lateral (select e.id as ev_id, e.triggered as ev_triggered, e.sample_ok as ev_sample_ok, e.value as ev_value, e.state_change as ev_state, e.evaluated_at as ev_at, e.acknowledged_at as ev_ack
       from ai_business_alert_events e where e.tenant_id = ${T} and e.alert_id = a.id order by e.evaluated_at desc, e.id desc limit 1) ev on true`;
   private static RULE_COLS = sql`a.id, a.title, a.metric_id, a.operator, a.threshold, a.preset, a.min_sample_size, a.frequency, a.channel, a.active, a.created_at, a.last_checked_at, a.last_triggered_at,
@@ -244,16 +244,16 @@ export class BusinessCenter {
     const r = (await sql<Row>`select count(*) filter (where a.active)::int as active, count(*) filter (where not a.active)::int as paused,
         count(*) filter (where a.active and ev.ev_triggered and ev.ev_ack is null)::int as triggered,
         count(*) filter (where a.active and ev.ev_id is not null and not ev.ev_sample_ok)::int as needs_review,
-        count(*) filter (where a.active and ev.ev_id is null)::int as never, max(ev.ev_at) as last_at
-      from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0] ?? {};
-    return { activeRules: N(r.active), pausedRules: N(r.paused), triggeredUnacknowledged: N(r.triggered), needsReview: N(r.needs_review), neverEvaluated: N(r.never),
+        count(*) filter (where a.active and ev.ev_id is null)::int as never, count(*) filter (where a.active and ev.ev_state = 'failed')::int as failed, max(ev.ev_at) as last_at
+      from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0] ?? {};
+    return { activeRules: N(r.active), pausedRules: N(r.paused), triggeredUnacknowledged: N(r.triggered), needsReview: N(r.needs_review), neverEvaluated: N(r.never), failedEvaluations: N(r.failed),
       lastEvaluatedAt: iso(r.last_at), automaticEvaluation: false, notificationsSent: false };
   }
 
   async alertRules(ctx: AiBusinessContext, f: Row = {}) {
     this.need(ctx);
     const T = ctx.tenantId; const { page, pageSize } = this.paging(f);
-    const conds: any[] = [sql`a.tenant_id = ${T}`, this.scope(ctx, 'a')];
+    const conds: any[] = [sql`a.tenant_id = ${T}`, sql`a.archived_at is null`, this.scope(ctx, 'a')];   // an archived (deleted) rule keeps only its history
     const st = pick(BC_RULE_STATUSES, f.status) ?? 'all';
     if (st === 'active') conds.push(sql`a.active`); else if (st === 'paused') conds.push(sql`not a.active`);
     else if (st === 'triggered') conds.push(sql`ev.ev_triggered and ev.ev_ack is null`); else if (st === 'needs_review') conds.push(sql`ev.ev_id is not null and not ev.ev_sample_ok`);
@@ -297,11 +297,22 @@ export class BusinessCenter {
     if (!isUuid(id)) throw new BusinessCenterError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
     const T = ctx.tenantId;
     const a = (await sql<Row>`select a.id, a.branch_id, a.metric_id, a.operator, a.threshold, a.preset, a.min_sample_size from ai_business_alerts a
-      where a.tenant_id = ${T} and a.id = ${id}::uuid and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0];
+      where a.tenant_id = ${T} and a.id = ${id}::uuid and a.archived_at is null and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0];
     if (!a) throw new BusinessCenterError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
-    const ev = await this.d.alerts.evaluateNow(ctx, id);
     const { tz } = await this.today({ ...ctx, branchId: a.branch_id ? String(a.branch_id) : ctx.branchId });
     const range = presetRangeOf(String(a.preset), new Date(this.now()), tz);
+    let ev: any;
+    try { ev = await this.d.alerts.evaluateNow(ctx, id); }
+    catch (e) {
+      // the numbers could not be read: RECORD a failed evaluation (it used to vanish), then report it
+      const reason = `Could not read the numbers: ${String((e as Error)?.message ?? e).slice(0, 300)}`;
+      const row = (await sql<Row>`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, period_from, period_to, value, sample_size,
+          min_sample_size, sample_ok, triggered, state_change, reason, actor_user_id)
+        values (${T}, ${a.branch_id ?? null}, ${id}::uuid, 'manual', ${a.metric_id}, ${a.operator}, ${a.threshold}, ${a.preset}, ${range.from}::date, ${range.to}::date, null, null,
+          ${N(a.min_sample_size)}, false, false, 'failed', ${reason}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id, evaluated_at`.execute(this.db)).rows[0];
+      return { alertId: id, metricId: a.metric_id, operator: a.operator, threshold: N(a.threshold), preset: a.preset, value: null, sampleSize: null, sampleOk: false, triggered: false,
+        reason, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: 'failed', period: { from: range.from, to: range.to, timeZone: tz } };
+    }
     return this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('ai-business-alert:' || ${id}))`.execute(trx);
       const prev = (await sql<Row>`select e.triggered, e.sample_ok from ai_business_alert_events e where e.tenant_id = ${T} and e.alert_id = ${id}::uuid and e.sample_ok
@@ -414,7 +425,7 @@ export class BusinessCenter {
       const r = await one(sql<Row>`select count(*) filter (where a.active)::int as active, count(*) filter (where a.active and ev.ev_id is null)::int as never,
           count(*) filter (where a.active and (ev.ev_at is null or ev.ev_at < now() - interval '1 day'))::int as stale,
           count(*) filter (where a.active and a.min_sample_size < 1)::int as no_sample, count(*) filter (where a.active and a.channel in ('email', 'sms'))::int as channel_rules
-        from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and ${this.scope(ctx, 'a')}`);
+        from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`);
       checks.push({ key: 'rules_readable', component: 'rules', state: N(r.active) ? 'PASSED' : 'INSUFFICIENT_DATA', count: N(r.active) });
       checks.push({ key: 'rules_evaluated', component: 'evaluation', state: N(r.stale) ? 'WARNING' : 'PASSED', count: N(r.stale), detail: { never: N(r.never) } });
       checks.push({ key: 'automatic_evaluation', component: 'evaluation', state: 'UNAVAILABLE' });

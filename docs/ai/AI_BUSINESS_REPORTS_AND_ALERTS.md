@@ -36,3 +36,19 @@ Report (`ReportsService`) through the existing AI Business tools — no second r
 1. Scheduled reports (daily / weekly / monthly) — where should they be delivered (in-app only, or email)?
 2. Automatic alert evaluation (hourly / daily as each rule says) and delivery by SMS / email — turn on, and to whom?
 3. All-my-salons monitoring across separate salon accounts needs an owner grant model that does not exist yet.
+
+## Business Alerts — newer guide (021905f4, received Nov 3 2026)
+Built (Nov 3 afternoon):
+- Rules are branch-scoped for read / pause / edit / delete; Evaluate Now uses the rule's own branch and time zone.
+- Edit (name, threshold, period, minimum sample ≥ 1), Duplicate (a PAUSED copy), History per rule (the history filtered to one alert).
+- Periods: Today, Yesterday, This week, This month, This quarter, This year — anything else is refused (it was read as the last 7 days).
+- An evaluation whose numbers cannot be read is RECORDED as `failed` with the reason (migration 783) and counted in a Failed evaluations KPI.
+- Deleting a rule with history archives it (migration 782); the history stays, the rule leaves the list, the health check ignores it.
+- Health runs, the 30-second reuse and "last passed" are per branch.
+
+Not built (each needs a decision or infrastructure that does not exist yet):
+- Incidents (acknowledge → investigate → resolve, assignee, notes, snooze) — today an event can only be acknowledged once.
+- A background evaluator (scheduled runs, worker lag, dead letters) — rules are evaluated by hand, and the page says so.
+- Notifications (in-app inbox, email, the salon's own Twilio SMS) with cooldown, quiet hours, escalation and a delivery log.
+- Severity / recipients / quiet hours fields, rule versions, Draft state, tabbed layout, SSE live refresh.
+- Anomaly detection beyond net sales and tickets for yesterday; an AI-written explanation (the explanation is the measured bridge).

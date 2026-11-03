@@ -117,7 +117,7 @@ export class AiBusinessController {
   }
 
   @Patch('alerts/:id') @RequirePermission('pos.ai_business.view')
-  async updateAlert(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(AI_BUSINESS_ALERT_UPDATE_BODY, { strict: true })) body: { active?: boolean; threshold?: number; title?: string }) {
+  async updateAlert(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(AI_BUSINESS_ALERT_UPDATE_BODY, { strict: true })) body: { active?: boolean; threshold?: number; title?: string; preset?: string; minSampleSize?: number }) {
     try { return await this.alerts.update(ctxFrom(r), id, body || {}); }
     catch (e) { throw toHttp(e); }
   }

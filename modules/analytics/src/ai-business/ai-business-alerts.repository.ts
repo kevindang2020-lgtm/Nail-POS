@@ -36,7 +36,9 @@ export interface CreateAlertInput {
   frequency?: string;
   channel?: string;
 }
-export interface UpdateAlertInput { active?: boolean; threshold?: number; title?: string }
+export interface UpdateAlertInput { active?: boolean; threshold?: number; title?: string; preset?: string; minSampleSize?: number }
+/** the salon-local periods a rule can watch (the Sales Report's presets) */
+export const ALERT_PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'] as const;
 
 export interface AlertsRepositoryPort {
   list(ctx: AlertContext): Promise<BusinessAlert[]>;
@@ -79,6 +81,8 @@ export class InMemoryAlertsRepository implements AlertsRepositoryPort {
     if (patch.active !== undefined) r.active = patch.active;
     if (patch.threshold !== undefined) r.threshold = patch.threshold;
     if (patch.title !== undefined) r.title = patch.title;
+    if (patch.preset !== undefined) r.preset = patch.preset;
+    if (patch.minSampleSize !== undefined) r.minSampleSize = patch.minSampleSize;
     return this.view(r);
   }
   async remove(ctx: AlertContext, id: string): Promise<boolean> {

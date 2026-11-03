@@ -2,7 +2,7 @@
 // operator, channel, and a positive threshold; tenant/branch/user come only from the trusted ctx.
 import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
 import {
-  ALERT_METRICS, type AlertMetric, type AlertOperator, type BusinessAlert, type CreateAlertInput,
+  ALERT_METRICS, ALERT_PRESETS, type AlertMetric, type AlertOperator, type BusinessAlert, type CreateAlertInput,
   type UpdateAlertInput, type AlertsRepositoryPort, type AlertContext,
 } from './ai-business-alerts.repository';
 import { AiBusinessAlertEvaluator, type AlertEvaluation } from './ai-business-alerts-evaluator';
@@ -21,7 +21,7 @@ export class AiBusinessAlertsService {
 
   list(ctx: AiBusinessContext): Promise<BusinessAlert[]> { return this.repo.list(this.actx(ctx)); }
 
-  create(ctx: AiBusinessContext, input: CreateAlertInput): Promise<BusinessAlert> {
+  async create(ctx: AiBusinessContext, input: CreateAlertInput): Promise<BusinessAlert> {
     const a = this.actx(ctx);
     const title = (input?.title ?? '').trim();
     if (!title) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'A title is required'), 'TITLE_REQUIRED');
@@ -32,6 +32,8 @@ export class AiBusinessAlertsService {
     if (input.frequency && !FREQUENCIES.includes(input.frequency)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported frequency');
     // at least 1: with 0 an empty period (no tickets) passed the sample check and "fell below" on a fake $0 (Nov 3 audit)
     const minSampleSize = input.minSampleSize != null ? Math.max(1, Math.floor(input.minSampleSize)) : 5;
+    // an unknown period used to be accepted and read as the last 7 days (Business Alerts guide, Nov 3 audit)
+    if (input.preset != null && !(ALERT_PRESETS as readonly string[]).includes(String(input.preset))) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Choose one of the listed periods.'), 'VALIDATION_FAILED', { field: 'preset' });
     return this.repo.create(a, { ...input, title, metricId: input.metricId as AlertMetric, operator: input.operator as AlertOperator, minSampleSize });
   }
 
@@ -39,7 +41,11 @@ export class AiBusinessAlertsService {
     if (patch.threshold !== undefined && (!Number.isFinite(patch.threshold) || patch.threshold < 0)) {
       throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Threshold must be a non-negative number'), 'THRESHOLD_INVALID');
     }
-    const row = await this.repo.update(this.actx(ctx), id, patch);
+    // Edit (Business Alerts guide): name, threshold, period and minimum sample — validated like create
+    if (patch.title !== undefined && !String(patch.title).trim()) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'A title is required'), 'TITLE_REQUIRED');
+    if (patch.preset !== undefined && !(ALERT_PRESETS as readonly string[]).includes(String(patch.preset))) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Choose one of the listed periods.'), 'VALIDATION_FAILED', { field: 'preset' });
+    if (patch.minSampleSize !== undefined && (!Number.isInteger(patch.minSampleSize) || patch.minSampleSize < 1)) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'The minimum sample must be a whole number of at least 1.'), 'VALIDATION_FAILED', { field: 'minSampleSize' });
+    const row = await this.repo.update(this.actx(ctx), id, { ...patch, ...(patch.title !== undefined ? { title: String(patch.title).trim() } : {}) });
     if (!row) throw withCode(new AiBusinessError(AiBusinessErrorCode.METRIC_NOT_FOUND, 'Alert not found'), 'ALERT_NOT_FOUND');
     return row;
   }

@@ -19,10 +19,10 @@ import { posAiBusinessApi } from '../api/posAiBusinessApi';
 type Metric = 'net_sales' | 'average_ticket' | 'completed_appointments' | 'cancellation_rate' | 'no_show_rate' | 'customer_retention';
 const METRICS: Metric[] = ['net_sales', 'average_ticket', 'completed_appointments', 'cancellation_rate', 'no_show_rate', 'customer_retention'];
 const UNIT: Record<string, string> = { net_sales: 'cents', average_ticket: 'cents', completed_appointments: 'count', cancellation_rate: 'percent', no_show_rate: 'percent', customer_retention: 'percent' };
-const PRESETS = ['today', 'yesterday', 'week', 'month'];
+const PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
 const RULE_STATUSES = ['all', 'active', 'paused', 'triggered', 'needs_review', 'never_evaluated'];
-const EVENT_STATES = ['all', 'triggered', 'unacknowledged', 'recovered', 'unchanged', 'not_evaluated'];
-const STATE_TONE: Record<string, string> = { triggered: 'bad', recovered: 'ok', unchanged: '', not_evaluated: 'warn' };
+const EVENT_STATES = ['all', 'triggered', 'unacknowledged', 'recovered', 'unchanged', 'not_evaluated', 'failed'];
+const STATE_TONE: Record<string, string> = { triggered: 'bad', recovered: 'ok', unchanged: '', not_evaluated: 'warn', failed: 'bad' };
 
 export function POSAiAlertsScreen() {
   const [tick, setTick] = useState(0);
@@ -30,6 +30,7 @@ export function POSAiAlertsScreen() {
   const [sum, setSum] = useState<any>(null);
   const [sumErr, setSumErr] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const [histAlert, setHistAlert] = useState<{ id: string; title: string } | null>(null);
   const loadSum = useCallback(() => { setSumErr(null); posAiBusinessApi.center.alertSummary().then(setSum).catch((e) => setSumErr(bzErr(e))); }, []);
   useEffect(() => { loadSum(); }, [loadSum, tick]);
   return (
@@ -47,13 +48,14 @@ export function POSAiAlertsScreen() {
         <KpiCard testId="bzx-a-triggered" label={bt('bzx.a.kpi.triggered')} value={sum ? bzNum(sum.triggeredUnacknowledged) : '—'} tone={sum?.triggeredUnacknowledged ? 'bad' : undefined} loading={!sum && !sumErr} />
         <KpiCard testId="bzx-a-review" label={bt('bzx.a.kpi.review')} value={sum ? bzNum(sum.needsReview) : '—'} tone={sum?.needsReview ? 'warn' : undefined} loading={!sum && !sumErr} />
         <KpiCard testId="bzx-a-never" label={bt('bzx.a.kpi.never')} value={sum ? bzNum(sum.neverEvaluated) : '—'} loading={!sum && !sumErr} />
+        <KpiCard testId="bzx-a-failed" label={bt('bzx.a.kpi.failed')} value={sum ? bzNum(sum.failedEvaluations ?? 0) : '—'} tone={sum?.failedEvaluations ? 'bad' : undefined} loading={!sum && !sumErr} />
         <KpiCard testId="bzx-a-last" label={bt('bzx.a.kpi.last')} value={sum ? (sum.lastEvaluatedAt ? bzWhen(sum.lastEvaluatedAt) : bt('bzx.a.never')) : '—'} loading={!sum && !sumErr} />
       </div>
       {sum && !sum.automaticEvaluation ? <p className="sub" data-testid="bzx-a-manual">{bt('bzx.a.manualNote')}</p> : null}
       {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} role="status" data-testid="bzx-a-msg">{msg.text}</div> : null}
       <NewAlert onCreated={() => { setMsg({ tone: 'ok', text: bt('bzx.a.created') }); refresh(); }} onError={(t) => setMsg({ tone: 'err', text: t })} />
-      <Rules tick={tick} onChanged={refresh} onMsg={setMsg} />
-      <History tick={tick} onChanged={refresh} />
+      <Rules tick={tick} onChanged={refresh} onMsg={setMsg} onHistory={(a) => { setHistAlert(a); setTimeout(() => document.querySelector('[data-testid="bzx-a-history"]')?.scrollIntoView({ block: 'start' }), 0); }} />
+      <History tick={tick} onChanged={refresh} alert={histAlert} onAll={() => setHistAlert(null)} />
       <Anomaly />
     </div>
   );
@@ -92,7 +94,7 @@ function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: 
   );
 }
 
-function Rules({ tick, onChanged, onMsg }: { tick: number; onChanged: () => void; onMsg: (m: { tone: 'ok' | 'err'; text: string }) => void }) {
+function Rules({ tick, onChanged, onMsg, onHistory }: { tick: number; onChanged: () => void; onMsg: (m: { tone: 'ok' | 'err'; text: string }) => void; onHistory: (a: { id: string; title: string }) => void }) {
   const [draft, setDraft] = useState('');
   const [f, setF] = useState<{ q?: string; status: string; metric: string; page: number; pageSize: number }>({ status: 'all', metric: 'all', page: 1, pageSize: 25 });
   const [list, setList] = useState<any>(null);
@@ -100,6 +102,10 @@ function Rules({ tick, onChanged, onMsg }: { tick: number; onChanged: () => void
   const [evals, setEvals] = useState<Record<string, any>>({});
   const [del, setDel] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [edit, setEdit] = useState<any>(null);
+  // Duplicate (Business Alerts guide): same condition, a new name, created PAUSED so it never fires twice by surprise
+  const duplicate = (a: any) => { setBusy(a.id); posAiBusinessApi.alertCreate({ title: bt('bzx.a.copyOf', { t: a.title }).slice(0, 120), metricId: a.metricId, operator: a.operator, threshold: a.threshold, preset: a.preset, minSampleSize: a.minSampleSize })
+    .then((c: any) => posAiBusinessApi.alertUpdate(c.id, { active: false })).then(() => { onMsg({ tone: 'ok', text: bt('bzx.a.duplicated', { t: a.title }) }); onChanged(); }).catch((e) => onMsg({ tone: 'err', text: bzErr(e) })).finally(() => setBusy(null)); };
   const load = useCallback(() => { setErr(null); posAiBusinessApi.center.rules({ q: f.q, status: f.status, metric: f.metric, page: f.page, pageSize: f.pageSize }).then(setList).catch((e) => setErr(bzErr(e))); }, [f]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x, page: x.page ?? 1 }));
@@ -134,9 +140,12 @@ function Rules({ tick, onChanged, onMsg }: { tick: number; onChanged: () => void
                   <div className="rvw-actions">
                     <button type="button" className="btn ghost" data-testid="bzx-a-eval" disabled={busy === a.id} onClick={() => evaluate(a.id)}>{bt('bzx.a.evaluate')}</button>
                     <button type="button" className="btn ghost" data-testid="bzx-a-toggle" disabled={busy === a.id} onClick={() => toggle(a)}>{a.active ? bt('bzx.a.pause') : bt('bzx.a.resume')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-edit" disabled={busy === a.id} onClick={() => setEdit(a)}>{bt('bzx.a.edit')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-dup" disabled={busy === a.id} onClick={() => duplicate(a)}>{bt('bzx.a.duplicate')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-hist" onClick={() => onHistory({ id: a.id, title: a.title })}>{bt('bzx.a.viewHistory')}</button>
                     <button type="button" className="btn ghost" data-testid="bzx-a-del" disabled={busy === a.id} onClick={() => setDel(a)}>{bt('bzx.a.delete')}</button>
                   </div>
-                  {ev ? <div className="sub" data-testid="bzx-a-result"><b>{bt('bzx.es.' + ev.stateChange)}</b> · {bt('bzx.a.valueVs', { v: bzValue(ev.value, UNIT[ev.metricId]), t: bzValue(ev.threshold, UNIT[ev.metricId]) })} · {bt('bzx.a.sample', { n: bzNum(ev.sampleSize) })} · {bzDays(ev.period)}</div> : null}
+                  {ev && ev.stateChange === 'failed' ? <div className="err" data-testid="bzx-a-result">{bt('bzx.es.failed')}</div> : ev ? <div className="sub" data-testid="bzx-a-result"><b>{bt('bzx.es.' + ev.stateChange)}</b> · {bt('bzx.a.valueVs', { v: bzValue(ev.value, UNIT[ev.metricId]), t: bzValue(ev.threshold, UNIT[ev.metricId]) })} · {bt('bzx.a.sample', { n: bzNum(ev.sampleSize) })} · {bzDays(ev.period)}</div> : null}
                 </td>
               </tr>);
           })}</tbody></table></div>)}
@@ -147,11 +156,12 @@ function Rules({ tick, onChanged, onMsg }: { tick: number; onChanged: () => void
       {del ? <FitDialog testId="bzx-a-confirm" title={bt('bzx.a.deleteTitle', { t: del.title })} onClose={() => setDel(null)} busy={busy === del.id}
         footer={<><button className="btn" data-testid="bzx-a-del-yes" onClick={remove}>{bt('bzx.a.delete')}</button><button className="btn ghost" onClick={() => setDel(null)}>{bt('bzx.cancel')}</button></>}>
         <p>{bt('bzx.a.deleteNote')}</p></FitDialog> : null}
+      {edit ? <EditDialog alert={edit} onClose={() => setEdit(null)} onSaved={(t) => { setEdit(null); onMsg({ tone: 'ok', text: bt('bzx.a.saved', { t }) }); onChanged(); }} /> : null}
     </section>
   );
 }
 
-function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
+function History({ tick, onChanged, alert, onAll }: { tick: number; onChanged: () => void; alert: { id: string; title: string } | null; onAll: () => void }) {
   const [draft, setDraft] = useState('');
   const [f, setF] = useState<{ q?: string; state: string; page: number; pageSize: number }>({ state: 'all', page: 1, pageSize: 25 });
   const [period, setPeriod] = useState<BzPeriod>({});
@@ -161,7 +171,7 @@ function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
   const [note, setNote] = useState('');
   const [ackErr, setAckErr] = useState<string | null>(null);
   const [why, setWhy] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); posAiBusinessApi.center.history({ q: f.q, state: f.state, page: f.page, pageSize: f.pageSize, ...period }).then(setList).catch((e) => setErr(bzErr(e))); }, [f, period]);
+  const load = useCallback(() => { setErr(null); posAiBusinessApi.center.history({ q: f.q, state: f.state, page: f.page, pageSize: f.pageSize, ...period, ...(alert ? { alertId: alert.id } : {}) }).then(setList).catch((e) => setErr(bzErr(e))); }, [f, period, alert]);
   useEffect(() => { load(); }, [load, tick]);
   const set = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x, page: x.page ?? 1 }));
   const doAck = () => { setAckErr(null); posAiBusinessApi.center.acknowledge(ack.id, note.trim() || undefined).then(() => { setAck(null); setNote(''); onChanged(); }).catch((e) => setAckErr(bzErr(e))); };
@@ -176,6 +186,7 @@ function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
         <select data-testid="bzx-h-state" aria-label={bt('bzx.a.state')} value={f.state} onChange={(e) => set({ state: e.target.value })}>{EVENT_STATES.map((x) => <option key={x} value={x}>{bt('bzx.est.' + x)}</option>)}</select>
         {filtered ? <button className="btn ghost" type="button" onClick={() => { setDraft(''); setPeriod({}); setF({ state: 'all', page: 1, pageSize: f.pageSize }); }}>{bt('bzx.clear')}</button> : null}
       </form>
+      {alert ? <div className="rvw-filters" data-testid="bzx-h-one"><span className="chip">{bt('bzx.a.oneAlert', { t: alert.title })}</span><button type="button" className="btn ghost" onClick={onAll}>{bt('bzx.a.showAll')}</button></div> : null}
       <BzPeriodBar value={period} onChange={(p) => { setPeriod(p); set({}); }} today={list?.period?.today} />
       {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{bt('bzx.loading')}</div> : rows.length === 0 ? <Empty title={filtered ? bt('bzx.noMatch') : bt('bzx.a.noHistory')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
@@ -184,7 +195,7 @@ function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
             <tr key={e.id} data-testid="bzx-h-row">
               <td>{bzWhen(e.evaluatedAt)}</td>
               <td>{e.title}</td>
-              <td>{bt('bzx.a.valueVs', { v: bzValue(e.value, UNIT[e.metricId]), t: bzValue(e.threshold, UNIT[e.metricId]) })}<div className="sub">{bt('bzx.a.sampleOf', { n: bzNum(e.sampleSize), m: bzNum(e.minSampleSize) })}</div></td>
+              <td>{e.stateChange === 'failed' ? <span className="err">{e.reason ?? bt('bzx.es.failed')}</span> : <>{bt('bzx.a.valueVs', { v: bzValue(e.value, UNIT[e.metricId]), t: bzValue(e.threshold, UNIT[e.metricId]) })}<div className="sub">{bt('bzx.a.sampleOf', { n: bzNum(e.sampleSize), m: bzNum(e.minSampleSize) })}</div></>}</td>
               <td>{bzDays({ from: e.periodFrom, to: e.periodTo })}</td>
               <td><span className={'chip ' + (STATE_TONE[e.stateChange] ?? '')}>{bt('bzx.es.' + e.stateChange)}</span>
                 {e.acknowledgedAt ? <div className="sub">{bt('bzx.a.ackBy', { who: e.acknowledgedBy ?? '—', at: bzWhen(e.acknowledgedAt) })}{e.ackNote ? ` · ${e.ackNote}` : ''}</div> : null}</td>
@@ -204,6 +215,36 @@ function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
       </FitDialog> : null}
       {why ? <ExplainDialog eventId={why} onClose={() => setWhy(null)} /> : null}
     </section>
+  );
+}
+
+function EditDialog({ alert, onClose, onSaved }: { alert: any; onClose: () => void; onSaved: (title: string) => void }) {
+  const unit = UNIT[alert.metricId];
+  const [title, setTitle] = useState<string>(alert.title);
+  const [amount, setAmount] = useState(String(unit === 'cents' ? alert.threshold / 100 : alert.threshold));
+  const [preset, setPreset] = useState<string>(alert.preset);
+  const [minSample, setMinSample] = useState(String(alert.minSampleSize));
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+  const save = () => {
+    const raw = Number(amount); const ms = Math.trunc(Number(minSample));
+    if (!title.trim() || amount.trim() === '' || !Number.isFinite(raw) || raw < 0) { setErr(bt('bzx.a.formInvalid')); return; }
+    if (!Number.isFinite(ms) || ms < 1) { setErr(bt('bzx.a.sampleInvalid')); return; }
+    setBusy(true); setErr(null);
+    posAiBusinessApi.alertUpdate(alert.id, { title: title.trim(), threshold: unit === 'cents' ? Math.round(raw * 100) : raw, preset, minSampleSize: ms })
+      .then(() => onSaved(title.trim())).catch((e) => setErr(bzErr(e))).finally(() => setBusy(false));
+  };
+  return (
+    <FitDialog testId="bzx-edit" title={bt('bzx.a.editTitle', { t: alert.title })} onClose={onClose} busy={busy}
+      footer={<><button className="btn" data-testid="bzx-edit-save" disabled={busy} onClick={save}>{bt('bzx.a.save')}</button><button className="btn ghost" onClick={onClose}>{bt('bzx.cancel')}</button></>}>
+      <div className="rvw-filters">
+        <label className="rvw-f"><span>{bt('bzx.a.name')}</span><input data-testid="bzx-edit-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.amount.' + unit)}</span><input data-testid="bzx-edit-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.period')}</span><select data-testid="bzx-edit-preset" value={preset} onChange={(e) => setPreset(e.target.value)}>{PRESETS.map((p) => <option key={p} value={p}>{bt('bzx.period.' + p)}</option>)}</select></label>
+        <label className="rvw-f"><span>{bt('bzx.a.minSample')}</span><input data-testid="bzx-edit-min" inputMode="numeric" value={minSample} onChange={(e) => setMinSample(e.target.value)} /></label>
+      </div>
+      {err ? <div className="err" role="alert">{err}</div> : null}
+    </FitDialog>
   );
 }
 

@@ -21,7 +21,7 @@ export const posAiBusinessApi = {
   // Alerts (§34): CRUD + evaluate-now.
   alertCreate: (body: { title: string; metricId: string; operator: 'lt' | 'gt'; threshold: number; preset?: string; minSampleSize?: number; channel?: string; frequency?: string }) =>
     api.post(`/pos/ai-business/alerts`, body),
-  alertUpdate: (id: string, body: { active?: boolean; threshold?: number; title?: string }) => api.patch(`/pos/ai-business/alerts/${id}`, body),
+  alertUpdate: (id: string, body: { active?: boolean; threshold?: number; title?: string; preset?: string; minSampleSize?: number }) => api.patch(`/pos/ai-business/alerts/${id}`, body),
   alertDelete: (id: string) => api.del(`/pos/ai-business/alerts/${id}`),
   // AI Business Reports + Alerts guides (Nov 3 2026): the center. Retired from the client (pinned in posAiBusinessApi.retired.test.ts):
   //   reportsList / reportGet / reportCreate — the 100 newest, no search or pages, no period recorded → center.reports / report / generate

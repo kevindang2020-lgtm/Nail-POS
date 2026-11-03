@@ -83,4 +83,26 @@ describe('POSAiAlertsScreen', () => {
     fireEvent.click(screen.getByTestId('bzx-an-run'));
     expect(await screen.findByTestId('bzx-an-netSalesCents')).toHaveTextContent('Not enough history: 2 comparable days');
   });
+  it('Edit saves name, amount (cents), period and minimum sample; Duplicate creates a paused copy; History filters to one alert', async () => {
+    api.alertUpdate.mockResolvedValue({}); api.alertCreate.mockResolvedValue({ id: 'a2' });
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-a-edit'));
+    fireEvent.change(screen.getByTestId('bzx-edit-amount'), { target: { value: '1500' } });
+    fireEvent.change(screen.getByTestId('bzx-edit-preset'), { target: { value: 'quarter' } });
+    fireEvent.click(screen.getByTestId('bzx-edit-save'));
+    expect(await screen.findByText('Alert “test” saved.')).toBeInTheDocument();
+    expect(api.alertUpdate).toHaveBeenCalledWith('a1', { title: 'test', threshold: 150000, preset: 'quarter', minSampleSize: 5 });
+    fireEvent.click(screen.getByTestId('bzx-a-dup'));
+    expect(await screen.findByText(/Copy of “test” created/)).toBeInTheDocument();
+    expect(api.alertCreate).toHaveBeenCalledWith({ title: 'Copy of test', metricId: 'average_ticket', operator: 'gt', threshold: 123500, preset: 'today', minSampleSize: 5 });
+    expect(api.alertUpdate).toHaveBeenCalledWith('a2', { active: false });
+    fireEvent.click(screen.getByTestId('bzx-a-hist'));
+    expect(await screen.findByTestId('bzx-h-one')).toHaveTextContent('Showing only “test”');
+    expect(c.history).toHaveBeenLastCalledWith(expect.objectContaining({ alertId: 'a1' }));
+  });
+  it('a failed evaluation shows its reason, never a value', async () => {
+    c.history.mockResolvedValue({ items: [{ ...EV, id: 'e9', stateChange: 'failed', value: null, sampleOk: false, triggered: false, reason: 'Could not read the numbers: reports unavailable' }], total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } });
+    wrap();
+    expect(await screen.findByText('Could not read the numbers: reports unavailable')).toBeInTheDocument();
+  });
 });
