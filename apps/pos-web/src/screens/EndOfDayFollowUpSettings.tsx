@@ -12,6 +12,7 @@ import { posEodFollowUpsApi as api, type EodSummary, type EodHealthRow, type Hea
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
+import { deviceToday } from '../lib/deviceToday';
 
 const TIME_OPTS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
 const EXPIRE_OPTS = [0, 12, 24, 48, 72];
@@ -180,7 +181,7 @@ export function EndOfDayFollowUpSettings() {
         {filters.from ? <div className="s" style={{ margin: '4px 0' }} data-testid="eod-basis-note">{tx('eod.basisNote', { basis: tx(`eod.basis.${filters.basis}`) })} · {filters.from} – {filters.to}</div> : null}
         {calOpen ? (
           <div className="eod-cal" data-testid="eod-cal">
-            <RangeCalendar initial={{ from: filters.from, to: filters.to }} today={summary?.today ?? new Date().toISOString().slice(0, 10)}
+            <RangeCalendar initial={{ from: filters.from, to: filters.to }} today={summary?.today ?? deviceToday()}
               onApply={(r) => { setF({ from: r.from, to: r.to }); setCalOpen(false); }} onCancel={() => setCalOpen(false)} onClear={() => { setF({ from: undefined, to: undefined }); setCalOpen(false); }} />
           </div>
         ) : null}

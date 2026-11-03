@@ -13,6 +13,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone, fmtMoney } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const stars = (n: number | null | undefined) => { if (n == null) return '☆☆☆☆☆'; const full = Math.max(0, Math.min(5, Math.round(n))); return '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full); };
@@ -146,7 +147,7 @@ export function POSReviewsScreen() {
             </select></label>
         </div>
         {anyFilter ? <button className="btn ghost" data-testid="flt-clear" onClick={() => { setQ(''); setSp(new URLSearchParams(), { replace: true }); }}>{t('rvw.clearAll')}</button> : null}
-        {cal ? <div className="rvw-cal" data-testid="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.today ?? new Date().toISOString().slice(0, 10)}
+        {cal ? <div className="rvw-cal" data-testid="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.today ?? deviceToday()}
           onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: null, from: null, to: null }); setCal(false); }} /></div> : null}
       </section>
 

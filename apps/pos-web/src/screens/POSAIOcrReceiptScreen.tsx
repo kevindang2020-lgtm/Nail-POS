@@ -14,6 +14,7 @@ import { posExpensesApi } from '../api/posExpensesApi';
 import { isOfflineFailure } from '../api/offline-drafts';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createReceiptCaptureQueue, isOffline, CaptureUnavailableError, type ReceiptCaptureQueue, type CaptureSummary } from '@aipowersalon/mobile-sdk';
+import { deviceToday } from '../lib/deviceToday';
 
 const GOLD = 'var(--aps-orange,#A96F22)';
 const LINE = 'var(--line,#E7DBC6)';
@@ -158,7 +159,7 @@ export function POSAIOcrReceiptScreen() {
                   {(['today', 'yesterday', 'week', 'last_7', 'month', 'last_month', 'last_30', 'year'] as const).map((p) => <button key={p} data-testid={`preset-${p}`} style={btn(GOLD, f.preset === p)} onClick={() => set({ preset: p, from: undefined, to: undefined })}>{tx('rcsx.preset.' + p)}</button>)}
                   <button data-testid="preset-custom" style={btn(GOLD, f.preset === 'custom')} onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : tx('rcsx.preset.custom')}</button>
                 </div>
-                {cal ? <RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+                {cal ? <RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period?.today ?? deviceToday()}
                   onApply={(r) => { set({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { set({ preset: undefined, from: undefined, to: undefined }); setCal(false); }} /> : null}
               </div>
               {listErr ? <div role="alert" style={{ padding: 16, color: '#B0413E' }}>{listErr} <button onClick={loadList} style={btn(GOLD, false)}>{tx('rrx.retry')}</button></div>

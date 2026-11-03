@@ -133,6 +133,7 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
   const [status, setStatus] = useState(service?.status === 'inactive' ? 'inactive' : 'active');
   const [online, setOnline] = useState(service ? !!service.onlineBookable : false); const [ai, setAi] = useState(service ? !!service.aiBookable : false);
   const [desc, setDesc] = useState(service?.description ?? '');
+  const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { if (!service && !cat && categories.length) setCat(categories[0].categoryId); }, [categories]);   // eslint-disable-line react-hooks/exhaustive-deps
   const save = async () => {
@@ -141,10 +142,17 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
     if (!cat) { setErr(tx('pos.pick_a_category')); return; }
     if (cents == null || cents < 0) { setErr(tx('pos.enter_a_valid_price_dollars_and_1qkm')); return; }
     if (!Number.isInteger(m) || m <= 0) { setErr(tx('pos.duration_must_be_a_positive_number')); return; }
+    // editing: a price / duration change goes through Service Pricing (reason, conflict check, history) like the Pricing screen —
+    // it used to go through the plain update with no reason and no history entry; unchanged price / duration is not sent at all
+    const priceChanged = !!service && (cents !== Number(service.priceCents) || m !== Number(service.durationMinutes));
+    if (priceChanged && !reason.trim()) { setErr(tx('cg.svc.reasonNeeded')); return; }
     setBusy(true); setErr(null);
     try {
-      const body = { name: name.trim(), categoryId: cat, priceCents: cents, durationMinutes: m, status, onlineBookingEnabled: online, aiBookingEnabled: ai, description: desc.trim() || undefined };
-      if (service) await posServicesApi.update(service.serviceId, body); else await posServicesApi.create(body);
+      const common = { name: name.trim(), categoryId: cat, status, onlineBookingEnabled: online, aiBookingEnabled: ai, description: desc.trim() || undefined };
+      if (service) {
+        if (priceChanged) await posCatalogApi.updatePricing(service.serviceId, { priceCents: cents, durationMinutes: m, reason: reason.trim(), ...(service.updatedAt ? { expectedUpdatedAt: service.updatedAt } : {}) });
+        await posServicesApi.update(service.serviceId, common);
+      } else await posServicesApi.create({ ...common, priceCents: cents, durationMinutes: m });
       onSaved(service ? tx('cg.svc.saved', { name: name.trim() }) : tx('cg.svc.created', { name: name.trim() }));
     } catch (e) { setErr(errorTextOf(e, tx('pos.save_failed'))); } finally { setBusy(false); }
   };
@@ -158,6 +166,8 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
         <label className="fk-field">{tx('cg.f.price')}<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} data-testid="service-price" /></label>
         <label className="fk-field">{tx('cg.f.duration')}<input inputMode="numeric" value={dur} onChange={(e) => setDur(e.target.value.replace(/\D/g, ''))} data-testid="service-duration" /></label>
         <label className="fk-field wide">{tx('cg.f.description')}<input value={desc} maxLength={1000} onChange={(e) => setDesc(e.target.value)} /></label>
+        {service && (centsFromText(price || '0') !== Number(service.priceCents) || Number(dur) !== Number(service.durationMinutes))
+          ? <label className="fk-field wide">{tx('cg.f.reason')}<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} placeholder={tx('cg.f.reasonPh')} data-testid="service-reason" /></label> : null}
         <label className="cg-chk"><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} data-testid="service-online" /> {tx('cg.f.online')}</label>
         <label className="cg-chk"><input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} /> {tx('cg.f.ai')}</label>
       </div>

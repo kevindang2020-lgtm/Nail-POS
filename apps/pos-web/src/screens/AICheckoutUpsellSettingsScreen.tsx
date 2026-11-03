@@ -20,6 +20,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { money } from './reportsCommon';
 import { statusLabel } from '../i18n/status-label';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -193,7 +194,7 @@ function Dates({ period, setPer, today }: { period: Period; setPer: (p: Period) 
       {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`ucx-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('ucx.preset.' + p)}</button>)}
       <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="ucx-preset-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('ucx.preset.custom')}</button>
     </div>
-    {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+    {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={today ?? deviceToday()}
       onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
   </>;
 }

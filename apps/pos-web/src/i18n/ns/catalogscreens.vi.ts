@@ -397,4 +397,5 @@ export const CATALOGSCREENS_VI = {
   'cg.linesN': 'Dòng đã bán: {n}',
   'cg.import.csvPh': 'Name,Category,Price,Duration,Status (giữ nguyên tiêu đề tiếng Anh)',
   'cg.availableNow': 'Đang rảnh: {a}/{n}',
+  'cg.svc.reasonNeeded': 'Giá hoặc thời lượng đã thay đổi — hãy ghi lý do (được lưu trong lịch sử giá).',
 };

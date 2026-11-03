@@ -22,6 +22,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', NOT_CONFIGURED: 'warn', DISABLED: 'muted', UNKNOWN: 'bad', BLOCKED_EXTERNAL: 'muted' };
@@ -29,7 +30,7 @@ const STEP_TONE: Record<string, string> = { verified: 'ok', configured: 'warn', 
 const STAGE_TONE: Record<string, string> = { live: 'ok', test_call_verified: 'ok', ready_for_test: 'warn', configured: 'warn', not_configured: 'muted', degraded: 'bad' };
 const SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
 const PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => deviceToday();
 const dur = (s: number | null | undefined) => (s == null ? '—' : `${Math.floor(s / 60)}m ${s % 60}s`);
 const pct = (v: number | null | undefined) => (v == null ? '—' : `${v}%`);
 const when = (x: string | null | undefined) => (x ? fmtDateTime(x) : '—');

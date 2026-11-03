@@ -19,6 +19,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, type PageInfo } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 type Tab = 'discounts' | 'redemptions' | 'performance';
 const TABS: Tab[] = ['discounts', 'redemptions', 'performance'];
@@ -117,7 +118,7 @@ export function POSDiscountsScreen() {
           <KpiCard testId="kpi-redemptions" tone="gold" label={tx('pos.redemptions')} loading={!k} value={k ? nf(k.redemptions) : ''} sub={k ? (k.redemptions !== k.ledger.confirmedEvents ? tx('dsc.kpi.redLedger', { n: nf(k.ledger.confirmedEvents) }) : tx('dsc.kpi.redSub', { c: nf(k.ledger.uniqueCustomers), v: fmtMoney(k.ledger.savingsCents) })) : ''}
             onClick={() => { setRedState('confirmed'); setPeriods((x) => ({ ...x, redemptions: { preset: 'all' } })); setTab('redemptions'); }} />
           <KpiCard testId="kpi-expiring" tone={k && k.expiringSoon > 0 ? 'warn' : undefined} label={tx('pos.expiring_soon')} loading={!k} value={k ? nf(k.expiringSoon) : ''} sub={k ? tx('dsc.kpi.expSub', { n: nf(k.expiringWindowDays) }) : ''}
-            onClick={() => { const today = list.data?.period?.today ?? k?.today ?? new Date().toISOString().slice(0, 10); setStatus('live'); setType('all'); setDateField('ends'); setPeriods((x) => ({ ...x, discounts: { preset: 'custom', from: today, to: ymdPlus(today, k?.expiringWindowDays ?? 7) } })); setTab('discounts'); }} />
+            onClick={() => { const today = list.data?.period?.today ?? k?.today ?? deviceToday(); setStatus('live'); setType('all'); setDateField('ends'); setPeriods((x) => ({ ...x, discounts: { preset: 'custom', from: today, to: ymdPlus(today, k?.expiringWindowDays ?? 7) } })); setTab('discounts'); }} />
         </>}
       </div>
       <div className="dsc-explain fk-hint" data-testid="explain">{tx('pos.discounts_are_managed_as_coupon_codes_w1qz')}{k && k.ledger.pendingAtCheckout ? ` ${tx('dsc.pendingNote', { n: nf(k.ledger.pendingAtCheckout) })}` : ''}</div>

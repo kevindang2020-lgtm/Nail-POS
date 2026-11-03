@@ -26,6 +26,7 @@ import { fmtMoney, fmtTime as fmtClock, fmtYmd } from '../i18n/format';
 import { takeBookingHandoff } from '../api/posRebookingApi';
 
 import { statusLabel } from '../i18n/status-label';
+import { deviceToday } from '../lib/deviceToday';
 // POS Booking — reads the real /pos/booking/state (POSBookingFullState) and now WIRES the full appointment lifecycle.
 // Quick actions (no-body, idempotent): Check In, Move to Queue, Start Service. Per-appointment "Manage" drawer wires
 // the previously-deferred body-carrying actions with their exact backend shapes: Assign Technician ({technicianId}),
@@ -1116,7 +1117,7 @@ export function POSBookingScreen() {
   boardView.current = { date: grid?.date ?? null, visibleTechnicianIds: (techPageData?.technicians ?? []).map((t) => t.technicianId), visibleAppointmentIds: (grid?.appointments ?? []).map((a) => a.appointmentId) };
   const weekOpen = calendarView === 'week';
   const loadWeek = async (page: number) => {
-    const from = weekStart(calDate || grid?.date || new Date().toISOString().slice(0, 10)); const to = weekDays(from)[6];
+    const from = weekStart(calDate || grid?.date || deviceToday()); const to = weekDays(from)[6];
     try {
       const r: any = await posBookingApi.appointments({ ...filtersNow(), date: undefined, from, to, page, pageSize: 100 });
       const items: Row[] = Array.isArray(r?.items) ? r.items : [];
@@ -1163,7 +1164,7 @@ export function POSBookingScreen() {
     } as any));
   }, [openIPad]);
   const shiftDay = (delta: number) => {
-    const base = grid?.date || s?.dateRange.from || new Date().toISOString().slice(0, 10);
+    const base = grid?.date || s?.dateRange.from || deviceToday();
     const d = new Date(base + 'T00:00:00Z'); d.setUTCDate(d.getUTCDate() + delta);
     setCalDate(d.toISOString().slice(0, 10));
   };
@@ -1200,7 +1201,7 @@ export function POSBookingScreen() {
     setTechSel(''); // technicianName isn't an id; leave unset so the user picks explicitly
     // developer merge (Oct 2026): rows carry startTime as HH:MM (+ the row's date) — `new Date('10:30')` is Invalid Date, so the
     // picker always opened empty. Build the datetime-local value from the row's own date + time.
-    try { const hm = /T(\d{2}:\d{2})/.exec(String(a.startTime))?.[1] ?? String(a.startTime).slice(0, 5); setWhenStr(hm ? `${a.date || s?.dateRange?.from || new Date().toISOString().slice(0, 10)}T${hm}` : ''); } catch { setWhenStr(''); }
+    try { const hm = /T(\d{2}:\d{2})/.exec(String(a.startTime))?.[1] ?? String(a.startTime).slice(0, 5); setWhenStr(hm ? `${a.date || s?.dateRange?.from || deviceToday()}T${hm}` : ''); } catch { setWhenStr(''); }
   };
 
   const doAssign = (aid: string) => { if (!techSel) { setNote(tx('pos.pick_a_technician_to_assign')); return; } const version = s?.bookings.items.find((r) => r.appointmentId === aid)?.version; act(aid, () => posBookingApi.assignTechnician(aid, { technicianId: techSel, ...(version != null ? { expectedVersion: version } : {}) }), 'assign', true); };
@@ -1348,7 +1349,7 @@ export function POSBookingScreen() {
   const nonCancelledAppts = s.bookings.items.filter((a) => !['cancelled', 'no_show'].includes(a.status));
   // whole-day numbers from the SERVER (the board holds one page of technicians and one page of the list)
   const apptCount = Math.max(0, k.totalBookingsToday - k.cancelledBookings - k.noShowBookings);
-  const todayDateStr = new Date().toISOString().slice(0, 10);
+  const todayDateStr = deviceToday();
   const currentBoardDate = calDate || grid?.date || s.dateRange.from || todayDateStr;
   const isDateToday = currentBoardDate === todayDateStr;
   const curMin = new Date().getHours() * 60 + new Date().getMinutes();

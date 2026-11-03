@@ -30,6 +30,7 @@ import { fmtMoney } from '../i18n/format';
 import { FitPanel, KpiCard, Pager, Empty, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { TechnicianProfileOverlay, QualifiedFinder, MappingAssistant, HistoryTable, nf, pageOf, ratingText, roleText, WORK_TONE } from './technicianScreenParts';
+import { deviceToday } from '../lib/deviceToday';
 
 type InviteResult = { created: boolean; channel?: string | null; deliveryStatus?: string | null; acceptUrl?: string | null; reason?: string | null };
 type FoundTech = { found: false } | { found: true; techCode: string; displayName: string; avatarUrl: string | null; yearsExperience: number | null; overallRating: number | null; ratingCount: number; portfolioPhotoCount: number; alreadyAtThisSalon: boolean; activeSalonCount: number; platformStatus: string };
@@ -382,7 +383,7 @@ export function POSTechniciansScreen() {
 
       {profile ? <TechnicianProfileOverlay technicianId={profile} canPay={canPay} canEdit={canEdit} onClose={() => setProfile(null)}
         onEdit={() => { const t = rows.find((r) => r.technicianId === profile); setProfile(null); if (t) void openEdit(t); }} onMapping={() => { const id = profile; setProfile(null); setMapping({ id }); }} /> : null}
-      {finder ? <QualifiedFinder today={dash.data?.period?.today ?? new Date().toISOString().slice(0, 10)} onClose={() => setFinder(false)} /> : null}
+      {finder ? <QualifiedFinder today={dash.data?.period?.today ?? deviceToday()} onClose={() => setFinder(false)} /> : null}
       {mapping ? <MappingAssistant initialTechnicianId={mapping.id} onClose={() => setMapping(null)} onSaved={(m) => { setMapping(null); setOk(m); reload(); }} /> : null}
 
       {/* Admin Authorization Code Modal */}

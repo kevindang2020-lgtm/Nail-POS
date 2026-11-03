@@ -21,6 +21,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitK
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { TechnicianPickerButton } from '../components/TechnicianPickerButton';
 import { useCan } from '../components/usePermissions';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -168,7 +169,7 @@ export function POSAICustomerRebookingScreen() {
             {PRESETS.map((p) => <button key={p} className={'btn ghost' + (f.preset === p ? ' on' : '')} data-testid={`preset-${p}`} onClick={() => setF({ preset: p, from: null, to: null })}>{t('rbx.preset.' + p)}</button>)}
             <button className={'btn ghost' + (f.preset === 'custom' ? ' on' : '')} data-testid="preset-custom" onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : t('rbx.preset.custom')}</button>
           </div>
-          {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+          {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={list?.period?.today ?? deviceToday()}
             onApply={(r) => { setF({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setF({ preset: null, from: null, to: null }); setCal(false); }} /></div> : null}
         </section>
         <section className="panel rvw-feed" data-testid="rbx-results">

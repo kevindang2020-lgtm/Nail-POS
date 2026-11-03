@@ -10,6 +10,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitK
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -110,7 +111,7 @@ export function VoiceCallsWorkspace({ mode }: { mode: 'search' | 'history' }) {
           {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`vcx-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('vcx.preset.' + p)}</button>)}
           <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="vcx-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('vcx.preset.custom')}</button>
         </div>
-        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
           onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
 
         {!started ? <div className="state" data-testid="vcx-not-started">{tx('pos.enter_a_search_term_to_find_1hj7')}</div>

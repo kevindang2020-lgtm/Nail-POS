@@ -17,6 +17,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, fmtYmdSafe, DateField, centsFromText, textFromCents, type PeriodState } from '../components/FinanceKit';
 import { financeDownload as download } from './POSSettlementsScreen';
+import { deviceToday } from '../lib/deviceToday';
 
 type DisplayStatus = 'draft' | 'sent' | 'overdue' | 'partially_paid' | 'paid' | 'void';
 type Customer = { id: string | null; state: 'linked' | 'archived' | 'missing' | 'snapshot_only' | 'unlinked'; name: string | null; profileName: string | null; phone: string | null; email: string | null };
@@ -145,9 +146,9 @@ export function POSInvoicesScreen() {
 
       {dlg?.kind === 'detail' ? <InvoiceDetail id={dlg.id} onClose={() => setDlg(null)} onAction={(a, d) => setDlg(a === 'preview' ? { kind: 'preview', id: d.invoice.id, number: d.invoice.invoiceNumber } : a === 'edit' ? { kind: 'new', edit: d } : { kind: a, d })}
         onChanged={(t) => { setTick((x) => x + 1); setNote({ tone: 'ok', text: t }); }} onError={(t) => setNote({ tone: 'bad', text: t })} onProfile={(cid) => nav(`/tenant/customers/profiles?customerId=${encodeURIComponent(cid)}`)} /> : null}
-      {dlg?.kind === 'new' ? <InvoiceForm edit={dlg.edit} today={summary.data?.period?.today ?? new Date().toISOString().slice(0, 10)} onClose={() => setDlg(dlg.edit ? { kind: 'detail', id: dlg.edit.invoice.id } : null)}
+      {dlg?.kind === 'new' ? <InvoiceForm edit={dlg.edit} today={summary.data?.period?.today ?? deviceToday()} onClose={() => setDlg(dlg.edit ? { kind: 'detail', id: dlg.edit.invoice.id } : null)}
         onSaved={(d, sent, preview) => { if (preview) { setTick((t) => t + 1); setDlg({ kind: 'preview', id: d.invoice.id, number: d.invoice.invoiceNumber }); } else afterSave(d, dlg.edit ? 'finance.iv.saved' : sent ? 'finance.iv.createdSent' : 'finance.iv.createdDraft'); }} /> : null}
-      {dlg?.kind === 'pay' ? <PaymentDialog d={dlg.d} today={summary.data?.period?.today ?? new Date().toISOString().slice(0, 10)} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d, cents) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx(d.invoice.status === 'paid' ? 'finance.iv.paidInFull' : 'finance.iv.paymentRecorded', { a: money(cents), n: d.invoice.invoiceNumber, b: money(d.invoice.balanceCents) }) }); }} /> : null}
+      {dlg?.kind === 'pay' ? <PaymentDialog d={dlg.d} today={summary.data?.period?.today ?? deviceToday()} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d, cents) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx(d.invoice.status === 'paid' ? 'finance.iv.paidInFull' : 'finance.iv.paymentRecorded', { a: money(cents), n: d.invoice.invoiceNumber, b: money(d.invoice.balanceCents) }) }); }} /> : null}
       {dlg?.kind === 'void' ? <VoidDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx('finance.iv.voided', { n: d.invoice.invoiceNumber }) }); }} /> : null}
       {dlg?.kind === 'link' ? <LinkCustomerDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx('finance.iv.linked', { n: d.invoice.invoiceNumber }) }); }} /> : null}
       {dlg?.kind === 'preview' ? <PdfPreview id={dlg.id} number={dlg.number} onClose={() => setDlg({ kind: 'detail', id: dlg.id })} /> : null}

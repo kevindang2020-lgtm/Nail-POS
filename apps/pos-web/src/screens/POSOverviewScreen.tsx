@@ -12,6 +12,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { opsStatusLabel } from './opsStatus';
 import { fmtMoney, fmtMoneyCompact, fmtTime as fmtClock, fmtYmd } from '../i18n/format';
+import { deviceToday } from '../lib/deviceToday';
 
 // POS Overview — the salon's live daily command center. Consumes the canonical rich /pos/overview/state (KPIs, the day's
 // appointments, analytics, insights) + /pos/overview/board (arrivals, live tech queue, the service-flow sublists,
@@ -151,7 +152,7 @@ export function POSOverviewScreen() {
   const apptWindow = (n: number) => apptList.slice(apptFirst, apptFirst + n).length < n ? apptList.slice(Math.max(0, apptList.length - n)) : apptList.slice(apptFirst, apptFirst + n);
   const selDate = apptDate || s?.context?.businessDate || '';
   const apptLoading = !!apptDate && apptDate !== (s?.context?.businessDate || '') && !apptDay;
-  const shiftDate = (delta: number) => { const base = new Date((selDate || new Date().toISOString().slice(0, 10)) + 'T00:00:00'); base.setDate(base.getDate() + delta); setApptDate(base.toISOString().slice(0, 10)); };
+  const shiftDate = (delta: number) => { const base = new Date((selDate || deviceToday()) + 'T00:00:00'); base.setDate(base.getDate() + delta); setApptDate(base.toISOString().slice(0, 10)); };
 
   // KPI values come straight from the backend (OVERVIEW_KPI_DEFINITIONS), never re-derived from loaded rows
   const k = s?.kpis; const wi = s?.walkInStatus; const tot = board?.totals;

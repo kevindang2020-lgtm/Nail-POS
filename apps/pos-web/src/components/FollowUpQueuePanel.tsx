@@ -4,6 +4,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { FollowUpTechnicianSummary } from './FollowUpTechnicianSummary';
 import { FollowUpTaskTable } from './FollowUpTaskTable';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { deviceToday } from '../lib/deviceToday';
 
 // The manager Follow-Up Queue panel: date + technician + status filters, a "Generate Now" top-up, a by-technician
 // summary, and the task table. Reads the real /pos/follow-ups (scoped to the manager's branch server-side); Send / Skip
@@ -11,7 +12,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 const STATUS_FILTERS = [
   { key: '', get label() { return tx('pos.all'); } }, { key: 'pending', get label() { return tx('pos.pending'); } }, { key: 'sent', get label() { return tx('pos.sent'); } }, { key: 'skipped', get label() { return tx('pos.skipped'); } },
 ];
-const todayIso = () => new Date().toISOString().slice(0, 10);
+const todayIso = () => deviceToday();
 
 export function FollowUpQueuePanel() {
   const [date, setDate] = useState(todayIso());

@@ -7,6 +7,7 @@ import { FitDialog } from './FitKit';
 import { RangeCalendar, isForbidden } from './FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtMoney, fmtInZone, fmtYmd } from '../i18n/format';
+import { deviceToday } from '../lib/deviceToday';
 
 export const bt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 export const bzWhen = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -30,7 +31,7 @@ export function BzPeriodBar({ value, onChange, today }: { value: BzPeriod; onCha
       {BZ_PRESETS.map((x) => <button key={x} type="button" className={'btn ghost' + (value.preset === x ? ' on' : '')} data-testid={`bzx-preset-${x}`} onClick={() => onChange({ preset: x })}>{bt('bzx.preset.' + x)}</button>)}
       <button type="button" className={'btn ghost' + (value.preset === 'custom' ? ' on' : '')} data-testid="bzx-custom" onClick={() => setCal(true)}>
         {value.preset === 'custom' ? `${value.from} → ${value.to}` : bt('bzx.preset.custom')}</button>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? deviceToday()}
         onApply={(r) => { onChange({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { onChange({}); setCal(false); }} /></div> : null}
     </div>
   );

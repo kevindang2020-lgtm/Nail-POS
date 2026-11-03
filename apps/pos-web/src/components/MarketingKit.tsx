@@ -10,6 +10,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtMoney, fmtInZone } from '../i18n/format';
 import { posAIMarketingApi, type MkKind } from '../api/posAIMarketingApi';
 import { posCampaignCenterApi } from '../api/posCampaignCenterApi';
+import { deviceToday } from '../lib/deviceToday';
 
 export const mt = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 export const mkWhen = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -30,7 +31,7 @@ export function MkPeriodBar({ value, onChange, today, testId = 'amk-period' }: {
       {MK_PRESETS.map((x) => <button key={x} type="button" className={'btn ghost' + (value.preset === x ? ' on' : '')} data-testid={`amk-preset-${x}`} onClick={() => onChange({ preset: x })}>{mt('amk.preset.' + x)}</button>)}
       <button type="button" className={'btn ghost' + (value.preset === 'custom' ? ' on' : '')} data-testid="amk-custom" onClick={() => setCal(true)}>
         {value.preset === 'custom' ? `${value.from} → ${value.to}` : mt('amk.preset.custom')}</button>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? deviceToday()}
         onApply={(r) => { onChange({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { onChange({ preset: 'month' }); setCal(false); }} /></div> : null}
     </div>
   );
@@ -170,7 +171,7 @@ function LibCustom({ value, onApply, today }: { value: { preset: string; from?: 
   const [open, setOpen] = useState(false);
   return (<span style={{ position: 'relative' }}>
     <button type="button" className={'btn ghost' + (value.preset === 'custom' ? ' on' : '')} data-testid="amk-lib-custom" onClick={() => setOpen(true)}>{value.preset === 'custom' ? `${value.from} → ${value.to}` : mt('amk.preset.custom')}</button>
-    {open ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+    {open ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? deviceToday()}
       onApply={(r) => { onApply(r.from, r.to); setOpen(false); }} onCancel={() => setOpen(false)} onClear={() => setOpen(false)} /></div> : null}
   </span>);
 }

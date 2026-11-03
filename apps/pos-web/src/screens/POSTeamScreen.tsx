@@ -31,6 +31,7 @@ import { EmployeeProfileOverlay, TeamAvailableFinder, DateShiftLauncher, TeamDat
 import { AddTeamMemberDialog, TeamBirthdaysPanel, TeamTrainingPanel, TeamTrainingCatalog } from './teamStaffParts';   // round 2: TM-06 · TM-08 · TM-09
 
 const TABS = ['all', 'stylists', 'nail_technicians', 'receptionists', 'assistants', 'managers'] as const;
+import { deviceToday } from '../lib/deviceToday';
 const ROLES = ['owner', 'manager', 'receptionist', 'stylist', 'nail_technician', 'assistant', 'other'];
 const STATUSES = ['available', 'in_service', 'assigned', 'on_break', 'on_shift', 'off', 'time_off', 'not_tracked'];
 const SHIFTS = ['scheduled', 'unscheduled', 'clocked_in', 'day_off'];
@@ -84,7 +85,7 @@ export function POSTeamScreen() {
   const alertCount = useLoad(() => posTeamDataAlertsApi.list({ status: 'open_all', pageSize: 1 }), [tick, live.tick]);
   const alertsAllowed = !isForbidden(alertCount.error);
   useEffect(() => { const c: any = alertCount.data?.counts; if (c) setOpenAlerts((c.OPEN ?? 0) + (c.ASSIGNED ?? 0) + (c.INVESTIGATING ?? 0)); }, [alertCount.data]);
-  const d: any = dash.data; const k = d?.kpis; const today = d?.today ?? new Date().toISOString().slice(0, 10);
+  const d: any = dash.data; const k = d?.kpis; const today = d?.today ?? deviceToday();
   const canEditSchedule = can('pos.technicians.schedule.edit') || can('technicians.edit');
   const clearAll = () => { setSearch(''); setU((c: TeamUrl) => clearedTeamUrl(c)); };
   const toDir = (p: { status?: string; shift?: string; extra?: string }) => { setSearch(''); setU((c: TeamUrl) => ({ ...clearedTeamUrl(c), mode: 'staff', status: p.status ?? '', shift: p.shift ?? '', extra: p.extra ?? '' })); document.querySelector('[data-testid="directory"]')?.scrollIntoView({ block: 'start' }); };

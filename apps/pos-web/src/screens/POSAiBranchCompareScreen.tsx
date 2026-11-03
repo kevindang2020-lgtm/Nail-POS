@@ -13,6 +13,7 @@ import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitK
 import { RangeCalendar } from '../components/FinanceKit';
 import { bt, bzWhen, bzNum, bzValue, bzDays } from '../components/BusinessKit';
 import { reportError } from './reportsCommon';
+import { deviceToday } from '../lib/deviceToday';
 
 type Row = {
   branchId: string; branchName: string; status: string;
@@ -69,7 +70,7 @@ export function POSAiBranchCompareScreen() {
         {PRESETS.map((x) => <button key={x} type="button" className={'btn ghost' + (period.preset === x ? ' on' : '')} data-testid={`bcx-preset-${x}`} onClick={() => pick({ preset: x })}>{bt('bzx.period.' + x)}</button>)}
         <button type="button" className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="bcx-custom" onClick={() => setCal(true)}>
           {period.preset === 'custom' ? bzDays({ from: period.from, to: period.to }) : bt('bzx.preset.custom')}</button>
-        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={new Date().toISOString().slice(0, 10)}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={deviceToday()}
           onApply={(r) => { pick({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { pick({ preset: 'month' }); setCal(false); }} /></div> : null}
       </div>
 

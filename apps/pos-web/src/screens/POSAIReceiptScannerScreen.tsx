@@ -20,6 +20,7 @@ import { fmtNumber, fmtInZone } from '../i18n/format';
 import { money } from './reportsCommon';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, time = true) => (iso ? fmtInZone(iso, time ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -110,7 +111,7 @@ function ReceiptDashboard() {
           {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`preset-${p}`} onClick={() => setPer({ preset: p })}>{t('rcsx.preset.' + p)}</button>)}
           <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="preset-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('rcsx.preset.custom')}</button>
         </div>
-        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
           onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
         <p className="sub">{t('rcsx.dateNote.' + f.dateField)}</p>
         {listErr ? <ErrorRetry message={listErr} onRetry={loadList} /> : !list ? <div className="state">{t('rcsx.loading')}</div> : list.items.length === 0 ? <Empty title={any || period.preset ? t('rcsx.noMatch') : t('rcsx.noReceipts')} /> : (

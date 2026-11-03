@@ -10,6 +10,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { money } from './reportsCommon';
 import { growthCode } from './growthLabels';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -105,7 +106,7 @@ export function ForecastHistory() {
         {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`fch-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('fch.preset.' + p)}</button>)}
         <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="fch-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('fch.preset.custom')}</button>
       </div>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={list?.period?.today ?? deviceToday()}
         onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
 
       {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{t('fch.loading')}</div> : items.length === 0

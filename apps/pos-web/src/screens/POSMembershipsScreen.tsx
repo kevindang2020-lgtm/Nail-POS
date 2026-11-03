@@ -23,6 +23,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced, downloadCsv, type PageInfo } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 type Kpis = { totalMembers: number; newMembersThisMonth: number; activeMembers: number; activePctOfTotal: number; membershipRevenueCents: number; membershipPaymentsThisMonth?: number;
   revenueDeltaPct: number | null; expiringSoon: number; expiringWindowDays: number; canceledThisMonth: number; canceledDeltaPct: number | null };
@@ -119,7 +120,7 @@ export function POSMembershipsScreen() {
 
   const [dlg, setDlg] = useState<null | { kind: 'create' } | { kind: 'enroll' } | { kind: 'manage'; m: ManageMember } | { kind: 'plan'; plan: PlanRow } | { kind: 'reminder' } | { kind: 'discounts' } | { kind: 'report' } | { kind: 'performance' } | { kind: 'detail'; id: string }>(null);
   const [busyExport, setBusyExport] = useState<string | null>(null);
-  const stamp = () => new Date().toISOString().slice(0, 10);
+  const stamp = () => deviceToday();
   const dollars = (c: number) => (c / 100).toFixed(2);
   const runExport = async (kind: 'members' | 'payments' | 'redemptions') => {
     if (busyExport) return; setBusyExport(kind); setNote(null);

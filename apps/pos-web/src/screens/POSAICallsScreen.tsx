@@ -20,6 +20,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
@@ -32,7 +33,7 @@ const STAT_TONE: Record<string, string> = { completed: 'ok', failed: 'bad', aban
 const when = (v?: string | null) => (v ? fmtDateTime(v) : '—');
 const dur = (s?: number | null) => (s == null ? '—' : `${Math.floor(s / 60)}m ${s % 60}s`);
 const num = (v: number | null | undefined) => (v == null ? '—' : String(v));
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => deviceToday();
 const QKEYS = ['status', 'outcome', 'dateBasis', 'period', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 
 function Badge({ tone, label, testId }: { tone: string; label: string; testId?: string }) { return <span className={`aic-badge aic-${tone}`} data-testid={testId}>{label}</span>; }

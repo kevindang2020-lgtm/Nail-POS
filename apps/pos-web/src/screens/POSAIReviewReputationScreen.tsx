@@ -21,6 +21,7 @@ import { fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { useCan } from '../components/usePermissions';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
@@ -54,7 +55,7 @@ function PeriodBar({ value, onChange, today }: { value: Period; onChange: (p: Pe
       <button className={'btn ghost' + (!value.preset ? ' on' : '')} onClick={() => onChange({})}>{t('rpx.preset.all')}</button>
       {PRESETS.map((p) => <button key={p} className={'btn ghost' + (value.preset === p ? ' on' : '')} data-testid={`preset-${p}`} onClick={() => onChange({ preset: p })}>{t('rpx.preset.' + p)}</button>)}
       <button className={'btn ghost' + (value.preset === 'custom' ? ' on' : '')} data-testid="preset-custom" onClick={() => setCal(true)}>{value.preset === 'custom' ? `${value.from} → ${value.to}` : t('rpx.preset.custom')}</button>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: value.from, to: value.to }} today={today ?? deviceToday()}
         onApply={(r) => { onChange({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { onChange({}); setCal(false); }} /></div> : null}
     </div>
   );

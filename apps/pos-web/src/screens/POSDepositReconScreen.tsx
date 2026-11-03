@@ -20,6 +20,7 @@ import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, r
 import { PeriodBar, periodQuery, useLoad, StateBlock, fmtYmdSafe, DateField, centsFromText, textFromCents, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
 import { financeDownload as download } from './POSSettlementsScreen';
+import { deviceToday } from '../lib/deviceToday';
 
 type Tab = 'overview' | 'fees' | 'exceptions' | 'reports';
 type Status = 'pending' | 'expected' | 'matched' | 'partially_matched' | 'overdue' | 'exception' | 'under_review' | 'no_payout';
@@ -118,7 +119,7 @@ export function POSDepositReconScreen() {
       {dlg?.kind === 'deposit' ? <DepositView id={dlg.id} canManage={canManage} canApprove={canApprove} onClose={() => setDlg(null)} setDlg={setDlg} onDone={after} /> : null}
       {dlg?.kind === 'match' ? <MatchDialog init={dlg} canApprove={canApprove} onClose={() => setDlg(null)} onDone={(t) => { setDlg(null); after(t); }} /> : null}
       {dlg?.kind === 'suggest' ? <SuggestionsDialog depositId={dlg.depositId} canManage={canManage} onClose={() => setDlg(null)} onMatch={(m) => setDlg({ kind: 'match', ...m })} /> : null}
-      {dlg?.kind === 'record' ? <RecordDepositDialog accounts={(accounts.data?.items ?? []).filter((a: Account) => a.status === 'active')} today={server?.today ?? new Date().toISOString().slice(0, 10)} period={server}
+      {dlg?.kind === 'record' ? <RecordDepositDialog accounts={(accounts.data?.items ?? []).filter((a: Account) => a.status === 'active')} today={server?.today ?? deviceToday()} period={server}
         onClose={() => setDlg(null)} onDone={(dep, inPeriod) => { setDlg(null); refresh();
           setNote(inPeriod ? { tone: 'ok', text: tx('finance.dr.depositRecorded', { a: money(dep.amountCents) }) }
             : { tone: 'ok', text: tx('finance.dr.depositOutside', { a: money(dep.amountCents) }), actions: [{ label: tx('finance.viewRecord'), run: () => setDlg({ kind: 'deposit', id: dep.id }) }, { label: tx('finance.clearFilters'), run: () => { clearAll(); setPeriod({ preset: 'year' }); } }] }); }} /> : null}

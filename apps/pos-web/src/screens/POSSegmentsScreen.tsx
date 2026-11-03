@@ -24,6 +24,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 type Seg = 'new' | 'returning' | 'vip' | 'never' | 'inactive' | 'all';
 const TABS: Seg[] = ['new', 'returning', 'vip', 'never', 'inactive', 'all'];
@@ -331,7 +332,7 @@ function AudienceDialog({ onClose, query, seg, pageRows, selected, total, canCam
   const toCampaign = async () => {
     setBusy(true); setErr(null);
     try {
-      const c = await posCampaignsApi.create({ name: `${segLabel(seg)} · ${new Date().toISOString().slice(0, 10)}`, channel, audienceLabel: `${tx('pos.customer_segments')}: ${segLabel(seg)} (draft ${String(draft.draftId).slice(0, 8)})`, audienceSize: draft.eligible, offer: draft.messagePreview ?? undefined });
+      const c = await posCampaignsApi.create({ name: `${segLabel(seg)} · ${deviceToday()}`, channel, audienceLabel: `${tx('pos.customer_segments')}: ${segLabel(seg)} (draft ${String(draft.draftId).slice(0, 8)})`, audienceSize: draft.eligible, offer: draft.messagePreview ?? undefined });
       const cid = c?.id;
       setDraft(await posSegmentsApi.linkCampaign(draft.draftId, String(cid)));
     } catch (e) { setErr(errorTextOf(e, tx('pos.loading'))); } finally { setBusy(false); }

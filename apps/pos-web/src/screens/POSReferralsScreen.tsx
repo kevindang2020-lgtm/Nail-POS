@@ -15,6 +15,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { deviceToday } from '../lib/deviceToday';
 
 const TABS = ['all', 'pending', 'qualified', 'review', 'approved', 'issued', 'rejected', 'reversed'] as const;
 const PRESETS = ['today', 'week', 'month', 'year'] as const;
@@ -117,7 +118,7 @@ export function POSReferralsScreen() {
           {SORTS.map((s) => <option key={s} value={s}>{tx('rfp.sort.' + s)}</option>)}</select>
         {anyFilter ? <button type="button" className="fk-link" onClick={clearAll} data-testid="rfp-clear">{tx('rfp.clear')}</button> : null}
         {calOpen ? <div className="bd-cal" role="dialog" aria-label={tx('rfp.preset.custom')}>
-          <RangeCalendar initial={{ from: range?.from, to: range?.to }} today={list?.today ?? new Date().toISOString().slice(0, 10)}
+          <RangeCalendar initial={{ from: range?.from, to: range?.to }} today={list?.today ?? deviceToday()}
             onApply={(r) => { setRange(r); setPreset('custom'); setCalOpen(false); }} onCancel={() => setCalOpen(false)} onClear={() => { setRange(null); setPreset(''); setCalOpen(false); }} />
         </div> : null}
       </div>

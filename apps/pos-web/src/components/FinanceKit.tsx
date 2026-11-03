@@ -13,6 +13,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtYmd, displayLocale } from '../i18n/format';
+import { deviceToday } from '../lib/deviceToday';
 
 type PeriodPreset = 'today' | 'week' | 'month' | 'year' | 'custom' | 'all';
 export interface PeriodState { preset: PeriodPreset; from?: string; to?: string }
@@ -163,7 +164,7 @@ export function PeriodBar({ value, onChange, server, basis, basisOptions, onBasi
   basis?: string; basisOptions?: Array<{ value: string; label: string }>; onBasis?: (b: string) => void; allowAll?: boolean; compact?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const today = server?.today ?? new Date().toISOString().slice(0, 10);
+  const today = server?.today ?? deviceToday();
   const presets: PeriodPreset[] = [...(allowAll ? ['all' as PeriodPreset] : []), 'today', 'week', 'month', 'year'];
   const wrap = useRef<HTMLDivElement | null>(null);
   useEffect(() => {

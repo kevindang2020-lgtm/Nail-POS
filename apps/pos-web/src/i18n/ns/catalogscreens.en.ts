@@ -397,4 +397,5 @@ export const CATALOGSCREENS_EN = {
   'cg.linesN': 'Lines sold: {n}',
   'cg.import.csvPh': 'Name,Category,Price,Duration,Status',
   'cg.availableNow': 'Available now: {a} of {n}',
+  'cg.svc.reasonNeeded': 'Price or duration changed — say why (it is kept in the price history).',
 };

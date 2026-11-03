@@ -22,6 +22,7 @@ import { FitDialog, Pager, Empty, ErrorRetry } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { useCan } from '../components/usePermissions';
 import { useAuth } from '../auth/AuthContext';
+import { deviceToday } from '../lib/deviceToday';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -248,7 +249,7 @@ function HistoryTab() {
         {PRESETS.map((p) => <button key={p} className={'btn ghost' + (f.preset === p ? ' on' : '')} data-testid={`hist-preset-${p}`} onClick={() => set({ preset: p, from: undefined, to: undefined })}>{t('rssx.preset.' + p)}</button>)}
         <button className={'btn ghost' + (f.preset === 'custom' ? ' on' : '')} data-testid="hist-preset-custom" onClick={() => setCal(true)}>{f.preset === 'custom' ? `${f.from} → ${f.to}` : t('rssx.preset.custom')}</button>
       </div>
-      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={d?.period?.today ?? new Date().toISOString().slice(0, 10)}
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: f.from, to: f.to }} today={d?.period?.today ?? deviceToday()}
         onApply={(r) => { set({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { set({ preset: undefined, from: undefined, to: undefined }); setCal(false); }} /></div> : null}
       {err ? <div className="err">{err}</div> : !d ? <div className="state">{t('rssx.loading')}</div> : d.items.length === 0 ? <Empty title={any ? t('rssx.noMatch') : t('rssx.noHistory')} /> : (
         <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('rssx.hist.when')}</th><th>{t('rssx.hist.change')}</th><th>{t('rssx.hist.keys')}</th><th>{t('rssx.hist.by')}</th><th>{t('rssx.hist.version')}</th></tr></thead>

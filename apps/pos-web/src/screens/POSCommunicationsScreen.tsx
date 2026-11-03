@@ -29,6 +29,7 @@ import { TeamLiveBadge } from './teamLive';
 import { RangeCalendar } from '../components/FinanceKit';
 import { useDebounced, useEscapeToClose } from '../components/FitKit';
 import { readUrlState, writeUrlState, withFilter, listQuery, waitedFor, waitTone, deliveryTone, segmentsOf, DraftBook, atBottom, SORTS, CHANNELS, STATUSES, PRESETS, BASES, SIZES, type InboxUrlState } from './commsInboxCore';
+import { deviceToday } from '../lib/deviceToday';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const waitText = (iso: string | null | undefined) => { const w = waitedFor(iso); if (!w) return ''; return w.d ? tx('ci.wait.dh', { d: String(w.d), h: String(w.h) }) : w.h ? tx('ci.wait.hm', { h: String(w.h), m: String(w.m) }) : tx('ci.wait.m', { m: String(w.m) }); };
@@ -537,7 +538,7 @@ function PeriodPicker({ st, server, onChange }: { st: InboxUrlState; server: { f
       {st.preset !== 'all' && server?.tz ? <span className="ci-small" data-testid="ci-active-period" title={server.tz}>{server.from && server.to ? `${server.from} → ${server.to}` : ''}</span> : null}
       {open ? (
         <div className="ci-cal" data-testid="ci-calendar">
-          <RangeCalendar initial={{ from: st.from || undefined, to: st.to || undefined }} today={server?.today ?? new Date().toISOString().slice(0, 10)}
+          <RangeCalendar initial={{ from: st.from || undefined, to: st.to || undefined }} today={server?.today ?? deviceToday()}
             onApply={(r) => { setOpen(false); onChange({ preset: 'custom', from: r.from, to: r.to }); }} onCancel={() => setOpen(false)} onClear={() => { setOpen(false); onChange({ preset: 'all', from: '', to: '' }); }} />
         </div>
       ) : null}

@@ -21,6 +21,7 @@ import { fmtMoney, fmtNumber, fmtInZone, fmtYmd } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { monthLong } from '../components/codeLabel';
+import { deviceToday } from '../lib/deviceToday';
 
 const PRESETS = ['today', 'next7', 'month', 'next_month', 'year'] as const;
 const SCOPES = ['period', 'all', 'missing'] as const;
@@ -120,7 +121,7 @@ export function POSBirthdaysScreen() {
           <button type="button" className={preset === 'custom' ? 'on' : ''} aria-pressed={preset === 'custom'} aria-haspopup="dialog" aria-expanded={calOpen} onClick={() => setCalOpen((o) => !o)} data-testid="bd-preset-custom">{preset === 'custom' && range ? rangeText : tx('bd.preset.custom')}</button>
         </div>
         {calOpen ? <div className="bd-cal" role="dialog" aria-label={tx('bd.preset.custom')}>
-          <RangeCalendar initial={{ from: range?.from ?? sum?.range?.from, to: range?.to ?? sum?.range?.to }} today={sum?.today ?? new Date().toISOString().slice(0, 10)}
+          <RangeCalendar initial={{ from: range?.from ?? sum?.range?.from, to: range?.to ?? sum?.range?.to }} today={sum?.today ?? deviceToday()}
             onApply={(r) => { setRange(r); setPreset('custom'); setScope('period'); setCalOpen(false); }} onCancel={() => setCalOpen(false)} onClear={() => { setRange(null); setPreset('month'); setCalOpen(false); }} />
         </div> : null}
       </div>

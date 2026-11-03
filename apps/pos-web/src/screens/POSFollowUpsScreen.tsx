@@ -16,6 +16,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { money } from './reportsCommon';
 import { errorTextOf } from '../i18n/error-text';
 import { useRealtime } from '../realtime/useRealtime';
+import { deviceToday } from '../lib/deviceToday';
 
 const when = (iso: string | null | undefined, tz?: string) => (iso ? new Date(iso).toLocaleString(undefined, { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 const stText = (s: string) => tx(`eod.st.${s}`);
@@ -64,7 +65,7 @@ export function POSFollowUpsScreen() {
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
-  const today = kpis?.date ?? new Date().toISOString().slice(0, 10);
+  const today = kpis?.date ?? deviceToday();
   const tz = kpis?.timezone;
   const setF = (p: Partial<Filters>) => setFilters((f) => ({ ...f, ...p, page: 'page' in p ? p.page! : 1 }));
 
