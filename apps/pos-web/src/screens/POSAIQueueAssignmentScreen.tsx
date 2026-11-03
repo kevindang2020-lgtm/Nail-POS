@@ -85,7 +85,9 @@ export function POSAIQueueAssignmentScreen() {
             <Stat label={tx('pos.longest_wait_2')} value={mins(ov.longestWaitMinutes)} />
             <Stat label={tx('pos.open_alerts_2')} value={String(ov.openAlerts)} tone={ov.openAlerts > 0 ? '#B4451E' : undefined} />
             <Stat label={tx('pos.auto_assign')} value={ov.autoEnabled ? (ov.autoAllowed ? tx('pos.on') : tx('growth.aiQueue.blocked')) : tx('pos.off')} />
-            <Stat label={tx('pos.decided_today')} value={dt ? String(dt.accepted + dt.rejected + dt.overridden + dt.autoAssigned) : '0'} />
+            {ov.freeTechnicians != null ? <Stat label={tx('growth.aiQueue.freeTechs')} value={String(ov.freeTechnicians)} /> : null}
+            {/* Nov 3 audit: 'kept unassigned' is a decision too; a failed read is '—', never 0 */}
+            <Stat label={tx('pos.decided_today')} value={dt ? String(dt.accepted + dt.rejected + dt.overridden + dt.autoAssigned + (dt.keptUnassigned ?? 0)) : '—'} />
           </> : (!ovErr ? <div style={muted}>{tx('pos.loading')}</div> : null)}
         </section>
         {dt ? <div style={muted}>{tx('pos.today_4')}{' '}{dt.accepted} {tx('pos.accepted')}{' '}{dt.rejected} {tx('pos.rejected')}{' '}{dt.overridden} {tx('pos.overridden')}{' '}{dt.autoAssigned} {tx('pos.auto_assigned')}{off && ov?.autoEnabled ? ` · ${off}` : ''}</div> : null}

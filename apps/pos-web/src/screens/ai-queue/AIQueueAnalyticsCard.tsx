@@ -43,9 +43,10 @@ export function AIQueueAnalyticsCard({ tick, can, techName }: { tick: number; ca
     const range = { from, to };
     const [r1, r2, r3, r4] = await Promise.allSettled([api.analytics(range), api.decisionAnalytics(range), api.decisionHistory({ ...range, limit: 20 }), api.usage(range)]);
     if (r1.status === 'fulfilled') setA(r1.value); else setErr(errMsg(r1.reason, tx('growth.aiQueue.err.analytics')));
-    if (r2.status === 'fulfilled') setDa(r2.value);
-    setRecent(r3.status === 'fulfilled' ? r3.value : []);
-    if (r4.status === 'fulfilled') setUsage(r4.value);
+    // Nov 3 audit: a failed read used to leave the tiles at 0 / the list empty; it now says so
+    if (r2.status === 'fulfilled') setDa(r2.value); else { setDa(null); setErr((m) => m ?? errMsg(r2.reason, tx('growth.aiQueue.err.analytics'))); }
+    if (r3.status === 'fulfilled') setRecent(r3.value); else { setRecent([]); setErr((m) => m ?? errMsg(r3.reason, tx('growth.aiQueue.err.analytics'))); }
+    if (r4.status === 'fulfilled') setUsage(r4.value); else { setUsage(null); setErr((m) => m ?? errMsg(r4.reason, tx('growth.aiQueue.err.analytics'))); }
   }, [from, to]);
   useEffect(() => { void load(); }, [load, tick]);
 

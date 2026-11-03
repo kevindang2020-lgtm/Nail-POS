@@ -164,6 +164,7 @@ export const GROWTH_EN = {
   'growth.aiQueue.ask.keepUnassigned': 'Why keep this guest unassigned for now?',
   'growth.aiQueue.done.keptUnassigned': 'Kept unassigned.',
   'growth.aiQueue.ask.stopAuto': 'Why stop auto-assign at this location now?',
+  'growth.aiQueue.freeTechs': 'Free technicians',
   'growth.aiQueue.err.analytics': 'Could not load analytics',
   'growth.aiQueue.err.export': 'Export failed',
   'growth.aiQueue.err.settings': 'Could not load settings',

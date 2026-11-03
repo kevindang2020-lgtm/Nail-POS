@@ -68,7 +68,8 @@ export class QueueAssignmentOpsController {
     return opsRun(() => this.alerts.listAlerts(opsCtxFrom(r), { status: (status as any) || 'open', type: type || undefined }));
   }
 
-  @Post('alerts/scan') @RequirePermission('ai_queue_assignment.view')
+  // a scan RAISES and RESOLVES alerts — a write (Nov 3 audit: it needed only the view key)
+  @Post('alerts/scan') @RequirePermission('ai_queue_assignment.resolve_alerts')
   scan(@Req() r: any) { return opsRun(() => this.alerts.scanAlerts(opsCtxFrom(r))); }
 
   @Post('alerts/:id/acknowledge') @RequirePermission('ai_queue_assignment.resolve_alerts')

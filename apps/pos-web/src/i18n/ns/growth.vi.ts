@@ -165,6 +165,7 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   'growth.aiQueue.ask.keepUnassigned': 'Vì sao tạm thời chưa chỉ định thợ cho khách này?',
   'growth.aiQueue.done.keptUnassigned': 'Đã giữ chưa chỉ định.',
   'growth.aiQueue.ask.stopAuto': 'Vì sao dừng tự động chỉ định tại chi nhánh này ngay bây giờ?',
+  'growth.aiQueue.freeTechs': 'Thợ đang rảnh',
   'growth.aiQueue.err.analytics': 'Không thể tải số liệu phân tích',
   'growth.aiQueue.err.export': 'Xuất dữ liệu không thành công',
   'growth.aiQueue.err.settings': 'Không thể tải cài đặt',
