@@ -22,14 +22,14 @@
 //   pause (ai.manage)   live agent → paused, salon deactivated AND booking disarmed (AI booking actions stop at once).
 //   rollback (owner)    re-activates the agent recorded as `prior_agent_id` on this agent's last activation — same gates.
 // Drafts are rows only: create / save / duplicate never call a provider, place a call or change a route.
-import { sql, type Kysely } from 'kysely';
+import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { utcDate } from '@aipowersalon/date-time';
 import { randomUUID } from 'node:crypto';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { AI_RECEPTIONIST_AGENT } from '../ai-lifecycles';
 import { normalizeAgentConfig, DEFAULT_BEHAVIOR, DEFAULT_GREETING } from './ai-agent-core';
-import { RC_PERIODS, isUuid, type ReceptionistCenter, type RcCtx, type RcCheck, type RcState, type RcBusinessReadiness } from './receptionist-center';
+import { RC_PERIODS, HANDOFF_COMPLETED, HANDOFF_FAILED, isUuid, type ReceptionistCenter, type RcCtx, type RcCheck, type RcState, type RcBusinessReadiness } from './receptionist-center';
 
 type Row = Record<string, any>;
 export type FdCtx = RcCtx;
@@ -71,19 +71,26 @@ export class FrontDeskError extends Error {
 }
 
 /** the state the salon sees — never higher than the evidence (guide §7 core invariant) */
-export function effectiveState(a: { status: string; providerAgentId: string | null; wizardComplete: boolean },
-  route: { salonLive: boolean; routedAgentRef: string | null }): FdEffective {
+/** Does a recorded call route reach this agent? A call on a branch reaches that branch's agent or a salon-wide agent; a call with no branch
+ *  reaches any agent. Each branch is judged by ITS latest call (the salon-wide latest call used to mark every other branch's live agent degraded). */
+export function routeReaches(a: { providerAgentId: string | null; branchId?: string | null }, route: { routedAgentRef: string | null; routed?: { branchId: string | null; agentRef: string }[] }): boolean {
+  if (!a.providerAgentId) return false;
+  if (!route.routed) return route.routedAgentRef === a.providerAgentId;
+  return route.routed.some((r) => r.agentRef === a.providerAgentId && (!r.branchId || !a.branchId || r.branchId === a.branchId));
+}
+export function effectiveState(a: { status: string; providerAgentId: string | null; wizardComplete: boolean; branchId?: string | null },
+  route: { salonLive: boolean; routedAgentRef: string | null; routed?: { branchId: string | null; agentRef: string }[] }): FdEffective {
   switch (a.status) {
     case 'archived': return 'archived';
     case 'paused': return 'paused';
     case 'error': return 'degraded';
     case 'ready': return 'ready';
-    case 'live': return route.salonLive && !!a.providerAgentId && route.routedAgentRef === a.providerAgentId ? 'active' : 'degraded';
+    case 'live': return route.salonLive && routeReaches(a, route) ? 'active' : 'degraded';
     default: return a.wizardComplete ? 'setup_required' : 'draft';
   }
 }
 
-interface Route { salonLive: boolean; stage: string; routedAgentRef: string | null; routedAt: string | null; routedCallRef: string | null; testAgentRef: string | null; control: Row | null }
+interface Route { salonLive: boolean; stage: string; routedAgentRef: string | null; routed: { branchId: string | null; agentRef: string }[]; routedAt: string | null; routedCallRef: string | null; testAgentRef: string | null; control: Row | null }
 
 export class FrontDeskCenter {
   constructor(private readonly db: Kysely<any>, private readonly rc: ReceptionistCenter, private readonly business: RcBusinessReadiness | null = null) {}
@@ -102,13 +109,27 @@ export class FrontDeskCenter {
     const last: Row | undefined = (await sql<Row>`select provider_call_id, agent_ref, coalesce(started_at, created_at) at_ from voice_call_outcomes where tenant_id = ${T}
       and (${b}::uuid is null or branch_id = ${b}) and agent_ref is not null and coalesce(started_at, created_at) > now() - interval '7 days'
       order by coalesce(started_at, created_at) desc, id desc limit 1`.execute(this.db)).rows[0];
-    return { salonLive: r.stage === 'live', stage: r.stage, routedAgentRef: last?.agent_ref ?? test?.agent_ref ?? null, routedAt: iso(last?.at_ ?? null),
+    // the latest call per branch (last 7 days) — each branch's live agent is judged by its own calls
+    const perBranch: Row[] = (await sql<Row>`select distinct on (branch_id) branch_id, agent_ref from voice_call_outcomes where tenant_id = ${T}
+      and (${b}::uuid is null or branch_id = ${b}) and agent_ref is not null and coalesce(started_at, created_at) > now() - interval '7 days'
+      order by branch_id, coalesce(started_at, created_at) desc, id desc`.execute(this.db)).rows;   // DISTINCT ON keeps one row for all NULL branches
+    const routed = perBranch.length ? perBranch.map((x) => ({ branchId: x.branch_id ? String(x.branch_id) : null, agentRef: String(x.agent_ref) }))
+      : test?.agent_ref ? [{ branchId: null, agentRef: String(test.agent_ref) }] : [];
+    return { salonLive: r.stage === 'live', stage: r.stage, routed, routedAgentRef: last?.agent_ref ?? test?.agent_ref ?? null, routedAt: iso(last?.at_ ?? null),
       routedCallRef: last?.provider_call_id ? String(last.provider_call_id).slice(0, 12) + '…' : null, testAgentRef: test?.agent_ref ?? null, control: ctl };
   }
 
+  /** SQL twin of routeReaches() */
+  private reachesSql(route: Route, ref: RawBuilder<unknown>, branch: RawBuilder<unknown>) {
+    const refs = route.routed.map((x) => x.agentRef), brs = route.routed.map((x) => x.branchId ?? '');
+    return sql`exists (select 1 from unnest(${refs}::text[], ${brs}::text[]) as rr(ref, br) where rr.ref = ${ref} and (rr.br = '' or ${branch} is null or rr.br = ${branch}::text))`;
+  }
+  /** the salon selector: a branch sees its own agents and salon-wide ones */
+  private scopeSql(ctx: FdCtx, branch: RawBuilder<unknown>) { const b = this.branch(ctx); return b ? sql`(${branch} = ${b} or ${branch} is null)` : sql`true`; }
+
   private rowOut(a: Row, route: Route) {
     const ws = (a.wizard_state ?? {}) as Row;
-    const eff = effectiveState({ status: a.status, providerAgentId: a.provider_agent_id ?? null, wizardComplete: ws.complete === true }, route);
+    const eff = effectiveState({ status: a.status, providerAgentId: a.provider_agent_id ?? null, wizardComplete: ws.complete === true, branchId: a.branch_id ? String(a.branch_id) : null }, route);
     return { id: a.id, name: a.name, description: a.description ?? null, status: a.status, effective: eff, branchId: a.branch_id ?? null, branchName: a.branch_name ?? null,
       providerRef: refSuffix(a.provider_agent_id), providerLinked: !!a.provider_agent_id, bookingMode: a.booking_mode, configVersion: N(a.config_version),
       wizardStep: N(a.wizard_step), wizardComplete: ws.complete === true, createdBy: a.creator_name ?? null, createdAt: iso(a.created_at), updatedAt: iso(a.updated_at),
@@ -127,7 +148,7 @@ export class FrontDeskCenter {
     if (f.branchId && f.branchId !== 'tenant' && !isUuid(f.branchId)) throw new FrontDeskError('Choose a valid branch.', 'AI_FD_INVALID_FILTER');
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
     const route = await this.route(ctx);
-    const live = sql`a.status = 'live' and a.provider_agent_id is not null and a.provider_agent_id = ${route.routedAgentRef ?? ''} and ${route.salonLive}::boolean`;
+    const live = sql`a.status = 'live' and a.provider_agent_id is not null and ${this.reachesSql(route, sql`a.provider_agent_id`, sql`a.branch_id`)} and ${route.salonLive}::boolean`;
     const complete = sql`coalesce((a.wizard_state->>'complete')::boolean, false)`;
     const byStatus = status === 'all' ? sql`a.status <> 'archived'`
       : status === 'draft' ? sql`a.status = 'draft' and not ${complete}`
@@ -135,7 +156,7 @@ export class FrontDeskCenter {
       : status === 'active' ? live
       : status === 'degraded' ? sql`(a.status = 'error' or (a.status = 'live' and not (${live})))`
       : sql`a.status = ${status}`;
-    const byBranch = !f.branchId ? sql`true` : f.branchId === 'tenant' ? sql`a.branch_id is null` : sql`a.branch_id = ${f.branchId}`;
+    const byBranch = !f.branchId ? this.scopeSql(ctx, sql`a.branch_id`) : f.branchId === 'tenant' ? sql`a.branch_id is null` : sql`a.branch_id = ${f.branchId}`;
     const byQ = !q ? sql`true` : sql`(a.name ilike ${like(q)} or coalesce(a.description, '') ilike ${like(q)} or a.id::text ilike ${like(q.toLowerCase())}
       or coalesce(a.provider_agent_id, '') ilike ${like(q)} or coalesce(br.name, '') ilike ${like(q)})`;
     let byDate = sql`true`; let window: { from: string; to: string; tz: string; basis: string } | null = null;
@@ -169,14 +190,14 @@ export class FrontDeskCenter {
   /** summary strip — every number from the same predicates the filters use (guide §3.2) */
   async summary(ctx: FdCtx) {
     const T = ctx.tenantId; const route = await this.route(ctx);
-    const live = sql`status = 'live' and provider_agent_id is not null and provider_agent_id = ${route.routedAgentRef ?? ''} and ${route.salonLive}::boolean`;
+    const live = sql`status = 'live' and provider_agent_id is not null and ${this.reachesSql(route, sql`provider_agent_id`, sql`branch_id`)} and ${route.salonLive}::boolean`;
     const complete = sql`coalesce((wizard_state->>'complete')::boolean, false)`;
     const r: Row = (await sql<Row>`select count(*) filter (where status <> 'archived')::int total,
         count(*) filter (where status = 'draft' and not ${complete})::int draft, count(*) filter (where status = 'draft' and ${complete})::int setup_required,
         count(*) filter (where status = 'ready')::int ready, count(*) filter (where ${live})::int active,
         count(*) filter (where status = 'error' or (status = 'live' and not (${live})))::int degraded,
         count(*) filter (where status = 'paused')::int paused, count(*) filter (where status = 'archived')::int archived
-      from ai_receptionist_agents where tenant_id = ${T}`.execute(this.db)).rows[0];
+      from ai_receptionist_agents where tenant_id = ${T} and ${this.scopeSql(ctx, sql`branch_id`)}`.execute(this.db)).rows[0];
     return { counts: { total: N(r.total), draft: N(r.draft), setupRequired: N(r.setup_required), ready: N(r.ready), active: N(r.active), degraded: N(r.degraded), paused: N(r.paused), archived: N(r.archived) },
       route: this.routeOut(route), checkedAt: nowIso() };
   }
@@ -633,8 +654,9 @@ export class FrontDeskCenter {
     const orphan = N((await sql<Row>`select count(distinct o.agent_ref)::int n from voice_call_outcomes o where o.tenant_id = ${T} and o.agent_ref is not null
       and coalesce(o.started_at, o.created_at) > now() - interval '7 days'
       and not exists (select 1 from ai_receptionist_agents a where a.tenant_id = o.tenant_id and a.provider_agent_id = o.agent_ref)`.execute(this.db)).rows[0]?.n);
-    const liveAgent: Row | undefined = (await sql<Row>`select id, name, provider_agent_id from ai_receptionist_agents where tenant_id = ${T} and status = 'live'
+    const liveAgent: Row | undefined = (await sql<Row>`select id, name, provider_agent_id, branch_id from ai_receptionist_agents where tenant_id = ${T} and status = 'live'
       and (${this.branch(ctx)}::uuid is null or branch_id = ${this.branch(ctx)} or branch_id is null) order by (branch_id is null) asc limit 1`.execute(this.db)).rows[0];
+    const liveReached = !!liveAgent && routeReaches({ providerAgentId: liveAgent.provider_agent_id ?? null, branchId: liveAgent.branch_id ? String(liveAgent.branch_id) : null }, route);
     const own: RcCheck[] = [
       chk('fd.registry', 'Agent registry', 'READY', `${N(reg.agents)} agent(s) on file, ${N(reg.live)} live.`, 'ai_receptionist_agents (this salon)'),
       chk('fd.one_live', 'One live agent per route', dupLive ? 'FAILED' : 'READY', dupLive ? `${dupLive} route(s) have more than one live agent.` : 'Each route has at most one live agent.', 'status = live grouped by branch scope', dupLive ? 'Pause the extra agent(s); only one may answer a route.' : null, 'Owner'),
@@ -642,9 +664,9 @@ export class FrontDeskCenter {
         dupRef ? `${dupRef} provider agent(s) are linked to more than one local agent.` : N(reg.unmapped) ? `${N(reg.unmapped)} ready/live/paused agent(s) have no provider agent linked.` : 'Every non-draft agent maps to exactly one provider agent.', 'provider_agent_id per agent', null, 'Owner or manager'),
       chk('fd.orphans', 'Calls from unknown agents', orphan ? 'WARNING' : 'READY', orphan ? `Calls in the last 7 days came from ${orphan} provider agent(s) not linked to any agent here.` : 'Every recorded call in the last 7 days maps to an agent here.',
         'voice_call_outcomes.agent_ref vs ai_receptionist_agents.provider_agent_id', orphan ? 'An unlinked agent is answering this salon’s calls: check the number’s route in the provider console.' : null, 'Owner'),
-      chk('fd.drift', 'Live route', !liveAgent ? 'DISABLED' : route.salonLive && route.routedAgentRef === liveAgent.provider_agent_id ? 'READY' : 'FAILED',
-        !liveAgent ? 'No agent is live; calls are not routed to the AI from here.' : route.routedAgentRef === liveAgent.provider_agent_id ? `"${liveAgent.name}" answered the latest recorded call.` : `"${liveAgent.name}" is live here, but the latest recorded call reached a different agent or the salon is not live.`,
-        'latest recorded call agent vs live agent', liveAgent && route.routedAgentRef !== liveAgent.provider_agent_id ? 'Pause the agent (calls go to the human line) and fix the route in the provider console.' : null, 'Owner'),
+      chk('fd.drift', 'Live route', !liveAgent ? 'DISABLED' : route.salonLive && liveReached ? 'READY' : 'FAILED',
+        !liveAgent ? 'No agent is live; calls are not routed to the AI from here.' : liveReached ? `"${liveAgent.name}" answered the latest recorded call.` : `"${liveAgent.name}" is live here, but the latest recorded call reached a different agent or the salon is not live.`,
+        'latest recorded call agent (per branch) vs live agent', liveAgent && !liveReached ? 'Pause the agent (calls go to the human line) and fix the route in the provider console.' : null, 'Owner'),
     ];
     const checks = [...own, ...r.checks];
     const order: RcState[] = ['FAILED', 'UNKNOWN', 'NOT_CONFIGURED', 'BLOCKED_EXTERNAL', 'WARNING', 'DISABLED', 'READY'];
@@ -659,22 +681,23 @@ export class FrontDeskCenter {
     const T = ctx.tenantId; const b = this.branch(ctx);
     const r = await this.rc.readiness(ctx);
     const route = await this.route(ctx, r);
-    const live: Row | undefined = (await sql<Row>`select id, name, provider_agent_id, activated_at, last_verified_at, handoff_destination, after_hours_message, booking_mode
+    const live: Row | undefined = (await sql<Row>`select id, name, provider_agent_id, branch_id, activated_at, last_verified_at, handoff_destination, after_hours_message, booking_mode
       from ai_receptionist_agents where tenant_id = ${T} and status = 'live' and (${b}::uuid is null or branch_id = ${b} or branch_id is null) order by (branch_id is null) asc limit 1`.execute(this.db)).rows[0];
     const calls: Row = (await sql<Row>`select count(*)::int total, count(*) filter (where error_category is not null)::int failed, count(*) filter (where abandoned)::int abandoned,
-        count(*) filter (where coalesce(interruption_count, 0) > 0)::int interrupted, count(*) filter (where handoff_outcome is not null)::int handoffs
+        count(*) filter (where coalesce(interruption_count, 0) > 0)::int interrupted, count(*) filter (where handoff_outcome is not null and handoff_outcome <> 'none')::int handoffs,
+        count(*) filter (where handoff_outcome = any(${HANDOFF_COMPLETED}::text[]))::int handoffs_done, count(*) filter (where handoff_outcome = any(${HANDOFF_FAILED}::text[]))::int handoffs_failed
       from voice_call_outcomes where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and coalesce(started_at, created_at) > now() - interval '24 hours'`.execute(this.db)).rows[0];
-    const tools: Row = (await sql<Row>`select count(*) filter (where tool_kind = 'write' and status = 'succeeded')::int writes_ok, count(*) filter (where tool_kind = 'write' and status in ('refused', 'failed'))::int writes_bad,
+    const tools: Row = (await sql<Row>`select count(*) filter (where tool_kind = 'write' and status = 'succeeded' and business_result = 'appointment_created')::int writes_ok, count(*) filter (where business_result = 'pending_verification')::int pending, count(*) filter (where tool_kind = 'write' and status in ('refused', 'failed'))::int writes_bad,
         count(*) filter (where business_result = 'slot_held')::int holds
       from voice_tool_executions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and requested_at > now() - interval '24 hours'`.execute(this.db)).rows[0];
     const ent = r.checks.find((c) => c.id === 'ent.package');
-    const drift = !!live && route.routedAgentRef != null && route.routedAgentRef !== live.provider_agent_id;
+    const drift = !!live && route.routed.length > 0 && !routeReaches({ providerAgentId: live.provider_agent_id ?? null, branchId: live.branch_id ? String(live.branch_id) : null }, route);
     return {
       providerRoute: { liveAgent: live ? { id: live.id, name: live.name, providerRef: refSuffix(live.provider_agent_id) } : null, routedAgentRef: refSuffix(route.routedAgentRef),
         routedAt: route.routedAt, drift, verifiedAt: iso(live?.last_verified_at ?? null), state: !live ? 'DISABLED' : drift || !route.salonLive ? 'FAILED' : 'READY' },
       agentHealth: { calls24h: N(calls.total), failed24h: N(calls.failed), interrupted24h: N(calls.interrupted), state: N(calls.failed) > 0 ? 'WARNING' : N(calls.total) ? 'READY' : 'UNKNOWN' },
-      callSuccess: { answered24h: N(calls.total) - N(calls.abandoned), abandoned24h: N(calls.abandoned), handoffs24h: N(calls.handoffs) },
-      bookingActions: { succeeded24h: N(tools.writes_ok), refusedOrFailed24h: N(tools.writes_bad), slotHolds24h: N(tools.holds), armed: !!route.control?.booking_armed,
+      callSuccess: { answered24h: N(calls.total) - N(calls.abandoned), abandoned24h: N(calls.abandoned), handoffs24h: N(calls.handoffs), transfersCompleted24h: N(calls.handoffs_done), transfersFailed24h: N(calls.handoffs_failed) },
+      bookingActions: { succeeded24h: N(tools.writes_ok), awaitingCode24h: N(tools.pending), refusedOrFailed24h: N(tools.writes_bad), slotHolds24h: N(tools.holds), armed: !!route.control?.booking_armed,
         note: 'A booking still waiting for the six-digit code is not a confirmed appointment.' },
       fallback: { handoffConfigured: !!live?.handoff_destination, afterHoursMessage: !!live?.after_hours_message,
         state: !live ? 'DISABLED' : live.handoff_destination ? 'READY' : 'WARNING', note: 'Restoring a human route in Twilio is a provider-console step; it is not claimed here without a recorded call.' },

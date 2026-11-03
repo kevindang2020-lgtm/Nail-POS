@@ -230,3 +230,24 @@ describe('activation, routing monitor and safety — ACT-01…05, SEC-02, TWI-03
     expect(refSuffix('agent_full_ref_ava_001')).toBe('…va_001');
   });
 });
+
+describe('Nov 3 audit — per-branch route, honest 24h counts', () => {
+  it('each branch is judged by its own latest call: branch B\'s call does not make branch A\'s live agent degraded', () => {
+    const route = { salonLive: true, routedAgentRef: 'agent_b', routed: [{ branchId: 'A', agentRef: 'agent_a' }, { branchId: 'B', agentRef: 'agent_b' }] };
+    expect(effectiveState({ status: 'live', providerAgentId: 'agent_a', wizardComplete: true, branchId: 'A' }, route)).toBe('active');
+    expect(effectiveState({ status: 'live', providerAgentId: 'agent_b', wizardComplete: true, branchId: 'B' }, route)).toBe('active');
+    expect(effectiveState({ status: 'live', providerAgentId: 'agent_a', wizardComplete: true, branchId: 'B' }, route)).toBe('degraded');   // A's agent answering B is not B's route
+    expect(effectiveState({ status: 'live', providerAgentId: 'agent_x', wizardComplete: true, branchId: 'A' }, route)).toBe('degraded');
+    expect(effectiveState({ status: 'live', providerAgentId: 'agent_a', wizardComplete: true, branchId: null }, route)).toBe('active');    // salon-wide agent
+  });
+  it('handoffs24h counts real handoffs only and splits completed / failed transfers; bookings count created appointments only', async () => {
+    const before = (await fd.monitor(own)).callSuccess;
+    await call(TA, BA, 'call_h_none', 'agent_full_ref_ava_001', 3); await call(TA, BA, 'call_h_ok', 'agent_full_ref_ava_001', 3); await call(TA, BA, 'call_h_bad', 'agent_full_ref_ava_001', 3);
+    await sql`update voice_call_outcomes set handoff_outcome = case provider_call_id when 'call_h_none' then 'none' when 'call_h_ok' then 'transferred' else 'transfer_failed' end
+      where tenant_id = ${TA} and provider_call_id in ('call_h_none', 'call_h_ok', 'call_h_bad')`.execute(db);
+    const after = (await fd.monitor(own)).callSuccess;
+    expect(after.handoffs24h - before.handoffs24h).toBe(2);
+    expect(after.transfersCompleted24h - before.transfersCompleted24h).toBe(1);
+    expect(after.transfersFailed24h - before.transfersFailed24h).toBe(1);
+  });
+});

@@ -26,7 +26,7 @@ const BASES = ['created', 'updated', 'activated'] as const;
 const SORTS = ['newest', 'oldest', 'name_az', 'name_za', 'updated'] as const;
 const OV_TABS = ['overview', 'business', 'voice', 'routing', 'booking', 'calls', 'usage', 'health'] as const;
 const ACTIONS = ['', 'created', 'saved', 'duplicated', 'activated', 'paused', 'resumed', 'archived', 'restored', 'rolled_back', 'health_checked', 'demoted'] as const;
-const today = () => new Date().toISOString().slice(0, 10);
+const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };   // this device's day, not UTC (after 8pm Eastern UTC is already tomorrow)
 const when = (x: string | null | undefined) => (x ? fmtDateTime(x) : '—');
 const BIZ_KEYS = ['business_hours', 'services', 'technicians', 'staff_schedule', 'approved_faqs', 'agent_knowledge', 'knowledge_sync', 'tenant_branch', 'audit_jobs', 'hours', 'faqs', 'booking'];
 const bizLabel = (k: string) => (BIZ_KEYS.includes(k) ? t('aifd.biz.' + k) : k);
@@ -155,8 +155,8 @@ export function POSAIFrontDeskScreen() {
               <dl className="fd-dl">
                 <dt>{t('aifd.mon.route')}</dt><dd><Badge s={monitor.providerRoute.state} label={monitor.providerRoute.liveAgent ? monitor.providerRoute.liveAgent.name : t('aifd.mon.no_live')} />{monitor.providerRoute.drift ? <span className="fd-warn-t"> {t('aifd.mon.drift')}</span> : null}<div className="fd-muted">{t('aifd.mon.last_call', { at: when(monitor.providerRoute.routedAt), ref: monitor.providerRoute.routedAgentRef ?? '—' })}</div></dd>
                 <dt>{t('aifd.mon.health')}</dt><dd><Badge s={monitor.agentHealth.state} /> <span className="fd-muted">{t('aifd.mon.calls', { n: monitor.agentHealth.calls24h, f: monitor.agentHealth.failed24h })}</span></dd>
-                <dt>{t('aifd.mon.success')}</dt><dd>{t('aifd.mon.success_v', { a: monitor.callSuccess.answered24h, x: monitor.callSuccess.abandoned24h, h: monitor.callSuccess.handoffs24h })}</dd>
-                <dt>{t('aifd.mon.booking')}</dt><dd>{t('aifd.mon.booking_v', { ok: monitor.bookingActions.succeeded24h, bad: monitor.bookingActions.refusedOrFailed24h })} · {monitor.bookingActions.armed ? t('aifd.armed') : t('aifd.handoff_only')}<div className="fd-muted">{t('aifd.pending_rule')}</div></dd>
+                <dt>{t('aifd.mon.success')}</dt><dd>{t('aifd.mon.success_v', { a: monitor.callSuccess.answered24h, x: monitor.callSuccess.abandoned24h, h: monitor.callSuccess.handoffs24h, c: monitor.callSuccess.transfersCompleted24h ?? 0, f: monitor.callSuccess.transfersFailed24h ?? 0 })}</dd>
+                <dt>{t('aifd.mon.booking')}</dt><dd>{t('aifd.mon.booking_v', { ok: monitor.bookingActions.succeeded24h, p: monitor.bookingActions.awaitingCode24h ?? 0, bad: monitor.bookingActions.refusedOrFailed24h })} · {monitor.bookingActions.armed ? t('aifd.armed') : t('aifd.handoff_only')}<div className="fd-muted">{t('aifd.pending_rule')}</div></dd>
                 <dt>{t('aifd.mon.fallback')}</dt><dd><Badge s={monitor.fallback.state} /> <span className="fd-muted">{t('aifd.mon.fallback_note')}</span></dd>
                 <dt>{t('aifd.mon.subscription')}</dt><dd><Badge s={monitor.subscription.state} /> <span className="fd-muted">{t('aifd.mon.quota_na')}</span></dd>
               </dl>)}
