@@ -325,7 +325,9 @@ export class AiCalendarCenter {
         // "transaction aborted" and the run could not be recorded (Nov 3 audit)
         await sql`savepoint health_check`.execute(trx);
         try { await fn(); await sql`release savepoint health_check`.execute(trx); } catch (e) {
-          await sql`rollback to savepoint health_check`.execute(trx).catch(() => undefined);   // reviewed: the check is already marked UNKNOWN below; a failed rollback leaves nothing more to report add(id, group, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.', source); }
+          // reviewed: a failed rollback leaves nothing more to report — the check is marked UNKNOWN right here
+          await sql`rollback to savepoint health_check`.execute(trx).catch(() => undefined);
+          add(id, group, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.', source); }
       };
       await guard('booking', 'Canonical Booking', 'Booking rows and parity', 'pos_tech_appointments + BookingService.dayGrid', async () => {
         const mine = n((await sql<Row>`select count(*)::int c from pos_tech_appointments a where a.tenant_id = ${T} and ${this.scope(ctx)} and a.appt_date = ${date}::date and a.status <> all(${NOT_COUNTED}::text[])`.execute(trx)).rows[0]?.c);
