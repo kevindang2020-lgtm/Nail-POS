@@ -18,7 +18,7 @@ vi.mock('../api/posLiveTechnicianScheduleApi', () => ({ posLiveTechnicianSchedul
 vi.mock('../api/posTechniciansApi', () => ({ posTechniciansApi: techs }));
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => (k: string) => k !== 'technicians.view_pay' }));
-vi.mock('../components/IPadViewProvider', () => ({ useIPadView: () => ({ open: vi.fn() }) }));
+vi.mock('../components/IPadViewProvider', () => ({ useIPadView: () => ({ open: vi.fn() }), registerIPadModule: vi.fn() }));
 import { POSLiveTechnicianScheduleScreen, LS_LANE_PAGE_SIZE } from './POSLiveTechnicianScheduleScreen';
 
 const DAY = '2026-10-30';   // a Friday

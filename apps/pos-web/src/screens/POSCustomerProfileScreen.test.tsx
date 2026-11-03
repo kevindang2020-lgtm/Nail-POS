@@ -20,7 +20,7 @@ const detail = {
 describe('POSCustomerProfileScreen', () => {
   it('searches, picks, and shows the consolidated profile', async () => {
     searchMock.mockResolvedValue({ items: [cust] }); detailMock.mockResolvedValue(detail);
-    render(<POSCustomerProfileScreen />);
+    render(<MemoryRouter><POSCustomerProfileScreen /></MemoryRouter>);
     fireEvent.change(screen.getByPlaceholderText(/Search by name/i), { target: { value: 'Ana' } });
     fireEvent.click(await screen.findByText('Ana Rivera'));
     await waitFor(() => expect(detailMock).toHaveBeenCalledWith('c1'));
@@ -33,7 +33,7 @@ describe('POSCustomerProfileScreen', () => {
   it('handles a profile with no membership or gift cards', async () => {
     searchMock.mockResolvedValue({ items: [cust] });
     detailMock.mockResolvedValue({ ...detail, isVip: false, membership: { plan: '', status: 'none', benefits: [] }, giftCards: [] });
-    render(<POSCustomerProfileScreen />);
+    render(<MemoryRouter><POSCustomerProfileScreen /></MemoryRouter>);
     fireEvent.change(screen.getByPlaceholderText(/Search by name/i), { target: { value: 'Ana' } });
     fireEvent.click(await screen.findByText('Ana Rivera'));
     expect(await screen.findByText('No active membership plan on record.')).toBeInTheDocument();   // redesign wording

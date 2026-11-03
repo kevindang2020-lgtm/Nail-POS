@@ -9,6 +9,16 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 vi.mock('../api/client', () => ({ api: { get: vi.fn(), put: vi.fn(), post: vi.fn(), del: vi.fn() } }));
+// the Setup Center panels (overview / branch senders / activity) have their own API; this file tests the credential, Verify, number
+// and test-SMS flows, so the center gets a quiet, honest fixture
+vi.mock('../api/posMessagingSetupApi', () => ({ posMessagingSetupApi: {
+  overview: vi.fn(async () => ({ generatedAt: '2026-10-30T12:00:00Z', scope: { branchId: null, branchName: null, source: 'tenant_default' }, overall: 'ready', parts: [],
+    delivery: { statusCallbackUrl: true, lastStatusEventAt: null, waitingOver2h: 0, failedTests24h: 0, failedSms24h: 0, awaitingReports: 0 },
+    wizard: { steps: [], resumeAt: 'account' }, schedule: { enabled: false, lastScheduledAt: null, lastCheckAt: null, runsAt: '03:00', mode: 'off' }, note: '' })),
+  branches: vi.fn(async () => ({ salonDefault: { accountSidMasked: 'AC…1111', sender: '+18565550111', senderType: 'local', source: 'tenant_default' }, branches: [], rule: '' })),
+  activity: vi.fn(async () => ({ items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1, basis: 'created', period: { preset: 'month', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' } })),
+  detail: vi.fn(),
+} }));
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn(async () => ({ branches: [{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'Uptown' }] })) } }));
 import { api } from '../api/client';
 import { readinessFixture, regItem } from './phoneMessagingTestKit';
@@ -141,9 +151,11 @@ describe('test SMS', () => {
     const limited = readinessFixture({ scope: { ...readinessFixture().scope, authorizedBranches: [{ branchId: 'b1', name: 'Main', source: 'tenant_default' }] } });
     vi.mocked(api.get).mockImplementation(async (p: string) => (p.startsWith('/tenant/messaging/credentials') ? view() : p.startsWith('/tenant/messaging/readiness') ? limited : {}) as never);
     renderIt();
-    fireEvent.change(await screen.findByLabelText('Branch'), { target: { value: 'b2' } });
-    expect(await screen.findByTestId('pm-test-not-allowed')).toBeInTheDocument();
-    expect(screen.queryByText('Send test SMS')).toBeNull();
+    // the scope selector now offers only the branches the server says this user may act for: with only Main allowed there is
+    // no selector at all, so Uptown cannot even be chosen (the old "pick b2 → not allowed" path no longer exists)
+    await screen.findByLabelText('Send to (E.164)');
+    const sel = screen.queryByLabelText('Branch') as HTMLSelectElement | null;
+    if (sel) expect([...sel.options].map((o) => o.value)).not.toContain('b2');
   });
   it('an invalid destination cannot be sent', async () => {
     renderIt();

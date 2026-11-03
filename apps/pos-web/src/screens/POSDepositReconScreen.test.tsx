@@ -68,6 +68,7 @@ describe('POSDepositReconScreen', () => {
     api.kpis.mockRejectedValue({ status: 503 });
     mount();
     expect(await screen.findByText(/could not be reached/i)).toBeInTheDocument();
-    expect(screen.getByTestId('kpis')).not.toHaveTextContent('$0.00');   // the KPI strip (a settlement row's real $0.00 matched is data, not a KPI)
+    // the KPI strip shows the error (whose sentence mentions "$0.00") — never a $0.00 figure (a settlement row's real $0.00 matched is data)
+    expect(screen.getByTestId('kpis').textContent).not.toMatch(/\$0\.00(?! until)/);
   });
 });

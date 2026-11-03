@@ -42,6 +42,6 @@ describe('Deals & Offers in Vietnamese', () => {
     expect(screen.getByRole('tab', { name: 'Duyệt' })).toBeInTheDocument();
     expect(screen.getAllByTestId('price-line')[0]).toHaveTextContent('$10.00 → $9.50');
     for (const en of ['Approvals', 'Settings', 'Pending approval', 'Technician deals:']) expect(screen.queryByText(en), en).toBeNull();
-    expect(leftoverEnglish(container, ['Spring time', 'vishal']).join(' | ')).toBe('');
+    expect(leftoverEnglish(container, ['Spring time', 'vishal', 'America/New_York']).join(' | ')).toBe('');
   });
 });

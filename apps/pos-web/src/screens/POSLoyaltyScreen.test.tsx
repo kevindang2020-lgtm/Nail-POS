@@ -1,29 +1,32 @@
+// POSLoyaltyScreen — the one-screen overview (/pos/loyalty/overview + paged rewards / members / redemptions). The old
+// /pos/loyalty/state client method is retired; a failed overview is an error with Retry, never zeros.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-const { loyMock } = vi.hoisted(() => ({ loyMock: vi.fn() }));
-vi.mock('../api/posLoyaltyApi', () => ({ posLoyaltyApi: { state: loyMock } }));
+import { MemoryRouter } from 'react-router-dom';
+import { render, screen, waitFor } from '@testing-library/react';
+const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), rewards: vi.fn(), members: vi.fn(), redemptions: vi.fn() } }));
+vi.mock('../api/posLoyaltyApi', () => ({ posLoyaltyApi: api }));
 import { POSLoyaltyScreen } from './POSLoyaltyScreen';
-beforeEach(() => loyMock.mockReset());
+
+const empty = { items: [], page: 1, pageSize: 10, totalItems: 0, totalPages: 1 };
+const overview = { period: { label: 'This month', start: '2026-10-01', timeZone: 'America/New_York' }, kpis: { loyaltyMembers: 2, newMembersThisMonth: 1, pointsOutstanding: 620, balanceReconciled: true, activeRewards: 1, totalRewards: 2, redemptionsThisMonth: 1, redemptionsPending: 0, pointsRedeemedThisMonth: 200 },
+  tiers: [{ tier: 'VIP', members: 1, points: 500 }, { tier: 'Regular', members: 1, points: 120 }] };
+beforeEach(() => {
+  Object.values(api).forEach((f) => f.mockReset());
+  api.overview.mockResolvedValue(overview); api.rewards.mockResolvedValue(empty); api.members.mockResolvedValue(empty); api.redemptions.mockResolvedValue(empty);
+});
+const mount = () => render(<MemoryRouter><POSLoyaltyScreen /></MemoryRouter>);
 
 describe('POSLoyaltyScreen', () => {
-  it('renders program KPIs, tiers, rewards, and redemptions', async () => {
-    loyMock.mockResolvedValue({
-      kpis: { memberCount: 2, pointsOutstanding: 620, totalEarnedPoints: 920, totalRedeemedPoints: 300, activeRewards: 1, redemptionCount: 1, pointsRedeemed: 200 },
-      tiers: [{ tier: 'VIP', members: 1, points: 500 }, { tier: 'Regular', members: 1, points: 120 }],
-      rewards: [{ id: 'r1', title: 'Free Polish', pointsCost: 200, active: true }],
-      recentRedemptions: [{ id: 'x1', customerId: 'c1', rewardTitle: 'Free Polish', pointsSpent: 200, createdAt: '2026-07-01T00:00:00Z' }],
-    });
-    render(<POSLoyaltyScreen />);
-    expect(await screen.findByRole('heading', { name: 'Loyalty & Rewards' })).toBeInTheDocument();
-    expect(screen.getByText('Points Outstanding')).toBeInTheDocument();
-    expect(screen.getByText('620')).toBeInTheDocument();
-    expect(screen.getAllByText('Free Polish').length).toBeGreaterThan(0);
-    expect(screen.getByText('VIP')).toBeInTheDocument();
+  it('shows the server\'s KPIs and tiers', async () => {
+    mount();
+    await waitFor(() => expect(screen.getByTestId('kpi-points')).toHaveTextContent('620'));
+    expect(screen.getByTestId('kpi-members')).toHaveTextContent('2');
+    expect(screen.getByTestId('panel-tiers')).toHaveTextContent('VIP');
   });
-  it('shows empty states for a program with no data', async () => {
-    loyMock.mockResolvedValue({ kpis: { memberCount: 0, pointsOutstanding: 0, totalEarnedPoints: 0, totalRedeemedPoints: 0, activeRewards: 0, redemptionCount: 0, pointsRedeemed: 0 }, tiers: [], rewards: [], recentRedemptions: [] });
-    render(<POSLoyaltyScreen />);
-    expect(await screen.findByText(/No members enrolled yet/i)).toBeInTheDocument();
-    expect(screen.getByText(/No rewards yet/i)).toBeInTheDocument();   // wording changed with the catalog editor (Oct 2)
+  it('a failed overview is an error with Retry — never zeros', async () => {
+    api.overview.mockRejectedValue({ status: 503 });
+    mount();
+    expect(await screen.findByRole('button', { name: /retry/i })).toBeInTheDocument();
+    expect(screen.queryByTestId('kpi-points')).toBeNull();
   });
 });

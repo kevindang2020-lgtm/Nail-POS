@@ -76,7 +76,9 @@ describe('POSGiftCardsScreen', () => {
     fireEvent.change(await screen.findByTestId('issue-amount'), { target: { value: '100' } });
     expect(screen.getByTestId('issue-submit')).toBeDisabled();
     fireEvent.change(screen.getByTestId('customer-search'), { target: { value: 'Anna' } });
-    fireEvent.click(await screen.findByText('Anna Lee'));
+    // "Anna Lee" is also the purchaser in the cards table behind the dialog — pick the search hit (the last match, inside the dialog)
+    await waitFor(() => expect(screen.getAllByText('Anna Lee').length).toBeGreaterThan(1));
+    fireEvent.click(screen.getAllByText('Anna Lee').slice(-1)[0]);
     fireEvent.click(screen.getByTestId('issue-submit')); fireEvent.click(screen.getByTestId('issue-submit'));
     await waitFor(() => expect(gc.issue).toHaveBeenCalledTimes(1));
     expect(gc.issue.mock.calls[0][0]).toMatchObject({ customerId: 'c1', amountCents: 10000, delivery: 'digital' });
