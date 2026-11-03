@@ -6,6 +6,8 @@
 import { ReportsModule, ReportsService, type ReportsContext } from '@aipowersalon/reports';
 import { Module } from '@nestjs/common';
 import { AiAnalyticsForecastingController } from './ai-analytics-forecasting.controller';
+import { ForecastCenterController, FORECAST_CENTER } from './forecast-center.controller';
+import { ForecastCenter } from './forecast-center';
 import { AppointmentForecastService } from './appointment-forecast.service';
 import { RevenueForecastService } from './revenue-forecast.service';
 import { NoShowRiskService, InMemoryNoShowSource, type NoShowRiskSource } from './noshow-risk.service';
@@ -76,7 +78,7 @@ export class ReportsRevenueSource implements RevenueSeriesSource {
 
 @Module({
   imports: [ReportsModule, AiInventoryModule],
-  controllers: [AiAnalyticsForecastingController],
+  controllers: [AiAnalyticsForecastingController, ForecastCenterController],
   providers: [
     // AI Analytics & Forecasting guide (Nov 2026): appointments come from the booking calendar, zero-filled per salon day (the sales
     // report's paid-ticket days were used before, with quiet days missing); revenue stays on the report, zero-filled
@@ -94,6 +96,8 @@ export class ReportsRevenueSource implements RevenueSeriesSource {
     { provide: SeasonalTrendService, useFactory: (src: AppointmentSeriesSource) => new SeasonalTrendService(src), inject: ['AppointmentSeriesSource'] },
     { provide: AnomalyDetectService, useFactory: (src: AppointmentSeriesSource) => new AnomalyDetectService(src), inject: ['AppointmentSeriesSource'] },
     { provide: 'HourlyDemandSource', useFactory: (db: AppDatabase): HourlyDemandSource => (db ? new KyselyHourlyDemandSource(db) : new InMemoryHourlyDemandSource()), inject: [DATABASE_READ] },
+    // AI Analytics & Forecasting guide (Nov 2 2026): forecast history, forecast vs actual, the system check (read-only)
+    { provide: FORECAST_CENTER, useFactory: (db: AppDatabase) => (db ? new ForecastCenter(db) : null), inject: [DATABASE] },
     { provide: BusyPeriodService, useFactory: (src: HourlyDemandSource) => new BusyPeriodService(src), inject: ['HourlyDemandSource'] },
   ],
   exports: [AppointmentForecastService, RevenueForecastService, NoShowRiskService, ProductDemandForecastService, ForecastRunService, SeasonalTrendService, AnomalyDetectService, BusyPeriodService],

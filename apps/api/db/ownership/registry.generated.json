@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 920,
+  "tables": 921,
   "ownership": {
-   "tenant_owned": 610,
+   "tenant_owned": 611,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 129,
+   "AI": 130,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 139,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 499,
+   "INTERNAL": 500,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -3825,6 +3825,19 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "forecasting_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Analytics & Forecasting guide (Nov 2 2026, migration 776): read-only Check AI Analytics & Forecasting System runs"
   },
   "gift_card_adjustments": {
    "ownership": "tenant_owned",

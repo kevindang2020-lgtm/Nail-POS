@@ -422,6 +422,10 @@
   "voice_followup_health_runs": {
    "domain": "AI",
    "reason": "Voice Transcription Follow-Ups guide (Nov 2 2026, migration 775): read-only Check Voice Follow-Up System runs"
+  },
+  "forecasting_health_runs": {
+   "domain": "AI",
+   "reason": "AI Analytics & Forecasting guide (Nov 2 2026, migration 776): read-only Check AI Analytics & Forecasting System runs"
   }
  }
 }

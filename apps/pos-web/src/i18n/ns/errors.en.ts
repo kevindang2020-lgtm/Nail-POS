@@ -520,6 +520,8 @@ export const ERRORS_EN = {
   'errors.FOLLOWUP_CENTER_INVALID_FILTER': "Check the follow-up details or filter and try again.",
   'errors.VT_SETTINGS_VERSION_CONFLICT': "These settings were changed by someone else. Reload and try again.",
   'errors.VT_CONFIRM_REQUIRED': "This change needs confirmation.",
+  'errors.FC_INVALID_PERIOD': "Choose a From and a To date; the From date must be on or before the To date.",
+  'errors.FC_RUN_NOT_FOUND': "That forecast run was not found.",
   'errors.VT_SETTINGS_UNAVAILABLE': "The transcription settings could not be read.",
   'errors.FOLLOWUP_ASSIGNEE_INVALID': "Choose an active staff member who can work follow-ups in this branch.",
   'errors.FOLLOWUP_LINK_INVALID': "That customer, call or appointment is not in this salon.",

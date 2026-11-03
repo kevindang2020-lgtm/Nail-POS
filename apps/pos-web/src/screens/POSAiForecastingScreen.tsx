@@ -9,6 +9,7 @@ import { money, reportError } from './reportsCommon';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 import { growthCode } from './growthLabels';
+import { ForecastHistory, ForecastCheckButton } from './ForecastHistory';
 type Tab = 'appointments' | 'revenue' | 'noshow';
 const TABS = (): [Tab, string][] => [['appointments', tx('growth.aiForecast.tab.appointments')], ['revenue', tx('growth.aiForecast.tab.revenue')], ['noshow', tx('growth.aiForecast.tab.noshow')]];
 const titleCase = (s: string) => growthCode(s, 'level');
@@ -158,6 +159,7 @@ export function POSAiForecastingScreen() {
           <button className={"btn w-fit whitespace-nowrap " + (tab === id ? "active" : "")} key={id} aria-pressed={tab === id}
             onClick={() => setTab(id)}>{label}</button>
         ))}
+        <ForecastCheckButton />
       </div>
       </div>
 
@@ -185,6 +187,7 @@ export function POSAiForecastingScreen() {
       {!loading && !error && tab === 'appointments' && appt && <ForecastView data={appt} kind="appointments" accuracy={acc.appointments} />}
       {!loading && !error && tab === 'revenue' && rev && <ForecastView data={rev} kind="revenue" accuracy={acc.revenue} />}
       {!loading && !error && tab === 'noshow' && ns && <NoShowView data={ns} />}
+      <ForecastHistory />
     </div>
   );
 }

@@ -14613,3 +14613,157 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `vfx.health.d.tenant_isolation.FAILED` | A decision points at another salon's record. Report this immediately. | Có quyết định liên kết tới dữ liệu của tiệm khác. Hãy báo ngay. |
 | `vfx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `vfx.health.d.no_side_effects.PASSED` | This page and this check never call, text, book, refund or change a task. | Trang này và việc kiểm tra không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay sửa công việc. |
+
+## AI Analytics & Forecasting — history and system check (`fch.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `fch.check` | Check AI Analytics & Forecasting System | Kiểm tra hệ thống phân tích & dự báo AI |
+| `fch.close` | Close | Đóng |
+| `fch.refresh` | Refresh | Làm mới |
+| `fch.history` | Forecast history | Lịch sử dự báo |
+| `fch.historyNote` | Every forecast is kept. Once a forecast day has passed, its actual is filled in from the same data the forecast was built on, so you can see how close it was. | Mọi dự báo đều được lưu. Khi một ngày dự báo đã qua, số thực tế được điền từ chính dữ liệu dùng để dự báo, để bạn thấy dự báo sát đến đâu. |
+| `fch.loadFailed` | The forecast history could not be loaded. Try again — this is not "no forecasts". | Không tải được lịch sử dự báo. Hãy thử lại — đây không phải là "không có dự báo". |
+| `fch.err.forbidden` | Your role cannot see the forecast history. | Vai trò của bạn không xem được lịch sử dự báo. |
+| `fch.err.FC_INVALID_PERIOD` | Choose a From and a To date; the From date must be on or before the To date. | Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `fch.err.FC_RUN_NOT_FOUND` | That forecast run was not found. | Không tìm thấy lần dự báo này. |
+| `fch.kpi.runs` | Forecasts kept | Dự báo đã lưu |
+| `fch.kpi.runs30` | Last 30 days | 30 ngày qua |
+| `fch.kpi.awaiting` | Days waiting for an actual | Ngày chờ số thực tế |
+| `fch.kpi.evaluated` | Days compared with actual | Ngày đã so với thực tế |
+| `fch.lastRun` | Last forecast: {d} | Dự báo gần nhất: {d} |
+| `fch.never` | never | chưa có |
+| `fch.searchPh` | Run ID, model, version, branch or product | Mã lần dự báo, mô hình, phiên bản, chi nhánh hoặc sản phẩm |
+| `fch.search` | Search | Tìm |
+| `fch.clear` | Clear | Xóa bộ lọc |
+| `fch.typeLabel` | Forecast type | Loại dự báo |
+| `fch.statusLabel` | Status | Trạng thái |
+| `fch.sortLabel` | Sort | Sắp xếp |
+| `fch.rows` | Rows | Số dòng |
+| `fch.loading` | Loading… | Đang tải… |
+| `fch.noMatch` | No forecast matches these filters. | Không có dự báo nào khớp bộ lọc. |
+| `fch.empty` | No forecast has been kept yet. A forecast is kept once a day when the Appointments or Revenue tab is opened at a branch with enough history. | Chưa có dự báo nào được lưu. Mỗi ngày một dự báo được lưu khi mở thẻ Lịch hẹn hoặc Doanh thu ở chi nhánh có đủ dữ liệu. |
+| `fch.col.generated` | Made | Ngày tạo |
+| `fch.col.type` | Type | Loại |
+| `fch.col.model` | Model | Mô hình |
+| `fch.col.days` | Forecast days | Ngày dự báo |
+| `fch.col.status` | Status | Trạng thái |
+| `fch.col.error` | Error (WAPE) | Sai số (WAPE) |
+| `fch.col.coverage` | Inside 80% range | Trong khoảng 80% |
+| `fch.view` | View | Xem |
+| `fch.runTitle` | Forecast vs actual | Dự báo so với thực tế |
+| `fch.runId` | Run {id} | Lần dự báo {id} |
+| `fch.backtest` | Backtest error at the time: {v} | Sai số kiểm thử lúc tạo: {v} |
+| `fch.backtestNone` | Backtest not available for this forecast. | Không có kiểm thử ngược cho dự báo này. |
+| `fch.d.date` | Date | Ngày |
+| `fch.d.forecast` | Forecast | Dự báo |
+| `fch.d.range` | 80% range | Khoảng 80% |
+| `fch.d.actual` | Actual | Thực tế |
+| `fch.d.error` | Error | Sai số |
+| `fch.d.inside` | Inside range | Trong khoảng |
+| `fch.yes` | Yes | Có |
+| `fch.no` | No | Không |
+| `fch.state.pending` | Not yet | Chưa tới |
+| `fch.state.awaiting` | Waiting for actual | Chờ số thực tế |
+| `fch.state.evaluated` | Compared | Đã so sánh |
+| `fch.runNote` | A day shows its actual after it has passed and the accuracy panel has been opened. Nothing here changes a forecast. | Một ngày có số thực tế sau khi đã qua và bảng độ chính xác được mở. Trang này không thay đổi dự báo nào. |
+| `fch.health.running` | Checking… | Đang kiểm tra… |
+| `fch.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `fch.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `fch.health.readOnly` | Read-only: it never makes a forecast, books, prices or orders anything. | Chỉ đọc: không tạo dự báo, không đặt lịch, không đổi giá hay đặt hàng. |
+| `fch.health.part` | Part: {c} | Bộ phận: {c} |
+| `fch.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `fch.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `fch.health.checkedAt` | Checked {at} | Kiểm tra lúc {at} |
+| `fch.type.all` | All types | Mọi loại |
+| `fch.type.appointments` | Appointments | Lịch hẹn |
+| `fch.type.revenue` | Revenue | Doanh thu |
+| `fch.type.product_demand` | Product demand | Nhu cầu sản phẩm |
+| `fch.status.all` | All statuses | Mọi trạng thái |
+| `fch.status.pending` | Not yet due | Chưa tới ngày |
+| `fch.status.awaiting` | Waiting for actuals | Chờ số thực tế |
+| `fch.status.partial` | Partly compared | So sánh một phần |
+| `fch.status.evaluated` | Fully compared | Đã so sánh đủ |
+| `fch.sort.newest` | Newest first | Mới nhất trước |
+| `fch.sort.oldest` | Oldest first | Cũ nhất trước |
+| `fch.preset.all` | All time | Mọi thời gian |
+| `fch.preset.today` | Today | Hôm nay |
+| `fch.preset.yesterday` | Yesterday | Hôm qua |
+| `fch.preset.week` | This week | Tuần này |
+| `fch.preset.last_7` | Last 7 days | 7 ngày qua |
+| `fch.preset.month` | This month | Tháng này |
+| `fch.preset.last_30` | Last 30 days | 30 ngày qua |
+| `fch.preset.last_month` | Last month | Tháng trước |
+| `fch.preset.year` | This year | Năm nay |
+| `fch.preset.custom` | Custom range | Tùy chọn |
+| `fch.health.PASSED` | Passed | Đạt |
+| `fch.health.WARNING` | Warning | Cảnh báo |
+| `fch.health.FAILED` | Failed | Lỗi |
+| `fch.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `fch.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `fch.comp.booking_calendar` | Booking calendar | Lịch đặt hẹn |
+| `fch.comp.sales_report` | Sales report | Báo cáo bán hàng |
+| `fch.comp.data_quality` | Appointment data quality | Chất lượng dữ liệu lịch hẹn |
+| `fch.comp.no_show_model` | No-show risk | Rủi ro khách không đến |
+| `fch.comp.forecast_record` | Stored forecasts | Dự báo đã lưu |
+| `fch.comp.accuracy_tracking` | Accuracy tracking | Theo dõi độ chính xác |
+| `fch.comp.model` | Forecast model | Mô hình dự báo |
+| `fch.comp.subscription` | AI subscription | Gói AI |
+| `fch.comp.security` | Security | Bảo mật |
+| `fch.health.k.appointment_history` | Appointment history | Lịch sử lịch hẹn |
+| `fch.health.d.appointment_history.PASSED` | There are at least 14 days of booking history, enough to forecast. | Có ít nhất 14 ngày lịch hẹn, đủ để dự báo. |
+| `fch.health.d.appointment_history.WARNING` | Fewer than 14 days of booking history, so no appointment forecast is made yet. Cause: a new salon or a new branch. Fix: keep booking in the POS; it becomes ready by itself. | Chưa đủ 14 ngày lịch hẹn nên chưa có dự báo lịch hẹn. Nguyên nhân: tiệm hoặc chi nhánh mới. Cách xử lý: tiếp tục đặt hẹn trên POS; sẽ tự đủ. |
+| `fch.health.d.appointment_history.INSUFFICIENT_DATA` | No booked appointments yet at this branch. | Chi nhánh này chưa có lịch hẹn nào. |
+| `fch.health.k.booking_connection` | Bookings arriving | Lịch hẹn đang được ghi |
+| `fch.health.d.booking_connection.PASSED` | Appointments were booked in the last 7 days. | Có lịch hẹn được đặt trong 7 ngày qua. |
+| `fch.health.d.booking_connection.WARNING` | No appointment was booked in the last 7 days. Cause: bookings are kept somewhere else, or online booking is off. Fix: book in the POS calendar so forecasts see them. | Không có lịch hẹn nào trong 7 ngày qua. Nguyên nhân: lịch hẹn được ghi ở nơi khác, hoặc đặt hẹn trực tuyến đang tắt. Cách xử lý: đặt hẹn trên lịch POS để dự báo thấy được. |
+| `fch.health.d.booking_connection.INSUFFICIENT_DATA` | No appointments yet. | Chưa có lịch hẹn nào. |
+| `fch.health.k.revenue_history` | Revenue history | Lịch sử doanh thu |
+| `fch.health.d.revenue_history.PASSED` | There are at least 14 days of sales in the sales report (days without a sale count as 0). | Báo cáo bán hàng có ít nhất 14 ngày (ngày không bán được tính là 0). |
+| `fch.health.d.revenue_history.WARNING` | Fewer than 14 days of sales, so no revenue forecast yet. Fix: keep closing hóa đơn in the POS. | Chưa đủ 14 ngày bán hàng nên chưa có dự báo doanh thu. Cách xử lý: tiếp tục đóng hóa đơn trên POS. |
+| `fch.health.d.revenue_history.INSUFFICIENT_DATA` | No sales yet, or your role cannot see revenue (it needs the financial reports permission). | Chưa có doanh thu, hoặc vai trò của bạn không xem được doanh thu (cần quyền báo cáo tài chính). |
+| `fch.health.k.duplicate_appointments` | Duplicate appointments | Lịch hẹn trùng |
+| `fch.health.d.duplicate_appointments.PASSED` | No customer is booked twice with the same Thợ at the same time (last 180 days). | Không có khách nào bị đặt hai lần cùng Thợ cùng giờ (180 ngày qua). |
+| `fch.health.d.duplicate_appointments.WARNING` | Some customers are booked twice with the same Thợ at the same time. Cause: a double tap or a booking entered twice. Effect: those days are counted too high. Fix: cancel the extra appointment. | Có khách bị đặt hai lần cùng Thợ cùng giờ. Nguyên nhân: bấm hai lần hoặc nhập trùng. Ảnh hưởng: ngày đó bị tính cao hơn. Cách xử lý: hủy lịch hẹn thừa. |
+| `fch.health.d.duplicate_appointments.INSUFFICIENT_DATA` | Not enough past appointments to check. | Chưa đủ lịch hẹn đã qua để kiểm tra. |
+| `fch.health.k.invalid_durations` | Appointment times | Thời lượng lịch hẹn |
+| `fch.health.d.invalid_durations.PASSED` | Every appointment has a sensible start, end and length (last 180 days). | Mọi lịch hẹn đều có giờ bắt đầu, kết thúc và thời lượng hợp lý (180 ngày qua). |
+| `fch.health.d.invalid_durations.WARNING` | Some appointments are longer than 12 hours or have an impossible time. Fix: open them in the calendar and correct the time. | Có lịch hẹn dài hơn 12 giờ hoặc giờ không hợp lệ. Cách xử lý: mở trên lịch và sửa giờ. |
+| `fch.health.d.invalid_durations.INSUFFICIENT_DATA` | Not enough past appointments to check. | Chưa đủ lịch hẹn đã qua để kiểm tra. |
+| `fch.health.k.missing_outcomes` | Appointment outcomes | Kết quả lịch hẹn |
+| `fch.health.d.missing_outcomes.PASSED` | Every past appointment is marked completed, no-show or cancelled. | Mọi lịch hẹn đã qua đều được đánh dấu xong, không đến hoặc đã hủy. |
+| `fch.health.d.missing_outcomes.WARNING` | Some past appointments were never marked completed, no-show or cancelled. Effect: the no-show risk learns from fewer outcomes. Fix: close them in the calendar. | Có lịch hẹn đã qua chưa được đánh dấu xong, không đến hoặc đã hủy. Ảnh hưởng: rủi ro không đến học từ ít kết quả hơn. Cách xử lý: cập nhật trên lịch. |
+| `fch.health.d.missing_outcomes.FAILED` | More than 1 in 5 past appointments have no outcome. The no-show risk is unreliable until they are closed. | Hơn 1/5 lịch hẹn đã qua chưa có kết quả. Rủi ro không đến chưa đáng tin cho tới khi cập nhật. |
+| `fch.health.d.missing_outcomes.INSUFFICIENT_DATA` | No past appointments yet. | Chưa có lịch hẹn đã qua. |
+| `fch.health.k.noshow_labels` | No-show history | Lịch sử không đến |
+| `fch.health.d.noshow_labels.PASSED` | Past appointments have outcomes the no-show risk can learn from. | Lịch hẹn đã qua có kết quả để rủi ro không đến học theo. |
+| `fch.health.d.noshow_labels.INSUFFICIENT_DATA` | No completed or no-show appointments yet. | Chưa có lịch hẹn nào hoàn tất hoặc không đến. |
+| `fch.health.k.forecast_storage` | Forecasts being kept | Dự báo đang được lưu |
+| `fch.health.d.forecast_storage.PASSED` | A forecast was kept in the last 7 days. | Có dự báo được lưu trong 7 ngày qua. |
+| `fch.health.d.forecast_storage.WARNING` | No forecast was kept in the last 7 days. Cause: nobody opened the forecasts, or the history is too short. Fix: open the Appointments tab once a day. | Không có dự báo nào được lưu trong 7 ngày qua. Nguyên nhân: chưa ai mở dự báo, hoặc dữ liệu chưa đủ. Cách xử lý: mở thẻ Lịch hẹn mỗi ngày. |
+| `fch.health.d.forecast_storage.INSUFFICIENT_DATA` | No forecast has been kept yet. | Chưa có dự báo nào được lưu. |
+| `fch.health.k.forecast_ranges` | Forecast ranges valid | Khoảng dự báo hợp lệ |
+| `fch.health.d.forecast_ranges.PASSED` | Every kept forecast lies inside its own range, and no range is below zero. | Mọi dự báo đã lưu đều nằm trong khoảng của nó và không có khoảng nào dưới 0. |
+| `fch.health.d.forecast_ranges.FAILED` | A kept forecast lies outside its own range. Report this. | Có dự báo đã lưu nằm ngoài khoảng của nó. Hãy báo lại. |
+| `fch.health.d.forecast_ranges.INSUFFICIENT_DATA` | No forecast has been kept yet. | Chưa có dự báo nào được lưu. |
+| `fch.health.k.evaluation` | Forecasts compared with actuals | Dự báo được so với thực tế |
+| `fch.health.d.evaluation.PASSED` | Every forecast day that passed more than 3 days ago has its actual. | Mọi ngày dự báo đã qua hơn 3 ngày đều có số thực tế. |
+| `fch.health.d.evaluation.WARNING` | Some forecast days passed over 3 days ago but have no actual yet. Fix: open the tab of that forecast — the accuracy panel fills them in. | Có ngày dự báo đã qua hơn 3 ngày nhưng chưa có số thực tế. Cách xử lý: mở thẻ của dự báo đó — bảng độ chính xác sẽ điền vào. |
+| `fch.health.d.evaluation.INSUFFICIENT_DATA` | No forecast day has passed yet. | Chưa có ngày dự báo nào đã qua. |
+| `fch.health.k.interval_coverage` | 80% range holds | Khoảng 80% đúng |
+| `fch.health.d.interval_coverage.PASSED` | The actual fell inside the 80% range on enough days. | Số thực tế nằm trong khoảng 80% ở đủ số ngày. |
+| `fch.health.d.interval_coverage.WARNING` | The actual fell inside the 80% range on fewer than 6 in 10 days, so the range is too narrow. Read forecasts with extra care. | Số thực tế nằm trong khoảng 80% ít hơn 6/10 ngày, nên khoảng đang quá hẹp. Hãy xem dự báo thận trọng hơn. |
+| `fch.health.d.interval_coverage.INSUFFICIENT_DATA` | Fewer than 10 forecast days have an actual — too few to judge. | Chưa tới 10 ngày dự báo có số thực tế — quá ít để đánh giá. |
+| `fch.health.k.backtest` | Backtest | Kiểm thử ngược |
+| `fch.health.d.backtest.PASSED` | The latest forecast of each type was tested against its own past before it was shown. | Dự báo mới nhất của mỗi loại đã được kiểm thử trên dữ liệu cũ trước khi hiển thị. |
+| `fch.health.d.backtest.WARNING` | Backtest not available for the latest forecast. Cause: too little history to hold some back for testing. Its accuracy is unknown until days are compared with actuals. | Không có kiểm thử ngược cho dự báo mới nhất. Nguyên nhân: dữ liệu quá ít để giữ lại kiểm thử. Độ chính xác chưa rõ cho tới khi so với thực tế. |
+| `fch.health.d.backtest.INSUFFICIENT_DATA` | No forecast has been kept yet. | Chưa có dự báo nào được lưu. |
+| `fch.health.k.entitlement` | AI subscription | Gói AI |
+| `fch.health.d.entitlement.PASSED` | No forecast request was refused by the subscription check in the last 7 days. | Không có yêu cầu dự báo nào bị gói AI từ chối trong 7 ngày qua. |
+| `fch.health.d.entitlement.WARNING` | Some requests in the last 7 days would be refused if the subscription were enforced. Check the AI Analytics plan in Plans & Usage. | Một số yêu cầu trong 7 ngày qua sẽ bị từ chối nếu áp dụng gói. Hãy kiểm tra gói Phân tích AI trong Gói & Mức sử dụng. |
+| `fch.health.d.entitlement.FAILED` | Forecast requests were refused by the subscription check. Renew the AI Analytics plan in Plans & Usage. | Yêu cầu dự báo bị gói AI từ chối. Hãy gia hạn gói Phân tích AI trong Gói & Mức sử dụng. |
+| `fch.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `fch.health.d.tenant_isolation.PASSED` | Every kept forecast belongs to one of this salon's branches. | Mọi dự báo đã lưu đều thuộc chi nhánh của tiệm này. |
+| `fch.health.d.tenant_isolation.FAILED` | A kept forecast points at another salon's branch. Report this immediately. | Có dự báo đã lưu trỏ tới chi nhánh của tiệm khác. Hãy báo ngay. |
+| `fch.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `fch.health.d.no_side_effects.PASSED` | Forecasts are advice only; this page and this check never book, price or order anything. | Dự báo chỉ để tham khảo; trang này và việc kiểm tra không đặt lịch, đổi giá hay đặt hàng. |

@@ -726,9 +726,10 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
 - **Done: AI Usage Limits** (guide 14): the page was already rebuilt (Oct 30 guide); added Check AI Usage & Subscriptions
   (migration 771) — names stale trial rows, AI calls after a trial ended / after cancelling, the cost basis. Fixed the raw
   "forbidden" 403 text and two screen tests that failed on the untouched tree (no router). Doc: `docs/ai/AI_USAGE_HEALTH.md`.
-- **Done: AI Analytics & Forecasting** (guide 15, partial): the appointment series came from the sales report (paid-ticket days,
+- **Done: AI Analytics & Forecasting** (guide 15): the appointment series came from the sales report (paid-ticket days,
   quiet days missing, UTC) — now from the booking calendar, salon-day zero-filled to yesterday; revenue zero-filled; readiness
-  endpoint + panel. Not built: forecast-history search/pages and a forecasting health checker. Doc: `docs/ai/AI_FORECASTING.md`.
+  endpoint + panel. Nov 2: forecast history (`/pos/ai-analytics/center/*`: search, type / status, presets + From/To calendars,
+  pages, forecast vs actual) and Check AI Analytics & Forecasting System (migration 776). Doc: `docs/ai/AI_FORECASTING.md`.
 - **Done: AI Scheduling Optimizer** (guide 16 — docs/ai/SCHEDULING_OPTIMIZER.md). 
 - **Done: Checkout Upsell Settings** (guide 17 — docs/ai/CHECKOUT_UPSELL_SETTINGS.md). 
 - **Done: Voice Transcription Settings** (guide 18 — docs/ai/VOICE_TRANSCRIPTION_SETTINGS.md). 
@@ -750,7 +751,13 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
      Move it to the honest usage-screen state like the POS pages?
   9. AI prices: build a Super Admin per-assistant price editor (prices are in code today; plan override/discount exists)?
   10. Paid self-serve AI purchases need a recurring-billing integration — which provider (Stripe / Fiserv)?
-  11. Forecasting: build the forecast-history list (search / calendars / pages) and a forecasting health checker next?
+  11. Forecasting: a passed forecast day gets its actual only when someone opens that forecast's tab. Add a nightly job to fill
+      them? Also: a salon-wide login (no branch picked) never has its forecast kept (forecast_points needs a branch) — keep
+      forecasts per branch only (today), or add salon-wide runs?
+  12. Turn on the voice retention deletion job in production (it is off by default)?
+  13. Allow settings saves (upsell on/off, voice retention, raw text) when the AI subscription has lapsed?
+  14. Connect the five dormant upsell categories (retail, loyalty enrollment, loyalty redemption, gift cards, rebooking) to real data?
+  15. Add a retry queue for call-recording deletions the provider did not confirm?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

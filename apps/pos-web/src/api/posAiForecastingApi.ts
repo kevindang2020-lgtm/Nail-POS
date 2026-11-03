@@ -9,4 +9,11 @@ export const posAiForecastingApi = {
   accuracy: (domain: 'appointments' | 'revenue') => api.get<any>(`/pos/ai-analytics/accuracy`, { domain }),
   /** how much verified history each forecast has, the minimum and what is short (AI Analytics & Forecasting guide, Nov 2026) */
   readiness: () => api.get<any>(`/pos/ai-analytics/forecast/readiness`),
+  /** forecast history, forecast vs actual, Check AI Analytics & Forecasting System (AI Analytics & Forecasting guide, Nov 2 2026) */
+  center: {
+    summary: () => api.get<any>(`/pos/ai-analytics/center/summary`),
+    runs: (q: Record<string, string | number | undefined> = {}) => api.get<any>(`/pos/ai-analytics/center/runs`, Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>),
+    run: (runId: string) => api.get<any>(`/pos/ai-analytics/center/run`, { runId }),
+    check: () => api.post<any>(`/pos/ai-analytics/center/check`, {}),
+  },
 };

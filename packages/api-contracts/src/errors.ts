@@ -734,6 +734,9 @@ export const ERROR_REGISTRY = {
   // Voice Transcription Settings guide (Nov 2 2026)
   VT_SETTINGS_VERSION_CONFLICT: { status: 409, message: 'These settings were changed by someone else. Reload and try again.', domain: 'ai', retryable: false, severity: 'info', action: 'REFRESH' },
   VT_CONFIRM_REQUIRED: { status: 409, message: 'This change needs confirmation.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Analytics & Forecasting guide (Nov 2 2026): forecast history
+  FC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  FC_RUN_NOT_FOUND: { status: 404, message: 'That forecast run was not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

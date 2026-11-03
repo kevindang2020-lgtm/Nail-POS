@@ -303,6 +303,9 @@ GET /pos/account/overview  realm=staff  auth=session  domain=identity  perm=self
 GET /pos/ai-analytics/accuracy  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/anomalies  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/busy-periods  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-analytics/center/run  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-analytics/center/runs  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-analytics/center/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/appointments  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/product/{productId}  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/readiness  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2387,6 +2390,7 @@ POST /pos/access/members/{userId}/overrides  realm=staff  auth=session  domain=i
 POST /pos/access/overrides/{id}/revoke  realm=staff  auth=session  domain=identity  perm=permissions.override  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/access/ownership/transfer  realm=staff  auth=session  domain=identity  perm=ownership.transfer  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/access/preview  realm=staff  auth=session  domain=identity  perm=roles.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-analytics/center/check  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts/{id}/evaluate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/ask  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
