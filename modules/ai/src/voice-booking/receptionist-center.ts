@@ -93,7 +93,7 @@ export class ReceptionistCenter {
     private readonly env: NodeJS.ProcessEnv = process.env) {}
 
   private branch(ctx: RcCtx): string | null { return isUuid(ctx.branchId) ? ctx.branchId : null; }
-  private async zone(ctx: RcCtx) { return branchTimeZone(this.db, ctx.tenantId, this.branch(ctx)).catch(() => 'America/New_York'); }
+  private async zone(ctx: RcCtx) { return branchTimeZone(this.db, ctx.tenantId, this.branch(ctx)); }   // Nov 3 audit: no silent America/New_York — a failed read fails the request
   private check(id: string, group: string, label: string, state: RcState, detail: string, evidence: string, remedy: string | null = null, impact: string | null = null, roleRequired: string | null = null): RcCheck {
     return { id, group, label, state, detail, evidence, impact, remedy, roleRequired, checkedAt: nowIso(), traceId: trace() };
   }
@@ -206,7 +206,9 @@ export class ReceptionistCenter {
     } catch (e) { out.push(this.unknown('biz.setup', 'Business Setup', 'Hours, services, technicians', e)); }
 
     // 6 Booking — handoff-only until the platform switch AND this salon armed it
-    const ctl = await this.control(ctx);
+    let ctl: Awaited<ReturnType<ReceptionistCenter['control']>> | null = null;
+    try { ctl = await this.control(ctx); }
+    catch (e) { out.push(this.unknown('bk.control', 'Booking', 'Booking controls', e)); }   // one failed read no longer throws away the whole check
     const master = voiceWriteToolsEnabled(this.env);
     if (!master) out.push(this.check('bk.actions', 'Booking', 'Booking actions', 'DISABLED', 'Handoff-only: the platform switch VOICE_WRITE_TOOLS_ENABLED is off, so the AI can answer and hand off but cannot hold or book.', 'VOICE_WRITE_TOOLS_ENABLED off', 'The platform owner turns the switch on after the booking tools are approved.', null, 'Platform owner'));
     else if (!ctl?.booking_armed) out.push(this.check('bk.actions', 'Booking', 'Booking actions', 'DISABLED', 'Handoff-only: this salon has not armed booking actions.', 'ai_receptionist_control.booking_armed = false', 'An owner or manager arms booking actions here once every gate passes.', null, 'Owner or manager'));
@@ -342,7 +344,7 @@ export class ReceptionistCenter {
       handoffs: { requested: N(r.handoff_requested), completed: N(r.handoff_completed), failed: N(r.handoff_failed), ratePct: calls ? Math.round((1000 * N(r.handoff_requested)) / calls) / 10 : null },
       abandoned: { count: N(r.abandoned), ratePct: calls ? Math.round((1000 * N(r.abandoned)) / calls) / 10 : null, rule: 'Counted only when the voice provider reports the caller hung up before the agent finished (abandoned = true). Never inferred from a missing booking.' },
       avgDurationSeconds: N(r.dur_n) ? Math.round(Number(r.avg_dur)) : null,
-      voiceMinutes: calls ? Math.round(N(r.minutes_s) / 6) / 10 : 0,
+      voiceMinutes: calls ? Math.round(N(r.minutes_s) / 6) / 10 : null,   // no calls → N/A, not 0
       definitions: { calls: 'Calls the voice provider recorded for this salon in the window (by call start, salon time).', booked: 'Bookings the AI completed (booking outcome "booked"); requests and code-pending bookings are counted separately.', handoffs: 'Requested = the AI asked for a person; Completed = the transfer connected; Failed = the transfer did not connect.', avgDuration: 'Mean of ended calls with a recorded duration; — when there are none.' },
     };
   }
@@ -422,9 +424,9 @@ export class ReceptionistCenter {
     }
     // AI activity: control changes, health runs and worklist actions (tool executions live on each call's record)
     const rows: Row[] = (await sql<Row>`select x.id, x.kind, x.detail, x.created_at from (
-        select id::text id, 'control' kind, action detail, created_at from ai_receptionist_control_events where tenant_id = ${T} and (id::text = ${q} or action ilike ${like(q)} or coalesce(reason, '') ilike ${like(q)})
-        union all select id::text, 'health_check', overall, created_at from ai_receptionist_health_runs where tenant_id = ${T} and (id::text = ${q} or overall ilike ${like(q)})
-        union all select id::text, 'action', kind || ':' || status, created_at from ai_receptionist_actions where tenant_id = ${T} and (id::text = ${q} or status ilike ${like(q)} or source_ref ilike ${like(q)})
+        select id::text id, 'control' kind, action detail, created_at from ai_receptionist_control_events where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b} or branch_id is null) and (id::text = ${q} or action ilike ${like(q)} or coalesce(reason, '') ilike ${like(q)})
+        union all select id::text, 'health_check', overall, created_at from ai_receptionist_health_runs where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and (id::text = ${q} or overall ilike ${like(q)})
+        union all select id::text, 'action', kind || ':' || status, created_at from ai_receptionist_actions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and (id::text = ${q} or status ilike ${like(q)} or source_ref ilike ${like(q)})
       ) x order by created_at desc, id desc limit ${size + 1} offset ${(page - 1) * size}`.execute(this.db)).rows;
     const more = rows.length > size;
     return { scope, items: rows.slice(0, size).map((r) => ({ id: r.id, kind: r.kind, detail: r.detail, at: iso(r.created_at) })),
@@ -449,7 +451,7 @@ export class ReceptionistCenter {
       if (customer?.normalized_phone) shared = N((await sql<Row>`select count(*)::int n from customers where tenant_id = ${T} and normalized_phone = ${customer.normalized_phone} and id <> ${customerId}`.execute(this.db)).rows[0]?.n);
     }
     const appts: Row[] = customerId ? (await sql<Row>`select id, appt_date::text appt_date, start_time::text start_time, status, phone_verification, source, created_at from pos_tech_appointments
-      where tenant_id = ${T} and customer_id = ${customerId} and source = 'ai' order by created_at desc limit 10`.execute(this.db)).rows : [];
+      where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and customer_id = ${customerId} and source = 'ai' order by created_at desc limit 10`.execute(this.db)).rows : [];
     const handoffs: Row[] = (await sql<Row>`select id, status, reason, requested_at, connected_at, failure_reason, transferred_to from ai_receptionist_handoffs
       where tenant_id = ${T} and (ai_session_id::text = ${pc} or call_code = ${pc}) order by requested_at desc`.execute(this.db)).rows;
     const actions: Row[] = (await sql<Row>`select id, kind, status, prepared_by, decided_by, decided_at, result_ref, failure_reason, created_at from ai_receptionist_actions
@@ -494,7 +496,7 @@ export class ReceptionistCenter {
         and not exists (select 1 from ai_receptionist_follow_ups fu where fu.tenant_id = o.tenant_id and fu.provider_call_id = o.provider_call_id)
       union all
       select 'handoff', h.id::text, case when h.failure_reason is not null or h.status = 'failed' then 'failed_transfer' else 'person_requested' end,
-        case when h.failure_reason is not null or h.status = 'failed' then 1 else 1 end, h.requested_at, null, coalesce(h.reason, '')
+        1, h.requested_at, null, coalesce(h.reason, '')   -- a failed transfer and a person-requested callback are both most urgent
       from ai_receptionist_handoffs h where h.tenant_id = ${T} and (${b}::uuid is null or h.branch_id = ${b}) and h.connected_at is null
         and coalesce(h.status, '') not in ('completed', 'cancelled', 'resolved') and h.requested_at > now() - interval '14 days'
       union all
@@ -644,9 +646,10 @@ export class ReceptionistCenter {
   /** protected-setting change history (append-only), newest first */
   async controlHistory(ctx: RcCtx, f: { page?: unknown; pageSize?: unknown }) {
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
-    const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_control_events where tenant_id = ${ctx.tenantId}`.execute(this.db)).rows[0]?.n);
+    const B = this.branch(ctx);   // control rows are per branch: a branch sees its own changes and the salon-wide ones (Nov 3 audit)
+    const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_control_events where tenant_id = ${ctx.tenantId} and (${B}::uuid is null or branch_id = ${B} or branch_id is null)`.execute(this.db)).rows[0]?.n);
     const rows: Row[] = (await sql<Row>`select id, action, before_state, after_state, reason, actor_user_id, created_at from ai_receptionist_control_events where tenant_id = ${ctx.tenantId}
-      order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+      and (${B}::uuid is null or branch_id = ${B} or branch_id is null) order by created_at desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     return { items: rows.map((r) => ({ id: r.id, action: r.action, before: r.before_state, after: r.after_state, reason: r.reason, actorUserId: r.actor_user_id, at: iso(r.created_at) })),
       pagination: { page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) } };
   }

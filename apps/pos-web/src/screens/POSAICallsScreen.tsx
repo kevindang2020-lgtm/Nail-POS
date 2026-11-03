@@ -11,7 +11,7 @@
 //     Handoff & Follow-Ups · Audit / Errors — opening a call is audited; transcripts only for managers; recordings are
 //     never linked; "booked" from the AI is shown apart from bookings Booking actually holds
 //   • the missed-call / unresolved assistant (urgent + oldest first, suggestions only) and Reconciliation
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiCallsCenterApi, type AicCallsQuery } from '../api/posAiCallsCenterApi';
@@ -76,7 +76,9 @@ export function POSAICallsScreen() {
   useEffect(() => { loadKpi(); }, [loadKpi]);
   useEffect(() => { loadAsst(); }, [loadAsst]);
   useEffect(() => { void loadList(); }, [loadList]);
-  useEffect(() => { setF((x) => (x.page === 1 ? x : { ...x, page: 1 })); }, [dq, scope]);
+  // a NEW search / scope goes back to page 1 — but not on mount, or the page restored from the URL is lost (Nov 3 audit)
+  const firstSearch = useRef(true);
+  useEffect(() => { if (firstSearch.current) { firstSearch.current = false; return; } setF((x) => (x.page === 1 ? x : { ...x, page: 1 })); }, [dq, scope]);
   // non-private filter state in the URL (the search text never goes there)
   useEffect(() => {
     const next = new URLSearchParams();

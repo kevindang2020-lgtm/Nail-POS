@@ -14,12 +14,12 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A7 | AI Booking Assistant | /tenant/ai/booking | PARTIAL — invented-slots panel removed (220ee29); past usage kept and labelled after cancel; Usage & history on every AI add-on page. The operations center (requests / holds / verification KPIs, activity overlay, 12-group health check) is NOT built: there is no ai-booking backend module yet |
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | BUILT (fixes) — links, reschedule proposal, waitlist claim, midnight windows, sender check, branch scope, Yesterday, menu gating, error texts; name pickers / URL filters / health 'responsible role' still open |
 | A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | BUILT (core) — versions + history + restore, stale save refused (409), effective source shown, salon fallback, no silent default overwrite, coded errors; NOT built: the live agent reading these settings (shown honestly on the page), consent-script approval, health checker |
-| A10 | AI Calls | /tenant/ai/receptionist/calls | AUDITED |
+| A10 | AI Calls | /tenant/ai/receptionist/calls | BUILT (fixes) — health never green when the receptionist checks fail, pending-code count branch-scoped and 'unknown' on error, per-branch runs, page kept from the URL, ?call= opens a call; NOT built: caller / dialed-number columns, Twilio SID search, extra date bases, call_links table, SSE |
 | A11 | AI Calendar | /tenant/ai/receptionist/calendar | AUDITED |
 | A12 | Business Setup | /tenant/ai/receptionist/business-setup | AUDITED |
 | A13 | AI Follow-Ups | /tenant/ai/receptionist/follow-ups | AUDITED |
 | A14 | AI Front Desk | /tenant/ai/receptionist/front-desk | AUDITED |
-| A15 | AI Receptionist | /tenant/ai/receptionist | AUDITED |
+| A15 | AI Receptionist | /tenant/ai/receptionist | BUILT (fixes) — one failed read no longer breaks the check, activity search / overlay appointments / control history branch-scoped, no silent New York time zone, voice minutes N/A without calls; NOT built: missed / in-progress statuses, agent / service / duration filters, URL filters, live updates |
 | A16 | Reception Copilot (v2) | /tenant/ai/copilot | Same screen as A8 (fixes shared); tabbed workspace and Calls/SMS search scope NOT built |
 | A17 | Reviews & Reputation | /tenant/marketing/reviews | AUDITED |
 | A18 | Referral Program | /tenant/marketing/referrals | AUDITED |

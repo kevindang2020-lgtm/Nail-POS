@@ -116,7 +116,7 @@ export function POSAIReceptionistScreen() {
         </div>
         {kpiErr ? <ErrorRetry message={kpiErr} onRetry={loadKpi} /> : (
           <div className="rcp-kpi-row">
-            <Metric id="calls" label={t('rcpt.kpi.calls')} value={kpi ? String(kpi.calls) : '…'} sub={kpi ? t('rcpt.kpi.minutes', { n: kpi.voiceMinutes }) : undefined} />
+            <Metric id="calls" label={t('rcpt.kpi.calls')} value={kpi ? String(kpi.calls) : '…'} sub={kpi && kpi.voiceMinutes != null ? t('rcpt.kpi.minutes', { n: kpi.voiceMinutes }) : undefined} />
             <Metric id="booked" label={t('rcpt.kpi.booked')} value={kpi ? pct(kpi.booked.ratePct) : '…'} sub={kpi ? t('rcpt.kpi.bookedSub', { c: kpi.booked.confirmed, r: kpi.booked.requested, p: kpi.booked.pendingVerification ?? '—' }) : undefined} />
             <Metric id="handoffs" label={t('rcpt.kpi.handoffs')} value={kpi ? pct(kpi.handoffs.ratePct) : '…'} sub={kpi ? t('rcpt.kpi.handoffsSub', { r: kpi.handoffs.requested, c: kpi.handoffs.completed, f: kpi.handoffs.failed }) : undefined} />
             <Metric id="abandoned" label={t('rcpt.kpi.abandoned')} value={kpi ? pct(kpi.abandoned.ratePct) : '…'} sub={kpi ? t('rcpt.kpi.abandonedSub', { n: kpi.abandoned.count }) : undefined} />

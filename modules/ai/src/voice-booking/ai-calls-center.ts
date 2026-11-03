@@ -59,7 +59,7 @@ export class AiCallsCenter {
         max(coalesce(o.last_synced_at, o.updated_at)) last_sync
       from voice_call_outcomes o where o.tenant_id = ${T} and (${b}::uuid is null or o.branch_id = ${b}) and ${inWin(sql`coalesce(o.started_at, o.created_at)`)}`.execute(this.db)).rows[0];
     // a booking is "verified" only when Booking holds an AI appointment the call's tool ledger points at, still active
-    const linksExist = !!(await sql<Row>`select 1 from voice_tool_executions where tenant_id = ${T} and related_type = 'appointment' limit 1`.execute(this.db).catch(() => ({ rows: [] }))).rows[0];
+    const linksExist = !!(await sql<Row>`select 1 from voice_tool_executions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and related_type = 'appointment' limit 1`.execute(this.db).catch(() => ({ rows: [] }))).rows[0];
     const v: Row = !linksExist ? { n: null } : (await sql<Row>`select count(distinct a.id)::int n from voice_tool_executions x
         join pos_tech_appointments a on a.tenant_id = x.tenant_id and a.id::text = x.related_id
       where x.tenant_id = ${T} and (${b}::uuid is null or x.branch_id = ${b}) and x.related_type = 'appointment' and x.status = 'succeeded'
@@ -183,7 +183,10 @@ export class AiCallsCenter {
   // ── Check AI Calls System (guide §17 / §18A) — read-only, recorded ─────────────────────────────────────────────────────
   async checks(ctx: RcCtx): Promise<RcCheck[]> {
     const T = ctx.tenantId; const b = this.branch(ctx);
-    const base = await this.rc.checks(ctx).catch(() => [] as RcCheck[]);
+    // Nov 3 audit: if the receptionist checks fail, say so — dropping them let the overall result read READY
+    let base: RcCheck[];
+    try { base = await this.rc.checks(ctx); }
+    catch (e) { base = [this.check('receptionist', 'Voice readiness', 'Receptionist readiness', 'UNKNOWN', 'The receptionist readiness checks could not run. Nothing was assumed.', `checks failed (${(e as { code?: string })?.code ?? 'QUERY_FAILED'})`)]; }
     const out: RcCheck[] = base.map((c) => ({ ...c, group: c.group === 'Entitlements' ? 'Entitlement / permission' : 'Voice readiness' }));
     const key = !!String(this.env.RETELL_WEBHOOK_SIGNING_KEY ?? '').trim();
     try {
@@ -212,8 +215,9 @@ export class AiCallsCenter {
     try {
       const t: Row = (await sql<Row>`select count(*) filter (where status = 'failed')::int failed, count(*) filter (where status = 'refused')::int refused, count(*) filter (where status = 'requested' and requested_at < now() - interval '5 minutes')::int hanging, count(*)::int n
         from voice_tool_executions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and requested_at > now() - interval '7 days'`.execute(this.db)).rows[0];
-      const pend = N((await sql<Row>`select count(*)::int n from booking_verification_sessions where tenant_id = ${T} and channel = 'ai_receptionist' and status in ('pending', 'sent') and expires_at > now()`.execute(this.db)
-        .catch(() => ({ rows: [{ n: 0 }] }))).rows[0]?.n);
+      const pendRow = (await sql<Row>`select count(*)::int n from booking_verification_sessions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and channel = 'ai_receptionist' and status in ('pending', 'sent') and expires_at > now()`.execute(this.db)
+        .catch(() => ({ rows: [] as Row[] }))).rows[0];
+      const pend = pendRow ? String(N(pendRow.n)) : 'unknown';   // an unreadable count is "unknown", never 0
       out.push(this.check('actions', 'Actions', 'AI tool results', N(t.failed) || N(t.hanging) ? 'WARNING' : N(t.n) ? 'READY' : 'UNKNOWN',
         N(t.n) ? `${N(t.n)} tool request(s) in 7 days: ${N(t.failed)} failed, ${N(t.refused)} refused by policy, ${N(t.hanging)} never finished.` : 'No tool requests recorded in 7 days — tool behaviour cannot be judged yet.',
         `voice_tool_executions 7d; ${pend} AI booking(s) waiting for the six-digit code (never counted as confirmed)`, N(t.failed) ? 'Open a call with a failed tool and read its error category.' : null));
