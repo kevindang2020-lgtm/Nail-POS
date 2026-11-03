@@ -64,6 +64,6 @@ describe('POSPromotionsScreen', () => {
   it('shows a permission message on 403', async () => {
     disc.kpis.mockRejectedValue({ status: 403 });
     renderScreen();
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();
   });
 });

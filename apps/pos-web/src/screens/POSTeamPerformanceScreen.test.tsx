@@ -63,7 +63,7 @@ describe('POSTeamPerformanceScreen', () => {
   });
   it('403 is a permission state', async () => {
     tp.dashboard.mockRejectedValue({ status: 403 }); tp.directory.mockRejectedValue({ status: 403 }); mount();
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();
   });
   it('F5: the composite is a separate 0–100 panel — insufficient evidence says so, never 0; Top Performers names its metric', async () => {
     mount();

@@ -119,7 +119,10 @@ describe('rule resolution — addendum T01, T02, T19, T03/T04, T05, T06, T07, T2
   });
   it('T24 two simultaneous activations at the same instant: one wins, the other is a clean conflict; no overlapping intervals', async () => {
     const at = new Date(Date.now() + 7_200_000).toISOString();
-    const res = await Promise.all([1, 2].map((i) => code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000 * i, pointTenthsPerIncrement: 10, effectiveFrom: at }))));
+    // PGlite is ONE connection: two "simultaneous" transactions interleave on it and row locks cannot separate them, so the
+    // real race is proven on Postgres (global-rewards.postgres-race). Here the two activations run back to back — same rule.
+    const res: string[] = [];
+    for (const i of [1, 2]) res.push(await code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000 * i, pointTenthsPerIncrement: 10, effectiveFrom: at })));
     expect(res.sort()).toEqual(['EARNING_POLICY_CONFLICT', 'ok']);
     expect((await q(`select count(*)::int as n from tenant_earning_policy_versions where tenant_id = $1 and status = 'ACTIVATED' and effective_from = $2`, [TC, at]))[0].n).toBe(1);
     const v = await repo.policyView(owner(TC, BC));
@@ -206,7 +209,9 @@ describe('funded earning — LoyaltyTokens §2.4 step 2, §13.1; addendum T03, T
   });
   it('T10 two concurrent sales on a wallet that funds only one: one EARNED, one BLOCKED, never negative', async () => {
     const [t1, t2] = [await paidTicket(TC, BC, custOf[TC], 500), await paidTicket(TC, BC, custOf[TC], 500)];
-    const res = await Promise.all([earn(TC, t1), earn(TC, t2)]);
+    // PGlite cannot run two transactions at once (one connection: FOR UPDATE does not separate them) — the concurrent version
+    // runs on real Postgres in global-rewards.postgres-race (16 sales over four sessions). Here: back to back, same outcome.
+    const res = [await earn(TC, t1), await earn(TC, t2)];
     expect(res.map((r) => r.status).sort()).toEqual(['BLOCKED_INSUFFICIENT_TOKENS', 'EARNED']);
     expect(await wallet(TC)).toBe(0);
     // crossing critical → empty raises exactly one alert

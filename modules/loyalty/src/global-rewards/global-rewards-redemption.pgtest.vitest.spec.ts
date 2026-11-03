@@ -131,7 +131,10 @@ describe('guide §04 example: 100 points, Salon B holds 50, ticket paid, no payo
 describe('concurrency, release, expiry (guide §04 failure cases, §16)', () => {
   it('Salon B and Salon C race for the same 50 points: exactly one hold succeeds, available never negative', async () => {
     const tb = await openTicket(TB, BB, custOf[TB], 5000), tc = await openTicket(TC, BC, custOf[TC], 5000);
-    const res = await Promise.allSettled([applyReward(TB, BB, tb, custOf[TB], 5, 5000, 'race-b'), applyReward(TC, BC, tc, custOf[TC], 5, 5000, 'race-c')]);
+    // PGlite is one connection, so true concurrency is proven on real Postgres (global-rewards.postgres-race "double spend");
+    // here Salon B holds first and Salon C second — the second must be refused the same way.
+    const settle = (p: Promise<any>): Promise<PromiseSettledResult<any>> => p.then((value) => ({ status: 'fulfilled' as const, value }), (reason) => ({ status: 'rejected' as const, reason }));
+    const res = [await settle(applyReward(TB, BB, tb, custOf[TB], 5, 5000, 'race-b')), await settle(applyReward(TC, BC, tc, custOf[TC], 5, 5000, 'race-c'))];
     const ok = res.filter((r) => r.status === 'fulfilled');
     expect(ok.length).toBe(1);
     const failed = res.find((r) => r.status === 'rejected') as PromiseRejectedResult;

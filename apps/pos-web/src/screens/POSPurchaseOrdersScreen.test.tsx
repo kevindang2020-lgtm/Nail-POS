@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { MemoryRouter } from 'react-router-dom';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const { listMock, getMock, createMock, approveMock, receiveMock, cancelMock, vendorsMock, productsMock } = vi.hoisted(() => ({ listMock: vi.fn(), getMock: vi.fn(), createMock: vi.fn(), approveMock: vi.fn(), receiveMock: vi.fn(), cancelMock: vi.fn(), vendorsMock: vi.fn(), productsMock: vi.fn() }));
 vi.mock('../api/posPurchaseOrdersApi', () => ({ posPurchaseOrdersApi: { list: listMock, get: getMock, create: createMock, approve: approveMock, receive: receiveMock, cancel: cancelMock, vendors: vendorsMock, products: productsMock } }));
@@ -10,7 +11,7 @@ const po = (o: any = {}) => ({ id: 'po1', po_number: 'PO-ABC', status: 'draft', 
 describe('POSPurchaseOrdersScreen', () => {
   it('renders KPIs + PO rows with status', async () => {
     listMock.mockResolvedValue({ purchaseOrders: [po(), po({ id: 'po2', po_number: 'PO-XYZ', status: 'received', qty_received: 10 })] });
-    render(<POSPurchaseOrdersScreen />);
+    render(<MemoryRouter><POSPurchaseOrdersScreen /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'Purchase Orders' })).toBeInTheDocument();
     expect(screen.getByText('PO-ABC')).toBeInTheDocument();
     expect(screen.getAllByText('Draft').length).toBeGreaterThan(0);
@@ -20,7 +21,7 @@ describe('POSPurchaseOrdersScreen', () => {
   it('approves a draft PO', async () => {
     listMock.mockResolvedValue({ purchaseOrders: [po()] });
     approveMock.mockResolvedValue({});
-    render(<POSPurchaseOrdersScreen />);
+    render(<MemoryRouter><POSPurchaseOrdersScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Approve' }));
     await waitFor(() => expect(approveMock).toHaveBeenCalledWith('po1'));
   });
@@ -28,13 +29,13 @@ describe('POSPurchaseOrdersScreen', () => {
     listMock.mockResolvedValue({ purchaseOrders: [po({ status: 'approved' })] });
     getMock.mockResolvedValue({ lines: [{ id: 'l1', product_id: 'p1', product_name: 'Gel Polish', color_number: '204', quantity_ordered: 10, quantity_received: 3, unit_cost_cents: 1200 }] });
     receiveMock.mockResolvedValue({});
-    render(<POSPurchaseOrdersScreen />);
+    render(<MemoryRouter><POSPurchaseOrdersScreen /></MemoryRouter>);
     fireEvent.click(await screen.findByRole('button', { name: 'Receive' }));
     await waitFor(() => expect(receiveMock).toHaveBeenCalledWith('po1', [{ lineId: 'l1', quantity: 7 }]));
   });
   it('validates that a new PO needs a line', async () => {
     listMock.mockResolvedValue({ purchaseOrders: [] });
-    render(<POSPurchaseOrdersScreen />);
+    render(<MemoryRouter><POSPurchaseOrdersScreen /></MemoryRouter>);
     await screen.findByRole('heading', { name: 'Purchase Orders' });
     fireEvent.click(screen.getByRole('button', { name: '+ New PO' }));
     fireEvent.click(screen.getByRole('button', { name: 'Create PO' }));
