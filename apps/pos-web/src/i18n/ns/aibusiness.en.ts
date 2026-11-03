@@ -313,4 +313,13 @@ export const AIBUSINESS_EN: Record<string, string> = {
   "bcx.d.cancelled": "Cancelled",
   "bcx.d.noShow": "No-shows",
   "bcx.d.note": "N/A means there was nothing to divide by in this period (no bookings or no paid tickets) — it is not zero.",
+  "aib.tickets": "Paid tickets",
+  "aib.completed": "Completed appointments",
+  "aib.snapshotUnavailable": "This period's numbers could not be read.",
+  "aib.retry": "Try again",
+  "aib.copy": "Copy answer",
+  "aib.copied": "Copied",
+  "aib.rerun": "Run again for {p}",
+  "aib.savedSearch": "Search saved questions",
+  "aib.sessionLog": "This session's questions ({n}) — not saved",
 };

@@ -13,6 +13,8 @@ export const posAiBusinessApi = {
   compareBranches: (q: { preset?: string; from?: string; to?: string; q?: string; includeInactive?: string; page?: number; pageSize?: number } = {}) =>
     api.get(`/pos/ai-business/branches/compare`, Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>),
   metrics: () => api.get(`/pos/ai-business/metrics`),
+  revenueSummary: (preset: string) => api.get(`/pos/ai-business/revenue/summary`, { preset }),
+  appointmentMetrics: (preset: string) => api.get(`/pos/ai-business/appointments/metrics`, { preset }),
   // Saved questions (§35): create/list/delete/use, tenant + user scoped by the server.
   savedList: () => api.get(`/pos/ai-business/saved-questions`),
   savedCreate: (body: { title: string; intent: string; preset?: string; comparePreset?: string; question?: string; sharingScope?: 'private' | 'tenant' }) =>

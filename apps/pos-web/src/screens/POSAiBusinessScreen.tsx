@@ -6,7 +6,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
-import { money, PeriodTabs, reportError } from './reportsCommon';
+import { money, reportError } from './reportsCommon';
+import { fmtInZone, fmtMoney, fmtNumber } from '../i18n/format';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
@@ -23,6 +24,7 @@ type Saved = {
   question: string | null; sharingScope: 'private' | 'tenant'; ownedByMe: boolean; createdAt: string; lastUsedAt: string | null;
 };
 
+const AIB_PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'] as const;
 const CHIPS: { label: string; intent: string }[] = [
   { get label() { return t('pos.summarize_today'); }, intent: 'daily_summary' },
   { get label() { return t('pos.why_did_revenue_change'); }, intent: 'explain_revenue' },
@@ -65,12 +67,29 @@ export function POSAiBusinessScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Saved[]>([]);
   const [saveTitle, setSaveTitle] = useState('');
+  const [snap, setSnap] = useState<null | { at?: string; rev?: any; appt?: any; error?: string }>(null);
+  const [snapTick, setSnapTick] = useState(0);
+  const [last, setLast] = useState<null | { intent?: string; question?: string; preset?: string; comparePreset?: string }>(null);
+  const [sessionLog, setSessionLog] = useState<{ at: string; label: string; preset: string; answer: string | null }[]>([]);
+  const [savedQ, setSavedQ] = useState('');
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    let on = true; setSnap(null);
+    Promise.all([posAiBusinessApi.revenueSummary(period).catch(() => null), posAiBusinessApi.appointmentMetrics(period).catch(() => null)])
+      .then(([rev, appt]) => { if (on) setSnap(rev || appt ? { at: new Date().toISOString(), rev, appt } : { error: t('aib.snapshotUnavailable') }); });
+    return () => { on = false; };
+  }, [period, snapTick]);
 
   // a saved question replays with ITS saved period; "Summarize today" is always today (Nov 3 audit)
   const ask = useCallback(async (body: { intent?: string; question?: string; preset?: string; comparePreset?: string }) => {
     setLoading(true); setError(null);
     const preset = body.preset ?? (body.intent === 'daily_summary' ? 'today' : period);
-    try { setRes(await posAiBusinessApi.ask({ ...body, preset }) as Ask); }
+    setLast({ ...body, preset });
+    try {
+      const out = await posAiBusinessApi.ask({ ...body, preset }) as Ask; setRes(out); setCopied(false);
+      // this session's questions and answers, newest first (nothing is stored on the server)
+      setSessionLog((l) => [{ at: new Date().toISOString(), label: body.question ?? (CHIPS.find((c) => c.intent === body.intent)?.label ?? String(body.intent)), preset, answer: out?.answer ?? null }, ...l].slice(0, 50));
+    }
     catch (e: any) { setError(reportError(e, t('growth.noun.theBusinessAssistant'))); }
     finally { setLoading(false); }
   }, [period]);
@@ -110,7 +129,20 @@ export function POSAiBusinessScreen() {
         <h1>{t('pos.ai_business_assistant')}</h1>
         <div className="sub mb-3">{t('pos.ask_about_revenue_appointments_customers_technicians_vko6')}</div>
       </div>
-      <PeriodTabs period={period} onChange={setPeriod} />
+      <div className="rvw-dates" data-testid="aib-period">
+        {AIB_PRESETS.map((x) => <button key={x} type="button" className={'btn ghost' + (period === x ? ' on' : '')} data-testid={`aib-preset-${x}`} onClick={() => setPeriod(x)}>{t('bzx.period.' + x)}</button>)}
+        <button type="button" className="btn ghost" data-testid="aib-refresh" onClick={() => setSnapTick((n) => n + 1)}>{t('bzx.refresh')}</button>
+        {snap?.at ? <span className="sub">{t('bcx.asOf', { at: fmtInZone(snap.at, { hour: 'numeric', minute: '2-digit' }) })}</span> : null}
+      </div>
+      {/* Business Assistant guide: the period's key numbers before any question is asked (the canonical Sales Report / booking overview) */}
+      <div className="kpis" style={{ marginTop: 10 }} data-testid="aib-snapshot">
+        {snap === null ? <div className="state">{t('pos.loading')}</div> : snap.error ? <div className="sub">{snap.error}</div> : <>
+          <div className="kpi"><div className="l">{t('pos.net_sales')}</div><div className="v">{snap.rev ? fmtMoney(snap.rev.netSalesCents) : '—'}</div></div>
+          <div className="kpi"><div className="l">{t('aib.tickets')}</div><div className="v">{snap.rev ? fmtNumber(snap.rev.ticketsCount) : '—'}</div></div>
+          <div className="kpi"><div className="l">{t('pos.avg_ticket')}</div><div className="v">{snap.rev ? (snap.rev.ticketsCount > 0 ? fmtMoney(Math.round(snap.rev.netSalesCents / snap.rev.ticketsCount)) : t('bcx.na')) : '—'}</div></div>
+          <div className="kpi"><div className="l">{t('aib.completed')}</div><div className="v">{snap.appt ? fmtNumber(snap.appt.funnel?.completed ?? 0) : '—'}</div></div>
+        </>}
+      </div>
 
       <div className="panel" style={{ marginTop: 12, padding: 14 }}>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
@@ -119,10 +151,10 @@ export function POSAiBusinessScreen() {
           ))}
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-          <input
-            className="in" style={{ flex: 1 }} placeholder={t('pos.ask_a_business_question')} value={question}
+          <textarea
+            className="in" style={{ flex: 1, minHeight: 44, resize: 'vertical' }} rows={2} maxLength={1000} placeholder={t('pos.ask_a_business_question')} value={question} data-testid="aib-composer"
             onChange={(e) => setQuestion(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && question.trim()) ask({ question: question.trim() }); }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); if (question.trim() && !loading) ask({ question: question.trim() }); } }}
           />
           <button className="btn w-fit whitespace-nowrap" onClick={() => question.trim() && ask({ question: question.trim() })} disabled={loading || !question.trim()}>{t('pos.ask')}</button>
         </div>
@@ -131,8 +163,9 @@ export function POSAiBusinessScreen() {
       {saved.length > 0 && (
         <div className="panel" style={{ marginTop: 12, padding: 14 }}>
           <div className="p-h" style={{ padding: 0, marginBottom: 8 }}>{t('pos.saved_questions')}</div>
+          {saved.length > 6 ? <input className="in" type="search" style={{ maxWidth: 280, marginBottom: 8 }} data-testid="aib-saved-search" placeholder={t('aib.savedSearch')} value={savedQ} onChange={(e) => setSavedQ(e.target.value)} /> : null}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-            {saved.map((q) => (
+            {saved.filter((q) => !savedQ.trim() || `${q.title} ${q.question ?? ''}`.toLowerCase().includes(savedQ.trim().toLowerCase())).map((q) => (
               <span key={q.id} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 <button onClick={() => runSaved(q)} disabled={loading} style={{ all: 'unset', cursor: 'pointer' }} title={q.sharingScope === 'tenant' ? t('pos.shared_with_your_team') : t('growth.aiBusiness.private')}>
                   {q.title}{q.sharingScope === 'tenant' ? t('pos.shared_2') : ''}
@@ -147,7 +180,7 @@ export function POSAiBusinessScreen() {
       )}
 
       {loading ? <div className="state" style={{ marginTop: 12 }}>{t('pos.thinking')}</div>
-        : error ? <div className="err" style={{ marginTop: 12 }}>{error}</div>
+        : error ? <div className="err" style={{ marginTop: 12 }} role="alert">{error} {last ? <button type="button" className="btn ghost" data-testid="aib-retry" onClick={() => ask(last)}>{t('aib.retry')}</button> : null}</div>
         : !res ? <div className="state" style={{ marginTop: 12 }}>{t('pos.pick_a_question_above_or_type_vae9')}</div>
         : res.needsClarification ? (
           <div className="panel" style={{ marginTop: 12, padding: 14 }}>
@@ -169,6 +202,10 @@ export function POSAiBusinessScreen() {
             <section className="panel" style={{ marginTop: 12, padding: 14 }}>
               <div className="p-h" style={{ padding: 0, marginBottom: 6 }}>{t('pos.answer')}</div>
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{res.answer}</div>
+              <div className="rvw-actions" style={{ marginTop: 8 }}>
+                <button type="button" className="btn ghost" data-testid="aib-copy" onClick={() => { try { void navigator.clipboard?.writeText(res.answer ?? ''); setCopied(true); } catch { setCopied(false); } }}>{copied ? t('aib.copied') : t('aib.copy')}</button>
+                {last && last.preset !== period ? <button type="button" className="btn ghost" data-testid="aib-rerun" onClick={() => ask({ intent: last.intent, question: last.question, preset: period })}>{t('aib.rerun', { p: t('bzx.period.' + period) })}</button> : null}
+              </div>
             </section>
           )}
 
@@ -202,6 +239,12 @@ export function POSAiBusinessScreen() {
             </ul>
           )}
 
+          {sessionLog.length > 1 && (
+            <details style={{ marginTop: 12 }} data-testid="aib-session">
+              <summary className="sub" style={{ cursor: 'pointer' }}>{t('aib.sessionLog', { n: sessionLog.length })}</summary>
+              <ul className="sub" style={{ paddingLeft: 18 }}>{sessionLog.map((x, i) => <li key={i}><b>{x.label}</b> · {t('bzx.period.' + x.preset)} · {fmtInZone(x.at, { hour: 'numeric', minute: '2-digit' })}{x.answer ? ` — ${x.answer.slice(0, 160)}` : ''}</li>)}</ul>
+            </details>
+          )}
           {s != null && (
             <details style={{ marginTop: 12 }}>
               <summary className="sub" style={{ cursor: 'pointer' }}>{t('pos.show_all_returned_data')}</summary>

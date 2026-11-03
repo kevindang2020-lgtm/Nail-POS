@@ -314,4 +314,13 @@ export const AIBUSINESS_VI: Record<string, string> = {
   "bcx.d.cancelled": "Đã hủy",
   "bcx.d.noShow": "Không đến",
   "bcx.d.note": "Không áp dụng nghĩa là kỳ này không có gì để chia (không có lịch hẹn hoặc hóa đơn) — không phải bằng 0.",
+  "aib.tickets": "Hóa đơn đã thanh toán",
+  "aib.completed": "Lịch hẹn hoàn thành",
+  "aib.snapshotUnavailable": "Không đọc được số liệu kỳ này.",
+  "aib.retry": "Thử lại",
+  "aib.copy": "Sao chép câu trả lời",
+  "aib.copied": "Đã sao chép",
+  "aib.rerun": "Chạy lại cho {p}",
+  "aib.savedSearch": "Tìm câu hỏi đã lưu",
+  "aib.sessionLog": "Câu hỏi trong phiên này ({n}) — không được lưu",
 };

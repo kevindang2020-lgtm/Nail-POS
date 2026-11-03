@@ -4,12 +4,15 @@ import { MemoryRouter } from 'react-router-dom';
 const { askMock, savedListMock, savedCreateMock, savedDeleteMock, savedUseMock } = vi.hoisted(() => ({
   askMock: vi.fn(), savedListMock: vi.fn(), savedCreateMock: vi.fn(), savedDeleteMock: vi.fn(), savedUseMock: vi.fn(),
 }));
-vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { ask: askMock, savedList: savedListMock, savedCreate: savedCreateMock, savedDelete: savedDeleteMock, savedUse: savedUseMock } }));
+const { revMock, apptMock } = vi.hoisted(() => ({ revMock: vi.fn(), apptMock: vi.fn() }));
+vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { ask: askMock, savedList: savedListMock, savedCreate: savedCreateMock, savedDelete: savedDeleteMock, savedUse: savedUseMock, revenueSummary: revMock, appointmentMetrics: apptMock } }));
 import { POSAiBusinessScreen } from './POSAiBusinessScreen';
 
 beforeEach(() => {
   askMock.mockReset();
   savedListMock.mockReset().mockResolvedValue([]);
+  revMock.mockReset().mockResolvedValue({ netSalesCents: 120000, ticketsCount: 30 });
+  apptMock.mockReset().mockResolvedValue({ funnel: { completed: 28 } });
   savedCreateMock.mockReset().mockResolvedValue({});
   savedDeleteMock.mockReset().mockResolvedValue({ deleted: true });
   savedUseMock.mockReset().mockResolvedValue({});
@@ -83,5 +86,22 @@ describe('POSAiBusinessScreen', () => {
     renderScreen();
     fireEvent.click(await screen.findByText('Monthly revenue'));
     await waitFor(() => expect(askMock).toHaveBeenCalledWith({ intent: 'revenue_summary', question: undefined, preset: 'month', comparePreset: undefined }));
+  });
+  it('guide: the period snapshot shows before any question; Shift+Enter is a new line, Enter asks; a failure offers Try again', async () => {
+    renderScreen();
+    const snap = await screen.findByTestId('aib-snapshot');
+    await waitFor(() => expect(snap).toHaveTextContent('$1,200.00'));
+    expect(snap).toHaveTextContent('$40.00');                                    // net ÷ tickets
+    fireEvent.click(screen.getByTestId('aib-preset-quarter'));
+    await waitFor(() => expect(revMock).toHaveBeenLastCalledWith('quarter'));
+    askMock.mockRejectedValueOnce({ status: 500 }).mockResolvedValueOnce({ ok: true, needsClarification: false, intent: 'revenue_summary', answer: 'Steady quarter.', structured: null, access: { allowed: true } });
+    const box = screen.getByTestId('aib-composer');
+    fireEvent.change(box, { target: { value: 'How is the quarter?' } });
+    fireEvent.keyDown(box, { key: 'Enter', shiftKey: true });
+    expect(askMock).not.toHaveBeenCalled();
+    fireEvent.keyDown(box, { key: 'Enter' });
+    fireEvent.click(await screen.findByTestId('aib-retry'));
+    expect(await screen.findByText('Steady quarter.')).toBeInTheDocument();
+    expect(askMock).toHaveBeenLastCalledWith({ question: 'How is the quarter?', preset: 'quarter' });
   });
 });
