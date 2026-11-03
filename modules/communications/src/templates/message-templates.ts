@@ -179,7 +179,7 @@ export class MessageTemplatesCenter {
         t.created_at, t.updated_at, t.last_used_at, t.archived_at, cu.full_name as created_by_name, uu.full_name as updated_by_name, br.name as branch_name,
         coalesce(us.n, 0) as usage_count, coalesce(bd.n, 0) as active_bindings
       from pos_message_templates t
-      left join users cu on cu.id = t.created_by left join users uu on uu.id = t.updated_by
+      left join users cu on cu.id = t.created_by and cu.tenant_id = t.tenant_id left join users uu on uu.id = t.updated_by and uu.tenant_id = t.tenant_id
       left join branches br on br.id = t.branch_id and br.tenant_id = t.tenant_id
       left join lateral (select count(*)::int as n from pos_message_template_usage pu where pu.tenant_id = t.tenant_id and pu.template_id = t.id) us on true
       left join lateral (select count(*)::int as n from pos_message_template_bindings pb where pb.tenant_id = t.tenant_id and pb.template_id = t.id and pb.active) bd on true
