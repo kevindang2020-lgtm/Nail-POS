@@ -96,3 +96,5 @@ GUIDE_AUDIT_FINDINGS_2026-11-03.md; batch C/D audits have not been run yet.
 - B6 (second pass): the 3 always-failing global-rewards cases were PGlite artefacts (one connection cannot run two transactions at once) — rewritten back to back; real concurrency proven by global-rewards.postgres-race (4/4 on Postgres). Suite 72/72.
 - B7 (second pass): date-dependent fixture fixed (gift-card activity "10 days ago" fell outside "this month" on the 1st–10th). 20/20.
 Batch B: every guide audited; bugs fixed above; remaining NOT-built items are listed per guide.
+
+## Batch C — being worked (claim: the session writing this section, from 18:30 Nov 3; another session should pick D-guide builds instead)
