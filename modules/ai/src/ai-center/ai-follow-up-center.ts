@@ -346,7 +346,8 @@ export class AiFollowUpCenter {
         where id = ${id} and tenant_id = ${ctx.tenantId} returning *`.execute(trx)).rows[0];
       await this.activity(trx, ctx, ctx.tenantId, id, escalate ? 'escalated' : 'priority_override', cur.priority, to, reason.slice(0, 500));
       await this.audit(ctx, trx, escalate ? 'follow_up.escalated' : 'follow_up.priority_overridden', id, escalate ? 'Follow-up escalated to a manager' : `Priority ${cur.priority} → ${to}`, { reason, before: { priority: cur.priority }, after: { priority: to } });
-      if (escalate) await this.raiseAlert(trx, ctx.tenantId, ctx.branchId, id, 'manual', 'high', 'A follow-up was escalated', `Staff escalated a follow-up: ${reason.slice(0, 200)}`);
+      if (escalate) await this.raiseAlert(trx, ctx.tenantId, r.branch_id ?? null, id, `manual:${Number(r.escalation_level)}`,   // each escalation level alerts once (a second escalation used to be silent)
+         'high', 'A follow-up was escalated', `Staff escalated a follow-up: ${reason.slice(0, 200)}`);
       return this.rowOut(r);
     });
   }
@@ -372,6 +373,8 @@ export class AiFollowUpCenter {
     const next = b.nextAttemptLocal ? localToUtc(String(b.nextAttemptLocal), clk.tz) : null;
     return this.db.transaction().execute(async (trx) => {
       const cur = await this.lock(ctx, trx, id, undefined);
+      // Nov 3 audit: a resolved / closed follow-up takes no more attempts (they were counted on it)
+      if (!ACTIVE.includes(cur.status)) throw fail('Reopen this follow-up first.', 'FOLLOWUP_STATE_INVALID', 409);
       const reached = ['reached', 'resolved'].includes(outcome);
       const ins: Row | undefined = (await sql<Row>`insert into ai_follow_up_contact_attempts (tenant_id, follow_up_id, channel, actor_user_id, recipient_ref, outcome, idempotency_key, note, next_attempt_at)
         values (${ctx.tenantId}, ${id}, ${channel}, ${ctx.userId}, ${cur.caller_phone ? maskPhone(String(cur.caller_phone)) : null}, ${outcome}, ${'att:' + key}, ${b.note ? String(b.note).slice(0, 1000) : null}, ${next})

@@ -187,6 +187,11 @@ describe('assignment, lifecycle, escalation, contact (T23–T26, T34–T37)', ()
     expect(await code(fc.setPriority(desk, t, { priority: 'low', reason: 'not urgent', version: await ver(t) }))).toBe('PERMISSION_DENIED');
     const esc = await fc.setPriority(desk, t, { escalate: true, reason: 'Customer upset', version: await ver(t) });
     expect(esc).toMatchObject({ priority: 'urgent', escalationLevel: 1 });
+    // Nov 3 audit: a second escalation raises its own alert (one per level), on the TASK's branch
+    await fc.setPriority(desk, t, { escalate: true, reason: 'Still upset', version: await ver(t) });
+    const alerts = (await sql`select o.branch_id, f.branch_id as task_branch from owner_alerts o join ai_receptionist_follow_ups f on f.id::text = o.metadata->>'followUpId' where o.category = 'ai_follow_up' and o.metadata->>'followUpId' = ${t} and o.metadata->>'rule' like 'manual%'`.execute(db)).rows as any[];
+    expect(alerts).toHaveLength(2);
+    expect(alerts.every((a: any) => String(a.branch_id) === String(a.task_branch))).toBe(true);
     expect((await fc.setPriority(own, t, { priority: 'high', reason: 'Calmed down', version: await ver(t) })).priority).toBe('high');
   });
   it('T34/T35/T36 a recorded call is labelled an attestation; a text goes through prepare → confirm and is SUBMITTED, never delivered', async () => {

@@ -60,4 +60,4 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 18. ✅ FIXED — Deal approvals show "within policy" with active-deal count forced to 0.
 19. ✅ FIXED — Referral check ignores archived customers.
 20. ✅ FIXED — Birthday history not branch-scoped.
-21. AI follow-ups: attempts recorded on resolved tasks; escalation alert uses caller's branch.
+21. ✅ FIXED — AI follow-ups: attempts recorded on resolved tasks; escalation alert uses caller's branch.
