@@ -177,6 +177,12 @@ export class CustomerBookingService {
     return { date, serviceId, durationMinutes: service.durationMinutes, window, slots };
   }
 
+  /** a slot that has already started on the salon's clock is refused (booking or moving to 9 AM at 3 PM went through) */
+  private async assertNotPast(ctx: CustomerBookingContext, date: string, startTime: string) {
+    if (!this.repo.salonNow) return;
+    const now = await this.repo.salonNow(ctx);
+    if (date < now.date || (date === now.date && minutesOf(startTime) <= now.minutes)) throw new BookingValidationError('That time has already passed. Pick a later time.');
+  }
   async book(ctx: CustomerBookingContext, body: CreateBookingRequest): Promise<BookingResult> {
     // Sep 2026 merge (developer's multi-salon booking): a client-named salon is honoured ONLY when it is one of this
     // tenant's own active branches — it was substituted straight into the context — and the accepts-bookings check runs
@@ -194,6 +200,7 @@ export class CustomerBookingService {
     if (serviceIds.length === 0 || !technicianId) throw new BookingValidationError('serviceId(s) and technicianId are required');
     if (!DATE_RE.test(date)) throw new BookingValidationError('date must be YYYY-MM-DD');
     if (!TIME_RE.test(startTime)) throw new BookingValidationError('startTime must be HH:MM');
+    await this.assertNotPast(activeCtx, date, startTime);
 
     const customer = await this.repo.resolveCustomerId(activeCtx);
     if (!customer) throw new NotCustomerError('No customer profile is linked to this account.');
@@ -369,7 +376,10 @@ export class CustomerBookingService {
     const startTime = String(body?.startTime ?? '').trim();
     if (!DATE_RE.test(date)) throw new BookingValidationError('date must be YYYY-MM-DD');
     if (!TIME_RE.test(startTime)) throw new BookingValidationError('startTime must be HH:MM');
-    if (date < new Date().toISOString().slice(0, 10)) throw new BookingValidationError('Pick a future date.');
+    // a coarse guard only (the slot check refuses a past time in the salon's own zone): the UTC day is already tomorrow on a US
+    // evening, so comparing with it refused rescheduling to later TODAY — compare with the UTC day before instead
+    if (date < new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)) throw new BookingValidationError('Pick a future date.');
+    await this.assertNotPast(ctx, date, startTime);
     const customer = await this.repo.resolveCustomerId(ctx);
     if (!customer) throw new NotCustomerError('No customer profile is linked to this account.');
     const appt = await this.repo.getAppointmentForReschedule(ctx, customer.id, appointmentId);

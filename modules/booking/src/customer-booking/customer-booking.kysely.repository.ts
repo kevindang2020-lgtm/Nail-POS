@@ -6,7 +6,7 @@ import type { OutboxWriter } from '@aipowersalon/events';
 import { localDateTimeToEpochMs, utcDate } from '@aipowersalon/date-time';
 import { recordAppointmentChanges, detectTechnicianConflict, APPOINTMENT } from '@aipowersalon/appointments';
 import { sql, type Kysely } from 'kysely';
-import { categoryAddOnsForService, mergeAddOnRows, assertTransition, canMoveToSql, type DB } from '@aipowersalon/database';
+import { categoryAddOnsForService, mergeAddOnRows, assertTransition, canMoveToSql, branchTimeZone, type DB } from '@aipowersalon/database';
 import type { BookableService, BookableTechnician } from './customer-booking.dto';
 import { holdGuardFor, lockedForeignHold } from './booking-hold-locked-check';
 import { KyselyBookingRepository } from '../booking/booking.kysely.repository';
@@ -42,6 +42,11 @@ export class KyselyCustomerBookingRepository implements CustomerBookingDataPort 
   async appointmentBelongsToCustomer(ctx: CustomerBookingContext, appointmentId: string, customerId: string): Promise<boolean> {
     const r: any = await (this.db.selectFrom('pos_tech_appointments') as any).select(['id']).where('tenant_id', '=', ctx.tenantId).where('id', '=', appointmentId).where('customer_id', '=', customerId).executeTakeFirst();
     return !!r;
+  }
+  async salonNow(ctx: CustomerBookingContext): Promise<{ date: string; minutes: number }> {
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId);
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date()).map((x) => [x.type, x.value]));
+    return { date: `${p.year}-${p.month}-${p.day}`, minutes: Number(p.hour) * 60 + Number(p.minute) };
   }
   async startsAtOf(ctx: CustomerBookingContext, appointmentId: string): Promise<Date | null> {
     const r: any = await (this.db.selectFrom('pos_tech_appointments as a') as any).leftJoin('branches as b', 'b.id', 'a.branch_id').select(['a.appt_date', 'a.start_time', 'b.timezone'])

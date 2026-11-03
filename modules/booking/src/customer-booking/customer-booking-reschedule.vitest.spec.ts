@@ -23,6 +23,14 @@ describe('CustomerBookingService.reschedule', () => {
   it('rejects a past date', async () => {
     await expect(make().reschedule(ctx, 'ap1', { date: '2000-01-01', startTime: '12:00' })).rejects.toBeInstanceOf(BookingValidationError);
   });
+  it('Nov 3 audit — a time that already passed on the salon\'s clock is refused; later today is fine', async () => {
+    const svc = make({ salonNow: async () => ({ date: '2026-11-03', minutes: 15 * 60 }) });   // 3 PM at the salon
+    await expect(svc.reschedule(ctx, 'ap1', { date: '2026-11-03', startTime: '09:00' })).rejects.toThrow(/already passed/);
+    await expect(svc.reschedule(ctx, 'ap1', { date: '2026-11-03', startTime: '15:00' })).rejects.toThrow(/already passed/);
+    expect((await svc.reschedule(ctx, 'ap1', { date: '2026-11-03', startTime: '17:00' })).startTime).toBe('17:00');
+    await expect(make({ salonNow: async () => ({ date: '2026-11-03', minutes: 15 * 60 }), getService: async () => ({ id: 's1', name: 'Gel', durationMinutes: 30, priceCents: 5000 }), getTechnician: async () => ({ id: 't1', fullName: 'T' }), insertBookingAtomic: async () => ({ ok: true, id: 'a' }) })
+      .book(ctx, { serviceId: 's1', technicianId: 't1', date: '2026-11-03', startTime: '10:00' } as any)).rejects.toThrow(/already passed/);
+  });
   it('rejects an unknown appointment', async () => {
     await expect(make({ getAppointmentForReschedule: async () => null }).reschedule(ctx, 'ap1', { date: '2999-01-01', startTime: '12:00' })).rejects.toBeInstanceOf(BookingValidationError);
   });

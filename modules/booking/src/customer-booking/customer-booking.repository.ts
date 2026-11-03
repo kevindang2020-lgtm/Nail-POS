@@ -45,6 +45,8 @@ export interface CustomerBookingDataPort {
    *  schedule − breaks/lunch − blocked time, the SAME rule the staff engine applies (pbTechDayWindows). `null` = the port
    *  cannot say (no schedule data source), in which case the service does not refuse. */
   technicianWindows?(ctx: CustomerBookingContext, technicianId: string, date: string): Promise<{ start: number; end: number }[] | null>;
+  /** the salon's own clock: today's date and the minute of day in the branch's time zone (a past slot is refused against it) */
+  salonNow?(ctx: CustomerBookingContext): Promise<{ date: string; minutes: number }>;
 }
 
 export class InMemoryCustomerBookingRepository implements CustomerBookingDataPort {

@@ -17,6 +17,9 @@ const mgr = { tenantId: T, branchId: B, userId: MGR, role: 'MANAGER', permission
 const viewer = { tenantId: T, branchId: B, userId: MGR, role: 'FRONT_DESK', permissions: ['pos.reports.view'] };
 const miaSelf = { tenantId: T, branchId: B, userId: TECHU, role: 'TECHNICIAN', permissions: ['pos.reports.view', 'payroll.view'] };
 const other = { tenantId: T2, branchId: BX, userId: OTHERU, role: 'MANAGER', permissions: ['pos.reports.view', 'payroll.view', 'payroll.manage'] };
+// the last 30 days as a custom range: the fixture's lines are 1–20 days old, which "this month" missed in the first days of a month
+const ymd = (d: Date) => d.toISOString().slice(0, 10);
+const RANGE = { preset: 'custom', from: ymd(new Date(Date.now() - 30 * 86_400_000)), to: ymd(new Date(Date.now() + 86_400_000)) } as const;
 let pg: any; let repo: CommissionReviewRepository;
 const q = (s: string, p: unknown[] = []) => pg.query(s, p);
 const one = async (s: string, p: unknown[] = []) => (await q(s, p)).rows[0];
@@ -88,7 +91,7 @@ const findRev = async (type: string, line?: string) => one(`select * from commis
 describe('Run Check (F2 detectors + persisted findings)', () => {
   it('rate check: history and an approved override are honoured, a genuine mismatch is found, missing evidence is UNABLE_TO_VERIFY; no policy → Review Required', async () => {
     const before = await ledger();
-    const r = await repo.runCheck(mgr, { preset: 'month' }, 'req-run-1');
+    const r = await repo.runCheck(mgr, RANGE, 'req-run-1');
     expect(r.rateMismatch).toBe(1);
     expect(r.unableToVerify).toBe(1);
     expect(r.unableSamples[0]).toMatchObject({ serviceLineId: lines.legacy.ln });
@@ -110,7 +113,7 @@ describe('Run Check (F2 detectors + persisted findings)', () => {
   });
   it('a rescan never duplicates a finding (stable fingerprint)', async () => {
     const before = Number((await one(`select count(*) from commission_discrepancy_reviews where tenant_id = $1`, [T])).count);
-    const r = await repo.runCheck(mgr, { preset: 'month' }, 'req-run-2');
+    const r = await repo.runCheck(mgr, RANGE, 'req-run-2');
     expect(r.detected).toBe(0); expect(r.alreadyKnown).toBe(before);
     expect(Number((await one(`select count(*) from commission_discrepancy_reviews where tenant_id = $1`, [T])).count)).toBe(before);
   });
@@ -118,7 +121,7 @@ describe('Run Check (F2 detectors + persisted findings)', () => {
     await expect(repo.setRefundPolicy(viewer, 'PRO_RATA', 'r')).rejects.toMatchObject({ status: 403 });
     await repo.setRefundPolicy(mgr, 'PRO_RATA', 'req-policy');
     const before = await ledger();
-    await repo.runCheck(mgr, { preset: 'month' }, 'req-run-3');
+    await repo.runCheck(mgr, RANGE, 'req-run-3');
     const miss = (await q(`select * from commission_discrepancy_reviews where tenant_id = $1 and finding_type = 'REFUND_REVERSAL' and verification_state <> 'POLICY_NOT_CONFIGURED'`, [T])).rows;
     expect(miss).toHaveLength(1);
     expect(miss[0]).toMatchObject({ transaction_id: lines.refund.tk, technician_id: MIA });
@@ -151,7 +154,7 @@ describe('review workflow (F1)', () => {
     await expect(q(`delete from commission_discrepancy_reviews where id = $1`, [rid])).rejects.toThrow(/never deleted/);
   });
   it('a rescan keeps the reviewer decision', async () => {
-    await repo.runCheck(mgr, { preset: 'month' }, 'req-run-4');
+    await repo.runCheck(mgr, RANGE, 'req-run-4');
     expect((await repo.detail(mgr, rid)).status).toBe('RESOLVED');
   });
   it('Dismiss → Reopen keeps the original note and disposition', async () => {
