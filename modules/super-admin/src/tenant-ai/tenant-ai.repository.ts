@@ -41,11 +41,11 @@ export class KyselyTenantAiRepo implements TenantAiRepo {
   });
   async listForTenant(tenantId: string): Promise<SubRow[]> {
     return sql`select tenant_id, package_code, status, billing_period, price_cents, usage_limit, overage_enabled, trial_ends_at, current_period_starts_at from tenant_ai_subscriptions where tenant_id = ${tenantId}`
-      .execute(this.db).then((r: any) => r.rows.map(this.map)).catch(() => []);
+      .execute(this.db).then((r: any) => r.rows.map(this.map));   // Nov 2 2026: a read error is an error, never "not subscribed"
   }
   async getOne(tenantId: string, code: string): Promise<SubRow | null> {
     return sql`select tenant_id, package_code, status, billing_period, price_cents, usage_limit, overage_enabled, trial_ends_at, current_period_starts_at from tenant_ai_subscriptions where tenant_id = ${tenantId} and package_code = ${code}`
-      .execute(this.db).then((r: any) => (r.rows[0] ? this.map(r.rows[0]) : null)).catch(() => null);
+      .execute(this.db).then((r: any) => (r.rows[0] ? this.map(r.rows[0]) : null));
   }
   async usageForTenant(tenantId: string): Promise<TenantUsageRow[]> {
     // AI Usage & Limits guide §14: usage of the CURRENT billing period (the access gate's rule), not all-time — the
@@ -53,7 +53,7 @@ export class KyselyTenantAiRepo implements TenantAiRepo {
     return sql`select l.package_code, coalesce(sum(l.usage_amount),0)::int used, count(*)::int calls from ai_usage_logs l
       left join tenant_ai_subscriptions s on s.tenant_id = l.tenant_id and s.package_code = l.package_code
       where l.tenant_id = ${tenantId} and l.status = 'success' and (s.current_period_starts_at is null or l.created_at >= s.current_period_starts_at) group by l.package_code`
-      .execute(this.db).then((r: any) => r.rows.map((x: any) => ({ packageCode: String(x.package_code), used: Number(x.used || 0), calls: Number(x.calls || 0) }))).catch(() => []);
+      .execute(this.db).then((r: any) => r.rows.map((x: any) => ({ packageCode: String(x.package_code), used: Number(x.used || 0), calls: Number(x.calls || 0) })));   // never a false 0
   }
   async upsert(tenantId: string, v: NormalizedAssign): Promise<void> {
     await sql`
@@ -68,7 +68,7 @@ export class KyselyTenantAiRepo implements TenantAiRepo {
     // AI Usage & Limits guide §7: only a live subscription can be cancelled, and "ok" means a row actually changed
     // (it used to report success for an already-cancelled or missing package).
     const r: any = await sql`update tenant_ai_subscriptions set status='cancelled', cancelled_at=now(), updated_at=now() where tenant_id=${tenantId} and package_code=${code}
-      and status in ('active', 'trialing', 'past_due', 'unpaid') and ${canMoveToSql(TENANT_AI_SUBSCRIPTION, 'cancelled')}`.execute(this.db).catch(() => null);
+      and status in ('active', 'trialing', 'past_due', 'unpaid') and ${canMoveToSql(TENANT_AI_SUBSCRIPTION, 'cancelled')}`.execute(this.db);
     return Number(r?.numAffectedRows ?? r?.numUpdatedOrDeletedRows ?? 0) > 0;
   }
 }

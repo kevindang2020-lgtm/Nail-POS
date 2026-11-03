@@ -13838,3 +13838,78 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rrx.loadFailed` | Documents could not be loaded. Try again or run the check — this is not "no documents". | Không tải được chứng từ. Hãy thử lại hoặc chạy kiểm tra — đây không phải là "không có chứng từ". |
 | `rrx.reason.reject` | Why is it rejected? (kept in the history) | Vì sao từ chối? (lưu trong lịch sử) |
 | `rrx.reason.return` | What needs correcting? (kept in the history) | Cần sửa gì? (lưu trong lịch sử) |
+
+## AI Plans + AI Usage check + Forecast readiness (`plx.*`, `aiux.*`, `fcx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `plx.trialUsed` | This plan's free trial was already used (each salon gets one per plan and per assistant). Activation goes through Billing. | Gói này đã dùng thử miễn phí rồi (mỗi tiệm được một lần cho mỗi gói và mỗi trợ lý). Kích hoạt qua Thanh toán. |
+| `plx.trialEnds` | Trial ends {d} | Dùng thử kết thúc {d} |
+| `plx.trialEnded` | Trial ended {d}. | Dùng thử đã kết thúc {d}. |
+| `plx.noDiscount` | No bundle discount is set — the plan price equals its assistants' total. | Chưa có giảm giá gói — giá gói bằng tổng giá các trợ lý. |
+| `plx.confirmTrial` | Start the free trial of {name}? Nothing is charged now; after the trial the plan is {price}/mo and paid activation goes through Billing. One free trial per plan. | Bắt đầu dùng thử miễn phí {name}? Chưa tính phí; sau dùng thử gói có giá {price}/tháng và kích hoạt trả phí qua Thanh toán. Mỗi gói dùng thử một lần. |
+| `plx.confirmCancel` | Cancel {name}? Its assistants stop working right away for the whole salon. Results they already created stay. The free trial is not offered again. | Hủy {name}? Các trợ lý của gói ngừng hoạt động ngay cho cả tiệm. Kết quả đã tạo vẫn giữ. Không được dùng thử lại. |
+| `plx.individual` | Individual assistants | Từng trợ lý riêng |
+| `aiux.check` | Check AI Usage & Subscriptions | Kiểm tra mức dùng & đăng ký AI |
+| `aiux.running` | Checking… | Đang kiểm tra… |
+| `aiux.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `aiux.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `aiux.readOnly` | Read-only: it never starts a trial, cancels, changes a price or limit, or charges. | Chỉ đọc: không bắt đầu dùng thử, không hủy, không đổi giá hay giới hạn, không tính phí. |
+| `aiux.state.PASSED` | Passed | Đạt |
+| `aiux.state.WARNING` | Warning | Cảnh báo |
+| `aiux.state.FAILED` | Failed | Lỗi |
+| `aiux.state.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `aiux.state.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `aiux.k.states_readable` | Package states can be read | Đọc được trạng thái gói |
+| `aiux.d.states_readable.PASSED` | Every package's state was read from the subscription records. | Đã đọc trạng thái mọi gói từ hồ sơ đăng ký. |
+| `aiux.d.states_readable.FAILED` | The subscription records could not be read — nothing on this page can be trusted until this is fixed. | Không đọc được hồ sơ đăng ký — chưa thể tin dữ liệu trang này cho đến khi sửa. |
+| `aiux.k.catalog` | All 15 assistants listed | Đủ 15 trợ lý |
+| `aiux.d.catalog.PASSED` | All 15 AI assistants are in the catalog and on this page. | Đủ 15 trợ lý AI trong danh mục và trên trang này. |
+| `aiux.d.catalog.WARNING` | The catalog and this page do not list the same assistants. | Danh mục và trang này không khớp danh sách trợ lý. |
+| `aiux.k.statuses_known` | Every status recognised | Mọi trạng thái đều xác định |
+| `aiux.d.statuses_known.PASSED` | Every stored status is one the platform knows. | Mọi trạng thái lưu đều hợp lệ. |
+| `aiux.d.statuses_known.WARNING` | Some packages have a status the platform does not recognise — they show "Unable to verify". | Một số gói có trạng thái không xác định — hiển thị "Không xác minh được". |
+| `aiux.k.trial_rows_current` | Trial records up to date | Hồ sơ dùng thử cập nhật |
+| `aiux.d.trial_rows_current.PASSED` | No package still says "trialing" after its trial ended. | Không gói nào còn ghi "đang dùng thử" sau khi hết hạn. |
+| `aiux.d.trial_rows_current.WARNING` | Some packages are still stored as "trialing" although the trial ended. This page shows them as Trial expired and the AI is blocked; the record itself is out of date. | Một số gói vẫn lưu "đang dùng thử" dù đã hết hạn. Trang hiển thị Hết hạn dùng thử và AI bị chặn; chỉ hồ sơ chưa cập nhật. |
+| `aiux.k.no_use_after_trial` | No AI use after a trial ended | Không dùng AI sau khi hết dùng thử |
+| `aiux.d.no_use_after_trial.PASSED` | No AI call succeeded after its trial ended (without a payment). | Không có lượt AI nào chạy sau khi hết dùng thử (khi chưa thanh toán). |
+| `aiux.d.no_use_after_trial.FAILED` | AI calls succeeded after the trial ended without a payment. Report this — the access check let them through. | Có lượt AI chạy sau khi hết dùng thử mà chưa thanh toán. Hãy báo — bước kiểm tra quyền đã cho qua. |
+| `aiux.k.no_use_after_cancel` | No AI use after cancelling | Không dùng AI sau khi hủy |
+| `aiux.d.no_use_after_cancel.PASSED` | No AI call succeeded after its package was cancelled. | Không có lượt AI nào chạy sau khi gói bị hủy. |
+| `aiux.d.no_use_after_cancel.FAILED` | AI calls succeeded after the package was cancelled. Report this — the access check let them through. | Có lượt AI chạy sau khi gói bị hủy. Hãy báo — bước kiểm tra quyền đã cho qua. |
+| `aiux.k.cost_basis` | Monthly cost basis | Cơ sở chi phí hằng tháng |
+| `aiux.d.cost_basis.PASSED` | Every paying package has a recorded payment this period. | Mọi gói trả phí đều có thanh toán ghi nhận trong kỳ. |
+| `aiux.d.cost_basis.WARNING` | Some paying packages have no recorded payment this period, so the cost shown comes from the subscription records, not invoices. | Một số gói trả phí chưa có thanh toán ghi nhận trong kỳ, nên chi phí hiển thị lấy từ hồ sơ đăng ký, không phải hóa đơn. |
+| `aiux.d.cost_basis.INSUFFICIENT_DATA` | No paying packages — $0.00 is correct only if nothing is on a paid plan. | Không có gói trả phí — $0.00 chỉ đúng khi không có gói trả phí nào. |
+| `aiux.k.payments_current` | Payments current | Thanh toán đúng hạn |
+| `aiux.d.payments_current.PASSED` | No package is past due. | Không gói nào quá hạn thanh toán. |
+| `aiux.d.payments_current.WARNING` | Some packages are past due — update billing to keep them working. | Một số gói quá hạn — hãy cập nhật thanh toán. |
+| `aiux.k.metering` | Usage being counted | Đang ghi nhận mức dùng |
+| `aiux.d.metering.PASSED` | Successful AI calls are being counted. | Lượt AI thành công đang được ghi nhận. |
+| `aiux.d.metering.WARNING` | Packages are live but no AI call has ever been counted — usage may not be reaching the meter. | Có gói đang chạy nhưng chưa ghi nhận lượt AI nào — có thể mức dùng chưa được ghi. |
+| `aiux.d.metering.INSUFFICIENT_DATA` | No live package to meter. | Không có gói đang chạy để ghi nhận. |
+| `aiux.k.recent_errors` | Recent AI errors | Lỗi AI gần đây |
+| `aiux.d.recent_errors.PASSED` | No failed AI calls in the last 7 days. | Không có lượt AI lỗi trong 7 ngày qua. |
+| `aiux.d.recent_errors.WARNING` | Some AI calls failed in the last 7 days (they are not counted toward usage). | Một số lượt AI lỗi trong 7 ngày qua (không tính vào mức dùng). |
+| `aiux.k.limits` | Included allowance | Hạn mức có sẵn |
+| `aiux.d.limits.PASSED` | No package without overage has used up its allowance. | Không gói nào (không cho vượt) dùng hết hạn mức. |
+| `aiux.d.limits.WARNING` | Some packages used up their allowance and do not allow overage — the AI stops until the period resets. | Một số gói đã hết hạn mức và không cho vượt — AI dừng đến khi đặt lại kỳ. |
+| `aiux.k.plans_in_step` | Plans match their assistants | Gói khớp với trợ lý |
+| `aiux.d.plans_in_step.PASSED` | Live plans and their assistants agree. | Các gói đang chạy khớp với trợ lý. |
+| `aiux.d.plans_in_step.WARNING` | A live plan has assistants that are cancelled or expired. | Có gói đang chạy nhưng trợ lý bên trong đã hủy hoặc hết hạn. |
+| `aiux.k.admin_switches` | Platform switches | Công tắc nền tảng |
+| `aiux.d.admin_switches.PASSED` | No package is turned off by the platform. | Không gói nào bị nền tảng tắt. |
+| `aiux.d.admin_switches.WARNING` | Some packages are turned off by the platform for all salons — an upgrade does not turn them on. | Một số gói bị nền tảng tắt cho mọi tiệm — nâng cấp không bật lại được. |
+| `aiux.k.no_side_effects` | Nothing started, cancelled or charged | Không bắt đầu, hủy hay tính phí |
+| `aiux.d.no_side_effects.PASSED` | This check never starts, cancels, prices or charges anything. | Việc kiểm tra không bắt đầu, hủy, đổi giá hay tính phí. |
+| `fcx.readiness` | History behind the forecasts | Dữ liệu lịch sử cho dự báo |
+| `fcx.days` | {n} of {min} days of history | {n}/{min} ngày lịch sử |
+| `fcx.ready` | Enough history to forecast. | Đủ lịch sử để dự báo. |
+| `fcx.short` | {n} more day(s) needed — no forecast until then (nothing is guessed). | Cần thêm {n} ngày — chưa dự báo cho đến lúc đó (không đoán). |
+| `fcx.since` | from {d} | từ {d} |
+| `fcx.zeroDays` | {n} day(s) with none, counted as 0 | {n} ngày không có, tính là 0 |
+| `fcx.restricted` | Your role cannot see revenue. | Vai trò của bạn không xem được doanh thu. |
+| `fcx.source.booking_calendar` | from the booking calendar | từ lịch đặt hẹn |
+| `fcx.source.sales_report` | from the sales report | từ báo cáo doanh thu |
+| `fcx.note` | History counts every day since the first booked day up to yesterday, including quiet and closed days; cancelled appointments and today are left out. | Lịch sử tính mọi ngày từ ngày có hẹn đầu tiên đến hôm qua, kể cả ngày vắng và ngày nghỉ; không tính lịch hẹn đã hủy và hôm nay. |

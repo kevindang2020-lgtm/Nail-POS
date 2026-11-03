@@ -14,6 +14,8 @@ import { logException } from '@aipowersalon/observability';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { AiUsageScreenRepository, AiUsageScreenError, PACKAGE_STATUS_FILTERS, PACKAGE_CATEGORIES, HISTORY_STATUSES, HISTORY_BASES, type UsageCtx } from './ai-usage-screen.repository';
 import { AI_USAGE_TRIAL_BODY, AI_USAGE_CANCEL_BODY, AI_BRANCH_SETTING_BODY, AI_INVOICE_RECONCILE_BODY } from '../request-schemas-ai';
+import { S, type BodySchema } from '@aipowersalon/permissions';
+export const AI_USAGE_CHECK_BODY: BodySchema = S.object({});
 
 export const AI_USAGE_SCREEN_REPOSITORY = 'AiUsageScreenRepository';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -84,6 +86,10 @@ export class AiUsageScreenController {
       }
     });
   }
+
+  /** Check AI Usage & Subscriptions (AI Usage Limits guide, Nov 1 2026) — read-only: never starts, cancels, prices or charges */
+  @Post('check') @RequirePermission('ai.use')
+  check(@Req() q: any, @Body(ValidatedBody(AI_USAGE_CHECK_BODY, { strict: true })) _b: unknown) { return run(() => this.r().check(ctxOf(q))); }
 
   @Post('packages/:code/trial') @RequirePermission('ai.manage')
   trial(@Req() q: any, @Param('code') code: string, @Body(ValidatedBody(AI_USAGE_TRIAL_BODY, { strict: true })) b: any) {

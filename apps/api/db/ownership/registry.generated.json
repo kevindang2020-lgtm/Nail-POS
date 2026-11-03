@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 911,
+  "tables": 912,
   "ownership": {
-   "tenant_owned": 601,
+   "tenant_owned": 602,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 117,
+   "AI": 118,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 134,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 495,
+   "INTERNAL": 496,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -914,6 +914,18 @@
    "source": "heuristic"
   },
   "ai_usage_alerts": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_usage_health_runs": {
    "ownership": "tenant_owned",
    "class": "B",
    "domain": "AI",

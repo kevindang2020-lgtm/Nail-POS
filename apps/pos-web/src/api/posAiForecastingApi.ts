@@ -7,4 +7,6 @@ export const posAiForecastingApi = {
   revenue: (horizonDays = 14) => api.get<any>(`/pos/ai-analytics/forecast/revenue`, { horizonDays }),
   noShowRisk: (days = 7) => api.get<any>(`/pos/ai-analytics/no-show-risk`, { days }),
   accuracy: (domain: 'appointments' | 'revenue') => api.get<any>(`/pos/ai-analytics/accuracy`, { domain }),
+  /** how much verified history each forecast has, the minimum and what is short (AI Analytics & Forecasting guide, Nov 2026) */
+  readiness: () => api.get<any>(`/pos/ai-analytics/forecast/readiness`),
 };

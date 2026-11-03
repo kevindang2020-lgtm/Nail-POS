@@ -56,7 +56,8 @@ const unitLabel = (u: string, n?: number) => tx('aiu.unit.' + u, { n: nf(n ?? 0)
 const stateLabel = (s: string) => tx('aiu.state.' + s);
 const STATE_TONE: Record<string, string> = { active: 'ok', trialing: 'info', trial_available: 'gold', available: 'mut', trial_expired: 'warn', cancelled: 'mut', expired: 'mut', past_due: 'bad', suspended: 'bad', disabled_by_admin: 'mut', unable_to_verify: 'warn' };
 const LEVEL_TONE: Record<string, string> = { warn_80: 'warn', critical_90: 'bad', exhausted_100: 'bad' };
-const errText = (e: unknown, fb: string) => errorTextOf(e, fb);
+// a 403 reads as a permission message, never the server's raw word ("forbidden") — Nov 2 2026
+const errText = (e: unknown, fb: string) => ((e as { status?: number } | null)?.status === 403 || (e as { code?: string } | null)?.code === 'PERMISSION_DENIED' ? tx('pos.you_do_not_have_permission_for_7x5k') : errorTextOf(e, fb));
 const priceText = (c: Card) => c.price.cents > 0 ? `${fmtMoney(c.price.cents)}${c.price.period === 'yearly' ? tx('aiu.perYear') : tx('aiu.perMonth')}` : tx('aiu.included');
 /** the AI module's own page — from the shell's navigation (the same routes the sidebar opens) */
 const FALLBACK_ROUTES: Record<string, string> = { ai_customer_profile_assistant: '/tenant/ai/customer-profile', ai_phone_call_assistant: '/tenant/ai/receptionist' };
@@ -111,6 +112,9 @@ export function POSAiUsageScreen() {
   const [allAlerts, setAllAlerts] = useState(false);
   const ack = async (id: string) => { try { await posAiUsageScreenApi.acknowledge(id); loadSummary(); setReload((n) => n + 1); } catch (e) { setNote({ tone: 'bad', text: errText(e, tx('aiu.ackFailed')) }); } };
   const filtered = !!(search || status !== 'all' || category || sort !== 'catalog');
+  // AI Usage Limits guide (Nov 1 2026): Check AI Usage & Subscriptions — read-only evidence for what this page shows
+  const [health, setHealth] = useState<any | 'loading' | null>(null);
+  const runCheck = () => { setHealth('loading'); posAiUsageScreenApi.check().then(setHealth).catch((e) => setHealth({ error: errText(e, tx('aiu.loadFailed')) })); };
 
   return (
     <div className="work fit aiu" data-testid="ai-usage-screen">
@@ -120,8 +124,19 @@ export function POSAiUsageScreen() {
           <span className="fk-hint aiu-asof" title={sum ? when(sum.asOf) : undefined}>{sum ? tx('aiu.asOf', { t: when(sum.asOf) }) : ''}</span>
           <button type="button" className="fk-btn ghost" onClick={refresh} data-testid="aiu-refresh">{tx('aiu.refresh')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'history' })} data-testid="aiu-open-history">{tx('aiu.history')}</button>
+          <button type="button" className="fk-btn primary" onClick={runCheck} data-testid="aiu-check">{tx('aiux.check')}</button>
         </div>
       </header>
+      {health ? <FitDialog wide testId="aiu-health" title={tx('aiux.check')} onClose={() => setHealth(null)}
+        subtitle={health !== 'loading' && !health.error ? tx('aiux.overall', { s: tx('aiux.state.' + health.overall), at: when(health.checkedAt) }) : undefined}
+        footer={<button type="button" className="fk-btn ghost" onClick={() => setHealth(null)}>{tx('pos.close')}</button>}>
+        {health === 'loading' ? <div className="state">{tx('aiux.running')}</div> : health.error ? <div className="err" role="alert">{health.error}</div> : <>
+          <p className="sub">{tx('aiux.readOnly')}{health.reused ? ` ${tx('aiux.recent')}` : ''}</p>
+          {health.checks.map((x: any) => <div key={x.key} className="rvw-check" data-testid={`chk-${x.key}`}>
+            <div><span className={'chip ' + (x.state === 'FAILED' ? 'bad' : x.state === 'WARNING' ? 'warn' : x.state === 'PASSED' ? 'ok' : '')}>{tx('aiux.state.' + x.state)}</span> <b>{tx('aiux.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
+            <div className="sub">{tx('aiux.d.' + x.key + '.' + x.state)}</div></div>)}
+        </>}
+      </FitDialog> : null}
       {note ? <div className={'fk-note ' + note.tone} role="status"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
 
       <div className="fk-kpis" data-testid="aiu-kpis">

@@ -39,6 +39,15 @@ const isForbidden = (e: any) => e && (e.name === 'ForbiddenError' || e instanceo
 export class RevenueForecastService {
   constructor(private readonly source: RevenueSeriesSource) {}
 
+  /** AI Analytics & Forecasting guide (Nov 2026): how much history the model has — the SAME series the forecast uses, so the
+   *  "have N of 14 days" the screen shows is the number the forecast was refused on. Read-only. */
+  async readiness(ctx: AiForecastContext) {
+    const series = await this.source.getDailyRevenue(ctx, LOOKBACK_DAYS);
+    const zeroDays = series.filter((p) => !p.value).length;
+    return { domain: 'revenue' as const, historyDays: series.length, minimum: MIN_HISTORY, ready: series.length >= MIN_HISTORY, firstDay: series[0]?.date ?? null,
+      lastDay: series[series.length - 1]?.date ?? null, zeroDays, daysShort: Math.max(0, MIN_HISTORY - series.length) };
+  }
+
   /** Authoritative historical revenue actuals (cents) by date. Financial gate enforced by the source. */
   async getActualsByDate(ctx: AiForecastContext, lookbackDays = 120): Promise<Map<string, number>> {
     if (!ctx.permissions.includes('reports.view')) throw withCode(new AiForecastError(AiForecastErrorCode.INSUFFICIENT_PERMISSION, 'Missing reports.view', 403), 'PERMISSION_DENIED');

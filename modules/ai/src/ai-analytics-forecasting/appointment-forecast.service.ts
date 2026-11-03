@@ -36,6 +36,16 @@ function addDays(iso: string, n: number): string {
 export class AppointmentForecastService {
   constructor(private readonly source: AppointmentSeriesSource) {}
 
+  /** AI Analytics & Forecasting guide (Nov 2026): how much history the model has — the SAME series the forecast uses, so the
+   *  "have N of 14 days" the screen shows is the number the forecast was refused on. Read-only. */
+  async readiness(ctx: AiForecastContext) {
+    if (!ctx.permissions.includes('reports.view')) throw withCode(new AiForecastError(AiForecastErrorCode.INSUFFICIENT_PERMISSION, 'Missing reports.view', 403), 'PERMISSION_DENIED');
+    const series = await this.source.getDailyAppointments(ctx, LOOKBACK_DAYS);
+    const zeroDays = series.filter((p) => !p.value).length;
+    return { domain: 'appointments' as const, historyDays: series.length, minimum: MIN_HISTORY, ready: series.length >= MIN_HISTORY, firstDay: series[0]?.date ?? null,
+      lastDay: series[series.length - 1]?.date ?? null, zeroDays, daysShort: Math.max(0, MIN_HISTORY - series.length) };
+  }
+
   /** Authoritative historical actuals by date (for realized-accuracy evaluation). */
   async getActualsByDate(ctx: AiForecastContext, lookbackDays = 120): Promise<Map<string, number>> {
     if (!ctx.permissions.includes('reports.view')) throw withCode(new AiForecastError(AiForecastErrorCode.INSUFFICIENT_PERMISSION, 'Missing reports.view', 403), 'PERMISSION_DENIED');

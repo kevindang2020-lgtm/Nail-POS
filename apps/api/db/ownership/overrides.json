@@ -387,5 +387,9 @@
  "receipt_scanner_health_runs": {
   "domain": "AI",
   "reason": "AI OCR Receipt Scanner guide (Nov 2 2026, migration 770): the scanner page \u2014 read-only Check OCR System runs"
+ },
+ "ai_usage_health_runs": {
+  "domain": "AI",
+  "reason": "AI Usage & Limits guide (Nov 2 2026, migration 771): the AI Usage page \u2014 read-only Check AI Usage & Subscriptions runs"
  }
 }

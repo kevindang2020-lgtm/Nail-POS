@@ -717,7 +717,19 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
     cards were counted from 200 rows; a failed read showed "Nothing here"; Return/Reject sent fixed English and lost the reason.
   - Exact queues with search / dates / pages, real counts, error states, reason prompts, check, `?doc=` deep link. Old list retired.
   - Tests: pgtest 8/8, routes 2/2, screen 6/6 + 4/4. Doc: `docs/ai/RECEIPT_REVIEW.md`.
-- **Next: AI Plans** (guide 13).
+- **Done: AI Plans** (guide 13): no migration.
+  - Fixed: lapsed plan trials showed "On trial"; the plan path re-trialled cancelled packages / re-opened a cancelled plan's trial
+    (unlimited free months); Cancel swallowed errors and answered "ok"; catalog reads turned DB errors into "not subscribed / 0 used".
+  - Honest plan state + trial dates, confirmations, no-discount note, Individual assistants link. Tests: pgtest 5/5, screen 3/3.
+  - Not built (decisions): Super Admin per-assistant price editor; paid self-serve purchase (needs a billing provider); billing history.
+  - Doc: `docs/ai/AI_PLANS.md`.
+- **Done: AI Usage Limits** (guide 14): the page was already rebuilt (Oct 30 guide); added Check AI Usage & Subscriptions
+  (migration 771) — names stale trial rows, AI calls after a trial ended / after cancelling, the cost basis. Fixed the raw
+  "forbidden" 403 text and two screen tests that failed on the untouched tree (no router). Doc: `docs/ai/AI_USAGE_HEALTH.md`.
+- **Done: AI Analytics & Forecasting** (guide 15, partial): the appointment series came from the sales report (paid-ticket days,
+  quiet days missing, UTC) — now from the booking calendar, salon-day zero-filled to yesterday; revenue zero-filled; readiness
+  endpoint + panel. Not built: forecast-history search/pages and a forecasting health checker. Doc: `docs/ai/AI_FORECASTING.md`.
+- **Next: AI Scheduling Optimizer** (guide 16).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
@@ -733,6 +745,9 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   7. Automatic replies: nothing runs them. Build the job (only with approval OFF, clean 5-star only), or remove the control?
   8. Owner app AI packages still read the older `/tenant/ai/packages` list (it shows "not subscribed" on a database error).
      Move it to the honest usage-screen state like the POS pages?
+  9. AI prices: build a Super Admin per-assistant price editor (prices are in code today; plan override/discount exists)?
+  10. Paid self-serve AI purchases need a recurring-billing integration — which provider (Stripe / Fiserv)?
+  11. Forecasting: build the forecast-history list (search / calendars / pages) and a forecasting health checker next?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

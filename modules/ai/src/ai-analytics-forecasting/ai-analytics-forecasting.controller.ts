@@ -106,6 +106,21 @@ export class AiAnalyticsForecastingController {
     });
   }
 
+  /** how much verified history each forecast has (booking calendar / sales report), the minimum, and what is short — read-only */
+  @Get('forecast/readiness')
+  @RequirePermission('pos.ai_analytics.view')
+  readiness(@Req() r: any) {
+    return run(async () => {
+      const ctx = ctxFrom(r);
+      const appointments = await this.appointments.readiness(ctx);
+      // revenue needs the financial permission; a role without it is told so, not shown a zero
+      let revenue: Awaited<ReturnType<RevenueForecastService['readiness']>> | { domain: 'revenue'; restricted: true } ;
+      try { revenue = await this.revenue.readiness(ctx); }
+      catch (e) { if ((e as { status?: number })?.status === 403 || (e instanceof AiForecastError && e.status === 403)) revenue = { domain: 'revenue', restricted: true }; else throw e; }
+      return { appointments, revenue, sources: { appointments: 'booking_calendar', revenue: 'sales_report' }, quietDaysCounted: true, checkedAt: new Date().toISOString() };
+    });
+  }
+
   @Get('accuracy')
   @RequirePermission('pos.ai_analytics.view')
   accuracy(@Req() r: any, @Query('domain') domain?: string) {

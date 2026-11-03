@@ -7232,6 +7232,7 @@ export interface DB {
   review_reputation_health_runs: ReviewReputationHealthRunsTable;
   review_reputation_settings_health_runs: ReviewReputationSettingsHealthRunsTable;
   receipt_scanner_health_runs: ReceiptScannerHealthRunsTable;
+  ai_usage_health_runs: AiUsageHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
@@ -8464,6 +8465,9 @@ export interface ReviewPublicationsTable { id: Generated<string>; tenant_id: str
 export interface ReviewEscalationsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; review_id: string; severity: string; signals: Generated<unknown>; status: Generated<string>; assigned_user_id: string | null; acknowledged_at: Ts | null; resolved_at: Ts | null; created_at: Generated<Ts>; }
 export interface ReviewInternalNotesTable { id: Generated<string>; tenant_id: string; review_id: string; author_user_id: string | null; note: string; created_at: Generated<Ts>; }
 export interface ReviewRecoveryActionsTable { id: Generated<string>; tenant_id: string; review_id: string; action_type: string; status: Generated<string>; created_by_user_id: string | null; external_ref: string | null; created_at: Generated<Ts>; }
+export interface AiUsageHealthRunsTable {   // migration 771 — read-only "Check AI Usage & Subscriptions" runs
+  id: Generated<string>; tenant_id: string; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface ReceiptScannerHealthRunsTable {   // migration 770 — read-only "Check OCR System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }

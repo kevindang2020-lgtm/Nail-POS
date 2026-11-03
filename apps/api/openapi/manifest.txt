@@ -305,6 +305,7 @@ GET /pos/ai-analytics/anomalies  realm=staff  auth=session  domain=ai  perm=pos.
 GET /pos/ai-analytics/busy-periods  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/appointments  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/product/{productId}  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-analytics/forecast/readiness  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/forecast/revenue  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/no-show-risk  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/seasonal-trends  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -3632,6 +3633,7 @@ POST /tenant/ai/revenue/attributions  realm=staff  auth=session  domain=ai  perm
 POST /tenant/ai/subscriptions  realm=staff  auth=session  domain=ai  perm=ai.manage
 POST /tenant/ai/usage-screen/alerts/{id}/acknowledge  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/ai/usage-screen/billing/reconcile  realm=staff  auth=session  domain=ai  perm=subscription.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/ai/usage-screen/check  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/ai/usage-screen/packages/{code}/cancel  realm=staff  auth=session  domain=ai  perm=ai.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/ai/usage-screen/packages/{code}/trial  realm=staff  auth=session  domain=ai  perm=ai.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/ai/workflows/runs  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard

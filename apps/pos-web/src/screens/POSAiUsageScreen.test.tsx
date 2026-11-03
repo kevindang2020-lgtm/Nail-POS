@@ -4,9 +4,12 @@
 // idempotency key, the 80/90/100 % alert strip, and the numbered pager asks the server for the next page.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
-const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), packages: vi.fn(), detail: vi.fn(), history: vi.fn(), exportHistory: vi.fn(), startTrial: vi.fn(), cancel: vi.fn(), acknowledge: vi.fn() } }));
+const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), packages: vi.fn(), detail: vi.fn(), history: vi.fn(), exportHistory: vi.fn(), startTrial: vi.fn(), cancel: vi.fn(), acknowledge: vi.fn(), check: vi.fn() } }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: api, posAiUsageApi: {} }));
-import { POSAiUsageScreen } from './POSAiUsageScreen';
+import { MemoryRouter } from 'react-router-dom';
+import { POSAiUsageScreen as Screen } from './POSAiUsageScreen';
+// the screen navigates (Open Module / Billing), so it needs a router — this test rendered without one and failed on the untouched tree
+const POSAiUsageScreen = () => <MemoryRouter><Screen /></MemoryRouter>;
 
 const card = (o: Record<string, unknown>) => ({ code: 'ai_marketing_assistant', name: 'AI Marketing Assistant', description: 'Creates campaigns.', category: 'growth', posArea: 'Marketing', known: true, state: 'active', storedStatus: 'active',
   globallyEnabled: true, disabledReason: null, price: { cents: 5900, currency: 'USD', period: 'monthly', monthlyEquivalentCents: 5900, source: 'subscription' },
@@ -58,5 +61,13 @@ describe('POSAiUsageScreen', () => {
     expect(await screen.findByTestId('aiu-kpi-cost')).toHaveTextContent('Restricted');
     fireEvent.click(await screen.findByRole('button', { name: 'Page 2' }));
     await waitFor(() => expect(api.packages).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })));
+  });
+  it('Check AI Usage & Subscriptions shows read-only evidence for the screenshot contradictions (AI Usage Limits guide, Nov 1 2026)', async () => {
+    api.check.mockResolvedValue({ overall: 'FAILED', checkedAt: '2026-11-02T15:00:00Z', reused: false, checks: [{ key: 'no_use_after_trial', state: 'FAILED', count: 3 }, { key: 'trial_rows_current', state: 'WARNING', count: 1 }] });
+    render(<POSAiUsageScreen />);
+    fireEvent.click(await screen.findByTestId('aiu-check'));
+    expect(await screen.findByTestId('chk-no_use_after_trial')).toHaveTextContent(/succeeded after the trial ended/);
+    expect(screen.getByTestId('chk-trial_rows_current')).toHaveTextContent(/still stored as "trialing"/);
+    expect(api.check).toHaveBeenCalledTimes(1);
   });
 });

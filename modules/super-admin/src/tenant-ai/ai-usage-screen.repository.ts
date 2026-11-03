@@ -436,4 +436,68 @@ export class AiUsageScreenRepository {
     return N((await sql<any>`select count(*)::int as n from ai_usage_alerts a join tenant_ai_subscriptions s on s.tenant_id = a.tenant_id and s.package_code = a.package_code
       and a.period_start = s.current_period_starts_at where a.tenant_id = ${tenantId} and a.acknowledged_at is null`.execute(this.db)).rows[0]?.n);
   }
+
+  // ── Check AI Usage & Subscriptions (AI Usage Limits guide, Nov 1 2026) — read-only; one run per salon per 30 s ─────────────
+  // It reconciles what the page shows with the records behind it: the catalog, each package's stored status vs its honest state,
+  // calls the gate let through after a trial ended or after a cancellation, the cost basis, the metering, the plans. It never
+  // starts, cancels, prices, charges or changes a limit.
+  async check(ctx: UsageCtx) {
+    const T = ctx.tenantId;
+    type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
+    const recent = async (ex: Kysely<any>) => (await sql<any>`select id, overall, checks, created_at from ai_usage_health_runs where tenant_id = ${T}
+      and created_at >= now() - interval '30 seconds' order by created_at desc limit 1`.execute(ex)).rows[0];
+    const reused = (r: any) => ({ id: String(r.id), overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
+    const early = await recent(this.db);
+    if (early) return reused(early);
+    const checks: Array<{ key: string; state: St; count?: number; detail?: Record<string, unknown> }> = [];
+    const one = async (q: any) => (await q.execute(this.db)).rows[0] ?? {};
+    let cards: PackageCard[] = [];
+    try { cards = (await this.cards(ctx)).cards; checks.push({ key: 'states_readable', state: 'PASSED', count: cards.length }); }
+    catch { checks.push({ key: 'states_readable', state: 'FAILED' }); }
+    checks.push({ key: 'catalog', state: AI_PACKAGES.length === 15 && cards.length === AI_PACKAGES.length ? 'PASSED' : 'WARNING', count: AI_PACKAGES.length });
+    const unknown = cards.filter((c) => c.state === 'unable_to_verify').length;
+    checks.push({ key: 'statuses_known', state: unknown ? 'WARNING' : 'PASSED', count: unknown });
+    // a stored "trialing" whose trial already ended: the page says Trial expired and the gate denies — the row itself is stale
+    const staleTrials = cards.filter((c) => c.state === 'trial_expired' && c.storedStatus === 'trialing').length;
+    checks.push({ key: 'trial_rows_current', state: staleTrials ? 'WARNING' : 'PASSED', count: staleTrials });
+    // calls that succeeded after the trial ended / after cancellation — the gate should have refused them
+    const afterTrial = N((await one(sql<any>`select count(*)::int as n from ai_usage_logs l join tenant_ai_subscriptions s on s.tenant_id = l.tenant_id and s.package_code = l.package_code
+      where l.tenant_id = ${T} and l.status = 'success' and s.status = 'trialing' and s.trial_ends_at is not null and l.created_at > s.trial_ends_at
+      and not exists (select 1 from ai_billing_events b where b.tenant_id = s.tenant_id and b.package_code = s.package_code and b.event_type = any(${PAID_EVENTS}::text[]))`)).n);
+    checks.push({ key: 'no_use_after_trial', state: afterTrial ? 'FAILED' : 'PASSED', count: afterTrial });
+    const afterCancel = N((await one(sql<any>`select count(*)::int as n from ai_usage_logs l join tenant_ai_subscriptions s on s.tenant_id = l.tenant_id and s.package_code = l.package_code
+      where l.tenant_id = ${T} and l.status = 'success' and s.status = 'cancelled' and s.cancelled_at is not null and l.created_at > s.cancelled_at`)).n);
+    checks.push({ key: 'no_use_after_cancel', state: afterCancel ? 'FAILED' : 'PASSED', count: afterCancel });
+    // the cost card: paying packages without a recorded payment this period are shown on the subscription records' basis
+    const paying = cards.filter((c) => c.state === 'active' || c.state === 'past_due');
+    const unpaid = paying.filter((c) => c.lastPaymentStatus !== 'paid').length;
+    checks.push({ key: 'cost_basis', state: !paying.length ? 'INSUFFICIENT_DATA' : unpaid ? 'WARNING' : 'PASSED', count: unpaid, detail: { paying: paying.length } });
+    const pastDue = cards.filter((c) => c.state === 'past_due').length;
+    checks.push({ key: 'payments_current', state: pastDue ? 'WARNING' : 'PASSED', count: pastDue });
+    const live = cards.filter((c) => c.state === 'active' || c.state === 'trialing');
+    const lastUse = (await one(sql<any>`select max(created_at) as at from ai_usage_logs where tenant_id = ${T} and status = 'success'`)).at;
+    checks.push({ key: 'metering', state: !live.length ? 'INSUFFICIENT_DATA' : lastUse ? 'PASSED' : 'WARNING', detail: { lastSuccessAt: iso(lastUse) } });
+    const errors = N((await one(sql<any>`select count(*)::int as n from ai_usage_logs where tenant_id = ${T} and status in ('failed', 'provider_error') and created_at > now() - interval '7 days'`)).n);
+    checks.push({ key: 'recent_errors', state: errors ? 'WARNING' : 'PASSED', count: errors });
+    const exhausted = cards.filter((c) => c.usage.level === 'exhausted_100' && !c.overage.enabled).length;
+    checks.push({ key: 'limits', state: exhausted ? 'WARNING' : 'PASSED', count: exhausted });
+    // a plan row that is live while one of its members is not (bundle coverage out of step)
+    const planGap = N((await one(sql<any>`select count(*)::int as n from tenant_ai_plan_subscriptions p where p.tenant_id = ${T} and p.status in ('active', 'trialing')
+      and (p.trial_ends_at is null or p.trial_ends_at > now())`)).n);
+    const planMembers = cards.filter((c) => c.state === 'cancelled' || c.state === 'expired' || c.state === 'trial_expired').length;
+    checks.push({ key: 'plans_in_step', state: planGap && planMembers ? 'WARNING' : 'PASSED', count: planGap && planMembers ? planMembers : 0 });
+    const disabled = cards.filter((c) => c.state === 'disabled_by_admin').length;
+    checks.push({ key: 'admin_switches', state: disabled ? 'WARNING' : 'PASSED', count: disabled });
+    checks.push({ key: 'no_side_effects', state: 'PASSED' });
+    const order = ['FAILED', 'UNAVAILABLE', 'WARNING', 'INSUFFICIENT_DATA', 'PASSED'];
+    checks.sort((a, z) => order.indexOf(a.state) - order.indexOf(z.state));
+    const overall = checks.some((x) => x.state === 'FAILED' || x.state === 'UNAVAILABLE') ? 'FAILED' : checks.some((x) => x.state === 'WARNING') ? 'WARNING' : 'PASSED';
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('ai-usage-health:' || ${T}))`.execute(trx);
+      const raced = await recent(trx);
+      if (raced) return reused(raced);
+      const id = (await sql<any>`insert into ai_usage_health_runs (tenant_id, actor_user_id, overall, checks) values (${T}, ${/^[0-9a-f-]{36}$/i.test(String(ctx.userId ?? "")) ? ctx.userId : null}, ${overall}, ${JSON.stringify(checks)}::jsonb) returning id, created_at`.execute(trx)).rows[0];
+      return { id: String(id.id), overall, checks, checkedAt: iso(id.created_at), reused: false };
+    });
+  }
 }

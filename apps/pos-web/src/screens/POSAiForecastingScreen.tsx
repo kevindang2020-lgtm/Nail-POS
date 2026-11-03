@@ -127,6 +127,10 @@ export function POSAiForecastingScreen() {
   const [rev, setRev] = useState<any | null>(null);
   const [acc, setAcc] = useState<Record<string, any>>({});
   const [ns, setNs] = useState<any | null>(null);
+  // how much verified history each forecast has — the same series the forecast uses (AI Analytics & Forecasting guide, Nov 2026)
+  const [ready, setReady] = useState<any | null>(null);
+  const [readyErr, setReadyErr] = useState<string | null>(null);
+  useEffect(() => { posAiForecastingApi.readiness().then(setReady).catch((e: any) => setReadyErr(reportError(e, tx('fcx.readiness')))); }, []);
 
   const load = useCallback((t: Tab) => {
     setLoading(true); setError(null);
@@ -158,6 +162,23 @@ export function POSAiForecastingScreen() {
       </div>
 
 
+      <section className="panel" style={{ padding: 12, marginBottom: 12 }} data-testid="fcx-readiness">
+        <div className="p-h">{tx('fcx.readiness')}</div>
+        {readyErr ? <div className="err">{readyErr}</div> : !ready ? <div className="state">{tx('pos.loading')}</div> : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(['appointments', 'revenue'] as const).map((d) => {
+              const r = ready[d];
+              return <div key={d} className="kpi" data-testid={`fcx-ready-${d}`} style={{ margin: 0 }}>
+                <div className="l">{tx('growth.aiForecast.tab.' + d)} · {tx('fcx.source.' + ready.sources[d])}</div>
+                {r.restricted ? <div className="sub">{tx('fcx.restricted')}</div> : <>
+                  <div className="v" style={{ fontSize: 18 }}>{tx('fcx.days', { n: String(r.historyDays), min: String(r.minimum) })}</div>
+                  <div className="sub">{r.ready ? tx('fcx.ready') : tx('fcx.short', { n: String(r.daysShort) })}{r.firstDay ? ` · ${tx('fcx.since', { d: r.firstDay })}` : ''}{r.zeroDays ? ` · ${tx('fcx.zeroDays', { n: String(r.zeroDays) })}` : ''}</div>
+                </>}
+              </div>;
+            })}
+          </div>)}
+        <div className="sub" style={{ marginTop: 6 }}>{tx('fcx.note')}</div>
+      </section>
       {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
       {loading && <div className="state">{tx('pos.loading')}</div>}
 

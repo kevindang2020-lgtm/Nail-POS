@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-const { apptMock, revMock, nsMock, accMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn() }));
-vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, revenue: revMock, noShowRisk: nsMock, accuracy: accMock } }));
+const { apptMock, revMock, nsMock, accMock, readyMock } = vi.hoisted(() => ({ apptMock: vi.fn(), revMock: vi.fn(), nsMock: vi.fn(), accMock: vi.fn(), readyMock: vi.fn() }));
+vi.mock('../api/posAiForecastingApi', () => ({ posAiForecastingApi: { appointments: apptMock, revenue: revMock, noShowRisk: nsMock, accuracy: accMock, readiness: readyMock } }));
 import { POSAiForecastingScreen } from './POSAiForecastingScreen';
 
 const horizon = (v: number) => Array.from({ length: 3 }, (_, i) => ({ step: i + 1, date: `2026-03-0${i + 1}`, point: v, lower: v - 2, upper: v + 2 }));
 
 beforeEach(() => {
+  readyMock.mockResolvedValue({ appointments: { historyDays: 30, minimum: 14, ready: true, daysShort: 0 }, revenue: { historyDays: 30, minimum: 14, ready: true, daysShort: 0 }, sources: { appointments: 'booking_calendar', revenue: 'sales_report' } });
   apptMock.mockResolvedValue({ method: 'seasonal_naive', confidence: 'high', dataQuality: 'healthy', horizonDays: 3, accuracy: { wape: 0.12, folds: 30 }, horizon: horizon(20), selectionReason: 'lowest WAPE', disclaimer: 'decision-support' });
   revMock.mockResolvedValue({ method: 'holt_linear', confidence: 'moderate', dataQuality: 'healthy', horizonDays: 3, accuracy: null, forecastTotalCents: 90000, horizon: horizon(30000).map((h) => ({ step: h.step, date: h.date, pointCents: 30000, lowerCents: 28000, upperCents: 32000 })), selectionReason: 'x', disclaimer: 'not guaranteed income' });
   nsMock.mockResolvedValue({ modelVersion: 'v1', disclaimer: 'no sensitive attributes', items: [
@@ -31,5 +32,15 @@ describe('POSAiForecastingScreen', () => {
     fireEvent.click(screen.getByText('No-Show Risk'));
     expect(await screen.findByText('Jane')).toBeInTheDocument();
     expect(screen.getByText(/Request customer confirmation/)).toBeInTheDocument();
+  });
+  it('shows how much verified history each forecast has — the number the forecast is refused on (AI Analytics & Forecasting guide, Nov 2026)', async () => {
+    apptMock.mockRejectedValue({ status: 422, message: 'Need at least 14 days' }); accMock.mockResolvedValue({ evaluated: 0 });
+    readyMock.mockResolvedValue({ appointments: { domain: 'appointments', historyDays: 9, minimum: 14, ready: false, daysShort: 5, firstDay: '2026-10-24', lastDay: '2026-11-01', zeroDays: 2 },
+      revenue: { domain: 'revenue', restricted: true }, sources: { appointments: 'booking_calendar', revenue: 'sales_report' } });
+    render(<POSAiForecastingScreen />);
+    expect(await screen.findByTestId('fcx-ready-appointments')).toHaveTextContent('9 of 14 days of history');
+    expect(screen.getByTestId('fcx-ready-appointments')).toHaveTextContent(/5 more day\(s\) needed/);
+    expect(screen.getByTestId('fcx-ready-appointments')).toHaveTextContent(/booking calendar/);
+    expect(screen.getByTestId('fcx-ready-revenue')).toHaveTextContent(/cannot see revenue/);
   });
 });

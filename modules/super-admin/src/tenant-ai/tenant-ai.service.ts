@@ -101,21 +101,33 @@ export class TenantAiService {
     if (this.db) {
       const sRows = await sql<any>`SELECT plan_code, price_cents_override, discount_type, discount_value, active FROM ai_plan_settings`.execute(this.db);
       sRows.rows.forEach((r: any) => settings.set(r.plan_code, r));
-      const psRows = await sql<any>`SELECT plan_code, status, price_cents FROM tenant_ai_plan_subscriptions WHERE tenant_id = ${tenantId} AND status <> 'cancelled'`.execute(this.db);
+      // every plan row (cancelled ones too): a cancelled plan's free trial has been used (AI Plans guide, Nov 2 2026)
+      const psRows = await sql<any>`SELECT plan_code, status, price_cents, trial_ends_at, cancelled_at FROM tenant_ai_plan_subscriptions WHERE tenant_id = ${tenantId}`.execute(this.db);
       psRows.rows.forEach((r: any) => planSubs.set(r.plan_code, r));
     }
     const plans = AI_PLANS.filter((pl) => settings.get(pl.code)?.active ?? true).map((pl) => {
       const s = settings.get(pl.code);
       const { fullCents, effectiveCents, discountCents } = effectivePlanPriceCents(pl.code, { priceCentsOverride: s?.price_cents_override ?? null, discountType: s?.discount_type ?? null, discountValue: s?.discount_value ?? 0 });
       const pkgs = planPackages(pl.code);
-      const memberActive = pkgs.length > 0 && pkgs.every((p) => { const st = subByCode.get(p.code)?.status; return st === 'active' || st === 'trialing'; });
-      const planSub = planSubs.get(pl.code);
-      const subscribed = !!planSub || memberActive;
-      const trialAvailable = !subscribed && pkgs.some((p) => p.trialDays > 0 && !subByCode.has(p.code));
+      // a member counts as live only if active, or trialing with its trial not yet ended (a lapsed trial is not live)
+      const memberActive = pkgs.length > 0 && pkgs.every((p) => { const m = subByCode.get(p.code); if (!m) return false;
+        return m.status === 'active' || (m.status === 'trialing' && !(m.trialEndsAt && new Date(m.trialEndsAt).getTime() < Date.now())); });
+      const planRow = planSubs.get(pl.code);
+      const planSub = planRow && planRow.status !== 'cancelled' ? planRow : null;
+      // the ONE honest state (the AI Usage screen's rule): a lapsed trial is "trial_expired", never "trialing"
+      const trialEndsAt = planSub?.trial_ends_at ? new Date(planSub.trial_ends_at) : null;
+      const lapsed = planSub?.status === 'trialing' && trialEndsAt != null && trialEndsAt.getTime() < Date.now();
+      const subscribed = (!!planSub && !lapsed) || memberActive;
+      // a plan trial is offered only while the plan was never trialled AND at least one member never had a trial
+      const trialAvailable = !subscribed && !planRow && pkgs.some((p) => p.trialDays > 0 && !subByCode.has(p.code));
+      const state = lapsed ? 'trial_expired' : planSub ? (planSub.status === 'trialing' ? 'trialing' : planSub.status === 'active' ? 'active' : planSub.status === 'past_due' || planSub.status === 'unpaid' ? 'past_due' : String(planSub.status))
+        : memberActive ? 'active' : planRow?.status === 'cancelled' ? 'cancelled' : trialAvailable ? 'trial_available' : 'available';
       return {
         code: pl.code, name: pl.name, description: pl.description, essential: !!pl.essential,
         fullCents, discountCents, effectiveCents,
         subscribed, status: planSub?.status ?? (subscribed ? 'active' : null), trialAvailable,
+        state, trialEndsAt: trialEndsAt ? trialEndsAt.toISOString() : null, cancelledAt: planRow?.cancelled_at ? new Date(planRow.cancelled_at).toISOString() : null,
+        canCancel: subscribed || lapsed,
         packages: pkgs.map((p) => ({ code: p.code, name: p.name, monthlyPriceCents: p.monthlyPriceCents, usageUnit: p.usageUnit, posArea: p.posArea })),
       };
     });
@@ -134,12 +146,19 @@ export class TenantAiService {
     if (this.db) { const sRows = await sql<any>`SELECT price_cents_override, discount_type, discount_value FROM ai_plan_settings WHERE plan_code = ${planCode}`.execute(this.db); s = sRows.rows[0]; }
     const { fullCents, effectiveCents, discountCents } = effectivePlanPriceCents(planCode, { priceCentsOverride: s?.price_cents_override ?? null, discountType: s?.discount_type ?? null, discountValue: s?.discount_value ?? 0 });
     const split = proratePlanPriceCents(planCode, effectiveCents); // member prices sum to the bundle price for a clean trial→paid conversion
+    // AI Plans guide (Nov 2 2026): one free trial per plan per salon, and a member package is trialled only if it never had one —
+    // the plan path used to re-trial cancelled packages and re-open a cancelled plan's trial (cancel → trial again, forever)
+    if (this.db) {
+      const prior = (await sql<any>`SELECT status FROM tenant_ai_plan_subscriptions WHERE tenant_id = ${tenantId} AND plan_code = ${planCode}`.execute(this.db)).rows[0];
+      if (prior) throw new TenantAiError('bad_request', prior.status === 'cancelled' || prior.status === 'expired' ? 'trial_already_used' : 'already_subscribed');
+    }
     const existing = await this.repo.listForTenant(tenantId);
     const byCode = new Map(existing.map((x) => [x.packageCode, x]));
+    if (!pkgs.some((p) => p.trialDays > 0 && !byCode.has(p.code))) throw new TenantAiError('bad_request', 'trial_already_used');
     let activated = 0;
     for (const p of pkgs) {
       const cur = byCode.get(p.code);
-      if (cur && (cur.status === 'active' || cur.status === 'trialing')) continue;
+      if (cur) continue;   // active / trialing stays as it is; cancelled / expired already used its trial
       if (p.trialDays <= 0) continue;
       const priceCents = split.find((x) => x.code === p.code)?.priceCents ?? p.monthlyPriceCents;
       const norm = normalizeAssign({ packageCode: p.code, trial: true, priceCents });
@@ -160,8 +179,14 @@ export class TenantAiService {
     const tenantId = requireTenant(ctx);
     requireManage(ctx);
     if (!getAiPlan(planCode)) throw new TenantAiError('bad_request', 'unknown_ai_plan');
-    for (const p of planPackages(planCode)) { await this.repo.cancel(tenantId, p.code).catch(() => undefined); }
-    if (this.db) await sql`UPDATE tenant_ai_plan_subscriptions SET status = 'cancelled', cancelled_at = now(), updated_at = now() WHERE tenant_id = ${tenantId} AND plan_code = ${planCode} AND ${canMoveToSql(TENANT_AI_PLAN_SUBSCRIPTION, 'cancelled')}`.execute(this.db);
-    return { ok: true as const };
+    // a failed cancel is an error, and "ok" means something was actually cancelled (Nov 2 2026: errors were swallowed)
+    let cancelled = 0;
+    for (const p of planPackages(planCode)) { if (await this.repo.cancel(tenantId, p.code)) cancelled++; }
+    if (this.db) {
+      const r: any = await sql`UPDATE tenant_ai_plan_subscriptions SET status = 'cancelled', cancelled_at = now(), updated_at = now() WHERE tenant_id = ${tenantId} AND plan_code = ${planCode} AND status <> 'cancelled' AND ${canMoveToSql(TENANT_AI_PLAN_SUBSCRIPTION, 'cancelled')}`.execute(this.db);
+      cancelled += Number(r?.numAffectedRows ?? r?.numUpdatedOrDeletedRows ?? 0);
+    }
+    if (!cancelled) throw new TenantAiError('not_found', 'subscription_not_found');
+    return { ok: true as const, cancelled };
   }
 }

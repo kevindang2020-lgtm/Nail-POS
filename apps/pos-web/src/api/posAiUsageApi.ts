@@ -20,6 +20,8 @@ export const posAiUsageScreenApi = {
   startTrial: (code: string, b: { idempotencyKey: string; confirm: boolean }) => api.post<any>(`${US}/packages/${enc(code)}/trial`, b),
   cancel: (code: string, b: { idempotencyKey: string; confirm: boolean; expectedStatus?: string | null }) => api.post<any>(`${US}/packages/${enc(code)}/cancel`, b as Record<string, unknown>),
   acknowledge: (id: string) => api.post<any>(`${US}/alerts/${enc(id)}/acknowledge`, {}),
+  /** Check AI Usage & Subscriptions — read-only (AI Usage Limits guide, Nov 1 2026) */
+  check: () => api.post<any>(`${US}/check`, {}),
   // Four-Module Completion Guide (Oct 30 2026): AI-02 branch override · AI-01 read-only invoice re-check (never charges)
   setBranch: (code: string, branchId: string, b: { overrideEnabled: boolean | null; settings: Record<string, boolean>; expectedVersion: number; reason?: string | null }) =>
     api.put<any>(`${US}/packages/${enc(code)}/branches/${enc(branchId)}`, b as Record<string, unknown>),

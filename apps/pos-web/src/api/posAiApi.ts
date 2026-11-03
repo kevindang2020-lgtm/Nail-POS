@@ -29,6 +29,8 @@ export interface PosAiPlan {
   code: string; name: string; description: string; essential: boolean;
   fullCents: number; discountCents: number; effectiveCents: number;
   subscribed: boolean; status: string | null; trialAvailable: boolean;
+  /** AI Plans guide (Nov 2 2026): the one honest state (trial_expired is never 'trialing'), trial end, whether Cancel applies */
+  state: string; trialEndsAt: string | null; cancelledAt: string | null; canCancel: boolean;
   packages: PosAiPlanPkg[];
 }
 
