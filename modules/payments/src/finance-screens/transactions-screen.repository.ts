@@ -14,6 +14,7 @@
 // The old /pos/reports/transactions rendered a UTC DATE as midnight UTC (Oct 22 5:17 AM showed as Oct 21 8:00 PM in New
 // York), called every non-refund row "completed" and computed Net as Gross − discount on payment rows that always carry
 // discount 0. Writes (refund, void, receipts) stay on the authorised Checkout routes; nothing here moves money.
+import { TICKET_NET_SALES_T, ticketDue, taxRates } from './ticket-money';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -222,10 +223,10 @@ export class TransactionsScreenRepository {
   private async ticket(ctx: FinanceCtx, ticketId: string) {
     const T = ctx.tenantId;
     const t = (await sql<any>`select t.id, t.ticket_number, t.status, t.customer_id, t.paid_at, t.created_at, coalesce(t.subtotal_cents, 0)::bigint as subtotal_cents, coalesce(t.discount_cents, 0)::bigint as discount_cents,
-        coalesce(t.tax_cents, 0)::bigint as tax_cents, coalesce(t.surcharge_cents, 0)::bigint as surcharge_cents, coalesce(t.tip_cents, 0)::bigint as tip_cents, coalesce(t.total_cents, 0)::bigint as total_cents, t.locked_total_cents
+        coalesce(t.tax_cents, 0)::bigint as tax_cents, coalesce(t.surcharge_cents, 0)::bigint as surcharge_cents, coalesce(t.tip_cents, 0)::bigint as tip_cents, coalesce(t.total_cents, 0)::bigint as total_cents, t.branch_id, ${TICKET_NET_SALES_T}::bigint as net_sales_cents
       from tickets t where t.tenant_id = ${T} and t.id = ${ticketId}::uuid`.execute(this.db)).rows[0];
     if (!t) return null;
-    const tenders = (await sql<any>`select p.id, p.method, p.amount_cents, coalesce(p.tip_cents, 0) as tip_cents, p.status, p.processor_transaction_id, p.processor_reference_id, p.gift_card_last4, p.payment_surface, p.created_at
+    const tenders = (await sql<any>`select p.id, p.method, p.amount_cents, coalesce(p.tip_cents, 0) as tip_cents, coalesce(p.surcharge_cents, 0) as surcharge_cents, p.status, p.processor_transaction_id, p.processor_reference_id, p.gift_card_last4, p.payment_surface, p.created_at
       from payments p where p.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid and not (p.status in (${sql.join(REVERSAL_ROWS)}) or (p.status in (${sql.join(VOIDED)}) and p.amount_cents = 0)) order by p.created_at, p.id`.execute(this.db)).rows;
     const lines = (await sql<any>`select l.id, l.service_name_snapshot as name, l.line_total_cents, l.line_kind, coalesce(nullif(tc.full_name, ''), trim(tc.first_name || ' ' || coalesce(tc.last_name, ''))) as technician
       from ticket_service_lines l left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id where l.tenant_id = ${T} and l.ticket_id = ${ticketId}::uuid and l.removed_at is null order by l.created_at, l.id`.execute(this.db)).rows;
@@ -233,11 +234,15 @@ export class TransactionsScreenRepository {
       left join technicians tc on tc.id = x.technician_id and tc.tenant_id = x.tenant_id where x.tenant_id = ${T} and x.ticket_id = ${ticketId}::uuid order by x.tip_cents desc`.execute(this.db)).rows;
     const state = (st: string) => (CONFIRMED.includes(st) ? 'confirmed' : VOIDED.includes(st) ? 'voided' : FAILED.includes(st) ? 'failed' : 'pending');
     const paid = tenders.filter((p: any) => state(String(p.status)) === 'confirmed').reduce((a: number, p: any) => a + N(p.amount_cents), 0);
-    const due = t.locked_total_cents != null ? N(t.locked_total_cents) : N(t.total_cents) + N(t.tip_cents);
+    // what is still due is computed exactly (ticket-money.ts): total_cents / locked_total_cents are not an unpaid ticket's total
+    const confirmedRows = tenders.filter((p: any) => state(String(p.status)) === 'confirmed');
+    const owed = ticketDue({ branchId: t.branch_id ?? null, status: String(t.status), netSalesCents: N(t.net_sales_cents), tipCents: N(t.tip_cents), collectedCents: paid,
+      collectedSurchargeCents: confirmedRows.reduce((a: number, p: any) => a + N(p.surcharge_cents), 0), paidTotalCents: N(t.total_cents) },
+      (await taxRates(this.db, T))(t.branch_id ?? null));
     return {
       id: String(t.id), ticketNumber: t.ticket_number ?? null, status: String(t.status), paidAt: iso(t.paid_at), createdAt: iso(t.created_at),
-      financials: { subtotalCents: N(t.subtotal_cents), discountCents: N(t.discount_cents), taxCents: N(t.tax_cents), surchargeCents: N(t.surcharge_cents), tipCents: N(t.tip_cents), totalCents: N(t.total_cents),
-        paidCents: paid, balanceCents: String(t.status) === 'paid' ? 0 : Math.max(0, due - paid) },
+      financials: { subtotalCents: N(t.subtotal_cents), discountCents: N(t.discount_cents), taxCents: N(t.tax_cents), surchargeCents: N(t.surcharge_cents), tipCents: N(t.tip_cents), totalCents: owed.totalCents,
+        paidCents: paid, balanceCents: owed.dueCents },
       lines: lines.map((l: any) => ({ id: String(l.id), name: l.name ?? null, cents: N(l.line_total_cents), kind: l.line_kind ?? null, technician: l.technician ?? null })),
       tenders: tenders.map((p: any) => ({ id: String(p.id), method: methodKey(p.method), amountCents: N(p.amount_cents), tipCents: N(p.tip_cents), state: state(String(p.status)), rawStatus: String(p.status),
         processorRef: p.processor_transaction_id ?? p.processor_reference_id ?? null, giftCard: p.gift_card_last4 ? { last4: p.gift_card_last4 } : null, channel: p.payment_surface ?? null, at: iso(p.created_at) })),

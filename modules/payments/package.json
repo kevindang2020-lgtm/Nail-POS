@@ -28,6 +28,7 @@
     "@aipowersalon/customers": "*",
     "@aipowersalon/database": "*",
     "@aipowersalon/date-time": "*",
+    "@aipowersalon/money": "*",
     "@aipowersalon/observability": "*",
     "@aipowersalon/permissions": "*",
     "@aipowersalon/security": "*",

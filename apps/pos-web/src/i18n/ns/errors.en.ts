@@ -543,6 +543,8 @@ export const ERRORS_EN = {
   'errors.BC_ALERT_NOT_FOUND': "Alert not found.",
   'errors.BC_EVENT_NOT_FOUND': "Alert event not found.",
   'errors.BC_EVENT_NOT_ACKNOWLEDGEABLE': "Only a triggered alert that has not been acknowledged can be acknowledged.",
+  'errors.DRAWER_ALREADY_COUNTED': "This drawer was already counted for the day. Reopen it to record cash in or out.",
+  'errors.DRAWER_COUNT_NOT_ALLOWED': "This drawer cannot be counted in its current state.",
   'errors.VT_SETTINGS_UNAVAILABLE': "The transcription settings could not be read.",
   'errors.FOLLOWUP_ASSIGNEE_INVALID': "Choose an active staff member who can work follow-ups in this branch.",
   'errors.FOLLOWUP_LINK_INVALID': "That customer, call or appointment is not in this salon.",

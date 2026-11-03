@@ -93,4 +93,7 @@ export const MONEY_VI = {
   'pm.inv.paid': 'Đã trả',
   'pm.inv.draft': 'Bản nháp',
   'pm.inv.void': 'Đã hủy',
+  "cdr.over": "dư {amount}",
+  "cdr.short": "thiếu {amount}",
+  "cdr.changedSinceCount": "Tiền mặt đã thay đổi sau lần đếm này: dự kiến hiện là {amount}. Mở lại và đếm lại để chốt."
 };

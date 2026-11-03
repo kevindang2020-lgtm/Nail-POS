@@ -543,6 +543,8 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BC_ALERT_NOT_FOUND': "Không tìm thấy cảnh báo.",
   'errors.BC_EVENT_NOT_FOUND': "Không tìm thấy lần cảnh báo.",
   'errors.BC_EVENT_NOT_ACKNOWLEDGEABLE': "Chỉ cảnh báo đã kích hoạt và chưa xác nhận mới xác nhận được.",
+  'errors.DRAWER_ALREADY_COUNTED': "Ngăn kéo đã được đếm trong ngày. Mở lại để ghi tiền vào hoặc ra.",
+  'errors.DRAWER_COUNT_NOT_ALLOWED': "Không thể đếm ngăn kéo ở trạng thái hiện tại.",
   'errors.VT_SETTINGS_UNAVAILABLE': "Không đọc được cài đặt chép lời cuộc gọi.",
   'errors.FOLLOWUP_ASSIGNEE_INVALID': "Hãy chọn một nhân viên đang làm việc có thể xử lý việc theo dõi ở chi nhánh này.",
   'errors.FOLLOWUP_LINK_INVALID': "Khách hàng, cuộc gọi hoặc lịch hẹn đó không thuộc tiệm này.",

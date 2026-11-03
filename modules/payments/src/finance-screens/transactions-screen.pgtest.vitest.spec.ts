@@ -184,8 +184,16 @@ describe('Transactions — detail, privacy, isolation', () => {
     const s = await r.detail(ctx, ids.s1);
     expect(s.settlement).toMatchObject({ reference: 'BATCH-88', grossCents: 6316 });
     expect(s.ticket).toMatchObject({ ticketNumber: '4001', financials: { subtotalCents: 5916, tipCents: 400, paidCents: 6316, balanceCents: 0 } });   // a single-tender paid ticket has its ticket too
-    await q(`update tickets set status = 'ready_checkout' where id = (select ticket_id from payments where id = $1)`, [ids.s3]);   // the split ticket is still at checkout
-    expect((await r.detail(ctx, ids.s3)).ticket?.financials).toMatchObject({ paidCents: 5172, balanceCents: 7972 + 200 - 5172 });
+    // the split ticket is still at checkout: as Checkout leaves it — no subtotal / total yet (written at payment), the $79.72
+    // of sales on its line, tax off for this salon. The balance is computed from those (not from total_cents)
+    await q(`update tickets set status = 'ready_checkout', subtotal_cents = 0, total_cents = 0, locked_total_cents = 3000 where id = (select ticket_id from payments where id = $1)`, [ids.s3]);
+    await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status) select $1, $2, ticket_id, $3, 'Pedicure', 7972, 45, 7972, 'completed' from payments where id = $4`, [T, B, id('83'), ids.s3]);
+    await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'tax', '{"enabled":false}'::jsonb)`, [T]);
+    expect((await r.detail(ctx, ids.s3)).ticket?.financials).toMatchObject({ paidCents: 5172, balanceCents: 7972 + 200 - 5172, totalCents: 7972 + 200 });
+    // with tax on (7.75%), the same ticket owes its tax too: round(7972 × 7.75%) = 618
+    await q(`update tenant_settings set settings_json = '{"enabled":true,"taxRatePercent":7.75}'::jsonb where tenant_id = $1 and category = 'tax'`, [T]);
+    expect((await r.detail(ctx, ids.s3)).ticket?.financials).toMatchObject({ balanceCents: 7972 + 618 + 200 - 5172 });
+    await q(`update tenant_settings set settings_json = '{"enabled":false}'::jsonb where tenant_id = $1 and category = 'tax'`, [T]);
     await q(`update tickets set status = 'paid' where id = (select ticket_id from payments where id = $1)`, [ids.s3]);
     expect((await r.detail(ctx, ids.void)).permissions.refund).toBe(false);
   });

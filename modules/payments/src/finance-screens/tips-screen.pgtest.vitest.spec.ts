@@ -20,7 +20,10 @@ const other = { ...ctx, tenantId: T2, branchId: B2 };
 const TZ = 'America/New_York';
 let pg: any; let r: TipsScreenRepository;
 const q = (s: string, p: unknown[] = []) => pg.query(s, p);
-const month = async (extra: Record<string, unknown> = {}) => r.filters(await r.period(ctx, { preset: 'month' }), extra);
+// "the recent tips": the last 10 salon days (fixtures sit 1–5 days back; the 40-day-old one is outside). It was This Month,
+// which made the suite fail on the first days of every month (Nov 3 2026) — a fixed window keeps it date-independent.
+const ymdAgo = (d: number) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(Date.now() - d * 86_400_000));
+const month = async (extra: Record<string, unknown> = {}) => r.filters(await r.period(ctx, { preset: 'custom', from: ymdAgo(10), to: ymdAgo(0) }), extra);
 const all = async (extra: Record<string, unknown> = {}) => r.filters(await r.period(ctx, { preset: 'all' }), extra);
 const pr = { page: 1, pageSize: 12 };
 let n = 0;
@@ -29,6 +32,9 @@ async function ticket(o: { tenant?: string; branch?: string; tip: number; subtot
   await q(`insert into tickets (id, tenant_id, branch_id, customer_id, primary_technician_id, status, subtotal_cents, discount_cents, tax_cents, total_cents, tip_cents, ticket_number, chosen_payment_method, paid_at, created_at, removed_at)
     values ($1,$2,$3,$4,$5,$6,$7,0,0,$8,$9,$10,$11, now() - make_interval(days => $12), now() - make_interval(days => $12, mins => 30), case when $13 then now() else null end)`,
     [tid, o.tenant ?? T, o.branch ?? B, o.customer ?? (o.tenant ? id('99') : id('92')), o.tech ?? (o.tenant ? id('f9') : VISHAL), o.status ?? 'paid', o.subtotal, o.subtotal + o.tip, o.tip, o.number, o.chosen ?? 'card', o.daysAgo ?? 1, !!o.removed]);
+  // the sales live on the ticket's lines (what the screens read; subtotal_cents is only the paid, net figure)
+  if (o.subtotal > 0) await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status) values ($1,$2,$3,$5,'Service',$4,45,$4,'completed')`,
+    [o.tenant ?? T, o.branch ?? B, tid, o.subtotal, o.tenant ? id('8b') : id('8a')]);
   return tid;
 }
 async function pay(tid: string, method: string, amount: number, tip: number, status = 'approved', ref: string | null = null, tenant = T, branch = B) {
@@ -46,6 +52,8 @@ beforeAll(async () => {
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','tp-pilot','TPP001','active'), ($2,'Other LLC','Other','tp-other','TPP002','active')`, [T, T2]);
   await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active',$5), ($3,$4,'Elsewhere','active',$5)`, [B, T, B2, T2, TZ]);
   await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'o@x.test','Pat Owner','OWNER','active')`, [U, T]);
+  await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Nails'), ($4,$5,$6,'Nails')`, [id('8c'), T, B, id('8d'), T2, B2]);
+  await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$7,'Service',45,1000), ($4,$5,$6,$8,'Service',45,1000)`, [id('8a'), T, B, id('8b'), T2, B2, id('8c'), id('8d')]);
   await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status) values ($1,$5,$6,'Vishal','Verma','Vishal verma','active'), ($2,$5,$6,'Anna','Lee','Anna Lee','active'), ($3,$5,$6,'Bao','Tran','Bao Tran','active'), ($4,$5,$6,'Chi','Pham','Chi Pham','active'), ($7,$8,$9,'Other','Tech','Other Tech','active')`, [VISHAL, ANNA, BAO, CHI, T, B, id('f9'), T2, B2]);
   await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_display, email) values ($1,$2,$3,'John','Smith','John Smith','+18565551234','(856) 555-1234','john.smith@example.com'), ($4,$5,$6,'John','Smith','John Smith','+18565551234','(856) 555-1234',null), ($7,$2,$3,'Walk','In','Walk-in','+18565550000',null,null)`, [id('91'), T, B, id('99'), T2, B2, id('92')]);
 

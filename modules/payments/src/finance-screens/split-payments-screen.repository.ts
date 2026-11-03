@@ -11,6 +11,7 @@
 //     never to a redeemable code.
 // The old /state answered zero when the read failed (emptyOnReadError) and grouped only the newest 2,000 payment rows
 // in memory; a read error here throws, and the list, KPIs and export run over the whole scope on the server.
+import { openTicketDues, duesRelation } from './ticket-money';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -33,7 +34,9 @@ export interface SpFilters {
 const CONFIRMED = [...new Set([...REVENUE_BEARING_STATUSES, 'completed', 'succeeded', 'settled', 'partially_refunded'])];
 const REFUNDS = [...REFUND_STATUSES];
 const FAILED = ['declined', 'failed', 'error', 'timeout', 'canceled', 'cancelled', 'rejected', 'expired'];
-const REFUND_SETTLED_NOT = ['failed', 'declined', 'canceled', 'cancelled', 'rejected', 'error'];
+// a refund counts as refunded only once it HAS settled (status 'refunded') — the same rule as Transactions; a reserved,
+// pending or processing refund has not given anything back yet (guide audit Nov 3 2026)
+const REFUND_DONE = ['refunded'];
 const maskPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, ''); return d.length >= 4 ? `(•••) •••-${d.slice(-4)}` : null; };
 const showPhone = (p: string | null | undefined) => { const d = (p ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, ''); return d.length === 10 ? `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}` : (p ?? null); };
 const METHOD_KEY: Record<string, string> = { card: 'card', credit_card: 'card', debit_card: 'card', cash: 'cash', gift_card: 'gift_card', gift: 'gift_card', check: 'check', deposit: 'deposit', loyalty: 'loyalty', other: 'other' };
@@ -59,11 +62,16 @@ export class SplitPaymentsScreenRepository {
   private scope(ctx: FinanceCtx): RawBuilder<boolean> { return ctx.branchId && isUuid(ctx.branchId) ? sql<boolean>`t.branch_id = ${ctx.branchId}::uuid` : sql<boolean>`true`; }
 
   /** One row per ticket with its tender facts pre-aggregated (no many-to-many row multiplication). */
-  private base(ctx: FinanceCtx): RawBuilder<unknown> {
+  // (returns a plain wrapper — an async function cannot resolve to a RawBuilder: Kysely makes it un-awaitable)
+  private async dues(ctx: FinanceCtx): Promise<{ rel: RawBuilder<unknown> }> {
+    return { rel: duesRelation(await openTicketDues(this.db, ctx.tenantId, CONFIRMED, ctx.branchId && isUuid(ctx.branchId) ? ctx.branchId : null)) };
+  }
+  private base(ctx: FinanceCtx, dues: RawBuilder<unknown>): RawBuilder<unknown> {
     const T = ctx.tenantId;
     return sql`select t.id, t.tenant_id, t.branch_id, t.ticket_number, t.customer_id, t.status as ticket_status, t.created_at, t.paid_at, t.removed_at, t.checkout_register_id, t.primary_technician_id,
         coalesce(t.tip_cents, 0)::bigint as tip_cents, coalesce(t.surcharge_cents, 0)::bigint as surcharge_cents, coalesce(t.tax_cents, 0)::bigint as tax_cents, coalesce(t.discount_cents, 0)::bigint as discount_cents, coalesce(t.subtotal_cents, 0)::bigint as subtotal_cents,
-        (case when t.status = 'paid' and coalesce(t.total_cents, 0) > 0 then t.total_cents when t.locked_total_cents is not null then t.locked_total_cents else coalesce(t.total_cents, 0) + coalesce(t.tip_cents, 0) end)::bigint as total_cents,
+        (case when t.status = 'paid' and coalesce(t.total_cents, 0) > 0 then t.total_cents when t.status = 'paid' then pay.paid_cents else coalesce(od.total_cents, pay.paid_cents) end)::bigint as total_cents,
+        (case when t.status = 'paid' then 0 else coalesce(od.due_cents, 0) end)::bigint as owed_cents,
         pay.attempts, pay.confirmed, pay.pending, pay.failed, pay.paid_cents, pay.methods, pay.method_set, pay.refs, pay.first_at, pay.last_at, pay.last_confirmed_at, pay.cash_cents, pay.card_cents, pay.gift_cents, pay.other_cents,
         coalesce(rfd.refunded_cents, 0)::bigint as refunded_cents, rfd.last_refund_at,
         c.full_name as customer_name, c.normalized_phone as customer_phone, c.email as customer_email, b.name as branch_name, st.name as register_name, tc.full_name as technician_name
@@ -83,18 +91,19 @@ export class SplitPaymentsScreenRepository {
           coalesce(sum(p.amount_cents) filter (where p.status in (${sql.join(CONFIRMED)}) and p.method not in ('cash', 'card', 'credit_card', 'debit_card', 'gift_card', 'gift')), 0)::bigint as other_cents
         from payments p where p.tenant_id = t.tenant_id and p.ticket_id = t.id and p.status not in (${sql.join(REFUNDS)})) pay on true
       left join lateral (select sum(r.amount_cents) as refunded_cents, max(r.created_at) as last_refund_at from payment_refunds r join payments p0 on p0.id = r.payment_id and p0.tenant_id = r.tenant_id
-        where r.tenant_id = t.tenant_id and p0.ticket_id = t.id and r.status not in (${sql.join(REFUND_SETTLED_NOT)})) rfd on true
+        where r.tenant_id = t.tenant_id and p0.ticket_id = t.id and r.status in (${sql.join(REFUND_DONE)})) rfd on true
+      left join ${dues} od(id, total_cents, due_cents) on od.id = t.id
       left join customers c on c.id = t.customer_id and c.tenant_id = t.tenant_id
       left join branches b on b.id = t.branch_id and b.tenant_id = t.tenant_id
       left join pos_stations st on st.id = t.checkout_register_id and st.tenant_id = t.tenant_id
       left join technicians tc on tc.id = t.primary_technician_id and tc.tenant_id = t.tenant_id
       where t.tenant_id = ${T} and ${this.scope(ctx)} and (pay.attempts >= 2 or (pay.confirmed >= 1 and t.status <> 'paid'))`;
   }
-  private static readonly DUE = sql`greatest(0, a.total_cents - a.paid_cents)`;
+  private static readonly DUE = sql`a.owed_cents`;
   private static readonly STATUS = sql`(case when a.removed_at is not null or a.ticket_status in ('void', 'voided', 'canceled', 'cancelled') then 'void'
       when a.refunded_cents > 0 and a.refunded_cents >= a.paid_cents then 'refunded' when a.refunded_cents > 0 then 'partially_refunded'
       when a.confirmed = 0 and a.failed > 0 and a.pending = 0 then 'failed' when a.confirmed = 0 then 'pending'
-      when a.ticket_status = 'paid' or ${SplitPaymentsScreenRepository.DUE} = 0 then 'completed' else 'partially_paid' end)`;
+      when a.ticket_status = 'paid' then 'completed' else 'partially_paid' end)`;
   private static readonly QUALIFIES = sql`(a.confirmed >= 2)`;
   private basisCol(b: SpFilters['basis']): RawBuilder<unknown> {
     return { completed: sql`coalesce(a.paid_at, a.last_confirmed_at)`, created: sql`a.created_at`, tender: sql`a.last_at`, refund: sql`a.last_refund_at`, activity: sql`greatest(a.last_at, coalesce(a.last_refund_at, a.last_at), a.created_at)` }[b];
@@ -163,11 +172,11 @@ export class SplitPaymentsScreenRepository {
 
   async list(ctx: FinanceCtx, f: SpFilters, pr: PageReq): Promise<Paged<ReturnType<SplitPaymentsScreenRepository['row']>>> {
     const w = this.where(f); const s = this.search(f.q);
-    const total = N((await sql<any>`select count(*)::int as n from (${this.base(ctx)}) a where ${w}`.execute(this.db)).rows[0]?.n);
+    const total = N((await sql<any>`select count(*)::int as n from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}`.execute(this.db)).rows[0]?.n);
     const pg = clampPage(pr, total);
     const order = { created_desc: sql`a.created_at desc, a.id desc`, created_asc: sql`a.created_at asc, a.id asc`, completed_desc: sql`coalesce(a.paid_at, a.last_confirmed_at) desc nulls last, a.id desc`,
       total_desc: sql`a.total_cents desc, a.id desc`, total_asc: sql`a.total_cents asc, a.id desc`, tenders_desc: sql`a.confirmed desc, a.created_at desc, a.id desc`, due_desc: sql`${SplitPaymentsScreenRepository.DUE} desc, a.created_at desc, a.id desc` }[f.sort];
-    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, ${f.q ? s.rank : sql`0`} as rank from (${this.base(ctx)}) a where ${w}
+    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, ${f.q ? s.rank : sql`0`} as rank from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}
       order by ${f.q ? sql`rank desc, ` : sql``}${order} limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => this.row(ctx, r)), total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount };
   }
@@ -182,7 +191,7 @@ export class SplitPaymentsScreenRepository {
         count(*) filter (where ${SplitPaymentsScreenRepository.STATUS} in ('refunded', 'partially_refunded'))::int as refunded, count(*) filter (where ${SplitPaymentsScreenRepository.STATUS} = 'failed')::int as failed,
         coalesce(sum(a.tip_cents) filter (where a.confirmed >= 2), 0)::bigint as tips, coalesce(sum(a.cash_cents) filter (where a.confirmed >= 2), 0)::bigint as cash, coalesce(sum(a.card_cents) filter (where a.confirmed >= 2), 0)::bigint as card, coalesce(sum(a.gift_cents) filter (where a.confirmed >= 2), 0)::bigint as gift,
         count(*)::int as listed
-      from (${this.base(ctx)}) a where ${w}`.execute(this.db)).rows[0] ?? {};
+      from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w}`.execute(this.db)).rows[0] ?? {};
     const n = N(r.split_tickets);
     return {
       kpis: { splitTickets: n, splitTotalCents: N(r.split_total), avgTenders: n ? Math.round((N(r.split_tenders) / n) * 10) / 10 : 0, completedTickets: N(r.completed), outstandingTickets: N(r.partial), outstandingCents: N(r.outstanding),
@@ -198,11 +207,11 @@ export class SplitPaymentsScreenRepository {
   async detail(ctx: FinanceCtx, ticketId: string) {
     if (!isUuid(ticketId)) throw new FinanceError('That ticket could not be found.', 'TICKET_NOT_FOUND', 404);
     const T = ctx.tenantId;
-    const r = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx)}) a where a.id = ${ticketId}::uuid`.execute(this.db)).rows[0];
+    const r = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where a.id = ${ticketId}::uuid`.execute(this.db)).rows[0];
     if (!r) throw new FinanceError('That ticket could not be found.', 'TICKET_NOT_FOUND', 404);
     const ticket = this.row(ctx, r);
     const tenders = (await sql<any>`select p.id, p.method, p.amount_cents, coalesce(p.tip_cents, 0) as tip_cents, coalesce(p.surcharge_cents, 0) as surcharge_cents, p.status, p.processor_transaction_id, p.processor_reference_id, p.payment_surface, p.device_id, p.card_brand, p.card_last4, p.gift_card_last4, p.created_at, p.approved_at, p.failed_at, p.idempotency_key,
-        (select coalesce(sum(r.amount_cents), 0) from payment_refunds r where r.tenant_id = p.tenant_id and r.payment_id = p.id and r.status not in (${sql.join(REFUND_SETTLED_NOT)})) as refunded_cents,
+        (select coalesce(sum(r.amount_cents), 0) from payment_refunds r where r.tenant_id = p.tenant_id and r.payment_id = p.id and r.status in (${sql.join(REFUND_DONE)})) as refunded_cents,
         (select count(*)::int from payment_refunds r where r.tenant_id = p.tenant_id and r.payment_id = p.id) as refund_count,
         g.id as gift_ledger_id, g.gift_card_id, gc.card_number_last4 as gift_last4,
         d.id as drawer_movement_id, d.direction as drawer_direction
@@ -245,7 +254,7 @@ export class SplitPaymentsScreenRepository {
   /** CSV of every matching ticket (all pages): one row per ticket, the breakdown per method; masked contact; audited. */
   async exportCsv(ctx: FinanceCtx, f: SpFilters): Promise<string> {
     const w = this.where(f);
-    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx)}) a where ${w} order by a.created_at desc, a.id desc limit 20000`.execute(this.db)).rows.map((r: any) => this.row({ ...ctx, permissions: ctx.permissions.filter((p) => p !== 'pos.customers.view') }, r));
+    const rows = (await sql<any>`select ${SplitPaymentsScreenRepository.ROW_COLS}, 0 as rank from (${this.base(ctx, (await this.dues(ctx)).rel)}) a where ${w} order by a.created_at desc, a.id desc limit 20000`.execute(this.db)).rows.map((r: any) => this.row({ ...ctx, permissions: ctx.permissions.filter((p) => p !== 'pos.customers.view') }, r));
     const sum = await this.summary(ctx, f);
     const bd = (x: ReturnType<SplitPaymentsScreenRepository['row']>, m: string) => usd(x.breakdown.lines.find((l) => l.method === m)?.cents ?? 0);
     const doc = csvDocument('Split payments', [['Generated', new Date().toISOString()], ['Period', f.period.from ? `${f.period.from} to ${f.period.to} (${f.basis} date, ${f.period.tz})` : 'All time'], ['Search', f.q || '—'], ['Status', f.status ?? 'all'], ['Currency', 'USD'], ['Contact', 'masked']],

@@ -23,7 +23,10 @@ async function ticket(o: { tenant?: string; branch?: string; total: number; tip?
   const tid = id('c' + String(++n).padStart(3, '0'));
   await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, discount_cents, tax_cents, total_cents, tip_cents, locked_total_cents, ticket_number, checkout_register_id, paid_at, created_at)
     values ($1,$2,$3,$4,$5,$6,0,0,$7,$8,$9,$10,$11, case when $5 = 'paid' then now() - make_interval(days => $12) else null end, now() - make_interval(days => $12, mins => 20))`,
-    [tid, o.tenant ?? T, o.branch ?? B, o.customer ?? (o.tenant ? id('99') : id('92')), o.status ?? 'paid', o.total - (o.tip ?? 0), o.total, o.tip ?? 0, o.locked ?? null, o.number, o.register === undefined ? REG : o.register, o.daysAgo ?? 1]);
+    // what Checkout writes: subtotal / total only at payment (0 before), the sales on the ticket's lines
+    [tid, o.tenant ?? T, o.branch ?? B, o.customer ?? (o.tenant ? id('99') : id('92')), o.status ?? 'paid', (o.status ?? 'paid') === 'paid' ? o.total - (o.tip ?? 0) : 0, (o.status ?? 'paid') === 'paid' ? o.total : 0, o.tip ?? 0, o.locked ?? null, o.number, o.register === undefined ? REG : o.register, o.daysAgo ?? 1]);
+  await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status) values ($1,$2,$3,$5,'Service',$4,45,$4,'completed')`,
+    [o.tenant ?? T, o.branch ?? B, tid, o.total - (o.tip ?? 0), o.tenant ? id('8b') : id('8a')]);
   return tid;
 }
 async function pay(tid: string, method: string, amount: number, status = 'approved', ref: string | null = null, extra: { tenant?: string; branch?: string; surface?: string | null; last4?: string | null } = {}) {
@@ -40,6 +43,9 @@ beforeAll(async () => {
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'Pilot LLC','Pilot','sp-pilot','SPP001','active'), ($2,'Other LLC','Other','sp-other','SPP002','active')`, [T, T2]);
   await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','America/New_York'), ($3,$4,'Elsewhere','active','America/New_York')`, [B, T, B2, T2]);
   await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'o@x.test','Pat Owner','OWNER','active')`, [U, T]);
+  await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'tax', '{"enabled":false}'::jsonb)`, [T]);
+  await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Nails'), ($4,$5,$6,'Nails')`, [id('8c'), T, B, id('8d'), T2, B2]);
+  await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$7,'Service',45,1000), ($4,$5,$6,$8,'Service',45,1000)`, [id('8a'), T, B, id('8b'), T2, B2, id('8c'), id('8d')]);
   await q(`insert into pos_stations (id, tenant_id, branch_id, name) values ($1,$3,$4,'Front Desk'), ($2,$3,$4,'Back Bar')`, [REG, REG2, T, B]);
   await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, phone_display, email) values ($1,$2,$3,'John','Smith','John Smith','+18565551234','(856) 555-1234','john.smith@example.com'), ($4,$2,$3,'Walk','In','Walk-in','+18565550000',null,null), ($5,$6,$7,'John','Smith','John Smith','+18565551234','(856) 555-1234',null)`, [id('91'), T, B, id('92'), id('99'), T2, B2]);
 

@@ -30,3 +30,23 @@ describe('register cash', () => {
     expect(c.salesCents ?? c.cashSalesCents ?? c.sales).toBe(2000 + 6717);
   });
 });
+
+describe('a counted drawer stays as counted (Cash Drawer guide audit, Nov 3 2026)', () => {
+  it('expected / variance are frozen at the count; a later sale shows as the live figure, not a moved result', async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    await repo.open(ctx, B, 'main', day, 10000);
+    const r = await repo.reconcile(ctx, B, 'main', day, 10000 + 2000 + 6717, null);
+    expect(r).toMatchObject({ applied: true, status: 'reconciled', varianceCents: 0 });
+    await pg.exec(`INSERT INTO payments (tenant_id, branch_id, ticket_id, method, amount_cents, status) VALUES ('${T}', '${B}', '${K2}', 'cash', 500, 'approved')`);
+    const s = await repo.state(ctx, B, 'main', day);
+    expect(s).toMatchObject({ status: 'reconciled', expectedCashCents: 18717, varianceCents: 0, liveExpectedCashCents: 19217, changedSinceCount: true });
+  });
+  it('cash in / out after the count is refused until the drawer is reopened', async () => {
+    const day = new Date().toISOString().slice(0, 10);
+    await expect(repo.addMovement(ctx, B, 'main', day, 'out', 1000, 'lunch', null)).rejects.toMatchObject({ drawerCode: 'DRAWER_ALREADY_COUNTED' });
+  });
+  it('a failed read fails — it is never $0 (that stored a false shortage)', async () => {
+    const broken = new CashDrawerRepository({ selectFrom: () => { throw new Error('db down'); } } as any);
+    await expect(broken.computeRegisterCash({ ...ctx }, B, '2026-11-03').catch((e: Error) => { throw e; })).rejects.toThrow();
+  });
+});

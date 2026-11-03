@@ -65,7 +65,8 @@ export class CashDrawerService {
     const reason = typeof body?.reason === 'string' ? body.reason.slice(0, 80) : null;
     const note = typeof body?.note === 'string' ? body.note.slice(0, 300) : null;
     const registerId = typeof body?.registerId === 'string' && body.registerId ? body.registerId : 'main';
-    await this.repo.addMovement(ctx, branchId, registerId, d, direction, amount, reason, note);
+    try { await this.repo.addMovement(ctx, branchId, registerId, d, direction, amount, reason, note); }
+    catch (e: any) { if (e?.drawerCode === 'DRAWER_ALREADY_COUNTED') throw withCode(new CashDrawerError('already_counted', e.message, 409), 'DRAWER_ALREADY_COUNTED'); throw e; }
     await this.repo.audit(ctx, 'cash_drawer_movement', branchId, { businessDate: d, direction, amountCents: amount, reason, registerId });
     // §343: the repository recorded this in the drawer's transaction; the projection delivers it when the publisher is on
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, DRAWER_EVENTS.movement, { branchId, registerId, businessDate: d, direction, amountCents: amount });
@@ -106,6 +107,7 @@ export class CashDrawerService {
     await this.repo.audit(ctx, 'cash_drawer_reconciled', branchId, { businessDate: d, registerId, expectedCashCents: r.expectedCashCents, countedCents: counted, varianceCents: r.varianceCents, status: r.status });
     // §343: the repository recorded this in the drawer's transaction; the projection delivers it when the publisher is on
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, r.status === 'discrepancy' ? DRAWER_EVENTS.discrepancy : DRAWER_EVENTS.reconciled, { branchId, registerId, businessDate: d, expectedCashCents: r.expectedCashCents, countedCents: counted, varianceCents: r.varianceCents, status: r.status });
+    if (!r.applied) throw withCode(new CashDrawerError('not_allowed', 'This drawer cannot be counted in its current state.', 409), 'DRAWER_COUNT_NOT_ALLOWED');
     if (r.status === 'discrepancy') {
       const usd = (n: number) => '$' + (Math.abs(n) / 100).toFixed(2);
       await this.repo.alert(ctx, 'warning', 'Cash drawer discrepancy',

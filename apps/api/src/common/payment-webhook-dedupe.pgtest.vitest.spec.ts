@@ -42,7 +42,7 @@ describe.each(['fiserv', 'cardpointe', 'clover'])('card processor %s: the same e
     const txn = `rr-${proc}-seq`;
     const p = await payment(TA, BA, KA, txn);
     const body = { merchantId: 'MID-A', eventType: 'refund.completed', eventId: `evt-${proc}-seq`, transactionId: txn, refundId: `rf-${proc}-seq`, amountCents: 2500 };
-    expect((await deliver(proc, body)).body).toMatchObject({ ok: true, recordedRefund: true, statusApplied: 'refunded' });
+    expect((await deliver(proc, body)).body).toMatchObject({ ok: true, recordedRefund: true, statusApplied: null });   // the original tender keeps its status (audit Nov 3 2026)
     expect((await deliver(proc, body)).body).toMatchObject({ ok: true, duplicate: true });
     expect(await count('payment_refunds', 'payment_id = $1', [p])).toBe(1);
     expect(await count('payment_gateway_events', `event_id = $1 AND processed_at IS NOT NULL`, [body.eventId])).toBe(1);
@@ -58,6 +58,21 @@ describe.each(['fiserv', 'cardpointe', 'clover'])('card processor %s: the same e
     expect(await count('payment_gateway_events', `event_id = $1 AND processed_at IS NOT NULL`, [body.eventId])).toBe(1);
     expect(out.filter((o) => (o.body as any).recordedRefund).length).toBe(1);
     expect(out.filter((o) => (o.body as any).duplicate === true).length).toBe(2);   // the losers SAY duplicate (the webhook counters read it)
+  });
+
+  it('money in dollars is cents ×100; a partial refund leaves the sale counted; a refund the POS already recorded is not added twice (audit Nov 3 2026)', async () => {
+    const txn = `rr-${proc}-usd`;
+    const p = await payment(TA, BA, KA, txn);
+    const before = (await pg.query(`select status from payments where id = $1`, [p])).rows[0].status;
+    await deliver(proc, { merchantId: 'MID-A', eventType: 'refund.completed', eventId: `evt-${proc}-usd`, transactionId: txn, refundId: `rf-${proc}-usd`, amount: '12.50' });
+    expect((await pg.query(`select amount_cents from payment_refunds where payment_id = $1`, [p])).rows.map((r: any) => Number(r.amount_cents))).toEqual([1250]);
+    expect((await pg.query(`select status from payments where id = $1`, [p])).rows[0].status).toBe(before);
+    // the POS refunded $5.00 itself (its own reference); the gateway's callback for it names a different refund id
+    await pg.query(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, reason, status, processor_refund_id) values ($1,$2,$3,500,'pos','refunded','pos-ref-${proc}')`, [TA, BA, p]);
+    await deliver(proc, { merchantId: 'MID-A', eventType: 'refund.completed', eventId: `evt-${proc}-usd2`, transactionId: txn, refundId: `gw-${proc}-usd2`, amount: '5.00' });
+    expect(await count('payment_refunds', 'payment_id = $1', [p])).toBe(2);
+    await deliver(proc, { merchantId: 'MID-A', eventType: 'settlement.batch_closed', eventId: `evt-${proc}-usd3`, settlementId: `B-${proc}-usd`, gross: '1164.30', fee: '35.00' });
+    expect((await pg.query(`select gross_cents, fee_cents, net_cents from payment_settlements where tenant_id = $1 and settlement_id = $2`, [TA, `B-${proc}-usd`])).rows[0]).toMatchObject({ gross_cents: 116430, fee_cents: 3500, net_cents: 112930 });
   });
 
   it('a settlement batch delivered twice concurrently → one settlement row', async () => {

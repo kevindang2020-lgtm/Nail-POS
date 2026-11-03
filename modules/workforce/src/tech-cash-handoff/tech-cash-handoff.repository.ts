@@ -4,7 +4,7 @@
 import { canMoveToSql, defineStateMachine } from '@aipowersalon/database';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
-import { Kysely, sql } from 'kysely';
+import { Kysely, sql, type RawBuilder, type SqlBool } from 'kysely';
 import { branchTimeZone, tenantTimeZone, type DB } from '@aipowersalon/database';
 import { businessDate } from '@aipowersalon/date-time';
 import { CashHandoff, CashHandoffDetail, HandoffLine, HandoffStatus, num, isUuid, TechCashHandoffError, TechCashHandoffVersionConflict } from './tech-cash-handoff.dto';
@@ -53,6 +53,12 @@ export class TechCashHandoffRepository {
   }
 
   /** Cash a technician physically collected on a date (confirmed cash-to-tech only). */
+  /** this location (rows with no location belong to the salon as a whole), or the whole salon for a salon-wide session */
+  private branchScope(ctx: TCHCtx, col: 'c.branch_id' | 'branch_id'): RawBuilder<SqlBool> {
+    if (!(ctx.branchId && isUuid(ctx.branchId))) return sql<SqlBool>`true`;
+    return col === 'c.branch_id' ? sql<SqlBool>`(c.branch_id = ${ctx.branchId}::uuid or c.branch_id is null)` : sql<SqlBool>`(branch_id = ${ctx.branchId}::uuid or branch_id is null)`;
+  }
+
   async expectedCashForTech(ctx: TCHCtx, technicianId: string, date: string): Promise<Expected> {
     const rows = await this.db.selectFrom('cash_payment_confirmations as c')
       .leftJoin('tickets as t', 't.id', 'c.ticket_id')
@@ -60,7 +66,11 @@ export class TechCashHandoffRepository {
       .select(['c.ticket_id as ticketId', 'c.amount_cents as amountCents', 'c.confirmed_at as confirmedAt', 't.ticket_number as ticketNumber', 'cu.full_name as customerName'])
       .where('c.tenant_id', '=', ctx.tenantId).where('c.technician_id', '=', technicianId).where('c.status', '=', 'confirmed')
       .where(sql`(c.confirmed_at at time zone ${await this.zone(ctx)})::date = ${date}` as any)   // the branch's date (was the UTC date)
-      .orderBy('c.confirmed_at', 'asc').execute().catch(() => []);
+      .where(this.branchScope(ctx, 'c.branch_id'))
+      // cash for a ticket that was later voided or removed is not money the technician still holds
+      .where(sql<SqlBool>`(t.id is null or (t.removed_at is null and t.status not in ('void', 'voided', 'canceled', 'cancelled')))`)
+      // a failed read FAILS — it used to read as $0 expected, and a count then stored a fake overage (audit Nov 3 2026)
+      .orderBy('c.confirmed_at', 'asc').execute();
     const lines: HandoffLine[] = rows.map((r) => ({
       ticketId: r.ticketId,
       ticketNumber: r.ticketNumber ? '#' + r.ticketNumber : '#' + String(r.ticketId).slice(0, 6),
@@ -72,7 +82,7 @@ export class TechCashHandoffRepository {
   }
 
   private async getRow(ctx: TCHCtx, technicianId: string, date: string): Promise<any | undefined> {
-    return this.db.selectFrom('tech_cash_handoffs').selectAll().where('tenant_id', '=', ctx.tenantId).where('technician_id', '=', technicianId).where('business_date', '=', date).executeTakeFirst().catch(() => undefined);
+    return this.db.selectFrom('tech_cash_handoffs').selectAll().where('tenant_id', '=', ctx.tenantId).where('technician_id', '=', technicianId).where('business_date', '=', date).executeTakeFirst();
   }
 
   private toHandoff(techId: string, techName: string, date: string, exp: { expectedCents: number; paymentCount: number }, row: any): CashHandoff {
@@ -103,8 +113,11 @@ export class TechCashHandoffRepository {
       .select((eb: any) => ['c.technician_id as technicianId', eb.fn.sum('c.amount_cents').as('expectedCents'), eb.fn.count('c.id').as('paymentCount')])
       .where('c.tenant_id', '=', ctx.tenantId).where('c.status', '=', 'confirmed').where('c.technician_id', 'is not', null)
       .where(sql`(c.confirmed_at at time zone ${await this.zone(ctx)})::date = ${date}` as any)   // the branch's date (was the UTC date)
-      .groupBy('c.technician_id').execute().catch(() => []);
-    const rows = await this.db.selectFrom('tech_cash_handoffs').selectAll().where('tenant_id', '=', ctx.tenantId).where('business_date', '=', date).execute().catch(() => []);
+      .where(this.branchScope(ctx, 'c.branch_id'))
+      .where(sql<SqlBool>`not exists (select 1 from tickets tv where tv.tenant_id = c.tenant_id and tv.id = c.ticket_id and (tv.removed_at is not null or tv.status in ('void', 'voided', 'canceled', 'cancelled')))`)
+      .groupBy('c.technician_id').execute();
+    // this location's hand-offs only (a front desk saw and counted other branches' technician cash — audit Nov 3 2026)
+    const rows = await this.db.selectFrom('tech_cash_handoffs').selectAll().where('tenant_id', '=', ctx.tenantId).where('business_date', '=', date).where(this.branchScope(ctx, 'branch_id')).execute();
     const aggMap = new Map(agg.map((a) => [a.technicianId, a]));
     const rowMap = new Map(rows.map((r) => [r.technician_id, r]));
     const ids = Array.from(new Set([...aggMap.keys(), ...rowMap.keys()].filter(Boolean))) as string[];
@@ -193,8 +206,8 @@ export class TechCashHandoffRepository {
           drawerMovementId = String(mv.id);
           await sql`update tech_cash_handoffs set drawer_transfer_cents = drawer_transfer_cents + ${countedCents} where tenant_id = ${T} and id = ${up.id}::uuid`.execute(trx);
           await sql`update tech_cash_handoff_events set drawer_movement_id = ${mv.id}::uuid where tenant_id = ${T} and id = ${ev.id}::uuid`.execute(trx);
-          await sql`insert into tech_cash_handoff_events (tenant_id, branch_id, technician_id, business_date, handoff_id, event_type, amount_cents, expected_cents, counted_total_cents, variance_cents, actor_user_id, drawer_movement_id)
-            values (${T}, ${B}, ${technicianId}::uuid, ${date}::date, ${up.id}::uuid, 'drawer_transfer', ${countedCents}, ${exp.expectedCents}, ${total}, ${variance}, ${actor}, ${mv.id}::uuid)`.execute(trx);
+          await sql`insert into tech_cash_handoff_events (tenant_id, branch_id, technician_id, business_date, handoff_id, event_type, amount_cents, expected_cents, counted_total_cents, variance_cents, actor_user_id, drawer_movement_id, created_at)
+            values (${T}, ${B}, ${technicianId}::uuid, ${date}::date, ${up.id}::uuid, 'drawer_transfer', ${countedCents}, ${exp.expectedCents}, ${total}, ${variance}, ${actor}, ${mv.id}::uuid, clock_timestamp())`.execute(trx);
           await this.fact(trx, ctx, DOMAIN_EVENTS.CASH_DRAWER_MOVEMENT_RECORDED, technicianId, date, { movementId: drawerMovementId, branchId: B, registerId: reg, direction: 'in', amountCents: countedCents, sourceType: 'tech_cash_handoff', sourceId: String(up.id) });
         }
       }

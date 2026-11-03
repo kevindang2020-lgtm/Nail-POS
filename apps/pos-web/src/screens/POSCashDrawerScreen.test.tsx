@@ -4,7 +4,8 @@ vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
 vi.mock('../api/posCashDrawerApi', async (orig) => ({ ...(await orig<typeof import('../api/posCashDrawerApi')>()), posCashDrawerApi: { state: vi.fn(), open: vi.fn(), reconcile: vi.fn(), movement: vi.fn(), movements: vi.fn(), voidMovement: vi.fn() } }));
 import { posCashDrawerApi } from '../api/posCashDrawerApi';
 import { POSCashDrawerScreen } from './POSCashDrawerScreen';
-const TODAY = new Date().toISOString().slice(0, 10);
+// the screen uses the business date the SERVER names (the branch's day), never the browser's UTC date (audit Nov 3 2026)
+const TODAY = '2026-06-16';
 
 const drawer = (over: Record<string, unknown> = {}) => ({
   branchId: 'b1', businessDate: '2026-06-16',

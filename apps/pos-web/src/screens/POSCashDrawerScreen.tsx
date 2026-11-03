@@ -8,7 +8,8 @@ import { msg, renderMsg, type Msg } from '../i18n/notice';
 // Cash Drawer (front desk). Register cash for the chosen date = opening float + cash sales − cash refunds. Excludes the
 // Skip-the-Line cash-to-technician payments (those reconcile in End-of-Day Cash). Set the float, then count and reconcile.
 // Fits the desktop-POS shell: header/KPIs fixed, content scrolls inside .work at 1920×1080 @100%.
-const todayIso = () => new Date().toISOString().slice(0, 10);
+// The business date comes from the SERVER (the branch's own day): the browser's UTC date opened TOMORROW's drawer after
+// about 8 pm in New York (audit Nov 3 2026). Empty until the first answer names it.
 const money = (c: number | null | undefined) => '$' + ((c || 0) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const STATUS: Record<DrawerStatus, { label: string; color: string; bg: string }> = {
   open: { get label() { return t('pos.open'); }, color: '#7a5a12', bg: 'rgba(169,111,34,.14)' },
@@ -18,7 +19,7 @@ const STATUS: Record<DrawerStatus, { label: string; color: string; bg: string }>
 };
 
 export function POSCashDrawerScreen() {
-  const [date, setDate] = useState(todayIso());
+  const [date, setDate] = useState('');
   const [d, setD] = useState<DrawerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<Msg | null>(null);   // a KEY, translated at render (WP-D2)
@@ -33,9 +34,9 @@ export function POSCashDrawerScreen() {
 
   const load = useCallback(() => {
     posCashDrawerApi.state(date || undefined)
-      .then((s) => { setD(s); setError(null); setFloatStr((s.openingFloatCents / 100).toFixed(2)); if (s.countedCents != null) setCountStr((s.countedCents / 100).toFixed(2)); })
+      .then((s) => { setD(s); setError(null); if (!date && s.businessDate) setDate(s.businessDate); setFloatStr((s.openingFloatCents / 100).toFixed(2)); if (s.countedCents != null) setCountStr((s.countedCents / 100).toFixed(2)); })
       .catch((e: { message?: string }) => setError(e?.message || t('pos.failed_to_load_the_cash_drawer')));
-    posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch(() => setMoves([]));
+    posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch((e: { message?: string }) => setError(e?.message || t('pos.failed_to_load_the_cash_drawer')));
   }, [date]);
   useEffect(() => { load(); }, [load]);
   useRealtime('cash-drawer', load);
@@ -168,7 +169,8 @@ export function POSCashDrawerScreen() {
           </label>
           <button className="btn w-full sm:w-auto" style={{ padding: '7px 14px' }} disabled={busy === 'reconcile'} onClick={reconcile}>{busy === 'reconcile' ? t('pos.saving_2') : t('pos.reconcile')}</button>
         </div>
-        {d && d.countedCents != null ? <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{t('pos.counted')}{' '}{money(d.countedCents)} · {d.status === 'reconciled' ? t('pos.matched_exactly') : `${(d.varianceCents || 0) > 0 ? 'over' : 'short'} ${money(Math.abs(d.varianceCents || 0))}`}{d.notes ? ` · ${d.notes}` : ''}</div> : null}
+        {d && d.countedCents != null ? <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{t('pos.counted')}{' '}{money(d.countedCents)} · {d.status === 'reconciled' ? t('pos.matched_exactly') : t((d.varianceCents || 0) > 0 ? 'cdr.over' : 'cdr.short', { amount: money(Math.abs(d.varianceCents || 0)) })}{d.notes ? ` · ${d.notes}` : ''}</div> : null}
+        {d?.changedSinceCount && d.liveExpectedCashCents != null ? <div className="muted" role="status" style={{ fontSize: 12.5, marginTop: 6, color: '#A33' }}>{t('cdr.changedSinceCount', { amount: money(d.liveExpectedCashCents) })}</div> : null}
       </section>
     </div>
   );

@@ -39,6 +39,14 @@ function amountFromDollars(v: unknown): number | null {
   if (!/^\d+(\.\d{1,2})?$/.test(t)) return null;
   return t.includes('.') ? Math.round(Number(t) * 100) : Number(t);
 }
+/** A money field from the processor in integer cents: an explicit `…Cents` key is cents; a plain `amount` / `gross` / `fee` /
+ *  `net` is CardPointe's dollar string ("50.00" → 5000). It used to be Math.round(Number("50.00")) = 50 — refunds,
+ *  settlements and chargebacks were stored 100× too small (guide audit Nov 3 2026). */
+export function centsFrom(o: any, centsKeys: string[], dollarKeys: string[]): number | null {
+  for (const k of centsKeys) { const v = o?.[k]; if (v != null && v !== '' && Number.isFinite(Number(v))) return Math.round(Number(v)); }
+  for (const k of dollarKeys) { const c = amountFromDollars(o?.[k]); if (c != null) return c; }
+  return null;
+}
 function isRefundEvent(e: string): boolean { return e.toLowerCase().includes('refund'); }
 function isSettlementEvent(e: string): boolean { const x = e.toLowerCase(); return x.includes('settl') || x.includes('batch'); }
 // Chargeback / dispute events land in the `chargebacks` table. Pure + exported so the classification can be unit-tested.
@@ -77,7 +85,10 @@ export function settlementTxnIds(body: any, txnId: string | null | undefined): s
 function mapStatus(eventType: string): string | null {
   const e = eventType.toLowerCase();
   if (e.includes('void')) return 'voided';
-  if (e.includes('refund')) return 'refunded';
+  // A refund never moves the ORIGINAL tender's status: it is its own payment_refunds row (as the POS refund path does —
+  // the original stays approved). Marking the original 'refunded' made a partial refund erase the whole sale from
+  // Collections / Transactions while the refund was still deducted (guide audit Nov 3 2026).
+  if (e.includes('refund')) return null;
   if (e.includes('settl') || e.includes('captur')) return 'settled';
   return null; // informational event → recorded, no payment status change
 }
@@ -310,10 +321,15 @@ export class PaymentWebhookService {
     let recordedRefund = false, recordedSettlement = false, linkedPayments = 0;
     if (isRefundEvent(eventType) && matchedPaymentId) {
       const refundId = pick(body, ['refundId', 'refundReference', 'processorRefundId']) || txnId;
-      const dup = await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst().catch(() => undefined);
-      if (!dup) {
+      const amountCents = centsFrom(body, ['amountCents', 'refundCents'], ['amount']) ?? 0;
+      const dup = await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst();
+      // the POS already recorded this refund (it stores its own reference, not the gateway's refund id): the same payment,
+      // the same amount, not failed, recorded by the POS (no webhook event) — the callback confirms it, it is not a second refund
+      const posDup = dup ? undefined : await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('payment_id', '=', matchedPaymentId)
+        .where('amount_cents', '=', amountCents).where('event_id', 'is', null).where('status', 'not in', ['failed', 'cancelled', 'canceled', 'declined']).executeTakeFirst();
+      if (!dup && !posDup) {
         // uq_payment_refunds_processor_refund (565): a concurrent duplicate of the same refund loses here — not an error
-        recordedRefund = await this.db.insertInto('payment_refunds').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_id: matchedPaymentId, payment_gateway_id: tenant.tenantId, processor_type: processorType, amount_cents: pickNum(body, ['amountCents', 'refundCents', 'amount']) ?? 0, reason: pick(body, ['reason', 'refundReason']), status: 'refunded', processor_refund_id: refundId, event_id: eventId })
+        recordedRefund = await this.db.insertInto('payment_refunds').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_id: matchedPaymentId, payment_gateway_id: tenant.tenantId, processor_type: processorType, amount_cents: amountCents, reason: pick(body, ['reason', 'refundReason']), status: 'refunded', processor_refund_id: refundId, event_id: eventId })
           .execute().then(() => true, (e: any) => { if (e?.code === '23505') return false; throw e; });
       }
     }
@@ -322,9 +338,9 @@ export class PaymentWebhookService {
       const dup = await this.db.selectFrom('payment_settlements').select('id').where('tenant_id', '=', tenant.tenantId).where('settlement_id', '=', settlementId).executeTakeFirst().catch(() => undefined);
       let settlementRowId: string | null = dup ? String(dup.id) : null;
       if (!dup) {
-        const gross = pickNum(body, ['grossCents', 'amountCents', 'gross', 'amount']) ?? 0;
-        const fee = pickNum(body, ['feeCents', 'fee']) ?? 0;
-        const net = pickNum(body, ['netCents', 'net']) ?? (gross - fee);
+        const gross = centsFrom(body, ['grossCents', 'amountCents'], ['gross', 'amount']) ?? 0;
+        const fee = centsFrom(body, ['feeCents'], ['fee']) ?? 0;
+        const net = centsFrom(body, ['netCents'], ['net']) ?? (gross - fee);
         // uq_payment_settlements_settlement (565): a concurrent duplicate batch loses here and links to the winner's row
         const ins = await this.db.insertInto('payment_settlements').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_gateway_id: tenant.tenantId, processor_type: processorType, settlement_id: settlementId, gross_cents: gross, fee_cents: fee, net_cents: net, currency: 'USD', status: 'settled', event_id: eventId, payload_json_safe: JSON.stringify(payload), settled_at: sql`now()` })
           .returning(['id']).executeTakeFirst().catch((e: any) => { if (e?.code === '23505') return null; throw e; });
@@ -356,7 +372,7 @@ export class PaymentWebhookService {
           tenant_id: tenant.tenantId, branch_id: branchId, payment_gateway_id: tenant.tenantId, payment_id: matchedPaymentId,
           processor_type: processorType, chargeback_id: cbId, processor_transaction_id: txnId,
           reason_code: pick(body, ['reasonCode', 'reason_code']), reason: pick(body, ['reason', 'reasonDescription', 'reason_description']),
-          amount_cents: pickNum(body, ['amountCents', 'chargebackCents', 'disputeCents', 'amount']) ?? 0, currency: 'USD',
+          amount_cents: centsFrom(body, ['amountCents', 'chargebackCents', 'disputeCents'], ['amount']) ?? 0, currency: 'USD',
           status: cbStatus, event_id: eventId, payload_json_safe: JSON.stringify(payload), opened_at: sql`now()`, resolved_at: resolvedAt,
         } as any).execute().catch((e: any) => { if (e?.code !== '23505') throw e; });
       }

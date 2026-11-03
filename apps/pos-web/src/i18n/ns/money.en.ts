@@ -93,4 +93,7 @@ export const MONEY_EN = {
   'pm.inv.paid': 'Paid',
   'pm.inv.draft': 'Draft',
   'pm.inv.void': 'Void',
+  "cdr.over": "over {amount}",
+  "cdr.short": "short {amount}",
+  "cdr.changedSinceCount": "Cash has changed since this count: expected now {amount}. Reopen and count again to settle it."
 };

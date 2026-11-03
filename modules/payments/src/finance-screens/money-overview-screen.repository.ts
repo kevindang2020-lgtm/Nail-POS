@@ -22,6 +22,7 @@
 //                      money, never "in the bank";
 //   ALL TIME (the six secondary totals): the same definitions with no date bound; Total Payouts = processor payouts
 //   settled / deposited (staff payroll payouts are a different ledger and never mixed in).
+import { TICKET_NET_SALES_T, openTicketDues } from './ticket-money';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { REVENUE_BEARING_STATUSES } from '@aipowersalon/api-contracts';
@@ -66,9 +67,10 @@ export class MoneyOverviewScreenRepository {
     return ctx.branchId && isUuid(ctx.branchId) ? sql<boolean>`(${col} = ${ctx.branchId}::uuid or ${col} is null)` : sql<boolean>`true`;
   }
 
-  /** Revenue (period or all time): tickets PAID in the window, Σ subtotal − discount, and how many. */
+  /** Revenue (period or all time): tickets PAID in the window, Σ net sales (live lines − discount — subtotal_cents is already
+   *  net of the discount and skip-line never writes it; see ticket-money.ts), and how many. */
   private async revenue(ctx: FinanceCtx, p: Period | null) {
-    const r = (await sql<any>`select coalesce(sum(greatest(0, coalesce(t.subtotal_cents, 0) - coalesce(t.discount_cents, 0))), 0)::bigint as revenue, count(*)::int as tickets,
+    const r = (await sql<any>`select coalesce(sum(${TICKET_NET_SALES_T}), 0)::bigint as revenue, count(*)::int as tickets,
         coalesce(sum(coalesce(t.tip_cents, 0)), 0)::bigint as tips
       from tickets t where t.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`t.branch_id`)} and t.status = 'paid' and t.paid_at is not null and t.removed_at is null
         and ${p ? tsInPeriod(sql`t.paid_at`, p) : sql<boolean>`true`}`.execute(this.db)).rows[0] ?? {};
@@ -90,10 +92,11 @@ export class MoneyOverviewScreenRepository {
   }
   /** As of now: partly paid tickets + open invoices. */
   private async outstanding(ctx: FinanceCtx) {
-    const t = (await sql<any>`select coalesce(sum(x.due), 0)::bigint as due, count(*) filter (where x.due > 0)::int as n from (
-        select greatest(0, coalesce(t.locked_total_cents, coalesce(t.total_cents, 0) + coalesce(t.tip_cents, 0)) - coalesce(pay.paid, 0)) as due
-          from tickets t join lateral (select sum(p.amount_cents) as paid, count(*) as n from payments p where p.tenant_id = t.tenant_id and p.ticket_id = t.id and p.status in (${sql.join(CONFIRMED)})) pay on pay.n > 0
-         where t.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`t.branch_id`)} and t.status <> 'paid' and t.removed_at is null and t.status not in (${sql.join(VOID_TICKET)})) x`.execute(this.db)).rows[0] ?? {};
+    // the amount still due on a partly paid ticket is computed exactly (ticket-money.ts) — total_cents / locked_total_cents
+    // are not the ticket's total before it is paid
+    const dues = await openTicketDues(this.db, ctx.tenantId, CONFIRMED, ctx.branchId && isUuid(ctx.branchId) ? ctx.branchId : null);
+    const dv = [...dues.values()];
+    const t = { due: dv.reduce((a, d) => a + d.dueCents, 0), n: dv.filter((d) => d.dueCents > 0).length };
     const i = (await sql<any>`select coalesce(sum(greatest(0, i.total_cents - coalesce(ip.paid, 0))), 0)::bigint as due, count(*)::int as n from invoices i
         left join lateral (select sum(x.amount_cents) as paid from invoice_payments x where x.tenant_id = i.tenant_id and x.invoice_id = i.id) ip on true
        where i.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`i.branch_id`)} and i.status in (${sql.join(OPEN_INVOICE)}) and i.voided_at is null`.execute(this.db)).rows[0] ?? {};
@@ -160,7 +163,7 @@ export class MoneyOverviewScreenRepository {
     const span = daysBetween(from, to);
     const bucket = span <= 62 ? 'day' : span <= 400 ? 'week' : 'month';
     const rows = (await sql<any>`with b as (select to_char(g, 'YYYY-MM-DD') as start from generate_series(date_trunc(${bucket}, ${from}::date::timestamp), ${to}::date::timestamp, ('1 ' || ${bucket})::interval) g),
-      rv as (select to_char(date_trunc(${bucket}, t.paid_at at time zone ${p.tz}), 'YYYY-MM-DD') as start, sum(greatest(0, coalesce(t.subtotal_cents, 0) - coalesce(t.discount_cents, 0)))::bigint as cents
+      rv as (select to_char(date_trunc(${bucket}, t.paid_at at time zone ${p.tz}), 'YYYY-MM-DD') as start, sum(${TICKET_NET_SALES_T})::bigint as cents
                from tickets t where t.tenant_id = ${ctx.tenantId} and ${this.pScope(ctx, sql`t.branch_id`)} and t.status = 'paid' and t.paid_at is not null and t.removed_at is null
                 and t.paid_at >= (${from}::date)::timestamp at time zone ${p.tz} and t.paid_at < ((${to}::date + 1))::timestamp at time zone ${p.tz} group by 1),
       cl as (select to_char(date_trunc(${bucket}, coalesce(pp.approved_at, pp.created_at) at time zone ${p.tz}), 'YYYY-MM-DD') as start, sum(pp.amount_cents)::bigint as cents

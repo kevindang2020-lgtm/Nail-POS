@@ -15,6 +15,7 @@
 //     open / none — payout never adds a tip.
 // Date bases: collected (tickets.paid_at — default), checkout (tickets.created_at), allocation (first snapshot /
 // allocation time), adjustment (compensation_adjustments.created_at — the Adjustments view), payout (payroll_periods.paid_at).
+import { TICKET_NET_SALES_T } from './ticket-money';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -63,7 +64,7 @@ export class TipsScreenRepository {
   private base(ctx: FinanceCtx, tz = 'UTC'): RawBuilder<unknown> {
     const T = ctx.tenantId;
     return sql`select t.id, t.tenant_id, t.branch_id, t.ticket_number, t.customer_id, t.primary_technician_id, t.paid_at, t.created_at, t.chosen_payment_method,
-        greatest(0, coalesce(t.tip_cents, 0))::bigint as tip_cents, greatest(0, coalesce(t.subtotal_cents, 0) - coalesce(t.discount_cents, 0))::bigint as pretip_sales_cents, coalesce(t.total_cents, 0)::bigint as total_cents,
+        greatest(0, coalesce(t.tip_cents, 0))::bigint as tip_cents, ${TICKET_NET_SALES_T}::bigint as pretip_sales_cents, coalesce(t.total_cents, 0)::bigint as total_cents,
         coalesce(pay.card_pay, 0)::bigint as card_pay, coalesce(pay.cash_pay, 0)::bigint as cash_pay, coalesce(pay.methods, '') as methods, coalesce(pay.refs, '') as refs, coalesce(pay.tenders, 0)::int as tenders,
         coalesce(alc.alloc_cents, 0)::bigint as alloc_cents, coalesce(alc.techs, 0)::int as alloc_techs, alc.tech_names, alc.tech_ids, alc.first_alloc_at,
         snp.snap_cents, snp.first_snap_at,

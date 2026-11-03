@@ -764,6 +764,9 @@ export const ERROR_REGISTRY = {
   BC_ALERT_NOT_FOUND: { status: 404, message: 'Alert not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   BC_EVENT_NOT_FOUND: { status: 404, message: 'Alert event not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   BC_EVENT_NOT_ACKNOWLEDGEABLE: { status: 409, message: 'Only a triggered alert that has not been acknowledged can be acknowledged.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // Cash drawer (audit Nov 3 2026)
+  DRAWER_ALREADY_COUNTED: { status: 409, message: 'This drawer was already counted for the day. Reopen it to record cash in or out.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  DRAWER_COUNT_NOT_ALLOWED: { status: 409, message: 'This drawer cannot be counted in its current state.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

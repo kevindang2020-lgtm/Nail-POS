@@ -43,12 +43,12 @@ export class CashDrawerRepository {
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', 'in', [...REVENUE_BEARING_STATUSES])   // incl. 'partial' — the cash part of a split (wave 4 PILOT)
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
       .where(sql`(p.ticket_id IS NULL OR NOT EXISTS (SELECT 1 FROM cash_payment_confirmations c WHERE c.ticket_id = p.ticket_id AND c.tenant_id = ${ctx.tenantId} AND c.status = 'confirmed'))` as any)
-      .executeTakeFirst().catch(() => undefined);
+      .executeTakeFirst();   // a failed read must FAIL — it used to read as $0 and reconcile then stored a false shortage (audit Nov 3 2026)
     const refunds = await this.db.selectFrom('payments as p')
       .select((eb: any) => eb.fn.coalesce(eb.fn.sum('p.amount_cents'), sql`0`).as('cents'))
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', '=', 'refunded')
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
-      .executeTakeFirst().catch(() => undefined);
+      .executeTakeFirst();
     return { salesCents: num((sales as any)?.cents), refundsCents: num((refunds as any)?.cents), paymentCount: num((sales as any)?.cnt) };
   }
 
@@ -60,21 +60,26 @@ export class CashDrawerRepository {
         sql<number>`COALESCE(SUM(amount_cents) FILTER (WHERE direction='out'),0)`.as('out_cents'),
       ])
       .where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', branchId).where('register_id', '=', registerId).where('business_date', '=', date).where('voided_at', 'is', null)
-      .executeTakeFirst().catch(() => undefined);
+      .executeTakeFirst();
     return { paidInCents: num(r?.in_cents), paidOutCents: num(r?.out_cents) };
   }
 
   private async getRow(ctx: DrawerCtx, branchId: string, registerId: string, date: string): Promise<any | undefined> {
-    return this.db.selectFrom('cash_drawer_sessions').selectAll().where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', branchId).where('register_id', '=', registerId).where('business_date', '=', date).executeTakeFirst().catch(() => undefined);
+    return this.db.selectFrom('cash_drawer_sessions').selectAll().where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', branchId).where('register_id', '=', registerId).where('business_date', '=', date).executeTakeFirst();
   }
 
   async state(ctx: DrawerCtx, branchId: string, registerId: string, date: string): Promise<DrawerState> {
     const [c, mv, row] = await Promise.all([this.computeRegisterCash(ctx, branchId, date), this.computeMovements(ctx, branchId, registerId, date), this.getRow(ctx, branchId, registerId, date)]);
     const openingFloatCents = row ? num(row.opening_float_cents) : 0;
-    const expectedCashCents = openingFloatCents + c.salesCents - c.refundsCents + mv.paidInCents - mv.paidOutCents;
+    const liveExpected = openingFloatCents + c.salesCents - c.refundsCents + mv.paidInCents - mv.paidOutCents;
+    // a COUNTED drawer keeps the figures it was counted against — a later payment / refund / float edit used to change a
+    // reconciled day's expected cash and variance after the fact (audit Nov 3 2026); the live figure is reported beside it
+    const counted = !!row && row.counted_cents != null && row.expected_cash_cents != null && (row.status === 'reconciled' || row.status === 'discrepancy');
+    const expectedCashCents = counted ? num(row.expected_cash_cents) : liveExpected;
     return {
       branchId, registerId, businessDate: date,
-      openingFloatCents, expectedSalesCents: c.salesCents, refundsCents: c.refundsCents, paidInCents: mv.paidInCents, paidOutCents: mv.paidOutCents, expectedCashCents,
+      openingFloatCents, expectedSalesCents: counted ? num(row.expected_sales_cents) : c.salesCents, refundsCents: counted ? num(row.refunds_cents) : c.refundsCents, paidInCents: mv.paidInCents, paidOutCents: mv.paidOutCents, expectedCashCents,
+      liveExpectedCashCents: liveExpected, changedSinceCount: counted ? liveExpected !== expectedCashCents : false,
       countedCents: row && row.counted_cents != null ? num(row.counted_cents) : null,
       varianceCents: row && row.counted_cents != null ? num(row.counted_cents) - expectedCashCents : null,
       cashPaymentCount: c.paymentCount,
@@ -103,7 +108,7 @@ export class CashDrawerRepository {
   }
 
   /** Count the drawer and reconcile. reconciled if exact, else discrepancy. */
-  async reconcile(ctx: DrawerCtx, branchId: string, registerId: string, date: string, countedCents: number, notes: string | null): Promise<{ status: DrawerStatus; varianceCents: number; expectedCashCents: number; salesCents: number; refundsCents: number; openingFloatCents: number }> {
+  async reconcile(ctx: DrawerCtx, branchId: string, registerId: string, date: string, countedCents: number, notes: string | null): Promise<{ applied: boolean; status: DrawerStatus; varianceCents: number; expectedCashCents: number; salesCents: number; refundsCents: number; openingFloatCents: number }> {
     const c = await this.computeRegisterCash(ctx, branchId, date);
     const mv = await this.computeMovements(ctx, branchId, registerId, date);
     const row = await this.getRow(ctx, branchId, registerId, date);
@@ -111,8 +116,9 @@ export class CashDrawerRepository {
     const expectedCashCents = openingFloatCents + c.salesCents - c.refundsCents + mv.paidInCents - mv.paidOutCents;
     const variance = countedCents - expectedCashCents;
     const status: DrawerStatus = variance === 0 ? 'reconciled' : 'discrepancy';
+    let applied = false;
     await this.db.transaction().execute(async (trx) => {
-    await trx.insertInto('cash_drawer_sessions').values({
+    const res = await trx.insertInto('cash_drawer_sessions').values({
       tenant_id: ctx.tenantId, branch_id: branchId, register_id: registerId, business_date: date,
       opening_float_cents: openingFloatCents,
       expected_sales_cents: c.salesCents, refunds_cents: c.refundsCents, expected_cash_cents: expectedCashCents,
@@ -122,10 +128,13 @@ export class CashDrawerRepository {
       expected_sales_cents: c.salesCents, refunds_cents: c.refundsCents, expected_cash_cents: expectedCashCents,
       counted_cents: countedCents, variance_cents: variance, cash_payment_count: c.paymentCount, status,
       reconciled_by_user_id: isUuid(ctx.userId) ? ctx.userId : null, reconciled_at: sql`now()`, notes, updated_at: sql`now()`,
-    }).where(canMoveToSql(CASH_DRAWER_SESSION, status, 'cash_drawer_sessions'))).execute();
-    await this.fact(trx, ctx, DOMAIN_EVENTS.CASH_DRAWER_RECONCILED, `${branchId}:${date}`, { branchId, businessDate: date, status, expectedCashCents, countedCents, varianceCents: variance });
+    }).where(canMoveToSql(CASH_DRAWER_SESSION, status, 'cash_drawer_sessions'))).executeTakeFirst();
+    applied = Number(res?.numInsertedOrUpdatedRows ?? 0) > 0;
+    if (applied) await this.fact(trx, ctx, DOMAIN_EVENTS.CASH_DRAWER_RECONCILED, `${branchId}:${date}`, { branchId, businessDate: date, status, expectedCashCents, countedCents, varianceCents: variance });
     });
-    return { status, varianceCents: variance, expectedCashCents, salesCents: c.salesCents, refundsCents: c.refundsCents, openingFloatCents };
+    // the state machine refused the move (e.g. a cancelled drawer): report what IS stored, never the status we computed
+    if (!applied) { const now = await this.getRow(ctx, branchId, registerId, date); return { applied, status: (now?.status as DrawerStatus) ?? 'open', varianceCents: num(now?.variance_cents), expectedCashCents: num(now?.expected_cash_cents), salesCents: num(now?.expected_sales_cents), refundsCents: num(now?.refunds_cents), openingFloatCents: num(now?.opening_float_cents) }; }
+    return { applied, status, varianceCents: variance, expectedCashCents, salesCents: c.salesCents, refundsCents: c.refundsCents, openingFloatCents };
   }
 
   /** Owner read-only: per-branch register drawer state across the tenant for a date (salon-wide oversight). */
@@ -147,6 +156,9 @@ export class CashDrawerRepository {
 
   async addMovement(ctx: DrawerCtx, branchId: string, registerId: string, date: string, direction: 'in' | 'out', amountCents: number, reason: string | null, note: string | null): Promise<void> {
     await this.db.transaction().execute(async (trx) => {
+      // a counted drawer is closed for the day: cash in / out after the count would silently change a settled result
+      const sess: any = await trx.selectFrom('cash_drawer_sessions').select('status').where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', branchId).where('register_id', '=', registerId).where('business_date', '=', date).forUpdate().executeTakeFirst();
+      if (sess && (sess.status === 'reconciled' || sess.status === 'discrepancy')) throw Object.assign(new Error('This drawer was already counted for the day. Reopen it to record cash in or out.'), { drawerCode: 'DRAWER_ALREADY_COUNTED' });
       const row: any = await trx.insertInto('cash_drawer_movements').values({
         tenant_id: ctx.tenantId, branch_id: branchId, register_id: registerId, business_date: date,
         direction, amount_cents: amountCents, reason, note, created_by_user_id: isUuid(ctx.userId) ? ctx.userId : null,
