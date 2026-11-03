@@ -880,6 +880,9 @@ GET /pos/rebooking/customers  realm=staff  auth=session  domain=ai  perm=pos.ai_
 GET /pos/rebooking/customers/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/rebooking/history  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/rebooking/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/receipt-center/documents  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/receipt-center/documents/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/receipt-center/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/approvals  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/codes  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/health  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2844,6 +2847,7 @@ POST /pos/queue/reorder  realm=staff  auth=session  domain=booking  perm=pos.que
 POST /pos/rebooking/check  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/rebooking/customers/{id}/handoff  realm=staff  auth=session  domain=ai  perm=pos.booking.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/rebooking/customers/{id}/review  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/receipt-center/check  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/assistant/plan  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/assistant/save  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/check  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard

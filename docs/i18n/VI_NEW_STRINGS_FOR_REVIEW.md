@@ -13589,3 +13589,231 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rpx.health.d.tenant_isolation.FAILED` | A record references another salon. Report this immediately. | Có bản ghi trỏ tới tiệm khác. Hãy báo ngay. |
 | `rpx.health.k.no_automatic_actions` | No automatic publishing, messages or compensation | Không tự đăng, nhắn tin hay bồi thường |
 | `rpx.health.d.no_automatic_actions.PASSED` | Replies publish only after a person approves and publishes; nothing here sends messages or moves money. | Phản hồi chỉ được đăng sau khi có người duyệt và đăng; không có gì ở đây gửi tin hay chuyển tiền. |
+
+## AI OCR Receipt Scanner (`pkgx.*`, `rcsx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `pkgx.yr` | yr | năm |
+| `pkgx.resets` | Resets {d} | Đặt lại {d} |
+| `pkgx.since` | Since {d} | Từ {d} |
+| `pkgx.notMetered` | Not counted — the package is not running | Không tính — gói chưa chạy |
+| `pkgx.quotaUsed` | Included scans used up | Đã dùng hết lượt quét có sẵn |
+| `pkgx.available` | Available | Sẵn sàng |
+| `pkgx.notAvailable` | Not available | Không khả dụng |
+| `pkgx.trial` | Free trial | Dùng thử miễn phí |
+| `pkgx.trialEnds` | Ends {d} ({n} days left) | Kết thúc {d} (còn {n} ngày) |
+| `pkgx.trialEnded` | Ended {d} | Đã kết thúc {d} |
+| `pkgx.trialDays` | {n} days available | Có {n} ngày dùng thử |
+| `rcsx.refresh` | Refresh | Làm mới |
+| `rcsx.check` | Check OCR System | Kiểm tra hệ thống OCR |
+| `rcsx.openReview` | Open Receipt Review | Mở Duyệt hóa đơn |
+| `rcsx.loadFailed` | Receipt data could not be loaded. Try again or run Check OCR System — this is not "no receipts". | Không tải được dữ liệu hóa đơn. Hãy thử lại hoặc chạy Kiểm tra hệ thống OCR — đây không phải là "không có hóa đơn". |
+| `rcsx.loading` | Loading… | Đang tải… |
+| `rcsx.close` | Close | Đóng |
+| `rcsx.search` | Search | Tìm |
+| `rcsx.clear` | Clear | Xóa bộ lọc |
+| `rcsx.rows` | Rows | Số dòng |
+| `rcsx.view` | View | Xem |
+| `rcsx.unknown` | Not read | Chưa đọc được |
+| `rcsx.safety` | A scanned receipt is evidence, not an expense: an expense or stock change happens only after a person approves it in Receipt Review. | Hóa đơn đã quét chỉ là chứng từ, chưa phải chi phí: chi phí hoặc thay đổi tồn kho chỉ xảy ra sau khi có người duyệt trong Duyệt hóa đơn. |
+| `rcsx.defs` | Scanned = uploaded in the period · Needs review = waiting for a person now · Potential duplicates = open duplicate holds · Approved expenses = approved from a receipt in the period ({amount}). | Đã quét = tải lên trong kỳ · Cần duyệt = đang chờ người duyệt · Có thể trùng = đang giữ vì nghi trùng · Chi phí đã duyệt = duyệt từ hóa đơn trong kỳ ({amount}). |
+| `rcsx.history` | Receipt history | Lịch sử hóa đơn |
+| `rcsx.newestFirst` | newest first | mới nhất trước |
+| `rcsx.searchPh` | Vendor, receipt or invoice number, product or SKU, amount (12.50), document or expense ID | Nhà cung cấp, số hóa đơn, sản phẩm hoặc SKU, số tiền (12.50), mã chứng từ hoặc chi phí |
+| `rcsx.statusLabel` | Status | Trạng thái |
+| `rcsx.dateLabel` | Date filter means | Ngày lọc theo |
+| `rcsx.sortLabel` | Sort | Sắp xếp |
+| `rcsx.noReceipts` | No receipts yet. Upload one in Receipt Review. | Chưa có hóa đơn nào. Hãy tải lên ở Duyệt hóa đơn. |
+| `rcsx.noMatch` | No receipts match these filters. | Không có hóa đơn nào khớp bộ lọc. |
+| `rcsx.noVendor` | Vendor not read | Chưa đọc được nhà cung cấp |
+| `rcsx.err.RC_INVALID_PERIOD` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `rcsx.err.RC_NOT_FOUND` | That receipt was not found. | Không tìm thấy hóa đơn đó. |
+| `rcsx.err.PERMISSION_DENIED` | Your role cannot see receipts. | Vai trò của bạn không xem được hóa đơn. |
+| `rcsx.pl.processing` | {n} being read (oldest {at}) | {n} đang đọc (cũ nhất {at}) |
+| `rcsx.pl.failed` | {n} could not be read | {n} không đọc được |
+| `rcsx.pl.quarantined` | {n} held for a safety check | {n} đang giữ để kiểm tra an toàn |
+| `rcsx.pl.approved` | {n} approved, not posted yet | {n} đã duyệt, chưa ghi sổ |
+| `rcsx.kpi.scanned` | Scanned receipts | Hóa đơn đã quét |
+| `rcsx.kpi.needsReview` | Needs review | Cần duyệt |
+| `rcsx.kpi.duplicates` | Potential duplicates | Có thể trùng |
+| `rcsx.kpi.approved` | Approved expenses | Chi phí đã duyệt |
+| `rcsx.group.all` | All receipts | Tất cả hóa đơn |
+| `rcsx.group.processing` | Being read | Đang đọc |
+| `rcsx.group.needs_review` | Needs review | Cần duyệt |
+| `rcsx.group.duplicates` | Potential duplicates | Có thể trùng |
+| `rcsx.group.approved` | Approved, not posted | Đã duyệt, chưa ghi sổ |
+| `rcsx.group.posted` | Posted | Đã ghi sổ |
+| `rcsx.group.failed` | Could not be read / post failed | Không đọc được / ghi sổ lỗi |
+| `rcsx.group.rejected` | Rejected | Bị từ chối |
+| `rcsx.group.quarantined` | Held for safety check | Giữ kiểm tra an toàn |
+| `rcsx.date.uploaded` | Upload date | Ngày tải lên |
+| `rcsx.date.purchase` | Purchase date (on the receipt) | Ngày mua (trên hóa đơn) |
+| `rcsx.date.posted` | Posted date | Ngày ghi sổ |
+| `rcsx.dateNote.uploaded` | Dates filter by when the receipt was uploaded (salon time). | Lọc theo ngày tải hóa đơn lên (giờ tiệm). |
+| `rcsx.dateNote.purchase` | Dates filter by the purchase date printed on the receipt; receipts without one are left out. | Lọc theo ngày mua in trên hóa đơn; hóa đơn không có ngày sẽ không hiện. |
+| `rcsx.dateNote.posted` | Dates filter by when the receipt was posted to the books; receipts not posted are left out. | Lọc theo ngày ghi sổ; hóa đơn chưa ghi sổ sẽ không hiện. |
+| `rcsx.sort.newest` | Newest upload first | Tải lên mới nhất |
+| `rcsx.sort.oldest` | Oldest upload first | Tải lên cũ nhất |
+| `rcsx.sort.purchase_date` | Purchase date | Ngày mua |
+| `rcsx.sort.total_high` | Total, highest | Tổng, cao nhất |
+| `rcsx.sort.total_low` | Total, lowest | Tổng, thấp nhất |
+| `rcsx.sort.vendor` | Vendor A–Z | Nhà cung cấp A–Z |
+| `rcsx.preset.all` | All time | Mọi thời gian |
+| `rcsx.preset.today` | Today | Hôm nay |
+| `rcsx.preset.yesterday` | Yesterday | Hôm qua |
+| `rcsx.preset.week` | This week | Tuần này |
+| `rcsx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `rcsx.preset.month` | This month | Tháng này |
+| `rcsx.preset.last_month` | Last month | Tháng trước |
+| `rcsx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `rcsx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `rcsx.preset.year` | This year | Năm nay |
+| `rcsx.preset.custom` | Custom range | Tùy chọn |
+| `rcsx.col.vendor` | Vendor | Nhà cung cấp |
+| `rcsx.col.purchase` | Purchase date | Ngày mua |
+| `rcsx.col.uploaded` | Uploaded | Tải lên |
+| `rcsx.col.total` | Total | Tổng |
+| `rcsx.col.reading` | Reading | Đọc |
+| `rcsx.col.expense` | Expense | Chi phí |
+| `rcsx.col.receiving` | Stock receiving | Nhận hàng |
+| `rcsx.col.duplicate` | Duplicate | Trùng |
+| `rcsx.trk.reading.processing` | Being read | Đang đọc |
+| `rcsx.trk.reading.failed` | Could not be read | Không đọc được |
+| `rcsx.trk.reading.quarantined` | Held for safety check | Giữ kiểm tra an toàn |
+| `rcsx.trk.reading.manual_entry` | Needs typing in | Cần nhập tay |
+| `rcsx.trk.reading.rejected` | Rejected | Bị từ chối |
+| `rcsx.trk.reading.read` | Read | Đã đọc |
+| `rcsx.trk.expense.expense_draft` | Expense draft | Chi phí nháp |
+| `rcsx.trk.expense.expense_pending_review` | Expense pending review | Chi phí chờ duyệt |
+| `rcsx.trk.expense.expense_approved` | Expense approved | Chi phí đã duyệt |
+| `rcsx.trk.expense.expense_rejected` | Expense rejected | Chi phí bị từ chối |
+| `rcsx.trk.expense.expense_voided` | Expense voided | Chi phí đã hủy |
+| `rcsx.trk.expense.posting_failed` | Posting failed | Ghi sổ lỗi |
+| `rcsx.trk.expense.approved_not_posted` | Approved, not posted | Đã duyệt, chưa ghi sổ |
+| `rcsx.trk.expense.not_linked` | Not linked | Chưa liên kết |
+| `rcsx.trk.expense.awaiting_review` | Awaiting review | Chờ duyệt |
+| `rcsx.trk.receiving.received` | Received | Đã nhận hàng |
+| `rcsx.trk.receiving.receiving_failed` | Receiving failed | Nhận hàng lỗi |
+| `rcsx.trk.receiving.receiving_pending` | Receiving pending | Chờ nhận hàng |
+| `rcsx.trk.receiving.not_applicable` | Not applicable | Không áp dụng |
+| `rcsx.trk.duplicate.none` | None found | Không thấy trùng |
+| `rcsx.trk.duplicate.possible` | Possible | Có thể |
+| `rcsx.trk.duplicate.likely` | Likely | Nhiều khả năng |
+| `rcsx.trk.duplicate.exact` | Exact | Trùng khớp |
+| `rcsx.ov.title` | Receipt details | Chi tiết hóa đơn |
+| `rcsx.ov.openInReview` | Open in Receipt Review | Mở trong Duyệt hóa đơn |
+| `rcsx.ov.openExpenses` | Open Expenses | Mở Chi phí |
+| `rcsx.ov.number` | Receipt / invoice number | Số hóa đơn |
+| `rcsx.ov.dateAmbiguous` | the date could be read two ways | ngày có thể hiểu theo hai cách |
+| `rcsx.ov.amounts` | Amounts | Số tiền |
+| `rcsx.ov.subtotal` | Subtotal | Tạm tính |
+| `rcsx.ov.tax` | Tax | Thuế |
+| `rcsx.ov.fees` | Fees | Phí |
+| `rcsx.ov.category` | Category | Danh mục |
+| `rcsx.ov.confirmed` | confirmed by a person | đã được người xác nhận |
+| `rcsx.ov.suggested` | suggested | gợi ý |
+| `rcsx.ov.checks` | Arithmetic and required fields | Kiểm tra số học và trường bắt buộc |
+| `rcsx.ov.missing` | Missing: {f} | Thiếu: {f} |
+| `rcsx.ov.fields` | What was read | Những gì đã đọc |
+| `rcsx.ov.noFields` | Nothing was read from this receipt yet. | Chưa đọc được gì từ hóa đơn này. |
+| `rcsx.ov.corrected` | corrected by a person | đã được người sửa |
+| `rcsx.ov.lines` | Line items | Các dòng hàng |
+| `rcsx.ov.lineMismatch` | Line doesn't add up | Dòng không khớp |
+| `rcsx.ov.duplicates` | Possible duplicates | Có thể trùng |
+| `rcsx.ov.dismissed` | marked not a duplicate | đã đánh dấu không trùng |
+| `rcsx.ov.links` | Books | Sổ sách |
+| `rcsx.ov.expense` | Expense: {s} · {a} | Chi phí: {s} · {a} |
+| `rcsx.ov.noExpense` | No expense recorded from this receipt. | Chưa có chi phí nào ghi từ hóa đơn này. |
+| `rcsx.ov.posting` | {d}: {s} | {d}: {s} |
+| `rcsx.ov.trail` | Approval trail | Lịch sử duyệt |
+| `rcsx.ov.readOnly` | Read-only here. To correct, approve, post or receive, open it in Receipt Review. | Chỉ xem ở đây. Để sửa, duyệt, ghi sổ hoặc nhận hàng, hãy mở trong Duyệt hóa đơn. |
+| `rcsx.check.valid` | Checks passed | Kiểm tra đạt |
+| `rcsx.check.needs_review` | Needs a person to check | Cần người kiểm tra |
+| `rcsx.check.blocked` | Blocks posting | Chặn ghi sổ |
+| `rcsx.check.pending` | Not checked yet | Chưa kiểm tra |
+| `rcsx.fstate.high` | high confidence | độ tin cậy cao |
+| `rcsx.fstate.medium` | medium confidence | độ tin cậy trung bình |
+| `rcsx.fstate.low` | low confidence — verify | độ tin cậy thấp — cần kiểm |
+| `rcsx.fstate.missing` | not found | không tìm thấy |
+| `rcsx.fstate.conflicting` | conflicting readings | đọc ra kết quả mâu thuẫn |
+| `rcsx.fstate.manually_confirmed` | confirmed by a person | đã được người xác nhận |
+| `rcsx.fstate.manually_corrected` | corrected by a person | đã được người sửa |
+| `rcsx.field.vendor` | Vendor | Nhà cung cấp |
+| `rcsx.field.total` | Total | Tổng |
+| `rcsx.field.subtotal` | Subtotal | Tạm tính |
+| `rcsx.field.tax` | Tax | Thuế |
+| `rcsx.field.document_date` | Purchase date | Ngày mua |
+| `rcsx.field.document_number` | Receipt / invoice number | Số hóa đơn |
+| `rcsx.field.discount` | Discount | Giảm giá |
+| `rcsx.field.fees` | Fees / shipping | Phí / vận chuyển |
+| `rcsx.field.tip` | Tip | Tiền tip |
+| `rcsx.field.due_date` | Due date | Hạn thanh toán |
+| `rcsx.field.payment_terms` | Payment terms | Điều khoản thanh toán |
+| `rcsx.field.po_number` | PO number | Số đơn đặt hàng |
+| `rcsx.field.vendor_address` | Vendor address | Địa chỉ nhà cung cấp |
+| `rcsx.field.vendor_phone` | Vendor phone | Điện thoại nhà cung cấp |
+| `rcsx.field.document_time` | Purchase time | Giờ mua |
+| `rcsx.field.account_number` | Account number (masked) | Số tài khoản (đã che) |
+| `rcsx.field.other` | Other field | Trường khác |
+| `rcsx.dest.expense` | Expense | Chi phí |
+| `rcsx.dest.inventory_receipt` | Stock receiving | Nhận hàng |
+| `rcsx.pstatus.pending` | in progress | đang xử lý |
+| `rcsx.pstatus.posted` | posted | đã ghi sổ |
+| `rcsx.pstatus.failed` | failed | lỗi |
+| `rcsx.act.approve` | Approved | Đã duyệt |
+| `rcsx.act.reject` | Rejected | Từ chối |
+| `rcsx.act.return` | Returned for changes | Trả lại để sửa |
+| `rcsx.health.PASSED` | Passed | Đạt |
+| `rcsx.health.WARNING` | Warning | Cảnh báo |
+| `rcsx.health.FAILED` | Failed | Lỗi |
+| `rcsx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `rcsx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `rcsx.health.running` | Checking… | Đang kiểm tra… |
+| `rcsx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `rcsx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `rcsx.health.readOnly` | Read-only: it never uploads, posts an expense, receives stock or charges. | Chỉ đọc: không tải lên, không ghi chi phí, không nhận hàng, không tính phí. |
+| `rcsx.health.k.subscription` | Package & subscription | Gói & đăng ký |
+| `rcsx.health.d.subscription.PASSED` | The scanner package allows reading receipts. | Gói máy quét cho phép đọc hóa đơn. |
+| `rcsx.health.d.subscription.FAILED` | The package does not allow reading new receipts (see the status above). Receipts already scanned stay visible. | Gói không cho phép đọc hóa đơn mới (xem trạng thái ở trên). Hóa đơn đã quét vẫn hiển thị. |
+| `rcsx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái đăng ký. |
+| `rcsx.health.k.ocr_provider` | Reading service connected | Đã kết nối dịch vụ đọc |
+| `rcsx.health.d.ocr_provider.PASSED` | A receipt-reading service is configured. | Đã cấu hình dịch vụ đọc hóa đơn. |
+| `rcsx.health.d.ocr_provider.WARNING` | No reading service is configured — receipts go to manual entry. Ask your developer to set it up. | Chưa cấu hình dịch vụ đọc — hóa đơn chuyển sang nhập tay. Hãy nhờ kỹ thuật thiết lập. |
+| `rcsx.health.k.documents_present` | Receipts on record | Có hóa đơn |
+| `rcsx.health.d.documents_present.PASSED` | Receipts are on record. | Đã có hóa đơn được lưu. |
+| `rcsx.health.d.documents_present.INSUFFICIENT_DATA` | No receipts yet — zero is not proof the pipeline works. Upload one to test it. | Chưa có hóa đơn — số 0 không chứng minh hệ thống chạy. Hãy tải một hóa đơn để thử. |
+| `rcsx.health.k.nothing_stuck` | Nothing stuck being read | Không có hóa đơn kẹt khi đọc |
+| `rcsx.health.d.nothing_stuck.PASSED` | No receipt has been "being read" for over 30 minutes. | Không có hóa đơn nào "đang đọc" quá 30 phút. |
+| `rcsx.health.d.nothing_stuck.WARNING` | Some receipts have been "being read" for over 30 minutes. The background sweep retries every 5 minutes; if they stay, check the reading service. | Một số hóa đơn "đang đọc" quá 30 phút. Hệ thống thử lại mỗi 5 phút; nếu vẫn vậy, hãy kiểm tra dịch vụ đọc. |
+| `rcsx.health.k.extraction_failures` | Receipts that could not be read | Hóa đơn không đọc được |
+| `rcsx.health.d.extraction_failures.PASSED` | No receipt is waiting after a failed read. | Không có hóa đơn nào đang chờ sau khi đọc lỗi. |
+| `rcsx.health.d.extraction_failures.WARNING` | Some receipts could not be read. Open them in Receipt Review to retry or type them in. | Một số hóa đơn không đọc được. Mở trong Duyệt hóa đơn để thử lại hoặc nhập tay. |
+| `rcsx.health.k.recent_jobs` | Recent reading jobs | Lượt đọc gần đây |
+| `rcsx.health.d.recent_jobs.PASSED` | Reading jobs in the last 7 days succeeded. | Các lượt đọc trong 7 ngày qua thành công. |
+| `rcsx.health.d.recent_jobs.WARNING` | Some reading jobs in the last 7 days failed. | Một số lượt đọc trong 7 ngày qua bị lỗi. |
+| `rcsx.health.d.recent_jobs.FAILED` | Most reading jobs in the last 7 days failed — the reading service may be down. | Phần lớn lượt đọc trong 7 ngày qua bị lỗi — dịch vụ đọc có thể đang ngừng. |
+| `rcsx.health.d.recent_jobs.INSUFFICIENT_DATA` | No reading jobs in the last 7 days. | Không có lượt đọc nào trong 7 ngày qua. |
+| `rcsx.health.k.infected_files_held` | Unsafe files kept out | Tệp không an toàn bị chặn |
+| `rcsx.health.d.infected_files_held.PASSED` | No file marked unsafe is still in the pipeline. | Không có tệp bị đánh dấu không an toàn nào còn trong hệ thống. |
+| `rcsx.health.d.infected_files_held.FAILED` | A file marked unsafe is still in the pipeline. Report this immediately. | Có tệp bị đánh dấu không an toàn vẫn còn trong hệ thống. Hãy báo ngay. |
+| `rcsx.health.k.originals_fingerprinted` | Originals fingerprinted | Bản gốc có dấu vân tay |
+| `rcsx.health.d.originals_fingerprinted.PASSED` | Every original has a fingerprint for duplicate checks. | Mọi bản gốc đều có dấu vân tay để kiểm tra trùng. |
+| `rcsx.health.d.originals_fingerprinted.WARNING` | Some originals have no fingerprint, so a re-upload of them may not be caught as a duplicate. | Một số bản gốc không có dấu vân tay, nên tải lại có thể không bị phát hiện trùng. |
+| `rcsx.health.k.posting_needs_approval` | Nothing posted without approval | Không ghi sổ khi chưa duyệt |
+| `rcsx.health.d.posting_needs_approval.PASSED` | Every posted receipt was approved by a person first. | Mọi hóa đơn đã ghi sổ đều được người duyệt trước. |
+| `rcsx.health.d.posting_needs_approval.FAILED` | A receipt was posted with no approval on record. Report this immediately. | Có hóa đơn được ghi sổ mà không có ghi nhận duyệt. Hãy báo ngay. |
+| `rcsx.health.k.no_double_posting` | No receipt posted twice | Không hóa đơn nào ghi sổ hai lần |
+| `rcsx.health.d.no_double_posting.PASSED` | No receipt made two expenses or two stock receipts. | Không hóa đơn nào tạo hai chi phí hoặc hai lần nhận hàng. |
+| `rcsx.health.d.no_double_posting.FAILED` | A receipt was posted twice. Report this immediately. | Có hóa đơn bị ghi sổ hai lần. Hãy báo ngay. |
+| `rcsx.health.k.posting_failures` | Posting to the books | Ghi vào sổ sách |
+| `rcsx.health.d.posting_failures.PASSED` | No approved receipt is stuck after a failed posting. | Không có hóa đơn đã duyệt nào bị kẹt sau khi ghi sổ lỗi. |
+| `rcsx.health.d.posting_failures.WARNING` | Some approved receipts failed to post. Retry them in Receipt Review. | Một số hóa đơn đã duyệt ghi sổ lỗi. Thử lại trong Duyệt hóa đơn. |
+| `rcsx.health.k.review_backlog` | Review backlog | Tồn đọng chờ duyệt |
+| `rcsx.health.d.review_backlog.PASSED` | No receipt has waited for review more than 7 days. | Không có hóa đơn nào chờ duyệt quá 7 ngày. |
+| `rcsx.health.d.review_backlog.WARNING` | Some receipts have waited for review more than 7 days. | Một số hóa đơn đã chờ duyệt quá 7 ngày. |
+| `rcsx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `rcsx.health.d.tenant_isolation.PASSED` | Every expense link and duplicate match belongs to this salon. | Mọi liên kết chi phí và kết quả trùng đều thuộc tiệm này. |
+| `rcsx.health.d.tenant_isolation.FAILED` | A record links to another salon. Report this immediately. | Có bản ghi liên kết với tiệm khác. Hãy báo ngay. |
+| `rcsx.health.k.no_side_effects` | Nothing posted, received or charged | Không ghi sổ, nhận hàng hay tính phí |
+| `rcsx.health.d.no_side_effects.PASSED` | This page and this check never post an expense, receive stock, pay or charge. | Trang này và việc kiểm tra không ghi chi phí, nhận hàng, thanh toán hay tính phí. |

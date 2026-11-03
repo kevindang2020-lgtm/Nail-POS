@@ -105,6 +105,7 @@ import { POSIntegrationsScreen } from './screens/POSIntegrationsScreen';
 import { POSDepositReconScreen } from './screens/POSDepositReconScreen';
 import { POSAiAnalyticsScreen } from './screens/POSAiAnalyticsScreen';
 import { POSAiPackageScreen } from './screens/POSAiPackageScreen';
+import { POSAIReceiptScannerScreen } from './screens/POSAIReceiptScannerScreen';
 import { POSUsageLimitsScreen } from './screens/POSUsageLimitsScreen';
 import { POSAccountInvoicesScreen } from './screens/POSAccountInvoicesScreen';
 import { SuspendedBillingOnly } from './screens/SuspendedBillingOnly';
@@ -400,7 +401,7 @@ function POSRoutes() {
         <Route path="tenant/ai/checkout-upsell" element={<POSAiPackageScreen code="ai_checkout_upsell_assistant" title={t('pos.ai_checkout_upsell')} />} />
         <Route path="tenant/ai/fraud-protection" element={<POSAiPackageScreen code="ai_fraud_money_protection" title={t('pos.ai_fraud_protection')} />} />
         <Route path="tenant/ai/reviews" element={<POSAiPackageScreen code="ai_review_reputation_assistant" title={t('pos.ai_reviews_reputation')} />} />
-        <Route path="tenant/ai/receipt-scanner" element={<POSAiPackageScreen code="ai_ocr_receipt_scanner" title={t('pos.ai_receipt_scanner')} />} />
+        <Route path="tenant/ai/receipt-scanner" element={<POSAIReceiptScannerScreen />} />
         <Route path="tenant/marketing/sms" element={<POSCampaignCenterScreen defaultChannel="sms" />} />
         <Route path="tenant/marketing/email" element={<POSCampaignCenterScreen defaultChannel="email" />} />
         <Route path="tenant/marketing/coupons" element={<POSCouponsScreen />} />

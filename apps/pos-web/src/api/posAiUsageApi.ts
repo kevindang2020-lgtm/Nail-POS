@@ -2,11 +2,9 @@
 // Reuses the tenant/ai backend. Read + subscription actions (start trial / cancel) require ai.manage.
 import { api } from "./client";
 const enc = encodeURIComponent;
-export const posAiUsageApi = {
-  packages: () => api.get<any>(`/tenant/ai/packages`),
-  startTrial: (packageCode: string) => api.post(`/tenant/ai/subscriptions`, { packageCode }),
-  cancel: (code: string) => api.patch(`/tenant/ai/subscriptions/${enc(code)}/cancel`),
-};
+// posAiUsageApi.packages / startTrial / cancel were retired Nov 2 2026: every add-on page reads the honest package state from
+// posAiUsageScreenApi.detail and uses its audited, idempotent trial / cancel (AI OCR Receipt Scanner guide).
+
 
 // AI Usage & Limits Complete Build Guide (Oct 30 2026): `/tenant/ai/usage-screen/*` — the honest package states, 8-card
 // pages, one-click details, verified monthly cost, 80 / 90 / 100 % alerts, usage history + audited export.

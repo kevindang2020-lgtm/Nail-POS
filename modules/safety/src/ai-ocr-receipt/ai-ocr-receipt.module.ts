@@ -17,7 +17,7 @@
 import { OcrPipelineScheduler } from './ai-ocr-receipt-pipeline.scheduler';
 /** §113: the job type the upload enqueues (registered once per process below) */
 export const OCR_EXTRACT_JOB = 'ocr.receipt_extract';
-import { KyselyAiUsageLogger, KyselyAiAccessRepo, AiProviderTaskGateway, platformAiKillSwitchReader, KyselyAiSettingsStore, type AiUsageLogger } from '@aipowersalon/ai';
+import { KyselyAiUsageLogger, KyselyAiAccessRepo, AiProviderTaskGateway, platformAiKillSwitchReader, KyselyAiSettingsStore, evaluateAiAccess, type AiUsageLogger } from '@aipowersalon/ai';
 import { InventoryModule, InventoryService } from '@aipowersalon/inventory';
 import { FinanceModule, ExpenseService } from '@aipowersalon/finance';
 import { Module } from '@nestjs/common';
@@ -29,6 +29,8 @@ import { systemContext } from '@aipowersalon/tenant-context';
 import { makeEvidenceBlobStore } from '../tenant-safety-community/evidence-blob-store';
 import { makeEvidenceScanner } from '../tenant-safety-community/evidence-scanner';
 import { AiOcrReceiptController } from './ai-ocr-receipt.controller';
+import { ReceiptCenter } from './receipt-center';
+import { ReceiptCenterController, RECEIPT_CENTER } from './receipt-center.controller';
 import { AiOcrReceiptService, uploadRefusalFor, type OcrCtx } from './ai-ocr-receipt.service';
 import { STORAGE_QUOTA, type StorageQuotaPort } from '@aipowersalon/media';
 import { PostingService } from './ai-ocr-receipt-posting';
@@ -43,7 +45,7 @@ import {
 
 @Module({
   imports: [InventoryModule, FinanceModule, EventsCoreModule],
-  controllers: [AiOcrReceiptController],
+  controllers: [AiOcrReceiptController, ReceiptCenterController],
   providers: [
     {
       provide: AiOcrReceiptService,
@@ -128,6 +130,15 @@ import {
       },
       inject: [DATABASE, InventoryService, { token: STORAGE_QUOTA, optional: true }, { token: ExpenseService, optional: true }, OutboxWriter],
     },
+    // AI OCR Receipt Scanner guide (Nov 2026): the scanner page's read side — the same branch rule as the receipt list
+    { provide: RECEIPT_CENTER, useFactory: (db: AppDatabase, svc: AiOcrReceiptService) => {
+        if (!db) return null;
+        const access = new KyselyAiAccessRepo(db as never);
+        return new ReceiptCenter(db as never, async (c) => (svc.visibleBranches && !String(c.userId ?? '').startsWith('system:') ? svc.visibleBranches(c as OcrCtx) : null),
+          async (c) => { const d = evaluateAiAccess(await access.loadSnapshot(c.tenantId, 'ai_ocr_receipt_scanner', c.userId ?? null, { branchId: c.branchId || null }));
+            return { allowed: d.allowed, reason: d.reason, subscriptionStatus: String(d.subscriptionStatus) }; },
+          () => makeOcrProviders().map((p) => p.key));
+      }, inject: [DATABASE, AiOcrReceiptService] },
     OcrPipelineScheduler,   // M3 (Oct 23 2026): quarantined → rescan, stuck extracting → extract, every 5 min (OCR_PIPELINE_SWEEP=off stops it)
   ],
   exports: [AiOcrReceiptService],

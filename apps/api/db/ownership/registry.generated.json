@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 910,
+  "tables": 911,
   "ownership": {
-   "tenant_owned": 600,
+   "tenant_owned": 601,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -31,7 +31,7 @@
    "CUSTOMERS": 59,
    "CATALOG": 20,
    "COMMUNICATIONS": 41,
-   "CHECKOUT": 12,
+   "CHECKOUT": 13,
    "DEALS": 18,
    "LOYALTY": 34,
    "MEMBERSHIPS": 11,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 134,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 494,
+   "INTERNAL": 495,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -7121,6 +7121,18 @@
   "receipt_delivery_logs": {
    "ownership": "tenant_branch_owned",
    "class": "C",
+   "domain": "CHECKOUT",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "receipt_scanner_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
    "domain": "CHECKOUT",
    "sensitivity": "INTERNAL",
    "retention_class": "indefinite",

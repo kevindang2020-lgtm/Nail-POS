@@ -706,7 +706,13 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Sources, operational state, what actually runs (no auto-reply job, no request sender, no reminder sender); safe merged saves
     with conflict refusal + version + append-only History (the existing config-versions log) + audit; check. Old GET/PUT retired (pinned).
   - Tests: pgtest 12/12, routes 4/4, reputation suite 71/71, screen 7/7. Doc: `docs/ai/REVIEW_REPUTATION_SETTINGS.md`.
-- **Next: AI OCR Receipt Scanner** (guide 11).
+- **Done: AI OCR Receipt Scanner** (guide 11): `pos/receipt-center` read routes and migration 770.
+  - Fixed: every AI add-on page showed "On trial" + "Limited" + "trial ended" at once — it now reads the honest usage-screen
+    state (price the salon pays, current-period usage + reset date, trial end, confirmed + idempotent Start trial / Cancel).
+  - Scanner dashboard: four defined cards, stuck/failed counts, searchable history with four status tracks, read-only receipt
+    detail linking to Receipt Review, Check OCR System. Nothing posts or changes stock from this page.
+  - Tests: pgtest 7/7, screen 5/5, package screen 4/4 + 1. Doc: `docs/ai/RECEIPT_SCANNER.md`.
+- **Next: Receipt Document Recognition** (guide 12, `/tenant/ai/ocr-receipt`, reuse `pos/receipt-center`).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
@@ -720,6 +726,8 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   6. Review requests: requests are scheduled at checkout but no sender runs, so nothing is sent. Build the sender (consent,
      quiet hours, frequency cap, salon Twilio) and the one-reminder sender, or keep requests off and say so (today's screens say so)?
   7. Automatic replies: nothing runs them. Build the job (only with approval OFF, clean 5-star only), or remove the control?
+  8. Owner app AI packages still read the older `/tenant/ai/packages` list (it shows "not subscribed" on a database error).
+     Move it to the honest usage-screen state like the POS pages?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 
