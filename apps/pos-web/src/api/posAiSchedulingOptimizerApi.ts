@@ -24,6 +24,9 @@ const oneRec = (r: SchedRecommendationResponse | SchedRecommendation): SchedReco
   ((r as SchedRecommendationResponse)?.recommendation ?? (r as SchedRecommendation));
 const body = <T extends object>(b: T) => b as unknown as Record<string, unknown>;
 
+type Q = Record<string, string | number | undefined>;
+const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
+
 export type SchedExportKind = 'recommendations' | 'runs' | 'insights';
 
 export const posAiSchedulingOptimizerApi = {
@@ -77,6 +80,14 @@ export const posAiSchedulingOptimizerApi = {
   decideInsight: (kind: SchedInsightKind, id: string, decision: 'approve' | 'reject', d: SchedInsightDecisionRequest) =>
     api.post<unknown>(`${BASE}/insights/${enc(kind)}/${enc(id)}/${decision}`, body(d)),
   refreshInsights: () => api.post<unknown>(`${BASE}/insights/refresh`, {}),
+
+  // ── the page's read side (Scheduling Optimizer guide, Nov 2026): counters · queue · event trail · read-only health ──
+  center: {
+    summary: () => api.get<any>(`${BASE}/center/summary`),
+    recommendations: (q: Q = {}) => api.get<any>(`${BASE}/center/recommendations`, clean(q)),
+    history: (q: Q = {}) => api.get<any>(`${BASE}/center/history`, clean(q)),
+    check: () => api.post<any>(`${BASE}/center/check`, {}),
+  },
 
   // ── usage + export ──
   usage: (from: string, to: string) => api.get<SchedUsageSummary>(`${BASE}/usage`, { from, to }),

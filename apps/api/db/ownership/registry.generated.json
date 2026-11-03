@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 912,
+  "tables": 913,
   "ownership": {
-   "tenant_owned": 602,
+   "tenant_owned": 603,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 118,
+   "AI": 122,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -28,10 +28,10 @@
    "MARKETING": 21,
    "PAYMENTS": 59,
    "WORKFORCE": 73,
-   "CUSTOMERS": 59,
+   "CUSTOMERS": 57,
    "CATALOG": 20,
    "COMMUNICATIONS": 41,
-   "CHECKOUT": 13,
+   "CHECKOUT": 12,
    "DEALS": 18,
    "LOYALTY": 34,
    "MEMBERSHIPS": 11,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 134,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 496,
+   "INTERNAL": 497,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -935,7 +935,8 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
-   "source": "heuristic"
+   "source": "override",
+   "reason": "AI Usage & Limits guide (Nov 2 2026, migration 771): the AI Usage page — read-only Check AI Usage & Subscriptions runs"
   },
   "ai_usage_logs": {
    "ownership": "tenant_owned",
@@ -7145,14 +7146,15 @@
   "receipt_scanner_health_runs": {
    "ownership": "tenant_owned",
    "class": "B",
-   "domain": "CHECKOUT",
+   "domain": "AI",
    "sensitivity": "INTERNAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,
-   "source": "heuristic"
+   "source": "override",
+   "reason": "AI OCR Receipt Scanner guide (Nov 2 2026, migration 770): the scanner page — read-only Check OCR System runs"
   },
   "receipts": {
    "ownership": "tenant_branch_owned",
@@ -7748,26 +7750,28 @@
   "review_reputation_health_runs": {
    "ownership": "tenant_owned",
    "class": "B",
-   "domain": "CUSTOMERS",
+   "domain": "AI",
    "sensitivity": "CONFIDENTIAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,
-   "source": "heuristic"
+   "source": "override",
+   "reason": "Review & Reputation guide (Nov 2 2026, migration 768): AI Review & Reputation workspace — read-only Check Reputation System runs"
   },
   "review_reputation_settings_health_runs": {
    "ownership": "tenant_owned",
    "class": "B",
-   "domain": "CUSTOMERS",
+   "domain": "AI",
    "sensitivity": "CONFIDENTIAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,
-   "source": "heuristic"
+   "source": "override",
+   "reason": "Review & Reputation Settings guide (Nov 2 2026, migration 769): AI Review & Reputation settings screen — read-only Check Reputation Settings runs"
   },
   "review_request_campaigns": {
    "ownership": "tenant_owned",
@@ -8079,6 +8083,19 @@
    "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
+  },
+  "scheduling_optimizer_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Scheduling Optimizer guide (Nov 2 2026, migration 772): the optimizer page — read-only Check Scheduling System runs"
   },
   "scheduling_rule_versions": {
    "ownership": "tenant_owned",

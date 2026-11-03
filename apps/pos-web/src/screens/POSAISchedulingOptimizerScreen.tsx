@@ -5,6 +5,8 @@
 // writes explanations. Staff review every recommendation; a change to a confirmed appointment also needs the customer's
 // approval, and every change is applied by the server through the booking service (never from the browser).
 //
+// Scheduling Optimizer guide (Nov 2026): the four counters sit above the tabs (server-computed, each opens its queue);
+// Recommendations is the searchable, paged queue; History leads with the append-only event trail; Check Scheduling System.
 // Tabs: Overview · Recommendations (+ detail) · Find a time · Gaps & conflicts · Customer approvals · Insights ·
 // Time off & locks · Settings · Usage & export · History. Each card loads ON ITS OWN (one failing card never blanks the
 // screen). Buttons are hidden by permission (the server re-checks every action). Realtime `schedule_*` events (screen key
@@ -28,6 +30,7 @@ import { SchedInsightsCard } from './ai-scheduling/SchedInsightsCard';
 import { SchedInputsCard } from './ai-scheduling/SchedInputsCard';
 import { SchedSettingsCard } from './ai-scheduling/SchedSettingsCard';
 import { SchedUsageCard } from './ai-scheduling/SchedUsageCard';
+import { SchedCounters, SchedQueueCard, SchedEventTrailCard, SC_GROUPS } from './ai-scheduling/SchedCenter';
 import { useTechnicianNames } from '../components/useTechnicianNames';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -55,6 +58,7 @@ export function POSAISchedulingOptimizerScreen() {
   const [tab, setTabState] = useState<Tab>(recParam ? 'recs' : isTab(params.get('tab')) ? (params.get('tab') as Tab) : 'overview');
   const [selected, setSelected] = useState<string | null>(recParam);
   const [runId, setRunId] = useState<string | null>(null);
+  const [queueGroup, setQueueGroup] = useState<(typeof SC_GROUPS)[number]>('all');
   const [tick, setTick] = useState(0);
   const bump = useCallback(() => setTick((t) => t + 1), []);
   const [settings, setSettings] = useState<SchedSettingsView | null>(null);
@@ -100,13 +104,16 @@ export function POSAISchedulingOptimizerScreen() {
         </div>
         <button className="btn whitespace-nowrap !h-8" style={{ marginLeft: 'auto' }} onClick={bump}>{tx('pos.refresh')}</button>
       </div>
-      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'wrap' }} role="tablist" aria-label={tx('pos.optimizer_sections')}>
+      {/* Scheduling Optimizer guide: the four counters, server-computed, on every tab; a counter opens its queue */}
+      <div style={{ padding: '12px 20px 0' }}><SchedCounters tick={tick} onDrill={(g) => { setQueueGroup(g); setSelected(null); setTab('recs'); }} /></div>
+      <div style={{ padding: '12px 20px 0', display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist" aria-label={tx('pos.optimizer_sections')}>
         {TABS.map(([k, l]) => <button key={k} role="tab" aria-selected={tab === k} style={tabBtn(tab === k)} onClick={() => setTab(k)}>{tx(l)}</button>)}
       </div>
       <div style={{ padding: 20, display: 'grid', gap: 16 }}>
-        {tab === 'overview' && <SchedOverviewCard {...props} date={date} settings={settings} onOpenRun={openRun} />}
+        {tab === 'overview' && <SchedOverviewCard {...props} date={date} settings={settings} onOpenRun={openRun} onSelectRec={select} />}
         {tab === 'recs' && <>
           {selected ? <SchedRecommendationDetail id={selected} tick={tick} can={can} techName={techName} onChanged={bump} onClose={() => select(null)} /> : null}
+          <SchedQueueCard tick={tick} group={queueGroup} selectedId={selected} onSelect={select} />
           <SchedRecommendationsCard {...props} selectedId={selected} onSelect={select} date={date} appointments={day.appointments} />
         </>}
         {tab === 'find' && <SchedFindTimeCard can={can} date={date} services={day.services} />}
@@ -116,7 +123,10 @@ export function POSAISchedulingOptimizerScreen() {
         {tab === 'inputs' && <SchedInputsCard {...props} services={day.services} appointments={day.appointments} lockedIds={lockedIds} />}
         {tab === 'settings' && <SchedSettingsCard tick={tick} can={can} onChanged={bump} view={settings} reload={() => setSettingsTick((x) => x + 1)} />}
         {tab === 'usage' && <SchedUsageCard tick={tick} can={can} />}
-        {tab === 'history' && <SchedHistoryCard tick={tick} techName={techName} onOpenRun={openRun} />}
+        {tab === 'history' && <>
+          <SchedEventTrailCard tick={tick} onSelect={select} />
+          <SchedHistoryCard tick={tick} techName={techName} onOpenRun={openRun} />
+        </>}
       </div>
     </div>
   );

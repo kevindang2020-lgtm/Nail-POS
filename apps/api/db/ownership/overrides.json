@@ -374,22 +374,26 @@
   "customer_ai_settings_health_runs": {
    "domain": "AI",
    "reason": "Customer AI Settings guide (Nov 2 2026, migration 767): the AI Customer Profile assistant's settings screen \u2014 read-only Check Customer AI System runs"
+  },
+  "review_reputation_health_runs": {
+   "domain": "AI",
+   "reason": "Review & Reputation guide (Nov 2 2026, migration 768): AI Review & Reputation workspace \u2014 read-only Check Reputation System runs"
+  },
+  "review_reputation_settings_health_runs": {
+   "domain": "AI",
+   "reason": "Review & Reputation Settings guide (Nov 2 2026, migration 769): AI Review & Reputation settings screen \u2014 read-only Check Reputation Settings runs"
+  },
+  "receipt_scanner_health_runs": {
+   "domain": "AI",
+   "reason": "AI OCR Receipt Scanner guide (Nov 2 2026, migration 770): the scanner page \u2014 read-only Check OCR System runs"
+  },
+  "ai_usage_health_runs": {
+   "domain": "AI",
+   "reason": "AI Usage & Limits guide (Nov 2 2026, migration 771): the AI Usage page \u2014 read-only Check AI Usage & Subscriptions runs"
+  },
+  "scheduling_optimizer_health_runs": {
+   "domain": "AI",
+   "reason": "AI Scheduling Optimizer guide (Nov 2 2026, migration 772): the optimizer page \u2014 read-only Check Scheduling System runs"
   }
- },
- "review_reputation_health_runs": {
-  "domain": "AI",
-  "reason": "Review & Reputation guide (Nov 2 2026, migration 768): AI Review & Reputation workspace \u2014 read-only Check Reputation System runs"
- },
- "review_reputation_settings_health_runs": {
-  "domain": "AI",
-  "reason": "Review & Reputation Settings guide (Nov 2 2026, migration 769): AI Review & Reputation settings screen \u2014 read-only Check Reputation Settings runs"
- },
- "receipt_scanner_health_runs": {
-  "domain": "AI",
-  "reason": "AI OCR Receipt Scanner guide (Nov 2 2026, migration 770): the scanner page \u2014 read-only Check OCR System runs"
- },
- "ai_usage_health_runs": {
-  "domain": "AI",
-  "reason": "AI Usage & Limits guide (Nov 2 2026, migration 771): the AI Usage page \u2014 read-only Check AI Usage & Subscriptions runs"
  }
 }

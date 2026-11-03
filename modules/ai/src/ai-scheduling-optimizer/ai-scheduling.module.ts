@@ -34,6 +34,12 @@ import { TechAiScheduleController } from './ai-scheduling-tech';
 import { CustomerScheduleProposalsController } from './ai-scheduling-proposals.customer.controller';
 import { AiAnalyticsForecastingModule } from '../ai-analytics-forecasting/ai-analytics-forecasting.module';
 import { BusyPeriodService } from '../ai-analytics-forecasting/busy-period.service';
+import { SchedulingCenter } from './scheduling-center';
+import { SchedulingCenterController, SCHEDULING_CENTER } from './scheduling-center.controller';
+import { SchedPlatformSwitch } from './ai-scheduling-ops.platform-switch';
+import { KyselyAiAccessRepo } from '../ai/ai-access.kysely.repository';
+import { evaluateAiAccess } from '../ai/ai-access-gate';
+import { hasPermission } from '@aipowersalon/permissions';
 
 export const SCHED_STORE = 'SchedStore';
 export const SCHED_READER = 'SchedDayReader';
@@ -80,7 +86,7 @@ export function schedAuditResourceType(action: string): string {
 @Module({
   // EventsCoreModule provides OutboxWriter (non-optional injection — the Phase 6 outbox-wiring guard).
   imports: [EventsCoreModule, BookingModule, AiAnalyticsForecastingModule, ...SCHED_OPS_IMPORTS],
-  controllers: [AiSchedulingController, AiSchedulingOpsController, OwnerAiSchedulingController, TechAiScheduleController, CustomerScheduleProposalsController],
+  controllers: [AiSchedulingController, AiSchedulingOpsController, OwnerAiSchedulingController, TechAiScheduleController, CustomerScheduleProposalsController, SchedulingCenterController],
   providers: [
     ...SCHED_OPS_PROVIDERS,
     { provide: SCHED_STORE, useFactory: (db: AppDatabase): SchedStore => (db ? new KyselySchedStore(db) : new InMemorySchedStore()), inject: [DATABASE] },
@@ -104,6 +110,18 @@ export function schedAuditResourceType(action: string): string {
       }),
       inject: [SCHED_STORE, SCHED_READER, FORECAST, BookingService, HOLDS, AUDIT_SINK, SCHED_EVENTS, ModuleRef],
     },
+    // AI Scheduling Optimizer guide (Nov 2026): the page's read side (counters, queue, history, health) — null without a database
+    { provide: SCHEDULING_CENTER, useFactory: (db: AppDatabase, svc: AiSchedulingService, sw: SchedPlatformSwitch) => {
+        if (!db) return null;
+        const access = new KyselyAiAccessRepo(db as never);
+        return new SchedulingCenter(db as never, {
+          effective: (c) => svc.effectiveConfig({ ...c, actor: 'user' } as never),
+          entitlement: async (c) => { const d = evaluateAiAccess(await access.loadSnapshot(c.tenantId, 'ai_scheduling_optimizer', c.userId ?? null, { branchId: c.branchId || null }));
+            return { allowed: d.allowed, reason: d.reason, subscriptionStatus: String(d.subscriptionStatus) }; },
+          switchReadable: () => sw.readable(),
+          canSeeCustomers: (c) => hasPermission(c as never, 'customers.view'),
+        });
+      }, inject: [DATABASE, AiSchedulingService, SchedPlatformSwitch] },
   ],
   exports: [AiSchedulingService, SCHED_EVENTS, SCHED_STORE, SCHED_READER],
 })

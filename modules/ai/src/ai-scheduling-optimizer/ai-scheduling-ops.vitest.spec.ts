@@ -150,6 +150,16 @@ describe('platform switch', () => {
     expect(await ai.isKilled()).toBe(false);
     expect(await ai.automationBlocked()).toEqual({ blocked: true, by: 'ai_auto_actions_disabled' });
   });
+  it('a switch that was NEVER read fails closed (Scheduling Optimizer guide): a cold process with an unreadable row is stopped, not running', async () => {
+    let up = false; let t = 0;
+    const sw = new SchedPlatformSwitch({ read: async () => { if (!up) throw new Error('db down'); return { optimizerKilled: false, autoActionsDisabled: false }; } }, 1000, () => t);
+    expect(await sw.isKilled()).toBe(true);
+    expect(await sw.automationBlocked()).toEqual({ blocked: true, by: 'optimizer_platform_switch' });
+    expect(await sw.readable()).toBe(false);
+    up = true; t = 5000;
+    expect(await sw.isKilled()).toBe(false);
+    expect(await sw.readable()).toBe(true);
+  });
 });
 
 describe('common', () => {

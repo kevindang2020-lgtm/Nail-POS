@@ -729,7 +729,7 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
 - **Done: AI Analytics & Forecasting** (guide 15, partial): the appointment series came from the sales report (paid-ticket days,
   quiet days missing, UTC) — now from the booking calendar, salon-day zero-filled to yesterday; revenue zero-filled; readiness
   endpoint + panel. Not built: forecast-history search/pages and a forecasting health checker. Doc: `docs/ai/AI_FORECASTING.md`.
-- **Next: AI Scheduling Optimizer** (guide 16).
+- **Done: AI Scheduling Optimizer** (guide 16 — docs/ai/SCHEDULING_OPTIMIZER.md). **Next: Checkout Upsell Settings** (guide 17).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's

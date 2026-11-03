@@ -36,6 +36,17 @@ const settingsView = (o: any = {}) => ({
   effective: { enabled: true, killed: false, platformKilled: false, automationAllowed: false, config: { automationEnabled: false, allowedAutoActions: ['add_internal_warning'], confidenceThreshold: 0.85, weights: { preferredTimeProximity: 1, waitReduction: 1, gapFit: 1, preferencePreservation: 1, utilization: 1, fragmentation: 1, overtimeAvoidance: 1, workloadBalance: 1, idleReduction: 1 }, gapMinServiceMin: 30, largeBlockMin: 90, utilizationTargetPct: 80, bookingIntervalMin: 15, minLeadTimeMin: 60, maxHorizonDays: 14, humanReviewRequired: true, recommendationTtlMin: 30, proposalTtlHours: 24 } },
   tenant: null, branch: { level: 'branch', branchId: 'b1', enabled: null, killSwitch: null, config: { gapMinServiceMin: 25 }, version: 6, updatedAt: '2026-10-07T10:00:00Z', updatedByUserId: 'u1' }, ...o,
 });
+// Scheduling Optimizer guide (Nov 2026): the page's read side — /center/* (server-computed counters, queue, trail, health)
+const qrow = (o: any = {}) => ({ id: 'r1', type: 'move_appointment', status: 'review_required', branch: null, runId: null, appointmentId: 'a1', customer: 'Jane Doe', customerPhoneLast4: '0142',
+  services: ['Gel Manicure'], before: { date: '2026-10-08', start: '10:00', end: '10:45', technicianId: 't1', technician: 'Mia' }, after: { date: '2026-10-08', start: '11:15', end: '12:00', technicianId: 't2', technician: 'Leo' },
+  confidence: 0.82, needsCustomer: true, touchesConfirmed: true, automated: false, version: 5, ruleVersion: 'r7', engineVersion: 'e2', createdAt: '2026-10-08T14:00:00Z', decidedAt: null, appliedAt: null,
+  expiresAt: '2026-10-08T16:00:00Z', stale: false, appointmentMissing: false, pastExpiry: false, ...o });
+const summary = (o: any = {}) => ({ asOf: '2026-10-08T14:10:00Z', counters: { openRecommendations: 4, awaitingCustomer: 1, automation: 'off', module: 'enabled' },
+  more: { pastExpiry: 0, applyFailed: 0, applied30d: 3, openConflicts: 1, gaps: 3 },
+  moduleParts: { enabled: true, emergencyStop: false, platformStop: false, subscription: { allowed: true, reason: 'ok', status: 'active' }, lastRun: { status: 'completed', errorCode: null, at: '2026-10-08T13:00:00Z' } },
+  lastEvaluation: { runId: 'run1', at: '2026-10-08T13:00:01Z', date: '2026-10-08', trigger: 'job', utilizationPct: 71 }, freshness: { booking: '2026-10-08T12:00:00Z', timeOff: null, shifts: null },
+  definitions: {}, ...o });
+const page = (items: any[], o: any = {}) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, applied: {}, period: { today: '2026-10-08', timeZone: 'America/New_York' }, customersVisible: true, ...o });
 const server: { r1: any } = { r1: null };
 const defaults = (): Record<string, Reply | ((c: Call) => Reply)> => ({
   [`GET ${B}/settings`]: { body: settingsView() },
@@ -47,6 +58,12 @@ const defaults = (): Record<string, Reply | ((c: Call) => Reply)> => ({
   [`GET ${B}/recommendations`]: (c) => ({ body: c.url.includes('status=customer_approval_required') ? { items: [rec({ id: 'r3', status: 'customer_approval_required', proposal: { id: 'p1', status: 'customer_notified', customerId: 'c1', proposedDate: '2026-10-08', proposedStartTime: '11:15', proposedTechnicianId: 't2', originalDate: '2026-10-08', originalStartTime: '10:00', originalTechnicianId: 't1', notifiedAt: '2026-10-08T14:05:00Z', decidedAt: null, decisionChannel: null, expiresAt: '2026-10-09T14:05:00Z' } })], total: 1 }
     : c.url.includes('status=customer_approved') || c.url.includes('status=application_failed') ? { items: [], total: 0 }
       : { items: [rec(), rec({ id: 'r2', type: 'fill_gap', status: 'applied', requiresCustomerApproval: false, automated: true })], total: 2 } }),
+  [`GET ${B}/center/summary`]: { body: summary() },
+  [`GET ${B}/center/recommendations`]: (c) => ({ body: page(c.url.includes('group=applied') ? [qrow({ id: 'r2', type: 'fill_gap', status: 'applied', needsCustomer: false, automated: true })]
+    : [qrow(), qrow({ id: 'r2', type: 'fill_gap', status: 'applied', needsCustomer: false, automated: true })]) }),
+  [`GET ${B}/center/history`]: { body: page([{ kind: 'staff', recommendationId: 'r1', at: '2026-10-08T14:02:00Z', action: 'accept', outcome: 'accepted', actor: 'Mia', reason: null, ref: null },
+    { kind: 'generated', recommendationId: 'r1', at: '2026-10-08T14:00:00Z', action: 'generated', outcome: null, actor: null, reason: null, ref: 'r7' }]) },
+  [`POST ${B}/center/check`]: { body: { id: 'h1', overall: 'WARNING', reused: false, checkedAt: '2026-10-08T14:10:00Z', checks: [{ key: 'open_conflicts', state: 'WARNING', count: 1 }, { key: 'tenant_isolation', state: 'PASSED' }] } },
   // the server's current r1 — decisions change it, so the reload after an action sees the new state (as the real API does)
   [`GET ${B}/recommendations/r1`]: () => ({ body: { recommendation: server.r1 } }),
   [`POST ${B}/recommendations/r1/accept`]: (c) => { server.r1 = rec({ status: 'customer_approval_required', version: c.body.expectedVersion + 2 }); return { body: { recommendation: server.r1 } }; },
@@ -101,7 +118,34 @@ describe('Overview', () => {
     expect(await screen.findByText('71%')).toBeTruthy();
     expect(screen.getByText('90 min')).toBeTruthy();
     expect(screen.getByTestId('sched-last-run').textContent).toContain('scheduled scan');
-    await waitFor(() => expect(sent('GET', 'status=review_required').length).toBeGreaterThan(0));
+    // the four counters come from the server (one definition each) — no more three `limit=1` list calls in the browser
+    await waitFor(() => expect(screen.getByTestId('scx-kpi-open').textContent).toContain('4'));
+    expect(screen.getByTestId('scx-kpi-customer').textContent).toContain('1');
+    expect(screen.getByTestId('scx-kpi-auto').textContent).toContain('Off');
+    expect(screen.getByTestId('scx-kpi-module').textContent).toContain('Enabled');
+    expect(screen.getByTestId('scx-eval').textContent).toContain('scheduled scan');
+    expect(sent('GET', `${B}/recommendations?`).length).toBe(0);
+    // the blank area shows the newest recommendations
+    expect((await within(screen.getByTestId('scx-recent')).findAllByTestId('scx-row')).length).toBe(2);
+  });
+  it('a counter opens the queue on its own group; Module opens its parts; an unreadable mode is "Unknown", never "Off"', async () => {
+    routes[`GET ${B}/center/summary`] = { body: summary({ counters: { openRecommendations: 4, awaitingCustomer: 1, automation: 'unknown', module: 'subscription_restricted' } }) };
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId('scx-kpi-auto').textContent).toContain('Unknown'));
+    expect(screen.getByTestId('scx-kpi-module').textContent).toContain('Subscription restricted');
+    fireEvent.click(screen.getByTestId('scx-kpi-module'));
+    expect(screen.getByTestId('scx-module-parts').textContent).toContain('Emergency stop');
+    fireEvent.click(screen.getByTestId('scx-kpi-customer'));
+    await waitFor(() => expect(sent('GET', `${B}/center/recommendations?`).some((c) => c.url.includes('group=customer'))).toBe(true));
+    expect(screen.getByRole('tab', { name: 'Recommendations' }).getAttribute('aria-selected')).toBe('true');
+  });
+  it('Check Scheduling System is read-only and shows each result with its state', async () => {
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('scx-check'));
+    const d = await screen.findByTestId('scx-health');
+    expect(await within(d).findByTestId('scx-chk-open_conflicts')).toHaveTextContent('Warning');
+    expect(within(d).getByTestId('scx-chk-tenant_isolation')).toHaveTextContent('Passed');
+    expect(sent('POST', `${B}/center/check`)[0].body).toEqual({});
   });
   it('Run optimizer posts a branch_day run with a fresh idempotency key; a technician pick makes it technician_day', async () => {
     renderScreen();
@@ -140,18 +184,28 @@ describe('Overview', () => {
 });
 
 describe('Recommendations', () => {
-  it('filters go to the server as real query params (audit bug: {query})', async () => {
+  it('the queue: search, status group and which date go to the server as real params, page resets; stale rows say so', async () => {
+    routes[`GET ${B}/center/recommendations`] = (c: Call) => ({ body: page(c.url.includes('group=applied') ? [qrow({ id: 'r2', type: 'fill_gap', status: 'applied', needsCustomer: false })]
+      : [qrow(), qrow({ id: 'r4', stale: true })], { total: 60, totalPages: 3 }) });
     renderScreen(); tab('Recommendations');
-    expect((await screen.findAllByTestId('sched-rec-row')).length).toBe(2);
-    fireEvent.change(screen.getByLabelText('Filter by status'), { target: { value: 'applied' } });
-    fireEvent.change(screen.getByLabelText('Filter by type'), { target: { value: 'fill_gap' } });
-    await waitFor(() => expect(sent('GET', `${B}/recommendations?`).some((c) => c.url.includes('status=applied') && c.url.includes('type=fill_gap'))).toBe(true));
+    const q = await screen.findByTestId('scx-queue');
+    expect((await within(q).findAllByTestId('scx-row')).length).toBe(2);
+    expect(within(q).getByTestId('scx-stale').textContent).toContain('Schedule changed');
+    fireEvent.click(within(q).getByRole('button', { name: /2/ }));
+    await waitFor(() => expect(sent('GET', `${B}/center/recommendations?`).some((c) => c.url.includes('page=2'))).toBe(true));
+    fireEvent.change(within(q).getByTestId('scx-group'), { target: { value: 'applied' } });
+    fireEvent.change(within(q).getByTestId('scx-datefield'), { target: { value: 'applied' } });
+    fireEvent.change(within(q).getByTestId('scx-search'), { target: { value: '0142' } });
+    fireEvent.submit(within(q).getByTestId('scx-search').closest('form')!);
+    await waitFor(() => expect(sent('GET', `${B}/center/recommendations?`).some((c) => c.url.includes('group=applied') && c.url.includes('dateField=applied') && c.url.includes('q=0142') && c.url.includes('page=1'))).toBe(true));
+    fireEvent.click(within(q).getByTestId('scx-preset-last_30'));
+    await waitFor(() => expect(sent('GET', `${B}/center/recommendations?`).some((c) => c.url.includes('preset=last_30'))).toBe(true));
     expect(calls.some((c) => c.url.includes('query='))).toBe(false);
   });
 
   it('detail: simulation before/after, benefit, versions; Accept sends expectedVersion and shows the new status', async () => {
     renderScreen(); tab('Recommendations');
-    fireEvent.click((await screen.findAllByTestId('sched-rec-row'))[0]);
+    fireEvent.click((await within(await screen.findByTestId('scx-queue')).findAllByTestId('scx-row'))[0]);
     const d = await screen.findByTestId('sched-rec-detail');
     expect(within(d).getByLabelText('Simulation before and after').textContent).toContain('78%');
     expect(within(d).getByText('+ Closes a 30 min gap for Leo')).toBeTruthy();
@@ -337,6 +391,21 @@ describe('Realtime', () => {
 // English + Vietnamese POS mandate (WP-C1): the optimizer reads in Vietnamese — tabs, recommendation statuses / types,
 // clock times, run / proposal / conflict codes, the settings labels — with no English left (salon data and the server's own
 // prose — conflict messages, explanations, reasons — stay as sent).
+describe('History — the append-only event trail', () => {
+  it('lists events newest first with who and what; the event type filter and an Open link go to the recommendation', async () => {
+    renderScreen(); tab('History');
+    const tr = await screen.findByTestId('scx-trail');
+    const rows = await within(tr).findAllByTestId('scx-event');
+    expect(rows[0].textContent).toContain('Accepted');
+    expect(rows[0].textContent).toContain('Mia');
+    expect(rows[1].textContent).toContain('Generated');
+    fireEvent.change(within(tr).getByTestId('scx-kind'), { target: { value: 'customer' } });
+    await waitFor(() => expect(sent('GET', `${B}/center/history?`).some((c) => c.url.includes('kind=customer'))).toBe(true));
+    fireEvent.click(within(rows[0]).getByText('Open'));
+    expect(await screen.findByTestId('sched-rec-detail')).toBeTruthy();
+  });
+});
+
 describe('AI Scheduling Optimizer in Vietnamese (WP-C1)', () => {
   const NAMES = ['Mia', 'Leo', 'Jane Doe', 'Gel Manicure', 'Nail Art', 'Closes a 30 min gap for Leo', 'The customer moves 75 minutes later', 'median 44 min', 'Mia has two guests at 10:00', 'VIP', 'r7', 'e2', 'v6', 'v4', 'ms'];
   afterEach(async () => { await act(async () => { await setLanguage('en'); }); });
@@ -348,7 +417,7 @@ describe('AI Scheduling Optimizer in Vietnamese (WP-C1)', () => {
     await waitFor(() => expect(screen.getAllByRole('tab').length).toBe(10));
     expect(screen.getByRole('tab', { name: 'Nghỉ phép & khóa lịch' })).toBeTruthy();
     expect(scan()).toBe('');
-    for (const i of [1, 3, 4, 5, 6, 7]) {
+    for (const i of [1, 3, 4, 5, 6, 7, 9]) {
       fireEvent.click(screen.getAllByRole('tab')[i]);
       await new Promise((r) => setTimeout(r, 30));
       await waitFor(() => expect(container.textContent).not.toMatch(/Đang tải/));

@@ -13913,3 +13913,202 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `fcx.source.booking_calendar` | from the booking calendar | từ lịch đặt hẹn |
 | `fcx.source.sales_report` | from the sales report | từ báo cáo doanh thu |
 | `fcx.note` | History counts every day since the first booked day up to yesterday, including quiet and closed days; cancelled appointments and today are left out. | Lịch sử tính mọi ngày từ ngày có hẹn đầu tiên đến hôm qua, kể cả ngày vắng và ngày nghỉ; không tính lịch hẹn đã hủy và hôm nay. |
+
+## AI Scheduling Optimizer (`scx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `scx.counters` | Scheduling optimizer status | Trạng thái tối ưu lịch |
+| `scx.check` | Check Scheduling System | Kiểm tra hệ thống lịch |
+| `scx.close` | Close | Đóng |
+| `scx.loadFailed` | Scheduling data could not be loaded. Try again or run Check Scheduling System — this is not "zero". | Không tải được dữ liệu lịch. Hãy thử lại hoặc chạy Kiểm tra hệ thống lịch — đây không phải là "0". |
+| `scx.err.SC_INVALID_PERIOD` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `scx.err.PERMISSION_DENIED` | You do not have access to these appointment or branch records. | Bạn không có quyền xem lịch hẹn hoặc chi nhánh này. |
+| `scx.err.unavailable` | Cannot verify scheduling right now; recommendations are temporarily unavailable. | Hiện không kiểm tra được lịch; đề xuất tạm thời không khả dụng. |
+| `scx.lastEval` | Last successful evaluation {at} ({trigger}) | Lần đánh giá thành công gần nhất {at} ({trigger}) |
+| `scx.neverEvaluated` | Not evaluated yet | Chưa đánh giá lần nào |
+| `scx.fresh.booking` | Bookings last changed {at} | Lịch hẹn thay đổi lần cuối {at} |
+| `scx.fresh.timeOff` | Time off last changed {at} | Ngày nghỉ thay đổi lần cuối {at} |
+| `scx.more.conflicts` | {n} open conflicts | {n} xung đột chưa xử lý |
+| `scx.more.failed` | {n} could not be applied | {n} không áp dụng được |
+| `scx.more.pastExpiry` | {n} past expiry (closing soon) | {n} đã quá hạn (sắp đóng) |
+| `scx.more.pastExpiryHint` | Expired suggestions are never counted as open and can never be applied; the sweep closes them every few minutes. | Đề xuất quá hạn không bao giờ được tính là đang mở và không thể áp dụng; hệ thống sẽ đóng chúng sau vài phút. |
+| `scx.part.switch` | Optimizer switch | Công tắc tối ưu |
+| `scx.part.emergency` | Emergency stop (this salon) | Dừng khẩn cấp (tiệm này) |
+| `scx.part.platform` | Platform stop | Dừng toàn hệ thống |
+| `scx.part.subscription` | AI subscription | Gói AI |
+| `scx.part.lastRun` | Latest scan | Lần quét gần nhất |
+| `scx.part.note` | "Off" means nothing is applied automatically. Suggestions can still be made when the subscription allows it; every change still needs staff review and, for a confirmed booking, the customer's approval. | "Tắt" nghĩa là không có thay đổi nào tự áp dụng. Vẫn có thể tạo đề xuất nếu gói cho phép; mọi thay đổi vẫn cần nhân viên duyệt và, với lịch hẹn đã xác nhận, cần khách hàng đồng ý. |
+| `scx.unknown` | Unknown | Không rõ |
+| `scx.on` | On | Bật |
+| `scx.off` | Off | Tắt |
+| `scx.sub.active` | Active | Đang hoạt động |
+| `scx.sub.restricted` | Restricted — AI analysis unavailable; Booking keeps working | Bị giới hạn — không có phân tích AI; Đặt lịch vẫn hoạt động |
+| `scx.anyTech` | any technician | Thợ bất kỳ |
+| `scx.recent` | Newest recommendations | Đề xuất mới nhất |
+| `scx.queue` | Recommendation queue | Hàng chờ đề xuất |
+| `scx.newestFirst` | newest first | mới nhất trước |
+| `scx.searchPh` | Customer name or phone, technician, service, appointment ID, recommendation ID | Tên hoặc số điện thoại khách, Thợ, dịch vụ, mã lịch hẹn, mã đề xuất |
+| `scx.searchPhNoCustomer` | Technician, service, appointment ID, recommendation ID | Thợ, dịch vụ, mã lịch hẹn, mã đề xuất |
+| `scx.search` | Search | Tìm |
+| `scx.statusLabel` | Status | Trạng thái |
+| `scx.dateLabel` | Date filter means | Ngày lọc theo |
+| `scx.clear` | Clear | Xóa bộ lọc |
+| `scx.loading` | Scanning authorized appointments and technician schedules… | Đang quét lịch hẹn và lịch Thợ được phép… |
+| `scx.noMatch` | No verified scheduling recommendations match these filters. | Không có đề xuất lịch nào khớp bộ lọc. |
+| `scx.none` | No scheduling recommendations yet. Run the optimizer from Overview. | Chưa có đề xuất lịch nào. Chạy tối ưu từ Tổng quan. |
+| `scx.apptGone` | Appointment no longer exists | Lịch hẹn không còn |
+| `scx.stale` | Schedule changed — reload and re-review | Lịch đã thay đổi — tải lại và duyệt lại |
+| `scx.pastExpiry` | Past expiry | Quá hạn |
+| `scx.needsCustomer` | Needs the customer's approval | Cần khách hàng đồng ý |
+| `scx.automated` | Made by automation | Do tự động tạo |
+| `scx.confidence` | {n}% confidence | Độ tin cậy {n}% |
+| `scx.rows` | Rows | Số dòng |
+| `scx.trail` | Event history | Lịch sử sự kiện |
+| `scx.trailNote` | append-only — nothing is overwritten | chỉ ghi thêm — không ghi đè |
+| `scx.trailSearchPh` | Recommendation ID, staff name, event, reason | Mã đề xuất, tên nhân viên, sự kiện, lý do |
+| `scx.kindLabel` | Event type | Loại sự kiện |
+| `scx.noEvents` | No events match these filters. | Không có sự kiện nào khớp bộ lọc. |
+| `scx.open` | Open | Mở |
+| `scx.actor.automation` | Automation | Tự động |
+| `scx.actor.customer` | Customer | Khách hàng |
+| `scx.kpi.open` | Open recommendations | Đề xuất đang mở |
+| `scx.kpi.customer` | Awaiting customer approval | Chờ khách hàng đồng ý |
+| `scx.kpi.auto` | Automatic optimization | Tối ưu tự động |
+| `scx.kpi.module` | Module | Mô-đun |
+| `scx.auto.off` | Off | Tắt |
+| `scx.auto.on` | On (safe actions only) | Bật (chỉ thao tác an toàn) |
+| `scx.auto.module_off` | Off — module switched off | Tắt — mô-đun đang tắt |
+| `scx.auto.emergency_stopped` | Emergency stop | Dừng khẩn cấp |
+| `scx.auto.platform_stopped` | Stopped platform-wide | Dừng toàn hệ thống |
+| `scx.auto.unknown` | Unknown — could not be read | Không rõ — không đọc được |
+| `scx.module.enabled` | Enabled | Đang bật |
+| `scx.module.disabled` | Disabled | Đang tắt |
+| `scx.module.emergency_stopped` | Emergency stop | Dừng khẩn cấp |
+| `scx.module.platform_stopped` | Stopped platform-wide | Dừng toàn hệ thống |
+| `scx.module.subscription_restricted` | Subscription restricted | Gói bị giới hạn |
+| `scx.module.subscription_unknown` | Subscription unknown | Không rõ gói |
+| `scx.module.unknown` | Unknown | Không rõ |
+| `scx.trigger.manual` | run by staff | nhân viên chạy |
+| `scx.trigger.job` | scheduled scan | quét theo lịch |
+| `scx.trigger.automation` | automation | tự động |
+| `scx.group.all` | All | Tất cả |
+| `scx.group.open` | Open — waiting on staff | Đang mở — chờ nhân viên |
+| `scx.group.customer` | Awaiting customer | Chờ khách hàng |
+| `scx.group.accepted` | Accepted, not applied | Đã chấp nhận, chưa áp dụng |
+| `scx.group.applied` | Applied | Đã áp dụng |
+| `scx.group.failed` | Could not be applied | Không áp dụng được |
+| `scx.group.closed` | Rejected / expired / replaced | Từ chối / quá hạn / bị thay |
+| `scx.group.stale` | Schedule changed since | Lịch đã đổi từ khi tạo |
+| `scx.date.created` | Recommendation created | Ngày tạo đề xuất |
+| `scx.date.appointment` | Appointment date | Ngày hẹn |
+| `scx.date.decided` | Reviewed date | Ngày duyệt |
+| `scx.date.applied` | Applied date | Ngày áp dụng |
+| `scx.dateNote.created` | Dates filter by when the recommendation was created (salon time). | Lọc theo ngày tạo đề xuất (giờ tiệm). |
+| `scx.dateNote.appointment` | Dates filter by the appointment's own date. | Lọc theo ngày của lịch hẹn. |
+| `scx.dateNote.decided` | Dates filter by when staff reviewed it; unreviewed ones are left out. | Lọc theo ngày nhân viên duyệt; đề xuất chưa duyệt sẽ không hiện. |
+| `scx.dateNote.applied` | Dates filter by when the change was applied; unapplied ones are left out. | Lọc theo ngày áp dụng thay đổi; đề xuất chưa áp dụng sẽ không hiện. |
+| `scx.preset.all` | All time | Mọi thời gian |
+| `scx.preset.today` | Today | Hôm nay |
+| `scx.preset.week` | This week | Tuần này |
+| `scx.preset.month` | This month | Tháng này |
+| `scx.preset.last_month` | Last month | Tháng trước |
+| `scx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `scx.preset.custom` | Custom range | Tùy chọn |
+| `scx.col.suggestion` | Suggestion | Đề xuất |
+| `scx.col.before` | Before | Trước |
+| `scx.col.after` | Proposed | Đề xuất đổi |
+| `scx.col.status` | Status | Trạng thái |
+| `scx.col.created` | Created | Ngày tạo |
+| `scx.col.when` | When | Thời điểm |
+| `scx.col.event` | Event | Sự kiện |
+| `scx.col.by` | By | Người thực hiện |
+| `scx.col.result` | Result | Kết quả |
+| `scx.kind.all` | All events | Mọi sự kiện |
+| `scx.kind.generated` | Generated | Được tạo |
+| `scx.kind.staff` | Staff review | Nhân viên duyệt |
+| `scx.kind.customer` | Customer decision | Khách hàng quyết định |
+| `scx.kind.apply` | Apply attempt | Lần áp dụng |
+| `scx.act.generated` | Generated | Được tạo |
+| `scx.act.submit_for_review` | Sent for review | Gửi duyệt |
+| `scx.act.start_review` | Review started | Bắt đầu duyệt |
+| `scx.act.accept` | Accepted | Chấp nhận |
+| `scx.act.partial_accept` | Partly accepted | Chấp nhận một phần |
+| `scx.act.reject` | Rejected | Từ chối |
+| `scx.act.return` | Returned for changes | Trả lại để sửa |
+| `scx.act.customer_approve` | Customer approved | Khách hàng đồng ý |
+| `scx.act.customer_reject` | Customer declined | Khách hàng từ chối |
+| `scx.act.queue_application` | Queued to apply | Chờ áp dụng |
+| `scx.act.apply_ok` | Applied through Booking | Đã áp dụng qua Đặt lịch |
+| `scx.act.apply_fail` | Apply failed | Áp dụng lỗi |
+| `scx.act.retry` | Retried | Thử lại |
+| `scx.act.rollback` | Rolled back | Hoàn tác |
+| `scx.act.expire` | Expired | Quá hạn |
+| `scx.act.supersede` | Replaced by a newer suggestion | Bị thay bằng đề xuất mới hơn |
+| `scx.act.other` | Other | Khác |
+| `scx.health.PASSED` | Passed | Đạt |
+| `scx.health.WARNING` | Warning | Cảnh báo |
+| `scx.health.FAILED` | Failed | Lỗi |
+| `scx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `scx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `scx.health.running` | Checking… | Đang kiểm tra… |
+| `scx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `scx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `scx.health.readOnly` | Read-only: it never generates a suggestion, applies a change, moves an appointment or sends a message. | Chỉ đọc: không tạo đề xuất, không áp dụng thay đổi, không dời lịch hẹn, không gửi tin nhắn. |
+| `scx.health.k.subscription` | AI subscription | Gói AI |
+| `scx.health.d.subscription.PASSED` | The optimizer package allows AI analysis. | Gói tối ưu cho phép phân tích AI. |
+| `scx.health.d.subscription.FAILED` | The subscription does not allow AI analysis. Booking keeps working; past history stays visible. | Gói không cho phép phân tích AI. Đặt lịch vẫn hoạt động; lịch sử vẫn hiển thị. |
+| `scx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái gói. |
+| `scx.health.k.module_switch` | Module switches | Công tắc mô-đun |
+| `scx.health.d.module_switch.PASSED` | The optimizer is on and no stop is active. | Tối ưu đang bật và không có lệnh dừng. |
+| `scx.health.d.module_switch.WARNING` | The optimizer is off or a stop is on — no suggestion can be made or applied until it is lifted. | Tối ưu đang tắt hoặc đang dừng — không thể tạo hay áp dụng đề xuất cho đến khi gỡ. |
+| `scx.health.d.module_switch.UNAVAILABLE` | The settings could not be read. | Không đọc được cài đặt. |
+| `scx.health.k.platform_switch_readable` | Platform stop readable | Đọc được lệnh dừng toàn hệ thống |
+| `scx.health.d.platform_switch_readable.PASSED` | The platform stop can be read, so it is honoured. | Đọc được lệnh dừng toàn hệ thống nên được tuân thủ. |
+| `scx.health.d.platform_switch_readable.FAILED` | The platform stop cannot be read right now; the optimizer treats itself as stopped until it can. | Hiện không đọc được lệnh dừng; tối ưu tự coi như đang dừng cho đến khi đọc được. |
+| `scx.health.k.booking_source` | Booking data | Dữ liệu đặt lịch |
+| `scx.health.d.booking_source.PASSED` | Appointments from the Booking Calendar are being read. | Đang đọc lịch hẹn từ Lịch đặt hẹn. |
+| `scx.health.d.booking_source.INSUFFICIENT_DATA` | No appointments in the last 30 days — zero suggestions here is not proof the optimizer works. | Không có lịch hẹn trong 30 ngày qua — 0 đề xuất không chứng minh tối ưu đang chạy. |
+| `scx.health.k.time_off_valid` | Time off is valid | Ngày nghỉ hợp lệ |
+| `scx.health.d.time_off_valid.PASSED` | Every approved time off ends after it starts. | Mọi ngày nghỉ đã duyệt đều kết thúc sau khi bắt đầu. |
+| `scx.health.d.time_off_valid.FAILED` | An approved time off ends before it starts, so that time could look open. Fix it in Time off & locks. | Có ngày nghỉ kết thúc trước khi bắt đầu, khiến khung giờ đó trông như trống. Sửa ở mục Ngày nghỉ & khóa. |
+| `scx.health.k.shift_data` | Shift data | Dữ liệu ca làm |
+| `scx.health.d.shift_data.PASSED` | Recent shifts are on record. | Đã có ca làm gần đây. |
+| `scx.health.d.shift_data.INSUFFICIENT_DATA` | No shifts in the last 7 days — the optimizer uses the weekly schedule or store hours. | Không có ca làm trong 7 ngày qua — tối ưu dùng lịch tuần hoặc giờ mở cửa. |
+| `scx.health.k.scan_worker` | Scan worker | Bộ quét |
+| `scx.health.d.scan_worker.PASSED` | A scan completed in the last 36 hours with no failures. | Có lần quét hoàn tất trong 36 giờ qua, không lỗi. |
+| `scx.health.d.scan_worker.WARNING` | No scan in the last 36 hours, a scan failed, or one is stuck. Run the optimizer from Overview. | Không có lần quét trong 36 giờ qua, có lần quét lỗi hoặc bị kẹt. Chạy tối ưu từ Tổng quan. |
+| `scx.health.d.scan_worker.FAILED` | Most scans in the last 7 days failed. | Phần lớn lần quét trong 7 ngày qua bị lỗi. |
+| `scx.health.d.scan_worker.INSUFFICIENT_DATA` | The optimizer has never run here. | Tối ưu chưa từng chạy ở đây. |
+| `scx.health.k.job_queue` | Background jobs | Tác vụ nền |
+| `scx.health.d.job_queue.PASSED` | No scheduling job failed or is waiting too long. | Không có tác vụ lịch nào lỗi hoặc chờ quá lâu. |
+| `scx.health.d.job_queue.WARNING` | A scheduling job failed in the last 7 days or is waiting over 15 minutes. | Có tác vụ lịch lỗi trong 7 ngày qua hoặc chờ quá 15 phút. |
+| `scx.health.k.expiry_sweep` | Expiry sweep | Đóng đề xuất quá hạn |
+| `scx.health.d.expiry_sweep.PASSED` | Expired suggestions are being closed on time. | Đề xuất quá hạn được đóng đúng hạn. |
+| `scx.health.d.expiry_sweep.WARNING` | Some suggestions are past expiry and still open — the sweep may not be running. They still cannot be applied. | Một số đề xuất đã quá hạn nhưng vẫn mở — có thể bộ đóng không chạy. Chúng vẫn không thể áp dụng. |
+| `scx.health.k.apply_needs_staff_decision` | Nothing applied without staff review | Không áp dụng khi chưa có nhân viên duyệt |
+| `scx.health.d.apply_needs_staff_decision.PASSED` | Every applied change has a staff decision on record (or was a permitted automatic action). | Mọi thay đổi đã áp dụng đều có ghi nhận nhân viên duyệt (hoặc là thao tác tự động được phép). |
+| `scx.health.d.apply_needs_staff_decision.FAILED` | A change was applied with no staff decision on record. Report this immediately. | Có thay đổi được áp dụng mà không có ghi nhận nhân viên duyệt. Hãy báo ngay. |
+| `scx.health.k.apply_needs_customer_approval` | Customer approval respected | Tôn trọng sự đồng ý của khách |
+| `scx.health.d.apply_needs_customer_approval.PASSED` | Every change that needed the customer's approval had it. | Mọi thay đổi cần khách đồng ý đều đã có sự đồng ý. |
+| `scx.health.d.apply_needs_customer_approval.FAILED` | A change that needed the customer's approval was applied without it. Report this immediately. | Có thay đổi cần khách đồng ý nhưng đã áp dụng mà không có. Hãy báo ngay. |
+| `scx.health.k.no_silent_confirmed_change` | No silent change to a confirmed booking | Không tự ý đổi lịch hẹn đã xác nhận |
+| `scx.health.d.no_silent_confirmed_change.PASSED` | Automation never changed a confirmed appointment. | Tự động chưa bao giờ đổi lịch hẹn đã xác nhận. |
+| `scx.health.d.no_silent_confirmed_change.FAILED` | Automation changed a confirmed appointment. Report this immediately. | Tự động đã đổi một lịch hẹn đã xác nhận. Hãy báo ngay. |
+| `scx.health.k.no_double_apply` | No change applied twice | Không áp dụng hai lần |
+| `scx.health.d.no_double_apply.PASSED` | No suggestion was applied twice. | Không đề xuất nào bị áp dụng hai lần. |
+| `scx.health.d.no_double_apply.FAILED` | A suggestion was applied twice. Report this immediately. | Có đề xuất bị áp dụng hai lần. Hãy báo ngay. |
+| `scx.health.k.applied_has_booking_record` | Applied changes have a Booking record | Thay đổi đã áp dụng có ghi nhận Đặt lịch |
+| `scx.health.d.applied_has_booking_record.PASSED` | Every applied suggestion has its Booking application record. | Mọi đề xuất đã áp dụng đều có ghi nhận áp dụng trong Đặt lịch. |
+| `scx.health.d.applied_has_booking_record.WARNING` | Some suggestions say "applied" without a Booking application record. | Một số đề xuất ghi "đã áp dụng" nhưng không có ghi nhận trong Đặt lịch. |
+| `scx.health.k.open_conflicts` | Open conflicts | Xung đột chưa xử lý |
+| `scx.health.d.open_conflicts.PASSED` | The latest scans found no open conflict. | Các lần quét gần nhất không thấy xung đột. |
+| `scx.health.d.open_conflicts.WARNING` | The latest scan found conflicts (double booking, time off, hours…). See Gaps & conflicts. Nothing is moved automatically. | Lần quét gần nhất thấy xung đột (trùng lịch, ngày nghỉ, giờ làm…). Xem Khoảng trống & xung đột. Không có gì tự dời. |
+| `scx.health.k.apply_failures` | Apply failures | Áp dụng lỗi |
+| `scx.health.d.apply_failures.PASSED` | No suggestion is stuck after a failed apply. | Không có đề xuất nào kẹt sau khi áp dụng lỗi. |
+| `scx.health.d.apply_failures.WARNING` | Some accepted suggestions could not be applied. Open them to retry or reject. | Một số đề xuất đã chấp nhận không áp dụng được. Mở để thử lại hoặc từ chối. |
+| `scx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `scx.health.d.tenant_isolation.PASSED` | Every suggestion points at this salon's appointments and technicians. | Mọi đề xuất đều trỏ tới lịch hẹn và Thợ của tiệm này. |
+| `scx.health.d.tenant_isolation.FAILED` | A suggestion points at another salon's record. Report this immediately. | Có đề xuất trỏ tới dữ liệu của tiệm khác. Hãy báo ngay. |
+| `scx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `scx.health.d.no_side_effects.PASSED` | This page and this check never move an appointment, apply a change or send a message. | Trang này và việc kiểm tra không dời lịch hẹn, không áp dụng thay đổi, không gửi tin nhắn. |

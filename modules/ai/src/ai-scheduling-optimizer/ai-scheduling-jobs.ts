@@ -42,7 +42,9 @@ const ENTITLED = sql`
      and not exists (select 1 from tenant_scheduling_ai_settings s where s.tenant_id = t.id and s.level = 'tenant' and s.enabled = false)`;
 
 async function platformKilled(db: Kysely<any>): Promise<boolean> {
-  const r = rowsOf(await sql`select value from platform_settings where setting_key = ${SCHED_PLATFORM_SETTING} limit 1`.execute(db).catch(() => ({ rows: [] })))[0];
+  // Scheduling Optimizer guide (Nov 2026): no `.catch(() => no rows)` — an unreadable switch used to dispatch every scan
+  // (fail open). A read error now fails the dispatch tick; the next tick retries.
+  const r = rowsOf(await sql`select value from platform_settings where setting_key = ${SCHED_PLATFORM_SETTING} limit 1`.execute(db))[0];
   return !!r && (r.value === true || r.value === 'true');
 }
 

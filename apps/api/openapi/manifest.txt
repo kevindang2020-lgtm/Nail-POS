@@ -378,6 +378,9 @@ GET /pos/ai-queue-assignment/settings/versions  realm=staff  auth=session  domai
 GET /pos/ai-queue-assignment/usage  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/wait-thresholds  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/calendar  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-scheduling-optimizer/center/history  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-scheduling-optimizer/center/recommendations  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-scheduling-optimizer/center/summary  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/export  realm=staff  auth=session  domain=ai  perm=ai_scheduling.export  async=pos.ai-scheduling.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/insights  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/locks  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2442,6 +2445,7 @@ POST /pos/ai-review-reputation/{id}/publish  realm=staff  auth=session  domain=a
 POST /pos/ai-review-reputation/{id}/recovery  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-review-reputation/{id}/reject  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-review-reputation/{id}/request-approval  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-scheduling-optimizer/center/check  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-scheduling-optimizer/holds/{holdId}/release  realm=staff  auth=session  domain=ai  perm=ai_scheduling.generate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-scheduling-optimizer/insights/refresh  realm=staff  auth=session  domain=ai  perm=ai_scheduling.approve  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-scheduling-optimizer/insights/{kind}/{id}/approve  realm=staff  auth=session  domain=ai  perm=ai_scheduling.approve  guards=RolePermissionGuard,TenantAuthGuard

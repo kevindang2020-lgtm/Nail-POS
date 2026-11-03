@@ -106,7 +106,7 @@ export class AiSchedulingService {
     return { tenant: rows.find((r) => r.level === 'tenant') ?? null, branch: branchId ? rows.find((r) => r.level === 'branch' && r.branchId === branchId) ?? null : null };
   }
   private async resolved(ctx: SchedCtx, branchId: string | null): Promise<ResolvedSettings & { configVersion: number; tenant: SchedSettingsLayer | null; branch: SchedSettingsLayer | null }> {
-    const [{ tenant, branch }, platformKilled] = await Promise.all([this.layersFor(ctx, branchId), this.d.platform.isKilled().catch(() => false)]);
+    const [{ tenant, branch }, platformKilled] = await Promise.all([this.layersFor(ctx, branchId), this.d.platform.isKilled().catch(() => true)]);
     const r = resolveSettings({ tenant: layerToRow(tenant), branch: layerToRow(branch), platformKilled });
     return { ...r, configVersion: branch?.version ?? tenant?.version ?? 0, tenant, branch };
   }
