@@ -78,6 +78,7 @@ const svc = (o: Opts = {}) => new DailyFollowUpService(makeRepo(o) as any, rt as
   // ---- per-status guards ----
   await throwsCode('a sent follow-up cannot be dismissed', () => svc({ task: makeTask({ status: 'sent' }) }).techDismiss(ctx, 'task1'), 'invalid_state');
   await throwsCode('editing is blocked when disabled for the branch', () => svc({ settings: { allowTechEditMessage: false } }).techEditMessage(ctx, 'task1', 'hi'), 'forbidden');
+  await throwsCode('Nov 3 audit: a direct send with an edited message is refused when editing is off', () => svc({ settings: { allowTechEditMessage: false } }).techSend(ctx, 'task1', 'a different message'), 'forbidden');
   await throwsCode('only a pending follow-up can be edited', () => svc({ task: makeTask({ status: 'sent' }) }).techEditMessage(ctx, 'task1', 'hi'), 'invalid_state');
   await throwsCode('an edited message cannot be empty', () => svc().techEditMessage(ctx, 'task1', '   '), 'validation');
   await throwsCode('only an awaiting-approval follow-up can be approved', () => svc({ task: makeTask({ status: 'skipped' }) }).managerApprove(ctx, 'task1'), 'invalid_state');

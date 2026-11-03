@@ -15,8 +15,14 @@ describe('validatePatch', () => {
     expect(() => validatePatch({ afterHoursBehavior: 'party' })).toThrow(SettingsValidationError);
     expect(() => validatePatch({ enabled: 'yes' as any })).toThrow(SettingsValidationError);
   });
-  it('accepts and coerces valid values', () => {
-    expect(validatePatch({ enabled: true, silenceTimeoutSeconds: 12.6 })).toEqual({ enabled: true, silenceTimeoutSeconds: 13 });
+  it('accepts valid values; a decimal is refused, never rounded (Nov 3 audit, guide SET-11)', () => {
+    expect(validatePatch({ enabled: true, silenceTimeoutSeconds: 13 })).toEqual({ enabled: true, silenceTimeoutSeconds: 13 });
+    expect(() => validatePatch({ silenceTimeoutSeconds: 12.6 })).toThrow(SettingsValidationError);
+    expect(() => validatePatch({ maxCallDurationSeconds: 90.5 })).toThrow(SettingsValidationError);
+  });
+  it('a consent message is kept whole up to 2000 characters, refused beyond — never cut to 500', () => {
+    expect(validatePatch({ recordingConsentMessage: 'x'.repeat(1200) }).recordingConsentMessage).toHaveLength(1200);
+    expect(() => validatePatch({ recordingConsentMessage: 'x'.repeat(2001) })).toThrow(SettingsValidationError);
   });
 });
 
@@ -45,5 +51,24 @@ describe('Kevin (Oct 28 2026): the AI receptionist speaks English only', () => {
     const repo = new InMemorySettingsRepo();
     await repo.upsert('t1', '00000000-0000-0000-0000-000000000000', { ...DEFAULT_SETTINGS, defaultLanguage: 'vi' }, 'u1');
     expect((await new AiSettingsService(repo).get(owner as any)).defaultLanguage).toBe('en');
+  });
+});
+
+describe('Nov 3 audit: a failed read never turns into defaults that a save writes back', () => {
+  it('get and update fail when the stored settings cannot be read; nothing is written', async () => {
+    let writes = 0;
+    const broken = { get: async () => { throw new Error('db down'); }, upsert: async () => { writes++; } };
+    const s = new AiSettingsService(broken as any);
+    await expect(s.get(owner as any)).rejects.toThrow('db down');
+    await expect(s.update(owner as any, { enabled: true })).rejects.toThrow('db down');
+    expect(writes).toBe(0);
+  });
+  it('a branch reads the salon-wide settings unless it has its own', async () => {
+    const repo = new InMemorySettingsRepo();
+    await repo.upsert('t1', '00000000-0000-0000-0000-000000000000', { ...DEFAULT_SETTINGS, silenceTimeoutSeconds: 20 }, 'u1');
+    const branchCtx = { ...owner, branchId: 'b1' };
+    expect((await new AiSettingsService(repo).get(branchCtx as any)).silenceTimeoutSeconds).toBe(20);
+    await repo.upsert('t1', 'b1', { ...DEFAULT_SETTINGS, silenceTimeoutSeconds: 9 }, 'u1');
+    expect((await new AiSettingsService(repo).get(branchCtx as any)).silenceTimeoutSeconds).toBe(9);
   });
 });

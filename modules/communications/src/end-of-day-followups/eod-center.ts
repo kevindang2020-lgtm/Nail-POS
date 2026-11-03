@@ -208,7 +208,7 @@ export class EodCenter {
              count(*) filter (where f.status in ('failed', 'customer_not_available') and f.updated_at >= d.s0 and f.updated_at < d.s1)::int as failed_today,
              count(*) filter (where f.status = 'expired' and f.expired_at >= d.s0 and f.expired_at < d.s1)::int as expired_today,
              count(*) filter (where f.sent_at >= now() - interval '30 days' and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id
-                 and ap.customer_id = f.customer_id and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days'))::int as booked_after_30d
+                 and ap.customer_id = f.customer_id and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')))::int as booked_after_30d
         from service_follow_up_tasks f, d
        where f.tenant_id = ${T}::uuid and f.branch_id = ${B}::uuid and f.deleted_at is null`.execute(this.db)).rows[0];
     const last = (await sql<any>`select business_date::text as d, run_status, trigger_source, finished_at, created_count, skipped_count, candidates_count, excluded_count
@@ -342,7 +342,7 @@ export class EodCenter {
         and (entity_type = 'service_follow_up_task' or entity_type is null) order by created_at asc, id asc limit 100`.execute(this.db)).rows.map((e: any) => ({ action: e.action_type, role: e.role ?? null, at: iso(e.created_at) }));
     const notif = r.customer_app_notification_id ? (await sql<any>`select created_at, read_at from customer_notifications where id = ${r.customer_app_notification_id}::uuid and tenant_id = ${T}::uuid`.execute(this.db)).rows[0] ?? null : null;
     const booked = r.sent_at ? (await sql<any>`select id, appt_date::text as d, created_at from pos_tech_appointments where tenant_id = ${T}::uuid and customer_id = ${r.customer_id}::uuid
-        and created_at > ${r.sent_at} and created_at <= ${r.sent_at}::timestamptz + interval '30 days' order by created_at asc limit 1`.execute(this.db)).rows[0] ?? null : null;
+        and created_at > ${r.sent_at} and created_at <= ${r.sent_at}::timestamptz + interval '30 days' and status not in ('cancelled', 'no_show') order by created_at asc limit 1`.execute(this.db)).rows[0] ?? null : null;
     return {
       id: r.id, status: r.status, businessDate: r.bdate, customerId: r.customer_id, customerName: r.customer_name_snapshot, customerPhone: r.customer_phone_snapshot ?? null,
       customerHasApp: !!r.customer_app_user_id, technicianId: r.technician_id, technicianName: r.technician_name_snapshot, serviceName: r.service_name_snapshot,

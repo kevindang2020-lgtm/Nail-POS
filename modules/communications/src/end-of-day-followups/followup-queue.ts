@@ -78,7 +78,7 @@ export class FollowUpQueue {
       left join lateral (select count(*)::int as n from service_follow_up_tasks f3 where f3.tenant_id = ${T}::uuid and f3.customer_id = f.customer_id
             and f3.id <> f.id and f3.sent_at is not null and f3.sent_at < coalesce(f.created_at, now())
             and not exists (select 1 from pos_tech_appointments a3 where a3.tenant_id = ${T}::uuid and a3.customer_id = f3.customer_id
-                and a3.created_at > f3.sent_at and a3.created_at <= f3.sent_at + interval '30 days')) un on true`;
+                and a3.created_at > f3.sent_at and a3.created_at <= f3.sent_at + interval '30 days' and a3.status not in ('cancelled', 'no_show'))) un on true`;
   }
   private scoreSql(today: string) {
     return sql`(case when f.status = any(${UNSENT}::text[]) and f.business_date < ${today}::date then 2 else 0 end
@@ -108,7 +108,7 @@ export class FollowUpQueue {
              count(*) filter (where f.status = any(${SKIPPED}::text[]))::int as skipped,
              count(*) filter (where f.status = 'expired')::int as expired,
              count(*) filter (where f.sent_at is not null and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
-                 and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days'))::int as rebooked,
+                 and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')))::int as rebooked,
              count(*)::int as total
         from service_follow_up_tasks f
        where f.tenant_id = ${T}::uuid and f.branch_id = ${B}::uuid and f.deleted_at is null and f.business_date = ${d}::date`.execute(this.db)).rows[0];
@@ -151,7 +151,7 @@ export class FollowUpQueue {
     else if (st === 'skipped') conds.push(sql`f.status = any(${SKIPPED}::text[])`);
     else if (st === 'closed') conds.push(sql`f.status = any(${['skipped', 'dismissed', 'expired', 'customer_not_available', 'failed']}::text[])`);
     else if (st === 'rebooked') conds.push(sql`f.sent_at is not null and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
-        and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days')`);
+        and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show'))`);
     else if (st !== 'all') conds.push(sql`f.status = ${st}`);
     if (f.technicianId && UUID.test(f.technicianId)) conds.push(sql`f.technician_id = ${f.technicianId}::uuid`);
     if (f.due === 'overdue') conds.push(sql`f.status = any(${UNSENT}::text[]) and f.business_date < ${today}::date`);
@@ -162,7 +162,7 @@ export class FollowUpQueue {
       const lo = sql`(${f.from}::date::timestamp at time zone ${tz})`, hi = sql`((${f.to}::date + 1)::timestamp at time zone ${tz})`;
       if (basis === 'due') conds.push(sql`f.business_date between ${f.from}::date and ${f.to}::date`);
       else if (basis === 'rebooked') conds.push(sql`f.sent_at is not null and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
-          and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.created_at >= ${lo} and ap.created_at < ${hi})`);
+          and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show') and ap.created_at >= ${lo} and ap.created_at < ${hi})`);
       else {
         const col = basis === 'sent' ? sql`f.sent_at` : basis === 'last_visit' ? sql`f.completed_at` : sql`f.created_at`;
         conds.push(sql`${col} >= ${lo} and ${col} < ${hi}`);
@@ -274,10 +274,11 @@ export class FollowUpQueue {
     const funnel = (await sql<any>`
       with s as (select f.* from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and ${base}),
            appts as (select distinct ap.id from s join pos_tech_appointments ap on ap.tenant_id = s.tenant_id and ap.customer_id = s.customer_id
-               and s.sent_at is not null and ap.created_at > s.sent_at and ap.created_at <= s.sent_at + interval '30 days'),
+               and s.sent_at is not null and ap.created_at > s.sent_at and ap.created_at <= s.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')),
            visits as (select distinct tk.id, tk.total_cents from s join tickets tk on tk.tenant_id = s.tenant_id and tk.customer_id = s.customer_id
                and s.sent_at is not null and tk.status in ('closed', 'paid') and coalesce(tk.paid_at, tk.created_at) > s.sent_at
-               and coalesce(tk.paid_at, tk.created_at) <= s.sent_at + interval '30 days' and tk.id <> s.ticket_id)
+               and coalesce(tk.paid_at, tk.created_at) <= s.sent_at + interval '30 days'
+               and not exists (select 1 from service_follow_up_tasks s2 where s2.tenant_id = tk.tenant_id and s2.ticket_id = tk.id))   -- a visit that is itself a follow-up's source is not a return (Nov 3 audit)
       select (select count(*)::int from s) as generated,
              (select count(*)::int from s where s.status = any(${SENT}::text[])) as sent,
              (select count(*)::int from s where s.customer_app_notification_id is not null) as delivered,
@@ -295,7 +296,7 @@ export class FollowUpQueue {
     const byTech = (await sql<any>`select f.technician_id, max(f.technician_name_snapshot) as name, count(*)::int as generated,
           count(*) filter (where f.status = any(${SENT}::text[]))::int as sent, count(*) filter (where f.status = any(${SKIPPED}::text[]))::int as skipped,
           count(*) filter (where f.sent_at is not null and exists (select 1 from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id
-              and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days'))::int as booked_after
+              and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')))::int as booked_after
         from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and ${base} group by f.technician_id order by generated desc, name limit 50`.execute(this.db)).rows;
     const age = (await sql<any>`select count(*) filter (where now() - f.created_at < interval '24 hours')::int as lt1d,
           count(*) filter (where now() - f.created_at >= interval '24 hours' and now() - f.created_at < interval '72 hours')::int as d1to3,
@@ -322,7 +323,7 @@ export class FollowUpQueue {
     const rows = (await sql<any>`select f.id, f.business_date::text as business_date, f.status, f.service_name_snapshot, f.technician_name_snapshot, f.created_at, f.sent_at,
           f.skip_reason, f.customer_viewed_at, coalesce(f.sent_message, f.suggested_message) as message,
           (select min(ap.created_at) from pos_tech_appointments ap where ap.tenant_id = f.tenant_id and ap.customer_id = f.customer_id and f.sent_at is not null
-              and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days') as booked_at
+              and ap.created_at > f.sent_at and ap.created_at <= f.sent_at + interval '30 days' and ap.status not in ('cancelled', 'no_show')) as booked_at
         from service_follow_up_tasks f where f.tenant_id = ${T}::uuid and ${base} order by f.created_at desc, f.id desc limit ${ps} offset ${(pg - 1) * ps}`.execute(this.db)).rows;
     return {
       items: rows.map((r: any) => ({ id: r.id, dueDate: r.business_date, status: r.status, serviceName: r.service_name_snapshot, technicianName: r.technician_name_snapshot,

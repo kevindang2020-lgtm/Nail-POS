@@ -41,13 +41,16 @@ export function validatePatch(patch: Record<string, unknown>): Partial<Reception
       case 'afterHoursBehavior':
         if (!AFTER_HOURS.includes(String(v))) throw new SettingsValidationError('Invalid afterHoursBehavior.'); out.afterHoursBehavior = v as any; break;
       case 'silenceTimeoutSeconds': {
-        const n = Number(v); if (!Number.isFinite(n) || n < 2 || n > 30) throw new SettingsValidationError('silenceTimeoutSeconds must be 2\u201330.'); out.silenceTimeoutSeconds = Math.round(n); break;
+        const n = Number(v); if (!Number.isInteger(n) || n < 2 || n > 30) throw new SettingsValidationError('silenceTimeoutSeconds must be a whole number 2\u201330.'); out.silenceTimeoutSeconds = n; break;
       }
       case 'maxCallDurationSeconds': {
-        const n = Number(v); if (!Number.isFinite(n) || n < 60 || n > 3600) throw new SettingsValidationError('maxCallDurationSeconds must be 60\u20133600.'); out.maxCallDurationSeconds = Math.round(n); break;
+        const n = Number(v); if (!Number.isInteger(n) || n < 60 || n > 3600) throw new SettingsValidationError('maxCallDurationSeconds must be a whole number 60\u20133600.'); out.maxCallDurationSeconds = n; break;
       }
       case 'recordingConsentMessage':
-        if (typeof v !== 'string') throw new SettingsValidationError('recordingConsentMessage must be text.'); out.recordingConsentMessage = v.slice(0, 500); break;
+        if (typeof v !== 'string') throw new SettingsValidationError('recordingConsentMessage must be text.');
+        // never silently cut (the body schema allows 2000; this used to keep only the first 500)
+        if (v.length > 2000) throw new SettingsValidationError('recordingConsentMessage must be 2000 characters or fewer.');
+        out.recordingConsentMessage = v; break;
       default:
         throw new SettingsValidationError(`Unknown setting: ${k}`);
     }
@@ -66,9 +69,12 @@ const scopeBranch = (branchId: string | null) => branchId || SENTINEL;
 export class AiSettingsService {
   constructor(@Inject('SettingsRepo') private readonly repo: SettingsRepo) {}
 
+  /** Effective settings: the branch's own row over the salon-wide row over the defaults. A read failure is an ERROR (Nov 3
+   *  audit): it used to return the defaults, and a save right after then overwrote the stored settings with them. */
   async get(ctx: SettingsCtx): Promise<ReceptionistSettings> {
-    const stored = await this.repo.get(ctx.tenantId, scopeBranch(ctx.branchId)).catch(() => null);
-    return { ...DEFAULT_SETTINGS, ...(stored ?? {}), defaultLanguage: 'en' };   // English only, whatever was stored before Oct 28 2026
+    const salon = await this.repo.get(ctx.tenantId, SENTINEL);
+    const branch = ctx.branchId ? await this.repo.get(ctx.tenantId, scopeBranch(ctx.branchId)) : null;
+    return { ...DEFAULT_SETTINGS, ...(salon ?? {}), ...(branch ?? {}), defaultLanguage: 'en' };   // English only, whatever was stored before Oct 28 2026
   }
 
   async update(ctx: SettingsCtx, patch: Record<string, unknown>): Promise<ReceptionistSettings> {

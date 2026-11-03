@@ -197,7 +197,12 @@ export class DailyFollowUpService {
       this.emitTask(t);
       return this.view((await this.repo.taskById(t.id))!);
     }
-    return this.doSend(ctx, t, message, 'tech', { allowedFrom: ['pending'], approve: false, override: null });
+    // Nov 3 audit: "Allow technician to edit message = Off" also binds the direct send — an edited text used to reach the customer
+    const edited = (message ?? '').trim();
+    if (edited && edited !== String(t.suggestedMessage ?? '').trim() && !settings.allowTechEditMessage) {
+      throw withCode(new FollowUpError('forbidden', 'Editing follow-up messages is disabled for this branch.'), 'FOLLOWUP_EDITING_DISABLED');
+    }
+    return this.doSend(ctx, t, settings.allowTechEditMessage ? message : undefined, 'tech', { allowedFrom: ['pending'], approve: false, override: null });
   }
 
   async techSkip(ctx: FollowUpContext, taskId: string, reason?: string): Promise<FollowUpTaskView> {

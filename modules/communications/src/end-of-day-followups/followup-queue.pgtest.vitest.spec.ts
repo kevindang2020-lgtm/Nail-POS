@@ -110,7 +110,10 @@ describe('queue order, search, basis, pages (guide §06, §17)', () => {
     const ids = r.items.map((i) => i.id);
     expect(ids).toContain(inside); expect(ids).not.toContain(outside);
   });
-  it('the rebooked status uses a real later booking (not the task status)', async () => {
+  it('the rebooked status uses a real later booking (not the task status); a cancelled or no-show booking is not a rebooking (Nov 3 audit)', async () => {
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status, created_at)
+             values ($1,$2,$3,$4,'Customer 3','2026-11-21','10:00','11:00','cancelled','2026-11-02T16:00:00Z')`, [T, B, T1, C(3)]);
+    expect((await fq.kpis(T, B, TZ, TODAY, new Date())).rebooked).toBe(1);
     const r = await fq.list(T, B, TZ, TODAY, 24, { view: 'history', status: 'rebooked', pageSize: 50 });
     expect(r.items.map((i) => i.customerName)).toEqual(['Customer 5']);
   });
