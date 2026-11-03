@@ -29,7 +29,7 @@ function setup() {
     verifyCaller: vi.fn(async () => ({ verified: true, customerId: 'cus_1', phone: '+18565550190', name: 'Caller' })),
     rescheduleAppointment: vi.fn(async () => ({ ok: true, appointmentId: 'bk_9', date: '2030-11-04', startTime: '16:00', endTime: '17:00' })),
   } as any;
-  const c = new VoiceBookingController(gw, write, manage, outcomes, new RetellVoiceAdapter(), undefined, holds);
+  const c = new VoiceBookingController(gw, write, manage, outcomes, new RetellVoiceAdapter(), undefined, undefined, holds);   // deals, business knowledge (AI Business Setup), holds
   return { c, gw, write, outcomes, holds, manage };
 }
 afterEach(() => { delete process.env.VOICE_WRITE_TOOLS_ENABLED; });

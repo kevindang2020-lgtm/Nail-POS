@@ -40,7 +40,7 @@ beforeAll(async () => {
   const holds = new SlotHoldService(db);
   const booking = new BookingService(new KyselyBookingRepository(db), undefined, undefined, undefined, undefined, holds);
   manage = new VoiceManageService(booking, {} as any);
-  c = new VoiceBookingController({} as any, new VoiceBookingWriteService(booking), {} as any, { record: async () => ({ id: 'oc' }) } as any, new RetellVoiceAdapter(), undefined, holds);
+  c = new VoiceBookingController({} as any, new VoiceBookingWriteService(booking), {} as any, { record: async () => ({ id: 'oc' }) } as any, new RetellVoiceAdapter(), undefined, undefined, holds);   // deals, business knowledge (AI Business Setup), holds
 }, 120000);
 afterAll(() => { delete process.env.VOICE_WRITE_TOOLS_ENABLED; });
 

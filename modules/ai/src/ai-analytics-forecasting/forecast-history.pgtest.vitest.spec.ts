@@ -13,7 +13,13 @@ const ctx = { tenantId: T, branchId: B, userId: 'u', role: 'OWNER', permissions:
 let db: any; let src: BookingCalendarAppointmentSource;
 const NOW = new Date('2026-11-02T17:00:00Z');   // Nov 2, noon in New York
 const q = async (s: any) => (await s.execute(db)).rows as any[];
-const appt = (t: string, b: string, day: string, status = 'booked') => q(sql`insert into pos_tech_appointments (tenant_id, branch_id, appt_date, start_time, status) values (${t}, ${b}, ${day}::date, '10:00', ${status})`);
+// an appointment needs its technician (NOT NULL); one technician per appointment so the no-overlap rule never bites
+let techN = 0;
+const appt = async (t: string, b: string, day: string, status = 'booked') => {
+  const tech = `c7731000-0000-4000-8000-${String(++techN).padStart(12, '0')}`;
+  await q(sql`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values (${tech}, ${t}, ${b}, 'Tech', ${String(techN)}, ${'Tech ' + techN})`);
+  return q(sql`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_name, appt_date, start_time, end_time, status) values (${t}, ${b}, ${tech}, 'Guest', ${day}::date, '10:00', '10:45', ${status})`);
+};
 
 beforeAll(async () => {
   db = kyselyFor(await migratedPglite());
