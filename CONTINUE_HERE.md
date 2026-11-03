@@ -801,6 +801,16 @@ compared a month with itself; alert scope; settings overwritten by defaults; Reb
 tickets in coupon stats; deal cap; archived referrals; birthday branch scope; follow-up escalations). Migration 782 (alert archive).
 Next: build the guides in queue order, starting with the AI Center directory (A1).
 
+## Nov 3 2026 (evening) — batch A (A1–A20) worked through
+Every batch-A guide now has a row in docs/GUIDE_QUEUE_2026-11-03.md saying what was built and what was NOT built (honest list per
+guide). This round: A12 Business Setup (FAQ key reuse, branch-scoped eligibility, presets), A13 AI Follow-Ups (row version required,
+overdue re-alert after due change / reopen, edit description + due), A14 Front Desk (per-branch route check, branch-scoped directory,
+honest handoff / booking counts), A17 Reviews (KPIs follow filters), A18 Referrals (one tab per state), A19 Win-Back (email + accent +
+multi-word search), A20 Birthdays (KPIs follow range, Feb 29 order). Gates: the 6 known failures only (lint 14 hooks warnings,
+api-contract, strict-bodies-types, architecture mirrored types, pos-i18n) — silent-catch baseline re-ratcheted after review.
+Next: batch B — B1–B4 audit bugs in GUIDE_AUDIT_FINDINGS (segments % escape, coupon dollar parsing, atomic draft, ticket lookup
+branch), then B5–B8 (audit first), B9–B18; then batches C and D (not audited yet — audit inline).
+
 ## External — Kevin / his developer
 
 The full table is `NEXT_STEPS.md` §2. In short:
