@@ -731,6 +731,10 @@ export const ERROR_REGISTRY = {
   FOLLOWUP_REJECT_NOTE_REQUIRED:  { status: 400, message: 'Write a short note for the technician.', domain: 'communications', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_STATE_INVALID:         { status: 409, message: 'This follow-up cannot do that in its current state.', domain: 'communications', retryable: false, severity: 'info', action: 'REFRESH' },
   FOLLOWUP_CENTER_INVALID_FILTER: { status: 400, message: 'Check the follow-up details or filter and try again.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // Voice Transcription Settings guide (Nov 2 2026)
+  VT_SETTINGS_VERSION_CONFLICT: { status: 409, message: 'These settings were changed by someone else. Reload and try again.', domain: 'ai', retryable: false, severity: 'info', action: 'REFRESH' },
+  VT_CONFIRM_REQUIRED: { status: 409, message: 'This change needs confirmation.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_RESOLUTION_REQUIRED: { status: 400, message: 'Choose how this follow-up was resolved.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

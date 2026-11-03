@@ -14450,3 +14450,166 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `vsx.health.d.tenant_isolation.FAILED` | A transcript links to another salon. Report this immediately. | Có bản chép lời liên kết với tiệm khác. Hãy báo ngay. |
 | `vsx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `vsx.health.d.no_side_effects.PASSED` | This page and this check never place a call, transcribe, delete or send a message. | Trang này và việc kiểm tra không gọi điện, không chép lời, không xóa, không gửi tin nhắn. |
+
+## Voice Transcription Follow-Ups (`vfx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `vfx.refresh` | Refresh | Làm mới |
+| `vfx.check` | Check Voice Follow-Up System | Kiểm tra hệ thống theo dõi cuộc gọi |
+| `vfx.board` | Open task board | Mở bảng công việc |
+| `vfx.close` | Close | Đóng |
+| `vfx.cancel` | Cancel | Hủy |
+| `vfx.safety` | The AI only flags items. A person decides: turn one into a task, or dismiss it with a reason. Nothing here calls, texts, books or refunds. | AI chỉ đánh dấu. Người làm sẽ quyết định: tạo công việc, hoặc bỏ qua kèm lý do. Trang này không gọi điện, nhắn tin, đặt lịch hay hoàn tiền. |
+| `vfx.loadFailed` | This could not be loaded. Try again or run the system check — this is not "nothing to follow up". | Không tải được. Hãy thử lại hoặc chạy kiểm tra — đây không phải là "không có việc cần theo dõi". |
+| `vfx.err.forbidden` | You do not have access to call follow-ups. | Bạn không có quyền xem việc theo dõi cuộc gọi. |
+| `vfx.err.VF_INVALID_PERIOD` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `vfx.err.VF_REASON_REQUIRED` | Write a short reason (at least 3 characters). | Hãy ghi lý do ngắn (ít nhất 3 ký tự). |
+| `vfx.err.VF_NOT_OPEN` | This item already has a task or was dismissed. Refresh the list. | Mục này đã có công việc hoặc đã bỏ qua. Hãy làm mới danh sách. |
+| `vfx.err.VF_NOT_RESOLVED` | Only a resolved or dismissed item can be reopened. | Chỉ mục đã xong hoặc đã bỏ qua mới mở lại được. |
+| `vfx.err.FOLLOWUP_ASSIGNEE_INVALID` | That person is not active staff who can work follow-ups in this location. | Người này không phải nhân viên đang làm việc có thể xử lý theo dõi ở chi nhánh này. |
+| `vfx.kpi.open` | Open items | Mục đang mở |
+| `vfx.kpi.urgent` | Urgent | Khẩn cấp |
+| `vfx.kpi.inTask` | In a task | Đã thành công việc |
+| `vfx.kpi.overdue` | Task overdue | Công việc quá hạn |
+| `vfx.kpi.resolved` | Resolved (30 days) | Đã xong (30 ngày) |
+| `vfx.pl.processing` | {n} calls still being processed | {n} cuộc gọi đang xử lý |
+| `vfx.pl.errors` | {n} calls failed in the last 24 hours | {n} cuộc gọi lỗi trong 24 giờ qua |
+| `vfx.urgentLane` | Urgent — review first | Khẩn cấp — xem trước |
+| `vfx.viewCall` | View call | Xem cuộc gọi |
+| `vfx.createTask` | Create task | Tạo công việc |
+| `vfx.dismiss` | Dismiss | Bỏ qua |
+| `vfx.reopen` | Reopen | Mở lại |
+| `vfx.history` | History | Lịch sử |
+| `vfx.openTask` | Open task | Mở công việc |
+| `vfx.tabs` | Follow-up status | Trạng thái theo dõi |
+| `vfx.searchPh` | Customer name or phone, call ID, item type, assignee | Tên hoặc số điện thoại khách, mã cuộc gọi, loại việc, người phụ trách |
+| `vfx.searchPhNoCustomer` | Call ID, item type, assignee | Mã cuộc gọi, loại việc, người phụ trách |
+| `vfx.search` | Search | Tìm |
+| `vfx.typeLabel` | Item type | Loại việc |
+| `vfx.dateLabel` | Date filter means | Ngày lọc theo |
+| `vfx.sortLabel` | Sort | Sắp xếp |
+| `vfx.clear` | Clear | Xóa bộ lọc |
+| `vfx.loading` | Loading… | Đang tải… |
+| `vfx.noMatch` | Nothing matches these filters. | Không có gì khớp bộ lọc. |
+| `vfx.noneHere` | Nothing here yet. | Chưa có mục nào. |
+| `vfx.rows` | Rows | Số dòng |
+| `vfx.empty.none_open` | No open follow-ups. Calls are arriving, processing is finished and nothing is waiting — every flagged call has been handled. | Không có việc cần theo dõi. Cuộc gọi vẫn đến, đã xử lý xong và không còn gì chờ — mọi cuộc gọi được đánh dấu đã được xử lý. |
+| `vfx.empty.no_calls` | No transcribed calls yet, so there is nothing to follow up. This is not proof that calls are handled. | Chưa có cuộc gọi nào được chép lời nên chưa có gì để theo dõi. Điều này không chứng minh cuộc gọi đã được xử lý. |
+| `vfx.empty.processing` | Nothing open yet — some calls are still being processed. Check again shortly. | Chưa có mục mở — một số cuộc gọi vẫn đang xử lý. Hãy xem lại sau ít phút. |
+| `vfx.empty.pipeline_errors` | Nothing open, but calls failed to process in the last 24 hours — items from those calls may be missing. Run the system check. | Không có mục mở, nhưng có cuộc gọi xử lý lỗi trong 24 giờ qua — có thể thiếu việc từ các cuộc đó. Hãy chạy kiểm tra hệ thống. |
+| `vfx.customerHidden` | Customer (hidden) | Khách (ẩn) |
+| `vfx.unknownCaller` | Unknown caller | Người gọi chưa rõ |
+| `vfx.unassigned` | Unassigned | Chưa giao |
+| `vfx.taskLine` | Task: {status} · {who} | Công việc: {status} · {who} |
+| `vfx.due` | due {at} | hạn {at} |
+| `vfx.overdue` | Overdue | Quá hạn |
+| `vfx.dismissedBy` | Dismissed by {who} | {who} đã bỏ qua |
+| `vfx.taskNote` | The task goes to the task board, where it is assigned, followed up and resolved. Creating it calls or texts no one. | Công việc được đưa lên bảng công việc để giao, theo dõi và hoàn tất. Tạo công việc không gọi điện hay nhắn tin cho ai. |
+| `vfx.f.priority` | Priority | Mức ưu tiên |
+| `vfx.f.due` | Due | Hạn |
+| `vfx.f.assignee` | Assign to | Giao cho |
+| `vfx.f.note` | Note for staff (optional) | Ghi chú cho nhân viên (không bắt buộc) |
+| `vfx.f.dismissReason` | Why is no action needed? | Vì sao không cần xử lý? |
+| `vfx.f.reopenReason` | Why is it reopened? | Vì sao mở lại? |
+| `vfx.ok.task` | Task created on the task board. | Đã tạo công việc trên bảng công việc. |
+| `vfx.ok.dismissed` | Dismissed. | Đã bỏ qua. |
+| `vfx.ok.reopened` | Reopened. | Đã mở lại. |
+| `vfx.noHistory` | No decisions yet. | Chưa có quyết định nào. |
+| `vfx.historyNote` | Every decision is kept; nothing is overwritten. | Mọi quyết định đều được lưu; không ghi đè. |
+| `vfx.health.running` | Checking… | Đang kiểm tra… |
+| `vfx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `vfx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `vfx.health.readOnly` | Read-only: it never calls, texts, books, refunds or changes a task. | Chỉ đọc: không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay sửa công việc. |
+| `vfx.type.all` | All types | Mọi loại |
+| `vfx.type.callback_requested` | Callback requested | Khách muốn gọi lại |
+| `vfx.type.manager_requested` | Asked for a manager | Khách muốn gặp quản lý |
+| `vfx.type.health_safety` | Health or safety concern | Vấn đề sức khỏe hoặc an toàn |
+| `vfx.type.refund_requested` | Refund requested | Khách muốn hoàn tiền |
+| `vfx.type.complaint` | Complaint | Phàn nàn |
+| `vfx.type.pricing_unanswered` | Price question not answered | Câu hỏi giá chưa được trả lời |
+| `vfx.type.other` | Other | Khác |
+| `vfx.tab.open` | Open | Đang mở |
+| `vfx.state.open` | Open | Đang mở |
+| `vfx.tab.in_task` | In a task | Đã thành công việc |
+| `vfx.state.in_task` | In a task | Đã thành công việc |
+| `vfx.tab.resolved` | Resolved | Đã xong |
+| `vfx.state.resolved` | Resolved | Đã xong |
+| `vfx.tab.all` | All | Tất cả |
+| `vfx.state.all` | All | Tất cả |
+| `vfx.date.call` | Call date | Ngày gọi |
+| `vfx.date.reviewed` | Decision date | Ngày quyết định |
+| `vfx.date.due` | Task due date | Hạn công việc |
+| `vfx.sort.newest` | Newest call first | Cuộc gọi mới nhất |
+| `vfx.sort.priority` | Highest priority first | Ưu tiên cao nhất |
+| `vfx.sort.oldest` | Oldest call first | Cuộc gọi cũ nhất |
+| `vfx.preset.all` | All time | Mọi thời gian |
+| `vfx.preset.today` | Today | Hôm nay |
+| `vfx.preset.yesterday` | Yesterday | Hôm qua |
+| `vfx.preset.week` | This week | Tuần này |
+| `vfx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `vfx.preset.month` | This month | Tháng này |
+| `vfx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `vfx.preset.last_month` | Last month | Tháng trước |
+| `vfx.preset.year` | This year | Năm nay |
+| `vfx.preset.custom` | Custom range | Tùy chọn |
+| `vfx.prio.urgent` | Urgent | Khẩn cấp |
+| `vfx.prio.high` | High | Cao |
+| `vfx.prio.normal` | Normal | Bình thường |
+| `vfx.prio.low` | Low | Thấp |
+| `vfx.taskStatus.open` | open | đang mở |
+| `vfx.taskStatus.assigned` | assigned | đã giao |
+| `vfx.taskStatus.in_progress` | in progress | đang xử lý |
+| `vfx.taskStatus.waiting` | waiting | đang chờ |
+| `vfx.taskStatus.resolved` | resolved | đã xong |
+| `vfx.taskStatus.closed` | closed | đã đóng |
+| `vfx.col.call` | Call | Cuộc gọi |
+| `vfx.col.customer` | Customer | Khách hàng |
+| `vfx.col.item` | Item | Việc |
+| `vfx.col.status` | Status | Trạng thái |
+| `vfx.decision.task_created` | Task created | Đã tạo công việc |
+| `vfx.decision.dismissed` | Dismissed | Đã bỏ qua |
+| `vfx.decision.reopened` | Reopened | Đã mở lại |
+| `vfx.health.PASSED` | Passed | Đạt |
+| `vfx.health.WARNING` | Warning | Cảnh báo |
+| `vfx.health.FAILED` | Failed | Lỗi |
+| `vfx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `vfx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `vfx.health.k.calls_arriving` | Calls arriving | Cuộc gọi đang đến |
+| `vfx.health.d.calls_arriving.PASSED` | Transcribed calls arrived in the last 7 days. | Có cuộc gọi được chép lời trong 7 ngày qua. |
+| `vfx.health.d.calls_arriving.WARNING` | No transcribed calls in the last 7 days. | Không có cuộc gọi nào được chép lời trong 7 ngày qua. |
+| `vfx.health.d.calls_arriving.INSUFFICIENT_DATA` | No transcribed calls yet. | Chưa có cuộc gọi nào được chép lời. |
+| `vfx.health.k.transcription_errors` | Transcription errors | Lỗi chép lời |
+| `vfx.health.d.transcription_errors.PASSED` | No call failed to process in the last 7 days. | Không có cuộc gọi lỗi trong 7 ngày qua. |
+| `vfx.health.d.transcription_errors.WARNING` | Some calls failed to process — their follow-up items may be missing. | Một số cuộc gọi xử lý lỗi — có thể thiếu việc cần theo dõi. |
+| `vfx.health.d.transcription_errors.FAILED` | Most calls failed to process — follow-up items are likely missing. | Phần lớn cuộc gọi xử lý lỗi — nhiều khả năng thiếu việc cần theo dõi. |
+| `vfx.health.d.transcription_errors.INSUFFICIENT_DATA` | No calls in the last 7 days. | Không có cuộc gọi trong 7 ngày qua. |
+| `vfx.health.k.processing_backlog` | Processing backlog | Tồn đọng xử lý |
+| `vfx.health.d.processing_backlog.PASSED` | No call has waited over an hour for transcription or redaction. | Không có cuộc gọi nào chờ chép lời hoặc che quá một giờ. |
+| `vfx.health.d.processing_backlog.WARNING` | Some calls have waited over an hour to be processed. | Một số cuộc gọi đã chờ xử lý quá một giờ. |
+| `vfx.health.k.extraction` | Items extracted | Đã tách việc |
+| `vfx.health.d.extraction.PASSED` | Every transcribed call was checked for follow-up items. | Mọi cuộc gọi đã chép lời đều được kiểm tra việc cần theo dõi. |
+| `vfx.health.d.extraction.WARNING` | Some transcribed calls were never checked for follow-up items. | Một số cuộc gọi đã chép lời chưa được kiểm tra việc cần theo dõi. |
+| `vfx.health.k.urgent_reviewed` | Urgent items reviewed | Đã xem mục khẩn cấp |
+| `vfx.health.d.urgent_reviewed.PASSED` | No urgent item has waited over a day for a decision. | Không có mục khẩn cấp nào chờ quyết định quá một ngày. |
+| `vfx.health.d.urgent_reviewed.FAILED` | Urgent items (health / safety, callbacks, manager requests) have waited over a day. Review them now. | Có mục khẩn cấp (sức khỏe / an toàn, gọi lại, gặp quản lý) chờ quá một ngày. Hãy xem ngay. |
+| `vfx.health.k.tasks_on_time` | Tasks on time | Công việc đúng hạn |
+| `vfx.health.d.tasks_on_time.PASSED` | No follow-up task from a call is past its due time. | Không có công việc theo dõi nào quá hạn. |
+| `vfx.health.d.tasks_on_time.WARNING` | Some tasks from calls are past their due time — open the task board. | Một số công việc từ cuộc gọi đã quá hạn — hãy mở bảng công việc. |
+| `vfx.health.k.task_links` | Task links intact | Liên kết công việc còn nguyên |
+| `vfx.health.d.task_links.PASSED` | Every item turned into a task still points at its task. | Mọi mục đã thành công việc vẫn liên kết đúng công việc. |
+| `vfx.health.d.task_links.FAILED` | An item points at a task that no longer exists. Report this. | Có mục liên kết tới công việc không còn tồn tại. Hãy báo lại. |
+| `vfx.health.k.no_duplicate_tasks` | No duplicate tasks | Không trùng công việc |
+| `vfx.health.d.no_duplicate_tasks.PASSED` | No call has two open tasks for the same reason. | Không có cuộc gọi nào có hai công việc mở cùng lý do. |
+| `vfx.health.d.no_duplicate_tasks.FAILED` | A call has two open tasks for the same reason. Report this. | Có cuộc gọi có hai công việc mở cùng lý do. Hãy báo lại. |
+| `vfx.health.k.tasks_assigned` | Tasks assigned | Công việc đã giao |
+| `vfx.health.d.tasks_assigned.PASSED` | Every task from a call older than a day has someone on it. | Mọi công việc từ cuộc gọi quá một ngày đều đã có người phụ trách. |
+| `vfx.health.d.tasks_assigned.WARNING` | Some tasks from calls have waited over a day with nobody assigned. | Một số công việc từ cuộc gọi đã chờ quá một ngày mà chưa giao cho ai. |
+| `vfx.health.k.dismissals_explained` | Dismissals explained | Có lý do bỏ qua |
+| `vfx.health.d.dismissals_explained.PASSED` | Every dismissal and reopen has a reason. | Mọi lần bỏ qua và mở lại đều có lý do. |
+| `vfx.health.d.dismissals_explained.FAILED` | A dismissal has no reason on record. Report this. | Có lần bỏ qua không ghi lý do. Hãy báo lại. |
+| `vfx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `vfx.health.d.tenant_isolation.PASSED` | Every decision points at this salon's calls and tasks. | Mọi quyết định đều liên kết tới cuộc gọi và công việc của tiệm này. |
+| `vfx.health.d.tenant_isolation.FAILED` | A decision points at another salon's record. Report this immediately. | Có quyết định liên kết tới dữ liệu của tiệm khác. Hãy báo ngay. |
+| `vfx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `vfx.health.d.no_side_effects.PASSED` | This page and this check never call, text, book, refund or change a task. | Trang này và việc kiểm tra không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay sửa công việc. |

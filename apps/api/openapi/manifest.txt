@@ -399,6 +399,9 @@ GET /pos/ai-scheduling-optimizer/time-off  realm=staff  auth=session  domain=ai 
 GET /pos/ai-scheduling-optimizer/usage  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/center/records  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/center/summary  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/follow-ups/items  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/follow-ups/items/history  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/follow-ups/summary  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/overview  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/settings  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/transcripts  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
@@ -2471,6 +2474,10 @@ POST /pos/ai-scheduling-optimizer/runs  realm=staff  auth=session  domain=ai  pe
 POST /pos/ai-scheduling-optimizer/time-off  realm=staff  auth=session  domain=ai  perm=technicians.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/center/check  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/consent  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_settings  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-voice-transcription/follow-ups/check  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-voice-transcription/follow-ups/items/dismiss  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-voice-transcription/follow-ups/items/reopen  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-voice-transcription/follow-ups/items/task  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/ingest  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_rules  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/transcripts/{id}/legal-hold  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_settings  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/transcripts/{id}/summary  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard

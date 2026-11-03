@@ -414,6 +414,14 @@
   "voice_settings_health_runs": {
    "domain": "AI",
    "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): read-only Check Voice Transcription Settings runs"
+  },
+  "voice_followup_reviews": {
+   "domain": "AI",
+   "reason": "Voice Transcription Follow-Ups guide (Nov 2 2026, migration 775): append-only staff decision per extracted call item (task / dismiss / reopen)"
+  },
+  "voice_followup_health_runs": {
+   "domain": "AI",
+   "reason": "Voice Transcription Follow-Ups guide (Nov 2 2026, migration 775): read-only Check Voice Follow-Up System runs"
   }
  }
 }

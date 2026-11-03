@@ -1,14 +1,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-const m = vi.hoisted(() => ({ overview: vi.fn(), list: vi.fn(), detail: vi.fn(), intelligence: vi.fn(), generateSummary: vi.fn(), search: vi.fn(), unresolved: vi.fn(), getSettings: vi.fn(), updateSettings: vi.fn() }));
+import { render, screen, fireEvent, waitFor, within, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
+import { leftoverEnglish } from './viScan.testkit';
+const m = vi.hoisted(() => ({ overview: vi.fn(), list: vi.fn(), detail: vi.fn(), intelligence: vi.fn(), generateSummary: vi.fn(), search: vi.fn(), getSettings: vi.fn(), updateSettings: vi.fn() }));
 const c = vi.hoisted(() => ({ summary: vi.fn(), records: vi.fn(), check: vi.fn() }));   // the settings page's read side (guide, Nov 2026)
-vi.mock('../api/posAIVoiceTranscriptionApi', () => ({ posAIVoiceTranscriptionApi: { ...m, center: c } }));
+// Voice Transcription Follow-Ups guide (Nov 2026): the review queue (replaces GET unresolved — the client method is gone)
+const fu = vi.hoisted(() => ({ summary: vi.fn(), items: vi.fn(), history: vi.fn(), task: vi.fn(), dismiss: vi.fn(), reopen: vi.fn(), check: vi.fn() }));
+const staff = vi.hoisted(() => ({ staff: vi.fn() }));
+vi.mock('../api/posAIVoiceTranscriptionApi', () => ({ posAIVoiceTranscriptionApi: { ...m, center: c, followUps: fu } }));
+vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: staff }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await (orig() as any)), useParams: () => ({ id: 'tr1' }) }));
 import { POSAIVoiceTranscriptionScreen } from './POSAIVoiceTranscriptionScreen';
 import { POSAIVoiceTranscriptionHistoryScreen } from './POSAIVoiceTranscriptionHistoryScreen';
 import { POSAIVoiceTranscriptionSearchScreen } from './POSAIVoiceTranscriptionSearchScreen';
 import { POSAIVoiceTranscriptionDetailScreen } from './POSAIVoiceTranscriptionDetailScreen';
-beforeEach(() => { Object.values(m).forEach((f) => f.mockReset()); Object.values(c).forEach((f) => f.mockReset()); });
+beforeEach(() => { for (const g of [m, c, fu, staff] as Record<string, any>[]) Object.values(g).forEach((f: any) => f.mockReset()); });
 
 describe('Overview', () => {
   it('renders KPIs + status breakdown', async () => {
@@ -60,22 +67,76 @@ describe('Detail', () => {
 });
 
 import { POSAIVoiceTranscriptionUnresolvedScreen } from './POSAIVoiceTranscriptionUnresolvedScreen';
+const fuSum = (o: any = {}) => ({ counters: { open: 2, urgent: 1, inTask: 1, overdue: 0, resolved30d: 3 }, pipeline: { calls: 12, processing: 0, errors24h: 0 }, emptyReason: null,
+  urgent: [{ transcriptId: 'tr9', type: 'health_safety', priority: 'urgent', callAt: '2026-11-02T13:00:00Z' }], canWork: true, ...o });
+const fuRow = (o: any = {}) => ({ transcriptId: 'tr9', type: 'health_safety', priority: 'urgent', state: 'open', callAt: '2026-11-02T13:00:00Z', customer: 'Linh Pham', customerPhoneLast4: '0142', customerLinked: true, review: null, task: null, ...o });
+const fuPage = (items: any[]) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-02' }, customersVisible: true });
+const renderFu = () => render(<MemoryRouter><POSAIVoiceTranscriptionUnresolvedScreen /></MemoryRouter>);
 describe('Follow-ups', () => {
-  it('lists calls with open items + priority + link', async () => {
-    (m as any).unresolved = (m as any).unresolved || vi.fn();
-    (m as any).unresolved.mockResolvedValue({ items: [{ header: { id: 'tr9', direction: 'inbound', status: 'completed', createdAt: '2026-07-07T00:00:00Z' }, quickSummary: 'Customer call regarding complaint.', unresolved: [{ type: 'health_safety', description: 'Possible health or safety concern raised — requires human review.', priority: 'high' }] }] });
-    render(<POSAIVoiceTranscriptionUnresolvedScreen />);
-    expect(await screen.findByText(/health or safety concern/)).toBeInTheDocument();
-    expect(screen.getByText('[High]')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open call' })).toHaveAttribute('href', '/tenant/ai/voice-transcription/transcripts/tr9');
+  beforeEach(() => { fu.summary.mockResolvedValue(fuSum()); fu.items.mockResolvedValue(fuPage([fuRow(), fuRow({ transcriptId: 'tr8', type: 'callback_requested', priority: 'high', state: 'in_task', task: { id: 'f1', status: 'assigned', dueAt: null, assignee: 'Desk Mai', overdue: false } })])); staff.staff.mockResolvedValue({ items: [{ id: 'u2', name: 'Desk Mai', role: 'FRONT_DESK' }] }); });
+  it('counters, the urgent lane and the review queue with a link to the call', async () => {
+    renderFu();
+    expect(await screen.findByTestId('vfx-kpi-urgent')).toHaveTextContent('1');
+    expect(within(await screen.findByTestId('vfx-urgent')).getByText('Health or safety concern')).toBeInTheDocument();
+    const rows = await screen.findAllByTestId('vfx-row');
+    expect(rows[0]).toHaveTextContent('Linh Pham');
+    expect(within(rows[0]).getByRole('link', { name: 'View call' })).toHaveAttribute('href', '/tenant/ai/voice-transcription/transcripts/tr9');
+    expect(rows[1]).toHaveTextContent('Task: assigned · Desk Mai');
+    expect(fu.items).toHaveBeenCalledWith(expect.objectContaining({ tab: 'open', sort: 'newest', page: 1 }));
+    // GET unresolved is retired from the client (the review queue replaces it)
+    const actual = await vi.importActual<any>('../api/posAIVoiceTranscriptionApi');
+    expect(actual.posAIVoiceTranscriptionApi.unresolved).toBeUndefined();
+  });
+  it('Create task sends the item, priority, due and assignee — nothing else; Dismiss needs a reason', async () => {
+    fu.task.mockResolvedValue({ followUpId: 'f9', linked: false });
+    fu.dismiss.mockResolvedValue({ ok: true });
+    renderFu();
+    const row = (await screen.findAllByTestId('vfx-row'))[0];
+    fireEvent.click(within(row).getByTestId('vfx-act-task'));
+    const d = await screen.findByTestId('vfx-task');
+    fireEvent.change(within(d).getByTestId('vfx-task-due'), { target: { value: '2026-11-03T10:00' } });
+    await waitFor(() => expect(within(d).getByTestId('vfx-task-assignee').querySelectorAll('option').length).toBe(2));
+    fireEvent.change(within(d).getByTestId('vfx-task-assignee'), { target: { value: 'u2' } });
+    fireEvent.click(within(d).getByTestId('vfx-task-save'));
+    await waitFor(() => expect(fu.task).toHaveBeenCalledWith({ transcriptId: 'tr9', type: 'health_safety', priority: 'urgent', dueLocal: '2026-11-03T10:00', assignedUserId: 'u2', note: null }));
+    expect(await screen.findByText('Task created on the task board.')).toBeInTheDocument();
+    fireEvent.click(within((await screen.findAllByTestId('vfx-row'))[0]).getByTestId('vfx-act-dismiss'));
+    const dd = await screen.findByTestId('vfx-dismiss');
+    expect(within(dd).getByTestId('vfx-dismiss-save')).toBeDisabled();
+    fireEvent.change(within(dd).getByTestId('vfx-dismiss-reason'), { target: { value: 'customer already rebooked' } });
+    fireEvent.click(within(dd).getByTestId('vfx-dismiss-save'));
+    await waitFor(() => expect(fu.dismiss).toHaveBeenCalledWith({ transcriptId: 'tr9', type: 'health_safety', reason: 'customer already rebooked' }));
+  });
+  it('an empty list says WHY: no calls is not "every call is resolved"', async () => {
+    fu.summary.mockResolvedValue(fuSum({ counters: { open: 0, urgent: 0, inTask: 0, overdue: 0, resolved30d: 0 }, urgent: [], emptyReason: 'no_calls' }));
+    fu.items.mockResolvedValue(fuPage([]));
+    renderFu();
+    expect(await screen.findByText(/No transcribed calls yet/)).toBeInTheDocument();
+    expect(screen.queryByText(/every flagged call has been handled/)).toBeNull();
+  });
+  it('tabs, search and the read-only check', async () => {
+    fu.check.mockResolvedValue({ id: 'h', overall: 'FAILED', reused: false, checkedAt: '2026-11-02T14:00:00Z', checks: [{ key: 'urgent_reviewed', state: 'FAILED', count: 1 }] });
+    renderFu();
+    await screen.findAllByTestId('vfx-row');
+    fireEvent.click(screen.getByTestId('vfx-tab-resolved'));
+    await waitFor(() => expect(fu.items).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'resolved', page: 1 })));
+    fireEvent.change(screen.getByTestId('vfx-search'), { target: { value: '0142' } });
+    fireEvent.submit(screen.getByTestId('vfx-search').closest('form')!);
+    await waitFor(() => expect(fu.items).toHaveBeenLastCalledWith(expect.objectContaining({ q: '0142' })));
+    fireEvent.click(screen.getByTestId('vfx-check'));
+    expect(await screen.findByTestId('vfx-chk-urgent_reviewed')).toHaveTextContent('Failed');
+  });
+  it('is Vietnamese', async () => {
+    await setLanguage('vi');
+    try {
+      const { container } = renderFu();
+      await screen.findAllByTestId('vfx-row'); await screen.findByTestId('vfx-urgent');
+      expect(leftoverEnglish(container, ['Linh Pham', 'Desk Mai']).join(' | ')).toBe('');
+    } finally { await act(async () => { await setLanguage('en'); }); }
   });
 });
 
 import { POSAIVoiceTranscriptionSettingsScreen } from './POSAIVoiceTranscriptionSettingsScreen';
-import { MemoryRouter } from 'react-router-dom';
-import { within, act } from '@testing-library/react';
-import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
-import { leftoverEnglish } from './viScan.testkit';
 // Voice Transcription Settings guide (Nov 2 2026): changed fields + version; sensitive changes confirmed with their impact;
 // a stale save explained; the status row from real rows; Records; the read-only check.
 const saved = { transcriptionEnabled: true, retentionDays: 365, retainRaw: false, consentAnnouncementVersion: 'v1', version: 3, updatedAt: '2026-11-01T10:00:00Z', saved: true };

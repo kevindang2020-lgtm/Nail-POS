@@ -7239,6 +7239,8 @@ export interface DB {
   voice_transcription_settings_history: VoiceTranscriptionSettingsHistoryTable;
   voice_transcript_access_events: VoiceTranscriptAccessEventsTable;
   voice_settings_health_runs: VoiceSettingsHealthRunsTable;
+  voice_followup_reviews: VoiceFollowupReviewsTable;
+  voice_followup_health_runs: VoiceFollowupHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
@@ -8040,6 +8042,13 @@ export interface VoiceTranscriptionSettingsHistoryTable {   // migration 774 —
 }
 export interface VoiceTranscriptAccessEventsTable {   // migration 774 — every raw (pre-redaction) text view, written before it is shown
   id: Generated<string>; tenant_id: string; branch_id: string | null; transcript_id: string; kind: Generated<string>; actor_user_id: string | null; actor_role: string | null; created_at: Generated<Ts>;
+}
+export interface VoiceFollowupReviewsTable {   // migration 775 — append-only staff decision per extracted call item (newest row wins)
+  id: Generated<string>; tenant_id: string; branch_id: string | null; transcript_id: string; item_type: string; decision: string; follow_up_id: string | null;
+  reason: string | null; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface VoiceFollowupHealthRunsTable {   // migration 775 — read-only "Check Voice Follow-Up System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface VoiceSettingsHealthRunsTable {   // migration 774 — read-only "Check Voice Transcription Settings" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
