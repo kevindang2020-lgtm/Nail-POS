@@ -456,7 +456,7 @@ function MessageDialog({ row, tz, onClose, nav }: { row: MtUsageRow; tz?: string
       footer={<div className="mt-dlg-foot">
         {row.customerId ? <button type="button" className="fk-btn" onClick={() => nav(`/tenant/customers?customer=${encodeURIComponent(row.customerId!)}`)}>{tx('mt.msg.customer')}</button> : null}
         {row.threadId ? <button type="button" className="fk-btn" onClick={() => nav(`/tenant/communications/inbox?thread=${encodeURIComponent(row.threadId!)}`)}>{tx('mt.msg.conversation')}</button> : null}
-        {row.appointmentId ? <button type="button" className="fk-btn" onClick={() => nav(`/tenant/booking?appointment=${encodeURIComponent(row.appointmentId!)}`)}>{tx('mt.msg.booking')}</button> : null}
+        {row.appointmentId ? <button type="button" className="fk-btn" onClick={() => nav(`/booking?appointment=${encodeURIComponent(row.appointmentId!)}`)}>{tx('mt.msg.booking')}</button> : null}
         <button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></div>}>
       <dl className="mt-facts"><dt>{tx('mt.usage.customer')}</dt><dd>{row.customerName ?? '—'} {row.recipient ? <span className="sub">{row.recipient}</span> : null}</dd>
         <dt>{tx('mt.usage.time')}</dt><dd>{when(row.createdAt, tz)}</dd><dt>{tx('mt.usage.send')}</dt><dd><Chip s={row.sendOutcome} label={tx('mt.so.' + row.sendOutcome)} />{row.reason ? <span className="sub"> ({row.reason})</span> : null}</dd>

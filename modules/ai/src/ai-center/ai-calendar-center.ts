@@ -302,7 +302,7 @@ export class AiCalendarCenter {
       communications: { reminders: reminders.map((r) => ({ state: r.state, channel: r.channel, intendedAt: iso(r.intended_send_at), forStart: iso(r.appt_start_at) })),
         messages: msgs.map((m) => ({ channel: m.channel, purpose: m.purpose ?? null, state: m.status === 'failed' ? 'failed' : m.delivered_at ? 'delivered' : m.provider_status ? 'provider_accepted' : 'unknown', at: iso(m.created_at) })) },
       auditTrail: audit.map((x) => ({ module: x.module, action: x.action, summary: x.summary, at: iso(x.occurred_at) })),
-      links: { openBooking: `/booking?date=${a.appt_day}&appointmentId=${a.id}`, customer: c ? `/tenant/customers/${c.id}` : null, technicianSchedule: a.technician_id ? `/booking?date=${a.appt_day}&technicianId=${a.technician_id}` : null },
+      links: { openBooking: `/booking?date=${a.appt_day}&appointmentId=${a.id}`, customer: c ? `/tenant/customers/profiles?customerId=${c.id}` : null, technicianSchedule: a.technician_id ? `/booking?date=${a.appt_day}&technicianId=${a.technician_id}` : null },
     };
   }
 

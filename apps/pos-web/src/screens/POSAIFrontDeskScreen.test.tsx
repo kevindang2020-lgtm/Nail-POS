@@ -40,7 +40,7 @@ describe('POSAIFrontDeskScreen', () => {
     render(<MemoryRouter><POSAIFrontDeskScreen /></MemoryRouter>);
     await waitFor(() => expect(screen.getByText('Live Desk')).toBeInTheDocument());
     expect(screen.getAllByText('Degraded').length).toBeGreaterThan(0);
-    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Active').filter((el) => el.getAttribute('role') !== 'tab')).toHaveLength(0);   // the 'Active' FILTER TAB is not an agent state
   });
   it('Create Agent saves a draft through the API with a request key', async () => {
     render(<MemoryRouter><POSAIFrontDeskScreen /></MemoryRouter>);

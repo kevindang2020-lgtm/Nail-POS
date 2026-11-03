@@ -192,7 +192,7 @@ export function POSAIFrontDeskScreen() {
       {creating ? <CreateDialog onClose={() => setCreating(false)} onCreated={(a) => { setCreating(false); setNewId(a.id); setNotice(t('aifd.created')); setF((o) => ({ ...o, page: 1 })); refreshAll(); setWizardId(a.id); }} /> : null}
       {wizardId ? <Wizard id={wizardId} isOwner={isOwner} onClose={() => { setWizardId(null); refreshAll(); }} onActivate={(a) => setAct({ kind: 'activate', agent: a })} /> : null}
       {overlay ? <AgentOverlay id={overlay} manage={manage} isOwner={isOwner} onClose={() => setOverlay(null)} onEdit={(id) => { setOverlay(null); setWizardId(id); }}
-        onAct={(a) => setAct(a)} onDuplicated={(a) => { setOverlay(null); setNewId(a.id); setNotice(t('aifd.duplicated')); refreshAll(); }} onOpenBooking={() => nav('/tenant/booking')} onOpenCalls={() => nav('/tenant/ai/calls')} /> : null}
+        onAct={(a) => setAct(a)} onDuplicated={(a) => { setOverlay(null); setNewId(a.id); setNotice(t('aifd.duplicated')); refreshAll(); }} onOpenBooking={() => nav('/booking')} onOpenCalls={() => nav('/tenant/ai/receptionist/calls')} /> : null}
       {act ? <ActionDialog act={act} isOwner={isOwner} onClose={() => setAct(null)} onDone={(msg) => { setAct(null); setOverlay(null); setNotice(msg); refreshAll(); }} /> : null}
     </div>
   );

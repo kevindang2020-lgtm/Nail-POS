@@ -83,7 +83,7 @@ export const WORKFLOW_CATALOG: WorkflowInfo[] = [
     source: 'Staff pick any ACTIVE salon template (or a published platform template) per message. Variables are filled from the conversation\'s customer when the template is inserted; the message records the template version.' },
   { key: 'appointment_reminder', label: 'Appointment reminders', channels: ['sms', 'email'], bindable: true, categories: ['appointment_reminder'], route: '/tenant/communications/reminders', handoff: 'Appointment Reminders guide (lead times, ladder, quiet hours stay there).',
     source: 'Built-in reminder text (customer messages are English only). With an active binding the bound template is sent instead; if a value is missing the built-in text is used for that message.' },
-  { key: 'reschedule_cancellation', label: 'Reschedule / cancellation texts', channels: ['sms'], bindable: false, categories: ['reschedule_cancellation'], route: '/tenant/booking', handoff: 'Booking (does not read bindings yet).',
+  { key: 'reschedule_cancellation', label: 'Reschedule / cancellation texts', channels: ['sms'], bindable: false, categories: ['reschedule_cancellation'], route: '/booking', handoff: 'Booking (does not read bindings yet).',
     source: 'Built-in text in Booking ("Your appointment has been moved…" / "…has been cancelled").' },
   { key: 'booking_confirmation', label: 'Booking confirmations', channels: ['sms', 'email'], bindable: false, categories: ['booking_confirmation'], route: null, handoff: 'Booking / Booking Phone Verification guides.',
     source: 'No booking-confirmation message is sent by the code today (nothing to bind).' },

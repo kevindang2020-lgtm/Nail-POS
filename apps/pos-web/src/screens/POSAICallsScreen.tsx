@@ -57,7 +57,8 @@ export function POSAICallsScreen() {
   const [list, setList] = useState<any>(null); const [listErr, setListErr] = useState<string | null>(null); const [loading, setLoading] = useState(true);
   const [cal, setCal] = useState<null | 'kpi' | 'calls'>(null);
   const [asst, setAsst] = useState<any>(null); const [asstPage, setAsstPage] = useState(1); const [asstErr, setAsstErr] = useState<string | null>(null);
-  const [open, setOpen] = useState<string | null>(null);
+  // ?call=<id> (from Reception Copilot) opens that call's details
+  const [open, setOpen] = useState<string | null>(() => { const c = sp.get('call'); return c && /^[0-9a-f-]{36}$/i.test(c) ? c : null; });
   const [dialog, setDialog] = useState<null | 'health' | 'recon'>(null);
   const [lastCheck, setLastCheck] = useState<any>(null);
 

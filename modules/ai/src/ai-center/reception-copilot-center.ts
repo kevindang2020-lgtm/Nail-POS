@@ -446,7 +446,7 @@ export class ReceptionCopilotCenter {
     try {
       const q = this.queue && b ? await this.queue.queueSummary(ctx) : null;
       if (q?.available && q.unassigned > 0) items.push({ id: 'queue:unassigned', kind: 'queue', priority: 1, at: null, reason: `${q.unassigned} waiting customer(s) have no technician.`,
-        evidence: `Tech Queue: ${q.waiting} waiting, longest wait ${q.longestWaitMinutes ?? '—'} min`, proposal: { label: 'Open Tech Queue', link: '/tenant/queue', actionType: null, prefill: null } });
+        evidence: `Tech Queue: ${q.waiting} waiting, longest wait ${q.longestWaitMinutes ?? '—'} min`, proposal: { label: 'Open Tech Queue', link: '/queue', actionType: null, prefill: null } });
     } catch (e) { unreadable.push(`Tech Queue (${String((e as Error)?.message ?? e).slice(0, 80)})`); }   // reported, never an invented item
     const soon = (await sql<Row>`select id, customer_name, customer_phone, start_time s, created_at from pos_tech_appointments
         where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and status = any(${['booked', 'confirmed']}::text[]) and appt_date = (now() at time zone ${tz})::date
@@ -455,11 +455,11 @@ export class ReceptionCopilotCenter {
     for (const a of soon) items.push({ id: `appt:${a.id}`, kind: 'appointment_soon', priority: 2, at: null, reason: `${a.customer_name || 'A customer'} is due at ${a.s} and has not arrived.`,
       evidence: `appointment ${String(a.id).slice(0, 8)} · booked`, proposal: a.customer_phone && E164.test(String(a.customer_phone))
         ? { label: 'Prepare a reminder text', link: null, actionType: 'send_message', prefill: { to: a.customer_phone, body: `Hi ${String(a.customer_name || '').split(' ')[0] || 'there'}, a reminder of your appointment today at ${a.s}. See you soon!` } }
-        : { label: 'Open the appointment', link: `/tenant/booking`, actionType: null, prefill: null } });
+        : { label: 'Open the appointment', link: `/booking`, actionType: null, prefill: null } });
     const calls = (await sql<Row>`select id, provider_call_id, coalesce(started_at, created_at) at from voice_call_outcomes where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b})
         and follow_up_required and coalesce(started_at, created_at) > now() - interval '24 hours' order by coalesce(started_at, created_at), id limit 10`.execute(this.db)).rows;
     for (const c of calls) items.push({ id: `call:${c.id}`, kind: 'unanswered_call', priority: 1, at: iso(c.at), reason: 'An AI phone call needs a person to call back.',
-      evidence: `call ${c.provider_call_id ?? String(c.id).slice(0, 8)} · follow-up required`, proposal: { label: 'Open the call', link: `/tenant/ai/calls?call=${c.id}`, actionType: null, prefill: null } });
+      evidence: `call ${c.provider_call_id ?? String(c.id).slice(0, 8)} · follow-up required`, proposal: { label: 'Open the call', link: `/tenant/ai/receptionist/calls?call=${c.id}`, actionType: null, prefill: null } });
     const clashes = (await sql<Row>`select a.id, b2.id other, coalesce(t.full_name, '') tech, a.start_time s from pos_tech_appointments a
         join pos_tech_appointments b2 on b2.tenant_id = a.tenant_id and b2.technician_id = a.technician_id and b2.appt_date = a.appt_date and b2.id > a.id
           and b2.status = any(${ACTIVE_APPT}::text[]) and b2.start_time::time < a.end_time::time and b2.end_time::time > a.start_time::time
@@ -474,10 +474,10 @@ export class ReceptionCopilotCenter {
         and created_at > now() - interval '24 hours' order by created_at, id limit 10`.execute(this.db)).rows;
     for (const f of fails) items.push({ id: `action:${f.id}`, kind: 'failed_action', priority: 2, at: iso(f.created_at), reason: `A Copilot action did not complete: ${f.summary ?? f.action_type}.`,
       evidence: `error ${f.error_code ?? 'unknown outcome'}`, proposal: { label: 'Review in activity', link: null, actionType: null, prefill: null } });
-    const sms = (await sql<Row>`select id, created_at, failure_reason from notifications where tenant_id = ${T} and channel = 'sms' and status = 'failed' and created_at > now() - interval '24 hours'
+    const sms = (await sql<Row>`select id, customer_id, created_at, failure_reason from notifications where tenant_id = ${T} and channel = 'sms' and status = 'failed' and created_at > now() - interval '24 hours'
         order by created_at, id limit 10`.execute(this.db)).rows;
     for (const s of sms) items.push({ id: `sms:${s.id}`, kind: 'failed_text', priority: 3, at: iso(s.created_at), reason: 'A text message failed.',
-      evidence: `notification ${String(s.id).slice(0, 8)} · ${s.failure_reason ?? 'no reason recorded'}`, proposal: { label: 'Open Notifications', link: `/tenant/communications/notifications?timeline=${s.id}`, actionType: null, prefill: null } });
+      evidence: `notification ${String(s.id).slice(0, 8)} · ${s.failure_reason ?? 'no reason recorded'}`, proposal: { label: 'Open Notifications', link: s.customer_id ? `/tenant/communications/notifications?timeline=${s.customer_id}` : '/tenant/communications/notifications', actionType: null, prefill: null } });
     items.sort((x, y) => x.priority - y.priority || String(x.at ?? '').localeCompare(String(y.at ?? '')));
     return { asOf: new Date().toISOString(), items: items.map((i) => ({ ...i, approvalRequired: true })), sources: ['Tech Queue', 'appointments', 'AI phone calls', 'Copilot actions', 'text messages'], unreadable };
   }
@@ -515,7 +515,7 @@ export class ReceptionCopilotCenter {
       copilotActions: acts.map((a) => ({ id: a.id, type: a.action_type, summary: a.summary, state: a.state, errorCode: a.error_code ?? null, at: iso(a.created_at) })),
       consent: { marketingSms: !!c.marketing_sms_opt_in, marketingEmail: !!c.marketing_email_opt_in, smsOptOut: opt ? { scope: opt.scope ?? null, at: iso(opt.opted_out_at) } : null },
       audit: audit.map((a) => ({ action: a.action, summary: a.summary, at: iso(a.occurred_at) })),
-      links: { openBooking: `/booking/new?customerId=${c.id}&from=copilot`, profile: `/tenant/customers/${c.id}`, communications: `/tenant/communications/notifications?customerId=${c.id}` },
+      links: { openBooking: `/booking/new?customerId=${c.id}&from=copilot`, profile: `/tenant/customers/profiles?customerId=${c.id}`, communications: `/tenant/communications/notifications?timeline=${c.id}` },
     };
   }
 }

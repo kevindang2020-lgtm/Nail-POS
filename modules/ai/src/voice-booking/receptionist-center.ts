@@ -259,7 +259,7 @@ export class ReceptionistCenter {
     const step = (key: string, label: string, state: 'verified' | 'configured' | 'blocked' | 'incomplete', detail: string, route: string | null) => ({ key, label, state, detail, route });
     const steps = [
       step('business_setup', 'Confirm business hours & services', st('biz.setup') === 'READY' ? 'verified' : 'incomplete', checks.find((c) => c.id === 'biz.setup')!.detail, '/tenant/ai/receptionist/business-setup'),
-      step('booking_rules', 'Confirm booking rules', st('bk.verify') === 'READY' ? 'verified' : 'configured', checks.find((c) => c.id === 'bk.verify')!.detail, '/tenant/booking/verification'),
+      step('booking_rules', 'Confirm booking rules', st('bk.verify') === 'READY' ? 'verified' : 'configured', checks.find((c) => c.id === 'bk.verify')!.detail, '/tenant/communications/phone-verification'),
       step('integration_key', 'Issue an integration key', st('key.active') === 'READY' ? 'verified' : st('key.active') === 'FAILED' ? 'blocked' : 'incomplete', checks.find((c) => c.id === 'key.active')!.detail, null),
       step('voice_agent', 'Create the voice agent', st('rt.agent') === 'READY' ? 'verified' : st('rt.key') === 'FAILED' ? 'blocked' : st('rt.agent') === 'WARNING' ? 'configured' : 'incomplete', checks.find((c) => c.id === 'rt.agent')!.detail, '/tenant/ai/receptionist/front-desk'),
       step('phone_number', 'Connect a phone number', st('tw.route') === 'READY' ? 'verified' : st('tw.account') === 'READY' ? 'configured' : 'incomplete', checks.find((c) => c.id === 'tw.route')!.detail, '/tenant/communications/text-messaging-setup'),
