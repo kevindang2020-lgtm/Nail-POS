@@ -8346,11 +8346,13 @@ export interface AiBusinessSavedQuestionsTable {
   preset: string | null; compare_preset: string | null; question: string | null; sharing_scope: string;
   created_at: Ts; last_used_at: TsNull;
 }
+// archived_at (mig 782): a rule with evaluation history is archived, never deleted
 export interface AiBusinessAlertsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; created_by_user_id: string;
   title: string; metric_id: string; operator: string; threshold: number; preset: string;
   min_sample_size: number; frequency: string; channel: string; active: boolean;
   created_at: Ts; last_checked_at: TsNull; last_triggered_at: TsNull;
+  archived_at: Generated<TsNull>;
 }
 // migration 781 (AI Business Alerts guide, Nov 3 2026): one row per rule evaluation; a triggered row may be acknowledged
 export interface AiBusinessAlertEventsTable {

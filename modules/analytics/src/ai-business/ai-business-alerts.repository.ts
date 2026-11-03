@@ -10,6 +10,8 @@ export interface AlertContext { tenantId: string; branchId: string; userId: stri
 
 export interface BusinessAlert {
   id: string;
+  /** the rule's branch (null = whole salon) — it is evaluated for THIS scope, not the caller's */
+  branchId?: string | null;
   title: string;
   metricId: AlertMetric;
   operator: AlertOperator;

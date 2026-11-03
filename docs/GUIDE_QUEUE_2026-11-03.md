@@ -46,7 +46,7 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 4. ✅ FIXED — `'\D'` inside `sql` templates becomes `D` — phone search in phone center, inbox, templates.
 5. ✅ FIXED — Email Delivery Rate drops bounced (failed) emails from the denominator.
 6. ✅ FIXED — AI Business "why did revenue change" compares this month with this month.
-7. Business alerts: pause/delete not branch-scoped; evaluate uses caller's branch; min sample 0 allowed.
+7. ✅ FIXED — Business alerts: pause/delete not branch-scoped; evaluate uses caller's branch; min sample 0 allowed.
 8. Receptionist settings: failed read then save overwrites stored settings with defaults.
 9. EOD follow-ups: tech message edit bypasses "Allow tech to edit message = Off".
 10. Follow-up queue / EOD "Rebooked" counts cancelled and no-show appointments.

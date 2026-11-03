@@ -19,7 +19,7 @@ const id = (n: number) => `78100000-0000-4000-8000-${String(n).padStart(12, '0')
 const T = id(1), B = id(2), X = id(4), OWNER = id(10), C = id(20);
 const PERMS = ['pos.ai_business.view', 'pos.reports.view', 'pos.reports.financial_view'];
 const ctx = (o: any = {}) => ({ tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', permissions: PERMS, ...o });
-let pg: any; let db: any; let bc: BusinessCenter; let n = 0;
+let pg: any; let db: any; let bc: BusinessCenter; let n = 0; let alertsSvc: AiBusinessAlertsService;
 const q = async (text: string, params: unknown[] = []) => (await pg.query(text, params)).rows as any[];
 async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e: any) { return e instanceof BusinessCenterError ? e.code : (e?.code ?? e?.message); } }
 async function paid(cents: number, daysAgo = 0) {
@@ -47,6 +47,7 @@ beforeAll(async () => {
   const alerts = new AiBusinessAlertsService(new KyselyAlertsRepository(db), new AiBusinessAlertEvaluator({
     getRevenueSummary: (c, p) => revenue.getRevenueSummary(c, p) as any, getAppointmentMetrics: (c, p) => appointments.getAppointmentMetrics(c, p) as any, getCustomerGrowth: async () => ({ retentionRatePercent: 0, activeCustomers: 0 }),
   }));
+  alertsSvc = alerts;
   bc = new BusinessCenter(db, { reports, alerts, revenue, appointments, sales });
 }, 180_000);
 
@@ -135,6 +136,28 @@ describe('AI Business Alerts', () => {
     const x: any = await bc.alertExplain(ctx(), h.items[0].id);
     expect(x).toMatchObject({ kind: 'revenue_bridge', readOnly: true, causation: 'not_proven' });
     expect(x.explanation).toBeTruthy();
+  });
+  it('AL-05 (Nov 3 audit) a rule is evaluated for ITS branch; another branch cannot pause / delete it; delete keeps history; minimum sample ≥ 1', async () => {
+    const B2 = id(3);
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Second','active','UTC') on conflict do nothing`, [B2, T]);
+    const t2 = (await q(`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents, ticket_number, paid_at, created_at) values ($1,$2,$3,'paid',50000,50000,'B2-1',now(),now()) returning id`, [T, B2, C]))[0].id;
+    await q(`insert into payments (tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, surcharge_cents, status) values ($1,$2,$3,'card',50000,0,0,'approved')`, [T, B2, t2]);
+    const asBranch: any = await bc.alertEvaluate(ctx(), rule);
+    const asOwner: any = await bc.alertEvaluate(ctx({ branchId: '' }), rule);
+    expect(asOwner.value).toBe(asBranch.value);                       // Branch 2's $500 sale is not this branch's result
+    const other = ctx({ branchId: B2 });
+    expect(await code(alertsSvc.update(other, rule, { active: false }))).not.toBe('ok');
+    expect(await code(alertsSvc.remove(other, rule))).not.toBe('ok');
+    expect((await q(`select active, archived_at from ai_business_alerts where id = $1`, [rule]))[0]).toMatchObject({ active: true, archived_at: null });
+    const before = (await q(`select count(*)::int as n from ai_business_alert_events where alert_id = $1`, [rule]))[0].n;
+    await alertsSvc.remove(ctx(), rule);
+    expect((await q(`select count(*)::int as n from ai_business_alert_events where alert_id = $1`, [rule]))[0].n).toBe(before);
+    expect((await q(`select archived_at from ai_business_alerts where id = $1`, [rule]))[0].archived_at).not.toBeNull();
+    expect((await alertsSvc.list(ctx())).map((r) => r.id)).not.toContain(rule);
+    const zero = await alertsSvc.create(ctx(), { title: 'Zero sample', metricId: 'net_sales', operator: 'lt', threshold: 1, preset: 'today', minSampleSize: 0 } as any);
+    expect(zero.minSampleSize).toBe(1);
+    await alertsSvc.remove(ctx(), zero.id);                           // never evaluated: really deleted
+    expect((await q(`select count(*)::int as n from ai_business_alerts where id = $1`, [zero.id]))[0].n).toBe(0);
   });
   it('AL-04 anomaly: too few comparable weekdays → insufficient history, never a guess', async () => {
     const a: any = await bc.alertAnomaly(ctx());

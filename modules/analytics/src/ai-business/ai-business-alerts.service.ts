@@ -30,7 +30,8 @@ export class AiBusinessAlertsService {
     if (typeof input?.threshold !== 'number' || !Number.isFinite(input.threshold) || input.threshold < 0) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Threshold must be a non-negative number'), 'THRESHOLD_INVALID');
     if (input.channel && !CHANNELS.includes(input.channel)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported channel');
     if (input.frequency && !FREQUENCIES.includes(input.frequency)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported frequency');
-    const minSampleSize = input.minSampleSize != null ? Math.max(0, Math.floor(input.minSampleSize)) : 5;
+    // at least 1: with 0 an empty period (no tickets) passed the sample check and "fell below" on a fake $0 (Nov 3 audit)
+    const minSampleSize = input.minSampleSize != null ? Math.max(1, Math.floor(input.minSampleSize)) : 5;
     return this.repo.create(a, { ...input, title, metricId: input.metricId as AlertMetric, operator: input.operator as AlertOperator, minSampleSize });
   }
 
@@ -55,7 +56,9 @@ export class AiBusinessAlertsService {
     const a = this.actx(ctx);
     const alert = await this.repo.get(a, id);
     if (!alert) throw withCode(new AiBusinessError(AiBusinessErrorCode.METRIC_NOT_FOUND, 'Alert not found'), 'ALERT_NOT_FOUND');
-    const evalResult = await this.evaluator.evaluate(ctx, alert);
+    // Nov 3 audit: the rule's own scope — a salon-wide owner evaluating a branch rule used to store salon-wide numbers as that branch's result
+    const scope: AiBusinessContext = alert.branchId !== undefined ? { ...ctx, branchId: alert.branchId ?? '' } : ctx;
+    const evalResult = await this.evaluator.evaluate(scope, alert);
     await this.repo.markChecked(a, id, evalResult.triggered);
     return evalResult;
   }

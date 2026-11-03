@@ -300,7 +300,7 @@ export class BusinessCenter {
       where a.tenant_id = ${T} and a.id = ${id}::uuid and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0];
     if (!a) throw new BusinessCenterError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
     const ev = await this.d.alerts.evaluateNow(ctx, id);
-    const { tz } = await this.today(ctx);
+    const { tz } = await this.today({ ...ctx, branchId: a.branch_id ? String(a.branch_id) : ctx.branchId });
     const range = presetRangeOf(String(a.preset), new Date(this.now()), tz);
     return this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('ai-business-alert:' || ${id}))`.execute(trx);
