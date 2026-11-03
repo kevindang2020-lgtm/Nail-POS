@@ -468,7 +468,8 @@ export class AiUsageScreenRepository {
       const x: any = u.get(c.code) ?? {};
       rows.push({ code: c.code, name: c.name, category: c.category, state: c.state, storedStatus: c.storedStatus, trialEndsAt: c.trial.endsAt, cancelledAt: c.cancelledAt, globallyEnabled: c.globallyEnabled,
         gate, forYou, oldLabel: old, oldCountedRunning: old != null, unit: c.usage.unit, monthUsage: N(x.amount), monthEvents: N(x.ok), monthErrors: N(x.errors), monthBlocked: N(x.blocked),
-        lastSuccessAt: iso(x.last_ok), lastErrorAt: iso(x.last_error), mismatch: gate.allowed !== ['active', 'trialing'].includes(c.state) });
+        lastSuccessAt: iso(x.last_ok), lastErrorAt: iso(x.last_error), limitReached: gate.reason === 'limit_exceeded',
+        mismatch: gate.reason === 'limit_exceeded' ? false : gate.allowed !== ['active', 'trialing'].includes(c.state) });
     }
     const count = (f: (r: any) => boolean) => rows.filter(f).length;
     const mode = String(env.AI_ENTITLEMENT_ENFORCEMENT ?? '').trim().toLowerCase();
@@ -480,7 +481,7 @@ export class AiUsageScreenRepository {
         canRunNow: count((r) => r.gate.allowed), catalog: rows.length },
       staleTrialRows: count((r) => r.storedStatus === 'trialing' && r.state === 'trial_expired'),
       monthEvents: rows.reduce((a, r) => a + r.monthEvents, 0), monthBlocked: rows.reduce((a, r) => a + r.monthBlocked, 0), monthErrors: rows.reduce((a, r) => a + r.monthErrors, 0),
-      gateMismatches: count((r) => r.mismatch),
+      gateMismatches: count((r) => r.mismatch), limitReached: count((r) => r.limitReached),
       enforcement: { modelCalls: 'always', featureRoutes: mode === 'enforce' ? 'enforce' : mode === 'off' ? 'off' : 'observe' },
       rows,
     };

@@ -189,6 +189,30 @@ describe('§15 usage history', () => {
   });
 });
 
+describe('AI Center reconcile (guide 1a93f016)', () => {
+  it('explains the old Active/On Trial/Running counts; the gate agrees with every honest state', async () => {
+    const r = await repo.reconcile(ctx, { AI_ENTITLEMENT_ENFORCEMENT: 'observe' } as any);
+    expect(r.old.onTrial).toBe(r.rows.filter((x: any) => x.storedStatus === 'trialing').length);
+    expect(r.old.running).toBe(r.old.active + r.old.onTrial);
+    const lapsed = r.rows.find((x: any) => x.code === 'ai_business_assistant');
+    expect(lapsed).toMatchObject({ storedStatus: 'trialing', state: 'trial_expired', oldLabel: 'trial', oldCountedRunning: true });
+    expect(lapsed.gate.allowed).toBe(false);
+    expect(r.staleTrialRows).toBeGreaterThanOrEqual(1);
+    expect(r.rows.find((x: any) => x.code === 'ai_reception_copilot').gate.allowed).toBe(false);
+    expect(r.rows.filter((x: any) => x.mismatch).map((x: any) => [x.code, x.state, x.gate.reason])).toEqual([]);
+    expect(r.gateMismatches).toBe(0);
+    expect(r.rows.find((x: any) => x.code === 'ai_checkout_upsell_assistant')).toMatchObject({ state: 'active', limitReached: true });
+    expect(r.enforcement).toEqual({ modelCalls: 'always', featureRoutes: 'observe' });
+    expect(r.rows.some((x: any) => x.code === 'ai_marketing_assistant' && x.monthEvents >= 0)).toBe(true);
+    const other = await repo.reconcile(ctx2, {} as any);
+    expect(other.rows.find((x: any) => x.code === 'ai_business_assistant')?.storedStatus ?? null).not.toBe('trialing');
+    const chk = await repo.check(ctx);
+    const keys = (chk as any).checks.map((c: any) => c.key);
+    expect(keys).toEqual(expect.arrayContaining(['gate_matches_state', 'feature_routes_gated']));
+    expect((chk as any).checks.find((c: any) => c.key === 'gate_matches_state').state).toBe('PASSED');
+  });
+});
+
 describe('§16 global switch', () => {
   it('the access gate enforces it; changing it needs a reason and the current version', async () => {
     const access = new KyselyAiAccessRepo(db);
