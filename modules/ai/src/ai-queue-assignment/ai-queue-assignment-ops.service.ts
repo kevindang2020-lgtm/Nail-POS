@@ -24,7 +24,7 @@ import type { QueueOpsReadPort } from './ai-queue-assignment-ops.repository';
 import type { OpsEmitterPort } from './ai-queue-assignment-ops.notifications';
 import type { QueueAssignmentEntitlementPort } from './ai-queue-assignment-entitlement';
 import { QueueAssignmentContext, QueueAssignmentForbiddenError, QueueAssignmentValidationError, QueueAssignmentDisabledError } from './ai-queue-assignment.dto';
-import { utcDate } from '@aipowersalon/date-time';
+import { utcDate, localDateTimeToEpochMs, addDays } from '@aipowersalon/date-time';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 export class QueueOpsConflictError extends Error { constructor(m: string, readonly currentVersion?: number) { super(m); this.name = 'QueueOpsConflictError'; } }
@@ -35,10 +35,12 @@ const DAY = 86_400_000;
 export const MAX_RANGE_DAYS = 92;
 
 /** from / to (ISO or YYYY-MM-DD; `to` is exclusive, a bare date means the end of that day); default the last 7 days. */
-export function parseRange(from?: string, to?: string, nowMs = Date.now()): { from: string; to: string } {
+/** A bare YYYY-MM-DD is a SALON day (Nov 3 audit: it was read as UTC midnight); the end day is included whole. */
+export function parseRange(from?: string, to?: string, nowMs = Date.now(), tz: string | null = null): { from: string; to: string } {
   const p = (v: string | undefined, end: boolean): number | null => {
     if (!v) return null;
     const bare = /^\d{4}-\d{2}-\d{2}$/.test(v);
+    if (bare && tz) { const t = localDateTimeToEpochMs(end ? addDays(v, 1) : v, '00:00', tz); if (Number.isFinite(t)) return t; }
     const t = Date.parse(bare ? `${v}T00:00:00Z` : v);
     if (!Number.isFinite(t)) throw withCode(new QueueAssignmentValidationError('Dates must look like 2026-10-01.'), 'DATE_INVALID');
     return bare && end ? t + DAY : t;
@@ -173,7 +175,7 @@ export class QueueOpsService {
     byHour: { hour: number; served: number; avgWaitMinutes: number | null; decisions: number; autoAssigned: number }[]; alerts: { total: number; autoResolved: number; byType: Record<string, number> } }> {
     this.need(ctx, 'ai_queue_assignment.view');
     await this.assertEnabled(ctx.tenantId);
-    const range = parseRange(q.from, q.to, this.now());
+    const range = parseRange(q.from, q.to, this.now(), await this.tz(ctx.tenantId, ctx.branchId));
     const tz = await this.tz(ctx.tenantId, ctx.branchId);
     const [dec, waitsRaw, alerts, names] = await Promise.all([this.read.decisions(ctx.tenantId, ctx.branchId, range.from, range.to), this.read.servedWaits(ctx.tenantId, ctx.branchId, range.from, range.to),
       this.read.alerts(ctx.tenantId, ctx.branchId, range.from, range.to), this.read.technicianNames(ctx.tenantId)]);
@@ -193,7 +195,7 @@ export class QueueOpsService {
     await this.assertEnabled(ctx.tenantId);
     const type = q.type ?? 'decisions';
     if (!['decisions', 'alerts', 'history'].includes(type)) throw new QueueAssignmentValidationError('Export type must be decisions, alerts or history.');
-    const range = parseRange(q.from, q.to, this.now());
+    const range = parseRange(q.from, q.to, this.now(), await this.tz(ctx.tenantId, ctx.branchId));
     const names = await this.read.technicianNames(ctx.tenantId);
     const n = (id: string | null) => (id ? names[id] ?? '' : '');
     let headers: string[]; let rows: (string | number | boolean | null)[][];
@@ -216,7 +218,7 @@ export class QueueOpsService {
   async usage(ctx: QueueAssignmentContext, q: { from?: string; to?: string } = {}) {
     this.need(ctx, 'ai_queue_assignment.view');
     await this.assertEnabled(ctx.tenantId);
-    const range = parseRange(q.from, q.to, this.now());
+    const range = parseRange(q.from, q.to, this.now(), await this.tz(ctx.tenantId, ctx.branchId));
     const u = await this.read.usage(ctx.tenantId, range.from, range.to);
     return { range, ...u, explanations: u.byAction['queue.explain_recommendation'] ?? 0 };
   }

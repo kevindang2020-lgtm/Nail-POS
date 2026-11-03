@@ -60,6 +60,8 @@ describe('analytics — auto-assignments are not staff acceptances (bug 13)', ()
     expect(() => parseRange('2026-10-07', '2026-10-01')).toThrow(/before/);
     expect(() => parseRange('2026-01-01', '2026-10-01')).toThrow(/at most/);
     expect(parseRange('2026-10-01', '2026-10-01')).toEqual({ from: '2026-10-01T00:00:00.000Z', to: '2026-10-02T00:00:00.000Z' });
+    // Nov 3 audit: bare days are SALON days (New York, EDT −4h) and the end day is included whole
+    expect(parseRange('2026-10-01', '2026-10-01', Date.now(), 'America/New_York')).toEqual({ from: '2026-10-01T04:00:00.000Z', to: '2026-10-02T04:00:00.000Z' });
   });
 });
 

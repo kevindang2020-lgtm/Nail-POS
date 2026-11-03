@@ -100,11 +100,15 @@ export class KyselyQueueAssignmentRepository implements QueueAssignmentRepositor
     return rows(r).map((row: any): DecisionRecord => this.mapDecision(row));
   }
   async queryDecisions(ctx: QueueAssignmentContext, filter: { from?: string; to?: string; limit?: number }): Promise<DecisionRecord[]> {
+    // Nov 3 audit: a bare YYYY-MM-DD is a SALON day and the "to" day is included whole (it compared created_at <= 'YYYY-MM-DD',
+    // i.e. midnight UTC, dropping the whole last day); newest first with a stable tie-break.
+    const DAY = /^\d{4}-\d{2}-\d{2}$/;
+    const tz = sql`coalesce((select b.timezone from branches b where b.id = ${ctx.branchId} and b.tenant_id = ${ctx.tenantId}), 'UTC')`;
     let q = sql`select * from queue_assignment_decisions where tenant_id=${ctx.tenantId} and branch_id=${ctx.branchId}`;
-    if (filter.from) q = sql`${q} and created_at >= ${filter.from}`;
-    if (filter.to) q = sql`${q} and created_at <= ${filter.to}`;
+    if (filter.from) q = DAY.test(filter.from) ? sql`${q} and created_at >= (${filter.from}::date::timestamp at time zone ${tz})` : sql`${q} and created_at >= ${filter.from}`;
+    if (filter.to) q = DAY.test(filter.to) ? sql`${q} and created_at < ((${filter.to}::date + 1)::timestamp at time zone ${tz})` : sql`${q} and created_at <= ${filter.to}`;
     const lim = Math.min(filter.limit ?? 1000, 5000);
-    const r: any = await sql`${q} order by created_at desc limit ${lim}`.execute(this.db);
+    const r: any = await sql`${q} order by created_at desc, id desc limit ${lim}`.execute(this.db);
     return rows(r).map((row: any): DecisionRecord => this.mapDecision(row));
   }
   async lastServedTechnician(ctx: QueueAssignmentContext): Promise<string | null> {

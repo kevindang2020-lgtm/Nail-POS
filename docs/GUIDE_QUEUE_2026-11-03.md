@@ -52,7 +52,7 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 10. ✅ FIXED — Follow-up queue / EOD "Rebooked" counts cancelled and no-show appointments.
 11. ✅ FIXED — Dead links to /tenant/booking, /tenant/queue, /tenant/ai/calls, /tenant/customers/:id fall to /overview.
 12. ✅ FIXED — English catalog shows literal … / →.
-13. AI Queue decision history drops the whole "to" day.
+13. ✅ FIXED — AI Queue decision history drops the whole "to" day.
 14. Notification retry: after_fix failures outside SMS skip the fixed-since check.
 15. Booking screen help panel asks the model for slots with no schedule data (invented availability).
 16. Health-check 30-second reuse shared across branches (calendar, scheduling, copilot, follow-ups, calls).

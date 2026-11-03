@@ -106,7 +106,7 @@ export class InMemoryQueueAssignmentRepository implements QueueAssignmentReposit
   async queryDecisions(ctx: QueueAssignmentContext, filter: { from?: string; to?: string; limit?: number }): Promise<DecisionRecord[]> {
     let rows = this.decisions.filter((r) => r.tenantId === ctx.tenantId && r.branchId === ctx.branchId);
     if (filter.from) rows = rows.filter((r) => r.createdAt >= filter.from!);
-    if (filter.to) rows = rows.filter((r) => r.createdAt <= filter.to!);
+    if (filter.to) { const day = /^\d{4}-\d{2}-\d{2}$/.test(filter.to); rows = rows.filter((r) => (day ? r.createdAt.slice(0, 10) <= filter.to! : r.createdAt <= filter.to!)); }   // a bare end day is included whole
     rows = rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     return filter.limit ? rows.slice(0, filter.limit) : rows;
   }
