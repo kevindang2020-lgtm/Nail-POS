@@ -22,12 +22,14 @@ import { VoiceSettingsCenter } from './voice-settings-center';
 import { VoiceSettingsCenterController, VOICE_SETTINGS_CENTER } from './voice-settings-center.controller';
 import { VoiceFollowUpsCenter } from './voice-followups-center';
 import { VoiceFollowUpsCenterController, VOICE_FOLLOWUPS_CENTER } from './voice-followups-center.controller';
+import { VoiceCallsCenter } from './voice-calls-center';
+import { VoiceCallsCenterController, VOICE_CALLS_CENTER } from './voice-calls-center.controller';
 import { voiceRetentionSweepCronEnabled } from './ai-voice-transcription-retention.scheduler';
 import { runsBackgroundJob } from '@aipowersalon/config';
 
 @Module({
   imports: [AiModule, VoiceBookingModule],
-  controllers: [VoiceTranscriptionController, VoiceTranscriptionWebhookController, VoiceTranscriptionSuperAdminController, VoiceSettingsCenterController, VoiceFollowUpsCenterController],
+  controllers: [VoiceTranscriptionController, VoiceTranscriptionWebhookController, VoiceTranscriptionSuperAdminController, VoiceSettingsCenterController, VoiceFollowUpsCenterController, VoiceCallsCenterController],
   providers: [
     VoiceAuthGuard,
     SuperAdminGuard,
@@ -70,6 +72,8 @@ import { runsBackgroundJob } from '@aipowersalon/config';
         });
       }, inject: [DATABASE, VoiceTranscriptionService, 'VoiceTranscriptionEntitlementPort', 'TranscriptionProviderPort'] },
     // Voice Transcription Follow-Ups guide (Nov 2026): the review queue over extracted call items — null without a database
+    // Voice Transcription Search + Call History guides (Nov 3 2026): one read-only center for both pages + the system check
+    { provide: VOICE_CALLS_CENTER, useFactory: (db: AppDatabase) => (db ? new VoiceCallsCenter(db as never) : null), inject: [DATABASE] },
     { provide: VOICE_FOLLOWUPS_CENTER, useFactory: (db: AppDatabase) => (db ? new VoiceFollowUpsCenter(db as never) : null), inject: [DATABASE] },
   ],
   exports: [VoiceTranscriptionService],

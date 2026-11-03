@@ -343,7 +343,8 @@ export class KyselyVoiceTranscriptionRepository implements VoiceTranscriptionRep
     const limit = Math.min(100, Math.max(1, query.limit ?? 50));
     // Structured filters. Keyword terms match ONLY redacted text / summary / intents — raw_text is never referenced.
     const conds: any[] = [sql`t.tenant_id = ${ctx.tenantId}`, sql`t.deleted_at is null`];
-    if (query.branchId) conds.push(sql`t.branch_id = ${query.branchId}`);
+    // a branch sees its own calls and the salon-wide ones (no branch) — the same scope as the calls center
+    if (query.branchId) conds.push(sql`(t.branch_id = ${query.branchId} or t.branch_id is null)`);
     if (query.customerId) conds.push(sql`t.customer_id = ${query.customerId}`);
     if (query.direction) conds.push(sql`t.direction = ${query.direction}`);
     if (query.language) conds.push(sql`t.primary_language = ${query.language}`);
@@ -383,7 +384,7 @@ export class KyselyVoiceTranscriptionRepository implements VoiceTranscriptionRep
     const limit = Math.min(100, Math.max(1, f.limit ?? 50));
     let q = this.db.selectFrom('call_transcripts').selectAll().where('tenant_id', '=', ctx.tenantId).where('deleted_at', 'is', null);
     if (f.status) q = q.where('status', '=', f.status);
-    if (f.branchId) q = q.where('branch_id', '=', f.branchId);
+    if (f.branchId) { const b = f.branchId; q = q.where((eb) => eb.or([eb('branch_id', '=', b), eb('branch_id', 'is', null)])); }
     if (f.customerId) q = q.where('customer_id', '=', f.customerId);
     if (f.direction) q = q.where('direction', '=', f.direction);
     // Constitution 5 §46: keyset on (created_at, id) — newest first, id breaks ties. The cursor carries created_at as

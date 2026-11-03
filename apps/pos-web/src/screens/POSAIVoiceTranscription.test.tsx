@@ -3,19 +3,21 @@ import { render, screen, fireEvent, waitFor, within, act } from '@testing-librar
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { leftoverEnglish } from './viScan.testkit';
-const m = vi.hoisted(() => ({ overview: vi.fn(), list: vi.fn(), detail: vi.fn(), intelligence: vi.fn(), generateSummary: vi.fn(), search: vi.fn(), getSettings: vi.fn(), updateSettings: vi.fn() }));
+const m = vi.hoisted(() => ({ overview: vi.fn(), detail: vi.fn(), intelligence: vi.fn(), generateSummary: vi.fn(), getSettings: vi.fn(), updateSettings: vi.fn() }));
 const c = vi.hoisted(() => ({ summary: vi.fn(), records: vi.fn(), check: vi.fn() }));   // the settings page's read side (guide, Nov 2026)
 // Voice Transcription Follow-Ups guide (Nov 2026): the review queue (replaces GET unresolved — the client method is gone)
 const fu = vi.hoisted(() => ({ summary: vi.fn(), items: vi.fn(), history: vi.fn(), task: vi.fn(), dismiss: vi.fn(), reopen: vi.fn(), check: vi.fn() }));
 const staff = vi.hoisted(() => ({ staff: vi.fn() }));
-vi.mock('../api/posAIVoiceTranscriptionApi', () => ({ posAIVoiceTranscriptionApi: { ...m, center: c, followUps: fu } }));
+// Search + Call History guides (Nov 3 2026): one calls center — the old list / search client methods are gone
+const vc = vi.hoisted(() => ({ summary: vi.fn(), list: vi.fn(), detail: vi.fn(), check: vi.fn() }));
+vi.mock('../api/posAIVoiceTranscriptionApi', () => ({ posAIVoiceTranscriptionApi: { ...m, center: c, followUps: fu, calls: vc } }));
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: staff }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await (orig() as any)), useParams: () => ({ id: 'tr1' }) }));
 import { POSAIVoiceTranscriptionScreen } from './POSAIVoiceTranscriptionScreen';
 import { POSAIVoiceTranscriptionHistoryScreen } from './POSAIVoiceTranscriptionHistoryScreen';
 import { POSAIVoiceTranscriptionSearchScreen } from './POSAIVoiceTranscriptionSearchScreen';
 import { POSAIVoiceTranscriptionDetailScreen } from './POSAIVoiceTranscriptionDetailScreen';
-beforeEach(() => { for (const g of [m, c, fu, staff] as Record<string, any>[]) Object.values(g).forEach((f: any) => f.mockReset()); });
+beforeEach(() => { for (const g of [m, c, fu, staff, vc] as Record<string, any>[]) Object.values(g).forEach((f: any) => f.mockReset()); });
 
 describe('Overview', () => {
   it('renders KPIs + status breakdown', async () => {
@@ -32,23 +34,96 @@ describe('Overview', () => {
   });
 });
 
-describe('History', () => {
-  it('lists calls with a link to detail', async () => {
-    m.list.mockResolvedValue({ items: [{ id: 'tr1', provider: 'retell', providerCallId: 'c1', direction: 'inbound', handler: 'ai', status: 'completed', primaryLanguage: 'en', durationSeconds: 65, segmentCount: 4, createdAt: '2026-07-07T00:00:00Z' }] });
-    render(<POSAIVoiceTranscriptionHistoryScreen />);
-    expect(await screen.findByText('1:05')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Open' })).toHaveAttribute('href', '/tenant/ai/voice-transcription/transcripts/tr1');
+const vcSum = (o: any = {}) => ({ counters: { calls: 3, calls7d: 2, processing: 0, failed7d: 0, notTranscribed: 0 }, emptyReason: null, customersVisible: true, ...o });
+const vcRow = (o: any = {}) => ({ id: 'tr1', callRef: 'c1', callAt: '2026-11-02T15:00:00Z', direction: 'inbound', durationSeconds: 65, statusGroup: 'completed', hasSummary: true,
+  customer: 'Linh Pham', customerLinked: true, phoneLast4: '0142', matchType: null, excerpt: null, intents: ['new_booking'], followUp: { state: 'open', open: 1, inTask: 0, items: 1 }, ...o });
+const vcPage = (items: any[], o: any = {}) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' }, ...o });
+const wrap = (el: any) => render(<MemoryRouter>{el}</MemoryRouter>);
+
+describe('Call History', () => {
+  it('lists calls newest first from the start, with customer, status, follow-up; no old list call', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()]));
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    const row = await screen.findByTestId('vcx-row');
+    expect(row).toHaveTextContent('Linh Pham'); expect(row).toHaveTextContent('•••0142'); expect(row).toHaveTextContent('Transcribed');
+    expect(row).toHaveTextContent('Book'); expect(row).toHaveTextContent('Open');
+    expect(vc.list).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'newest', page: 1, pageSize: 25 }));
+    expect(screen.getByRole('heading', { name: 'Voice Transcription · Call History' })).toBeInTheDocument();
+    // the old list / search (no pages, the browser's branch) are retired from the client
+    const actual = await vi.importActual<any>('../api/posAIVoiceTranscriptionApi');
+    expect(actual.posAIVoiceTranscriptionApi.search).toBeUndefined();
+    expect(actual.posAIVoiceTranscriptionApi.list).toBeUndefined();
+    expect(typeof actual.posAIVoiceTranscriptionApi.calls.list).toBe('function');
+  });
+  it('an empty history says WHY: no calls is not "nothing matches"; a filter that matches nothing says so', async () => {
+    vc.summary.mockResolvedValue(vcSum({ counters: { calls: 0, calls7d: 0, processing: 0, failed7d: 0, notTranscribed: 0 }, emptyReason: 'no_calls' })); vc.list.mockResolvedValue(vcPage([]));
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    expect(await screen.findByText(/No calls have been transcribed yet/)).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('vcx-direction'), { target: { value: 'outbound' } });
+    expect(await screen.findByText('No calls match this search or these filters.')).toBeInTheDocument();
+  });
+  it('filters, presets, rows and pages reach the server; Status and Direction are still there', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()], { total: 60, totalPages: 3 }));
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    await screen.findByTestId('vcx-row');
+    fireEvent.change(screen.getByTestId('vcx-status'), { target: { value: 'failed' } });
+    fireEvent.change(screen.getByTestId('vcx-intent'), { target: { value: 'refund' } });
+    fireEvent.click(screen.getByTestId('vcx-preset-last_30'));
+    await waitFor(() => expect(vc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'failed', intent: 'refund', preset: 'last_30', page: 1 })));
+    fireEvent.change(screen.getByTestId('vcx-rows'), { target: { value: '50' } });
+    await waitFor(() => expect(vc.list).toHaveBeenLastCalledWith(expect.objectContaining({ pageSize: 50 })));
+  });
+  it('View opens the details overlay: redacted lines with speakers, the request marked "not a booking", follow-ups; Close keeps the list', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([vcRow()]));
+    vc.detail.mockResolvedValue({ call: { id: 'tr1', callRef: 'c1', callAt: '2026-11-02T15:00:00Z', direction: 'inbound', durationSeconds: 65, statusGroup: 'completed', language: 'en', branch: 'Main' },
+      customer: { linked: true, id: 'cu1', name: 'Linh Pham', phoneLast4: '0142', visible: true },
+      transcript: [{ seq: 1, speaker: 'customer', text: 'Can I book a gel manicure Saturday?', uncertain: false }, { seq: 2, speaker: 'ai_receptionist', text: 'Let me check.', uncertain: true }],
+      summary: { quick: 'Wants a gel manicure Saturday', detailed: null, generatedAt: '2026-11-02T15:01:00Z' }, intents: [],
+      request: { services: ['gel manicure'], date: 'Saturday', time: null, technician: null, state: 'requested_unverified' },
+      followUps: [{ type: 'callback_requested', state: 'open', taskId: null }], canWorkFollowUps: true });
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(await screen.findByTestId('vcx-view'));
+    const lines = await screen.findAllByTestId('vcx-line');
+    expect(vc.detail).toHaveBeenCalledWith('tr1');
+    expect(lines[0]).toHaveTextContent('Customer'); expect(lines[1]).toHaveTextContent('unclear speech');
+    expect(screen.getByTestId('vcx-call-request')).toHaveTextContent('not a booking');
+    expect(screen.getByTestId('vcx-call-follow')).toHaveTextContent('Callback requested');
+    fireEvent.click(screen.getByTestId('vcx-call-close'));
+    expect(screen.queryByTestId('vcx-call')).toBeNull();
+    expect(screen.getByTestId('vcx-row')).toBeInTheDocument();
+  });
+  it('Check Voice Transcription System: every check with its part and last pass; a failed request is an error, never a pass', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockResolvedValue(vcPage([]));
+    vc.check.mockResolvedValueOnce({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', reused: false, checks: [{ key: 'no_card_numbers_searchable', component: 'privacy', state: 'FAILED', count: 1, lastPassedAt: null },
+      { key: 'calls_arriving', component: 'ingestion', state: 'PASSED', lastPassedAt: '2026-11-03T05:00:00Z' }] }).mockRejectedValueOnce({ status: 403 });
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    fireEvent.click(screen.getByTestId('vcx-check'));
+    const k = await screen.findByTestId('vcx-chk-no_card_numbers_searchable');
+    expect(k).toHaveTextContent('Failed'); expect(k).toHaveTextContent('Part: Privacy'); expect(k).toHaveTextContent('Has not passed yet');
+    expect(screen.getByTestId('vcx-chk-calls_arriving')).toHaveTextContent('Last passed:');
+    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByTestId('vcx-check'));
+    expect(await screen.findByText(/cannot view call transcripts/)).toBeInTheDocument();
   });
 });
 
 describe('Search', () => {
-  it('searches and shows redacted snippets', async () => {
-    m.search.mockResolvedValue({ items: [{ header: { id: 'tr1', direction: 'inbound', status: 'completed', createdAt: '2026-07-07T00:00:00Z' }, snippet: '…book a gel manicure…', matchedIn: ['transcript'] }] });
-    render(<POSAIVoiceTranscriptionSearchScreen />);
+  it('keeps the original first state; searches redacted text and shows what matched + the excerpt', async () => {
+    vc.summary.mockResolvedValue(vcSum());
+    vc.list.mockResolvedValue(vcPage([vcRow({ matchType: 'transcript', excerpt: '…book a gel manicure…' })]));
+    wrap(<POSAIVoiceTranscriptionSearchScreen />);
+    expect(screen.getByTestId('vcx-not-started')).toHaveTextContent('Enter a search term to find calls.');
+    expect(vc.list).not.toHaveBeenCalled();
     fireEvent.change(screen.getByLabelText('Search transcripts'), { target: { value: 'manicure' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
-    await waitFor(() => expect(m.search).toHaveBeenCalledWith({ q: 'manicure' }));
-    expect(await screen.findByText(/book a gel manicure/)).toBeInTheDocument();
+    await waitFor(() => expect(vc.list).toHaveBeenCalledWith(expect.objectContaining({ q: 'manicure', sort: 'best' })));
+    expect(await screen.findByTestId('vcx-excerpt')).toHaveTextContent('book a gel manicure');
+    expect(screen.getByTestId('vcx-row')).toHaveTextContent('Transcript');
+  });
+  it('a refused range shows the guide text', async () => {
+    vc.summary.mockResolvedValue(vcSum()); vc.list.mockRejectedValue({ status: 400, code: 'VC_INVALID_PERIOD' });
+    wrap(<POSAIVoiceTranscriptionHistoryScreen />);
+    expect(await screen.findByText(/From date must be on or before the To date/)).toBeInTheDocument();
   });
 });
 

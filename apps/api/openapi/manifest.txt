@@ -400,6 +400,9 @@ GET /pos/ai-scheduling-optimizer/settings  realm=staff  auth=session  domain=ai 
 GET /pos/ai-scheduling-optimizer/settings/versions  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/time-off  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-scheduling-optimizer/usage  realm=staff  auth=session  domain=ai  perm=ai_scheduling.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/calls  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/calls/detail  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-voice-transcription/calls/summary  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/center/records  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/center/summary  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-voice-transcription/follow-ups/items  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
@@ -2476,6 +2479,7 @@ POST /pos/ai-scheduling-optimizer/recommendations/{id}/return  realm=staff  auth
 POST /pos/ai-scheduling-optimizer/recommendations/{id}/rollback  realm=staff  auth=session  domain=ai  perm=ai_scheduling.apply  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-scheduling-optimizer/runs  realm=staff  auth=session  domain=ai  perm=ai_scheduling.generate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-scheduling-optimizer/time-off  realm=staff  auth=session  domain=ai  perm=technicians.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-voice-transcription/calls/check  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/center/check  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/consent  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_settings  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-voice-transcription/follow-ups/check  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.view_transcripts  guards=RolePermissionGuard,TenantAuthGuard

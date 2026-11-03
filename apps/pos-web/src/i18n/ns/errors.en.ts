@@ -522,6 +522,8 @@ export const ERRORS_EN = {
   'errors.VT_CONFIRM_REQUIRED': "This change needs confirmation.",
   'errors.FC_INVALID_PERIOD': "Choose a From and a To date; the From date must be on or before the To date.",
   'errors.FC_RUN_NOT_FOUND': "That forecast run was not found.",
+  'errors.VC_INVALID_PERIOD': "Choose a From and a To date; the From date must be on or before the To date.",
+  'errors.VC_CALL_NOT_FOUND': "That call was not found.",
   'errors.VT_SETTINGS_UNAVAILABLE': "The transcription settings could not be read.",
   'errors.FOLLOWUP_ASSIGNEE_INVALID': "Choose an active staff member who can work follow-ups in this branch.",
   'errors.FOLLOWUP_LINK_INVALID': "That customer, call or appointment is not in this salon.",

@@ -25,15 +25,14 @@ export const posAIVoiceTranscriptionApi = {
     records: (q: Record<string, string | number | undefined> = {}) => api.get<any>(`/pos/ai-voice-transcription/center/records`, Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>),
     check: () => api.post<any>(`/pos/ai-voice-transcription/center/check`, {}),
   },
-  list: (q: Record<string, string | number | undefined> = {}) => {
-    const qs = Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-    return api.get(`/pos/ai-voice-transcription/transcripts${qs ? `?${qs}` : ''}`);
+  // Search + Call History (Nov 3 2026): one center — the old transcripts list / search (no pages, browser branch) are retired
+  calls: {
+    summary: () => api.get<any>(`/pos/ai-voice-transcription/calls/summary`),
+    list: (q: Record<string, string | number | undefined> = {}) => api.get<any>(`/pos/ai-voice-transcription/calls`, Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>),
+    detail: (id: string) => api.get<any>(`/pos/ai-voice-transcription/calls/detail`, { id }),
+    check: () => api.post<any>(`/pos/ai-voice-transcription/calls/check`, {}),
   },
   detail: (id: string) => api.get(`/pos/ai-voice-transcription/transcripts/${id}`),
   intelligence: (id: string) => api.get(`/pos/ai-voice-transcription/transcripts/${id}/intelligence`),
   generateSummary: (id: string) => api.post(`/pos/ai-voice-transcription/transcripts/${id}/summary`, {}),
-  search: (q: Record<string, string | number | undefined> = {}) => {
-    const qs = Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-    return api.get(`/pos/ai-voice-transcription/transcripts/search${qs ? `?${qs}` : ''}`);
-  },
 };

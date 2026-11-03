@@ -426,6 +426,10 @@
   "forecasting_health_runs": {
    "domain": "AI",
    "reason": "AI Analytics & Forecasting guide (Nov 2 2026, migration 776): read-only Check AI Analytics & Forecasting System runs"
+  },
+  "voice_system_health_runs": {
+   "domain": "AI",
+   "reason": "Voice Transcription Search + Call History guides (Nov 3 2026, migration 777): read-only Check Voice Transcription System runs"
   }
  }
 }

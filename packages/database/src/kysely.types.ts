@@ -7241,6 +7241,7 @@ export interface DB {
   voice_settings_health_runs: VoiceSettingsHealthRunsTable;
   voice_followup_reviews: VoiceFollowupReviewsTable;
   voice_followup_health_runs: VoiceFollowupHealthRunsTable;
+  voice_system_health_runs: VoiceSystemHealthRunsTable;
   forecasting_health_runs: ForecastingHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
@@ -8049,6 +8050,9 @@ export interface VoiceFollowupReviewsTable {   // migration 775 — append-only 
   reason: string | null; actor_user_id: string | null; created_at: Generated<Ts>;
 }
 export interface ForecastingHealthRunsTable {   // migration 776 — read-only "Check AI Analytics & Forecasting System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface VoiceSystemHealthRunsTable {   // migration 777 — read-only "Check Voice Transcription System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface VoiceFollowupHealthRunsTable {   // migration 775 — read-only "Check Voice Follow-Up System" runs

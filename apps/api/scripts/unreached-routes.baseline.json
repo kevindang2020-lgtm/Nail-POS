@@ -27,6 +27,7 @@
   "GET /pos/ai-inventory/positions/:productId",
   "GET /pos/ai-inventory/recipes",
   "GET /pos/ai-inventory/recipes/:id",
+  "GET /pos/ai-voice-transcription/transcripts",
   "GET /pos/ai-voice-transcription/transcripts/:id/raw",
   "GET /pos/ai-voice-transcription/unresolved",
   "GET /pos/booking/integration-status",

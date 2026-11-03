@@ -14767,3 +14767,286 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `fch.health.d.tenant_isolation.FAILED` | A kept forecast points at another salon's branch. Report this immediately. | Có dự báo đã lưu trỏ tới chi nhánh của tiệm khác. Hãy báo ngay. |
 | `fch.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `fch.health.d.no_side_effects.PASSED` | Forecasts are advice only; this page and this check never book, price or order anything. | Dự báo chỉ để tham khảo; trang này và việc kiểm tra không đặt lịch, đổi giá hay đặt hàng. |
+
+## Voice Transcription Search + Call History (`vcx.*`) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `vcx.check` | Check Voice Transcription System | Kiểm tra hệ thống chép lời cuộc gọi |
+| `vcx.close` | Close | Đóng |
+| `vcx.refresh` | Refresh | Làm mới |
+| `vcx.search` | Search | Tìm |
+| `vcx.clear` | Clear | Xóa bộ lọc |
+| `vcx.loading` | Loading… | Đang tải… |
+| `vcx.rows` | Rows | Số dòng |
+| `vcx.searchPh` | Gel manicure, refund, Saturday, a phone number, a customer name or a call ID | Sơn gel, hoàn tiền, thứ Bảy, số điện thoại, tên khách hoặc mã cuộc gọi |
+| `vcx.searchPhNoCustomer` | Gel manicure, refund, Saturday or a call ID | Sơn gel, hoàn tiền, thứ Bảy hoặc mã cuộc gọi |
+| `vcx.privacy` | Results show redacted text only. Card numbers, security codes and other private details are removed before anything is shown, and the original wording is never searched. | Kết quả chỉ hiện nội dung đã che. Số thẻ, mã bảo mật và thông tin riêng tư được xóa trước khi hiển thị, và lời gốc không bao giờ được tìm kiếm. |
+| `vcx.safety` | Read-only: nothing here calls, texts, books or changes a call. Follow-ups are decided by staff on the Follow-Ups page. | Chỉ xem: trang này không gọi, nhắn tin, đặt lịch hay sửa cuộc gọi. Việc cần theo dõi do nhân viên quyết định ở trang Theo dõi. |
+| `vcx.loadFailed` | The calls could not be loaded. Try again or run the system check — this is not "no calls". | Không tải được cuộc gọi. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có cuộc gọi". |
+| `vcx.err.forbidden` | Your role cannot view call transcripts. | Vai trò của bạn không xem được bản chép lời cuộc gọi. |
+| `vcx.err.VC_INVALID_PERIOD` | Choose a From and a To date; the From date must be on or before the To date. | Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `vcx.err.VC_CALL_NOT_FOUND` | That call was not found. | Không tìm thấy cuộc gọi này. |
+| `vcx.kpi.calls` | Calls | Cuộc gọi |
+| `vcx.kpi.calls7` | Last 7 days | 7 ngày qua |
+| `vcx.kpi.processing` | Still processing | Đang xử lý |
+| `vcx.kpi.failed` | Failed (7 days) | Lỗi (7 ngày) |
+| `vcx.kpi.notTranscribed` | Not transcribed | Không chép lời |
+| `vcx.statusLabel` | Call status | Trạng thái cuộc gọi |
+| `vcx.directionLabel` | Direction | Chiều gọi |
+| `vcx.intentLabel` | What the caller wanted | Khách gọi để |
+| `vcx.followLabel` | Follow-up | Theo dõi |
+| `vcx.languageLabel` | Language | Ngôn ngữ |
+| `vcx.dateLabel` | Date filter means | Ngày lọc theo |
+| `vcx.sortLabel` | Sort | Sắp xếp |
+| `vcx.empty.notStarted` | Enter a search term to find calls. | Nhập từ khóa để tìm cuộc gọi. |
+| `vcx.empty.no_calls` | No calls have been transcribed yet. This is not proof the phone line works — run the system check. | Chưa có cuộc gọi nào được chép lời. Điều này không chứng minh đường dây hoạt động — hãy chạy kiểm tra hệ thống. |
+| `vcx.empty.disabled` | Call transcription is turned off for this salon, so no calls are recorded here. Turn it on in Voice Transcription Settings. | Chép lời cuộc gọi đang tắt cho tiệm này nên không có cuộc gọi nào ở đây. Hãy bật trong Cài đặt chép lời. |
+| `vcx.empty.noMatch` | No calls match this search or these filters. | Không có cuộc gọi nào khớp tìm kiếm hoặc bộ lọc. |
+| `vcx.empty.processingHint` | {n} call(s) are still being processed and will appear when finished. | {n} cuộc gọi đang được xử lý và sẽ hiện khi xong. |
+| `vcx.col.when` | Call date | Ngày gọi |
+| `vcx.col.customer` | Customer | Khách hàng |
+| `vcx.col.call` | Call | Cuộc gọi |
+| `vcx.col.status` | Status | Trạng thái |
+| `vcx.col.match` | Matched | Khớp |
+| `vcx.col.follow` | Follow-up | Theo dõi |
+| `vcx.view` | View | Xem |
+| `vcx.unknownCaller` | Unknown caller | Người gọi chưa rõ |
+| `vcx.customerHidden` | Customer (hidden) | Khách (ẩn) |
+| `vcx.summaryReady` | Summary ready | Đã có tóm tắt |
+| `vcx.noSummary` | No summary yet | Chưa có tóm tắt |
+| `vcx.d.title` | Call details | Chi tiết cuộc gọi |
+| `vcx.d.transcript` | Transcript (redacted) | Bản chép lời (đã che) |
+| `vcx.d.noTranscript` | No transcript for this call. | Cuộc gọi này không có bản chép lời. |
+| `vcx.d.find` | Find in transcript | Tìm trong bản chép lời |
+| `vcx.d.summary` | Summary | Tóm tắt |
+| `vcx.d.generated` | Made {at} | Tạo lúc {at} |
+| `vcx.d.request` | What the caller asked for | Khách đã yêu cầu |
+| `vcx.d.requestNote` | Taken from the words of the call — not a booking. Only the booking calendar confirms an appointment, and a day like "Saturday" must be checked with the customer. | Lấy từ lời trong cuộc gọi — không phải lịch hẹn. Chỉ lịch đặt hẹn mới xác nhận lịch, và ngày như "thứ Bảy" cần hỏi lại khách. |
+| `vcx.d.services` | Services | Dịch vụ |
+| `vcx.d.tech` | Thợ requested | Thợ được yêu cầu |
+| `vcx.d.day` | Day | Ngày |
+| `vcx.d.time` | Time | Giờ |
+| `vcx.d.follow` | Follow-up items | Việc cần theo dõi |
+| `vcx.d.noFollow` | Nothing to follow up was found in this call. | Không có việc cần theo dõi trong cuộc gọi này. |
+| `vcx.d.openFollow` | Open Follow-Ups | Mở trang Theo dõi |
+| `vcx.d.openCustomer` | View customer | Xem khách hàng |
+| `vcx.d.fullPage` | Open full page | Mở trang đầy đủ |
+| `vcx.d.linked` | Linked customer | Khách đã liên kết |
+| `vcx.d.notLinked` | No customer linked — the caller is not guessed from the phone number. | Chưa liên kết khách — không đoán khách từ số điện thoại. |
+| `vcx.d.uncertain` | unclear speech | nghe không rõ |
+| `vcx.d.audited` | Opening a call is recorded in the audit log. | Việc mở cuộc gọi được ghi vào nhật ký. |
+| `vcx.d.duration` | {n} s | {n} giây |
+| `vcx.d.lang` | Language: {l} | Ngôn ngữ: {l} |
+| `vcx.health.running` | Checking… | Đang kiểm tra… |
+| `vcx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `vcx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `vcx.health.readOnly` | Read-only: it never places a call, sends a message, books, refunds, changes a provider setting or downloads a recording. | Chỉ đọc: không gọi điện, nhắn tin, đặt lịch, hoàn tiền, đổi cài đặt nhà cung cấp hay tải ghi âm. |
+| `vcx.health.part` | Part: {c} | Bộ phận: {c} |
+| `vcx.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `vcx.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `vcx.status.all` | All statuses | Mọi trạng thái |
+| `vcx.status.completed` | Transcribed | Đã chép lời |
+| `vcx.status.processing` | Processing | Đang xử lý |
+| `vcx.status.review` | Needs review | Cần xem lại |
+| `vcx.status.failed` | Failed | Lỗi |
+| `vcx.status.not_transcribed` | Not transcribed | Không chép lời |
+| `vcx.status.other` | Other | Khác |
+| `vcx.dir.all` | All directions | Mọi chiều |
+| `vcx.dir.inbound` | Incoming | Gọi đến |
+| `vcx.dir.outbound` | Outgoing | Gọi đi |
+| `vcx.follow.all` | Any follow-up | Mọi trạng thái theo dõi |
+| `vcx.follow.open` | Open | Đang mở |
+| `vcx.follow.in_task` | In a task | Đã thành công việc |
+| `vcx.follow.resolved` | Resolved | Đã xong |
+| `vcx.follow.none` | Nothing to follow up | Không cần theo dõi |
+| `vcx.date.call` | Call date | Ngày gọi |
+| `vcx.date.summary` | Summary date | Ngày tóm tắt |
+| `vcx.date.followup` | Follow-up decision date | Ngày quyết định theo dõi |
+| `vcx.sort.newest` | Newest first | Mới nhất trước |
+| `vcx.sort.oldest` | Oldest first | Cũ nhất trước |
+| `vcx.sort.best` | Best match | Khớp nhất |
+| `vcx.match.call_id` | Call ID | Mã cuộc gọi |
+| `vcx.match.phone` | Phone | Số điện thoại |
+| `vcx.match.customer` | Customer | Khách hàng |
+| `vcx.match.transcript` | Transcript | Bản chép lời |
+| `vcx.match.summary` | Summary | Tóm tắt |
+| `vcx.match.intent` | Intent | Mục đích |
+| `vcx.intent.all` | Any reason | Mọi lý do |
+| `vcx.intent.new_booking` | Book | Đặt lịch |
+| `vcx.intent.reschedule` | Reschedule | Đổi lịch |
+| `vcx.intent.cancellation` | Cancel | Hủy lịch |
+| `vcx.intent.confirmation` | Confirm | Xác nhận |
+| `vcx.intent.availability` | Availability | Hỏi lịch trống |
+| `vcx.intent.pricing` | Prices | Hỏi giá |
+| `vcx.intent.service_info` | Service question | Hỏi dịch vụ |
+| `vcx.intent.technician_request` | Ask for a Thợ | Yêu cầu Thợ |
+| `vcx.intent.hours_location` | Hours or address | Giờ mở cửa hoặc địa chỉ |
+| `vcx.intent.promotion` | Promotion | Khuyến mãi |
+| `vcx.intent.membership` | Hội viên | Hội viên |
+| `vcx.intent.loyalty` | Points | Điểm thưởng |
+| `vcx.intent.payment_issue` | Payment problem | Vấn đề thanh toán |
+| `vcx.intent.refund` | Refund | Hoàn tiền |
+| `vcx.intent.complaint` | Complaint | Phàn nàn |
+| `vcx.intent.repair` | Repair | Sửa móng |
+| `vcx.intent.health_safety` | Health or safety | Sức khỏe hoặc an toàn |
+| `vcx.intent.manager_request` | Manager | Gặp quản lý |
+| `vcx.intent.callback` | Callback | Gọi lại |
+| `vcx.intent.general_question` | General question | Câu hỏi chung |
+| `vcx.intent.other` | Other | Khác |
+| `vcx.item.callback_requested` | Callback requested | Khách muốn gọi lại |
+| `vcx.item.manager_requested` | Asked for a manager | Khách muốn gặp quản lý |
+| `vcx.item.health_safety` | Health or safety concern | Vấn đề sức khỏe hoặc an toàn |
+| `vcx.item.refund_requested` | Refund requested | Khách muốn hoàn tiền |
+| `vcx.item.complaint` | Complaint | Phàn nàn |
+| `vcx.item.pricing_unanswered` | Price question not answered | Câu hỏi giá chưa được trả lời |
+| `vcx.item.other` | Other | Khác |
+| `vcx.speaker.customer` | Customer | Khách |
+| `vcx.speaker.ai_receptionist` | AI receptionist | Lễ tân AI |
+| `vcx.speaker.human_receptionist` | Front desk | Lễ tân |
+| `vcx.speaker.technician` | Thợ | Thợ |
+| `vcx.speaker.manager` | Manager | Quản lý |
+| `vcx.speaker.additional_caller` | Other caller | Người gọi khác |
+| `vcx.speaker.unknown` | Speaker | Người nói |
+| `vcx.preset.all` | All time | Mọi thời gian |
+| `vcx.preset.today` | Today | Hôm nay |
+| `vcx.preset.yesterday` | Yesterday | Hôm qua |
+| `vcx.preset.week` | This week | Tuần này |
+| `vcx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `vcx.preset.month` | This month | Tháng này |
+| `vcx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `vcx.preset.last_month` | Last month | Tháng trước |
+| `vcx.preset.year` | This year | Năm nay |
+| `vcx.preset.custom` | Custom range | Tùy chọn |
+| `vcx.health.PASSED` | Passed | Đạt |
+| `vcx.health.WARNING` | Warning | Cảnh báo |
+| `vcx.health.FAILED` | Failed | Lỗi |
+| `vcx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `vcx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `vcx.comp.provider` | Phone provider | Nhà cung cấp điện thoại |
+| `vcx.comp.ingestion` | Call records | Hồ sơ cuộc gọi |
+| `vcx.comp.recording` | Recording consent | Đồng ý ghi âm |
+| `vcx.comp.transcription` | Transcription | Chép lời |
+| `vcx.comp.privacy` | Privacy | Quyền riêng tư |
+| `vcx.comp.ai_summary` | AI summary | Tóm tắt AI |
+| `vcx.comp.customers` | Customer matching | Ghép khách hàng |
+| `vcx.comp.search` | Search | Tìm kiếm |
+| `vcx.comp.retention` | Deletion and retention | Xóa và lưu trữ |
+| `vcx.comp.security` | Security | Bảo mật |
+| `vcx.health.k.provider_connection` | Phone provider connected | Đã kết nối nhà cung cấp |
+| `vcx.health.d.provider_connection.PASSED` | An active provider key is set up for this salon. | Tiệm có khóa nhà cung cấp đang hoạt động. |
+| `vcx.health.d.provider_connection.WARNING` | Calls exist but no active provider key is set up. Cause: the key was revoked or expired. Fix: create a new key in Voice settings. | Có cuộc gọi nhưng không có khóa nhà cung cấp đang hoạt động. Nguyên nhân: khóa bị thu hồi hoặc hết hạn. Cách xử lý: tạo khóa mới trong cài đặt thoại. |
+| `vcx.health.d.provider_connection.INSUFFICIENT_DATA` | No provider key and no calls yet — the phone line is not connected. | Chưa có khóa nhà cung cấp và chưa có cuộc gọi — đường dây chưa được kết nối. |
+| `vcx.health.k.calls_arriving` | Calls arriving | Cuộc gọi đang đến |
+| `vcx.health.d.calls_arriving.PASSED` | Calls arrived in the last 7 days. | Có cuộc gọi trong 7 ngày qua. |
+| `vcx.health.d.calls_arriving.WARNING` | No call in the last 7 days. Cause: the provider stopped sending calls, or the line was quiet. Fix: place a test call and check again. | Không có cuộc gọi nào trong 7 ngày qua. Nguyên nhân: nhà cung cấp ngừng gửi, hoặc không ai gọi. Cách xử lý: gọi thử rồi kiểm tra lại. |
+| `vcx.health.d.calls_arriving.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.branch_mapping` | Calls matched to a branch | Cuộc gọi gắn với chi nhánh |
+| `vcx.health.d.branch_mapping.PASSED` | Every call belongs to a branch. | Mọi cuộc gọi đều thuộc một chi nhánh. |
+| `vcx.health.d.branch_mapping.WARNING` | Some calls have no branch while the salon has several, so each branch's list shows them all. Fix: give each branch its own provider key. | Một số cuộc gọi không có chi nhánh trong khi tiệm có nhiều chi nhánh, nên chi nhánh nào cũng thấy. Cách xử lý: mỗi chi nhánh dùng một khóa riêng. |
+| `vcx.health.d.branch_mapping.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.consent` | Recording consent | Đồng ý ghi âm |
+| `vcx.health.d.consent.PASSED` | No call in the last 30 days was skipped for missing or declined consent. | Không có cuộc gọi nào trong 30 ngày qua bị bỏ qua vì thiếu hoặc từ chối đồng ý. |
+| `vcx.health.d.consent.WARNING` | Some calls were not transcribed because consent was missing or declined. This is correct behaviour; check the announcement if it happens often. | Một số cuộc gọi không được chép lời vì thiếu hoặc từ chối đồng ý. Đây là hành vi đúng; hãy xem lại lời thông báo nếu xảy ra thường xuyên. |
+| `vcx.health.d.consent.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.transcription_jobs` | Transcription working | Chép lời hoạt động |
+| `vcx.health.d.transcription_jobs.PASSED` | Calls in the last 7 days were transcribed; none is stuck. | Cuộc gọi 7 ngày qua đã được chép lời; không có cuộc nào bị kẹt. |
+| `vcx.health.d.transcription_jobs.WARNING` | Some calls failed or have been processing for over an hour. Their text and follow-ups may be missing. | Một số cuộc gọi bị lỗi hoặc xử lý quá một giờ. Có thể thiếu nội dung và việc cần theo dõi. |
+| `vcx.health.d.transcription_jobs.FAILED` | More calls failed than succeeded in the last 7 days — the transcription service is likely down. Report this. | Số cuộc gọi lỗi nhiều hơn thành công trong 7 ngày qua — dịch vụ chép lời có thể đang ngưng. Hãy báo lại. |
+| `vcx.health.d.transcription_jobs.INSUFFICIENT_DATA` | No calls in the last 7 days. | Không có cuộc gọi trong 7 ngày qua. |
+| `vcx.health.k.redaction` | Private details removed | Đã che thông tin riêng |
+| `vcx.health.d.redaction.PASSED` | Every finished call had its private details removed. | Mọi cuộc gọi đã xong đều được che thông tin riêng. |
+| `vcx.health.d.redaction.FAILED` | A finished call has not had its private details removed for over an hour. It is hidden from search until fixed. Report this. | Có cuộc gọi đã xong nhưng chưa được che thông tin riêng quá một giờ. Cuộc gọi bị ẩn khỏi tìm kiếm cho đến khi sửa. Hãy báo lại. |
+| `vcx.health.d.redaction.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.no_card_numbers_searchable` | No card numbers searchable | Không tìm được số thẻ |
+| `vcx.health.d.no_card_numbers_searchable.PASSED` | No card-number-like digits are left in the text search and summaries read. | Không còn dãy số giống số thẻ trong nội dung tìm kiếm và tóm tắt. |
+| `vcx.health.d.no_card_numbers_searchable.FAILED` | Text that search reads contains a card-number-like number. Excerpts are re-checked before showing, but report this immediately. | Nội dung tìm kiếm có dãy số giống số thẻ. Đoạn trích được che lại trước khi hiện, nhưng hãy báo ngay. |
+| `vcx.health.d.no_card_numbers_searchable.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.summaries` | Summaries made | Đã có tóm tắt |
+| `vcx.health.d.summaries.PASSED` | Every transcribed call has its summary and follow-up items. | Mọi cuộc gọi đã chép lời đều có tóm tắt và việc cần theo dõi. |
+| `vcx.health.d.summaries.WARNING` | Some transcribed calls have no summary, so their follow-up items are missing. | Một số cuộc gọi đã chép lời chưa có tóm tắt nên thiếu việc cần theo dõi. |
+| `vcx.health.d.summaries.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.customer_matching` | Customer matching | Ghép khách hàng |
+| `vcx.health.d.customer_matching.PASSED` | Calls are linked to a customer only when the link is known; others stay "unknown caller". | Cuộc gọi chỉ được liên kết khi biết chắc khách; còn lại là "người gọi chưa rõ". |
+| `vcx.health.d.customer_matching.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.customer_links_valid` | Customer links valid | Liên kết khách hợp lệ |
+| `vcx.health.d.customer_links_valid.PASSED` | Every linked customer exists in this salon. | Mọi khách đã liên kết đều thuộc tiệm này. |
+| `vcx.health.d.customer_links_valid.FAILED` | A call points at a customer that does not exist or belongs to another salon. Report this. | Có cuộc gọi trỏ tới khách không tồn tại hoặc thuộc tiệm khác. Hãy báo lại. |
+| `vcx.health.k.search_freshness` | Search up to date | Tìm kiếm cập nhật |
+| `vcx.health.d.search_freshness.PASSED` | Search reads the live redacted calls, so a finished call is searchable at once. | Tìm kiếm đọc trực tiếp cuộc gọi đã che, nên cuộc gọi xong tìm được ngay. |
+| `vcx.health.d.search_freshness.INSUFFICIENT_DATA` | No calls yet. | Chưa có cuộc gọi. |
+| `vcx.health.k.deletions_propagated` | Deleted calls gone everywhere | Cuộc gọi đã xóa không còn |
+| `vcx.health.d.deletions_propagated.PASSED` | No deleted call still has text or a summary that could be searched. | Không còn cuộc gọi đã xóa nào giữ nội dung hoặc tóm tắt có thể tìm. |
+| `vcx.health.d.deletions_propagated.FAILED` | A deleted call still has text or a summary stored. Report this. | Có cuộc gọi đã xóa vẫn còn nội dung hoặc tóm tắt. Hãy báo lại. |
+| `vcx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `vcx.health.d.tenant_isolation.PASSED` | Every transcript line belongs to this salon's calls. | Mọi dòng chép lời đều thuộc cuộc gọi của tiệm này. |
+| `vcx.health.d.tenant_isolation.FAILED` | A transcript line points at another salon's call. Report this immediately. | Có dòng chép lời trỏ tới cuộc gọi của tiệm khác. Hãy báo ngay. |
+| `vcx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `vcx.health.d.no_side_effects.PASSED` | This page and this check never call, text, book, refund or change a provider setting. | Trang này và việc kiểm tra không gọi điện, nhắn tin, đặt lịch, hoàn tiền hay đổi cài đặt nhà cung cấp. |
+
+## AI add-on page workspaces (`asx.*`, `rax.*`, …) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `asx.refresh` | Refresh | Làm mới |
+| `asx.search` | Search | Tìm |
+| `asx.clear` | Clear | Xóa bộ lọc |
+| `asx.sort` | Sort | Sắp xếp |
+| `asx.rows` | Rows | Số dòng |
+| `asx.loading` | Loading… | Đang tải… |
+| `asx.close` | Close | Đóng |
+| `asx.forbidden` | Your role cannot see this information. | Vai trò của bạn không xem được thông tin này. |
+| `asx.loadFailed` | This could not be loaded. Try again or run the system check — this is not "nothing here". | Không tải được. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có gì". |
+| `asx.health.running` | Checking… | Đang kiểm tra… |
+| `asx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `asx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `asx.health.readOnly` | Read-only: the check changes nothing, sends nothing and charges nothing. | Chỉ đọc: việc kiểm tra không thay đổi, không gửi và không tính phí gì. |
+| `asx.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `asx.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `asx.health.PASSED` | Passed | Đạt |
+| `asx.health.WARNING` | Warning | Cảnh báo |
+| `asx.health.FAILED` | Failed | Lỗi |
+| `asx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `asx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `asx.preset.all` | All time | Mọi thời gian |
+| `asx.preset.today` | Today | Hôm nay |
+| `asx.preset.yesterday` | Yesterday | Hôm qua |
+| `asx.preset.week` | This week | Tuần này |
+| `asx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `asx.preset.month` | This month | Tháng này |
+| `asx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `asx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `asx.preset.last_month` | Last month | Tháng trước |
+| `asx.preset.year` | This year | Năm nay |
+| `asx.preset.custom` | Custom range | Tùy chọn |
+| `rax.check` | Check AI Review System | Kiểm tra hệ thống đánh giá AI |
+| `rax.open` | Open Reviews & Reputation | Mở Đánh giá & Uy tín |
+| `rax.note` | The assistant only drafts and explains. Every reply is approved by a person and published from Reviews & Reputation; nothing is posted or sent from this page. | Trợ lý chỉ soạn nháp và giải thích. Mọi phản hồi được người duyệt và đăng từ Đánh giá & Uy tín; trang này không đăng hay gửi gì. |
+| `rax.kpi.reviews` | Reviews | Đánh giá |
+| `rax.kpi.avg` | Average rating | Điểm trung bình |
+| `rax.kpi.negative` | Negative | Tiêu cực |
+| `rax.kpi.awaiting` | Replies awaiting approval | Phản hồi chờ duyệt |
+| `rax.kpi.serious` | Open complaints | Phàn nàn đang mở |
+| `rax.kpi.response` | Response rate | Tỷ lệ phản hồi |
+| `rax.list` | Reviews | Danh sách đánh giá |
+| `rax.searchPh` | Review text, reviewer, source or review ID | Nội dung, người đánh giá, nguồn hoặc mã đánh giá |
+| `rax.empty` | No reviews are on record yet. Connect a review source or record feedback in Reviews & Reputation. | Chưa có đánh giá nào. Hãy kết nối nguồn đánh giá hoặc ghi nhận phản hồi trong Đánh giá & Uy tín. |
+| `rax.noMatch` | No reviews match this search or these filters. | Không có đánh giá nào khớp tìm kiếm hoặc bộ lọc. |
+| `rax.col.when` | Date | Ngày |
+| `rax.col.rating` | Rating | Điểm |
+| `rax.col.review` | Review | Đánh giá |
+| `rax.col.source` | Source | Nguồn |
+| `rax.col.reply` | Reply | Phản hồi |
+| `rax.col.complaint` | Complaint | Phàn nàn |
+| `rax.f.response` | Reply state | Trạng thái phản hồi |
+| `rax.f.rating` | Rating | Điểm |
+| `rax.f.complaint` | Complaint | Phàn nàn |
+| `rax.anyRating` | Any rating | Mọi mức điểm |
+| `rax.anyReply` | Any reply state | Mọi trạng thái phản hồi |
+| `rax.anyComplaint` | Any complaint state | Mọi trạng thái phàn nàn |
+| `rax.stars` | {n} stars | {n} sao |
+| `rax.noRating` | No rating | Không có điểm |
+| `rax.sort.newest` | Newest first | Mới nhất trước |
+| `rax.sort.oldest` | Oldest first | Cũ nhất trước |
+| `rax.sort.rating_low` | Lowest rating first | Điểm thấp nhất trước |
+| `rax.sort.rating_high` | Highest rating first | Điểm cao nhất trước |

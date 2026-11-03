@@ -209,10 +209,22 @@ export class VoiceTranscriptionService {
     return (await this.repo.getTranscript(ctx, header.id))!;
   }
 
+  /** Voice Transcription Search + Call History guides (Nov 3 2026): a branch login reads its own branch's calls (and salon-wide
+   *  ones) only — before this a branch user could open any call of the salon by its id. Not found, never "forbidden" (no leak). */
+  private async scopedTranscript(ctx: VoiceTranscriptionContext, id: string) {
+    const h = await this.repo.getTranscript(ctx, id);
+    if (h && ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) && h.branchId && h.branchId !== ctx.branchId) return null;
+    return h;
+  }
+  /** the branch filter a staff list may use: a branch login is pinned to its branch whatever the query says */
+  private branchFor(ctx: VoiceTranscriptionContext, asked?: string): string | undefined {
+    return ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : asked;
+  }
+
   async getTranscript(ctx: VoiceTranscriptionContext, id: string): Promise<{ header: TranscriptHeader; segments: TranscriptSegment[] }> {
     this.need(ctx, 'ai_voice_transcription.view');
     await this.assertEnabled(ctx);
-    const header = await this.repo.getTranscript(ctx, id);
+    const header = await this.scopedTranscript(ctx, id);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     const segments = await this.repo.getSegments(ctx, id);
     return { header, segments };
@@ -223,7 +235,7 @@ export class VoiceTranscriptionService {
   async deleteTranscript(ctx: VoiceTranscriptionContext, id: string, reason: 'tenant_request' | 'customer_request' | 'manual' | 'admin' = 'manual'): Promise<{ deleted: boolean; providerDeleted: boolean }> {
     this.need(ctx, 'ai_voice_transcription.delete');
     await this.assertEnabled(ctx);
-    const header = await this.repo.getTranscript(ctx, id);
+    const header = await this.scopedTranscript(ctx, id);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     if (header.legalHold) throw new VoiceTranscriptionValidationError('LEGAL_HOLD');
     return this.eraseOne({ tenantId: ctx.tenantId, branchId: ctx.branchId }, id, reason, ctx.userId);
@@ -319,21 +331,21 @@ export class VoiceTranscriptionService {
     await this.assertEnabled(ctx);
     // §46: a cursor we cannot read is refused — restarting at the top would repeat rows in an appending list.
     if (f.cursor && !decodeCursor(f.cursor)) throw new VoiceTranscriptionValidationError('cursor is not valid — restart from the first page');
-    return this.repo.listTranscripts(ctx, f);
+    return this.repo.listTranscripts(ctx, { ...f, branchId: this.branchFor(ctx, f.branchId) });
   }
 
   // Tenant-scoped search over REDACTED text + summaries/intents only (raw is never indexed). Redacted snippets only.
   async search(ctx: VoiceTranscriptionContext, query: import('./ai-voice-transcription.repository').SearchQuery) {
     this.need(ctx, 'ai_voice_transcription.view_transcripts');
     await this.assertEnabled(ctx);
-    return this.repo.searchTranscripts(ctx, query);
+    return this.repo.searchTranscripts(ctx, { ...query, branchId: this.branchFor(ctx, query.branchId) });
   }
 
   // Structured call intelligence (deterministic, computed at ingest) — summaries/intents/appointment/unresolved.
   async getIntelligence(ctx: VoiceTranscriptionContext, transcriptId: string) {
     this.need(ctx, 'ai_voice_transcription.view');
     await this.assertEnabled(ctx);
-    const header = await this.repo.getTranscript(ctx, transcriptId);
+    const header = await this.scopedTranscript(ctx, transcriptId);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     return this.repo.getIntelligence(ctx, transcriptId);
   }
@@ -343,7 +355,7 @@ export class VoiceTranscriptionService {
   async generateDetailedSummary(ctx: VoiceTranscriptionContext, transcriptId: string): Promise<{ summary: string; source: 'ai' | 'fallback' }> {
     this.need(ctx, 'ai_voice_transcription.view');
     await this.assertEnabled(ctx);
-    const header = await this.repo.getTranscript(ctx, transcriptId);
+    const header = await this.scopedTranscript(ctx, transcriptId);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     const segments = await this.repo.getSegments(ctx, transcriptId); // redacted text
     const intel = await this.repo.getIntelligence(ctx, transcriptId);
@@ -368,7 +380,7 @@ export class VoiceTranscriptionService {
   async getRawTranscript(ctx: VoiceTranscriptionContext, id: string): Promise<{ seq: number; speakerRole: string; rawText: string | null }[]> {
     this.need(ctx, 'ai_voice_transcription.view_raw');
     await this.assertEnabled(ctx);
-    const header = await this.repo.getTranscript(ctx, id);
+    const header = await this.scopedTranscript(ctx, id);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     if (!header.rawAvailable) throw new VoiceTranscriptionForbiddenError('RAW_NOT_AVAILABLE');
     // Voice Transcription Settings guide (Nov 2026): every raw-text view is logged BEFORE the text is returned; a failed log

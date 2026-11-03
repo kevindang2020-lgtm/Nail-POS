@@ -105,6 +105,7 @@ import { POSIntegrationsScreen } from './screens/POSIntegrationsScreen';
 import { POSDepositReconScreen } from './screens/POSDepositReconScreen';
 import { POSAiAnalyticsScreen } from './screens/POSAiAnalyticsScreen';
 import { POSAiPackageScreen } from './screens/POSAiPackageScreen';
+import { POSAIReviewAssistantScreen } from './screens/POSAIReviewAssistantScreen';
 import { POSAIReceiptScannerScreen } from './screens/POSAIReceiptScannerScreen';
 import { POSUsageLimitsScreen } from './screens/POSUsageLimitsScreen';
 import { POSAccountInvoicesScreen } from './screens/POSAccountInvoicesScreen';
@@ -400,7 +401,7 @@ function POSRoutes() {
         <Route path="tenant/ai/customer-insights" element={<POSAiPackageScreen code="ai_customer_profile_assistant" title={t('pos.ai_customer_insights')} />} />
         <Route path="tenant/ai/checkout-upsell" element={<POSAiPackageScreen code="ai_checkout_upsell_assistant" title={t('pos.ai_checkout_upsell')} />} />
         <Route path="tenant/ai/fraud-protection" element={<POSAiPackageScreen code="ai_fraud_money_protection" title={t('pos.ai_fraud_protection')} />} />
-        <Route path="tenant/ai/reviews" element={<POSAiPackageScreen code="ai_review_reputation_assistant" title={t('pos.ai_reviews_reputation')} />} />
+        <Route path="tenant/ai/reviews" element={<POSAIReviewAssistantScreen />} />
         <Route path="tenant/ai/receipt-scanner" element={<POSAIReceiptScannerScreen />} />
         <Route path="tenant/marketing/sms" element={<POSCampaignCenterScreen defaultChannel="sms" />} />
         <Route path="tenant/marketing/email" element={<POSCampaignCenterScreen defaultChannel="email" />} />

@@ -522,6 +522,8 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.VT_CONFIRM_REQUIRED': "Thay đổi này cần được xác nhận.",
   'errors.FC_INVALID_PERIOD': "Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc.",
   'errors.FC_RUN_NOT_FOUND': "Không tìm thấy lần dự báo này.",
+  'errors.VC_INVALID_PERIOD': "Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc.",
+  'errors.VC_CALL_NOT_FOUND': "Không tìm thấy cuộc gọi này.",
   'errors.VT_SETTINGS_UNAVAILABLE': "Không đọc được cài đặt chép lời cuộc gọi.",
   'errors.FOLLOWUP_ASSIGNEE_INVALID': "Hãy chọn một nhân viên đang làm việc có thể xử lý việc theo dõi ở chi nhánh này.",
   'errors.FOLLOWUP_LINK_INVALID': "Khách hàng, cuộc gọi hoặc lịch hẹn đó không thuộc tiệm này.",
