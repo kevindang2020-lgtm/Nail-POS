@@ -3748,3 +3748,17 @@ span.tq-who{cursor:default}
 /* Customer Intelligence (Nov 2 2026) */
 .cix .link { background: none; border: 0; padding: 0; color: var(--aps-orange); text-decoration: underline; cursor: pointer; min-height: 32px; }
 .cix .rvw-table td .chip { margin-left: 4px; }
+
+/* AI Marketing Assistant family (Nov 3 2026) — seven cards, reach, recommendations, funnel, estimate */
+.amk-kpis { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; margin: 12px 0; }
+@media (max-width: 1400px) { .amk-kpis { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media (max-width: 900px) { .amk-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.amk-recs { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+.amk-rec { border: 1px solid var(--line); border-radius: 12px; padding: 10px; background: var(--panel, #fff); display: flex; flex-direction: column; gap: 4px; }
+.amk-rec-n { font-weight: 700; }
+.amk-funnel { margin-bottom: 12px; }
+.amk-funnel .num, .amk-reach .num { text-align: right; }
+.amk-est { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; font-size: 13px; margin-top: 8px; }
+.amk-steps { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0; }
+.amk-steps .btn.on { background: var(--gold); color: #fff; border-color: var(--gold); }
+.linkish { background: none; border: 0; padding: 0; font: inherit; color: var(--gold-ink, #8a5a17); text-decoration: underline; cursor: pointer; text-align: left; min-height: 32px; }

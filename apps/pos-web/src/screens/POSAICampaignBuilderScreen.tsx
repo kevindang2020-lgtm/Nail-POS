@@ -1,204 +1,130 @@
-// POSAICampaignBuilderScreen.tsx — AI Center → AI Marketing → Campaign Builder (spec §39). A guided workflow
-// that CONNECTS the existing endpoints: audience preview → draft generation → submit (creates a draft campaign
-// + persists the send plan) → approve (schedules it). It never sends — approval only schedules; the gated
-// worker sends. Nothing here bypasses consent, invents an offer, or uses free-form audience queries.
-import { useState, type CSSProperties } from 'react';
+// POSAICampaignBuilderScreen.tsx — AI Center → AI Marketing → Campaign Builder (/tenant/ai/marketing/builder). Campaign Builder guide
+// (Nov 3 2026). Goal → Audience → Message → Budget & cost → Review & save. A Next click NEVER sends, schedules or approves anything.
+//
+// Before: the last step called the AI "submit" and "approve" routes, which created a campaign from a hand-carried audience size and
+// moved it straight to Scheduled — no Campaign Center approval (content hash), no audience snapshot, and the send worker then sent
+// it. Now the last step saves the recommendation as an UNSENT Customer Segments audience (consent-checked on the server) and an
+// UNAPPROVED Campaign Center draft that uses it; an owner or manager reviews, approves and launches it in Campaign Center, where the
+// send-time checks (consent, opt-outs, quiet hours, limits, idempotency) run. Placeholders Campaign Center cannot fill per customer
+// are refused before saving.
+import { useEffect, useMemo, useState } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { ErrorRetry } from '../components/FitKit';
+import { MkFunnel, MkEstimate, MkHealthButton, mt, mkErr, mkMoney, mkNum } from '../components/MarketingKit';
 import { posAIMarketingApi } from '../api/posAIMarketingApi';
-import { reportError } from './reportsCommon';
-import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { fmtDateTime } from '../i18n/format';
-import { growthCode } from './growthLabels';
 
-import { statusLabel } from '../i18n/status-label';
-type Channel = 'sms' | 'email' | 'push';
-type Preview = { total: number; eligible: number; suppressed: number; breakdown: { missingContact: number; optedOut: number } };
-type Draft = { text: string; validation: { requiresRevision: boolean; warnings: string[] } };
-
-const field: CSSProperties = { display: 'flex', flexDirection: 'column', gap: 4, minWidth: 160 };
-const input: CSSProperties = { padding: '6px 8px', borderRadius: 8, border: '1px solid var(--line, #e6ddcd)', background: '#fff' };
-const btn = (primary = true): CSSProperties => ({ padding: '8px 16px', borderRadius: 8, border: primary ? 'none' : '1px solid var(--line, #e6ddcd)', background: primary ? 'var(--gold, #A96F22)' : '#fff', color: primary ? '#fff' : 'inherit', fontWeight: 700, cursor: 'pointer' });
-const n = (x: number) => (x || 0).toLocaleString('en-US');
-
-const STEPS = (): string[] => [tx('growth.campaign.step.goal'), tx('growth.campaign.step.audience'), tx('growth.campaign.step.message'), tx('growth.campaign.step.offer'), tx('growth.campaign.step.schedule'), tx('growth.campaign.step.review')];
+const STEPS = ['goal', 'audience', 'message', 'budget', 'review'] as const;
+type Step = (typeof STEPS)[number];
+const newKey = () => (typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `k${Date.now()}${Math.random().toString(36).slice(2)}`);
 
 export function POSAICampaignBuilderScreen() {
-  const [step, setStep] = useState(0);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // goal
+  const [sp] = useSearchParams();
+  const [step, setStep] = useState<Step>('goal');
+  const [kind, setKind] = useState<'rebooking' | 'winback' | null>(sp.get('kind') === 'rebooking' || sp.get('kind') === 'winback' ? (sp.get('kind') as 'rebooking' | 'winback') : null);
+  const [channel, setChannel] = useState<'sms' | 'email'>(sp.get('channel') === 'email' ? 'email' : 'sms');
   const [name, setName] = useState('');
-  const [campaignType, setCampaignType] = useState('rebooking');
-  // audience
-  const [channel, setChannel] = useState<Channel>('sms');
-  const [minDays, setMinDays] = useState<number | null>(90);
-  const [excludeFuture, setExcludeFuture] = useState(true);
-  const [activeOnly, setActiveOnly] = useState(true);
-  const [preview, setPreview] = useState<Preview | null>(null);
-  // message
-  const [salonName, setSalonName] = useState('');
-  const [serviceName, setServiceName] = useState('');
-  const [draftText, setDraftText] = useState('');
-  const [draftWarn, setDraftWarn] = useState<string[]>([]);
-  // offer
-  const [useOffer, setUseOffer] = useState(false);
-  const [offerName, setOfferName] = useState('');
-  // schedule
-  const [scheduledLocal, setScheduledLocal] = useState('');
-  // result
-  const [, setSubmitted] = useState<{ id: string; status: string } | null>(null);
-  const [approved, setApproved] = useState<{ status: string; scheduledAt: string } | null>(null);
+  const [message, setMessage] = useState(sp.get('message') ?? '');
+  const [subject, setSubject] = useState('');
+  const [budget, setBudget] = useState('');
+  const [rec, setRec] = useState<any>(null);
+  const [recErr, setRecErr] = useState<string | null>(null);
+  const [recTick, setRecTick] = useState(0);
+  const [est, setEst] = useState<any>(null);
+  const [gate, setGate] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState<any>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const key = useMemo(newKey, [kind, channel]);   // one save per goal + channel: a double tap or a retry returns the same draft
 
-  const audienceDefinition = () => ({ channel: channel === 'push' ? 'sms' : channel, minDaysSinceLastCompletedVisit: minDays, excludeWithFutureAppointment: excludeFuture, requireActiveStatus: activeOnly });
-  const audienceLabel = () => [channel.toUpperCase(), minDays == null ? tx('pos.any_recency') : tx('pos.mindays_days', { minDays: String(minDays) }), excludeFuture ? tx('pos.excl_upcoming') : null, activeOnly ? tx('pos.active_only_2') : null].filter(Boolean).join(' · ');
+  useEffect(() => {
+    if (!kind) return; let on = true; setRec(null); setRecErr(null);
+    posAIMarketingApi.center.recommendations(channel).then((r) => {
+      if (!on) return; const it = (r.items ?? []).find((x: any) => x.kind === kind) ?? null; setRec(it);
+      if (it?.message && !message) { setMessage(it.message.body ?? ''); if (!subject && it.message.subject) setSubject(it.message.subject); if (!name && it.message.name) setName(it.message.name); }
+    }).catch((e) => on && setRecErr(mkErr(e)));
+    return () => { on = false; };
+  }, [kind, channel, recTick]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function runPreview() {
-    setBusy(true); setError(null);
-    try { setPreview(await posAIMarketingApi.previewAudience(audienceDefinition()) as Preview); }
-    catch (e: any) { setError(reportError(e, tx('growth.noun.audience'))); }
-    finally { setBusy(false); }
-  }
-  async function generate() {
-    if (!salonName.trim()) { setError(tx('pos.enter_your_salon_name')); return; }
-    setBusy(true); setError(null);
-    try {
-      const body: Record<string, unknown> = { channel, tone: 'friendly', language: 'en', campaignType, salonName, serviceName: serviceName || null };
-      if (useOffer && offerName.trim()) body.offer = { name: offerName.trim() };
-      const d = await posAIMarketingApi.generateDraft(body) as Draft;
-      setDraftText(d.text || ''); setDraftWarn(d.validation?.warnings || []);
-    } catch (e: any) { setError(reportError(e, tx('growth.noun.messageStudio'))); }
-    finally { setBusy(false); }
-  }
-  async function submitAndApprove() {
-    setBusy(true); setError(null);
-    try {
-      const body: Record<string, unknown> = {
-        name, channel, draftText, audienceLabel: audienceLabel(), audienceSize: preview?.eligible || 0,
-        audienceDefinition: audienceDefinition(), messageVersion: 1,
-      };
-      if (useOffer && offerName.trim()) body.offer = { name: offerName.trim() };
-      const res = await posAIMarketingApi.submitCampaign(body) as { campaign: { id: string; status: string } };
-      setSubmitted({ id: res.campaign.id, status: res.campaign.status });
-      const iso = new Date(scheduledLocal).toISOString();
-      const appr = await posAIMarketingApi.approveCampaign(res.campaign.id, iso) as { status: string; scheduledAt: string };
-      setApproved({ status: appr.status, scheduledAt: appr.scheduledAt });
-    } catch (e: any) { setError(reportError(e, tx('growth.noun.campaign'))); }
-    finally { setBusy(false); }
-  }
-
-  const canNext = () => {
-    if (step === 0) return name.trim().length > 0;
-    if (step === 1) return !!preview && preview.eligible > 0;
-    if (step === 2) return draftText.trim().length > 0;
-    if (step === 4) return !!scheduledLocal && new Date(scheduledLocal).getTime() > Date.now();
-    return true;
+  const budgetCents = budget.trim() === '' ? null : Math.round(Number(budget) * 100);
+  const eligible = rec?.eligible ?? 0;
+  const ready: Record<Step, string | null> = {
+    goal: kind ? null : 'amk.b.gate.goal',
+    audience: rec && rec.status === 'ready' ? null : 'amk.b.gate.audience',
+    message: !message.trim() ? 'amk.b.gate.message' : channel === 'email' && !subject.trim() ? 'amk.b.gate.subject' : est?.unresolved?.length ? 'amk.b.gate.tokens' : null,
+    budget: budgetCents != null && (!Number.isFinite(budgetCents) || budgetCents < 0) ? 'amk.b.gate.budget' : null,
+    review: null,
+  };
+  const i = STEPS.indexOf(step);
+  const go = (to: Step) => { const j = STEPS.indexOf(to); for (let x = 0; x < j; x++) { const g = ready[STEPS[x]]; if (g) { setGate(g); setStep(STEPS[x]); return; } } setGate(null); setStep(to); };
+  const save = () => {
+    if (!kind) return; setSaving(true); setSaveErr(null);
+    posAIMarketingApi.center.saveDraft({ kind, channel, name: name.trim() || null, message, subject: channel === 'email' ? subject : null, budgetCents, idempotencyKey: key })
+      .then(setSaved).catch((e) => setSaveErr(mkErr(e))).finally(() => setSaving(false));
   };
 
   return (
-    <div className="work">
-      <div className="vh">
-        <h1>{tx('pos.campaign_builder')}</h1>
-        <div className="sub mb-3">{tx('pos.build_a_campaign_step_by_step_1rqf')}</div>
+    <div className="work rvw" data-testid="amk-builder">
+      <div className="rvw-head">
+        <div className="vh"><h1>{mt('amk.b.title')}</h1><div className="sub">{mt('amk.b.sub')}</div></div>
+        <div className="rvw-actions"><MkHealthButton /><Link className="btn ghost" to="/tenant/marketing/campaigns">{mt('amk.b.openCenter')}</Link></div>
       </div>
+      <div className="amk-steps" role="tablist">{STEPS.map((s, n) => <button key={s} type="button" role="tab" aria-selected={step === s} className={'btn ghost' + (step === s ? ' on' : '')} data-testid={`amk-step-${s}`} onClick={() => go(s)}>{n + 1}. {mt('amk.b.step.' + s)}</button>)}</div>
+      {gate ? <div className="err" data-testid="amk-gate">{mt(gate)}</div> : null}
 
-      <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
-        {STEPS().map((s, i) => (
-          <span key={s} style={{ padding: '3px 10px', borderRadius: 999, fontSize: 12, fontWeight: 700, background: i === step ? 'var(--gold, #A96F22)' : 'var(--card, #fff)', color: i === step ? '#fff' : 'var(--muted)', border: '1px solid var(--line, #e6ddcd)' }}>{i + 1}. {s}</span>
-        ))}
-      </div>
-
-      <section className="panel">
-        {step === 0 && (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-            <label style={{ ...field, minWidth: 260, maxWidth: '100%' }}>{tx('pos.campaign_name')}
-              <input style={input} value={name} onChange={(e) => setName(e.target.value)} placeholder={tx('pos.e_g_july_gel_rebooking')} />
-            </label>
-            <label style={field}>{tx('pos.goal')}
-              <select style={input} value={campaignType} onChange={(e) => setCampaignType(e.target.value)}>
-                {['rebooking', 'inactive_customer', 'birthday', 'new_service', 'membership', 'loyalty', 'gift_card', 'seasonal'].map((t) => <option key={t} value={t}>{statusLabel('campaignType', t)}</option>)}
-              </select>
-            </label>
+      <section className="panel" style={{ padding: 12 }}>
+        {step === 'goal' ? <>
+          <div className="amk-recs">{(['rebooking', 'winback'] as const).map((k) => (
+            <button key={k} type="button" className="amk-rec" data-testid={`amk-b-kind-${k}`} aria-pressed={kind === k} onClick={() => { setKind(k); setGate(null); }} style={{ textAlign: 'left', cursor: 'pointer', borderColor: kind === k ? 'var(--gold)' : undefined }}>
+              <b>{mt('amk.kind.' + k)}</b><span className="sub">{mt('amk.kindDesc.' + k)}</span></button>))}
           </div>
-        )}
+          <p className="sub">{mt('amk.b.birthdayElsewhere')} <Link to="/tenant/marketing/birthdays">{mt('amk.openBirthdays')}</Link></p>
+          <div className="rvw-dates">{(['sms', 'email'] as const).map((c) => <button key={c} type="button" className={'btn ghost' + (channel === c ? ' on' : '')} data-testid={`amk-b-ch-${c}`} onClick={() => setChannel(c)}>{mt('amk.channel.' + c)}</button>)}</div>
+          <label className="rvw-f block"><span>{mt('amk.b.name')}</span><input data-testid="amk-b-name" value={name} maxLength={120} onChange={(e) => setName(e.target.value)} placeholder={mt('amk.b.namePh')} /></label>
+        </> : null}
 
-        {step === 1 && (
-          <div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              <label style={field}>{tx('pos.channel')}<select style={input} value={channel} onChange={(e) => setChannel(e.target.value as Channel)}><option value="sms">SMS</option><option value="email">{tx('pos.email')}</option><option value="push">{tx('pos.push')}</option></select></label>
-              <label style={field}>{tx('pos.last_visit')}<select style={input} value={minDays == null ? '' : String(minDays)} onChange={(e) => setMinDays(e.target.value === '' ? null : Number(e.target.value))}><option value="">{tx('pos.any')}</option><option value="42">{tx('pos.42_days')}</option><option value="60">{tx('pos.60_days')}</option><option value="90">{tx('pos.90_days')}</option><option value="180">{tx('pos.180_days')}</option></select></label>
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 10, flexWrap: 'wrap' }}>
-              <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}><input type="checkbox" checked={excludeFuture} onChange={(e) => setExcludeFuture(e.target.checked)} />{tx('pos.exclude_upcoming_appointments')}</label>
-              <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}><input type="checkbox" checked={activeOnly} onChange={(e) => setActiveOnly(e.target.checked)} />{tx('pos.active_customers_only')}</label>
-              <button style={btn(false)} onClick={runPreview} disabled={busy}>{busy ? tx('pos.estimating') : tx('pos.estimate_audience')}</button>
-            </div>
-            {preview && (
-              <div className="kpis" style={{ marginTop: 10 }}>
-                <div className="kpi"><div className="l">{tx('pos.eligible')}</div><div className="v" style={{ color: 'var(--ok)' }}>{n(preview.eligible)}</div></div>
-                <div className="kpi"><div className="l">{tx('pos.excluded')}</div><div className="v" style={{ color: 'var(--muted)' }}>{n(preview.suppressed)}</div></div>
-              </div>
-            )}
-          </div>
-        )}
+        {step === 'audience' && kind ? <>
+          {recErr ? <ErrorRetry message={recErr} onRetry={() => setRecTick((n) => n + 1)} /> : rec ? <p data-testid="amk-b-aud-status"><b>{mt('amk.recStatus.' + rec.status)}</b> · {mt('amk.recCounts', { m: mkNum(rec.matched), e: mkNum(rec.eligible), x: mkNum(rec.excludedTotal) })}</p> : null}
+          <MkFunnel kind={kind} channel={channel} />
+        </> : null}
 
-        {step === 2 && (
-          <div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-              <label style={field}>{tx('pos.salon_name')}<input style={input} value={salonName} onChange={(e) => setSalonName(e.target.value)} placeholder={tx('pos.e_g_lotus_nails')} /></label>
-              <label style={field}>{tx('pos.service_optional')}<input style={input} value={serviceName} onChange={(e) => setServiceName(e.target.value)} placeholder={tx('pos.e_g_gel_manicure')} /></label>
-              <button style={{ ...btn(false), alignSelf: 'end' }} onClick={generate} disabled={busy}>{busy ? tx('pos.generating') : tx('pos.generate_draft')}</button>
-            </div>
-            <textarea value={draftText} onChange={(e) => setDraftText(e.target.value)} rows={channel === 'email' ? 8 : 4} placeholder={tx('pos.write_or_generate_the_message_use_1w0k')} style={{ ...input, width: '100%', marginTop: 10, resize: 'vertical' }} />
-            {draftWarn.length > 0 && <ul style={{ marginTop: 8, paddingLeft: 18, color: 'var(--muted)' }}>{draftWarn.map((w, i) => <li key={i} style={{ fontSize: 12 }}>{w}</li>)}</ul>}
-          </div>
-        )}
+        {step === 'message' ? <>
+          {channel === 'email' ? <label className="rvw-f block"><span>{mt('amk.b.subject')}</span><input data-testid="amk-b-subject" value={subject} maxLength={200} onChange={(e) => setSubject(e.target.value)} /></label> : null}
+          <label className="rvw-f block"><span>{mt('amk.b.message')}</span><textarea data-testid="amk-b-message" value={message} maxLength={1600} rows={5} onChange={(e) => setMessage(e.target.value)} placeholder={mt('amk.b.messagePh')} /></label>
+          <p className="sub">{mt('amk.b.vars')} <Link to="/tenant/ai/marketing/studio">{mt('amk.b.studio')}</Link></p>
+          <MkEstimate channel={channel} body={message} recipients={eligible} budgetCents={budgetCents} onResult={setEst} />
+        </> : null}
 
-        {step === 3 && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 6 }}><input type="checkbox" checked={useOffer} onChange={(e) => setUseOffer(e.target.checked)} />{tx('pos.attach_an_approved_offer')}</label>
-            {useOffer && <input style={{ ...input, minWidth: 260, maxWidth: '100%' }} value={offerName} onChange={(e) => setOfferName(e.target.value)} placeholder={tx('pos.e_g_10_off_gel_manicure_vq4g')} />}
-            {!useOffer && <span className="sub" style={{ fontSize: 12 }}>{tx('pos.no_offer_the_message_will_contain_1k8f')}</span>}
-          </div>
-        )}
+        {step === 'budget' ? <>
+          <label className="rvw-f"><span>{mt('amk.b.budget')}</span><input type="number" min={0} step="0.01" data-testid="amk-b-budget" value={budget} onChange={(e) => setBudget(e.target.value)} /></label>
+          <p className="sub">{mt('amk.b.budgetNote')}</p>
+          <MkEstimate channel={channel} body={message} recipients={eligible} budgetCents={budgetCents} onResult={setEst} />
+        </> : null}
 
-        {step === 4 && (
-          <label style={field}>{tx('pos.send_at')}
-            <input type="datetime-local" style={input} value={scheduledLocal} onChange={(e) => setScheduledLocal(e.target.value)} />
-            <span className="sub" style={{ fontSize: 12 }}>{tx('pos.must_be_in_the_future_quiet_ns4a')}</span>
-          </label>
-        )}
-
-        {step === 5 && (
-          <div>
-            {!approved ? (
-              <>
-                <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max"><tbody>
-                  <tr><td>{tx('pos.name')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{name || '—'}</td></tr>
-                  <tr><td>{tx('pos.audience')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{audienceLabel()} · {n(preview?.eligible || 0)} {tx('pos.eligible_2')}</td></tr>
-                  <tr><td>{tx('pos.channel')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{channel.toUpperCase()}</td></tr>
-                  <tr><td>{tx('pos.offer')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{useOffer && offerName ? offerName : tx('pos.none')}</td></tr>
-                  <tr><td>{tx('pos.send_at')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{scheduledLocal ? new Date(scheduledLocal).toLocaleString() : '—'}</td></tr>
-                </tbody></table></div>
-                <div className="sub" style={{ margin: '8px 0', fontSize: 12 }}>{tx('pos.submitting_creates_a_draft_and_schedules_14fh')}</div>
-                <button style={btn()} onClick={submitAndApprove} disabled={busy}>{busy ? tx('pos.submitting') : tx('pos.submit_schedule')}</button>
-              </>
-            ) : (
-              <div className="state">
-                {tx('pos.campaign')}{' '}<strong>{name}</strong> {tx('pos.is')}{' '}<strong>{growthCode(approved.status)}</strong> {tx('pos.for')}{' '}{fmtDateTime(approved.scheduledAt)}{tx('pos.it_will_send_through_the_gated_it32')}
-              </div>
-            )}
-          </div>
-        )}
-
-        {error && <div className="err" style={{ marginTop: 10 }}>{error}</div>}
-
-        {!approved && (
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 14 }}>
-            <button style={btn(false)} onClick={() => setStep((s) => Math.max(0, s - 1))} disabled={step === 0 || busy}>{tx('pos.back')}</button>
-            {step < STEPS().length - 1 && <button style={btn()} onClick={() => canNext() ? setStep((s) => s + 1) : setError(tx('pos.complete_this_step_first'))} disabled={busy}>{tx('pos.next')}</button>}
-          </div>
-        )}
+        {step === 'review' ? (saved ? (
+          <div data-testid="amk-b-saved">
+            <p><b>{saved.duplicate ? mt('amk.b.savedAgain') : mt('amk.b.saved')}</b></p>
+            <p>{mt('amk.b.savedCounts', { e: mkNum(saved.eligible), x: mkNum(saved.excluded) })}</p>
+            <p className="sub">{mt('amk.b.notSent')}</p>
+            <Link className="btn" data-testid="amk-b-open" to={`/tenant/marketing/campaigns?q=${encodeURIComponent(saved.campaignId)}`}>{mt('amk.b.reviewInCenter')}</Link>
+          </div>) : (
+          <div data-testid="amk-b-review">
+            <table className="tbl"><tbody>
+              <tr><td>{mt('amk.b.r.goal')}</td><td>{kind ? mt('amk.kind.' + kind) : '—'} · {mt('amk.channel.' + channel)}</td></tr>
+              <tr><td>{mt('amk.b.r.audience')}</td><td>{mt('amk.recCounts', { m: mkNum(rec?.matched), e: mkNum(rec?.eligible), x: mkNum(rec?.excludedTotal) })}</td></tr>
+              <tr><td>{mt('amk.b.r.message')}</td><td style={{ whiteSpace: 'pre-wrap' }}>{channel === 'email' ? <b>{subject}<br /></b> : null}{est?.asSent ?? message}</td></tr>
+              <tr><td>{mt('amk.b.r.cost')}</td><td>{est?.estimatedCostCents != null ? mkMoney(est.estimatedCostCents) : mt('amk.est.note.' + (est?.costNote ?? 'not_priced'))}{budgetCents != null ? ` · ${mt('amk.b.r.budget', { b: mkMoney(budgetCents) })}` : ''}</td></tr>
+            </tbody></table>
+            {est?.withinBudget === false ? <div className="err">{mt('amk.est.overBudget', { b: mkMoney(budgetCents) })}</div> : null}
+            <p className="sub">{mt('amk.b.reviewNote')}</p>
+            {saveErr ? <div className="err" data-testid="amk-b-err">{saveErr}</div> : null}
+            <button type="button" className="btn" data-testid="amk-b-save" disabled={saving || !!Object.values(ready).find(Boolean)} onClick={save}>{saving ? mt('amk.b.saving') : mt('amk.b.save')}</button>
+          </div>)) : null}
       </section>
+
+      <div className="rvw-actions" style={{ marginTop: 10 }}>
+        {i > 0 ? <button type="button" className="btn ghost" data-testid="amk-b-back" onClick={() => { setGate(null); setStep(STEPS[i - 1]); }}>{mt('amk.b.back')}</button> : null}
+        {i < STEPS.length - 1 ? <button type="button" className="btn" data-testid="amk-b-next" onClick={() => go(STEPS[i + 1])}>{mt('amk.b.next')}</button> : null}
+      </div>
     </div>
   );
 }

@@ -1,14 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-const { previewMock } = vi.hoisted(() => ({ previewMock: vi.fn() }));
-vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { previewAudience: previewMock, state: vi.fn(), generateDraft: vi.fn() } }));
+import { MemoryRouter } from 'react-router-dom';
+const { c } = vi.hoisted(() => ({ c: { eligibility: vi.fn(), check: vi.fn() } }));
+vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { center: c } }));
 import { POSAIAudienceBuilderScreen } from './POSAIAudienceBuilderScreen';
 
 describe('Audience Builder permissions', () => {
   it('shows a permission message on 403', async () => {
-    previewMock.mockRejectedValue({ status: 403 });
-    render(<POSAIAudienceBuilderScreen />);
-    fireEvent.click(screen.getByText('Estimate audience'));
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    c.eligibility.mockRejectedValue({ status: 403 });
+    render(<MemoryRouter><POSAIAudienceBuilderScreen /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId('amk-aud-rebooking'));
+    expect(await screen.findByText('Your role cannot use marketing.')).toBeInTheDocument();
   });
 });

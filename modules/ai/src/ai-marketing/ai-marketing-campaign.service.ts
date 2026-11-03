@@ -19,6 +19,9 @@ export interface CampaignOrchestrationPort {
   detail(ctx: CampaignsContext, id: string): Promise<CampaignRow>;
   update(ctx: CampaignsContext, id: string, patch: UpdateCampaignRequest): Promise<CampaignRow>;
   transition(ctx: CampaignsContext, id: string, to: CampaignStatus): Promise<CampaignRow>;
+  /** draft → scheduled through Campaign Center's send-readiness rule (approved, unchanged since approval, a real audience snapshot
+   *  with ≥ 1 eligible customer). Optional only for the in-memory unit tests of the legacy lifecycle. */
+  schedule?(ctx: CampaignsContext, id: string): Promise<CampaignRow>;
 }
 
 export class CampaignOrchestrationValidationError extends Error {}
@@ -129,9 +132,12 @@ export class AiMarketingCampaignService {
       throw withCode(new CampaignOrchestrationValidationError('No eligible recipients — audience is empty'), 'AUDIENCE_EMPTY');
     }
 
-    // Persist the approved schedule time, then transition. Deep quiet-hours/frequency enforcement runs in the
-    // send pipeline (later slice) where the codebase already evaluates messaging limits before dispatch.
+    // Persist the approved schedule time, then schedule. AI Marketing guides (Nov 3 2026): this used to call transition()
+    // directly — a draft moved to Scheduled with no Campaign Center approval (content hash) and no audience snapshot, and the
+    // send sweep then sent it from the plan saved at submit time. It now goes through CampaignsService.schedule(), which
+    // refuses anything Campaign Center would refuse (CAMPAIGN_APPROVAL_REQUIRED, CAMPAIGN_AUDIENCE_NOT_SELECTED, …).
     await this.campaigns.update(ctx as CampaignsContext, id, { scheduledAt });
+    if (this.campaigns.schedule) return this.campaigns.schedule(ctx as CampaignsContext, id);
     return this.campaigns.transition(ctx as CampaignsContext, id, 'scheduled');
   }
 

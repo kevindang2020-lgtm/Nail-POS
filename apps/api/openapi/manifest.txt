@@ -359,6 +359,8 @@ GET /pos/ai-inventory/recipes/{id}  realm=staff  auth=session  domain=ai  perm=p
 GET /pos/ai-inventory/reorder-recommendations  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-inventory/slow-moving  realm=staff  auth=session  domain=ai  perm=pos.ai_inventory.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-marketing/campaigns/{id}/results  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-marketing/center/recommendations  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-marketing/center/summary  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-marketing/state  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-money-protection/alerts  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-money-protection/investigations  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2428,6 +2430,10 @@ POST /pos/ai-marketing/audience/preview  realm=staff  auth=session  domain=ai  p
 POST /pos/ai-marketing/campaigns  realm=staff  auth=session  domain=ai  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-marketing/campaigns/{id}/approve  realm=staff  auth=session  domain=ai  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-marketing/campaigns/{id}/cancel  realm=staff  auth=session  domain=ai  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-marketing/center/check  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-marketing/center/eligibility  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-marketing/center/estimate  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-marketing/center/save-draft  realm=staff  auth=session  domain=ai  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-marketing/content/draft  realm=staff  auth=session  domain=ai  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-money-protection/alerts/{id}/explain  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-money-protection/evaluate  realm=staff  auth=session  domain=ai  perm=ai_money_protection.manage_rules  guards=RolePermissionGuard,TenantAuthGuard

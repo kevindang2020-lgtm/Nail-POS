@@ -1,7 +1,12 @@
 // POSAIMessageStudioScreen.tsx — AI Center → AI Marketing → Message Studio. Wired to
 // POST /pos/ai-marketing/content/draft. Generates an EDITABLE draft (SMS/email/push) and surfaces the server's
 // safety validation (invented offer / unknown token / raw URL / length). It never sends — drafting only.
+// Message Studio guide (Nov 3 2026): the edited text now shows what it costs before anyone approves it — characters, GSM-7 / UCS-2,
+// SMS segments, the platform price and the estimated cost for a recipient count — and which placeholders Campaign Center cannot fill
+// for each customer (they would go out as written). "Use in Campaign Builder" carries the text there; nothing is saved or sent here.
 import { useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
+import { MkEstimate, MkHealthButton, mt } from '../components/MarketingKit';
 import { posAIMarketingApi } from '../api/posAIMarketingApi';
 import { reportError } from './reportsCommon';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -39,6 +44,7 @@ export function POSAIMessageStudioScreen() {
   const [edited, setEdited] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [recipients, setRecipients] = useState(100);
 
   async function generate() {
     if (!salonName.trim()) { setError(tx('pos.enter_your_salon_name_so_the_1u0w')); return; }
@@ -61,6 +67,7 @@ export function POSAIMessageStudioScreen() {
       <div className="vh">
         <h1>{tx('pos.message_studio')}</h1>
         <div className="sub mb-3">{tx('pos.draft_an_sms_email_or_push_djac')}</div>
+        <div className="rvw-actions"><MkHealthButton /></div>
       </div>
 
       <section className="panel">
@@ -138,6 +145,14 @@ export function POSAIMessageStudioScreen() {
             </ul>
           )}
           <div className="sub" style={{ marginTop: 8, fontSize: 12 }}>{tx('pos.required_opt_out_text_is_appended_6p4p')}</div>
+          {channel !== 'push' ? <div data-testid="amk-studio-cost">
+            <label className="rvw-f" style={{ marginTop: 10 }}><span>{mt('amk.studio.recipients')}</span>
+              <input type="number" min={0} data-testid="amk-studio-recipients" value={recipients} onChange={(e) => setRecipients(Math.max(0, Math.trunc(Number(e.target.value) || 0)))} /></label>
+            <MkEstimate channel={channel === 'email' ? 'email' : 'sms'} body={edited} recipients={recipients} />
+            <div className="rvw-actions" style={{ marginTop: 8 }}>
+              <Link className="btn" data-testid="amk-studio-use" to={`/tenant/ai/marketing/builder?channel=${channel}&message=${encodeURIComponent(edited.slice(0, 1600))}`}>{mt('amk.studio.use')}</Link>
+            </div>
+          </div> : <p className="sub">{mt('amk.studio.push')}</p>}
         </section>
       )}
     </div>

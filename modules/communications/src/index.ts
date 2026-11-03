@@ -11,6 +11,7 @@ export { CampaignsContext } from './campaigns/campaigns.repository';   // used b
 export { CampaignCenter } from './campaigns/campaign-center';
 export { parseTokens } from './templates/template-variables';   // Birthday Campaigns: a birthday template may only use tokens Campaign Center fills   // Marketing & Growth (reports): read-only overview / list for the cost & profit view
 export { CampaignsService, ForbiddenError, NotFoundError, ValidationError } from './campaigns/campaigns.service';   // used by the API today
+export { KyselyCampaignsRepository } from './campaigns/campaigns.kysely.repository';   // AI Marketing (ai): the real schedule / send-readiness rule behind the old AI approve route
 export { MockPushProvider } from './push/push-providers';   // used by the API today
 export { InMemoryPushRepository } from './push/push.repository';   // used by the API today
 export { PushService } from './push/push.service';   // used by the API today

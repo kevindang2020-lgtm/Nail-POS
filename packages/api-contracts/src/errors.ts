@@ -749,6 +749,13 @@ export const ERROR_REGISTRY = {
   MC_DETECTION_FAILED: { status: 503, message: 'Detection could not finish. Run the system check.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   // AI Inventory Assistant (Nov 3 2026)
   IC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Marketing Assistant center (Nov 3 2026)
+  MKC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MKC_KIND_INVALID: { status: 400, message: 'Choose who the campaign is for.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MKC_MESSAGE_REQUIRED: { status: 400, message: 'Write the message first.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MKC_SUBJECT_REQUIRED: { status: 400, message: 'An email needs a subject.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Marketing Assistant center (Nov 3 2026)
+  MKC_TOKENS_UNSUPPORTED: { status: 400, message: 'Some placeholders cannot be filled for each customer and would be sent as written. Remove them or use {salon_name} / {offer}.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

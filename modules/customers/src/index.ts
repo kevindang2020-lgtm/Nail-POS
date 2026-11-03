@@ -21,8 +21,9 @@ export { maskEmail } from './customer-identity/identity-core';   // used by the 
 export { CustomersModule } from './customers/customers.module';
 export * from './customers/customers.dto';
 export { INACTIVE_DAYS, RETURNING_MIN_VISITS, VISIT_TICKET_STATUSES } from './customers/customer-segments';   // used by the API today
-export { RetentionRepository, PERIOD_PRESETS, isUuid, maskPhone as maskStoredPhone } from './retention/retention.repository';   // Marketing & Growth (reports): salon-local periods + authorized branch scope
+export { RetentionRepository, RetentionError, PERIOD_PRESETS, isUuid, maskPhone as maskStoredPhone } from './retention/retention.repository';   // Marketing & Growth (reports): salon-local periods + authorized branch scope
 export type { RetentionContext, BranchScope } from './retention/retention.repository';
+export { WinBackCenter } from './retention/winback-center';   // AI Marketing Assistant (ai): the ONE win-back / rebooking audience rule + its Segments draft
 export { SegmentsRepository, SegmentsError } from './segments/segments.repository';   // Birthday Campaigns (reports): consent verdicts, unsent audience drafts, the customer overlay
 export * from './birthdays/birthday-core';   // Birthday Campaigns: the ONE birthday → occurrence rule (Feb 29 policy, year rollover, occasion year)
 export { KyselyCustomersRepository } from './customers/customers.kysely.repository';   // used by the API today

@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 926,
+  "tables": 927,
   "ownership": {
-   "tenant_owned": 616,
+   "tenant_owned": 617,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 135,
+   "AI": 136,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 140,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 504,
+   "INTERNAL": 505,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -575,6 +575,19 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "ai_marketing_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Check AI Marketing System evidence (migration 780): read-only health runs of the AI Marketing Assistant"
   },
   "ai_narrative_model_versions": {
    "ownership": "platform_global",

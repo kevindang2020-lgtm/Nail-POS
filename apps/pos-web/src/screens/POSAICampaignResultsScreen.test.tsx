@@ -1,34 +1,38 @@
+// POSAICampaignResultsScreen — Campaign Results guide (Nov 3 2026): period totals from their own sources, Campaign Center's campaign
+// list, and per campaign every stage with what it is checked against. Loading never sends.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-const { stateMock, resultsMock } = vi.hoisted(() => ({ stateMock: vi.fn(), resultsMock: vi.fn() }));
-vi.mock('../api/posCampaignsApi', () => ({ posCampaignsApi: { getState: stateMock } }));
-vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { campaignResults: resultsMock, state: vi.fn(), previewAudience: vi.fn(), generateDraft: vi.fn() } }));
+import { MemoryRouter } from 'react-router-dom';
+const { c, cc } = vi.hoisted(() => ({ c: { summary: vi.fn(), check: vi.fn() }, cc: { list: vi.fn(), detail: vi.fn() } }));
+vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { center: c } }));
+vi.mock('../api/posCampaignCenterApi', () => ({ posCampaignCenterApi: cc }));
 import { POSAICampaignResultsScreen } from './POSAICampaignResultsScreen';
-beforeEach(() => { stateMock.mockReset(); resultsMock.mockReset(); });
+const counts = { selected: 10, selectedIsEstimate: false, eligible: 8, excluded: 2, queued: 0, attempted: 8, submitted: 8, skippedAtSend: 0, failed: 1, delivered: 6, unknown: 1, simulated: 0,
+  booked: 2, redemptions: 1, discountCents: 500, associatedRevenueCents: 6500, legacyRevenueCents: 0, legacySentCount: 0, actualCostCents: 28, roi: null, roiNote: '' };
+beforeEach(() => {
+  vi.clearAllMocks();
+  c.summary.mockResolvedValue({ period: { today: '2026-11-03' }, cards: { messagesSent: 8, delivered: 6, failed: 1, bookings: 2, completedVisits: 1, associatedRevenueCents: 6500, associatedTickets: 1, actualCostCents: 28, costPerBookingCents: 14 }, definitions: { associatedRevenue: 'x' } });
+  cc.list.mockResolvedValue({ items: [{ id: 'c1', name: 'Gel rebooking', status: 'completed', displayStatus: 'completed', outcome: null, origin: 'assistant', channel: 'sms', budgetCents: 500, createdAt: '2026-11-01T10:00:00Z', counts }],
+    pagination: { page: 1, pageSize: 10, totalItems: 1, totalPages: 1 }, period: { today: '2026-11-03' } });
+  cc.detail.mockResolvedValue({ id: 'c1', name: 'Gel rebooking', displayStatus: 'completed', outcome: null, channel: 'sms', createdAt: '2026-11-01T10:00:00Z', budgetCents: 500, counts });
+});
 
 describe('POSAICampaignResultsScreen', () => {
-  it('lists campaigns and shows results on selection with associated-revenue labeling', async () => {
-    stateMock.mockResolvedValue({ campaigns: [{ id: 'c1', name: 'Gel rebooking', status: 'completed', channel: 'sms' }] });
-    resultsMock.mockResolvedValue({
-      campaignId: 'c1', name: 'Gel rebooking', status: 'completed', channel: 'sms', audienceSize: 800,
-      funnel: { sent: 780, opened: 0, clicked: 96, booked: 41 },
-      rates: { openRate: null, clickRate: 96 / 780, bookingRate: 41 / 780 },
-      costCents: 3900, associatedRevenueCents: 348000, costPerBookingCents: 95, revenuePerSentCents: 446,
-      disclaimer: 'Revenue shown is associated with customers who booked through this campaign (correlation), not a proven causal effect.',
-      generatedAt: 'now',
-    });
-    render(<POSAICampaignResultsScreen />);
-    fireEvent.click(await screen.findByText('Gel rebooking'));
-    expect(await screen.findByText('Assoc. Revenue')).toBeInTheDocument();
-    expect(screen.getByText('$3,480.00')).toBeInTheDocument();
-    expect(screen.getByText('—')).toBeInTheDocument(); // open rate null → em-dash
-    expect(screen.getAllByText(/correlation/i).length).toBeGreaterThan(0);
-    expect(resultsMock).toHaveBeenCalledWith('c1');
+  it('period totals: accepted / delivered / failed, bookings and visits, cost per booking', async () => {
+    render(<MemoryRouter><POSAICampaignResultsScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('amk-res-sent')).toHaveTextContent('6 delivered · 1 failed');
+    expect(screen.getByTestId('amk-res-bookings')).toHaveTextContent('1 became completed visits');
+    expect(screen.getByTestId('amk-res-costPerBooking')).toHaveTextContent('$0.14');
+    fireEvent.click(screen.getByTestId('amk-preset-year'));
+    expect(c.summary).toHaveBeenLastCalledWith({ preset: 'year' });
   });
-
-  it('shows an empty state when there are no campaigns', async () => {
-    stateMock.mockResolvedValue({ campaigns: [] });
-    render(<POSAICampaignResultsScreen />);
-    expect(await screen.findByText(/No campaigns yet/i)).toBeInTheDocument();
+  it('a campaign opens its funnel: each stage, its source, money spent vs budget', async () => {
+    render(<MemoryRouter><POSAICampaignResultsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('amk-lib-open'));
+    expect(cc.detail).toHaveBeenCalledWith('c1');
+    expect(await screen.findByTestId('amk-stage-delivered')).toHaveTextContent('The provider delivery report');
+    expect(screen.getByTestId('amk-stage-unknown')).toHaveTextContent('1');
+    expect(screen.getByTestId('amk-stage-cost')).toHaveTextContent('$0.28');
+    expect(screen.getByTestId('amk-res-detail')).toHaveTextContent('does not prove the campaign caused the visit');
   });
 });

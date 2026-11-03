@@ -5,7 +5,10 @@ import { AiModule } from '../ai/ai.module';
 import { AiPlatform } from '../ai/ai-platform';
 import { marketingDraftAdapter } from '../ai/ai-platform.adapters';
 import { KyselyAiAccessRepo, KyselyAiUsageLogger } from '../ai/ai-access.kysely.repository';
-import { CampaignsModule, CampaignsService } from '@aipowersalon/communications';
+import { CampaignsModule, CampaignsService, CampaignCenter } from '@aipowersalon/communications';
+import { WinBackCenter } from '@aipowersalon/customers';
+import { MarketingCenter } from './marketing-center';
+import { MarketingCenterController, MARKETING_CENTER } from './marketing-center.controller';
 import { Module } from '@nestjs/common';
 import { AiMarketingController } from './ai-marketing.controller';
 import { AiMarketingService } from './ai-marketing.service';
@@ -19,8 +22,11 @@ import { KyselyCampaignConversions, InMemoryCampaignConversions, type CampaignCo
 
 @Module({
   imports: [AiModule, CampaignsModule], // reuse the existing campaign lifecycle (create/transition/audit), no duplication
-  controllers: [AiMarketingController],
+  controllers: [AiMarketingController, MarketingCenterController],
   providers: [
+    // AI Marketing Assistant family guides (Nov 3 2026): the read-side center over Campaign Center, Customer Retention / Segments
+    // and the send ledger. It writes only when save-draft hands a recommendation to Campaign Center (unsent, unapproved).
+    { provide: MARKETING_CENTER, useFactory: (db: AppDatabase) => (db ? new MarketingCenter(db, new WinBackCenter(db), new CampaignCenter(db)) : null), inject: [DATABASE] },
     {
       provide: 'AiMarketingRepositoryPort',
       useFactory: (db: AppDatabase): AiMarketingRepositoryPort =>

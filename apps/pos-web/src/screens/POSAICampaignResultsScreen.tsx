@@ -1,110 +1,81 @@
-// POSAICampaignResultsScreen.tsx — AI Center → AI Marketing → Campaign Results. Lists the tenant's campaigns
-// (from the existing Campaign Center state) and, on selection, shows the per-campaign funnel from
-// GET /pos/ai-marketing/campaigns/:id/results. Revenue is labeled ASSOCIATED (correlation), and rates/
-// cost-per-booking render em-dash when their denominator is zero — matching the honest server contract.
-import { useEffect, useState, type CSSProperties } from 'react';
-import { posCampaignsApi } from '../api/posCampaignsApi';
+// POSAICampaignResultsScreen.tsx — AI Center → AI Marketing → Campaign Results (/tenant/ai/marketing/results). Campaign Results guide
+// (Nov 3 2026). Before: a plain list of every campaign (no search, no pages) and a per-campaign card read from the old counters —
+// "Sent" from campaigns.sent_count (which nothing wrote), "Message cost" = the campaign's BUDGET, and open / click rates for text
+// messages that have no open event. Now:
+//   • the period totals (salon time): messages accepted / delivered / failed, campaign-link bookings and the visits they became,
+//     associated revenue on paid tickets that redeemed a campaign code, provider cost and cost per booking (N/A when 0 bookings);
+//   • Campaign Center's campaign list (search · status · channel · period · numbered pages, newest first);
+//   • per campaign, every stage from its own source — the audience snapshot, the send ledger, the provider's delivery report,
+//     booking-link conversions, code redemptions on paid tickets — with what each figure is checked against.
+// Loading or refreshing this page never sends, schedules or changes a campaign.
+import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { KpiCard, ErrorRetry, FitDialog } from '../components/FitKit';
+import { MkPeriodBar, MkHealthButton, CampaignLibrary, mt, mkErr, mkMoney, mkNum, mkWhen, type MkPeriod } from '../components/MarketingKit';
 import { posAIMarketingApi } from '../api/posAIMarketingApi';
-import { reportError, money } from './reportsCommon';
-import { t } from '@aipowersalon/mobile-sdk/i18n';
-import { growthCode } from './growthLabels';
+import { posCampaignCenterApi } from '../api/posCampaignCenterApi';
 
-type CampaignLite = { id: string; name: string; status: string; channel: string };
-type Results = {
-  campaignId: string; name: string; status: string; channel: string; audienceSize: number;
-  funnel: { sent: number; opened: number; clicked: number; booked: number };
-  rates: { openRate: number | null; clickRate: number | null; bookingRate: number | null };
-  costCents: number; associatedRevenueCents: number;
-  costPerBookingCents: number | null; revenuePerSentCents: number | null;
-  disclaimer: string; generatedAt: string;
-};
-
-const n = (x: number) => (x || 0).toLocaleString('en-US');
-const rate = (r: number | null) => (r == null ? '—' : `${(r * 100).toFixed(1)}%`);
-const cents = (c: number | null) => (c == null ? '—' : money(c));
-const row: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', borderRadius: 8, cursor: 'pointer', border: '1px solid var(--line, #e6ddcd)', marginBottom: 6 };
+const STAGES = ['selected', 'eligible', 'excluded', 'queued', 'attempted', 'submitted', 'delivered', 'failed', 'unknown', 'simulated', 'skippedAtSend', 'booked', 'redemptions'] as const;
 
 export function POSAICampaignResultsScreen() {
-  const [campaigns, setCampaigns] = useState<CampaignLite[] | null>(null);
-  const [listError, setListError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<string | null>(null);
-  const [results, setResults] = useState<Results | null>(null);
-  const [resError, setResError] = useState<string | null>(null);
-  const [resLoading, setResLoading] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const s = await posCampaignsApi.getState() as { campaigns: CampaignLite[] };
-        if (alive) setCampaigns(s.campaigns || []);
-      } catch (e: any) {
-        if (alive) setListError(reportError(e, t('growth.noun.campaigns')));
-      }
-    })();
-    return () => { alive = false; };
-  }, []);
-
-  async function open(id: string) {
-    setSelected(id); setResults(null); setResError(null); setResLoading(true);
-    try {
-      const r = await posAIMarketingApi.campaignResults(id) as Results;
-      setResults(r);
-    } catch (e: any) {
-      setResError(reportError(e, t('growth.noun.campaignResults')));
-    } finally {
-      setResLoading(false);
-    }
-  }
-
+  const [period, setPeriod] = useState<MkPeriod>({ preset: 'month' });
+  const [s, setS] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const [open, setOpen] = useState<any>(null);
+  const load = useCallback(() => { setErr(null); posAIMarketingApi.center.summary(period).then(setS).catch((e) => setErr(mkErr(e))); }, [period]);
+  useEffect(() => { load(); }, [load, tick]);
+  const k = s?.cards;
+  const cards = [
+    { key: 'sent', v: mkNum(k?.messagesSent), sub: k ? mt('amk.kpi.delivered', { d: mkNum(k.delivered), f: mkNum(k.failed) }) : undefined },
+    { key: 'bookings', v: mkNum(k?.bookings), sub: k ? mt('amk.kpi.completed', { n: mkNum(k.completedVisits) }) : undefined },
+    { key: 'revenue', v: mkMoney(k?.associatedRevenueCents), sub: k ? mt('amk.res.tickets', { n: mkNum(k.associatedTickets) }) : undefined },
+    { key: 'spent', v: k ? (k.actualCostCents == null ? mt('amk.notReported') : mkMoney(k.actualCostCents)) : '—' },
+    { key: 'costPerBooking', v: k?.costPerBookingCents == null ? mt('amk.na') : mkMoney(k.costPerBookingCents) },
+  ];
   return (
-    <div className="work">
-      <div className="vh">
-        <h1>{t('pos.campaign_results')}</h1>
-        <div className="sub mb-3">{t('pos.pick_a_campaign_to_see_its_1cf0')}</div>
+    <div className="work rvw" data-testid="amk-results">
+      <div className="rvw-head">
+        <div className="vh"><h1>{mt('amk.res.title')}</h1><div className="sub">{mt('amk.res.sub')}</div></div>
+        <div className="rvw-actions">
+          <button type="button" className="btn ghost" data-testid="amk-refresh" onClick={() => setTick((n) => n + 1)}>{mt('amk.refresh')}</button>
+          <MkHealthButton />
+        </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr] gap-3">
-        <section className="panel" style={{ minWidth: 0 }}>
-          <div className="p-h">{t('pos.campaigns')}</div>
-          {listError && <div className="err">{listError}</div>}
-          {!listError && campaigns == null && <div className="state">{t('pos.loading_campaigns')}</div>}
-          {campaigns && campaigns.length === 0 && <div className="state">{t('pos.no_campaigns_yet_create_one_from_1xzf')}</div>}
-          {campaigns && campaigns.map((c) => (
-            <div key={c.id} style={{ ...row, background: selected === c.id ? 'var(--card, #fff)' : 'transparent', borderColor: selected === c.id ? 'var(--gold, #A96F22)' : 'var(--line, #e6ddcd)' }} onClick={() => open(c.id)}>
-              <span style={{ fontWeight: 600 }}>{c.name}</span>
-              <span className="sub" style={{ fontSize: 12 }}>{growthCode(c.channel).toUpperCase()} · {growthCode(c.status)}</span>
-            </div>
-          ))}
-        </section>
-
-        <section className="panel" style={{ minWidth: 0 }}>
-          <div className="p-h">{t('pos.results')}</div>
-          {!selected && <div className="state">{t('pos.select_a_campaign_to_view_its_exuc')}</div>}
-          {selected && resLoading && <div className="state">{t('pos.loading_results')}</div>}
-          {selected && resError && <div className="err">{resError}</div>}
-          {selected && results && (
-            <>
-              <div className="kpis">
-                <div className="kpi"><div className="l">{t('pos.sent')}</div><div className="v">{n(results.funnel.sent)}</div></div>
-                <div className="kpi"><div className="l">{t('pos.clicked')}</div><div className="v">{n(results.funnel.clicked)}</div></div>
-                <div className="kpi"><div className="l">{t('pos.booked')}</div><div className="v">{n(results.funnel.booked)}</div></div>
-                <div className="kpi"><div className="l">{t('pos.assoc_revenue')}</div><div className="v">{money(results.associatedRevenueCents)}</div></div>
-              </div>
-              <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max" style={{ marginTop: 8 }}>
-                <tbody>
-                  <tr><td>{t('pos.open_rate')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{rate(results.rates.openRate)}</td></tr>
-                  <tr><td>{t('pos.click_rate')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{rate(results.rates.clickRate)}</td></tr>
-                  <tr><td>{t('pos.booking_rate')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{rate(results.rates.bookingRate)}</td></tr>
-                  <tr><td>{t('pos.cost_booking')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{cents(results.costPerBookingCents)}</td></tr>
-                  <tr><td>{t('pos.message_cost')}</td><td style={{ textAlign: 'right', fontWeight: 700 }}>{money(results.costCents)}</td></tr>
-                </tbody>
-              </table></div>
-              <div className="sub" style={{ marginTop: 8, fontSize: 12 }}>{results.disclaimer}</div>
-            </>
-          )}
-        </section>
+      <MkPeriodBar value={period} onChange={setPeriod} today={s?.period?.today} />
+      {err ? <ErrorRetry message={err} onRetry={load} /> : null}
+      <div className="amk-kpis" data-testid="amk-res-kpis">
+        {cards.map((c) => <KpiCard key={c.key} testId={`amk-res-${c.key}`} label={mt('amk.kpi.' + c.key)} value={s ? c.v : '—'} sub={c.sub} loading={!s && !err} />)}
       </div>
+      {s ? <p className="sub">{s.definitions?.associatedRevenue ? mt('amk.associated') : null} {mt('amk.res.basis')}</p> : null}
+      <CampaignLibrary tick={tick} title={mt('amk.res.list')} onOpen={setOpen} />
+      {open ? <CampaignFunnel id={open.id} name={open.name} onClose={() => setOpen(null)} /> : null}
     </div>
+  );
+}
+
+function CampaignFunnel({ id, name, onClose }: { id: string; name: string; onClose: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  useEffect(() => { let on = true; setErr(null); posCampaignCenterApi.detail(id).then((x) => on && setD(x)).catch((e) => on && setErr(mkErr(e))); return () => { on = false; }; }, [id, tick]);
+  const c = d?.counts;
+  return (
+    <FitDialog wide testId="amk-res-detail" title={name} onClose={onClose}
+      footer={<><Link className="btn" to={`/tenant/marketing/campaigns?q=${encodeURIComponent(id)}`}>{mt('amk.res.openCenter')}</Link><button className="btn ghost" onClick={onClose}>{mt('amk.close')}</button></>}>
+      {err ? <ErrorRetry message={err} onRetry={() => setTick((n) => n + 1)} /> : !d ? <div className="state">{mt('amk.loading')}</div> : <>
+        <p className="sub">{mt('amk.cst.' + d.displayStatus)}{d.outcome ? ` · ${mt('amk.outcome.' + d.outcome)}` : ''} · {mt('amk.channel.' + d.channel)} · {mkWhen(d.createdAt)}</p>
+        <table className="tbl"><thead><tr><th>{mt('amk.res.stage')}</th><th className="num">{mt('amk.res.count')}</th><th>{mt('amk.res.source')}</th></tr></thead><tbody>
+          {STAGES.map((st) => <tr key={st} data-testid={`amk-stage-${st}`}><td>{mt('amk.stage.' + st)}</td><td className="num">{c[st] == null ? '—' : mkNum(c[st])}</td><td className="sub">{mt('amk.stageSrc.' + st)}</td></tr>)}
+          <tr><td>{mt('amk.stage.revenue')}</td><td className="num">{mkMoney(c.associatedRevenueCents)}</td><td className="sub">{mt('amk.stageSrc.revenue')}</td></tr>
+          <tr><td>{mt('amk.stage.cost')}</td><td className="num" data-testid="amk-stage-cost">{c.actualCostCents == null ? (c.submitted ? mt('amk.notReported') : mkMoney(0)) : mkMoney(c.actualCostCents)}</td><td className="sub">{mt('amk.stageSrc.cost')}</td></tr>
+          <tr><td>{mt('amk.stage.budget')}</td><td className="num">{mkMoney(d.budgetCents)}</td><td className="sub">{mt('amk.stageSrc.budget')}</td></tr>
+          <tr><td>{mt('amk.stage.costPerBooking')}</td><td className="num">{c.actualCostCents && c.booked ? mkMoney(Math.round(c.actualCostCents / c.booked)) : mt('amk.na')}</td><td className="sub">{mt('amk.stageSrc.costPerBooking')}</td></tr>
+        </tbody></table>
+        {c.selectedIsEstimate ? <p className="sub">{mt('amk.res.estimateNote')}</p> : null}
+        {c.legacySentCount !== c.submitted && c.legacySentCount ? <p className="sub">{mt('amk.res.legacy', { o: mkNum(c.legacySentCount), n: mkNum(c.submitted) })}</p> : null}
+        <p className="sub">{mt('amk.associated')}</p>
+      </>}
+    </FitDialog>
   );
 }

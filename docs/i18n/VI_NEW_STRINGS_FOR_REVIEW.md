@@ -15568,3 +15568,311 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `icx.health.d.tenant_isolation.FAILED` | A stock record points at another salon's product. Report this immediately. | Có bản ghi tồn trỏ tới sản phẩm của tiệm khác. Hãy báo ngay. |
 | `icx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `icx.health.d.no_side_effects.PASSED` | This page and this check never order, count, transfer or adjust stock. | Trang này và việc kiểm tra không đặt hàng, kiểm kê, chuyển hay điều chỉnh tồn. |
+
+## AI Marketing Assistant family (`amk.*`) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `amk.title` | AI Marketing Assistant | Trợ lý Marketing AI |
+| `amk.policy` | Campaign recommendations from your real customer data. Every campaign is reviewed and approved in Campaign Center before anything is sent. | Đề xuất chiến dịch từ dữ liệu khách hàng thật. Mọi chiến dịch được xem xét và duyệt trong Trung tâm chiến dịch trước khi gửi. |
+| `amk.updated` | Updated {at} · salon time {tz} | Cập nhật {at} · giờ tiệm {tz} |
+| `amk.refresh` | Refresh | Làm mới |
+| `amk.check` | Check AI Marketing System | Kiểm tra hệ thống Marketing AI |
+| `amk.close` | Close | Đóng |
+| `amk.search` | Search | Tìm |
+| `amk.clear` | Clear filters | Xóa bộ lọc |
+| `amk.rows` | Rows | Số dòng |
+| `amk.loading` | Loading… | Đang tải… |
+| `amk.na` | N/A | Không áp dụng |
+| `amk.notReported` | Not reported yet | Chưa có báo cáo |
+| `amk.loadFailed` | Marketing data could not be loaded. Try again or run the system check — this is not "no campaigns". | Không tải được dữ liệu marketing. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có chiến dịch". |
+| `amk.err.forbidden` | Your role cannot use marketing. | Vai trò của bạn không dùng được marketing. |
+| `amk.openBuilder` | Campaign Builder | Tạo chiến dịch |
+| `amk.openBirthdays` | Open Birthday Campaigns | Mở Chiến dịch sinh nhật |
+| `amk.buildDraft` | Build a campaign | Tạo chiến dịch |
+| `amk.viewEligibility` | View eligibility | Xem ai đủ điều kiện |
+| `amk.kpi.active` | Active Campaigns | Chiến dịch đang chạy |
+| `amk.kpi.scheduled` | Scheduled | Đã lên lịch |
+| `amk.kpi.drafts` | Drafts | Bản nháp |
+| `amk.kpi.sent` | Messages Sent | Tin đã gửi |
+| `amk.kpi.bookings` | Bookings | Lượt đặt lịch |
+| `amk.kpi.revenue` | Associated Rev | Doanh thu liên quan |
+| `amk.kpi.costPerBooking` | Cost / Booking | Chi phí / lượt đặt |
+| `amk.kpi.spent` | Message cost | Chi phí tin nhắn |
+| `amk.kpi.awaiting` | {n} awaiting approval | {n} chờ duyệt |
+| `amk.kpi.delivered` | {d} delivered · {f} failed | {d} đã nhận · {f} lỗi |
+| `amk.kpi.completed` | {n} became completed visits | {n} thành lượt làm xong |
+| `amk.costPartial` | The provider has reported the cost of {n} of {t} messages in this period, so cost and cost per booking are not shown as a total. | Nhà cung cấp mới báo chi phí {n}/{t} tin trong kỳ này nên chưa hiện tổng chi phí và chi phí mỗi lượt đặt. |
+| `amk.reach.title` | Reach & Consent | Tiếp cận & đồng ý |
+| `amk.reach.smsIn` | Opted in to SMS | Đồng ý nhận SMS |
+| `amk.reach.emailIn` | Opted in to Email | Đồng ý nhận Email |
+| `amk.reach.reachable` | …of them reachable now | …trong đó liên hệ được |
+| `amk.reach.suppressed` | Suppressed (opted out) | Đã từ chối nhận (opt-out) |
+| `amk.reach.either` | Reachable by text or email | Liên hệ được qua SMS hoặc email |
+| `amk.reach.both` | …reachable by both | …liên hệ được cả hai |
+| `amk.reach.spent` | Message cost (this period) | Chi phí tin nhắn (kỳ này) |
+| `amk.reach.budgets` | Campaign budgets set | Ngân sách chiến dịch đã đặt |
+| `amk.reach.noteNoContact` | "Reachable" = opted in, has a usable contact and is not on the opt-out list. {s} opted in to SMS without a phone; {o} opted in but texted STOP. | "Liên hệ được" = đã đồng ý, có thông tin liên hệ dùng được và không nằm trong danh sách từ chối. {s} đồng ý SMS nhưng không có số điện thoại; {o} đồng ý nhưng đã nhắn STOP. |
+| `amk.costExpl.budget_not_spent` | The {b} is the budget set on {n} campaign(s). Nothing has been sent, so nothing has been spent — a budget is a limit, not a cost. | {b} là ngân sách đặt cho {n} chiến dịch. Chưa gửi tin nào nên chưa tốn chi phí — ngân sách là giới hạn, không phải chi phí. |
+| `amk.costExpl.budget_and_spend` | Budgets ({b} on {n} campaign(s)) are limits someone set; the message cost is what the provider reported for messages actually sent. | Ngân sách ({b} cho {n} chiến dịch) là giới hạn đã đặt; chi phí tin nhắn là số nhà cung cấp báo cho các tin đã gửi. |
+| `amk.costExpl.spend_partly_unreported` | The provider has not reported the cost of every sent message yet. | Nhà cung cấp chưa báo chi phí cho mọi tin đã gửi. |
+| `amk.associated` | Revenue is associated with campaign bookings — it does not prove the campaign caused the visit. | Doanh thu chỉ liên quan đến lượt đặt từ chiến dịch — không chứng minh chiến dịch là nguyên nhân. |
+| `amk.recs.title` | Recommended Campaigns | Chiến dịch đề xuất |
+| `amk.recs.note` | Recommendations only — nothing is sent. Consent and opt-outs are checked again for every customer at send time. | Chỉ là đề xuất — không gửi gì. Sự đồng ý và từ chối được kiểm tra lại cho từng khách khi gửi. |
+| `amk.recUnavailable` | This recommendation could not be evaluated right now. Run the system check. | Chưa đánh giá được đề xuất này. Hãy chạy kiểm tra hệ thống. |
+| `amk.recCounts` | {m} match · {e} eligible · {x} excluded | {m} phù hợp · {e} đủ điều kiện · {x} bị loại |
+| `amk.recCost` | Estimated cost: {m} | Chi phí ước tính: {m} |
+| `amk.recCostNone` | Cost not estimated (no price per text set, or email). | Chưa ước tính chi phí (chưa đặt giá mỗi tin, hoặc là email). |
+| `amk.why.no_eligible` | Nobody is eligible — mostly because: {r} ({n}). | Không ai đủ điều kiện — chủ yếu vì: {r} ({n}). |
+| `amk.why.no_match.rebooking` | No customer is between the "approaching" and "at risk" days since their last completed visit. | Không có khách nào ở khoảng "sắp đến hạn" đến "có nguy cơ" kể từ lần làm xong gần nhất. |
+| `amk.why.no_match.winback` | No customer with a completed visit has been away long enough to be at risk. | Không có khách đã từng làm xong nào vắng đủ lâu để có nguy cơ. |
+| `amk.why.no_match.birthday` | No customer has a recorded birthday this month. | Không có khách nào có sinh nhật ghi nhận trong tháng này. |
+| `amk.neverVisited` | {n} customer(s) never visited — they are never part of a win-back message. | {n} khách chưa từng đến — họ không bao giờ nằm trong tin mời quay lại. |
+| `amk.funnelTitle` | Who is eligible: {k} | Ai đủ điều kiện: {k} |
+| `amk.f.matched` | Match the goal | Phù hợp mục tiêu |
+| `amk.f.eligible` | Eligible now | Đủ điều kiện lúc này |
+| `amk.f.unique` | {n} unique people can be reached by text or email. | {n} người khác nhau liên hệ được qua SMS hoặc email. |
+| `amk.f.recheck` | Counts only — no customer list. Consent, opt-outs and contact details are checked again for every customer when the message is sent. | Chỉ là số lượng — không hiện danh sách khách. Sự đồng ý, từ chối và thông tin liên hệ được kiểm tra lại cho từng khách khi gửi. |
+| `amk.lib.title` | Campaigns | Chiến dịch |
+| `amk.lib.searchPh` | Campaign name, ID, offer or creator | Tên chiến dịch, mã, ưu đãi hoặc người tạo |
+| `amk.lib.status` | Status | Trạng thái |
+| `amk.lib.channel` | Channel | Kênh |
+| `amk.lib.none` | No campaigns yet. | Chưa có chiến dịch. |
+| `amk.lib.noMatch` | Nothing matches this search or these filters. | Không có gì khớp tìm kiếm hoặc bộ lọc. |
+| `amk.lib.col.name` | Campaign | Chiến dịch |
+| `amk.lib.col.status` | Status | Trạng thái |
+| `amk.lib.col.channel` | Channel | Kênh |
+| `amk.lib.col.audience` | Audience | Đối tượng |
+| `amk.lib.col.sent` | Sent | Đã gửi |
+| `amk.lib.col.booked` | Bookings | Lượt đặt |
+| `amk.lib.col.cost` | Cost | Chi phí |
+| `amk.lib.col.created` | Created | Ngày tạo |
+| `amk.lib.assistant` | AI draft | Bản nháp AI |
+| `amk.lib.budget` | Budget {b} | Ngân sách {b} |
+| `amk.lib.estimate` | {n} (typed estimate) | {n} (ước tính nhập tay) |
+| `amk.lib.eligibleOf` | {e} eligible of {n} | {e}/{n} đủ điều kiện |
+| `amk.lib.sentCell` | {s} accepted · {d} delivered | {s} đã nhận gửi · {d} đã đến |
+| `amk.aud.title` | Audience Builder | Tạo nhóm khách |
+| `amk.aud.sub` | How many customers fit a goal, who is left out and why — counts only. Custom audiences are built in Customer Segments. | Bao nhiêu khách phù hợp mục tiêu, ai bị loại và vì sao — chỉ là số lượng. Nhóm tùy chỉnh được tạo trong Phân nhóm khách hàng. |
+| `amk.aud.segments` | Customer Segments | Phân nhóm khách hàng |
+| `amk.aud.goal` | Goal | Mục tiêu |
+| `amk.aud.pick` | Choose a goal to see who is eligible. | Chọn mục tiêu để xem ai đủ điều kiện. |
+| `amk.kind.rebooking` | Rebooking due | Đến hạn đặt lại |
+| `amk.kind.winback` | Inactive customer win-back | Mời khách lâu không đến quay lại |
+| `amk.kind.birthday` | Birthday campaign | Chiến dịch sinh nhật |
+| `amk.kindDesc.rebooking` | Customers whose next visit is coming due (the "approaching" days in Customer Retention), with no booking yet. | Khách sắp đến hạn quay lại (số ngày "sắp đến hạn" trong Giữ chân khách) và chưa đặt lịch. |
+| `amk.kindDesc.winback` | Customers with at least one completed visit and none for the "at risk" days. | Khách đã làm xong ít nhất một lần và không quay lại trong số ngày "có nguy cơ". |
+| `amk.kindDesc.birthday` | Customers with a recorded birthday this month. Made in Birthday Campaigns (one message a year). | Khách có sinh nhật ghi nhận trong tháng này. Tạo trong Chiến dịch sinh nhật (mỗi năm một tin). |
+| `amk.studio.recipients` | Recipients for the estimate | Số người nhận để ước tính |
+| `amk.studio.use` | Use in Campaign Builder | Dùng trong Tạo chiến dịch |
+| `amk.studio.push` | Push messages have no per-message price and are not sent from Campaign Center yet. | Thông báo đẩy không tính giá mỗi tin và chưa gửi được từ Trung tâm chiến dịch. |
+| `amk.est.sms` | {c} characters · {e} · {s} segment(s) per text | {c} ký tự · {e} · {s} phần mỗi tin |
+| `amk.est.recipients` | {n} recipient(s) | {n} người nhận |
+| `amk.est.cost` | Estimated cost {m} ({s} segments) | Chi phí ước tính {m} ({s} phần) |
+| `amk.est.note.not_priced` | Not priced: no price per text is set for the platform. | Chưa có giá: nền tảng chưa đặt giá mỗi tin. |
+| `amk.est.note.email_unpriced` | Email has no per-message price here. | Email không tính giá mỗi tin ở đây. |
+| `amk.est.note.no_message` | Write the message to see its cost. | Viết tin nhắn để xem chi phí. |
+| `amk.est.note.estimate` | Estimate | Ước tính |
+| `amk.est.overBudget` | Over the budget of {b} — lower the audience or the message length, or raise the budget. | Vượt ngân sách {b} — hãy giảm người nhận hoặc độ dài tin, hoặc tăng ngân sách. |
+| `amk.est.withinBudget` | Within the budget | Trong ngân sách |
+| `amk.est.unresolved` | These placeholders cannot be filled for each customer and would be sent as written: {t}. Use {salon_name} or {offer}. | Các chỗ điền tự động này không điền được cho từng khách và sẽ gửi nguyên văn: {t}. Hãy dùng {salon_name} hoặc {offer}. |
+| `amk.est.offer` | {offer} is filled with the offer chosen in Campaign Center when the campaign is approved. | {offer} được điền bằng ưu đãi chọn trong Trung tâm chiến dịch khi duyệt. |
+| `amk.b.title` | Campaign Builder | Tạo chiến dịch |
+| `amk.b.sub` | Goal → audience → message → budget → review. Saving makes an unsent, unapproved draft in Campaign Center. | Mục tiêu → đối tượng → tin nhắn → ngân sách → xem lại. Lưu sẽ tạo bản nháp chưa gửi, chưa duyệt trong Trung tâm chiến dịch. |
+| `amk.b.openCenter` | Campaign Center | Trung tâm chiến dịch |
+| `amk.b.step.goal` | Goal | Mục tiêu |
+| `amk.b.step.audience` | Audience | Đối tượng |
+| `amk.b.step.message` | Message | Tin nhắn |
+| `amk.b.step.budget` | Budget & cost | Ngân sách & chi phí |
+| `amk.b.step.review` | Review & save | Xem lại & lưu |
+| `amk.b.gate.goal` | Choose a goal first. | Hãy chọn mục tiêu trước. |
+| `amk.b.gate.audience` | Nobody is eligible for this goal right now — see the reasons in the audience step. | Hiện chưa ai đủ điều kiện cho mục tiêu này — xem lý do ở bước đối tượng. |
+| `amk.b.gate.message` | Write the message first. | Hãy viết tin nhắn trước. |
+| `amk.b.gate.subject` | An email needs a subject. | Email cần có tiêu đề. |
+| `amk.b.gate.tokens` | Remove the placeholders that cannot be filled for each customer. | Hãy xóa các chỗ điền tự động không điền được cho từng khách. |
+| `amk.b.gate.budget` | Enter a budget of 0 or more, or leave it empty. | Nhập ngân sách từ 0 trở lên, hoặc để trống. |
+| `amk.b.birthdayElsewhere` | Birthday campaigns are made in Birthday Campaigns (one message per customer a year). | Chiến dịch sinh nhật được tạo trong Chiến dịch sinh nhật (mỗi khách một tin mỗi năm). |
+| `amk.b.name` | Campaign name | Tên chiến dịch |
+| `amk.b.namePh` | e.g. November rebooking | vd: Đặt lại tháng 11 |
+| `amk.b.subject` | Email subject | Tiêu đề email |
+| `amk.b.message` | Message | Tin nhắn |
+| `amk.b.messagePh` | Write the message. You can use {salon_name} and {offer}. | Viết tin nhắn. Có thể dùng {salon_name} và {offer}. |
+| `amk.b.vars` | Only {salon_name} and {offer} are filled in. Need a draft? | Chỉ {salon_name} và {offer} được điền tự động. Cần bản nháp? |
+| `amk.b.studio` | Open Message Studio | Mở Soạn tin |
+| `amk.b.budget` | Maximum budget ($, optional) | Ngân sách tối đa ($, không bắt buộc) |
+| `amk.b.budgetNote` | The budget is stored with the campaign and shown beside the real cost. The estimate uses the eligible count and the platform price per text. | Ngân sách được lưu cùng chiến dịch và hiện cạnh chi phí thực. Ước tính dùng số người đủ điều kiện và giá mỗi tin của nền tảng. |
+| `amk.b.r.goal` | Goal | Mục tiêu |
+| `amk.b.r.audience` | Audience | Đối tượng |
+| `amk.b.r.message` | As it would be sent | Tin sẽ gửi |
+| `amk.b.r.cost` | Cost | Chi phí |
+| `amk.b.r.budget` | budget {b} | ngân sách {b} |
+| `amk.b.reviewNote` | Saving checks consent again on the server and makes an unsent, unapproved draft. An owner or manager approves and launches it in Campaign Center. | Khi lưu, máy chủ kiểm tra lại sự đồng ý và tạo bản nháp chưa gửi, chưa duyệt. Chủ tiệm hoặc quản lý duyệt và gửi trong Trung tâm chiến dịch. |
+| `amk.b.save` | Save draft to Campaign Center | Lưu bản nháp vào Trung tâm chiến dịch |
+| `amk.b.saving` | Saving… | Đang lưu… |
+| `amk.b.saved` | Draft saved in Campaign Center. | Đã lưu bản nháp trong Trung tâm chiến dịch. |
+| `amk.b.savedAgain` | This draft was already saved — here it is. | Bản nháp này đã được lưu — đây là bản đó. |
+| `amk.b.savedCounts` | {e} eligible · {x} excluded in its audience. | {e} đủ điều kiện · {x} bị loại trong nhóm. |
+| `amk.b.notSent` | Nothing has been sent or scheduled. | Chưa gửi hay lên lịch gì. |
+| `amk.b.reviewInCenter` | Review, approve and launch in Campaign Center | Xem, duyệt và gửi trong Trung tâm chiến dịch |
+| `amk.b.back` | Back | Quay lại |
+| `amk.b.next` | Next | Tiếp |
+| `amk.res.title` | Campaign Results | Kết quả chiến dịch |
+| `amk.res.sub` | Every figure from its own record: sends, delivery reports, booking links, paid tickets. | Mỗi số liệu từ đúng nguồn của nó: tin gửi, báo cáo giao tin, liên kết đặt lịch, hóa đơn đã thanh toán. |
+| `amk.res.list` | Campaigns | Chiến dịch |
+| `amk.res.tickets` | {n} paid ticket(s) | {n} hóa đơn đã thanh toán |
+| `amk.res.basis` | Sent = when the send was recorded · bookings = when the campaign-link booking was made · revenue = when the ticket was paid. | Đã gửi = lúc ghi nhận gửi · lượt đặt = lúc đặt qua liên kết chiến dịch · doanh thu = lúc hóa đơn được thanh toán. |
+| `amk.res.openCenter` | Open in Campaign Center | Mở trong Trung tâm chiến dịch |
+| `amk.res.stage` | Stage | Bước |
+| `amk.res.count` | Count | Số lượng |
+| `amk.res.source` | Checked against | Đối chiếu với |
+| `amk.res.estimateNote` | This campaign has a typed audience estimate, not a customer list — nobody could be messaged from it. | Chiến dịch này chỉ có số người ước tính nhập tay, không có danh sách khách — không thể gửi cho ai. |
+| `amk.res.legacy` | The old counter said {o} sent; the send records say {n}. The send records are shown. | Bộ đếm cũ ghi {o} đã gửi; bản ghi gửi ghi {n}. Hiện theo bản ghi gửi. |
+| `amk.health.running` | Checking… | Đang kiểm tra… |
+| `amk.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `amk.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `amk.health.readOnly` | Read-only: the check sends no message, creates no campaign and changes no consent or payment. | Chỉ đọc: việc kiểm tra không gửi tin, không tạo chiến dịch, không đổi sự đồng ý hay thanh toán. |
+| `amk.health.retry` | Check again | Kiểm tra lại |
+| `amk.health.part` | Part: {c} | Bộ phận: {c} |
+| `amk.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `amk.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `amk.preset.today` | Today | Hôm nay |
+| `amk.preset.yesterday` | Yesterday | Hôm qua |
+| `amk.preset.week` | This week | Tuần này |
+| `amk.preset.last_7` | Last 7 days | 7 ngày qua |
+| `amk.preset.month` | This month | Tháng này |
+| `amk.preset.last_30` | Last 30 days | 30 ngày qua |
+| `amk.preset.last_month` | Last month | Tháng trước |
+| `amk.preset.year` | This year | Năm nay |
+| `amk.preset.all` | All time | Mọi thời gian |
+| `amk.preset.custom` | Custom range | Tùy chọn |
+| `amk.channel.sms` | SMS | SMS |
+| `amk.channel.email` | Email | Email |
+| `amk.channel.push` | Push | Thông báo đẩy |
+| `amk.channel.both` | SMS + Email | SMS + Email |
+| `amk.channel.all` | All channels | Mọi kênh |
+| `amk.cst.all` | All statuses | Mọi trạng thái |
+| `amk.cst.draft` | Draft | Bản nháp |
+| `amk.cst.awaiting_approval` | Awaiting approval | Chờ duyệt |
+| `amk.cst.approved` | Approved | Đã duyệt |
+| `amk.cst.scheduled` | Scheduled | Đã lên lịch |
+| `amk.cst.sending` | Sending | Đang gửi |
+| `amk.cst.completed` | Completed | Hoàn tất |
+| `amk.cst.cancelled` | Cancelled | Đã hủy |
+| `amk.outcome.approval_voided_by_edit` | Edited after approval — needs approval again | Đã sửa sau khi duyệt — cần duyệt lại |
+| `amk.outcome.started_no_send_record` | Started, but no send has been recorded | Đã bắt đầu nhưng chưa ghi nhận lần gửi nào |
+| `amk.outcome.completed_no_send_record` | Marked completed — nothing was ever sent | Đánh dấu hoàn tất — chưa từng gửi tin nào |
+| `amk.outcome.completed_legacy_counts_only` | Completed — only old counters, no send records | Hoàn tất — chỉ có bộ đếm cũ, không có bản ghi gửi |
+| `amk.outcome.completed_zero_sent` | Completed — 0 messages accepted | Hoàn tất — 0 tin được nhận gửi |
+| `amk.outcome.completed_delivery_pending` | Completed — some delivery reports still pending | Hoàn tất — còn chờ một số báo cáo giao tin |
+| `amk.recStatus.ready` | Ready to draft | Sẵn sàng tạo nháp |
+| `amk.recStatus.no_eligible` | Nobody eligible | Không ai đủ điều kiện |
+| `amk.recStatus.no_match` | No matching customers | Không có khách phù hợp |
+| `amk.recStatus.unavailable` | Could not evaluate | Chưa đánh giá được |
+| `amk.reason.no_consent` | No marketing consent for this channel | Chưa đồng ý nhận marketing qua kênh này |
+| `amk.reason.opted_out` | Opted out (STOP / unsubscribe) | Đã từ chối (STOP / hủy đăng ký) |
+| `amk.reason.no_phone` | No phone number | Không có số điện thoại |
+| `amk.reason.invalid_phone` | Phone number not usable | Số điện thoại không dùng được |
+| `amk.reason.no_email` | No email address | Không có email |
+| `amk.reason.invalid_email` | Email not usable | Email không dùng được |
+| `amk.reason.never_visited` | Never visited | Chưa từng đến |
+| `amk.reason.not_found` | Customer record not found | Không tìm thấy hồ sơ khách |
+| `amk.reason.duplicate_destination` | Same phone or email as another customer in the list | Trùng số điện thoại hoặc email với khách khác trong danh sách |
+| `amk.reason.recently_contacted` | Recently contacted by a campaign | Vừa được chiến dịch liên hệ gần đây |
+| `amk.reason.contacted` | Recently contacted by a campaign | Vừa được chiến dịch liên hệ gần đây |
+| `amk.reason.upcoming_booking` | Already has an upcoming booking | Đã có lịch hẹn sắp tới |
+| `amk.reason.booked` | Already has an upcoming booking | Đã có lịch hẹn sắp tới |
+| `amk.reason.recent_visit` | Visited recently | Mới đến gần đây |
+| `amk.stage.selected` | Selected (audience snapshot) | Đã chọn (danh sách khách) |
+| `amk.stage.eligible` | Eligible when saved | Đủ điều kiện khi lưu |
+| `amk.stage.excluded` | Excluded when saved | Bị loại khi lưu |
+| `amk.stage.queued` | Queued | Trong hàng chờ |
+| `amk.stage.attempted` | Tried | Đã thử gửi |
+| `amk.stage.submitted` | Accepted by the provider | Nhà cung cấp đã nhận |
+| `amk.stage.delivered` | Delivered | Đã đến |
+| `amk.stage.failed` | Failed | Lỗi |
+| `amk.stage.unknown` | Waiting for a delivery report | Chờ báo cáo giao tin |
+| `amk.stage.simulated` | Test sender (not delivered) | Gửi thử (không đến khách) |
+| `amk.stage.skippedAtSend` | Skipped at send time (consent, opt-out, limits) | Bỏ qua khi gửi (đồng ý, từ chối, giới hạn) |
+| `amk.stage.booked` | Booked through the campaign link | Đặt lịch qua liên kết chiến dịch |
+| `amk.stage.redemptions` | Paid tickets that used a campaign code | Hóa đơn đã thanh toán dùng mã chiến dịch |
+| `amk.stage.revenue` | Associated revenue | Doanh thu liên quan |
+| `amk.stage.cost` | Message cost | Chi phí tin nhắn |
+| `amk.stage.budget` | Budget | Ngân sách |
+| `amk.stage.costPerBooking` | Cost per booking | Chi phí mỗi lượt đặt |
+| `amk.stageSrc.selected` | The customers copied from a saved audience | Các khách sao chép từ nhóm đã lưu |
+| `amk.stageSrc.eligible` | The consent verdict saved with the audience | Kết quả kiểm tra đồng ý lưu cùng nhóm |
+| `amk.stageSrc.excluded` | The same verdict, with each reason | Cùng kết quả, kèm từng lý do |
+| `amk.stageSrc.queued` | The send ledger | Sổ ghi gửi tin |
+| `amk.stageSrc.attempted` | The send ledger | Sổ ghi gửi tin |
+| `amk.stageSrc.submitted` | The send ledger + the provider message ID | Sổ ghi gửi tin + mã tin của nhà cung cấp |
+| `amk.stageSrc.delivered` | The provider delivery report | Báo cáo giao tin của nhà cung cấp |
+| `amk.stageSrc.failed` | The send ledger and the delivery report | Sổ ghi gửi tin và báo cáo giao tin |
+| `amk.stageSrc.unknown` | Accepted, no delivery report yet | Đã nhận gửi, chưa có báo cáo giao tin |
+| `amk.stageSrc.simulated` | The test sender | Bộ gửi thử |
+| `amk.stageSrc.skippedAtSend` | The send ledger (reason recorded) | Sổ ghi gửi tin (có ghi lý do) |
+| `amk.stageSrc.booked` | Booking-link conversions | Lượt đặt qua liên kết |
+| `amk.stageSrc.redemptions` | Code redemptions on paid tickets | Lượt dùng mã trên hóa đơn đã thanh toán |
+| `amk.stageSrc.revenue` | Totals of those paid tickets (refunded / voided excluded) | Tổng các hóa đơn đó (trừ hoàn tiền / hủy) |
+| `amk.stageSrc.cost` | The provider cost on each sent message | Chi phí nhà cung cấp trên từng tin đã gửi |
+| `amk.stageSrc.budget` | Typed on the campaign — a limit, not spending | Nhập trên chiến dịch — là giới hạn, không phải chi phí |
+| `amk.stageSrc.costPerBooking` | Message cost ÷ bookings; N/A when there are none | Chi phí tin ÷ lượt đặt; không áp dụng khi chưa có lượt đặt |
+| `amk.health.PASSED` | Passed | Đạt |
+| `amk.health.WARNING` | Warning | Cảnh báo |
+| `amk.health.FAILED` | Failed | Lỗi |
+| `amk.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `amk.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `amk.comp.campaigns` | Campaigns | Chiến dịch |
+| `amk.comp.audience` | Audience | Đối tượng |
+| `amk.comp.workers` | Background sending | Gửi tự động |
+| `amk.comp.communications` | Text & email | SMS & email |
+| `amk.comp.consent` | Consent | Sự đồng ý |
+| `amk.comp.budget` | Cost & budget | Chi phí & ngân sách |
+| `amk.comp.results` | Results | Kết quả |
+| `amk.comp.security` | Security | Bảo mật |
+| `amk.health.k.campaign_engine` | Campaigns readable | Đọc được chiến dịch |
+| `amk.health.d.campaign_engine.PASSED` | The campaign records can be read for this salon. | Đọc được dữ liệu chiến dịch của tiệm. |
+| `amk.health.k.approved_before_sending` | Approved before sending | Đã duyệt trước khi gửi |
+| `amk.health.d.approved_before_sending.PASSED` | Every scheduled or sending campaign was approved in Campaign Center and not changed since. | Mọi chiến dịch đã lên lịch hoặc đang gửi đều đã được duyệt trong Trung tâm chiến dịch và không bị sửa sau đó. |
+| `amk.health.d.approved_before_sending.FAILED` | Some scheduled or sending campaigns have no current Campaign Center approval (scheduled by the old AI route, or edited after approval). Move them back to draft and approve them. | Có chiến dịch đã lên lịch hoặc đang gửi mà không có duyệt hiện hành (lên lịch qua đường AI cũ, hoặc sửa sau khi duyệt). Hãy đưa về bản nháp và duyệt lại. |
+| `amk.health.k.audience_snapshot` | Real audience lists | Danh sách khách thật |
+| `amk.health.d.audience_snapshot.PASSED` | Every scheduled or sending campaign has a saved customer list. | Mọi chiến dịch đã lên lịch hoặc đang gửi đều có danh sách khách đã lưu. |
+| `amk.health.d.audience_snapshot.WARNING` | Some scheduled or sending campaigns only have a typed audience number — nobody can be messaged from it. Choose a saved audience. | Một số chiến dịch chỉ có số người nhập tay — không gửi được cho ai. Hãy chọn nhóm khách đã lưu. |
+| `amk.health.k.send_worker` | Background sending on | Bật gửi tự động |
+| `amk.health.d.send_worker.PASSED` | Background sending is on and a worker is reporting in. | Gửi tự động đang bật và có tiến trình đang chạy. |
+| `amk.health.d.send_worker.WARNING` | Background sending is off on this server, or no worker is reporting in — scheduled campaigns wait until it runs. | Gửi tự động đang tắt trên máy chủ này, hoặc không có tiến trình chạy — chiến dịch đã lên lịch sẽ chờ. |
+| `amk.health.k.schedules_on_time` | Schedules on time | Lịch gửi đúng giờ |
+| `amk.health.d.schedules_on_time.PASSED` | No scheduled campaign is more than 15 minutes late. | Không có chiến dịch nào trễ quá 15 phút. |
+| `amk.health.d.schedules_on_time.WARNING` | Some scheduled campaigns are more than 15 minutes late. Check that background sending is running. | Có chiến dịch trễ hơn 15 phút. Hãy kiểm tra gửi tự động có đang chạy. |
+| `amk.health.k.sms_sender` | Salon text sender | Số gửi SMS của tiệm |
+| `amk.health.d.sms_sender.PASSED` | The salon's own Twilio sender is set. | Đã cài số gửi Twilio riêng của tiệm. |
+| `amk.health.d.sms_sender.WARNING` | Texts would use the shared or test sender, or carrier registration is not finished. Finish Text Messaging Setup. | Tin sẽ dùng số chung hoặc số thử, hoặc chưa hoàn tất đăng ký nhà mạng. Hãy hoàn tất Cài đặt nhắn tin. |
+| `amk.health.d.sms_sender.FAILED` | No text sender is configured — no campaign text can be sent. | Chưa cài số gửi — không gửi được SMS chiến dịch. |
+| `amk.health.k.email_provider` | Email provider | Nhà cung cấp email |
+| `amk.health.d.email_provider.PASSED` | An email provider is configured (the key is never shown). | Đã cài nhà cung cấp email (khóa không bao giờ hiển thị). |
+| `amk.health.d.email_provider.WARNING` | No email provider is configured, so campaign emails are not delivered. | Chưa cài nhà cung cấp email nên email chiến dịch không được gửi đi. |
+| `amk.health.k.delivery_reports` | Delivery reports arriving | Có báo cáo giao tin |
+| `amk.health.d.delivery_reports.PASSED` | Every campaign message from the last 7 days has a delivery report (or is under an hour old). | Mọi tin chiến dịch 7 ngày qua đều có báo cáo giao tin (hoặc mới gửi chưa tới 1 giờ). |
+| `amk.health.d.delivery_reports.WARNING` | Some messages accepted more than an hour ago have no delivery report. Check the provider status callbacks. | Một số tin đã nhận gửi hơn 1 giờ chưa có báo cáo giao tin. Hãy kiểm tra phản hồi trạng thái của nhà cung cấp. |
+| `amk.health.k.consent_contacts` | Opted-in customers can be reached | Khách đã đồng ý liên hệ được |
+| `amk.health.d.consent_contacts.PASSED` | Everyone who opted in has a contact for that channel. | Mọi khách đã đồng ý đều có thông tin liên hệ của kênh đó. |
+| `amk.health.d.consent_contacts.WARNING` | Some customers opted in but have no phone or email for that channel — they cannot be messaged. Update their profiles. | Một số khách đã đồng ý nhưng thiếu số điện thoại hoặc email — không gửi được. Hãy cập nhật hồ sơ. |
+| `amk.health.d.consent_contacts.INSUFFICIENT_DATA` | No customers yet. | Chưa có khách. |
+| `amk.health.k.opt_out_list` | Opt-out list read | Đọc được danh sách từ chối |
+| `amk.health.d.opt_out_list.PASSED` | The opt-out (STOP / unsubscribe) list is read before every audience and every send. | Danh sách từ chối (STOP / hủy đăng ký) được đọc trước mỗi nhóm khách và mỗi lần gửi. |
+| `amk.health.k.sms_pricing` | Price per text set | Đã đặt giá mỗi tin |
+| `amk.health.d.sms_pricing.PASSED` | A price per text segment is set, so costs can be estimated. | Đã đặt giá mỗi phần tin nên ước tính được chi phí. |
+| `amk.health.d.sms_pricing.WARNING` | No price per text is set — costs are shown as "not priced", never guessed. | Chưa đặt giá mỗi tin — chi phí hiện "chưa có giá", không đoán. |
+| `amk.health.k.budget_respected` | Budgets respected | Tuân thủ ngân sách |
+| `amk.health.d.budget_respected.PASSED` | No campaign has cost more than its budget. | Không chiến dịch nào tốn hơn ngân sách. |
+| `amk.health.d.budget_respected.FAILED` | Some campaigns cost more than their budget. Budgets are shown beside the real cost; review those campaigns. | Có chiến dịch tốn hơn ngân sách. Ngân sách hiện cạnh chi phí thực; hãy xem lại các chiến dịch đó. |
+| `amk.health.k.budget_not_spending` | Budgets are not spending | Ngân sách không phải chi phí |
+| `amk.health.d.budget_not_spending.PASSED` | No campaign has a budget without sends. | Không có chiến dịch nào có ngân sách mà chưa gửi. |
+| `amk.health.d.budget_not_spending.WARNING` | Some campaigns have a budget but sent nothing. The old page added these budgets up as "message cost" — they are limits, not money spent. | Một số chiến dịch có ngân sách nhưng chưa gửi gì. Trang cũ cộng các ngân sách này thành "chi phí tin nhắn" — đó là giới hạn, không phải tiền đã chi. |
+| `amk.health.k.attribution` | Booking links recorded | Ghi nhận liên kết đặt lịch |
+| `amk.health.d.attribution.PASSED` | Campaign-link bookings are being recorded. | Lượt đặt qua liên kết chiến dịch đang được ghi nhận. |
+| `amk.health.d.attribution.INSUFFICIENT_DATA` | No campaign message was sent in 90 days, so there is nothing to attribute yet. | Chưa gửi tin chiến dịch nào trong 90 ngày nên chưa có gì để ghi nhận. |
+| `amk.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `amk.health.d.tenant_isolation.PASSED` | Every send record belongs to this salon's campaigns. | Mọi bản ghi gửi đều thuộc chiến dịch của tiệm này. |
+| `amk.health.d.tenant_isolation.FAILED` | A send record points at another salon's campaign. Report this immediately. | Có bản ghi gửi trỏ tới chiến dịch của tiệm khác. Hãy báo ngay. |
+| `amk.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `amk.health.d.no_side_effects.PASSED` | This check sends no message, creates no campaign and changes no consent or payment. | Việc kiểm tra không gửi tin, không tạo chiến dịch, không đổi sự đồng ý hay thanh toán. |

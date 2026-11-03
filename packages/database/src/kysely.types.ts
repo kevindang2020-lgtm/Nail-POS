@@ -7241,6 +7241,7 @@ export interface DB {
   voice_settings_health_runs: VoiceSettingsHealthRunsTable;
   voice_followup_reviews: VoiceFollowupReviewsTable;
   voice_followup_health_runs: VoiceFollowupHealthRunsTable;
+  ai_marketing_health_runs: AiMarketingHealthRunsTable;
   inventory_health_runs: InventoryHealthRunsTable;
   money_protection_health_runs: MoneyProtectionHealthRunsTable;
   money_protection_detection_runs: MoneyProtectionDetectionRunsTable;
@@ -8072,6 +8073,9 @@ export interface MoneyProtectionHealthRunsTable {   // migration 778 — read-on
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface InventoryHealthRunsTable {   // migration 779 — read-only "Check Inventory System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface AiMarketingHealthRunsTable {   // migration 780 — Check AI Marketing System runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface VoiceFollowupHealthRunsTable {   // migration 775 — read-only "Check Voice Follow-Up System" runs

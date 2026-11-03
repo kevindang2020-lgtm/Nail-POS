@@ -446,6 +446,10 @@
   "inventory_health_runs": {
    "domain": "AI",
    "reason": "AI Inventory Assistant guides (Nov 3 2026, migration 779): read-only Check Inventory System runs"
+  },
+  "ai_marketing_health_runs": {
+   "domain": "AI",
+   "reason": "Check AI Marketing System evidence (migration 780): read-only health runs of the AI Marketing Assistant"
   }
  }
 }

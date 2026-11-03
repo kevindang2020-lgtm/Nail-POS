@@ -1,50 +1,63 @@
+// POSAICampaignBuilderScreen — Campaign Builder guide (Nov 3 2026): goal → audience → message → budget & cost → review & save. Next never
+// sends or approves; saving makes an UNSENT, UNAPPROVED Campaign Center draft (the old AI submit + approve routes are gone).
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-const { previewMock, draftMock, submitMock, approveMock } = vi.hoisted(() => ({ previewMock: vi.fn(), draftMock: vi.fn(), submitMock: vi.fn(), approveMock: vi.fn() }));
-vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { previewAudience: previewMock, generateDraft: draftMock, submitCampaign: submitMock, approveCampaign: approveMock, state: vi.fn() } }));
+import { MemoryRouter } from 'react-router-dom';
+const { c } = vi.hoisted(() => ({ c: { recommendations: vi.fn(), eligibility: vi.fn(), estimate: vi.fn(), saveDraft: vi.fn(), check: vi.fn() } }));
+vi.mock('../api/posAIMarketingApi', () => ({ posAIMarketingApi: { center: c, generateDraft: vi.fn() } }));
 import { POSAICampaignBuilderScreen } from './POSAICampaignBuilderScreen';
-beforeEach(() => { previewMock.mockReset(); draftMock.mockReset(); submitMock.mockReset(); approveMock.mockReset(); });
-
-function next() { fireEvent.click(screen.getByText('Next')); }
+const REC = { kind: 'winback', status: 'ready', matched: 5, eligible: 4, excludedTotal: 1, excluded: { no_phone: 1 }, message: { name: 'We miss you', body: 'We miss you at {salon_name}! Come back soon. Reply STOP to opt out.', subject: null } };
+const est = (o: any = {}) => ({ channel: 'sms', asSent: 'Pilot: We miss you at Pilot!', characters: 60, encoding: 'GSM-7', segmentsPerMessage: 1, recipients: 4, estimatedSegments: 4, estimatedCostCents: 14, budgetCents: null, withinBudget: null, unresolved: [], costNote: 'estimate', ...o });
+const wrap = (url = '/tenant/ai/marketing/builder') => render(<MemoryRouter initialEntries={[url]}><POSAICampaignBuilderScreen /></MemoryRouter>);
+beforeEach(() => {
+  vi.clearAllMocks();
+  c.recommendations.mockResolvedValue({ items: [REC] });
+  c.eligibility.mockResolvedValue({ kind: 'winback', channels: [{ channel: 'sms', matched: 5, eligible: 4, excluded: { no_phone: 1 }, criteria: 'x' }], uniqueEligible: null });
+  c.estimate.mockResolvedValue(est());
+});
 
 describe('POSAICampaignBuilderScreen', () => {
-  it('walks goal→audience→message→offer→schedule→review and submits + approves', async () => {
-    previewMock.mockResolvedValue({ total: 100, eligible: 80, suppressed: 20, breakdown: { missingContact: 5, optedOut: 15 } });
-    submitMock.mockResolvedValue({ campaign: { id: 'c1', status: 'draft' } });
-    approveMock.mockResolvedValue({ status: 'scheduled', scheduledAt: '2026-07-10T14:00:00Z' });
-
-    render(<POSAICampaignBuilderScreen />);
-    // Goal
-    fireEvent.change(screen.getByPlaceholderText('e.g. July gel rebooking'), { target: { value: 'July rebook' } });
-    next();
-    // Audience — estimate then next
-    fireEvent.click(screen.getByText('Estimate audience'));
-    expect(await screen.findByText('80')).toBeInTheDocument();
-    next();
-    // Message — type a draft
-    fireEvent.change(screen.getByPlaceholderText(/Write or generate the message/i), { target: { value: 'Hi {{customer_first_name}} {{booking_link}}' } });
-    next();
-    // Offer — skip
-    next();
-    // Schedule — future
-    const future = '2030-01-01T10:00';
-    fireEvent.change(screen.getByDisplayValue(''), { target: { value: future } });
-    next();
-    // Review — submit
-    fireEvent.click(screen.getByText('Submit & schedule'));
-    expect(await screen.findByText(/is/)).toBeInTheDocument();
-    expect(submitMock).toHaveBeenCalledOnce();
-    expect(approveMock).toHaveBeenCalledOnce();
-    // submit body carries the audience definition + eligible size (the missing link for sending)
-    const body = submitMock.mock.calls[0][0];
-    expect(body.audienceSize).toBe(80);
-    expect(body.audienceDefinition).toBeTruthy();
-    expect(body.draftText).toContain('{{booking_link}}');
+  it('Next is gated until a goal is chosen', () => {
+    wrap();
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    expect(screen.getByTestId('amk-gate')).toHaveTextContent('Choose a goal first.');
   });
-
-  it('gates Next until the current step is complete', async () => {
-    render(<POSAICampaignBuilderScreen />);
-    next(); // no name yet
-    expect(await screen.findByText('Complete this step first.')).toBeInTheDocument();
+  it('walks the steps with the server\'s suggested text and saves an unsent draft into Campaign Center — once', async () => {
+    c.saveDraft.mockResolvedValue({ duplicate: false, campaignId: 'cmp-9', eligible: 4, excluded: 1, sent: 0 });
+    wrap('/tenant/ai/marketing/builder?kind=winback&channel=sms');
+    fireEvent.click(screen.getByTestId('amk-b-next'));                         // → audience
+    expect(await screen.findByTestId('amk-b-aud-status')).toHaveTextContent('5 match · 4 eligible · 1 excluded');
+    fireEvent.click(screen.getByTestId('amk-b-next'));                         // → message (prefilled from the recommendation)
+    expect(screen.getByTestId('amk-b-message')).toHaveValue(REC.message.body);
+    expect(await screen.findByTestId('amk-est-cost')).toHaveTextContent('$0.14');
+    expect(c.estimate).toHaveBeenLastCalledWith({ channel: 'sms', body: REC.message.body, recipients: 4, budgetCents: null });
+    fireEvent.click(screen.getByTestId('amk-b-next'));                         // → budget
+    fireEvent.change(screen.getByTestId('amk-b-budget'), { target: { value: '5' } });
+    fireEvent.click(screen.getByTestId('amk-b-next'));                         // → review
+    fireEvent.click(screen.getByTestId('amk-b-save'));
+    expect(await screen.findByTestId('amk-b-saved')).toHaveTextContent('Nothing has been sent or scheduled.');
+    expect(c.saveDraft).toHaveBeenCalledTimes(1);
+    const body = c.saveDraft.mock.calls[0][0];
+    expect(body).toMatchObject({ kind: 'winback', channel: 'sms', message: REC.message.body, budgetCents: 500, name: 'We miss you' });
+    expect(body.idempotencyKey.length).toBeGreaterThanOrEqual(8);
+    expect(screen.getByTestId('amk-b-open').getAttribute('href')).toBe('/tenant/marketing/campaigns?q=cmp-9');
+  });
+  it('a placeholder Campaign Center cannot fill blocks the message step', async () => {
+    c.estimate.mockResolvedValue(est({ unresolved: ['{{customer_first_name}}'] }));
+    wrap('/tenant/ai/marketing/builder?kind=winback&channel=sms&message=Hi%20%7B%7Bcustomer_first_name%7D%7D');
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    await screen.findByTestId('amk-b-aud-status');
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    expect(await screen.findByTestId('amk-unresolved')).toHaveTextContent('{{customer_first_name}}');
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    expect(screen.getByTestId('amk-gate')).toHaveTextContent('Remove the placeholders');
+  });
+  it('nobody eligible: the audience step stops the wizard with the reason', async () => {
+    c.recommendations.mockResolvedValue({ items: [{ ...REC, status: 'no_eligible', eligible: 0 }] });
+    wrap('/tenant/ai/marketing/builder?kind=winback');
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    await screen.findByTestId('amk-b-aud-status');
+    fireEvent.click(screen.getByTestId('amk-b-next'));
+    expect(screen.getByTestId('amk-gate')).toHaveTextContent('Nobody is eligible');
   });
 });
