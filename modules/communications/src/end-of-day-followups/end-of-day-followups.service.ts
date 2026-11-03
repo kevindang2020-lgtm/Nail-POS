@@ -29,6 +29,8 @@ const REFUSAL: Record<string, (detail?: string) => Error> = {
 };
 
 
+const ymdAdd = (ymd: string, days: number) => { const [y, m, d] = ymd.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + days)); return t.toISOString().slice(0, 10); };
+
 export class DailyFollowUpService {
   // realtime is OPTIONAL: unit tests/harness construct with just the repo (emits become no-ops); the module injects the bus.
   constructor(private readonly repo: DailyFollowUpPort, private readonly realtime?: RealtimeEmitter) {}
@@ -61,12 +63,12 @@ export class DailyFollowUpService {
   // ---------- generation ----------
 
   /** Generate (or top-up) the follow-up queue for one branch on its current local business date. Idempotent. */
-  async generateForBranch(tenantId: string, branchId: string, opts: { now?: Date; triggerSource: 'scheduler' | 'manual'; force?: boolean }): Promise<GenerateResult> {
+  async generateForBranch(tenantId: string, branchId: string, opts: { now?: Date; triggerSource: 'scheduler' | 'manual'; force?: boolean; businessDate?: string }): Promise<GenerateResult> {
     const now = opts.now ?? new Date();
     const tz = (await this.repo.branchTimezone(tenantId, branchId)) || DEFAULT_TZ;
     const settings = await this.repo.settingsFor(tenantId, branchId);
     const resolvedTz = settings.timezone || tz;
-    const businessDate = localDateInTz(now, resolvedTz);
+    const businessDate = opts.businessDate && /^\d{4}-\d{2}-\d{2}$/.test(opts.businessDate) ? opts.businessDate : localDateInTz(now, resolvedTz);   // catch-up passes yesterday
 
     // Scheduler/auto path respects the "already generated today" guard; manual Generate Now bypasses it (the unique
     // index still prevents duplicate tasks, so a top-up only adds newly completed lines).
@@ -123,7 +125,16 @@ export class DailyFollowUpService {
         const settings = await this.repo.settingsFor(b.tenantId, b.branchId);
         if (!settings.enabled) continue;
         const tz = settings.timezone || (await this.repo.branchTimezone(b.tenantId, b.branchId)) || DEFAULT_TZ;
-        if (localMinutesInTz(now, tz) < parseHHMM(settings.generationTime)) continue; // not yet 8pm local
+        if (localMinutesInTz(now, tz) < parseHHMM(settings.generationTime)) {
+          // not yet 8pm local — but if YESTERDAY's run was missed (the server was down at 8pm), catch it up now. Only the last missed
+          // day, and only for a branch that ran the day before it (a branch just switched on is never back-filled).
+          const today = localDateInTz(now, tz), yesterday = ymdAdd(today, -1), dayBefore = ymdAdd(today, -2);
+          if (!(await this.repo.runExists(b.tenantId, b.branchId, yesterday)) && (await this.repo.runExists(b.tenantId, b.branchId, dayBefore))) {
+            const res = await this.generateForBranch(b.tenantId, b.branchId, { now, triggerSource: 'scheduler', businessDate: yesterday });
+            branchesRun += 1; totalCreated += res.created;
+          }
+          continue;
+        }
         const businessDate = localDateInTz(now, tz);
         if (await this.repo.runExists(b.tenantId, b.branchId, businessDate)) continue; // already generated today
         const res = await this.generateForBranch(b.tenantId, b.branchId, { now, triggerSource: 'scheduler' });

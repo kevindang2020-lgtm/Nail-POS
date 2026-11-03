@@ -269,6 +269,10 @@ describe('staff Cancel Pending, KPIs, list, health, customer history, isolation 
     expect(all.totalItems).toBeGreaterThan(10);
     const p2 = await center.list(ctx, { tab: 'all', pageSize: 10, page: 2 });
     expect(p2.items.length).toBeGreaterThan(0);
+    const far = await center.list(ctx, { tab: 'all', pageSize: 10, page: 999 });   // Nov 3 audit: past the end → the last page with the real total, not "0"
+    expect(far.totalItems).toBe(all.totalItems); expect(far.page).toBe(all.totalPages); expect(far.items.length).toBeGreaterThan(0);
+    const farUp = await center.list(ctx, { tab: 'upcoming', pageSize: 10, page: 999 });
+    expect(farUp.totalItems).toBe((await center.list(ctx, { tab: 'upcoming', pageSize: 10 })).totalItems);
     const created = [...all.items, ...p2.items].map((x: any) => x.createdAt);
     expect([...created].sort().reverse()).toEqual(created);
     const oldest = (await q(`select appointment_id from appointment_reminders_sent where tenant_id = $1 order by created_at asc, id asc limit 1`, [T]))[0].appointment_id;

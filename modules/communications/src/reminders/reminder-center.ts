@@ -178,15 +178,15 @@ export class ReminderCenter {
       conds.push(this.inRange(basis === 'appointment' ? sql`u.start_at` : sql`u.intended_at`, p));
       const s = this.search(f.q, { name: sql`u.customer_name`, phone: sql`u.phone`, email: sql`u.email`, tech: sql`u.technician_name`, ids: [sql`u.appointment_id`, sql`u.customer_id`] });
       if (s) conds.push(s);
-      const rows = (await sql<any>`with ${this.upcomingCte(T, tz)}
+      const fetchU = async (pgN: number) => (await sql<any>`with ${this.upcomingCte(T, tz)}
         select u.appointment_id, u.lead_minutes, u.branch_id, u.customer_id, u.customer_name, u.phone, u.email, u.technician_name, u.channel, u.start_at, u.intended_at, ${ReminderCenter.UPSTATE} as state, count(*) over() as total, b.name as branch_name
         from up u left join branches b on b.id = u.branch_id and b.tenant_id = ${T}::uuid
         where ${sql.join(conds, sql` and `)}
         order by u.intended_at asc, u.appointment_id asc, u.lead_minutes desc
-        limit ${ps} offset ${(pg - 1) * ps}`.execute(this.db)).rows;
-      const total = rows.length ? n(rows[0].total) : 0;
-      return { tab, basis, timezone: tz, period: { preset: p.preset, from: p.from, to: p.to }, page: pg, pageSize: ps, totalItems: total, totalPages: Math.max(1, Math.ceil(total / ps)),
-        items: rows.map((r) => ({
+        limit ${ps} offset ${(pgN - 1) * ps}`.execute(this.db)).rows;
+      const { rows, total, page: pgU } = await this.pastEnd(fetchU, pg, ps);
+      return { tab, basis, timezone: tz, period: { preset: p.preset, from: p.from, to: p.to }, page: pgU, pageSize: ps, totalItems: total, totalPages: Math.max(1, Math.ceil(total / ps)),
+        items: rows.map((r: any) => ({
           id: `u:${r.appointment_id}:${r.lead_minutes}`, kind: 'upcoming', state: r.state, reasonText: REASON_TEXT[r.state] ?? null,
           appointmentId: r.appointment_id, customerId: r.customer_id, customerName: r.customer_name, phoneLast4: last4(r.phone), emailMasked: maskEmail(r.email),
           hasDestination: r.channel === 'email' ? !!r.email : !!r.phone, technicianName: r.technician_name, branchId: r.branch_id, branchName: r.branch_name,
@@ -205,7 +205,7 @@ export class ReminderCenter {
     conds.push(this.inRange(col, p));
     const s = this.search(f.q, { name: sql`coalesce(c.full_name, a.customer_name, '')`, phone: sql`coalesce(c.normalized_phone, a.customer_phone)`, email: sql`c.email`, tech: sql`tc.full_name`, ids: [sql`d.id`, sql`d.appointment_id`, sql`d.customer_id`, sql`d.notification_id`] });
     if (s) conds.push(s);
-    const rows = (await sql<any>`
+    const fetchD = async (pgN: number) => (await sql<any>`
       select d.id, d.appointment_id, d.customer_id, d.branch_id, d.channel, d.lead_minutes, d.occurrence_key, d.state, d.reason, d.appt_start_at, d.intended_send_at, d.created_at, d.updated_at, d.attempt_count, d.notification_id, ${EFFECTIVE} as eff, n.status as provider_status, n.created_at as sent_at, n.delivered_at, n.provider_error_code,
         coalesce(c.full_name, a.customer_name, '') as customer_name, coalesce(c.normalized_phone, a.customer_phone) as phone, c.email, tc.full_name as technician_name, b.name as branch_name,
         (a.id is null or a.status not in ('booked', 'confirmed') or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded,
@@ -218,9 +218,20 @@ export class ReminderCenter {
       left join branches b on b.id = coalesce(d.branch_id, a.branch_id) and b.tenant_id = d.tenant_id
       where ${sql.join(conds, sql` and `)}
       order by d.created_at desc, d.id desc
-      limit ${ps} offset ${(pg - 1) * ps}`.execute(this.db)).rows;
-    const total = rows.length ? n(rows[0].total) : 0;
-    return { tab, basis, timezone: tz, period: { preset: p.preset, from: p.from, to: p.to }, page: pg, pageSize: ps, totalItems: total, totalPages: Math.max(1, Math.ceil(total / ps)), items: rows.map((r) => this.rowOut(r)) };
+      limit ${ps} offset ${(pgN - 1) * ps}`.execute(this.db)).rows;
+    const { rows, total, page: pgD } = await this.pastEnd(fetchD, pg, ps);
+    return { tab, basis, timezone: tz, period: { preset: p.preset, from: p.from, to: p.to }, page: pgD, pageSize: ps, totalItems: total, totalPages: Math.max(1, Math.ceil(total / ps)), items: rows.map((r: any) => this.rowOut(r)) };
+  }
+
+  /** count(*) over() is only on returned rows: a page past the end used to say "0 total". Re-read the first page for the count and
+   *  show the last real page instead. */
+  private async pastEnd(fetch: (page: number) => Promise<any[]>, pg: number, ps: number): Promise<{ rows: any[]; total: number; page: number }> {
+    const rows = await fetch(pg);
+    if (rows.length || pg <= 1) return { rows, total: rows.length ? n(rows[0].total) : 0, page: pg };
+    const first = await fetch(1);
+    const total = first.length ? n(first[0].total) : 0;
+    const last = Math.max(1, Math.ceil(total / ps));
+    return last === 1 ? { rows: first, total, page: 1 } : { rows: await fetch(last), total, page: last };
   }
 
   private rowOut(r: any) {
