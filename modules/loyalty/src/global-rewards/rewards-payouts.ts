@@ -86,8 +86,16 @@ export async function applyPayoutSettlement(trx: Transaction<any>, ev: { provide
   }
   await sql`UPDATE payout_attempts pa SET status = 'SETTLED', provider_event_id = ${ev.providerEventId}, settlement_ref = ${ev.settlementRef}, settled_amount_cents = ${ev.amountCents},
       signature_verified = true, settled_at = now(), updated_at = now() WHERE pa.id = ${pa.id}::uuid AND ${canMoveToSql(PAYOUT_ATTEMPT, 'SETTLED', 'pa')}`.execute(trx);
-  await sql`UPDATE merchant_reimbursements m SET status = 'PAID', provider = ${ev.provider}, provider_ref = ${ev.settlementRef}, paid_at = now(), version = m.version + 1, updated_at = now()
-    WHERE m.id = ${pa.reimbursement_id}::uuid AND ${canMoveToSql(MERCHANT_REIMBURSEMENT, 'PAID', 'm')}`.execute(trx);
+  const paid = (await sql<Row>`UPDATE merchant_reimbursements m SET status = 'PAID', provider = ${ev.provider}, provider_ref = ${ev.settlementRef}, paid_at = now(), version = m.version + 1, updated_at = now()
+    WHERE m.id = ${pa.reimbursement_id}::uuid AND ${canMoveToSql(MERCHANT_REIMBURSEMENT, 'PAID', 'm')} RETURNING m.id`.execute(trx)).rows[0];
+  if (!paid) {
+    // the money moved but the payable was no longer payable (put ON_HOLD / adjusted meanwhile): it used to be silently left as it was
+    // while the attempt said SETTLED and the journal booked the cash out. Finance decides; nothing is booked against the payable.
+    await sql`INSERT INTO loyalty_fraud_alerts (signal, severity, confidence, dedupe_key, tenant_id, evidence)
+      VALUES ('payout_anomaly', 'high', 0.95, ${'payout_state:' + String(pa.id)}, ${pa.tenant_id}::uuid, ${JSON.stringify({ attemptId: String(pa.id), reason: 'settled_but_payable_not_payable', settledCents: ev.amountCents })}::jsonb)
+      ON CONFLICT (dedupe_key) DO NOTHING`.execute(trx);
+    return { outcome: 'mismatch' };
+  }
   await postJournal(trx, { entryType: 'reimbursement_paid', tenantId: String(pa.tenant_id), sourceTable: 'payout_attempts', sourceId: String(pa.id), memo: `Payout settled ${dollarsLabel(ev.amountCents)}`,
     lines: [{ account: 'reimbursement_payable', tenantId: String(pa.tenant_id), debit: ev.amountCents }, { account: 'settlement_cash', tenantId: null, credit: ev.amountCents }] });
   return { outcome: 'paid' };

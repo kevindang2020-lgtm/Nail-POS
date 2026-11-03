@@ -216,6 +216,16 @@ describe('refunds and payouts (guide §05, T15)', () => {
     expect((await q(`select signal from loyalty_fraud_alerts where dedupe_key = $1`, ['payout_mismatch:' + s2.attemptId]))[0].signal).toBe('payout_anomaly');
     // a sandbox "settlement" can never satisfy the database, even written by hand
     expect(await code(q(`update payout_attempts set status = 'SETTLED', provider = 'sandbox', settlement_ref = 'x', settled_amount_cents = amount_cents, signature_verified = true, settled_at = now() where id = $1`, [s2.attemptId]))).toMatch(/ck_pa_settled_proof/);
+    // Nov 3 audit: a payable put ON_HOLD while its payout was in flight, then the provider settles — never PAID, an alert for finance
+    const t3 = await openTicket(TC, BC, custOf[TC], 1000); const h3 = await applyReward(TC, BC, t3, custOf[TC], 1, 1000, 'po-c'); await payRest(TC, BC, t3, 900); await finalize(TC, t3);
+    const id3 = (await q(`select id from merchant_reimbursements where redemption_id = $1`, [h3.redemptionId]))[0].id;
+    await db.transaction().execute((trx: any) => markPayoutEligible(trx, { reimbursementId: id3, actorUserId: SA }));
+    const s3: any = await requestPayout(db, fake, { reimbursementId: id3, actorUserId: SA, idempotencyKey: 'po-c-1' });
+    await q(`update merchant_reimbursements set status = 'ON_HOLD', hold_reason = 'finance review' where id = $1`, [id3]);
+    const r3 = await db.transaction().execute((trx: any) => applyPayoutSettlement(trx, { provider: 'test-verified-provider', providerEventId: 'evt-c', providerPayoutId: 'po_' + s3.attemptId, outcome: 'SETTLED', settlementRef: 'stl_3', amountCents: 100, signatureVerified: true }));
+    expect(r3.outcome).toBe('mismatch');
+    expect((await q(`select status from merchant_reimbursements where id = $1`, [id3]))[0].status).toBe('ON_HOLD');
+    expect((await q(`select count(*)::int n from loyalty_fraud_alerts where dedupe_key = $1`, ['payout_state:' + s3.attemptId]))[0].n).toBe(1);
     expect(await unbalanced()).toBe(0);
   });
   it('points ledger = account total; flags off for redemption → no new holds, existing liabilities untouched (T23)', async () => {
