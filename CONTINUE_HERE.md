@@ -791,6 +791,16 @@ More decisions for Kevin (continue the numbering above):
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 
+## Nov 3 2026 (afternoon) — 21 audit bugs fixed; 71 guides queued
+Kevin sent four more batches on Nov 3 (A 20 AI guides, B 18 marketing/communications, C 13, D 20 — D re-sent at 11:09). The queue,
+the status of every guide and the audit findings live in docs/GUIDE_QUEUE_2026-11-03.md and docs/GUIDE_AUDIT_FINDINGS_2026-11-03.md.
+Done this session: every wrong-number / money / scope bug the audits found (reminders skipped confirmed appointments; reversed
+token purchases stayed spendable; tip/tax refunds took points; '\D' broke phone search; email delivery rate; revenue-change
+compared a month with itself; alert scope; settings overwritten by defaults; Rebooked counted cancellations; dead links; literal
+\u2192 in English; AI Queue end day; resend without a fix; invented booking slots; health runs shared across branches; removed
+tickets in coupon stats; deal cap; archived referrals; birthday branch scope; follow-up escalations). Migration 782 (alert archive).
+Next: build the guides in queue order, starting with the AI Center directory (A1).
+
 ## External — Kevin / his developer
 
 The full table is `NEXT_STEPS.md` §2. In short:
