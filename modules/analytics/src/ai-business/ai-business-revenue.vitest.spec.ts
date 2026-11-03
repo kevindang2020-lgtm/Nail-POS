@@ -2,7 +2,7 @@
 // Uses a fake RevenueSource so the tool is tested in isolation. The fake mirrors the REAL ReportsService contract:
 // it returns per-tenant SalesKpis and throws ForbiddenError when the ctx lacks pos.reports.financial_view (exactly as
 // ReportsService.requireFinancial does), so permission propagation and cross-tenant isolation are exercised honestly.
-import { ForbiddenError, type ReportsContext, type ReportFilters, type SalesKpis, type SalesTrend } from '@aipowersalon/reports';
+import { ForbiddenError, previousPeriodRange, type ReportsContext, type ReportFilters, type SalesKpis, type SalesTrend } from '@aipowersalon/reports';
 import { describe, it, expect } from 'vitest';
 import { AiBusinessRevenueService, type RevenueSource } from './ai-business-revenue.service';
 import { AiBusinessError, AiBusinessErrorCode, type AiBusinessContext } from './ai-business.dto';
@@ -21,7 +21,7 @@ class FakeReports implements RevenueSource {
   async getSales(ctx: ReportsContext, f?: ReportFilters) {
     this.lastCtx = ctx;
     if (!ctx.permissions.includes('pos.reports.financial_view')) throw new ForbiddenError('Missing pos.reports.financial_view');
-    const preset = f?.preset ?? 'today';
+    const preset = (f?.period === 'previous' ? 'prev:' : '') + (f?.preset ?? 'today');
     const byPreset = this.data[ctx.tenantId] || {};
     return { kpis: byPreset[preset] ?? kpis({}), trend: emptyTrend };
   }
@@ -103,6 +103,34 @@ describe('explainRevenueChange — exact contribution bridge', () => {
     const zeroSrc = new FakeReports({ tenantA: { month: kpis({ netSalesCents: 5000, ticketsCount: 2, averageTicketCents: 2500 }), quarter: kpis({ netSalesCents: 0, ticketsCount: 0, averageTicketCents: 0 }) } });
     const r = await new AiBusinessRevenueService(zeroSrc).explainRevenueChange(CTX(), 'month', 'quarter');
     expect(r.changePercent).toBeNull();
+  });
+});
+
+describe('Nov 3 audit: the default comparison is the equivalent PREVIOUS period', () => {
+  it('This Month with no comparison is compared with last month to date — never with itself', async () => {
+    const src = new FakeReports({ tenantA: { month: kpis({ netSalesCents: 12000, ticketsCount: 4, averageTicketCents: 3000 }), 'prev:month': kpis({ netSalesCents: 10000, ticketsCount: 4, averageTicketCents: 2500 }) } });
+    const r = await new AiBusinessRevenueService(src).explainRevenueChange(CTX(), 'month');
+    expect(r.changeCents).toBe(2000);
+    expect(r.evidence.compareWindow).toBe('previous');
+    expect(r.evidence.comparePreset).toBe('month');
+  });
+  it('an explicit comparison equal to the current preset also means the previous one; a different preset is read as is', async () => {
+    const src = new FakeReports({ tenantA: { week: kpis({ netSalesCents: 5000, ticketsCount: 2, averageTicketCents: 2500 }), 'prev:week': kpis({ netSalesCents: 4000, ticketsCount: 2, averageTicketCents: 2000 }), month: kpis({ netSalesCents: 9000, ticketsCount: 3, averageTicketCents: 3000 }) } });
+    const svc = new AiBusinessRevenueService(src);
+    expect((await svc.explainRevenueChange(CTX(), 'week', 'week')).changeCents).toBe(1000);
+    const r = await svc.explainRevenueChange(CTX(), 'week', 'month');
+    expect(r.changeCents).toBe(-4000); expect(r.evidence.compareWindow).toBe('current');
+  });
+});
+
+describe('previousPeriodRange (salon-local days)', () => {
+  const now = new Date('2026-03-31T15:00:00Z');   // Tue Mar 31 2026 in New York
+  it('month to date → last month to the same day, clamped; week → last Monday to the same weekday; year → last year', () => {
+    expect(previousPeriodRange('month', now, 'America/New_York')).toEqual({ from: '2026-02-01', to: '2026-02-28' });
+    expect(previousPeriodRange('week', now, 'America/New_York')).toEqual({ from: '2026-03-23', to: '2026-03-24' });
+    expect(previousPeriodRange('today', now, 'America/New_York')).toEqual({ from: '2026-03-30', to: '2026-03-30' });
+    expect(previousPeriodRange('year', now, 'America/New_York')).toEqual({ from: '2025-01-01', to: '2025-03-31' });
+    expect(previousPeriodRange('quarter', now, 'America/New_York')).toEqual({ from: '2025-10-01', to: '2025-12-31' });
   });
 });
 

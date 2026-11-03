@@ -66,9 +66,11 @@ export function POSAiBusinessScreen() {
   const [saved, setSaved] = useState<Saved[]>([]);
   const [saveTitle, setSaveTitle] = useState('');
 
-  const ask = useCallback(async (body: { intent?: string; question?: string }) => {
+  // a saved question replays with ITS saved period; "Summarize today" is always today (Nov 3 audit)
+  const ask = useCallback(async (body: { intent?: string; question?: string; preset?: string; comparePreset?: string }) => {
     setLoading(true); setError(null);
-    try { setRes(await posAiBusinessApi.ask({ ...body, preset: period }) as Ask); }
+    const preset = body.preset ?? (body.intent === 'daily_summary' ? 'today' : period);
+    try { setRes(await posAiBusinessApi.ask({ ...body, preset }) as Ask); }
     catch (e: any) { setError(reportError(e, t('growth.noun.theBusinessAssistant'))); }
     finally { setLoading(false); }
   }, [period]);
@@ -81,7 +83,7 @@ export function POSAiBusinessScreen() {
 
   const runSaved = useCallback(async (q: Saved) => {
     setSaveTitle('');
-    await ask({ intent: q.intent, question: q.question || undefined });
+    await ask({ intent: q.intent, question: q.question || undefined, preset: q.preset || undefined, comparePreset: q.comparePreset || undefined });
     posAiBusinessApi.savedUse(q.id).then(loadSaved).catch(() => { /* touch is best-effort */ });
   }, [ask, loadSaved]);
 

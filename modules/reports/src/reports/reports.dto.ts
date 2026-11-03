@@ -129,6 +129,8 @@ export type DatePreset = "today" | "yesterday" | "week" | "month" | "quarter" | 
 // server-side filters (§11) — applied in the repository, never only in the UI
 export interface ReportFilters {
   from?: string; to?: string; preset?: DatePreset;
+  /** server-side only (never a query param): read the EQUIVALENT PREVIOUS period of `preset` — same length, to the same point */
+  period?: 'current' | 'previous';
   branchId?: string; technicianId?: string; serviceCategory?: string; service?: string;
   paymentMethod?: string; bookingSource?: string; customerType?: string; status?: string; search?: string;
 }

@@ -10,6 +10,8 @@ export interface RevenueEvidence {
   definition: string;                 // human-readable metric definition from the registry
   preset: DatePreset;
   comparePreset?: DatePreset;
+  /** 'previous' = the equivalent previous period of comparePreset (same length, to the same point) */
+  compareWindow?: 'previous' | 'current';
   freshnessClass: MetricDefinition['freshness'];
   partialCurrentPeriod: boolean;      // true when the current window includes an incomplete day (§10)
   drilldownRoute: string;             // real POS report route

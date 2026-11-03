@@ -45,9 +45,9 @@ export class AiBusinessRevenueService {
     return input as DatePreset;
   }
   /** Pull authoritative KPIs, translating the reports layer's ForbiddenError into the stable ai_business taxonomy. */
-  private async sales(ctx: AiBusinessContext, preset: DatePreset): Promise<SalesKpis> {
+  private async sales(ctx: AiBusinessContext, preset: DatePreset, period: 'current' | 'previous' = 'current'): Promise<SalesKpis> {
     try {
-      const { kpis } = await this.reports.getSales(reportsCtx(ctx), { preset });
+      const { kpis } = await this.reports.getSales(reportsCtx(ctx), { preset, period });
       return kpis;
     } catch (e) {
       if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message);
@@ -85,9 +85,14 @@ export class AiBusinessRevenueService {
   async explainRevenueChange(ctx: AiBusinessContext, presetInput?: string, comparePresetInput?: string): Promise<RevenueChangeExplanation> {
     this.assertAuthed(ctx);
     const preset = this.resolvePreset(presetInput, 'today');
-    const comparePreset = this.resolvePreset(comparePresetInput, preset === 'today' ? 'yesterday' : 'month');
+    // Nov 3 audit: with no explicit comparison, compare with the EQUIVALENT PREVIOUS period (This Month → last month to the
+    // same day). It used to default to 'month', so This Month was compared with itself and This Week / This Year with an
+    // overlapping month. An explicit comparison preset that equals the current one also means "the previous one".
+    const explicit = comparePresetInput ? this.resolvePreset(comparePresetInput, preset) : null;
+    const usePrevious = !explicit || explicit === preset;
+    const comparePreset: DatePreset = usePrevious ? preset : explicit!;
     const cur = await this.sales(ctx, preset);
-    const prev = await this.sales(ctx, comparePreset);
+    const prev = await this.sales(ctx, comparePreset, usePrevious ? 'previous' : 'current');
 
     const changeCents = cur.netSalesCents - prev.netSalesCents;
     const volumeEffect = (cur.ticketsCount - prev.ticketsCount) * prev.averageTicketCents;
@@ -123,7 +128,7 @@ export class AiBusinessRevenueService {
     return {
       currentNetCents: cur.netSalesCents, previousNetCents: prev.netSalesCents,
       changeCents, changePercent: prev.netSalesCents === 0 ? null : (changeCents / prev.netSalesCents) * 100,
-      contributors, caveats, evidence: this.evidence('net_sales', preset, comparePreset),
+      contributors, caveats, evidence: { ...this.evidence('net_sales', preset, comparePreset), compareWindow: usePrevious ? 'previous' : 'current' },
     };
   }
 }

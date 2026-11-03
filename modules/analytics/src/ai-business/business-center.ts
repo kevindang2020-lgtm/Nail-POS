@@ -343,8 +343,8 @@ export class BusinessCenter {
     const base = { eventId, metricId: e.metric_id, value: e.value == null ? null : N(e.value), threshold: N(e.threshold), operator: e.operator, triggered: !!e.triggered, sampleOk: !!e.sample_ok,
       period: { from: e.period_from ? String(e.period_from).slice(0, 10) : null, to: e.period_to ? String(e.period_to).slice(0, 10) : null }, readOnly: true, causation: 'not_proven' };
     if (e.metric_id === 'net_sales' || e.metric_id === 'average_ticket') {
-      const compare = preset === 'today' ? 'yesterday' : preset === 'yesterday' ? 'yesterday' : preset === 'week' ? 'week' : 'month';
-      const x: any = await this.d.revenue.explainRevenueChange(ctx, preset, compare === preset ? undefined : compare);
+      // compared with the equivalent previous period (yesterday → the day before, month → last month to the same day)
+      const x: any = await this.d.revenue.explainRevenueChange(ctx, preset);
       return { ...base, kind: 'revenue_bridge', explanation: x, sourceRoute: '/tenant/reports/sales' };
     }
     const m: any = await this.d.appointments.getAppointmentMetrics(ctx, preset);

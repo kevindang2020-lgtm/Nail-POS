@@ -94,7 +94,7 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
   private async withPresetRange(ctx: ReportsContext, f: ReportFilters): Promise<ReportFilters> {
     if (f.from || f.to || !f.preset || f.preset === 'custom') return f;
     const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null);
-    return { ...f, ...presetRange(f.preset, new Date(), tz) };
+    return { ...f, ...(f.period === 'previous' ? previousPeriodRange(f.preset, new Date(), tz) : presetRange(f.preset, new Date(), tz)) };
   }
 
   async query(ctx: ReportsContext, filtersIn: ReportFilters) {
@@ -148,5 +148,29 @@ export function presetRange(preset: string, now: Date, tz: string): { from: stri
     case 'quarter': return { from: `${y}-${String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0')}-01`, to: today };
     case 'year': return { from: `${y}-01-01`, to: today };
     default: return { from: add(today, -7), to: today };
+  }
+}
+
+/**
+ * The equivalent PREVIOUS period of a preset, to the same point (Nov 3 audit: "why did revenue change?" compared This Month
+ * with This Month). today → yesterday; yesterday → the day before; week (Mon..today) → last Mon..the same weekday;
+ * month (1st..today) → last month 1st..the same day (clamped to its last day); quarter / year likewise.
+ */
+export function previousPeriodRange(preset: string, now: Date, tz: string): { from: string; to: string } {
+  const cur = presetRange(preset, now, tz);
+  const add = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+  const shiftMonths = (d: string, k: number) => {
+    const y = Number(d.slice(0, 4)), m = Number(d.slice(5, 7)) - 1 + k, day = Number(d.slice(8, 10));
+    const ty = y + Math.floor(m / 12), tm = ((m % 12) + 12) % 12;
+    const last = new Date(Date.UTC(ty, tm + 1, 0)).getUTCDate();
+    return `${ty}-${String(tm + 1).padStart(2, '0')}-${String(Math.min(day, last)).padStart(2, '0')}`;
+  };
+  switch (preset) {
+    case 'today': case 'yesterday': return { from: add(cur.from, -1), to: add(cur.to, -1) };
+    case 'week': return { from: add(cur.from, -7), to: add(cur.to, -7) };
+    case 'month': return { from: shiftMonths(cur.from, -1), to: shiftMonths(cur.to, -1) };
+    case 'quarter': return { from: shiftMonths(cur.from, -3), to: shiftMonths(cur.to, -3) };
+    case 'year': return { from: shiftMonths(cur.from, -12), to: shiftMonths(cur.to, -12) };
+    default: { const len = Math.round((Date.parse(cur.to) - Date.parse(cur.from)) / 86_400_000) + 1; return { from: add(cur.from, -len), to: add(cur.to, -len) }; }
   }
 }
