@@ -1373,4 +1373,11 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BIRTHDAY_TEMPLATE_INVALID': 'Không dùng được mẫu đó: Trung tâm chiến dịch gửi một tin và chỉ điền {salon_name} và {offer}.',
   'errors.BIRTHDAY_AUDIENCE_TOO_LARGE': 'Có quá nhiều sinh nhật trong khoảng này. Hãy chọn khoảng ngắn hơn.',
   'errors.BIRTHDAY_AUDIENCE_EMPTY': 'Không có khách hợp lệ nào có sinh nhật trong khoảng này.',
+  'errors.BOOKING_VERIFICATION_NOT_FOUND': 'Không tìm thấy hồ sơ xác minh này.',
+  'errors.BOOKING_VERIFICATION_RESEND_REFUSED': 'Không thể gửi lại mã này.',
+  'errors.BOOKING_VERIFICATION_RESEND_UNAVAILABLE': 'Hiện không thể gửi mã.',
+  'errors.RETENTION_INVALID_FILTER': 'Một bộ lọc giữ chân khách không hợp lệ.',
+  'errors.WINBACK_GOAL_INVALID': 'Hãy chọn mục tiêu thu hút khách quay lại.',
+  'errors.WINBACK_AUDIENCE_EMPTY': 'Hiện không có khách đủ điều kiện cho mục tiêu này.',
+  'errors.WINBACK_HEALTH_RATE_LIMITED': 'Vừa kiểm tra dữ liệu giữ chân khách. Hãy thử lại sau một phút.',
 };

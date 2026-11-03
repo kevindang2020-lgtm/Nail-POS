@@ -172,9 +172,11 @@ function TechCommissionDetails({ row, pq, periodLabel, onClose }: { row: any; pq
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   useEffect(() => setPg(1), [tab, lqq]);
   const id = row.technicianId as string;
-  const d = useLoad(() => (tab === 'lines' ? posCommissionScreenApi.lines(id, { ...pq, q: lqq || undefined, page: pg, pageSize: 8 }) : tab === 'tips' ? posCommissionScreenApi.tips(id, { ...pq, page: pg, pageSize: 8 })
-    : tab === 'adjustments' ? posCommissionScreenApi.adjustments(id, { ...pq, page: pg, pageSize: 8 }) : posCommissionScreenApi.payouts({ ...pq, technicianId: id, page: pg, pageSize: 8 })), [tab, lqq, pg, id, JSON.stringify(pq)]);
-  const x: any = d.data;
+  const d = useLoad(() => { const forTab = tab; return (tab === 'lines' ? posCommissionScreenApi.lines(id, { ...pq, q: lqq || undefined, page: pg, pageSize: 8 }) : tab === 'tips' ? posCommissionScreenApi.tips(id, { ...pq, page: pg, pageSize: 8 })
+    : tab === 'adjustments' ? posCommissionScreenApi.adjustments(id, { ...pq, page: pg, pageSize: 8 }) : posCommissionScreenApi.payouts({ ...pq, technicianId: id, page: pg, pageSize: 8 })).then((r: any) => ({ forTab, r })); }, [tab, lqq, pg, id, JSON.stringify(pq)]);
+  // the data of THIS tab only: switching tabs used to draw the previous tab's rows in the new tab's table until the load finished
+  // (service lines appeared as tips of $0.00)
+  const x: any = d.data && (d.data as any).forTab === tab ? (d.data as any).r : null;
   return (
     <FitDialog wide title={row.technicianName ?? tx('cm.details')} subtitle={<>{periodLabel} · {tx('cm.basis.checkout')}</>} onClose={onClose} testId="dlg-commission"
       footer={<button type="button" className="fk-btn primary" onClick={onClose} data-testid="commission-close">{tx('pos.close')}</button>}>

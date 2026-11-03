@@ -103,7 +103,7 @@ describe('Service Pricing', () => {
   it('403 is a permission state', async () => {
     cat.services.mockRejectedValue({ status: 403 });
     mount(<POSServicePricingScreen />);
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();
   });
 });
 
@@ -120,7 +120,7 @@ describe('Service Categories', () => {
   it('403 is a permission state', async () => {
     cat.categorySummary.mockRejectedValue({ status: 403 });
     mount(<POSServiceCategoriesScreen />);
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();
   });
 });
 

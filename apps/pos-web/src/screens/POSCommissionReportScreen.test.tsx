@@ -2,13 +2,14 @@
 // the photo's month, the table pages / sorts / searches on the server, a row opens Technician Commission Details with the
 // captured rate per line, the reconciliation calls the payout an obligation and Paid only what payroll recorded, the
 // cross-check against the payroll calculation, and the empty state.
+import { MemoryRouter } from 'react-router-dom';   // the review slide-over links to Payroll
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const { cm, cr, stateMock } = vi.hoisted(() => ({ cm: { summary: vi.fn(), technicians: vi.fn(), lines: vi.fn(), tips: vi.fn(), adjustments: vi.fn(), payouts: vi.fn(), exportCsv: vi.fn(), exportHistory: vi.fn() },
   cr: { list: vi.fn(), detail: vi.fn(), assignees: vi.fn(), runCheck: vi.fn(), setRefundPolicy: vi.fn(), assign: vi.fn(), investigate: vi.fn(), note: vi.fn(), resolve: vi.fn(), dismiss: vi.fn(), reopen: vi.fn() }, stateMock: vi.fn() }));
 vi.mock('../api/posTeamScreensApi', () => ({ posCommissionScreenApi: cm, posCommissionReviewApi: cr }));
 vi.mock('../api/posCommissionReportApi', () => ({ posCommissionReportApi: { state: stateMock } }));
-vi.mock('../components/IPadViewProvider', () => ({ useIPadView: () => ({ open: vi.fn() }) }));
+vi.mock('../components/IPadViewProvider', () => ({ useIPadView: () => ({ open: vi.fn() }), registerIPadModule: vi.fn() }));
 import { POSCommissionReportScreen } from './POSCommissionReportScreen';
 
 const period = { preset: 'month', from: '2026-10-01', to: '2026-10-30', tz: 'America/New_York', today: '2026-10-30' };
@@ -39,7 +40,7 @@ beforeEach(() => {
 
 describe('POSCommissionReportScreen', () => {
   it('the five KPIs and the seven columns equal the photo, with the total row', async () => {
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     expect(await screen.findByRole('heading', { name: 'Commission Report' })).toBeInTheDocument();
     expect(await screen.findByTestId('kpi-payout')).toHaveTextContent('$591.80');
     expect(screen.getByTestId('kpi-revenue')).toHaveTextContent('$1,881.00');
@@ -51,14 +52,14 @@ describe('POSCommissionReportScreen', () => {
     expect(await screen.findByTestId('check-ok')).toBeInTheDocument();   // same days as the payroll calculation, same totals
   });
   it('search and sort go to the server; Page 1 again', async () => {
-    render(<POSCommissionReportScreen />); await screen.findAllByTestId('payout-row');
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>); await screen.findAllByTestId('payout-row');
     fireEvent.change(screen.getByTestId('search'), { target: { value: 'T-2001' } });
     await waitFor(() => expect(cm.technicians).toHaveBeenLastCalledWith(expect.objectContaining({ q: 'T-2001', page: 1 })));
     fireEvent.change(screen.getByTestId('sort'), { target: { value: 'name' } });
     await waitFor(() => expect(cm.technicians).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'name', page: 1 })));
   });
   it('a row opens the details: captured rate per line, the tip mismatch; Esc closes', async () => {
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     fireEvent.click((await screen.findAllByTestId('payout-row'))[0]);
     expect(await screen.findByTestId('commission-summary')).toHaveTextContent('$561.80');
     expect(await screen.findByTestId('line-row')).toHaveTextContent('13%');
@@ -70,7 +71,7 @@ describe('POSCommissionReportScreen', () => {
   });
   it('reconciliation: payable is owed, Paid only from recorded payouts; a differing payroll calculation is flagged', async () => {
     stateMock.mockResolvedValue({ preset: 'month', from: '2026-10-01', to: '2026-10-30', kpis: { technicianCount: 2, totalServiceRevenueCents: 188100, totalCommissionCents: 25000, totalTipsCents: 33300, totalPayoutCents: 58300, averageRatePercent: 13.3 }, rows: [] });
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     const r = await screen.findByTestId('recon');
     expect(r).toHaveTextContent('$591.80'); expect(r).toHaveTextContent('$300.00');
     expect(await screen.findByTestId('check-diff')).toHaveTextContent('+$8.80');
@@ -80,7 +81,7 @@ describe('POSCommissionReportScreen', () => {
   it('F1: a finding opens the review slide-over; Resolve sends the version, code and note, and shows the server-confirmed state', async () => {
     cr.resolve.mockImplementation(async () => { DETAIL = { ...DETAIL, status: 'RESOLVED', version: 2, resolutionCode: 'NO_ACTION', resolutionNote: 'Split at the desk', actions: ['note', 'reopen'],
       history: { ...DETAIL.history, items: [{ id: 'h2', type: 'RESOLVED', from: 'OPEN', to: 'RESOLVED', reason: 'Split at the desk', metadata: { resolutionCode: 'NO_ACTION' }, at: '2026-10-30T15:00:00Z', actor: 'Kim Manager' }, ...DETAIL.history.items] } }; return DETAIL; });
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     fireEvent.click((await screen.findAllByTestId('disc-row'))[0]);
     await screen.findByTestId('review-evidence');
     fireEvent.click(screen.getByTestId('act-resolve'));
@@ -94,7 +95,7 @@ describe('POSCommissionReportScreen', () => {
   });
   it('F1: a stale version (409) says someone else changed it and reloads; nothing claims success', async () => {
     cr.investigate.mockRejectedValue({ status: 409, code: 'VERSION_CONFLICT' });
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     fireEvent.click((await screen.findAllByTestId('disc-row'))[0]); await screen.findByTestId('review-evidence');
     fireEvent.click(screen.getByTestId('act-investigate')); fireEvent.click(screen.getByTestId('review-submit'));
     expect(await screen.findByTestId('review-error')).toHaveTextContent(/changed this finding/);
@@ -103,7 +104,7 @@ describe('POSCommissionReportScreen', () => {
   });
   it('F2: Run Check calls the server for the period and shows its counts; the missing refund policy is visible', async () => {
     cr.runCheck.mockResolvedValue({ detected: 2, alreadyKnown: 1, unableToVerify: 3, checkedLines: 28 });
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     expect(await screen.findByTestId('policy-missing')).toBeInTheDocument();
     fireEvent.click(screen.getByTestId('run-check'));
     await waitFor(() => expect(cr.runCheck).toHaveBeenCalledWith({ preset: 'month' }));
@@ -111,7 +112,7 @@ describe('POSCommissionReportScreen', () => {
   });
   it('F3: Export asks the server (audited) with a request id and the screen language; the history lists the attempt', async () => {
     const orig = URL.createObjectURL; URL.createObjectURL = vi.fn(() => 'blob:x'); URL.revokeObjectURL = vi.fn();
-    render(<POSCommissionReportScreen />); await screen.findByTestId('kpi-payout');
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>); await screen.findByTestId('kpi-payout');
     fireEvent.click(screen.getByTestId('export'));
     await waitFor(() => expect(cm.exportCsv).toHaveBeenCalledWith(expect.objectContaining({ preset: 'month', lang: 'en', requestId: expect.stringMatching(/^[0-9a-f-]{36}$/) })));
     expect(await screen.findByTestId('export-history-row')).toHaveTextContent('Succeeded');
@@ -121,7 +122,7 @@ describe('POSCommissionReportScreen', () => {
   });
   it('shows the empty state when nothing was earned', async () => {
     cm.technicians.mockResolvedValue(page([]));
-    render(<POSCommissionReportScreen />);
+    render(<MemoryRouter><POSCommissionReportScreen /></MemoryRouter>);
     expect(await screen.findByText(/No commissionable activity/)).toBeInTheDocument();
   });
 });

@@ -29,7 +29,7 @@ const updateReceptionistSettings = vi.fn((_b?: any) => Promise.resolve({ ...sett
 
 vi.mock('../api/posAiApi', () => ({
   posAiApi: {
-    receptionistSettings: () => Promise.resolve(settings),
+    receptionistSettings: () => Promise.resolve(settings), receptionistSettingsHistory: () => Promise.resolve({ items: [] }),
     updateReceptionistSettings: (b: any) => updateReceptionistSettings(b),
   },
 }));

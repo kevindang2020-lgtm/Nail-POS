@@ -72,10 +72,10 @@ describe('the activity panel and the switches', () => {
   });
   it('all six sources are shown (guide §2) — the in-salon three fixed OFF with the reason; the three re-verify rules are back (guide §9)', async () => {
     render(<POSBookingVerificationScreen />);
-    await screen.findByText('Online booking page');
-    expect(screen.getByText('Customer App')).toBeTruthy();
+    await screen.findAllByText('Online booking page');   // also a channel name in the live list
+    expect(screen.getAllByText('Customer App').length).toBeGreaterThan(0);
     for (const label of ['Kiosk', 'Front desk (staff-created)', 'Walk-in check-in']) {
-      const box = screen.getByText(label).closest('label')!.querySelector('input') as HTMLInputElement;
+      const box = screen.getAllByText(label).map((el) => el.closest('label')).find(Boolean)!.querySelector('input') as HTMLInputElement;   // the label inside the switches (the name also appears in the live list)
       expect(box.checked).toBe(false); expect(box.disabled).toBe(true);   // never asked in the salon; the server refuses turning them on
     }
     expect(screen.getAllByText(/staff confirm the customer in person/)).toHaveLength(3);

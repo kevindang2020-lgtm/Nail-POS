@@ -1373,4 +1373,11 @@ export const ERRORS_EN = {
   'errors.BIRTHDAY_TEMPLATE_INVALID': 'That template cannot be used: Campaign Center sends one text and fills only {salon_name} and {offer}.',
   'errors.BIRTHDAY_AUDIENCE_TOO_LARGE': 'Too many birthdays fall in this range. Choose a shorter range.',
   'errors.BIRTHDAY_AUDIENCE_EMPTY': 'No eligible customers have a birthday in this range.',
+  'errors.BOOKING_VERIFICATION_NOT_FOUND': 'That verification record could not be found.',
+  'errors.BOOKING_VERIFICATION_RESEND_REFUSED': 'This code cannot be resent.',
+  'errors.BOOKING_VERIFICATION_RESEND_UNAVAILABLE': 'Sending codes is not available right now.',
+  'errors.RETENTION_INVALID_FILTER': 'One of the retention filters is not valid.',
+  'errors.WINBACK_GOAL_INVALID': 'Choose a win-back goal.',
+  'errors.WINBACK_AUDIENCE_EMPTY': 'No eligible customers match this win-back goal right now.',
+  'errors.WINBACK_HEALTH_RATE_LIMITED': 'The retention data check just ran. Try again in a minute.',
 };
