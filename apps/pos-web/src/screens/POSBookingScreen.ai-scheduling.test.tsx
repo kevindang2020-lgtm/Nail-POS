@@ -57,11 +57,12 @@ const renderIt = () => render(
 beforeEach(() => { perms.deny = new Set(); });
 
 describe('Booking calendar — the LLM "Optimize schedule" button is replaced by the real optimizer', () => {
-  it('no AiAssistantPanel for ai_scheduling_optimizer, even when the package is active; a link to the optimizer instead', async () => {
+  it('no LLM panel (neither the optimizer nor "Booking help", Nov 3 audit) even when the packages are active; a link to the optimizer instead', async () => {
     install({ pkgs: true });
     renderIt();
     await screen.findByText('Booking');
-    await waitFor(() => expect(screen.queryByTestId('ai-panel-ai_booking_assistant')).toBeInTheDocument());   // the panels did load
+    await screen.findByRole('link', { name: /AI Scheduling Optimizer/ });
+    expect(screen.queryByTestId('ai-panel-ai_booking_assistant')).toBeNull();   // asked the model for slots with no schedule data
     expect(screen.queryByTestId('ai-panel-ai_scheduling_optimizer')).toBeNull();
     expect(screen.queryByText('Optimize schedule')).toBeNull();
     fireEvent.click(screen.getByRole('link', { name: /AI Scheduling Optimizer/ }));

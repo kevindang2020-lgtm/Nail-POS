@@ -1,5 +1,4 @@
 import SourceBadge from './SourceBadge';
-import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { ImeSafeInput } from '../components/ImeSafeInput';
 import { viIncludes } from '@aipowersalon/api-contracts';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
@@ -1492,7 +1491,9 @@ export function POSBookingScreen() {
           <button onClick={() => nav('/booking/new')} className="btn">{tx('pos.new_booking')}</button>
         </div>
       </div>
-      <AiAssistantPanel packageCode="ai_booking_assistant" cta={tx('pos.booking_help')} action="booking" buildPrompt={() => "Suggest the best available appointment slots and flag scheduling conflicts for a nail salon. Be brief."} />
+      {/* Nov 3 audit: the "Booking help" panel asked the model for "the best available slots" with NO schedule data — a billable
+          call that could only invent openings. Removed like the old "Optimize schedule" panel; real openings come from the
+          optimizer below and New Booking's availability. */}
       {/* Phase 7: the old LLM "Optimize schedule" panel is gone — it asked the generic assistant with no schedule data.
           The deterministic optimizer lives in its own workspace; its findings are drawn on this calendar. */}
       {canSched ? (
