@@ -159,6 +159,26 @@ export function eligibleCentsOf(t: { paidCents: number; taxCents: number; tipCen
   return Math.max(0, Math.floor(v));
 }
 
+/**
+ * How much of a ticket's refunds came out of the EARNING amount (Nov 3 audit). A refund the POS marked as giving the tip
+ * back is taken from the tip first; the rest is service money, of which the ticket's tax share is not eligible either.
+ * Cumulative over every settled refund of the ticket, in order; never more than the earning's eligible amount.
+ */
+export function refundedEligibleCentsOf(t: { paidCents: number; taxCents: number; tipCents: number; eligibleCents: number; refunds: { amountCents: number; tipRefunded?: boolean }[] }): number {
+  let tipLeft = Math.max(0, Math.floor(t.tipCents));
+  const nonTip = Math.max(0, t.paidCents - t.tipCents);
+  const taxShare = nonTip > 0 ? Math.min(1, Math.max(0, t.taxCents) / nonTip) : 0;
+  let out = 0;
+  for (const r of t.refunds) {
+    const amt = Math.max(0, Math.floor(r.amountCents));
+    const tipPart = r.tipRefunded ? Math.min(amt, tipLeft) : 0;
+    tipLeft -= tipPart;
+    const rest = amt - tipPart;
+    out += rest - Math.round(rest * taxShare);
+  }
+  return Math.min(Math.max(0, t.eligibleCents), out);
+}
+
 // ── redemption (guide §2.2, §6.4) ───────────────────────────────────────────────────────────────────────────────
 /** Redeem in whole blocks (10 points = $1, minimum one block), never more than the ticket still owes. */
 export function redeemableBlocks(availableTenths: number, dueCents: number, program: ProgramPolicy): { blocks: number; pointTenths: number; valueCents: number } {

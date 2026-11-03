@@ -21,6 +21,7 @@ function main(): void {
   check('too-far appt excluded', selectDueReminders([base({ startsAtMs: now + 26 * HOUR })], now, opts).length === 0);
   check('window is half-open at upper bound', selectDueReminders([base({ startsAtMs: now + 25 * HOUR })], now, opts).length === 0);
   check('window includes lower bound', selectDueReminders([base({ startsAtMs: now + 24 * HOUR })], now, opts).length === 1);
+  check('confirmed appt selected (POS Confirm / customer reschedule)', selectDueReminders([base({ status: 'confirmed' })], now, opts).length === 1);
   check('non-booked excluded', selectDueReminders([base({ status: 'cancelled' })], now, opts).length === 0);
   check('missing address excluded', selectDueReminders([base({ address: undefined })], now, opts).length === 0);
   check('already-sent excluded', selectDueReminders([base()], now, { ...opts, alreadySent: new Set(['a1']) }).length === 0);

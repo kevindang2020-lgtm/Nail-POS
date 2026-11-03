@@ -40,9 +40,9 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 2. Guides in batch order, one at a time; each gets a commit.
 
 ## Wrong-number / money / scope bugs found by the audits (fix first)
-1. Appointment reminders skip `confirmed` appointments (only `booked` eligible).
-2. Loyalty: token purchase reversed/charged back after funding leaves tokens spendable; books check accepts it.
-3. Loyalty: refunds of tip/tax take back points (refund total vs eligible cents).
+1. ✅ FIXED — Appointment reminders skip `confirmed` appointments (only `booked` eligible).
+2. ✅ FIXED — Loyalty: token purchase reversed/charged back after funding leaves tokens spendable; books check accepts it. (Also: a locked/suspended wallet is reported as a policy block, not "Buy Tokens".)
+3. ✅ FIXED — Loyalty: refunds of tip/tax take back points (refund total vs eligible cents); a refund settled before the earning is no longer earned on.
 4. `'\D'` inside `sql` templates becomes `D` — phone search in phone center, inbox, templates.
 5. Email Delivery Rate drops bounced (failed) emails from the denominator.
 6. AI Business "why did revenue change" compares this month with this month.

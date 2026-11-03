@@ -11,7 +11,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { giftCardChargeForTicket } from '@aipowersalon/gift-cards';
 import { withCode } from '@aipowersalon/api-contracts';
-import { GlobalRewardsRepository, earnForTicket, reverseEarnForRefund, finalizeForPaidTicket, reverseRedemptionForRefund, GrTenantMismatchError } from '@aipowersalon/loyalty';
+import { GlobalRewardsRepository, earnForTicket, reverseEarnForRefund, refundedEligibleForTicket, finalizeForPaidTicket, reverseRedemptionForRefund, GrTenantMismatchError } from '@aipowersalon/loyalty';
 
 export class GlobalRewardsConsumer implements EventConsumer {
   readonly name = 'loyalty.global_rewards';
@@ -51,8 +51,8 @@ export class GlobalRewardsConsumer implements EventConsumer {
         await reverseRedemptionForRefund(trx, await repo.program(trx), { tenantId, rewardPaymentId: paymentId, refundId, refundedCents: onReward });
         return;
       }
-      const refunded = Number((await sql<{ v: string }>`SELECT coalesce(sum(r.amount_cents), 0)::bigint AS v FROM payment_refunds r JOIN payments p2 ON p2.id = r.payment_id AND p2.tenant_id = r.tenant_id
-        WHERE r.tenant_id = ${tenantId}::uuid AND p2.ticket_id = ${p.ticket_id}::uuid AND r.status = 'refunded' AND p2.method <> 'global_reward'`.execute(trx)).rows[0]?.v ?? 0);
+      // only the EARNING part of the refunds counts — a tip or tax refund never takes points back (Nov 3 audit)
+      const refunded = await refundedEligibleForTicket(trx, tenantId, String(p.ticket_id));
       await reverseEarnForRefund(trx, repo, { tenantId, ticketId: String(p.ticket_id), refundId, refundedEligibleCents: refunded });
     } catch (err) {
       if (err instanceof GrTenantMismatchError) throw withCode(new TenantMismatchError(err.message), 'TENANT_ACCESS_DENIED');   // a SECURITY failure, never a retry-and-award

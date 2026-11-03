@@ -65,7 +65,7 @@ export class KyselyRemindersRepository implements RemindersDataPort {
       FROM pos_tech_appointments a
       LEFT JOIN customers c ON c.id = a.customer_id
       LEFT JOIN technicians tc ON tc.id = a.technician_id AND tc.tenant_id = a.tenant_id
-      WHERE a.tenant_id = ${tenantId} AND a.status = 'booked' AND a.appt_date BETWEEN ${fromDate}::date AND ${toDate}::date
+      WHERE a.tenant_id = ${tenantId} AND a.status in ('booked', 'confirmed') AND a.appt_date BETWEEN ${fromDate}::date AND ${toDate}::date
     `.execute(this.db);
     return res.rows.map((r) => ({
       appointmentId: r.appointmentId, apptDate: r.apptDate, startTime: r.startTime, status: r.status,
@@ -118,7 +118,7 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
       const a = (await sql<{ status: string; occ: string; future: boolean }>`
         SELECT a.status, ${occOf} AS occ, (${startAt(c.tz)} > now()) AS future
         FROM pos_tech_appointments a WHERE a.id = ${c.appointmentId}::uuid AND a.tenant_id = ${c.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
-      if (!a || a.status !== 'booked' || a.occ !== c.occurrenceKey || !a.future) return { stale: true as const };
+      if (!a || !['booked', 'confirmed'].includes(a.status) || a.occ !== c.occurrenceKey || !a.future) return { stale: true as const };
       const retryable = sql.join([...AUTO_RETRYABLE_REASONS]);
       const r = (await sql<{ id: string; state: string; inserted: boolean }>`
         INSERT INTO appointment_reminders_sent AS d (tenant_id, appointment_id, lead_minutes, occurrence_key, state, reason, channel, branch_id, customer_id,
@@ -145,7 +145,7 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
       if (!d || d.state !== 'claimed') return false;   // a staff cancel (or anything else) got there first
       const tz = await this.tzOf(trx, tenantId);
       const a = (await sql<{ ok: boolean }>`
-        SELECT (a.status = 'booked' AND ${occOf} = ${d.occurrence_key} AND ${startAt(tz)} > now()) AS ok
+        SELECT (a.status in ('booked', 'confirmed') AND ${occOf} = ${d.occurrence_key} AND ${startAt(tz)} > now()) AS ok
         FROM pos_tech_appointments a WHERE a.id = ${d.appointment_id}::uuid AND a.tenant_id = ${tenantId}::uuid`.execute(trx)).rows[0];
       if (a?.ok) return true;
       await sql`UPDATE appointment_reminders_sent SET state = 'cancelled', reason = 'appointment_changed', updated_at = now()
@@ -175,7 +175,7 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
       SELECT d.appointment_id, d.occurrence_key FROM appointment_reminders_sent d
       JOIN pos_tech_appointments a ON a.id = d.appointment_id AND a.tenant_id = d.tenant_id
       WHERE d.tenant_id = ${tenantId}::uuid AND d.lead_minutes = ${leadMinutes} AND d.state = 'deferred'
-        AND a.status = 'booked' AND ${occOf} = d.occurrence_key AND ${startAt(tz)} > now()
+        AND a.status in ('booked', 'confirmed') AND ${occOf} = d.occurrence_key AND ${startAt(tz)} > now()
       ORDER BY d.intended_send_at LIMIT 500`.execute(this.db);
     return r.rows.map((x) => ({ appointmentId: x.appointment_id, occurrenceKey: x.occurrence_key }));
   }
@@ -199,7 +199,7 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
     return this.db.transaction().execute(async (trx: Kysely<any>) => {
       const rows = (await sql<{ id: string; appointment_id: string; occurrence_key: string; channel: string; changed: boolean }>`
         SELECT d.id, d.appointment_id, d.occurrence_key, d.channel,
-          NOT coalesce((SELECT a.status = 'booked' AND ${occOf} = d.occurrence_key AND ${startAt(tz)} > now() FROM pos_tech_appointments a WHERE a.id = d.appointment_id AND a.tenant_id = d.tenant_id), false) AS changed
+          NOT coalesce((SELECT a.status in ('booked', 'confirmed') AND ${occOf} = d.occurrence_key AND ${startAt(tz)} > now() FROM pos_tech_appointments a WHERE a.id = d.appointment_id AND a.tenant_id = d.tenant_id), false) AS changed
         FROM appointment_reminders_sent d
         WHERE d.tenant_id = ${tenantId}::uuid AND d.state = 'claimed' AND d.updated_at < now() - interval '15 minutes'
         FOR UPDATE OF d SKIP LOCKED`.execute(trx)).rows;

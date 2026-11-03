@@ -119,7 +119,7 @@ export class ReminderCenter {
         s.window_minutes
       from reminder_settings s
       cross join lateral unnest(coalesce(nullif(s.ladder_minutes, '{}'::int[]), array[s.lead_minutes])) as r(lead)
-      join pos_tech_appointments a on a.tenant_id = s.tenant_id and a.status = 'booked'
+      join pos_tech_appointments a on a.tenant_id = s.tenant_id and a.status in ('booked', 'confirmed')
         and a.appt_date between ((now() at time zone ${tz})::date - 1) and ((now() at time zone ${tz})::date + 15)
       left join customers c on c.id = a.customer_id and c.tenant_id = a.tenant_id
       left join technicians tc on tc.id = a.technician_id and tc.tenant_id = a.tenant_id
@@ -208,7 +208,7 @@ export class ReminderCenter {
     const rows = (await sql<any>`
       select d.id, d.appointment_id, d.customer_id, d.branch_id, d.channel, d.lead_minutes, d.occurrence_key, d.state, d.reason, d.appt_start_at, d.intended_send_at, d.created_at, d.updated_at, d.attempt_count, d.notification_id, ${EFFECTIVE} as eff, n.status as provider_status, n.created_at as sent_at, n.delivered_at, n.provider_error_code,
         coalesce(c.full_name, a.customer_name, '') as customer_name, coalesce(c.normalized_phone, a.customer_phone) as phone, c.email, tc.full_name as technician_name, b.name as branch_name,
-        (a.id is null or a.status <> 'booked' or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded,
+        (a.id is null or a.status not in ('booked', 'confirmed') or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded,
         a.status as appt_status, count(*) over() as total
       from appointment_reminders_sent d
       left join pos_tech_appointments a on a.id = d.appointment_id and a.tenant_id = d.tenant_id
@@ -261,7 +261,7 @@ export class ReminderCenter {
     const r = (await sql<any>`
       select d.id, d.appointment_id, d.customer_id, d.branch_id, d.channel, d.lead_minutes, d.occurrence_key, d.state, d.reason, d.appt_start_at, d.intended_send_at, d.created_at, d.updated_at, d.attempt_count, d.notification_id, ${EFFECTIVE} as eff, n.status as provider_status, n.created_at as sent_at, n.delivered_at, n.provider_error_code, n.provider_id, n.failure_reason,
         coalesce(c.full_name, a.customer_name, '') as customer_name, coalesce(c.normalized_phone, a.customer_phone) as phone, c.email, tc.full_name as technician_name, b.name as branch_name,
-        (a.id is null or a.status <> 'booked' or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded, a.status as appt_status
+        (a.id is null or a.status not in ('booked', 'confirmed') or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded, a.status as appt_status
       from appointment_reminders_sent d
       left join pos_tech_appointments a on a.id = d.appointment_id and a.tenant_id = d.tenant_id
       left join customers c on c.id = coalesce(d.customer_id, a.customer_id) and c.tenant_id = d.tenant_id
@@ -307,7 +307,7 @@ export class ReminderCenter {
             ((a.appt_date::text || ' ' || left(a.start_time, 5))::timestamp at time zone ${tz}) as start_at
           from pos_tech_appointments a where a.id = ${m[1]}::uuid and a.tenant_id = ${T}::uuid for update`.execute(trx)).rows[0];
         if (!a || (ctx.allowedBranches && !ctx.allowedBranches.includes(a.branch_id))) throw err('REMINDER_NOT_FOUND', 'That reminder could not be found.', 404);
-        if (a.status !== 'booked' || new Date(a.start_at).getTime() <= Date.now()) throw err('REMINDER_APPOINTMENT_CHANGED', 'The appointment changed.', 409);
+        if (!['booked', 'confirmed'].includes(a.status) || new Date(a.start_at).getTime() <= Date.now()) throw err('REMINDER_APPOINTMENT_CHANGED', 'The appointment changed.', 409);
         const lead = Number(m[2]); const occ = occurrenceKey(a.d, a.t); const cfg = await this.svc.getConfig(T);
         const ins = (await sql<{ id: string }>`insert into appointment_reminders_sent (tenant_id, appointment_id, lead_minutes, occurrence_key, state, reason, channel, branch_id, customer_id,
             intended_send_at, appt_start_at, reminded_at, created_at, updated_at, updated_by)
@@ -412,7 +412,7 @@ export class ReminderCenter {
         (select max(e.received_at) from notification_delivery_events e join appointment_reminders_sent d on d.notification_id = e.notification_id and d.tenant_id = e.tenant_id where e.tenant_id = ${T}::uuid) as last_report_at,
         (select count(*) from appointment_reminders_sent d join pos_tech_appointments a on a.id = d.appointment_id and a.tenant_id = d.tenant_id
            where d.tenant_id = ${T}::uuid and d.state = 'submitted' and d.updated_at > now() - interval '7 days'
-             and (a.status <> 'booked' or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key)) as changed_after_send
+             and (a.status not in ('booked', 'confirmed') or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key)) as changed_after_send
       `.execute(this.db)).rows[0];
     const up = (await sql<any>`with ${this.upcomingCte(T, tz)} select
         count(*) filter (where ${ReminderCenter.UPSTATE} = 'missed_window' and u.intended_at > now() - interval '24 hours') as missed,
@@ -455,7 +455,7 @@ export class ReminderCenter {
     const rows = (await sql<any>`
       select d.id, d.appointment_id, d.customer_id, d.branch_id, d.channel, d.lead_minutes, d.occurrence_key, d.state, d.reason, d.appt_start_at, d.intended_send_at, d.created_at, d.updated_at, d.attempt_count, d.notification_id, ${EFFECTIVE} as eff, n.status as provider_status, n.created_at as sent_at, n.delivered_at, n.provider_error_code,
         coalesce(c.full_name, a.customer_name, '') as customer_name, coalesce(c.normalized_phone, a.customer_phone) as phone, c.email, tc.full_name as technician_name, b.name as branch_name,
-        (a.id is null or a.status <> 'booked' or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded, a.status as appt_status, count(*) over() as total
+        (a.id is null or a.status not in ('booked', 'confirmed') or (to_char(a.appt_date, 'YYYY-MM-DD') || ' ' || left(a.start_time, 5)) <> d.occurrence_key) as superseded, a.status as appt_status, count(*) over() as total
       from appointment_reminders_sent d
       left join pos_tech_appointments a on a.id = d.appointment_id and a.tenant_id = d.tenant_id
       left join customers c on c.id = coalesce(d.customer_id, a.customer_id) and c.tenant_id = d.tenant_id

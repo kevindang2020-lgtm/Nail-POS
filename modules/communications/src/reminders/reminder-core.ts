@@ -10,7 +10,7 @@ import type { AppLanguage } from '@aipowersalon/api-contracts';
 export interface ReminderCandidate {
   appointmentId: string;
   startsAtMs: number;            // absolute appointment start (epoch ms), resolved by the caller in the salon tz
-  status: string;                // appointment status; only 'booked' is eligible
+  status: string;                // appointment status; 'booked' and 'confirmed' are eligible (REMINDABLE_STATUSES)
   channel?: ReminderChannel;     // chosen contact channel (sms when a phone exists, else email)
   address?: string;              // recipient phone (E.164) or email
   customerName?: string;
@@ -28,12 +28,16 @@ export interface SelectOptions {
 
 // Pick the appointments whose start falls inside [now+lead, now+lead+window), are still booked, have a usable
 // contact address, and haven't already been reminded. The half-open window prevents double-firing across runs.
+/** Appointments that still expect the guest: POS Confirm and a customer reschedule set 'confirmed'. */
+export const REMINDABLE_STATUSES = ['booked', 'confirmed'] as const;
+export const isRemindable = (s: string) => s === 'booked' || s === 'confirmed';
+
 export function selectDueReminders(cands: ReminderCandidate[], nowMs: number, opts: SelectOptions): ReminderCandidate[] {
   const from = nowMs + opts.leadMs;
   const to = from + Math.max(0, opts.windowMs);
   const sent = opts.alreadySent ?? new Set<string>();
   return cands.filter((c) =>
-    c.status === 'booked' &&
+    isRemindable(c.status) &&
     !!c.address &&
     !sent.has(c.appointmentId) &&
     c.startsAtMs >= from &&
@@ -96,7 +100,7 @@ export function occurrenceKey(apptDate: string | null | undefined, startTime: st
 export function selectDueWindow(cands: ReminderCandidate[], nowMs: number, opts: { leadMs: number; windowMs: number }): ReminderCandidate[] {
   const from = nowMs + opts.leadMs;
   const to = from + Math.max(0, opts.windowMs);
-  return cands.filter((c) => c.status === 'booked' && c.startsAtMs >= from && c.startsAtMs < to);
+  return cands.filter((c) => isRemindable(c.status) && c.startsAtMs >= from && c.startsAtMs < to);
 }
 
 export interface QuietHours { start: number; end: number; policy: 'defer' | 'skip' | 'send' }

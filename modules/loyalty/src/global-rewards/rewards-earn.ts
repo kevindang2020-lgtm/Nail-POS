@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
-import { computeEarn, eligibleCentsOf, tenthsLabel, tokensLabel, alertLevel, GlobalRewardsError, type EffectiveEarningRule } from './global-rewards-core';
+import { computeEarn, eligibleCentsOf, refundedEligibleCentsOf, tenthsLabel, tokensLabel, alertLevel, GlobalRewardsError, type EffectiveEarningRule } from './global-rewards-core';
 import { GlobalRewardsRepository, postJournal } from './global-rewards.repository';
 import { flagState } from './global-rewards-flags';
 import { REWARD_EARN_TRANSACTION } from './global-rewards-lifecycles';
@@ -52,7 +52,9 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   const pay = (await sql<Row>`SELECT coalesce(sum(p.amount_cents), 0) AS paid FROM payments p
     WHERE p.tenant_id = ${T}::uuid AND p.ticket_id = ${a.ticketId}::uuid AND p.amount_cents > 0 AND p.status = ANY(${[...PAID_TENDER_STATUSES]}::text[])
       AND p.method IS DISTINCT FROM ${REWARD_TENDER_METHOD}`.execute(trx)).rows[0];
-  const eligible = eligibleCentsOf({ paidCents: n(pay?.paid), taxCents: n(ticket.tax_cents), tipCents: n(ticket.tip_cents), giftCardChargeCents: Math.max(0, n(a.giftCardChargeCents)), rewardTenderCents: 0 });
+  const grossEligible = eligibleCentsOf({ paidCents: n(pay?.paid), taxCents: n(ticket.tax_cents), tipCents: n(ticket.tip_cents), giftCardChargeCents: Math.max(0, n(a.giftCardChargeCents)), rewardTenderCents: 0 });
+  // a refund already settled before this earning was judged (events out of order) is not earned on (Nov 3 audit)
+  const eligible = Math.max(0, grossEligible - await refundedEligibleForTicket(trx, T, a.ticketId, grossEligible));
 
   const identity = ticket.customer_id ? (await sql<Row>`SELECT l.identity_id FROM customer_identity_links l
       JOIN customer_identities ci ON ci.id = l.identity_id JOIN global_rewards_accounts ga ON ga.identity_id = l.identity_id
@@ -88,6 +90,16 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   // the earning salon's OWN wallet, locked; a short wallet blocks — it never falls back to a cheaper rule or overdraws
   const before = (await sql<Row>`SELECT w.available_cents FROM tenant_token_wallets w WHERE w.tenant_id = ${T}::uuid`.execute(trx)).rows[0];
   const debit = await repo.debitWallet(trx, { tenantId: T, branchId, cents: backing, sourceTable: 'reward_earn_transactions', sourceId: earnId, reason: `${tenthsLabel(tenths)} points on ticket` });
+  if (!debit.ok && debit.walletStatus !== 'active' && debit.walletStatus !== 'none') {
+    // a suspended / locked wallet is a policy block, not a shortage — never tell the owner to "Buy Tokens" for it
+    const why = `wallet_${debit.walletStatus}`;
+    await insert('BLOCKED_POLICY', why, tenths, backing);
+    await sql`INSERT INTO owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata)
+      VALUES (${T}::uuid, ${branchId}, 'loyalty', 'warning', 'new', 'Rewards not issued: token wallet on hold',
+        ${`A customer's sale would have earned ${tenthsLabel(tenths)} global points, but this salon's token wallet is ${debit.walletStatus === 'locked' ? 'locked (a token purchase was reversed after it was spent)' : 'suspended'}. The sale completed normally; no points were issued. Contact AIPowerSalon support to resolve it.`},
+        ${JSON.stringify({ earnId, ticketId: a.ticketId, neededCents: backing, availableCents: debit.availableCents, code: 'WALLET_' + debit.walletStatus.toUpperCase() })}::jsonb)`.execute(trx);
+    return { outcome: 'judged', status: 'BLOCKED_POLICY', earnId, tenantId: T, branchId, identityId, pointTenths: tenths, backingCents: backing, ruleSource: rule!.source, reason: why, walletAfterCents: debit.availableCents };
+  }
   if (!debit.ok) {
     await insert('BLOCKED_INSUFFICIENT_TOKENS', 'insufficient_tokens', tenths, backing);
     await sql`INSERT INTO owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata)
@@ -119,6 +131,29 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
         ${JSON.stringify({ level: lvlAfter, availableCents: debit.balanceAfterCents })}::jsonb)`.execute(trx);
   }
   return { outcome: 'judged', status: 'EARNED', earnId, tenantId: T, branchId, identityId, pointTenths: tenths, backingCents: backing, ruleSource: rule!.source, reason: null, walletAfterCents: debit.balanceAfterCents, alertRaised };
+}
+
+/**
+ * The ticket's refunded EARNING amount so far (Nov 3 audit): settled refunds of non-reward tenders, a refund that gave
+ * the tip back taken from the tip first, the tax share of service money excluded. Feeds reverseEarnForRefund.
+ */
+export async function refundedEligibleForTicket(trx: Transaction<any>, tenantId: string, ticketId: string, eligibleOverride?: number): Promise<number> {
+  const T = tenantId;
+  const [tk, paid, earn, refunds] = await Promise.all([
+    sql<Row>`SELECT t.tax_cents, t.tip_cents FROM tickets t WHERE t.tenant_id = ${T}::uuid AND t.id = ${ticketId}::uuid`.execute(trx),
+    sql<Row>`SELECT coalesce(sum(p.amount_cents), 0) AS v FROM payments p WHERE p.tenant_id = ${T}::uuid AND p.ticket_id = ${ticketId}::uuid AND p.amount_cents > 0
+      AND p.status = ANY(${[...PAID_TENDER_STATUSES, 'partially_refunded', 'refunded']}::text[]) AND p.method IS DISTINCT FROM ${REWARD_TENDER_METHOD}`.execute(trx),
+    sql<Row>`SELECT e.eligible_cents FROM reward_earn_transactions e WHERE e.tenant_id = ${T}::uuid AND e.ticket_id = ${ticketId}::uuid`.execute(trx),
+    sql<Row>`SELECT r.amount_cents, r.request_detail FROM payment_refunds r JOIN payments p2 ON p2.id = r.payment_id AND p2.tenant_id = r.tenant_id
+      WHERE r.tenant_id = ${T}::uuid AND p2.ticket_id = ${ticketId}::uuid AND r.status = 'refunded' AND p2.method IS DISTINCT FROM ${REWARD_TENDER_METHOD} ORDER BY r.created_at, r.id`.execute(trx),
+  ]);
+  // request_detail is jsonb (an object); a legacy string row is read as JSON text
+  const tipFlag = (v: unknown): boolean => {
+    const o: unknown = typeof v === 'string' && v.trim().startsWith('{') ? JSON.parse(v) : v;
+    return !!o && typeof o === 'object' && (o as { tipRefunded?: unknown }).tipRefunded === true;
+  };
+  return refundedEligibleCentsOf({ paidCents: n(paid.rows[0]?.v), taxCents: n(tk.rows[0]?.tax_cents), tipCents: n(tk.rows[0]?.tip_cents), eligibleCents: eligibleOverride ?? n(earn.rows[0]?.eligible_cents),
+    refunds: refunds.rows.map((r) => ({ amountCents: n(r.amount_cents), tipRefunded: tipFlag(r.request_detail) })) });
 }
 
 /**

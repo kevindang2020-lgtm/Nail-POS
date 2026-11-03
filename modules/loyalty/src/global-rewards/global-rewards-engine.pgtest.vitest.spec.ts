@@ -9,6 +9,7 @@ import { GlobalRewardsRepository, type GrCtx } from './global-rewards.repository
 import { earnForTicket, reverseEarnForRefund, TenantMismatchError } from './rewards-earn';
 import { GlobalRewardsError } from './global-rewards-core';
 import { GR_FLAGS } from './global-rewards-flags';
+import { collectFindings } from './rewards-books-check';
 
 const P = 'd7330000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -244,6 +245,38 @@ describe('refunds — guide §8.1, addendum T12', () => {
     expect(await wallet(TA)).toBe(w0 + 50); expect(await points()).toBe(p0 - 50);
     const r2 = await db.transaction().execute((trx: any) => reverseEarnForRefund(trx, repo, { tenantId: TA, ticketId: t, refundId: id('r2'), refundedEligibleCents: 10000 }));
     expect(r2).toMatchObject({ reversedTenths: 50, status: 'REVERSED' });
+  });
+});
+
+describe('purchase reversed after funding — LoyaltyTokens (Nov 3 audit P0)', () => {
+  it('a reversal takes the tokens back exactly once; a chargeback after they were spent locks the wallet and books the shortfall', async () => {
+    const w0 = await wallet(TA);
+    const i1 = await fund(TA, BA, 10);
+    expect(await wallet(TA)).toBe(w0 + 1000);
+    expect(await repo.movePurchase(i1, 'REVERSED', { tenantId: TA, source: 'test' })).toMatchObject({ changed: true });
+    expect(await wallet(TA)).toBe(w0);
+    expect(await repo.movePurchase(i1, 'REVERSED', { tenantId: TA, source: 'test' })).toMatchObject({ changed: false });
+    expect(await wallet(TA)).toBe(w0);
+    expect((await q(`select status from tenant_token_wallets where tenant_id = $1`, [TA]))[0].status).toBe('active');
+
+    const before = await wallet(TC);
+    const i2 = await fund(TC, BC, 1);
+    const e = await earn(TC, await paidTicket(TC, BC, custOf[TC], 10000));   // spends 1.00 token backing 10 points
+    expect(e).toMatchObject({ status: 'EARNED', backingCents: 100 });
+    const left = await wallet(TC);
+    expect(left).toBe(before);
+    await repo.movePurchase(i2, 'CHARGED_BACK', { tenantId: TC, source: 'test' });
+    expect(await wallet(TC)).toBe(0);
+    expect((await q(`select status from tenant_token_wallets where tenant_id = $1`, [TC]))[0].status).toBe('locked');
+    const def = Number((await q(`select coalesce(sum(debit_cents) - sum(credit_cents), 0)::bigint as v from rewards_journal_lines l join rewards_journal_entries j on j.id = l.entry_id
+      where j.source_id = $1 and j.entry_type = 'purchase_reversed' and l.account = 'funding_deficit_receivable'`, [i2]))[0].v);
+    expect(def).toBe(100 - left);
+    // a locked wallet is a policy block, never "not enough tokens — Buy Tokens"
+    expect(await earn(TC, await paidTicket(TC, BC, custOf[TC], 10000))).toMatchObject({ status: 'BLOCKED_POLICY', reason: 'wallet_locked' });
+    const alert = (await q(`select title, metadata from owner_alerts where tenant_id = $1 order by created_at desc limit 1`, [TC]))[0];
+    expect(alert.title).toBe('Rewards not issued: token wallet on hold');
+    const f = await collectFindings(db, new Date(Date.now() + 60_000));
+    expect(f.find((x: any) => x.checkType === 'funding_purchases')?.outcome).toBe('PASS');
   });
 });
 

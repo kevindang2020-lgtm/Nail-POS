@@ -97,6 +97,13 @@ describe('dispatch: claim before send, one reminder per occurrence (guide §7, �
     expect(sent.filter((x) => x.source?.id === A)).toHaveLength(1);
     expect(await disp(A)).toHaveLength(1);
   });
+  it('P0: a CONFIRMED appointment (POS Confirm / customer reschedule) is reminded like a booked one', async () => {
+    const c = await appt(start + 60_000, C4);
+    await q(`update pos_tech_appointments set status = 'confirmed' where id = $1`, [c]);
+    await run(Date.now());
+    expect((await disp(c)).map((x: any) => x.state)).toEqual(['submitted']);
+    expect(sent.filter((x) => x.source?.id === c)).toHaveLength(1);
+  });
   it('§4.1 rescheduled after the reminder went out: the NEW time gets its own reminder; the old record stays, marked superseded', async () => {
     const ns = start + 2 * H; const l = local(ns);
     const [hh, mm] = l.time.split(':').map(Number); const e = Math.min(hh * 60 + mm + 45, 23 * 60 + 59);

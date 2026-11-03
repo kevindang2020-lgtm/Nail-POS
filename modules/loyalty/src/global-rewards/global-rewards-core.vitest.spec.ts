@@ -4,8 +4,7 @@ import { describe, it, expect } from 'vitest';
 import {
   computeEarn, validateCustomRate, previewRows, policyVersionAt, policyDisplay, versionDisplayState, globalVersionAt, eligibleCentsOf,
   redeemableBlocks, alertLevel, tenthsLabel, tokensLabel, rateLabel, purchaseQuantity, isSpendable, centsPerPointTenth, GlobalRewardsError,
-  type ProgramPolicy, type EarningRate, type PolicyVersion,
-} from './global-rewards-core';
+  type ProgramPolicy, type EarningRate, type PolicyVersion, refundedEligibleCentsOf } from './global-rewards-core';
 
 const program: ProgramPolicy = {
   earnPaused: false, redeemPaused: false, purchasesPaused: false, reimbursementsPaused: false,
@@ -127,5 +126,18 @@ describe('eligibility, redemption, alerts, labels, purchases', () => {
     expect(code(() => purchaseQuantity(10.5, program))).toBe('VALIDATION_FAILED');
     expect(code(() => purchaseQuantity(5001, program))).toBe('VALIDATION_FAILED');
     expect(['PAYMENT_CONFIRMED', 'SETTLEMENT_PENDING', 'UNKNOWN', 'FUNDS_VERIFIED'].map(isSpendable)).toEqual([false, false, false, true]);
+  });
+});
+
+describe('refundedEligibleCentsOf (Nov 3 audit: tip / tax refunds never take back points)', () => {
+  it('a tip-only refund removes nothing from the earning amount', () => {
+    expect(refundedEligibleCentsOf({ paidCents: 12000, taxCents: 0, tipCents: 2000, eligibleCents: 10000, refunds: [{ amountCents: 2000, tipRefunded: true }] })).toBe(0);
+  });
+  it('a service refund removes its own amount less its tax share; capped at the eligible amount', () => {
+    expect(refundedEligibleCentsOf({ paidCents: 10600, taxCents: 600, tipCents: 0, eligibleCents: 10000, refunds: [{ amountCents: 5300 }] })).toBe(5000);
+    expect(refundedEligibleCentsOf({ paidCents: 10600, taxCents: 600, tipCents: 0, eligibleCents: 10000, refunds: [{ amountCents: 10600 }, { amountCents: 500 }] })).toBe(10000);
+  });
+  it('a refund marked with the tip takes the tip first, then service money', () => {
+    expect(refundedEligibleCentsOf({ paidCents: 12000, taxCents: 0, tipCents: 2000, eligibleCents: 10000, refunds: [{ amountCents: 7000, tipRefunded: true }] })).toBe(5000);
   });
 });

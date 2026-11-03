@@ -5,7 +5,7 @@ export * from './loyalty.dto';
 
 // Global Loyalty & Rewards Network + prepaid tenant token wallet (LoyaltyTokens.pdf v1.0, LoyaltyRules.pdf v2.0)
 export { GlobalRewardsRepository } from './global-rewards/global-rewards.repository';
-export { earnForTicket, reverseEarnForRefund, TenantMismatchError as GrTenantMismatchError } from './global-rewards/rewards-earn';
+export { earnForTicket, reverseEarnForRefund, refundedEligibleForTicket, TenantMismatchError as GrTenantMismatchError } from './global-rewards/rewards-earn';
 export { GR_FLAGS } from './global-rewards/global-rewards-flags';
 // Final Completion guide §04–§05: cross-salon redemption at Checkout + reimbursement payables / payouts
 export { holdForTicket, releaseHold, finalizeForPaidTicket, reverseRedemptionForRefund, redemptionQuote, rewardsIdentityFor, requestPayout, applyPayoutSettlement, markPayoutEligible, holdPayable, payoutProviderFromEnv, PAYOUT_PROVIDER, type PayoutProvider } from './global-rewards/rewards-redemption';

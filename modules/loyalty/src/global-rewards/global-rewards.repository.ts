@@ -18,7 +18,7 @@ import {
   purchaseQuantity, isPending, rateLabel, tokensLabel,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
-import { TENANT_EARNING_POLICY_VERSION, TOKEN_PURCHASE_INTENT, GLOBAL_EARNING_RULE_VERSION, GLOBAL_REWARDS_ENROLLMENT } from './global-rewards-lifecycles';
+import { TENANT_EARNING_POLICY_VERSION, TOKEN_PURCHASE_INTENT, GLOBAL_EARNING_RULE_VERSION, GLOBAL_REWARDS_ENROLLMENT, TENANT_TOKEN_WALLET } from './global-rewards-lifecycles';
 import { flagState, type GrFlagState } from './global-rewards-flags';
 import { recordAuditStrict, recordPlatformAuditStrict } from '@aipowersalon/audit';
 
@@ -361,10 +361,10 @@ export class GlobalRewardsRepository {
   }
 
   /** Debit the wallet for funded points (earn). Refuses — never overdraws — when the balance is short. */
-  async debitWallet(trx: Transaction<any>, a: { tenantId: string; branchId?: string | null; cents: number; sourceTable: string; sourceId: string; reason?: string | null }): Promise<{ ok: true; balanceAfterCents: number; duplicate: boolean } | { ok: false; availableCents: number }> {
+  async debitWallet(trx: Transaction<any>, a: { tenantId: string; branchId?: string | null; cents: number; sourceTable: string; sourceId: string; reason?: string | null }): Promise<{ ok: true; balanceAfterCents: number; duplicate: boolean } | { ok: false; availableCents: number; walletStatus: string }> {
     const w = (await sql<Row>`SELECT w.available_cents, w.status FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
     const avail = n(w?.available_cents);
-    if (!w || w.status !== 'active' || avail < a.cents) return { ok: false, availableCents: avail };
+    if (!w || w.status !== 'active' || avail < a.cents) return { ok: false, availableCents: avail, walletStatus: String(w?.status ?? 'none') };
     const after = avail - a.cents;
     const led = (await sql<Row>`INSERT INTO token_wallet_ledger (tenant_id, branch_id, entry_type, delta_cents, balance_after_cents, source_table, source_id, reason)
       VALUES (${a.tenantId}::uuid, ${a.branchId ?? null}, 'earn_allocation', ${-a.cents}, ${after}, ${a.sourceTable}, ${a.sourceId}, ${a.reason ?? null})
@@ -456,8 +456,45 @@ export class GlobalRewardsRepository {
             ...(n(cur.amount_cents) !== cents ? [{ account: 'funding_deficit_receivable' as const, tenantId: String(cur.tenant_id), ...(n(cur.amount_cents) < cents ? { debit: cents - n(cur.amount_cents) } : { credit: n(cur.amount_cents) - cents }) }] : []),
           ] } });
       }
+      if (to === 'REVERSED' || to === 'CHARGED_BACK') await this.clawBackPurchase(trx, { tenantId: String(cur.tenant_id), intentId, tokenCents: n(cur.token_cents), amountCents: n(cur.amount_cents), to, actorUserId: a.actorUserId ?? null });
       return { intentId, status: to, changed: true, tenantId: String(cur.tenant_id) };
     });
+  }
+
+  /**
+   * LoyaltyTokens guide (Nov 3 audit, P0): a purchase reversed or charged back AFTER it funded the wallet takes its tokens
+   * back. Whatever is still in the wallet is debited (ledger 'purchase_reversal'); tokens already spent backing points
+   * cannot be un-issued, so the shortfall is booked as funding_deficit_receivable and the wallet is LOCKED (no further
+   * earning) until finance resolves it. The settlement cash goes back out. Exactly once per intent (ledger + journal unique).
+   */
+  private async clawBackPurchase(trx: Transaction<any>, a: { tenantId: string; intentId: string; tokenCents: number; amountCents: number; to: string; actorUserId: string | null }) {
+    const funded = (await sql<Row>`SELECT 1 AS x FROM token_wallet_ledger l WHERE l.tenant_id = ${a.tenantId}::uuid AND l.source_table = 'token_purchase_intents'
+      AND l.source_id = ${a.intentId} AND l.entry_type = 'purchase_funded'`.execute(trx)).rows[0];
+    if (!funded) return; // never credited: nothing to take back
+    const w = (await sql<Row>`SELECT w.available_cents FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
+    const avail = n(w?.available_cents);
+    const clawed = Math.min(avail, a.tokenCents);
+    const shortfall = a.tokenCents - clawed;
+    if (clawed > 0) {
+      const led = (await sql<Row>`INSERT INTO token_wallet_ledger (tenant_id, entry_type, delta_cents, balance_after_cents, source_table, source_id, actor_user_id, reason)
+        VALUES (${a.tenantId}::uuid, 'purchase_reversal', ${-clawed}, ${avail - clawed}, 'token_purchase_intents', ${a.intentId}, ${actor(a.actorUserId)}, ${`Token purchase ${a.to.toLowerCase().replace('_', ' ')}`})
+        ON CONFLICT (tenant_id, source_table, source_id, entry_type) DO NOTHING RETURNING id`.execute(trx)).rows[0];
+      if (!led) return; // already clawed back
+    }
+    const program = await this.program(trx);
+    await sql`UPDATE tenant_token_wallets w SET available_cents = w.available_cents - ${clawed}, lifetime_funded_cents = greatest(0, w.lifetime_funded_cents - ${a.tokenCents}),
+        alert_level = ${alertLevel(avail - clawed, program)}, version = w.version + 1, updated_at = now()
+      WHERE w.tenant_id = ${a.tenantId}::uuid`.execute(trx);
+    if (shortfall > 0) await sql`UPDATE tenant_token_wallets w SET status = 'locked', updated_at = now()
+      WHERE w.tenant_id = ${a.tenantId}::uuid AND ${canMoveToSql(TENANT_TOKEN_WALLET, 'locked', 'w')}`.execute(trx);
+    const deficit = a.amountCents - clawed; // what the salon still owes the network (spent tokens, and any funding difference)
+    await postJournal(trx, { entryType: 'purchase_reversed', tenantId: a.tenantId, sourceTable: 'token_purchase_intents', sourceId: a.intentId, memo: `Token purchase ${a.intentId} ${a.to.toLowerCase()}`, lines: [
+      { account: 'settlement_cash', tenantId: null, credit: a.amountCents },
+      ...(clawed > 0 ? [{ account: 'merchant_prepaid_liability' as const, tenantId: a.tenantId, debit: clawed }] : []),
+      ...(deficit > 0 ? [{ account: 'funding_deficit_receivable' as const, tenantId: a.tenantId, debit: deficit }] : deficit < 0 ? [{ account: 'funding_deficit_receivable' as const, tenantId: a.tenantId, credit: -deficit }] : []),
+    ] });
+    await this.auditTenant(trx, { tenantId: a.tenantId, userId: a.actorUserId }, 'loyalty.tokens.purchase_clawed_back', `Token purchase ${a.to.toLowerCase()}: ${clawed} cents taken back${shortfall > 0 ? `, ${shortfall} cents already spent — wallet locked` : ''}`,
+      { resourceType: 'token_purchase_intent', resourceId: a.intentId, metadata: { clawedCents: clawed, shortfallCents: shortfall, walletLocked: shortfall > 0 } });
   }
 
   async purchases(tenantId: string, page = 1, pageSize = 20) {

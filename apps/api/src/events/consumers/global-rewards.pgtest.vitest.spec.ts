@@ -88,6 +88,25 @@ describe('loyalty.global_rewards handler (direct, same transaction contract as t
     await handle(ev); await handle(ev);
     expect(await pts()).toBe(p0); expect(await wallet()).toBe(w0);
   });
+  it('Nov 3 audit: refunding only the tip takes back no points; a refund settled before the earning is not earned on', async () => {
+    const tk = id('f6');
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at, tip_cents) values ($1,$2,$3,$4,'paid',now(),2000)`, [tk, T, B, CUST]);
+    await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, status) values ($1,$2,$3,$4,'card',12000,2000,'approved')`, [id('f96'), T, B, tk]);
+    const p0 = await pts();
+    await handle(completed(tk));
+    expect(await pts()).toBe(p0 + 100);                       // $100 of service earns 10 points; the $20 tip earns nothing
+    const rf = (await q(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, status, request_detail) values ($1,$2,$3,2000,'refunded','{"tipRefunded":true}'::jsonb) returning id`, [T, B, id('f96')]))[0].id;
+    await handle(createDomainEvent({ eventType: DOMAIN_EVENTS.PAYMENT_REFUNDED, tenantId: T, branchId: B, aggregateType: 'payment_refund', aggregateId: rf, actorType: 'user', payload: { refundId: rf, paymentId: id('f96'), amountCents: 2000 } }));
+    expect(await pts()).toBe(p0 + 100);                       // was −20 points: the refund total was subtracted from the eligible amount
+    const tk2 = id('f7');
+    await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, paid_at) values ($1,$2,$3,$4,'paid',now())`, [tk2, T, B, CUST]);
+    await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, status) values ($1,$2,$3,$4,'card',10000,0,'approved')`, [id('f97'), T, B, tk2]);
+    const rf2 = (await q(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, status) values ($1,$2,$3,5000,'refunded') returning id`, [T, B, id('f97')]))[0].id;
+    await handle(createDomainEvent({ eventType: DOMAIN_EVENTS.PAYMENT_REFUNDED, tenantId: T, branchId: B, aggregateType: 'payment_refund', aggregateId: rf2, actorType: 'user', payload: { refundId: rf2, paymentId: id('f97'), amountCents: 5000 } }));
+    const p1 = await pts();
+    await handle(completed(tk2));
+    expect(await pts()).toBe(p1 + 50);                        // earns on the $50 kept, not the $100 first charged
+  });
   it('a ticket of another salon throws the platform TenantMismatchError (a SECURITY dead letter in the runner)', async () => {
     await expect(handle(completed(id('d2'), T))).rejects.toBeInstanceOf(TenantMismatchError);
   });
