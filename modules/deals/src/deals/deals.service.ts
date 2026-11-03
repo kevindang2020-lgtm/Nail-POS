@@ -359,7 +359,8 @@ export class DealsService {
     if (d.ownerType !== 'technician') return;
     const settings = (await this.tenantGate(ctx)).settings;
     if (settings.allowTechnicianDeals === 'off') throw withCode(new DealForbiddenError('Technician deals are turned off for this salon.'), 'TECH_DEALS_OFF');
-    const active = d.technicianId && d.status !== 'active' ? await this.repo.countActiveDealsForTech(ctx, d.technicianId) : 0;
+    // the OTHER active deals (Nov 3 audit: it counted the deal being approved itself, so a cap of 1 refused the first deal)
+    const active = d.technicianId && d.status !== 'active' ? await this.repo.countActiveDealsForTech(ctx, d.technicianId, d.id) : 0;
     const v = validateTechDealAgainstSettings({ discountType: d.discountType, discountPercent: d.discountPercent, discountCents: d.discountCents, originalPriceCents: d.originalPriceCents,
       startsAt: d.startsAt, endsAt: d.endsAt, maxRedemptions: d.maxRedemptions, newCustomersOnly: d.newCustomersOnly, activeDealCountForTech: active }, settings);
     if (v.length) throw withCode(new DealValidationError(v.join(' ')), 'TECH_DEAL_OVER_POLICY');

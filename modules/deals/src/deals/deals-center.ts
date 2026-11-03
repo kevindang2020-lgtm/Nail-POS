@@ -21,6 +21,7 @@ import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
 import { DealsService, DealConflictError, DealForbiddenError, DealValidationError } from './deals.service';
+import { ACTIVE_TECH_STATES } from './deals.kysely.repository';
 import { DealRefusedError } from '../engine/deals-checkout.service';
 import { validateTechDealAgainstSettings, savingsCents } from './deals.core';
 import type { DealContext } from './deals.dto';
@@ -69,7 +70,9 @@ export class DealsCenter {
     const total = N((await sql<any>`select count(*)::int as n from deals d where d.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const pg = Math.min(page, totalPages);
     const ord = order === 'start' ? sql`d.starts_at asc nulls last, req_at asc, d.id asc` : order === 'newest' ? sql`req_at desc, d.id desc` : sql`req_at asc, d.id asc`;
-    const rows = (await sql<any>`select d.id, d.title, d.kind, d.owner_type, d.technician_id, d.branch_id, d.discount_type, d.discount_percent, d.discount_cents, d.original_price_cents, d.final_price_cents,
+    // the SAME count the approve path uses (Nov 3 audit: forced to 0, so a request read 'within policy' and approve then refused it)
+    const techActive = sql`(select count(*)::int from deals d2 where d2.tenant_id = d.tenant_id and d2.technician_id = d.technician_id and d2.id <> d.id and d2.status in (${sql.join(ACTIVE_TECH_STATES)}))`;
+    const rows = (await sql<any>`select ${techActive} as tech_active, d.id, d.title, d.kind, d.owner_type, d.technician_id, d.branch_id, d.discount_type, d.discount_percent, d.discount_cents, d.original_price_cents, d.final_price_cents,
         d.starts_at, d.ends_at, d.new_customers_only, d.member_only, d.max_redemptions, d.max_per_customer, d.min_spend_cents, d.version, d.created_at, d.created_by_user_id,
         ${reqAt} as req_at, ${techName} as technician_name, (select b.name from branches b where b.id = d.branch_id and b.tenant_id = d.tenant_id) as branch_name,
         (select coalesce(nullif(u.full_name, ''), u.email) from users u where u.id = d.created_by_user_id) as created_by,
@@ -81,7 +84,7 @@ export class DealsCenter {
       const tech = String(r.owner_type) === 'technician';
       const violations = tech ? validateTechDealAgainstSettings({ discountType: dt, discountPercent: r.discount_percent == null ? null : N(r.discount_percent), discountCents: r.discount_cents == null ? null : N(r.discount_cents),
         originalPriceCents: r.original_price_cents == null ? null : N(r.original_price_cents), startsAt: iso(r.starts_at), endsAt: iso(r.ends_at),
-        maxRedemptions: r.max_redemptions == null ? null : N(r.max_redemptions), newCustomersOnly: !!r.new_customers_only, activeDealCountForTech: 0 }, s) : [];
+        maxRedemptions: r.max_redemptions == null ? null : N(r.max_redemptions), newCustomersOnly: !!r.new_customers_only, activeDealCountForTech: N(r.tech_active) }, s) : [];
       const perUse = r.original_price_cents == null ? null : savingsCents(N(r.original_price_cents), dt, r.discount_percent == null ? null : N(r.discount_percent), r.discount_cents == null ? null : N(r.discount_cents));
       return {
         id: String(r.id), title: String(r.title), kind: String(r.kind ?? 'deal'), ownerType: String(r.owner_type), technicianId: r.technician_id ? String(r.technician_id) : null, technicianName: r.technician_name ?? null,
@@ -105,7 +108,8 @@ export class DealsCenter {
   async detail(ctx: DealContext, id: string) {
     const base: any = await this.screen.detail(this.sctx(ctx), id);   // 404 PROMOTION_NOT_FOUND outside the salon / branch scope
     const T = ctx.tenantId;
-    const d = (await sql<any>`select d.owner_type, d.technician_id, d.kind, d.status, d.version, d.approved_by_user_id, d.discount_type, d.discount_percent, d.discount_cents, d.original_price_cents, d.final_price_cents,
+    const d = (await sql<any>`select (select count(*)::int from deals d2 where d2.tenant_id = d.tenant_id and d2.technician_id = d.technician_id and d2.id <> d.id and d2.status in (${sql.join(ACTIVE_TECH_STATES)})) as tech_active,
+        d.owner_type, d.technician_id, d.kind, d.status, d.version, d.approved_by_user_id, d.discount_type, d.discount_percent, d.discount_cents, d.original_price_cents, d.final_price_cents,
         d.starts_at, d.ends_at, d.max_redemptions, d.new_customers_only,
         (select coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) from technicians te where te.id = d.technician_id and te.tenant_id = d.tenant_id) as technician_name,
         (select coalesce(nullif(u.full_name, ''), u.email) from users u where u.id = d.approved_by_user_id) as approved_by
@@ -122,7 +126,7 @@ export class DealsCenter {
       const s = await this.deals.getSettings(ctx);
       const v = validateTechDealAgainstSettings({ discountType: d.discount_type, discountPercent: d.discount_percent == null ? null : N(d.discount_percent), discountCents: d.discount_cents == null ? null : N(d.discount_cents),
         originalPriceCents: d.original_price_cents == null ? null : N(d.original_price_cents), startsAt: iso(d.starts_at), endsAt: iso(d.ends_at), maxRedemptions: d.max_redemptions == null ? null : N(d.max_redemptions),
-        newCustomersOnly: !!d.new_customers_only, activeDealCountForTech: 0 }, s);
+        newCustomersOnly: !!d.new_customers_only, activeDealCountForTech: d.status === 'active' ? 0 : N(d.tech_active) }, s);
       policy = { allowTechnicianDeals: s.allowTechnicianDeals, maxDiscountPercent: s.maxDiscountPercent ?? null, maxFixedDiscountCents: s.maxFixedDiscountCents ?? null, withinPolicy: v.length === 0, violations: v };
     }
     return { ...base, owner: { ownerType: String(d?.owner_type ?? 'salon'), technicianId: d?.technician_id ? String(d.technician_id) : null, technicianName: d?.technician_name ?? null, approvedBy: d?.approved_by ?? null, version: N(d?.version) },

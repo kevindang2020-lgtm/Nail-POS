@@ -37,7 +37,8 @@ export interface DealsRepositoryPort {
   resolveTechnicianId(ctx: DealContext): Promise<string | null>;
   getSettings(ctx: DealContext): Promise<DealSettings>;
   upsertSettings(ctx: DealContext, s: Partial<DealSettings>): Promise<DealSettings>;
-  countActiveDealsForTech(ctx: DealContext, technicianId: string): Promise<number>;
+  /** excludeDealId: the deal being judged is not one of the OTHER active deals (approve / publish / resume) */
+  countActiveDealsForTech(ctx: DealContext, technicianId: string, excludeDealId?: string): Promise<number>;
   insertDeal(ctx: DealContext, input: CreateDealInput, initialStatus: DealStatus, finalPriceCents: number): Promise<DealView>;
   getDeal(ctx: DealContext, id: string): Promise<DealView | null>;
   listDeals(ctx: DealContext, filter?: { status?: DealStatus; ownerType?: string; technicianId?: string; kind?: string }): Promise<DealView[]>;
@@ -91,8 +92,8 @@ export class InMemoryDealsRepository implements DealsRepositoryPort {
     const merged = { ...(this.settings.get(ctx.tenantId) ?? DEFAULT_SETTINGS), ...s };
     this.settings.set(ctx.tenantId, merged); return merged;
   }
-  async countActiveDealsForTech(ctx: DealContext, technicianId: string): Promise<number> {
-    return [...this.deals.values()].filter((d) => d.tenantId === ctx.tenantId && d.technicianId === technicianId && ['active', 'pending_approval', 'approved', 'scheduled', 'paused'].includes(d.status)).length;
+  async countActiveDealsForTech(ctx: DealContext, technicianId: string, excludeDealId?: string): Promise<number> {
+    return [...this.deals.values()].filter((d) => d.tenantId === ctx.tenantId && d.technicianId === technicianId && d.id !== excludeDealId && ['active', 'pending_approval', 'approved', 'scheduled', 'paused'].includes(d.status)).length;
   }
   async insertDeal(ctx: DealContext, input: CreateDealInput, initialStatus: DealStatus, finalPriceCents: number): Promise<DealView> {
     const id = 'deal_' + (++this.seq);

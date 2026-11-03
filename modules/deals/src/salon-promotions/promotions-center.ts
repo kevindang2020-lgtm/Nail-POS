@@ -114,7 +114,7 @@ export class PromotionsCenter {
       ${base} left join branches b on b.id = r.branch_id and b.tenant_id = r.tenant_id where ${w} group by r.branch_id, b.name order by n desc, r.branch_id nulls last limit 20`.execute(this.db)).rows;
     // services on the tickets that carried a completed redemption — ASSOCIATED, not caused by the promotion
     const byService = (await sql<any>`select l.service_id, max(l.service_name_snapshot) as name, count(distinct r.id)::int as n, coalesce(sum(l.line_total_cents), 0)::bigint as lines
-      ${base} join ticket_service_lines l on l.ticket_id = r.ticket_id and l.tenant_id = r.tenant_id where ${w} group by l.service_id order by n desc, lines desc, l.service_id limit 20`.execute(this.db)).rows;
+      ${base} join ticket_service_lines l on l.ticket_id = r.ticket_id and l.tenant_id = r.tenant_id and l.removed_at is null where ${w} group by l.service_id order by n desc, lines desc, l.service_id limit 20`.execute(this.db)).rows;
     const tot = series.reduce((a: any, s: any) => ({ n: a.n + N(s.n), gross: a.gross + N(s.gross), reversed: a.reversed + N(s.reversed) }), { n: 0, gross: 0, reversed: 0 });
     return { grain, period: per, branchId,
       totals: { redemptions: tot.n, grossDiscountCents: tot.gross, reversedCents: tot.reversed, netDiscountCents: tot.gross - tot.reversed },

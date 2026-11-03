@@ -62,7 +62,7 @@ export class CouponCenter {
     if (!(await this.coupon(ctx, dealId))) throw this.notFound();
     if (!b.ticketId && b.ticketNumber && String(b.ticketNumber).trim()) {   // the number the desk sees (#1042), this salon's only, newest first
       const num = String(b.ticketNumber).trim().replace(/^#/, '');
-      const t = (await sql<any>`select id from tickets where tenant_id = ${ctx.tenantId} and ticket_number::text = ${num} order by created_at desc, id desc limit 1`.execute(this.db)).rows[0];
+      const t = (await sql<any>`select id from tickets where tenant_id = ${ctx.tenantId} and ticket_number::text = ${num} and removed_at is null ${ctx.branchId && /^[0-9a-f-]{36}$/i.test(String(ctx.branchId)) ? sql`and branch_id = ${ctx.branchId}::uuid` : sql``} order by created_at desc, id desc limit 1`.execute(this.db)).rows[0];
       if (!t) throw withCode(new HttpException({ code: 'TICKET_NOT_FOUND', message: 'Ticket not found.' }, HttpStatus.NOT_FOUND), 'TICKET_NOT_FOUND');
       b = { ...b, ticketId: String(t.id) };
     }
@@ -132,7 +132,7 @@ export class CouponCenter {
     // starts at the salon's next local midnight, runs 30 salon days
     const w = (await sql<any>`select (((${today}::date + 1))::timestamp at time zone ${tz}) as s, (((${today}::date + 31))::timestamp at time zone ${tz}) as e`.execute(this.db)).rows[0];
     const startsAt = new Date(w.s).toISOString(); const endsAt = new Date(w.e).toISOString();
-    const visits = sql`t.tenant_id = ${T} and t.status in ('closed', 'paid') and coalesce(t.paid_at, t.created_at) >= now() - interval '90 days'`;
+    const visits = sql`t.tenant_id = ${T} and t.removed_at is null and t.status in ('closed', 'paid') and coalesce(t.paid_at, t.created_at) >= now() - interval '90 days'`;   // removed tickets never count (Nov 3 audit)
     const base: CouponTerms = { title: '', discountType: 'percent', discountPercent: 15, discountCents: null, serviceIds: [], daysOfWeek: null, startsAt, endsAt, maxRedemptions: null, maxPerCustomer: 1, minSpendCents: null, newCustomersOnly: false, rules: null };
     const uncertainty = 'Computed from the last 90 days of this salon\'s paid tickets. It does not predict how many customers will respond or whether visits are added rather than moved.';
     if (goal === 'slow_weekdays') {
@@ -149,7 +149,7 @@ export class CouponCenter {
         eligibleCustomers: null, uncertainty };
     }
     if (goal === 'promote_service') {
-      const s = (await sql<any>`select s.id, s.name, s.price_cents, (select count(*) from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id where l.tenant_id = s.tenant_id and l.service_id = s.id and ${visits})::int as n
+      const s = (await sql<any>`select s.id, s.name, s.price_cents, (select count(*) from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id where l.tenant_id = s.tenant_id and l.service_id = s.id and l.removed_at is null and ${visits})::int as n
         from services s where s.tenant_id = ${T} and s.archived_at is null and coalesce(s.status, 'active') = 'active' and coalesce(s.price_cents, 0) > 0 order by n asc, s.price_cents desc, s.id limit 1`.execute(this.db)).rows[0];
       if (!s) return { goal, method: ASSIST_METHOD, terms: { ...base, title: 'Service 15% off' }, basis: { windowDays: 90, services: 0 }, explanation: 'There are no priced services to promote.', exposure: null, eligibleCustomers: null, uncertainty };
       return { goal, method: ASSIST_METHOD, terms: { ...base, title: `${String(s.name)} 15% off`.slice(0, 120), serviceIds: [String(s.id)] },
@@ -161,8 +161,8 @@ export class CouponCenter {
     // returning_visits (one visit so far) / reconnect_inactive (≥1 visit, away past the salon's At Risk threshold)
     const risk = goal === 'reconnect_inactive' ? N((await sql<any>`select risk_days from tenant_retention_settings where tenant_id = ${T}`.execute(this.db)).rows[0]?.risk_days) || 60 : 0;
     const cnt = goal === 'returning_visits'
-      ? (await sql<any>`select count(*)::int as n from (select t.customer_id from tickets t where t.tenant_id = ${T} and t.status in ('closed', 'paid') and t.customer_id is not null group by t.customer_id having count(*) = 1) x`.execute(this.db)).rows[0]
-      : (await sql<any>`select count(*)::int as n from (select t.customer_id from tickets t where t.tenant_id = ${T} and t.status in ('closed', 'paid') and t.customer_id is not null group by t.customer_id
+      ? (await sql<any>`select count(*)::int as n from (select t.customer_id from tickets t where t.tenant_id = ${T} and t.removed_at is null and t.status in ('closed', 'paid') and t.customer_id is not null group by t.customer_id having count(*) = 1) x`.execute(this.db)).rows[0]
+      : (await sql<any>`select count(*)::int as n from (select t.customer_id from tickets t where t.tenant_id = ${T} and t.removed_at is null and t.status in ('closed', 'paid') and t.customer_id is not null group by t.customer_id
           having max(coalesce(t.paid_at, t.created_at)) < now() - make_interval(days => ${risk})) x`.execute(this.db)).rows[0];
     const rules = goal === 'returning_visits' ? { all: [{ type: 'min_visits', count: 1 }, { type: 'max_visits', count: 1 }] } : { all: [{ type: 'lapsed', days: risk }, { type: 'min_visits', count: 1 }] };
     return { goal, method: ASSIST_METHOD, terms: { ...base, discountPercent: goal === 'returning_visits' ? 10 : 15, title: goal === 'returning_visits' ? 'Second visit 10% off' : 'Welcome back 15% off', rules },

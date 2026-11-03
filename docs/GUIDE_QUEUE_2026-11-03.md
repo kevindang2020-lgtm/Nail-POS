@@ -56,8 +56,8 @@ D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Ser
 14. ✅ FIXED — Notification retry: after_fix failures outside SMS skip the fixed-since check.
 15. ✅ FIXED — Booking screen help panel asks the model for slots with no schedule data (invented availability).
 16. Health-check 30-second reuse shared across branches (calendar, scheduling, copilot, follow-ups, calls).
-17. Coupon assistant counts removed tickets; promotion trends count removed lines.
-18. Deal approvals show "within policy" with active-deal count forced to 0.
+17. ✅ FIXED — Coupon assistant counts removed tickets; promotion trends count removed lines.
+18. ✅ FIXED — Deal approvals show "within policy" with active-deal count forced to 0.
 19. Referral check ignores archived customers.
 20. Birthday history not branch-scoped.
 21. AI follow-ups: attempts recorded on resolved tasks; escalation alert uses caller's branch.

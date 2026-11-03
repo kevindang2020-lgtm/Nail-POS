@@ -17,7 +17,7 @@ import type { DealsRepositoryPort, RecordApprovalInput, ReserveResult, HoldRow, 
 const rowsOf = (r: any): any[] => (r && Array.isArray(r.rows) ? r.rows : []);
 const iso = (v: any): string | null => (v ? new Date(v).toISOString() : null);
 
-const ACTIVE_TECH_STATES = ['active', 'pending_approval', 'approved', 'scheduled', 'paused'];
+export const ACTIVE_TECH_STATES = ['active', 'pending_approval', 'approved', 'scheduled', 'paused'];
 // which lifecycle fact a status change is (from>to, or *>to for any origin)
 const TRANSITION_EVENT: Record<string, string> = {
   '*>pending_approval': DOMAIN_EVENTS.DEAL_SUBMITTED, '*>approved': DOMAIN_EVENTS.DEAL_APPROVED, '*>rejected': DOMAIN_EVENTS.DEAL_REJECTED,
@@ -179,8 +179,9 @@ export class KyselyDealsRepository implements DealsRepositoryPort {
     return this.getSettings(ctx);
   }
 
-  async countActiveDealsForTech(ctx: DealContext, technicianId: string): Promise<number> {
-    const r = rowsOf(await sql`SELECT count(*)::int AS c FROM deals WHERE tenant_id=${ctx.tenantId} AND technician_id=${technicianId} AND status IN (${sql.join(ACTIVE_TECH_STATES)})`.execute(this.d))[0];
+  async countActiveDealsForTech(ctx: DealContext, technicianId: string, excludeDealId?: string): Promise<number> {
+    const r = rowsOf(await sql`SELECT count(*)::int AS c FROM deals WHERE tenant_id=${ctx.tenantId} AND technician_id=${technicianId} AND status IN (${sql.join(ACTIVE_TECH_STATES)})
+      ${excludeDealId ? sql`AND id <> ${excludeDealId}` : sql``}`.execute(this.d))[0];
     return Number(r?.c ?? 0);
   }
 

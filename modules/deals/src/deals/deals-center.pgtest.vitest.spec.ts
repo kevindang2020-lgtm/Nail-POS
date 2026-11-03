@@ -158,6 +158,19 @@ describe('§9 technician deals: 10% cap and manager approval (server-side)', () 
     await svc.updateSettings(owner, { maxDiscountPercent: 10 } as any);
     expect((await svc.approve(mgr, p.id)).status).toBe('approved');
   });
+  it('Nov 3 audit: the active-deal cap counts the technician\'s OTHER deals — in the inbox and at approval', async () => {
+    const t2 = { ...tech, technicianId: TECH2, userId: id('e4') };
+    await svc.updateSettings(owner, { maxActiveDealsPerTech: 3 } as any);
+    const a = await svc.createDeal(t2, { ownerType: 'technician', title: 'Minh cap A', discountType: 'percent', discountPercent: 5, serviceIds: [S10] } as any);
+    const b = await svc.createDeal(t2, { ownerType: 'technician', title: 'Minh cap B', discountType: 'percent', discountPercent: 5, serviceIds: [S10] } as any);
+    // cap 3: Minh has two OTHER live-or-pending deals besides A, so A is within the cap (it was refused — it counted itself)
+    expect((await center.approvals(owner, { pageSize: 50 } as any)).items.find((i: any) => i.id === a.id).policy.withinPolicy).toBe(true);
+    expect((await svc.approve(mgr, a.id)).status).toBe('approved');
+    await svc.updateSettings(owner, { maxActiveDealsPerTech: 2 } as any);
+    expect((await center.approvals(owner, { pageSize: 50 } as any)).items.find((i: any) => i.id === b.id).policy.withinPolicy).toBe(false);   // was "within policy"
+    expect(await code(svc.approve(mgr, b.id))).toBe('TECH_DEAL_OVER_POLICY');
+    await svc.updateSettings(owner, { maxActiveDealsPerTech: null } as any);
+  });
   it('technician deals turned OFF: no technician deal can be created, approved or activated — including resume — salon deals still go live', async () => {
     const p = await svc.createDeal(tech, { ownerType: 'technician', title: 'Lisa 5%', discountType: 'percent', discountPercent: 5, serviceIds: [S10] } as any);
     await svc.pause(mgr, p8.id);
