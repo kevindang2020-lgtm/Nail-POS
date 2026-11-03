@@ -142,7 +142,7 @@ export function POSAIOcrReceiptScreen() {
         {tab === 'upload' && <UploadPanel onUploaded={() => { setTick((n) => n + 1); setTab('review'); }} onError={setErr} />}
 
         {tab !== 'upload' && (
-          <div className={'grid gap-[12px] ' + (selected ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1')} style={{ gap: 12 }}>
+          <div className={'grid gap-[12px] ' + (selected ? tx('pos.grid_cols_1_lg_grid_cols_17ya') : 'grid-cols-1')} style={{ gap: 12 }}>
             <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
               <div style={{ padding: 10, display: 'grid', gap: 8 }} data-testid="rrx-filters">
                 {tab === 'overview' ? <div style={{ ...h2 }}>{tx('rrx.recent')}</div> : null}
