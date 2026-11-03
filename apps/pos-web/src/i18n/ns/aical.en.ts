@@ -186,4 +186,9 @@ export const AICAL_EN: Record<string, string> = {
   "aical.viewTechSchedule": "View Technician Schedule",
   "aical.views": "Calendar views",
   "aical.yes": "Yes",
+  "aical.unreadable": "Could not be read right now (not empty): {parts}.",
+  "aical.part.ai_activity": "AI activity",
+  "aical.part.copilot": "Copilot actions",
+  "aical.part.messages": "messages",
+  "aical.part.audit": "audit",
 };

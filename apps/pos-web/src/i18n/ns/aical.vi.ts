@@ -186,4 +186,9 @@ export const AICAL_VI: Record<string, string> = {
   "aical.viewTechSchedule": "Xem lịch thợ",
   "aical.views": "Kiểu xem lịch",
   "aical.yes": "Có",
+  "aical.unreadable": "Hiện không đọc được (không phải trống): {parts}.",
+  "aical.part.ai_activity": "hoạt động AI",
+  "aical.part.copilot": "thao tác Copilot",
+  "aical.part.messages": "tin nhắn",
+  "aical.part.audit": "nhật ký",
 };

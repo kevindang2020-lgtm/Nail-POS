@@ -15,7 +15,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | BUILT (fixes) — links, reschedule proposal, waitlist claim, midnight windows, sender check, branch scope, Yesterday, menu gating, error texts; name pickers / URL filters / health 'responsible role' still open |
 | A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | BUILT (core) — versions + history + restore, stale save refused (409), effective source shown, salon fallback, no silent default overwrite, coded errors; NOT built: the live agent reading these settings (shown honestly on the page), consent-script approval, health checker |
 | A10 | AI Calls | /tenant/ai/receptionist/calls | BUILT (fixes) — health never green when the receptionist checks fail, pending-code count branch-scoped and 'unknown' on error, per-branch runs, page kept from the URL, ?call= opens a call; NOT built: caller / dialed-number columns, Twilio SID search, extra date bases, call_links table, SSE |
-| A11 | AI Calendar | /tenant/ai/receptionist/calendar | AUDITED |
+| A11 | AI Calendar | /tenant/ai/receptionist/calendar | BUILT (fixes) — health check survives one failed read (savepoints), per-branch runs, failed-call count branch-scoped, metrics check can warn, no silent New York, overlay reports unreadable sections; open-slot hours and Booking deep-link remain owner decisions (AI_CALENDAR.md) |
 | A12 | Business Setup | /tenant/ai/receptionist/business-setup | AUDITED |
 | A13 | AI Follow-Ups | /tenant/ai/receptionist/follow-ups | AUDITED |
 | A14 | AI Front Desk | /tenant/ai/receptionist/front-desk | AUDITED |

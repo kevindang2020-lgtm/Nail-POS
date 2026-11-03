@@ -282,6 +282,7 @@ function AppointmentOverlay({ id, onClose, nav }: { id: string; onClose: () => v
       {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="aic-muted">{t('aical.loading')}</div> : (
         <>
           <div className="aic-seg" role="tablist">{TABS.map((x) => <button key={x} role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={`aic-tab-${x}`}>{t(`aical.tab.${x}`)}</button>)}</div>
+          {d.unreadable?.length ? <div className="aic-muted" role="status" data-testid="aic-ov-unreadable">{t('aical.unreadable', { parts: d.unreadable.map((x: string) => t('aical.part.' + x)).join(', ') })}</div> : null}
           <div className="aic-ov-body" data-testid={`aic-ov-${tab}`}>
             {tab === 'overview' ? <KV rows={[[t('aical.f.id'), <code key="id">{o.id}</code>], [t('aical.f.status'), t(`aical.status.${o.status}`)], [t('aical.f.source'), o.aiCreated ? <AiBadge key="ai" /> : t(`aical.source.${o.source}`)],
               [t('aical.f.aiEvidence'), o.aiEvidence], [t('aical.f.verification'), t(`aical.verify.${o.verification}`)], [t('aical.f.timeZone'), o.timeZone], [t('aical.f.created'), when(o.createdAt)], [t('aical.f.updated'), when(o.updatedAt)]]} /> : null}

@@ -99,7 +99,7 @@ export class AiCalendarCenter {
   private branch(ctx: AicCtx) { return ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null; }
   private bctx(ctx: AicCtx): BookingContext { return { tenantId: ctx.tenantId, branchId: this.branch(ctx) ?? '', userId: ctx.userId, role: ctx.role, permissions: ctx.permissions } as BookingContext; }
   private can(ctx: AicCtx, perm: string) { return hasPermission(ctx as Parameters<typeof hasPermission>[0], perm); }
-  async clock(ctx: AicCtx) { const tz = await branchTimeZone(this.db, ctx.tenantId, this.branch(ctx)).catch(() => 'America/New_York'); return { tz, ...localToday(tz) }; }
+  async clock(ctx: AicCtx) { const tz = await branchTimeZone(this.db, ctx.tenantId, this.branch(ctx)); return { tz, ...localToday(tz) }; }   // no silent America/New_York (Nov 3 audit)
   /** same branch scope as KyselyBookingRepository.scoped(): this branch's rows plus branch-less rows */
   private scope(ctx: AicCtx, alias: keyof typeof BRANCH_COL = 'a') { const b = this.branch(ctx); const col = BRANCH_COL[alias]; return b ? sql`(${col} = ${b} or ${col} is null)` : sql`true`; }
   private day(d: unknown, today: string) { if (d == null || d === '') return today; if (!DATE.test(String(d))) throw new AiCalendarError('Dates are YYYY-MM-DD.', 'AI_CALENDAR_INVALID_FILTER'); return String(d); }
@@ -265,6 +265,7 @@ export class AiCalendarCenter {
 
   // ── Appointment & Customer History overlay (the view itself is audited; contact masked unless permitted) ──────────
   async detail(ctx: AicCtx, id: string) {
+    const unreadable = new Set<string>();   // Nov 3 audit: a section that could not be read is reported, never shown as an empty tab
     if (!UUID.test(String(id))) throw new AiCalendarError('That appointment was not found.', 'AI_CALENDAR_NOT_FOUND', 404);
     const T = ctx.tenantId; const clk = await this.clock(ctx);
     const a = (await sql<Row>`select a.id, a.branch_id, a.technician_id, a.customer_id, a.customer_name, a.customer_phone, a.source, a.services, a.start_time, a.end_time, a.duration_minutes, a.status, a.deposit_status,
@@ -275,13 +276,13 @@ export class AiCalendarCenter {
     const fullContact = this.can(ctx, 'customers.export') || this.can(ctx, 'pos.customers.export');
     const c = a.customer_id ? (await sql<Row>`select id, full_name, normalized_phone, email, phone_verified_at, created_at from customers where tenant_id = ${T} and id = ${a.customer_id}`.execute(this.db)).rows[0] : null;
     const tools = (await sql<Row>`select tool_name, status, provider_call_id, requested_at, finished_at, error_category from voice_tool_executions where tenant_id = ${T} and related_type = 'appointment' and related_id = ${id}
-      order by requested_at asc, id asc limit 20`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows;
-    const copilot = (await sql<Row>`select action_type, state, summary, created_at from reception_copilot_action_ledger where tenant_id = ${T} and resource_id = ${id} order by created_at desc, id desc limit 20`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows;
+      order by requested_at asc, id asc limit 20`.execute(this.db).catch(() => { unreadable.add('ai_activity'); return { rows: [] as Row[] }; })).rows;
+    const copilot = (await sql<Row>`select action_type, state, summary, created_at from reception_copilot_action_ledger where tenant_id = ${T} and resource_id = ${id} order by created_at desc, id desc limit 20`.execute(this.db).catch(() => { unreadable.add('copilot'); return { rows: [] as Row[] }; })).rows;
     const holds = (await sql<Row>`select id, status, channel, expires_at, released_at, release_reason, booking_session_id is not null pending_code, created_at from booking_holds where tenant_id = ${T} and converted_appointment_id = ${id}
       order by created_at desc limit 10`.execute(this.db)).rows;
-    const reminders = (await sql<Row>`select state, channel, intended_send_at, appt_start_at, created_at from appointment_reminders_sent where tenant_id = ${T} and appointment_id = ${id} order by created_at desc limit 10`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows;
-    const msgs = c ? (await sql<Row>`select channel, status, provider_status, purpose, created_at, delivered_at from notifications where tenant_id = ${T} and customer_id = ${c.id} order by created_at desc, id desc limit 10`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows : [];
-    const audit = (await sql<Row>`select action, summary, occurred_at, module from audit_events where tenant_id = ${T} and resource_id = ${id} order by occurred_at desc limit 25`.execute(this.db).catch(() => ({ rows: [] as Row[] }))).rows;
+    const reminders = (await sql<Row>`select state, channel, intended_send_at, appt_start_at, created_at from appointment_reminders_sent where tenant_id = ${T} and appointment_id = ${id} order by created_at desc limit 10`.execute(this.db).catch(() => { unreadable.add('messages'); return { rows: [] as Row[] }; })).rows;
+    const msgs = c ? (await sql<Row>`select channel, status, provider_status, purpose, created_at, delivered_at from notifications where tenant_id = ${T} and customer_id = ${c.id} order by created_at desc, id desc limit 10`.execute(this.db).catch(() => { unreadable.add('messages'); return { rows: [] as Row[] }; })).rows : [];
+    const audit = (await sql<Row>`select action, summary, occurred_at, module from audit_events where tenant_id = ${T} and resource_id = ${id} order by occurred_at desc limit 25`.execute(this.db).catch(() => { unreadable.add('audit'); return { rows: [] as Row[] }; })).rows;
     const history = c ? (await sql<Row>`select id, appt_date::text d, start_time, status, source from pos_tech_appointments where tenant_id = ${T} and customer_id = ${c.id} and id <> ${id} order by appt_date desc, start_time desc, id desc limit 10`.execute(this.db)).rows : [];
     await recordAuditStrict(this.db, { tenantId: T, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role }, {
       module: 'ai_calendar', action: 'appointment_overlay.viewed', resourceType: 'appointment', resourceId: id, summary: 'Appointment details viewed in AI Calendar',
@@ -296,6 +297,7 @@ export class AiCalendarCenter {
       services: services.map((s: Row) => ({ name: s.serviceName ?? null, minutes: s.durationMinutes ?? null, priceCents: s.priceCents ?? null, technicianId: s.technicianId ?? a.technician_id ?? null })),
       technician: a.technician_id ? { id: a.technician_id, name: a.tech_name ?? null } : null,
       bookingHistory: history.map((h) => ({ id: h.id, date: h.d, start: h.start_time, status: h.status, source: h.source })),
+      unreadable: [...unreadable],
       aiActivity: { toolResults: tools.map((x) => ({ tool: x.tool_name, status: x.status, callRef: x.provider_call_id ? String(x.provider_call_id).slice(-6) : null, at: iso(x.requested_at), error: x.error_category ?? null })),
         copilotActions: copilot.map((x) => ({ type: x.action_type, state: x.state, summary: x.summary, at: iso(x.created_at) })) },
       verificationAndHolds: holds.map((h) => ({ id: h.id, status: h.status, channel: h.channel, expiresAt: iso(h.expires_at), releasedAt: iso(h.released_at), releaseReason: h.release_reason ?? null, codeWasRequired: !!h.pending_code })),
@@ -319,7 +321,11 @@ export class AiCalendarCenter {
       const at = new Date().toISOString(); const out: AicCheck[] = [];
       const add = (id: string, group: string, label: string, state: AicState, detail: string, evidence: string, remedy: string | null, source: string) => out.push({ id, group, label, state, detail, evidence, remedy, source, checkedAt: at });
       const guard = async (id: string, group: string, label: string, source: string, fn: () => Promise<void>) => {
-        try { await fn(); } catch (e) { add(id, group, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.', source); }
+        // one savepoint per check: a failed read used to abort the whole transaction, so every later check read
+        // "transaction aborted" and the run could not be recorded (Nov 3 audit)
+        await sql`savepoint health_check`.execute(trx);
+        try { await fn(); await sql`release savepoint health_check`.execute(trx); } catch (e) {
+          await sql`rollback to savepoint health_check`.execute(trx).catch(() => undefined); add(id, group, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.', source); }
       };
       await guard('booking', 'Canonical Booking', 'Booking rows and parity', 'pos_tech_appointments + BookingService.dayGrid', async () => {
         const mine = n((await sql<Row>`select count(*)::int c from pos_tech_appointments a where a.tenant_id = ${T} and ${this.scope(ctx)} and a.appt_date = ${date}::date and a.status <> all(${NOT_COUNTED}::text[])`.execute(trx)).rows[0]?.c);
@@ -348,7 +354,7 @@ export class AiCalendarCenter {
         const r = (await sql<Row>`select count(*) filter (where a.source = 'ai')::int ai,
             count(*) filter (where a.source = 'ai' and exists (select 1 from voice_tool_executions x where x.tenant_id = a.tenant_id and x.related_type = 'appointment' and x.related_id = a.id::text and x.status = 'succeeded'))::int linked
           from pos_tech_appointments a where a.tenant_id = ${T} and ${this.scope(ctx)} and a.created_at > now() - interval '30 days'`.execute(trx)).rows[0];
-        const failed = n((await sql<Row>`select count(*)::int c from voice_tool_executions where tenant_id = ${T} and status = 'failed' and requested_at > now() - interval '30 days'`.execute(trx).catch(() => ({ rows: [{ c: 0 }] }))).rows[0]?.c);
+        const failed = n((await sql<Row>`select count(*)::int c from voice_tool_executions where tenant_id = ${T} and (${b}::uuid is null or branch_id = ${b}) and status = 'failed' and requested_at > now() - interval '30 days'`.execute(trx)).rows[0]?.c);
         const unlinked = n(r?.ai) - n(r?.linked);
         add('provenance', 'AI provenance', 'AI-created lineage', unlinked ? 'WARNING' : 'READY', `${n(r?.ai)} AI-created appointment(s) in 30 days; ${n(r?.linked)} linked to a recorded AI call. Failed AI attempts (${failed}) are never counted as appointments.`,
           `source='ai' ${n(r?.ai)}; tool-linked ${n(r?.linked)}; failed tool calls ${failed}`, unlinked ? 'Unlinked ones came from a path that does not record a call link (older calls or the booking assistant); they still carry the canonical source "ai".' : null, 'pos_tech_appointments.source + voice_tool_executions');
@@ -361,7 +367,7 @@ export class AiCalendarCenter {
       await guard('metrics', 'Metrics', 'Counter definitions', 'AiCalendarCenter.summary', async () => {
         const s = await this.summary(ctx, date);
         const diff = s.openSlots.engineValue != null && s.openSlots.value != null ? s.openSlots.engineValue - s.openSlots.value : null;
-        add('metrics', 'Metrics', 'Counter definitions', 'READY', `Appointments ${s.appointments}, AI-Created ${s.aiCreated}, Open start times ${s.openSlots.value ?? '—'} (Booking's raw grid total ${s.openSlots.engineValue ?? '—'}), Scheduled technicians ${s.technicians.scheduledToday ?? '—'} (active roster ${s.technicians.activeRoster ?? '—'}).`,
+        add('metrics', 'Metrics', 'Counter definitions', s.openSlots.value == null || (diff != null && diff < 0) ? 'WARNING' : 'READY', `Appointments ${s.appointments}, AI-Created ${s.aiCreated}, Open start times ${s.openSlots.value ?? '—'} (Booking's raw grid total ${s.openSlots.engineValue ?? '—'}), Scheduled technicians ${s.technicians.scheduledToday ?? '—'} (active roster ${s.technicians.activeRoster ?? '—'}).`,
           `open-slot difference ${diff ?? 'n/a'} = holds + past times; date ${date}; branch scope ${s.branchScope}`, null, 'AiCalendarCenter.summary');
       });
       await guard('conflicts', 'Conflicts', 'Overlaps and durations', 'pos_tech_appointments', async () => {
