@@ -763,7 +763,7 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
 Kevin uploaded 20 PDFs (Nov 3): voice search + call history, Review / Reputation assistant, Inventory (spec + guide), Fraud &
 Money Protection (+ settings, rules & detection, investigations, alerts), Checkout Upsell assistant, Customer Profile assistant,
 the Marketing family (assistant, Campaign Builder, Message Studio, Audience Builder, Campaign Results), AI Business Reports and
-AI Business Alerts. Every one is built (commits `afc27ba`, `4c4b65b`, `fd6ac68`, and the Reports / Alerts commit).
+AI Business Alerts. Every one is built (commits `afc27ba`, `4c4b65b`, `fd6ac68`, `6b48de7`).
 Docs: `docs/ai/VOICE_SEARCH_AND_CALL_HISTORY.md`, `AI_ASSISTANT_PAGES.md`, `MONEY_PROTECTION.md`, `AI_INVENTORY_ASSISTANT.md`,
 `AI_MARKETING_ASSISTANT.md`, `AI_BUSINESS_REPORTS_AND_ALERTS.md`. Migrations 777–781.
 
