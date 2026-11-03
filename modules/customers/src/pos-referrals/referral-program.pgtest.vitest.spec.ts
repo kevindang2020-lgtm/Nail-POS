@@ -74,6 +74,15 @@ describe('codes, the honest empty state, and the eligibility checker (T01, T02, 
     expect((await rp.check(ctx(), { code: 'RITA10', referredCustomerId: C.rita })).reasons.map((r: any) => r.code)).toContain('self_referral');
     expect(await code(rp.record(ctx(), { code: 'RITA10', referredCustomerId: C.rita, idempotencyKey: 'rec-self-1' }))).toBe('SELF_REFERRAL');
   });
+  it('Nov 3 audit: an archived customer can neither refer nor be referred', async () => {
+    const arch = id(199);
+    await cust(arch, 'Ann Archived', '+16095550199');
+    await q(sql`update customers set status = 'archived' where id = ${arch}`);
+    expect((await rp.check(ctx(), { code: 'RITA10', referredCustomerId: arch })).reasons.map((r: any) => r.code)).toContain('referred_inactive');
+    await q(sql`update customers set status = 'archived' where id = ${C.rita}`);
+    expect((await rp.check(ctx(), { code: 'RITA10', referredCustomerId: C.nia })).reasons.map((r: any) => r.code)).toContain('referrer_inactive');
+    await q(sql`update customers set status = 'active' where id = ${C.rita}`);
+  });
   it('an existing customer (2 completed visits) is not a new customer — refused with the reason', async () => {
     expect(await code(rp.record(ctx(), { code: 'RITA10', referredCustomerId: C.olga, idempotencyKey: 'rec-olga-1' }))).toBe('REFERRAL_NOT_FIRST_TIME');
   });

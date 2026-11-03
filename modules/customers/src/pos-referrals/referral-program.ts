@@ -164,12 +164,15 @@ export class ReferralProgram {
     if (!code) { reasons.push({ code: 'code_unknown', ok: false, text: 'No referral code in this salon matches that code.' }); return out('INELIGIBLE', { policy }); }
     if (code.status !== 'active') { reasons.push({ code: 'code_disabled', ok: false, text: 'This referral code has been disabled.' }); return out('INELIGIBLE', { policy, codeInfo: this.codeInfo(code) }); }
     if (code.expires_at && new Date(code.expires_at).getTime() <= Date.now()) { reasons.push({ code: 'code_expired', ok: false, text: 'This referral code has expired.' }); return out('INELIGIBLE', { policy, codeInfo: this.codeInfo(code) }); }
+    // Nov 3 audit: customer status was read but never used — an archived customer could refer or be referred
+    if (code.customer_status && code.customer_status !== 'active') { reasons.push({ code: 'referrer_inactive', ok: false, text: 'The customer who owns this code is no longer active in this salon.' }); return out('INELIGIBLE', { policy, codeInfo: this.codeInfo(code) }); }
     reasons.push({ code: 'code_valid', ok: true, text: `Code ${String(code.code).toUpperCase()} is active and belongs to ${code.full_name ?? 'a customer'} in this salon.` });
     const rid = isUuid(b.referredCustomerId) ? String(b.referredCustomerId) : null;
     if (!rid) { reasons.push({ code: 'customer_missing', ok: false, text: 'Choose the new customer.' }); return out('INELIGIBLE', { policy, codeInfo: this.codeInfo(code) }); }
     const cust = (await sql<any>`select c.id, c.full_name, c.normalized_phone, c.email, c.status, c.created_at from customers c where c.tenant_id = ${T} and c.id = ${rid}`.execute(db)).rows[0];
     if (!cust) { reasons.push({ code: 'customer_unknown', ok: false, text: 'That customer is not in this salon.' }); return out('INELIGIBLE', { policy, codeInfo: this.codeInfo(code) }); }
     const info = { codeInfo: this.codeInfo(code), referred: { customerId: rid, name: cust.full_name, phone: maskPhone(cust.normalized_phone) } };
+    if (cust.status && cust.status !== 'active') { reasons.push({ code: 'referred_inactive', ok: false, text: 'That customer is not active in this salon.' }); return out('INELIGIBLE', { policy, ...info }); }
     if (String(code.customer_id) === rid) { reasons.push({ code: 'self_referral', ok: false, text: 'A customer cannot refer themselves.' }); return out('INELIGIBLE', { policy, ...info }); }
     // the same verified person behind two customer records in this salon is still a self-referral (never merged — refused)
     const sameIdentity = (await sql<any>`select 1 from customer_identity_links a join customer_identity_links b on b.identity_id = a.identity_id and b.tenant_id = a.tenant_id
@@ -605,7 +608,7 @@ export class ReferralProgram {
     const appt = r.referred_customer_id ? (await sql<any>`select id, status, to_char(appt_date, 'YYYY-MM-DD') as appt_date, left(start_time::text, 5) as start_time from pos_tech_appointments where tenant_id = ${T} and customer_id = ${r.referred_customer_id} order by appt_date desc, start_time desc limit 3`.execute(this.db)).rows : [];
     const prior = (await sql<any>`select count(*)::int as referrals, count(*) filter (where state = 'REWARD_ISSUED')::int as rewarded from referral_redemptions where tenant_id = ${T} and referrer_customer_id = ${r.referrer_customer_id}`.execute(this.db)).rows[0];
     const events = (await sql<any>`select e.event_type, e.from_state, e.to_state, e.reason, e.source_ref, e.idempotency_key, e.metadata, e.created_at, u.full_name as actor_name from referral_events e
-      left join users u on u.id = e.actor_user_id where e.tenant_id = ${T} and e.referral_id = ${id} order by e.created_at asc, e.id asc`.execute(this.db)).rows;
+      left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.referral_id = ${id} order by e.created_at asc, e.id asc`.execute(this.db)).rows;
     const contact = (p: unknown, e: unknown) => (show ? { phone: p ?? null, email: e ?? null } : { phone: maskPhone(p), email: maskEmail(e) });
     return {
       ...base,
