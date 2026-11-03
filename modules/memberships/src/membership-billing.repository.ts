@@ -76,7 +76,7 @@ export class InMemoryMembershipBillingRepository implements MembershipBillingRep
   async addAudit(a: AuditArgs): Promise<void> { this.audits.push(a); }
   async failedRenewalAttempts(tenantId: string, membershipId: string, periodStart: Date | null): Promise<number> {
     const t = periodStart ? periodStart.getTime() : null;
-    return this.payments.filter((x) => x.tenantId === tenantId && x.membershipId === membershipId && x.kind === 'renewal' && x.status === 'failed' && ((x.periodStart ? new Date(x.periodStart as any).getTime() : null) === t)).length;
+    return this.payments.filter((x) => x.tenantId === tenantId && x.membershipId === membershipId && x.kind === 'renewal' && x.status === 'failed' && ((x.periodStart ? x.periodStart.getTime() : null) === t)).length;
   }
   async paymentByKey(tenantId: string, membershipId: string, idempotencyKey: string) { const p = this.payments.find((x) => x.tenantId === tenantId && x.membershipId === membershipId && x.idempotencyKey === idempotencyKey); return p ? { id: p.id, status: p.status } : null; }
 }
