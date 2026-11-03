@@ -43,7 +43,9 @@ beforeAll(async () => {
   for (const r of [5, 5, 4.5, 4.5, 5]) await review(ANNA, r); // 4.8 over 5 reviews
   for (const r of [3.5, 3.5, 3.5]) await review(BAO, r);      // exactly 3.5 → Very Good (boundary)
   await review(KEVIN, 2.5);                                   // exactly 2.5 → Good (boundary)
-  await review(ANNA, 2, { ago: '40 days' });                  // a previous-period review
+  // a previous-period review: the last day of LAST month (40 days ago fell two months back on the 1st–9th of a month)
+  const dayNY = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', day: 'numeric' }).format(new Date()));
+  await review(ANNA, 2, { ago: `${dayNY} days` });
   await q(`insert into reviews (tenant_id, branch_id, technician_id, rating) values ($1,$2,$3,5)`, [T2, BX, OTHER]);
   repo = new TeamPerformanceScreenRepository(kyselyFor(pg) as never);
 }, 180_000);
@@ -78,5 +80,21 @@ describe('Team Performance', () => {
     const a = await repo.technician(ctx, ANNA, { preset: 'month' });
     expect(a.score.allTimeReviews).toBe(6); expect(a.previous?.reviews).toBe(1);
     await expect(repo.technician(ctx, OTHER, { preset: 'month' })).rejects.toBeTruthy();
+  });
+  it('Nov 3 audit — customer search needs customers.view; an archived technician leaves the overall score; tiers follow the shown score', async () => {
+    const noCust = { ...ctx, permissions: ctx.permissions.filter((p: string) => p !== 'customers.view') };
+    expect((await repo.directory(noCust, { preset: 'month', q: '856 555 1234' })).totalItems).toBe(0);
+    const before = (await repo.dashboard(ctx, { preset: 'month' })).kpis;
+    await q(`update technicians set archived_at = now(), status = 'archived' where id = $1`, [KEVIN]);
+    try {
+      const after = (await repo.dashboard(ctx, { preset: 'month' })).kpis;
+      expect(after.overallReviews).toBe(before.overallReviews - 1);   // Kevin's 2.5 review no longer in "overall"
+      expect(after.technicians).toBe(before.technicians - 1);
+    } finally { await q(`update technicians set archived_at = null, status = 'active' where id = $1`, [KEVIN]); }
+    // Bao 3.5 ×3 + 5 ×5 + 4.5 ×2 = 44.5 / 10 → raw 4.45, shown 4.5 → Excellent in BOTH the row and the filter (the filter used 4.45 < 4.5)
+    for (const r of [5, 5, 5, 5, 5, 4.5, 4.5]) await q(`insert into reviews (tenant_id, branch_id, technician_id, rating, comment, created_at) values ($1,$2,$3,$4,'ok', now())`, [T, B, BAO, r]);
+    const row = (await repo.directory(ctx, { preset: 'month', q: 'Bao' })).items[0];
+    expect(row.rating).toBe(4.5); expect(row.tier).toBe('excellent');
+    expect((await repo.directory(ctx, { preset: 'month', tier: 'excellent' })).items.map((x) => x.name)).toContain('Bao Tran');
   });
 });

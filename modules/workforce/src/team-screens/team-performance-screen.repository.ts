@@ -41,11 +41,14 @@ export class TeamPerformanceScreenRepository {
 
   /** per technician (every current, non-archived technician): her reviews and services in the period */
   private perTech(ctx: TeamCtx, per: TPeriod) {
-    const T = ctx.tenantId;
+    const T = ctx.tenantId; const b = branchOf(ctx);
+    // with a branch selected, a technician's reviews and services are THIS branch's (they were her whole salon's)
     return sql`with rv as (select r.technician_id as tid, count(*)::int as n, avg(r.rating)::numeric(4,2) as avg, max(r.created_at) as last_review from reviews r
-          where r.tenant_id = ${T} and r.technician_id is not null and ${this.verified()} and ${inPeriod(sql`coalesce(r.review_date, r.created_at)`, per)} group by r.technician_id),
+          where r.tenant_id = ${T} and r.technician_id is not null and ${this.verified()} and ${inPeriod(sql`coalesce(r.review_date, r.created_at)`, per)}
+            and (${b}::uuid is null or r.branch_id = ${b}) group by r.technician_id),
         sv as (select l.technician_id as tid, count(distinct l.id)::int as n, max(t.paid_at) as last_service from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
-          where l.tenant_id = ${T} and l.technician_id is not null and ${this.paidLine()} and ${inPeriod(sql`t.paid_at`, per)} group by l.technician_id),
+          where l.tenant_id = ${T} and l.technician_id is not null and ${this.paidLine()} and ${inPeriod(sql`t.paid_at`, per)}
+            and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null) group by l.technician_id),
         x as (select te.id as tid, coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) as name, te.avatar_url, te.status, te.created_at, b.name as branch,
             coalesce(rv.n, 0) as reviews, rv.avg, rv.last_review, coalesce(sv.n, 0) as services, sv.last_service
           from technicians te left join branches b on b.id = te.branch_id and b.tenant_id = te.tenant_id left join rv on rv.tid = te.id left join sv on sv.tid = te.id
@@ -56,7 +59,8 @@ export class TeamPerformanceScreenRepository {
   async dashboard(ctx: TeamCtx, q: { preset?: unknown; from?: unknown; to?: unknown }) {
     const T = ctx.tenantId; const per = await this.period(ctx, q); const b = branchOf(ctx);
     const all = (await sql<any>`select count(*)::int as n, avg(r.rating)::numeric(4,2) as avg from reviews r join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id
-      where r.tenant_id = ${T} and ${this.verified()} and ${inPeriod(sql`coalesce(r.review_date, r.created_at)`, per)} and ${this.br(ctx)}`.execute(this.db)).rows[0];
+      where r.tenant_id = ${T} and ${this.verified()} and ${inPeriod(sql`coalesce(r.review_date, r.created_at)`, per)} and ${this.br(ctx)}
+        and te.archived_at is null and coalesce(te.status, '') <> 'archived' and (${b}::uuid is null or r.branch_id = ${b})`.execute(this.db)).rows[0];   // the same technicians and reviews as the rows below
     const svc = (await sql<any>`select count(distinct l.id)::int as lines, count(distinct (l.id, l.technician_id))::int as contributions, count(distinct t.id)::int as tickets
       from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id where l.tenant_id = ${T} and l.technician_id is not null and ${this.paidLine()} and ${inPeriod(sql`t.paid_at`, per)}
         and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0];
@@ -64,7 +68,7 @@ export class TeamPerformanceScreenRepository {
     const rated = rows.filter((r: any) => N(r.reviews) > 0);
     const avgPerf = rated.length ? round1(rated.reduce((a: number, r: any) => a + Number(r.avg), 0) / rated.length) : null;
     const dist = { excellent: 0, very_good: 0, good: 0, needs: 0, unrated: 0 } as Record<string, number>;
-    for (const r of rows) dist[tierOf(N(r.reviews) ? Number(r.avg) : null)]++;
+    for (const r of rows) dist[tierOf(N(r.reviews) ? round1(Number(r.avg)) : null)]++;   // the tier of the score shown (4.46 shows 4.5 = Excellent)
     const top = rows.filter((r: any) => N(r.reviews) > 0).slice(0, 5);
     return { period: per, minSample: MIN_SAMPLE,
       kpis: { overallScore: N(all?.n) ? round1(Number(all.avg)) : null, overallReviews: N(all?.n), avgPerformance: avgPerf, ratedTechnicians: rated.length, technicians: rows.length,
@@ -79,14 +83,17 @@ export class TeamPerformanceScreenRepository {
     const T = ctx.tenantId; const per = await this.period(ctx, f); const { page, pageSize } = paging(f.page, f.pageSize, 10);
     const tier = (PERF_TIERS as readonly string[]).includes(String(f.tier)) ? String(f.tier) : 'all';
     const sort = (PERF_SORTS as readonly string[]).includes(String(f.sort)) ? String(f.sort) : 'score';
+    const custOk = can(ctx, 'customers.view');
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const { d, phoneish } = phoneDigits(raw); const isId = UUID.test(raw);
-    const tierW = tier === 'all' ? sql`true` : tier === 'unrated' ? sql`x.reviews = 0` : tier === 'excellent' ? sql`x.reviews > 0 and x.avg >= 4.5`
-      : tier === 'very_good' ? sql`x.reviews > 0 and x.avg >= 3.5 and x.avg < 4.5` : tier === 'good' ? sql`x.reviews > 0 and x.avg >= 2.5 and x.avg < 3.5` : sql`x.reviews > 0 and x.avg < 2.5`;
+    const ra = sql`round(x.avg, 1)`;   // filter on the score the row shows, not the raw average (4.46 showed "4.5 Excellent" but fell in Very good)
+    const tierW = tier === 'all' ? sql`true` : tier === 'unrated' ? sql`x.reviews = 0` : tier === 'excellent' ? sql`x.reviews > 0 and ${ra} >= 4.5`
+      : tier === 'very_good' ? sql`x.reviews > 0 and ${ra} >= 3.5 and ${ra} < 4.5` : tier === 'good' ? sql`x.reviews > 0 and ${ra} >= 2.5 and ${ra} < 3.5` : sql`x.reviews > 0 and ${ra} < 2.5`;
     const techHit = sql`(x.name ilike ${l} or x.tid::text = ${raw} or exists (select 1 from technicians tp where tp.tenant_id = ${T} and tp.id = x.tid and ${phoneish} and right(regexp_replace(coalesce(tp.normalized_phone, tp.phone_display, ''), '\\D', '', 'g'), 10) like ${'%' + d + '%'}))`;
     const workHit = sql`exists (select 1 from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id left join customers c on c.id = t.customer_id and c.tenant_id = l.tenant_id
       where l.tenant_id = ${T} and l.technician_id = x.tid and ${this.paidLine()} and ${inPeriod(sql`t.paid_at`, per)}
-        and (coalesce(l.service_name_snapshot, '') ilike ${l} or coalesce(t.ticket_number, '') ilike ${l} or (${isId} and (t.id::text = ${raw} or l.id::text = ${raw})) or coalesce(c.full_name, '') ilike ${l}
-          or (${phoneish} and right(regexp_replace(coalesce(c.normalized_phone, c.phone_display, ''), '\\D', '', 'g'), 10) like ${'%' + d + '%'})))`;
+        and (coalesce(l.service_name_snapshot, '') ilike ${l} or coalesce(t.ticket_number, '') ilike ${l} or (${isId} and (t.id::text = ${raw} or l.id::text = ${raw}))
+          -- customer name / phone only for a role that may see customers (searching them confirmed who she served)
+          or (${custOk} and (coalesce(c.full_name, '') ilike ${l} or (${phoneish} and right(regexp_replace(coalesce(c.normalized_phone, c.phone_display, ''), '\\D', '', 'g'), 10) like ${'%' + d + '%'})))))`;
     const w = sql`${tierW} and (${raw} = '' or ${techHit} or ${workHit})`;
     const order = sort === 'services' ? sql`x.services desc, ${this.rankOrder()}` : sort === 'name' ? sql`lower(x.name), x.tid` : sort === 'recent' ? sql`x.last_service desc nulls last, x.tid`
       : sort === 'newest' ? sql`x.created_at desc, x.tid` : this.rankOrder();
