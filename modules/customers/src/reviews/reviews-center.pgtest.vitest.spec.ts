@@ -209,3 +209,18 @@ describe('assistant, requests, health (REV-19, REV-22, Check Review System)', ()
     expect(after.v).toBe(before.v);
   });
 });
+
+describe('Nov 3 audit — KPIs follow the technician / source filters', () => {
+  it('the KPI strip counts only the filtered technician and source; "none" means no technician', async () => {
+    const snap = { preset: 'custom', from: '2026-08-31', to: '2026-09-14' };
+    await review({ rating: 2, tech: TECH2, at: '2026-09-01T15:00:00Z', comment: 'Chipped next day' });
+    await review({ rating: 4, tech: null, at: '2026-09-02T15:00:00Z', source: 'google' });
+    const all = await rc.summary(ctx(), snap), v = await rc.summary(ctx(), { ...snap, technician: V }), lan = await rc.summary(ctx(), { ...snap, technician: TECH2 });
+    const none = await rc.summary(ctx(), { ...snap, technician: 'none' }), g = await rc.summary(ctx(), { ...snap, source: 'google' });
+    expect(all.totalReviews).toBe(6);
+    expect([v.totalReviews, v.averageRating]).toEqual([4, 5]);
+    expect([lan.totalReviews, lan.averageRating]).toEqual([1, 2]);
+    expect(none.totalReviews).toBe(1); expect(g.totalReviews).toBe(1);
+    expect(v.scope.technician).toBe('one technician');
+  });
+});

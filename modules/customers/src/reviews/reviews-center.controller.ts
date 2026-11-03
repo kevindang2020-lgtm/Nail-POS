@@ -57,7 +57,7 @@ export class ReviewsCenterController {
 
   /** KPI row + rating distribution — every number states its scope (verified / all received / public) */
   @Get('summary') @RequirePermission('pos.marketing.view')
-  summary(@Req() q: any, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().summary(c, { preset, from, to })); }
+  summary(@Req() q: any, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('technician') technician?: string, @Query('source') source?: string) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().summary(c, { preset, from, to, technician, source })); }
 
   /** the Review Feed: server search · rating / comment / visibility / follow-up / technician / service / source · date basis + range · sort · pages 10/20/50 */
   @Get('reviews') @RequirePermission('pos.marketing.view')

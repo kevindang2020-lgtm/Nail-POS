@@ -106,9 +106,13 @@ export class ReviewsCenter {
   }
 
   // ── KPIs + distribution (guide §04 zone B/D, §10). One query; the scope is stated beside every number. ─────────────────
-  async summary(ctx: RvCtx, f: { preset?: unknown; from?: unknown; to?: unknown } = {}, db: Kysely<any> = this.db) {
+  async summary(ctx: RvCtx, f: { preset?: unknown; from?: unknown; to?: unknown; technician?: unknown; source?: unknown } = {}, db: Kysely<any> = this.db) {
     const { tz, today } = await this.tz(ctx);
     const rg = this.range(today, f);
+    // the KPIs follow the technician / source filters of the feed (they used to show the whole salon beside a filtered list)
+    const tech = f.technician === 'none' ? 'none' : isUuid(f.technician) ? String(f.technician) : null;
+    const src = pick(RV_SOURCES, f.source);
+    const fw = sql`${src ? sql`r.source = ${src}` : sql`true`} and ${tech === 'none' ? sql`r.technician_id is null` : tech ? sql`r.technician_id = ${tech}` : sql`true`}`;
     const rw = rg ? sql`coalesce(r.review_date, r.created_at) >= (${rg.from}::date)::timestamp at time zone ${tz} and coalesce(r.review_date, r.created_at) < ((${rg.to}::date + 1))::timestamp at time zone ${tz}` : sql`true`;
     const k = (await sql<any>`select count(*)::int as total,
         count(*) filter (where ${VERIFIED_REVIEW_SQL})::int as verified, avg(r.rating) filter (where ${VERIFIED_REVIEW_SQL}) as verified_avg,
@@ -121,7 +125,7 @@ export class ReviewsCenter {
         count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 5)::int as d5, count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 4)::int as d4,
         count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 3)::int as d3, count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 2)::int as d2,
         count(*) filter (where ${VERIFIED_REVIEW_SQL} and round(r.rating) = 1)::int as d1, max(r.created_at) as last_review
-      from reviews r where r.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${rw}`.execute(db)).rows[0] ?? {};
+      from reviews r where r.tenant_id = ${ctx.tenantId} and ${this.branchW(ctx)} and ${rw} and ${fw}`.execute(db)).rows[0] ?? {};
     const dist = [{ star: 5, count: N(k.d5) }, { star: 4, count: N(k.d4) }, { star: 3, count: N(k.d3) }, { star: 2, count: N(k.d2) }, { star: 1, count: N(k.d1) }];
     const verified = N(k.verified);
     return {
@@ -132,7 +136,8 @@ export class ReviewsCenter {
       fiveStarPercent: verified ? Math.round((N(k.five) / verified) * 1000) / 10 : null,
       ratingDistribution: dist, lastReviewAt: iso(k.last_review),
       scope: { rating: 'verified: rated 1–5, not hidden by a manager, not spam — the same reviews Team Performance and Technicians count',
-        allReceived: 'every non-spam rating, including hidden ones', public: 'verified and the customer allowed it to be public', date: rg ? `submitted ${rg.from} – ${rg.to}` : 'all time' },
+        allReceived: 'every non-spam rating, including hidden ones', public: 'verified and the customer allowed it to be public', date: rg ? `submitted ${rg.from} – ${rg.to}` : 'all time',
+        technician: tech === 'none' ? 'no technician' : tech ? 'one technician' : 'all technicians', source: src ?? 'all sources' },
       range: rg, timezone: tz, today, evaluatedAt: new Date().toISOString(),
     };
   }
@@ -246,7 +251,7 @@ export class ReviewsCenter {
       const approvals = (await sql<any>`select action, actor_user_id, reason, version, created_at from review_approvals where tenant_id = ${T} and review_id = ${id} order by created_at desc limit 20`.execute(trx)).rows;
       const pubs = (await sql<any>`select result, external_response_id, error, is_auto, created_at from review_publications where tenant_id = ${T} and review_id = ${id} order by created_at desc limit 20`.execute(trx)).rows;
       const mod = (await sql<any>`select e.action, e.previous_hidden, e.new_hidden, e.reason_code, e.reason_text, e.evidence, e.source, e.created_at, e.actor_user_id, u.full_name as actor_name
-          from review_moderation_events e left join users u on u.id = e.actor_user_id where e.tenant_id = ${T} and e.review_id = ${id} order by e.created_at desc, e.id desc limit 50`.execute(trx)).rows;
+          from review_moderation_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.review_id = ${id} order by e.created_at desc, e.id desc limit 50`.execute(trx)).rows;
       if (c) await opts.audit(trx, { reviewId: id, customerId: String(c.id), fullContact: opts.fullContact });
       const external = isExternal(r.source);
       const verified = Number(r.rating) >= 1 && Number(r.rating) <= 5 && !r.is_hidden_by_manager && !r.is_spam;
@@ -256,7 +261,7 @@ export class ReviewsCenter {
           submittedAt: iso(r.submitted_at), createdAt: iso(r.created_at), updatedAt: iso(r.updated_at),
           isPublic: !!r.is_public, isHidden: !!r.is_hidden_by_manager, isSpam: !!r.is_spam, hiddenReason: r.hidden_reason ?? null,
           moderationVersion: N(r.moderation_version), lastModeratedAt: iso(r.last_moderated_at),
-          branch: { id: String(r.branch_id), name: r.branch_name ?? null }, responded: !!r.responded, needsAttention: !!r.attention,
+          branch: r.branch_id ? { id: String(r.branch_id), name: r.branch_name ?? null } : null, responded: !!r.responded, needsAttention: !!r.attention,
           resolution: r.resolution_status ?? 'open', escalation: r.escalation_status ?? 'none', technicianResponse: r.technician_response ?? null, technicianResponseAt: iso(r.technician_response_at) },
         metric: { countsInVerifiedRating: verified, countsInPublicRating: verified && !!r.is_public && !!r.technician_id,
           why: r.is_spam ? 'Marked spam — excluded from every rating.' : r.is_hidden_by_manager ? 'Hidden by a manager — excluded from the verified rating and from public display, still counted in "all received".'

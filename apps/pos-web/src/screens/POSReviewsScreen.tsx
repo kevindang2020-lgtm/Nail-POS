@@ -36,7 +36,8 @@ export function POSReviewsScreen() {
     setSp(next, { replace: true });
   };
   const query: ReviewQuery = { ...f, q: dq || undefined, page: Number(f.page ?? 1), pageSize: Number(f.pageSize ?? 20) };
-  const range = f.preset ? { preset: f.preset, from: f.from, to: f.to } : undefined;
+  // the KPI strip follows the date range AND the technician / source filters of the list beside it
+  const range = { ...(f.preset ? { preset: f.preset, from: f.from, to: f.to } : {}), technician: f.technician || undefined, source: f.source || undefined };
 
   const [sum, setSum] = useState<any>(null);
   const [list, setList] = useState<any>(null);

@@ -10,7 +10,7 @@ export type ReviewQuery = {
 };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export const posReviewsCenterApi = {
-  summary: (r?: { preset?: string; from?: string; to?: string }) => api.get<any>(`/pos/reviews-center/summary`, clean(r ?? {})),
+  summary: (r?: { preset?: string; from?: string; to?: string; technician?: string; source?: string }) => api.get<any>(`/pos/reviews-center/summary`, clean(r ?? {})),
   reviews: (q: ReviewQuery) => api.get<any>(`/pos/reviews-center/reviews`, clean(q)),
   options: () => api.get<any>(`/pos/reviews-center/options`),
   review: (id: string) => api.get<any>(`/pos/reviews-center/reviews/${enc(id)}`),
