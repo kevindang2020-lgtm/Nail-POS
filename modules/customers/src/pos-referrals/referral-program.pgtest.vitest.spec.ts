@@ -137,6 +137,9 @@ describe('record → qualify → approve → issue ONCE (T03, T06–T13)', () =>
     expect((await ref(C.pia)).state).toBe('REWARD_PENDING_APPROVAL');
     expect((await reward(r.id)).state).toBe('PENDING_APPROVAL');
     expect((await rp.list(ctx(), {}, { approvals: true })).items.map((x: any) => x.id)).toContain(r.id);
+    // Nov 3 audit: a reward waiting for approval is in Needs review only, not also in Qualified
+    expect((await rp.list(ctx(), { tab: 'review' })).items.map((x: any) => x.id)).toContain(r.id);
+    expect((await rp.list(ctx(), { tab: 'qualified' })).items.map((x: any) => x.id)).not.toContain(r.id);
     expect(await code(rp.review(ctx(OWNER), r.id, { action: 'approve' }, audit))).toBe('REFERRAL_SELF_APPROVAL');
     const before = await points(C.rita);
     await rp.review(ctx(MGR), r.id, { action: 'approve', reason: 'first visit verified' }, audit);

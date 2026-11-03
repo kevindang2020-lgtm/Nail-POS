@@ -34,7 +34,7 @@ export const RP_GOALS = ['first_time_customers', 'existing_refer_friends', 'low_
 export const RP_REVIEW_ACTIONS = ['approve', 'reject', 'investigate', 'clear_review'] as const;
 export const RP_ELIGIBILITY = ['ELIGIBLE_TO_RECORD', 'RECORDED_WAITING_FOR_QUALIFICATION', 'QUALIFIED_PENDING_APPROVAL', 'INELIGIBLE', 'REVIEW_REQUIRED', 'ERROR_UNKNOWN'] as const;
 const TAB_STATES: Record<string, string[] | null> = {
-  all: null, pending: ['RECORDED', 'PENDING_QUALIFICATION'], qualified: ['QUALIFIED', 'REWARD_PENDING_APPROVAL'], review: ['UNDER_REVIEW', 'REWARD_PENDING_APPROVAL'],
+  all: null, pending: ['RECORDED', 'PENDING_QUALIFICATION'], qualified: ['QUALIFIED'], review: ['UNDER_REVIEW', 'REWARD_PENDING_APPROVAL'],   // a reward waiting for approval is in Needs review only (it used to sit in two tabs)
   approved: ['APPROVED'], issued: ['REWARD_ISSUED'], rejected: ['REJECTED'], reversed: ['REVERSED'], closed: ['REJECTED', 'EXPIRED', 'CANCELLED', 'REVERSED'],
 };
 const OPEN_STATES = ['RECORDED', 'PENDING_QUALIFICATION'];
