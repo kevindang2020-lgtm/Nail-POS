@@ -569,7 +569,7 @@ export class ServiceRecommendationsCenter {
         where ts.tenant_id = r.tenant_id and ts.service_id = r.service_id and tc.is_active and tc.archived_at is null)`)).n);
     checks.push({ key: 'technician_qualifications', state: unqualified ? 'WARNING' : 'PASSED', count: unqualified });
     const booked = N((await one(sql<Row>`select count(*)::int as n from service_recommendations r where r.tenant_id = ${T} and r.status = 'open'
-      and exists (select 1 from pos_tech_appointments a where a.tenant_id = r.tenant_id and a.customer_id = r.customer_id and a.appt_date >= current_date
+      and exists (select 1 from pos_tech_appointments a where a.tenant_id = r.tenant_id and a.customer_id = r.customer_id and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.id = a.branch_id and bz.tenant_id = a.tenant_id), 'America/New_York'))::date
         and a.status = any(${LIVE_APPT}::text[]) and jsonb_typeof(a.services) = 'array' and exists (select 1 from jsonb_array_elements(a.services) x where x->>'serviceId' = r.service_id::text))`)).n);
     checks.push({ key: 'already_booked', state: 'PASSED', count: booked });
     const orphan = N((await one(sql<Row>`select count(*)::int as n from service_recommendations r where r.tenant_id = ${T} and r.status = 'open'

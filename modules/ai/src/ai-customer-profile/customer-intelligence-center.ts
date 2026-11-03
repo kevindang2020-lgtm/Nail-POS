@@ -437,7 +437,7 @@ export class CustomerIntelligenceCenter {
     const visitsAnon = N((await one(sql<Row>`select count(*)::int as n from tickets where tenant_id = ${T} and customer_id is null and removed_at is null and status = any(${VISIT}::text[]) and coalesce(paid_at, created_at) >= now() - interval '90 days'`)).n);
     checks.push({ key: 'completed_visits', state: visitsNoTime ? 'WARNING' : 'PASSED', count: visitsNoTime, detail: { withoutCompletionTime: visitsNoTime, withoutCustomer90d: visitsAnon } });
     const apptArchived = N((await one(sql<Row>`select count(*)::int as n from pos_tech_appointments a join customers c on c.id = a.customer_id and c.tenant_id = a.tenant_id
-      where a.tenant_id = ${T} and a.appt_date >= current_date and a.status in ('booked', 'confirmed') and c.archived_at is not null`)).n);
+      where a.tenant_id = ${T} and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.id = a.branch_id and bz.tenant_id = a.tenant_id), 'America/New_York'))::date and a.status in ('booked', 'confirmed') and c.archived_at is not null`)).n);
     checks.push({ key: 'booking_sync', state: apptArchived ? 'WARNING' : 'PASSED', count: apptArchived });
     const dup = await one(sql<Row>`select (select max(finished_at) from customer_duplicate_scans where tenant_id = ${T} and status = 'completed') as last,
       (select count(*)::int from customer_duplicate_groups where tenant_id = ${T} and status = any(${OPEN_DUP}::text[])) as open`);

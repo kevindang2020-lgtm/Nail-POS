@@ -302,7 +302,7 @@ export class ChurnWatchCenter {
     checks.push({ key: 'rule_applied', state: !ok ? 'INSUFFICIENT_DATA' : unevaluated ? 'WARNING' : 'PASSED', count: unevaluated });
     const upcomingMismatch = N((await one(sql<Row>`select count(*)::int as n from customer_intelligence_snapshots sn where sn.tenant_id = ${T} and not sn.has_upcoming
       and sn.churn_level = any(${FLAGGED}::text[]) and exists (select 1 from pos_tech_appointments a where a.tenant_id = sn.tenant_id and a.customer_id = sn.customer_id
-      and a.appt_date >= current_date and a.status in ('booked', 'confirmed') and a.created_at > sn.computed_at)`)).n);
+      and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.id = a.branch_id and bz.tenant_id = a.tenant_id), 'America/New_York'))::date and a.status in ('booked', 'confirmed') and a.created_at > sn.computed_at)`)).n);
     checks.push({ key: 'bookings_since_evaluation', state: upcomingMismatch ? 'WARNING' : 'PASSED', count: upcomingMismatch });
     const orphanReviews = N((await one(sql<Row>`select count(*)::int as n from churn_watch_reviews r where r.tenant_id = ${T}
       and not exists (select 1 from customers c where c.id = r.customer_id and c.tenant_id = r.tenant_id and c.archived_at is null)`)).n);

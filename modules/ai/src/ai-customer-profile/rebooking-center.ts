@@ -447,7 +447,7 @@ export class RebookingCenter {
     const booking = await one(sql<Row>`select count(*)::int as n, max(updated_at) as at from pos_tech_appointments where tenant_id = ${T}`);
     checks.push({ key: 'booking_calendar', state: 'PASSED', count: N(booking.n), detail: { latestChange: iso(booking.at) } });
     const bookedSince = N((await one(sql<Row>`select count(*)::int as n from customer_intelligence_snapshots sn where sn.tenant_id = ${T} and sn.rebooking and exists (select 1 from pos_tech_appointments a
-      where a.tenant_id = sn.tenant_id and a.customer_id = sn.customer_id and a.appt_date >= current_date and a.status = any(${LIVE_APPT}::text[]))`)).n);
+      where a.tenant_id = sn.tenant_id and a.customer_id = sn.customer_id and a.appt_date >= (now() at time zone coalesce((select bz.timezone from branches bz where bz.id = a.branch_id and bz.tenant_id = a.tenant_id), 'America/New_York'))::date and a.status = any(${LIVE_APPT}::text[]))`)).n);
     // these are already shown as Already Booked (the list reads bookings live) — a warning only says the evaluation is behind
     checks.push({ key: 'bookings_since_evaluation', state: bookedSince ? 'WARNING' : 'PASSED', count: bookedSince });
     const catalog = await one(sql<Row>`select count(*) filter (where status = 'active' and archived_at is null)::int as active, count(*)::int as total from services where tenant_id = ${T}`);
