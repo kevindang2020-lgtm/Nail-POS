@@ -213,7 +213,9 @@ export class DiscountsScreenRepository {
     const from = sql`from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id left join customers cu on cu.id = r.customer_id and cu.tenant_id = r.tenant_id
       left join tickets tk on tk.id = r.ticket_id and tk.tenant_id = r.tenant_id left join deal_coupon_codes cc on cc.id = r.coupon_code_id and cc.tenant_id = r.tenant_id
       left join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id left join users au on au.id = r.applied_by_user_id left join branches br on br.id = r.branch_id and br.tenant_id = r.tenant_id`;
-    const w = sql`r.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and ${stW} and ${this.inP(at, per)} and (${dealId}::uuid is null or r.deal_id = ${dealId}) and (${rBranch}::uuid is null or r.branch_id = ${rBranch})
+    // a redemption belongs to the branch where it was USED (a salon-wide deal used at branch B showed on branch A's screen)
+    const rb = ctx.branchId && UUID.test(ctx.branchId) ? sql`(r.branch_id = ${ctx.branchId} or r.branch_id is null)` : sql`true`;
+    const w = sql`r.tenant_id = ${T} and ${this.kindW()} and ${rb} and ${stW} and ${this.inP(at, per)} and (${dealId}::uuid is null or r.deal_id = ${dealId}) and (${rBranch}::uuid is null or r.branch_id = ${rBranch})
       and (${raw} = '' or coalesce(cu.full_name, '') ilike ${l} or d.title ilike ${l} or (${phoneish} and regexp_replace(coalesce(cu.normalized_phone, ''), '\\D', '', 'g') like ${'%' + d + '%'})
         or coalesce(tk.ticket_number::text, '') = ${raw.replace(/^#/, '')} or r.id::text = ${raw.toLowerCase()} or coalesce(r.ticket_id::text, '') = ${raw.toLowerCase()}
         or (${UUID.test(raw)} and exists (select 1 from pos_queue_items qi where qi.tenant_id = r.tenant_id and qi.ticket_id = r.ticket_id and qi.appointment_id::text = ${raw.toLowerCase()}))

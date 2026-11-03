@@ -138,4 +138,13 @@ describe('Discounts — Redemption History, performance, details', () => {
     const csv = await repo.exportRedemptions(ctx, { state: 'all' });
     expect(csv.split('\r\n').filter(Boolean)).toHaveLength(5); expect(csv).not.toContain('555-1234'); expect(csv).not.toContain('SPRING20');
   });
+  it('Nov 3 audit — a redemption shows on the screen of the branch where it was used, not of the deal\'s branch', async () => {
+    const B3 = id('b3');
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Uptown','active','America/New_York')`, [B3, T]);
+    await q(`insert into deal_redemptions (id, deal_id, tenant_id, branch_id, customer_id, ticket_id, amount_discounted_cents, deal_version, status, kind, applied_at, redeemed_at, created_at)
+       values ($1,$2,$3,$4,$5,null,700,1,'redeemed','coupon', now(), now(), now())`, [id('ae7'), id('d1'), T, B3, id('c1')]);
+    const at = (branchId: string) => repo.redemptions({ ...ctx, branchId }, { state: 'all', pageSize: 50 } as any).then((r: any) => r.items.map((x: any) => x.id ?? x.redemptionId));
+    expect(await at(B3)).toContain(id('ae7'));
+    expect(await at(B)).not.toContain(id('ae7'));
+  });
 });

@@ -62,6 +62,8 @@ const ADD_ON_ORDER: Record<string, RawBuilder<unknown>> = {
 
 export class CatalogScreensRepository {
   constructor(private readonly db: Kysely<any>) {}
+  /** tickets of the selected branch (sales were the whole salon's for a branch user) */
+  private tb(ctx: CatCtx) { const b = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null; return b ? sql`t.branch_id = ${b}` : sql`true`; }
   private branch(ctx: CatCtx, a: 's' | 'c' | 'a') {
     const b = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
     if (!b) return sql`true`;
@@ -87,7 +89,7 @@ export class CatalogScreensRepository {
     return sql`(${col} >= (${p.from}::date)::timestamp at time zone ${p.tz} and ${col} < ((${p.to}::date + 1))::timestamp at time zone ${p.tz})`;
   }
   /** Paid tickets of this salon (the realized-sales scope), as a fragment over `t`. */
-  private paid(ctx: CatCtx) { return sql`t.tenant_id = ${ctx.tenantId} and t.paid_at is not null and t.removed_at is null and coalesce(t.payment_status, '') <> 'voided'`; }
+  private paid(ctx: CatCtx) { return sql`t.tenant_id = ${ctx.tenantId} and t.paid_at is not null and t.removed_at is null and coalesce(t.payment_status, '') <> 'voided' and ${this.tb(ctx)}`; }
 
   // ── Services & Products dashboard ──────────────────────────────────────────────────────────────────────────────────
   async dashboard(ctx: CatCtx, q: { preset?: unknown; from?: unknown; to?: unknown }) {
@@ -313,11 +315,11 @@ export class CatalogScreensRepository {
   // ── customer service history (phone / name / ticket → what was actually charged) ───────────────────────────────────
   async customerHistory(ctx: CatCtx, f: { q?: string; kind?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId; const { page, pageSize } = paging(f.page, f.pageSize, 10); const per = await this.period(ctx, f);
-    const raw = String(f.q ?? '').trim().slice(0, 100); const { d, phoneish } = phoneDigits(raw); const ticketNo = /^#?\d{1,9}$/.test(raw) && !phoneish ? raw.replace('#', '') : null;
+    const raw = String(f.q ?? '').trim().slice(0, 100); const { d, phoneish } = phoneDigits(raw); const ticketNo = /^#?\d{1,9}$/.test(raw) ? raw.replace('#', '') : null;   // "1042" is a ticket number AND phone digits — search both (it was phone only)
     // never a list of every customer: a name needs 2 letters, a phone 4 digits, a ticket its number
     if (!(raw.length >= 2 && /[a-z]/i.test(raw)) && !phoneish && !ticketNo && !UUID.test(raw)) return { period: per, needsQuery: true, items: [], page: 1, pageSize, totalItems: 0, totalPages: 1 };
     const kind = f.kind === 'add_on' ? sql`(coalesce(l.is_add_on, false) or lower(coalesce(l.line_kind, '')) = 'add_on')` : f.kind === 'retail' ? sql`lower(coalesce(l.line_kind, '')) = 'retail'` : f.kind === 'service' ? sql`(not coalesce(l.is_add_on, false) and lower(coalesce(l.line_kind, 'service')) = 'service')` : sql`true`;
-    const w = sql`l.tenant_id = ${T} and l.removed_at is null and t.removed_at is null and ${kind} and ${this.inP(sql`coalesce(t.paid_at, t.created_at)`, per)}
+    const w = sql`l.tenant_id = ${T} and l.removed_at is null and t.removed_at is null and ${kind} and ${this.inP(sql`coalesce(t.paid_at, t.created_at)`, per)} and ${this.tb(ctx)}
       and ((${phoneish} and regexp_replace(coalesce(cu.normalized_phone, ''), '\\D', '', 'g') like ${'%' + d + '%'}) or (${!phoneish && !ticketNo} and (coalesce(cu.full_name, '') ilike ${like(raw)} or coalesce(cu.email, '') ilike ${like(raw)}))
         or (${ticketNo}::text is not null and t.ticket_number::text = ${ticketNo ?? ''}) or (${UUID.test(raw)} and (t.id::text = ${raw.toLowerCase()} or cu.id::text = ${raw.toLowerCase()})))`;
     const from = sql`from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id left join customers cu on cu.id = t.customer_id and cu.tenant_id = t.tenant_id
@@ -483,7 +485,7 @@ export class CatalogScreensRepository {
       where a.tenant_id = ${T} and a.add_on_key = ${key} and ${this.branch(ctx, 'a')} order by lower(s.name), a.id`.execute(this.db)).rows;
     if (!rows.length) throw err(404, 'ADD_ON_NOT_FOUND', 'That add-on was not found.');
     const usage = (await sql<any>`select count(*)::int as n, coalesce(sum(l.line_total_cents), 0)::bigint as cents, max(t.paid_at) as last_at from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
-      where l.tenant_id = ${T} and l.removed_at is null and t.paid_at is not null and coalesce(l.is_add_on, false) and lower(l.service_name_snapshot) = lower(${String(rows[0].name)})`.execute(this.db)).rows[0];
+      where l.tenant_id = ${T} and l.removed_at is null and t.paid_at is not null and coalesce(l.is_add_on, false) and lower(l.service_name_snapshot) = lower(${String(rows[0].name)}) and ${this.tb(ctx)}`.execute(this.db)).rows[0];
     const first = rows[0];
     return { key: String(key), name: String(first.name), offerings: rows.map((r: any) => ({ offeringId: String(r.id), serviceId: String(r.service_id), serviceName: String(r.service_name), serviceStatus: String(r.service_status ?? 'active'),
       categoryName: r.category_name ?? null, priceCents: N(r.price_cents), durationMinutes: N(r.duration_delta_minutes), taxable: !!r.is_taxable, active: !!r.is_active,
@@ -496,9 +498,11 @@ export class CatalogScreensRepository {
   async addOnUsage(ctx: CatCtx, f: { q?: string; key?: string; dateField?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId; const { page, pageSize } = paging(f.page, f.pageSize, 10); const per = await this.period(ctx, f, 'month');
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const { d, phoneish } = phoneDigits(raw); const ticketNo = /^#\d{1,9}$/.test(raw) ? raw.slice(1) : null;
-    const keyName = f.key && /^[A-Za-z0-9_-]{1,64}$/.test(f.key) ? (await sql<any>`select name from service_add_ons where tenant_id = ${T} and add_on_key = ${f.key} limit 1`.execute(this.db)).rows[0]?.name ?? '\u0000' : null;
+    const keyName = f.key && /^[A-Za-z0-9_-]{1,64}$/.test(f.key) ? (await sql<any>`select name from service_add_ons where tenant_id = ${T} and add_on_key = ${f.key} limit 1`.execute(this.db)).rows[0]?.name ?? null : null;
+    // an unknown add-on key matches nothing (the '\u0000' placeholder it used made Postgres refuse the query → 500)
+    if (f.key && keyName == null) return { period: per, totals: { paidLines: 0, paidCents: 0 }, items: [], page: 1, pageSize, totalItems: 0, totalPages: 1 };
     const col = f.dateField === 'added' ? sql`l.created_at` : sql`coalesce(t.paid_at, l.created_at)`;
-    const w = sql`l.tenant_id = ${T} and l.removed_at is null and t.removed_at is null and (coalesce(l.is_add_on, false) or lower(coalesce(l.line_kind, '')) = 'add_on') and ${this.inP(col, per)}
+    const w = sql`l.tenant_id = ${T} and l.removed_at is null and t.removed_at is null and (coalesce(l.is_add_on, false) or lower(coalesce(l.line_kind, '')) = 'add_on') and ${this.inP(col, per)} and ${this.tb(ctx)}
       and (${keyName}::text is null or lower(l.service_name_snapshot) = lower(${keyName ?? ''}))
       and (${raw} = '' or l.service_name_snapshot ilike ${l} or coalesce(cu.full_name, '') ilike ${l} or (${ticketNo}::text is not null and t.ticket_number::text = ${ticketNo ?? ''})
         or (${phoneish} and regexp_replace(coalesce(cu.normalized_phone, ''), '\\D', '', 'g') like ${'%' + d + '%'})

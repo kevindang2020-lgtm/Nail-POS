@@ -130,6 +130,12 @@ describe('Service Pricing — audited edits and history', () => {
     expect(add.items.map((x) => [x.item, x.chargedCents, x.kind, x.maskedPhone])).toEqual([['French tips', 1000, 'add_on', '••• 1234']]);
     expect((await repo.customerHistory(ctx, { q: '#102', page: 1, pageSize: 10 })).items.map((x) => x.item)).toEqual(['Classic Pedicure']);
     expect((await repo.customerHistory(ctx2, { q: '8565551234', page: 1, pageSize: 10 })).items.map((x) => x.chargedCents)).toEqual([9900]);
+    // Nov 3 audit: a 4+ digit ticket number was searched only as phone digits
+    await q(`update tickets set ticket_number = '4242' where tenant_id = $1 and ticket_number = '102'`, [T]);
+    try { expect((await repo.customerHistory(ctx, { q: '4242', page: 1, pageSize: 10 })).items.map((x) => x.item)).toEqual(['Classic Pedicure']); }
+    finally { await q(`update tickets set ticket_number = '102' where tenant_id = $1 and ticket_number = '4242'`, [T]); }
+    // an unknown add-on key is an empty list, not a server error (the '\u0000' placeholder made Postgres refuse the query)
+    expect((await repo.addOnUsage(ctx, { key: 'no-such-addon', page: 1, pageSize: 10 })).totalItems).toBe(0);
   });
 });
 
