@@ -1,0 +1,38 @@
+# AI Business Reports + AI Business Alerts — Nov 3 2026
+
+Routes: `/tenant/ai/business/reports`, `/tenant/ai/business/alerts`. API: `/pos/ai-business/center/*` (migration 781).
+Reports stay in `ai_business_report_jobs` (338), rules in `ai_business_alerts` (337). Figures come from the canonical Sales
+Report (`ReportsService`) through the existing AI Business tools — no second reporting engine.
+
+## Audit
+
+| Requirement | Status before | Evidence | Action |
+|---|---|---|---|
+| A period means its days | **BROKEN (everywhere)** | `KyselyReportsRepository.query` ignored `preset`: no from/to → the last 7 days. Every AI Business tool (daily brief, weekly, monthly, alerts' "today") asked by preset; the Sales Report screen sends `period`, which the controller dropped | `presetRange` in the reports repository (salon-local days, weeks from Monday) and `period` accepted as `preset`. Pinned in `reports-reconcile.pgtest` |
+| Four report buttons + history | PARTIAL | Worked; history = 100 newest, no search / filters / pages; a read error showed "No reports yet" (swallowed `.catch`) | Center list + pages; errors surface |
+| "completed" + "expired" | AMBIGUOUS | `expired` = the 7-day content window (`expires_at`), content kept but hidden — not a failed download | Generation status and availability shown apart |
+| Which days a report covers | MISSING | Only the preset name was stored | Exact days + timezone + the Sales Report snapshot stored in the content |
+| Verify Numbers | MISSING | — | Snapshot vs the Sales Report now, same days and scope: matched / changed (with reason) / cannot verify |
+| Regenerate | MISSING | — | New report; the old one untouched |
+| Double tap | MISSING | Every tap made a report | Same user + type + period within 15 s returns the same report |
+| Report detail | PARTIAL | Raw JSON | Labelled headline figures + full data |
+| Scheduled reports | MISSING — decision | No scheduler / delivery | Reported as "not set up" by the check |
+| Alert rules (create, pause, delete, evaluate) | PARTIAL | Pause / delete errors swallowed; delete without confirmation; screen claimed "scheduled delivery runs server-side" (false) | Errors shown, confirmation, honest note |
+| Alert history / incidents | MISSING | Evaluate only set two timestamps | `ai_business_alert_events`: value, threshold, sample, exact days, state change (triggered / recovered / unchanged / not evaluated), acknowledgement |
+| Automatic evaluation, SMS / email delivery | MISSING — decision | `frequency` / `channel` stored, never acted on | Reported by the check; listed below |
+| Root-cause advisor | MISSING | — | Deterministic: the existing price × volume bridge for money metrics, the appointment funnel otherwise; read-only, "not proof of cause" |
+| Anomaly detection | MISSING | — | Opt-in check: yesterday vs the same weekday over 8 weeks, median + MAD, needs ≥ 4 comparable days |
+| Health checks | MISSING | — | Check AI Business Reports / Alerts System (read-only, recorded, 30 s reuse) incl. "a period means its days" |
+| All-my-salons (cross-tenant) | MISSING — not built | Branch comparison exists within a salon | Not built: needs an owner multi-tenant grant model |
+
+## Tests
+
+- `modules/analytics/src/ai-business/business-center.pgtest.vitest.spec.ts` — 10 on the real schema with the real Sales Report.
+- `modules/reports/src/reports/reports-reconcile.pgtest.vitest.spec.ts` — +2 (preset = its days; `presetRange`).
+- POS: `POSAiReportsScreen` (5), `POSAiAlertsScreen` (7 + 403), `posAiBusinessApi.retired` (6).
+
+## Decisions for the owner
+
+1. Scheduled reports (daily / weekly / monthly) — where should they be delivered (in-app only, or email)?
+2. Automatic alert evaluation (hourly / daily as each rule says) and delivery by SMS / email — turn on, and to whom?
+3. All-my-salons monitoring across separate salon accounts needs an owner grant model that does not exist yet.

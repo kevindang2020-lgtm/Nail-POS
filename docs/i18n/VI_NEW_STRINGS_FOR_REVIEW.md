@@ -15876,3 +15876,293 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `amk.health.d.tenant_isolation.FAILED` | A send record points at another salon's campaign. Report this immediately. | Có bản ghi gửi trỏ tới chiến dịch của tiệm khác. Hãy báo ngay. |
 | `amk.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `amk.health.d.no_side_effects.PASSED` | This check sends no message, creates no campaign and changes no consent or payment. | Việc kiểm tra không gửi tin, không tạo chiến dịch, không đổi sự đồng ý hay thanh toán. |
+
+## AI Business Reports + Alerts (`bzx.*`) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `bzx.refresh` | Refresh | Làm mới |
+| `bzx.search` | Search | Tìm |
+| `bzx.clear` | Clear filters | Xóa bộ lọc |
+| `bzx.rows` | Rows | Số dòng |
+| `bzx.close` | Close | Đóng |
+| `bzx.cancel` | Cancel | Hủy |
+| `bzx.loading` | Loading… | Đang tải… |
+| `bzx.sort` | Sort | Sắp xếp |
+| `bzx.matching` | {n} matching | {n} kết quả |
+| `bzx.noMatch` | Nothing matches this search or these filters. | Không có gì khớp tìm kiếm hoặc bộ lọc. |
+| `bzx.loadFailed` | This could not be loaded. Try again or run the system check — this is not "nothing here". | Không tải được. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có gì". |
+| `bzx.err.forbidden` | Your role cannot use AI Business. | Vai trò của bạn không dùng được AI Kinh doanh. |
+| `bzx.check.reports` | Check AI Business Reports System | Kiểm tra hệ thống Báo cáo AI |
+| `bzx.check.alerts` | Check AI Business Alerts System | Kiểm tra hệ thống Cảnh báo AI |
+| `bzx.cond` | {m} {op} {v} | {m} {op} {v} |
+| `bzx.op.lt` | falls below | xuống dưới |
+| `bzx.op.gt` | rises above | lên trên |
+| `bzx.r.title` | AI Business Reports | Báo cáo kinh doanh AI |
+| `bzx.r.sub` | Generate a structured report from your authorized data — the numbers match your reports. | Tạo báo cáo có cấu trúc từ dữ liệu bạn được phép xem — số liệu khớp với các báo cáo của bạn. |
+| `bzx.r.kpi.total` | Report history | Lịch sử báo cáo |
+| `bzx.r.kpi.processing` | Processing | Đang tạo |
+| `bzx.r.kpi.stuck` | {n} stuck over 10 minutes | {n} kẹt hơn 10 phút |
+| `bzx.r.kpi.failed` | Failed | Lỗi |
+| `bzx.r.kpi.viewable` | Ready to view | Xem được |
+| `bzx.r.kpi.expired` | Content expired | Hết hạn nội dung |
+| `bzx.r.kpi.expiredSub` | Content is shown for {n} days | Nội dung hiển thị trong {n} ngày |
+| `bzx.r.generate` | Generate a report | Tạo báo cáo |
+| `bzx.r.history` | Report History | Lịch sử báo cáo |
+| `bzx.r.searchPh` | Report type, period, ID or who generated it | Loại báo cáo, kỳ, mã hoặc người tạo |
+| `bzx.r.type` | Report type | Loại báo cáo |
+| `bzx.r.allTypes` | All reports | Mọi báo cáo |
+| `bzx.r.status` | Status | Trạng thái |
+| `bzx.r.generatedFilter` | Filter by when the report was generated (not the days it covers): | Lọc theo lúc tạo báo cáo (không phải các ngày báo cáo bao gồm): |
+| `bzx.r.none` | No reports yet — generate one above. | Chưa có báo cáo — hãy tạo ở trên. |
+| `bzx.r.col.report` | Report | Báo cáo |
+| `bzx.r.col.generated` | Generated | Đã tạo |
+| `bzx.r.col.status` | Status | Trạng thái |
+| `bzx.r.col.actions` | Actions | Thao tác |
+| `bzx.r.view` | View | Xem |
+| `bzx.r.genNote` | Choose the days the report covers. It is generated now from the canonical reports and keeps the figures for those days. | Chọn các ngày báo cáo bao gồm. Báo cáo được tạo ngay từ báo cáo gốc và lưu số liệu của các ngày đó. |
+| `bzx.r.generateNow` | Generate | Tạo |
+| `bzx.r.generating` | Generating… | Đang tạo… |
+| `bzx.r.covers` | Covers {d} (salon time, {tz}) | Bao gồm {d} (giờ tiệm, {tz}) |
+| `bzx.r.noPeriod` | Period: {p} (generated before reports recorded their exact days) | Kỳ: {p} (tạo trước khi báo cáo ghi ngày chính xác) |
+| `bzx.r.partial` | The period was still in progress when generated. | Kỳ này còn đang diễn ra khi tạo. |
+| `bzx.r.expiredNote` | Generation completed. Its content is shown for 7 days and that window has passed — regenerate for current figures. | Đã tạo xong. Nội dung chỉ hiển thị 7 ngày và đã quá hạn — hãy tạo lại để có số liệu hiện tại. |
+| `bzx.r.fullData` | Full report data ({s}) | Dữ liệu đầy đủ ({s}) |
+| `bzx.r.verify` | Verify numbers | Kiểm tra số liệu |
+| `bzx.r.verifying` | Checking against the Sales Report… | Đang đối chiếu với Báo cáo doanh thu… |
+| `bzx.r.regenerate` | Regenerate with current data | Tạo lại với dữ liệu hiện tại |
+| `bzx.r.metric` | Figure | Số liệu |
+| `bzx.r.inReport` | In the report | Trong báo cáo |
+| `bzx.r.now` | Sales Report now | Báo cáo doanh thu hiện tại |
+| `bzx.r.diff` | Difference | Chênh lệch |
+| `bzx.r.openSales` | Open the Sales Report | Mở Báo cáo doanh thu |
+| `bzx.r.matchNote` | Figures come from the same Sales Report calculation; regenerating makes a new report and keeps this one as it was. | Số liệu lấy từ cùng cách tính của Báo cáo doanh thu; tạo lại sẽ tạo báo cáo mới và giữ nguyên báo cáo này. |
+| `bzx.a.title` | AI Business Alerts | Cảnh báo kinh doanh AI |
+| `bzx.a.sub` | Watch a metric and see when it crosses a threshold — with a minimum sample so a few tickets cannot trip an alert. | Theo dõi một chỉ số và biết khi nó vượt ngưỡng — có số mẫu tối thiểu để vài hóa đơn không làm kích hoạt cảnh báo. |
+| `bzx.a.kpi.active` | Active rules | Quy tắc đang bật |
+| `bzx.a.kpi.paused` | {n} paused | {n} tạm dừng |
+| `bzx.a.kpi.triggered` | Triggered, not acknowledged | Đã kích hoạt, chưa xác nhận |
+| `bzx.a.kpi.review` | Needs review (sample too small) | Cần xem lại (mẫu quá nhỏ) |
+| `bzx.a.kpi.never` | Never evaluated | Chưa từng đánh giá |
+| `bzx.a.kpi.last` | Last evaluated | Lần đánh giá gần nhất |
+| `bzx.a.never` | Not evaluated yet | Chưa đánh giá |
+| `bzx.a.manualNote` | Rules are evaluated when someone taps "Evaluate now". Automatic evaluation and SMS / email delivery are not set up yet. | Quy tắc được đánh giá khi có người bấm "Đánh giá ngay". Chưa cài đặt đánh giá tự động và gửi SMS / email. |
+| `bzx.a.new` | New alert | Cảnh báo mới |
+| `bzx.a.name` | Alert name | Tên cảnh báo |
+| `bzx.a.metric` | Metric | Chỉ số |
+| `bzx.a.comparison` | Comparison | So sánh |
+| `bzx.a.amount.cents` | Amount ($) | Số tiền ($) |
+| `bzx.a.amount.count` | Count | Số lượng |
+| `bzx.a.amount.percent` | Percent | Phần trăm |
+| `bzx.a.period` | Evaluation period | Kỳ đánh giá |
+| `bzx.a.minSample` | Minimum sample | Số mẫu tối thiểu |
+| `bzx.a.create` | Create alert | Tạo cảnh báo |
+| `bzx.a.created` | Alert created. | Đã tạo cảnh báo. |
+| `bzx.a.formInvalid` | Enter a name and an amount of 0 or more. | Nhập tên và số từ 0 trở lên. |
+| `bzx.a.sampleInvalid` | The minimum sample must be at least 1. | Số mẫu tối thiểu phải từ 1 trở lên. |
+| `bzx.a.rules` | Alert rules | Quy tắc cảnh báo |
+| `bzx.a.searchPh` | Alert name, metric or who created it | Tên cảnh báo, chỉ số hoặc người tạo |
+| `bzx.a.status` | Status | Trạng thái |
+| `bzx.a.allMetrics` | All metrics | Mọi chỉ số |
+| `bzx.a.none` | No alerts yet — create one above. | Chưa có cảnh báo — hãy tạo ở trên. |
+| `bzx.a.col.alert` | Alert | Cảnh báo |
+| `bzx.a.col.condition` | Condition | Điều kiện |
+| `bzx.a.col.period` | Period | Kỳ |
+| `bzx.a.col.status` | Status | Trạng thái |
+| `bzx.a.col.actions` | Actions | Thao tác |
+| `bzx.a.col.when` | Evaluated | Đánh giá lúc |
+| `bzx.a.col.result` | Value vs threshold | Giá trị so với ngưỡng |
+| `bzx.a.col.days` | Days | Ngày |
+| `bzx.a.col.state` | What changed | Thay đổi |
+| `bzx.a.minSampleN` | minimum sample {n} | số mẫu tối thiểu {n} |
+| `bzx.a.active` | Active | Đang bật |
+| `bzx.a.pausedOne` | Paused | Tạm dừng |
+| `bzx.a.unack` | not acknowledged | chưa xác nhận |
+| `bzx.a.evaluate` | Evaluate now | Đánh giá ngay |
+| `bzx.a.pause` | Pause | Tạm dừng |
+| `bzx.a.resume` | Resume | Tiếp tục |
+| `bzx.a.delete` | Delete | Xóa |
+| `bzx.a.deleteTitle` | Delete "{t}"? | Xóa "{t}"? |
+| `bzx.a.deleteNote` | The rule and its evaluation history are removed. This cannot be undone. | Quy tắc và lịch sử đánh giá sẽ bị xóa. Không thể hoàn tác. |
+| `bzx.a.deleted` | "{t}" deleted. | Đã xóa "{t}". |
+| `bzx.a.valueVs` | {v} vs {t} | {v} so với {t} |
+| `bzx.a.sample` | sample {n} | mẫu {n} |
+| `bzx.a.sampleOf` | sample {n} (minimum {m}) | mẫu {n} (tối thiểu {m}) |
+| `bzx.a.history` | Evaluation history | Lịch sử đánh giá |
+| `bzx.a.hSearchPh` | Alert name or metric | Tên cảnh báo hoặc chỉ số |
+| `bzx.a.state` | What changed | Thay đổi |
+| `bzx.a.noHistory` | No evaluations yet. | Chưa có lần đánh giá nào. |
+| `bzx.a.ack` | Acknowledge | Xác nhận |
+| `bzx.a.ackTitle` | Acknowledge "{t}" | Xác nhận "{t}" |
+| `bzx.a.ackNote` | Note (optional) | Ghi chú (không bắt buộc) |
+| `bzx.a.ackBy` | Acknowledged by {who} · {at} | Đã xác nhận bởi {who} · {at} |
+| `bzx.a.explain` | Explain | Giải thích |
+| `bzx.a.explainTitle` | What the numbers show | Số liệu cho thấy gì |
+| `bzx.a.valueWas` | the value was {v} | giá trị là {v} |
+| `bzx.a.openSource` | Open the source report | Mở báo cáo gốc |
+| `bzx.a.notProof` | Measured changes, not proof of cause. Nothing is changed from here — prices, schedules and campaigns stay in their own screens. | Thay đổi đo được, không phải bằng chứng nguyên nhân. Không thay đổi gì từ đây — giá, lịch và chiến dịch vẫn ở màn hình riêng. |
+| `bzx.x.current` | This period | Kỳ này |
+| `bzx.x.previous` | Comparable previous period | Kỳ trước tương ứng |
+| `bzx.x.netChange` | Change in net sales | Thay đổi doanh thu thuần |
+| `bzx.x.totalBookings` | Bookings | Lượt đặt |
+| `bzx.x.completed` | Completed | Đã làm xong |
+| `bzx.x.cancelled` | Cancelled | Đã hủy |
+| `bzx.x.noShow` | No-show | Không đến |
+| `bzx.x.cancelledPercent` | Cancellation rate | Tỷ lệ hủy |
+| `bzx.x.noShowPercent` | No-show rate | Tỷ lệ không đến |
+| `bzx.an.title` | Unusual day check | Kiểm tra ngày bất thường |
+| `bzx.an.sub` | Compares yesterday (a complete salon day) with the same weekday over the previous 8 weeks, from the Sales Report. Read-only. | So sánh hôm qua (một ngày làm việc trọn vẹn) với cùng thứ trong 8 tuần trước, từ Báo cáo doanh thu. Chỉ đọc. |
+| `bzx.an.run` | Check yesterday | Kiểm tra hôm qua |
+| `bzx.an.metric` | {day} | {day} |
+| `bzx.an.actual` | Actual | Thực tế |
+| `bzx.an.baseline` | Usual (median) | Thường lệ (trung vị) |
+| `bzx.an.result` | Result | Kết quả |
+| `bzx.an.note` | A lead to look into, not a proven cause. Holidays, closures and short days count as ordinary days in the baseline. | Gợi ý để xem xét, không phải nguyên nhân đã chứng minh. Ngày lễ, ngày nghỉ và ngày làm ngắn được tính như ngày thường trong mức chuẩn. |
+| `bzx.type.daily_brief` | Daily brief | Tóm tắt ngày |
+| `bzx.type.weekly_summary` | Weekly summary | Tổng kết tuần |
+| `bzx.type.monthly_review` | Monthly review | Đánh giá tháng |
+| `bzx.type.branch_comparison` | Branch comparison | So sánh chi nhánh |
+| `bzx.period.today` | Today | Hôm nay |
+| `bzx.period.yesterday` | Yesterday | Hôm qua |
+| `bzx.period.week` | This week | Tuần này |
+| `bzx.period.month` | This month | Tháng này |
+| `bzx.period.quarter` | This quarter | Quý này |
+| `bzx.period.year` | This year | Năm nay |
+| `bzx.preset.all` | All dates | Mọi ngày |
+| `bzx.preset.today` | Today | Hôm nay |
+| `bzx.preset.yesterday` | Yesterday | Hôm qua |
+| `bzx.preset.week` | This week | Tuần này |
+| `bzx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `bzx.preset.month` | This month | Tháng này |
+| `bzx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `bzx.preset.last_month` | Last month | Tháng trước |
+| `bzx.preset.year` | This year | Năm nay |
+| `bzx.preset.custom` | Custom range | Tùy chọn |
+| `bzx.rs.all` | All statuses | Mọi trạng thái |
+| `bzx.rs.viewable` | Ready to view | Xem được |
+| `bzx.rs.content_expired` | Content expired | Hết hạn nội dung |
+| `bzx.rs.queued` | Queued | Đang chờ |
+| `bzx.rs.running` | Processing | Đang tạo |
+| `bzx.rs.completed` | Completed | Hoàn tất |
+| `bzx.rs.failed` | Failed | Lỗi |
+| `bzx.avail.viewable` | Content available | Có nội dung |
+| `bzx.avail.content_expired` | Content no longer shown (7-day window) — regenerate | Nội dung không còn hiển thị (hạn 7 ngày) — hãy tạo lại |
+| `bzx.avail.not_ready` | Not ready yet | Chưa sẵn sàng |
+| `bzx.avail.failed` | Generation failed | Tạo thất bại |
+| `bzx.sort.newest` | Newest first | Mới nhất trước |
+| `bzx.sort.oldest` | Oldest first | Cũ nhất trước |
+| `bzx.m.net_sales` | Net sales | Doanh thu thuần |
+| `bzx.m.paid_tickets` | Paid tickets | Hóa đơn đã thanh toán |
+| `bzx.m.average_ticket` | Average ticket | Trung bình mỗi hóa đơn |
+| `bzx.m.refunds` | Refunds | Hoàn tiền |
+| `bzx.m.completed_appointments` | Completed appointments | Lịch hẹn đã làm xong |
+| `bzx.m.bookings` | Bookings | Lượt đặt |
+| `bzx.m.new_customers` | New customers | Khách mới |
+| `bzx.m.branches` | Branches compared | Chi nhánh so sánh |
+| `bzx.vm.netSalesCents` | Net sales | Doanh thu thuần |
+| `bzx.vm.grossSalesCents` | Gross sales | Doanh thu gộp |
+| `bzx.vm.ticketsCount` | Paid tickets | Hóa đơn đã thanh toán |
+| `bzx.vm.averageTicketCents` | Average ticket | Trung bình mỗi hóa đơn |
+| `bzx.vm.refundsCents` | Refunds | Hoàn tiền |
+| `bzx.vm.discountsCents` | Discounts | Giảm giá |
+| `bzx.vs.matched` | Matched — the report agrees with the Sales Report for the same days. | Khớp — báo cáo trùng với Báo cáo doanh thu cho cùng các ngày. |
+| `bzx.vs.changed` | Changed since the report was generated. | Đã thay đổi kể từ khi tạo báo cáo. |
+| `bzx.vs.cannot_verify` | Cannot verify this report. | Không kiểm tra được báo cáo này. |
+| `bzx.vr.period_was_in_progress` | the period was still in progress, so later sales were added | kỳ còn đang diễn ra nên có thêm doanh thu sau đó |
+| `bzx.vr.source_changed_since` | a sale, refund or void for those days was recorded after the report | có giao dịch, hoàn tiền hoặc hủy cho các ngày đó được ghi sau báo cáo |
+| `bzx.vr.not_completed` | the report did not complete | báo cáo chưa hoàn tất |
+| `bzx.vr.no_period` | it was generated before reports recorded their exact days — regenerate it | được tạo trước khi báo cáo ghi ngày chính xác — hãy tạo lại |
+| `bzx.vr.no_snapshot` | it was generated by a role without access to money figures | được tạo bởi vai trò không xem được số tiền |
+| `bzx.vr.no_permission` | your role cannot see the Sales Report figures | vai trò của bạn không xem được số liệu Báo cáo doanh thu |
+| `bzx.metric.net_sales` | Net sales | Doanh thu thuần |
+| `bzx.metric.average_ticket` | Average ticket | Trung bình mỗi hóa đơn |
+| `bzx.metric.completed_appointments` | Completed appointments | Lịch hẹn đã làm xong |
+| `bzx.metric.cancellation_rate` | Cancellation rate | Tỷ lệ hủy |
+| `bzx.metric.no_show_rate` | No-show rate | Tỷ lệ không đến |
+| `bzx.metric.customer_retention` | Customer retention | Giữ chân khách |
+| `bzx.rst.all` | All rules | Mọi quy tắc |
+| `bzx.rst.active` | Active | Đang bật |
+| `bzx.rst.paused` | Paused | Tạm dừng |
+| `bzx.rst.triggered` | Triggered, not acknowledged | Đã kích hoạt, chưa xác nhận |
+| `bzx.rst.needs_review` | Needs review | Cần xem lại |
+| `bzx.rst.never_evaluated` | Never evaluated | Chưa từng đánh giá |
+| `bzx.est.all` | All results | Mọi kết quả |
+| `bzx.est.triggered` | Triggered | Đã kích hoạt |
+| `bzx.est.unacknowledged` | Triggered, not acknowledged | Đã kích hoạt, chưa xác nhận |
+| `bzx.est.recovered` | Recovered | Đã trở lại bình thường |
+| `bzx.est.unchanged` | No change | Không đổi |
+| `bzx.est.not_evaluated` | Not evaluated (sample too small) | Không đánh giá (mẫu quá nhỏ) |
+| `bzx.es.triggered` | Triggered | Đã kích hoạt |
+| `bzx.es.recovered` | Recovered | Đã trở lại bình thường |
+| `bzx.es.unchanged` | No change | Không đổi |
+| `bzx.es.not_evaluated` | Not evaluated — sample too small | Không đánh giá — mẫu quá nhỏ |
+| `bzx.an.st.normal` | Within the usual range ({n} comparable days) | Trong mức thường lệ ({n} ngày so sánh) |
+| `bzx.an.st.unusually_low` | Unusually low ({n} comparable days) | Thấp bất thường ({n} ngày so sánh) |
+| `bzx.an.st.unusually_high` | Unusually high ({n} comparable days) | Cao bất thường ({n} ngày so sánh) |
+| `bzx.an.st.insufficient_history` | Not enough history: {n} comparable days with sales (4 needed) | Chưa đủ dữ liệu: {n} ngày so sánh có doanh thu (cần 4) |
+| `bzx.health.PASSED` | Passed | Đạt |
+| `bzx.health.WARNING` | Warning | Cảnh báo |
+| `bzx.health.FAILED` | Failed | Lỗi |
+| `bzx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `bzx.health.UNAVAILABLE` | Not available | Chưa có |
+| `bzx.health.running` | Checking… | Đang kiểm tra… |
+| `bzx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `bzx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `bzx.health.readOnly` | Read-only: the check changes no sale, report, rule or schedule and sends nothing. | Chỉ đọc: việc kiểm tra không thay đổi giao dịch, báo cáo, quy tắc hay lịch và không gửi gì. |
+| `bzx.health.retry` | Check again | Kiểm tra lại |
+| `bzx.health.part` | Part: {c} | Bộ phận: {c} |
+| `bzx.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `bzx.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `bzx.comp.metrics` | Report figures | Số liệu báo cáo |
+| `bzx.comp.storage` | Report storage | Lưu báo cáo |
+| `bzx.comp.generation` | Generation | Tạo báo cáo |
+| `bzx.comp.verification` | Verification | Đối chiếu |
+| `bzx.comp.automation` | Automation | Tự động |
+| `bzx.comp.rules` | Rules | Quy tắc |
+| `bzx.comp.evaluation` | Evaluation | Đánh giá |
+| `bzx.comp.notifications` | Notifications | Thông báo |
+| `bzx.comp.security` | Security | Bảo mật |
+| `bzx.health.k.sales_source` | Sales Report answers | Báo cáo doanh thu phản hồi |
+| `bzx.health.d.sales_source.PASSED` | The canonical Sales Report can be read for this salon. | Đọc được Báo cáo doanh thu gốc của tiệm. |
+| `bzx.health.d.sales_source.UNAVAILABLE` | The Sales Report could not be read (or your role cannot see money figures). Reports and money alerts cannot be checked. | Không đọc được Báo cáo doanh thu (hoặc vai trò không xem được số tiền). Không kiểm tra được báo cáo và cảnh báo tiền. |
+| `bzx.health.k.period_matches` | Periods mean the days they name | Kỳ đúng các ngày ghi |
+| `bzx.health.d.period_matches.PASSED` | "Today" returns exactly today's figures — the same as asking for today's date. | "Hôm nay" trả đúng số liệu hôm nay — giống khi chọn đúng ngày hôm nay. |
+| `bzx.health.d.period_matches.FAILED` | A period name returns different figures than its own days. Report this — reports and alerts would be wrong. | Tên kỳ trả số liệu khác với chính các ngày đó. Hãy báo ngay — báo cáo và cảnh báo sẽ sai. |
+| `bzx.health.k.appointments_source` | Appointment figures answer | Số liệu lịch hẹn phản hồi |
+| `bzx.health.d.appointments_source.PASSED` | Appointment figures can be read. | Đọc được số liệu lịch hẹn. |
+| `bzx.health.d.appointments_source.UNAVAILABLE` | Appointment figures could not be read for your role. | Không đọc được số liệu lịch hẹn với vai trò của bạn. |
+| `bzx.health.k.reports_readable` | Report history readable | Đọc được lịch sử báo cáo |
+| `bzx.health.d.reports_readable.PASSED` | Every report of this salon can be listed. | Liệt kê được mọi báo cáo của tiệm. |
+| `bzx.health.k.no_stuck_reports` | No stuck reports | Không có báo cáo bị kẹt |
+| `bzx.health.d.no_stuck_reports.PASSED` | No report has been queued or processing for more than 10 minutes. | Không có báo cáo nào chờ hoặc đang tạo quá 10 phút. |
+| `bzx.health.d.no_stuck_reports.FAILED` | Some reports have been queued or processing for more than 10 minutes. Regenerate them. | Có báo cáo chờ hoặc đang tạo quá 10 phút. Hãy tạo lại. |
+| `bzx.health.k.recent_failures` | No recent failures | Không có lỗi gần đây |
+| `bzx.health.d.recent_failures.PASSED` | No report failed in the last 7 days. | Không có báo cáo lỗi trong 7 ngày qua. |
+| `bzx.health.d.recent_failures.WARNING` | Some reports failed in the last 7 days. Open them to see why, then regenerate. | Có báo cáo lỗi trong 7 ngày qua. Mở ra để xem lý do rồi tạo lại. |
+| `bzx.health.k.content_window` | Content window | Hạn nội dung |
+| `bzx.health.d.content_window.PASSED` | Every completed report can still be viewed. | Mọi báo cáo hoàn tất vẫn xem được. |
+| `bzx.health.d.content_window.WARNING` | Some completed reports are past their 7-day content window. They completed — regenerate for current figures. | Một số báo cáo đã quá hạn nội dung 7 ngày. Chúng đã hoàn tất — hãy tạo lại để có số liệu hiện tại. |
+| `bzx.health.k.reports_record_period` | Reports record their days | Báo cáo ghi ngày |
+| `bzx.health.d.reports_record_period.PASSED` | Every viewable report records the exact days it covers, so its numbers can be verified. | Mọi báo cáo xem được đều ghi đúng các ngày nên kiểm tra được số liệu. |
+| `bzx.health.d.reports_record_period.WARNING` | Some reports were generated before reports recorded their days, so Verify cannot check them. Regenerate them. | Một số báo cáo được tạo trước khi ghi ngày nên không kiểm tra được. Hãy tạo lại. |
+| `bzx.health.k.scheduled_reports` | Scheduled reports | Báo cáo tự động |
+| `bzx.health.d.scheduled_reports.UNAVAILABLE` | Daily / weekly / monthly reports on a schedule are not set up — reports are generated when someone taps a button. | Chưa cài đặt báo cáo tự động theo lịch — báo cáo được tạo khi có người bấm nút. |
+| `bzx.health.k.rules_readable` | Rules readable | Đọc được quy tắc |
+| `bzx.health.d.rules_readable.PASSED` | The active rules of this salon can be read. | Đọc được các quy tắc đang bật của tiệm. |
+| `bzx.health.d.rules_readable.INSUFFICIENT_DATA` | No active rule yet. | Chưa có quy tắc nào đang bật. |
+| `bzx.health.k.rules_evaluated` | Rules evaluated recently | Quy tắc được đánh giá gần đây |
+| `bzx.health.d.rules_evaluated.PASSED` | Every active rule was evaluated in the last day. | Mọi quy tắc đang bật đều được đánh giá trong ngày qua. |
+| `bzx.health.d.rules_evaluated.WARNING` | Some active rules were not evaluated in the last day (or ever). Tap "Evaluate now". | Một số quy tắc chưa được đánh giá trong ngày qua (hoặc chưa bao giờ). Hãy bấm "Đánh giá ngay". |
+| `bzx.health.k.automatic_evaluation` | Automatic evaluation | Đánh giá tự động |
+| `bzx.health.d.automatic_evaluation.UNAVAILABLE` | Nothing evaluates rules on their own yet; the stored frequency is not acted on. | Chưa có gì tự đánh giá quy tắc; tần suất đã lưu chưa được thực hiện. |
+| `bzx.health.k.sample_guard` | Minimum sample set | Đã đặt số mẫu tối thiểu |
+| `bzx.health.d.sample_guard.PASSED` | Every active rule needs at least one transaction or booking before it can trigger. | Mọi quy tắc đang bật cần ít nhất một giao dịch hoặc lượt đặt mới kích hoạt. |
+| `bzx.health.d.sample_guard.WARNING` | Some rules have no minimum sample, so a near-empty day can trigger them. | Một số quy tắc không có số mẫu tối thiểu nên ngày gần như trống cũng kích hoạt. |
+| `bzx.health.k.delivery_channels` | Delivery channels | Kênh gửi |
+| `bzx.health.d.delivery_channels.PASSED` | Every active rule is in-app only. | Mọi quy tắc đang bật chỉ hiển thị trong ứng dụng. |
+| `bzx.health.d.delivery_channels.WARNING` | Some rules ask for SMS or email, but alert delivery by SMS / email is not built — they are shown here only. | Một số quy tắc chọn SMS hoặc email, nhưng chưa có gửi cảnh báo qua SMS / email — chỉ hiển thị ở đây. |
+| `bzx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `bzx.health.d.tenant_isolation.PASSED` | Every record belongs to this salon. | Mọi bản ghi đều thuộc tiệm này. |
+| `bzx.health.d.tenant_isolation.FAILED` | A record points at another salon. Report this immediately. | Có bản ghi trỏ tới tiệm khác. Hãy báo ngay. |
+| `bzx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `bzx.health.d.no_side_effects.PASSED` | This check changes no sale, report, rule or schedule and sends nothing. | Việc kiểm tra không thay đổi giao dịch, báo cáo, quy tắc hay lịch và không gửi gì. |

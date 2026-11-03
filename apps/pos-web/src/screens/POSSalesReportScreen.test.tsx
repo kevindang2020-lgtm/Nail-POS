@@ -33,7 +33,7 @@ describe('POSSalesReportScreen', () => {
     expect(screen.getByText('Gel Manicure')).toBeInTheDocument();
     expect(screen.getByText('$65.00')).toBeInTheDocument();
     // fetched with the default period
-    expect(stateMock).toHaveBeenCalledWith({ period: 'month' });
+    expect(stateMock).toHaveBeenCalledWith({ preset: 'month' });   // the API reads `preset` (it dropped `period`, so the tabs did nothing — Nov 3 2026)
   });
 
   it('refetches when the period changes', async () => {
@@ -42,7 +42,7 @@ describe('POSSalesReportScreen', () => {
     await screen.findByRole('heading', { name: 'Sales Report' });
     stateMock.mockResolvedValue(sample(30000));
     fireEvent.click(screen.getByRole('tab', { name: 'Today' }));
-    await waitFor(() => expect(stateMock).toHaveBeenCalledWith({ period: 'today' }));
+    await waitFor(() => expect(stateMock).toHaveBeenCalledWith({ preset: 'today' }));
   });
 
   it('shows a permission message on 403', async () => {

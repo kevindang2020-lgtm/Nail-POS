@@ -9,6 +9,7 @@
 // gift_card is normalized to the builder's 'giftCard' bucket; refunded/voided payment statuses map to 'refunded'.
 import type { Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
+import { branchTimeZone } from '@aipowersalon/database';
 import type { ReportFilters } from './reports.dto';
 import { ReportsContext, ReportsRepositoryPort, Tx, buildReportsState, buildExportRows, daysAgo, attributeCardSurcharge } from './reports.repository';
 import { REPORTABLE_PAYMENT_STATUSES, isRefundStatus } from '@aipowersalon/api-contracts';
@@ -87,7 +88,17 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
     });
   }
 
-  async query(ctx: ReportsContext, filters: ReportFilters) {
+  /** AI Business Reports guide (Nov 3 2026): a preset WITHOUT from/to used to be ignored — every caller asking for "today",
+   *  "month" or "year" (the Sales Report screen, the AI Business Assistant tools, its alerts and its reports) got the last 7 days.
+   *  A preset is now turned into the salon-local days it names; explicit from/to still win. */
+  private async withPresetRange(ctx: ReportsContext, f: ReportFilters): Promise<ReportFilters> {
+    if (f.from || f.to || !f.preset || f.preset === 'custom') return f;
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null);
+    return { ...f, ...presetRange(f.preset, new Date(), tz) };
+  }
+
+  async query(ctx: ReportsContext, filtersIn: ReportFilters) {
+    const filters = await this.withPresetRange(ctx, filtersIn);
     const out = buildReportsState(await this.loadTx(ctx, filters), filters, ctx.branchId);
     await this.overlayFacts(ctx, out).catch(() => undefined);
     return out;
@@ -118,8 +129,24 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
     const gw: any = await this.db.selectFrom('tenant_payment_config').where('tenant_id', '=', ctx.tenantId).select(['status']).executeTakeFirst();
     s.payments.processorStatus = String(gw?.status || 'not_configured');
   }
-  async exportRows(ctx: ReportsContext, type: string, filters: ReportFilters) { return buildExportRows(await this.loadTx(ctx, filters), type, filters, ctx.branchId); }
+  async exportRows(ctx: ReportsContext, type: string, filtersIn: ReportFilters) { const filters = await this.withPresetRange(ctx, filtersIn); return buildExportRows(await this.loadTx(ctx, filters), type, filters, ctx.branchId); }
 }
 
 // cast a TIMESTAMPTZ column to ::date for an inclusive day-range comparison
 function sqlDate(eb: any, col: string) { return eb.fn('date', [eb.ref(col)]); }
+
+/** the salon-local days a report preset names (inclusive), for `now` in `tz`; weeks start on Monday */
+export function presetRange(preset: string, now: Date, tz: string): { from: string; to: string } {
+  const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
+  const add = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+  const y = today.slice(0, 4), m = Number(today.slice(5, 7));
+  switch (preset) {
+    case 'today': return { from: today, to: today };
+    case 'yesterday': { const d = add(today, -1); return { from: d, to: d }; }
+    case 'week': return { from: add(today, -((new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7)), to: today };
+    case 'month': return { from: today.slice(0, 8) + '01', to: today };
+    case 'quarter': return { from: `${y}-${String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0')}-01`, to: today };
+    case 'year': return { from: `${y}-01-01`, to: today };
+    default: return { from: add(today, -7), to: today };
+  }
+}

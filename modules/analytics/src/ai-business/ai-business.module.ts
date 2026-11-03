@@ -32,10 +32,12 @@ import { OwnerServiceBranchScopeResolver } from './ai-business-branch-scope';
 import { OwnerModule } from '../owner/owner.module';
 import { OwnerService } from '../owner/owner.service';
 import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
+import { BusinessCenter } from './business-center';
+import { BusinessCenterController, BUSINESS_CENTER } from './business-center.controller';
 
 @Module({
   imports: [ReportsModule, OwnerModule, AiModule],
-  controllers: [AiBusinessController, AiBusinessAdminController],
+  controllers: [AiBusinessController, AiBusinessAdminController, BusinessCenterController],
   providers: [
     { provide: AiBusinessService, useFactory: () => new AiBusinessService() },
     { provide: AiBusinessRevenueService, useFactory: (reports: ReportsService) => new AiBusinessRevenueService(reports), inject: [ReportsService] },
@@ -101,6 +103,14 @@ import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/databas
         return new AiBusinessAssistantService(toolset, assistant);
       },
       inject: [AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiAssistantService],
+    },
+    // AI Business Reports + Alerts guides (Nov 3 2026): history / search / pages, Verify Numbers, alert history + acknowledgement,
+    // explanations and the read-only system checks — over the same services and the canonical ReportsService.
+    {
+      provide: BUSINESS_CENTER,
+      useFactory: (db: AppDatabase, reports: AiBusinessReportsService, alerts: AiBusinessAlertsService, revenue: AiBusinessRevenueService, appointments: AiBusinessAppointmentsService, sales: ReportsService) =>
+        (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales }) : null),
+      inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService],
     },
   ],
   exports: [AiBusinessService, AiBusinessRevenueService, AiBusinessBriefService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiBusinessAssistantService, AiBusinessSavedQuestionsService, AiBusinessAlertsService, AiBusinessReportsService],

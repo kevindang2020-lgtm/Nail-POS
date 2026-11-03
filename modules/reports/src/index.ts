@@ -12,6 +12,8 @@ export { BOOKING_CHECKIN_RECORDER, BookingCheckinRecorderPort, DuplicateInput, F
 export { PosKpiSnapshots } from './kpi-snapshots/kpi-snapshots';   // used by the API today
 export { ReportsContext } from './reports/reports.repository';   // used by the API today
 export { ForbiddenError, ReportsService } from './reports/reports.service';   // used by the API today
+export { KyselyReportsRepository } from './reports/reports.kysely.repository';   // composition + tests of the canonical Sales Report (AI Business Reports / Alerts)
+export { presetRange } from './reports/reports.kysely.repository';   // AI Business Reports / Alerts: the ONE preset → salon-local days rule the Sales Report uses
 // joined by --into (marketing-report):
 export { MarketingReportModule } from './marketing-report/marketing-report.module';
 export { MarketingGrowthModule } from './marketing-growth/marketing-growth.module';   // Marketing & Growth (Oct 30 2026): reconciliation, search, activity, journey, economics

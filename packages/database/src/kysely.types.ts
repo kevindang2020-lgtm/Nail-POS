@@ -7095,6 +7095,8 @@ export interface DB {
   tenant_checkin_settings: TenantCheckinSettingsTable;
   ai_business_saved_questions: AiBusinessSavedQuestionsTable;
   ai_business_alerts: AiBusinessAlertsTable;
+  ai_business_alert_events: AiBusinessAlertEventsTable;
+  ai_business_health_runs: AiBusinessHealthRunsTable;
   ai_business_report_jobs: AiBusinessReportJobsTable;
   schedule_optimization_runs: ScheduleOptimizationRunsTable;
   time_clock_break_policies: TimeClockBreakPoliciesTable;
@@ -8349,6 +8351,18 @@ export interface AiBusinessAlertsTable {
   title: string; metric_id: string; operator: string; threshold: number; preset: string;
   min_sample_size: number; frequency: string; channel: string; active: boolean;
   created_at: Ts; last_checked_at: TsNull; last_triggered_at: TsNull;
+}
+// migration 781 (AI Business Alerts guide, Nov 3 2026): one row per rule evaluation; a triggered row may be acknowledged
+export interface AiBusinessAlertEventsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; alert_id: string; source: string; metric_id: string; operator: string;
+  threshold: ColumnType<string, number | string, number | string>; preset: string; period_from: string | null; period_to: string | null;
+  value: ColumnType<string | null, number | string | null, number | string | null>; sample_size: number | null; min_sample_size: number | null;
+  sample_ok: boolean; triggered: boolean; state_change: string; reason: string | null; actor_user_id: string | null;
+  acknowledged_at: TsNull; acknowledged_by: string | null; ack_note: string | null; evaluated_at: Generated<Ts>;
+}
+// migration 781: Check AI Business Reports / Alerts System runs
+export interface AiBusinessHealthRunsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; area: string; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface AiBusinessReportJobsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; requested_by_user_id: string;

@@ -11,7 +11,7 @@
 // surcharge, the compensation snapshot's tip allocation — the payroll authority), and says nothing it does not know.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { KyselyReportsRepository } from './reports.kysely.repository';
+import { KyselyReportsRepository, presetRange } from './reports.kysely.repository';
 
 const T = 'a8001000-0000-4000-8000-000000000001', B = 'a8001000-0000-4000-8000-000000000002';
 const L = 'a8001000-0000-4000-8000-0000000000a1', M = 'a8001000-0000-4000-8000-0000000000a2', C = 'a8001000-0000-4000-8000-0000000000c1';
@@ -94,5 +94,21 @@ describe('POS Reports reconcile with the day', () => {
     expect(state.revenueOverview.trendPercent).toBe(0);
     expect(state.kpis.bookingsTrendPercent).toBe(0);
     expect(state.appointmentsTrend.points.reduce((n: number, p: any) => n + p.completed, 0)).toBe(state.kpis.completedServices);
+  });
+  it('a preset without from/to is the period it names (before: always the last 7 days — "today", "month", "year" all alike)', async () => {
+    await pg.exec(`UPDATE branches SET timezone = 'UTC' WHERE id = '${B}'`);   // the rows are filed by the UTC day (see above), so the salon's day must be too
+    const all = (await repo.query(ctx, { from: today, to: today })).state.salesKpis;
+    expect(all.ticketsCount).toBeGreaterThan(0);
+    expect((await repo.query(ctx, { preset: 'today' } as any)).state.salesKpis.ticketsCount).toBe(all.ticketsCount);
+    expect((await repo.query(ctx, { preset: 'yesterday' } as any)).state.salesKpis.ticketsCount).toBe(0);   // today's tickets are not yesterday's
+  });
+  it('presetRange: salon-local days, weeks from Monday, quarters, years', () => {
+    const at = new Date('2026-11-04T03:00:00Z');   // still Nov 3 in New York
+    expect(presetRange('today', at, 'America/New_York')).toEqual({ from: '2026-11-03', to: '2026-11-03' });
+    expect(presetRange('yesterday', at, 'America/New_York')).toEqual({ from: '2026-11-02', to: '2026-11-02' });
+    expect(presetRange('week', at, 'America/New_York')).toEqual({ from: '2026-11-02', to: '2026-11-03' });
+    expect(presetRange('month', at, 'America/New_York')).toEqual({ from: '2026-11-01', to: '2026-11-03' });
+    expect(presetRange('quarter', at, 'America/New_York')).toEqual({ from: '2026-10-01', to: '2026-11-03' });
+    expect(presetRange('year', at, 'UTC')).toEqual({ from: '2026-01-01', to: '2026-11-04' });
   });
 });

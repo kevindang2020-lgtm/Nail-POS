@@ -35,7 +35,8 @@ export function POSSalesReportScreen() {
   useEffect(() => {
     let alive = true;
     setLoading(true); setError(null);
-    posReportsApi.state({ period })
+    // the API reads `preset` — this screen sent `period`, which was dropped, so the tabs did nothing (Nov 3 2026)
+    posReportsApi.state({ preset: period })
       .then((d: any) => { if (alive) setS(d); })
       .catch((e: any) => {
         if (!alive) return;
@@ -50,7 +51,7 @@ export function POSSalesReportScreen() {
   const doExport = async () => {
     setBusy(true);
     try {
-      const r: any = await posReportsApi.exportReport({ kind: 'sales', period });
+      const r: any = await posReportsApi.exportReport({ kind: 'sales', preset: period });
       if (r?.csv) {
         const blob = new Blob([r.csv], { type: 'text/csv;charset=utf-8;' });
         const link = document.createElement('a');

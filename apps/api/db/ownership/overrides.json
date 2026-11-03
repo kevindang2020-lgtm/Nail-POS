@@ -450,6 +450,14 @@
   "ai_marketing_health_runs": {
    "domain": "AI",
    "reason": "Check AI Marketing System evidence (migration 780): read-only health runs of the AI Marketing Assistant"
+  },
+  "ai_business_alert_events": {
+   "domain": "AI",
+   "reason": "AI Business Alerts evaluation history (migration 781): one row per rule evaluation, acknowledgement on triggered rows"
+  },
+  "ai_business_health_runs": {
+   "domain": "AI",
+   "reason": "Check AI Business Reports / Alerts System evidence (migration 781): read-only health runs"
   }
  }
 }

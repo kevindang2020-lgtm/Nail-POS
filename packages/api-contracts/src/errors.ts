@@ -756,6 +756,14 @@ export const ERROR_REGISTRY = {
   MKC_SUBJECT_REQUIRED: { status: 400, message: 'An email needs a subject.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   // AI Marketing Assistant center (Nov 3 2026)
   MKC_TOKENS_UNSUPPORTED: { status: 400, message: 'Some placeholders cannot be filled for each customer and would be sent as written. Remove them or use {salon_name} / {offer}.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Business Reports + Alerts center (Nov 3 2026)
+  BC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_REPORT_NOT_FOUND: { status: 404, message: 'Report not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_REPORT_TYPE_INVALID: { status: 400, message: 'Choose a report.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_REPORT_PERIOD_INVALID: { status: 400, message: 'That period is not available for this report.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_ALERT_NOT_FOUND: { status: 404, message: 'Alert not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_EVENT_NOT_FOUND: { status: 404, message: 'Alert event not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  BC_EVENT_NOT_ACKNOWLEDGEABLE: { status: 409, message: 'Only a triggered alert that has not been acknowledged can be acknowledged.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

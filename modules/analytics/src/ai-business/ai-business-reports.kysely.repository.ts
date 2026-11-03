@@ -32,12 +32,12 @@ export class KyselyReportsJobRepository implements ReportsJobRepositoryPort {
   }
   async get(ctx: ReportContext, id: string): Promise<ReportJob | null> {
     const r = await this.db.selectFrom('ai_business_report_jobs').where('tenant_id', '=', ctx.tenantId).where('id', '=', id)
-      .select(COLS).executeTakeFirst().catch(() => null);
+      .select(COLS).executeTakeFirst();   // a read error is an error, not "no such report" (Nov 3 2026)
     return r ? toDomain(r) : null;
   }
   async list(ctx: ReportContext): Promise<ReportJob[]> {
     const rows = await this.db.selectFrom('ai_business_report_jobs').where('tenant_id', '=', ctx.tenantId)
-      .select(COLS as any).orderBy('created_at', 'desc').limit(100).execute().catch(() => [] as any[]);
+      .select(COLS as any).orderBy('created_at', 'desc').limit(100).execute();   // a read error is an error, not "no reports" (Nov 3 2026)
     return rows.map(toDomain);
   }
   async markRunning(ctx: ReportContext, id: string): Promise<void> {

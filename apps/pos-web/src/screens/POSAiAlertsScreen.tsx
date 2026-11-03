@@ -1,140 +1,252 @@
-// POSAiAlertsScreen.tsx — AI Center → AI Business Alerts. Wired to /pos/ai-business/alerts (pos.ai.view) and
-// /pos/ai-business/alerts/:id/evaluate (pos.reports.view). Create rules that watch one bounded metric and fire when
-// it crosses a threshold (with a minimum sample size so small samples can't trip an alert). "Evaluate now" checks the
-// rule against current data. Scheduled delivery runs server-side; this screen manages the rules and previews them.
+// POSAiAlertsScreen.tsx — AI Center → AI Business Alerts (/tenant/ai/business/alerts). AI Business Alerts guide (Nov 3 2026).
+// Keeps the photographed page — the New Alert row (name · metric · comparison · amount · period · Create Alert) and the rule table
+// (Alert · Condition · Period · Status · Actions with Evaluate now and Delete) — and finishes it:
+//   • Evaluate now is RECORDED: the value, the threshold, the sample, the exact salon days and what changed (triggered / recovered /
+//     unchanged / not evaluated because the sample was too small) — an alert has a history now, newest first, with search, state,
+//     date presets + From/To month calendar and numbered pages; a triggered alert can be acknowledged (who, when, note);
+//   • Explain: the measured price × volume bridge for money metrics, the appointment funnel otherwise — correlation, not proof;
+//   • an opt-in anomaly check: yesterday against the same weekday over the previous 8 weeks (median and spread), only with enough
+//     comparable days;
+//   • Check AI Business Alerts System (read-only); Pause / Resume and Delete (with confirmation) report their errors.
+// Honest about what does not exist yet: rules are not evaluated automatically and nothing is sent by SMS or email.
+// Before: every "today" / "week" value was the last 7 days (the canonical report ignored the period) — fixed at the source.
 import { useCallback, useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
+import { BzPeriodBar, BzHealthButton, bt, bzErr, bzWhen, bzNum, bzValue, bzDays, type BzPeriod } from '../components/BusinessKit';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
-import { money, reportError } from './reportsCommon';
-import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 type Metric = 'net_sales' | 'average_ticket' | 'completed_appointments' | 'cancellation_rate' | 'no_show_rate' | 'customer_retention';
-type Alert = {
-  id: string; title: string; metricId: Metric; operator: 'lt' | 'gt'; threshold: number; preset: string;
-  minSampleSize: number; frequency: string; channel: string; active: boolean;
-  createdAt: string; lastCheckedAt: string | null; lastTriggeredAt: string | null;
-};
-type Evaluation = { metricId: Metric; unit: 'currency_cents' | 'count' | 'percent'; value: number; threshold: number; operator: 'lt' | 'gt'; sampleSize: number; sampleOk: boolean; triggered: boolean; reason: string };
-
-const METRICS: { id: Metric; label: string; unit: 'currency_cents' | 'count' | 'percent' }[] = [
-  { id: 'net_sales', get label() { return t('pos.net_sales_2'); }, unit: 'currency_cents' },
-  { id: 'average_ticket', get label() { return t('pos.average_ticket_2'); }, unit: 'currency_cents' },
-  { id: 'completed_appointments', get label() { return t('pos.completed_appointments'); }, unit: 'count' },
-  { id: 'cancellation_rate', get label() { return t('pos.cancellation_rate'); }, unit: 'percent' },
-  { id: 'no_show_rate', get label() { return t('pos.no_show_rate_2'); }, unit: 'percent' },
-  { id: 'customer_retention', get label() { return t('pos.customer_retention_2'); }, unit: 'percent' },
-];
+const METRICS: Metric[] = ['net_sales', 'average_ticket', 'completed_appointments', 'cancellation_rate', 'no_show_rate', 'customer_retention'];
+const UNIT: Record<string, string> = { net_sales: 'cents', average_ticket: 'cents', completed_appointments: 'count', cancellation_rate: 'percent', no_show_rate: 'percent', customer_retention: 'percent' };
 const PRESETS = ['today', 'yesterday', 'week', 'month'];
-const unitOf = (m: Metric) => METRICS.find((x) => x.id === m)!.unit;
-const fmt = (v: number, unit: string) => (unit === 'currency_cents' ? money(v) : unit === 'percent' ? `${v}%` : String(v));
+const RULE_STATUSES = ['all', 'active', 'paused', 'triggered', 'needs_review', 'never_evaluated'];
+const EVENT_STATES = ['all', 'triggered', 'unacknowledged', 'recovered', 'unchanged', 'not_evaluated'];
+const STATE_TONE: Record<string, string> = { triggered: 'bad', recovered: 'ok', unchanged: '', not_evaluated: 'warn' };
 
 export function POSAiAlertsScreen() {
-  const [alerts, setAlerts] = useState<Alert[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [evals, setEvals] = useState<Record<string, Evaluation>>({});
+  const [tick, setTick] = useState(0);
+  const refresh = () => setTick((n) => n + 1);
+  const [sum, setSum] = useState<any>(null);
+  const [sumErr, setSumErr] = useState<string | null>(null);
+  const [msg, setMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
+  const loadSum = useCallback(() => { setSumErr(null); posAiBusinessApi.center.alertSummary().then(setSum).catch((e) => setSumErr(bzErr(e))); }, []);
+  useEffect(() => { loadSum(); }, [loadSum, tick]);
+  return (
+    <div className="work rvw" data-testid="bzx-alerts">
+      <div className="rvw-head">
+        <div className="vh"><h1>{bt('bzx.a.title')}</h1><div className="sub">{bt('bzx.a.sub')}</div></div>
+        <div className="rvw-actions">
+          <button type="button" className="btn ghost" data-testid="bzx-refresh" onClick={refresh}>{bt('bzx.refresh')}</button>
+          <BzHealthButton area="alerts" run={posAiBusinessApi.center.alertCheck} />
+        </div>
+      </div>
+      {sumErr ? <ErrorRetry message={sumErr} onRetry={loadSum} /> : null}
+      <div className="rvw-kpis" data-testid="bzx-a-kpis">
+        <KpiCard testId="bzx-a-active" label={bt('bzx.a.kpi.active')} value={sum ? bzNum(sum.activeRules) : '—'} sub={sum?.pausedRules ? bt('bzx.a.kpi.paused', { n: sum.pausedRules }) : undefined} loading={!sum && !sumErr} />
+        <KpiCard testId="bzx-a-triggered" label={bt('bzx.a.kpi.triggered')} value={sum ? bzNum(sum.triggeredUnacknowledged) : '—'} tone={sum?.triggeredUnacknowledged ? 'bad' : undefined} loading={!sum && !sumErr} />
+        <KpiCard testId="bzx-a-review" label={bt('bzx.a.kpi.review')} value={sum ? bzNum(sum.needsReview) : '—'} tone={sum?.needsReview ? 'warn' : undefined} loading={!sum && !sumErr} />
+        <KpiCard testId="bzx-a-never" label={bt('bzx.a.kpi.never')} value={sum ? bzNum(sum.neverEvaluated) : '—'} loading={!sum && !sumErr} />
+        <KpiCard testId="bzx-a-last" label={bt('bzx.a.kpi.last')} value={sum ? (sum.lastEvaluatedAt ? bzWhen(sum.lastEvaluatedAt) : bt('bzx.a.never')) : '—'} loading={!sum && !sumErr} />
+      </div>
+      {sum && !sum.automaticEvaluation ? <p className="sub" data-testid="bzx-a-manual">{bt('bzx.a.manualNote')}</p> : null}
+      {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} role="status" data-testid="bzx-a-msg">{msg.text}</div> : null}
+      <NewAlert onCreated={() => { setMsg({ tone: 'ok', text: bt('bzx.a.created') }); refresh(); }} onError={(t) => setMsg({ tone: 'err', text: t })} />
+      <Rules tick={tick} onChanged={refresh} onMsg={setMsg} />
+      <History tick={tick} onChanged={refresh} />
+      <Anomaly />
+    </div>
+  );
+}
 
-  // create form
+function NewAlert({ onCreated, onError }: { onCreated: () => void; onError: (t: string) => void }) {
   const [title, setTitle] = useState('');
   const [metricId, setMetricId] = useState<Metric>('net_sales');
   const [operator, setOperator] = useState<'lt' | 'gt'>('lt');
-  const [thresholdText, setThresholdText] = useState('');
+  const [amount, setAmount] = useState('');
   const [preset, setPreset] = useState('today');
-
-  const load = useCallback(async () => {
-    setLoading(true); setError(null);
-    try { setAlerts(await posAiBusinessApi.alertsList() as Alert[]); }
-    catch (e: any) { setError(reportError(e, t('growth.noun.yourAlerts'))); }
-    finally { setLoading(false); }
-  }, []);
-  useEffect(() => { load(); }, [load]);
-
-  const create = useCallback(async () => {
-    const raw = Number(thresholdText);
-    if (!title.trim() || !Number.isFinite(raw) || raw < 0) { setError(t('pos.enter_a_title_and_a_non_108p')); return; }
-    // Money thresholds are entered in dollars; store integer cents.
-    const threshold = unitOf(metricId) === 'currency_cents' ? Math.round(raw * 100) : Math.round(raw);
-    try {
-      await posAiBusinessApi.alertCreate({ title: title.trim(), metricId, operator, threshold, preset });
-      setTitle(''); setThresholdText(''); await load();
-    } catch (e: any) { setError(reportError(e, t('growth.noun.creatingTheAlert'))); }
-  }, [title, metricId, operator, thresholdText, preset, load]);
-
-  const toggle = useCallback(async (a: Alert) => {
-    try { await posAiBusinessApi.alertUpdate(a.id, { active: !a.active }); await load(); } catch { /* ignore */ }
-  }, [load]);
-  const remove = useCallback(async (id: string) => {
-    try { await posAiBusinessApi.alertDelete(id); await load(); } catch { /* ignore */ }
-  }, [load]);
-  const evaluate = useCallback(async (id: string) => {
-    try { const ev = await posAiBusinessApi.alertEvaluate(id) as Evaluation; setEvals((m) => ({ ...m, [id]: ev })); }
-    catch (e: any) { setError(reportError(e, t('growth.noun.evaluatingTheAlert'))); }
-  }, []);
-
-  const thresholdUnit = unitOf(metricId);
-
+  const [minSample, setMinSample] = useState('5');
+  const [busy, setBusy] = useState(false);
+  const unit = UNIT[metricId];
+  const create = () => {
+    const raw = Number(amount); const ms = Math.trunc(Number(minSample));
+    if (!title.trim() || amount.trim() === '' || !Number.isFinite(raw) || raw < 0) { onError(bt('bzx.a.formInvalid')); return; }
+    if (!Number.isFinite(ms) || ms < 1) { onError(bt('bzx.a.sampleInvalid')); return; }
+    setBusy(true);
+    posAiBusinessApi.alertCreate({ title: title.trim(), metricId, operator, threshold: unit === 'cents' ? Math.round(raw * 100) : raw, preset, minSampleSize: ms })
+      .then(() => { setTitle(''); setAmount(''); onCreated(); }).catch((e) => onError(bzErr(e))).finally(() => setBusy(false));
+  };
   return (
-    <div className="work">
-      <div className="vh">
-        <h1>{t('pos.ai_business_alerts')}</h1>
-        <div className="sub mb-3">{t('pos.watch_a_metric_and_get_notified_16ll')}</div>
+    <section className="panel" style={{ padding: 12 }} data-testid="bzx-a-new">
+      <div className="p-h">{bt('bzx.a.new')}</div>
+      <div className="rvw-filters">
+        <label className="rvw-f"><span>{bt('bzx.a.name')}</span><input data-testid="bzx-a-title" value={title} maxLength={120} onChange={(e) => setTitle(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.metric')}</span><select data-testid="bzx-a-metric" value={metricId} onChange={(e) => setMetricId(e.target.value as Metric)}>{METRICS.map((m) => <option key={m} value={m}>{bt('bzx.metric.' + m)}</option>)}</select></label>
+        <label className="rvw-f"><span>{bt('bzx.a.comparison')}</span><select data-testid="bzx-a-op" value={operator} onChange={(e) => setOperator(e.target.value as 'lt' | 'gt')}><option value="lt">{bt('bzx.op.lt')}</option><option value="gt">{bt('bzx.op.gt')}</option></select></label>
+        <label className="rvw-f"><span>{bt('bzx.a.amount.' + unit)}</span><input data-testid="bzx-a-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
+        <label className="rvw-f"><span>{bt('bzx.a.period')}</span><select data-testid="bzx-a-preset" value={preset} onChange={(e) => setPreset(e.target.value)}>{PRESETS.map((p) => <option key={p} value={p}>{bt('bzx.period.' + p)}</option>)}</select></label>
+        <label className="rvw-f"><span>{bt('bzx.a.minSample')}</span><input data-testid="bzx-a-min" inputMode="numeric" value={minSample} onChange={(e) => setMinSample(e.target.value)} /></label>
+        <button type="button" className="btn" data-testid="bzx-a-create" disabled={busy} onClick={create}>{bt('bzx.a.create')}</button>
       </div>
+    </section>
+  );
+}
 
-      <div className="panel" style={{ marginTop: 4, padding: 14 }}>
-        <div className="p-h" style={{ padding: 0, marginBottom: 10 }}>{t('pos.new_alert')}</div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-9 2xl:grid-cols-12 gap-3 items-center">
-          <input className="in lg:col-span-3 w-full" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', height: 34 }} placeholder={t('pos.alert_name')} value={title} onChange={(e) => setTitle(e.target.value)} />
-          <select className="in lg:col-span-2 w-full" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', height: 34 }} value={metricId} onChange={(e) => setMetricId(e.target.value as Metric)} aria-label={t('pos.metric')}>
-            {METRICS.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
-          </select>
-          <select className="in lg:col-span-2 w-full" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', height: 34 }} value={operator} onChange={(e) => setOperator(e.target.value as 'lt' | 'gt')} aria-label={t('pos.operator')}>
-            <option value="lt">{t('pos.falls_below')}</option>
-            <option value="gt">{t('pos.rises_above')}</option>
-          </select>
-          <input className="in lg:col-span-2 w-full" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', height: 34 }} placeholder={thresholdUnit === 'currency_cents' ? t('pos.amount') : thresholdUnit === 'percent' ? t('growth.aiAlerts.percent') : t('growth.aiAlerts.count')} value={thresholdText} onChange={(e) => setThresholdText(e.target.value)} inputMode="decimal" aria-label={t('pos.threshold')} />
-          <select className="in lg:col-span-2 w-full" style={{ border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', height: 34 }} value={preset} onChange={(e) => setPreset(e.target.value)} aria-label={t('pos.period')}>
-            {PRESETS.map((p) => <option key={p} value={p}>{p}</option>)}
-          </select>
-          <button className="btn w-full lg:col-span-1 whitespace-nowrap" style={{ height: 34 }} onClick={create}>{t('pos.create_alert')}</button>
-        </div>
+function Rules({ tick, onChanged, onMsg }: { tick: number; onChanged: () => void; onMsg: (m: { tone: 'ok' | 'err'; text: string }) => void }) {
+  const [draft, setDraft] = useState('');
+  const [f, setF] = useState<{ q?: string; status: string; metric: string; page: number; pageSize: number }>({ status: 'all', metric: 'all', page: 1, pageSize: 25 });
+  const [list, setList] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [evals, setEvals] = useState<Record<string, any>>({});
+  const [del, setDel] = useState<any>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posAiBusinessApi.center.rules({ q: f.q, status: f.status, metric: f.metric, page: f.page, pageSize: f.pageSize }).then(setList).catch((e) => setErr(bzErr(e))); }, [f]);
+  useEffect(() => { load(); }, [load, tick]);
+  const set = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x, page: x.page ?? 1 }));
+  const evaluate = (id: string) => { setBusy(id); posAiBusinessApi.center.evaluate(id).then((r) => { setEvals((m) => ({ ...m, [id]: r })); onChanged(); }).catch((e) => onMsg({ tone: 'err', text: bzErr(e) })).finally(() => setBusy(null)); };
+  const toggle = (a: any) => { setBusy(a.id); posAiBusinessApi.alertUpdate(a.id, { active: !a.active }).then(() => onChanged()).catch((e) => onMsg({ tone: 'err', text: bzErr(e) })).finally(() => setBusy(null)); };
+  const remove = () => { const a = del; setBusy(a.id); posAiBusinessApi.alertDelete(a.id).then(() => { setDel(null); onMsg({ tone: 'ok', text: bt('bzx.a.deleted', { t: a.title }) }); onChanged(); }).catch((e) => onMsg({ tone: 'err', text: bzErr(e) })).finally(() => setBusy(null)); };
+  const rows: any[] = list?.items ?? [];
+  const filtered = !!(f.q || f.status !== 'all' || f.metric !== 'all');
+  return (
+    <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-a-rules">
+      <div className="p-h">{bt('bzx.a.rules')}</div>
+      <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
+        <input className="rvw-search" type="search" data-testid="bzx-a-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={bt('bzx.a.searchPh')} aria-label={bt('bzx.a.searchPh')} />
+        <button className="btn" type="submit">{bt('bzx.search')}</button>
+        <select data-testid="bzx-a-status" aria-label={bt('bzx.a.status')} value={f.status} onChange={(e) => set({ status: e.target.value })}>{RULE_STATUSES.map((x) => <option key={x} value={x}>{bt('bzx.rst.' + x)}</option>)}</select>
+        <select data-testid="bzx-a-mfilter" aria-label={bt('bzx.a.metric')} value={f.metric} onChange={(e) => set({ metric: e.target.value })}>{['all', ...METRICS].map((x) => <option key={x} value={x}>{x === 'all' ? bt('bzx.a.allMetrics') : bt('bzx.metric.' + x)}</option>)}</select>
+        {filtered ? <button className="btn ghost" type="button" onClick={() => { setDraft(''); setF({ status: 'all', metric: 'all', page: 1, pageSize: f.pageSize }); }}>{bt('bzx.clear')}</button> : null}
+      </form>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{bt('bzx.loading')}</div> : rows.length === 0 ? <Empty title={filtered ? bt('bzx.noMatch') : bt('bzx.a.none')} /> : (
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
+          <th>{bt('bzx.a.col.alert')}</th><th>{bt('bzx.a.col.condition')}</th><th>{bt('bzx.a.col.period')}</th><th>{bt('bzx.a.col.status')}</th><th>{bt('bzx.a.col.actions')}</th></tr></thead>
+          <tbody>{rows.map((a) => {
+            const ev = evals[a.id];
+            return (
+              <tr key={a.id} data-testid="bzx-a-row">
+                <td><b>{a.title}</b>{a.createdBy ? <div className="sub">{a.createdBy}</div> : null}</td>
+                <td>{bt('bzx.cond', { m: bt('bzx.metric.' + a.metricId), op: bt('bzx.op.' + a.operator), v: bzValue(a.threshold, UNIT[a.metricId]) })}<div className="sub">{bt('bzx.a.minSampleN', { n: a.minSampleSize })}</div></td>
+                <td>{bt('bzx.period.' + a.preset)}</td>
+                <td><span className={'chip ' + (a.active ? 'ok' : '')}>{a.active ? bt('bzx.a.active') : bt('bzx.a.pausedOne')}</span>
+                  {a.latest ? <div className="sub" data-testid="bzx-a-latest">{bt('bzx.es.' + a.latest.stateChange)} · {bzWhen(a.latest.evaluatedAt)}{a.latest.triggered && !a.latest.acknowledgedAt ? ` · ${bt('bzx.a.unack')}` : ''}</div> : <div className="sub">{bt('bzx.a.never')}</div>}</td>
+                <td>
+                  <div className="rvw-actions">
+                    <button type="button" className="btn ghost" data-testid="bzx-a-eval" disabled={busy === a.id} onClick={() => evaluate(a.id)}>{bt('bzx.a.evaluate')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-toggle" disabled={busy === a.id} onClick={() => toggle(a)}>{a.active ? bt('bzx.a.pause') : bt('bzx.a.resume')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-del" disabled={busy === a.id} onClick={() => setDel(a)}>{bt('bzx.a.delete')}</button>
+                  </div>
+                  {ev ? <div className="sub" data-testid="bzx-a-result"><b>{bt('bzx.es.' + ev.stateChange)}</b> · {bt('bzx.a.valueVs', { v: bzValue(ev.value, UNIT[ev.metricId]), t: bzValue(ev.threshold, UNIT[ev.metricId]) })} · {bt('bzx.a.sample', { n: bzNum(ev.sampleSize) })} · {bzDays(ev.period)}</div> : null}
+                </td>
+              </tr>);
+          })}</tbody></table></div>)}
+      <div className="rvw-pager">
+        <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n })} />
+        <label className="rvw-f"><span>{bt('bzx.rows')}</span><select value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
       </div>
+      {del ? <FitDialog testId="bzx-a-confirm" title={bt('bzx.a.deleteTitle', { t: del.title })} onClose={() => setDel(null)} busy={busy === del.id}
+        footer={<><button className="btn" data-testid="bzx-a-del-yes" onClick={remove}>{bt('bzx.a.delete')}</button><button className="btn ghost" onClick={() => setDel(null)}>{bt('bzx.cancel')}</button></>}>
+        <p>{bt('bzx.a.deleteNote')}</p></FitDialog> : null}
+    </section>
+  );
+}
 
-      {error && <div className="err" style={{ marginTop: 12 }}>{error}</div>}
+function History({ tick, onChanged }: { tick: number; onChanged: () => void }) {
+  const [draft, setDraft] = useState('');
+  const [f, setF] = useState<{ q?: string; state: string; page: number; pageSize: number }>({ state: 'all', page: 1, pageSize: 25 });
+  const [period, setPeriod] = useState<BzPeriod>({});
+  const [list, setList] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [ack, setAck] = useState<any>(null);
+  const [note, setNote] = useState('');
+  const [ackErr, setAckErr] = useState<string | null>(null);
+  const [why, setWhy] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posAiBusinessApi.center.history({ q: f.q, state: f.state, page: f.page, pageSize: f.pageSize, ...period }).then(setList).catch((e) => setErr(bzErr(e))); }, [f, period]);
+  useEffect(() => { load(); }, [load, tick]);
+  const set = (x: Partial<typeof f>) => setF((y) => ({ ...y, ...x, page: x.page ?? 1 }));
+  const doAck = () => { setAckErr(null); posAiBusinessApi.center.acknowledge(ack.id, note.trim() || undefined).then(() => { setAck(null); setNote(''); onChanged(); }).catch((e) => setAckErr(bzErr(e))); };
+  const rows: any[] = list?.items ?? [];
+  const filtered = !!(f.q || f.state !== 'all' || period.preset);
+  return (
+    <section className="panel rvw-feed" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-a-history">
+      <div className="p-h">{bt('bzx.a.history')}</div>
+      <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
+        <input className="rvw-search" type="search" data-testid="bzx-h-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={bt('bzx.a.hSearchPh')} aria-label={bt('bzx.a.hSearchPh')} />
+        <button className="btn" type="submit">{bt('bzx.search')}</button>
+        <select data-testid="bzx-h-state" aria-label={bt('bzx.a.state')} value={f.state} onChange={(e) => set({ state: e.target.value })}>{EVENT_STATES.map((x) => <option key={x} value={x}>{bt('bzx.est.' + x)}</option>)}</select>
+        {filtered ? <button className="btn ghost" type="button" onClick={() => { setDraft(''); setPeriod({}); setF({ state: 'all', page: 1, pageSize: f.pageSize }); }}>{bt('bzx.clear')}</button> : null}
+      </form>
+      <BzPeriodBar value={period} onChange={(p) => { setPeriod(p); set({}); }} today={list?.period?.today} />
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !list ? <div className="state">{bt('bzx.loading')}</div> : rows.length === 0 ? <Empty title={filtered ? bt('bzx.noMatch') : bt('bzx.a.noHistory')} /> : (
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr>
+          <th>{bt('bzx.a.col.when')}</th><th>{bt('bzx.a.col.alert')}</th><th>{bt('bzx.a.col.result')}</th><th>{bt('bzx.a.col.days')}</th><th>{bt('bzx.a.col.state')}</th><th>{bt('bzx.a.col.actions')}</th></tr></thead>
+          <tbody>{rows.map((e) => (
+            <tr key={e.id} data-testid="bzx-h-row">
+              <td>{bzWhen(e.evaluatedAt)}</td>
+              <td>{e.title}</td>
+              <td>{bt('bzx.a.valueVs', { v: bzValue(e.value, UNIT[e.metricId]), t: bzValue(e.threshold, UNIT[e.metricId]) })}<div className="sub">{bt('bzx.a.sampleOf', { n: bzNum(e.sampleSize), m: bzNum(e.minSampleSize) })}</div></td>
+              <td>{bzDays({ from: e.periodFrom, to: e.periodTo })}</td>
+              <td><span className={'chip ' + (STATE_TONE[e.stateChange] ?? '')}>{bt('bzx.es.' + e.stateChange)}</span>
+                {e.acknowledgedAt ? <div className="sub">{bt('bzx.a.ackBy', { who: e.acknowledgedBy ?? '—', at: bzWhen(e.acknowledgedAt) })}{e.ackNote ? ` · ${e.ackNote}` : ''}</div> : null}</td>
+              <td><div className="rvw-actions">
+                {e.triggered && !e.acknowledgedAt ? <button type="button" className="btn ghost" data-testid="bzx-h-ack" onClick={() => { setAck(e); setAckErr(null); }}>{bt('bzx.a.ack')}</button> : null}
+                {e.sampleOk ? <button type="button" className="btn ghost" data-testid="bzx-h-why" onClick={() => setWhy(e.id)}>{bt('bzx.a.explain')}</button> : null}
+              </div></td>
+            </tr>))}</tbody></table></div>)}
+      <div className="rvw-pager">
+        <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n })} />
+        <label className="rvw-f"><span>{bt('bzx.rows')}</span><select value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+      </div>
+      {ack ? <FitDialog testId="bzx-ack" title={bt('bzx.a.ackTitle', { t: ack.title })} onClose={() => setAck(null)}
+        footer={<><button className="btn" data-testid="bzx-ack-yes" onClick={doAck}>{bt('bzx.a.ack')}</button><button className="btn ghost" onClick={() => setAck(null)}>{bt('bzx.cancel')}</button></>}>
+        <label className="rvw-f block"><span>{bt('bzx.a.ackNote')}</span><textarea data-testid="bzx-ack-note" maxLength={500} value={note} onChange={(e) => setNote(e.target.value)} /></label>
+        {ackErr ? <div className="err">{ackErr}</div> : null}
+      </FitDialog> : null}
+      {why ? <ExplainDialog eventId={why} onClose={() => setWhy(null)} /> : null}
+    </section>
+  );
+}
 
-      {loading ? <div className="state" style={{ marginTop: 12 }}>{t('pos.loading_alerts')}</div>
-        : alerts.length === 0 ? <div className="state" style={{ marginTop: 12 }}>{t('pos.no_alerts_yet_create_one_above')}</div>
-        : (
-        <section className="panel" style={{ padding: 0, overflow: 'hidden', marginTop: 12 }}>
-          <div className="overflow-x-auto w-full"><table className="tbl w-full min-w-max">
-            <thead><tr><th>{t('pos.alert')}</th><th className="whitespace-nowrap">{t('pos.condition')}</th><th className="whitespace-nowrap">{t('pos.period')}</th><th className="whitespace-nowrap">{t('pos.status')}</th><th className="whitespace-nowrap" style={{ textAlign: 'right' }}>{t('pos.actions')}</th></tr></thead>
-            <tbody>
-              {alerts.map((a) => {
-                const ev = evals[a.id];
-                return (
-                  <tr key={a.id}>
-                    <td>{a.title}</td>
-                    <td>{METRICS.find((m) => m.id === a.metricId)?.label} {a.operator === 'lt' ? 'below' : 'above'} {fmt(a.threshold, unitOf(a.metricId))}<div className="sub">{t('pos.min_sample')}{' '}{a.minSampleSize}</div></td>
-                    <td>{a.preset}</td>
-                    <td>
-                      <button className="chip" onClick={() => toggle(a)}>{a.active ? t('pos.active_3') : t('pos.paused')}</button>
-                      {a.lastTriggeredAt && <div className="sub">{t('pos.last_fired')}{' '}{new Date(a.lastTriggeredAt).toLocaleDateString()}</div>}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button className="chip" onClick={() => evaluate(a.id)}>{t('pos.evaluate_now')}</button>{' '}
-                      <button className="chip" onClick={() => remove(a.id)} aria-label={t('pos.delete_title', { title: String(a.title) })}>{t('pos.delete')}</button>
-                      {ev && (
-                        <div className="sub" style={{ marginTop: 6, textAlign: 'left' }}>
-                          <span style={{ color: ev.triggered ? 'var(--aps-orange)' : 'var(--muted)', fontWeight: 600 }}>{ev.triggered ? t('pos.would_fire') : 'OK'}</span>
-                          {' · '}{t('pos.value_2')}{' '}{fmt(ev.value, ev.unit)}{' · '}{ev.reason}
-                        </div>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table></div>
-        </section>
-      )}
-    </div>
+function ExplainDialog({ eventId, onClose }: { eventId: string; onClose: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { let on = true; posAiBusinessApi.center.explain(eventId).then((x) => on && setD(x)).catch((e) => on && setErr(bzErr(e))); return () => { on = false; }; }, [eventId]);
+  const x = d?.explanation;
+  return (
+    <FitDialog wide testId="bzx-explain" title={bt('bzx.a.explainTitle')} onClose={onClose} footer={<>{d ? <Link className="btn ghost" to={d.sourceRoute}>{bt('bzx.a.openSource')}</Link> : null}<button className="btn ghost" onClick={onClose}>{bt('bzx.close')}</button></>}>
+      {err ? <div className="err">{err}</div> : !d ? <div className="state">{bt('bzx.loading')}</div> : <>
+        <p><b>{bt('bzx.cond', { m: bt('bzx.metric.' + d.metricId), op: bt('bzx.op.' + d.operator), v: bzValue(d.threshold, UNIT[d.metricId]) })}</b> — {bt('bzx.a.valueWas', { v: bzValue(d.value, UNIT[d.metricId]) })} · {bzDays(d.period)}</p>
+        {d.kind === 'revenue_bridge' && x ? <table className="tbl" data-testid="bzx-bridge"><tbody>
+          <tr><td>{bt('bzx.x.current')}</td><td className="num">{bzValue(x.currentNetCents, 'cents')}</td></tr>
+          <tr><td>{bt('bzx.x.previous')}</td><td className="num">{bzValue(x.previousNetCents, 'cents')}</td></tr>
+          <tr><td><b>{bt('bzx.x.netChange')}</b></td><td className="num"><b>{bzValue(x.changeCents, 'cents')}</b>{x.changePercent != null ? ` (${x.changePercent}%)` : ''}</td></tr>
+          {(x.contributors ?? []).map((c: any, i: number) => <tr key={i} data-testid="bzx-contrib"><td>{c.factor}<div className="sub">{c.note}</div></td><td className="num">{bzValue(c.deltaCents, 'cents')}</td></tr>)}
+          {(x.caveats ?? []).map((c: string, i: number) => <tr key={'c' + i}><td colSpan={2} className="sub">{c}</td></tr>)}
+        </tbody></table> : null}
+        {d.kind === 'appointment_funnel' && x?.funnel ? <table className="tbl" data-testid="bzx-funnel"><tbody>
+          {['totalBookings', 'completed', 'cancelled', 'noShow', 'cancelledPercent', 'noShowPercent'].filter((k) => x.funnel[k] != null).map((k) => <tr key={k}><td>{bt('bzx.x.' + k)}</td><td className="num">{k.endsWith('Percent') ? `${x.funnel[k]}%` : bzNum(x.funnel[k])}</td></tr>)}
+        </tbody></table> : null}
+        <p className="sub">{bt('bzx.a.notProof')}</p>
+      </>}
+    </FitDialog>
+  );
+}
+
+function Anomaly() {
+  const [d, setD] = useState<any | 'loading' | null>(null);
+  const run = () => { setD('loading'); posAiBusinessApi.center.anomaly().then(setD).catch((e) => setD({ error: bzErr(e) })); };
+  return (
+    <section className="panel" style={{ padding: 12, marginTop: 12 }} data-testid="bzx-anomaly">
+      <div className="p-h">{bt('bzx.an.title')}</div>
+      <p className="sub">{bt('bzx.an.sub')}</p>
+      <button type="button" className="btn ghost" data-testid="bzx-an-run" onClick={run}>{bt('bzx.an.run')}</button>
+      {d === 'loading' ? <div className="state">{bt('bzx.loading')}</div> : d?.error ? <div className="err">{d.error}</div> : d ? (
+        <table className="tbl" style={{ marginTop: 8 }}><thead><tr><th>{bt('bzx.an.metric', { day: d.weekday })}</th><th className="num">{bt('bzx.an.actual')}</th><th className="num">{bt('bzx.an.baseline')}</th><th>{bt('bzx.an.result')}</th></tr></thead>
+          <tbody>{d.items.map((x: any) => (
+            <tr key={x.metric} data-testid={`bzx-an-${x.metric}`}><td>{bt('bzx.vm.' + x.metric)}</td><td className="num">{bzValue(x.actual, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td>
+              <td className="num">{x.baseline == null ? '—' : bzValue(x.baseline, x.metric === 'ticketsCount' ? 'count' : 'cents')}</td>
+              <td>{bt('bzx.an.st.' + x.status, { n: x.comparableDays })}</td></tr>))}</tbody></table>) : null}
+      {d && d !== 'loading' && !d.error ? <p className="sub">{bt('bzx.an.note')}</p> : null}
+    </section>
   );
 }

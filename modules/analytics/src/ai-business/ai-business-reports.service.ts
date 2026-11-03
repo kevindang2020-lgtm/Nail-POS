@@ -59,15 +59,17 @@ export class AiBusinessReportsService {
     }
   }
 
-  async create(ctx: AiBusinessContext, reportType: string): Promise<ReportJob> {
+  /** `preset` (AI Business Reports guide, Nov 3 2026): the period the owner chose — the type's default when omitted. `extra` is
+   *  merged into the stored content: the exact salon-local period and the canonical Sales Report snapshot used by Verify. */
+  async create(ctx: AiBusinessContext, reportType: string, presetIn?: string, extra?: (preset: string) => Promise<Record<string, unknown>>): Promise<ReportJob> {
     const rc = this.rctx(ctx);
     if (!REPORT_TYPES.includes(reportType as ReportType)) throw new AiBusinessError(AiBusinessErrorCode.METRIC_NOT_FOUND, 'Unknown report type');
     const type = reportType as ReportType;
-    const preset = PRESET_FOR[type];
+    const preset = presetIn ?? PRESET_FOR[type];
     const job = await this.repo.create(rc, type, preset);
     await this.repo.markRunning(rc, job.id);
     try {
-      const content = await this.generate(ctx, type, preset);
+      const content = { ...(await this.generate(ctx, type, preset)), ...(extra ? await extra(preset) : {}) };
       return (await this.repo.complete(rc, job.id, content)) ?? job;
     } catch (e: any) {
       // A hard failure (e.g. no reports.view at all) marks the job failed rather than 500-ing the request.

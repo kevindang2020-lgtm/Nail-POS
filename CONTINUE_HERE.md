@@ -758,6 +758,36 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   13. Allow settings saves (upsell on/off, voice retention, raw text) when the AI subscription has lapsed?
   14. Connect the five dormant upsell categories (retail, loyalty enrollment, loyalty redemption, gift cards, rebooking) to real data?
   15. Add a retry queue for call-recording deletions the provider did not confirm?
+## The 20 AI guides of Nov 3 2026 — all built
+
+Kevin uploaded 20 PDFs (Nov 3): voice search + call history, Review / Reputation assistant, Inventory (spec + guide), Fraud &
+Money Protection (+ settings, rules & detection, investigations, alerts), Checkout Upsell assistant, Customer Profile assistant,
+the Marketing family (assistant, Campaign Builder, Message Studio, Audience Builder, Campaign Results), AI Business Reports and
+AI Business Alerts. Every one is built (commits `afc27ba`, `4c4b65b`, `fd6ac68`, and the Reports / Alerts commit).
+Docs: `docs/ai/VOICE_SEARCH_AND_CALL_HISTORY.md`, `AI_ASSISTANT_PAGES.md`, `MONEY_PROTECTION.md`, `AI_INVENTORY_ASSISTANT.md`,
+`AI_MARKETING_ASSISTANT.md`, `AI_BUSINESS_REPORTS_AND_ALERTS.md`. Migrations 777–781.
+
+Root-cause fixes found on the way (each pinned by a test):
+- **The canonical Sales Report ignored the period** (`preset` without from/to → last 7 days; the Sales Report screen sends
+  `period`, which was dropped). Every AI Business tool, report and alert was the same 7 days. Fixed at the source.
+- **Marketing "Message cost to date" was the sum of campaign BUDGETS** — the photographed "$100 with 0 sent".
+- **The old AI marketing approve route scheduled a campaign with no Campaign Center approval or audience snapshot**, and the
+  send sweep then sent it. It now goes through the send-readiness rule; the builder saves into Campaign Center.
+- **AI marketing "lapsed" counted a customer who came back yesterday** — now the Customer Retention rule.
+- Inventory: a salon-wide login read every product as out of stock. Money Protection, voice and the assistant pages: see their docs.
+
+More decisions for Kevin (continue the numbering above):
+  16. Turn on scheduled Money Protection detection (`AI_MONEY_PROTECTION_DETECTION_ENABLED=1`)?
+  17. Money Protection: restrict the investigation "assign" route to the branch's active staff?
+  18. Inventory: the Low Stock / Reorder / Slow-Moving tabs for a salon-wide login (today one branch's view)?
+  19. Checkout "missed-service review" and customer-note drafting (Customer Profile guide) — build them?
+  20. Marketing: enforce the campaign budget in the send worker (today shown and checked only)?
+  21. Marketing: a per-customer frequency cap at send time (e.g. one campaign message per 7 days)?
+  22. Marketing: per-customer personalization in the sender (`{{customer_first_name}}`, booking links)? Today only
+      `{salon_name}` / `{offer}`; Message Studio drafts with other tokens are refused before saving.
+  23. AI Business Reports on a schedule — deliver in-app only, or email too?
+  24. AI Business Alerts: automatic evaluation (each rule's hourly / daily) and SMS / email delivery — turn on, to whom?
+  25. All-my-salons reports / alerts across separate salon accounts need an owner grant model that does not exist yet.
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 
