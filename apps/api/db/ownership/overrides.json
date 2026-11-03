@@ -394,6 +394,14 @@
   "scheduling_optimizer_health_runs": {
    "domain": "AI",
    "reason": "AI Scheduling Optimizer guide (Nov 2 2026, migration 772): the optimizer page \u2014 read-only Check Scheduling System runs"
+  },
+  "ai_checkout_upsell_settings_history": {
+   "domain": "AI",
+   "reason": "Checkout Upsell Settings guide (Nov 2 2026, migration 773): append-only before/after of every assistant settings save"
+  },
+  "checkout_upsell_health_runs": {
+   "domain": "AI",
+   "reason": "Checkout Upsell Settings guide (Nov 2 2026, migration 773): read-only Check Checkout Upsell System runs"
   }
  }
 }

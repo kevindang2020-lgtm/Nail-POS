@@ -14112,3 +14112,173 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `scx.health.d.tenant_isolation.FAILED` | A suggestion points at another salon's record. Report this immediately. | Có đề xuất trỏ tới dữ liệu của tiệm khác. Hãy báo ngay. |
 | `scx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `scx.health.d.no_side_effects.PASSED` | This page and this check never move an appointment, apply a change or send a message. | Trang này và việc kiểm tra không dời lịch hẹn, không áp dụng thay đổi, không gửi tin nhắn. |
+
+## Checkout Upsell Assistant Settings (`ucx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `ucx.err.conflict` | Someone else saved these settings a moment ago. The latest values are shown — make your change again. | Có người vừa lưu cài đặt này. Đang hiển thị giá trị mới nhất — hãy thay đổi lại. |
+| `ucx.err.range` | That value is outside the allowed range and was not saved. | Giá trị nằm ngoài phạm vi cho phép nên không được lưu. |
+| `ucx.err.period` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `ucx.err.forbidden` | You do not have access to the upsell assistant records. | Bạn không có quyền xem dữ liệu trợ lý gợi ý bán thêm. |
+| `ucx.loadFailed` | This could not be loaded. Try again or run the system check — this is not "no activity". | Không tải được. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có hoạt động". |
+| `ucx.saved` | Saved version {v} · {at} | Đã lưu phiên bản {v} · {at} |
+| `ucx.kpi.effective` | Assistant right now | Trợ lý hiện tại |
+| `ucx.kpi.categories` | Categories on | Danh mục đang bật |
+| `ucx.kpi.catValue` | {on} on · {live} connected | {on} bật · {live} đã kết nối |
+| `ucx.kpi.limits` | Limits (shown / add-ons / products) | Giới hạn (hiển thị / dịch vụ thêm / sản phẩm) |
+| `ucx.kpi.health` | System health | Tình trạng hệ thống |
+| `ucx.notTested` | Not tested | Chưa kiểm tra |
+| `ucx.subRestricted` | The AI subscription does not allow suggestions right now. The switch above is your preference; checkout keeps working. | Gói AI hiện không cho phép gợi ý. Công tắc ở trên là lựa chọn của bạn; thanh toán vẫn hoạt động. |
+| `ucx.notConnected` | Not connected yet | Chưa kết nối |
+| `ucx.notConnectedHint` | This category has no live data source in this version, so it cannot show a suggestion even when checked. | Danh mục này chưa có nguồn dữ liệu trong phiên bản này nên không thể hiện gợi ý dù đã bật. |
+| `ucx.capNote` | The total cap wins: with "Max suggestions shown" at 2, at most 2 cards appear even if add-ons and products each allow 2. | Giới hạn tổng được ưu tiên: nếu "Số gợi ý tối đa" là 2 thì chỉ hiện tối đa 2 thẻ, dù dịch vụ thêm và sản phẩm đều cho phép 2. |
+| `ucx.promise` | Every suggestion needs staff confirmation; nothing is added or charged automatically. | Mọi gợi ý đều cần nhân viên xác nhận; không có gì được tự động thêm hay tính tiền. |
+| `ucx.workspace` | Upsell records | Hồ sơ gợi ý bán thêm |
+| `ucx.cancel` | Cancel | Hủy |
+| `ucx.offExplain` | Suggestions stop at checkout for this salon. Checkout, payments, tickets and your AI subscription are not changed — to stop billing, use AI Plans. | Gợi ý ngừng hiện khi thanh toán cho tiệm này. Thanh toán, hóa đơn và gói AI không thay đổi — muốn ngừng tính phí, hãy dùng Gói AI. |
+| `ucx.newestFirst` | newest first | mới nhất trước |
+| `ucx.searchPh` | Customer name or phone, ticket number, offer, category, status, ID | Tên hoặc số điện thoại khách, số hóa đơn, gợi ý, danh mục, trạng thái, mã |
+| `ucx.searchPhNoCustomer` | Ticket number, offer, category, status, ID | Số hóa đơn, gợi ý, danh mục, trạng thái, mã |
+| `ucx.search` | Search | Tìm |
+| `ucx.typeLabel` | Category | Danh mục |
+| `ucx.statusLabel` | Status | Trạng thái |
+| `ucx.clear` | Clear | Xóa bộ lọc |
+| `ucx.activityNote` | Shown ≠ accepted ≠ applied: only "Applied" means the item is on the ticket. Sales are counted in Checkout and Reports, not here. | Đã hiện ≠ đã chấp nhận ≠ đã áp dụng: chỉ "Đã áp dụng" nghĩa là mục đã nằm trong hóa đơn. Doanh thu được tính ở Thanh toán và Báo cáo, không phải ở đây. |
+| `ucx.loading` | Loading… | Đang tải… |
+| `ucx.noMatch` | Nothing matches these filters. | Không có gì khớp bộ lọc. |
+| `ucx.noActivity` | No suggestions have been made yet. | Chưa có gợi ý nào. |
+| `ucx.by` | by {who} | bởi {who} |
+| `ucx.rows` | Rows | Số dòng |
+| `ucx.inherit` | default | mặc định |
+| `ucx.on` | On | Bật |
+| `ucx.off` | Off | Tắt |
+| `ucx.historyNote` | every save, before → after | mỗi lần lưu, trước → sau |
+| `ucx.historySearchPh` | Setting, staff name, role | Cài đặt, tên nhân viên, vai trò |
+| `ucx.noHistory` | No settings changes yet. | Chưa có thay đổi cài đặt nào. |
+| `ucx.check` | Check Checkout Upsell System | Kiểm tra hệ thống gợi ý bán thêm |
+| `ucx.health.readOnly` | Read-only: it never adds to a ticket, enrolls, redeems, issues a gift card, books, charges or sends a message. | Chỉ đọc: không thêm vào hóa đơn, không đăng ký, không đổi điểm, không phát thẻ quà tặng, không đặt lịch, không tính tiền, không gửi tin nhắn. |
+| `ucx.health.running` | Checking… | Đang kiểm tra… |
+| `ucx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `ucx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `ucx.offAt.tenant` | Off for this salon | Đang tắt cho tiệm này |
+| `ucx.offAt.branch` | Off for this location | Đang tắt cho chi nhánh này |
+| `ucx.offAt.device` | Off on this device | Đang tắt trên thiết bị này |
+| `ucx.offAt.user` | Off for your account | Đang tắt cho tài khoản của bạn |
+| `ucx.offAt.settings_unreadable` | Off — the settings could not be read | Đang tắt — không đọc được cài đặt |
+| `ucx.offAt.other` | Off | Đang tắt |
+| `ucx.eff.enabled` | Enabled | Đang bật |
+| `ucx.eff.disabled` | Disabled | Đang tắt |
+| `ucx.eff.subscription_restricted` | Subscription restricted | Gói bị giới hạn |
+| `ucx.eff.subscription_unknown` | Subscription unknown | Không rõ gói |
+| `ucx.eff.unknown` | Unknown — could not be read | Không rõ — không đọc được |
+| `ucx.src.platform` | platform default | mặc định hệ thống |
+| `ucx.src.tenant` | salon setting | cài đặt của tiệm |
+| `ucx.src.branch` | location setting | cài đặt chi nhánh |
+| `ucx.src.device` | device setting | cài đặt thiết bị |
+| `ucx.src.user` | your own setting | cài đặt riêng của bạn |
+| `ucx.tab.activity` | Suggestion Activity | Hoạt động gợi ý |
+| `ucx.tab.history` | Settings History | Lịch sử cài đặt |
+| `ucx.tab.health` | System Health | Tình trạng hệ thống |
+| `ucx.preset.all` | All time | Mọi thời gian |
+| `ucx.preset.today` | Today | Hôm nay |
+| `ucx.preset.yesterday` | Yesterday | Hôm qua |
+| `ucx.preset.week` | This week | Tuần này |
+| `ucx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `ucx.preset.month` | This month | Tháng này |
+| `ucx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `ucx.preset.last_month` | Last month | Tháng trước |
+| `ucx.preset.year` | This year | Năm nay |
+| `ucx.preset.custom` | Custom range | Tùy chọn |
+| `ucx.type.all` | All categories | Mọi danh mục |
+| `ucx.type.service_addon` | Service add-on | Dịch vụ thêm |
+| `ucx.type.product` | Retail product | Sản phẩm bán lẻ |
+| `ucx.type.membership` | Membership | Hội viên |
+| `ucx.type.loyalty_enrollment` | Loyalty enrollment | Đăng ký tích điểm |
+| `ucx.type.loyalty_redemption` | Loyalty redemption | Đổi điểm |
+| `ucx.type.gift_card` | Gift card | Thẻ quà tặng |
+| `ucx.type.next_appointment` | Rebooking | Đặt lịch lại |
+| `ucx.type.promotion` | Promotion | Khuyến mãi |
+| `ucx.st.all` | All statuses | Mọi trạng thái |
+| `ucx.st.GENERATED` | Made | Đã tạo |
+| `ucx.st.DISPLAYED` | Shown | Đã hiện |
+| `ucx.st.ACCEPTED` | Accepted | Đã chấp nhận |
+| `ucx.st.APPLIED` | Applied | Đã áp dụng |
+| `ucx.st.DISMISSED` | Dismissed | Đã bỏ qua |
+| `ucx.st.EXPIRED` | Expired | Hết hạn |
+| `ucx.st.INELIGIBLE` | No longer eligible | Không còn phù hợp |
+| `ucx.st.OUT_OF_STOCK` | Out of stock | Hết hàng |
+| `ucx.st.FAILED` | Could not be applied | Không áp dụng được |
+| `ucx.col.when` | When | Thời điểm |
+| `ucx.col.offer` | Suggestion | Gợi ý |
+| `ucx.col.ticket` | Ticket | Hóa đơn |
+| `ucx.col.status` | Status | Trạng thái |
+| `ucx.col.price` | Price | Giá |
+| `ucx.col.change` | Change | Thay đổi |
+| `ucx.col.by` | By | Người thực hiện |
+| `ucx.col.version` | Version | Phiên bản |
+| `ucx.key.enabled` | Assistant | Trợ lý |
+| `ucx.key.addOnsEnabled` | Service add-ons | Dịch vụ thêm |
+| `ucx.key.productsEnabled` | Retail products | Sản phẩm bán lẻ |
+| `ucx.key.membershipEnabled` | Memberships | Hội viên |
+| `ucx.key.loyaltyEnrollEnabled` | Loyalty enrollment | Đăng ký tích điểm |
+| `ucx.key.loyaltyRedeemEnabled` | Loyalty redemption | Đổi điểm |
+| `ucx.key.giftCardEnabled` | Gift cards | Thẻ quà tặng |
+| `ucx.key.rebookingEnabled` | Rebooking | Đặt lịch lại |
+| `ucx.key.maxTotal` | Max suggestions shown | Số gợi ý tối đa |
+| `ucx.key.maxAddOn` | Max add-ons | Số dịch vụ thêm tối đa |
+| `ucx.key.maxProduct` | Max products | Số sản phẩm tối đa |
+| `ucx.key.maxMembership` | Max memberships | Số gói hội viên tối đa |
+| `ucx.key.maxAddedValueCents` | Max added value per visit | Giá trị thêm tối đa mỗi lượt |
+| `ucx.key.maxAddedPercent` | Max share of booked services | Tỷ lệ tối đa so với dịch vụ đã đặt |
+| `ucx.key.allowAfterServiceDone` | Add-ons after Service Done | Dịch vụ thêm sau khi xong dịch vụ |
+| `ucx.health.PASSED` | Passed | Đạt |
+| `ucx.health.WARNING` | Warning | Cảnh báo |
+| `ucx.health.FAILED` | Failed | Lỗi |
+| `ucx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `ucx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `ucx.health.k.settings_readable` | Settings readable | Đọc được cài đặt |
+| `ucx.health.d.settings_readable.PASSED` | The salon's settings were read. | Đã đọc được cài đặt của tiệm. |
+| `ucx.health.d.settings_readable.FAILED` | The settings could not be read, so the assistant is off at checkout until they can be. | Không đọc được cài đặt nên trợ lý tạm tắt khi thanh toán cho đến khi đọc được. |
+| `ucx.health.k.assistant_enabled` | Assistant switched on | Trợ lý đang bật |
+| `ucx.health.d.assistant_enabled.PASSED` | The assistant is on for this salon. | Trợ lý đang bật cho tiệm này. |
+| `ucx.health.d.assistant_enabled.WARNING` | The assistant is switched off — no suggestions appear at checkout. | Trợ lý đang tắt — không có gợi ý khi thanh toán. |
+| `ucx.health.d.assistant_enabled.UNAVAILABLE` | Could not tell — the settings were unreadable. | Không xác định được — không đọc được cài đặt. |
+| `ucx.health.k.subscription` | AI subscription | Gói AI |
+| `ucx.health.d.subscription.PASSED` | The subscription allows suggestions. | Gói cho phép gợi ý. |
+| `ucx.health.d.subscription.FAILED` | The subscription does not allow suggestions (trial ended, past due or not active). Checkout keeps working. | Gói không cho phép gợi ý (hết dùng thử, quá hạn hoặc chưa kích hoạt). Thanh toán vẫn hoạt động. |
+| `ucx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái gói. |
+| `ucx.health.k.categories_connected` | Categories connected | Danh mục đã kết nối |
+| `ucx.health.d.categories_connected.PASSED` | Every category that is on has a live data source. | Mọi danh mục đang bật đều có nguồn dữ liệu. |
+| `ucx.health.d.categories_connected.WARNING` | Some categories are on but not connected to a data source yet, so they cannot show a suggestion. | Một số danh mục đang bật nhưng chưa kết nối nguồn dữ liệu nên không thể hiện gợi ý. |
+| `ucx.health.d.categories_connected.UNAVAILABLE` | Could not tell — the settings were unreadable. | Không xác định được — không đọc được cài đặt. |
+| `ucx.health.k.limits_valid` | Limits valid | Giới hạn hợp lệ |
+| `ucx.health.d.limits_valid.PASSED` | The three limits are within their allowed ranges. | Ba giới hạn nằm trong phạm vi cho phép. |
+| `ucx.health.d.limits_valid.WARNING` | A stored limit is outside its range (it is clamped when read). Save it again from this page. | Có giới hạn đã lưu nằm ngoài phạm vi (được giới hạn khi đọc). Hãy lưu lại từ trang này. |
+| `ucx.health.k.addon_catalog` | Add-on catalog | Danh mục dịch vụ thêm |
+| `ucx.health.d.addon_catalog.PASSED` | Active service add-ons exist for suggestions. | Có dịch vụ thêm đang hoạt động để gợi ý. |
+| `ucx.health.d.addon_catalog.INSUFFICIENT_DATA` | No active service add-ons were found — add-ons may also be set on a service category. Without any, none can be suggested. | Không thấy dịch vụ thêm đang hoạt động — dịch vụ thêm cũng có thể đặt theo nhóm dịch vụ. Nếu không có thì không thể gợi ý. |
+| `ucx.health.k.recent_suggestions` | Recent suggestions | Gợi ý gần đây |
+| `ucx.health.d.recent_suggestions.PASSED` | Suggestions were made in the last 7 days. | Có gợi ý trong 7 ngày qua. |
+| `ucx.health.d.recent_suggestions.WARNING` | Most recent suggestions failed when applied. | Phần lớn gợi ý gần đây áp dụng bị lỗi. |
+| `ucx.health.d.recent_suggestions.INSUFFICIENT_DATA` | No suggestions in the last 7 days — zero is not proof the assistant works. | Không có gợi ý trong 7 ngày qua — số 0 không chứng minh trợ lý đang chạy. |
+| `ucx.health.k.applied_needs_staff` | Nothing applied without staff | Không áp dụng khi chưa có nhân viên |
+| `ucx.health.d.applied_needs_staff.PASSED` | Every applied suggestion records who confirmed it. | Mọi gợi ý đã áp dụng đều ghi người xác nhận. |
+| `ucx.health.d.applied_needs_staff.FAILED` | A suggestion was applied with no staff confirmation on record. Report this immediately. | Có gợi ý được áp dụng mà không ghi nhận nhân viên xác nhận. Hãy báo ngay. |
+| `ucx.health.k.applied_has_result` | Applied suggestions have a result | Gợi ý đã áp dụng có kết quả |
+| `ucx.health.d.applied_has_result.PASSED` | Every applied suggestion points at the ticket line or record it made. | Mọi gợi ý đã áp dụng đều trỏ tới dòng hóa đơn hoặc bản ghi đã tạo. |
+| `ucx.health.d.applied_has_result.WARNING` | Some applied suggestions do not point at what they made. | Một số gợi ý đã áp dụng không trỏ tới kết quả đã tạo. |
+| `ucx.health.k.no_double_apply` | Nothing applied twice | Không áp dụng hai lần |
+| `ucx.health.d.no_double_apply.PASSED` | No offer was applied twice to the same ticket. | Không gợi ý nào bị áp dụng hai lần cho cùng hóa đơn. |
+| `ucx.health.d.no_double_apply.FAILED` | An offer was applied twice to the same ticket. Report this immediately. | Có gợi ý bị áp dụng hai lần cho cùng hóa đơn. Hãy báo ngay. |
+| `ucx.health.k.stale_open_cards` | Old open suggestions | Gợi ý cũ còn mở |
+| `ucx.health.d.stale_open_cards.PASSED` | No suggestion has stayed open for more than a day. | Không có gợi ý nào mở quá một ngày. |
+| `ucx.health.d.stale_open_cards.WARNING` | Some suggestions stayed open for over a day. They can no longer be applied; this points to a stuck screen or job. | Một số gợi ý mở quá một ngày. Chúng không thể áp dụng nữa; có thể có màn hình hoặc tác vụ bị kẹt. |
+| `ucx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `ucx.health.d.tenant_isolation.PASSED` | Every suggestion points at this salon's tickets and customers. | Mọi gợi ý đều trỏ tới hóa đơn và khách hàng của tiệm này. |
+| `ucx.health.d.tenant_isolation.FAILED` | A suggestion points at another salon's record. Report this immediately. | Có gợi ý trỏ tới dữ liệu của tiệm khác. Hãy báo ngay. |
+| `ucx.health.k.settings_history` | Settings history kept | Có lưu lịch sử cài đặt |
+| `ucx.health.d.settings_history.PASSED` | Settings changes are recorded. | Các thay đổi cài đặt đều được ghi lại. |
+| `ucx.health.d.settings_history.WARNING` | The settings were changed but no history was recorded. | Cài đặt đã thay đổi nhưng không có lịch sử. |
+| `ucx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `ucx.health.d.no_side_effects.PASSED` | This page and this check never add to a ticket, charge, enroll, redeem, issue, book or message. | Trang này và việc kiểm tra không thêm vào hóa đơn, không tính tiền, không đăng ký, không đổi điểm, không phát thẻ, không đặt lịch, không gửi tin. |

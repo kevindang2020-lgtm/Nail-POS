@@ -80,3 +80,36 @@ export function effectiveAddedValueCapCents(t: Pick<UpsellTunables, 'maxAddedVal
   return Math.min(hard, Math.floor((subtotalCents * Math.max(0, t.maxAddedPercent)) / 100));
 }
 
+
+// ---- Checkout Upsell Settings guide (Nov 2 2026): saving is strict, not silently clamped ----
+/** The editable ranges — the same bounds resolveSettings clamps to. A save outside them is REFUSED (400), never clamped. */
+export const TUNABLE_RANGES: Record<string, [number, number]> = {
+  maxTotal: [0, 8], maxAddOn: [0, 5], maxProduct: [0, 5], maxMembership: [0, 2], maxAddedValueCents: [0, 1000000], maxAddedPercent: [0, 100],
+};
+export const TUNABLE_FLAGS = ['addOnsEnabled', 'productsEnabled', 'membershipEnabled', 'loyaltyEnrollEnabled', 'loyaltyRedeemEnabled', 'giftCardEnabled', 'rebookingEnabled', 'allowAfterServiceDone'] as const;
+/** The keys a patch actually sets (null / undefined = "leave as it is"). Throws UPSELL_SETTING_OUT_OF_RANGE on a bad value. */
+export function cleanTunablesPatch(patch: Partial<UpsellTunables> | null | undefined): Partial<UpsellTunables> {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(patch ?? {})) {
+    if (v === undefined || v === null) continue;
+    if (k in TUNABLE_RANGES) {
+      const [lo, hi] = TUNABLE_RANGES[k];
+      if (typeof v !== 'number' || !Number.isInteger(v) || v < lo || v > hi) throw new Error('UPSELL_SETTING_OUT_OF_RANGE');
+      out[k] = v;
+    } else if ((TUNABLE_FLAGS as readonly string[]).includes(k)) {
+      if (typeof v !== 'boolean') throw new Error('UPSELL_SETTING_OUT_OF_RANGE');
+      out[k] = v;
+    } else throw new Error('UPSELL_SETTING_OUT_OF_RANGE');
+  }
+  return out as Partial<UpsellTunables>;
+}
+/** Which layer each effective value comes from (the last layer that sets it wins; none = the platform default). */
+export function settingSources(layers: { tenant?: UpsellSettingsLayer; branch?: UpsellSettingsLayer; device?: UpsellSettingsLayer; user?: UpsellSettingsLayer }): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const k of Object.keys(PLATFORM_DEFAULTS)) out[k] = 'platform';
+  for (const lvl of ['tenant', 'branch', 'device', 'user'] as const) {
+    const t = layers[lvl]?.tunables as Record<string, unknown> | undefined;
+    if (t) for (const [k, v] of Object.entries(t)) if (v !== undefined && v !== null && k in out) out[k] = lvl;
+  }
+  return out;
+}

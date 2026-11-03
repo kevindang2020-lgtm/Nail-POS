@@ -114,6 +114,7 @@ export const UPSELL_SETTINGS_BODY: BodySchema = S.object({
     membershipEnabled: flag, loyaltyEnrollEnabled: flag, loyaltyRedeemEnabled: flag, giftCardEnabled: flag, rebookingEnabled: flag,
     maxAddedValueCents: intOrNull, maxAddedPercent: intOrNull, allowAfterServiceDone: flag,
   })),
+  expectedVersion: intOrNull,   // Checkout Upsell Settings guide (Nov 2026): the version the editor read; a stale one → 409
 });
 /** the platform's record of the two onboarding states — the TTP_* machines move them */
 export const TTP_ONBOARDING_BODY: BodySchema = S.object({ appleEntitlementStatus: str(16), commerceHubStatus: str(16), pspEnrollmentStatus: str(16), notes: str(2000) });   // pspEnrollmentStatus = the admin screen's name for commerceHubStatus

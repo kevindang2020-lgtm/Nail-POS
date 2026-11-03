@@ -10,7 +10,7 @@ import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { AiCheckoutUpsellContext } from './ai-checkout-upsell.dto';
 import type { IdempotencyStore, BeginResult } from './ai-checkout-upsell.idempotency';
-import { rowsToLayers, type SettingsRow } from './ai-checkout-upsell-settings';
+import { rowsToLayers, cleanTunablesPatch, type SettingsRow } from './ai-checkout-upsell-settings';
 import type { UpsellSettingsPort, TechnicianSchedulePort } from './ai-checkout-upsell.service';
 import { CHAIR_HOLDING_STATUSES } from '@aipowersalon/api-contracts';
 import { businessDate, zonedParts } from '@aipowersalon/date-time';
@@ -83,24 +83,63 @@ export class KyselyUpsellSettings implements UpsellSettingsPort {
         ...(isUuid(ctx.deviceId) ? [eb.and([eb('level', '=', 'device'), eb('device_id', '=', ctx.deviceId)])] : []),
         ...(isUuid(ctx.userId) ? [eb.and([eb('level', '=', 'user'), eb('user_id', '=', ctx.userId)])] : []),
       ]))
-      .limit(50).execute().catch(() => [] as any[]);
+      // Checkout Upsell Settings guide (Nov 2026): no `.catch(() => [])` — an unreadable settings table used to resolve to the
+      // platform defaults, i.e. ENABLED with every category on, even for a salon that had switched the assistant off.
+      .limit(50).execute();
     const mapped: SettingsRow[] = rows.map(r => ({ level: r.level, branch_id: r.branch_id ?? null, device_id: r.device_id ?? null, user_id: r.user_id ?? null, enabled: r.enabled ?? null, tunables: r.tunables ?? null }));
     return rowsToLayers(mapped, ctx);
   }
 
-  async setLayer(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: { enabled?: boolean; tunables?: any }): Promise<void> {
-    const branch_id = level === 'branch' ? (ctx.branchId || null) : null;
-    const device_id = level === 'device' ? (ctx.deviceId || null) : null;
-    const user_id = level === 'user' ? (ctx.userId || null) : null;
-    // delete-then-insert keeps the write independent of the COALESCE expression index (no onConflict target mismatch)
-    let del = this.db.deleteFrom('ai_checkout_upsell_settings').where('tenant_id', '=', ctx.tenantId).where('level', '=', level);
-    del = branch_id ? del.where('branch_id', '=', branch_id) : del.where('branch_id', 'is', null);
-    del = device_id ? del.where('device_id', '=', device_id) : del.where('device_id', 'is', null);
-    del = user_id ? del.where('user_id', '=', user_id) : del.where('user_id', 'is', null);
-    await del.execute();
-    await this.db.insertInto('ai_checkout_upsell_settings')
-      .values({ tenant_id: ctx.tenantId, level, branch_id, device_id, user_id, enabled: patch.enabled ?? null, tunables: (patch.tunables ?? null), updated_by_user_id: ctx.userId })
-      .execute();
+  /** the stored row for one layer of this scope (what the salon saved, not the resolved value) */
+  async stored(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user') {
+    const k = this.key(ctx, level);
+    const r = await this.match(this.db.selectFrom('ai_checkout_upsell_settings').select(['enabled', 'tunables', 'version', 'updated_at', 'updated_by_user_id']), ctx.tenantId, level, k).executeTakeFirst() as { enabled: boolean | null; tunables: unknown; version: number; updated_at: string | null; updated_by_user_id: string | null } | undefined;
+    return r ? { enabled: r.enabled ?? null, tunables: (r.tunables ?? null) as Record<string, unknown> | null, version: Number(r.version ?? 1), updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null, updatedByUserId: r.updated_by_user_id ?? null }
+      : { enabled: null, tunables: null, version: 0, updatedAt: null, updatedByUserId: null };
+  }
+  private key(ctx: AiCheckoutUpsellContext, level: string) {
+    return { branch_id: level === 'branch' ? (ctx.branchId || null) : null, device_id: level === 'device' ? (ctx.deviceId || null) : null, user_id: level === 'user' ? (ctx.userId || null) : null };
+  }
+  private match(q: any, tenantId: string, level: string, k: { branch_id: string | null; device_id: string | null; user_id: string | null }) {
+    q = q.where('tenant_id', '=', tenantId).where('level', '=', level);
+    q = k.branch_id ? q.where('branch_id', '=', k.branch_id) : q.where('branch_id', 'is', null);
+    q = k.device_id ? q.where('device_id', '=', k.device_id) : q.where('device_id', 'is', null);
+    return k.user_id ? q.where('user_id', '=', k.user_id) : q.where('user_id', 'is', null);
+  }
+
+  /** Checkout Upsell Settings guide (Nov 2026): one transaction that MERGES the patch into the stored layer (a category
+   *  toggle used to send back the whole RESOLVED set — platform defaults and the branch / user layers got baked into the
+   *  salon's row — and "Disable"/"Enable" wrote `tunables: null`, wiping every category and limit), refuses a stale
+   *  `expectedVersion` (two managers saving at once), and appends a before/after row to the settings history. */
+  async setLayer(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: { enabled?: boolean; tunables?: any }, expectedVersion?: number | null): Promise<{ version: number }> {
+    const k = this.key(ctx, level);
+    const tunablesPatch = cleanTunablesPatch(patch.tunables);
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('upsell-settings:' || ${ctx.tenantId} || ':' || ${level} || ':' || ${k.branch_id ?? ''} || ${k.device_id ?? ''} || ${k.user_id ?? ''}))`.execute(trx);
+      const cur = await this.match(trx.selectFrom('ai_checkout_upsell_settings').select(['id', 'enabled', 'tunables', 'version']), ctx.tenantId, level, k).executeTakeFirst() as { id: string; enabled: boolean | null; tunables: unknown; version: number } | undefined;
+      const curVersion = cur ? Number(cur.version ?? 1) : 0;
+      if (expectedVersion != null && expectedVersion !== curVersion) throw new Error('UPSELL_SETTINGS_VERSION_CONFLICT');
+      const beforeT = (cur?.tunables ?? {}) as Record<string, unknown>;
+      const afterT = { ...beforeT, ...tunablesPatch } as Record<string, unknown>;
+      const beforeE = cur ? (cur.enabled ?? null) : null;
+      const afterE = patch.enabled === undefined ? beforeE : patch.enabled;
+      const changed = [...(afterE !== beforeE ? ['enabled'] : []), ...Object.keys(tunablesPatch).filter((x) => beforeT[x] !== afterT[x])];
+      if (!changed.length) return { version: curVersion };   // nothing changed — no new version, no history row
+      const version = curVersion + 1;
+      const actor = isUuid(ctx.userId) ? ctx.userId : null;
+      if (cur) {
+        await trx.updateTable('ai_checkout_upsell_settings').set({ enabled: afterE, tunables: JSON.stringify(afterT), version, updated_by_user_id: actor, updated_at: sql<string>`now()` })
+          .where('tenant_id', '=', ctx.tenantId).where('id', '=', cur.id).execute();
+      } else {
+        await trx.insertInto('ai_checkout_upsell_settings')
+          .values({ tenant_id: ctx.tenantId, level, ...k, enabled: afterE, tunables: JSON.stringify(afterT), version, updated_by_user_id: actor }).execute();
+      }
+      await trx.insertInto('ai_checkout_upsell_settings_history').values({
+        tenant_id: ctx.tenantId, level, ...k, version, actor_user_id: actor, actor_role: ctx.role ?? null,
+        before_enabled: beforeE, after_enabled: afterE, before_tunables: JSON.stringify(beforeT), after_tunables: JSON.stringify(afterT), changed_keys: changed,
+      }).execute();
+      return { version };
+    });
   }
 }
 

@@ -10,7 +10,7 @@ import {
   type LoyaltyEnrollInput, type LoyaltyRedeemInput, type GiftCardInput, type NextApptInput,
   enforceAddedValueCap,
 } from './ai-checkout-upsell-core';
-import { resolveSettings, PLATFORM_DEFAULTS, effectiveAddedValueCapCents, type UpsellSettingsLayer, type EffectiveUpsellSettings } from './ai-checkout-upsell-settings';
+import { resolveSettings, settingSources, PLATFORM_DEFAULTS, effectiveAddedValueCapCents, type UpsellSettingsLayer, type EffectiveUpsellSettings } from './ai-checkout-upsell-settings';
 import { UpsellCache, contextFingerprint } from './ai-checkout-upsell.cache';
 import { isPaymentStage, type AiCheckoutUpsellContext, type CheckoutTicketView } from './ai-checkout-upsell.dto';
 import { runOnce, idempotencyKey, type IdempotencyStore } from './ai-checkout-upsell.idempotency';
@@ -36,7 +36,9 @@ export interface NextAppointmentPort { context(ctx: AiCheckoutUpsellContext, tic
 export interface TechnicianSchedulePort { nextAppointment(ctx: AiCheckoutUpsellContext, technicianId: string): Promise<{ startsInMinutes: number; startTime: string } | null>; }
 export interface UpsellSettingsPort {
   layers(ctx: AiCheckoutUpsellContext): Promise<{ tenant?: UpsellSettingsLayer; branch?: UpsellSettingsLayer; device?: UpsellSettingsLayer; user?: UpsellSettingsLayer }>;
-  setLayer?(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: UpsellSettingsLayer): Promise<void>;
+  setLayer?(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: UpsellSettingsLayer, expectedVersion?: number | null): Promise<unknown>;
+  /** the stored row for one layer (Checkout Upsell Settings guide: version + what the salon saved, not the resolved value) */
+  stored?(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user'): Promise<{ enabled: boolean | null; tunables: Record<string, unknown> | null; version: number; updatedAt: string | null; updatedByUserId: string | null }>;
 }
 
 export interface DismissalPort {
@@ -119,8 +121,16 @@ export class AiCheckoutUpsellService {
       { module: 'ai_checkout_upsell', action, resourceType: 'pos_checkout_ticket', resourceId: checkoutId, metadata: meta });
   }
 
+  /** Checkout Upsell Settings guide (Nov 2026): fails CLOSED — an unreadable settings table used to resolve to the platform
+   *  defaults (enabled, every category on) even for a salon that had switched the assistant off. Now the assistant is off
+   *  for that request (`disabledAtLevel: 'settings_unreadable'`) and checkout itself is untouched. */
   private async effectiveSettings(ctx: AiCheckoutUpsellContext): Promise<EffectiveUpsellSettings> {
-    const layers = await this.settings.layers(ctx).catch(() => ({}));
+    let layers: Awaited<ReturnType<UpsellSettingsPort['layers']>>;
+    try { layers = await this.settings.layers(ctx); }
+    catch (e) {
+      this.audit(ctx, 'ai_upsell_settings_unreadable', '-', { error: String((e as Error)?.message ?? e).slice(0, 120) });
+      return { enabled: false, disabledAtLevel: 'settings_unreadable', tunables: { ...PLATFORM_DEFAULTS } };
+    }
     return resolveSettings({ platform: PLATFORM_DEFAULTS, ...layers });
   }
 
@@ -223,19 +233,23 @@ export class AiCheckoutUpsellService {
   /** get_settings (§70) — effective settings for this scope. */
   async getEffectiveSettings(ctx: AiCheckoutUpsellContext) {
     this.need(ctx, VIEW);
-    return this.effectiveSettings(ctx);
+    // the settings PAGE must not show defaults it could not read — a read failure is an error there (503), not "Enabled"
+    const layers = await this.settings.layers(ctx);
+    const eff = resolveSettings({ platform: PLATFORM_DEFAULTS, ...layers });
+    const stored = this.settings.stored ? await this.settings.stored(ctx, 'tenant') : null;
+    return { ...eff, sources: settingSources(layers), salon: stored, platformDefaults: PLATFORM_DEFAULTS };
   }
 
   /** update_settings (§70/§88) — persist a per-scope override / kill switch. Manage-gated (settings.edit); requires the
    *  DB-backed settings port. Invalidates so a changed cap/toggle/disable takes effect immediately. */
-  async updateSettings(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: UpsellSettingsLayer) {
+  async updateSettings(ctx: AiCheckoutUpsellContext, level: 'tenant' | 'branch' | 'device' | 'user', patch: UpsellSettingsLayer, expectedVersion?: number | null) {
     this.need(ctx, 'settings.edit');
     if (!this.settings.setLayer) throw new Error('SETTINGS_NOT_PERSISTED');
     if (level === 'branch' && !ctx.branchId) throw new Error('BRANCH_NOT_AUTHORIZED');
-    await this.settings.setLayer(ctx, level, patch);
+    await this.settings.setLayer(ctx, level, patch, expectedVersion ?? null);
     await this.cache.invalidateTenant(ctx.tenantId);
-    this.audit(ctx, 'ai_upsell_settings_updated', '-', { level, enabled: patch.enabled });
-    return this.effectiveSettings(ctx);
+    this.audit(ctx, 'ai_upsell_settings_updated', '-', { level, enabled: patch.enabled, keys: Object.keys(patch.tunables ?? {}) });
+    return this.getEffectiveSettings(ctx);
   }
 
   // ============================ CONFIRMATION-GATED MUTATIONS (stage 3) ============================ (controller adds granular @RequirePermission(pos.ai_checkout_upsell.*), mapped in security-core).

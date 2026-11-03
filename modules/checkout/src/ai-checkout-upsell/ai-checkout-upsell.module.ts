@@ -25,6 +25,17 @@ import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { AuditService } from '@aipowersalon/audit';
 import { RedisCache, makeCacheRedis } from '@aipowersalon/ai';
 import { makeIoredis } from '@aipowersalon/cache';
+import { KyselyAiAccessRepo, evaluateAiAccess } from '@aipowersalon/ai';
+import { hasPermission } from '@aipowersalon/permissions';
+import { UpsellCenter, type UcCategory } from './upsell-center';
+import { UpsellCenterController, UPSELL_CENTER } from './upsell-center.controller';
+
+/** Checkout Upsell Settings guide (Nov 2026): which category switches have a REAL read path in this build. A dormant
+ *  adapter below answers nothing, so its switch can never produce a card — the settings page and the health check say so. */
+export const UPSELL_WIRED: Record<UcCategory, boolean> = {
+  addOnsEnabled: true, membershipEnabled: true,
+  productsEnabled: false, loyaltyEnrollEnabled: false, loyaltyRedeemEnabled: false, giftCardEnabled: false, rebookingEnabled: false,
+};
 
 // Dormant read adapters — return nothing until their real read path is wired (honest: no fabricated cards).
 const emptyProducts: ProductRecoPort = { async candidates() { return []; } };
@@ -35,7 +46,7 @@ const emptyNextAppt: NextAppointmentPort = { async context() { return null; } };
 
 @Module({
   imports: [ServingModule, ServicesModule, CheckoutModule, MembershipEnrollModule, MembershipsModule],
-  controllers: [AiCheckoutUpsellController],
+  controllers: [AiCheckoutUpsellController, UpsellCenterController],
   providers: [
     {
       provide: AiCheckoutUpsellService,
@@ -62,6 +73,17 @@ const emptyNextAppt: NextAppointmentPort = { async context() { return null; } };
       },
       inject: [ServingService, ServicesService, CheckoutService, MembershipEnrollService, MembershipsService, DATABASE, AuditService],
     },
+    { provide: UPSELL_CENTER, useFactory: (db: AppDatabase, svc: AiCheckoutUpsellService) => {
+        if (!db) return null;
+        const access = new KyselyAiAccessRepo(db as never);
+        return new UpsellCenter(db as never, {
+          settings: (c) => svc.getEffectiveSettings({ tenantId: c.tenantId, branchId: c.branchId ?? '', userId: String(c.userId ?? ''), role: c.role ?? '', permissions: c.permissions ?? [], deviceId: null } as never) as never,
+          entitlement: async (c) => { const d = evaluateAiAccess(await access.loadSnapshot(c.tenantId, 'ai_checkout_upsell_assistant', c.userId ?? null, { branchId: c.branchId || null }));
+            return { allowed: d.allowed, reason: d.reason, subscriptionStatus: String(d.subscriptionStatus) }; },
+          wired: UPSELL_WIRED,
+          canSeeCustomers: (c) => hasPermission(c as never, 'customers.view'),
+        });
+      }, inject: [DATABASE, AiCheckoutUpsellService] },
   ],
 })
 export class AiCheckoutUpsellModule {}

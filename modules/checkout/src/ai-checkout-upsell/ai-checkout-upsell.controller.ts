@@ -37,6 +37,9 @@ const STATUS: Record<string, number> = {
   LOYALTY_ENROLL_NOT_AVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
   LOYALTY_REDEEM_NOT_AVAILABLE: HttpStatus.SERVICE_UNAVAILABLE,
   SETTINGS_NOT_PERSISTED: HttpStatus.SERVICE_UNAVAILABLE,
+  // Checkout Upsell Settings guide (Nov 2026): a save is strict and versioned
+  UPSELL_SETTING_OUT_OF_RANGE: HttpStatus.BAD_REQUEST,
+  UPSELL_SETTINGS_VERSION_CONFLICT: HttpStatus.CONFLICT,
   INTERNAL_ERROR: HttpStatus.INTERNAL_SERVER_ERROR,
 };
 async function run<T>(fn: () => Promise<T>): Promise<T> {
@@ -95,7 +98,7 @@ export class AiCheckoutUpsellController {
   @Put('settings/:level') @RequirePermission('pos.settings.edit')
   updateSettings(@Req() r: any, @Param('level') level: string, @Body(ValidatedBody(UPSELL_SETTINGS_BODY, { strict: true })) b: any) {
     const lvl = (['tenant', 'branch', 'device', 'user'].includes(level) ? level : 'tenant') as any;
-    return run(() => this.svc.updateSettings(ctxFrom(r), lvl, { enabled: b?.enabled, tunables: b?.tunables }));
+    return run(() => this.svc.updateSettings(ctxFrom(r), lvl, { enabled: b?.enabled ?? undefined, tunables: b?.tunables ?? undefined }, typeof b?.expectedVersion === 'number' ? b.expectedVersion : null));
   }
 
   // ---- feedback (no charge; metadata only) ----

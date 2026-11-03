@@ -323,6 +323,9 @@ GET /pos/ai-business/revenue/explain-change  realm=staff  auth=session  domain=a
 GET /pos/ai-business/revenue/summary  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/saved-questions  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/technicians/performance  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-checkout-upsell/center/activity  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-checkout-upsell/center/history  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-checkout-upsell/center/summary  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-checkout-upsell/checkout/{checkoutId}/context  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-checkout-upsell/checkout/{checkoutId}/recommendations  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-checkout-upsell/settings  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2385,6 +2388,7 @@ POST /pos/ai-business/ask  realm=staff  auth=session  domain=analytics  perm=pos
 POST /pos/ai-business/reports  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/saved-questions  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/saved-questions/{id}/use  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-checkout-upsell/center/check  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-checkout-upsell/checkout/{checkoutId}/addons/{addOnId}/add  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-checkout-upsell/checkout/{checkoutId}/dismiss  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-checkout-upsell/checkout/{checkoutId}/feedback  realm=staff  auth=session  domain=checkout  perm=pos.ai_checkout_upsell.view  guards=RolePermissionGuard,TenantAuthGuard

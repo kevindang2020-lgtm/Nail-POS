@@ -7234,6 +7234,8 @@ export interface DB {
   receipt_scanner_health_runs: ReceiptScannerHealthRunsTable;
   ai_usage_health_runs: AiUsageHealthRunsTable;
   scheduling_optimizer_health_runs: SchedulingOptimizerHealthRunsTable;
+  ai_checkout_upsell_settings_history: AiCheckoutUpsellSettingsHistoryTable;
+  checkout_upsell_health_runs: CheckoutUpsellHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
@@ -8315,6 +8317,15 @@ export interface AiCheckoutUpsellSettingsTable {
   enabled: boolean | null; tunables: unknown | null; updated_by_user_id: string | null;
   created_at: Generated<string>; updated_at: Generated<string>;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  version: Generated<number>;   // migration 773 (Checkout Upsell Settings guide): the editor's expectedVersion
+}
+export interface AiCheckoutUpsellSettingsHistoryTable {   // migration 773 — append-only before/after of every settings save
+  id: Generated<string>; tenant_id: string; level: string; branch_id: string | null; device_id: string | null; user_id: string | null; version: number;
+  actor_user_id: string | null; actor_role: string | null; before_enabled: boolean | null; after_enabled: boolean | null;
+  before_tunables: Generated<unknown>; after_tunables: Generated<unknown>; changed_keys: Generated<string[]>; created_at: Generated<Ts>;
+}
+export interface CheckoutUpsellHealthRunsTable {   // migration 773 — read-only "Check Checkout Upsell System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface AiCheckoutUpsellRecommendationsTable {
   id: Generated<string>; tenant_id: string; branch_id: string; checkout_id: string; customer_id: string | null;
