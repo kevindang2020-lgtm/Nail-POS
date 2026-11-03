@@ -732,7 +732,7 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
 - **Done: AI Scheduling Optimizer** (guide 16 — docs/ai/SCHEDULING_OPTIMIZER.md). 
 - **Done: Checkout Upsell Settings** (guide 17 — docs/ai/CHECKOUT_UPSELL_SETTINGS.md). 
 - **Done: Voice Transcription Settings** (guide 18 — docs/ai/VOICE_TRANSCRIPTION_SETTINGS.md). 
-- **Done: Voice Transcription Follow-Ups** (guide 19 — docs/ai/VOICE_TRANSCRIPTION_FOLLOW_UPS.md). **Next: AI Center** (guide 27).
+- **Done: Voice Transcription Follow-Ups** (guide 19 — docs/ai/VOICE_TRANSCRIPTION_FOLLOW_UPS.md). **Next: AI Center** (guide 27) — BLOCKED: its guide text is not in the uploaded files; waiting on Kevin.
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
