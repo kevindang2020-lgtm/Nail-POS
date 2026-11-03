@@ -2,17 +2,17 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3788 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3791 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3788 |
+| all HTTP routes | 3791 |
 | realm `customer` | 165 |
 | realm `shared` | 282 |
-| realm `staff` | 2169 |
+| realm `staff` | 2172 |
 | realm `super_admin` | 1172 |
 | public (no session; each one reviewed by `check:public`) | 123 |
 | integration key / OAuth (`auth=api_key`) | 13 |
@@ -166,7 +166,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | method | path | handler | auth |
 |---|---|---|---|
 | POST | `/internal/ai-billing/webhook` | modules/ai/src/ai/ai-subscription-billing.service.ts:42 | public |
-| POST | `/voice-transcription/webhook` | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts:166 | api_key |
+| POST | `/voice-transcription/webhook` | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts:170 | api_key |
 | POST | `/webhooks/bank/{token}` | modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.controller.ts:17 | public |
 | POST | `/webhooks/email/sendgrid` | modules/communications/src/email/email-public.controller.ts:25 | public |
 | POST | `/webhooks/payments/{processor}` | modules/payments/src/payments/payment-webhook.controller.ts:18 | public |

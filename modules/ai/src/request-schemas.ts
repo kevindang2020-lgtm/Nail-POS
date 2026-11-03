@@ -186,7 +186,8 @@ export const VT_CONSENT_BODY: BodySchema = S.object({
 });
 export const VT_INGEST_BODY: BodySchema = S.object({ provider: text(64), providerCallId: text(200), customerId: id, recordingRef: text(2000), languageHint: text(32) }, [], { 'x-forbidden': ['status', 'redactionStatus'] });
 export const VT_LEGAL_HOLD_BODY: BodySchema = S.object({ hold: { type: ['boolean', 'string', 'number', 'null'], maxLength: 8 } });
-export const VT_SETTINGS_BODY: BodySchema = S.object({ transcriptionEnabled: bool, retentionDays: numish, retainRaw: bool, consentAnnouncementVersion: text(64) });
+export const VT_SETTINGS_BODY: BodySchema = S.object({ transcriptionEnabled: bool, retentionDays: numish, retainRaw: bool, consentAnnouncementVersion: text(64),
+  expectedVersion: numish, confirm: bool });   // Voice Transcription Settings guide (Nov 2026): versioned save + sensitive-change confirm
 export const VT_DELETE_BODY: BodySchema = S.object({ reason: text(500) });
 export const VT_RETENTION_SWEEP_BODY: BodySchema = S.object({ limit: numish });
 /** the transcription provider's call webhook (integration-key authenticated): our consent block + the provider's call ids */

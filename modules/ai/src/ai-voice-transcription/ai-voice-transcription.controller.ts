@@ -13,7 +13,7 @@ import { VoiceKeyRateLimitGuard } from '@aipowersalon/security/nest';
 import { VoiceTranscriptionService } from './ai-voice-transcription.service';
 import {
   VoiceTranscriptionForbiddenError, VoiceTranscriptionValidationError, VoiceTranscriptionDisabledError,
-  ConsentRequiredError, type VoiceTranscriptionContext,
+  ConsentRequiredError, VoiceSettingsConflictError, VoiceSettingsConfirmRequiredError, VoiceSettingsUnavailableError, type VoiceTranscriptionContext,
 } from './ai-voice-transcription.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { VoiceTranscriptionControllerListQueries } from './ai-voice-transcription.list-queries';
@@ -29,6 +29,10 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
     if (e instanceof VoiceTranscriptionDisabledError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
     if (e instanceof ConsentRequiredError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
     if (e instanceof VoiceTranscriptionValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    // Voice Transcription Settings guide (Nov 2026)
+    if (e instanceof VoiceSettingsConflictError) throw new HttpException({ code: 'VT_SETTINGS_VERSION_CONFLICT', message: 'These settings were changed by someone else. Reload and try again.', currentVersion: e.currentVersion }, HttpStatus.CONFLICT);
+    if (e instanceof VoiceSettingsConfirmRequiredError) throw new HttpException({ code: 'VT_CONFIRM_REQUIRED', message: 'This change needs confirmation.', impact: e.impact }, HttpStatus.CONFLICT);
+    if (e instanceof VoiceSettingsUnavailableError) throw new HttpException({ code: 'VT_SETTINGS_UNAVAILABLE', message: 'The transcription settings could not be read.' }, HttpStatus.SERVICE_UNAVAILABLE);
     throw e;
   }
 }
@@ -65,7 +69,7 @@ export class VoiceTranscriptionController {
       retentionDays: b?.retentionDays != null ? +b.retentionDays : undefined,
       retainRaw: typeof b?.retainRaw === 'boolean' ? b.retainRaw : undefined,
       consentAnnouncementVersion: b?.consentAnnouncementVersion !== undefined ? b.consentAnnouncementVersion : undefined,
-    }));
+    }, { expectedVersion: b?.expectedVersion != null ? +b.expectedVersion : null, confirm: b?.confirm === true }));
   }
 
   @Get('transcripts')

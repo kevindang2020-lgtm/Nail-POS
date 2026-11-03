@@ -18,10 +18,14 @@ import { InMemoryVoiceTranscriptionRepository, type VoiceTranscriptionRepository
 import { KyselyVoiceTranscriptionRepository } from './ai-voice-transcription.kysely.repository';
 import { InMemoryVoiceEntitlement, KyselyVoiceEntitlement, type VoiceEntitlementPort } from './ai-voice-transcription-entitlement';
 import { resolveTranscriptionProvider, type TranscriptionProviderPort } from './ai-voice-transcription.provider';
+import { VoiceSettingsCenter } from './voice-settings-center';
+import { VoiceSettingsCenterController, VOICE_SETTINGS_CENTER } from './voice-settings-center.controller';
+import { voiceRetentionSweepCronEnabled } from './ai-voice-transcription-retention.scheduler';
+import { runsBackgroundJob } from '@aipowersalon/config';
 
 @Module({
   imports: [AiModule, VoiceBookingModule],
-  controllers: [VoiceTranscriptionController, VoiceTranscriptionWebhookController, VoiceTranscriptionSuperAdminController],
+  controllers: [VoiceTranscriptionController, VoiceTranscriptionWebhookController, VoiceTranscriptionSuperAdminController, VoiceSettingsCenterController],
   providers: [
     VoiceAuthGuard,
     SuperAdminGuard,
@@ -52,6 +56,17 @@ import { resolveTranscriptionProvider, type TranscriptionProviderPort } from './
         new VoiceTranscriptionService(repo, provider, ent, undefined, undefined, voiceSummarizeAdapter(platform), undefined, usage),
       inject: ['VoiceTranscriptionRepositoryPort', 'TranscriptionProviderPort', 'VoiceTranscriptionEntitlementPort', 'VoiceTranscriptionUsageLogger', AiPlatform],
     },
+    // Voice Transcription Settings guide (Nov 2026): the settings page's read side — null without a database
+    { provide: VOICE_SETTINGS_CENTER, useFactory: (db: AppDatabase, svc: VoiceTranscriptionService, ent: VoiceEntitlementPort, provider: TranscriptionProviderPort) => {
+        if (!db) return null;
+        return new VoiceSettingsCenter(db as never, {
+          settings: (c) => svc.settingsView({ tenantId: c.tenantId, branchId: c.branchId ?? null, userId: c.userId ?? '', role: c.role ?? '', permissions: c.permissions ?? [] } as never),
+          entitled: (tenantId) => ent.hasVoiceTranscription(tenantId),
+          // the mock provider (no VOICE_TRANSCRIPTION_PROVIDER configured) is "not configured", never "healthy"
+          providerHealthy: async () => (provider.name === 'mock' ? null : provider.healthy()),
+          sweepArmedHere: () => runsBackgroundJob('ai') && voiceRetentionSweepCronEnabled(),
+        });
+      }, inject: [DATABASE, VoiceTranscriptionService, 'VoiceTranscriptionEntitlementPort', 'TranscriptionProviderPort'] },
   ],
   exports: [VoiceTranscriptionService],
 })

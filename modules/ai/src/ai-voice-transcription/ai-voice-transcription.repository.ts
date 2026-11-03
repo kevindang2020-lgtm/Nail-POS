@@ -2,8 +2,9 @@
 // (the ctx.tenantId is the only tenant a call can touch). Transcript upsert is idempotent on
 // (tenant, provider, providerCallId) so a redelivered webhook/retry never duplicates a transcript.
 import type {
-  VoiceTranscriptionContext, ConsentRecord, TranscriptHeader, TranscriptSegment, TranscriptStatus, RedactionStatus,
+  VoiceTranscriptionContext, ConsentRecord, TranscriptHeader, TranscriptSegment, TranscriptStatus, RedactionStatus, VoiceSettingsImpact,
 } from './ai-voice-transcription.dto';
+import { VoiceSettingsConflictError, VoiceSettingsConfirmRequiredError } from './ai-voice-transcription.dto';
 import { parseTerms, matchesAllTerms, snippet } from './ai-voice-transcription-search';
 import { decodeCursor, encodeCursor } from '@aipowersalon/api-contracts';
 
@@ -78,11 +79,26 @@ export interface PlatformTranscriptionAggregate {
 export interface UnresolvedRow { header: TranscriptHeader; quickSummary: string; unresolved: any[]; }
 
 export interface VoiceSettings { transcriptionEnabled: boolean; retentionDays: number; retainRaw: boolean; consentAnnouncementVersion: string | null; }
+/** the sensitive changes a save makes (each needs an explicit confirm) */
+export function voiceSensitiveChanges(cur: VoiceSettings, next: VoiceSettings): string[] {
+  return [
+    ...(next.retentionDays < cur.retentionDays ? ['retention_shortened'] : []),
+    ...(!cur.retainRaw && next.retainRaw ? ['raw_on'] : []),
+    ...(cur.retainRaw && !next.retainRaw ? ['raw_off'] : []),
+    ...(cur.transcriptionEnabled && !next.transcriptionEnabled ? ['transcription_off'] : []),
+  ];
+}
 
 export interface VoiceTranscriptionRepositoryPort {
   overview(ctx: VoiceTranscriptionContext): Promise<TranscriptionOverview>;
   getSettings(ctx: VoiceTranscriptionContext): Promise<VoiceSettings | null>;
   saveSettings(ctx: VoiceTranscriptionContext, s: VoiceSettings): Promise<VoiceSettings>;
+  /** Voice Transcription Settings guide (Nov 2026): one transaction — version check, impact, sensitive-change confirmation,
+   *  apply (incl. moving deletion dates / purging raw text), append history. */
+  applySettings?(ctx: VoiceTranscriptionContext, next: VoiceSettings, opts: { expectedVersion: number | null; confirm: boolean; defaults: VoiceSettings }): Promise<{ settings: VoiceSettings; version: number; impact: VoiceSettingsImpact }>;
+  settingsMeta?(ctx: VoiceTranscriptionContext): Promise<{ version: number; updatedAt: string | null; updatedBy: string | null }>;
+  /** log a raw-text view BEFORE it is returned (throws → the view is refused) */
+  recordRawAccess?(ctx: VoiceTranscriptionContext, transcriptId: string): Promise<void>;
   // Transcripts with open follow-up items (from intelligence). Tenant-scoped; excludes deleted.
   listUnresolved(ctx: VoiceTranscriptionContext, limit?: number): Promise<{ items: UnresolvedRow[] }>;
   // Super-Admin: cross-tenant COUNTS only — never transcript content or tenant identifiers beyond an active count.
@@ -124,6 +140,20 @@ export class InMemoryVoiceTranscriptionRepository implements VoiceTranscriptionR
 
   async getSettings(ctx: VoiceTranscriptionContext): Promise<VoiceSettings | null> {
     return this.settings.get(ctx.tenantId) ?? null;
+  }
+  private versions = new Map<string, number>();
+  readonly rawAccess: { tenantId: string; transcriptId: string; userId: string | null }[] = [];
+  async settingsMeta(ctx: VoiceTranscriptionContext) { return { version: this.versions.get(ctx.tenantId) ?? 0, updatedAt: null, updatedBy: null }; }
+  async recordRawAccess(ctx: VoiceTranscriptionContext, transcriptId: string) { this.rawAccess.push({ tenantId: ctx.tenantId, transcriptId, userId: ctx.userId ?? null }); }
+  async applySettings(ctx: VoiceTranscriptionContext, next: VoiceSettings, opts: { expectedVersion: number | null; confirm: boolean; defaults: VoiceSettings }) {
+    const cur = this.settings.get(ctx.tenantId) ?? opts.defaults;
+    const v = this.versions.get(ctx.tenantId) ?? 0;
+    if (opts.expectedVersion != null && opts.expectedVersion !== v) throw new VoiceSettingsConflictError(v);
+    const sensitive = voiceSensitiveChanges(cur, next);
+    const impact: VoiceSettingsImpact = { sensitive, transcripts: 0, dueNow: 0, rawToPurge: 0 };
+    if (sensitive.length && !opts.confirm) throw new VoiceSettingsConfirmRequiredError(impact);
+    this.settings.set(ctx.tenantId, { ...next }); this.versions.set(ctx.tenantId, v + 1);
+    return { settings: { ...next }, version: v + 1, impact };
   }
   async saveSettings(ctx: VoiceTranscriptionContext, s: VoiceSettings): Promise<VoiceSettings> {
     this.settings.set(ctx.tenantId, { ...s }); return { ...s };

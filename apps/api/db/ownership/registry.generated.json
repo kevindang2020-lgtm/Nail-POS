@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 915,
+  "tables": 918,
   "ownership": {
-   "tenant_owned": 605,
+   "tenant_owned": 608,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 124,
+   "AI": 127,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -41,7 +41,7 @@
    "TENANTS": 27
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 134,
+   "HIGHLY_SENSITIVE": 137,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
    "INTERNAL": 499,
@@ -11117,6 +11117,19 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "voice_settings_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): read-only Check Voice Transcription Settings runs"
+  },
   "voice_tool_executions": {
    "ownership": "tenant_branch_owned",
    "class": "C",
@@ -11129,6 +11142,19 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "voice_transcript_access_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): every raw (pre-redaction) transcript view, logged before it is shown"
+  },
   "voice_transcription_settings": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -11140,6 +11166,19 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "voice_transcription_settings_history": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): append-only before/after of every voice transcription settings save"
   },
   "wallet_topup_intents": {
    "ownership": "tenant_owned",

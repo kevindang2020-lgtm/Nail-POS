@@ -14282,3 +14282,171 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `ucx.health.d.settings_history.WARNING` | The settings were changed but no history was recorded. | Cài đặt đã thay đổi nhưng không có lịch sử. |
 | `ucx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
 | `ucx.health.d.no_side_effects.PASSED` | This page and this check never add to a ticket, charge, enroll, redeem, issue, book or message. | Trang này và việc kiểm tra không thêm vào hóa đơn, không tính tiền, không đăng ký, không đổi điểm, không phát thẻ, không đặt lịch, không gửi tin. |
+
+## Voice Transcription Settings (`vsx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `vsx.check` | Check Voice Transcription Settings | Kiểm tra cài đặt chép lời cuộc gọi |
+| `vsx.close` | Close | Đóng |
+| `vsx.cancel` | Cancel | Hủy |
+| `vsx.err.forbidden` | You do not have access to these voice settings or records. | Bạn không có quyền xem cài đặt hoặc hồ sơ cuộc gọi này. |
+| `vsx.err.conflict` | Someone else saved these settings a moment ago. The latest values are shown — make your change again. | Có người vừa lưu cài đặt này. Đang hiển thị giá trị mới nhất — hãy thay đổi lại. |
+| `vsx.err.period` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `vsx.loadFailed` | This could not be loaded. Try again or run the check — this is not "no records". | Không tải được. Hãy thử lại hoặc chạy kiểm tra — đây không phải là "không có hồ sơ". |
+| `vsx.kpi.transcription` | Transcription | Chép lời |
+| `vsx.kpi.redaction` | Sensitive-data redaction | Che thông tin nhạy cảm |
+| `vsx.kpi.retention` | Retention window | Thời gian lưu |
+| `vsx.kpi.raw` | Raw (pre-redaction) text | Văn bản gốc (chưa che) |
+| `vsx.alwaysOn` | Always on | Luôn bật |
+| `vsx.on` | On | Bật |
+| `vsx.off` | Off | Tắt |
+| `vsx.days` | {n} days | {n} ngày |
+| `vsx.lastProcessed` | Last call transcribed {at} | Cuộc gọi chép lời gần nhất {at} |
+| `vsx.noneProcessed` | No call transcribed yet | Chưa chép lời cuộc gọi nào |
+| `vsx.redactionIssues` | {failed} failed · {stuck} waiting over an hour | {failed} lỗi · {stuck} chờ quá một giờ |
+| `vsx.overdue` | {n} past their deletion date | {n} đã quá ngày xóa |
+| `vsx.nextDue` | Next deletion {at} | Lần xóa kế tiếp {at} |
+| `vsx.rawStored` | {n} calls hold raw text | {n} cuộc gọi đang lưu văn bản gốc |
+| `vsx.redactionNote` | Card numbers, codes and other sensitive details are removed before a transcript is shown, searched, summarized or exported. This cannot be turned off. | Số thẻ, mã xác minh và thông tin nhạy cảm khác được che trước khi hiển thị, tìm kiếm, tóm tắt hoặc xuất. Không thể tắt. |
+| `vsx.consentNote` | A version label is a reference, not proof of consent — check that your call greeting actually plays it. | Mã phiên bản chỉ để tham chiếu, không chứng minh khách đã đồng ý — hãy kiểm tra lời chào cuộc gọi có phát đúng phiên bản. |
+| `vsx.unsaved` | {n} unsaved change(s) | {n} thay đổi chưa lưu |
+| `vsx.savedVersion` | Saved version {v} · {at} | Đã lưu phiên bản {v} · {at} |
+| `vsx.defaults` | Using the default policy (never saved) | Đang dùng chính sách mặc định (chưa lưu lần nào) |
+| `vsx.nothingChanged` | Nothing changed. | Không có thay đổi. |
+| `vsx.subRestricted` | The AI subscription does not allow transcription right now. Calls still ring and book normally; history stays readable. | Gói AI hiện không cho phép chép lời. Cuộc gọi và đặt lịch vẫn bình thường; lịch sử vẫn xem được. |
+| `vsx.st.title` | What is actually happening | Tình trạng thực tế |
+| `vsx.st.calls` | Last 30 days: {calls} calls · {ok} transcribed · {consent} blocked by consent · {failed} failed | 30 ngày qua: {calls} cuộc gọi · {ok} đã chép lời · {consent} bị chặn vì chưa đồng ý · {failed} lỗi |
+| `vsx.st.deletions` | Last 30 days: {n} transcripts erased, {unconfirmed} without provider confirmation · last {at} | 30 ngày qua: đã xóa {n} bản chép lời, {unconfirmed} chưa được nhà cung cấp xác nhận · lần cuối {at} |
+| `vsx.st.holds` | {n} calls on legal hold (never erased while held) | {n} cuộc gọi đang bị giữ pháp lý (không xóa khi đang giữ) |
+| `vsx.st.sweepNotHere` | The automatic deletion job is not running on this server; it may run on a worker. The check below shows whether deletions are overdue. | Tác vụ xóa tự động không chạy trên máy chủ này; có thể chạy trên máy khác. Mục kiểm tra bên dưới cho biết có bản nào quá hạn xóa không. |
+| `vsx.st.consentUsed` | Announcement versions calls played (30 days) | Phiên bản lời thông báo đã phát (30 ngày) |
+| `vsx.st.noConsent` | No consent records in the last 30 days. | Không có ghi nhận đồng ý trong 30 ngày qua. |
+| `vsx.st.noVersion` | no version | không có phiên bản |
+| `vsx.st.mismatch` | {n} calls played a version other than {v}. | {n} cuộc gọi đã phát phiên bản khác {v}. |
+| `vsx.link.history` | Call History | Lịch sử cuộc gọi |
+| `vsx.link.search` | Voice Search | Tìm cuộc gọi |
+| `vsx.link.followups` | Follow-ups | Việc cần theo dõi |
+| `vsx.confirm.title` | Confirm this change | Xác nhận thay đổi |
+| `vsx.confirm.yes` | Save this change | Lưu thay đổi |
+| `vsx.confirm.retention_shortened` | Shorter retention: {transcripts} stored calls get the new deletion date; {due} are already past it and will be erased by the next deletion run (legal holds are kept). | Thời gian lưu ngắn hơn: {transcripts} cuộc gọi đã lưu được đặt ngày xóa mới; {due} cuộc đã quá hạn và sẽ bị xóa ở lần xóa kế tiếp (bản đang giữ pháp lý được giữ lại). |
+| `vsx.confirm.raw_on` | Raw text ON: unredacted words are stored for new calls. Only people with raw-text permission can open them, and every view is logged. | Bật văn bản gốc: lời chưa che sẽ được lưu cho cuộc gọi mới. Chỉ người có quyền mới mở được, và mọi lần xem đều được ghi lại. |
+| `vsx.confirm.raw_off` | Raw text OFF: the raw text already stored for {raw} calls is removed now and cannot be recovered (legal holds keep theirs). | Tắt văn bản gốc: văn bản gốc đã lưu của {raw} cuộc gọi sẽ bị xóa ngay và không khôi phục được (bản giữ pháp lý được giữ lại). |
+| `vsx.confirm.transcription_off` | Transcription OFF: new calls are not transcribed, so Voice Search, summaries and new follow-up suggestions stop for them. Calls, bookings and existing follow-ups are not affected. | Tắt chép lời: cuộc gọi mới sẽ không được chép lời nên Tìm cuộc gọi, tóm tắt và gợi ý theo dõi mới sẽ ngừng cho các cuộc đó. Cuộc gọi, đặt lịch và việc theo dõi hiện có không bị ảnh hưởng. |
+| `vsx.confirm.note` | This is recorded in the settings history with your name. | Thay đổi này được ghi vào lịch sử cài đặt kèm tên bạn. |
+| `vsx.records` | Records | Hồ sơ |
+| `vsx.newestFirst` | newest first | mới nhất trước |
+| `vsx.searchPh` | Setting, staff name, role, reason, record ID | Cài đặt, tên nhân viên, vai trò, lý do, mã hồ sơ |
+| `vsx.search` | Search | Tìm |
+| `vsx.kindLabel` | Record type | Loại hồ sơ |
+| `vsx.loading` | Loading… | Đang tải… |
+| `vsx.noRecords` | No records match these filters. | Không có hồ sơ nào khớp bộ lọc. |
+| `vsx.rows` | Rows | Số dòng |
+| `vsx.providerConfirmed` | Provider confirmed deletion | Nhà cung cấp đã xác nhận xóa |
+| `vsx.providerNotConfirmed` | Not confirmed by the provider | Nhà cung cấp chưa xác nhận |
+| `vsx.viewedRaw` | Opened raw text | Đã mở văn bản gốc |
+| `vsx.actor.system` | Automatic | Tự động |
+| `vsx.actor.staff` | Staff | Nhân viên |
+| `vsx.health.running` | Checking… | Đang kiểm tra… |
+| `vsx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `vsx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `vsx.health.readOnly` | Read-only: it never places a call, transcribes, deletes, purges or sends a message. | Chỉ đọc: không gọi điện, không chép lời, không xóa, không gửi tin nhắn. |
+| `vsx.tx.on` | On | Đang bật |
+| `vsx.tx.off` | Off | Đang tắt |
+| `vsx.tx.subscription_restricted` | Subscription restricted | Gói bị giới hạn |
+| `vsx.tx.unknown` | Unknown — could not be read | Không rõ — không đọc được |
+| `vsx.kind.all` | All records | Mọi hồ sơ |
+| `vsx.kind.settings` | Settings change | Thay đổi cài đặt |
+| `vsx.kind.deletion` | Deletion | Xóa |
+| `vsx.kind.failure` | Processing failure | Lỗi xử lý |
+| `vsx.kind.raw_access` | Raw-text view | Xem văn bản gốc |
+| `vsx.preset.all` | All time | Mọi thời gian |
+| `vsx.preset.today` | Today | Hôm nay |
+| `vsx.preset.yesterday` | Yesterday | Hôm qua |
+| `vsx.preset.week` | This week | Tuần này |
+| `vsx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `vsx.preset.month` | This month | Tháng này |
+| `vsx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `vsx.preset.last_month` | Last month | Tháng trước |
+| `vsx.preset.year` | This year | Năm nay |
+| `vsx.preset.custom` | Custom range | Tùy chọn |
+| `vsx.col.when` | When | Thời điểm |
+| `vsx.col.kind` | Type | Loại |
+| `vsx.col.what` | What | Nội dung |
+| `vsx.col.by` | By | Người thực hiện |
+| `vsx.key.transcriptionEnabled` | Transcription | Chép lời |
+| `vsx.key.retentionDays` | Retention window | Thời gian lưu |
+| `vsx.key.retainRaw` | Raw text | Văn bản gốc |
+| `vsx.key.consentAnnouncementVersion` | Announcement version | Phiên bản lời thông báo |
+| `vsx.reason.retention_expired` | Retention window ended | Hết thời gian lưu |
+| `vsx.reason.tenant_request` | Salon request | Tiệm yêu cầu |
+| `vsx.reason.customer_request` | Customer request | Khách yêu cầu |
+| `vsx.reason.manual` | Deleted by staff | Nhân viên xóa |
+| `vsx.reason.admin` | Platform admin | Quản trị hệ thống |
+| `vsx.reason.other` | Deleted | Đã xóa |
+| `vsx.fail.provider_error` | Provider error | Lỗi nhà cung cấp |
+| `vsx.fail.failed` | Failed | Lỗi |
+| `vsx.fail.audio_unavailable` | No audio | Không có âm thanh |
+| `vsx.fail.manual_review_required` | Needs manual review | Cần xem thủ công |
+| `vsx.health.PASSED` | Passed | Đạt |
+| `vsx.health.WARNING` | Warning | Cảnh báo |
+| `vsx.health.FAILED` | Failed | Lỗi |
+| `vsx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `vsx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `vsx.health.k.settings_readable` | Settings readable | Đọc được cài đặt |
+| `vsx.health.d.settings_readable.PASSED` | The salon's policy was read. | Đã đọc được chính sách của tiệm. |
+| `vsx.health.d.settings_readable.FAILED` | The policy could not be read — new calls are not transcribed until it can be. | Không đọc được chính sách — cuộc gọi mới sẽ không được chép lời cho đến khi đọc được. |
+| `vsx.health.k.subscription` | AI subscription | Gói AI |
+| `vsx.health.d.subscription.PASSED` | The subscription allows transcription. | Gói cho phép chép lời. |
+| `vsx.health.d.subscription.FAILED` | The subscription does not allow transcription. Calls and bookings keep working. | Gói không cho phép chép lời. Cuộc gọi và đặt lịch vẫn hoạt động. |
+| `vsx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái gói. |
+| `vsx.health.k.provider` | Transcription provider | Nhà cung cấp chép lời |
+| `vsx.health.d.provider.PASSED` | The transcription provider answers. | Nhà cung cấp chép lời đang phản hồi. |
+| `vsx.health.d.provider.WARNING` | No transcription provider is configured on this server — ask your developer to set one up. | Máy chủ chưa cấu hình nhà cung cấp chép lời — hãy nhờ kỹ thuật thiết lập. |
+| `vsx.health.d.provider.FAILED` | The transcription provider does not answer. | Nhà cung cấp chép lời không phản hồi. |
+| `vsx.health.k.transcription_pipeline` | Calls being transcribed | Cuộc gọi đang được chép lời |
+| `vsx.health.d.transcription_pipeline.PASSED` | Calls in the last 30 days were transcribed. | Cuộc gọi trong 30 ngày qua đã được chép lời. |
+| `vsx.health.d.transcription_pipeline.WARNING` | Transcription is off by policy, or some calls failed in the last 30 days. | Chép lời đang tắt theo chính sách, hoặc một số cuộc gọi bị lỗi trong 30 ngày qua. |
+| `vsx.health.d.transcription_pipeline.FAILED` | Most calls in the last 30 days failed to transcribe. | Phần lớn cuộc gọi trong 30 ngày qua chép lời bị lỗi. |
+| `vsx.health.d.transcription_pipeline.INSUFFICIENT_DATA` | No calls in the last 30 days — zero is not proof transcription works. | Không có cuộc gọi trong 30 ngày qua — số 0 không chứng minh hệ thống đang chạy. |
+| `vsx.health.k.redaction` | Redaction finished | Đã che xong |
+| `vsx.health.d.redaction.PASSED` | Every finished transcript was redacted. | Mọi bản chép lời đã xong đều được che. |
+| `vsx.health.d.redaction.WARNING` | Some transcripts have waited over an hour for redaction. | Một số bản chép lời đã chờ che quá một giờ. |
+| `vsx.health.d.redaction.FAILED` | Redaction failed on some transcripts. Report this immediately. | Việc che bị lỗi ở một số bản chép lời. Hãy báo ngay. |
+| `vsx.health.k.raw_text_policy` | Raw text matches the policy | Văn bản gốc khớp chính sách |
+| `vsx.health.d.raw_text_policy.PASSED` | Raw text is stored only where the policy allows it. | Văn bản gốc chỉ được lưu khi chính sách cho phép. |
+| `vsx.health.d.raw_text_policy.FAILED` | Raw text is stored although the policy says off. Save the policy again (raw off) to purge it, and report this. | Văn bản gốc vẫn được lưu dù chính sách đang tắt. Hãy lưu lại chính sách (tắt văn bản gốc) để xóa, và báo lại. |
+| `vsx.health.d.raw_text_policy.UNAVAILABLE` | Could not tell — the settings were unreadable. | Không xác định được — không đọc được cài đặt. |
+| `vsx.health.k.raw_text_orphans` | No hidden raw text | Không còn văn bản gốc ẩn |
+| `vsx.health.d.raw_text_orphans.PASSED` | No raw text is left behind on transcripts marked without it. | Không còn văn bản gốc sót lại ở bản chép lời đã đánh dấu không có. |
+| `vsx.health.d.raw_text_orphans.FAILED` | Raw text was found on transcripts marked without it. Report this immediately. | Tìm thấy văn bản gốc ở bản chép lời đã đánh dấu không có. Hãy báo ngay. |
+| `vsx.health.k.retention_dates` | Deletion dates match the window | Ngày xóa khớp thời gian lưu |
+| `vsx.health.d.retention_dates.PASSED` | Every stored call's deletion date follows the current window. | Ngày xóa của mọi cuộc gọi đã lưu đều theo thời gian lưu hiện tại. |
+| `vsx.health.d.retention_dates.WARNING` | Some calls still carry a deletion date from an older window. Save the retention window again to re-date them. | Một số cuộc gọi vẫn mang ngày xóa theo thời gian lưu cũ. Hãy lưu lại thời gian lưu để cập nhật. |
+| `vsx.health.d.retention_dates.UNAVAILABLE` | Could not tell — the settings were unreadable. | Không xác định được — không đọc được cài đặt. |
+| `vsx.health.k.retention_sweep` | Deletions on time | Xóa đúng hạn |
+| `vsx.health.d.retention_sweep.PASSED` | No call is more than a day past its deletion date. | Không có cuộc gọi nào quá ngày xóa hơn một ngày. |
+| `vsx.health.d.retention_sweep.FAILED` | Calls are past their deletion date and still stored — the automatic deletion job is not running. Ask your developer to enable it. | Có cuộc gọi đã quá ngày xóa nhưng vẫn còn lưu — tác vụ xóa tự động không chạy. Hãy nhờ kỹ thuật bật lại. |
+| `vsx.health.k.provider_deletion` | Provider deletion confirmed | Nhà cung cấp xác nhận xóa |
+| `vsx.health.d.provider_deletion.PASSED` | Every deletion in the last 30 days was confirmed by the provider. | Mọi lần xóa trong 30 ngày qua đều được nhà cung cấp xác nhận. |
+| `vsx.health.d.provider_deletion.WARNING` | Some deletions were not confirmed by the provider — their copy may still exist. | Một số lần xóa chưa được nhà cung cấp xác nhận — bản sao của họ có thể vẫn còn. |
+| `vsx.health.d.provider_deletion.INSUFFICIENT_DATA` | No deletions in the last 30 days. | Không có lần xóa nào trong 30 ngày qua. |
+| `vsx.health.k.legal_holds_kept` | Legal holds respected | Tôn trọng giữ pháp lý |
+| `vsx.health.d.legal_holds_kept.PASSED` | No call on legal hold was deleted. | Không có cuộc gọi đang giữ pháp lý nào bị xóa. |
+| `vsx.health.d.legal_holds_kept.FAILED` | A call on legal hold was deleted. Report this immediately. | Có cuộc gọi đang giữ pháp lý bị xóa. Hãy báo ngay. |
+| `vsx.health.k.consent_version` | Announcement version | Phiên bản lời thông báo |
+| `vsx.health.d.consent_version.PASSED` | Calls played the announcement version saved here. | Cuộc gọi đã phát đúng phiên bản lời thông báo đã lưu. |
+| `vsx.health.d.consent_version.WARNING` | No version is saved, or calls played a different version than the one saved here. | Chưa lưu phiên bản, hoặc cuộc gọi đã phát phiên bản khác với bản đã lưu. |
+| `vsx.health.d.consent_version.INSUFFICIENT_DATA` | No consent records in the last 30 days. | Không có ghi nhận đồng ý trong 30 ngày qua. |
+| `vsx.health.d.consent_version.UNAVAILABLE` | Could not tell — the settings were unreadable. | Không xác định được — không đọc được cài đặt. |
+| `vsx.health.k.no_unauthorized_text` | Nothing stored without consent | Không lưu khi chưa đồng ý |
+| `vsx.health.d.no_unauthorized_text.PASSED` | No text is stored for a call that was blocked by consent or policy. | Không lưu văn bản cho cuộc gọi bị chặn vì chưa đồng ý hoặc theo chính sách. |
+| `vsx.health.d.no_unauthorized_text.FAILED` | Text is stored for a call that was blocked by consent or policy. Report this immediately. | Có văn bản được lưu cho cuộc gọi bị chặn vì chưa đồng ý hoặc theo chính sách. Hãy báo ngay. |
+| `vsx.health.k.settings_history` | Settings history kept | Có lưu lịch sử cài đặt |
+| `vsx.health.d.settings_history.PASSED` | Settings changes are recorded. | Các thay đổi cài đặt đều được ghi lại. |
+| `vsx.health.d.settings_history.WARNING` | The settings were changed but no history was recorded. | Cài đặt đã thay đổi nhưng không có lịch sử. |
+| `vsx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `vsx.health.d.tenant_isolation.PASSED` | Every transcript belongs to this salon. | Mọi bản chép lời đều thuộc tiệm này. |
+| `vsx.health.d.tenant_isolation.FAILED` | A transcript links to another salon. Report this immediately. | Có bản chép lời liên kết với tiệm khác. Hãy báo ngay. |
+| `vsx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `vsx.health.d.no_side_effects.PASSED` | This page and this check never place a call, transcribe, delete or send a message. | Trang này và việc kiểm tra không gọi điện, không chép lời, không xóa, không gửi tin nhắn. |

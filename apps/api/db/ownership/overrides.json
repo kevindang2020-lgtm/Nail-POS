@@ -402,6 +402,18 @@
   "checkout_upsell_health_runs": {
    "domain": "AI",
    "reason": "Checkout Upsell Settings guide (Nov 2 2026, migration 773): read-only Check Checkout Upsell System runs"
+  },
+  "voice_transcription_settings_history": {
+   "domain": "AI",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): append-only before/after of every voice transcription settings save"
+  },
+  "voice_transcript_access_events": {
+   "domain": "AI",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): every raw (pre-redaction) transcript view, logged before it is shown"
+  },
+  "voice_settings_health_runs": {
+   "domain": "AI",
+   "reason": "Voice Transcription Settings guide (Nov 2 2026, migration 774): read-only Check Voice Transcription Settings runs"
   }
  }
 }

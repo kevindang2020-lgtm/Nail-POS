@@ -113,6 +113,25 @@ export class VoiceTranscriptionForbiddenError extends Error {
 export class VoiceTranscriptionValidationError extends Error {
   constructor(msg: string) { super(msg); this.name = 'VoiceTranscriptionValidationError'; }
 }
+// Voice Transcription Settings guide (Nov 2026)
+/** a save based on a version that is no longer the latest (someone else saved first) */
+export class VoiceSettingsConflictError extends Error {
+  constructor(readonly currentVersion: number) { super('VT_SETTINGS_VERSION_CONFLICT'); this.name = 'VoiceSettingsConflictError'; }
+}
+/** a sensitive change (shorter retention, raw text on / off, transcription off) needs an explicit confirm; carries the impact */
+export class VoiceSettingsConfirmRequiredError extends Error {
+  constructor(readonly impact: VoiceSettingsImpact) { super('VT_CONFIRM_REQUIRED'); this.name = 'VoiceSettingsConfirmRequiredError'; }
+}
+/** the settings could not be read — nothing is transcribed on defaults (fail closed) */
+export class VoiceSettingsUnavailableError extends Error {
+  constructor() { super('VT_SETTINGS_UNAVAILABLE'); this.name = 'VoiceSettingsUnavailableError'; }
+}
+export interface VoiceSettingsImpact {
+  sensitive: string[];                 // which sensitive changes this save makes: retention_shortened · raw_on · raw_off · transcription_off
+  transcripts: number;                 // live (not deleted) transcripts whose deletion date moves with the new window
+  dueNow: number;                      // of those, not on legal hold and past the NEW window — erased by the next retention sweep
+  rawToPurge: number;                  // transcripts whose raw (pre-redaction) text is removed now (raw off; legal holds keep theirs)
+}
 export class VoiceTranscriptionDisabledError extends Error {
   constructor(msg = 'AI_VOICE_TRANSCRIPTION_DISABLED') { super(msg); this.name = 'VoiceTranscriptionDisabledError'; }
 }

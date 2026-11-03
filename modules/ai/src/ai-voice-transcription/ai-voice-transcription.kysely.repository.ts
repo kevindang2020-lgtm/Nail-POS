@@ -10,6 +10,8 @@ import type {
   VoiceTranscriptionContext, ConsentRecord, TranscriptHeader, TranscriptSegment,
 } from './ai-voice-transcription.dto';
 import type { VoiceTranscriptionRepositoryPort, TranscriptFilters, CreateTranscriptInput, TranscriptIntelligence, DeletionScope, ExpiredTranscript, TombstoneResult, SearchQuery, SearchResultItem, TranscriptionOverview, PlatformTranscriptionAggregate, UnresolvedRow, VoiceSettings } from './ai-voice-transcription.repository';
+import { voiceSensitiveChanges } from './ai-voice-transcription.repository';
+import { VoiceSettingsConflictError, VoiceSettingsConfirmRequiredError, type VoiceSettingsImpact } from './ai-voice-transcription.dto';
 import { parseTerms, snippet } from './ai-voice-transcription-search';
 import { decodeCursor, encodeCursor } from '@aipowersalon/api-contracts';
 
@@ -237,6 +239,64 @@ export class KyselyVoiceTranscriptionRepository implements VoiceTranscriptionRep
         retain_raw=excluded.retain_raw, consent_announcement_version=excluded.consent_announcement_version, updated_by=excluded.updated_by, updated_at=now()
     `.execute(this.db);
     return s;
+  }
+
+  async settingsMeta(ctx: VoiceTranscriptionContext) {
+    const r = (await sql<{ version: number; updated_at: Date | string | null; updated_by: string | null }>`select version, updated_at, updated_by from voice_transcription_settings where tenant_id=${ctx.tenantId} limit 1`.execute(this.db)).rows[0];
+    return r ? { version: Number(r.version ?? 1), updatedAt: r.updated_at ? new Date(r.updated_at).toISOString() : null, updatedBy: r.updated_by ?? null } : { version: 0, updatedAt: null, updatedBy: null };
+  }
+  /** Voice Transcription Settings guide (Nov 2026). One transaction:
+   *   1. lock the salon's row, refuse a stale expectedVersion;
+   *   2. measure what the save does to stored data (transcripts whose deletion date moves, how many become due now,
+   *      raw text to purge) and refuse a SENSITIVE change without confirm (the 409 carries the impact for the dialog);
+   *   3. apply: the settings row (version + 1); a new retention window re-dates every live transcript (it used to apply
+   *      only to calls ingested AFTER the change — "30 days" on screen while old calls stayed 365); raw text OFF purges the
+   *      stored raw text of transcripts not on legal hold (it used to stay readable forever);
+   *   4. append the before → after + impact to voice_transcription_settings_history. */
+  async applySettings(ctx: VoiceTranscriptionContext, next: VoiceSettings, opts: { expectedVersion: number | null; confirm: boolean; defaults: VoiceSettings }) {
+    const T = ctx.tenantId;
+    const actor = /^[0-9a-f-]{36}$/i.test(String(ctx.userId ?? '')) ? ctx.userId : null;
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('voice-settings:' || ${T}))`.execute(trx);
+      const row = (await sql<any>`select transcription_enabled, retention_days, retain_raw, consent_announcement_version, version from voice_transcription_settings where tenant_id=${T} limit 1 for update`.execute(trx)).rows[0];
+      const cur: VoiceSettings = row ? { transcriptionEnabled: !!row.transcription_enabled, retentionDays: Number(row.retention_days), retainRaw: !!row.retain_raw, consentAnnouncementVersion: row.consent_announcement_version ?? null } : opts.defaults;
+      const curVersion = row ? Number(row.version ?? 1) : 0;
+      if (opts.expectedVersion != null && opts.expectedVersion !== curVersion) throw new VoiceSettingsConflictError(curVersion);
+      const sensitive = voiceSensitiveChanges(cur, next);
+      const retentionChanged = next.retentionDays !== cur.retentionDays;
+      const m = (await sql<any>`select count(*) filter (where deleted_at is null)::int as live,
+          count(*) filter (where deleted_at is null and legal_hold = false and created_at + make_interval(days => ${next.retentionDays}) <= now())::int as due,
+          count(*) filter (where deleted_at is null and legal_hold = false and raw_available = true)::int as raw
+        from call_transcripts where tenant_id=${T}`.execute(trx)).rows[0] ?? {};
+      const impact: VoiceSettingsImpact = { sensitive, transcripts: retentionChanged ? Number(m.live ?? 0) : 0, dueNow: retentionChanged ? Number(m.due ?? 0) : 0,
+        rawToPurge: sensitive.includes('raw_off') ? Number(m.raw ?? 0) : 0 };
+      if (sensitive.length && !opts.confirm) throw new VoiceSettingsConfirmRequiredError(impact);
+      const changed = (['transcriptionEnabled', 'retentionDays', 'retainRaw', 'consentAnnouncementVersion'] as const).filter((k) => cur[k] !== next[k]);
+      if (!changed.length && row) return { settings: cur, version: curVersion, impact };
+      const version = curVersion + 1;
+      await sql`
+        insert into voice_transcription_settings (tenant_id, branch_id, transcription_enabled, retention_days, retain_raw, consent_announcement_version, updated_by, version)
+        values (${T}, ${ctx.branchId}, ${next.transcriptionEnabled}, ${next.retentionDays}, ${next.retainRaw}, ${next.consentAnnouncementVersion}, ${ctx.userId}, ${version})
+        on conflict (tenant_id) do update set transcription_enabled=excluded.transcription_enabled, retention_days=excluded.retention_days,
+          retain_raw=excluded.retain_raw, consent_announcement_version=excluded.consent_announcement_version, updated_by=excluded.updated_by, version=excluded.version, updated_at=now()`.execute(trx);
+      if (retentionChanged) {
+        await sql`update call_transcripts set retention_expires_at = created_at + make_interval(days => ${next.retentionDays}), updated_at = now()
+          where tenant_id=${T} and deleted_at is null`.execute(trx);
+      }
+      if (sensitive.includes('raw_off')) {
+        await sql`update call_transcript_segments s set raw_text = null from call_transcripts t
+          where s.tenant_id=${T} and t.tenant_id=${T} and s.transcript_id = t.id and t.legal_hold = false and s.raw_text is not null`.execute(trx);
+        await sql`update call_transcripts set raw_available = false, updated_at = now() where tenant_id=${T} and legal_hold = false and raw_available = true`.execute(trx);
+      }
+      await sql`insert into voice_transcription_settings_history (tenant_id, version, actor_user_id, actor_role, before_state, after_state, changed_keys, impact)
+        values (${T}, ${version}, ${actor}, ${ctx.role ?? null}, ${JSON.stringify(cur)}::jsonb, ${JSON.stringify(next)}::jsonb, ${changed}::text[], ${JSON.stringify(impact)}::jsonb)`.execute(trx);
+      return { settings: next, version, impact };
+    });
+  }
+  async recordRawAccess(ctx: VoiceTranscriptionContext, transcriptId: string): Promise<void> {
+    const actor = /^[0-9a-f-]{36}$/i.test(String(ctx.userId ?? '')) ? ctx.userId : null;
+    await sql`insert into voice_transcript_access_events (tenant_id, branch_id, transcript_id, kind, actor_user_id, actor_role)
+      values (${ctx.tenantId}, ${ctx.branchId ?? null}, ${transcriptId}, 'view_raw', ${actor}, ${ctx.role ?? null})`.execute(this.db);
   }
 
   async platformAggregate(): Promise<PlatformTranscriptionAggregate> {

@@ -7236,6 +7236,9 @@ export interface DB {
   scheduling_optimizer_health_runs: SchedulingOptimizerHealthRunsTable;
   ai_checkout_upsell_settings_history: AiCheckoutUpsellSettingsHistoryTable;
   checkout_upsell_health_runs: CheckoutUpsellHealthRunsTable;
+  voice_transcription_settings_history: VoiceTranscriptionSettingsHistoryTable;
+  voice_transcript_access_events: VoiceTranscriptAccessEventsTable;
+  voice_settings_health_runs: VoiceSettingsHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
@@ -8029,6 +8032,17 @@ export interface VoiceTranscriptionSettingsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; transcription_enabled: Generated<boolean>;
   retention_days: Generated<number>; retain_raw: Generated<boolean>; consent_announcement_version: string | null;
   updated_by: string | null; created_at: Ts; updated_at: Ts;
+  version: Generated<number>;   // migration 774 (Voice Transcription Settings guide): the editor's expectedVersion
+}
+export interface VoiceTranscriptionSettingsHistoryTable {   // migration 774 — append-only before/after of every settings save
+  id: Generated<string>; tenant_id: string; version: number; actor_user_id: string | null; actor_role: string | null;
+  before_state: Generated<unknown>; after_state: Generated<unknown>; changed_keys: Generated<string[]>; impact: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface VoiceTranscriptAccessEventsTable {   // migration 774 — every raw (pre-redaction) text view, written before it is shown
+  id: Generated<string>; tenant_id: string; branch_id: string | null; transcript_id: string; kind: Generated<string>; actor_user_id: string | null; actor_role: string | null; created_at: Generated<Ts>;
+}
+export interface VoiceSettingsHealthRunsTable {   // migration 774 — read-only "Check Voice Transcription Settings" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface CallTranscriptSegmentsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; transcript_id: string; seq: number;

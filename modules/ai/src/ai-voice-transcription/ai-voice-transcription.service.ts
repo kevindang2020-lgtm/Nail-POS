@@ -2,15 +2,15 @@
 // entitlement to ai_voice_transcription and (2) recorded consent, then fetches via the provider adapter, runs the
 // PURE normalization/language/speaker logic, and persists a tenant-scoped transcript. Heavy provider/AI work is
 // delegated to the adapter, not done inline; later slices add redaction, summaries, retention, and search.
-import { decodeCursor } from '@aipowersalon/api-contracts';
+import { decodeCursor, withCode } from '@aipowersalon/api-contracts';
 import { isSystemContext } from '@aipowersalon/tenant-context';
 import type {
   VoiceTranscriptionContext, TranscriptHeader, TranscriptSegment, ConsentRecord,
 } from './ai-voice-transcription.dto';
 import {
-  VoiceTranscriptionForbiddenError, VoiceTranscriptionValidationError, VoiceTranscriptionDisabledError,
+  VoiceTranscriptionForbiddenError, VoiceTranscriptionValidationError, VoiceTranscriptionDisabledError, VoiceSettingsUnavailableError,
 } from './ai-voice-transcription.dto';
-import type { VoiceTranscriptionRepositoryPort, TranscriptFilters } from './ai-voice-transcription.repository';
+import type { VoiceTranscriptionRepositoryPort, TranscriptFilters, VoiceSettings } from './ai-voice-transcription.repository';
 import type { VoiceEntitlementPort } from './ai-voice-transcription-entitlement';
 import type { TranscriptionProviderPort } from './ai-voice-transcription.provider';
 import { normalizeSegments, detectLanguage, overallConfidence, transcriptionAuthorized, blockedStatusForConsent } from './ai-voice-transcription-normalize';
@@ -83,8 +83,12 @@ export class VoiceTranscriptionService {
     await this.assertEnabled(ctx);
     if (!req.providerCallId) throw new VoiceTranscriptionValidationError('providerCallId required');
 
-    // Tenant policy (falls back to env defaults). A tenant can turn transcription off entirely.
-    const settings = await this.repo.getSettings(ctx).catch(() => null);
+    // Tenant policy (falls back to env defaults only when NOTHING is saved). A tenant can turn transcription off entirely.
+    // Voice Transcription Settings guide (Nov 2026): no `.catch(() => null)` — an unreadable settings row used to fall back
+    // to the defaults, so a salon that had switched transcription OFF (or raw text OFF) was transcribed on defaults. Now the
+    // ingest fails (503) and the provider redelivers; nothing is stored.
+    let settings: Awaited<ReturnType<VoiceTranscriptionRepositoryPort['getSettings']>>;
+    try { settings = await this.repo.getSettings(ctx); } catch { throw new VoiceSettingsUnavailableError(); }
     if (settings && settings.transcriptionEnabled === false) {
       const { header } = await this.repo.upsertTranscript(ctx, {
         provider: req.provider, providerCallId: req.providerCallId, customerId: req.customerId ?? null,
@@ -264,24 +268,37 @@ export class VoiceTranscriptionService {
   }
 
   // Tenant transcription settings. Effective defaults are surfaced when no row is saved yet.
+  private defaults(): VoiceSettings { return { transcriptionEnabled: true, retentionDays: this.retentionDays, retainRaw: this.retainRaw, consentAnnouncementVersion: null }; }
   async getSettings(ctx: VoiceTranscriptionContext) {
     this.need(ctx, 'ai_voice_transcription.view');
     await this.assertEnabled(ctx);
-    const s = await this.repo.getSettings(ctx);
-    return s ?? { transcriptionEnabled: true, retentionDays: this.retentionDays, retainRaw: this.retainRaw, consentAnnouncementVersion: null };
+    return this.settingsView(ctx);
   }
-  async updateSettings(ctx: VoiceTranscriptionContext, patch: Partial<{ transcriptionEnabled: boolean; retentionDays: number; retainRaw: boolean; consentAnnouncementVersion: string | null }>) {
+  /** the saved policy + its version (0 = never saved; the defaults are shown) — no entitlement check (the center uses it) */
+  async settingsView(ctx: VoiceTranscriptionContext) {
+    const s = await this.repo.getSettings(ctx);
+    const meta = this.repo.settingsMeta ? await this.repo.settingsMeta(ctx) : { version: 0, updatedAt: null, updatedBy: null };
+    return { ...(s ?? this.defaults()), version: meta.version, updatedAt: meta.updatedAt, saved: !!s };
+  }
+  /** Voice Transcription Settings guide (Nov 2026): versioned (expectedVersion), sensitive changes need `confirm` (the 409
+   *  carries the impact), and a retention change re-dates stored transcripts / raw OFF purges raw text — in one transaction. */
+  async updateSettings(ctx: VoiceTranscriptionContext, patch: Partial<{ transcriptionEnabled: boolean; retentionDays: number; retainRaw: boolean; consentAnnouncementVersion: string | null }>, opts: { expectedVersion?: number | null; confirm?: boolean } = {}) {
     this.need(ctx, 'ai_voice_transcription.manage_settings');
     await this.assertEnabled(ctx);
-    const cur = await this.getSettings(ctx);
+    const cur = await this.repo.getSettings(ctx) ?? this.defaults();
     const days = patch.retentionDays ?? cur.retentionDays;
     if (!Number.isInteger(days) || days < 1 || days > 3650) throw new VoiceTranscriptionValidationError('retentionDays must be 1..3650');
-    return this.repo.saveSettings(ctx, {
+    const version = patch.consentAnnouncementVersion !== undefined ? (patch.consentAnnouncementVersion ? String(patch.consentAnnouncementVersion).trim() || null : null) : cur.consentAnnouncementVersion;
+    if (version != null && !/^[A-Za-z0-9._-]{1,64}$/.test(version)) throw withCode(new VoiceTranscriptionValidationError('consentAnnouncementVersion must be letters, digits, dot, dash or underscore'), 'VALIDATION_FAILED');
+    const next: VoiceSettings = {
       transcriptionEnabled: patch.transcriptionEnabled ?? cur.transcriptionEnabled,
       retentionDays: days,
       retainRaw: patch.retainRaw ?? cur.retainRaw,
-      consentAnnouncementVersion: patch.consentAnnouncementVersion !== undefined ? patch.consentAnnouncementVersion : cur.consentAnnouncementVersion,
-    });
+      consentAnnouncementVersion: version,
+    };
+    if (!this.repo.applySettings) return this.repo.saveSettings(ctx, next);
+    const r = await this.repo.applySettings(ctx, next, { expectedVersion: opts.expectedVersion ?? null, confirm: opts.confirm === true, defaults: this.defaults() });
+    return { ...r.settings, version: r.version, impact: r.impact, saved: true };
   }
 
   // Calls with open follow-up items — the staff worklist.
@@ -354,6 +371,9 @@ export class VoiceTranscriptionService {
     const header = await this.repo.getTranscript(ctx, id);
     if (!header) throw new VoiceTranscriptionValidationError('TRANSCRIPT_NOT_FOUND');
     if (!header.rawAvailable) throw new VoiceTranscriptionForbiddenError('RAW_NOT_AVAILABLE');
+    // Voice Transcription Settings guide (Nov 2026): every raw-text view is logged BEFORE the text is returned; a failed log
+    // refuses the view (it used to leave no trace at all)
+    if (this.repo.recordRawAccess) await this.repo.recordRawAccess(ctx, id);
     return this.repo.getRawSegments(ctx, id);
   }
 }
