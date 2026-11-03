@@ -430,6 +430,22 @@
   "voice_system_health_runs": {
    "domain": "AI",
    "reason": "Voice Transcription Search + Call History guides (Nov 3 2026, migration 777): read-only Check Voice Transcription System runs"
+  },
+  "money_protection_health_runs": {
+   "domain": "AI",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): read-only Check AI Money Protection System runs"
+  },
+  "money_protection_detection_runs": {
+   "domain": "AI",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): every detection pass, scheduled or manual"
+  },
+  "money_protection_events": {
+   "domain": "AI",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): append-only decisions on alerts, investigations and rules"
+  },
+  "inventory_health_runs": {
+   "domain": "AI",
+   "reason": "AI Inventory Assistant guides (Nov 3 2026, migration 779): read-only Check Inventory System runs"
   }
  }
 }

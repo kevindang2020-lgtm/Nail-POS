@@ -137,7 +137,7 @@ export class KyselyMoneyProtectionRepository implements MoneyProtectionRepositor
       .orderBy('created_at', 'desc')
       .limit(50000)
       .execute()
-      .catch(() => []);
+      ;
     const payments: NormalizedPayment[] = [];
     const refunds: NormalizedRefund[] = [];
     for (const r of rows) {
@@ -160,7 +160,7 @@ export class KyselyMoneyProtectionRepository implements MoneyProtectionRepositor
       .where('updated_at', '>=', since as any)
       .limit(50000)
       .execute()
-      .catch(() => []);
+      ;
     const tickets: NormalizedTicket[] = ticketRows.map((t) => ({
       id: t.id, branchId: t.branch_id ?? null, subtotalCents: Number(t.subtotal_cents) || 0,
       discountCents: Number(t.discount_cents) || 0, totalCents: Number(t.total_cents) || 0, status: String(t.status || ''),
@@ -172,7 +172,7 @@ export class KyselyMoneyProtectionRepository implements MoneyProtectionRepositor
       .where('created_at', '>=', since as any)
       .limit(50000)
       .execute()
-      .catch(() => []);
+      ;
     const attempts: NormalizedAttempt[] = attemptRows.map((a) => ({
       id: a.id, branchId: a.branch_id ?? null, ticketId: a.ticket_id ?? null,
       status: String(a.status || '').toLowerCase(), method: a.method ?? '', createdAtMs: Date.parse(iso(a.created_at)) || 0,
@@ -184,15 +184,15 @@ export class KyselyMoneyProtectionRepository implements MoneyProtectionRepositor
     const since = new Date(sinceMs).toISOString();
     const mp: any[] = await this.db.selectFrom('membership_payments')
       .select(['id', 'branch_id', 'customer_id', 'amount_cents', 'status', 'processor_ref', 'idempotency_key', 'created_at'])
-      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute().catch(() => []);
+      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute();
     const gc: any[] = await this.db.selectFrom('gift_cards')
-      .select(['id', 'branch_id', 'balance_cents', 'status']).where('tenant_id', '=', ctx.tenantId).limit(50000).execute().catch(() => []);
+      .select(['id', 'branch_id', 'balance_cents', 'status']).where('tenant_id', '=', ctx.tenantId).limit(50000).execute();
     const gct: any[] = await this.db.selectFrom('gift_card_transactions')
       .select(['id', 'gift_card_id', 'type', 'amount_cents', 'balance_after_cents', 'created_at'])
-      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute().catch(() => []);
+      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute();
     const cs: any[] = await this.db.selectFrom('cash_drawer_sessions')
       .select(['id', 'branch_id', 'business_date', 'variance_cents', 'counted_cents', 'expected_cash_cents', 'status'])
-      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute().catch(() => []);
+      .where('tenant_id', '=', ctx.tenantId).where('created_at', '>=', since as any).limit(50000).execute();
     return {
       membershipPayments: mp.map((r) => ({ id: r.id, branchId: r.branch_id ?? null, customerId: r.customer_id ?? null, amountCents: Number(r.amount_cents) || 0, status: String(r.status || ''), processorRef: r.processor_ref ?? null, idempotencyKey: r.idempotency_key ?? null, createdAtMs: Date.parse(iso(r.created_at)) || 0 })),
       giftCards: gc.map((r) => ({ id: r.id, branchId: r.branch_id ?? null, balanceCents: Number(r.balance_cents) || 0, status: String(r.status || '') })),
@@ -223,7 +223,7 @@ export class KyselyMoneyProtectionRepository implements MoneyProtectionRepositor
 
   async getRuleSettings(ctx: MoneyProtectionContext): Promise<RuleSettingsMap> {
     const rows: any[] = await this.db.selectFrom('money_protection_rule_settings').selectAll()
-      .where('tenant_id', '=', ctx.tenantId).execute().catch(() => []);
+      .where('tenant_id', '=', ctx.tenantId).execute();
     const map: RuleSettingsMap = {};
     for (const r of rows) {
       const thresholds = typeof r.thresholds === 'string' ? safeJson(r.thresholds) : (r.thresholds ?? {});

@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 922,
+  "tables": 926,
   "ownership": {
-   "tenant_owned": 612,
+   "tenant_owned": 616,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 131,
+   "AI": 135,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 140,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 500,
+   "INTERNAL": 504,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -4589,6 +4589,19 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "inventory_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Inventory Assistant guides (Nov 3 2026, migration 779): read-only Check Inventory System runs"
+  },
   "inventory_items": {
    "ownership": "tenant_branch_owned",
    "class": "C",
@@ -5341,6 +5354,45 @@
    "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
+  },
+  "money_protection_detection_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): every detection pass, scheduled or manual"
+  },
+  "money_protection_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): append-only decisions on alerts, investigations and rules"
+  },
+  "money_protection_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "AI Money Protection guides (Nov 3 2026, migration 778): read-only Check AI Money Protection System runs"
   },
   "money_protection_investigation_notes": {
    "ownership": "tenant_owned",

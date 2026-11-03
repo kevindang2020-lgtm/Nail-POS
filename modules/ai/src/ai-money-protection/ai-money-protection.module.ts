@@ -6,6 +6,9 @@ import { AiPlatform } from '../ai/ai-platform';
 import { moneyExplainAdapter } from '../ai/ai-platform.adapters';
 import { Module } from '@nestjs/common';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { MoneyProtectionCenter, type McCtx } from './money-protection-center';
+import { MoneyProtectionCenterController, MONEY_PROTECTION_CENTER } from './money-protection-center.controller';
+import { MoneyProtectionDetectionScheduler, detectionScheduled } from './money-protection-detection.scheduler';
 import { MoneyProtectionController } from './ai-money-protection.controller';
 import { MoneyProtectionService } from './ai-money-protection.service';
 import { InMemoryMoneyProtectionRepository, type MoneyProtectionRepositoryPort } from './ai-money-protection.repository';
@@ -19,7 +22,7 @@ import { moneyProtectionFlags } from './ai-money-protection-flags';
 
 @Module({
   imports: [AiModule],
-  controllers: [MoneyProtectionController],
+  controllers: [MoneyProtectionController, MoneyProtectionCenterController],
   providers: [
     {
       provide: 'MoneyProtectionRepositoryPort',
@@ -43,10 +46,27 @@ import { moneyProtectionFlags } from './ai-money-protection-flags';
       useFactory: (repo: MoneyProtectionRepositoryPort, ent: EntitlementPort) => new MoneyProtectionService(repo, ent, moneyProtectionFlags()),
       inject: ['MoneyProtectionRepositoryPort', 'MoneyProtectionEntitlementPort'],
     },
+    // the six Money Protection guides (Nov 3 2026): the center (overview, alerts, investigations, rules, detection runs, check)
+    {
+      provide: MONEY_PROTECTION_CENTER,
+      useFactory: (db: AppDatabase, svc: MoneyProtectionService, ent: EntitlementPort) => (db ? new MoneyProtectionCenter(db as never, {
+        flags: () => moneyProtectionFlags(), entitlement: ent, scheduled: () => detectionScheduled(),
+        detect: async (tenantId: string) => {
+          const sys = { tenantId, branchId: null, userId: 'system', role: 'SYSTEM', permissions: ['ai_money_protection.manage_rules'] } as never;
+          const d = await svc.evaluateDeterministic(sys);
+          const r = await svc.evaluateReconciliation(sys);
+          return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { deterministic: d, reconciliation: r } };
+        },
+        saveRule: (ctx: McCtx, ruleId: string, input) => svc.updateSetting({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: String(ctx.userId ?? ''), role: ctx.role ?? '', permissions: ctx.permissions ?? [] } as never, ruleId, input),
+      }) : null),
+      inject: [DATABASE, MoneyProtectionService, 'MoneyProtectionEntitlementPort'],
+    },
+    MoneyProtectionDetectionScheduler,
     {
       provide: InvestigationService,
-      useFactory: (invRepo: MoneyProtectionInvestigationRepositoryPort, alertRepo: MoneyProtectionRepositoryPort) => new InvestigationService(invRepo, alertRepo),
-      inject: ['MoneyProtectionInvestigationRepositoryPort', 'MoneyProtectionRepositoryPort'],
+      useFactory: (invRepo: MoneyProtectionInvestigationRepositoryPort, alertRepo: MoneyProtectionRepositoryPort, center: MoneyProtectionCenter | null) =>
+        new InvestigationService(invRepo, alertRepo, center ? (ctx, e) => center.recordInvestigationEvent(ctx as never, e) : null),
+      inject: ['MoneyProtectionInvestigationRepositoryPort', 'MoneyProtectionRepositoryPort', MONEY_PROTECTION_CENTER],
     },
     {
       provide: MoneyProtectionExplainService,

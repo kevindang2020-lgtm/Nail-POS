@@ -740,6 +740,15 @@ export const ERROR_REGISTRY = {
   // Voice Transcription Search + Call History (Nov 3 2026)
   VC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VC_CALL_NOT_FOUND: { status: 404, message: 'That call was not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Money Protection guides (Nov 3 2026)
+  MC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MC_NOT_FOUND: { status: 404, message: 'That record was not found.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MC_REASON_REQUIRED: { status: 400, message: 'Write a reason (at least 5 characters).', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MC_STALE: { status: 409, message: 'This was changed by someone else. Reload it.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MC_STATE_INVALID: { status: 409, message: 'This alert cannot do that in its current state.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  MC_DETECTION_FAILED: { status: 503, message: 'Detection could not finish. Run the system check.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  // AI Inventory Assistant (Nov 3 2026)
+  IC_INVALID_PERIOD: { status: 400, message: 'Choose a From and a To date; the From date must be on or before the To date.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   FOLLOWUP_LINK_INVALID: { status: 400, message: 'That customer, call or appointment is not in this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },

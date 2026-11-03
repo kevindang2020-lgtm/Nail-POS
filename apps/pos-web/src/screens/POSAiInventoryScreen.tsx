@@ -9,6 +9,7 @@ import { money, reportError } from './reportsCommon';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 import { growthCode } from './growthLabels';
+import { InventoryCenterPanel } from './InventoryCenterPanel';
 type Tab = 'command' | 'low' | 'reorder' | 'slow';
 const TABS = (): [Tab, string][] => [['command', tx('growth.aiInventory.tab.command')], ['low', tx('growth.aiInventory.tab.low')], ['reorder', tx('growth.aiInventory.tab.reorder')], ['slow', tx('growth.aiInventory.tab.slow')]];
 
@@ -33,7 +34,6 @@ export function POSAiInventoryScreen() {
   const [tab, setTab] = useState<Tab>('command');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [ctx, setCtx] = useState<any | null>(null);
   const [low, setLow] = useState<any | null>(null);
   const [reorder, setReorder] = useState<any | null>(null);
   const [slow, setSlow] = useState<any | null>(null);
@@ -41,7 +41,7 @@ export function POSAiInventoryScreen() {
   const load = useCallback((t: Tab) => {
     setLoading(true); setError(null);
     const call =
-      t === 'command' ? posAiInventoryApi.context().then(setCtx)
+      t === 'command' ? Promise.resolve()
         : t === 'low' ? posAiInventoryApi.lowStock().then(setLow)
           : t === 'reorder' ? posAiInventoryApi.reorder().then(setReorder)
             : posAiInventoryApi.slowMoving().then(setSlow);
@@ -69,21 +69,7 @@ export function POSAiInventoryScreen() {
       {error && <div className="err" style={{ marginBottom: 12 }}>{error}</div>}
       {loading && <div className="state">{tx('pos.loading')}</div>}
 
-      {!loading && !error && tab === 'command' && ctx && (
-        <>
-          <div className="kpis">
-            <div className="kpi"><div className="k-l">{tx('pos.products')}</div><div className="k-v">{num(ctx.productCount)}</div></div>
-            <div className="kpi"><div className="k-l">{tx('pos.in_stock')}</div><div className="k-v">{num(ctx.inStock)}</div></div>
-            <div className="kpi"><div className="k-l">{tx('pos.low')}</div><div className="k-v" style={{ color: '#D09A36' }}>{num(ctx.low)}</div></div>
-            <div className="kpi"><div className="k-l">{tx('pos.critical')}</div><div className="k-v" style={{ color: '#B85B4D' }}>{num(ctx.critical)}</div></div>
-            <div className="kpi"><div className="k-l">{tx('pos.out_of_stock')}</div><div className="k-v" style={{ color: '#B85B4D' }}>{num(ctx.outOfStock)}</div></div>
-            <div className="kpi"><div className="k-l">{tx('pos.overstock')}</div><div className="k-v">{num(ctx.overstock)}</div></div>
-          </div>
-          <div className="sub" style={{ marginTop: 10 }}>
-            {tx('pos.inbound_purchase_orders')}{' '}{ctx.inboundWired ? 'are' : tx('pos.are_not_yet')} {tx('pos.folded_into_positions')}{' '}{ctx.costVisible ? '' : tx('pos.cost_figures_are_hidden_for_your_1anr')}
-          </div>
-        </>
-      )}
+      {tab === 'command' ? <InventoryCenterPanel /> : null}
 
       {!loading && !error && tab === 'low' && low && (
         low.items.length === 0 ? <div className="state">{tx('pos.nothing_below_its_reorder_point_right_1dw9')}</div> : (

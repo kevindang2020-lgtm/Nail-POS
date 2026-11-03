@@ -1,0 +1,60 @@
+// POSAICustomerProfileAssistantScreen.tsx — AI Center → AI Customer Profile Assistant (/tenant/ai/customer-insights). AI Customer
+// Profile Assistant guide (Nov 2 2026, built Nov 3 2026). The add-on header stays and is honest (AiPackagePanel). Below it, the
+// assistant's dashboard reads Customer Intelligence (/pos/customer-intelligence/*, which owns the classification): the cards from the
+// latest scan (or "not scanned yet" — never zeros), the customer list (search name / phone / email — contact masked unless the role
+// may see it · status · flag · which date · presets + From/To month calendar · sort · numbered pages) and Check Customer
+// Intelligence System. Nothing here edits a profile, merges, or messages a customer.
+import { AiPackagePanel } from './POSAiPackageScreen';
+import { AssistantDashboard } from '../components/AssistantDashboard';
+import { posCustomerIntelligenceApi } from '../api/posCustomerIntelligenceApi';
+import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtNumber, fmtInZone } from '../i18n/format';
+
+const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
+const STATUSES = ['all', 'active', 'rebooking_soon', 'due_for_return', 'inactive_all', 'inactive', 'long_term_inactive', 'insufficient_history', 'never_served', 'not_scanned'];
+const FLAGS = ['churn_watch', 'rebooking', 'upcoming', 'duplicate'];
+const DATES = ['last_visit', 'created', 'next_appointment', 'profile_updated'];
+const SORTS = ['last_visit', 'recently_added', 'name', 'visits', 'days_since'];
+const day = (iso?: string | null) => (iso ? fmtInZone(iso.length === 10 ? iso + 'T12:00:00Z' : iso, { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
+const card = (s: any, k: string) => (s?.cards ? fmtNumber(s.cards[k] ?? 0) : t('cpx.notScanned'));
+const ci = posCustomerIntelligenceApi;
+
+export function POSAICustomerProfileAssistantScreen() {
+  return (
+    <AiPackagePanel code="ai_customer_profile_assistant" title={t('pos.ai_customer_insights')}>
+      <AssistantDashboard testId="cpx-dashboard"
+        summary={ci.summary}
+        kpis={[
+          { key: 'scanned', label: t('cpx.kpi.scanned'), value: (s) => card(s, 'scanned') },
+          { key: 'active', label: t('cpx.kpi.active'), value: (s) => card(s, 'active') },
+          { key: 'upcoming', label: t('cpx.kpi.upcoming'), value: (s) => card(s, 'withUpcoming') },
+          { key: 'inactive', label: t('cpx.kpi.inactive'), value: (s) => card(s, 'inactive') },
+          { key: 'churn', label: t('cpx.kpi.churn'), value: (s) => card(s, 'churnWatch'), tone: (s) => (s?.cards?.churnWatch ? 'warn' : undefined) },
+          { key: 'rebooking', label: t('cpx.kpi.rebooking'), value: (s) => card(s, 'rebooking'), tone: (s) => (s?.cards?.rebooking ? 'gold' : undefined) },
+        ]}
+        list={ci.customers}
+        rowKey={(r) => r.id}
+        columns={[
+          { key: 'customer', label: t('cpx.col.customer'), render: (r) => <><b>{r.name ?? '—'}</b>{r.phone ? <div className="sub">{r.phone}</div> : null}</> },
+          { key: 'status', label: t('cpx.col.status'), render: (r) => <span className="chip">{t('cix.status.' + (r.scanned ? (STATUSES.includes(r.status) ? r.status : 'not_scanned') : (r.neverServed ? 'never_served' : 'not_scanned')))}</span> },
+          { key: 'last', label: t('cpx.col.last'), render: (r) => <>{day(r.lastVisitAt)}{r.daysSinceLast != null ? <div className="sub">{t('cpx.daysAgo', { n: fmtNumber(r.daysSinceLast) })}</div> : null}</> },
+          { key: 'visits', label: t('cpx.col.visits'), render: (r) => (r.completedVisits == null ? '—' : fmtNumber(r.completedVisits)) },
+          { key: 'next', label: t('cpx.col.next'), render: (r) => day(r.nextAppointmentDate) },
+          { key: 'flags', label: t('cpx.col.flags'), render: (r) => <>{r.churnWatch ? <span className="chip warn">{t('cix.flag.churn_watch')}</span> : null} {r.rebooking ? <span className="chip">{t('cix.flag.rebooking')}</span> : null} {r.duplicate ? <span className="chip">{t('cix.flag.duplicate')}</span> : null}</> },
+        ]}
+        filters={[
+          { key: 'status', label: t('cpx.f.status'), options: STATUSES.map((v) => ({ value: v, label: v === 'all' ? t('cpx.anyStatus') : t('cix.status.' + v) })) },
+          { key: 'flag', label: t('cpx.f.flag'), options: [{ value: '', label: t('cpx.anyFlag') }, ...FLAGS.map((v) => ({ value: v, label: t('cix.flag.' + v) }))] },
+          { key: 'dateField', label: t('cpx.dateLabel'), options: DATES.map((v) => ({ value: v, label: t('cix.date.' + v) })) },
+        ]}
+        sorts={SORTS.map((v) => ({ value: v, label: t('cix.sort.' + v) }))}
+        presets={['today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_90', 'last_month', 'year']}
+        searchPlaceholder={t('cpx.searchPh')} listTitle={t('cpx.list')}
+        emptyText={(filtered) => (filtered ? t('cpx.noMatch') : t('cpx.empty'))}
+        check={ci.check} checkLabel={t('cpx.check')}
+        checkText={{ title: (k) => t('cix.health.k.' + k), detail: (k, s, x) => (k === 'eligibility' && x?.detail ? t('cix.health.eligibility', { s: fmtNumber(x.detail.scanned), a: fmtNumber(x.detail.active), i: fmtNumber(x.detail.inactiveCard),
+          n: fmtNumber(x.detail.neverServed), u: fmtNumber(x.detail.underCadence), r: fmtNumber(x.detail.rebookingSoon + x.detail.dueForReturn) }) : t('cix.health.d.' + k + '.' + s)) }}
+        openTo="/tenant/ai/customer-profile" openLabel={t('cpx.open')} note={t('cpx.note')} />
+    </AiPackagePanel>
+  );
+}

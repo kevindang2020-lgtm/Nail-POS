@@ -1,38 +1,40 @@
+// POSAIMoneyProtectionSettingsScreen — rule settings (guides of Nov 3 2026): edit through the center with the version it saw; turning a
+// rule off needs a reason (the server refuses without one and the screen shows why); every change is in the history, before → after.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-const m = vi.hoisted(() => ({ rules: vi.fn(), getSettings: vi.fn(), update: vi.fn() }));
-vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: { rules: m.rules, getSettings: m.getSettings, updateSetting: m.update, state: vi.fn(), alerts: vi.fn() } }));
-import { POSAIMoneyProtectionSettingsScreen } from './POSAIMoneyProtectionSettingsScreen';
-beforeEach(() => { m.rules.mockReset(); m.getSettings.mockReset(); m.update.mockReset(); });
+import { MemoryRouter } from 'react-router-dom';
+const { mc, api } = vi.hoisted(() => {
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
+});
+vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
+const page = (items: any[], o: any = {}) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' }, ...o });
+const wrap = (el: any) => render(<MemoryRouter>{el}</MemoryRouter>);
 
-const catalog = { rules: [
-  { id: 'MP_DUP_CHARGE_EXACT', name: 'Exact duplicate charge', category: 'duplicate_charge', layer: 'deterministic', severity: 'CRITICAL', defaultThresholds: {}, enabled: true },
-  { id: 'MP_FAILED_PAYMENT_RETRY_LOOP', name: 'Failed-payment retry loop', category: 'failed_payment', layer: 'deterministic', severity: 'MEDIUM', defaultThresholds: { minDeclines: 4, windowMinutes: 15 }, enabled: true },
-] };
+import { POSAIMoneyProtectionSettingsScreen } from './POSAIMoneyProtectionSettingsScreen';
+const rule = { id: 'MP_DUP_CHARGE_LIKELY', name: 'Likely duplicate charge', category: 'duplicate_charge', layer: 'deterministic', description: 'd', defaultSeverity: 'HIGH', severity: 'HIGH', severityOverridden: false,
+  defaultThresholds: { windowSeconds: 120 }, thresholds: { windowSeconds: 120 }, enabled: true, layerOn: true, effective: true, updatedAt: '2026-11-01T10:00:00.000Z', alerts30d: 0, open: 0, dismissed90d: 0, lastAlertAt: null };
+beforeEach(() => { vi.clearAllMocks(); mc.rules.mockResolvedValue({ rules: [rule], canEdit: true });
+  mc.history.mockResolvedValue(page([{ id: 'h1', ruleId: 'MP_DUP_CHARGE_LIKELY', rule: 'Likely duplicate charge', reason: 'Split tenders', actor: 'Owner Kim', at: '2026-11-02T10:00:00Z',
+    before: { enabled: true, severity: 'HIGH' }, after: { enabled: false, severity: 'HIGH' }, weaker: true }])); });
 
 describe('POSAIMoneyProtectionSettingsScreen', () => {
-  it('renders rules with editable enable/severity/thresholds and saves an override', async () => {
-    m.rules.mockResolvedValue(catalog);
-    m.getSettings.mockResolvedValue({});
-    m.update.mockResolvedValue({ ruleId: 'MP_FAILED_PAYMENT_RETRY_LOOP' });
-    render(<POSAIMoneyProtectionSettingsScreen />);
-
-    expect(await screen.findByRole('heading', { name: /Settings/i })).toBeInTheDocument();
-    expect(screen.getByText('Exact duplicate charge')).toBeInTheDocument();
-    // change a threshold and save
-    fireEvent.change(screen.getByLabelText(/Min Declines for Failed-payment retry loop/i), { target: { value: '6' } });
-    fireEvent.click(screen.getAllByRole('button', { name: 'Save' })[1]);
-    await waitFor(() => expect(m.update).toHaveBeenCalled());
-    expect(m.update.mock.calls[0][0]).toBe('MP_FAILED_PAYMENT_RETRY_LOOP');
-    expect(m.update.mock.calls[0][1].thresholds.minDeclines).toBe(6);
-    expect(await screen.findByText('Saved.')).toBeInTheDocument();
+  it('edits a rule with the version it saw; a refused weaker change shows the reason requirement', async () => {
+    mc.saveRule.mockRejectedValueOnce({ status: 400, code: 'MC_REASON_REQUIRED' }).mockResolvedValueOnce({});
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-rule-edit'));
+    fireEvent.click(screen.getByTestId('mpx-rule-enabled'));
+    fireEvent.change(screen.getByLabelText('windowSeconds'), { target: { value: '90' } });
+    fireEvent.click(screen.getByTestId('mpx-rule-save'));
+    expect(await screen.findByTestId('mpx-rule-msg')).toHaveTextContent('at least 5 characters');
+    fireEvent.change(screen.getByTestId('mpx-rule-reason'), { target: { value: 'Split tenders trigger it' } });
+    fireEvent.click(screen.getByTestId('mpx-rule-save'));
+    await waitFor(() => expect(mc.saveRule).toHaveBeenLastCalledWith({ ruleId: 'MP_DUP_CHARGE_LIKELY', enabled: false, severityOverride: null, thresholds: { windowSeconds: 90 },
+      reason: 'Split tenders trigger it', expectedUpdatedAt: '2026-11-01T10:00:00.000Z' }));
   });
-
-  it('reflects an existing disabled override', async () => {
-    m.rules.mockResolvedValue(catalog);
-    m.getSettings.mockResolvedValue({ MP_DUP_CHARGE_EXACT: { ruleId: 'MP_DUP_CHARGE_EXACT', enabled: false, severityOverride: null, thresholds: {} } });
-    render(<POSAIMoneyProtectionSettingsScreen />);
-    const cb = await screen.findByLabelText('Enable Exact duplicate charge') as HTMLInputElement;
-    expect(cb.checked).toBe(false);
+  it('shows the change history before → after, flagged weaker, with who and why', async () => {
+    wrap(<POSAIMoneyProtectionSettingsScreen />);
+    const h = await screen.findByTestId('mpx-hist-row');
+    expect(h).toHaveTextContent('On · High → Off · High'); expect(h).toHaveTextContent('Weaker'); expect(h).toHaveTextContent('Owner Kim'); expect(h).toHaveTextContent('Split tenders');
   });
 });

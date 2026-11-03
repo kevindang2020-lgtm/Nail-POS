@@ -2,7 +2,9 @@
 // Tenant/branch are server-derived from req.ctx (TenantAuthGuard) — never from the client.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { MONEY_INVESTIGATION_ASSIGN_BODY, MONEY_INVESTIGATION_CREATE_BODY, MONEY_INVESTIGATION_NOTE_BODY, MONEY_INVESTIGATION_RESOLVE_BODY, MONEY_INVESTIGATION_STATUS_BODY, MONEY_RULE_SETTING_BODY } from '../request-schemas';
-import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject, Optional } from '@nestjs/common';
+import { MoneyProtectionCenter, MoneyCenterError } from './money-protection-center';
+import { MONEY_PROTECTION_CENTER } from './money-protection-center.controller';
 import {
   MoneyProtectionService, MoneyProtectionForbiddenError, MoneyProtectionValidationError, MoneyProtectionDisabledError,
 } from './ai-money-protection.service';
@@ -15,6 +17,10 @@ import { MoneyProtectionControllerListQueries } from './ai-money-protection.list
 function ctxFrom(req: any): MoneyProtectionContext {
   const c = req?.ctx || {};
   return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] };
+}
+async function runCenter<T>(fn: () => Promise<T>): Promise<T> {
+  try { return await fn(); }
+  catch (e) { if (e instanceof MoneyCenterError) throw new HttpException({ code: e.code, message: e.message, ...e.extra }, e.status); throw e; }
 }
 async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
@@ -34,6 +40,7 @@ export class MoneyProtectionController {
     private readonly svc: MoneyProtectionService,
     private readonly inv: InvestigationService,
     private readonly explain: MoneyProtectionExplainService,
+    @Optional() @Inject(MONEY_PROTECTION_CENTER) private readonly center: MoneyProtectionCenter | null = null,
   ) {}
 
   @Get('state')
@@ -57,6 +64,9 @@ export class MoneyProtectionController {
   @Post('settings/:ruleId')
   @RequirePermission('ai_money_protection.manage_settings')
   updateSetting(@Req() r: any, @Param('ruleId') ruleId: string, @Body(ValidatedBody(MONEY_RULE_SETTING_BODY, { strict: true })) b: any) {
+    // Money Protection guides (Nov 3 2026): no screen calls this any more; a direct call goes through the same safe save as the
+    // Settings page (history before → after; turning a rule off or lowering it needs a reason — this body has none, so it is refused)
+    if (this.center) return runCenter(() => this.center!.saveRule(ctxFrom(r), ruleId, { enabled: b?.enabled, severityOverride: b?.severityOverride ?? null, thresholds: b?.thresholds ?? undefined }));
     return run(() => this.svc.updateSetting(ctxFrom(r), ruleId, b));
   }
 

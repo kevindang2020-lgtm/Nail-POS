@@ -74,7 +74,15 @@ export const MONEY_PROTECTION_INVESTIGATION = defineStateMachine({
 /** money_protection_alerts.status — the only status write today: a new / acknowledged alert joins an investigation. */
 export const MONEY_PROTECTION_ALERT = defineStateMachine({
   name: 'money_protection_alert', table: 'money_protection_alerts', column: 'status',
-  states: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING'], transitions: { NEW: ['INVESTIGATING'], ACKNOWLEDGED: ['INVESTIGATING'] }, initial: ['NEW'],
+  // Money Protection guides (Nov 3 2026): a person acknowledges, dismisses (reason) or reopens (reason) an alert — money-protection-center
+  states: ['NEW', 'ACKNOWLEDGED', 'INVESTIGATING', 'WAITING_FOR_INFORMATION', 'ESCALATED', 'DISMISSED_FALSE_POSITIVE',
+    'RESOLVED_EXPECTED_ACTIVITY', 'RESOLVED_SYSTEM_ERROR', 'RESOLVED_POLICY_VIOLATION', 'RESOLVED_CONFIRMED_MISUSE', 'CLOSED'],
+  transitions: {
+    NEW: ['ACKNOWLEDGED', 'INVESTIGATING', 'DISMISSED_FALSE_POSITIVE'], ACKNOWLEDGED: ['INVESTIGATING', 'DISMISSED_FALSE_POSITIVE'],
+    INVESTIGATING: ['DISMISSED_FALSE_POSITIVE'], WAITING_FOR_INFORMATION: ['DISMISSED_FALSE_POSITIVE'], ESCALATED: ['DISMISSED_FALSE_POSITIVE'],
+    DISMISSED_FALSE_POSITIVE: ['ACKNOWLEDGED'], RESOLVED_EXPECTED_ACTIVITY: ['ACKNOWLEDGED'], RESOLVED_SYSTEM_ERROR: ['ACKNOWLEDGED'],
+    RESOLVED_POLICY_VIOLATION: ['ACKNOWLEDGED'], RESOLVED_CONFIRMED_MISUSE: ['ACKNOWLEDGED'], CLOSED: ['ACKNOWLEDGED'],
+  }, initial: ['NEW'],
 });
 
 // ── queue assignment / review & reputation ──────────────────────────────────────────────────────────────────────────

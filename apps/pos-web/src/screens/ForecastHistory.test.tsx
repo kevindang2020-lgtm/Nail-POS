@@ -89,7 +89,7 @@ describe('Check AI Analytics & Forecasting System', () => {
     fireEvent.click(screen.getByTestId('fch-check'));
     const dup = await screen.findByTestId('fch-chk-duplicate_appointments');
     expect(dup).toHaveTextContent('Duplicate appointments');
-    expect(dup).toHaveTextContent(/booked twice with the same Thợ/);
+    expect(dup).toHaveTextContent(/booked twice with the same technician/);
     expect(dup).toHaveTextContent('Part: Appointment data quality');
     expect(dup).toHaveTextContent('Has not passed yet');
     expect(screen.getByTestId('fch-chk-backtest')).toHaveTextContent(/Last passed:/);

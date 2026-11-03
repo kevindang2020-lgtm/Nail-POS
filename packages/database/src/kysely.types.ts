@@ -7241,6 +7241,10 @@ export interface DB {
   voice_settings_health_runs: VoiceSettingsHealthRunsTable;
   voice_followup_reviews: VoiceFollowupReviewsTable;
   voice_followup_health_runs: VoiceFollowupHealthRunsTable;
+  inventory_health_runs: InventoryHealthRunsTable;
+  money_protection_health_runs: MoneyProtectionHealthRunsTable;
+  money_protection_detection_runs: MoneyProtectionDetectionRunsTable;
+  money_protection_events: MoneyProtectionEventsTable;
   voice_system_health_runs: VoiceSystemHealthRunsTable;
   forecasting_health_runs: ForecastingHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
@@ -8053,6 +8057,21 @@ export interface ForecastingHealthRunsTable {   // migration 776 — read-only "
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface VoiceSystemHealthRunsTable {   // migration 777 — read-only "Check Voice Transcription System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface MoneyProtectionDetectionRunsTable {   // migration 778 — every detection pass (scheduled or manual)
+  id: Generated<string>; tenant_id: string; trigger_kind: string; status: Generated<string>; window_hours: Generated<number>; evaluated: Generated<number>;
+  created_alerts: Generated<number>; updated_alerts: Generated<number>; layers: Generated<unknown>; error_code: string | null; actor_user_id: string | null;
+  started_at: Generated<Ts>; finished_at: TsNull;
+}
+export interface MoneyProtectionEventsTable {   // migration 778 — append-only human decisions on alerts, investigations and rules
+  id: Generated<string>; tenant_id: string; branch_id: string | null; entity_type: string; entity_id: string; action: string; from_state: string | null; to_state: string | null;
+  reason: string | null; detail: Generated<unknown>; actor_user_id: string | null; created_at: Generated<Ts>;
+}
+export interface MoneyProtectionHealthRunsTable {   // migration 778 — read-only "Check AI Money Protection System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface InventoryHealthRunsTable {   // migration 779 — read-only "Check Inventory System" runs
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface VoiceFollowupHealthRunsTable {   // migration 775 — read-only "Check Voice Follow-Up System" runs

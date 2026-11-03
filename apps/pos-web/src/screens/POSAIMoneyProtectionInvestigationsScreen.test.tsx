@@ -1,54 +1,49 @@
+// POSAIMoneyProtectionInvestigationsScreen — investigations (guides of Nov 3 2026): a server list (status, severity, which date, presets,
+// pages), a case opens with its append-only timeline (notes + recorded decisions), notes are appended, a resolution is recorded.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-const m = vi.hoisted(() => ({ list: vi.fn(), get: vi.fn(), addNote: vi.fn(), setStatus: vi.fn(), resolve: vi.fn() }));
-vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: {
-  listInvestigations: m.list, getInvestigation: m.get, addNote: m.addNote, setInvestigationStatus: m.setStatus,
-  resolveInvestigation: m.resolve, assignInvestigation: vi.fn(), createInvestigation: vi.fn(),
-} }));
-import { POSAIMoneyProtectionInvestigationsScreen } from './POSAIMoneyProtectionInvestigationsScreen';
-beforeEach(() => { Object.values(m).forEach((f) => f.mockReset()); });
+import { MemoryRouter } from 'react-router-dom';
+const { mc, api } = vi.hoisted(() => {
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
+});
+vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
+const page = (items: any[], o: any = {}) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' }, ...o });
+const wrap = (el: any) => render(<MemoryRouter>{el}</MemoryRouter>);
 
-const inv = {
-  id: 'inv_1', title: 'Duplicate Charge Exact — review', category: 'general', severity: 'CRITICAL', status: 'OPEN',
-  assignedUserId: null, valueUnderReviewCents: 5000, recoveryAmountCents: 0, resolution: null,
-  related: { userIds: ['emp7'], alertIds: ['mpa_1'] }, createdAt: '2026-07-07T00:00:00Z', updatedAt: '2026-07-07T00:00:00Z', closedAt: null,
-};
+import { POSAIMoneyProtectionInvestigationsScreen } from './POSAIMoneyProtectionInvestigationsScreen';
+const inv = { id: 'inv1', title: 'Double card capture on T-1042', category: 'general', severity: 'CRITICAL', status: 'INVESTIGATING', assignee: null, branch: 'Main', valueUnderReviewCents: 5000,
+  recoveryCents: 0, resolution: null, alerts: 1, notes: 1, openedAt: '2026-11-03T05:00:00Z', updatedAt: '2026-11-03T06:00:00Z', closedAt: null };
+const TL = { items: [{ kind: 'event', action: 'status_changed', from: 'OPEN', to: 'INVESTIGATING', actor: 'Owner Kim', at: '2026-11-03T06:00:00Z' }, { kind: 'note', text: 'Called the processor', actor: 'Owner Kim', at: '2026-11-03T05:30:00Z' },
+  { kind: 'event', action: 'opened', to: 'OPEN', actor: 'Owner Kim', at: '2026-11-03T05:00:00Z' }], alerts: [{ id: 'a1', ruleId: 'MP_DUP_CHARGE_EXACT', severity: 'CRITICAL', amountCents: 5000, status: 'INVESTIGATING' }] };
+beforeEach(() => { vi.clearAllMocks(); mc.investigations.mockResolvedValue(page([inv])); mc.timeline.mockResolvedValue(TL); api.addNote.mockResolvedValue({}); api.resolveInvestigation.mockResolvedValue({}); });
 
 describe('POSAIMoneyProtectionInvestigationsScreen', () => {
-  it('lists investigations, opens detail with notes, and adds an append-only note', async () => {
-    m.list.mockResolvedValue([inv]);
-    m.get.mockResolvedValueOnce({ investigation: inv, notes: [] })
-         .mockResolvedValueOnce({ investigation: inv, notes: [{ id: 'n1', authorUserId: 'u1', body: 'Checked both txns', createdAt: '2026-07-07T01:00:00Z' }] });
-    m.addNote.mockResolvedValue({ id: 'n1' });
-    render(<POSAIMoneyProtectionInvestigationsScreen />);
-
-    expect(await screen.findByText('Duplicate Charge Exact — review')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
-    expect(await screen.findByRole('dialog', { name: 'Investigation detail' })).toBeInTheDocument();
-    expect(screen.getByText(/Notes \(append-only\)/i)).toBeInTheDocument();
-
-    fireEvent.change(screen.getByLabelText('Add a note'), { target: { value: 'Checked both txns' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Add note' }));
-    await waitFor(() => expect(m.addNote).toHaveBeenCalledWith('inv_1', 'Checked both txns'));
-    expect(await screen.findByText(/Checked both txns/)).toBeInTheDocument();
+  it('lists active cases (unassigned flagged) and opens the append-only timeline; adds a note', async () => {
+    wrap(<POSAIMoneyProtectionInvestigationsScreen />);
+    const r = await screen.findByTestId('mpx-inv-row');
+    expect(r).toHaveTextContent('Double card capture'); expect(r).toHaveTextContent('Unassigned'); expect(r).toHaveTextContent('1 alert(s) · 1 note(s)');
+    expect(mc.investigations).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'active', sort: 'updated', page: 1 }));
+    fireEvent.click(screen.getByTestId('mpx-inv-view'));
+    const items = await screen.findAllByTestId('mpx-tl-item');
+    expect(items.map((x) => x.textContent)).toEqual([expect.stringContaining('Status changed'), expect.stringContaining('Called the processor'), expect.stringContaining('Opened')]);
+    fireEvent.change(screen.getByTestId('mpx-note-text'), { target: { value: 'Bank shows two settlements' } });
+    fireEvent.click(screen.getByTestId('mpx-add-note'));
+    await waitFor(() => expect(api.addNote).toHaveBeenCalledWith('inv1', 'Bank shows two settlements'));
   });
-
-  it('records a resolution', async () => {
-    m.list.mockResolvedValue([inv]);
-    m.get.mockResolvedValue({ investigation: inv, notes: [] });
-    m.resolve.mockResolvedValue({ ...inv, status: 'RESOLVED', resolution: 'FALSE_POSITIVE' });
-    render(<POSAIMoneyProtectionInvestigationsScreen />);
-    fireEvent.click(await screen.findByRole('button', { name: 'Open' }));
-    await screen.findByRole('dialog', { name: 'Investigation detail' });
-    fireEvent.click(screen.getByRole('button', { name: 'Record resolution' }));
-    await waitFor(() => expect(m.resolve).toHaveBeenCalled());
-    expect(m.resolve.mock.calls[0][0]).toBe('inv_1');
-    expect(typeof m.resolve.mock.calls[0][1]).toBe('string'); // a resolution value from the dropdown
+  it('records a resolution (with recovered amount in cents)', async () => {
+    wrap(<POSAIMoneyProtectionInvestigationsScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-inv-view'));
+    fireEvent.change(await screen.findByTestId('mpx-resolution'), { target: { value: 'DUPLICATE_CHARGE_CONFIRMED' } });
+    fireEvent.change(screen.getByTestId('mpx-recovery'), { target: { value: '50' } });
+    fireEvent.click(screen.getByTestId('mpx-resolve'));
+    await waitFor(() => expect(api.resolveInvestigation).toHaveBeenCalledWith('inv1', 'DUPLICATE_CHARGE_CONFIRMED', 5000));
   });
-
-  it('shows empty state', async () => {
-    m.list.mockResolvedValue([]);
-    render(<POSAIMoneyProtectionInvestigationsScreen />);
-    expect(await screen.findByText(/No investigations yet/i)).toBeInTheDocument();
+  it('shows an empty state; filters reach the server', async () => {
+    mc.investigations.mockResolvedValue(page([]));
+    wrap(<POSAIMoneyProtectionInvestigationsScreen />);
+    expect(await screen.findByText('No investigations here.')).toBeInTheDocument();
+    fireEvent.change(screen.getByTestId('mpx-istatus'), { target: { value: 'RESOLVED' } });
+    await waitFor(() => expect(mc.investigations).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'RESOLVED', page: 1 })));
   });
 });

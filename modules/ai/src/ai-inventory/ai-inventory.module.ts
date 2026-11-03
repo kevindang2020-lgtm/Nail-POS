@@ -14,10 +14,14 @@ import { KyselyInventoryRead } from './ai-inventory.kysely.port';
 import { InMemoryRecipeRepository, type RecipeRepositoryPort } from './ai-inventory-recipe.repository';
 import { KyselyRecipeRepository } from './ai-inventory-recipe.kysely.repository';
 import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
+import { InventoryCenter } from './inventory-center';
+import { InventoryCenterController, INVENTORY_CENTER } from './inventory-center.controller';
 
 @Module({
-  controllers: [AiInventoryController],
+  controllers: [AiInventoryController, InventoryCenterController],
   providers: [
+    // AI Inventory Assistant guides (Nov 3 2026): cards with definitions, products, stock activity, the system check (read-only)
+    { provide: INVENTORY_CENTER, useFactory: (db: AppDatabase) => (db ? new InventoryCenter(db as never) : null), inject: [DATABASE] },
     {
       provide: 'InventoryReadPort',
       useFactory: (db: AppDatabase): InventoryReadPort => (db ? new KyselyInventoryRead(db) : new InMemoryInventoryRead()),

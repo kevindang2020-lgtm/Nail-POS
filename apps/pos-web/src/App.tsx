@@ -106,6 +106,9 @@ import { POSDepositReconScreen } from './screens/POSDepositReconScreen';
 import { POSAiAnalyticsScreen } from './screens/POSAiAnalyticsScreen';
 import { POSAiPackageScreen } from './screens/POSAiPackageScreen';
 import { POSAIReviewAssistantScreen } from './screens/POSAIReviewAssistantScreen';
+import { POSAIFraudProtectionAssistantScreen } from './screens/POSAIFraudProtectionAssistantScreen';
+import { POSAICustomerProfileAssistantScreen } from './screens/POSAICustomerProfileAssistantScreen';
+import { POSAICheckoutUpsellAssistantScreen } from './screens/POSAICheckoutUpsellAssistantScreen';
 import { POSAIReceiptScannerScreen } from './screens/POSAIReceiptScannerScreen';
 import { POSUsageLimitsScreen } from './screens/POSUsageLimitsScreen';
 import { POSAccountInvoicesScreen } from './screens/POSAccountInvoicesScreen';
@@ -398,9 +401,9 @@ function POSRoutes() {
         <Route path="tenant/reports/ai" element={<POSAiAnalyticsScreen />} />
         <Route path="tenant/ai/booking" element={<POSAiPackageScreen code="ai_booking_assistant" title={t('pos.ai_booking_assistant')} />} />
         <Route path="tenant/ai/scheduling" element={<Navigate to="/tenant/ai/scheduling-optimizer" replace />} />{/* BUILD_PLAN Phase 7: one optimizer entry */}
-        <Route path="tenant/ai/customer-insights" element={<POSAiPackageScreen code="ai_customer_profile_assistant" title={t('pos.ai_customer_insights')} />} />
-        <Route path="tenant/ai/checkout-upsell" element={<POSAiPackageScreen code="ai_checkout_upsell_assistant" title={t('pos.ai_checkout_upsell')} />} />
-        <Route path="tenant/ai/fraud-protection" element={<POSAiPackageScreen code="ai_fraud_money_protection" title={t('pos.ai_fraud_protection')} />} />
+        <Route path="tenant/ai/customer-insights" element={<POSAICustomerProfileAssistantScreen />} />
+        <Route path="tenant/ai/checkout-upsell" element={<POSAICheckoutUpsellAssistantScreen />} />
+        <Route path="tenant/ai/fraud-protection" element={<POSAIFraudProtectionAssistantScreen />} />
         <Route path="tenant/ai/reviews" element={<POSAIReviewAssistantScreen />} />
         <Route path="tenant/ai/receipt-scanner" element={<POSAIReceiptScannerScreen />} />
         <Route path="tenant/marketing/sms" element={<POSCampaignCenterScreen defaultChannel="sms" />} />

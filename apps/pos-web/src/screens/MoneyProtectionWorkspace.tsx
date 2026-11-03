@@ -1,0 +1,465 @@
+// MoneyProtectionWorkspace.tsx — the six AI Money Protection guides (Nov 2 2026, built Nov 3 2026). The five pages
+// (/tenant/ai/money-protection · /alerts · /investigations · /rules · /settings) keep their titles and descriptions and share one
+// header: the page tabs, "Run detection now" and "Check AI Money Protection System". Everything is read from
+// /pos/money-protection-center/*: the overview says whether monitoring is CURRENT (never "no alerts" when detection never ran);
+// alerts and investigations have search, filters, which date, presets + From/To month calendar, sort and numbered pages; an
+// alert opens with its evidence, the hóa đơn / payments / staff it points at and its history, and a person acknowledges,
+// dismisses (reason) or reopens it — never about their own activity; investigations show an append-only timeline; the 15 rules
+// show what each checks and how often it fires; a rule change needs a reason to weaken it and keeps before → after.
+// Nothing here moves money.
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
+import { posAIMoneyProtectionApi } from '../api/posAIMoneyProtectionApi';
+import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
+import { codedText } from '../i18n/coded-text';
+import { mpTextCoded } from '@aipowersalon/api-contracts/tenant';
+import type { CodedText } from '@aipowersalon/api-contracts';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry } from '../components/FitKit';
+import { RangeCalendar, isForbidden } from '../components/FinanceKit';
+import { errorTextOf } from '../i18n/error-text';
+import { fmtNumber, fmtInZone } from '../i18n/format';
+import { money } from './reportsCommon';
+
+const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
+const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
+const mc = posAIMoneyProtectionApi.center;
+const GROUPS = ['open', 'new', 'resolved', 'dismissed', 'all'] as const;
+const SEVS = ['all', 'CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'] as const;
+const CATS = ['all', 'duplicate_charge', 'refund', 'void', 'discount', 'tip', 'failed_payment', 'reconciliation', 'employee', 'integrity'] as const;
+const A_DATES = ['detected', 'last_seen', 'updated'] as const;
+const A_SORTS = ['newest', 'oldest', 'severity', 'value'] as const;
+const I_STATUS = ['active', 'OPEN', 'INVESTIGATING', 'WAITING_FOR_INFORMATION', 'ESCALATED', 'RESOLVED', 'CLOSED', 'all'] as const;
+const I_DATES = ['opened', 'updated', 'closed'] as const;
+const I_SORTS = ['updated', 'newest', 'oldest', 'severity', 'value'] as const;
+const PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_30', 'last_90', 'last_month', 'year'] as const;
+const RESOLUTIONS = ['EXPECTED_ACTIVITY', 'CUSTOMER_REQUEST', 'APPROVED_MANAGER_ACTION', 'PROCESSOR_ERROR', 'DEVICE_ERROR', 'SOFTWARE_BUG', 'DUPLICATE_WEBHOOK', 'DUPLICATE_CHARGE_CONFIRMED',
+  'POLICY_VIOLATION', 'EMPLOYEE_MISUSE_CONFIRMED', 'ACCOUNT_COMPROMISE', 'INVENTORY_ERROR', 'CASH_RECONCILIATION_ERROR', 'FALSE_POSITIVE', 'INSUFFICIENT_EVIDENCE', 'OTHER'];
+const MOVES: Record<string, string[]> = { OPEN: ['INVESTIGATING', 'WAITING_FOR_INFORMATION', 'ESCALATED'], INVESTIGATING: ['WAITING_FOR_INFORMATION', 'ESCALATED'], WAITING_FOR_INFORMATION: ['INVESTIGATING', 'ESCALATED'], ESCALATED: ['INVESTIGATING'], RESOLVED: ['CLOSED'] };
+const RULE_IDS = ['MP_DUP_CHARGE_EXACT', 'MP_DUP_CHARGE_LIKELY', 'MP_REFUND_EXCEEDS_CAPTURE', 'MP_REFUND_METHOD_MISMATCH', 'MP_DISCOUNT_EXCEEDS_SUBTOTAL', 'MP_NEGATIVE_CAPTURE', 'MP_MULTIPLE_REVERSALS',
+  'MP_FAILED_PAYMENT_RETRY_LOOP', 'MP_PAID_NO_CAPTURE', 'MP_CAPTURE_ON_CANCELLED', 'MP_REVERSAL_RATE_OUTLIER', 'MP_MEMBERSHIP_DUP_CHARGE', 'MP_GIFTCARD_NEGATIVE_BALANCE', 'MP_GIFTCARD_REDEEM_EXCEEDS', 'MP_CASH_DRAWER_VARIANCE'];
+const STATE_TONE: Record<string, string> = { PASSED: 'ok', WARNING: 'warn', FAILED: 'bad', INSUFFICIENT_DATA: '', UNAVAILABLE: 'bad' };
+const SEV_TONE: Record<string, string> = { CRITICAL: 'bad', HIGH: 'bad', MEDIUM: 'warn', LOW: '', INFO: '' };
+const ruleName = (id: string, fallback?: string) => (RULE_IDS.includes(id) ? t('mpx.rule.' + id) : fallback ?? id);
+const catName = (c: string | null | undefined) => t('mpx.cat.' + (c && (CATS as readonly string[]).includes(c) ? c : 'other'));
+const stName = (s: string) => t('mpx.st.' + s);
+const codeOf = (e: unknown) => { const x = e as { code?: string; details?: { code?: string }; body?: { code?: string } } | null; return x?.code ?? x?.details?.code ?? x?.body?.code; };
+export function mpErr(e: unknown) {
+  const c = codeOf(e);
+  if (c && ['MC_INVALID_PERIOD', 'MC_NOT_FOUND', 'MC_REASON_REQUIRED', 'MC_STALE', 'MC_STATE_INVALID', 'MC_DETECTION_FAILED', 'SEGREGATION_OF_DUTIES'].includes(c)) return t('mpx.err.' + c);
+  if (isForbidden(e)) return t('mpx.err.forbidden');
+  return errorTextOf(e, t('mpx.loadFailed'));
+}
+type Period = { preset?: string; from?: string; to?: string };
+
+/** the header every Money Protection page shares: title, description, tabs, Run detection now, Check */
+function MpShell({ title, sub, tab, children, onChanged }: { title: string; sub: string; tab: string; children: ReactNode; onChanged?: () => void }) {
+  const [health, setHealth] = useState<any | 'loading' | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const runCheck = () => { setHealth('loading'); mc.check().then(setHealth).catch((e) => setHealth({ error: mpErr(e) })); };
+  const runDetection = () => {
+    setBusy(true); setNote(null);
+    mc.runDetection().then((r: any) => { setNote(r.reused ? t('mpx.runReused') : t('mpx.runDone', { c: fmtNumber(r.created ?? 0), u: fmtNumber(r.updated ?? 0) })); onChanged?.(); })
+      .catch((e) => setNote(mpErr(e))).finally(() => setBusy(false));
+  };
+  const TABS: [string, string][] = [['overview', '/tenant/ai/money-protection'], ['alerts', '/tenant/ai/money-protection/alerts'], ['investigations', '/tenant/ai/money-protection/investigations'],
+    ['rules', '/tenant/ai/money-protection/rules'], ['settings', '/tenant/ai/money-protection/settings']];
+  return (
+    <div className="work" data-testid={`mpx-${tab}`}>
+      <div className="vh" style={{ display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'flex-start' }}>
+        <div style={{ flex: 1, minWidth: 260 }}><h1>{title}</h1><div className="sub mb-3">{sub}</div></div>
+        <button className="btn ghost" data-testid="mpx-run" disabled={busy} onClick={runDetection}>{busy ? t('mpx.running') : t('mpx.run')}</button>
+        <button className="btn ghost" data-testid="mpx-check" onClick={runCheck}>{t('mpx.check')}</button>
+      </div>
+      <nav style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto', marginBottom: 8 }} aria-label={t('mpx.tab.overview')}>
+        {TABS.map(([k, to]) => <Link key={k} to={to} className={'btn ghost' + (k === tab ? ' on' : '')} aria-current={k === tab ? 'page' : undefined} data-testid={`mpx-tab-${k}`}>{t('mpx.tab.' + k)}</Link>)}
+      </nav>
+      <p className="sub" data-testid="mpx-safety">{t('mpx.safety')}</p>
+      {note ? <div className="panel" role="status" data-testid="mpx-note" style={{ padding: 10, marginBottom: 8 }}>{note}</div> : null}
+      {children}
+      {health ? <FitDialog wide testId="mpx-health" title={t('mpx.check')} onClose={() => setHealth(null)}
+        subtitle={health !== 'loading' && !health.error ? t('mpx.health.overall', { s: t('mpx.health.' + health.overall), at: when(health.checkedAt) }) : undefined}
+        footer={<button className="btn ghost" onClick={() => setHealth(null)}>{t('mpx.close')}</button>}>
+        {health === 'loading' ? <div className="state">{t('mpx.health.running')}</div> : health.error ? <div className="err">{health.error}</div> : <>
+          <p className="sub">{t('mpx.health.readOnly')}{health.reused ? ` ${t('mpx.health.recent')}` : ''}</p>
+          {(health.checks ?? []).map((x: any) => (
+            <div key={x.key} className="rvw-check" data-testid={`mpx-chk-${x.key}`}>
+              <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')}>{t('mpx.health.' + x.state)}</span> <b>{t('mpx.health.k.' + x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
+              <div className="sub">{t('mpx.health.d.' + x.key + '.' + x.state)}</div>
+              <div className="sub">{t('mpx.health.part', { c: t('mpx.comp.' + x.component) })} · {x.lastPassedAt ? t('mpx.health.lastPassed', { at: when(x.lastPassedAt) }) : t('mpx.health.neverPassed')}</div>
+            </div>))}
+        </>}
+      </FitDialog> : null}
+    </div>
+  );
+}
+
+/** the shared list frame: search · filters · presets + calendar · table · pager */
+function ListFrame({ testId, f, set, period, setPer, today, searchPh, filters, list, err, onRetry, empty, children, total }: {
+  testId: string; f: Record<string, any>; set: (x: Record<string, any>, keep?: boolean) => void; period: Period; setPer: (p: Period) => void; today?: string; searchPh: string;
+  filters: ReactNode; list: any; err: string | null; onRetry: () => void; empty: string; children: ReactNode; total?: number }) {
+  const [draft, setDraft] = useState(f.q ?? '');
+  const [cal, setCal] = useState(false);
+  return (
+    <section className="panel rvw-feed" data-testid={testId} style={{ padding: 12, marginTop: 8 }}>
+      <form className="rvw-filters" onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>
+        <input className="rvw-search" type="search" data-testid="mpx-search" value={draft} onChange={(e) => setDraft(e.target.value)} placeholder={searchPh} aria-label={searchPh} />
+        <button className="btn" type="submit">{t('mpx.search')}</button>
+        {filters}
+        {f.q || period.preset ? <button className="btn ghost" type="button" data-testid="mpx-clear" onClick={() => { setDraft(''); setPer({}); set({ q: undefined }); }}>{t('mpx.clear')}</button> : null}
+      </form>
+      <div className="rvw-dates">
+        <button className={'btn ghost' + (!period.preset ? ' on' : '')} onClick={() => setPer({})}>{t('mpx.preset.all')}</button>
+        {PRESETS.map((p) => <button key={p} className={'btn ghost' + (period.preset === p ? ' on' : '')} data-testid={`mpx-preset-${p}`} onClick={() => setPer({ preset: p })}>{t('mpx.preset.' + p)}</button>)}
+        <button className={'btn ghost' + (period.preset === 'custom' ? ' on' : '')} data-testid="mpx-custom" onClick={() => setCal(true)}>{period.preset === 'custom' ? `${period.from} → ${period.to}` : t('mpx.preset.custom')}</button>
+      </div>
+      {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: period.from, to: period.to }} today={today ?? new Date().toISOString().slice(0, 10)}
+        onApply={(r) => { setPer({ preset: 'custom', from: r.from, to: r.to }); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setPer({}); setCal(false); }} /></div> : null}
+      {err ? <ErrorRetry message={err} onRetry={onRetry} /> : !list ? <div className="state">{t('mpx.loading')}</div> : !total ? <Empty title={empty} /> : children}
+      <div className="rvw-pager">
+        <Pager info={list ? { page: list.page, pageSize: list.pageSize, totalItems: list.total, totalPages: list.totalPages } : null} onPage={(n) => set({ page: n }, true)} />
+        <label className="rvw-f"><span>{t('mpx.rows')}</span><select data-testid="mpx-rows" value={String(f.pageSize)} onChange={(e) => set({ pageSize: Number(e.target.value) })}>{['10', '25', '50', '100'].map((x) => <option key={x} value={x}>{x}</option>)}</select></label>
+      </div>
+    </section>
+  );
+}
+function useList<F extends Record<string, any>>(fetch: (q: Record<string, any>) => Promise<any>, initial: F & { q?: string }, tick: number) {
+  const [f, setF] = useState<F & { q?: string }>(initial);
+  const [period, setPeriod] = useState<Period>({});
+  const [list, setList] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); fetch({ ...f, ...period }).then(setList).catch((e) => setErr(mpErr(e))); }, [f, period, fetch]);
+  useEffect(() => { load(); }, [load, tick]);
+  const set = (x: Record<string, any>, keep = false) => setF((y) => ({ ...y, ...x, page: keep ? (x.page ?? y.page) : 1 }));
+  const setPer = (p: Period) => { setPeriod(p); setF((y) => ({ ...y, page: 1 })); };
+  return { f, set, period, setPer, list, err, load };
+}
+
+// ── Overview ──────────────────────────────────────────────────────────────────────────────────────────────────
+export function MpOverview() {
+  const [s, setS] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
+  const load = useCallback(() => { setErr(null); mc.summary().then(setS).catch((e) => setErr(mpErr(e))); }, []);
+  useEffect(() => { load(); }, [load, tick]);
+  const runs = useList(mc.runs, { page: 1, pageSize: 10 }, tick);
+  const c = s?.cards;
+  const monAt = s?.monitoring === 'last_run_failed' ? when(s?.lastRun?.startedAt) : when(s?.lastSuccessAt);
+  return (
+    <MpShell title={tx('pos.ai_money_protection')} sub={tx('pos.possible_financial_anomalies_from_your_real_z6vv')} tab="overview" onChanged={() => setTick((n) => n + 1)}>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : null}
+      {s ? <div className={'panel' + (s.monitoring === 'current' ? '' : ' warn')} data-testid="mpx-monitoring" style={{ padding: 10, marginBottom: 8 }}>
+        <b>{t('mpx.mon.' + s.monitoring, { at: monAt })}</b> <span className="sub">{s.scheduled ? t('mpx.mon.scheduledOn') : t('mpx.mon.scheduledOff')}</span></div> : null}
+      <div className="rvw-kpis" data-testid="mpx-kpis">
+        <KpiCard testId="mpx-kpi-new" label={t('mpx.kpi.new')} value={c ? fmtNumber(c.newAlerts) : '—'} loading={!s && !err} tone={c?.newAlerts ? 'gold' : undefined} />
+        <KpiCard testId="mpx-kpi-open" label={t('mpx.kpi.open')} value={c ? fmtNumber(c.openAlerts) : '—'} loading={!s && !err} />
+        <KpiCard testId="mpx-kpi-critical" label={t('mpx.kpi.critical')} value={c ? fmtNumber(c.critical) : '—'} loading={!s && !err} tone={c?.critical ? 'bad' : undefined} />
+        <KpiCard testId="mpx-kpi-high" label={t('mpx.kpi.high')} value={c ? fmtNumber(c.high) : '—'} loading={!s && !err} tone={c?.high ? 'warn' : undefined} />
+        <KpiCard testId="mpx-kpi-value" label={t('mpx.kpi.value')} value={c ? money(c.valueUnderReviewCents) : '—'} loading={!s && !err} />
+        <KpiCard testId="mpx-kpi-cases" label={t('mpx.kpi.cases')} value={c ? fmtNumber(c.openInvestigations) : '—'} loading={!s && !err} />
+        <KpiCard testId="mpx-kpi-dismissed" label={t('mpx.kpi.dismissed')} value={c ? fmtNumber(c.dismissed30d) : '—'} loading={!s && !err} />
+      </div>
+      <p className="sub" data-testid="mpx-value-hint">{t('mpx.kpi.valueHint')}</p>
+      <section className="panel" style={{ padding: 12, marginTop: 8 }} data-testid="mpx-bycat">
+        <div className="p-h">{t('mpx.byCategory')}</div>
+        {s && !Object.keys(s.byCategory ?? {}).length ? <div className="state">{s.monitoring === 'current' ? t('mpx.noOpen') : t('mpx.mon.' + s.monitoring, { at: monAt })}</div>
+          : Object.entries(s?.byCategory ?? {}).map(([k, n]) => <div key={k} className="rvw-ev"><Link to={`/tenant/ai/money-protection/alerts?category=${k}`}>{catName(k)}</Link> · <b>{fmtNumber(Number(n))}</b></div>)}
+      </section>
+      <section className="panel" style={{ padding: 12, marginTop: 8 }} data-testid="mpx-runs">
+        <div className="p-h">{t('mpx.runs')}</div>
+        {runs.err ? <ErrorRetry message={runs.err} onRetry={runs.load} /> : !runs.list ? <div className="state">{t('mpx.loading')}</div> : !runs.list.total ? <div className="sub">{t('mpx.noRuns')}</div> : (
+          <div className="rvw-table-wrap"><table className="tbl rvw-table"><tbody>{runs.list.items.map((r: any) => (
+            <tr key={r.id} data-testid="mpx-run-row"><td className="nowrap">{when(r.startedAt)}</td><td>{t('mpx.run.trigger.' + r.trigger)}{r.actor ? ` · ${r.actor}` : ''}</td>
+              <td><span className={'chip ' + (r.status === 'failed' ? 'bad' : r.status === 'running' ? 'warn' : 'ok')}>{t('mpx.run.status.' + r.status)}</span></td>
+              <td>{r.status === 'succeeded' ? t('mpx.run.line', { c: fmtNumber(r.created), u: fmtNumber(r.updated) }) : r.errorCode ?? ''}</td></tr>))}</tbody></table></div>)}
+        {runs.list && runs.list.totalPages > 1 ? <Pager info={{ page: runs.list.page, pageSize: runs.list.pageSize, totalItems: runs.list.total, totalPages: runs.list.totalPages }} onPage={(n) => runs.set({ page: n }, true)} /> : null}
+      </section>
+    </MpShell>
+  );
+}
+
+// ── Alerts ────────────────────────────────────────────────────────────────────────────────────────────────────
+export function MpAlerts() {
+  const [params] = useSearchParams();
+  const [tick, setTick] = useState(0);
+  const init = { status: 'open', severity: 'all', category: (CATS as readonly string[]).includes(params.get('category') ?? '') ? params.get('category')! : 'all', rule: params.get('rule') ?? undefined,
+    dateField: 'detected', sort: 'newest', page: 1, pageSize: 25 };
+  const L = useList(mc.alerts, init, tick);
+  const [open, setOpen] = useState<string | null>(null);
+  const rows: any[] = L.list?.items ?? [];
+  return (
+    <MpShell title={tx('pos.money_protection_alerts')} sub={tx('pos.possible_anomalies_requiring_review_each_shows_1ql7')} tab="alerts" onChanged={() => setTick((n) => n + 1)}>
+      <div style={{ display: 'flex', gap: 6, flexWrap: 'nowrap', overflowX: 'auto' }} role="tablist">
+        {GROUPS.map((g) => <button key={g} role="tab" aria-selected={L.f.status === g} className={'btn ghost' + (L.f.status === g ? ' on' : '')} data-testid={`mpx-grp-${g}`} onClick={() => L.set({ status: g })}>{t('mpx.grp.' + g)}</button>)}
+      </div>
+      <ListFrame testId="mpx-alerts" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+        searchPh={L.list?.customersVisible === false ? t('mpx.searchPhNoCustomer') : t('mpx.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.noAlerts')}
+        filters={<>
+          <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
+          <select data-testid="mpx-category" aria-label={t('mpx.categoryLabel')} value={L.f.category} onChange={(e) => L.set({ category: e.target.value, rule: undefined })}>{CATS.map((k) => <option key={k} value={k}>{catName(k)}</option>)}</select>
+          <select data-testid="mpx-datefield" aria-label={t('mpx.dateLabel')} value={L.f.dateField} onChange={(e) => L.set({ dateField: e.target.value })}>{A_DATES.map((k) => <option key={k} value={k}>{t('mpx.date.' + k)}</option>)}</select>
+          <select data-testid="mpx-sort" aria-label={t('mpx.sortLabel')} value={L.f.sort} onChange={(e) => L.set({ sort: e.target.value })}>{A_SORTS.map((k) => <option key={k} value={k}>{t('mpx.sort.' + k)}</option>)}</select>
+        </>}>
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.col.when')}</th><th>{t('mpx.col.alert')}</th><th>{t('mpx.col.severity')}</th><th>{t('mpx.col.amount')}</th><th>{t('mpx.col.status')}</th><th /></tr></thead>
+          <tbody>{rows.map((a) => (
+            <tr key={a.id} data-testid="mpx-alert-row">
+              <td className="nowrap">{when(a.firstSeenAt)}{a.eventCount > 1 ? <div className="sub">×{fmtNumber(a.eventCount)}</div> : null}</td>
+              <td><b>{ruleName(a.ruleId, a.rule)}</b><div className="sub">{catName(a.category)}{a.branch ? ` · ${a.branch}` : ''}</div></td>
+              <td><span className={'chip ' + (SEV_TONE[a.severity] ?? '')}>{t('mpx.sev.' + a.severity)}</span></td>
+              <td>{money(a.amountCents)}</td>
+              <td><span className="chip" data-testid="mpx-alert-status">{stName(a.status)}</span>{a.investigationId ? <div className="sub">{t('mpx.d.inCase')}</div> : null}</td>
+              <td><button className="btn ghost sm" data-testid="mpx-alert-view" onClick={() => setOpen(a.id)}>{t('mpx.view')}</button></td>
+            </tr>))}</tbody></table></div>
+      </ListFrame>
+      {open ? <AlertDialog id={open} onClose={() => setOpen(null)} onChanged={() => setTick((n) => n + 1)} /> : null}
+    </MpShell>
+  );
+}
+
+type Explanation = { summary: string; source: 'ai' | 'fallback'; disclaimer: string; summaryCoded?: CodedText[] | null; disclaimerCoded?: CodedText | null; language?: 'en' | 'vi' | null };
+/** Vietnamese POS §21 / §120: the deterministic summary — English: the server's text; Vietnamese: worded from its codes. An AI-written
+ *  summary is in the language the gateway asked for: shown as is when it matches the screen, labelled with its language when not. */
+function ExplainText({ x }: { x: Explanation }) {
+  const lang = getLanguage();
+  return <>
+    {x.source === 'fallback'
+      ? (lang === 'en' || !x.summaryCoded?.length ? <p style={{ margin: 0 }}>{x.summary}</p> : <p style={{ margin: 0 }}>{x.summaryCoded.map((c) => codedText(c)).join(' ')}</p>)
+      : (x.language ?? 'en') === lang
+        ? <p style={{ margin: 0 }} lang={x.language ?? 'en'} data-testid="mp-explain-ai">{x.summary}</p>
+        : (x.language ?? 'en') === 'en'
+          ? <p style={{ margin: 0 }} lang="en" data-testid="mp-explain-ai-english"><b>{tx('growth.mp.aiEnglish')}</b> {x.summary}</p>
+          : <p style={{ margin: 0 }} lang="vi" data-testid="mp-explain-ai-vietnamese"><b>{tx('growth.mp.aiVietnamese')}</b> {x.summary}</p>}
+    {x.disclaimer ? <div className="sub" style={{ marginTop: 6 }}>{lang === 'en' ? x.disclaimer : codedText(x.disclaimerCoded ?? { code: 'MP.DISCLAIMER' }, x.disclaimer)} {x.source === 'fallback' ? tx('pos.deterministic_summary') : ''}</div> : null}
+  </>;
+}
+
+function AlertDialog({ id, onClose, onChanged }: { id: string; onClose: () => void; onChanged: () => void }) {
+  const [d, setD] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [act, setAct] = useState<null | 'acknowledge' | 'dismiss' | 'reopen'>(null);
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [explain, setExplain] = useState<Explanation | { error: string } | 'loading' | null>(null);
+  const load = useCallback(() => { setErr(null); mc.alert(id).then(setD).catch((e) => setErr(mpErr(e))); }, [id]);
+  useEffect(() => { load(); }, [load]);
+  const doAct = () => {
+    if (!act || !d) return;
+    setBusy(true); setMsg(null);
+    mc.alertAction({ id, action: act, reason: reason.trim() || null, expectedStatus: d.alert.status })
+      .then(() => { setMsg(t('mpx.act.done.' + act)); setAct(null); setReason(''); load(); onChanged(); })
+      .catch((e) => { setMsg(mpErr(e)); if (codeOf(e) === 'MC_STALE') load(); }).finally(() => setBusy(false));
+  };
+  const openCase = () => {
+    if (!d) return;
+    setBusy(true);
+    posAIMoneyProtectionApi.createInvestigation({ title: ruleName(d.alert.ruleId, d.alert.rule), alertIds: [id] }).then(() => { setMsg(t('mpx.d.caseOpened')); load(); onChanged(); })
+      .catch((e) => setMsg(mpErr(e))).finally(() => setBusy(false));
+  };
+  const a = d?.alert;
+  return (
+    <FitDialog wide testId="mpx-alert" title={t('mpx.d.title')} subtitle={a ? `${ruleName(a.ruleId, a.rule)} · ${when(a.firstSeenAt)}` : undefined} onClose={onClose}
+      footer={<button className="btn ghost" onClick={onClose}>{t('mpx.close')}</button>}>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="state">{t('mpx.loading')}</div> : <>
+        <div><span className={'chip ' + (SEV_TONE[a.severity] ?? '')}>{t('mpx.sev.' + a.severity)}</span> <span className="chip" data-testid="mpx-d-status">{stName(a.status)}</span> · <b>{money(a.amountCents)}</b> <span className="sub">{t('mpx.kpi.valueHint')}</span></div>
+        {msg ? <div className="panel" role="status" data-testid="mpx-d-msg" style={{ padding: 8, marginTop: 8 }}>{msg}</div> : null}
+        {/* the stored evidence is server English; Vietnamese is worded from its codes (an unknown sentence is shown as stored) */}
+        <section style={{ marginTop: 10 }} data-testid="mpx-d-evidence"><div className="p-h">{t('mpx.d.evidence')}</div>
+          <p>{d.evidence?.summary ? codedText(mpTextCoded(d.evidence.summary), d.evidence.summary) : d.rule?.description ?? ''}</p>
+          <div className="sub">{tx('pos.risk_score')}{' '}{a.riskScore} {tx('pos.confidence_2')}{' '}{a.confidence}</div>
+          {Array.isArray(d.evidence?.recommendedReview) && d.evidence.recommendedReview.length ? <><b>{tx('pos.recommended_review')}</b><ul>{d.evidence.recommendedReview.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}
+          {Array.isArray(d.evidence?.alternativeExplanations) && d.evidence.alternativeExplanations.length ? <><b>{tx('pos.possible_benign_explanations')}</b><ul>{d.evidence.alternativeExplanations.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}</section>
+        <section style={{ marginTop: 10 }} data-testid="mpx-d-sources"><div className="p-h">{t('mpx.d.sources')}</div>
+          {d.sources.tickets.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.tickets')}: <b>{x.number ?? x.id.slice(0, 8)}</b> · {x.totalCents == null ? '' : money(x.totalCents)} · {when(x.at)}{x.customer ? ` · ${x.customer}` : ''}</div>)}
+          {d.sources.payments.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.payments')}: {money(x.amountCents)} · {x.method} · {x.status} · {when(x.at)}</div>)}
+          {d.sources.staff.length ? <div className="rvw-ev">{t('mpx.d.staff')}: {d.sources.staff.map((x: any) => x.name).filter(Boolean).join(', ')}</div> : null}
+          {d.sources.missing.tickets + d.sources.missing.payments ? <div className="sub">{t('mpx.d.missing', { n: fmtNumber(d.sources.missing.tickets + d.sources.missing.payments) })}</div> : null}
+        </section>
+        {d.selfInvolved ? <p className="warn" data-testid="mpx-d-self">{t('mpx.d.self')}</p> : null}
+        {d.canAct ? <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {(d.actions as string[]).map((x) => <button key={x} className="btn ghost" data-testid={`mpx-act-${x}`} onClick={() => { setAct(x as never); setReason(''); }}>{t('mpx.act.' + x)}</button>)}
+          {!a.investigationId && a.group === 'open' ? <button className="btn" data-testid="mpx-open-case" disabled={busy} onClick={openCase}>{t('mpx.d.openCase')}</button> : null}
+          <button className="btn ghost" data-testid="mpx-explain" onClick={() => { setExplain('loading'); posAIMoneyProtectionApi.explainAlert(id).then((x) => setExplain(x as Explanation)).catch((e) => setExplain({ error: mpErr(e) })); }}>{explain === 'loading' ? t('mpx.d.explaining') : tx('pos.explain_this_alert_advisory')}</button>
+        </div> : null}
+        {explain && explain !== 'loading' ? <div className="panel" style={{ padding: 8, marginTop: 8 }} data-testid="mpx-explain-out">{'error' in explain ? explain.error : <ExplainText x={explain} />}</div> : null}
+        {act ? <div className="panel" style={{ padding: 10, marginTop: 8 }} data-testid="mpx-act-form">
+          <label className="rvw-f"><span>{act === 'dismiss' ? t('mpx.act.reasonDismiss') : act === 'reopen' ? t('mpx.act.reasonReopen') : t('mpx.act.reasonOptional')}</span>
+            <textarea data-testid="mpx-reason" value={reason} onChange={(e) => setReason(e.target.value)} rows={2} maxLength={1000} /></label>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6 }}><button className="btn ghost" onClick={() => setAct(null)}>{t('mpx.cancel')}</button>
+            <button className="btn" data-testid="mpx-act-go" disabled={busy || (act !== 'acknowledge' && reason.trim().length < 5)} onClick={doAct}>{t('mpx.act.' + act)}</button></div>
+        </div> : null}
+        <section style={{ marginTop: 10 }} data-testid="mpx-d-history"><div className="p-h">{t('mpx.d.history')}</div>
+          {d.history.length ? d.history.map((h: any, i: number) => <div key={i} className="rvw-ev"><b>{t('mpx.ev.' + h.action)}</b> · {h.actor ?? '—'} · {when(h.at)}{h.reason ? <div className="sub">{h.reason}</div> : null}</div>) : <div className="sub">{t('mpx.d.noHistory')}</div>}
+        </section>
+      </>}
+    </FitDialog>
+  );
+}
+
+// ── Investigations ────────────────────────────────────────────────────────────────────────────────────────────
+export function MpInvestigations() {
+  const [tick, setTick] = useState(0);
+  const L = useList(mc.investigations, { status: 'active', severity: 'all', dateField: 'opened', sort: 'updated', page: 1, pageSize: 25 }, tick);
+  const [open, setOpen] = useState<any>(null);
+  const rows: any[] = L.list?.items ?? [];
+  return (
+    <MpShell title={tx('pos.money_protection_investigations')} sub={tx('pos.human_review_of_possible_anomalies_notes_xycx')} tab="investigations" onChanged={() => setTick((n) => n + 1)}>
+      <ListFrame testId="mpx-invs" f={L.f} set={L.set} period={L.period} setPer={L.setPer} today={L.list?.period?.today} list={L.list} err={L.err} onRetry={L.load} total={L.list?.total}
+        searchPh={t('mpx.inv.searchPh')} empty={L.f.q || L.period.preset ? t('mpx.noMatch') : t('mpx.inv.empty')}
+        filters={<>
+          <select data-testid="mpx-istatus" aria-label={t('mpx.statusLabel')} value={L.f.status} onChange={(e) => L.set({ status: e.target.value })}>{I_STATUS.map((k) => <option key={k} value={k}>{t('mpx.ist.' + k)}</option>)}</select>
+          <select data-testid="mpx-severity" aria-label={t('mpx.severityLabel')} value={L.f.severity} onChange={(e) => L.set({ severity: e.target.value })}>{SEVS.map((k) => <option key={k} value={k}>{t('mpx.sev.' + k)}</option>)}</select>
+          <select data-testid="mpx-datefield" aria-label={t('mpx.dateLabel')} value={L.f.dateField} onChange={(e) => L.set({ dateField: e.target.value })}>{I_DATES.map((k) => <option key={k} value={k}>{t('mpx.idate.' + k)}</option>)}</select>
+          <select data-testid="mpx-sort" aria-label={t('mpx.sortLabel')} value={L.f.sort} onChange={(e) => L.set({ sort: e.target.value })}>{I_SORTS.map((k) => <option key={k} value={k}>{t('mpx.sort.' + k)}</option>)}</select>
+        </>}>
+        <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.inv.col.opened')}</th><th>{t('mpx.inv.col.case')}</th><th>{t('mpx.inv.col.status')}</th><th>{t('mpx.inv.col.assignee')}</th><th>{t('mpx.inv.col.value')}</th><th>{t('mpx.inv.col.activity')}</th><th /></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr key={r.id} data-testid="mpx-inv-row">
+              <td className="nowrap">{when(r.openedAt)}</td>
+              <td><b>{r.title}</b><div className="sub"><span className={'chip ' + (SEV_TONE[r.severity] ?? '')}>{t('mpx.sev.' + r.severity)}</span>{r.branch ? ` · ${r.branch}` : ''}</div></td>
+              <td><span className="chip">{t('mpx.ist.' + r.status)}</span>{r.resolution ? <div className="sub">{t('mpx.res.' + r.resolution)}</div> : null}</td>
+              <td>{r.assignee ?? <span className="chip warn">{t('mpx.inv.unassigned')}</span>}</td>
+              <td>{money(r.valueUnderReviewCents)}</td>
+              <td className="sub">{t('mpx.inv.counts', { a: fmtNumber(r.alerts), n: fmtNumber(r.notes) })}<div>{when(r.updatedAt)}</div></td>
+              <td><button className="btn ghost sm" data-testid="mpx-inv-view" onClick={() => setOpen(r)}>{t('mpx.view')}</button></td>
+            </tr>))}</tbody></table></div>
+      </ListFrame>
+      {open ? <CaseDialog row={open} onClose={() => setOpen(null)} onChanged={() => setTick((n) => n + 1)} /> : null}
+    </MpShell>
+  );
+}
+
+function CaseDialog({ row, onClose, onChanged }: { row: any; onClose: () => void; onChanged: () => void }) {
+  const [tl, setTl] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [status, setStatus] = useState<string>(row.status);
+  const [resolution, setResolution] = useState('');
+  const [recovery, setRecovery] = useState('');
+  const [msg, setMsg] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const load = useCallback(() => { setErr(null); mc.timeline(row.id).then(setTl).catch((e) => setErr(mpErr(e))); }, [row.id]);
+  useEffect(() => { load(); }, [load]);
+  const go = (p: Promise<unknown>, after?: (r: any) => void) => { setBusy(true); setMsg(null); p.then((r) => { setMsg(t('mpx.inv.done')); after?.(r); load(); onChanged(); }).catch((e) => setMsg(mpErr(e))).finally(() => setBusy(false)); };
+  const done = status === 'RESOLVED' || status === 'CLOSED';
+  return (
+    <FitDialog wide testId="mpx-case" title={t('mpx.inv.title')} subtitle={`${row.title} · ${when(row.openedAt)}`} onClose={onClose} footer={<button className="btn ghost" onClick={onClose}>{t('mpx.close')}</button>}>
+      <div><span className="chip" data-testid="mpx-case-status">{t('mpx.ist.' + status)}</span> · {money(row.valueUnderReviewCents)} <span className="sub">{t('mpx.kpi.valueHint')}</span></div>
+      {msg ? <div className="panel" role="status" data-testid="mpx-case-msg" style={{ padding: 8, marginTop: 8 }}>{msg}</div> : null}
+      {!done ? <div className="rvw-filters" style={{ marginTop: 10 }}>
+        {(MOVES[status] ?? []).map((s) => <button key={s} className="btn ghost sm" data-testid={`mpx-move-${s}`} disabled={busy} onClick={() => go(posAIMoneyProtectionApi.setInvestigationStatus(row.id, s), () => setStatus(s))}>{t('mpx.inv.move')} {t('mpx.ist.' + s)}</button>)}
+      </div> : status === 'RESOLVED' ? <button className="btn ghost sm" data-testid="mpx-move-CLOSED" disabled={busy} onClick={() => go(posAIMoneyProtectionApi.setInvestigationStatus(row.id, 'CLOSED'), () => setStatus('CLOSED'))}>{t('mpx.inv.move')} {t('mpx.ist.CLOSED')}</button> : null}
+      {!done && status !== 'OPEN' ? <div className="rvw-filters" style={{ marginTop: 8 }}>
+        <select data-testid="mpx-resolution" aria-label={t('mpx.inv.resolution')} value={resolution} onChange={(e) => setResolution(e.target.value)}><option value="">{t('mpx.inv.resolution')}</option>{RESOLUTIONS.map((r) => <option key={r} value={r}>{t('mpx.res.' + r)}</option>)}</select>
+        <input data-testid="mpx-recovery" inputMode="decimal" value={recovery} onChange={(e) => setRecovery(e.target.value.replace(/[^0-9.]/g, ''))} placeholder={t('mpx.inv.recovery')} aria-label={t('mpx.inv.recovery')} />
+        <button className="btn" data-testid="mpx-resolve" disabled={busy || !resolution} onClick={() => go(posAIMoneyProtectionApi.resolveInvestigation(row.id, resolution, recovery ? Math.round(Number(recovery) * 100) : undefined), () => setStatus('RESOLVED'))}>{t('mpx.inv.resolve')}</button>
+      </div> : null}
+      <section style={{ marginTop: 10 }}><div className="p-h">{t('mpx.inv.note')}</div>
+        <textarea data-testid="mpx-note-text" rows={2} value={note} maxLength={4000} onChange={(e) => setNote(e.target.value)} aria-label={t('mpx.inv.note')} />
+        <button className="btn sm" data-testid="mpx-add-note" disabled={busy || !note.trim()} onClick={() => go(posAIMoneyProtectionApi.addNote(row.id, note.trim()), () => setNote(''))}>{t('mpx.inv.addNote')}</button></section>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !tl ? <div className="state">{t('mpx.loading')}</div> : <>
+        <section style={{ marginTop: 10 }} data-testid="mpx-case-timeline"><div className="p-h">{t('mpx.inv.timeline')}</div>
+          {tl.items.map((x: any, i: number) => <div key={i} className="rvw-ev" data-testid="mpx-tl-item"><b>{x.kind === 'note' ? t('mpx.ev.note') : t('mpx.ev.' + x.action)}</b>{x.to && x.kind !== 'note' && x.action !== 'assigned' ? ` → ${t('mpx.ist.' + x.to)}` : ''} · {x.actor ?? '—'} · {when(x.at)}
+            {x.kind === 'note' ? <div>{x.text}</div> : x.detail?.resolution ? <div className="sub">{t('mpx.res.' + x.detail.resolution)}</div> : null}</div>)}</section>
+        <section style={{ marginTop: 10 }}><div className="p-h">{t('mpx.inv.linked')}</div>
+          {tl.alerts.map((a: any) => <div key={a.id} className="rvw-ev">{ruleName(a.ruleId, a.rule)} · {t('mpx.sev.' + a.severity)} · {money(a.amountCents)} · {stName(a.status)}</div>)}</section>
+      </>}
+    </FitDialog>
+  );
+}
+
+// ── Rules & detection ─────────────────────────────────────────────────────────────────────────────────────────
+function useRules(tick: number) {
+  const [r, setR] = useState<any>(null);
+  const [err, setErr] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); mc.rules().then(setR).catch((e) => setErr(mpErr(e))); }, []);
+  useEffect(() => { load(); }, [load, tick]);
+  return { r, err, load };
+}
+function RuleState({ x }: { x: any }) {
+  return !x.layerOn ? <span className="chip warn">{t('mpx.rules.layerOff')}</span> : <span className={'chip ' + (x.enabled ? 'ok' : 'warn')} data-testid="mpx-rule-state">{x.enabled ? t('mpx.rules.on') : t('mpx.rules.off')}</span>;
+}
+export function MpRules() {
+  const [tick, setTick] = useState(0);
+  const { r, err, load } = useRules(tick);
+  const [open, setOpen] = useState<any>(null);
+  return (
+    <MpShell title={tx('pos.money_protection_rules_detection')} sub={t('mpx.rules.note')} tab="rules" onChanged={() => setTick((n) => n + 1)}>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('mpx.loading')}</div> : (
+        <section className="panel" style={{ padding: 12 }} data-testid="mpx-rules"><div className="p-h">{t('mpx.rules.title')}</div>
+          <div className="rvw-table-wrap"><table className="tbl rvw-table"><thead><tr><th>{t('mpx.rules.col.rule')}</th><th>{t('mpx.rules.col.layer')}</th><th>{t('mpx.rules.col.state')}</th><th>{t('mpx.rules.col.alerts')}</th><th>{t('mpx.rules.col.last')}</th><th /></tr></thead>
+            <tbody>{r.rules.map((x: any) => (
+              <tr key={x.id} data-testid="mpx-rule-row">
+                <td><b>{ruleName(x.id, x.name)}</b><div className="sub">{catName(x.category)} · <span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></div></td>
+                <td>{t('mpx.layer.' + x.layer)}{Object.keys(x.thresholds).length ? <div className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</div> : null}</td><td><RuleState x={x} /></td>
+                <td>{fmtNumber(x.alerts30d)}{x.dismissed90d ? <div className="sub">{t('mpx.rules.dismissed', { n: fmtNumber(x.dismissed90d) })}</div> : null}</td>
+                <td>{when(x.lastAlertAt)}</td>
+                <td className="nowrap"><button className="btn ghost sm" data-testid="mpx-rule-view" onClick={() => setOpen(x)}>{t('mpx.view')}</button>{' '}
+                  <Link className="btn ghost sm" to={`/tenant/ai/money-protection/alerts?rule=${x.id}`}>{t('mpx.rules.seeAlerts')}</Link></td>
+              </tr>))}</tbody></table></div>
+        </section>)}
+      {open ? <FitDialog wide testId="mpx-rule" title={ruleName(open.id, open.name)} onClose={() => setOpen(null)} footer={<button className="btn ghost" onClick={() => setOpen(null)}>{t('mpx.close')}</button>}>
+        <p>{open.description}</p>
+        <div className="sub">{catName(open.category)} · {t('mpx.layer.' + open.layer)} · {t('mpx.rules.default', { s: t('mpx.sev.' + open.defaultSeverity) })}</div>
+        {Object.keys(open.thresholds).length ? <div style={{ marginTop: 8 }}><b>{t('mpx.rules.thresholds')}</b>: {Object.entries(open.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</div> : null}
+        <div style={{ marginTop: 8 }}><RuleState x={open} /> · {t('mpx.rules.col.alerts')}: {fmtNumber(open.alerts30d)}</div>
+      </FitDialog> : null}
+    </MpShell>
+  );
+}
+
+// ── Settings ──────────────────────────────────────────────────────────────────────────────────────────────────
+export function MpSettings() {
+  const [tick, setTick] = useState(0);
+  const { r, err, load } = useRules(tick);
+  const H = useList(mc.history, { page: 1, pageSize: 25 }, tick);
+  const [edit, setEdit] = useState<any>(null);
+  return (
+    <MpShell title={tx('pos.money_protection_settings')} sub={tx('pos.enable_disable_rules_adjust_severity_and_1pnq')} tab="settings" onChanged={() => setTick((n) => n + 1)}>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !r ? <div className="state">{t('mpx.loading')}</div> : (
+        <section className="panel" style={{ padding: 12 }} data-testid="mpx-settings"><div className="p-h">{t('mpx.set.title')}</div>
+          <div className="rvw-table-wrap"><table className="tbl rvw-table"><tbody>{r.rules.map((x: any) => (
+            <tr key={x.id} data-testid="mpx-set-row"><td><b>{ruleName(x.id, x.name)}</b><div className="sub">{t('mpx.rules.default', { s: t('mpx.sev.' + x.defaultSeverity) })}</div></td>
+              <td><RuleState x={x} /></td><td><span className={'chip ' + (SEV_TONE[x.severity] ?? '')}>{t('mpx.sev.' + x.severity)}</span></td>
+              <td className="sub">{Object.entries(x.thresholds).map(([k, v]) => `${k} ${v}`).join(' · ')}</td>
+              <td>{r.canEdit ? <button className="btn ghost sm" data-testid="mpx-rule-edit" onClick={() => setEdit(x)}>{t('mpx.rules.edit')}</button> : null}</td></tr>))}</tbody></table></div>
+        </section>)}
+      <ListFrame testId="mpx-history" f={H.f} set={H.set} period={H.period} setPer={H.setPer} today={H.list?.period?.today} list={H.list} err={H.err} onRetry={H.load} total={H.list?.total}
+        searchPh={t('mpx.set.history')} empty={t('mpx.set.noHistory')} filters={null}>
+        <div className="p-h">{t('mpx.set.history')}</div>
+        {(H.list?.items ?? []).map((h: any) => <div key={h.id} className="rvw-ev" data-testid="mpx-hist-row">
+          <b>{ruleName(h.ruleId, h.rule)}</b>: {h.before ? `${h.before.enabled ? t('mpx.rules.on') : t('mpx.rules.off')} · ${t('mpx.sev.' + h.before.severity)}` : '—'} → {h.after ? `${h.after.enabled ? t('mpx.rules.on') : t('mpx.rules.off')} · ${t('mpx.sev.' + h.after.severity)}` : '—'}
+          {h.weaker ? <span className="chip warn"> {t('mpx.set.weaker')}</span> : null}<div className="sub">{h.actor ?? '—'} · {when(h.at)}{h.reason ? ` · ${h.reason}` : ''}</div></div>)}
+      </ListFrame>
+      {edit ? <RuleEditor rule={edit} onClose={() => setEdit(null)} onSaved={() => { setEdit(null); setTick((n) => n + 1); }} /> : null}
+    </MpShell>
+  );
+}
+
+function RuleEditor({ rule, onClose, onSaved }: { rule: any; onClose: () => void; onSaved: () => void }) {
+  const [enabled, setEnabled] = useState<boolean>(rule.enabled);
+  const [sev, setSev] = useState<string>(rule.severityOverridden ? rule.severity : '');
+  const [th, setTh] = useState<Record<string, string>>(Object.fromEntries(Object.entries(rule.thresholds).map(([k, v]) => [k, String(v)])));
+  const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  const save = () => {
+    setBusy(true); setMsg(null);
+    const thresholds = Object.fromEntries(Object.entries(th).map(([k, v]) => [k, v !== '' && !Number.isNaN(Number(v)) ? Number(v) : v]));
+    mc.saveRule({ ruleId: rule.id, enabled, severityOverride: sev || null, thresholds, reason: reason.trim() || null, expectedUpdatedAt: rule.updatedAt ?? null })
+      .then(() => onSaved()).catch((e) => setMsg(mpErr(e))).finally(() => setBusy(false));
+  };
+  return (
+    <FitDialog wide testId="mpx-rule-editor" title={ruleName(rule.id, rule.name)} onClose={onClose}
+      footer={<><button className="btn ghost" onClick={onClose}>{t('mpx.cancel')}</button><button className="btn" data-testid="mpx-rule-save" disabled={busy} onClick={save}>{t('mpx.save')}</button></>}>
+      <p className="sub">{rule.description}</p>
+      {msg ? <div className="err" data-testid="mpx-rule-msg">{msg}</div> : null}
+      <label className="rvw-f"><input type="checkbox" data-testid="mpx-rule-enabled" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> <span>{t('mpx.rules.enabled')}</span></label>
+      <label className="rvw-f"><span>{t('mpx.rules.severity')}</span><select data-testid="mpx-rule-sev" value={sev} onChange={(e) => setSev(e.target.value)}>
+        <option value="">{t('mpx.rules.defaultSev', { s: t('mpx.sev.' + rule.defaultSeverity) })}</option>{SEVS.filter((s) => s !== 'all').map((s) => <option key={s} value={s}>{t('mpx.sev.' + s)}</option>)}</select></label>
+      {Object.keys(th).map((k) => <label key={k} className="rvw-f"><span>{k}</span><input value={th[k]} onChange={(e) => setTh((x) => ({ ...x, [k]: e.target.value }))} aria-label={k} /></label>)}
+      <label className="rvw-f"><span>{t('mpx.rules.reason')}</span><textarea data-testid="mpx-rule-reason" rows={2} maxLength={1000} value={reason} onChange={(e) => setReason(e.target.value)} /></label>
+      <div className="sub">{t('mpx.rules.reasonHint')}</div>
+    </FitDialog>
+  );
+}

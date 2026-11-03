@@ -1,28 +1,52 @@
+// POSAIMoneyProtectionScreen — the Money Protection overview (guides of Nov 3 2026): the cards come from the center, value under review is
+// framed as "not a confirmed loss", the monitoring line says when detection never ran (never "no alerts"), Run detection now and the
+// read-only check render honestly.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
-const { stateMock } = vi.hoisted(() => ({ stateMock: vi.fn() }));
-vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: { state: stateMock, alerts: vi.fn(), explainAlert: vi.fn() } }));
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+const { mc, api } = vi.hoisted(() => {
+  const mc = { summary: vi.fn(), alerts: vi.fn(), alert: vi.fn(), alertAction: vi.fn(), investigations: vi.fn(), timeline: vi.fn(), rules: vi.fn(), saveRule: vi.fn(), history: vi.fn(), runs: vi.fn(), runDetection: vi.fn(), check: vi.fn() };
+  return { mc, api: { center: mc, explainAlert: vi.fn(), createInvestigation: vi.fn(), addNote: vi.fn(), assignInvestigation: vi.fn(), setInvestigationStatus: vi.fn(), resolveInvestigation: vi.fn() } };
+});
+vi.mock('../api/posAIMoneyProtectionApi', () => ({ posAIMoneyProtectionApi: api }));
+const page = (items: any[], o: any = {}) => ({ items, total: items.length, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' }, ...o });
+const wrap = (el: any) => render(<MemoryRouter>{el}</MemoryRouter>);
+
 import { POSAIMoneyProtectionScreen } from './POSAIMoneyProtectionScreen';
-beforeEach(() => stateMock.mockReset());
+const SUM = (o: any = {}) => ({ cards: { newAlerts: 4, openAlerts: 6, critical: 1, high: 2, valueUnderReviewCents: 12500, openInvestigations: 1, unassignedInvestigations: 0, dismissed30d: 2, raised30d: 9 },
+  byCategory: { duplicate_charge: 3, refund: 1 }, monitoring: 'current', scheduled: true, lastRun: null, lastSuccessAt: '2026-11-03T05:00:00Z', ...o });
+beforeEach(() => { vi.clearAllMocks(); mc.runs.mockResolvedValue(page([{ id: 'r1', trigger: 'manual', status: 'succeeded', startedAt: '2026-11-03T05:00:00Z', created: 2, updated: 1, actor: 'Owner Kim' }])); });
 
-describe('POSAIMoneyProtectionScreen (Command Center)', () => {
-  it('renders KPIs, the under-review framing, and by-type breakdown', async () => {
-    stateMock.mockResolvedValue({
-      newAlerts: 4, highSeverityAlerts: 2, criticalAlerts: 1, openInvestigations: 1, alertsAwaitingReview: 5,
-      byType: [{ type: 'duplicate_charge_exact', count: 3 }, { type: 'refund_exceeds_capture', count: 1 }],
-      valueUnderReviewCents: 12500, resolvedFalsePositives: 2, dataFreshness: 'realtime', generatedAt: '2026-07-07T00:00:00Z',
-    });
-    render(<POSAIMoneyProtectionScreen />);
+describe('POSAIMoneyProtectionScreen (overview)', () => {
+  it('renders the cards, the under-review framing, kinds of open alerts and the detection runs', async () => {
+    mc.summary.mockResolvedValue(SUM());
+    wrap(<POSAIMoneyProtectionScreen />);
     expect(await screen.findByRole('heading', { name: 'AI Money Protection' })).toBeInTheDocument();
-    expect(screen.getByText('Value Under Review')).toBeInTheDocument();
-    expect(screen.getByText('$125.00')).toBeInTheDocument();
-    expect(screen.getByText(/under review — not confirmed loss/i)).toBeInTheDocument();
-    expect(screen.getByText('Duplicate charge (exact)')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId('mpx-kpi-value')).toHaveTextContent('$125.00'));
+    expect(screen.getByTestId('mpx-value-hint')).toHaveTextContent(/not a confirmed loss/i);
+    expect(screen.getByTestId('mpx-bycat')).toHaveTextContent('Duplicate charges');
+    expect(await screen.findByTestId('mpx-run-row')).toHaveTextContent('2 new · 1 refreshed');
+    expect(screen.getByTestId('mpx-monitoring')).toHaveTextContent(/Monitoring is current/);
   });
-
-  it('shows an empty state when there are no open alerts', async () => {
-    stateMock.mockResolvedValue({ newAlerts: 0, highSeverityAlerts: 0, criticalAlerts: 0, openInvestigations: 0, alertsAwaitingReview: 0, byType: [], valueUnderReviewCents: 0, resolvedFalsePositives: 0, dataFreshness: 'realtime', generatedAt: '2026-07-07T00:00:00Z' });
-    render(<POSAIMoneyProtectionScreen />);
-    expect(await screen.findByText(/Nothing needs review right now/i)).toBeInTheDocument();
+  it('detection never ran: says so (never "nothing needs review"); Run detection now reports what it raised', async () => {
+    mc.summary.mockResolvedValue(SUM({ cards: { newAlerts: 0, openAlerts: 0, critical: 0, high: 0, valueUnderReviewCents: 0, openInvestigations: 0, dismissed30d: 0 }, byCategory: {}, monitoring: 'never_checked', scheduled: false, lastSuccessAt: null }));
+    mc.runDetection.mockResolvedValue({ status: 'succeeded', reused: false, created: 3, updated: 0 });
+    wrap(<POSAIMoneyProtectionScreen />);
+    expect(await screen.findByTestId('mpx-monitoring')).toHaveTextContent(/never run/);
+    expect(screen.getByTestId('mpx-monitoring')).toHaveTextContent(/Scheduled detection is off/);
+    expect(screen.queryByText(/Nothing needs review right now/)).toBeNull();
+    fireEvent.click(screen.getByTestId('mpx-run'));
+    expect(await screen.findByTestId('mpx-note')).toHaveTextContent('3 new alert(s)');
+  });
+  it('Check AI Money Protection System: localized checks with part and last pass; a refused check is an error', async () => {
+    mc.summary.mockResolvedValue(SUM());
+    mc.check.mockResolvedValueOnce({ overall: 'FAILED', checkedAt: '2026-11-03T05:00:00Z', checks: [{ key: 'detection_recent', component: 'detection', state: 'FAILED', lastPassedAt: null }] }).mockRejectedValueOnce({ status: 403 });
+    wrap(<POSAIMoneyProtectionScreen />);
+    fireEvent.click(await screen.findByTestId('mpx-check'));
+    const k = await screen.findByTestId('mpx-chk-detection_recent');
+    expect(k).toHaveTextContent('Detection ran recently'); expect(k).toHaveTextContent('Part: Detection'); expect(k).toHaveTextContent('Has not passed yet');
+    fireEvent.click(screen.getByText('Close'));
+    fireEvent.click(screen.getByTestId('mpx-check'));
+    expect(await screen.findByText(/cannot do this in Money Protection/)).toBeInTheDocument();
   });
 });

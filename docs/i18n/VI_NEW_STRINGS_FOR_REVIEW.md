@@ -14720,11 +14720,11 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `fch.health.d.booking_connection.INSUFFICIENT_DATA` | No appointments yet. | Chưa có lịch hẹn nào. |
 | `fch.health.k.revenue_history` | Revenue history | Lịch sử doanh thu |
 | `fch.health.d.revenue_history.PASSED` | There are at least 14 days of sales in the sales report (days without a sale count as 0). | Báo cáo bán hàng có ít nhất 14 ngày (ngày không bán được tính là 0). |
-| `fch.health.d.revenue_history.WARNING` | Fewer than 14 days of sales, so no revenue forecast yet. Fix: keep closing hóa đơn in the POS. | Chưa đủ 14 ngày bán hàng nên chưa có dự báo doanh thu. Cách xử lý: tiếp tục đóng hóa đơn trên POS. |
+| `fch.health.d.revenue_history.WARNING` | Fewer than 14 days of sales, so no revenue forecast yet. Fix: keep closing ticket in the POS. | Chưa đủ 14 ngày bán hàng nên chưa có dự báo doanh thu. Cách xử lý: tiếp tục đóng hóa đơn trên POS. |
 | `fch.health.d.revenue_history.INSUFFICIENT_DATA` | No sales yet, or your role cannot see revenue (it needs the financial reports permission). | Chưa có doanh thu, hoặc vai trò của bạn không xem được doanh thu (cần quyền báo cáo tài chính). |
 | `fch.health.k.duplicate_appointments` | Duplicate appointments | Lịch hẹn trùng |
-| `fch.health.d.duplicate_appointments.PASSED` | No customer is booked twice with the same Thợ at the same time (last 180 days). | Không có khách nào bị đặt hai lần cùng Thợ cùng giờ (180 ngày qua). |
-| `fch.health.d.duplicate_appointments.WARNING` | Some customers are booked twice with the same Thợ at the same time. Cause: a double tap or a booking entered twice. Effect: those days are counted too high. Fix: cancel the extra appointment. | Có khách bị đặt hai lần cùng Thợ cùng giờ. Nguyên nhân: bấm hai lần hoặc nhập trùng. Ảnh hưởng: ngày đó bị tính cao hơn. Cách xử lý: hủy lịch hẹn thừa. |
+| `fch.health.d.duplicate_appointments.PASSED` | No customer is booked twice with the same technician at the same time (last 180 days). | Không có khách nào bị đặt hai lần cùng Thợ cùng giờ (180 ngày qua). |
+| `fch.health.d.duplicate_appointments.WARNING` | Some customers are booked twice with the same technician at the same time. Cause: a double tap or a booking entered twice. Effect: those days are counted too high. Fix: cancel the extra appointment. | Có khách bị đặt hai lần cùng Thợ cùng giờ. Nguyên nhân: bấm hai lần hoặc nhập trùng. Ảnh hưởng: ngày đó bị tính cao hơn. Cách xử lý: hủy lịch hẹn thừa. |
 | `fch.health.d.duplicate_appointments.INSUFFICIENT_DATA` | Not enough past appointments to check. | Chưa đủ lịch hẹn đã qua để kiểm tra. |
 | `fch.health.k.invalid_durations` | Appointment times | Thời lượng lịch hẹn |
 | `fch.health.d.invalid_durations.PASSED` | Every appointment has a sensible start, end and length (last 180 days). | Mọi lịch hẹn đều có giờ bắt đầu, kết thúc và thời lượng hợp lý (180 ngày qua). |
@@ -14824,7 +14824,7 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `vcx.d.request` | What the caller asked for | Khách đã yêu cầu |
 | `vcx.d.requestNote` | Taken from the words of the call — not a booking. Only the booking calendar confirms an appointment, and a day like "Saturday" must be checked with the customer. | Lấy từ lời trong cuộc gọi — không phải lịch hẹn. Chỉ lịch đặt hẹn mới xác nhận lịch, và ngày như "thứ Bảy" cần hỏi lại khách. |
 | `vcx.d.services` | Services | Dịch vụ |
-| `vcx.d.tech` | Thợ requested | Thợ được yêu cầu |
+| `vcx.d.tech` | Technician requested | Thợ được yêu cầu |
 | `vcx.d.day` | Day | Ngày |
 | `vcx.d.time` | Time | Giờ |
 | `vcx.d.follow` | Follow-up items | Việc cần theo dõi |
@@ -14880,10 +14880,10 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `vcx.intent.availability` | Availability | Hỏi lịch trống |
 | `vcx.intent.pricing` | Prices | Hỏi giá |
 | `vcx.intent.service_info` | Service question | Hỏi dịch vụ |
-| `vcx.intent.technician_request` | Ask for a Thợ | Yêu cầu Thợ |
+| `vcx.intent.technician_request` | Ask for a technician | Yêu cầu Thợ |
 | `vcx.intent.hours_location` | Hours or address | Giờ mở cửa hoặc địa chỉ |
 | `vcx.intent.promotion` | Promotion | Khuyến mãi |
-| `vcx.intent.membership` | Hội viên | Hội viên |
+| `vcx.intent.membership` | Membership | Hội viên |
 | `vcx.intent.loyalty` | Points | Điểm thưởng |
 | `vcx.intent.payment_issue` | Payment problem | Vấn đề thanh toán |
 | `vcx.intent.refund` | Refund | Hoàn tiền |
@@ -14904,7 +14904,7 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `vcx.speaker.customer` | Customer | Khách |
 | `vcx.speaker.ai_receptionist` | AI receptionist | Lễ tân AI |
 | `vcx.speaker.human_receptionist` | Front desk | Lễ tân |
-| `vcx.speaker.technician` | Thợ | Thợ |
+| `vcx.speaker.technician` | Technician | Thợ |
 | `vcx.speaker.manager` | Manager | Quản lý |
 | `vcx.speaker.additional_caller` | Other caller | Người gọi khác |
 | `vcx.speaker.unknown` | Speaker | Người nói |
@@ -15050,3 +15050,521 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `rax.sort.oldest` | Oldest first | Cũ nhất trước |
 | `rax.sort.rating_low` | Lowest rating first | Điểm thấp nhất trước |
 | `rax.sort.rating_high` | Highest rating first | Điểm cao nhất trước |
+| `cux.check` | Check Checkout Upsell System | Kiểm tra hệ thống gợi ý bán thêm |
+| `cux.open` | Open Upsell Settings | Mở cài đặt bán thêm |
+| `cux.note` | Suggestions are advice only. A suggestion never charges, discounts, changes a ticket, a tip or a commission, or books anything; staff add it at Checkout and the posted ticket is the only sale that counts. | Gợi ý chỉ để tham khảo. Gợi ý không tính tiền, giảm giá, sửa hóa đơn, tiền tip hay hoa hồng, và không đặt lịch; nhân viên thêm ở Thanh toán và chỉ hóa đơn đã ghi mới được tính là doanh thu. |
+| `cux.kpi.state` | Assistant | Trợ lý |
+| `cux.kpi.generated` | Suggestions (30 days) | Gợi ý (30 ngày) |
+| `cux.kpi.accepted` | Accepted | Đã nhận |
+| `cux.kpi.applied` | Added to a ticket | Đã thêm vào hóa đơn |
+| `cux.kpi.dismissed` | Dismissed | Đã bỏ qua |
+| `cux.kpi.failed` | Failed to add | Thêm thất bại |
+| `cux.list` | Suggestion activity | Hoạt động gợi ý |
+| `cux.searchPh` | Customer name or phone, ticket number, suggestion or ID | Tên hoặc số điện thoại khách, số hóa đơn, gợi ý hoặc mã |
+| `cux.searchPhNoCustomer` | Ticket number, suggestion or ID | Số hóa đơn, gợi ý hoặc mã |
+| `cux.empty` | No suggestions yet. They appear at Checkout once the assistant is on and connected. | Chưa có gợi ý nào. Gợi ý xuất hiện ở Thanh toán khi trợ lý được bật và kết nối. |
+| `cux.noMatch` | No suggestions match this search or these filters. | Không có gợi ý nào khớp tìm kiếm hoặc bộ lọc. |
+| `cux.col.when` | Date | Ngày |
+| `cux.col.suggestion` | Suggestion | Gợi ý |
+| `cux.col.ticket` | Ticket | Hóa đơn |
+| `cux.col.customer` | Customer | Khách hàng |
+| `cux.col.status` | Status | Trạng thái |
+| `cux.col.price` | Price | Giá |
+| `cux.f.type` | Type | Loại |
+| `cux.f.status` | Status | Trạng thái |
+| `cux.unknownCustomer` | — | — |
+| `cpx.check` | Check Customer Intelligence System | Kiểm tra hệ thống thông tin khách hàng |
+| `cpx.open` | Open Customer Intelligence | Mở Thông tin khách hàng |
+| `cpx.note` | Insights come from the salon's own visits and bookings and are advice only. Nothing here changes a profile, merges customers or sends a message; notes are written by staff in the customer's profile. | Thông tin lấy từ lượt ghé và lịch hẹn của tiệm và chỉ để tham khảo. Trang này không sửa hồ sơ, gộp khách hay gửi tin nhắn; ghi chú do nhân viên viết trong hồ sơ khách. |
+| `cpx.kpi.scanned` | Customers scanned | Khách đã quét |
+| `cpx.kpi.active` | Active | Đang hoạt động |
+| `cpx.kpi.upcoming` | With an upcoming visit | Có lịch hẹn sắp tới |
+| `cpx.kpi.inactive` | Inactive | Không hoạt động |
+| `cpx.kpi.churn` | Churn watch | Có nguy cơ rời bỏ |
+| `cpx.kpi.rebooking` | Rebooking | Cần đặt lại lịch |
+| `cpx.notScanned` | Not scanned yet | Chưa quét |
+| `cpx.list` | Customers | Khách hàng |
+| `cpx.searchPh` | Customer name, phone or email | Tên, số điện thoại hoặc email khách |
+| `cpx.empty` | No customers yet. | Chưa có khách hàng. |
+| `cpx.noMatch` | No customers match this search or these filters. | Không có khách nào khớp tìm kiếm hoặc bộ lọc. |
+| `cpx.col.customer` | Customer | Khách hàng |
+| `cpx.col.status` | Status | Trạng thái |
+| `cpx.col.last` | Last visit | Lần ghé gần nhất |
+| `cpx.col.visits` | Visits | Lượt ghé |
+| `cpx.col.next` | Next appointment | Lịch hẹn kế tiếp |
+| `cpx.col.flags` | Flags | Đánh dấu |
+| `cpx.f.status` | Status | Trạng thái |
+| `cpx.anyStatus` | All statuses | Mọi trạng thái |
+| `cpx.dateLabel` | Date filter means | Ngày lọc theo |
+| `cpx.f.flag` | Flag | Đánh dấu |
+| `cpx.anyFlag` | Any flag | Mọi đánh dấu |
+| `cpx.daysAgo` | {n} days ago | {n} ngày trước |
+
+## AI Money Protection (`mpx.*`, `fpx.*`) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `mpx.check` | Check AI Money Protection System | Kiểm tra hệ thống bảo vệ tiền AI |
+| `mpx.run` | Run detection now | Chạy phát hiện ngay |
+| `mpx.running` | Running… | Đang chạy… |
+| `mpx.refresh` | Refresh | Làm mới |
+| `mpx.close` | Close | Đóng |
+| `mpx.cancel` | Cancel | Hủy |
+| `mpx.save` | Save | Lưu |
+| `mpx.search` | Search | Tìm |
+| `mpx.clear` | Clear | Xóa bộ lọc |
+| `mpx.rows` | Rows | Số dòng |
+| `mpx.loading` | Loading… | Đang tải… |
+| `mpx.view` | View | Xem |
+| `mpx.safety` | Money Protection only reads and flags. It never charges, refunds, reverses, settles or writes off money, and an alert is a possible discrepancy for a person to review — not a finding about anyone. | Bảo vệ tiền chỉ đọc và đánh dấu. Hệ thống không tính tiền, hoàn tiền, đảo giao dịch, quyết toán hay xóa nợ, và cảnh báo chỉ là sai lệch có thể có để người xem xét — không phải kết luận về ai. |
+| `mpx.loadFailed` | This could not be loaded. Try again or run the system check — this is not "no alerts". | Không tải được. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có cảnh báo". |
+| `mpx.err.forbidden` | Your role cannot do this in Money Protection. | Vai trò của bạn không thực hiện được thao tác này trong Bảo vệ tiền. |
+| `mpx.err.MC_INVALID_PERIOD` | Choose a From and a To date; the From date must be on or before the To date. | Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `mpx.err.MC_NOT_FOUND` | That record was not found. | Không tìm thấy mục này. |
+| `mpx.err.MC_REASON_REQUIRED` | Write a reason (at least 5 characters). | Hãy ghi lý do (ít nhất 5 ký tự). |
+| `mpx.err.MC_STALE` | This was changed by someone else. It has been reloaded — check it and try again. | Mục này vừa được người khác thay đổi và đã được tải lại — hãy xem lại rồi thử lại. |
+| `mpx.err.MC_STATE_INVALID` | This alert cannot do that in its current state. | Cảnh báo này không thể thực hiện thao tác đó ở trạng thái hiện tại. |
+| `mpx.err.MC_DETECTION_FAILED` | Detection could not finish. Run the system check. | Không thể hoàn tất việc phát hiện. Hãy chạy kiểm tra hệ thống. |
+| `mpx.err.SEGREGATION_OF_DUTIES` | You cannot review an alert or case about your own activity. Ask another manager. | Bạn không thể xem xét cảnh báo hoặc hồ sơ liên quan đến hoạt động của chính mình. Hãy nhờ quản lý khác. |
+| `mpx.tab.overview` | Overview | Tổng quan |
+| `mpx.tab.alerts` | Alerts | Cảnh báo |
+| `mpx.tab.investigations` | Investigations | Điều tra |
+| `mpx.tab.rules` | Rules & detection | Quy tắc & phát hiện |
+| `mpx.tab.settings` | Settings | Cài đặt |
+| `mpx.kpi.new` | New alerts | Cảnh báo mới |
+| `mpx.kpi.open` | Open alerts | Cảnh báo đang mở |
+| `mpx.kpi.critical` | Critical | Nghiêm trọng |
+| `mpx.kpi.high` | High | Cao |
+| `mpx.kpi.value` | Value under review | Số tiền đang xem xét |
+| `mpx.kpi.valueHint` | Under review — not a confirmed loss | Đang xem xét — không phải tổn thất đã xác nhận |
+| `mpx.kpi.cases` | Open investigations | Cuộc điều tra đang mở |
+| `mpx.kpi.unassigned` | Unassigned | Chưa giao |
+| `mpx.kpi.dismissed` | Dismissed (30 days) | Đã bỏ qua (30 ngày) |
+| `mpx.mon.current` | Monitoring is current. Last check: {at}. | Giám sát đang cập nhật. Lần kiểm tra gần nhất: {at}. |
+| `mpx.mon.never_checked` | Detection has never run for this salon, so "no alerts" proves nothing yet. Run detection now, or turn on scheduled detection. | Việc phát hiện chưa từng chạy cho tiệm này, nên "không có cảnh báo" chưa chứng minh gì. Hãy chạy phát hiện ngay, hoặc bật phát hiện theo lịch. |
+| `mpx.mon.last_run_failed` | The last detection pass failed ({at}). Alerts may be missing — run the system check. | Lần phát hiện gần nhất bị lỗi ({at}). Có thể thiếu cảnh báo — hãy chạy kiểm tra hệ thống. |
+| `mpx.mon.stale` | No successful detection pass in over a day (last: {at}). New problems may not be flagged yet. | Hơn một ngày chưa có lần phát hiện thành công (gần nhất: {at}). Sự cố mới có thể chưa được đánh dấu. |
+| `mpx.mon.module_off` | Money Protection is turned off on this server. | Bảo vệ tiền đang tắt trên máy chủ này. |
+| `mpx.mon.scheduledOn` | Scheduled detection is on. | Phát hiện theo lịch đang bật. |
+| `mpx.mon.scheduledOff` | Scheduled detection is off — detection runs only when someone presses "Run detection now". | Phát hiện theo lịch đang tắt — chỉ chạy khi có người bấm "Chạy phát hiện ngay". |
+| `mpx.runDone` | Detection finished: {c} new alert(s), {u} refreshed. | Đã phát hiện xong: {c} cảnh báo mới, {u} được cập nhật. |
+| `mpx.runReused` | A detection pass ran moments ago — showing its result. | Một lần phát hiện vừa chạy — đang hiển thị kết quả đó. |
+| `mpx.byCategory` | Open alerts by kind | Cảnh báo đang mở theo loại |
+| `mpx.noOpen` | No open alerts. Nothing needs review right now. | Không có cảnh báo đang mở. Hiện không có gì cần xem xét. |
+| `mpx.runs` | Detection runs | Các lần phát hiện |
+| `mpx.noRuns` | No detection run yet. | Chưa có lần phát hiện nào. |
+| `mpx.run.trigger.manual` | Manual | Thủ công |
+| `mpx.run.trigger.scheduled` | Scheduled | Theo lịch |
+| `mpx.run.status.running` | Running | Đang chạy |
+| `mpx.run.status.succeeded` | Finished | Hoàn tất |
+| `mpx.run.status.failed` | Failed | Lỗi |
+| `mpx.run.line` | {c} new · {u} refreshed | {c} mới · {u} cập nhật |
+| `mpx.searchPh` | Alert ID, rule, ticket number, staff name, customer name or phone | Mã cảnh báo, quy tắc, số hóa đơn, tên nhân viên, tên hoặc số điện thoại khách |
+| `mpx.searchPhNoCustomer` | Alert ID, rule, ticket number or staff name | Mã cảnh báo, quy tắc, số hóa đơn hoặc tên nhân viên |
+| `mpx.statusLabel` | Status | Trạng thái |
+| `mpx.severityLabel` | Severity | Mức độ |
+| `mpx.categoryLabel` | Kind | Loại |
+| `mpx.dateLabel` | Date filter means | Ngày lọc theo |
+| `mpx.sortLabel` | Sort | Sắp xếp |
+| `mpx.noMatch` | Nothing matches this search or these filters. | Không có gì khớp tìm kiếm hoặc bộ lọc. |
+| `mpx.noAlerts` | No alerts here. If detection has never run, this proves nothing — see the Overview. | Không có cảnh báo. Nếu việc phát hiện chưa từng chạy thì điều này chưa chứng minh gì — xem Tổng quan. |
+| `mpx.col.when` | Detected | Phát hiện lúc |
+| `mpx.col.alert` | Alert | Cảnh báo |
+| `mpx.col.severity` | Severity | Mức độ |
+| `mpx.col.amount` | Amount under review | Số tiền đang xem xét |
+| `mpx.col.status` | Status | Trạng thái |
+| `mpx.col.case` | Case | Hồ sơ |
+| `mpx.d.title` | Alert details | Chi tiết cảnh báo |
+| `mpx.d.evidence` | What was found | Điều đã phát hiện |
+| `mpx.d.sources` | Records it points at | Các bản ghi liên quan |
+| `mpx.d.tickets` | Ticket | Hóa đơn |
+| `mpx.d.payments` | Payments | Thanh toán |
+| `mpx.d.staff` | Staff involved | Nhân viên liên quan |
+| `mpx.d.missing` | {n} referenced record(s) could not be found in this salon. | {n} bản ghi được nhắc đến không tìm thấy trong tiệm này. |
+| `mpx.d.history` | History | Lịch sử |
+| `mpx.d.noHistory` | No decisions yet. | Chưa có quyết định nào. |
+| `mpx.d.self` | This alert involves your own activity, so another manager must review it. | Cảnh báo này liên quan đến hoạt động của bạn, nên quản lý khác phải xem xét. |
+| `mpx.d.explain` | Explain with AI | Giải thích bằng AI |
+| `mpx.d.explaining` | Explaining… | Đang giải thích… |
+| `mpx.d.openCase` | Open an investigation | Mở cuộc điều tra |
+| `mpx.d.caseOpened` | Investigation opened. | Đã mở cuộc điều tra. |
+| `mpx.d.inCase` | In an investigation | Đang trong cuộc điều tra |
+| `mpx.act.acknowledge` | Acknowledge | Ghi nhận |
+| `mpx.act.dismiss` | Dismiss as expected | Bỏ qua (hoạt động bình thường) |
+| `mpx.act.reopen` | Reopen | Mở lại |
+| `mpx.act.reasonDismiss` | Why is this expected activity or a false alarm? | Vì sao đây là hoạt động bình thường hoặc báo nhầm? |
+| `mpx.act.reasonReopen` | Why is it reopened? | Vì sao mở lại? |
+| `mpx.act.reasonOptional` | Note (optional) | Ghi chú (không bắt buộc) |
+| `mpx.act.done.acknowledge` | Acknowledged. | Đã ghi nhận. |
+| `mpx.act.done.dismiss` | Dismissed. | Đã bỏ qua. |
+| `mpx.act.done.reopen` | Reopened. | Đã mở lại. |
+| `mpx.inv.searchPh` | Case title, ID, kind or assignee | Tiêu đề, mã, loại hồ sơ hoặc người phụ trách |
+| `mpx.inv.empty` | No investigations here. | Không có cuộc điều tra nào. |
+| `mpx.inv.col.opened` | Opened | Mở lúc |
+| `mpx.inv.col.case` | Case | Hồ sơ |
+| `mpx.inv.col.status` | Status | Trạng thái |
+| `mpx.inv.col.assignee` | Assignee | Người phụ trách |
+| `mpx.inv.col.value` | Value under review | Số tiền đang xem xét |
+| `mpx.inv.col.activity` | Activity | Hoạt động |
+| `mpx.inv.unassigned` | Unassigned | Chưa giao |
+| `mpx.inv.counts` | {a} alert(s) · {n} note(s) | {a} cảnh báo · {n} ghi chú |
+| `mpx.inv.title` | Investigation | Cuộc điều tra |
+| `mpx.inv.timeline` | Timeline (append-only) | Dòng thời gian (chỉ thêm, không sửa) |
+| `mpx.inv.note` | Add a note | Thêm ghi chú |
+| `mpx.inv.addNote` | Add note | Thêm ghi chú |
+| `mpx.inv.assignMe` | Assign to me | Giao cho tôi |
+| `mpx.inv.move` | Move to | Chuyển sang |
+| `mpx.inv.resolve` | Resolve | Giải quyết |
+| `mpx.inv.resolution` | Resolution | Kết luận |
+| `mpx.inv.recovery` | Amount recovered (optional) | Số tiền thu hồi (không bắt buộc) |
+| `mpx.inv.linked` | Linked alerts | Cảnh báo liên kết |
+| `mpx.inv.done` | Saved. | Đã lưu. |
+| `mpx.ev.opened` | Opened | Đã mở |
+| `mpx.ev.assigned` | Assigned | Đã giao |
+| `mpx.ev.status_changed` | Status changed | Đổi trạng thái |
+| `mpx.ev.resolved` | Resolved | Đã giải quyết |
+| `mpx.ev.note` | Note | Ghi chú |
+| `mpx.ev.acknowledge` | Acknowledged | Đã ghi nhận |
+| `mpx.ev.dismiss` | Dismissed | Đã bỏ qua |
+| `mpx.ev.reopen` | Reopened | Đã mở lại |
+| `mpx.ev.setting_changed` | Setting changed | Đổi cài đặt |
+| `mpx.rules.title` | The 15 detection rules | 15 quy tắc phát hiện |
+| `mpx.rules.note` | Every rule is deterministic: it compares your own records (payments, ticket, refunds, gift cards, memberships, cash drawers). Rules raise alerts for a person to review; none blocks or moves money. | Mọi quy tắc đều xác định: so sánh bản ghi của chính tiệm (thanh toán, hóa đơn, hoàn tiền, thẻ quà tặng, hội viên, ngăn kéo tiền). Quy tắc chỉ tạo cảnh báo để người xem xét; không chặn hay chuyển tiền. |
+| `mpx.rules.col.rule` | Rule | Quy tắc |
+| `mpx.rules.col.layer` | How it checks | Cách kiểm tra |
+| `mpx.rules.col.state` | State | Trạng thái |
+| `mpx.rules.col.alerts` | Alerts (30 days) | Cảnh báo (30 ngày) |
+| `mpx.rules.col.last` | Last alert | Cảnh báo gần nhất |
+| `mpx.rules.on` | On | Bật |
+| `mpx.rules.off` | Off | Tắt |
+| `mpx.rules.layerOff` | Off on this server | Đang tắt trên máy chủ |
+| `mpx.rules.dismissed` | {n} dismissed in 90 days | {n} bị bỏ qua trong 90 ngày |
+| `mpx.rules.edit` | Edit | Sửa |
+| `mpx.rules.seeAlerts` | See its alerts | Xem cảnh báo |
+| `mpx.rules.default` | default {s} | mặc định {s} |
+| `mpx.rules.thresholds` | Thresholds | Ngưỡng |
+| `mpx.rules.enabled` | Rule is on | Quy tắc đang bật |
+| `mpx.rules.severity` | Severity | Mức độ |
+| `mpx.rules.defaultSev` | Default ({s}) | Mặc định ({s}) |
+| `mpx.rules.reason` | Reason for this change | Lý do thay đổi |
+| `mpx.rules.reasonHint` | Required to turn a rule off or lower its severity. | Bắt buộc khi tắt quy tắc hoặc hạ mức độ. |
+| `mpx.rules.saved` | Rule saved. | Đã lưu quy tắc. |
+| `mpx.set.title` | Rule settings | Cài đặt quy tắc |
+| `mpx.set.history` | Change history | Lịch sử thay đổi |
+| `mpx.set.noHistory` | No changes recorded yet. Changes made before Nov 3 2026 kept no history. | Chưa có thay đổi nào được ghi. Các thay đổi trước ngày 3/11/2026 không có lịch sử. |
+| `mpx.set.change` | {rule}: {before} → {after} | {rule}: {before} → {after} |
+| `mpx.set.weaker` | Weaker | Lỏng hơn |
+| `mpx.health.running` | Checking… | Đang kiểm tra… |
+| `mpx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `mpx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `mpx.health.readOnly` | Read-only: the check never changes an alert, a rule or any money. | Chỉ đọc: việc kiểm tra không thay đổi cảnh báo, quy tắc hay tiền. |
+| `mpx.health.part` | Part: {c} | Bộ phận: {c} |
+| `mpx.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `mpx.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `mpx.grp.open` | Open | Đang mở |
+| `mpx.grp.new` | New | Mới |
+| `mpx.grp.resolved` | Resolved | Đã giải quyết |
+| `mpx.grp.dismissed` | Dismissed | Đã bỏ qua |
+| `mpx.grp.all` | All | Tất cả |
+| `mpx.sev.all` | Any severity | Mọi mức độ |
+| `mpx.sev.CRITICAL` | Critical | Nghiêm trọng |
+| `mpx.sev.HIGH` | High | Cao |
+| `mpx.sev.MEDIUM` | Medium | Trung bình |
+| `mpx.sev.LOW` | Low | Thấp |
+| `mpx.sev.INFO` | Info | Thông tin |
+| `mpx.cat.all` | Any kind | Mọi loại |
+| `mpx.cat.duplicate_charge` | Duplicate charges | Trùng tiền |
+| `mpx.cat.refund` | Refunds | Hoàn tiền |
+| `mpx.cat.void` | Voids and reversals | Hủy và đảo giao dịch |
+| `mpx.cat.discount` | Discounts | Giảm giá |
+| `mpx.cat.tip` | Tips | Tiền tip |
+| `mpx.cat.failed_payment` | Failed payments | Thanh toán lỗi |
+| `mpx.cat.reconciliation` | Reconciliation | Đối soát |
+| `mpx.cat.employee` | Staff patterns | Xu hướng nhân viên |
+| `mpx.cat.integrity` | Data integrity | Toàn vẹn dữ liệu |
+| `mpx.cat.other` | Other | Khác |
+| `mpx.st.NEW` | New | Mới |
+| `mpx.st.ACKNOWLEDGED` | Acknowledged | Đã ghi nhận |
+| `mpx.st.INVESTIGATING` | Investigating | Đang điều tra |
+| `mpx.st.WAITING_FOR_INFORMATION` | Waiting for information | Chờ thông tin |
+| `mpx.st.ESCALATED` | Escalated | Đã báo cấp trên |
+| `mpx.st.RESOLVED_EXPECTED_ACTIVITY` | Resolved — expected | Đã xong — bình thường |
+| `mpx.st.RESOLVED_SYSTEM_ERROR` | Resolved — system error | Đã xong — lỗi hệ thống |
+| `mpx.st.RESOLVED_POLICY_VIOLATION` | Resolved — policy issue | Đã xong — vi phạm quy định |
+| `mpx.st.RESOLVED_CONFIRMED_MISUSE` | Resolved — confirmed misuse | Đã xong — xác nhận sai phạm |
+| `mpx.st.DISMISSED_FALSE_POSITIVE` | Dismissed | Đã bỏ qua |
+| `mpx.st.CLOSED` | Closed | Đã đóng |
+| `mpx.ist.active` | Active cases | Hồ sơ đang mở |
+| `mpx.ist.OPEN` | Open | Mở |
+| `mpx.ist.INVESTIGATING` | Investigating | Đang điều tra |
+| `mpx.ist.WAITING_FOR_INFORMATION` | Waiting for information | Chờ thông tin |
+| `mpx.ist.ESCALATED` | Escalated | Đã báo cấp trên |
+| `mpx.ist.RESOLVED` | Resolved | Đã giải quyết |
+| `mpx.ist.CLOSED` | Closed | Đã đóng |
+| `mpx.ist.all` | All | Tất cả |
+| `mpx.res.EXPECTED_ACTIVITY` | Expected activity | Hoạt động bình thường |
+| `mpx.res.CUSTOMER_REQUEST` | Customer request | Theo yêu cầu khách |
+| `mpx.res.APPROVED_MANAGER_ACTION` | Approved by a manager | Quản lý đã duyệt |
+| `mpx.res.PROCESSOR_ERROR` | Processor error | Lỗi bên xử lý thẻ |
+| `mpx.res.DEVICE_ERROR` | Device error | Lỗi thiết bị |
+| `mpx.res.SOFTWARE_BUG` | Software bug | Lỗi phần mềm |
+| `mpx.res.DUPLICATE_WEBHOOK` | Duplicate webhook | Thông báo trùng |
+| `mpx.res.DUPLICATE_CHARGE_CONFIRMED` | Duplicate charge confirmed | Xác nhận trùng tiền |
+| `mpx.res.POLICY_VIOLATION` | Policy violation | Vi phạm quy định |
+| `mpx.res.EMPLOYEE_MISUSE_CONFIRMED` | Staff misuse confirmed | Xác nhận nhân viên sai phạm |
+| `mpx.res.ACCOUNT_COMPROMISE` | Account compromised | Tài khoản bị xâm nhập |
+| `mpx.res.INVENTORY_ERROR` | Inventory error | Lỗi tồn kho |
+| `mpx.res.CASH_RECONCILIATION_ERROR` | Cash count error | Lỗi đếm tiền mặt |
+| `mpx.res.FALSE_POSITIVE` | False alarm | Báo nhầm |
+| `mpx.res.INSUFFICIENT_EVIDENCE` | Not enough evidence | Không đủ bằng chứng |
+| `mpx.res.OTHER` | Other | Khác |
+| `mpx.date.detected` | Detected | Ngày phát hiện |
+| `mpx.date.last_seen` | Last seen | Lần thấy gần nhất |
+| `mpx.date.updated` | Last changed | Lần đổi gần nhất |
+| `mpx.idate.opened` | Opened | Ngày mở |
+| `mpx.idate.updated` | Last changed | Lần đổi gần nhất |
+| `mpx.idate.closed` | Closed | Ngày đóng |
+| `mpx.sort.newest` | Newest first | Mới nhất trước |
+| `mpx.sort.oldest` | Oldest first | Cũ nhất trước |
+| `mpx.sort.severity` | Most severe first | Nghiêm trọng nhất trước |
+| `mpx.sort.value` | Largest amount first | Số tiền lớn nhất trước |
+| `mpx.sort.updated` | Recently changed | Thay đổi gần đây |
+| `mpx.layer.deterministic` | Exact comparison | So khớp chính xác |
+| `mpx.layer.baseline` | Compared with normal levels | So với mức bình thường |
+| `mpx.layer.reconciliation` | Reconciliation | Đối soát |
+| `mpx.preset.all` | All time | Mọi thời gian |
+| `mpx.preset.today` | Today | Hôm nay |
+| `mpx.preset.yesterday` | Yesterday | Hôm qua |
+| `mpx.preset.week` | This week | Tuần này |
+| `mpx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `mpx.preset.month` | This month | Tháng này |
+| `mpx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `mpx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `mpx.preset.last_month` | Last month | Tháng trước |
+| `mpx.preset.year` | This year | Năm nay |
+| `mpx.preset.custom` | Custom range | Tùy chọn |
+| `mpx.rule.MP_DUP_CHARGE_EXACT` | Exact duplicate charge | Trùng tiền chính xác |
+| `mpx.rule.MP_DUP_CHARGE_LIKELY` | Likely duplicate charge | Có thể trùng tiền |
+| `mpx.rule.MP_REFUND_EXCEEDS_CAPTURE` | Refund larger than the payment | Hoàn tiền nhiều hơn số đã thu |
+| `mpx.rule.MP_REFUND_METHOD_MISMATCH` | Refund by a different method | Hoàn tiền khác phương thức |
+| `mpx.rule.MP_DISCOUNT_EXCEEDS_SUBTOTAL` | Discount larger than the subtotal | Giảm giá lớn hơn tạm tính |
+| `mpx.rule.MP_NEGATIVE_CAPTURE` | Negative payment amount | Số tiền thu âm |
+| `mpx.rule.MP_MULTIPLE_REVERSALS` | Several reversals on one ticket | Nhiều lần đảo trên một hóa đơn |
+| `mpx.rule.MP_FAILED_PAYMENT_RETRY_LOOP` | Repeated failed payment attempts | Thanh toán lỗi lặp lại |
+| `mpx.rule.MP_PAID_NO_CAPTURE` | Paid ticket without a payment | Hóa đơn đã trả nhưng không có thanh toán |
+| `mpx.rule.MP_CAPTURE_ON_CANCELLED` | Money taken on a cancelled ticket | Thu tiền trên hóa đơn đã hủy |
+| `mpx.rule.MP_REVERSAL_RATE_OUTLIER` | Unusually many reversals | Đảo giao dịch nhiều bất thường |
+| `mpx.rule.MP_MEMBERSHIP_DUP_CHARGE` | Membership charged twice | Phí Hội viên bị thu hai lần |
+| `mpx.rule.MP_GIFTCARD_NEGATIVE_BALANCE` | Gift card balance below zero | Số dư thẻ quà tặng âm |
+| `mpx.rule.MP_GIFTCARD_REDEEM_EXCEEDS` | Gift card used beyond its balance | Dùng thẻ quà tặng vượt số dư |
+| `mpx.rule.MP_CASH_DRAWER_VARIANCE` | Cash drawer count difference | Chênh lệch ngăn kéo tiền |
+| `mpx.comp.subscription` | Subscription | Gói dịch vụ |
+| `mpx.comp.detection` | Detection | Phát hiện |
+| `mpx.comp.sources` | Payment records | Bản ghi thanh toán |
+| `mpx.comp.rules` | Rules | Quy tắc |
+| `mpx.comp.alerts` | Alerts | Cảnh báo |
+| `mpx.comp.privacy` | Privacy | Quyền riêng tư |
+| `mpx.comp.investigations` | Investigations | Điều tra |
+| `mpx.comp.security` | Security | Bảo mật |
+| `mpx.health.PASSED` | Passed | Đạt |
+| `mpx.health.WARNING` | Warning | Cảnh báo |
+| `mpx.health.FAILED` | Failed | Lỗi |
+| `mpx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `mpx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `mpx.health.k.subscription` | Subscribed to Money Protection | Đã đăng ký Bảo vệ tiền |
+| `mpx.health.d.subscription.PASSED` | The salon has the AI Fraud & Money Protection add-on. | Tiệm có gói AI Chống gian lận & Bảo vệ tiền. |
+| `mpx.health.d.subscription.FAILED` | The add-on is not active, so detection is blocked. Renew it in Plans & Usage. | Gói chưa hoạt động nên việc phát hiện bị chặn. Hãy gia hạn trong Gói & Mức sử dụng. |
+| `mpx.health.d.subscription.UNAVAILABLE` | The subscription could not be read. | Không đọc được gói dịch vụ. |
+| `mpx.health.k.module_enabled` | Detection layers on | Các lớp phát hiện đang bật |
+| `mpx.health.d.module_enabled.PASSED` | Exact rules, normal-level comparison and reconciliation are all on. | Quy tắc chính xác, so sánh mức bình thường và đối soát đều đang bật. |
+| `mpx.health.d.module_enabled.WARNING` | Some detection layers are turned off on this server, so some rules never run. | Một số lớp phát hiện đang tắt trên máy chủ nên vài quy tắc không chạy. |
+| `mpx.health.d.module_enabled.FAILED` | Money Protection is turned off on this server. | Bảo vệ tiền đang tắt trên máy chủ này. |
+| `mpx.health.k.detection_scheduled` | Detection scheduled | Phát hiện theo lịch |
+| `mpx.health.d.detection_scheduled.PASSED` | Detection runs on a schedule. | Việc phát hiện chạy theo lịch. |
+| `mpx.health.d.detection_scheduled.WARNING` | Scheduled detection is off; detection runs only when someone presses "Run detection now". Ask your administrator to turn it on. | Phát hiện theo lịch đang tắt; chỉ chạy khi có người bấm "Chạy phát hiện ngay". Hãy nhờ quản trị viên bật. |
+| `mpx.health.k.detection_recent` | Detection ran recently | Phát hiện đã chạy gần đây |
+| `mpx.health.d.detection_recent.PASSED` | A detection pass finished successfully in the last day. | Có lần phát hiện thành công trong ngày qua. |
+| `mpx.health.d.detection_recent.WARNING` | No successful detection pass in over a day. | Hơn một ngày chưa có lần phát hiện thành công. |
+| `mpx.health.d.detection_recent.FAILED` | Detection has never finished for this salon — "no alerts" proves nothing. Run detection now. | Việc phát hiện chưa từng hoàn tất cho tiệm này — "không có cảnh báo" chưa chứng minh gì. Hãy chạy phát hiện ngay. |
+| `mpx.health.k.detection_failures` | Detection without errors | Phát hiện không lỗi |
+| `mpx.health.d.detection_failures.PASSED` | No detection pass failed in the last 7 days. | Không có lần phát hiện nào lỗi trong 7 ngày qua. |
+| `mpx.health.d.detection_failures.WARNING` | Some detection passes failed or got stuck in the last 7 days. | Một số lần phát hiện bị lỗi hoặc kẹt trong 7 ngày qua. |
+| `mpx.health.d.detection_failures.FAILED` | The last detection pass failed. Alerts may be missing. Report this. | Lần phát hiện gần nhất bị lỗi. Có thể thiếu cảnh báo. Hãy báo lại. |
+| `mpx.health.d.detection_failures.INSUFFICIENT_DATA` | No detection pass yet. | Chưa có lần phát hiện nào. |
+| `mpx.health.k.payments_feed` | Payments being recorded | Thanh toán đang được ghi |
+| `mpx.health.d.payments_feed.PASSED` | Payments were recorded in the last 7 days, so the rules have something to check. | Có thanh toán trong 7 ngày qua nên quy tắc có dữ liệu để kiểm tra. |
+| `mpx.health.d.payments_feed.INSUFFICIENT_DATA` | No payments in the last 7 days — nothing for the rules to check. | Không có thanh toán trong 7 ngày qua — quy tắc không có gì để kiểm tra. |
+| `mpx.health.k.rules_enabled` | Rules on | Quy tắc đang bật |
+| `mpx.health.d.rules_enabled.PASSED` | No critical rule is turned off. | Không có quy tắc nghiêm trọng nào bị tắt. |
+| `mpx.health.d.rules_enabled.WARNING` | A critical rule is turned off for this salon. Check the reason in Settings → Change history. | Có quy tắc nghiêm trọng bị tắt cho tiệm này. Xem lý do trong Cài đặt → Lịch sử thay đổi. |
+| `mpx.health.k.urgent_reviewed` | Urgent alerts reviewed | Đã xem cảnh báo khẩn |
+| `mpx.health.d.urgent_reviewed.PASSED` | No critical or high alert has waited over a day without being acknowledged. | Không có cảnh báo nghiêm trọng hoặc cao nào chờ quá một ngày chưa được ghi nhận. |
+| `mpx.health.d.urgent_reviewed.FAILED` | Critical or high alerts have waited over a day. Review them now. | Có cảnh báo nghiêm trọng hoặc cao chờ quá một ngày. Hãy xem ngay. |
+| `mpx.health.k.dismissals_explained` | Dismissals explained | Có lý do bỏ qua |
+| `mpx.health.d.dismissals_explained.PASSED` | Every dismissed alert has a recorded reason. | Mọi cảnh báo bị bỏ qua đều có lý do được ghi. |
+| `mpx.health.d.dismissals_explained.WARNING` | Some alerts were dismissed without a recorded reason (before reasons were required, or outside this screen). | Một số cảnh báo bị bỏ qua mà không có lý do (trước khi bắt buộc ghi lý do, hoặc ngoài màn hình này). |
+| `mpx.health.k.no_card_data` | No card numbers in evidence | Không có số thẻ trong bằng chứng |
+| `mpx.health.d.no_card_data.PASSED` | No card-number-like digits are stored in alert evidence. | Không có dãy số giống số thẻ trong bằng chứng cảnh báo. |
+| `mpx.health.d.no_card_data.FAILED` | Alert evidence contains a card-number-like number. Report this immediately. | Bằng chứng cảnh báo có dãy số giống số thẻ. Hãy báo ngay. |
+| `mpx.health.k.case_links` | Case links intact | Liên kết hồ sơ còn nguyên |
+| `mpx.health.d.case_links.PASSED` | Every alert in a case points at a case of this salon. | Mọi cảnh báo trong hồ sơ đều trỏ tới hồ sơ của tiệm này. |
+| `mpx.health.d.case_links.FAILED` | An alert points at a case that does not exist. Report this. | Có cảnh báo trỏ tới hồ sơ không tồn tại. Hãy báo lại. |
+| `mpx.health.k.cases_assigned` | Cases assigned | Hồ sơ đã giao |
+| `mpx.health.d.cases_assigned.PASSED` | Every open case older than a day has someone on it. | Mọi hồ sơ mở quá một ngày đều có người phụ trách. |
+| `mpx.health.d.cases_assigned.WARNING` | Some open cases have waited over a day with nobody assigned. | Một số hồ sơ mở đã chờ quá một ngày mà chưa giao cho ai. |
+| `mpx.health.k.settings_history` | Settings history kept | Có lịch sử cài đặt |
+| `mpx.health.d.settings_history.PASSED` | Every rule setting has its change recorded. | Mọi cài đặt quy tắc đều có thay đổi được ghi. |
+| `mpx.health.d.settings_history.WARNING` | Some rule settings were changed before history was kept, so who changed them and why is unknown. | Một số cài đặt quy tắc được đổi trước khi có lịch sử nên không rõ ai đổi và vì sao. |
+| `mpx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `mpx.health.d.tenant_isolation.PASSED` | Every alert belongs to one of this salon's branches. | Mọi cảnh báo đều thuộc chi nhánh của tiệm này. |
+| `mpx.health.d.tenant_isolation.FAILED` | An alert points at another salon's branch. Report this immediately. | Có cảnh báo trỏ tới chi nhánh của tiệm khác. Hãy báo ngay. |
+| `mpx.health.k.no_money_moved` | Nothing moves money | Không chuyển tiền |
+| `mpx.health.d.no_money_moved.PASSED` | Money Protection only reads and flags; automatic duplicate blocking is off. | Bảo vệ tiền chỉ đọc và đánh dấu; tự động chặn trùng tiền đang tắt. |
+| `mpx.health.d.no_money_moved.WARNING` | Automatic duplicate blocking is on for this server — it can stop a payment. Confirm this was intended. | Tự động chặn trùng tiền đang bật trên máy chủ — có thể chặn một khoản thanh toán. Hãy xác nhận đây là chủ ý. |
+| `fpx.open` | Open Money Protection | Mở Bảo vệ tiền |
+| `fpx.list` | Recent alerts | Cảnh báo gần đây |
+
+## AI Inventory Assistant (`icx.*`) — Nov 3 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `icx.check` | Check Inventory System | Kiểm tra hệ thống tồn kho |
+| `icx.close` | Close | Đóng |
+| `icx.refresh` | Refresh | Làm mới |
+| `icx.search` | Search | Tìm |
+| `icx.clear` | Clear | Xóa bộ lọc |
+| `icx.rows` | Rows | Số dòng |
+| `icx.loading` | Loading… | Đang tải… |
+| `icx.readOnly` | Recommendations only: nothing here orders, counts, transfers, adjusts or throws away stock. | Chỉ là đề xuất: trang này không đặt hàng, kiểm kê, chuyển kho, điều chỉnh hay hủy hàng. |
+| `icx.loadFailed` | Inventory could not be loaded. Try again or run the system check — this is not "no products". | Không tải được tồn kho. Hãy thử lại hoặc chạy kiểm tra hệ thống — đây không phải là "không có sản phẩm". |
+| `icx.err.forbidden` | Your role cannot see inventory. | Vai trò của bạn không xem được tồn kho. |
+| `icx.err.IC_INVALID_PERIOD` | Choose a From and a To date; the From date must be on or before the To date. | Hãy chọn ngày bắt đầu và ngày kết thúc; ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `icx.scope.branch` | Counts for this branch. | Số liệu của chi nhánh này. |
+| `icx.scope.all_branches` | Counts for all branches added together. | Số liệu cộng tất cả chi nhánh. |
+| `icx.reasons` | Why: {e} critical by their own critical level, {d} critical because they are at or below half their reorder level (no critical level set). | Lý do: {e} sản phẩm nghiêm trọng theo mức nghiêm trọng riêng, {d} sản phẩm nghiêm trọng vì còn bằng hoặc dưới một nửa mức đặt lại (chưa đặt mức nghiêm trọng). |
+| `icx.noThreshold` | {n} product(s) have no reorder or critical level, so they can never show as low. | {n} sản phẩm chưa có mức đặt lại hoặc mức nghiêm trọng nên sẽ không bao giờ báo thấp. |
+| `icx.mismatch` | {n} product(s) show a stock figure different from the stock history. | {n} sản phẩm có số tồn khác với lịch sử tồn kho. |
+| `icx.def.products` | Active products in the catalog. | Sản phẩm đang dùng trong danh mục. |
+| `icx.def.inStock` | Above the reorder level and not over the maximum. | Trên mức đặt lại và không vượt mức tối đa. |
+| `icx.def.low` | Above critical, at or below the reorder level. | Trên mức nghiêm trọng, bằng hoặc dưới mức đặt lại. |
+| `icx.def.critical` | Some left, at or below the critical level. | Còn hàng, bằng hoặc dưới mức nghiêm trọng. |
+| `icx.def.outOfStock` | None left. | Hết hàng. |
+| `icx.def.overstock` | Above the maximum stock. | Vượt mức tồn tối đa. |
+| `icx.products` | Products | Sản phẩm |
+| `icx.searchPh` | Product name, SKU, vendor or category | Tên sản phẩm, SKU, nhà cung cấp hoặc danh mục |
+| `icx.statusLabel` | Status | Trạng thái |
+| `icx.sortLabel` | Sort | Sắp xếp |
+| `icx.noProducts` | No products in the catalog yet. | Danh mục chưa có sản phẩm. |
+| `icx.noMatch` | Nothing matches this search or these filters. | Không có gì khớp tìm kiếm hoặc bộ lọc. |
+| `icx.col.product` | Product | Sản phẩm |
+| `icx.col.onHand` | On hand | Tồn kho |
+| `icx.col.levels` | Reorder / critical | Mức đặt lại / nghiêm trọng |
+| `icx.col.ordered` | On order | Đang đặt |
+| `icx.col.status` | Status | Trạng thái |
+| `icx.col.ledger` | Stock history | Lịch sử tồn |
+| `icx.derived` | (half the reorder level) | (một nửa mức đặt lại) |
+| `icx.noLevels` | No levels set | Chưa đặt mức |
+| `icx.ledgerSame` | Matches | Khớp |
+| `icx.ledgerDiff` | History says {n} | Lịch sử ghi {n} |
+| `icx.noLedger` | No history | Chưa có lịch sử |
+| `icx.reserved` | {n} reserved | {n} đã giữ |
+| `icx.noRecord` | No stock record | Chưa có bản ghi tồn |
+| `icx.activity` | Stock activity | Biến động tồn kho |
+| `icx.actSearchPh` | Product, SKU, reason or reference | Sản phẩm, SKU, lý do hoặc mã tham chiếu |
+| `icx.typeLabel` | Type | Loại |
+| `icx.noActivity` | No stock movements here. | Không có biến động tồn kho. |
+| `icx.col.when` | When | Thời gian |
+| `icx.col.type` | Type | Loại |
+| `icx.col.change` | Change | Thay đổi |
+| `icx.col.after` | After | Sau |
+| `icx.col.by` | By | Người làm |
+| `icx.health.running` | Checking… | Đang kiểm tra… |
+| `icx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `icx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `icx.health.readOnly` | Read-only: the check changes no stock, order or product. | Chỉ đọc: việc kiểm tra không thay đổi tồn kho, đơn hàng hay sản phẩm. |
+| `icx.health.part` | Part: {c} | Bộ phận: {c} |
+| `icx.health.lastPassed` | Last passed: {at} | Lần đạt gần nhất: {at} |
+| `icx.health.neverPassed` | Has not passed yet | Chưa từng đạt |
+| `icx.st.all` | All statuses | Mọi trạng thái |
+| `icx.st.in_stock` | In stock | Còn hàng |
+| `icx.st.low` | Low | Thấp |
+| `icx.st.critical` | Critical | Nghiêm trọng |
+| `icx.st.out_of_stock` | Out of stock | Hết hàng |
+| `icx.st.overstock` | Overstock | Tồn quá nhiều |
+| `icx.st.no_threshold` | No levels set | Chưa đặt mức |
+| `icx.st.ledger_mismatch` | Differs from history | Khác lịch sử |
+| `icx.sort.attention` | Needs attention first | Cần chú ý trước |
+| `icx.sort.name` | Name | Tên |
+| `icx.sort.on_hand` | Lowest stock first | Tồn ít nhất trước |
+| `icx.sort.updated` | Recently changed | Thay đổi gần đây |
+| `icx.type.all` | All types | Mọi loại |
+| `icx.type.received` | Received | Nhận hàng |
+| `icx.type.retail_sale` | Retail sale | Bán lẻ |
+| `icx.type.service_usage` | Used in a service | Dùng cho dịch vụ |
+| `icx.type.adjustment` | Adjustment | Điều chỉnh |
+| `icx.type.count` | Count | Kiểm kê |
+| `icx.type.transfer` | Transfer | Chuyển kho |
+| `icx.type.damage_waste` | Damaged or wasted | Hư hỏng hoặc hao hụt |
+| `icx.type.return` | Return | Trả hàng |
+| `icx.type.other` | Other | Khác |
+| `icx.preset.all` | All time | Mọi thời gian |
+| `icx.preset.today` | Today | Hôm nay |
+| `icx.preset.yesterday` | Yesterday | Hôm qua |
+| `icx.preset.week` | This week | Tuần này |
+| `icx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `icx.preset.month` | This month | Tháng này |
+| `icx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `icx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `icx.preset.last_month` | Last month | Tháng trước |
+| `icx.preset.year` | This year | Năm nay |
+| `icx.preset.custom` | Custom range | Tùy chọn |
+| `icx.health.PASSED` | Passed | Đạt |
+| `icx.health.WARNING` | Warning | Cảnh báo |
+| `icx.health.FAILED` | Failed | Lỗi |
+| `icx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `icx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `icx.comp.catalog` | Product catalog | Danh mục sản phẩm |
+| `icx.comp.stock` | Stock | Tồn kho |
+| `icx.comp.ledger` | Stock history | Lịch sử tồn |
+| `icx.comp.thresholds` | Stock levels | Mức tồn |
+| `icx.comp.purchasing` | Purchasing | Mua hàng |
+| `icx.comp.security` | Security | Bảo mật |
+| `icx.health.k.products_tracked` | Products tracked | Có sản phẩm theo dõi |
+| `icx.health.d.products_tracked.PASSED` | The catalog has active products. | Danh mục có sản phẩm đang dùng. |
+| `icx.health.d.products_tracked.INSUFFICIENT_DATA` | No products yet. Add products in Inventory. | Chưa có sản phẩm. Hãy thêm trong Tồn kho. |
+| `icx.health.k.stock_records` | Stock recorded | Có bản ghi tồn |
+| `icx.health.d.stock_records.PASSED` | Every product has a stock record here. | Mọi sản phẩm đều có bản ghi tồn ở đây. |
+| `icx.health.d.stock_records.WARNING` | Some products have no stock record here, so they count as 0 (out of stock). Count them in Inventory. | Một số sản phẩm chưa có bản ghi tồn ở đây nên được tính là 0 (hết hàng). Hãy kiểm kê trong Tồn kho. |
+| `icx.health.d.stock_records.INSUFFICIENT_DATA` | No products yet. | Chưa có sản phẩm. |
+| `icx.health.k.no_negative_stock` | No negative stock | Không tồn âm |
+| `icx.health.d.no_negative_stock.PASSED` | No stock figure is below zero. | Không có số tồn nào dưới 0. |
+| `icx.health.d.no_negative_stock.FAILED` | Some stock is below zero — a usage was recorded without the stock. Count those products. | Có tồn âm — đã ghi dùng hàng khi không còn hàng. Hãy kiểm kê các sản phẩm đó. |
+| `icx.health.k.ledger_matches_stock` | Stock matches its history | Tồn khớp lịch sử |
+| `icx.health.d.ledger_matches_stock.PASSED` | Every stock figure equals the last balance in its stock history. | Mọi số tồn đều bằng số dư cuối trong lịch sử. |
+| `icx.health.d.ledger_matches_stock.FAILED` | Some stock figures differ from their stock history. Cause: a change saved without a history line. Fix: count those products. | Một số tồn khác lịch sử. Nguyên nhân: có thay đổi không ghi lịch sử. Cách xử lý: kiểm kê các sản phẩm đó. |
+| `icx.health.d.ledger_matches_stock.INSUFFICIENT_DATA` | No stock history yet. | Chưa có lịch sử tồn. |
+| `icx.health.k.thresholds_set` | Stock levels set | Đã đặt mức tồn |
+| `icx.health.d.thresholds_set.PASSED` | Every product has a reorder or critical level. | Mọi sản phẩm đều có mức đặt lại hoặc mức nghiêm trọng. |
+| `icx.health.d.thresholds_set.WARNING` | Some products have no levels, so they never show as low. Set a reorder level in Inventory. | Một số sản phẩm chưa có mức nên không bao giờ báo thấp. Hãy đặt mức đặt lại trong Tồn kho. |
+| `icx.health.d.thresholds_set.INSUFFICIENT_DATA` | No products yet. | Chưa có sản phẩm. |
+| `icx.health.k.critical_explained` | Critical levels set on purpose | Mức nghiêm trọng được đặt rõ |
+| `icx.health.d.critical_explained.PASSED` | Every critical product has its own critical level. | Mọi sản phẩm nghiêm trọng đều có mức nghiêm trọng riêng. |
+| `icx.health.d.critical_explained.WARNING` | Some products are critical only because they are at half their reorder level (no critical level set). Set a critical level if that is too strict. | Một số sản phẩm nghiêm trọng chỉ vì còn một nửa mức đặt lại (chưa đặt mức nghiêm trọng). Hãy đặt mức nghiêm trọng nếu quá chặt. |
+| `icx.health.k.levels_consistent` | Levels make sense | Các mức hợp lý |
+| `icx.health.d.levels_consistent.PASSED` | No critical level is above its reorder level. | Không có mức nghiêm trọng nào cao hơn mức đặt lại. |
+| `icx.health.d.levels_consistent.WARNING` | Some critical levels are above their reorder level, so those products skip "Low". | Một số mức nghiêm trọng cao hơn mức đặt lại nên sản phẩm bỏ qua "Thấp". |
+| `icx.health.k.movements_recorded` | Stock changes recorded | Có ghi biến động tồn |
+| `icx.health.d.movements_recorded.PASSED` | Stock changes were recorded in the last 30 days. | Có biến động tồn trong 30 ngày qua. |
+| `icx.health.d.movements_recorded.WARNING` | No stock change in 30 days — sales and services may not be using up stock. | Không có biến động trong 30 ngày — bán hàng và dịch vụ có thể chưa trừ tồn. |
+| `icx.health.d.movements_recorded.INSUFFICIENT_DATA` | No stock history yet. | Chưa có lịch sử tồn. |
+| `icx.health.k.orders_received` | Orders received on time | Đơn hàng nhận đúng hạn |
+| `icx.health.d.orders_received.PASSED` | No open purchase order is more than 3 days past its expected date. | Không có đơn mua quá hạn hơn 3 ngày. |
+| `icx.health.d.orders_received.WARNING` | Some purchase orders are more than 3 days past their expected date. Receive them or update the date. | Một số đơn mua quá hạn hơn 3 ngày. Hãy nhận hàng hoặc cập nhật ngày. |
+| `icx.health.k.reorder_data` | Reorder information complete | Đủ thông tin đặt lại |
+| `icx.health.d.reorder_data.PASSED` | Every product that needs reordering has a vendor with a lead time. | Mọi sản phẩm cần đặt lại đều có nhà cung cấp và thời gian giao. |
+| `icx.health.d.reorder_data.WARNING` | Some products that need reordering have no vendor or lead time, so the order date cannot be worked out. | Một số sản phẩm cần đặt lại chưa có nhà cung cấp hoặc thời gian giao nên không tính được ngày đặt. |
+| `icx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `icx.health.d.tenant_isolation.PASSED` | Every stock record belongs to this salon's products. | Mọi bản ghi tồn đều thuộc sản phẩm của tiệm này. |
+| `icx.health.d.tenant_isolation.FAILED` | A stock record points at another salon's product. Report this immediately. | Có bản ghi tồn trỏ tới sản phẩm của tiệm khác. Hãy báo ngay. |
+| `icx.health.k.no_side_effects` | Nothing changed by this check | Kiểm tra không thay đổi gì |
+| `icx.health.d.no_side_effects.PASSED` | This page and this check never order, count, transfer or adjust stock. | Trang này và việc kiểm tra không đặt hàng, kiểm kê, chuyển hay điều chỉnh tồn. |

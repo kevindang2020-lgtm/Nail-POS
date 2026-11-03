@@ -21,11 +21,16 @@ import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's re
 /** money_protection_investigations.severity CHECK (migration 324) */
 export const INVESTIGATION_SEVERITIES = ['INFO', 'LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] as const;
 
+export type InvestigationEventSink = (ctx: MoneyProtectionContext, e: { investigationId: string; branchId?: string | null; action: string; from?: string | null; to?: string | null; detail?: Record<string, unknown> }) => Promise<void>;
+
 export class InvestigationService {
   constructor(
     private readonly repo: MoneyProtectionInvestigationRepositoryPort,
     private readonly alerts: MoneyProtectionRepositoryPort,
+    /** Money Protection guides (Nov 3 2026): every create / assign / status move / resolution is recorded (who, from → to) */
+    private readonly events: InvestigationEventSink | null = null,
   ) {}
+  private async log(ctx: MoneyProtectionContext, e: Parameters<InvestigationEventSink>[1]) { if (this.events) await this.events(ctx, e); }
 
   private need(ctx: MoneyProtectionContext, perm: string) {
     if (!ctx?.tenantId) throw new MoneyProtectionValidationError('Missing tenant context');
@@ -64,6 +69,7 @@ export class InvestigationService {
       createdByUserId: ctx.userId,
     });
     if (linked.length) await this.alerts.attachInvestigation(ctx, linked.map((a) => a.id), inv.id);
+    await this.log(ctx, { investigationId: inv.id, branchId: inv.branchId ?? null, action: 'opened', to: inv.status, detail: { alerts: linked.length } });
     return inv;
   }
 
@@ -79,7 +85,9 @@ export class InvestigationService {
     this.need(ctx, 'ai_money_protection.investigate');
     const inv = await this.repo.get(ctx, investigationId);
     if (!inv) throw new MoneyProtectionValidationError('INVESTIGATION_NOT_FOUND');
-    return (await this.repo.update(ctx, investigationId, { assignedUserId: assigneeUserId }))!;
+    const out = (await this.repo.update(ctx, investigationId, { assignedUserId: assigneeUserId }))!;
+    await this.log(ctx, { investigationId, branchId: inv.branchId ?? null, action: 'assigned', from: inv.assignedUserId ?? null, to: assigneeUserId });
+    return out;
   }
 
   async updateStatus(ctx: MoneyProtectionContext, investigationId: string, to: InvestigationStatus): Promise<Investigation> {
@@ -95,6 +103,7 @@ export class InvestigationService {
     if (to === 'CLOSED') patch.closedAt = new Date().toISOString();
     const out = await this.repo.update(ctx, investigationId, patch);
     if (!out) throw new InvalidStateTransitionError(MONEY_PROTECTION_INVESTIGATION, inv.status, to, 'concurrent');
+    await this.log(ctx, { investigationId, branchId: inv.branchId ?? null, action: 'status_changed', from: inv.status, to });
     return out;
   }
 
@@ -115,6 +124,7 @@ export class InvestigationService {
     assertTransition(MONEY_PROTECTION_INVESTIGATION, inv.status, 'RESOLVED');
     const out = await this.repo.update(ctx, investigationId, { status: 'RESOLVED', fromStatus: inv.status, resolution, recoveryAmountCents });
     if (!out) throw new InvalidStateTransitionError(MONEY_PROTECTION_INVESTIGATION, inv.status, 'RESOLVED', 'concurrent');
+    await this.log(ctx, { investigationId, branchId: inv.branchId ?? null, action: 'resolved', from: inv.status, to: 'RESOLVED', detail: { resolution, recoveryAmountCents } });
     return out;
   }
 

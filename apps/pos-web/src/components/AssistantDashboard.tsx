@@ -23,7 +23,7 @@ const DEFAULT_PRESETS = ['today', 'yesterday', 'week', 'last_7', 'month', 'last_
 export type AsKpi = { key: string; label: string; value: (s: any) => string; tone?: (s: any) => 'warn' | 'bad' | 'gold' | undefined; hint?: string };
 export type AsCol = { key: string; label: string; render: (r: any) => ReactNode };
 export type AsFilter = { key: string; label: string; options: { value: string; label: string }[] };
-export type AsCheckText = { title: (key: string) => string; detail: (key: string, state: string) => string; part?: (c: any) => string | null };
+export type AsCheckText = { title: (key: string) => string; detail: (key: string, state: string, check: any) => string; part?: (c: any) => string | null };
 export interface AssistantDashboardProps {
   testId: string;
   /** the module's counters (null when it cannot be read — shown as an error, never as zeros) */
@@ -117,7 +117,7 @@ export function AssistantDashboard(p: AssistantDashboardProps) {
           {(health.checks ?? []).map((x: any) => (
             <div key={x.key} className="rvw-check" data-testid={`as-chk-${x.key}`}>
               <div><span className={'chip ' + (STATE_TONE[x.state] ?? '')}>{t('asx.health.' + x.state)}</span> <b>{p.checkText.title(x.key)}</b>{x.count ? <span className="sub"> · {fmtNumber(x.count)}</span> : null}</div>
-              <div className="sub">{p.checkText.detail(x.key, x.state)}</div>
+              <div className="sub">{p.checkText.detail(x.key, x.state, x)}</div>
               {p.checkText.part?.(x) || x.lastPassedAt !== undefined ? <div className="sub">{[p.checkText.part?.(x), x.lastPassedAt !== undefined ? (x.lastPassedAt ? t('asx.health.lastPassed', { at: asWhen(x.lastPassedAt) }) : t('asx.health.neverPassed')) : null].filter(Boolean).join(' · ')}</div> : null}
             </div>))}
         </>}

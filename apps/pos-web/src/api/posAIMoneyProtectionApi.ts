@@ -3,23 +3,29 @@
 // here — these endpoints only read alerts, request an advisory explanation, and manage investigations.
 import { api } from './client';
 
+type Q = Record<string, string | number | undefined>;
+const clean = (o: Q) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '')) as Record<string, string | number>;
+
+// the six Money Protection guides (Nov 3 2026): the read side + the few human actions live in /pos/money-protection-center/*.
+// Retired from the client (the center replaces them): state, rules, getSettings, updateSetting, alerts, listInvestigations, getInvestigation.
 export const posAIMoneyProtectionApi = {
-  state: () => api.get(`/pos/ai-money-protection/state`),
-  rules: () => api.get(`/pos/ai-money-protection/rules`),
-  getSettings: () => api.get(`/pos/ai-money-protection/settings`),
-  updateSetting: (ruleId: string, body: Record<string, unknown>) => api.post(`/pos/ai-money-protection/settings/${ruleId}`, body),
-  alerts: (q: Record<string, string | number | undefined> = {}) => {
-    const qs = Object.entries(q).filter(([, v]) => v !== undefined && v !== '').map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-    return api.get(`/pos/ai-money-protection/alerts${qs ? `?${qs}` : ''}`);
+  center: {
+    summary: () => api.get<any>(`/pos/money-protection-center/summary`),
+    alerts: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/alerts`, clean(q)),
+    alert: (id: string) => api.get<any>(`/pos/money-protection-center/alerts/detail`, { id }),
+    alertAction: (b: { id: string; action: 'acknowledge' | 'dismiss' | 'reopen'; reason?: string | null; expectedStatus?: string | null }) => api.post<any>(`/pos/money-protection-center/alerts/action`, b),
+    investigations: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/investigations`, clean(q)),
+    timeline: (id: string) => api.get<any>(`/pos/money-protection-center/investigations/timeline`, { id }),
+    rules: () => api.get<any>(`/pos/money-protection-center/rules`),
+    saveRule: (b: { ruleId: string; enabled: boolean; severityOverride: string | null; thresholds: Record<string, number | string>; reason?: string | null; expectedUpdatedAt: string | null }) => api.post<any>(`/pos/money-protection-center/rules/save`, b),
+    history: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/settings/history`, clean(q)),
+    runs: (q: Q = {}) => api.get<any>(`/pos/money-protection-center/detection/runs`, clean(q)),
+    runDetection: () => api.post<any>(`/pos/money-protection-center/detection/run`, {}),
+    check: () => api.post<any>(`/pos/money-protection-center/check`, {}),
   },
   // Advisory AI explanation of a single alert (sanitized server-side; never accusatory).
   explainAlert: (id: string) => api.post(`/pos/ai-money-protection/alerts/${id}/explain`, {}),
-  listInvestigations: (q: Record<string, string | undefined> = {}) => {
-    const qs = Object.entries(q).filter(([, v]) => v).map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join('&');
-    return api.get(`/pos/ai-money-protection/investigations${qs ? `?${qs}` : ''}`);
-  },
-  getInvestigation: (id: string) => api.get(`/pos/ai-money-protection/investigations/${id}`),
-  createInvestigation: (body: Record<string, unknown>) => api.post(`/pos/ai-money-protection/investigations`, body),
+  createInvestigation: (body: Record<string, unknown>) => api.post<any>(`/pos/ai-money-protection/investigations`, body),
   addNote: (id: string, body: string) => api.post(`/pos/ai-money-protection/investigations/${id}/notes`, { body }),
   assignInvestigation: (id: string, assigneeUserId: string) => api.post(`/pos/ai-money-protection/investigations/${id}/assign`, { assigneeUserId }),
   setInvestigationStatus: (id: string, status: string) => api.post(`/pos/ai-money-protection/investigations/${id}/status`, { status }),

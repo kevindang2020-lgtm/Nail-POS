@@ -53,6 +53,9 @@ beforeAll(async () => {
     create table cash_drawer_sessions (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid, business_date text, variance_cents bigint, counted_cents bigint, expected_cash_cents bigint, status text, created_at timestamptz default now());`);
   await pg.exec(readFileSync(`${MIGRATIONS_DIR}/323_money_protection_alerts.sql`, 'utf8'));
   await pg.exec(readFileSync(`${MIGRATIONS_DIR}/324_money_protection_investigations.sql`, 'utf8'));
+  // Money Protection guides (Nov 3 2026): reading rule settings no longer swallows a missing table (a failed read used to mean
+  // "every rule on"), so the fixture applies the settings migration too
+  await pg.exec(readFileSync(`${MIGRATIONS_DIR}/325_money_protection_rule_settings.sql`, 'utf8'));
 
   // Seed tenant A: an exact duplicate charge (shared processor txn) + a paid ticket with no capture.
   const ins = async (sql: string, params: any[]) => pg.query(sql, params);
