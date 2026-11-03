@@ -1029,6 +1029,7 @@ export const ERROR_REGISTRY = {
   BOTTLE_NOT_FOUND:               { status: 404, message: 'That bottle could not be found.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   BRAND_NAME_REQUIRED:            { status: 400, message: 'Enter a brand name.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   BRAND_NOT_FOUND:                { status: 404, message: 'That brand could not be found.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
+  PO_RECEIVE_FROM_PO:             { status: 400, message: 'Receive purchase-order stock from the purchase order.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   PO_STATE_INVALID:               { status: 409, message: 'This purchase order cannot do that in its current status.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   COUNT_STATE_INVALID:            { status: 409, message: 'This stock count cannot do that in its current status.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   BOTTLE_STATE_INVALID:           { status: 409, message: 'This bottle cannot change to that status.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },

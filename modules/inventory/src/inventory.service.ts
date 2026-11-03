@@ -680,20 +680,28 @@ export class InventoryService {
   }
 
   // ---- add stock (creates bottle rows + movement + recompute) ----
-  async addStock(ctx: InvCtx, productId: string, b: any) {
-    const p = await this.product(ctx, productId);
+  /** One transaction: the bottles, the cost, the movement and the audit row land together or not at all (a failure part-way
+   *  used to leave bottles without their movement). A purchase-order receipt comes only from receivePurchaseOrder (`fromPo`):
+   *  a caller naming a purchaseOrderId here used to label a manual add "purchase received" against any id, unchecked. */
+  async addStock(ctx: InvCtx, productId: string, b: any, opts: { fromPo?: boolean; exec?: Kysely<DB> } = {}) {
+    await this.product(ctx, productId);
     const qty = Math.max(0, parseInt(b?.quantity, 10) || 0);
     if (qty <= 0) throw withCode(new InventoryError(400, 'Quantity must be at least 1'), 'QUANTITY_AT_LEAST_1');
     if (qty > 1000) throw withCode(new InventoryError(400, 'Quantity too large for a single receipt'), 'QUANTITY_TOO_LARGE');
-    const before = (await this.recompute(ctx, productId)).onHand;
-    for (let i = 0; i < qty; i++) {
-      await sql`INSERT INTO inventory_units (tenant_id, branch_id, product_id, lot_number, expiration_date, storage_location, status)
-        VALUES (${ctx.tenantId}, ${ctx.branchId}, ${productId}, ${b?.lotNumber ?? null}, ${b?.expirationDate ?? null}, ${b?.storageLocation ?? null}, ${'unopened'})`.execute(this.need());
-    }
-    if (b?.costCents != null) await sql`UPDATE inventory_products SET cost_cents = ${b.costCents}, updated_at = now() WHERE id = ${productId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-    const after = (await this.recompute(ctx, productId)).onHand;
-    await this.move(ctx, productId, null, b?.purchaseOrderId ? 'purchase_received' : 'manual_add', before, after - before, after, b?.note, b?.purchaseOrderId ? { type: 'purchase_order', id: b.purchaseOrderId } : undefined);
-    await this.audit(ctx, 'inventory_stock_added', productId, null, { quantity: qty, lot: b?.lotNumber ?? null });
+    if (b?.purchaseOrderId && !opts.fromPo) throw withCode(new InventoryError(400, 'Receive purchase-order stock from the purchase order.'), 'PO_RECEIVE_FROM_PO');
+    const work = async (exec: Kysely<DB>) => {
+      await this.lockStock(ctx, [productId], exec);
+      const before = (await this.recompute(ctx, productId, exec)).onHand;
+      for (let i = 0; i < qty; i++) {
+        await sql`INSERT INTO inventory_units (tenant_id, branch_id, product_id, lot_number, expiration_date, storage_location, status)
+          VALUES (${ctx.tenantId}, ${ctx.branchId}, ${productId}, ${b?.lotNumber ?? null}, ${b?.expirationDate ?? null}, ${b?.storageLocation ?? null}, ${'unopened'})`.execute(exec);
+      }
+      if (b?.costCents != null) await sql`UPDATE inventory_products SET cost_cents = ${b.costCents}, updated_at = now() WHERE id = ${productId} AND tenant_id = ${ctx.tenantId}`.execute(exec);
+      const after = (await this.recompute(ctx, productId, exec)).onHand;
+      await this.move(ctx, productId, null, b?.purchaseOrderId ? 'purchase_received' : 'manual_add', before, after - before, after, b?.note, b?.purchaseOrderId ? { type: 'purchase_order', id: b.purchaseOrderId } : undefined, exec);
+      await this.audit(ctx, 'inventory_stock_added', productId, null, { quantity: qty, lot: b?.lotNumber ?? null }, exec);
+    };
+    if (opts.exec) await work(opts.exec); else await this.need().transaction().execute((trx) => work(trx as unknown as Kysely<DB>));
     return { product: (await this.getProduct(ctx, productId)).product };
   }
 
@@ -1032,7 +1040,7 @@ export class InventoryService {
           quantity: chunk, costCents: line.unit_cost_cents || undefined,
           lotNumber: rl?.lotNumber ?? line.lot_number ?? null, expirationDate: rl?.expirationDate ?? line.expiration_date ?? null,
           storageLocation: line.storage_location ?? null, purchaseOrderId: id, note: 'PO ' + (po.po_number || id),
-        });
+        }, { fromPo: true });
         remaining -= chunk;
       }
       receivedAny = true;

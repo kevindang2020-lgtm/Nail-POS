@@ -935,6 +935,7 @@ export const ERRORS_EN = {
   'errors.BOTTLE_NOT_FOUND': 'That bottle could not be found.',
   'errors.BRAND_NAME_REQUIRED': 'Enter a brand name.',
   'errors.BRAND_NOT_FOUND': 'That brand could not be found.',
+  'errors.PO_RECEIVE_FROM_PO': 'Receive purchase-order stock from the purchase order.',
   'errors.PO_STATE_INVALID': 'This purchase order cannot do that in its current status.',
   'errors.COUNT_STATE_INVALID': 'This stock count cannot do that in its current status.',
   'errors.BOTTLE_STATE_INVALID': 'This bottle cannot change to that status.',

@@ -935,6 +935,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BOTTLE_NOT_FOUND': 'Không tìm thấy chai này.',
   'errors.BRAND_NAME_REQUIRED': 'Hãy nhập tên thương hiệu.',
   'errors.BRAND_NOT_FOUND': 'Không tìm thấy thương hiệu này.',
+  'errors.PO_RECEIVE_FROM_PO': 'Hãy nhận hàng của đơn đặt hàng từ chính đơn đặt hàng đó.',
   'errors.PO_STATE_INVALID': 'Đơn đặt hàng này không thể thực hiện thao tác đó ở trạng thái hiện tại.',
   'errors.COUNT_STATE_INVALID': 'Phiếu kiểm kê này không thể thực hiện thao tác đó ở trạng thái hiện tại.',
   'errors.BOTTLE_STATE_INVALID': 'Chai này không thể chuyển sang trạng thái đó.',

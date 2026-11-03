@@ -137,4 +137,9 @@ describe.skipIf(!url)('recipe deduction under the publisher lanes (M4)', () => {
     const left = (await sql<{ d: string; status: string }>`select to_char(expiration_date, 'YYYY-MM-DD') d, status from inventory_units where tenant_id = ${T} and product_id = ${P} order by expiration_date`.execute(db)).rows;
     expect(left).toEqual([{ d: '2020-01-01', status: 'unopened' }, { d: '2098-06-30', status: 'empty' }, { d: '2099-12-31', status: 'unopened' }]);
   });
+  it('Nov 3 audit — Add Stock with a purchase-order id is refused (it labelled a manual add "purchase received", unchecked)', async () => {
+    const { P } = await fixture(1, 100);
+    await expect(svc.addStock(ctx, P, { quantity: 2, purchaseOrderId: 'a7a00000-0000-4000-8000-00000000eee1' })).rejects.toMatchObject({ status: 400 });
+    expect(await onHand(P)).toBe(1);
+  });
 });
