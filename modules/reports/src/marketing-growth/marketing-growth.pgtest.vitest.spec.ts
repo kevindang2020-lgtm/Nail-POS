@@ -59,8 +59,9 @@ beforeAll(async () => {
   // GIFT CARDS — card 1: $40 owed, ledger agrees; card 2: says $25 owed but its last ledger entry says $20
   await q(`insert into gift_cards (id, tenant_id, branch_id, code, initial_balance_cents, balance_cents, status, customer_id, card_number_last4, reference) values
     ($1,$2,$3,'GCX-1',5000,4000,'partially_redeemed',$4,'4242','GCREF0001'), ($5,$2,$3,'GCX-2',2500,2500,'active',null,'1881','GCREF0002')`, [id('f01'), T, B, AVA, id('f02')]);
+  // hours ago, not days: the default "this month" must contain them on the 1st–10th of a month too
   await q(`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, created_at) values
-    ($1,$2,$3,'activate',5000,5000, now() - interval '10 days'), ($1,$2,$3,'redeem',-1000,4000, now() - interval '1 day'), ($1,$2,$4,'activate',2000,2000, now() - interval '9 days')`, [T, B, id('f01'), id('f02')]);
+    ($1,$2,$3,'activate',5000,5000, now() - interval '3 hours'), ($1,$2,$3,'redeem',-1000,4000, now() - interval '1 hour'), ($1,$2,$4,'activate',2000,2000, now() - interval '2 hours')`, [T, B, id('f01'), id('f02')]);
 
   // REFERRALS — Ava → Dan rewarded $10; Fay → Fay (self) rewarded $5; Ava → Eve pending. (A second referral of the same customer is
   // refused by the unique index ux_referral_redemptions_referred, so the duplicate check can only find legacy rows.)
