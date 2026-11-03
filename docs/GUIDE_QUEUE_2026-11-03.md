@@ -23,7 +23,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A16 | Reception Copilot (v2) | /tenant/ai/copilot | Same screen as A8 (fixes shared); tabbed workspace and Calls/SMS search scope NOT built |
 | A17 | Reviews & Reputation | /tenant/marketing/reviews | BUILT (fixes): KPI strip follows the technician / source filters (scope stated); review overlay no longer shows branch "null"; moderation history staff names joined within the salon only. Not built: assign workflow, communication history tab, first/last name search split, recorded health runs |
 | A18 | Referral Program | /tenant/marketing/referrals | BUILT (fixes): a reward waiting for approval shows in Needs review only (was in Qualified too); archived customers refused and staff names salon-scoped (fixed earlier). Not built: branch / eligibility / creator / reviewer filters, more fraud signals, communication tab, recorded health runs |
-| A19 | Customer Retention / Win-Back | /tenant/marketing/win-back | AUDITED |
+| A19 | Customer Retention / Win-Back | /tenant/marketing/win-back | BUILT (fixes): search by email; accent-insensitive names ("nguyen" finds "Nguyễn"); every word of a first + last name must match; % and _ are literal. Test fixture made date-proof (failed on the 1st–3rd of a month). Not built: search scopes, service category / technician / spend-band filters, "New" definition change, Add to eligible audience |
 | A20 | Birthday Campaigns | /tenant/marketing/birthdays | AUDITED |
 
 ## Batch B (10:35) — 18 marketing / communications guides

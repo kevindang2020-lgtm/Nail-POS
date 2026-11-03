@@ -64,10 +64,10 @@ beforeAll(async () => {
   // Uma is booked tomorrow
   await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status, services)
     values ($1,$2,$3,$4,'Uma',(now() at time zone 'America/New_York')::date + 1,'10:00','11:00','booked','[]')`, [T, B, TECH, UP]);
-  // marketing messages: Tia delivered (provider evidence), Olga failed; Olga unsubscribed from marketing email
+  // marketing messages (sent minutes ago, so they fall in "this month" on any day — 3 days ago fell in last month on the 1st–3rd): Tia delivered (provider evidence), Olga failed; Olga unsubscribed from marketing email
   await q(`insert into notifications (tenant_id, channel, to_address, body, customer_id, status, purpose, created_at, delivered_at) values
-    ($1,'sms','+12155550302','We miss you',$2,'delivered','marketing', now() - interval '3 days', now() - interval '3 days'),
-    ($1,'sms','+12155550303','We miss you',$3,'failed','marketing', now() - interval '3 days', null)`, [T, TWO, OLD]);
+    ($1,'sms','+12155550302','We miss you',$2,'delivered','marketing', now() - interval '5 minutes', now() - interval '5 minutes'),
+    ($1,'sms','+12155550303','We miss you',$3,'failed','marketing', now() - interval '5 minutes', null)`, [T, TWO, OLD]);
   await q(`insert into notification_opt_outs (tenant_id, channel, address, reason, scope) values ($1,'email','olga@x.test','unsubscribe','marketing')`, [T]);
   // a win-back text still QUEUED for Gus, whose only visit was removed after the confirmation
   await q(`insert into retention_sms_campaigns (id, tenant_id, status, body, body_sha256, eligible_count, confirmed_at) values ($1,$2,'sending','We miss you at Lotus','x',1, now())`, [id('f01'), T]);
@@ -97,6 +97,18 @@ describe('R01–R05 segments (one shared rule)', () => {
     expect(ids(await repo.customers(ctx, { segment: 'all', future: 'yes', pageSize: 50 }))).toEqual([UP]);
     const r = await repo.customers(ctx, { segment: 'all', q: 'Olga', pageSize: 50 });
     expect(r.items[0]).toMatchObject({ emailStatus: 'opted_out', maskedEmail: 'o•••@x.test' });
+  });
+  it('Nov 3 audit — search by email, accent-insensitive names, and every word of a first + last name', async () => {
+    expect(ids(await repo.customers(ctx, { segment: 'all', q: 'olga@x', pageSize: 50 }))).toEqual([OLD]);
+    expect(ids(await repo.customers(ctx, { segment: 'all', q: 'TIA@X.TEST', pageSize: 50 }))).toEqual([TWO]);
+    expect(ids(await repo.customers(ctx, { segment: 'all', q: 'xena@x.test', pageSize: 50 }))).toEqual([]);   // another salon's customer
+    expect(ids(await repo.customers(ctx, { segment: 'all', q: '%', pageSize: 50 }))).toEqual([]);             // a wildcard is a character, not "everyone"
+    await q(`update customers set full_name = 'Nora Nguyễn Thị' where id = $1`, [N0]);
+    try {
+      expect(ids(await repo.customers(ctx, { segment: 'all', q: 'nguyen', pageSize: 50 }))).toEqual([N0]);
+      expect(ids(await repo.customers(ctx, { segment: 'all', q: 'Nora Thi', pageSize: 50 }))).toEqual([N0]);
+      expect(ids(await repo.customers(ctx, { segment: 'all', q: 'Nora Olga', pageSize: 50 }))).toEqual([]);
+    } finally { await q(`update customers set full_name = 'Nora' where id = $1`, [N0]); }
   });
   it('Delivered comes only from provider evidence — unknown (null) when the salon has none', async () => {
     expect((await repo.summary(ctx, {})).kpis).toMatchObject({ delivered: 1, deliveryEvidence: true });

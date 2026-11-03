@@ -376,13 +376,18 @@ export class RetentionRepository {
     if (isUuid(String(raw))) return sql`(b.id = ${raw}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${raw}::uuid and a.customer_id = b.id)
       or exists (select 1 from tickets t where t.tenant_id = ${T} and t.id = ${raw}::uuid and t.customer_id = b.id))`;
     const digits = raw.replace(/\D/g, '');
-    const name = sql`b.full_name ilike ${'%' + raw + '%'}`;
+    // name: accent-insensitive (vi_fold — "nguyen" finds "Nguyễn"), and every word must appear, so "Ava Kim" finds "Ava M. Kim" and
+    // first-name + last-name searches work; email: partial, case-insensitive (the guide's email search)
+    const esc = (x: string) => x.replace(/[\\%_]/g, (m) => '\\' + m);
+    const words = raw.split(/\s+/).filter(Boolean).slice(0, 5);
+    const name = sql`(${sql.join(words.map((w) => sql`vi_fold(coalesce(b.full_name, '')) like '%' || vi_fold(${esc(w)}) || '%'`), sql` and `)})`;
+    const email = raw.includes('@') || raw.length >= 3 ? sql`coalesce(b.email, '') ilike ${'%' + esc(raw) + '%'}` : sql`false`;
     const service = raw.length >= 3 ? sql`exists (select 1 from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
         where l.tenant_id = ${T} and t.customer_id = b.id and l.removed_at is null and t.removed_at is null and t.status = any(${VISIT}::text[]) and l.service_name_snapshot ilike ${'%' + raw + '%'})` : sql`false`;
     if (digits.length >= 3 && digits.length === raw.replace(/[\s()+.-]/g, '').length) {
       return sql`(coalesce(b.normalized_phone, '') like ${'%' + digits + '%'} or exists (select 1 from tickets t where t.tenant_id = ${T} and t.customer_id = b.id and t.ticket_number::text = ${raw}))`;
     }
-    return sql`(${name} or ${service})`;
+    return sql`(${name} or ${email} or ${service})`;
   }
   private row(r: any): RetentionRow {
     const st = String(r.sms_status) as RetentionRow['smsStatus'];
