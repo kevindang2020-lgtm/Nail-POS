@@ -13,6 +13,7 @@ const list = vi.fn((_q?: any) => Promise.resolve(page([row])));
 const create = vi.fn((_b?: any) => Promise.resolve({ id: 'fu2', duplicate: false }));
 const prepareText = vi.fn((_id: string, _b: any) => Promise.resolve({ state: 'awaiting_confirmation', blocked: [], warnings: [], notices: [], token: 't1', proposed: { to: '•••0000' } }));
 const confirmText = vi.fn();
+const edit = vi.fn((_id: string, _b: any) => Promise.resolve(row));
 const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, resolution: null, resolutionCategory: null, notes: null, createdBy: 'AI receptionist', branchId: null, dueTimeZone: null, reopenedCount: 0, waitingUntil: null },
   customer: { id: null, name: null, phone: '•••0000', unmatched: true, match: 'unmatched', smsOptedOut: false, sharedPhoneProfiles: 0 }, call: null, attempts: [], booking: { linked: null, upcoming: 0 }, activity: [],
   permissions: { canWork: true, canManage: false, canText: true, canBook: true } }));
@@ -20,7 +21,7 @@ const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, reso
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: {
   list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => Promise.resolve({ items: [], bookingsAwaitingVerification: 0, note: '' }),
   create: (b: any) => create(b), detail: (id: string) => detail(id), prepareText: (id: string, b: any) => prepareText(id, b), confirmText: (...a: any[]) => confirmText(...a),
-  health: vi.fn(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
+  edit: (id: string, b: any) => edit(id, b), health: vi.fn(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
 } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: vi.fn().mockResolvedValue({ items: [] }) } }));
 
@@ -68,5 +69,16 @@ describe('POSAIFollowUpsScreen', () => {
     fireEvent.click(screen.getByTestId('aifu-tx-prepare'));
     await waitFor(() => expect(screen.getByTestId('aifu-tx-preview')).toBeInTheDocument());
     expect(confirmText).not.toHaveBeenCalled();
+  });
+  it('Edit details sends only the changed fields with the row version', async () => {
+    mount();
+    await waitFor(() => expect(screen.getAllByTestId('aifu-row')).toHaveLength(1));
+    fireEvent.click(screen.getAllByTestId('aifu-row')[0]);
+    await waitFor(() => expect(screen.getByTestId('aifu-d-edit')).toBeInTheDocument());
+    fireEvent.click(screen.getByTestId('aifu-d-edit'));
+    expect(screen.getByTestId('aifu-e-save')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('aifu-e-desc'), { target: { value: 'Call back after 3pm' } });
+    fireEvent.click(screen.getByTestId('aifu-e-save'));
+    await waitFor(() => expect(edit).toHaveBeenCalledWith('fu1', { description: 'Call back after 3pm', version: 1 }));
   });
 });

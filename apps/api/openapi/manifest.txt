@@ -1845,6 +1845,7 @@ GET /tenant/ai/receptionist/calls/{providerCallId}  realm=staff  auth=session  d
 GET /tenant/ai/receptionist/overview  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
 GET /tenant/ai/receptionist/provisioning/{jobId}  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
 GET /tenant/ai/receptionist/settings  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
+GET /tenant/ai/receptionist/settings/history  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
 GET /tenant/ai/revenue/summary  realm=staff  auth=session  domain=ai  perm=ai.use  guards=TenantAuthGuard
 GET /tenant/ai/subscriptions  realm=staff  auth=session  domain=ai  perm=ai.use
 GET /tenant/ai/usage  realm=staff  auth=session  domain=ai  perm=ai.use
@@ -2471,7 +2472,7 @@ POST /pos/ai-ocr-receipt/documents/{id}/retry-post  realm=staff  auth=session  d
 POST /pos/ai-ocr-receipt/documents/{id}/return  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-ocr-receipt/documents/{id}/start-review  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-ocr-receipt/upload  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/ai-queue-assignment/alerts/scan  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-queue-assignment/alerts/scan  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.resolve_alerts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/alerts/{id}/acknowledge  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.resolve_alerts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/alerts/{id}/repair  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.resolve_alerts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/alerts/{id}/resolve  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.resolve_alerts  guards=RolePermissionGuard,TenantAuthGuard
@@ -2536,6 +2537,7 @@ POST /pos/ai/follow-ups-center/priorities/decide  realm=staff  auth=session  dom
 POST /pos/ai/follow-ups-center/tasks  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/follow-ups-center/tasks/{id}/assign  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/follow-ups-center/tasks/{id}/attempts  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai/follow-ups-center/tasks/{id}/edit  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/follow-ups-center/tasks/{id}/note  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/follow-ups-center/tasks/{id}/priority  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai/follow-ups-center/tasks/{id}/status  realm=staff  auth=session  domain=ai  perm=ai.use  guards=RolePermissionGuard,TenantAuthGuard

@@ -37,6 +37,9 @@ export const FU_PERIODS = ['all', 'today', 'week', 'month', 'year', 'custom'] as
 const ACTIVE = ['open', 'assigned', 'in_progress', 'waiting'];
 const ASSIGNABLE_ROLES = ['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION'];
 /** the task columns every read uses (no whole-row reads) */
+/** The overdue alert key: one alert per due time and per reopening. A task whose due time is moved, or that is reopened, and then
+ *  goes overdue again alerts again (it used to stay silent forever after its first overdue alert). */
+const OVERDUE_RULE = sql<string>`('overdue:' || floor(extract(epoch from f.due_at))::bigint::text || ':' || f.reopened_count::text)`;
 const FU_COLS = sql.raw(`f.id, f.tenant_id, f.branch_id, f.reason, f.priority, f.status, f.customer_id, f.caller_phone, f.provider_call_id, f.appointment_id, f.assigned_user_id, f.due_at, f.due_tz, f.notes, f.description, f.resolution, f.resolution_category, f.source, f.created_by_user_id, f.created_at, f.updated_at, f.resolved_at, f.version, f.customer_match, f.contact_attempts, f.first_contact_at, f.last_contact_at, f.escalation_level, f.escalated_at, f.reopened_count, f.waiting_until, f.assigned_at`);
 /** a second text to the same task within this window is a duplicate (manager override with a reason) — guide T37 */
 export const FU_TEXT_COOLDOWN_HOURS = 4;
@@ -260,10 +263,11 @@ export class AiFollowUpCenter {
   }
 
   // ── row-versioned writes ──────────────────────────────────────────────────────────────────────────────────────
-  private async lock(ctx: FuCtx, trx: Kysely<any>, id: string, version: unknown): Promise<Row> {
+  private async lock(ctx: FuCtx, trx: Kysely<any>, id: string, version: unknown, requireVersion = true): Promise<Row> {
     if (!UUIDRE.test(id)) throw fail('Follow-up not found.', 'NOT_FOUND', 404);
     const r: Row | undefined = (await sql<Row>`select ${FU_COLS} from ai_receptionist_follow_ups f where f.id = ${id} and f.tenant_id = ${ctx.tenantId} and ${this.branchScope(ctx)} for update`.execute(trx)).rows[0];
     if (!r) throw fail('Follow-up not found.', 'NOT_FOUND', 404);
+    if (requireVersion && (version === undefined || version === null)) throw fail('Refresh this follow-up and try again.', 'VERSION_REQUIRED', 422, { version: n(r.version) });   // a client without the row version could overwrite a newer change
     if (version !== undefined && version !== null && Number(version) !== n(r.version)) throw fail('This follow-up changed — refresh and try again.', 'RECORD_CHANGED_RELOAD', 409, { version: n(r.version) });
     return r;
   }
@@ -329,6 +333,28 @@ export class AiFollowUpCenter {
       return this.rowOut(r);
     });
   }
+  /** edit the description and / or due time of an open task (row-versioned, audited). Due time is salon-local; '' clears it. */
+  async edit(ctx: FuCtx, id: string, b: { description?: string | null; dueLocal?: string | null; version?: number }) {
+    this.needWork(ctx);
+    const hasDesc = b.description !== undefined && b.description !== null, hasDue = b.dueLocal !== undefined;
+    if (!hasDesc && !hasDue) throw fail('Nothing to change.', 'FOLLOWUP_CENTER_INVALID_FILTER', 400);
+    const description = hasDesc ? String(b.description).trim().slice(0, 1000) : null;
+    if (hasDesc && (description ?? '').length < 3) throw fail('Describe the issue (3+ characters).', 'FOLLOWUP_CENTER_INVALID_FILTER', 400, { field: 'description' });
+    const clk = await this.clock(ctx);
+    const dueAt = hasDue && b.dueLocal ? localToUtc(String(b.dueLocal), clk.tz) : null;
+    return this.db.transaction().execute(async (trx) => {
+      const cur = await this.lock(ctx, trx, id, b.version);
+      if (!ACTIVE.includes(cur.status)) throw fail('Reopen this follow-up first.', 'FOLLOWUP_STATE_INVALID', 409);
+      const r: Row = (await sql<Row>`update ai_receptionist_follow_ups set version = version + 1, updated_at = now(), updated_by = ${ctx.userId},
+          description = ${hasDesc ? description : sql`description`}, due_at = ${hasDue ? dueAt : sql`due_at`}, due_tz = ${hasDue ? (dueAt ? clk.tz : null) : sql`due_tz`}
+        where id = ${id} and tenant_id = ${ctx.tenantId} and version = ${n(cur.version)} returning *`.execute(trx)).rows[0];
+      const before = { description: cur.description ?? null, dueAt: iso(cur.due_at) }, after = { description: r.description ?? null, dueAt: iso(r.due_at) };
+      if (hasDue && before.dueAt !== after.dueAt) await this.activity(trx, ctx, ctx.tenantId, id, 'due_changed', before.dueAt, after.dueAt, null);
+      if (hasDesc && before.description !== after.description) await this.activity(trx, ctx, ctx.tenantId, id, 'description_changed', null, null, String(after.description).slice(0, 500));
+      await this.audit(ctx, trx, 'follow_up.edited', id, 'Follow-up details edited', { before, after });
+      return this.rowOut(r);
+    });
+  }
   /** escalate (any worker): priority → urgent, escalation level +1, manager alert. Any other priority change: manager + reason. */
   async setPriority(ctx: FuCtx, id: string, b: { priority?: string; reason?: string; version?: number; escalate?: boolean }) {
     this.needWork(ctx);
@@ -372,7 +398,7 @@ export class AiFollowUpCenter {
     const clk = await this.clock(ctx);
     const next = b.nextAttemptLocal ? localToUtc(String(b.nextAttemptLocal), clk.tz) : null;
     return this.db.transaction().execute(async (trx) => {
-      const cur = await this.lock(ctx, trx, id, undefined);
+      const cur = await this.lock(ctx, trx, id, undefined, false);
       // Nov 3 audit: a resolved / closed follow-up takes no more attempts (they were counted on it)
       if (!ACTIVE.includes(cur.status)) throw fail('Reopen this follow-up first.', 'FOLLOWUP_STATE_INVALID', 409);
       const reached = ['reached', 'resolved'].includes(outcome);
@@ -400,7 +426,7 @@ export class AiFollowUpCenter {
   async prepareText(ctx: FuCtx, id: string, b: { body?: string; overrideReason?: string }) {
     this.needWork(ctx);
     if (!this.text) throw fail('Texting is not available here.', 'SERVICE_UNAVAILABLE', 503);
-    const cur = await this.db.transaction().execute((trx) => this.lock(ctx, trx, id, undefined));
+    const cur = await this.db.transaction().execute((trx) => this.lock(ctx, trx, id, undefined, false));
     const to = await this.taskPhone(ctx, cur);
     const body = String(b.body ?? '').trim();
     const extraBlocked: string[] = [];
@@ -423,7 +449,7 @@ export class AiFollowUpCenter {
     if (key.length < 8) throw fail('A request key is required.', 'IDEMPOTENCY_KEY_REQUIRED');
     const prior: Row | undefined = (await sql<Row>`select id, outcome from ai_follow_up_contact_attempts where tenant_id = ${ctx.tenantId} and idempotency_key = ${'sms:' + key}`.execute(this.db)).rows[0];
     if (prior) return { duplicate: true, attemptId: prior.id, state: prior.outcome };
-    const cur = await this.db.transaction().execute((trx) => this.lock(ctx, trx, id, undefined));
+    const cur = await this.db.transaction().execute((trx) => this.lock(ctx, trx, id, undefined, false));
     const to = await this.taskPhone(ctx, cur);
     if (!to || !E164.test(to) || !ACTIVE.includes(cur.status)) throw fail('This follow-up cannot be texted.', 'FOLLOWUP_STATE_INVALID', 409);
     const dup = await this.recentText(ctx, id);
@@ -554,7 +580,7 @@ export class AiFollowUpCenter {
     await guard('background_jobs', async () => {
       const off = process.env.AI_FOLLOW_UP_ESCALATION === 'off';
       const o: Row = (await sql<Row>`select count(*)::int n from ai_receptionist_follow_ups f where f.tenant_id = ${T} and f.status = any(${ACTIVE}::text[]) and f.due_at < now() - interval '15 minutes'
-          and not exists (select 1 from ai_follow_up_escalations e where e.tenant_id = f.tenant_id and e.follow_up_id = f.id and e.rule = 'overdue')`.execute(this.db)).rows[0];
+          and not exists (select 1 from ai_follow_up_escalations e where e.tenant_id = f.tenant_id and e.follow_up_id = f.id and e.rule = ${OVERDUE_RULE})`.execute(this.db)).rows[0];
       if (off) add('background_jobs', 'DISABLED', 'The overdue escalation job is turned off.', 'AI_FOLLOW_UP_ESCALATION=off', 'Turn it back on.', 'Engineering');
       else if (n(o.n)) add('background_jobs', 'ATTENTION', `${n(o.n)} task(s) are overdue by 15+ minutes with no escalation — the job may not be running.`, 'overdue without escalation', 'Check the worker.', 'Engineering');
       else add('background_jobs', 'READY', 'Overdue tasks are escalated (one alert per task).', 'no stale overdue task', null);
@@ -600,27 +626,27 @@ export class AiFollowUpCenter {
     if (!['accept', 'dismiss', 'escalate'].includes(decision)) throw fail('Choose Accept, Dismiss or Escalate.', 'FOLLOWUP_CENTER_INVALID_FILTER', 400, { field: 'decision' });
     if (decision === 'escalate') return this.setPriority(ctx, String(b.taskId), { escalate: true, reason: b.note || `Assistant: ${b.signal}`, version: b.version });
     return this.db.transaction().execute(async (trx) => {
-      await this.lock(ctx, trx, String(b.taskId), undefined);
+      await this.lock(ctx, trx, String(b.taskId), undefined, false);   // accept / dismiss only log the decision; nothing on the task changes
       await this.activity(trx, ctx, ctx.tenantId, String(b.taskId), `assistant_${decision}`, null, String(b.signal ?? '').slice(0, 40), b.note ? String(b.note).slice(0, 300) : null);
       return { ok: true };
     });
   }
 }
 
-/** overdue escalation: one owner alert per overdue task (rule 'overdue'); urgent overdue → high severity. Idempotent. */
+/** overdue escalation: one owner alert per overdue period of a task; urgent overdue → high severity. Idempotent. */
 export async function escalateOverdueFollowUps(db: Kysely<any>, now = new Date()): Promise<{ escalated: number }> {
-  const rows: Row[] = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.priority, f.reason from ai_receptionist_follow_ups f
+  const rows: Row[] = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.priority, f.reason, ${OVERDUE_RULE} as rule from ai_receptionist_follow_ups f
     where f.status = any(${ACTIVE}::text[]) and f.due_at < ${now.toISOString()}
-      and not exists (select 1 from ai_follow_up_escalations e where e.tenant_id = f.tenant_id and e.follow_up_id = f.id and e.rule = 'overdue') limit 500`.execute(db)).rows;
+      and not exists (select 1 from ai_follow_up_escalations e where e.tenant_id = f.tenant_id and e.follow_up_id = f.id and e.rule = ${OVERDUE_RULE}) limit 500`.execute(db)).rows;
   let escalated = 0;
   for (const r of rows) {
     const done = await db.transaction().execute(async (trx) => {
-      const esc: Row | undefined = (await sql<Row>`insert into ai_follow_up_escalations (tenant_id, follow_up_id, rule, severity) values (${r.tenant_id}, ${r.id}, 'overdue', ${r.priority === 'urgent' ? 'high' : 'warning'})
+      const esc: Row | undefined = (await sql<Row>`insert into ai_follow_up_escalations (tenant_id, follow_up_id, rule, severity) values (${r.tenant_id}, ${r.id}, ${r.rule}, ${r.priority === 'urgent' ? 'high' : 'warning'})
         on conflict (tenant_id, follow_up_id, rule) do nothing returning id`.execute(trx)).rows[0];
       if (!esc) return false;
       const a: Row = (await sql<Row>`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
         values (${r.tenant_id}, ${r.branch_id}, 'ai_follow_up', ${r.priority === 'urgent' ? 'high' : 'warning'}, 'new', 'A follow-up is overdue', ${`A ${String(r.reason).toLowerCase()} follow-up is past its due time.`},
-          ${JSON.stringify({ followUpId: r.id, rule: 'overdue' })}::jsonb, 'all') returning id`.execute(trx)).rows[0];
+          ${JSON.stringify({ followUpId: r.id, rule: r.rule })}::jsonb, 'all') returning id`.execute(trx)).rows[0];
       await sql`update ai_follow_up_escalations set owner_alert_id = ${a.id} where id = ${esc.id}`.execute(trx);
       await sql`insert into ai_follow_up_activity (tenant_id, follow_up_id, actor_user_id, event_type, to_value, note) values (${r.tenant_id}, ${r.id}, null, 'overdue_alert', 'overdue', 'Overdue — manager alerted')`.execute(trx);
       return true;

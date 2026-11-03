@@ -182,7 +182,7 @@ describe('assignment, lifecycle, escalation, contact (T23–T26, T34–T37)', ()
     const r1 = await escalateOverdueFollowUps(db), r2 = await escalateOverdueFollowUps(db);
     expect(r1.escalated).toBeGreaterThan(0); expect(r2.escalated).toBe(0);
     const urg = (await q1(sql`select id from ai_receptionist_follow_ups where description = 'Burnt cuticle'`)).id;
-    expect((await q1(sql`select severity, owner_alert_id from ai_follow_up_escalations where follow_up_id = ${urg} and rule = 'overdue'`)).severity).toBe('high');
+    expect((await q1(sql`select severity, owner_alert_id from ai_follow_up_escalations where follow_up_id = ${urg} and rule like 'overdue:%'`)).severity).toBe('high');
     expect(N((await q1(sql`select count(*)::int n from owner_alerts where category = 'ai_follow_up' and metadata->>'followUpId' = ${urg}`)).n)).toBe(1);
     expect(await code(fc.setPriority(desk, t, { priority: 'low', reason: 'not urgent', version: await ver(t) }))).toBe('PERMISSION_DENIED');
     const esc = await fc.setPriority(desk, t, { escalate: true, reason: 'Customer upset', version: await ver(t) });
@@ -193,6 +193,25 @@ describe('assignment, lifecycle, escalation, contact (T23–T26, T34–T37)', ()
     expect(alerts).toHaveLength(2);
     expect(alerts.every((a: any) => String(a.branch_id) === String(a.task_branch))).toBe(true);
     expect((await fc.setPriority(own, t, { priority: 'high', reason: 'Calmed down', version: await ver(t) })).priority).toBe('high');
+  });
+  it('Nov 3 audit — an edit without the row version is refused; edits are versioned and audited; a moved due time alerts again', async () => {
+    expect(await code(fc.assign(desk, t, { assignedUserId: FD }))).toBe('VERSION_REQUIRED');
+    expect(await code(fc.transition(desk, t, { to: 'waiting', note: 'x' }))).toBe('VERSION_REQUIRED');
+    expect(await code(fc.note(desk, t, { note: 'no version' }))).toBe('VERSION_REQUIRED');
+    expect(await code(fc.edit(desk, t, { description: 'New text' }))).toBe('VERSION_REQUIRED');
+    expect(await code(fc.edit(desk, t, { description: 'Okay fine', version: (await ver(t)) + 3 }))).toBe('RECORD_CHANGED_RELOAD');
+    expect(await code(fc.edit(desk, t, { description: 'x', version: await ver(t) }))).toBe('FOLLOWUP_CENTER_INVALID_FILTER');
+    const e = await fc.edit(desk, t, { description: 'Customer wants a call after 3pm', dueLocal: '2020-01-02T09:00', version: await ver(t) });
+    expect(e.description).toBe('Customer wants a call after 3pm');
+    const acts = (await sql`select event_type from ai_follow_up_activity where follow_up_id = ${t} and event_type in ('due_changed','description_changed')`.execute(db)).rows as any[];
+    expect(acts.map((a) => a.event_type).sort()).toEqual(['description_changed', 'due_changed']);
+    // the task is overdue under its NEW due time → a new overdue alert, once
+    const before = N((await q1(sql`select count(*)::int n from ai_follow_up_escalations where follow_up_id = ${t} and rule like 'overdue:%'`)).n);
+    await escalateOverdueFollowUps(db); await escalateOverdueFollowUps(db);
+    expect(N((await q1(sql`select count(*)::int n from ai_follow_up_escalations where follow_up_id = ${t} and rule like 'overdue:%'`)).n)).toBe(before + 1);
+    await fc.edit(desk, t, { dueLocal: '2020-01-03T09:00', version: await ver(t) });
+    await escalateOverdueFollowUps(db);
+    expect(N((await q1(sql`select count(*)::int n from ai_follow_up_escalations where follow_up_id = ${t} and rule like 'overdue:%'`)).n)).toBe(before + 2);
   });
   it('T34/T35/T36 a recorded call is labelled an attestation; a text goes through prepare → confirm and is SUBMITTED, never delivered', async () => {
     expect((await fc.recordAttempt(desk, t, { channel: 'phone_call', outcome: 'no_answer', note: 'Rang twice', idempotencyKey: 'att-key-0001' })).duplicate).toBe(false);

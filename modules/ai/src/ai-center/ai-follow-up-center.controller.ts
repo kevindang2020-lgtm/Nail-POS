@@ -22,6 +22,7 @@ export const FU_STATUS_BODY: BodySchema = S.object({
   resolutionCategory: S.nullable(S.enumOf([...FU_RESOLUTIONS])), note: S.nullable(S.text(1000)), waitingUntilLocal: S.nullable(S.text(16)),
 }, ['to']);
 export const FU_NOTE_BODY: BodySchema = S.object({ note: S.text(1000), version: S.nullable(S.integer({ minimum: 1, maximum: 1_000_000 })) }, ['note']);
+export const FU_EDIT_BODY: BodySchema = S.object({ description: S.nullable(S.text(1000)), dueLocal: S.nullable(S.text(40)), version: S.integer({ minimum: 1, maximum: 1_000_000 }) }, ['version']);
 export const FU_PRIORITY_BODY: BodySchema = S.object({ priority: S.nullable(S.enumOf([...FU_PRIORITIES])), reason: S.text(500), version: S.nullable(S.integer({ minimum: 1, maximum: 1_000_000 })), escalate: S.nullable(S.boolean()) }, ['reason']);
 export const FU_ATTEMPT_BODY: BodySchema = S.object({
   channel: S.enumOf([...FU_ATTEMPT_CHANNELS]), outcome: S.enumOf([...FU_ATTEMPT_OUTCOMES]), note: S.nullable(S.text(1000)), nextAttemptLocal: S.nullable(S.text(16)), idempotencyKey: S.text(120),
@@ -84,6 +85,9 @@ export class AiFollowUpCenterController {
 
   @Post('tasks/:id/note') @RequirePermission('ai.use')
   note(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(FU_NOTE_BODY, { strict: true })) b: any) { return run(() => this.c().note(ctxFrom(q), id, b)); }
+
+  @Post('tasks/:id/edit') @RequirePermission('ai.use')
+  edit(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(FU_EDIT_BODY, { strict: true })) b: any) { return run(() => this.c().edit(ctxFrom(q), id, b)); }
 
   @Post('tasks/:id/priority') @RequirePermission('ai.use')
   priority(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(FU_PRIORITY_BODY, { strict: true })) b: any) { return run(() => this.c().setPriority(ctxFrom(q), id, b)); }

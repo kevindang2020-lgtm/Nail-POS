@@ -195,6 +195,7 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
               {o.resolution ? <><dt>{tx('aifu.o.resolution')}</dt><dd>{o.resolution}</dd></> : null}
               <dt>{tx('aifu.o.id')}</dt><dd className="sub">{o.id}</dd>
             </dl>
+            {can?.canWork && active ? <EditBlock o={o} busy={busy} onSave={(b) => act(() => fa.edit(id, { ...b, version: v }), tx('aifu.done'))} /> : null}
             {can?.canWork ? <div className="aifu-acts">
               {active ? <label>{tx('aifu.c.assign')}<select value={o.assignee?.id ?? ''} disabled={busy} onChange={(e) => act(() => fa.assign(id, { assignedUserId: e.target.value || null, version: v }), tx('aifu.done'))} data-testid="aifu-d-assign"><option value="">{tx('aifu.f.unassigned')}</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label> : null}
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={tx('aifu.notePh')} data-testid="aifu-d-note" />
@@ -250,5 +251,31 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
         </div>
       </>}
     </FitDialog>
+  );
+}
+
+/** edit description / due time (salon-local) of an open task; sends the row version so a newer change is never overwritten */
+function EditBlock({ o, busy, onSave }: { o: { description: string | null; dueAt: string | null; dueTimeZone?: string | null }; busy: boolean; onSave: (b: { description?: string; dueLocal?: string | null }) => void }) {
+  const toLocal = (s: string | null, tz?: string | null) => {
+    if (!s) return '';
+    const p = Object.fromEntries(new Intl.DateTimeFormat('en-CA', { timeZone: tz ?? undefined, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(s)).map((x) => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}`;
+  };
+  const [open, setOpen] = useState(false);
+  const [desc, setDesc] = useState(o.description ?? ''); const [due, setDue] = useState(toLocal(o.dueAt, o.dueTimeZone));
+  if (!open) return <button className="btn ghost" onClick={() => { setDesc(o.description ?? ''); setDue(toLocal(o.dueAt, o.dueTimeZone)); setOpen(true); }} data-testid="aifu-d-edit">{tx('aifu.edit')}</button>;
+  const changes: { description?: string; dueLocal?: string | null } = {};
+  if (desc.trim() !== (o.description ?? '')) changes.description = desc.trim();
+  if (due !== toLocal(o.dueAt, o.dueTimeZone)) changes.dueLocal = due || null;
+  const none = Object.keys(changes).length === 0;
+  return (
+    <div className="aifu-acts" data-testid="aifu-edit">
+      <label>{tx('aifu.c.description')}<textarea value={desc} maxLength={1000} onChange={(e) => setDesc(e.target.value)} data-testid="aifu-e-desc" /></label>
+      <label>{tx('aifu.c.due')}<input type="datetime-local" value={due} onChange={(e) => setDue(e.target.value)} data-testid="aifu-e-due" /></label>
+      <div className="aifu-row-btns">
+        <button className="btn" disabled={busy || none || (changes.description !== undefined && changes.description.length < 3)} onClick={() => { onSave(changes); setOpen(false); }} data-testid="aifu-e-save">{tx('aifu.save')}</button>
+        <button className="btn ghost" onClick={() => setOpen(false)}>{tx('aifu.cancel')}</button>
+      </div>
+    </div>
   );
 }

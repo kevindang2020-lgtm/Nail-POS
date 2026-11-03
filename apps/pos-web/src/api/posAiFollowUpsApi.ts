@@ -35,6 +35,7 @@ export const posAiFollowUpsApi = {
   detail: (id: string) => api.get<FuDetail>(`${B}/tasks/${id}`),
   assign: (id: string, b: { assignedUserId: string | null; version: number; note?: string | null }) => api.post<FuRow>(`${B}/tasks/${id}/assign`, b),
   status: (id: string, b: { to: string; version: number; reason?: string | null; resolutionCategory?: string | null; note?: string | null; waitingUntilLocal?: string | null }) => api.post<FuRow>(`${B}/tasks/${id}/status`, b),
+  edit: (id: string, b: { description?: string | null; dueLocal?: string | null; version: number }) => api.post<FuRow>(`${B}/tasks/${id}/edit`, b),
   note: (id: string, b: { note: string; version: number }) => api.post<FuRow>(`${B}/tasks/${id}/note`, b),
   priority: (id: string, b: { priority?: string | null; reason: string; version: number; escalate?: boolean }) => api.post<FuRow>(`${B}/tasks/${id}/priority`, b),
   attempt: (id: string, b: { channel: string; outcome: string; note?: string | null; nextAttemptLocal?: string | null; idempotencyKey: string }) => api.post<{ duplicate: boolean }>(`${B}/tasks/${id}/attempts`, b),
