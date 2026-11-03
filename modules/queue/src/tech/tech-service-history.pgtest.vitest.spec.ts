@@ -29,9 +29,9 @@ let pg: PGlite;
 beforeAll(async () => {
   pg = await PGlite.create();
   await pg.exec(`CREATE TABLE tickets (id uuid primary key, tenant_id uuid not null, customer_id uuid, status text not null,
-    paid_at timestamptz, satisfaction_rating smallint)`);
+    paid_at timestamptz, satisfaction_rating smallint, removed_at timestamptz)`);
   await pg.exec(`CREATE TABLE ticket_service_lines (id uuid primary key, tenant_id uuid not null, ticket_id uuid not null,
-    technician_id uuid, service_name_snapshot text, line_total_cents bigint not null default 0)`);
+    technician_id uuid, service_name_snapshot text, line_total_cents bigint not null default 0, removed_at timestamptz)`);
   await pg.exec(`CREATE TABLE customers (id uuid primary key, tenant_id uuid not null, first_name text, last_name text)`);
   const tk = (n: number) => `000000${n}0-0000-4000-8000-0000000000${n}0`.slice(0, 36);
   const cu = (n: number) => `000000${n}1-0000-4000-8000-0000000000${n}1`.slice(0, 36);
@@ -57,6 +57,16 @@ describe('tech service history (real tables)', () => {
     const r = await repo.serviceHistory({ tenantId: T } as any, ME);
     expect(r.items).toHaveLength(2);
     expect(r.items.map((i) => i.serviceName).sort()).toEqual(['Builder Gel Refill', 'Gel Manicure']);
+  });
+
+  it('Nov 3 audit — a removed line is not history; a closed (paid) ticket is', async () => {
+    const tid = 'abcdef00-0000-4000-8000-000000000001', l1 = 'abcdef00-0000-4000-8000-000000000002', l2 = 'abcdef00-0000-4000-8000-000000000003';
+    await pg.query(`INSERT INTO tickets (id, tenant_id, status, paid_at) VALUES ($1,$2,'closed', now())`, [tid, T]);
+    await pg.query(`INSERT INTO ticket_service_lines (id, tenant_id, ticket_id, technician_id, service_name_snapshot) VALUES ($1,$3,$4,$5,'Closed Ticket Pedi'), ($2,$3,$4,$5,'Removed Line')`, [l1, l2, T, tid, ME]);
+    await pg.query(`UPDATE ticket_service_lines SET removed_at = now() WHERE id = $1`, [l2]);
+    const names = (await repo.serviceHistory({ tenantId: T } as any, ME)).items.map((i) => i.serviceName);
+    expect(names).toContain('Closed Ticket Pedi'); expect(names).not.toContain('Removed Line');
+    await pg.query(`DELETE FROM ticket_service_lines WHERE ticket_id = $1`, [tid]); await pg.query(`DELETE FROM tickets WHERE id = $1`, [tid]);
   });
 
   it('names the guest first-name + last-initial and shows the rating honestly (null when unrated)', async () => {

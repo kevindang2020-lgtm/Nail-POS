@@ -408,7 +408,7 @@ export class TechService {
    *  earnings-period.ts; Payroll mandate §126–§128): the window is resolved in the TENANT's timezone, half-open, custom
    *  ranges capped, and `pay_period` maps a payroll row. Scoped server-side to the authenticated technician (never trusts a
    *  client-supplied id, §31). */
-  async getCanonicalEarnings(ctx: TechContext, period: EarningsPeriod | 'pay_period' = 'day', dateIso?: string, dateToIso?: string, payPeriodId?: string): Promise<(TechEarningsSummary & { period: string; dateFrom: string; dateTo: string; timezone: string; clamped?: boolean; payPeriodId?: string; lines: { serviceName: string; lineTotalCents: number; commissionCents: number; completedAt: string; ticketId: string; ruleSource: string | null }[] }) | null> {
+  async getCanonicalEarnings(ctx: TechContext, period: EarningsPeriod | 'pay_period' = 'day', dateIso?: string, dateToIso?: string, payPeriodId?: string): Promise<(TechEarningsSummary & { period: string; dateFrom: string; dateTo: string; timezone: string; clamped?: boolean; payPeriodId?: string; linesUnavailable?: boolean; lines: { serviceName: string; lineTotalCents: number; commissionCents: number; completedAt: string; ticketId: string; ruleSource: string | null }[] }) | null> {
     const technicianId = await this.requireTechnician(ctx);
     this.require(ctx, 'tech.earnings.view');
     if (!this.compReads) return null; // honest: no snapshot source wired (e.g. no DB)
@@ -425,10 +425,11 @@ export class TechService {
     catch (e: any) { throw new TechError('invalid_state', e?.message || 'Invalid earnings range.'); }
     const [sums, lines] = await Promise.all([
       this.compReads.sumByTechnicianPeriod(ctx.tenantId, technicianId, w.fromIso, w.toIso),
-      this.compReads.linesByTechnicianPeriod ? this.compReads.linesByTechnicianPeriod(ctx.tenantId, technicianId, w.fromIso, w.toIso).catch(() => []) : Promise.resolve([]),
+      // a failed line read is reported as unavailable beside the totals (an empty list read as "no work" under real totals)
+      this.compReads.linesByTechnicianPeriod ? this.compReads.linesByTechnicianPeriod(ctx.tenantId, technicianId, w.fromIso, w.toIso).catch(() => null) : Promise.resolve([]),
     ]);
     await this.auditSafe(ctx, technicianId, 'technician_earnings_viewed', { data: { period: w.period, canonical: true } });
-    return { ...technicianEarningsSummary(sums), period: w.period, dateFrom: w.fromIso, dateTo: w.toIso, timezone: w.timezone, clamped: w.clamped, payPeriodId: w.payPeriodId, lines };
+    return { ...technicianEarningsSummary(sums), period: w.period, dateFrom: w.fromIso, dateTo: w.toIso, timezone: w.timezone, clamped: w.clamped, payPeriodId: w.payPeriodId, lines: lines ?? [], linesUnavailable: lines === null };
   }
 
   /** §16 internal earnings receipt for one ticket — this technician's lines only (isolation). */

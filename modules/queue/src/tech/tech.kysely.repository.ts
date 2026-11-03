@@ -226,11 +226,13 @@ export class KyselyTechRepository implements TechDataPort {
       .leftJoin('customers as c', 'c.id', 'tk.customer_id')
       .select(['tk.id as ticket_id', 'l.service_name_snapshot as service_name', 'c.first_name as first_name', 'c.last_name as last_name', 'tk.paid_at as completed_at', 'tk.satisfaction_rating as rating', 'l.line_total_cents as line_total_cents'])
       .where('l.tenant_id', '=', ctx.tenantId).where('tk.tenant_id', '=', ctx.tenantId)
-      .where('l.technician_id', '=', technicianId).where('tk.status', '=', 'paid');
+      // a removed line or ticket is not a service she performed; a closed ticket is paid (both were wrong here)
+      .where('l.technician_id', '=', technicianId).where('tk.status', 'in', ['paid', 'closed']).where('l.removed_at', 'is', null).where('tk.removed_at', 'is', null);
     if (service) q = q.where('l.service_name_snapshot', '=', service);
-    const rows = await q.orderBy('tk.paid_at', 'desc').limit(Math.min(200, Math.max(1, limit))).execute().catch(() => []);
+    // a failed read is an error, not "no history" (it used to answer an empty list)
+    const rows = await q.orderBy('tk.paid_at', 'desc').limit(Math.min(200, Math.max(1, limit))).execute();
     const names = await this.db.selectFrom('ticket_service_lines').select('service_name_snapshot').distinct()
-      .where('tenant_id', '=', ctx.tenantId).where('technician_id', '=', technicianId).execute().catch(() => []);
+      .where('tenant_id', '=', ctx.tenantId).where('technician_id', '=', technicianId).where('removed_at', 'is', null).execute();
     return {
       items: rows.map((r) => ({
         ticketId: r.ticket_id,

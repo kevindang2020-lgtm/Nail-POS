@@ -55,8 +55,12 @@ describe('§40 technician identity is server-resolved (browser-supplied id is ig
 describe('§40 snapshot immutability (write-once)', () => {
   it('persistSnapshot uses ON CONFLICT DO NOTHING', async () => {
     let doNothing = false;
-    const db: any = { insertInto: () => ({ values: () => ({ onConflict: (fn: any) => { fn({ columns: () => ({ doNothing: () => { doNothing = true; return {}; } }) }); return { execute: async () => [{}] }; } }) }) };
-    await new CompensationSnapshotRepository(db).persistSnapshot([{ tenant_id: 't', ticket_id: 'k', service_line_id: 'l', technician_id: 'x' } as any]);
+    // persistSnapshot now runs in a transaction that locks the ticket's existing rows first (the remainder rule); the insert is still
+    // ON CONFLICT DO NOTHING on (tenant, ticket, line, technician)
+    const sel: any = { select: () => sel, where: () => sel, forUpdate: () => sel, execute: async () => [] };
+    const trx: any = { selectFrom: () => sel, insertInto: () => ({ values: () => ({ onConflict: (fn: any) => { fn({ columns: () => ({ doNothing: () => { doNothing = true; return {}; } }) }); return { execute: async () => [{}] }; } }) }) };
+    const db: any = { transaction: () => ({ execute: (f: any) => f(trx) }) };
+    await new CompensationSnapshotRepository(db).persistSnapshot([{ tenant_id: 't', ticket_id: 'k', service_line_id: 'l', technician_id: 'x', card_tip_cents: 0, cash_tip_cents: 0, retail_commission_cents: 0 } as any]);
     expect(doNothing).toBe(true);
   });
 });
