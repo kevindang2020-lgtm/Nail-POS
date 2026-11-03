@@ -114,7 +114,8 @@ describe('KPIs, search, calendar, pages (§05–§06)', () => {
     const dst = await ledger({ to: '+15551230001', status: 'delivered', at: '2026-11-02T04:30:00Z', delivered: '2026-11-02T04:30:30Z' });   // Nov 1 23:30 EST
     const got = (await center.list(owner, { preset: 'custom', from: '2026-10-10', to: '2026-10-10' })).items.map((x: any) => x.id);
     expect(got).toContain(late); expect(got).not.toContain(before);
-    expect((await center.list(owner, { preset: 'custom', from: '2026-11-01', to: '2026-11-01' })).items.map((x: any) => x.id)).toEqual([dst]);
+    const nov1 = (await center.list(owner, { preset: 'custom', from: '2026-11-01', to: '2026-11-01' })).items.map((x: any) => x.id);   // other fixtures are relative to now() and may also fall on Nov 1
+    expect(nov1).toContain(dst); expect(nov1).not.toContain(late);
     expect(await code(center.list(owner, { preset: 'custom', from: '2026-10-12', to: '2026-10-10' }))).toBe('DATE_RANGE_INVALID');
     // date basis: delivered_at
     expect((await center.list(owner, { preset: 'custom', from: '2026-10-10', to: '2026-10-10', basis: 'delivered' })).window.basis).toBe('delivered');
@@ -197,6 +198,11 @@ describe('smart failed-notification recovery (§10)', () => {
     readinessState = { account: { state: 'connected', lastCheckedAt: ago(15) }, sender: { state: 'assigned' }, outbound: { state: 'ready_to_attempt' } };
     expect((await center.retry(owner, auth, { idempotencyKey: 'retry-auth-02', confirm: true })).outcome).toBe('sent');   // re-checked after the failure → allowed
     expect((await center.retry(owner, await mk({ to: '+15550000077' }), { idempotencyKey: 'retry-chg-001', confirm: true })).refusalCode).toBe('NOTIFICATION_RETRY_CONTACT_CHANGED');
+    // Nov 3 audit: an email sender failure (after_fix) also needs evidence — it used to be resendable straight away
+    const sender = await ledger({ channel: 'email', to: 'maya@example.com', status: 'failed', customer: C2, at: ago(20), reason: 'The from address does not match a verified sender identity', subject: 'Receipt' });
+    expect((await center.retry(owner, sender, { idempotencyKey: 'retry-esnd-01', confirm: true })).refusalCode).toBe('NOTIFICATION_RETRY_SETUP_NOT_FIXED');
+    await q(sql`insert into email_health_checks (tenant_id, trigger_type, configuration, sender_identity, provider_health, callbacks, overall, detail) values (${T}, 'manual', 'ready_to_check', 'unknown', 'healthy', 'unknown', 'ready', 'ok')`);
+    expect((await center.retry(owner, sender, { idempotencyKey: 'retry-esnd-02', confirm: true })).refusalCode ?? null).not.toBe('NOTIFICATION_RETRY_SETUP_NOT_FIXED');
     await svc.recordOptOut(systemContext({ tenantId: T, actor: 'twilio-inbound' }) as any, 'sms', '+15551230001', 'inbound_stop');
     expect((await center.retry(owner, await mk({}), { idempotencyKey: 'retry-opt-001', confirm: true })).refusalCode).toBe('NOTIFICATION_RETRY_OPTED_OUT');
     expect((await q(sql`select count(*)::int n from audit_events where tenant_id = ${T} and action = 'notification.retry_refused'`))[0].n).toBeGreaterThanOrEqual(4);

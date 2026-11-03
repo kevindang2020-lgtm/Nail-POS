@@ -344,6 +344,15 @@ export class CustomerNotificationsCenter {
     if (f.retry === 'after_fix' && ['auth', 'not_configured', 'sender', 'registration'].includes(f.category) && r.channel === 'sms') {
       const s = await this.setupFixedSince(ctx, new Date(r.created_at));
       if (!s.fixed) return { eligible: false, code: 'NOTIFICATION_RETRY_SETUP_NOT_FIXED', category: f.category };
+    } else if (f.retry === 'after_fix') {
+      // Nov 3 audit: every other "fix it first" failure (email sender / credentials / configuration, over limit) needs evidence
+      // too — a passing email provider check after the failure, or a message on the same channel that actually went out since
+      const since = new Date(r.created_at);
+      const proof = (await sql<any>`select (
+          (${r.channel} = 'email' and exists (select 1 from email_health_checks h where h.tenant_id = ${ctx.tenantId}::uuid and h.provider_health = 'healthy' and h.checked_at > ${since}))
+          or exists (select 1 from notifications n2 where n2.tenant_id = ${ctx.tenantId}::uuid and n2.channel = ${r.channel} and n2.status in ('sent', 'delivered') and n2.created_at > ${since})
+        ) as ok`.execute(this.db)).rows[0];
+      if (!proof?.ok) return { eligible: false, code: 'NOTIFICATION_RETRY_SETUP_NOT_FIXED', category: f.category };
     }
     return { eligible: true, code: null, category: f.category };
   }
