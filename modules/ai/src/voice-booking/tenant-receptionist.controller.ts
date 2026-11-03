@@ -10,7 +10,7 @@ import { AiAgentService, AgentForbiddenError, AgentNotFoundError } from './ai-ag
 import { AgentValidationError } from './ai-agent-core';
 import { AiFollowUpService, FollowUpForbiddenError, FollowUpNotFoundError, FollowUpValidationError } from './ai-follow-up.service';
 import { AiFaqService, FaqForbiddenError, FaqNotFoundError, FaqValidationError } from './ai-faq.service';
-import { AiSettingsService, SettingsForbiddenError, SettingsValidationError, type SettingsCtx } from './ai-settings.service';
+import { AiSettingsService, SettingsForbiddenError, SettingsValidationError, SettingsConflictError, type SettingsCtx } from './ai-settings.service';
 import { AiProvisioningService, ProvForbiddenError, ProvNotFoundError, type ProvCtx } from './ai-provisioning.service';
 import { AuditService } from '@aipowersalon/audit';
 import { ListQueries } from '@aipowersalon/database';
@@ -27,6 +27,7 @@ async function runAgent<T>(fn: () => Promise<T> | T): Promise<T> {
     if (e instanceof AgentForbiddenError || e instanceof FollowUpForbiddenError || e instanceof FaqForbiddenError || e instanceof SettingsForbiddenError || e instanceof ProvForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
     if (e instanceof AgentNotFoundError || e instanceof FollowUpNotFoundError || e instanceof FaqNotFoundError || e instanceof ProvNotFoundError) throw new HttpException(e.message, HttpStatus.NOT_FOUND);
     if (e instanceof AgentValidationError || e instanceof FollowUpValidationError || e instanceof FaqValidationError || e instanceof SettingsValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    if (e instanceof SettingsConflictError) throw new HttpException({ code: 'VERSION_CONFLICT', message: e.message, currentVersion: e.current }, HttpStatus.CONFLICT);
     throw new HttpException(e?.message || 'Error', HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
@@ -68,5 +69,7 @@ export class TenantReceptionistController {
 
   // ---- Settings (receptionist-level only; booking/notification prefs link out to their existing screens) ----
   @RequirePermission('ai.use') @Get('settings') getSettings(@Req() r: any) { return runAgent(() => this.settings.get(ctxFrom(r) as SettingsCtx)); }
-  @RequirePermission('ai.manage') @Patch('settings') async updateSettings(@Req() r: any, @Body(ValidatedBody(RECEPTIONIST_SETTINGS_BODY)) b: any) { const s = await runAgent(() => this.settings.update(ctxFrom(r) as SettingsCtx, b || {})); await this.aud(r, 'settings.updated', null, 'Updated receptionist settings', { changed: Object.keys(b || {}) }); return s; }
+  @RequirePermission('ai.manage') @Patch('settings') async updateSettings(@Req() r: any, @Body(ValidatedBody(RECEPTIONIST_SETTINGS_BODY)) b: any) { const s = await runAgent(() => this.settings.update(ctxFrom(r) as SettingsCtx, b || {})); await this.aud(r, 'settings.updated', null, 'Updated receptionist settings', { changed: Object.keys(b || {}).filter((k) => k !== 'expectedVersion'), version: s.meta?.version ?? null }); return s; }
+  /** Receptionist Settings guide: every saved version, newest first (before / after / who), for compare and restore */
+  @RequirePermission('ai.use') @Get('settings/history') settingsHistory(@Req() r: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) { return runAgent(() => this.settings.history(ctxFrom(r) as SettingsCtx, Number(page) || 1, Number(pageSize) || 20)); }
 }

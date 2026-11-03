@@ -219,7 +219,7 @@ export const RECEPTIONIST_FAQ_BODY: BodySchema = S.object({ question: text(2000)
  *  settings, bounded to 2 levels and 200 keys + items) */
 export const RECEPTIONIST_SETTINGS_BODY: BodySchema = S.bounded(S.object({
   enabled: bool, allowInterruptions: bool, recordingEnabled: bool, defaultLanguage: text(32), afterHoursBehavior: text(64),
-  silenceTimeoutSeconds: numish, maxCallDurationSeconds: numish, recordingConsentMessage: text(2000),
+  silenceTimeoutSeconds: numish, maxCallDurationSeconds: numish, recordingConsentMessage: text(2000), expectedVersion: numish,
 }, [], { additionalProperties: true }), 2, 200);
 /** POST /voice/calls/:callId/outcome — the call-outcome report from the voice agent (voice-call-outcome-core) */
 /** AI Calls guide (Oct 31 2026): Retell call lifecycle webhook — a bounded envelope; the signature is the authentication */

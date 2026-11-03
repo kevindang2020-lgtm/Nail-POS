@@ -1410,11 +1410,17 @@ export interface AiReceptionistProvisioningJobsTable {
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
+// mig 784: one row per saved receptionist settings version
+export interface AiReceptionistSettingsHistoryTable {
+  id: Generated<string>; tenant_id: string; branch_id: string; version: number; settings: unknown; before: unknown | null;
+  changed_keys: Generated<string[]>; actor_user_id: string | null; created_at: Generated<Ts>;
+}
 export interface AiReceptionistSettingsTable {
   tenant_id: string;
   branch_id: Generated<string>;
   settings: Generated<unknown>;
   updated_by_user_id: string | null;
+  version: Generated<number>;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
@@ -7296,6 +7302,7 @@ export interface DB {
   ai_receptionist_handoffs: AiReceptionistHandoffsTable;
   ai_receptionist_provisioning_jobs: AiReceptionistProvisioningJobsTable;
   ai_receptionist_settings: AiReceptionistSettingsTable;
+  ai_receptionist_settings_history: AiReceptionistSettingsHistoryTable;
   ai_report_deliveries: AiReportDeliveriesTable;
   ai_report_narratives: AiReportNarrativesTable;
   ai_report_runs: AiReportRunsTable;

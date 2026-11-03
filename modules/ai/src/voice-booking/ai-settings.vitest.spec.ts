@@ -1,7 +1,7 @@
 // ai-settings.vitest.spec.ts — receptionist settings. Defaults merge, validated patch (rejects unknown keys and
 // out-of-range values), permission gating, and merge-on-update.
 import { describe, it, expect } from 'vitest';
-import { AiSettingsService, InMemorySettingsRepo, validatePatch, DEFAULT_SETTINGS, SettingsForbiddenError, SettingsValidationError } from './ai-settings.service';
+import { AiSettingsService, InMemorySettingsRepo, validatePatch, DEFAULT_SETTINGS, SettingsForbiddenError, SettingsValidationError, SettingsConflictError } from './ai-settings.service';
 
 const owner = { tenantId: 't1', branchId: null, userId: 'u1', role: 'OWNER', permissions: ['ai.manage'] };
 const viewer = { tenantId: 't1', branchId: null, userId: 'u2', role: 'RECEPTION', permissions: ['ai.use'] };
@@ -28,7 +28,9 @@ describe('validatePatch', () => {
 
 describe('AiSettingsService', () => {
   it('returns defaults when nothing is stored', async () => {
-    expect(await svc().get(owner as any)).toEqual(DEFAULT_SETTINGS);
+    const { meta, ...rest } = await svc().get(owner as any);
+    expect(rest).toEqual(DEFAULT_SETTINGS);
+    expect(meta).toEqual({ version: 0, source: 'defaults', scope: 'salon', appliedToCalls: false });
   });
   it('refuses writes without ai.manage', async () => {
     await expect(svc().update(viewer as any, { enabled: true })).rejects.toBeInstanceOf(SettingsForbiddenError);
@@ -70,5 +72,19 @@ describe('Nov 3 audit: a failed read never turns into defaults that a save write
     expect((await new AiSettingsService(repo).get(branchCtx as any)).silenceTimeoutSeconds).toBe(20);
     await repo.upsert('t1', 'b1', { ...DEFAULT_SETTINGS, silenceTimeoutSeconds: 9 }, 'u1');
     expect((await new AiSettingsService(repo).get(branchCtx as any)).silenceTimeoutSeconds).toBe(9);
+  });
+});
+
+describe('Receptionist Settings guide: versions, history, concurrent edits', () => {
+  it('each save is a new version with before / changed keys; a save from an older screen is refused', async () => {
+    const s = svc();
+    const v1 = await s.update(owner as any, { enabled: true, expectedVersion: 0 });
+    expect(v1.meta).toMatchObject({ version: 1, source: 'salon' });
+    await s.update(owner as any, { silenceTimeoutSeconds: 12, expectedVersion: 1 });
+    await expect(s.update(owner as any, { enabled: false, expectedVersion: 1 })).rejects.toBeInstanceOf(SettingsConflictError);
+    const h = await s.history(owner as any);
+    expect(h.items.map((x) => x.version)).toEqual([2, 1]);
+    expect(h.items[0]).toMatchObject({ changedKeys: ['silenceTimeoutSeconds'], before: expect.objectContaining({ silenceTimeoutSeconds: 8 }) });
+    expect((await s.get(owner as any)).enabled).toBe(true);
   });
 });

@@ -5,6 +5,10 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { posAiApi, type ReceptionistSettings } from '../api/posAiApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { errorTextOf } from '../i18n/error-text';
+import { fmtDateTime } from '../i18n/format';
+
+const KEYS = ['enabled', 'afterHoursBehavior', 'allowInterruptions', 'silenceTimeoutSeconds', 'maxCallDurationSeconds', 'recordingEnabled', 'recordingConsentMessage'] as const;
 
 const cardBox: React.CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line)', borderRadius: 14, padding: 14 };
 const headStyle: React.CSSProperties = { fontWeight: 800, fontSize: 13.5, marginBottom: 10, fontFamily: 'var(--aps-font-head, Playfair Display)' };
@@ -32,16 +36,29 @@ export function POSAISettingsScreen() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [conflict, setConflict] = useState(false);
+  const [hist, setHist] = useState<any>(null);
+  const [histPage, setHistPage] = useState(1);
+  const [tick, setTick] = useState(0);
+  const meta = (s as (ReceptionistSettings & { meta?: { version: number; source: string; scope: string; appliedToCalls: boolean } }) | null)?.meta;
 
-  useEffect(() => { posAiApi.receptionistSettings().then(setS).catch((e: any) => setError(e?.message || t('pos.failed_to_load_settings'))); }, []);
+  useEffect(() => { setConflict(false); posAiApi.receptionistSettings().then((x) => { setS(x); setDirty(false); }).catch((e: unknown) => setError(errorTextOf(e, t('pos.failed_to_load_settings')))); }, [tick]);
+  useEffect(() => { posAiApi.receptionistSettingsHistory(histPage, 10).then(setHist).catch(() => setHist({ error: true })); }, [histPage, tick, saved]);
 
-  const set = (patch: Partial<ReceptionistSettings>) => { setS((cur) => cur ? { ...cur, ...patch } : cur); setSaved(false); };
+  const set = (patch: Partial<ReceptionistSettings>) => { setS((cur) => cur ? { ...cur, ...patch } : cur); setSaved(false); setDirty(true); };
+  // restore = put an older version's values back in the form; nothing changes until Save
+  const restore = (v: any) => { set(Object.fromEntries(KEYS.filter((k) => v.settings?.[k] !== undefined).map((k) => [k, v.settings[k]])) as Partial<ReceptionistSettings>); };
   const save = async () => {
     if (!s) return; setBusy(true); setError(null);
     try {
-      const next = await posAiApi.updateReceptionistSettings({ enabled: s.enabled, defaultLanguage: s.defaultLanguage, afterHoursBehavior: s.afterHoursBehavior, allowInterruptions: s.allowInterruptions, silenceTimeoutSeconds: s.silenceTimeoutSeconds, maxCallDurationSeconds: s.maxCallDurationSeconds, recordingEnabled: s.recordingEnabled, recordingConsentMessage: s.recordingConsentMessage });
-      setS(next); setSaved(true);
-    } catch (e: any) { setError(e?.message || t('pos.could_not_save_settings')); }
+      const next = await posAiApi.updateReceptionistSettings({ enabled: s.enabled, defaultLanguage: s.defaultLanguage, afterHoursBehavior: s.afterHoursBehavior, allowInterruptions: s.allowInterruptions, silenceTimeoutSeconds: s.silenceTimeoutSeconds, maxCallDurationSeconds: s.maxCallDurationSeconds, recordingEnabled: s.recordingEnabled, recordingConsentMessage: s.recordingConsentMessage, expectedVersion: meta?.version ?? 0 });
+      setS(next); setSaved(true); setDirty(false);
+    } catch (e: any) {
+      // someone else saved first: never overwrite their change silently
+      if (e?.status === 409) { setConflict(true); setError(t('aist.conflict')); }
+      else setError(errorTextOf(e, t('pos.could_not_save_settings')));
+    }
     finally { setBusy(false); }
   };
 
@@ -58,10 +75,13 @@ export function POSAISettingsScreen() {
         </div></div>
         <div style={{ alignSelf: 'center', display: 'flex', flexWrap: 'wrap', gap: 10, alignItems: 'center' }}>
           {saved ? <span style={{ fontSize: 12, color: '#3E8F57' }}>{t('pos.saved')}</span> : null}
+          {dirty ? <span className="chip warn" data-testid="aist-dirty">{t('aist.unsaved')}</span> : null}
+          {meta ? <span className="sub" data-testid="aist-version">{t('aist.version', { v: meta.version, src: t('aist.src.' + meta.source) })}</span> : null}
           <button className="btn w-fit whitespace-nowrap"  disabled={busy} onClick={save}>{busy ? t('pos.saving_2') : t('pos.save_changes')}</button>
         </div>
       </div>
-      {error ? <div className="err">{error}</div> : null}
+      {error ? <div className="err" role="alert">{error}{conflict ? <> <button style={linkBtn} data-testid="aist-reload" onClick={() => setTick((n) => n + 1)}>{t('aist.reload')}</button></> : null}</div> : null}
+      {meta && !meta.appliedToCalls ? <div className="state" data-testid="aist-not-applied">{t('aist.notApplied')}</div> : null}
 
       <section style={cardBox}>
         <div style={headStyle}>{t('pos.general')}</div>
@@ -93,6 +113,17 @@ export function POSAISettingsScreen() {
           <button style={linkBtn} onClick={() => nav('/settings?section=notifications')}>{t('pos.notifications_u2192')}</button>
           <button style={linkBtn} onClick={() => nav('/tenant/ai/receptionist/business-setup')}>{t('pos.business_setup_faqs_u2192')}</button>
         </div>
+      </section>
+
+      <section style={cardBox} data-testid="aist-history">
+        <div style={headStyle}>{t('aist.history')}</div>
+        {!hist ? <div className="sub">{t('pos.loading')}</div> : hist.error ? <div className="sub">{t('aist.historyFailed')}</div> : hist.items.length === 0 ? <div className="sub">{t('aist.noHistory')}</div> : (
+          <table className="tbl"><thead><tr><th>{t('aist.col.version')}</th><th>{t('aist.col.when')}</th><th>{t('aist.col.who')}</th><th>{t('aist.col.changed')}</th><th /></tr></thead>
+            <tbody>{hist.items.map((v: any) => (
+              <tr key={v.version} data-testid="aist-version-row"><td>{v.version}</td><td>{fmtDateTime(v.at)}</td><td>{v.actorName ?? '—'}</td>
+                <td>{v.changedKeys.length ? v.changedKeys.map((k: string) => `${t('aist.key.' + k)}: ${JSON.stringify(v.before?.[k] ?? '—')} → ${JSON.stringify(v.settings?.[k])}`).join(' · ') : t('aist.noChange')}</td>
+                <td>{v.version !== meta?.version ? <button style={linkBtn} data-testid="aist-restore" onClick={() => restore(v)}>{t('aist.restore')}</button> : <span className="sub">{t('aist.current')}</span>}</td></tr>))}</tbody></table>)}
+        {hist && !hist.error && hist.totalPages > 1 ? <div style={{ display: 'flex', gap: 8, marginTop: 6 }}><button style={linkBtn} disabled={histPage <= 1} onClick={() => setHistPage((p) => p - 1)}>{t('pos.previous')}</button><span className="sub">{histPage} / {hist.totalPages}</span><button style={linkBtn} disabled={histPage >= hist.totalPages} onClick={() => setHistPage((p) => p + 1)}>{t('pos.next')}</button></div> : null}
       </section>
 
       <div style={{ fontSize: 11.5, color: '#9B8B78' }}><button style={linkBtn} onClick={() => nav('/tenant/ai/receptionist')}>{t('pos.back_to_command_center')}</button></div>

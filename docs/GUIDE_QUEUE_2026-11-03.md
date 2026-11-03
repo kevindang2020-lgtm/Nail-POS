@@ -13,7 +13,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A6 | AI Queue | /tenant/ai/queue | PARTIAL — salon-day ranges + end day (bb92dd5), free-technicians tile, kept-unassigned counted, failed reads shown, scan needs resolve_alerts; health checker, overlay tabs, search and numbered pages not built |
 | A7 | AI Booking Assistant | /tenant/ai/booking | PARTIAL — invented-slots panel removed (220ee29); past usage kept and labelled after cancel; Usage & history on every AI add-on page. The operations center (requests / holds / verification KPIs, activity overlay, 12-group health check) is NOT built: there is no ai-booking backend module yet |
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | BUILT (fixes) — links, reschedule proposal, waitlist claim, midnight windows, sender check, branch scope, Yesterday, menu gating, error texts; name pickers / URL filters / health 'responsible role' still open |
-| A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | AUDITED |
+| A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | BUILT (core) — versions + history + restore, stale save refused (409), effective source shown, salon fallback, no silent default overwrite, coded errors; NOT built: the live agent reading these settings (shown honestly on the page), consent-script approval, health checker |
 | A10 | AI Calls | /tenant/ai/receptionist/calls | AUDITED |
 | A11 | AI Calendar | /tenant/ai/receptionist/calendar | AUDITED |
 | A12 | Business Setup | /tenant/ai/receptionist/business-setup | AUDITED |

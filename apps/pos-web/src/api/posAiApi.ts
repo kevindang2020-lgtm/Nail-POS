@@ -63,6 +63,7 @@ export const posAiApi = {
   receptionistOverview: () => api.get<ReceptionistOverview>('/tenant/ai/receptionist/overview'),
   receptionistSettings: () => api.get<ReceptionistSettings>('/tenant/ai/receptionist/settings'),
   updateReceptionistSettings: (b: Record<string, unknown>) => api.patch<ReceptionistSettings>('/tenant/ai/receptionist/settings', b),
+  receptionistSettingsHistory: (page = 1, pageSize = 10) => api.get<any>('/tenant/ai/receptionist/settings/history', { page, pageSize }),
   provisionReceptionistAgent: (id: string) => api.post<ProvisioningJob>(`/tenant/ai/receptionist/agents/${id}/provision`, {}),
   receptionistProvisioningJob: (jobId: string) => api.get<ProvisioningJob>(`/tenant/ai/receptionist/provisioning/${jobId}`),
   workflowRunsSummary: () => api.get<Record<string, WorkflowStat>>('/tenant/ai/workflows/runs/summary'),

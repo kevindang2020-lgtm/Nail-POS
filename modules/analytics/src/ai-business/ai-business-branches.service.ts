@@ -6,6 +6,7 @@
 // made to look worse merely for being smaller (§30).
 import { type ReportsContext, type ReportFilters, type DatePreset, type SalesKpis, type SalesTrend, type BookingsOverview, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric } from './ai-business-metrics';
+import { withCode } from '@aipowersalon/api-contracts';
 import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
 import type { BranchScopeResolver } from './ai-business-branch-scope';
 
@@ -68,9 +69,9 @@ export class AiBusinessBranchesService {
     const q: BranchCompareQuery = typeof input === 'string' || input == null ? { preset: input ?? undefined } : input;
     let filters: ReportFilters; let preset: DatePreset | 'custom'; let range: { from: string; to: string } | null = null;
     if (q.from || q.to) {
-      if (!YMD.test(String(q.from)) || !YMD.test(String(q.to)) || String(q.from) > String(q.to)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Choose a valid From and To date.');
+      if (!YMD.test(String(q.from)) || !YMD.test(String(q.to)) || String(q.from) > String(q.to)) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Choose a valid From and To date.'), 'DATE_RANGE_INVALID');
       const days = Math.round((Date.parse(String(q.to)) - Date.parse(String(q.from))) / 86_400_000) + 1;
-      if (days > MAX_CUSTOM_DAYS) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, `Choose at most ${MAX_CUSTOM_DAYS} days.`);
+      if (days > MAX_CUSTOM_DAYS) throw withCode(new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, `Choose at most ${MAX_CUSTOM_DAYS} days.`), 'DATE_RANGE_MAX_DAYS', { max: MAX_CUSTOM_DAYS });
       range = { from: String(q.from), to: String(q.to) }; preset = 'custom'; filters = { preset: 'custom' as DatePreset, from: range.from, to: range.to };
     } else {
       if (q.preset != null && !VALID_PRESETS.includes(q.preset as DatePreset)) throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
