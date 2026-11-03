@@ -4,21 +4,24 @@ import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { POSCommunicationsScreen } from './POSCommunicationsScreen';
 
 vi.mock('../api/posCommunicationsApi', () => {
-  const thread = { id: 't1', customerName: 'Olivia Brown', customerContact: '(555) 123-4567', channel: 'sms', status: 'open', assignedToName: null, unreadCount: 1, lastMessageAt: '2026-06-06T14:00:00Z', lastMessagePreview: "Hi! I'd like to book a gel mani" };
+  // the screen reads the Communications Inbox API (inbox.list / summary / detail …) — the old getState / getThread shape is retired
+  const thread = { id: 'c0330000-0000-4000-8000-000000000001', branchId: null, branchName: null, customerId: 'c1', displayName: 'Olivia Brown', identity: 'linked', contactMasked: '(•••) •••-4567', channel: 'sms', status: 'open',
+    assignedTo: null, assignedToName: null, unreadCount: 1, lastActivityAt: '2026-06-06T14:00:00Z', lastMessagePreview: "Hi! I'd like to book a gel mani", lastDirection: 'inbound',
+    awaitingSince: '2026-06-06T14:00:00Z', followUpDueAt: null, version: 1, createdAt: '2026-06-06T14:00:00Z' };
+  const page = { items: [thread], total: 1, page: 1, pageSize: 20, pageCount: 1, sort: 'recent', period: { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-06-06' }, branch: null };
+  const summary = { scope: { branch: null, tz: 'America/New_York' }, conversations: { total: 1, open: 1, unreadThreads: 1, unreadMessages: 1, replied: 0, missed: 0, awaiting: 1, oldestAwaitingSince: null },
+    channelMix: [{ channel: 'sms', count: 1 }], sentToday: { total: 12, submitted: 12, delivered: 10, failed: 0, simulated: 0 }, definitions: {}, generatedAt: '2026-06-06T14:00:00Z' };
+  const detail = { thread: { ...thread, contact: '(555) 123-4567', customerMatch: 'linked', closedAt: null, lastInboundAt: '2026-06-06T14:00:00Z' },
+    customer: { id: 'c1', name: 'Olivia Brown', phone: '(555) 123-4567', email: null, marketingSmsOptIn: true, archived: false }, consent: { smsOptedOut: false, marketingSmsOptIn: true },
+    nextAppointment: null, ambiguousCandidates: 0, olderCursor: null, permissions: { canSend: true, canManage: true },
+    composer: { enabled: true, reasonCode: null, readiness: null },
+    messages: [{ id: 'm1', threadId: 'c0330000-0000-4000-8000-000000000001', direction: 'inbound', channel: 'sms', body: 'Hi! I would like to book a gel mani this weekend.', authorKind: 'customer', authorName: null, createdAt: '2026-06-06T14:00:00Z',
+      delivery: 'received', reasonCode: null, providerErrorCode: null, deliveredAt: null, mediaCount: 0 }] };
+  const ok = (v: unknown) => vi.fn().mockResolvedValue(v);
   return {
     posCommunicationsApi: {
-      getState: vi.fn().mockResolvedValue({
-        kpis: { totalThreads: 1, openConversations: 1, unreadThreads: 1, repliedThreads: 0, missedThreads: 0 },
-        threads: [thread], pagination: { page: 1, pageSize: 50, totalItems: 1, totalPages: 1 },
-      }),
-      getThread: vi.fn().mockResolvedValue({
-        thread,
-        messages: [
-          { id: 'm1', direction: 'inbound', body: 'Hi! I would like to book a gel mani this weekend.', authorName: null, createdAt: '2026-06-06T14:00:00Z', status: 'delivered' },
-        ],
-      }),
-      markRead: vi.fn().mockResolvedValue({}),
-      reply: vi.fn(), setStatus: vi.fn(), create: vi.fn(),
+      inbox: { list: ok(page), summary: ok(summary), detail: ok(detail), read: ok({}), unread: ok({}), reply: vi.fn(), status: vi.fn(), assign: vi.fn(), followUp: vi.fn(), linkCustomer: vi.fn(),
+        customers: ok({ items: [] }), staff: ok({ items: [] }), templates: ok({ items: [] }), renderTemplate: vi.fn(), older: ok({ messages: [], olderCursor: null }), start: vi.fn(), timeline: ok({ items: [] }) },
       getActivity: vi.fn().mockResolvedValue({
         windowDays: 30,
         messagesSentToday: { value: 12, available: true },
@@ -61,7 +64,7 @@ describe('POSCommunicationsScreen', () => {
       <MemoryRouter initialEntries={["/tenant/communications"]}>
         <Routes>
           <Route path="/tenant/communications" element={<POSCommunicationsScreen />} />
-          <Route path="/tenant/ai/receptionist" element={<div>AI-RECEPTIONIST-SCREEN</div>} />
+          <Route path="/tenant/communications/ai-receptionist" element={<div>AI-RECEPTIONIST-SCREEN</div>} />
           <Route path="/tenant/communications/templates" element={<div>TEMPLATES-SCREEN</div>} />
         </Routes>
       </MemoryRouter>,
@@ -74,12 +77,12 @@ describe('POSCommunicationsScreen', () => {
   it('renders the activity metrics from their real sources, and shows an unavailable one as — not 0', async () => {
     render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
     expect(await screen.findByText('Messages Sent Today')).toBeInTheDocument();
-    expect(await screen.findByText('12')).toBeInTheDocument();
+    expect((await screen.findAllByText('12')).length).toBeGreaterThan(0);
     expect(screen.getByText('93%')).toBeInTheDocument();
-    expect(screen.getByText('15m')).toBeInTheDocument();
+    expect(screen.getByText('15 m')).toBeInTheDocument();
     // rebooking conversion has no source — it must read as not-tracked, never as 0%
     expect(screen.getByText('Rebooking Conv.')).toBeInTheDocument();
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
-    expect(screen.getAllByText('not tracked yet').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/not tracked yet/i).length).toBeGreaterThanOrEqual(1);
   });
 });

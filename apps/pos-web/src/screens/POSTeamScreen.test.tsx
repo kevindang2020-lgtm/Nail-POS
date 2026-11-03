@@ -59,6 +59,8 @@ beforeEach(() => {
     { key: 'manager', label: 'Manager', base: 'MANAGER', provider: false, custom: false, allowed: false, reason: 'ROLE_ABOVE_YOURS', flow: 'staff' },
     { key: 'nail_technician', label: 'Nail Technician', base: 'TECHNICIAN', provider: true, custom: false, allowed: true, reason: null, flow: 'technician' }] });
   staff.upcoming.mockResolvedValue({ recorded: false, today: '2026-10-30', days: 30, items: [], canManage: true });
+  staff.bdGet.mockResolvedValue({ memberId: 'u-v', month: null, day: null, private: true, canManage: false });   // the profile overview reads the member's birthday
+  staff.member.mockResolvedValue({ configured: false, canManage: false, assignments: [], certifications: [] });
   staff.summary.mockResolvedValue({ configured: false, today: '2026-10-30', expiringWindowDays: 30, courses: { active: 0, total: 0 }, assignments: { assigned: 0, inProgress: 0, completed: 0, expiringSoon: 0, expired: 0, canceled: 0, overdue: 0 }, staffCertifications: { verified: 0, unverified: 0, expiringSoon: 0 }, canManage: true });
 });
 
@@ -88,7 +90,7 @@ describe('POSTeamScreen (Team Management)', () => {
     expect(await screen.findByTestId('add-tech-fields')).toBeInTheDocument();
     fireEvent.change(screen.getByTestId('add-first'), { target: { value: 'Lan' } }); fireEvent.change(screen.getByTestId('add-last'), { target: { value: 'Vo' } });
     fireEvent.click(screen.getByTestId('add-submit'));
-    await waitFor(() => expect(staff.techCreate).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'Lan', lastName: 'Vo', status: 'active' })));
+    await waitFor(() => expect(staff.techCreate).toHaveBeenCalledWith(expect.objectContaining({ firstName: 'Lan', lastName: 'Vo', status: 'active' }), expect.any(String)));
     expect(staff.createStaff).not.toHaveBeenCalled();
   });
 
@@ -132,7 +134,7 @@ describe('POSTeamScreen (Team Management)', () => {
     for (const h of ['Team Member', 'Role', 'Department', 'Shift', 'Status', 'Performance', 'Services', 'Revenue', 'Commission earned', 'Actions']) expect(screen.getAllByText(h).length).toBeGreaterThan(0);
     for (const p of ['Team Attendance Today', 'Performance Overview', 'Top Performers', "Today's Shift Overview", 'Team Productivity', 'Upcoming Birthdays', 'Training & Certifications']) expect(screen.getByText(p)).toBeInTheDocument();
     expect(screen.getByText('Birthdays are not recorded')).toBeInTheDocument();
-    expect(screen.getByTestId('ring-progress')).toHaveTextContent('Not configured');
+    expect(await screen.findByTestId('training')).toHaveTextContent('Not configured');   // no rings when the catalog is not configured
   });
 
   it('search goes to the server (the whole salon, not the page) and resets to page 1', async () => {

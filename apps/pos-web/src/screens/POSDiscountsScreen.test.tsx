@@ -26,7 +26,7 @@ describe('POSDiscountsScreen', () => {
     expect(screen.getByText('$10.00')).toBeInTheDocument();
     expect(screen.getByText('No end date')).toBeInTheDocument();
     expect(screen.getByText(/0 used/)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Manage in Promotions' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Manage in Promotions/ })).toBeInTheDocument();
   });
   it('a verified zero is an empty state with Manage in Promotions, not an error', async () => {
     api.list.mockResolvedValue(page([]));

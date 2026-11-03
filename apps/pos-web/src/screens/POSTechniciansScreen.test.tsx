@@ -72,11 +72,11 @@ describe('POSTechniciansScreen', () => {
   });
   it('403 is a permission state', async () => {
     ts.dashboard.mockRejectedValue({ status: 403 }); mount();
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();   // the shared forbidden state's wording
   });
   it('reads in Vietnamese', async () => {
     await setLanguage('vi'); mount();
-    expect(await screen.findByText('Tài khoản hoạt động')).toBeInTheDocument();
+    expect((await screen.findAllByText('Tài khoản hoạt động')).length).toBeGreaterThan(0);
     expect(screen.getByText('Danh bạ thợ')).toBeInTheDocument();
   });
 });

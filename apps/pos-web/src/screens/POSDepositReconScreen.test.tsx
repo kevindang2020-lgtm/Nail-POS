@@ -68,6 +68,6 @@ describe('POSDepositReconScreen', () => {
     api.kpis.mockRejectedValue({ status: 503 });
     mount();
     expect(await screen.findByText(/could not be reached/i)).toBeInTheDocument();
-    expect(screen.queryByText('$0.00')).toBeNull();
+    expect(screen.getByTestId('kpis')).not.toHaveTextContent('$0.00');   // the KPI strip (a settlement row's real $0.00 matched is data, not a KPI)
   });
 });
