@@ -7,7 +7,7 @@
 //   • Idempotent per (tenant, appointment/visit, customer, channel) so a replayed completion event never double-sends.
 import type { ReviewRequestPolicy } from './ai-review-reputation-settings';
 
-export interface CompletedVisit { tenantId: string; branchId?: string | null; customerId: string | null; appointmentId?: string | null; ticketId?: string | null; completedAt: string; visitValueCents: number; channelContact?: boolean; }
+export interface CompletedVisit { tenantId: string; branchId?: string | null; customerId: string | null; appointmentId?: string | null; ticketId?: string | null; completedAt: string; visitValueCents: number; channelContact?: boolean; timeZone?: string | null; }
 
 export function reviewRequestIdempotencyKey(v: { tenantId: string; appointmentId?: string | null; ticketId?: string | null; customerId: string | null; channel: string }): string {
   const visit = v.appointmentId || v.ticketId || 'novisit';
@@ -32,16 +32,28 @@ export function evaluateRequestEligibility(visit: CompletedVisit, config: Review
   return { eligible: true, reason: 'ok' };
 }
 
-/** Compute a send time: apply the configured delay, then shift out of quiet hours into the next allowed window. */
-export function computeSendTime(completedAt: string, config: ReviewRequestPolicy, ref?: Date): Date {
+/** Compute a send time: apply the configured delay, then shift out of quiet hours into the next allowed window. Quiet hours
+ *  are the SALON's local hours: pass its IANA time zone (Review & Reputation Settings guide, Nov 2 2026 — before this the
+ *  server's own clock decided, so on a UTC host "21:00–09:00" meant 5 pm–5 am in New York). Without a zone the host's local
+ *  hours are used (tests / offline). */
+export function computeSendTime(completedAt: string, config: ReviewRequestPolicy, ref?: Date, timeZone?: string | null): Date {
   const base = new Date(new Date(completedAt).getTime() + config.delayMinutes * 60_000);
   void ref;
   const inQuiet = (h: number): boolean => (config.quietHoursStart <= config.quietHoursEnd
     ? h >= config.quietHoursStart && h < config.quietHoursEnd
     : h >= config.quietHoursStart || h < config.quietHoursEnd);
-  const t = new Date(base);
+  if (!timeZone) {
+    const t = new Date(base);
+    let guard = 0;
+    while (inQuiet(t.getHours()) && guard++ < 48) { t.setHours(t.getHours() + 1, 0, 0, 0); }
+    return t;
+  }
+  const fmt = new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', minute: 'numeric', second: 'numeric', hourCycle: 'h23' });
+  const local = (d: Date) => { const p = Object.fromEntries(fmt.formatToParts(d).map((x) => [x.type, Number(x.value)])); return { h: p.hour % 24, m: p.minute, s: p.second }; };
+  let t = new Date(base);
   let guard = 0;
-  while (inQuiet(t.getHours()) && guard++ < 48) { t.setHours(t.getHours() + 1, 0, 0, 0); }
+  // step to the top of the next local hour until outside quiet hours (DST-safe: each step is computed from the zone's own clock)
+  while (inQuiet(local(t).h) && guard++ < 48) { const l = local(t); t = new Date(t.getTime() + ((60 - l.m) * 60 - l.s) * 1000 - t.getMilliseconds()); }
   return t;
 }
 

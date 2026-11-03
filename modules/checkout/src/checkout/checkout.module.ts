@@ -17,7 +17,7 @@ import { PosPaymentGatewayController } from './pos-payment-gateway.controller';
 import { CheckoutService, type BookingDepositCheckoutPort, type GlobalRewardsCheckoutPort } from './checkout.service';
 import { CommerceHubTapToPayRefunds } from '../mobile-checkout/ttp-refund-processor';
 import { TENANT_APPROVALS_TOKEN, type RefundApprovalsPort } from './refund-approval';
-import { DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { DATABASE, type AppDatabase, branchTimeZone } from '@aipowersalon/database';
 import { InMemoryCheckoutRepository, type CheckoutRepositoryPort } from './checkout.repository';
 import { KyselyCheckoutRepository } from './checkout.kysely.repository';
 import { InMemoryGiftCardLookupThrottle } from './gift-card-lookup-throttle';
@@ -48,7 +48,7 @@ const giftCardLookupThrottle = new InMemoryGiftCardLookupThrottle();
     { provide: PaymentGatewayResolver, useFactory: (db: AppDatabase, secrets: PaymentSecrets) => new PaymentGatewayResolver(db, secrets), inject: [DATABASE, PAYMENT_SECRETS] },
     { provide: CompensationService, useFactory: (db: AppDatabase) => (db ? new CompensationService(new KyselyCompensationPorts(db)) : undefined), inject: [DATABASE] },
     { provide: MembershipCompService, useFactory: (db: AppDatabase) => new MembershipCompService(db ? new KyselyMembershipCompRepository(db) : new InMemoryMembershipCompRepository()), inject: [DATABASE] },
-    { provide: 'ReviewRequestHook', useFactory: (requests: ReviewRequestService, db: AppDatabase) => new CheckoutReviewRequestHook(requests, db ? new KyselySettings(db) : { async load() { return []; }, async save() {}, async tenantContextInput(c: any, cfg: any) { return { tenantId: c.tenantId, brandName: '', config: cfg }; } }), inject: [ReviewRequestService, DATABASE] },
+    { provide: 'ReviewRequestHook', useFactory: (requests: ReviewRequestService, db: AppDatabase) => new CheckoutReviewRequestHook(requests, db ? new KyselySettings(db) : { async load() { return []; }, async tenantContextInput(c: any, cfg: any) { return { tenantId: c.tenantId, brandName: '', config: cfg }; } }, db ? (t: string, b: string | null) => branchTimeZone(db, t, b) : undefined), inject: [ReviewRequestService, DATABASE] },
     { provide: CheckoutService, useFactory: (repo: CheckoutRepositoryPort, gateway: PaymentGatewayResolver, realtime: RealtimeEmitter, compensation: CompensationService | undefined, membershipComp: MembershipCompService, locks: CheckoutLockService, reviewHook: CheckoutReviewRequestHook, deals: DealsCheckoutService | null, messenger?: TenantMessenger, approvals?: RefundApprovalsPort | null, push?: PushService | null, stock?: InventoryService | null, deposits?: BookingDepositCheckoutPort | null, rewards?: GlobalRewardsCheckoutPort | null) => new CheckoutService(repo, smsFromEnv(), emailFromEnv(), processorFromEnv(), gateway, realtime, compensation, membershipComp, locks, reviewHook, giftCardLookupThrottle, messenger ?? undefined).useDeals(deals).usePush(push ?? null).useStock(stock ?? null)   // BUILD_PLAN Phase 5: deals + coupons on tickets
         .useTapToPayRefunds(gateway ? new CommerceHubTapToPayRefunds(gateway) : null)   // Oct 28 2026: Tap to Pay refunds / voids go back to the location's CommerceHub merchant
         .useApprovals(approvals ?? null)   // BUILD_PLAN Phase 9: refunds past the salon's limit go to the salon approvals engine (@Global token; absent → the old 403)

@@ -26,6 +26,14 @@ describe('scheduling', () => {
     expect(computeSendTime(new Date(2026, 6, 1, 23, 0, 0).toISOString(), cfg).getHours()).toBe(9);
     expect(computeSendTime(new Date(2026, 6, 1, 14, 0, 0).toISOString(), cfg).getHours()).toBe(16);
   });
+  it('quiet hours are the SALON\'s local hours when its time zone is given (not the server clock)', () => {
+    // 22:30 UTC = 6:30 pm in New York (EDT): + 120 min = 8:30 pm local — outside 21–09, so it stays
+    expect(computeSendTime('2026-07-01T22:30:00Z', cfg, undefined, 'America/New_York').toISOString()).toBe('2026-07-02T00:30:00.000Z');
+    // 01:30 UTC = 9:30 pm New York: + 120 min = 11:30 pm local (quiet) → next 9:00 am local = 13:00 UTC
+    expect(computeSendTime('2026-07-02T01:30:00Z', cfg, undefined, 'America/New_York').toISOString()).toBe('2026-07-02T13:00:00.000Z');
+    // across the DST change (Nov 1 2026, New York): 11:30 pm EDT Oct 31 → 9:00 am EST Nov 1 = 14:00 UTC
+    expect(computeSendTime('2026-11-01T01:30:00Z', cfg, undefined, 'America/New_York').toISOString()).toBe('2026-11-01T14:00:00.000Z');
+  });
   it('sends exactly one reminder', () => {
     expect(shouldSendReminder({ status: 'sent', sentAt: new Date(2026, 6, 12, 0, 0, 0).toISOString(), reminderSent: false, converted: false, optedOut: false }, 48, now, cfg)).toBe(true);
     expect(shouldSendReminder({ status: 'sent', sentAt: new Date(2026, 6, 12, 0, 0, 0).toISOString(), reminderSent: true, converted: false, optedOut: false }, 48, now, cfg)).toBe(false);

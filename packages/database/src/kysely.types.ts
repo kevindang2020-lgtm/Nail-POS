@@ -7229,6 +7229,8 @@ export interface DB {
   review_request_campaigns: ReviewRequestCampaignsTable;
   review_requests: ReviewRequestsTable;
   review_request_events: ReviewRequestEventsTable;
+  review_reputation_health_runs: ReviewReputationHealthRunsTable;
+  review_reputation_settings_health_runs: ReviewReputationSettingsHealthRunsTable;
   reputation_snapshots: ReputationSnapshotsTable;
   tenant_ai_reputation_settings: TenantAiReputationSettingsTable;
   ai_reputation_config_versions: AiReputationConfigVersionsTable;
@@ -8461,12 +8463,19 @@ export interface ReviewPublicationsTable { id: Generated<string>; tenant_id: str
 export interface ReviewEscalationsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; review_id: string; severity: string; signals: Generated<unknown>; status: Generated<string>; assigned_user_id: string | null; acknowledged_at: Ts | null; resolved_at: Ts | null; created_at: Generated<Ts>; }
 export interface ReviewInternalNotesTable { id: Generated<string>; tenant_id: string; review_id: string; author_user_id: string | null; note: string; created_at: Generated<Ts>; }
 export interface ReviewRecoveryActionsTable { id: Generated<string>; tenant_id: string; review_id: string; action_type: string; status: Generated<string>; created_by_user_id: string | null; external_ref: string | null; created_at: Generated<Ts>; }
+export interface ReviewReputationSettingsHealthRunsTable {   // migration 769 — read-only "Check Reputation Settings" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
+export interface ReviewReputationHealthRunsTable {   // migration 768 — read-only "Check Reputation System" runs
+  id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
+}
 export interface ReviewRequestCampaignsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; name: string; channel: string; enabled: Generated<boolean>; config: Generated<unknown>; created_at: Generated<Ts>; }
 export interface ReviewRequestsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; customer_id: string | null; appointment_id: string | null; campaign_id: string | null; channel: string; status: Generated<string>; idempotency_key: string; scheduled_for: Ts | null; sent_at: Ts | null; created_at: Generated<Ts>; }
 export interface ReviewRequestEventsTable { id: Generated<string>; tenant_id: string; request_id: string; event: string; detail: unknown | null; created_at: Generated<Ts>; }
 export interface ReputationSnapshotsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; snapshot_date: string; avg_rating: number | null; review_count: Generated<number>; positive_pct: number | null; neutral_pct: number | null; negative_pct: number | null; response_rate: number | null; avg_response_minutes: number | null; serious_complaint_count: Generated<number>; metrics: Generated<unknown>; created_at: Generated<Ts>; }
 export interface TenantAiReputationSettingsTable { id: Generated<string>; tenant_id: string; level: 'tenant' | 'branch'; branch_id: string | null; enabled: boolean | null; config: unknown | null; version: Generated<number>; updated_by_user_id: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null; }
-export interface AiReputationConfigVersionsTable { id: Generated<string>; tenant_id: string; level: string; branch_id: string | null; version: number; config: unknown | null; enabled: boolean | null; changed_by_user_id: string | null; created_at: Generated<Ts>; }
+export interface AiReputationConfigVersionsTable { id: Generated<string>; tenant_id: string; level: string; branch_id: string | null; version: number; config: unknown | null; enabled: boolean | null; changed_by_user_id: string | null; created_at: Generated<Ts>;
+  event_type: Generated<string>; before: unknown | null; changed_keys: Generated<string[]>; reason: string | null; actor_role: string | null; }   // 769 — History
 // ---- merged from branch D (reconciliation/sidebar-wiring) ----
 export interface ServiceAddOnsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; service_id: string;

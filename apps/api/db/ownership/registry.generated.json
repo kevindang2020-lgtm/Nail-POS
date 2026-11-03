@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 908,
+  "tables": 910,
   "ownership": {
-   "tenant_owned": 598,
+   "tenant_owned": 600,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 88,
    "platform_global": 153,
@@ -28,7 +28,7 @@
    "MARKETING": 21,
    "PAYMENTS": 59,
    "WORKFORCE": 73,
-   "CUSTOMERS": 57,
+   "CUSTOMERS": 59,
    "CATALOG": 20,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 12,
@@ -42,13 +42,13 @@
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 134,
-   "CONFIDENTIAL": 160,
+   "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
    "INTERNAL": 494,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
-  "append_only": 47,
+  "append_only": 48,
   "platform_rows": 99
  },
  "tables": {
@@ -874,7 +874,7 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
-   "append_only": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "ai_revenue_attributions": {
@@ -7718,6 +7718,30 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "review_reputation_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "review_reputation_settings_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
   },

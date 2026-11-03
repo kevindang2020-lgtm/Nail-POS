@@ -43,7 +43,7 @@ export class ReviewRequestService {
     const existing = await this.store.findByIdem(ctx, idem);
     if (existing) return { scheduled: false, requestId: existing.id, reason: 'already_requested' };   // idempotent
 
-    const scheduledFor = computeSendTime(visit.completedAt, config).toISOString();
+    const scheduledFor = computeSendTime(visit.completedAt, config, now, visit.timeZone ?? null).toISOString();
     const { id } = await this.store.create(ctx, { customerId: visit.customerId, appointmentId: visit.appointmentId ?? null, channel, idempotencyKey: idem, scheduledFor });
     await this.store.recordEvent(ctx, id, 'scheduled', { scheduledFor });
     this.audit(ctx, 'review_request_scheduled', { requestId: id, scheduledFor });

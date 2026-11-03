@@ -88,7 +88,7 @@ export const posBookingApi = {
   update: (aid: string, body: UpdateAppointmentBody | unknown) => http<any>('/appointments/' + id(aid), { method: 'PATCH', body: JSON.stringify(body) }),
   checkConflict: (body: unknown) => http<any>('/conflicts/check', { method: 'POST', body: JSON.stringify(body) }),
   availability: (q: { date?: string; serviceIds?: string[]; technicianId?: string; branchId?: string; technicianIds?: string[] }) => http<any>('/availability' + qs({ date: q.date, serviceIds: (q.serviceIds || []).join(','), technicianId: q.technicianId, branchId: q.branchId, technicianIds: q.technicianIds?.length ? q.technicianIds.join(',') : undefined })),
-  integrationStatus: () => http<any>('/integration-status'),
+  // integrationStatus() retired Nov 2 2026: no caller (the board reads integrationStatus from the booking payload)
   // B-22 (Oct 22 2026): Save Draft keeps the New Booking form as a REAL draft (booking_holds kind 'draft') — never an appointment
   drafts: {
     list: () => http<{ drafts: BookingDraft[] }>('/drafts'),

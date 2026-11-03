@@ -13139,3 +13139,453 @@ Namespace `ns/teamround2a.{en,vi}.ts` (prefix `tm2.`), staff-facing Front Desk P
 | `casx.health.d.tenant_isolation.FAILED` | A change references another salon's user. Report this immediately. | Có thay đổi trỏ tới người dùng của tiệm khác. Hãy báo ngay. |
 | `casx.health.k.no_side_effects` | No bookings, messages or billing | Không đặt hẹn, nhắn tin hay tính phí |
 | `casx.health.d.no_side_effects.PASSED` | This screen and its check only read and write the salon's own settings and history. | Màn hình và việc kiểm tra chỉ đọc và ghi cài đặt và lịch sử của chính tiệm. |
+
+## Review & Reputation Settings (`rssx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `rssx.loadFailed` | The settings could not be loaded. Try again or open System Health — nothing is assumed. | Không tải được cài đặt. Hãy thử lại hoặc mở Tình trạng hệ thống — không có gì được giả định. |
+| `rssx.saveFailed` | The settings could not be saved. Your changes are still here; nothing was changed. | Không lưu được cài đặt. Thay đổi của bạn vẫn còn ở đây; chưa có gì thay đổi. |
+| `rssx.loading` | Loading… | Đang tải… |
+| `rssx.close` | Close | Đóng |
+| `rssx.cancel` | Cancel | Hủy |
+| `rssx.search` | Search | Tìm |
+| `rssx.clear` | Clear | Xóa bộ lọc |
+| `rssx.rows` | Rows | Số dòng |
+| `rssx.on` | On | Bật |
+| `rssx.off` | Off | Tắt |
+| `rssx.unknown` | Not recorded | Không ghi nhận |
+| `rssx.minutes` | {n} min | {n} phút |
+| `rssx.unsaved` | {n} unsaved change(s) | {n} thay đổi chưa lưu |
+| `rssx.discard` | Discard changes | Bỏ thay đổi |
+| `rssx.notAllowed` | Your role can view these settings but not change them. | Vai trò của bạn chỉ xem, không đổi được các cài đặt này. |
+| `rssx.saved` | Saved. Settings version {v} is in effect for the next draft and the next checkout. | Đã lưu. Phiên bản cài đặt {v} áp dụng cho bản nháp và lượt thanh toán tiếp theo. |
+| `rssx.toneHint` | Changes how new drafts sound — never what they may promise, and never whether they publish. | Thay đổi giọng văn của bản nháp mới — không thay đổi nội dung được hứa hay việc đăng. |
+| `rssx.conflict` | Automatic replies cannot be on while "Require approval before publishing" is on. Turn one of them off to save. | Không thể bật phản hồi tự động khi đang bật "Yêu cầu phê duyệt trước khi đăng". Hãy tắt một trong hai để lưu. |
+| `rssx.smsMissing` | This salon has no SMS sender set up (Text Messaging Setup). Requests by SMS cannot be delivered. | Tiệm chưa thiết lập số gửi SMS (Thiết lập nhắn tin). Yêu cầu qua SMS không thể gửi được. |
+| `rssx.delayHint` | Counted from checkout. A time inside quiet hours ({s}:00–{e}:00 salon time) moves to the end of quiet hours. | Tính từ lúc thanh toán. Nếu rơi vào giờ yên lặng ({s}:00–{e}:00 giờ tiệm) sẽ dời đến hết giờ yên lặng. |
+| `rssx.delayBad` | Enter whole minutes from 0 to 10080 (7 days). | Nhập số phút nguyên từ 0 đến 10080 (7 ngày). |
+| `rssx.safeguards` | Request safeguards (always applied) | Giới hạn yêu cầu (luôn áp dụng) |
+| `rssx.lastChange` | Last change {at} by {by} · version {v} | Thay đổi gần nhất {at} bởi {by} · phiên bản {v} |
+| `rssx.noChange` | No change recorded yet — these are the platform defaults. | Chưa có thay đổi nào — đây là mặc định của nền tảng. |
+| `rssx.liveNote` | AI drafting and checkout read these settings each time, so a saved change applies to the next draft and the next checkout. Other salons are never affected. | Soạn thảo AI và thanh toán đọc cài đặt mỗi lần, nên thay đổi đã lưu áp dụng cho bản nháp và lượt thanh toán tiếp theo. Không ảnh hưởng tiệm khác. |
+| `rssx.confirmTitle` | Save these changes? | Lưu các thay đổi này? |
+| `rssx.confirmIntro` | For this salon: | Cho tiệm này: |
+| `rssx.confirmRole` | Saved as: {role} | Lưu với vai trò: {role} |
+| `rssx.scopeNote` | Changes apply to this salon only. They do not change the subscription, billing, Super Admin switches or other salons. | Thay đổi chỉ áp dụng cho tiệm này. Không thay đổi gói đăng ký, thanh toán, công tắc Super Admin hay tiệm khác. |
+| `rssx.reason` | Reason (optional, saved in History) | Lý do (không bắt buộc, lưu trong Lịch sử) |
+| `rssx.searchHistory` | Setting, person, role, reason or change ID | Cài đặt, người, vai trò, lý do hoặc mã thay đổi |
+| `rssx.anyType` | All changes | Mọi thay đổi |
+| `rssx.noHistory` | No changes recorded yet. | Chưa có thay đổi nào. |
+| `rssx.noMatch` | No changes match these filters. | Không có thay đổi nào khớp bộ lọc. |
+| `rssx.legacy` | Recorded before change details were kept — the earlier value is not known. | Ghi nhận trước khi lưu chi tiết thay đổi — không rõ giá trị trước đó. |
+| `rssx.check` | Check Reputation Settings | Kiểm tra cài đặt danh tiếng |
+| `rssx.sg.quiet` | Quiet hours {s}:00–{e}:00 (salon time) | Giờ yên lặng {s}:00–{e}:00 (giờ tiệm) |
+| `rssx.sg.cooldown` | At most one request per customer every {n} days | Mỗi khách tối đa một yêu cầu trong {n} ngày |
+| `rssx.sg.max` | At most {n} request(s) per customer per period | Tối đa {n} yêu cầu mỗi khách mỗi kỳ |
+| `rssx.sg.consent` | Only customers with a contact method who have not opted out; never chosen by expected rating. | Chỉ khách có thông tin liên lạc và chưa từ chối; không bao giờ chọn theo số sao dự đoán. |
+| `rssx.rt.approval` | Always enforced: a reply is published only from a draft a person approved, whatever this box says. | Luôn áp dụng: phản hồi chỉ được đăng từ bản nháp đã có người duyệt, bất kể ô này. |
+| `rssx.rt.autoResponse` | Saved, but nothing runs automatic replies yet — no reply is published without a person. | Đã lưu, nhưng chưa có gì chạy phản hồi tự động — không phản hồi nào được đăng mà không có người. |
+| `rssx.rt.requests` | Requests are scheduled at checkout ({n} waiting), but no sender delivers them yet — nothing is sent. {o} are past their time. | Yêu cầu được lên lịch khi thanh toán ({n} đang chờ), nhưng chưa có bộ gửi — không có gì được gửi. {o} đã quá giờ. |
+| `rssx.rt.reminder` | Saved, but no reminder sender exists yet — no reminder is sent. | Đã lưu, nhưng chưa có bộ gửi nhắc lại — không có lời nhắc nào được gửi. |
+| `rssx.disabledAt` | Turned off at the level of {l}. | Đã tắt ở cấp {l}. |
+| `rssx.branchOff` | A branch setting turns it off here. | Cài đặt chi nhánh đang tắt tại đây. |
+| `rssx.sms.configured` | Set up | Đã thiết lập |
+| `rssx.sms.notConfigured` | Not set up | Chưa thiết lập |
+| `rssx.sms.validationFailed` | The last credential check failed. | Lần kiểm tra thông tin xác thực gần nhất thất bại. |
+| `rssx.providers.none` | None connected | Chưa kết nối |
+| `rssx.providers.n` | {n} connected | {n} đã kết nối |
+| `rssx.tab.settings` | Settings | Cài đặt |
+| `rssx.tab.history` | History | Lịch sử |
+| `rssx.tab.health` | System Health | Tình trạng hệ thống |
+| `rssx.strip.effective` | Assistant now | Trợ lý hiện tại |
+| `rssx.strip.package` | Package & subscription | Gói & đăng ký |
+| `rssx.strip.sms` | SMS sender | Số gửi SMS |
+| `rssx.strip.providers` | Review providers | Nguồn đánh giá |
+| `rssx.src.default` | Default | Mặc định |
+| `rssx.src.tenant` | This salon | Tiệm này |
+| `rssx.src.branch` | This branch | Chi nhánh này |
+| `rssx.op.operational` | Running | Đang chạy |
+| `rssx.op.disabled` | Turned off | Đã tắt |
+| `rssx.op.subscription_blocked` | Blocked by the subscription | Bị chặn bởi gói đăng ký |
+| `rssx.op.unknown_entitlement` | Subscription status unknown | Chưa rõ trạng thái đăng ký |
+| `rssx.level.tenant` | this salon | tiệm này |
+| `rssx.level.branch` | this branch | chi nhánh này |
+| `rssx.level.platform` | the platform | nền tảng |
+| `rssx.ent.ok` | Allowed | Được phép |
+| `rssx.ent.package_disabled` | Turned off by Super Admin for all salons | Super Admin đã tắt cho mọi tiệm |
+| `rssx.ent.not_subscribed` | Not subscribed | Chưa đăng ký |
+| `rssx.ent.trial_expired` | Trial ended | Hết thời gian dùng thử |
+| `rssx.ent.past_due` | Payment past due | Quá hạn thanh toán |
+| `rssx.ent.unpaid` | Unpaid | Chưa thanh toán |
+| `rssx.ent.cancelled` | Cancelled | Đã hủy |
+| `rssx.ent.expired` | Expired | Đã hết hạn |
+| `rssx.ent.subscription_suspended` | Suspended | Đã tạm ngưng |
+| `rssx.ent.tenant_not_active` | Salon account not active | Tài khoản tiệm chưa hoạt động |
+| `rssx.ent.branch_disabled` | Turned off for this branch | Đã tắt cho chi nhánh này |
+| `rssx.ent.permission_denied` | Your role is not allowed | Vai trò của bạn không được phép |
+| `rssx.ent.limit_exceeded` | Usage limit reached | Đã hết hạn mức sử dụng |
+| `rssx.ent.unreadable` | Could not be read | Không đọc được |
+| `rssx.ent.unknown` | Unknown | Chưa rõ |
+| `rssx.mode.observe` | Not enforced yet — access is only recorded | Chưa áp dụng — chỉ ghi nhận |
+| `rssx.mode.enforce` | Enforced | Đang áp dụng |
+| `rssx.mode.off` | Gate off | Tắt kiểm tra |
+| `rssx.tone.professional` | Professional | Chuyên nghiệp |
+| `rssx.tone.warm` | Warm | Ấm áp |
+| `rssx.tone.luxury` | Luxury | Sang trọng |
+| `rssx.tone.friendly` | Friendly | Thân thiện |
+| `rssx.tone.concise` | Concise | Ngắn gọn |
+| `rssx.tone.apologetic` | Apologetic | Xin lỗi chân thành |
+| `rssx.tone.brand` | Salon brand voice | Giọng thương hiệu của tiệm |
+| `rssx.chan.sms` | SMS | SMS |
+| `rssx.chan.email` | Email | Email |
+| `rssx.chan.app` | Customer App | Ứng dụng khách |
+| `rssx.event.settings_changed` | Settings changed | Đã đổi cài đặt |
+| `rssx.event.assistant_enabled` | Assistant turned on | Đã bật trợ lý |
+| `rssx.event.assistant_disabled` | Assistant turned off | Đã tắt trợ lý |
+| `rssx.preset.all` | All time | Mọi thời gian |
+| `rssx.preset.today` | Today | Hôm nay |
+| `rssx.preset.yesterday` | Yesterday | Hôm qua |
+| `rssx.preset.week` | This week | Tuần này |
+| `rssx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `rssx.preset.month` | This month | Tháng này |
+| `rssx.preset.last_month` | Last month | Tháng trước |
+| `rssx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `rssx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `rssx.preset.year` | This year | Năm nay |
+| `rssx.preset.custom` | Custom range | Tùy chọn |
+| `rssx.hist.when` | When | Thời gian |
+| `rssx.hist.change` | Change | Thay đổi |
+| `rssx.hist.keys` | Settings | Cài đặt |
+| `rssx.hist.by` | By | Người thực hiện |
+| `rssx.hist.version` | Version | Phiên bản |
+| `rssx.ov.title` | Settings change | Thay đổi cài đặt |
+| `rssx.ov.id` | Change ID | Mã thay đổi |
+| `rssx.ov.scope` | Level | Cấp |
+| `rssx.ov.reason` | Reason | Lý do |
+| `rssx.ov.before` | Before | Trước |
+| `rssx.ov.after` | After | Sau |
+| `rssx.ov.default` | Default | Mặc định |
+| `rssx.ov.live` | Read live: {d} AI draft(s) and {r} review request(s) have used the settings since this change. | Đọc trực tiếp: {d} bản nháp AI và {r} yêu cầu đánh giá đã dùng cài đặt kể từ thay đổi này. |
+| `rssx.err.RSS_STALE_VERSION` | Someone else changed these settings. They have been reloaded — your changes were not saved. | Người khác vừa đổi các cài đặt này. Đã tải lại — thay đổi của bạn chưa được lưu. |
+| `rssx.err.RSS_NO_CHANGE` | Nothing changed. | Không có gì thay đổi. |
+| `rssx.err.RSS_INVALID_VALUE` | A value is not allowed. | Có giá trị không hợp lệ. |
+| `rssx.err.RSS_POLICY_CONFLICT` | Automatic replies cannot be on while approval is required. Nothing was saved. | Không thể bật phản hồi tự động khi đang yêu cầu phê duyệt. Chưa có gì được lưu. |
+| `rssx.err.RSS_VERSION_REQUIRED` | Reload the settings and try again. | Hãy tải lại cài đặt và thử lại. |
+| `rssx.err.RSS_INVALID_PERIOD` | The From date must be on or before the To date. | Ngày bắt đầu phải trước hoặc bằng ngày kết thúc. |
+| `rssx.err.RSS_EVENT_NOT_FOUND` | That change was not found. | Không tìm thấy thay đổi đó. |
+| `rssx.err.PERMISSION_DENIED` | Your role cannot do this. | Vai trò của bạn không thực hiện được việc này. |
+| `rssx.health.PASSED` | Passed | Đạt |
+| `rssx.health.WARNING` | Warning | Cảnh báo |
+| `rssx.health.FAILED` | Failed | Lỗi |
+| `rssx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `rssx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `rssx.health.intro` | Read-only: it never sends, publishes, approves or changes anything. | Chỉ đọc: không gửi, đăng, duyệt hay thay đổi gì. |
+| `rssx.health.running` | Checking… | Đang kiểm tra… |
+| `rssx.health.overall` | Overall: {s} · {at} | Tổng thể: {s} · {at} |
+| `rssx.health.recent` | (a check from the last 30 seconds) | (kết quả kiểm tra trong 30 giây qua) |
+| `rssx.health.k.settings_readable` | Settings can be read | Đọc được cài đặt |
+| `rssx.health.d.settings_readable.PASSED` | The settings and their sources were read. | Đã đọc được cài đặt và nguồn của chúng. |
+| `rssx.health.d.settings_readable.FAILED` | The settings could not be read. Drafting stops and checkout schedules no requests until this is fixed. | Không đọc được cài đặt. Soạn thảo dừng và thanh toán không lên lịch yêu cầu cho đến khi sửa. |
+| `rssx.health.k.values_valid` | Stored values are valid | Giá trị lưu hợp lệ |
+| `rssx.health.d.values_valid.PASSED` | Every stored value is allowed. | Mọi giá trị đã lưu đều hợp lệ. |
+| `rssx.health.d.values_valid.WARNING` | Some stored values are not allowed and are ignored (the default is used). Save the setting again. | Một số giá trị đã lưu không hợp lệ nên bị bỏ qua (dùng mặc định). Hãy lưu lại cài đặt. |
+| `rssx.health.k.assistant_state` | Assistant switched on | Trợ lý đang bật |
+| `rssx.health.d.assistant_state.PASSED` | The assistant is on for this salon. | Trợ lý đang bật cho tiệm này. |
+| `rssx.health.d.assistant_state.WARNING` | The assistant is turned off here — no AI drafts and no new review requests. | Trợ lý đang tắt tại đây — không có bản nháp AI và không có yêu cầu đánh giá mới. |
+| `rssx.health.k.subscription` | Package & subscription | Gói & đăng ký |
+| `rssx.health.d.subscription.PASSED` | The AI Review & Reputation package is allowed for this salon. | Gói Đánh giá & Danh tiếng AI được phép cho tiệm này. |
+| `rssx.health.d.subscription.WARNING` | The subscription would not allow the package, but the gate only records it for now. | Gói đăng ký không cho phép, nhưng hiện chỉ ghi nhận. |
+| `rssx.health.d.subscription.FAILED` | The subscription blocks the package. Reviews stay visible; AI drafting is unavailable. | Gói đăng ký đang chặn. Đánh giá vẫn hiển thị; soạn thảo AI không dùng được. |
+| `rssx.health.d.subscription.UNAVAILABLE` | The subscription status could not be read. | Không đọc được trạng thái đăng ký. |
+| `rssx.health.k.auto_response` | Automatic replies | Phản hồi tự động |
+| `rssx.health.d.auto_response.PASSED` | Automatic replies are off. | Phản hồi tự động đang tắt. |
+| `rssx.health.d.auto_response.WARNING` | Automatic replies are saved as on, but nothing runs them — no reply is published without a person. | Phản hồi tự động được lưu là bật, nhưng chưa có gì chạy — không phản hồi nào được đăng mà không có người. |
+| `rssx.health.k.requests_sender` | Review-request delivery | Gửi yêu cầu đánh giá |
+| `rssx.health.d.requests_sender.PASSED` | Requests are off and none are waiting. | Yêu cầu đang tắt và không có yêu cầu nào đang chờ. |
+| `rssx.health.d.requests_sender.WARNING` | Requests are scheduled at checkout but no sender delivers them — nothing is sent. | Yêu cầu được lên lịch khi thanh toán nhưng chưa có bộ gửi — không có gì được gửi. |
+| `rssx.health.k.reminder` | Reminder | Nhắc lại |
+| `rssx.health.d.reminder.PASSED` | Reminders are off. | Nhắc lại đang tắt. |
+| `rssx.health.d.reminder.WARNING` | "Send one reminder" is on, but no reminder sender exists — no reminder is sent. | "Gửi một lời nhắc" đang bật, nhưng chưa có bộ gửi nhắc — không có lời nhắc nào được gửi. |
+| `rssx.health.k.sms_sender` | Salon SMS sender | Số gửi SMS của tiệm |
+| `rssx.health.d.sms_sender.PASSED` | This salon's own SMS sender is set up. | Số gửi SMS riêng của tiệm đã được thiết lập. |
+| `rssx.health.d.sms_sender.WARNING` | Requests use SMS but this salon has no SMS sender set up. | Yêu cầu dùng SMS nhưng tiệm chưa thiết lập số gửi SMS. |
+| `rssx.health.d.sms_sender.INSUFFICIENT_DATA` | No SMS sender set up (not needed while SMS requests are off). | Chưa thiết lập số gửi SMS (không cần khi tắt yêu cầu qua SMS). |
+| `rssx.health.k.provider_connected` | Review provider connected | Đã kết nối nguồn đánh giá |
+| `rssx.health.d.provider_connected.PASSED` | At least one review provider is connected. | Có ít nhất một nguồn đánh giá đã kết nối. |
+| `rssx.health.d.provider_connected.WARNING` | No review provider is connected — replies cannot be published to Google or Facebook. | Chưa kết nối nguồn đánh giá — không thể đăng phản hồi lên Google hoặc Facebook. |
+| `rssx.health.k.policy_conflict` | Approval and automatic replies agree | Phê duyệt và phản hồi tự động không xung đột |
+| `rssx.health.d.policy_conflict.PASSED` | No level has automatic replies on while approval is required. | Không cấp nào bật phản hồi tự động khi đang yêu cầu phê duyệt. |
+| `rssx.health.d.policy_conflict.FAILED` | A salon or branch setting has automatic replies on while approval is required. Turn one off. | Có cài đặt tiệm hoặc chi nhánh bật phản hồi tự động khi đang yêu cầu phê duyệt. Hãy tắt một trong hai. |
+| `rssx.health.k.approval_enforced` | Every published reply was approved | Mọi phản hồi đã đăng đều được duyệt |
+| `rssx.health.d.approval_enforced.PASSED` | Every published reply has an approval on record. | Mọi phản hồi đã đăng đều có ghi nhận phê duyệt. |
+| `rssx.health.d.approval_enforced.FAILED` | A reply was published with no approval on record. Report this immediately. | Có phản hồi đã đăng mà không có ghi nhận phê duyệt. Hãy báo ngay. |
+| `rssx.health.k.delay_honoured` | Delay after visit honoured | Thời gian chờ sau lượt được tuân thủ |
+| `rssx.health.d.delay_honoured.PASSED` | No request was sent before its scheduled time. | Không có yêu cầu nào gửi trước giờ đã lên lịch. |
+| `rssx.health.d.delay_honoured.FAILED` | A request was sent before its scheduled time. | Có yêu cầu được gửi trước giờ đã lên lịch. |
+| `rssx.health.k.consent` | Consent still given | Khách vẫn đồng ý |
+| `rssx.health.d.consent.PASSED` | No waiting request is for a customer who opted out. | Không có yêu cầu đang chờ nào cho khách đã từ chối. |
+| `rssx.health.d.consent.WARNING` | Some waiting requests are for customers who have since opted out; they are skipped at send time. | Một số yêu cầu đang chờ dành cho khách đã từ chối; chúng sẽ bị bỏ qua khi gửi. |
+| `rssx.health.k.no_duplicate_requests` | One request per visit | Mỗi lượt một yêu cầu |
+| `rssx.health.d.no_duplicate_requests.PASSED` | No visit has two requests on the same channel. | Không có lượt nào có hai yêu cầu cùng kênh. |
+| `rssx.health.d.no_duplicate_requests.FAILED` | A visit has more than one request on the same channel. | Có lượt có nhiều hơn một yêu cầu cùng kênh. |
+| `rssx.health.k.branch_overrides` | Branch settings | Cài đặt chi nhánh |
+| `rssx.health.d.branch_overrides.PASSED` | No branch overrides the salon's settings. | Không có chi nhánh nào ghi đè cài đặt của tiệm. |
+| `rssx.health.d.branch_overrides.WARNING` | A branch has its own settings; they apply on that branch instead of the salon's. | Có chi nhánh có cài đặt riêng; áp dụng tại chi nhánh đó thay cho cài đặt của tiệm. |
+| `rssx.health.k.history_complete` | Every change is in History | Mọi thay đổi có trong Lịch sử |
+| `rssx.health.d.history_complete.PASSED` | The current settings match a recorded change. | Cài đặt hiện tại khớp với một thay đổi đã ghi. |
+| `rssx.health.d.history_complete.WARNING` | The current settings were written without a History entry (before this update). | Cài đặt hiện tại được ghi mà không có mục Lịch sử (trước bản cập nhật này). |
+| `rssx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `rssx.health.d.tenant_isolation.PASSED` | Every recorded change was made by this salon's staff. | Mọi thay đổi đã ghi đều do nhân viên tiệm này thực hiện. |
+| `rssx.health.d.tenant_isolation.FAILED` | A change refers to a user from another salon. Report this immediately. | Có thay đổi gắn với người dùng của tiệm khác. Hãy báo ngay. |
+| `rssx.health.k.no_side_effects` | Nothing sent, published or charged | Không gửi, đăng hay tính phí |
+| `rssx.health.d.no_side_effects.PASSED` | This check and these settings never send a message, publish, approve or charge. | Việc kiểm tra và các cài đặt này không gửi tin, đăng, duyệt hay tính phí. |
+
+## AI Review & Reputation (`rpx.*`) — Nov 2 2026
+
+| Key | English | Tiếng Việt |
+|---|---|---|
+| `rpx.loadFailed` | Review data could not be loaded. Open Check Reputation System or try again — this is not "no reviews". | Không tải được dữ liệu đánh giá. Hãy mở Kiểm tra hệ thống danh tiếng hoặc thử lại — đây không phải là "không có đánh giá". |
+| `rpx.saveFailed` | That could not be saved. Nothing was changed. | Không lưu được. Không có gì thay đổi. |
+| `rpx.loading` | Loading… | Đang tải… |
+| `rpx.close` | Close | Đóng |
+| `rpx.cancel` | Cancel | Hủy |
+| `rpx.check` | Check Reputation System | Kiểm tra hệ thống danh tiếng |
+| `rpx.search` | Search | Tìm |
+| `rpx.clear` | Clear | Xóa bộ lọc |
+| `rpx.rows` | Rows | Số dòng |
+| `rpx.view` | View | Xem |
+| `rpx.searchReviews` | Review text, reviewer name, provider or review ID | Nội dung, tên người đánh giá, nguồn hoặc mã đánh giá |
+| `rpx.searchQueue` | Review or draft text | Nội dung đánh giá hoặc bản nháp |
+| `rpx.all` | All | Tất cả |
+| `rpx.anySource` | All providers | Tất cả nguồn |
+| `rpx.anyRating` | Any rating | Mọi số sao |
+| `rpx.anyResponse` | Any response | Mọi trạng thái phản hồi |
+| `rpx.anyComplaint` | Any complaint state | Mọi trạng thái khiếu nại |
+| `rpx.smallSample` | Fewer than 20 reviews — treat averages and shares as a small sample. | Dưới 20 đánh giá — hãy xem trung bình và tỷ lệ là mẫu nhỏ. |
+| `rpx.freshness` | Last import {sync} · newest review {newest} | Lần nhập gần nhất {sync} · đánh giá mới nhất {newest} |
+| `rpx.never` | never | chưa có |
+| `rpx.defs` | Negative share = negative reviews ÷ reviews ({c} of {n} classified). Response rate counts only provider-confirmed published replies; drafts and approvals do not count. Spam is excluded. | Tỷ lệ tiêu cực = đánh giá tiêu cực ÷ số đánh giá ({c}/{n} đã phân loại). Tỷ lệ phản hồi chỉ tính phản hồi đã đăng được nguồn xác nhận; bản nháp và phê duyệt không tính. Không tính thư rác. |
+| `rpx.recent` | Recent reviews | Đánh giá gần đây |
+| `rpx.noReviews` | No reviews in this period. | Không có đánh giá nào trong khoảng này. |
+| `rpx.noMatch` | No records match these filters. | Không có bản ghi nào khớp bộ lọc. |
+| `rpx.noApprovals` | Nothing in this approval state. | Không có mục nào ở trạng thái này. |
+| `rpx.noComplaints` | No complaint cases in this state. | Không có khiếu nại nào ở trạng thái này. |
+| `rpx.noRequests` | No review requests in this state. | Không có yêu cầu đánh giá nào ở trạng thái này. |
+| `rpx.stars` | {n}★ | {n}★ |
+| `rpx.na` | N/A | N/A |
+| `rpx.more` | more… | xem thêm… |
+| `rpx.noText` | (no written comment) | (không có nội dung) |
+| `rpx.preset.all` | All time | Mọi thời gian |
+| `rpx.preset.today` | Today | Hôm nay |
+| `rpx.preset.yesterday` | Yesterday | Hôm qua |
+| `rpx.preset.week` | This week | Tuần này |
+| `rpx.preset.last_7` | Last 7 days | 7 ngày qua |
+| `rpx.preset.month` | This month | Tháng này |
+| `rpx.preset.last_month` | Last month | Tháng trước |
+| `rpx.preset.last_30` | Last 30 days | 30 ngày qua |
+| `rpx.preset.last_90` | Last 90 days | 90 ngày qua |
+| `rpx.preset.year` | This year | Năm nay |
+| `rpx.preset.custom` | Custom range | Tùy chọn |
+| `rpx.src.google` | Google | Google |
+| `rpx.src.facebook` | Facebook | Facebook |
+| `rpx.src.yelp` | Yelp | Yelp |
+| `rpx.src.internal` | In-salon | Tại tiệm |
+| `rpx.src.survey` | Survey | Khảo sát |
+| `rpx.src.sms` | SMS | SMS |
+| `rpx.src.email` | Email | Email |
+| `rpx.src.app` | Customer App | Ứng dụng khách |
+| `rpx.src.support` | Support | Hỗ trợ |
+| `rpx.src.manual` | Manual | Thủ công |
+| `rpx.src.whatsapp` | WhatsApp | WhatsApp |
+| `rpx.src.push` | App notification | Thông báo ứng dụng |
+| `rpx.src.unknown` | Unknown | Không rõ |
+| `rpx.resp.unanswered` | Unanswered | Chưa phản hồi |
+| `rpx.resp.draft` | Draft | Bản nháp |
+| `rpx.resp.awaiting_approval` | Awaiting approval | Chờ phê duyệt |
+| `rpx.resp.approved` | Approved — not published | Đã duyệt — chưa đăng |
+| `rpx.resp.published` | Published | Đã đăng |
+| `rpx.resp.publish_failed` | Publish failed | Đăng thất bại |
+| `rpx.resp.rejected` | Rejected | Bị từ chối |
+| `rpx.resp.draft_generated` | Draft | Bản nháp |
+| `rpx.resp.needs_revision` | Needs revision | Cần sửa |
+| `rpx.resp.publishing` | Publishing… | Đang đăng… |
+| `rpx.resp.review_received` | Unanswered | Chưa phản hồi |
+| `rpx.resp.analyzed` | Unanswered | Chưa phản hồi |
+| `rpx.resp.no_response_required` | No response needed | Không cần phản hồi |
+| `rpx.resp.escalated` | Escalated | Đã chuyển cấp |
+| `rpx.resp.archived` | Archived | Đã lưu trữ |
+| `rpx.resp.analysis_pending` | Unanswered | Chưa phản hồi |
+| `rpx.case.none` | No complaint | Không khiếu nại |
+| `rpx.case.open` | Open | Đang mở |
+| `rpx.case.acknowledged` | Acknowledged | Đã tiếp nhận |
+| `rpx.case.resolved` | Resolved | Đã xử lý |
+| `rpx.case.active` | Open or acknowledged | Đang mở hoặc đã tiếp nhận |
+| `rpx.case.all` | All | Tất cả |
+| `rpx.req.scheduled` | Scheduled — not sent | Đã lên lịch — chưa gửi |
+| `rpx.req.sent` | Sent | Đã gửi |
+| `rpx.req.delivered` | Delivered | Đã nhận |
+| `rpx.req.failed` | Failed | Thất bại |
+| `rpx.req.skipped` | Skipped | Bỏ qua |
+| `rpx.req.opted_out` | Opted out | Đã từ chối nhận |
+| `rpx.req.converted` | Review received | Đã nhận đánh giá |
+| `rpx.req.all` | All | Tất cả |
+| `rpx.sort.newest` | Newest first | Mới nhất trước |
+| `rpx.sort.oldest` | Oldest first | Cũ nhất trước |
+| `rpx.sort.rating_low` | Lowest rating first | Sao thấp nhất trước |
+| `rpx.sort.rating_high` | Highest rating first | Sao cao nhất trước |
+| `rpx.date.review` | Review date | Ngày đánh giá |
+| `rpx.date.imported` | Import date | Ngày nhập |
+| `rpx.col.date` | Review / Date | Đánh giá / Ngày |
+| `rpx.col.provider` | Provider / Branch | Nguồn / Chi nhánh |
+| `rpx.col.rating` | Rating / Preview | Số sao / Xem trước |
+| `rpx.col.response` | Response | Phản hồi |
+| `rpx.col.complaint` | Complaint | Khiếu nại |
+| `rpx.col.draft` | Draft | Bản nháp |
+| `rpx.col.updated` | Updated | Cập nhật |
+| `rpx.col.by` | By | Người thực hiện |
+| `rpx.col.severity` | Severity | Mức độ |
+| `rpx.col.opened` | Opened | Mở lúc |
+| `rpx.col.assignee` | Owner | Người phụ trách |
+| `rpx.col.customer` | Customer | Khách hàng |
+| `rpx.col.channel` | Channel | Kênh |
+| `rpx.col.scheduled` | Scheduled for | Lên lịch lúc |
+| `rpx.col.status` | Status | Trạng thái |
+| `rpx.col.month` | Month | Tháng |
+| `rpx.col.count` | Reviews | Đánh giá |
+| `rpx.col.branch` | Branch | Chi nhánh |
+| `rpx.col.sent` | Requests sent | Yêu cầu đã gửi |
+| `rpx.col.provider2` | Provider | Nguồn |
+| `rpx.col.connection` | Connection | Kết nối |
+| `rpx.col.lastSync` | Last successful sync | Đồng bộ thành công gần nhất |
+| `rpx.col.publish` | Reply publishing | Đăng phản hồi |
+| `rpx.sample.too_few` | too few reviews | quá ít đánh giá |
+| `rpx.sample.small` | small sample | mẫu nhỏ |
+| `rpx.sample.ok` | enough reviews | đủ đánh giá |
+| `rpx.trendNote` | Monthly figures use the same definitions as the cards. They show association over time, not causes; months with few reviews are marked. | Số liệu theo tháng dùng cùng định nghĩa với các thẻ. Chúng cho thấy sự liên quan theo thời gian, không phải nguyên nhân; tháng có ít đánh giá được đánh dấu. |
+| `rpx.branchNote` | A branch with no reviews shows N/A, not 0%. Compare review counts before comparing averages. | Chi nhánh không có đánh giá hiển thị N/A, không phải 0%. Hãy so sánh số đánh giá trước khi so sánh trung bình. |
+| `rpx.requestsNote` | Requests are scheduled after a completed visit, only with consent, a valid contact and the frequency limit — never by predicted rating. No sender is running yet, so nothing is sent automatically; scheduled requests are shown as not sent. | Yêu cầu được lên lịch sau lượt hoàn tất, chỉ khi có đồng ý, liên hệ hợp lệ và giới hạn tần suất — không bao giờ theo số sao dự đoán. Chưa có bộ gửi nào chạy nên không gửi tự động; yêu cầu đã lên lịch hiển thị là chưa gửi. |
+| `rpx.overdue` | {n} scheduled requests are past their time and were not sent. | {n} yêu cầu đã lên lịch quá giờ và chưa được gửi. |
+| `rpx.prov.google_business_profile` | Google Business Profile | Google Business Profile |
+| `rpx.prov.facebook_pages` | Facebook Pages | Facebook Pages |
+| `rpx.prov.yelp` | Yelp | Yelp |
+| `rpx.conn.not_connected` | Not connected | Chưa kết nối |
+| `rpx.conn.active` | Connected | Đã kết nối |
+| `rpx.conn.disabled` | Disabled | Đã tắt |
+| `rpx.conn.error` | Error | Lỗi |
+| `rpx.conn.pending` | Pending | Đang chờ |
+| `rpx.conn.revoked` | Revoked | Đã thu hồi |
+| `rpx.conn.expired` | Expired | Đã hết hạn |
+| `rpx.canPublish` | Supported | Hỗ trợ |
+| `rpx.cannotPublish` | Not available through the provider — reply on the provider's site | Nguồn không hỗ trợ — hãy phản hồi trên trang của nguồn |
+| `rpx.importsTitle` | Imported reviews by source | Đánh giá đã nhập theo nguồn |
+| `rpx.notConnectedNote` | Not connected: no reviews are imported from this provider and none are invented. | Chưa kết nối: không nhập đánh giá nào từ nguồn này và không tạo đánh giá giả. |
+| `rpx.ov.title` | Review | Đánh giá |
+| `rpx.ov.source` | Source | Nguồn |
+| `rpx.ov.externalId` | Provider ID | Mã của nguồn |
+| `rpx.ov.imported` | Imported {at} · last sync {sync} | Nhập lúc {at} · đồng bộ {sync} |
+| `rpx.ov.customer` | Linked customer | Khách hàng liên kết |
+| `rpx.ov.restricted` | A customer is linked; your role cannot see who. | Có khách hàng liên kết; vai trò của bạn không được xem. |
+| `rpx.ov.noCustomer` | No customer is linked. A public reviewer name is never matched to a customer record. | Không có khách hàng liên kết. Tên người đánh giá công khai không bao giờ được ghép với hồ sơ khách. |
+| `rpx.ov.analysis` | AI analysis | Phân tích AI |
+| `rpx.ov.analysisLine` | {s} · severity {sev} · confidence {c} | {s} · mức độ {sev} · độ tin cậy {c} |
+| `rpx.ov.noAnalysis` | Not analyzed yet. | Chưa phân tích. |
+| `rpx.ov.response` | Response | Phản hồi |
+| `rpx.ov.draftLabel` | DRAFT — not published | BẢN NHÁP — chưa đăng |
+| `rpx.ov.noDraft` | No response drafted yet. | Chưa có bản nháp phản hồi. |
+| `rpx.ov.version` | version {v} | phiên bản {v} |
+| `rpx.ov.history` | Response history | Lịch sử phản hồi |
+| `rpx.ov.complaint` | Complaint case | Hồ sơ khiếu nại |
+| `rpx.ov.signals` | Signals: {s} | Dấu hiệu: {s} |
+| `rpx.ov.caseNote` | A flag for human review — not a proven fact about anyone. | Một cảnh báo để người xem xét — không phải sự thật đã được chứng minh về ai. |
+| `rpx.ov.notes` | Internal notes | Ghi chú nội bộ |
+| `rpx.ov.addNote` | Add note | Thêm ghi chú |
+| `rpx.ov.notePlaceholder` | Visible to staff only | Chỉ nhân viên thấy |
+| `rpx.ov.recovery` | Recovery records | Hồ sơ khắc phục |
+| `rpx.ov.generate` | Draft a response | Soạn phản hồi |
+| `rpx.ov.regenerate` | Regenerate | Soạn lại |
+| `rpx.ov.shorten` | Shorter | Ngắn hơn |
+| `rpx.ov.warmer` | Warmer | Ấm áp hơn |
+| `rpx.ov.submit` | Send for approval | Gửi phê duyệt |
+| `rpx.ov.approve` | Approve | Phê duyệt |
+| `rpx.ov.reject` | Reject | Từ chối |
+| `rpx.ov.rejectReason` | Reason for rejecting | Lý do từ chối |
+| `rpx.ov.publish` | Publish to provider | Đăng lên nguồn |
+| `rpx.ov.publishNote` | Publishing sends the approved text to the provider; it counts as a response only when the provider confirms. | Đăng sẽ gửi nội dung đã duyệt lên nguồn; chỉ được tính là phản hồi khi nguồn xác nhận. |
+| `rpx.ov.noProviderPublish` | This review cannot be replied to through a provider connection here — reply on the provider's site. | Không thể phản hồi đánh giá này qua kết nối nguồn tại đây — hãy phản hồi trên trang của nguồn. |
+| `rpx.ov.acknowledge` | Acknowledge | Tiếp nhận |
+| `rpx.ov.resolve` | Record resolution | Ghi nhận đã xử lý |
+| `rpx.ov.noMoney` | No action here issues refunds, credits, points or discounts, or sends messages. | Không thao tác nào ở đây hoàn tiền, tặng tín dụng, điểm hay giảm giá, hoặc gửi tin nhắn. |
+| `rpx.ov.openSource` | View on provider | Xem trên trang nguồn |
+| `rpx.act.requested` | Sent for approval | Gửi phê duyệt |
+| `rpx.act.approved` | Approved | Đã duyệt |
+| `rpx.act.rejected` | Rejected | Từ chối |
+| `rpx.act.auto_approved` | Approved by the salon's auto-approve rule | Duyệt theo quy tắc tự duyệt của tiệm |
+| `rpx.done.drafted` | Draft created. It is not published. | Đã tạo bản nháp. Chưa đăng. |
+| `rpx.done.submitted` | Sent for approval. | Đã gửi phê duyệt. |
+| `rpx.done.approved` | Approved. Not published until you publish it. | Đã duyệt. Chưa đăng cho đến khi bạn đăng. |
+| `rpx.done.rejected` | Rejected. | Đã từ chối. |
+| `rpx.done.published` | Published — the provider confirmed it. | Đã đăng — nguồn đã xác nhận. |
+| `rpx.done.noted` | Note added. | Đã thêm ghi chú. |
+| `rpx.done.acknowledged` | Case acknowledged. | Đã tiếp nhận khiếu nại. |
+| `rpx.done.resolved` | Resolution recorded. | Đã ghi nhận xử lý. |
+| `rpx.err.DRAFT_UNSAFE` | The draft was blocked by the safety check (for example a promise, a discount or private details). Nothing was saved. | Bản nháp bị chặn bởi kiểm tra an toàn (ví dụ hứa hẹn, giảm giá hay thông tin riêng). Không lưu gì. |
+| `rpx.err.NOT_APPROVED` | Only an approved draft can be published. | Chỉ bản nháp đã duyệt mới được đăng. |
+| `rpx.err.PUBLISH_FAILED` | The provider did not accept the reply. It is marked Publish failed; nothing was posted. | Nguồn không nhận phản hồi. Đã đánh dấu Đăng thất bại; không có gì được đăng. |
+| `rpx.err.INTEGRATION_DISCONNECTED` | No working provider connection for this review. Reply on the provider's site or connect it in Integrations. | Không có kết nối nguồn hoạt động cho đánh giá này. Hãy phản hồi trên trang nguồn hoặc kết nối trong mục Tích hợp. |
+| `rpx.err.INVALID_RESPONSE_TRANSITION` | That step is not allowed from the current state. Reload the review. | Không thể thực hiện bước này từ trạng thái hiện tại. Hãy tải lại đánh giá. |
+| `rpx.err.DRAFT_NOT_FOUND` | There is no draft yet. | Chưa có bản nháp. |
+| `rpx.err.REVIEW_NOT_FOUND` | Review not found in your authorized salons. | Không tìm thấy đánh giá trong các tiệm bạn được xem. |
+| `rpx.err.REPUTATION_INVALID_PERIOD` | Choose a valid date range (From on or before To). | Hãy chọn khoảng ngày hợp lệ (Từ ngày không sau Đến ngày). |
+| `rpx.err.REPUTATION_INVALID_FILTER` | That filter value is not valid. | Giá trị bộ lọc không hợp lệ. |
+| `rpx.err.FORBIDDEN` | Your role cannot do this. | Vai trò của bạn không được làm việc này. |
+| `rpx.err.PERMISSION_DENIED` | Your role cannot do this. | Vai trò của bạn không được làm việc này. |
+| `rpx.health.overall` | {s} · checked {at} | {s} · kiểm tra lúc {at} |
+| `rpx.health.running` | Checking… | Đang kiểm tra… |
+| `rpx.health.readOnly` | This check only reads. It never publishes, sends requests, changes reviews or moves money. | Việc kiểm tra chỉ đọc. Không đăng, gửi yêu cầu, sửa đánh giá hay chuyển tiền. |
+| `rpx.health.recent` | (A check just ran — showing its result.) | (Vừa kiểm tra xong — đang hiển thị kết quả đó.) |
+| `rpx.health.PASSED` | Passed | Đạt |
+| `rpx.health.WARNING` | Warning | Cảnh báo |
+| `rpx.health.FAILED` | Failed | Lỗi |
+| `rpx.health.INSUFFICIENT_DATA` | Not enough data | Chưa đủ dữ liệu |
+| `rpx.health.UNAVAILABLE` | Unavailable | Không khả dụng |
+| `rpx.health.k.reviews_present` | Reviews on record | Có đánh giá |
+| `rpx.health.d.reviews_present.PASSED` | Reviews are on record for this salon. | Tiệm có đánh giá được lưu. |
+| `rpx.health.d.reviews_present.INSUFFICIENT_DATA` | No reviews yet — connect a provider or collect in-salon reviews. This is not a healthy zero. | Chưa có đánh giá — hãy kết nối nguồn hoặc thu đánh giá tại tiệm. Đây không phải số 0 bình thường. |
+| `rpx.health.k.provider_connected` | A review provider is connected | Đã kết nối nguồn đánh giá |
+| `rpx.health.d.provider_connected.PASSED` | At least one provider connection is active. | Có ít nhất một kết nối nguồn đang hoạt động. |
+| `rpx.health.d.provider_connected.WARNING` | No provider is connected; only in-salon reviews appear. Connect Google Business Profile in Integrations. | Chưa kết nối nguồn nào; chỉ có đánh giá tại tiệm. Hãy kết nối Google Business Profile trong mục Tích hợp. |
+| `rpx.health.k.provider_sync` | Provider imports succeed | Nhập từ nguồn thành công |
+| `rpx.health.d.provider_sync.PASSED` | The last import attempt succeeded. | Lần nhập gần nhất thành công. |
+| `rpx.health.d.provider_sync.FAILED` | A connected provider's last import failed after its last success. Reconnect it in Integrations. | Lần nhập gần nhất của một nguồn đã thất bại. Hãy kết nối lại trong mục Tích hợp. |
+| `rpx.health.d.provider_sync.INSUFFICIENT_DATA` | No connected provider to check. | Không có nguồn đã kết nối để kiểm tra. |
+| `rpx.health.k.credentials_valid` | Provider credentials valid | Thông tin xác thực hợp lệ |
+| `rpx.health.d.credentials_valid.PASSED` | No connected provider token has expired. | Không có mã xác thực nào đã hết hạn. |
+| `rpx.health.d.credentials_valid.FAILED` | A provider token has expired — imports and replies stop. Reconnect it in Integrations. | Mã xác thực của một nguồn đã hết hạn — dừng nhập và phản hồi. Hãy kết nối lại trong mục Tích hợp. |
+| `rpx.health.k.response_state_consistent` | Response states agree | Trạng thái phản hồi khớp nhau |
+| `rpx.health.d.response_state_consistent.PASSED` | Every review's response state matches its draft. | Trạng thái phản hồi của mọi đánh giá khớp với bản nháp. |
+| `rpx.health.d.response_state_consistent.WARNING` | Some reviews show a response state that differs from their draft (changed before this fix). The workspace reads the draft; the next step on each review aligns it. | Một số đánh giá có trạng thái khác với bản nháp (từ trước bản sửa này). Màn hình đọc theo bản nháp; bước tiếp theo trên mỗi đánh giá sẽ đồng bộ lại. |
+| `rpx.health.k.analysis_coverage` | Reviews analyzed | Đánh giá đã được phân tích |
+| `rpx.health.d.analysis_coverage.PASSED` | Every review with text has a sentiment. | Mọi đánh giá có nội dung đều đã có cảm xúc. |
+| `rpx.health.d.analysis_coverage.WARNING` | Some reviews with text have no sentiment yet, so the negative share undercounts them. They are shown as unclassified. | Một số đánh giá có nội dung chưa có cảm xúc nên tỷ lệ tiêu cực có thể thiếu. Chúng hiển thị là chưa phân loại. |
+| `rpx.health.d.analysis_coverage.INSUFFICIENT_DATA` | No reviews yet. | Chưa có đánh giá. |
+| `rpx.health.k.publishing` | Replies published | Phản hồi đã đăng |
+| `rpx.health.d.publishing.PASSED` | No reply is in Publish failed. | Không có phản hồi nào đăng thất bại. |
+| `rpx.health.d.publishing.WARNING` | Some approved replies failed to publish. Open them, check the connection, and publish again. | Một số phản hồi đã duyệt đăng thất bại. Hãy mở, kiểm tra kết nối và đăng lại. |
+| `rpx.health.k.publish_stuck` | No reply stuck while publishing | Không có phản hồi bị kẹt khi đăng |
+| `rpx.health.d.publish_stuck.PASSED` | No reply has been "publishing" for more than 15 minutes. | Không có phản hồi nào "đang đăng" quá 15 phút. |
+| `rpx.health.d.publish_stuck.WARNING` | A reply has been "publishing" for over 15 minutes. Check the provider; do not publish twice. | Có phản hồi "đang đăng" quá 15 phút. Hãy kiểm tra nguồn; không đăng hai lần. |
+| `rpx.health.k.complaints_tracked` | Serious reviews have a case | Đánh giá nghiêm trọng có hồ sơ |
+| `rpx.health.d.complaints_tracked.PASSED` | Every high-severity review has a complaint case. | Mọi đánh giá mức độ cao đều có hồ sơ khiếu nại. |
+| `rpx.health.d.complaints_tracked.WARNING` | Some high-severity reviews have no complaint case. Open them from the Inbox. | Một số đánh giá mức độ cao chưa có hồ sơ khiếu nại. Hãy mở từ Hộp thư đánh giá. |
+| `rpx.health.k.complaints_acknowledged` | Cases acknowledged in time | Khiếu nại được tiếp nhận kịp thời |
+| `rpx.health.d.complaints_acknowledged.PASSED` | No open case is older than 2 days. | Không có khiếu nại đang mở nào quá 2 ngày. |
+| `rpx.health.d.complaints_acknowledged.WARNING` | Some open cases are older than 2 days without acknowledgement. | Một số khiếu nại đang mở quá 2 ngày chưa được tiếp nhận. |
+| `rpx.health.k.requests_delivery` | Review requests | Yêu cầu đánh giá |
+| `rpx.health.d.requests_delivery.PASSED` | No scheduled request is past its time. | Không có yêu cầu nào quá giờ đã lên lịch. |
+| `rpx.health.d.requests_delivery.WARNING` | Scheduled requests are past their time and were not sent — no sender is running. Nothing is sent automatically. | Có yêu cầu quá giờ đã lên lịch và chưa gửi — chưa có bộ gửi chạy. Không gửi tự động. |
+| `rpx.health.k.tenant_isolation` | Only this salon's data | Chỉ dữ liệu của tiệm này |
+| `rpx.health.d.tenant_isolation.PASSED` | Every draft, case and customer link belongs to this salon. | Mọi bản nháp, hồ sơ và liên kết khách đều thuộc tiệm này. |
+| `rpx.health.d.tenant_isolation.FAILED` | A record references another salon. Report this immediately. | Có bản ghi trỏ tới tiệm khác. Hãy báo ngay. |
+| `rpx.health.k.no_automatic_actions` | No automatic publishing, messages or compensation | Không tự đăng, nhắn tin hay bồi thường |
+| `rpx.health.d.no_automatic_actions.PASSED` | Replies publish only after a person approves and publishes; nothing here sends messages or moves money. | Phản hồi chỉ được đăng sau khi có người duyệt và đăng; không có gì ở đây gửi tin hay chuyển tiền. |

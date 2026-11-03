@@ -11,8 +11,5 @@ export const REVIEW_INBOX_SPEC = {
   limitParams: ['pageSize'], maxLimit: 100, defaultLimit: 25, params: ['page'],
 } satisfies ListQuerySpec;
 
-export const AiReviewReputationControllerListQueries = {
-  inbox: REVIEW_INBOX_SPEC,
-  analytics: { filters: { branchId: { type: 'id' }, prevFrom: { type: 'date' }, prevTo: { type: 'date' } }, search: false, dateRange: { maxDays: 'analytics' } },
-  branchComparison: { search: false, dateRange: { maxDays: 'analytics' } },
-} satisfies Record<string, ListQuerySpec>;
+// the inbox / analytics / branch-comparison handlers are retired (Nov 2 2026): their lists are /pos/reputation/* (@ListQuery there)
+export const AiReviewReputationControllerListQueries = {} satisfies Record<string, ListQuerySpec>;

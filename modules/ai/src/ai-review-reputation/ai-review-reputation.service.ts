@@ -26,7 +26,8 @@ export interface ReviewReadPort {
   setResolution(ctx: RepCtx, reviewId: string, status: string): Promise<void>;
   integrationStatus(ctx: RepCtx): Promise<{ source: string; connected: boolean; lastSyncAt: string | null }[]>;
 }
-export interface SettingsPort { load(ctx: RepCtx): Promise<SettingsRow[]>; save(ctx: RepCtx, level: 'tenant' | 'branch', branchId: string | null, enabled: boolean | null, config: Partial<ReputationConfig> | null): Promise<void>; tenantContextInput(ctx: RepCtx, config: ReputationConfig): Promise<TenantContextInput>; }
+// writes moved to the Reputation Settings center (version-checked, history, fail-closed audit — Nov 2 2026)
+export interface SettingsPort { load(ctx: RepCtx): Promise<SettingsRow[]>; tenantContextInput(ctx: RepCtx, config: ReputationConfig): Promise<TenantContextInput>; }
 
 export class AiReviewReputationService {
   constructor(
@@ -61,8 +62,16 @@ export class AiReviewReputationService {
   analyze(text: string | null, rating: number | null): ReviewAnalysis { return analyzeReview({ text, rating }); }
 
   // ---- drafting / approval (delegates) ----
-  async draft(ctx: RepCtx, reviewId: string, directive: any, review: { text: string | null }) {
+  async draft(ctx: RepCtx, reviewId: string, directive: any, _client: { text: string | null }) {
+    // the AI drafts from the STORED review (tenant-scoped), never from text the browser sends (Review & Reputation guide,
+    // Nov 2 2026): the client field is ignored, so a draft cannot be steered by arbitrary text or written for a blank review
+    this.need(ctx, MANAGE);
+    const stored = await this.read.detail(ctx, reviewId);
+    if (!stored) throw new Error('REVIEW_NOT_FOUND');
+    const review = { text: (stored.comment ?? null) as string | null };
     const eff = await this.effectiveSettings(ctx);
+    // a salon (or branch) that switched the assistant off gets no AI drafts (before Nov 2 2026 the switch was ignored here)
+    if (!eff.enabled) throw new Error('ASSISTANT_DISABLED');
     const tc = buildTenantContext(await this.settings.tenantContextInput(ctx, eff.config));
     const analysis = this.analyze(review.text, null);
     return this.drafting.generateDraft(ctx, reviewId, { analysis, config: eff.config, tenantContext: tc, reviewText: review.text, directive });
@@ -97,11 +106,6 @@ export class AiReviewReputationService {
   }
 
   // ---- settings ----
-  async getSettings(ctx: RepCtx) { this.need(ctx, VIEW); return this.effectiveSettings(ctx); }
-  async updateSettings(ctx: RepCtx, level: 'tenant' | 'branch', branchId: string | null, enabled: boolean | null, config: Partial<ReputationConfig> | null) {
-    this.need(ctx, MANAGE);
-    if (level === 'branch' && !branchId) throw new Error('VALIDATION_ERROR');
-    await this.settings.save(ctx, level, branchId, enabled, config);
-    return this.effectiveSettings(ctx);
-  }
+  // GET / PUT settings are retired: /pos/reputation-settings/* reads the effective policy with its sources and writes it
+  // version-checked with history (Review & Reputation Settings guide, Nov 2 2026).
 }

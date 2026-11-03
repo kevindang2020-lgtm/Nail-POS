@@ -31,11 +31,11 @@ describe('usage-limit fallback', () => {
 });
 
 describe('auto-response safety chain', () => {
-  const enabled = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { autoResponse: { enabled: true, minRating: 5, confidenceThreshold: 0.8, requireNoComplaintText: true } } } }).config;
+  const enabled = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { approvalRequired: false, autoResponse: { enabled: true, minRating: 5, confidenceThreshold: 0.8, requireNoComplaintText: true } } } }).config;
   it('denies serious/negative and allows only clean 5-star, and cannot be widened', () => {
     expect(autoResponseDecision(analyzeReview({ text: 'chemical burn', rating: 5 }), 5, enabled).allow).toBe(false);
     expect(autoResponseDecision(analyzeReview({ text: 'perfect, highly recommend', rating: 5 }), 5, enabled).allow).toBe(true);
-    const widened = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { autoResponse: { enabled: true, minRating: 1, confidenceThreshold: 0.1, requireNoComplaintText: false } } } }).config;
+    const widened = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { approvalRequired: false, autoResponse: { enabled: true, minRating: 1, confidenceThreshold: 0.1, requireNoComplaintText: false } } } }).config;
     expect(widened.autoResponse.minRating).toBe(5);
     expect(widened.autoResponse.confidenceThreshold).toBeGreaterThanOrEqual(0.8);
     expect(autoResponseDecision(analyzeReview({ text: 'awful, worst', rating: 1 }), 1, widened).allow).toBe(false);

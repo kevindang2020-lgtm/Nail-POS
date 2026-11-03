@@ -23,6 +23,7 @@ import { QueueSuperAdminController as AqSa } from './ai-queue-assignment/ai-queu
 import { QueueAssignmentController as Aq } from './ai-queue-assignment/ai-queue-assignment.controller';
 import { AiRevenueController as Rev } from './ai-revenue/ai-revenue.controller';
 import { AiReviewReputationController as Rr } from './ai-review-reputation/ai-review-reputation.controller';
+import { ReputationSettingsCenterController as Rss } from './ai-review-reputation/reputation-settings-center.controller';
 import { AiSchedulingOpsController as SchOps } from './ai-scheduling-optimizer/ai-scheduling-ops.controller';
 import { CustomerScheduleProposalsController as SchCust } from './ai-scheduling-optimizer/ai-scheduling-proposals.customer.controller';
 import { AiSchedulingController as Sch } from './ai-scheduling-optimizer/ai-scheduling.controller';
@@ -108,7 +109,8 @@ const CASES: RouteBodyCase[] = [
   c('POST /pos/ai-review-reputation/escalations/:id/resolve', Rr, 'resolve', [{ reviewId: ID }], [{ reviewId: [] }, 'reviewId']),
   c('POST /pos/ai-review-reputation/:id/recovery', Rr, 'recordRecovery', [{ type: 'free_fix' }], [{ type: 2 }, 'type']),
   c('POST /pos/ai-review-reputation/:id/notes', Rr, 'addNote', [{ note: 'called the guest' }], [{ note: {} }, 'note']),
-  c('PUT /pos/ai-review-reputation/settings', Rr, 'updateSettings', [{ level: 'tenant', enabled: true, config: { autoRespond: false } }], [{ config: 'x' }, 'config']),
+  // PUT /pos/ai-review-reputation/settings is retired (Nov 2 2026) — Save Changes is POST /pos/reputation-settings/save
+  c('POST /pos/reputation-settings/save', Rss, 'save', [{ values: { responseTone: 'warm' }, expectedVersion: 1 }, { values: { delayMinutes: 120, requestsEnabled: true }, expectedVersion: 0, reason: 'policy' }], [{ values: { delayMinutes: '120' }, expectedVersion: 1 }, 'values.delayMinutes']),
   // scheduling optimizer
   c('POST /pos/ai-scheduling-optimizer/insights/:kind/:id/approve', SchOps, 'approveInsight', [{ expectedVersion: 2 }, { expectedVersion: 2, reason: 'fits' }], [{ expectedVersion: [2] }, 'expectedVersion']),
   c('POST /pos/ai-scheduling-optimizer/insights/:kind/:id/reject', SchOps, 'rejectInsight', [{ expectedVersion: 2, reason: 'no' }], [{ expectedVersion: 2, status: 'approved' }, 'status']),

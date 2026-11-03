@@ -63,24 +63,31 @@ export class KyselyDraftStore implements DraftStorePort {
     return r ? { status: r.status as ResponseStatus, text: r.current_text ?? null, version: Number(r.current_version) || 0 } : null;
   }
   async save(ctx: { tenantId: string; branchId?: string | null }, reviewId: string, patch: { status?: ResponseStatus; text?: string; version?: number; isAuto?: boolean }) {
+    // Review & Reputation guide (Nov 2 2026): writes no longer swallow errors (an approval that did not save used to answer
+    // "approved"), and the review's own response_status follows the draft — the inbox, the KPIs and the approval queue
+    // read the same state (Awaiting approval / Response rate were stuck at 0 because nothing updated reviews.response_status).
     const existing = await this.get(ctx, reviewId);
     if (!existing) {
-      await this.db.insertInto('review_response_drafts').values({ tenant_id: tid(ctx), branch_id: ctx.branchId ?? null, review_id: reviewId, status: patch.status ?? 'draft_generated', current_text: patch.text ?? null, current_version: patch.version ?? 1, is_auto: !!patch.isAuto }).execute().catch(() => {});
+      await this.db.insertInto('review_response_drafts').values({ tenant_id: tid(ctx), branch_id: ctx.branchId ?? null, review_id: reviewId, status: patch.status ?? 'draft_generated', current_text: patch.text ?? null, current_version: patch.version ?? 1, is_auto: !!patch.isAuto }).execute();
     } else {
       const set: any = { updated_at: now() };
       if (patch.status) set.status = patch.status; if (patch.text !== undefined) set.current_text = patch.text; if (patch.version !== undefined) set.current_version = patch.version; if (patch.isAuto !== undefined) set.is_auto = patch.isAuto;
-      await this.db.updateTable('review_response_drafts').set(set).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).execute().catch(() => {});
+      await this.db.updateTable('review_response_drafts').set(set).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).execute();
     }
+    const status = patch.status ?? (existing ? undefined : 'draft_generated');
+    if (status) await this.db.updateTable('reviews').set({ response_status: status, updated_at: now() }).where('tenant_id', '=', tid(ctx)).where('id', '=', reviewId).execute();
   }
   async addVersion(ctx: { tenantId: string }, reviewId: string, version: number, text: string, editedByUserId: string | null, isAi: boolean) {
-    const d: any = await this.db.selectFrom('review_response_drafts').select(['id']).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).executeTakeFirst().catch(() => null);
-    await this.db.insertInto('review_response_versions').values({ tenant_id: tid(ctx), draft_id: d ? String(d.id) : reviewId, review_id: reviewId, version, text, edited_by_user_id: editedByUserId, is_ai_generated: isAi }).execute().catch(() => {});
+    const d: any = await this.db.selectFrom('review_response_drafts').select(['id']).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).executeTakeFirst();
+    await this.db.insertInto('review_response_versions').values({ tenant_id: tid(ctx), draft_id: d ? String(d.id) : reviewId, review_id: reviewId, version, text, edited_by_user_id: editedByUserId, is_ai_generated: isAi }).execute();
   }
 }
 export class KyselyApprovalStore implements ApprovalStorePort {
   constructor(private readonly db: Kysely<DB>) {}
   async record(ctx: { tenantId: string }, reviewId: string, action: string, reason?: string | null, version?: number | null) {
-    await this.db.insertInto('review_approvals').values({ tenant_id: tid(ctx), review_id: reviewId, draft_id: reviewId, action, reason: reason ?? null, version: version ?? null }).execute().catch(() => {});
+    // the real draft id (it used to store the review id), the acting user, and no swallowed failure
+    const d: any = await this.db.selectFrom('review_response_drafts').select(['id']).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).executeTakeFirst();
+    await this.db.insertInto('review_approvals').values({ tenant_id: tid(ctx), review_id: reviewId, draft_id: d ? String(d.id) : reviewId, action, actor_user_id: (ctx as { userId?: string }).userId ?? null, reason: reason ?? null, version: version ?? null }).execute();
   }
 }
 
@@ -97,9 +104,9 @@ export class KyselyEscalationStore implements EscalationStorePort {
   }
   async setStatus(ctx: EscCtx, id: string, status: any, at: string) {
     const set: any = { status }; if (status === 'acknowledged') set.acknowledged_at = at; if (status === 'resolved') set.resolved_at = at;
-    await this.db.updateTable('review_escalations').set(set).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where(canMoveToSql(REVIEW_ESCALATION, status) as any).execute().catch(() => {});   // Phase 12 (#27)
+    await this.db.updateTable('review_escalations').set(set).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where(canMoveToSql(REVIEW_ESCALATION, status) as any).execute();   // Phase 12 (#27)
   }
-  async assign(ctx: EscCtx, id: string, userId: string) { await this.db.updateTable('review_escalations').set({ assigned_user_id: userId }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).execute().catch(() => {}); }
+  async assign(ctx: EscCtx, id: string, userId: string) { await this.db.updateTable('review_escalations').set({ assigned_user_id: userId }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).execute(); }
   async listOpen(ctx: EscCtx) {
     const rows: any[] = await this.db.selectFrom('review_escalations').select(['id', 'review_id', 'severity', 'status', 'created_at']).where('tenant_id', '=', tid(ctx)).where('status', '!=', 'resolved').limit(500).execute().catch(() => []);
     return rows.map((r) => ({ id: String(r.id), reviewId: String(r.review_id), severity: String(r.severity), status: r.status, createdAt: r.created_at ? new Date(r.created_at).toISOString() : '' }));
@@ -178,16 +185,11 @@ export class KyselyConsent implements ConsentPort {
 // ---- settings ----
 export class KyselySettings implements SettingsPort {
   constructor(private readonly db: Kysely<DB>) {}
+  /** fail-closed (Nov 2 2026): a read error used to return [] = platform defaults, i.e. the assistant ENABLED past a salon's
+   *  Disable. It now throws; drafting stops and the checkout hook schedules nothing. */
   async load(ctx: RepCtx): Promise<SettingsRow[]> {
-    const rows: any[] = await this.db.selectFrom('tenant_ai_reputation_settings').select(['level', 'branch_id', 'enabled', 'config']).where('tenant_id', '=', tid(ctx)).execute().catch(() => []);
+    const rows: any[] = await this.db.selectFrom('tenant_ai_reputation_settings').select(['level', 'branch_id', 'enabled', 'config']).where('tenant_id', '=', tid(ctx)).execute();
     return rows.map((r) => ({ level: r.level, branch_id: r.branch_id ? String(r.branch_id) : null, enabled: r.enabled ?? null, config: parseJson(r.config) }));
-  }
-  async save(ctx: RepCtx, level: 'tenant' | 'branch', branchId: string | null, enabled: boolean | null, config: Partial<ReputationConfig> | null) {
-    const existing: any = await this.db.selectFrom('tenant_ai_reputation_settings').select(['id', 'version']).where('tenant_id', '=', tid(ctx)).where('level', '=', level).where((eb) => branchId ? eb('branch_id', '=', branchId) : eb('branch_id', 'is', null)).executeTakeFirst().catch(() => null);
-    const version = (Number(existing?.version) || 0) + 1;
-    if (existing) await this.db.updateTable('tenant_ai_reputation_settings').set({ enabled, config: config ? JSON.stringify(config) : null, version, updated_by_user_id: ctx.userId, updated_at: now() } as any).where('id', '=', existing.id).execute().catch(() => {});
-    else await this.db.insertInto('tenant_ai_reputation_settings').values({ tenant_id: tid(ctx), level, branch_id: branchId, enabled, config: config ? JSON.stringify(config) : null, version, updated_by_user_id: ctx.userId }).execute().catch(() => {});
-    await this.db.insertInto('ai_reputation_config_versions').values({ tenant_id: tid(ctx), level, branch_id: branchId, version, config: config ? JSON.stringify(config) : null, enabled, changed_by_user_id: ctx.userId }).execute().catch(() => {});
   }
   async tenantContextInput(ctx: RepCtx, config: ReputationConfig): Promise<TenantContextInput> {
     return { tenantId: ctx.tenantId, brandName: config.salonName || '', config };   // branch/service/policy enrichment can be layered from the tenant's own settings later
@@ -245,7 +247,7 @@ export class KyselyReviewRead implements ReviewReadPort {
     const r: any = await this.db.insertInto('review_internal_notes').values({ tenant_id: tid(ctx), review_id: reviewId, author_user_id: ctx.userId, note }).returning(['id']).executeTakeFirstOrThrow();
     return { id: String(r.id) };
   }
-  async setResolution(ctx: RepCtx, reviewId: string, status: string) { await this.db.updateTable('reviews').set({ resolution_status: status, updated_at: now() }).where('tenant_id', '=', tid(ctx)).where('id', '=', reviewId).execute().catch(() => {}); }
+  async setResolution(ctx: RepCtx, reviewId: string, status: string) { await this.db.updateTable('reviews').set({ resolution_status: status, updated_at: now() }).where('tenant_id', '=', tid(ctx)).where('id', '=', reviewId).execute(); }
   async integrationStatus(ctx: RepCtx) {
     const rows: any[] = await this.db.selectFrom('reviews').select(['source']).select((eb) => eb.fn.max('last_synced_at').as('last')).where('tenant_id', '=', tid(ctx)).groupBy('source').execute().catch(() => []);
     return rows.filter((r) => r.source !== 'internal' && r.source !== 'manual').map((r) => ({ source: String(r.source), connected: !!r.last, lastSyncAt: r.last ? new Date(r.last).toISOString() : null }));

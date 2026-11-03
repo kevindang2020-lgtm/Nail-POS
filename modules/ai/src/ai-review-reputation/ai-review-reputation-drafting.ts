@@ -14,6 +14,9 @@ export interface AutoResponseDecision { allow: boolean; reason: string; }
 export function autoResponseDecision(analysis: ReviewAnalysis, rating: number | null, config: ReputationConfig): AutoResponseDecision {
   const ar = config.autoResponse;
   if (!ar.enabled) return { allow: false, reason: 'auto_response_disabled' };
+  // "Require approval before publishing" wins: an automatic reply would publish without a person (Nov 2 2026 — before this
+  // the approval setting was never consulted here). The settings center also refuses to save the two together.
+  if (config.approvalRequired !== false) return { allow: false, reason: 'approval_required' };
   if (analysis.escalationRequired) return { allow: false, reason: 'escalation_required' };
   if (analysis.seriousSignals.length > 0) return { allow: false, reason: 'serious_signal' };
   if (analysis.isSpam) return { allow: false, reason: 'spam' };

@@ -14,6 +14,7 @@ export const REPUTATION_ERROR_STATUS: Record<string, number> = {
   INVALID_RESPONSE_TRANSITION: 409,
   INVALID_ESCALATION_TRANSITION: 409,
   NOT_APPROVED: 409,
+  ASSISTANT_DISABLED: 409,          // the salon or branch switched the assistant off — no AI drafts (Nov 2 2026)
   ALREADY_REQUESTED: 409,
   IDEMPOTENCY_CONFLICT: 409,
   // validation / safety

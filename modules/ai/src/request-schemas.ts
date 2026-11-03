@@ -159,7 +159,6 @@ export const REVIEW_ASSIGN_BODY: BodySchema = S.object({ userId: scalar(64) });
 export const REVIEW_RESOLVE_BODY: BodySchema = S.object({ reviewId: scalar(64) });
 export const REVIEW_RECOVERY_BODY: BodySchema = S.object({ type: text(64) });
 export const REVIEW_NOTE_BODY: BodySchema = S.object({ note: text(4000) });
-export const REVIEW_SETTINGS_BODY: BodySchema = S.object({ level: text(16), branchId: id, enabled: bool, config: S.nullable(S.freeObject()) });
 
 // ── AI scheduling optimizer (pos-web posAiSchedulingOptimizerApi, customer-web) — api-contracts tenant/ai-scheduling ─
 const versioned = { expectedVersion: numish };

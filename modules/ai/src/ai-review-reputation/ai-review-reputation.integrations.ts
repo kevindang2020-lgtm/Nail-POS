@@ -49,7 +49,8 @@ import type { SettingsPort } from './ai-review-reputation.service';
  *  request (writes a row) for the completed visit. It never dispatches here and never throws to the caller — checkout
  *  wraps this in its own isolation, and this adapter is defensive on top of that. */
 export class CheckoutReviewRequestHook {
-  constructor(private readonly requests: ReviewRequestService, private readonly settings: SettingsPort) {}
+  // timeZoneOf: the salon's IANA zone, so quiet hours are the salon's local hours (Review & Reputation Settings guide, Nov 2 2026)
+  constructor(private readonly requests: ReviewRequestService, private readonly settings: SettingsPort, private readonly timeZoneOf?: (tenantId: string, branchId: string | null) => Promise<string | null>) {}
   async onVisitCompleted(ctx: { tenantId: string; branchId?: string | null; userId: string; role: string; permissions: string[] }, visit: { ticketId: string; customerId: string; branchId: string | null; visitValueCents: number; completedAt: string }): Promise<void> {
     try {
       const repCtx: any = systemContext({ tenantId: ctx.tenantId, branchId: visit.branchId ?? ctx.branchId ?? null, actor: 'review-request-on-checkout' });
@@ -59,6 +60,7 @@ export class CheckoutReviewRequestHook {
       await this.requests.scheduleForCompletedVisit(repCtx, {
         tenantId: ctx.tenantId, branchId: visit.branchId, customerId: visit.customerId, ticketId: visit.ticketId,
         completedAt: visit.completedAt, visitValueCents: visit.visitValueCents,
+        timeZone: this.timeZoneOf ? await this.timeZoneOf(ctx.tenantId, visit.branchId ?? null) : null,
       }, eff.config.reviewRequest);
     } catch { /* defensive: scheduling must never surface to checkout */ }
   }

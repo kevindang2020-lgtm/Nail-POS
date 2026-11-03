@@ -28,6 +28,7 @@
   "GET /pos/ai-inventory/recipes",
   "GET /pos/ai-inventory/recipes/:id",
   "GET /pos/ai-voice-transcription/transcripts/:id/raw",
+  "GET /pos/booking/integration-status",
   "GET /pos/campaigns",
   "GET /pos/checkout/gift-cards/:code",
   "GET /pos/customers/:customerId/gift-cards",

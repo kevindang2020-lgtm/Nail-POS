@@ -8,13 +8,15 @@ import { PLATFORM_DEFAULTS, resolveSettings } from './ai-review-reputation-setti
 import { buildTenantContext } from './ai-review-reputation-context';
 import { analyzeReview } from './ai-review-reputation-core';
 
-const enabledCfg = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { autoResponse: { enabled: true, minRating: 5, confidenceThreshold: 0.8, requireNoComplaintText: true } } } }).config;
+const enabledCfg = resolveSettings({ platform: PLATFORM_DEFAULTS, tenant: { config: { approvalRequired: false, autoResponse: { enabled: true, minRating: 5, confidenceThreshold: 0.8, requireNoComplaintText: true } } } }).config;
 const clean5 = analyzeReview({ text: 'Amazing, highly recommend!', rating: 5 });
 
 describe('auto-response gate', () => {
   it('allows a clean high-confidence 5-star when enabled; denies every risk case', () => {
     expect(autoResponseDecision(clean5, 5, enabledCfg).allow).toBe(true);
     expect(autoResponseDecision(clean5, 5, PLATFORM_DEFAULTS).reason).toBe('auto_response_disabled');
+    // "Require approval before publishing" wins over automatic replies (Nov 2 2026)
+    expect(autoResponseDecision(clean5, 5, { ...enabledCfg, approvalRequired: true }).reason).toBe('approval_required');
     expect(autoResponseDecision(analyzeReview({ text: 'terrible', rating: 1 }), 1, enabledCfg).allow).toBe(false);
     expect(autoResponseDecision(analyzeReview({ text: 'chemical burn', rating: 5 }), 5, enabledCfg).allow).toBe(false);
     expect(autoResponseDecision(analyzeReview({ text: 'good', rating: 4 }), 4, enabledCfg).allow).toBe(false);

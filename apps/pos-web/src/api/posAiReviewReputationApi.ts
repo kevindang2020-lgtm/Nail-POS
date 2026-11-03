@@ -6,17 +6,11 @@ import { api } from './client';
 const enc = encodeURIComponent;
 
 export const posAiReviewReputationApi = {
-  inbox: (filters?: Record<string, unknown>) => api.get<any>(`/pos/ai-review-reputation/inbox`, { query: filters }),
-  detail: (id: string) => api.get<any>(`/pos/ai-review-reputation/${enc(id)}`),
-  settings: () => api.get<any>(`/pos/ai-review-reputation/settings`),
-  updateSettings: (patch: { level?: 'tenant' | 'branch'; branchId?: string | null; enabled?: boolean | null; config?: any }) => api.put<any>(`/pos/ai-review-reputation/settings`, patch),
-  analytics: (query?: { from?: string; to?: string; branchId?: string; prevFrom?: string; prevTo?: string }) => api.get<any>(`/pos/ai-review-reputation/analytics`, { query }),
-  branchComparison: (query?: { from?: string; to?: string }) => api.get<any>(`/pos/ai-review-reputation/branch-comparison`, { query }),
-  urgentQueue: () => api.get<any>(`/pos/ai-review-reputation/escalations/urgent`),
-  integrationStatus: () => api.get<any>(`/pos/ai-review-reputation/integration-status`),
+  // the workspace READS moved to posReputationApi (/pos/reputation/*, Nov 2 2026); these are the workflow WRITES (settings moved to posReputationSettingsApi, /pos/reputation-settings/*)
 
   sync: (source: string, since?: string | null) => api.post<any>(`/pos/ai-review-reputation/sync`, { source, since: since ?? null }),
-  draft: (id: string, directive: string, reviewText: string | null) => api.post<any>(`/pos/ai-review-reputation/${enc(id)}/draft`, { directive, reviewText }),
+  // the server drafts from the STORED review; no review text is sent from the browser
+  draft: (id: string, directive: string) => api.post<any>(`/pos/ai-review-reputation/${enc(id)}/draft`, { directive }),
   requestApproval: (id: string) => api.post<any>(`/pos/ai-review-reputation/${enc(id)}/request-approval`, {}),
   approve: (id: string) => api.post<any>(`/pos/ai-review-reputation/${enc(id)}/approve`, {}),
   reject: (id: string, reason: string) => api.post<any>(`/pos/ai-review-reputation/${enc(id)}/reject`, { reason }),

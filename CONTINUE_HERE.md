@@ -693,7 +693,20 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
   - Fixed: the settings read failed OPEN (DB error = enabled past a Disable); Enable/Disable wiped the thresholds; no version / history.
   - Provenance, propagation, subscription shown apart; version-checked writes + append-only history; preview; health check. Old GET/PUT settings retired (pinned).
   - Tests: pgtest 12/12, screen 6/6. Doc: `docs/ai/CUSTOMER_AI_SETTINGS.md`.
-- **Next: Review & Reputation** (guide 9).
+- **Done: Review & Reputation** (guide 9): `pos/reputation` read routes and migration 768; writes stay on the existing workflow routes.
+  - Fixed: "Awaiting approval" and "Response rate" were always 0 (the review's response column was never updated); store writes
+    swallowed errors (Approve could say "approved" without saving); AI drafts used browser-sent text; approvals stored the review
+    id as the draft id; the average rating showed rounded to a whole star.
+  - One metrics definition for cards / trends / branches; full review overlay with role-gated customer link; check. Six old
+    read routes retired (pinned).
+  - Tests: pgtest 11/11, routes 3/3, reputation suite 54/54, screen 8/8. Doc: `docs/ai/REVIEW_REPUTATION.md`.
+- **Done: Review & Reputation Settings** (guide 10): `pos/reputation-settings` routes and migration 769.
+  - Fixed: the settings read failed OPEN; Save swallowed errors ("Saved" without saving) and had no version check; drafting
+    ignored the assistant switch; the auto-reply gate ignored "Require approval"; quiet hours used the server clock, not the salon's.
+  - Sources, operational state, what actually runs (no auto-reply job, no request sender, no reminder sender); safe merged saves
+    with conflict refusal + version + append-only History (the existing config-versions log) + audit; check. Old GET/PUT retired (pinned).
+  - Tests: pgtest 12/12, routes 4/4, reputation suite 71/71, screen 7/7. Doc: `docs/ai/REVIEW_REPUTATION_SETTINGS.md`.
+- **Next: AI OCR Receipt Scanner** (guide 11).
 - **Decisions for Kevin** (collected; he asked to decide after everything is built):
   1. Should Global Rewards `/pos/loyalty/network/*` get the `@RequireFeature('loyalty')` plan gate?
   2. Duplicate merge: should a source's gift cards and saved-card references keep moving to the kept profile (today's
@@ -702,6 +715,11 @@ Full handoff: `docs/setup/BUSINESS_SETUP.md`. Route kept: `/tenant/ai/receptioni
      booked service should not. Change it (it also changes the Customer Intelligence and Churn Watch numbers) or keep it?
   4. Super Admin per-salon threshold overrides and a per-salon emergency switch: build them (the old Settings note promised
      them), or keep Super Admin at the package-wide switch only?
+  5. Review replies: drafting and approving use the same manage permission, so one person can draft and approve their own
+     reply. Split them (a separate approve permission, and "drafter cannot approve") or keep one permission?
+  6. Review requests: requests are scheduled at checkout but no sender runs, so nothing is sent. Build the sender (consent,
+     quiet hours, frequency cap, salon Twilio) and the one-reminder sender, or keep requests off and say so (today's screens say so)?
+  7. Automatic replies: nothing runs them. Build the job (only with approval OFF, clean 5-star only), or remove the control?
 - **Sandbox note:** the full POS vitest run hangs here (POSQueueScreen hangs on the untouched tree too), so run only the
   related files. `roster-1000.test.tsx` already fails 2 tests on the untouched tree.
 

@@ -6,6 +6,13 @@ import { CommunicationsModule, CommunicationsService } from '@aipowersalon/commu
 import { systemContext } from '@aipowersalon/tenant-context';
 import { Module } from '@nestjs/common';
 import { AiReviewReputationController } from './ai-review-reputation.controller';
+import { ReputationCenter } from './reputation-center';
+import { ReputationCenterController, REPUTATION_CENTER } from './reputation-center.controller';
+import { ReputationSettingsCenter } from './reputation-settings-center';
+import { ReputationSettingsCenterController, REPUTATION_SETTINGS_CENTER } from './reputation-settings-center.controller';
+import { KyselyAiAccessRepo } from '../ai/ai-access.kysely.repository';
+import { evaluateAiAccess } from '../ai/ai-access-gate';
+import { enforcementMode } from '../ai-entitlement/ai-entitlement.guard';
 import { AiReviewReputationService, type ReviewReadPort, type SettingsPort } from './ai-review-reputation.service';
 import { ReviewDraftingService, type DraftLlmPort, type DraftStorePort, type ApprovalStorePort, type PublicationPort } from './ai-review-reputation-drafting.service';
 import { EscalationService, type EscalationStorePort, type SecureNotifyPort, type RecoveryStorePort, type ReviewStatusPort } from './ai-review-reputation-escalation.service';
@@ -20,7 +27,7 @@ import { hasTenantWideScope } from '@aipowersalon/permissions';
 
 // honest in-memory fallbacks (used only when DATABASE is null)
 const memRead: ReviewReadPort = { async inbox() { return { items: [], pagination: { page: 1, pageSize: 25, totalItems: 0, totalPages: 0 } }; }, async detail() { return null; }, async metricsInputs() { return { reviews: [], responses: [], requests: [] }; }, async branchMetricsInputs() { return []; }, async authorizedBranches(ctx) { return hasTenantWideScope(ctx as any) ? 'all' : (ctx.branchId ? [ctx.branchId] : []); }, async addNote() { return { id: 'note' }; }, async setResolution() {}, async integrationStatus() { return []; } };
-const memSettings: SettingsPort = { async load() { return []; }, async save() {}, async tenantContextInput(ctx, config) { return { tenantId: ctx.tenantId, brandName: config.salonName || '', config }; } };
+const memSettings: SettingsPort = { async load() { return []; }, async tenantContextInput(ctx, config) { return { tenantId: ctx.tenantId, brandName: config.salonName || '', config }; } };
 const memDraftStore: DraftStorePort = { async get() { return null; }, async save() {}, async addVersion() {} };
 const memApprovalStore: ApprovalStorePort = { async record() {} };
 const templateLlm: DraftLlmPort = { async draft() { return 'Thank you for your feedback. We appreciate you taking the time to share it and would be glad to make things right.'; } };
@@ -35,8 +42,18 @@ const noDispatch: DispatchPort = { async send() { throw new Error('DISPATCH_FAIL
 
 @Module({
   imports: [CommunicationsModule],
-  controllers: [AiReviewReputationController],
+  controllers: [AiReviewReputationController, ReputationCenterController, ReputationSettingsCenterController],   // + the workspace read side (Review & Reputation guide, Nov 2026)
   providers: [
+    { provide: REPUTATION_CENTER, useFactory: (db: AppDatabase) => (db ? new ReputationCenter(db) : null), inject: [DATABASE] },
+    // Review & Reputation Settings (Nov 2026): provenance, safe salon-level writes with history, the entitlement gate's own decision
+    { provide: REPUTATION_SETTINGS_CENTER, useFactory: (db: AppDatabase) => {
+        if (!db) return null;
+        const access = new KyselyAiAccessRepo(db);
+        return new ReputationSettingsCenter(db,
+          async (ctx) => { const d = evaluateAiAccess(await access.loadSnapshot(ctx.tenantId, 'ai_review_reputation_assistant', ctx.userId ?? null, { branchId: ctx.branchId || null }));
+            return { allowed: d.allowed, reason: d.reason, subscriptionStatus: String(d.subscriptionStatus) }; },
+          () => enforcementMode());
+      }, inject: [DATABASE] },
     { provide: ReviewDraftingService, useFactory: (db: AppDatabase, secrets: ProviderSecrets) => new ReviewDraftingService(templateLlm, db ? new KyselyDraftStore(db) : memDraftStore, db ? new KyselyApprovalStore(db) : memApprovalStore, db ? new ReviewPublishAdapter(new KyselyReviewTarget(db), new KyselyConnectionCredentialResolver(db, (enc: string) => secrets.decrypt(enc), () => secrets.isConfigured()), new FetchHttpJson()) : disconnectedPublication), inject: [DATABASE, PROVIDER_SECRETS] },
     { provide: EscalationService, useFactory: (db: AppDatabase) => new EscalationService(db ? new KyselyEscalationStore(db) : memEscStore, noopNotify, db ? new KyselyRecoveryStore(db) : memRecovery, db ? new KyselyReviewStatus(db) : memReviewStatus, undefined, ''), inject: [DATABASE] },
     { provide: ReviewIngestionService, useFactory: (db: AppDatabase, esc: EscalationService) => new ReviewIngestionService(db ? new KyselyReviewStore(db) : { async findByDedupeKey() { return null; }, async insert() { return { id: 'r' }; }, async update() {} }, { async raise(ctx, reviewId, analysis) { await esc.raise({ ...ctx, ...systemContext({ tenantId: ctx.tenantId, branchId: ctx.branchId, actor: 'review-ingestion' }) }, reviewId, analysis); } }), inject: [DATABASE, EscalationService] },

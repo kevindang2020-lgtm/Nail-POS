@@ -3,8 +3,8 @@
 // (mapped to marketing in security-core). The service's stable error codes are mapped to HTTP via the error taxonomy.
 // Nothing here issues refunds/credits/loyalty/discounts — recovery only records recommendations.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
-import { REVIEW_ASSIGN_BODY, REVIEW_DRAFT_BODY, REVIEW_NOTE_BODY, REVIEW_RECOVERY_BODY, REVIEW_REJECT_BODY, REVIEW_RESOLVE_BODY, REVIEW_SETTINGS_BODY, REVIEW_SYNC_BODY } from '../request-schemas';
-import { Controller, Get, Post, Put, Body, Param, Query, Req, UseGuards, HttpException } from '@nestjs/common';
+import { REVIEW_ASSIGN_BODY, REVIEW_DRAFT_BODY, REVIEW_NOTE_BODY, REVIEW_RECOVERY_BODY, REVIEW_REJECT_BODY, REVIEW_RESOLVE_BODY, REVIEW_SYNC_BODY } from '../request-schemas';
+import { Controller, Post, Body, Param, Req, UseGuards, HttpException } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { AiReviewReputationService, ReputationForbiddenError, type RepCtx } from './ai-review-reputation.service';
 import { mapErrorToHttp, errorCode } from './ai-review-reputation-errors';
@@ -39,26 +39,16 @@ export class AiReviewReputationController {
   constructor(private readonly svc: AiReviewReputationService) {}
 
   // ---- reads ----
-  @Get('inbox') @RequirePermission('pos.ai_review_reputation.view')
-  inbox(@Req() r: any, @Query() q: any) { return run(() => this.svc.inbox(ctxFrom(r), q || {})); }
+  // inbox · analytics · branch-comparison · escalations/urgent · integration-status · GET :id are retired (Review & Reputation
+  // guide, Nov 2 2026): the workspace reads /pos/reputation/* — one metric definition, server pages, no swallowed errors.
 
-  @Get('settings') @RequirePermission('pos.ai_review_reputation.view')
-  getSettings(@Req() r: any) { return run(() => this.svc.getSettings(ctxFrom(r))); }
+  // GET settings / PUT settings are retired (Review & Reputation Settings guide, Nov 2 2026): /pos/reputation-settings/* reads the
+  // effective policy with its sources and writes it version-checked, with history and a fail-closed audit.
 
-  @Get('analytics') @RequirePermission('pos.ai_review_reputation.view')
-  analytics(@Req() r: any, @Query() q: any) { return run(() => this.svc.analytics(ctxFrom(r), { from: q?.from, to: q?.to, branchId: q?.branchId }, q?.prevFrom ? { from: q.prevFrom, to: q.prevTo } : undefined)); }
 
-  @Get('branch-comparison') @RequirePermission('pos.ai_review_reputation.view')
-  branchComparison(@Req() r: any, @Query() q: any) { return run(() => this.svc.branchComparison(ctxFrom(r), { from: q?.from, to: q?.to })); }
 
-  @Get('escalations/urgent') @RequirePermission('pos.ai_review_reputation.view')
-  urgentQueue(@Req() r: any) { return run(() => this.svc.urgentQueue(ctxFrom(r))); }
 
-  @Get('integration-status') @RequirePermission('pos.ai_review_reputation.view')
-  integrationStatus(@Req() r: any) { return run(() => this.svc.integrationStatus(ctxFrom(r))); }
 
-  @Get(':id') @RequirePermission('pos.ai_review_reputation.view')
-  detail(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.detail(ctxFrom(r), id)); }
 
   // ---- sync ----
   @Post('sync') @RequirePermission('pos.ai_review_reputation.manage')
@@ -96,7 +86,4 @@ export class AiReviewReputationController {
   @Post(':id/notes') @RequirePermission('pos.ai_review_reputation.manage')
   addNote(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(REVIEW_NOTE_BODY, { strict: true })) b: any) { return run(() => this.svc.addNote(ctxFrom(r), id, String(b?.note || ''))); }
 
-  // ---- settings ----
-  @Put('settings') @RequirePermission('pos.ai_review_reputation.manage')
-  updateSettings(@Req() r: any, @Body(ValidatedBody(REVIEW_SETTINGS_BODY, { strict: true })) b: any) { return run(() => this.svc.updateSettings(ctxFrom(r), b?.level === 'branch' ? 'branch' : 'tenant', b?.branchId ?? null, typeof b?.enabled === 'boolean' ? b.enabled : null, b?.config ?? null)); }
 }
