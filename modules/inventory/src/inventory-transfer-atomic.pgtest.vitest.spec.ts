@@ -72,3 +72,31 @@ describe('count reconciliation uses the snapshot and is all-or-nothing', () => {
     expect(await units(B, pid)).toBe(7);
   });
 });
+
+// audit D9 (Nov 4 2026): a bottle status change and a manual recipe deduction are each one transaction
+describe('bottle changes and manual deductions are all-or-nothing', () => {
+  it('opening a bottle twice: the second is refused and the ledger has one row', async () => {
+    const { id: pid } = await inv.createProduct(manager, { name: 'Cuticle Oil', sku: 'CO-1' });
+    await inv.addStock(manager, pid, { quantity: 1 });
+    const [u] = await q(`select id from inventory_units where tenant_id = $1 and product_id = $2`, [T, pid]);
+    await inv.openUnit(manager, u.id);
+    await expect(inv.openUnit(manager, u.id)).rejects.toThrow(/Cannot change bottle/);
+    expect((await q(`select count(*)::int n from inventory_stock_movements where product_id = $1 and movement_type = 'bottle_opened'`, [pid]))[0].n).toBe(1);
+  });
+  it('a manual deduction that fails part way empties no bottle', async () => {
+    const CAT = 'a7180000-0000-4000-8000-0000000000c1', SVC = 'a7180000-0000-4000-8000-0000000000d1';
+    await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Manicures')`, [CAT, T, B]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Gel Mani',30,3000)`, [SVC, T, B, CAT]);
+    const { id: pid } = await inv.createProduct(manager, { name: 'Gel Color', sku: 'GC-1' });
+    await inv.addStock(manager, pid, { quantity: 3 });
+    await q(`insert into service_product_recipes (tenant_id, service_id, product_id, quantity) values ($1,$2,$3,2)`, [T, SVC, pid]);
+    await q(`create or replace function tr_refuse_use() returns trigger language plpgsql as $$ begin if new.movement_type = 'service_usage' then raise exception 'usage refused'; end if; return new; end $$`);
+    await q(`create trigger trg_tr_refuse_use before insert on inventory_stock_movements for each row execute function tr_refuse_use()`);
+    try { await expect(inv.consumeServiceRecipe(manager, SVC, 1)).rejects.toThrow(/usage refused/); }
+    finally { await q(`drop trigger trg_tr_refuse_use on inventory_stock_movements`); }
+    expect(await units(B, pid)).toBe(3);
+    const ok: any = await inv.consumeServiceRecipe(manager, SVC, 1);
+    expect(ok.deducted[0]).toMatchObject({ requested: 2, deducted: 2 });
+    expect(await units(B, pid)).toBe(1);
+  });
+});

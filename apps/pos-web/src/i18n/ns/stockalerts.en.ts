@@ -58,6 +58,7 @@ export const STOCKALERTS_EN = {
   'sa.ackBy': 'by {who}',
   'sa.onOrder': '{n} on order',
   'sa.suggest': 'order {n}',
+  'sa.draftPo': 'draft {po} not ordered yet',
   'sa.sinceUnknown': 'Before alert tracking',
   'sa.reorder': 'Reorder',
   'sa.unattributed': '{n} unattributed',

@@ -35,6 +35,8 @@ ok('null critical_level falls back to derived', stockStatus(5, 10, null, null) =
 // ---- reorder suggestion ----
 ok('suggest when low', reorderSuggestion(2, 3, 6) === 6);
 ok('no suggestion when healthy', reorderSuggestion(10, 3, 6) === 0);
+ok('on-order bottles are subtracted', reorderSuggestion(2, 3, 6, 4) === 2);
+ok('fully covered by an order → 0', reorderSuggestion(2, 3, 6, 9) === 0);
 ok('suggestion at least the gap', reorderSuggestion(1, 10, 2) === 9);
 
 // ---- bottle lifecycle guards ----

@@ -58,6 +58,7 @@ export const STOCKALERTS_VI = {
   'sa.ackBy': 'bởi {who}',
   'sa.onOrder': '{n} đang đặt',
   'sa.suggest': 'nên đặt {n}',
+  'sa.draftPo': 'nháp {po} chưa đặt',
   'sa.sinceUnknown': 'Trước khi theo dõi cảnh báo',
   'sa.reorder': 'Đặt hàng',
   'sa.unattributed': '{n} không rõ thợ',

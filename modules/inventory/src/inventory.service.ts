@@ -7,6 +7,7 @@ import { utcDate } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
 import { transitionStatus, canMoveToSql, type DB } from '@aipowersalon/database';
 import { PURCHASE_ORDER, INVENTORY_COUNT, INVENTORY_TECH_REPORT, PRODUCT_USAGE_EVENT } from './inventory-lifecycles';
+import { onOrderSql } from './stock-alert-state';
 import {
   countsFromUnits, stockStatus, reorderSuggestion, canTransitionBottle, validateTechReport,
   poReceivingStatus, receivableQty, poTotals, canReceivePO,
@@ -528,7 +529,7 @@ export class InventoryService {
     const rows = await sql<any>`
       SELECT p.*, s.quantity_on_hand, s.quantity_unopened, s.quantity_open, s.quantity_empty, s.quantity_damaged, s.quantity_reserved,
         s.reorder_level_override, s.reorder_quantity_override, s.critical_level_override, s.lead_time_days_override, s.preferred_vendor_id_override,
-        b.name AS brand_name, c.name AS category_name
+        b.name AS brand_name, c.name AS category_name, ${onOrderSql(ctx.tenantId, branchId, sql`p.id`)} AS on_order
       FROM inventory_products p
       LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId})
       LEFT JOIN inventory_brands b ON b.id = p.brand_id
@@ -543,7 +544,8 @@ export class InventoryService {
       const reorderLvl = p.reorder_level_override ?? p.reorder_level ?? 0;
       const reorderQty = p.reorder_quantity_override ?? p.reorder_quantity ?? 0;
       const critLvl = p.critical_level_override ?? p.critical_level ?? null;
-      return { ...p, onHand, status: stockStatus(onHand, reorderLvl, p.maximum_stock, critLvl), reorderSuggestion: reorderSuggestion(onHand, reorderLvl, reorderQty) };
+      const onOrder = Number(p.on_order ?? 0);
+      return { ...p, onHand, onOrder, status: stockStatus(onHand, reorderLvl, p.maximum_stock, critLvl), reorderSuggestion: reorderSuggestion(onHand, reorderLvl, reorderQty, onOrder) };
     });
     // technicians never see cost/value
     if (this.isTechOnly(ctx)) withStatus.forEach((p: any) => { delete p.cost_cents; delete p.retail_price_cents; });
@@ -779,14 +781,22 @@ export class InventoryService {
 
   // ---- bottle lifecycle ----
   private async transition(ctx: InvCtx, unitId: string, to: BottleStatus, audit: string, moveType: MovementType, byCol?: 'opened' | 'emptied') {
-    const u = await this.unit(ctx, unitId);
-    if (!canTransitionBottle(u.status, to)) throw withCode(new InventoryError(409, `Cannot change bottle from ${u.status} to ${to}`), 'BOTTLE_STATE_INVALID');
+    const u0 = await this.unit(ctx, unitId);
+    if (!canTransitionBottle(u0.status, to)) throw withCode(new InventoryError(409, `Cannot change bottle from ${u0.status} to ${to}`), 'BOTTLE_STATE_INVALID');
     const stamp = byCol === 'opened' ? sql`, opened_at = now(), opened_by_user_id = ${ctx.userId}` : byCol === 'emptied' ? sql`, emptied_at = now(), emptied_by_user_id = ${ctx.userId}` : sql``;
-    const before = (await this.recompute(ctx, u.product_id)).onHand;
-    await sql`UPDATE inventory_units SET status = ${to}, updated_at = now() ${stamp} WHERE id = ${unitId} AND tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId}`.execute(this.need());
-    const after = (await this.recompute(ctx, u.product_id)).onHand;
-    await this.move(ctx, u.product_id, unitId, moveType, before, after - before, after, undefined);
-    await this.audit(ctx, audit, u.product_id, unitId, { from: u.status, to });
+    // audit D9 (Nov 4 2026): the bottle, the stock cache, the ledger row and the audit are ONE transaction under the
+    // product's stock lock, and the bottle moves only from the status just read (two taps: one moves, the other is refused)
+    const u = await this.need().transaction().execute(async (trx0) => {
+      const trx = trx0 as unknown as Kysely<DB>;
+      await this.lockStock(ctx, [String(u0.product_id)], trx);
+      const before = (await this.recompute(ctx, u0.product_id, trx)).onHand;
+      const moved = await sql`UPDATE inventory_units SET status = ${to}, updated_at = now() ${stamp} WHERE id = ${unitId} AND tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND status = ${u0.status}`.execute(trx);
+      if (!Number(moved.numAffectedRows ?? 0)) throw withCode(new InventoryError(409, `Cannot change bottle from its current status to ${to}`), 'BOTTLE_STATE_INVALID');
+      const after = (await this.recompute(ctx, u0.product_id, trx)).onHand;
+      await this.move(ctx, u0.product_id, unitId, moveType, before, after - before, after, undefined, undefined, trx);
+      await this.audit(ctx, audit, u0.product_id, unitId, { from: u0.status, to }, trx);
+      return u0;
+    });
     const reorder = await this.reorderAlert(ctx, u.product_id);
     return { unit: await this.unit(ctx, unitId), product: (await this.getProduct(ctx, u.product_id)).product, reorderAlert: reorder };
   }
@@ -796,10 +806,13 @@ export class InventoryService {
   markDamaged(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'damaged', 'inventory_bottle_damaged', 'damaged'); }
 
   private async reorderAlert(ctx: InvCtx, productId: string): Promise<{ needed: boolean; suggested: number } | null> {
-    const p = await sql<any>`SELECT reorder_level, reorder_quantity FROM inventory_products WHERE id = ${productId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-    const s = await sql<any>`SELECT quantity_on_hand FROM inventory_location_stock WHERE product_id = ${productId} AND tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId}`.execute(this.need());
-    const onHand = s.rows[0]?.quantity_on_hand ?? 0; const lvl = p.rows[0]?.reorder_level ?? 0;
-    const suggested = reorderSuggestion(onHand, lvl, p.rows[0]?.reorder_quantity ?? 0);
+    // the location's overrides win (the alert list's rule) and what is already on order is not suggested again
+    const branchId = await this.resolveBranchId(ctx);
+    const r = (await sql<any>`SELECT coalesce(s.reorder_level_override, p.reorder_level, 0)::int AS lvl, coalesce(s.reorder_quantity_override, p.reorder_quantity, 0)::int AS qty,
+        coalesce(s.quantity_on_hand, 0)::int AS on_hand, ${onOrderSql(ctx.tenantId, branchId, sql`p.id`)} AS on_order
+      FROM inventory_products p LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND s.branch_id = ${branchId}
+      WHERE p.id = ${productId} AND p.tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
+    const suggested = r ? reorderSuggestion(Number(r.on_hand), Number(r.lvl), Number(r.qty), Number(r.on_order)) : 0;
     return suggested > 0 ? { needed: true, suggested } : null;
   }
 
@@ -875,19 +888,25 @@ export class InventoryService {
   // ---- summary / alerts ----
   async summary(ctx: InvCtx) {
     const branchId = await this.resolveBranchId(ctx);
-    const rows = await sql<any>`SELECT p.reorder_level, p.critical_level, p.maximum_stock, p.cost_cents, p.track_expiration,
-        s.reorder_level_override, s.critical_level_override,
-        coalesce(s.quantity_on_hand,0) AS on_hand, coalesce(s.quantity_unopened,0) AS unopened, coalesce(s.quantity_open,0) AS open, coalesce(s.quantity_empty,0) AS empty
+    // Audit D9 (Nov 4 2026): ONE low-stock rule everywhere (the board, the overview insight, the alert list and this
+    // summary): a product's stock is summed across the scope (salon-wide had one row per location — a product stocked at
+    // three locations counted three times), the location override wins, and an inactive product never counts as low.
+    const rows = await sql<any>`SELECT p.reorder_level, p.critical_level, p.maximum_stock, p.cost_cents, p.track_expiration, (p.active IS NOT FALSE) AS active,
+        max(s.reorder_level_override) AS reorder_level_override, max(s.critical_level_override) AS critical_level_override,
+        coalesce(sum(s.quantity_on_hand),0)::int AS on_hand, coalesce(sum(s.quantity_unopened),0)::int AS unopened, coalesce(sum(s.quantity_open),0)::int AS open, coalesce(sum(s.quantity_empty),0)::int AS empty
       FROM inventory_products p
       LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId})
-      WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL`.execute(this.need());
+      WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL
+      GROUP BY p.id`.execute(this.need());
     let totalProducts = 0, totalBottles = 0, openBottles = 0, unopenedBottles = 0, lowStock = 0, outOfStock = 0, valueCents = 0;
     for (const r of rows.rows) {
       totalProducts++; totalBottles += r.on_hand; openBottles += r.open; unopenedBottles += r.unopened; valueCents += (r.on_hand * (r.cost_cents || 0));
       const reorderLvl = r.reorder_level_override ?? r.reorder_level ?? 0;
       const critLvl = r.critical_level_override ?? r.critical_level ?? null;
       const st = stockStatus(r.on_hand, reorderLvl, r.maximum_stock, critLvl);
-      if (st === 'out_of_stock') outOfStock++; else if (st === 'low' || st === 'critical') lowStock++;
+      if (!r.active) continue;   // an inactive product is never low / out
+      // out of stock = nothing on hand (as the product list says); LOW = at or under a reorder point (the alert list's rule)
+      if (st === 'out_of_stock') outOfStock++; else if ((st === 'low' || st === 'critical') && reorderLvl > 0) lowStock++;
     }
     const pending = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_technician_reports WHERE tenant_id = ${ctx.tenantId} AND (${branchId}::uuid IS NULL OR branch_id = ${branchId}) AND status = 'pending'`.execute(this.need());
     const expiring = await sql<{ n: number }>`SELECT count(*)::int AS n FROM inventory_units WHERE tenant_id = ${ctx.tenantId} AND (${branchId}::uuid IS NULL OR branch_id = ${branchId}) AND status IN ('unopened','opened','low') AND expiration_date IS NOT NULL AND expiration_date <= (now() + interval '30 days')`.execute(this.need());
@@ -898,15 +917,20 @@ export class InventoryService {
 
   async alerts(ctx: InvCtx) {
     const branchId = await this.resolveBranchId(ctx);
-    const low = await sql<any>`SELECT p.id, p.name, p.color_number, p.reorder_level, p.reorder_quantity, p.critical_level, p.maximum_stock, coalesce(s.quantity_on_hand,0) AS on_hand,
-        s.reorder_level_override, s.reorder_quantity_override, s.critical_level_override
-      FROM inventory_products p LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId})
-      WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL AND coalesce(s.reorder_level_override, p.reorder_level) > 0 AND coalesce(s.quantity_on_hand,0) <= coalesce(s.reorder_level_override, p.reorder_level)
-      ORDER BY coalesce(s.quantity_on_hand,0) ASC LIMIT 100`.execute(this.need());
+    // the shared low-stock rule (see summary): stock summed over the scope, location override wins, active products only
+    const low = await sql<any>`SELECT * FROM (
+        SELECT p.id, p.name, p.color_number, p.reorder_level, p.reorder_quantity, p.critical_level, p.maximum_stock, coalesce(sum(s.quantity_on_hand),0)::int AS on_hand,
+          max(s.reorder_level_override) AS reorder_level_override, max(s.reorder_quantity_override) AS reorder_quantity_override, max(s.critical_level_override) AS critical_level_override,
+          ${onOrderSql(ctx.tenantId, branchId, sql`p.id`)} AS on_order
+        FROM inventory_products p LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId})
+        WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL AND p.active IS NOT FALSE
+        GROUP BY p.id) x
+      WHERE coalesce(x.reorder_level_override, x.reorder_level, 0) > 0 AND x.on_hand <= coalesce(x.reorder_level_override, x.reorder_level)
+      ORDER BY x.on_hand ASC LIMIT 100`.execute(this.need());
     return { alerts: low.rows.map((p) => {
       const rLvl = p.reorder_level_override ?? p.reorder_level ?? 0;
       const rQty = p.reorder_quantity_override ?? p.reorder_quantity ?? 0;
-      return { productId: p.id, name: p.name, colorNumber: p.color_number, onHand: p.on_hand, status: stockStatus(p.on_hand, rLvl, p.maximum_stock, p.critical_level_override ?? p.critical_level ?? null), suggested: reorderSuggestion(p.on_hand, rLvl, rQty) };   // the same thresholds as the product list
+      return { productId: p.id, name: p.name, colorNumber: p.color_number, onHand: p.on_hand, status: stockStatus(p.on_hand, rLvl, p.maximum_stock, p.critical_level_override ?? p.critical_level ?? null), onOrder: Number(p.on_order ?? 0), suggested: reorderSuggestion(p.on_hand, rLvl, rQty, Number(p.on_order ?? 0)) };   // the same thresholds as the product list
     }) };
   }
 
@@ -938,7 +962,7 @@ export class InventoryService {
   async getPurchaseOrder(ctx: InvCtx, id: string) {
     const po = await this.po(ctx, id);
     const lines = await sql<any>`
-      SELECT l.id, l.product_id, l.quantity_ordered, l.quantity_received, l.unit_cost_cents, l.lot_number, l.expiration_date,
+      SELECT l.id, l.product_id, l.quantity_ordered, l.quantity_received, l.unit_cost_cents, l.units_per_purchase_unit, l.lot_number, l.expiration_date,
              p.name AS product_name, p.color_number
       FROM purchase_order_lines l JOIN inventory_products p ON p.id = l.product_id
       WHERE l.purchase_order_id = ${id} AND l.tenant_id = ${ctx.tenantId} ORDER BY p.name`.execute(this.need());
@@ -969,14 +993,17 @@ export class InventoryService {
     if (vendorId && !(await sql`SELECT 1 FROM inventory_vendors WHERE id = ${vendorId} AND tenant_id = ${ctx.tenantId}`.execute(this.need()).catch(() => ({ rows: [] }))).rows.length) {
       throw withCode(new InventoryError(404, 'That vendor was not found.'), 'VENDOR_NOT_FOUND');
     }
+    // the supplier's pack size is copied onto each line (audit D9): N purchase units received = N × pack bottles
+    const packs = new Map<string, number>();
+    if (vendorId) for (const r of (await sql<any>`SELECT product_id, units_per_purchase_unit FROM inventory_vendor_products WHERE tenant_id = ${ctx.tenantId} AND vendor_id = ${vendorId}`.execute(this.need())).rows) packs.set(String(r.product_id), Math.max(1, Number(r.units_per_purchase_unit) || 1));
     const poId = await this.need().transaction().execute(async (trx) => {
       const r = await sql<{ id: string }>`INSERT INTO purchase_orders
         (tenant_id, branch_id, vendor_id, po_number, status, expected_date, notes, subtotal_cents, shipping_cents, tax_cents, total_cents, created_by_user_id)
         VALUES (${ctx.tenantId}, ${ctx.branchId}, ${vendorId}, ${poNum}, 'draft', ${b?.expectedDate ?? null}, ${b?.notes ?? null}, ${totals.subtotalCents}, ${shipping}, ${tax}, ${totals.totalCents}, ${ACTOR_UUID.test(ctx.userId) ? ctx.userId : null}) RETURNING id`.execute(trx);
       const id = r.rows[0].id;
       for (const l of clean) {
-        await sql`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, unit_cost_cents)
-          VALUES (${ctx.tenantId}, ${id}, ${l.productId}, ${l.quantityOrdered}, ${l.unitCostCents})`.execute(trx);
+        await sql`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, unit_cost_cents, units_per_purchase_unit)
+          VALUES (${ctx.tenantId}, ${id}, ${l.productId}, ${l.quantityOrdered}, ${l.unitCostCents}, ${packs.get(l.productId) ?? 1})`.execute(trx);
       }
       await this.audit(ctx, 'inventory_po_created', null, null, { id, poNumber: poNum, lines: clean.length, totalCents: totals.totalCents }, trx as unknown as Kysely<DB>);
       return id;
@@ -1035,7 +1062,7 @@ export class InventoryService {
     for (const rl of reqLines) {
       const want = parseInt(rl?.quantity as any, 10) || 0;
       if (want <= 0) continue;
-      const lineRow = await sql<any>`SELECT id, product_id, quantity_ordered, quantity_received, unit_cost_cents, lot_number, expiration_date, storage_location
+      const lineRow = await sql<any>`SELECT id, product_id, quantity_ordered, quantity_received, unit_cost_cents, units_per_purchase_unit, lot_number, expiration_date, storage_location
         FROM purchase_order_lines WHERE id = ${rl.lineId} AND purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
       const line = lineRow.rows[0];
       if (!line) throw withCode(new InventoryError(404, 'Purchase order line not found'), 'PO_LINE_NOT_FOUND');
@@ -1052,11 +1079,14 @@ export class InventoryService {
         RETURNING id`.execute(trx);
       if (!claim.rows[0]) continue; // lost the race — another receiver already took it
       // only AFTER the claim do we create physical stock (units + 'purchase_received' movement + recompute)
-      let remaining = take;
+      // `take` is in purchase units (cases); the shelf gets bottles — each at the line cost ÷ pack (audit D9)
+      const pack = Math.max(1, Number(line.units_per_purchase_unit) || 1);
+      const bottleCost = line.unit_cost_cents ? Math.round(Number(line.unit_cost_cents) / pack) : 0;
+      let remaining = take * pack;
       while (remaining > 0) {
         const chunk = Math.min(1000, remaining);
         await this.addStock(ctx, line.product_id, {
-          quantity: chunk, costCents: line.unit_cost_cents || undefined,
+          quantity: chunk, costCents: bottleCost || undefined,
           lotNumber: rl?.lotNumber ?? line.lot_number ?? null, expirationDate: rl?.expirationDate ?? line.expiration_date ?? null,
           storageLocation: line.storage_location ?? null, purchaseOrderId: id, note: 'PO ' + (po.po_number || id),
         }, { fromPo: true, exec: trx });
@@ -1379,9 +1409,12 @@ export class InventoryService {
   /** Deduct a service's recipe from stock (e.g. when the service is performed). For each line, claim
    *  quantity×multiplier movable units (most-used first), mark them 'empty', and write a service_usage
    *  movement. Deducts only what's on hand (reports any shortfall) — never goes negative. */
-  async consumeServiceRecipe(ctx: InvCtx, serviceId: string, multiplier = 1, opts: { exec?: Kysely<DB>; related?: { type: string; id: string }; reason?: string; audit?: string } = {}) {
+  async consumeServiceRecipe(ctx: InvCtx, serviceId: string, multiplier = 1, opts: { exec?: Kysely<DB>; related?: { type: string; id: string }; reason?: string; audit?: string } = {}): Promise<{ serviceId: string; multiplier: number; deducted: { productId: string; requested: number; deducted: number }[] }> {
+    // audit D9: a manual call (no caller transaction) is ONE transaction — the stock lock taken below then holds until the
+    // bottles, ledger and audit are written (outside a transaction it was released at once and a failure left half a deduction)
+    if (!opts.exec) return this.need().transaction().execute((trx) => this.consumeServiceRecipe(ctx, serviceId, multiplier, { ...opts, exec: trx as unknown as Kysely<DB> }));
     await this.service(ctx, serviceId);
-    const exec = opts.exec ?? this.need();
+    const exec = opts.exec;
     const mult = Math.max(1, Math.floor(multiplier || 1));
     // product_id order, and the stock rows locked in that order BEFORE the first count (M4 lanes — see lockStock): the
     // "before" count is then taken after every concurrent deduction of these products has committed, so before − after

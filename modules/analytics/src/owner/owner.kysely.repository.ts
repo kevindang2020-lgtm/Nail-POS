@@ -965,8 +965,13 @@ export class KyselyOwnerRepository implements OwnerDataPort {
     const db = this.db;
     const branchFilter = branchIds === null ? sql`` : sql`AND s.branch_id = ANY(${branchIds})`;
     const rowsRes: any = await sql<any>`
-      SELECT p.id AS product_id, p.name, p.cost_cents, p.retail_price_cents, p.reorder_level, p.critical_level, p.maximum_stock, p.reorder_quantity,
-             c.name AS category_name, s.branch_id, br.name AS branch_name, s.quantity_on_hand
+      SELECT p.id AS product_id, p.name, p.cost_cents, p.retail_price_cents, p.maximum_stock, (p.active IS NOT FALSE) AS active,
+             -- audit D9 (Nov 4 2026): the location's overrides win (Inventory's rule) and committed orders are not re-suggested
+             coalesce(s.reorder_level_override, p.reorder_level) AS reorder_level, coalesce(s.critical_level_override, p.critical_level) AS critical_level,
+             coalesce(s.reorder_quantity_override, p.reorder_quantity) AS reorder_quantity,
+             c.name AS category_name, s.branch_id, br.name AS branch_name, s.quantity_on_hand,
+             (SELECT coalesce(sum(greatest(0, pl.quantity_ordered - pl.quantity_received) * pl.units_per_purchase_unit), 0)::int FROM purchase_order_lines pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
+               WHERE po.tenant_id = p.tenant_id AND po.branch_id = s.branch_id AND pl.product_id = p.id AND po.status IN ('approved', 'ordered', 'partial')) AS on_order
       FROM inventory_products p
       JOIN inventory_location_stock s ON s.product_id = p.id AND s.tenant_id = p.tenant_id
       LEFT JOIN inventory_categories c ON c.id = p.category_id
@@ -995,8 +1000,8 @@ export class KyselyOwnerRepository implements OwnerDataPort {
       const cat = r.category_name ?? 'Uncategorized';
       let cm = catMap.get(cat); if (!cm) { cm = { products: new Set(), value: 0 }; catMap.set(cat, cm); }
       cm.products.add(r.product_id); cm.value += cost;
-      if (st === 'low' || st === 'critical' || st === 'out_of_stock') {
-        reorder.push({ productId: r.product_id, name: r.name ?? '—', branchId: r.branch_id ?? null, branchName: r.branch_name ?? '—', onHand, reorderLevel: n(r.reorder_level), status: st, suggestedQty: reorderSuggestion(onHand, n(r.reorder_level), n(r.reorder_quantity)) });
+      if (r.active && (st === 'low' || st === 'critical' || st === 'out_of_stock')) {   // an inactive product is never reordered
+        reorder.push({ productId: r.product_id, name: r.name ?? '—', branchId: r.branch_id ?? null, branchName: r.branch_name ?? '—', onHand, reorderLevel: n(r.reorder_level), status: st, suggestedQty: reorderSuggestion(onHand, n(r.reorder_level), n(r.reorder_quantity), n(r.on_order)) });
       }
     }
     const rank: Record<string, number> = { out_of_stock: 0, critical: 1, low: 2 };

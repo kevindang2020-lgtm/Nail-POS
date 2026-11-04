@@ -10,7 +10,7 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
-import { liveAlertState, openAlertCount } from './stock-alert-state';
+import { liveAlertState, openAlertCount, onOrderSql } from './stock-alert-state';
 import { formatQuantity } from './product-usage-core';
 import { reorderSuggestion } from './inventory-core';
 import { InventoryError, type InvCtx } from './inventory.service';
@@ -157,10 +157,11 @@ export class StockAlertsRepository {
         p.name, p.sku, p.barcode, p.color_number, p.unit_type, br.name AS brand_name, c.name AS category_name, v.id AS vendor_id, v.name AS vendor_name, v.phone AS vendor_phone,
         wa.id AS alert_id, wa.created_at AS alert_since, wa.acknowledged_at, wa.acknowledged_by_user_id,
         coalesce(nullif(au.full_name, ''), nullif(trim(coalesce(au.first_name, '') || ' ' || coalesce(au.last_name, '')), ''), au.email) AS acknowledged_by_name,
-        (SELECT coalesce(sum(greatest(0, pl.quantity_ordered - pl.quantity_received)), 0)::int FROM purchase_order_lines pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
-          WHERE po.tenant_id = ${ctx.tenantId} AND po.branch_id = ${b} AND pl.product_id = la.product_id AND po.status IN ('draft', 'approved', 'ordered', 'partial')) AS on_order,
+        ${onOrderSql(ctx.tenantId, b, sql`la.product_id`)} AS on_order,   -- committed orders only: a draft is not on order
         (SELECT string_agg(DISTINCT po.po_number, ', ') FROM purchase_order_lines pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
-          WHERE po.tenant_id = ${ctx.tenantId} AND po.branch_id = ${b} AND pl.product_id = la.product_id AND po.status IN ('draft', 'approved', 'ordered', 'partial')) AS open_pos,
+          WHERE po.tenant_id = ${ctx.tenantId} AND po.branch_id = ${b} AND pl.product_id = la.product_id AND po.status IN ('approved', 'ordered', 'partial')) AS open_pos,
+        (SELECT string_agg(DISTINCT po.po_number, ', ') FROM purchase_order_lines pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
+          WHERE po.tenant_id = ${ctx.tenantId} AND po.branch_id = ${b} AND pl.product_id = la.product_id AND po.status = 'draft') AS draft_pos,
         lu.technician_id AS last_tech_id, lu.technician_name AS last_tech_name, lu.occurred_at AS last_used_at, lu.hundredths AS last_qty, lu.source AS last_source
       ${base}
       ORDER BY wa.created_at DESC NULLS LAST, CASE la.severity WHEN 'out_of_stock' THEN 0 WHEN 'critical' THEN 1 ELSE 2 END, p.name, la.product_id
@@ -171,7 +172,7 @@ export class StockAlertsRepository {
         productId: String(r.product_id), alertId: r.alert_id ?? null, name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, colorNumber: r.color_number ?? null, unit: r.unit_type || 'unit',
         brand: r.brand_name ?? null, category: r.category_name ?? null, vendorId: r.vendor_id ?? null, vendor: r.vendor_name ?? null, vendorPhone: r.vendor_phone ?? null,
         severity: r.severity, onHand: N(r.on_hand), reorderLevel: N(r.reorder_level), criticalLevel: N(r.critical_level),
-        suggestedReorder: reorderSuggestion(N(r.on_hand), N(r.reorder_level), N(r.reorder_quantity)), onOrder: N(r.on_order), openPurchaseOrders: r.open_pos ?? null,
+        suggestedReorder: reorderSuggestion(N(r.on_hand), N(r.reorder_level), N(r.reorder_quantity), N(r.on_order)), onOrder: N(r.on_order), openPurchaseOrders: r.open_pos ?? null, draftPurchaseOrders: r.draft_pos ?? null,
         since: iso(r.alert_since), acknowledgedAt: iso(r.acknowledged_at), acknowledgedBy: r.acknowledged_by_name ?? null,
         ...this.lastUsedOut(r),
       })),

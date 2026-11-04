@@ -3767,7 +3767,7 @@ POST /tenant/inventory/purchase-orders/{id}/approve  realm=staff  auth=session  
 POST /tenant/inventory/purchase-orders/{id}/cancel  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/purchase-orders/{id}/receive  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.receive  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/receipt-expense  realm=staff  auth=session  domain=inventory  perm=inventory.create  guards=RolePermissionGuard,TenantAuthGuard
-POST /tenant/inventory/recipes/{serviceId}/consume  realm=staff  auth=session  domain=inventory  perm=inventory.product_usage.submit  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/recipes/{serviceId}/consume  realm=staff  auth=session  domain=inventory  perm=inventory.product_usage.submit  idempotency=required  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/screen/products/{productId}/recount  realm=staff  auth=session  domain=inventory  perm=inventory.stock.adjust  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/screen/products/{productId}/restore  realm=staff  auth=session  domain=inventory  perm=inventory.archive  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/stock-alerts/active/{productId}/acknowledge  realm=staff  auth=session  domain=inventory  perm=inventory.view  guards=RolePermissionGuard,TenantAuthGuard

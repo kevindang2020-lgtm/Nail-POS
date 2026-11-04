@@ -130,7 +130,7 @@ export function POSInventoryAlertsScreen() {
                 <td><button type="button" className="fk-li-t link" onClick={() => setProduct(r.productId)}>{r.name}</button><span className="fk-li-s">{[r.sku, r.brand, r.vendor].filter(Boolean).join(' · ') || '—'}</span></td>
                 <td><span className={'fk-chip ' + (SEV_TONE[r.severity] ?? 'mut')}>{sevLbl(r.severity)}</span>{r.acknowledgedAt ? <span className="fk-li-s">{tx('sa.ackBy', { who: r.acknowledgedBy ?? '—' })}</span> : null}</td>
                 <td className="num"><b>{fmtNumber(r.onHand)}</b></td>
-                <td className="num">{fmtNumber(r.reorderLevel)}<span className="fk-li-s">{r.onOrder ? tx('sa.onOrder', { n: fmtNumber(r.onOrder) }) : r.suggestedReorder ? tx('sa.suggest', { n: fmtNumber(r.suggestedReorder) }) : ''}</span></td>
+                <td className="num">{fmtNumber(r.reorderLevel)}<span className="fk-li-s">{[r.onOrder ? tx('sa.onOrder', { n: fmtNumber(r.onOrder) }) : '', r.suggestedReorder ? tx('sa.suggest', { n: fmtNumber(r.suggestedReorder) }) : '', r.draftPurchaseOrders ? tx('sa.draftPo', { po: r.draftPurchaseOrders }) : ''].filter(Boolean).join(' · ')}</span></td>
                 <td><LastUsed r={r} testId="last-used" /></td>
                 <td className="t-opt">{r.since ? when(r.since) : <span className="fk-muted">{tx('sa.sinceUnknown')}</span>}</td>
                 <td className="fn-acts">

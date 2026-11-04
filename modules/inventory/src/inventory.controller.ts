@@ -79,7 +79,9 @@ export class InventoryController {
   @Get('recipes') @RequirePermission('inventory.view') listRecipes(@Req() r: any) { return run(() => this.svc.listServicesForRecipes(ctx(r))); }
   @Get('recipes/:serviceId') @RequirePermission('inventory.view') getRecipe(@Req() r: any, @Param('serviceId') id: string) { return run(() => this.svc.getServiceRecipe(ctx(r), id)); }
   @Put('recipes/:serviceId') @RequirePermission('inventory.update') setRecipe(@Req() r: any, @Param('serviceId') id: string, @Body(ValidatedBody(INV_RECIPE_BODY, { strict: true })) b: any) { return run(() => this.svc.setServiceRecipe(ctx(r), id, b)); }
-  @Post('recipes/:serviceId/consume') @RequirePermission('inventory.product_usage.submit') consumeRecipe(@Req() r: any, @Param('serviceId') id: string, @Body(ValidatedBody(INV_CONSUME_BODY, { strict: true })) b: any) { return run(() => this.svc.consumeServiceRecipe(ctx(r), id, b?.multiplier)); }
+  // audit D9 (Nov 4 2026): a manual deduction had no idempotency — a retried request emptied the bottles twice. An
+  // Idempotency-Key is now required; the same key replays the first answer.
+  @Idempotent({ required: true }) @Post('recipes/:serviceId/consume') @RequirePermission('inventory.product_usage.submit') consumeRecipe(@Req() r: any, @Param('serviceId') id: string, @Body(ValidatedBody(INV_CONSUME_BODY, { strict: true })) b: any) { return run(() => this.svc.consumeServiceRecipe(ctx(r), id, b?.multiplier)); }
 
   // ---- stock-threshold alert feed (§17) — persisted, acknowledgeable (distinct from live /alerts) ----
   @Get('alert-feed') @RequirePermission('inventory.view') listAlerts(@Req() r: any, @Query() q: any) { return run(() => this.svc.listAlerts(ctx(r), q?.includeAcknowledged !== 'false')); }

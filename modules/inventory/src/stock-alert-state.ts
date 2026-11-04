@@ -41,3 +41,12 @@ export function openAlertCount(tenantId: string, branchId: string): RawBuilder<{
     WHERE NOT EXISTS (SELECT 1 FROM inventory_alerts a WHERE a.tenant_id = ${tenantId} AND a.branch_id = ${branchId} AND a.product_id = la.product_id
                         AND a.resolved_at IS NULL AND a.acknowledged_at IS NOT NULL)`;
 }
+
+/** Purchase-order statuses whose open quantity is really coming: a DRAFT is not an order yet (it was counted as one). */
+export const ON_ORDER_PO_STATUSES = ['approved', 'ordered', 'partial'] as const;
+
+/** Bottles (purchase units × pack) still to arrive for `productCol` at `branchId` (every location when null) — committed purchase orders only. */
+export function onOrderSql(tenantId: string, branchId: string | null, productCol: RawBuilder<unknown>): RawBuilder<number> {
+  return sql<number>`(SELECT coalesce(sum(greatest(0, pl.quantity_ordered - pl.quantity_received) * pl.units_per_purchase_unit), 0)::int FROM purchase_order_lines pl JOIN purchase_orders po ON po.id = pl.purchase_order_id
+    WHERE po.tenant_id = ${tenantId} AND (${branchId}::uuid IS NULL OR po.branch_id = ${branchId}::uuid) AND pl.product_id = ${productCol} AND po.status IN ('approved', 'ordered', 'partial'))`;
+}

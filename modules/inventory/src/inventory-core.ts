@@ -51,9 +51,11 @@ export function stockStatus(onHand: number, reorderLevel: number, maximumStock?:
 }
 
 /** Suggested reorder quantity when at/below the reorder point (0 when not needed). */
-export function reorderSuggestion(onHand: number, reorderLevel: number, reorderQuantity: number): number {
+export function reorderSuggestion(onHand: number, reorderLevel: number, reorderQuantity: number, onOrder = 0): number {
   if (reorderLevel <= 0 || onHand > reorderLevel) return 0;
-  return Math.max(reorderQuantity, reorderLevel - onHand);
+  // audit D9 (Nov 4 2026): what is already on order (approved / ordered / partly received — never a draft) is subtracted,
+  // so a product with a purchase order on the way is not suggested again
+  return Math.max(0, Math.max(reorderQuantity, reorderLevel - onHand) - Math.max(0, onOrder));
 }
 
 // ---- bottle lifecycle guards ----

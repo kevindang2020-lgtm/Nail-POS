@@ -311,7 +311,7 @@ export class InventoryScreenRepository extends StockAlertsRepository {
     if (!one) throw withCode(new InventoryError(404, 'Purchase order not found'), 'PO_NOT_FOUND');
     const hide = this.techOnly(ctx);
     const lines = (await sql<any>`SELECT pl.id, pl.product_id, p.name, p.sku, p.color_number, p.unit_type, pl.quantity_ordered, pl.quantity_received, pl.unit_cost_cents, pl.lot_number,
-        to_char(pl.expiration_date, 'YYYY-MM-DD') AS expiration_date, vp.supplier_sku, vp.purchase_unit, vp.units_per_purchase_unit
+        to_char(pl.expiration_date, 'YYYY-MM-DD') AS expiration_date, vp.supplier_sku, vp.purchase_unit, pl.units_per_purchase_unit   -- the pack the order was placed in (snapshot)
       FROM purchase_order_lines pl JOIN inventory_products p ON p.id = pl.product_id AND p.tenant_id = pl.tenant_id
       JOIN purchase_orders po ON po.id = pl.purchase_order_id AND po.tenant_id = pl.tenant_id
       LEFT JOIN inventory_vendor_products vp ON vp.tenant_id = pl.tenant_id AND vp.vendor_id = po.vendor_id AND vp.product_id = pl.product_id
