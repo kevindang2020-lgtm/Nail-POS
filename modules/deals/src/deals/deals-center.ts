@@ -57,7 +57,7 @@ export class DealsCenter {
 
   /** §9 approval inbox: pending requests, each with the policy comparison a manager decides on. Oldest waiting first by
    *  default (fairness); "start" = the soonest planned start first; "newest" only when asked. */
-  async approvals(ctx: DealContext, f: { q?: string; order?: string; page?: unknown; pageSize?: unknown }) {
+  async approvals(ctx: DealContext, f: { q?: string; order?: string; branchId?: string; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId;
     const page = Math.max(1, Math.trunc(Number(f.page)) || 1); const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(f.pageSize)) || 10));
     const order = (APPROVAL_ORDERS as readonly string[]).includes(String(f.order)) ? String(f.order) : 'oldest';
@@ -65,7 +65,9 @@ export class DealsCenter {
     // "requested" = when it entered pending_approval: its newest version row (submit bumps the version), else its last update
     const reqAt = sql`coalesce((select max(v.created_at) from deal_versions v where v.tenant_id = d.tenant_id and v.deal_id = d.id), d.updated_at)`;
     const techName = sql`(select coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) from technicians te where te.id = d.technician_id and te.tenant_id = d.tenant_id)`;
-    const w = sql`d.tenant_id = ${T} and ${this.branch(ctx)} and d.status = 'pending_approval'
+    // Deals guide (Nov 4 2026): a location filter (salon-wide requests stay visible beside a location's own)
+    const fb = f.branchId && /^[0-9a-f-]{36}$/i.test(f.branchId) ? f.branchId : null;
+    const w = sql`d.tenant_id = ${T} and ${this.branch(ctx)} and d.status = 'pending_approval' and (${fb}::uuid is null or d.branch_id = ${fb} or d.branch_id is null)
       and (${raw} = '' or d.title ilike ${l} or coalesce(${techName}, '') ilike ${l} or d.id::text = ${raw.toLowerCase()} or coalesce(d.technician_id::text, '') = ${raw.toLowerCase()})`;
     const total = N((await sql<any>`select count(*)::int as n from deals d where d.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const pg = Math.min(page, totalPages);
@@ -164,8 +166,8 @@ const PRESET = { type: 'enum', values: ['today', 'week', 'month', 'year', 'custo
 const LIB_SPEC = { filters: { preset: PRESET, status: { type: 'enum', values: ['live', 'all', 'pending', ...LIFECYCLES] }, type: { type: 'enum', values: ['percent', 'fixed', 'all'] },
   dateField: { type: 'enum', values: DEAL_DATE_FIELDS }, serviceId: { type: 'uuid' }, ownerType: { type: 'enum', values: ['salon', 'technician', 'all'] }, kind: { type: 'enum', values: ['all', ...DEAL_KINDS_ALL] },
   technicianId: { type: 'uuid' }, branchId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
-const RED_SPEC = { filters: { preset: PRESET, state: { type: 'enum', values: REDEMPTION_STATES }, dealId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
-const APR_SPEC = { filters: { order: { type: 'enum', values: APPROVAL_ORDERS } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
+const RED_SPEC = { filters: { preset: PRESET, state: { type: 'enum', values: REDEMPTION_STATES }, dealId: { type: 'uuid' }, branchId: { type: 'uuid' }, dateField: { type: 'enum', values: ['redeemed', 'applied', 'finalized'] } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
+const APR_SPEC = { filters: { order: { type: 'enum', values: APPROVAL_ORDERS }, branchId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/deals-offers')
@@ -185,10 +187,10 @@ export class DealsCenterController {
   }
 
   @Get('approvals') @RequirePermission('pos.marketing.view') @ListQuery(APR_SPEC)
-  approvals(@Req() r: any, @Query() q: any) { return run(() => this.c().approvals(ctxOf(r), { q: s(q?.q), order: s(q?.order), page: q?.page, pageSize: q?.pageSize })); }
+  approvals(@Req() r: any, @Query() q: any) { return run(() => this.c().approvals(ctxOf(r), { q: s(q?.q), order: s(q?.order), branchId: s(q?.branchId), page: q?.page, pageSize: q?.pageSize })); }
 
   @Get('redemptions') @RequirePermission('pos.marketing.view') @ListQuery(RED_SPEC)
-  redemptions(@Req() r: any, @Query() q: any) { return run(() => this.c().redemptions(ctxOf(r), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), ...per(q), page: q?.page, pageSize: q?.pageSize })); }
+  redemptions(@Req() r: any, @Query() q: any) { return run(() => this.c().redemptions(ctxOf(r), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), dateField: s(q?.dateField), ...per(q), page: q?.page, pageSize: q?.pageSize })); }
 
   @Get('health') @RequirePermission('pos.marketing.view')
   health(@Req() r: any) { return run(() => this.c().health(ctxOf(r))); }

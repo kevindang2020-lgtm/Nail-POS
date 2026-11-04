@@ -12,6 +12,7 @@
 //   details  overview, eligibility, limits, services, redemptions, approvals & policy, performance, versions; Check / Edit /
 //            Duplicate / lifecycle actions. The checker is Checkout's own engine and changes nothing.
 // Money is the server's (integer cents). A technician deal is never decided by its own proposer (server rule DEAL_SELF_APPROVAL).
+import { authApi } from '../api/authApi';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -77,9 +78,12 @@ export function POSDealsScreen() {
   useEffect(() => { (posServicesApi.list() as Promise<any>).then((r) => setServices((Array.isArray(r) ? r : r?.items ?? r?.services ?? []).map((s: any) => ({ id: String(s.id ?? s.serviceId), name: String(s.name) })))).catch(() => setServices([])); }, []);
   useEffect(() => { (posTechniciansApi.list({ pageSize: 100 }) as Promise<any>).then((r) => setTechs((Array.isArray(r) ? r : r?.items ?? r?.technicians ?? []).map((x: any) => ({ id: String(x.id ?? x.technicianId), name: String(x.fullName ?? x.displayName ?? x.name ?? '') })).filter((x: any) => x.name))).catch(() => setTechs([])); }, []);
 
-  const libScope = { q: q || undefined, status, kind, ownerType: owner, type, serviceId: serviceId || undefined, technicianId: technicianId || undefined, dateField: basis, ...periodQuery(periods.library) };
-  const redScope = { q: q || undefined, state: redState, ...periodQuery(periods.redemptions) };
-  const aprScope = { q: q || undefined, order };
+  // Deals guide (Nov 4 2026): a location filter on every list, and the redemption date basis (applied / ticket paid)
+  const [branchId, setBranchId] = useState(''); const [redBasis, setRedBasis] = useState('redeemed');
+  const branches = useLoad(() => authApi.branches().then((r: any) => (r.branches ?? []).filter((b: any) => b.isActive)), []);
+  const libScope = { q: q || undefined, status, kind, ownerType: owner, type, serviceId: serviceId || undefined, technicianId: technicianId || undefined, dateField: basis, branchId: branchId || undefined, ...periodQuery(periods.library) };
+  const redScope = { q: q || undefined, state: redState, branchId: branchId || undefined, dateField: redBasis, ...periodQuery(periods.redemptions) };
+  const aprScope = { q: q || undefined, order, branchId: branchId || undefined };
   const libKey = JSON.stringify([libScope, size]); const redKey = JSON.stringify([redScope, size]); const aprKey = JSON.stringify([aprScope, size]);
   useEffect(() => setPage(1), [libKey]); useEffect(() => setRpage(1), [redKey]); useEffect(() => setApage(1), [aprKey]);
   const kpis = useLoad(() => posDealsOffersApi.kpis(), [tick]);
@@ -93,9 +97,9 @@ export function POSDealsScreen() {
   useEffect(() => { const p = apr.data?.page; if (p && p !== apage) setApage(p); }, [apr.data]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   const libFiltered = status !== 'live' || kind !== 'all' || owner !== 'all' || type !== 'all' || !!serviceId || !!technicianId || periods.library.preset !== 'all';
-  const filtered = !!(q || (tab === 'library' && libFiltered) || (tab === 'redemptions' && (redState !== 'confirmed' || periods.redemptions.preset !== 'all')) || (tab === 'approvals' && order !== 'oldest'));
+  const filtered = !!(branchId || q || (tab === 'library' && libFiltered) || (tab === 'redemptions' && (redState !== 'confirmed' || periods.redemptions.preset !== 'all')) || (tab === 'approvals' && order !== 'oldest'));
   const clearAll = () => {
-    setSearch(''); setType('all'); setServiceId(''); setTechnicianId(''); setBasis('created'); setRedState('confirmed'); setOrder('oldest');
+    setBranchId(''); setRedBasis('redeemed'); setSearch(''); setType('all'); setServiceId(''); setTechnicianId(''); setBasis('created'); setRedState('confirmed'); setOrder('oldest');
     setPeriods({ library: { preset: 'all' }, redemptions: { preset: 'all' } });
     const p = new URLSearchParams(params); ['status', 'kind', 'owner'].forEach((k) => p.delete(k)); setParams(p, { replace: true });
   };
@@ -159,11 +163,13 @@ export function POSDealsScreen() {
         </> : null}
         {tab === 'redemptions' ? <select className="fk-select" value={redState} onChange={(e) => setRedState(e.target.value)} aria-label={tx('pos.status')} data-testid="red-state">{RSTATES.map((s) => <option key={s} value={s}>{tx('dsc.rstate.' + s)}</option>)}</select> : null}
         {tab === 'approvals' ? <select className="fk-select" value={order} onChange={(e) => setOrder(e.target.value)} aria-label={tx('do.order')} data-testid="apr-order">{ORDERS.map((s) => <option key={s} value={s}>{tx('do.order.' + s)}</option>)}</select> : null}
+        {(branches.data?.length ?? 0) > 1 ? <select className="fk-select" value={branchId} onChange={(e) => setBranchId(e.target.value)} aria-label={tx('cp.location')} data-testid="branch">
+          <option value="">{tx('cp.allLocations')}</option>{(branches.data ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div> : null}
       {tab === 'library' || tab === 'redemptions' ? <PeriodBar compact allowAll value={periods[pKey]} onChange={(p) => setPeriods((x) => ({ ...x, [pKey]: p }))} server={server}
-        basis={tab === 'library' ? basis : 'redeemed'} onBasis={tab === 'library' ? setBasis : () => undefined}
-        basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('do.basis.' + b) })) : [{ value: 'redeemed', label: tx('dsc.df.redeemed') }]} /> : null}
+        basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
+        basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('do.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}
 
       <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('pos.deals_offers')}>
         {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
@@ -214,7 +220,7 @@ export function POSDealsScreen() {
         footer={<div className="cp-foot"><Pager info={pageOf(reds.data)} onPage={setRpage} label={tx('do.tab.redemptions')} /><SizePicker size={size} onSize={setSize} /></div>}>
         {reds.error ? <StateBlock error={reds.error} onRetry={reds.reload} /> : !reds.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : reds.data.items.length === 0 ? <Empty title={q ? tx('dsc.noMatchSearch', { q }) : tx('dsc.noRedemptions')} />
-          : <RedemptionsTable rows={reds.data.items} onCoupon={(id) => setDetail({ id, tab: 'redemptions' })} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} />}
+          : <RedemptionsTable rows={reds.data.items} onCoupon={(id) => setDetail({ id, tab: 'redemptions' })} onTicket={(ticketId) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(reds.data.items.find((x: any) => x.ticketId === ticketId)?.ticketNumber ?? ticketId)}`)} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} />}
       </FitPanel> : null}
 
       {tab === 'performance' ? <FitPanel testId="performance" title={tx('do.tab.performance')}><DealsDashboard /><div className="fk-hint">{tx('do.perfNote')}</div></FitPanel> : null}

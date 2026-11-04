@@ -17,6 +17,7 @@ vi.mock('../api/posDealsApi', () => ({ posDealsApi: deals }));
 vi.mock('../api/posDealsOffersApi', () => ({ posDealsOffersApi: offers }));
 vi.mock('../api/posDiscountsApi', () => ({ posDiscountsApi: disc }));
 vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
+vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Second', isActive: true }] }) } }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: async () => [{ id: '11111111-1111-4111-8111-111111111111', name: 'Polish change', priceCents: 1000 }] } }));
 vi.mock('../api/posTechniciansApi', () => ({ posTechniciansApi: { list: async () => ({ items: [{ id: 't1', fullName: 'Lisa Tran' }] }) } }));
 import { POSDealsScreen } from './POSDealsScreen';
@@ -153,5 +154,16 @@ describe('checker, health, wizard, settings, performance', () => {
     renderScreen('/tenant/marketing/deals?tab=performance');
     const dash = await screen.findByTestId('deals-dashboard');
     await waitFor(() => expect(dash).toHaveTextContent('Spring time'));
+  });
+  it('a location filter reaches the library, approvals and redemptions; the redemption basis and #ticket work', async () => {
+    renderScreen();
+    fireEvent.change(await screen.findByTestId('branch'), { target: { value: 'b2' } });
+    await waitFor(() => expect(offers.library).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', page: 1 })));
+    fireEvent.click(screen.getByTestId('tab-approvals'));
+    await waitFor(() => expect(offers.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2' })));
+    offers.redemptions.mockResolvedValue({ ...page([{ id: 'r1', at: '2026-10-30T12:00:00Z', customerId: null, customerName: 'Ana', code: null, dealName: 'Deal', dealId: 'd1', ticketId: 't9', ticketNumber: '2001', eligibleSubtotalCents: 1000, discountCents: 200, finalCents: 800, status: 'redeemed' }]), totals: { savingsCents: 200, uniqueCustomers: 1 } });
+    fireEvent.click(screen.getByTestId('tab-redemptions'));
+    await waitFor(() => expect(offers.redemptions).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', dateField: 'redeemed' })));
+    expect(await screen.findByTestId('red-ticket')).toHaveTextContent('#2001');
   });
 });

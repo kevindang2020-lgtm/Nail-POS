@@ -296,3 +296,19 @@ describe('§10 details, §15 assistant, §17 tenant isolation', () => {
     expect((await center.kpis(ownerX)).pendingApproval).toBe(0);
   });
 });
+
+// Deals guide (Nov 4 2026): the approval inbox filters by location (salon-wide requests stay visible) and searches by title
+describe('Deals center — approvals location filter and search', () => {
+  it('a location filter keeps that location\'s and salon-wide requests; another location\'s disappear', async () => {
+    const salon = { ...owner, branchId: undefined } as any;   // an owner viewing the whole salon (a branch session only ever sees its own)
+    const B3 = id('b3');
+    await q(`insert into branches (id, tenant_id, name) values ($1,$2,'Third') on conflict do nothing`, [B3, T]);
+    const all = await center.approvals(owner, { pageSize: 50 } as any);
+    expect(all.totalItems).toBeGreaterThan(0);
+    const pick = all.items[0]!;
+    await q(`update deals set branch_id = $1 where id = $2`, [B3, pick.id]);
+    expect((await center.approvals(salon, { pageSize: 50, branchId: B } as any)).items.map((x: any) => x.id)).not.toContain(pick.id);
+    expect((await center.approvals(salon, { pageSize: 50, branchId: B3 } as any)).items.map((x: any) => x.id)).toContain(pick.id);
+    expect((await center.approvals(salon, { pageSize: 50, q: pick.title } as any)).items.map((x: any) => x.id)).toContain(pick.id);
+  });
+});
