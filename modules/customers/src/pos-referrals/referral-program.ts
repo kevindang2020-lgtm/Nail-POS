@@ -345,6 +345,9 @@ export class ReferralProgram {
   // ── issuance (guide §10): exactly one posting per reward; a cash payout is BLOCKED_EXTERNAL ─────────────────────────
   /** the issuance itself, inside the caller's transaction. A turned-off Settings switch leaves the reward APPROVED (not an error). */
   async issueTx(trx: Kysely<any>, T: string, actor: unknown, rewardId: string, source: string): Promise<{ rewardId: string; state: string; duplicate: boolean; ledgerEntryId?: string | null; held?: string }> {
+    // lock order: the referral, THEN its reward — the same order review() takes. Locking the reward first deadlocked against a
+    // concurrent approval holding the referral (real Postgres: "deadlock detected" instead of a clean conflict).
+    await sql`select rr.id from referral_redemptions rr where rr.tenant_id = ${T} and rr.id = (select rw0.referral_id from referral_rewards rw0 where rw0.tenant_id = ${T} and rw0.id = ${rewardId}) for update of rr`.execute(trx);
     const w = (await sql<any>`select ${RW_COLS}, rr.branch_id as ref_branch, rr.state as ref_state from referral_rewards rw join referral_redemptions rr on rr.id = rw.referral_id and rr.tenant_id = rw.tenant_id
       where rw.tenant_id = ${T} and rw.id = ${rewardId} for update of rw`.execute(trx)).rows[0];
     if (!w) throw new ReferralProgramError('Reward not found.', 'REFERRAL_REWARD_NOT_FOUND', 404);
@@ -379,6 +382,7 @@ export class ReferralProgram {
       // a provider / ledger failure: keep the reward Failed with the reason; a retry reuses the same issuance key
       const msg = String((e as Error)?.message ?? e).slice(0, 300);
       await this.db.transaction().execute(async (trx) => {
+        await sql`select rr.id from referral_redemptions rr where rr.tenant_id = ${T} and rr.id = (select rw0.referral_id from referral_rewards rw0 where rw0.tenant_id = ${T} and rw0.id = ${rewardId}) for update of rr`.execute(trx);   // same lock order
         const w = (await sql<any>`select referral_id, state from referral_rewards where tenant_id = ${T} and id = ${rewardId} for update`.execute(trx)).rows[0];
         if (w && w.state === 'APPROVED') {
           await this.moveReward(trx, T, rewardId, 'FAILED', sql`issue_error = ${msg}`);

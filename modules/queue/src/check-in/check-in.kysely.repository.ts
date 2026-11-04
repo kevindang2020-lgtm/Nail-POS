@@ -272,7 +272,7 @@ export class KyselyCheckInRepository implements CheckInRepositoryPort {
     type Lbl = { id: string; full_name?: string | null; name?: string | null };
     const lc: Lbl[] = custs, lt: Lbl[] = techs, ls: Lbl[] = svcs;
     const labels = { cust: new Map(lc.map((c) => [c.id, c])), tech: new Map(lt.map((t) => [t.id, t.full_name || ''])), svc: new Map(ls.map((x) => [x.id, x.name || ''])) };
-    return rows.map((a: any) => this.loadAppt(ctx, a, labels));
+    return Promise.all(rows.map((a: any) => this.loadAppt(ctx, a, labels)));   // loadAppt is async: without Promise.all the list was an array of promises and every row read as empty
   }
   async appointmentSearch(ctx: CheckInContext, q: string, _date?: string): Promise<POSCheckInAppointmentRow[]> {
     const cat = await this._catalog(ctx); const all = await this._apptsRaw(ctx); const s = (q || '').trim().toLowerCase();
