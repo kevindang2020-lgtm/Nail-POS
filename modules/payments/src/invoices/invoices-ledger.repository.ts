@@ -24,6 +24,7 @@
 //                    status filter narrows the list only, so the cards keep describing the whole period.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { logException } from '@aipowersalon/observability';
+import type { TenantMessenger } from '@aipowersalon/notifications';
 import { assertTransition } from '@aipowersalon/database';
 import { INVOICE } from '../payments-lifecycles';
 import { normalizeLines, nextInvoiceNumber, type InvoiceLineInput } from './invoices.dto';
@@ -51,8 +52,14 @@ const phoneShown = (display: unknown, normalized: unknown): string | null => {
   return n || null;
 };
 
+/** an address shown in the attempt history: enough to recognise it, not to copy it */
+export function maskDestination(channel: string, to: string): string {
+  if (channel === 'email') { const [u, d] = to.split('@'); return d ? `${(u ?? '').slice(0, 2)}***@${d}` : '***'; }
+  const digits = to.replace(/\D/g, ''); return digits.length >= 4 ? `•••-${digits.slice(-4)}` : '•••';
+}
+
 export class InvoicesLedgerRepository {
-  constructor(private readonly db: Kysely<any>, private readonly auditor: AuditRecorder | null = null) {}
+  constructor(private readonly db: Kysely<any>, private readonly auditor: AuditRecorder | null = null, private readonly messenger: TenantMessenger | null = null) {}
   private log = (ctx: FinanceCtx) => (e: unknown) => logException(e, { where: 'invoices-ledger.audit', tenantId: ctx.tenantId });
 
   async period(ctx: FinanceCtx, q: { preset?: unknown; from?: unknown; to?: unknown }): Promise<Period> {
@@ -227,8 +234,72 @@ export class InvoicesLedgerRepository {
         reason: String(c.reason), issuedOn: ymd(c.issued_on), createdAt: iso(c.created_at), issuedBy: c.issued_by ?? null })),
       lines: lines.map((l: any) => ({ id: String(l.id), description: String(l.description), quantity: N(l.quantity), unitPriceCents: N(l.unit_price_cents), lineTotalCents: N(l.line_total_cents), position: N(l.position) })),
       payments: payments.map((p: any) => ({ id: String(p.id), amountCents: N(p.amount_cents), paidOn: ymd(p.paid_on), method: String(p.method), reference: p.reference ?? null, note: p.note ?? null, createdAt: iso(p.created_at), recordedBy: p.recorded_by ?? null })),
-      delivery: { email: 'not_connected', sms: 'not_connected', note: 'Invoice delivery to customers is not connected. Sending marks the invoice issued; share the PDF with the customer.' },
+      delivery: await this.deliveryState(ctx, id, r),
     };
+  }
+
+  // ── Delivery (Invoices guide Nov 4 2026 §14): the salon's configured sender; submitted ≠ delivered ──
+  private deliveryChannels() {
+    return { email: this.messenger?.sendEmail ? 'available' as const : 'not_connected' as const, sms: this.messenger ? 'available' as const : 'not_connected' as const };
+  }
+  private async deliveryState(ctx: FinanceCtx, id: string, r: any) {
+    const ch = this.deliveryChannels();
+    const attempts = (await sql<any>`select d.id, d.channel, d.destination, d.status, d.reason, d.created_at, n.status as notif_status, n.delivered_at, n.provider_error_code
+        from invoice_deliveries d left join notifications n on n.id = d.notification_id and n.tenant_id = d.tenant_id
+        where d.tenant_id = ${ctx.tenantId} and d.invoice_id = ${id}::uuid order by d.created_at desc, d.id desc limit 20`.execute(this.db)).rows;
+    const issued = ['sent', 'partially_paid', 'paid'].includes(String(r.status));
+    const email = r.bill_to_email ?? null, phone = r.bill_to_phone_digits ?? null;
+    const note = ch.email === 'not_connected' && ch.sms === 'not_connected' ? 'Invoice delivery to customers is not connected. Sending marks the invoice issued; share the PDF with the customer.' : '';
+    return {
+      email: ch.email, sms: ch.sms, note,
+      canSend: { email: issued && ch.email === 'available' && !!email, sms: issued && ch.sms === 'available' && !!phone },
+      destination: { email, phone: r.bill_to_phone ?? null },
+      attempts: attempts.map((a: any) => ({ id: String(a.id), channel: String(a.channel), destination: maskDestination(String(a.channel), String(a.destination)), createdAt: iso(a.created_at), reason: a.reason ?? null,
+        // what the provider confirmed, never more: delivered only when the ledger row says so
+        status: a.notif_status === 'delivered' ? 'delivered' : a.notif_status === 'failed' && a.status === 'submitted' ? 'undelivered' : String(a.status), deliveredAt: iso(a.delivered_at) })),
+    };
+  }
+  /** Send an issued invoice to the bill-to email / phone. Claim-before-send on the request key (a retry sends nothing). */
+  async deliver(ctx: FinanceCtx, id: string, b: Record<string, unknown>) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const key = String(b.idempotencyKey ?? '');
+    if (!isUuid(key)) throw new FinanceError('This action needs a request id. Try again.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const channel = oneOf(b.channel, ['email', 'sms'] as const, 'channel');
+    if (!channel) throw new FinanceError('Choose email or text message.', 'VALIDATION_FAILED', 400, { field: 'channel' });
+    const ch = this.deliveryChannels();
+    if (ch[channel] !== 'available') throw new FinanceError(channel === 'email' ? 'Invoice email is not connected for this salon.' : 'Text messages are not connected for this salon.', 'INVOICE_DELIVERY_NOT_CONNECTED', 409, { channel });
+    const T = ctx.tenantId; const actor = isUuid(ctx.userId) ? ctx.userId : null;
+    const claim = await this.db.transaction().execute(async (trx) => {
+      const prior = (await sql<any>`select id, invoice_id, status from invoice_deliveries where tenant_id = ${T} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      if (prior) { if (String(prior.invoice_id) !== id) throw new FinanceError('This request id was already used.', 'IDEMPOTENCY_KEY_REQUIRED'); return { duplicate: true as const }; }
+      const inv = (await sql<any>`select id, status, invoice_number, customer_id, bill_to_name, bill_to_email, bill_to_phone_digits, total_cents, due_date, to_char(due_date, 'YYYY-MM-DD') as due_ymd from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!inv) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      if (!['sent', 'partially_paid', 'paid'].includes(String(inv.status))) throw new FinanceError(String(inv.status) === 'draft' ? 'Issue the invoice before sending it to the customer.' : 'This invoice cannot be sent.', 'INVOICE_NOT_DELIVERABLE', 409, { status: String(inv.status) });
+      const to = channel === 'email' ? (inv.bill_to_email ? String(inv.bill_to_email).trim() : '') : (inv.bill_to_phone_digits ? '+' + (String(inv.bill_to_phone_digits).length === 10 ? '1' : '') + String(inv.bill_to_phone_digits) : '');
+      if (!to) throw new FinanceError(channel === 'email' ? 'This invoice has no email address to send to.' : 'This invoice has no phone number to text.', 'INVOICE_DELIVERY_NO_DESTINATION', 409, { channel });
+      const row = (await sql<any>`insert into invoice_deliveries (tenant_id, invoice_id, channel, destination, status, idempotency_key, created_by, updated_by)
+        values (${T}, ${id}::uuid, ${channel}, ${to}, 'submitting', ${key}, ${actor}, ${actor}) returning id`.execute(trx)).rows[0];
+      return { duplicate: false as const, deliveryId: String(row.id), to, inv };
+    });
+    if (claim.duplicate) return { duplicate: true, ...(await this.detail(ctx, id))! };
+    const { inv, to, deliveryId } = claim;
+    const balance = (await this.detail(ctx, id))!.invoice.balanceCents;
+    const salon = await this.salonIdentity(ctx);
+    // customer-facing text is English (guide §14 — no separate localisation decision exists)
+    const dueText = inv.due_ymd ? `, due ${inv.due_ymd}` : '';
+    const body = `Invoice ${inv.invoice_number} from ${salon.name}: total $${usd(N(inv.total_cents))}, balance due $${usd(balance)}${dueText}.${salon.phone ? ` Questions? Call ${salon.phone}.` : ''}`;
+    let status: 'submitted' | 'simulated' | 'blocked' | 'failed'; let reason: string | null = null; let providerId: string | null = null; let notificationId: string | null = null;
+    try {
+      const res = channel === 'email'
+        ? await this.messenger!.sendEmail!({ tenantId: T, branchId: isUuid(ctx.branchId) ? ctx.branchId : null, to, subject: `Invoice ${inv.invoice_number} from ${salon.name}`, body, purpose: 'notification', category: 'manual', customerId: inv.customer_id ? String(inv.customer_id) : null, idempotencyKey: key })
+        : await this.messenger!.sendSms({ tenantId: T, branchId: isUuid(ctx.branchId) ? ctx.branchId : null, to, body, purpose: 'notification', customerId: inv.customer_id ? String(inv.customer_id) : null });
+      status = res.sent ? (res.simulated ? 'simulated' : 'submitted') : res.status === 'blocked' ? 'blocked' : 'failed';
+      reason = res.sent ? null : (res.reason ?? res.status); providerId = res.providerId ?? null; notificationId = res.notificationId && isUuid(res.notificationId) ? res.notificationId : null;
+    } catch (e: any) { status = 'failed'; reason = String(e?.message ?? 'send_failed').slice(0, 200); logException(e, { where: 'invoices-ledger.deliver', tenantId: T }); }   // never retried here — it could double-send
+    await sql`update invoice_deliveries set status = ${status}, reason = ${reason}, provider_id = ${providerId}, notification_id = ${notificationId}, updated_by = ${actor}, updated_at = now()
+      where tenant_id = ${T} and id = ${deliveryId}::uuid and status = 'submitting'`.execute(this.db);
+    await audit(this.auditor, ctx, 'payments', 'invoice_delivery_attempted', 'invoice', id, { deliveryId, channel, status, reason, destination: maskDestination(channel, to) }, this.log(ctx));
+    return { duplicate: false, attempt: { id: deliveryId, channel, status, reason }, ...(await this.detail(ctx, id))! };
   }
 
   /** Customer lookup for New Invoice / Link Customer: this salon's live customers by name, phone or email. */

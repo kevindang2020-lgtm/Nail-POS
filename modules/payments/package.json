@@ -29,6 +29,7 @@
     "@aipowersalon/database": "*",
     "@aipowersalon/date-time": "*",
     "@aipowersalon/money": "*",
+    "@aipowersalon/notifications": "*",
     "@aipowersalon/observability": "*",
     "@aipowersalon/permissions": "*",
     "@aipowersalon/security": "*",

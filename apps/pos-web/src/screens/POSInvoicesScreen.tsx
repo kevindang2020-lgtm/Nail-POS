@@ -27,7 +27,8 @@ type Row = { id: string; invoiceNumber: string; status: string; displayStatus: D
   actions: { edit: boolean; send: boolean; recordPayment: boolean; void: boolean; linkCustomer: boolean; credit?: boolean } };
 type Detail = { invoice: Row; lines: Array<{ id: string; description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }>; payments: Array<{ id: string; amountCents: number; paidOn: string | null; method: string; reference: string | null; note: string | null; createdAt: string | null; recordedBy: string | null }>;
   credits?: Array<{ id: string; creditNumber: string; creditCents: number; refundCents: number; refundMethod: string | null; refundReference: string | null; reason: string; issuedOn: string | null; issuedBy: string | null }>;
-  delivery: { note: string }; permissions: { recordPayment: boolean; send: boolean; manage: boolean } };
+  delivery: { note: string; email?: 'available' | 'not_connected'; sms?: 'available' | 'not_connected'; canSend?: { email: boolean; sms: boolean }; destination?: { email: string | null; phone: string | null };
+    attempts?: Array<{ id: string; channel: string; destination: string; status: string; reason: string | null; createdAt: string | null; deliveredAt: string | null }> }; permissions: { recordPayment: boolean; send: boolean; manage: boolean } };
 const money = (c: number | null | undefined) => fmtMoney(c ?? 0);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) || '—' : '—');
 const lbl = (k: string, fb: string) => codeLabel(k, fb);
@@ -203,6 +204,14 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
       else { const url = URL.createObjectURL(blob); const w = window.open(url, '_blank', 'noopener'); if (!w) onError(tx('finance.iv.popupBlocked')); setTimeout(() => URL.revokeObjectURL(url), 60_000); }
     } catch (e) { onError(errMsg(e)); } finally { setBusy(false); }
   };
+  // Invoices guide (Nov 4 2026) §14: email / text the invoice through the salon's sender — one key per tap
+  const deliver = async (channel: 'email' | 'sms') => {
+    setBusy(true);
+    try { const r = await api.deliver(id, { channel, idempotencyKey: requestId() }); d.reload(); const st = r?.attempt?.status ?? 'submitted';
+      if (st === 'submitted' || st === 'simulated') onChanged(tx(st === 'simulated' ? 'finance.iv.deliverySimulated' : channel === 'email' ? 'finance.iv.emailSubmitted' : 'finance.iv.smsSubmitted', { n: inv?.invoiceNumber ?? '' }));
+      else onError(tx('finance.iv.deliveryNotSent', { why: lbl('finance.iv.deliveryReason.' + (r?.attempt?.reason ?? st), r?.attempt?.reason ?? st) })); }
+    catch (e) { onError(errMsg(e)); } finally { setBusy(false); }
+  };
   const send = async () => { setBusy(true); try { await api.send(id); d.reload(); onChanged(tx('finance.iv.sentNote', { n: inv?.invoiceNumber ?? '' })); } catch (e) { onError(errMsg(e)); } finally { setBusy(false); } };
   return (
     <FitDialog wide title={inv ? tx('finance.iv.detailTitle', { n: inv.invoiceNumber }) : tx('finance.iv.detail')} subtitle={inv ? `${customerText(inv.customer)} · ${tx('finance.iv.col.issued')} ${fmtYmdSafe(inv.issueDate)} · ${tx('finance.iv.col.due')} ${fmtYmdSafe(inv.dueDate)}` : undefined} onClose={onClose} busy={busy} testId="invoice-detail"
@@ -249,7 +258,19 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
         {d.data!.payments.length === 0 ? <div className="fk-hint">{tx('finance.iv.noPayments')}</div> : <table className="fk-table" data-testid="payments"><tbody>{d.data!.payments.map((pm) => <tr key={pm.id}><td>{fmtYmdSafe(pm.paidOn)}</td><td>{tx('finance.payMethod.' + pm.method)}</td><td>{pm.reference ?? '—'}</td><td>{pm.recordedBy ?? '—'}</td><td className="num">{money(pm.amountCents)}</td></tr>)}</tbody></table>}
         {d.data!.credits?.length ? <><h3 className="fk-h3">{tx('finance.iv.creditNotes')}</h3><table className="fk-table" data-testid="credits"><tbody>{d.data!.credits.map((c) => <tr key={c.id}><td>{c.creditNumber}</td><td>{fmtYmdSafe(c.issuedOn)}</td><td className="fn-wrap">{c.reason}</td><td>{c.refundCents ? tx('finance.iv.refundShown', { a: money(c.refundCents), m: tx('finance.payMethod.' + (c.refundMethod ?? 'other')) }) : '—'}</td><td>{c.issuedBy ?? '—'}</td><td className="num">− {money(c.creditCents)}</td></tr>)}</tbody></table></> : null}
         {inv.notes ? <><h3 className="fk-h3">{tx('finance.iv.notes')}</h3><div className="fn-wrap">{inv.notes}</div></> : null}
-        <div className="fk-hint">{tx('finance.iv.deliveryNote')}</div>
+        <h3 className="fk-h3">{tx('finance.iv.deliveryTitle')}</h3>
+        {(() => { const dv = d.data!.delivery; const cs = dv.canSend ?? { email: false, sms: false }; const connected = dv.email === 'available' || dv.sms === 'available'; return <div data-testid="delivery">
+          {!connected ? <div className="fk-hint">{tx('finance.iv.deliveryNote')}</div> : <>
+            <div className="fn-acts">
+              {dv.email === 'available' ? <button type="button" className="fk-btn sm" disabled={busy || !cs.email || !p?.send} onClick={() => deliver('email')} data-testid="deliver-email" title={!dv.destination?.email ? tx('finance.iv.noEmail') : undefined}>{tx('finance.iv.emailInvoice')}{dv.destination?.email ? ` · ${dv.destination.email}` : ''}</button> : <span className="fk-hint">{tx('finance.iv.emailNotConnected')}</span>}
+              {' '}{dv.sms === 'available' ? <button type="button" className="fk-btn sm" disabled={busy || !cs.sms || !p?.send} onClick={() => deliver('sms')} data-testid="deliver-sms" title={!dv.destination?.phone ? tx('finance.iv.noPhone') : undefined}>{tx('finance.iv.textInvoice')}{dv.destination?.phone ? ` · ${dv.destination.phone}` : ''}</button> : <span className="fk-hint">{tx('finance.iv.smsNotConnected')}</span>}
+            </div>
+            {inv.status === 'draft' ? <div className="fk-hint">{tx('finance.iv.deliverAfterIssue')}</div> : null}
+          </>}
+          {dv.attempts?.length ? <table className="fk-table" data-testid="delivery-attempts"><tbody>{dv.attempts.map((a) => <tr key={a.id}><td>{when(a.createdAt)}</td><td>{tx(a.channel === 'email' ? 'finance.iv.channelEmail' : 'finance.iv.channelSms')}</td><td>{a.destination}</td>
+            <td><span className={'fk-chip ' + (a.status === 'delivered' ? 'ok' : a.status === 'submitted' || a.status === 'simulated' ? 'info' : 'bad')}>{lbl('finance.iv.deliveryStatus.' + a.status, a.status)}</span>{a.reason ? <span className="fk-hint"> {lbl('finance.iv.deliveryReason.' + a.reason, a.reason)}</span> : null}</td></tr>)}</tbody></table> : null}
+          <div className="fk-hint">{tx('finance.iv.deliveryHonest')}</div>
+        </div>; })()}
       </>}
     </FitDialog>
   );

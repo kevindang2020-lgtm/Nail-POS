@@ -150,6 +150,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   inventory_vendor_products: 'ut',
   inventory_vendors: 'ut',
   invoice_credits: 'c',
+  invoice_deliveries: 'cut',
   invoices: 'ut',
   ip_block_rules: 'cut',
   jobs: 'ut',

@@ -275,3 +275,47 @@ describe('Invoices — catalog lookup for New Invoice lines', () => {
     expect((await repo.catalogLookup(ctx2, 'gel')).items.map((i) => i.name)).toEqual(['Gel Elsewhere', 'Gel Elsewhere Oil']);
   });
 });
+
+// Invoices guide (Nov 4 2026) §14: email / text through the salon's sender — destination is the bill-to snapshot, a draft is
+// not sent, one key = one attempt, "submitted" is not "delivered" (the notifications ledger decides), not connected says so
+describe('Invoices — delivery to the customer', () => {
+  it('emails / texts an issued invoice once per key, records the attempt, and reports delivered only from the ledger', async () => {
+    const sent: any[] = [];
+    const messenger = {
+      sendSms: async (r: any) => { sent.push({ ch: 'sms', ...r }); return { sent: true, status: 'sent' as const, providerId: 'SM1' }; },
+      sendEmail: async (r: any) => { sent.push({ ch: 'email', ...r }); const n = (await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_id) values ($1,'email',$2,'invoice','sent','EM1') returning id`, [T, r.to])).rows[0]; return { sent: true, status: 'sent' as const, providerId: 'EM1', notificationId: n.id }; },
+    };
+    const r2 = new InvoicesLedgerRepository(db, auditor, messenger as any);
+    const draft = await r2.create(ctx, { customerId: ann, lines: [line('Gel', 1, 4500)], idempotencyKey: key(900) });
+    expect(draft.delivery).toMatchObject({ email: 'available', sms: 'available', canSend: { email: false, sms: false } });
+    expect(await code(r2.deliver(ctx, draft.invoice.id, { channel: 'email', idempotencyKey: key(901) }))).toBe('INVOICE_NOT_DELIVERABLE');
+    const inv = await r2.create(ctx, { customerId: ann, lines: [line('Gel', 1, 4500)], send: true, idempotencyKey: key(902) });
+    expect(inv.delivery.canSend).toEqual({ email: true, sms: true });
+    const e1 = await r2.deliver(ctx, inv.invoice.id, { channel: 'email', idempotencyKey: key(903) });
+    expect(e1.attempt).toMatchObject({ channel: 'email', status: 'submitted' });
+    expect(sent[0]).toMatchObject({ ch: 'email', to: 'ann@example.com', tenantId: T });
+    expect(sent[0].subject).toContain(inv.invoice.invoiceNumber); expect(sent[0].body).toContain('balance due $45.00');
+    const again = await r2.deliver(ctx, inv.invoice.id, { channel: 'email', idempotencyKey: key(903) });
+    expect(again.duplicate).toBe(true); expect(sent.length).toBe(1);   // a retry with the same key sends nothing
+    expect(again.delivery.attempts[0]).toMatchObject({ channel: 'email', status: 'submitted', destination: 'an***@example.com' });
+    await q(`update notifications set status = 'delivered', delivered_at = now() where provider_id = 'EM1'`);
+    expect((await r2.detail(ctx, inv.invoice.id))!.delivery.attempts[0].status).toBe('delivered');
+    const s1 = await r2.deliver(ctx, inv.invoice.id, { channel: 'sms', idempotencyKey: key(904) });
+    expect(sent[1]).toMatchObject({ ch: 'sms', to: '+18565551234', purpose: 'notification' });
+    expect(s1.delivery.attempts[0]).toMatchObject({ channel: 'sms', status: 'submitted', destination: '•••-1234' });
+    expect(audited.filter((a) => a.action === 'invoice_delivery_attempted' && a.resourceId === inv.invoice.id).length).toBe(2);
+    expect(await code(r2.deliver(ctx2, inv.invoice.id, { channel: 'sms', idempotencyKey: key(905) }))).toBe('INVOICE_NOT_FOUND');
+  });
+  it('a blocked send (opt-out) is recorded as blocked; no email on file is refused; no sender says not connected', async () => {
+    const r2 = new InvoicesLedgerRepository(db, auditor, { sendSms: async () => ({ sent: false, status: 'blocked' as const, reason: 'opted_out' }) } as any);
+    const inv = await r2.create(ctx, { customerId: cat, lines: [line('Polish', 1, 2000)], send: true, idempotencyKey: key(910) });   // Cat has no email
+    expect(inv.delivery).toMatchObject({ email: 'not_connected', sms: 'available' });
+    expect(await code(r2.deliver(ctx, inv.invoice.id, { channel: 'email', idempotencyKey: key(911) }))).toBe('INVOICE_DELIVERY_NOT_CONNECTED');
+    const b = await r2.deliver(ctx, inv.invoice.id, { channel: 'sms', idempotencyKey: key(912) });
+    expect(b.attempt).toMatchObject({ status: 'blocked', reason: 'opted_out' });
+    const r3 = new InvoicesLedgerRepository(db, auditor, { sendSms: async () => ({ sent: true, status: 'sent' as const }), sendEmail: async () => ({ sent: true, status: 'sent' as const }) } as any);
+    expect(await code(r3.deliver(ctx, inv.invoice.id, { channel: 'email', idempotencyKey: key(913) }))).toBe('INVOICE_DELIVERY_NO_DESTINATION');
+    expect((await repo.detail(ctx, inv.invoice.id))!.delivery).toMatchObject({ email: 'not_connected', sms: 'not_connected' });   // no messenger at all
+    expect(await code(repo.deliver(ctx, inv.invoice.id, { channel: 'sms', idempotencyKey: key(914) }))).toBe('INVOICE_DELIVERY_NOT_CONNECTED');
+  });
+});

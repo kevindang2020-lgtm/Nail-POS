@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn(), credit: vi.fn(), catalog: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn(), credit: vi.fn(), catalog: vi.fn(), deliver: vi.fn() }));
 vi.mock('../api/posInvoicesApi', () => ({ posInvoicesApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 import { POSInvoicesScreen } from './POSInvoicesScreen';
@@ -137,5 +137,21 @@ describe('POSInvoicesScreen', () => {
     expect(screen.getByTestId('form-total')).toHaveTextContent('$63.00');
     fireEvent.change(screen.getByTestId('catalog-find'), { target: { value: 'gel' } });
     await waitFor(() => expect(api.catalog).toHaveBeenLastCalledWith('gel'));
+  });
+  it('an issued invoice can be emailed / texted; the attempt shows Submitted, never Delivered until the provider confirms; not connected says so', async () => {
+    const dv = { note: '', email: 'available', sms: 'not_connected', canSend: { email: true, sms: false }, destination: { email: 'ann@example.com', phone: '(856) 555-1234' }, attempts: [] };
+    api.detail.mockResolvedValue({ ...detail(), delivery: dv });
+    api.deliver.mockResolvedValue({ attempt: { status: 'submitted', channel: 'email' } });
+    mount();
+    fireEvent.click(await screen.findByText('INV-0002'));
+    const btn = await screen.findByTestId('deliver-email');
+    expect(btn).toHaveTextContent('ann@example.com');
+    expect(screen.queryByTestId('deliver-sms')).toBeNull();
+    expect(screen.getByText('Text messages are not connected for this salon.')).toBeInTheDocument();
+    api.detail.mockResolvedValue({ ...detail(), delivery: { ...dv, attempts: [{ id: 'a1', channel: 'email', destination: 'an***@example.com', status: 'submitted', reason: null, createdAt: '2026-10-29T15:00:00Z', deliveredAt: null }] } });
+    fireEvent.click(btn);
+    await waitFor(() => expect(api.deliver).toHaveBeenCalledWith('i-2', expect.objectContaining({ channel: 'email' })));
+    const attempts = await screen.findByTestId('delivery-attempts');
+    expect(attempts).toHaveTextContent('Submitted'); expect(attempts).not.toHaveTextContent('Delivered');
   });
 });
