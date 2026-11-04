@@ -174,3 +174,26 @@ describe('membership lifecycle (cancel/pause/resume)', () => {
     await expect(svc.cancelMembership(ctx, e.membershipId, { atPeriodEnd: true, expectedVersion: 99 })).rejects.toThrow(ConcurrencyError);
   });
 });
+
+describe('dollar-credit redeem (D6, Nov 3 2026)', () => {
+  const dplan: PlanForEnroll = { ...plan, planId: 'p2', planVersionId: 'v2', benefits: [
+    { benefitId: 'd1', benefitType: 'dollar_credit', serviceId: null, label: '$50 service credit', creditsPerCycle: 0, valueCents: 5000, allocatedValueCents: 0, percent: 0 },
+  ] };
+  it('spends from the dollar balance up to the service price, then refuses when the balance is gone', async () => {
+    repo.seedPlan(dplan);
+    repo.seedServiceLine('sl2', { serviceId: 's1', priceCents: 3500 });
+    repo.seedServiceLine('sl3', { serviceId: 's1', priceCents: 3500 });
+    repo.seedServiceLine('sl4', { serviceId: 's1', priceCents: 3500 });
+    const e = await svc.enroll(ctx, { customerId: 'c1', planId: 'p2', autoRenewConsent: true });
+    const bal = async () => (await svc.getMembershipBenefits(ctx, e.membershipId)).benefits[0].dollarCreditsAvailableCents;
+    expect(await bal()).toBe(5000);
+    // was always MEMBERSHIP_CREDITS_INSUFFICIENT: a dollar benefit was checked against SERVICE credits, which it never has
+    const r1 = await svc.redeemBenefit(ctx, { membershipId: e.membershipId, benefitId: 'd1', ticketId: 'tk1', serviceLineId: 'sl2' });
+    expect(r1.allocatedValueCents).toBe(3500);
+    expect(await bal()).toBe(1500);
+    const r2 = await svc.redeemBenefit(ctx, { membershipId: e.membershipId, benefitId: 'd1', ticketId: 'tk1', serviceLineId: 'sl3' });
+    expect(r2.allocatedValueCents).toBe(1500);   // only what is left, never below zero
+    expect(await bal()).toBe(0);
+    await expect(svc.redeemBenefit(ctx, { membershipId: e.membershipId, benefitId: 'd1', ticketId: 'tk1', serviceLineId: 'sl4' })).rejects.toMatchObject({ apiCode: 'MEMBERSHIP_CREDITS_INSUFFICIENT' });
+  });
+});

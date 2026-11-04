@@ -67,12 +67,22 @@ describe('credit balance derivation', () => {
   it('redeeming a reservation does not double-count (held → consumed)', () => {
     const b = creditBalance([
       { entryType: 'issued', quantity: 2 },
-      { entryType: 'reserved', quantity: 1 },
-      { entryType: 'redeemed', quantity: 1 },
+      { entryType: 'reserved', quantity: 1, reservationRef: 'r1' },
+      { entryType: 'redeemed', quantity: 1, reservationRef: 'r1' },
     ]);
     expect(b.serviceCreditsReserved).toBe(0);
     expect(b.serviceCreditsRedeemed).toBe(1);
     expect(b.serviceCreditsAvailable).toBe(1); // exactly one consumed, one left — not two
+  });
+
+  it('a walk-in redeem (no reservation) does not cancel another open hold (D6: one credit was reserved and redeemed twice)', () => {
+    const b = creditBalance([
+      { entryType: 'issued', quantity: 2 },
+      { entryType: 'reserved', quantity: 1, reservationRef: 'friday' },
+      { entryType: 'redeemed', quantity: 1, reservationRef: null },
+    ]);
+    expect(b.serviceCreditsReserved).toBe(1);   // Friday's hold still stands
+    expect(b.serviceCreditsAvailable).toBe(0);  // was 1: the hold vanished and a third service could be taken
   });
 
   it('releasing a reservation returns the credit to available', () => {
@@ -98,8 +108,8 @@ describe('credit balance derivation', () => {
   it('derives dollar-credit balance the same way', () => {
     const b = creditBalance([
       { entryType: 'issued', amountCents: 5000 },
-      { entryType: 'reserved', amountCents: 2000 },
-      { entryType: 'redeemed', amountCents: 2000 },
+      { entryType: 'reserved', amountCents: 2000, reservationRef: 'r1' },
+      { entryType: 'redeemed', amountCents: 2000, reservationRef: 'r1' },
     ]);
     expect(b.dollarCreditsReservedCents).toBe(0);
     expect(b.dollarCreditsAvailableCents).toBe(3000);

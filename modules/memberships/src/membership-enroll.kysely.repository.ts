@@ -19,6 +19,14 @@ const iso = (v: unknown): string | null => (v == null ? null : new Date(v as any
 
 export class KyselyMembershipEnrollRepository implements MembershipEnrollRepositoryPort {
   constructor(private readonly db: Kysely<DB>, private readonly outbox?: OutboxWriter) {}
+
+  async withMembershipLock<T>(ctx: EnrollContext, membershipId: string, fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T> {
+    if (this.db.isTransaction) return fn(this);
+    return this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext(${'membership_benefit:' + ctx.tenantId + ':' + membershipId}))`.execute(trx);
+      return fn(new KyselyMembershipEnrollRepository(trx, this.outbox));
+    });
+  }
   /** membership.activated / membership.canceled — declared since Constitution 8, recorded by nothing until now. */
   private async membershipFact(exec: any, ctx: EnrollContext, type: string, membershipId: string, payload: Record<string, unknown>): Promise<void> {
     if (!this.outbox) return;

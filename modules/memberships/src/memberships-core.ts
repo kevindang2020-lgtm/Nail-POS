@@ -62,6 +62,7 @@ export interface LedgerEntry {
   entryType: string;
   quantity?: number;     // service-credit magnitude (always stored positive; signs applied here)
   amountCents?: number;  // dollar-credit magnitude (always stored positive; signs applied here)
+  reservationRef?: string | null; // a 'redeemed' entry closes a hold only when it redeems that reservation
 }
 
 export interface CreditBalance {
@@ -83,12 +84,13 @@ export interface CreditBalance {
 export function creditBalance(entries: LedgerEntry[]): CreditBalance {
   let granted = 0, redeemed = 0, expired = 0, reserved = 0, released = 0, adjusted = 0;
   let dGranted = 0, dRedeemed = 0, dExpired = 0, dReserved = 0, dReleased = 0, dAdjusted = 0;
+  let redeemedHeldQ = 0, redeemedHeldA = 0;
   for (const e of entries) {
     const q = e.quantity ?? 0;
     const a = e.amountCents ?? 0;
     switch (e.entryType) {
       case 'issued': case 'rolled_over': case 'restored': granted += q; dGranted += a; break;
-      case 'redeemed': redeemed += q; dRedeemed += a; break;
+      case 'redeemed': redeemed += q; dRedeemed += a; if (e.reservationRef) { redeemedHeldQ += q; redeemedHeldA += a; } break;
       case 'expired': expired += q; dExpired += a; break;
       case 'reserved': reserved += q; dReserved += a; break;
       case 'released': released += q; dReleased += a; break;
@@ -96,9 +98,10 @@ export function creditBalance(entries: LedgerEntry[]): CreditBalance {
       default: break;
     }
   }
-  // A reserve adds a hold; releasing OR redeeming that reserve removes the hold.
-  const heldQ = Math.max(0, reserved - released - redeemed);
-  const heldA = Math.max(0, dReserved - dReleased - dRedeemed);
+  // A reserve adds a hold; releasing OR redeeming THAT reserve removes the hold. A walk-in redeem (no reservation) does not:
+  // it used to cancel someone else's open hold, so one credit could be reserved for Friday and redeemed today.
+  const heldQ = Math.max(0, reserved - released - redeemedHeldQ);
+  const heldA = Math.max(0, dReserved - dReleased - redeemedHeldA);
   return {
     serviceCreditsGranted: granted,
     serviceCreditsRedeemed: redeemed,

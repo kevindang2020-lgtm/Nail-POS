@@ -17,7 +17,7 @@ export class ValidationError extends Error { constructor(m = 'Invalid request') 
 export class ConcurrencyError extends Error { constructor(m = 'Membership was modified; reload and retry') { super(m); this.name = 'ConcurrencyError'; } }
 
 const DAY = 86400000;
-const toEntry = (r: LedgerEntryRow): LedgerEntry => ({ entryType: r.entryType, quantity: r.quantity, amountCents: r.amountCents });
+const toEntry = (r: LedgerEntryRow): LedgerEntry => ({ entryType: r.entryType, quantity: r.quantity, amountCents: r.amountCents, reservationRef: r.reservationRef });
 
 export interface EnrollRequest { customerId: string; planId: string; planVersionId?: string; assignedTechnicianId?: string | null; autoRenewConsent?: boolean; agreementVersion?: string | null; channel?: string }
 export interface ReserveRequest { membershipId: string; benefitId: string; ticketId?: string | null; quantity?: number }
@@ -191,12 +191,15 @@ export class MembershipEnrollService {
     const benefit = await this.repo.getBenefit(ctx, m.planVersionId, body.benefitId);
     if (!benefit) throw withCode(new ValidationError('Benefit not found'), 'BENEFIT_NOT_FOUND');
     const qty = Math.max(1, Math.floor(body.quantity || 1));
-    const entries = (await this.repo.ledgerForBenefit(ctx, body.membershipId, body.benefitId)).map(toEntry);
-    if (!canReserveServiceCredit(entries, qty)) throw withCode(new ValidationError('Insufficient membership credits'), 'MEMBERSHIP_CREDITS_INSUFFICIENT');
-    const reservationRef = randomUUID();
-    await this.repo.appendLedger(ctx, { membershipId: body.membershipId, benefitId: body.benefitId, entryType: 'reserved', quantity: qty, amountCents: 0, serviceId: benefit.serviceId, ticketId: body.ticketId ?? null, reservationRef, reason: 'booking_reserve' });
-    await this.repo.addAudit(ctx, { membershipId: body.membershipId, planId: m.planId, planVersionId: m.planVersionId, action: 'benefit_reserved', prevState: null, newState: null, reason: body.benefitId, result: 'ok' });
-    return { reservationRef };
+    // check and write under one per-membership lock: two front-desk reserves at once both saw the last credit as free
+    return this.locked(ctx, body.membershipId, async (repo) => {
+      const entries = (await repo.ledgerForBenefit(ctx, body.membershipId, body.benefitId)).map(toEntry);
+      if (!canReserveServiceCredit(entries, qty)) throw withCode(new ValidationError('Insufficient membership credits'), 'MEMBERSHIP_CREDITS_INSUFFICIENT');
+      const reservationRef = randomUUID();
+      await repo.appendLedger(ctx, { membershipId: body.membershipId, benefitId: body.benefitId, entryType: 'reserved', quantity: qty, amountCents: 0, serviceId: benefit.serviceId, ticketId: body.ticketId ?? null, reservationRef, reason: 'booking_reserve' });
+      await repo.addAudit(ctx, { membershipId: body.membershipId, planId: m.planId, planVersionId: m.planVersionId, action: 'benefit_reserved', prevState: null, newState: null, reason: body.benefitId, result: 'ok' });
+      return { reservationRef };
+    });
   }
 
   async releaseBenefit(ctx: EnrollContext, reservationRef: string) {
@@ -204,9 +207,14 @@ export class MembershipEnrollService {
     const res = await this.repo.findOpenReservation(ctx, reservationRef);
     if (!res) throw withCode(new ValidationError('Reservation not found'), 'RESERVATION_NOT_FOUND');
     if (res.closed) return { released: false, reason: 'already_closed' };
-    await this.repo.appendLedger(ctx, { membershipId: res.membershipId, benefitId: res.benefitId, entryType: 'released', quantity: res.quantity, amountCents: res.amountCents, serviceId: res.serviceId, ticketId: null, reservationRef, reason: 'booking_release' });
-    await this.repo.addAudit(ctx, { membershipId: res.membershipId, planId: null, planVersionId: null, action: 'benefit_released', prevState: null, newState: null, reason: reservationRef, result: 'ok' });
-    return { released: true };
+    // re-read under the membership lock: a release racing a redeem of the same reservation closed it twice (credit came back)
+    return this.locked(ctx, res.membershipId, async (repo) => {
+      const cur = await repo.findOpenReservation(ctx, reservationRef);
+      if (!cur || cur.closed) return { released: false, reason: 'already_closed' };
+      await repo.appendLedger(ctx, { membershipId: res.membershipId, benefitId: res.benefitId, entryType: 'released', quantity: res.quantity, amountCents: res.amountCents, serviceId: res.serviceId, ticketId: null, reservationRef, reason: 'booking_release' });
+      await repo.addAudit(ctx, { membershipId: res.membershipId, planId: null, planVersionId: null, action: 'benefit_released', prevState: null, newState: null, reason: reservationRef, result: 'ok' });
+      return { released: true };
+    });
   }
 
   async redeemBenefit(ctx: EnrollContext, body: RedeemRequest) {
@@ -217,34 +225,49 @@ export class MembershipEnrollService {
     const benefit = await this.repo.getBenefit(ctx, m.planVersionId, body.benefitId);
     if (!benefit) throw withCode(new ValidationError('Benefit not found'), 'BENEFIT_NOT_FOUND');
 
-    if (body.serviceLineId && (await this.repo.redemptionExistsForLine(ctx, body.serviceLineId))) {
-      throw withCode(new ValidationError('This service line has already redeemed a membership benefit'), 'BENEFIT_ALREADY_REDEEMED');
-    }
-
-    if (body.reservationRef) {
-      const res = await this.repo.findOpenReservation(ctx, body.reservationRef);
-      if (!res) throw withCode(new ValidationError('Reservation not found'), 'RESERVATION_NOT_FOUND');
-      if (res.closed) throw withCode(new ValidationError('Reservation already closed'), 'RESERVATION_CLOSED');
-    } else {
-      const entries = (await this.repo.ledgerForBenefit(ctx, body.membershipId, body.benefitId)).map(toEntry);
-      if (!canReserveServiceCredit(entries, 1)) throw withCode(new ValidationError('Insufficient membership credits'), 'MEMBERSHIP_CREDITS_INSUFFICIENT');
-    }
-
-    const lineSnap = body.serviceLineId ? await this.repo.serviceLineSnapshot(ctx, body.serviceLineId) : null;
-    const standardValueCents = lineSnap?.priceCents ?? benefit.allocatedValueCents ?? 0;
-    const allocatedValueCents = benefit.allocatedValueCents || benefit.valueCents || 0;
-    const snap = commissionSnapshot(m.techCommissionBasis, m.techSplitPct, standardValueCents, allocatedValueCents, 0);
-
-    const { redemptionId } = await this.repo.insertRedemption(ctx, {
-      membershipId: body.membershipId, ticketId: body.ticketId ?? null, serviceLineId: body.serviceLineId ?? null, benefitId: body.benefitId,
-      serviceId: benefit.serviceId ?? lineSnap?.serviceId ?? null, standardValueCents, allocatedValueCents, upgradeChargeCents: Math.max(0, Math.floor(body.upgradeChargeCents || 0)),
-      technicianId: body.technicianId ?? null, commissionBasisSnapshot: JSON.stringify(snap),
-    });
-
     const isDollar = benefit.benefitType === 'dollar_credit';
-    await this.repo.appendLedger(ctx, { membershipId: body.membershipId, benefitId: body.benefitId, entryType: 'redeemed', quantity: isDollar ? 0 : 1, amountCents: isDollar ? allocatedValueCents : 0, serviceId: benefit.serviceId, ticketId: body.ticketId ?? null, reservationRef: body.reservationRef ?? null, reason: 'service_redeem' });
-    await this.repo.addActivity(ctx, { membershipId: body.membershipId, customerId: m.customerId, planId: m.planId, activityType: 'redeemed', customerName: null, planName: null, amountCents: standardValueCents });
-    await this.repo.addAudit(ctx, { membershipId: body.membershipId, planId: m.planId, planVersionId: m.planVersionId, action: 'benefit_redeemed', prevState: null, newState: null, reason: body.benefitId, result: 'ok' });
-    return { redemptionId, standardValueCents, allocatedValueCents, allocation: { techCents: snap.techCents, ownerCents: snap.ownerCents } };
+    const lineSnap = body.serviceLineId ? await this.repo.serviceLineSnapshot(ctx, body.serviceLineId) : null;
+    // the line check, the balance check and the writes happen under one per-membership lock (two tablets redeeming the last
+    // credit, or the same line twice, both passed the checks before either wrote)
+    return this.locked(ctx, body.membershipId, async (repo) => {
+      if (body.serviceLineId && (await repo.redemptionExistsForLine(ctx, body.serviceLineId))) {
+        throw withCode(new ValidationError('This service line has already redeemed a membership benefit'), 'BENEFIT_ALREADY_REDEEMED');
+      }
+      if (body.reservationRef) {
+        const res = await repo.findOpenReservation(ctx, body.reservationRef);
+        if (!res || res.membershipId !== body.membershipId) throw withCode(new ValidationError('Reservation not found'), 'RESERVATION_NOT_FOUND');
+        if (res.closed) throw withCode(new ValidationError('Reservation already closed'), 'RESERVATION_CLOSED');
+      }
+      const entries = (await repo.ledgerForBenefit(ctx, body.membershipId, body.benefitId)).map(toEntry);
+      const bal = creditBalance(entries);
+
+      const standardValueCents = lineSnap?.priceCents ?? benefit.allocatedValueCents ?? 0;
+      let allocatedValueCents = benefit.allocatedValueCents || benefit.valueCents || 0;
+      if (isDollar) {
+        // a dollar credit is spent from its dollar balance, up to the service price (it was checked against SERVICE credits,
+        // which a dollar benefit never has, so it was always refused — and when it went through it took the full value)
+        const spendable = bal.dollarCreditsAvailableCents;
+        if (spendable <= 0) throw withCode(new ValidationError('Insufficient membership credits'), 'MEMBERSHIP_CREDITS_INSUFFICIENT');
+        allocatedValueCents = Math.min(spendable, lineSnap?.priceCents ?? (benefit.valueCents || spendable));
+      } else if (!body.reservationRef && bal.serviceCreditsAvailable < 1) {
+        throw withCode(new ValidationError('Insufficient membership credits'), 'MEMBERSHIP_CREDITS_INSUFFICIENT');
+      }
+      const snap = commissionSnapshot(m.techCommissionBasis, m.techSplitPct, standardValueCents, allocatedValueCents, 0);
+
+      const { redemptionId } = await repo.insertRedemption(ctx, {
+        membershipId: body.membershipId, ticketId: body.ticketId ?? null, serviceLineId: body.serviceLineId ?? null, benefitId: body.benefitId,
+        serviceId: benefit.serviceId ?? lineSnap?.serviceId ?? null, standardValueCents, allocatedValueCents, upgradeChargeCents: Math.max(0, Math.floor(body.upgradeChargeCents || 0)),
+        technicianId: body.technicianId ?? null, commissionBasisSnapshot: JSON.stringify(snap),
+      });
+
+      await repo.appendLedger(ctx, { membershipId: body.membershipId, benefitId: body.benefitId, entryType: 'redeemed', quantity: isDollar ? 0 : 1, amountCents: isDollar ? allocatedValueCents : 0, serviceId: benefit.serviceId, ticketId: body.ticketId ?? null, reservationRef: body.reservationRef ?? null, reason: 'service_redeem' });
+      await repo.addActivity(ctx, { membershipId: body.membershipId, customerId: m.customerId, planId: m.planId, activityType: 'redeemed', customerName: null, planName: null, amountCents: standardValueCents });
+      await repo.addAudit(ctx, { membershipId: body.membershipId, planId: m.planId, planVersionId: m.planVersionId, action: 'benefit_redeemed', prevState: null, newState: null, reason: body.benefitId, result: 'ok' });
+      return { redemptionId, standardValueCents, allocatedValueCents, allocation: { techCents: snap.techCents, ownerCents: snap.ownerCents } };
+    });
+  }
+
+  private locked<T>(ctx: EnrollContext, membershipId: string, fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T> {
+    return this.repo.withMembershipLock ? this.repo.withMembershipLock(ctx, membershipId, fn) : fn(this.repo);
   }
 }

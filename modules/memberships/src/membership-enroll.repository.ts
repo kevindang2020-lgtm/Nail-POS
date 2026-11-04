@@ -59,6 +59,8 @@ export interface MembershipEnrollRepositoryPort {
   redemptionsForTicket(ctx: EnrollContext, ticketId: string): Promise<Array<{ serviceLineId: string | null; serviceName: string | null; standardValueCents: number; upgradeChargeCents: number }>>;
   addActivity(ctx: EnrollContext, a: ActivityArgs): Promise<void>;
   addAudit(ctx: EnrollContext, a: AuditArgs): Promise<void>;
+  /** Run fn in one transaction holding a per-membership lock (benefit reserve / release / redeem). */
+  withMembershipLock?<T>(ctx: EnrollContext, membershipId: string, fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T>;
 }
 
 let SEQ = 1;
