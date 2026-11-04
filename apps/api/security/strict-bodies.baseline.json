@@ -22,6 +22,9 @@
   "POST /webhooks/twilio/booking-verification/status": "Twilio status callback for the booking-verification SMS (form-encoded): Twilio adds parameters without notice — refusing one would drop delivery receipts; the declared fields are typed and the rest stripped.",
   "POST /webhooks/twilio/sms/inbound": "Twilio inbound-SMS callback (form-encoded): Twilio adds parameters without notice and X-Twilio-Signature is computed over every posted parameter — the declared fields are typed, the rest kept; bounded (x-maxDepth 2, x-maxNodes 500).",
   "POST /webhooks/twilio/sms/status": "Twilio status callback (form-encoded): Twilio adds parameters without notice and X-Twilio-Signature is computed over every posted parameter — the declared fields are typed, the rest kept; bounded (x-maxDepth 2, x-maxNodes 500).",
-  "PUT /community/settings": "Open by design: parseSettingsUpdate refuses an unknown key itself (400 not_allowed), so unknown keys are KEPT for it to see; the notify / roleGrants / roleRemovals maps are free-form by design; bounded (S.bounded: x-maxDepth 4, x-maxNodes 2,000)."
+  "PUT /community/settings": "Open by design: parseSettingsUpdate refuses an unknown key itself (400 not_allowed), so unknown keys are KEPT for it to see; the notify / roleGrants / roleRemovals maps are free-form by design; bounded (S.bounded: x-maxDepth 4, x-maxNodes 2,000).",
+  "POST /webhooks/email/sendgrid": "a provider callback (SendGrid signed event webhook): SendGrid adds fields over time; the ECDSA signature over the raw bytes authenticates it and only known fields are read",
+  "POST /webhooks/voice/retell": "a provider callback (Retell call events): Retell adds fields over time; the signature over rawBody + timestamp authenticates it and only known fields are read",
+  "POST /public/email/unsubscribe": "a one-click unsubscribe form post from an email client / browser: some clients post their own fields (List-Unsubscribe=One-Click); the HMAC token in the query is the only input read"
  }
 }
