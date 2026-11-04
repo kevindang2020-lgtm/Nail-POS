@@ -9,6 +9,7 @@
 //   redemptions, codes, financials, related campaigns, audit) with Check / Edit / Duplicate / lifecycle actions.
 // Money is the server's (integer cents); codes are masked (only the last four exist). Creating, duplicating or saving an
 // assistant suggestion makes a DRAFT — activation is the separate, permission-checked lifecycle step; nothing here sends.
+import { posCustomersApi } from '../api/posCustomersApi';
 import { HealthRunHistory } from '../components/HealthRunHistory';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { useEffect, useState } from 'react';
@@ -261,12 +262,21 @@ export function Campaigns({ dealId }: { dealId: string }) {
 
 /** The read-only checker (Checkout's own engine). Deals & Offers reuses it with its own endpoint, subtitle and no code box. */
 export function CheckDialog({ dealId, name, services, onClose, check = posCouponsApi.check, subtitle, showCode = true, doneNote }: { dealId: string; name: string; services: { id: string; name: string }[]; onClose: () => void;
-  check?: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }) => Promise<CouponCheck>; subtitle?: string; showCode?: boolean; doneNote?: string }) {
+  check?: (dealId: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean; customerId?: string | null }) => Promise<CouponCheck>; subtitle?: string; showCode?: boolean; doneNote?: string }) {
   const [ticket, setTicket] = useState(''); const [spend, setSpend] = useState(''); const [svc, setSvc] = useState<string[]>([]); const [code, setCode] = useState(true);
   const [res, setRes] = useState<CouponCheck | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  // audit B2 (Nov 4 2026): a hypothetical check can name the customer (new-customer-only and once-per-customer rules need one)
+  const [cust, setCust] = useState<{ id: string; name: string } | null>(null); const [cq, setCq] = useState(''); const dcq = useDebounced(cq.trim(), 250);
+  const [hits, setHits] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  useEffect(() => {
+    let alive = true; if (dcq.length < 2 || cust) { setHits([]); return; }
+    (posCustomersApi.quickSearch(dcq) as Promise<any>).then((r) => { if (!alive) return; const items = Array.isArray(r) ? r : r?.items ?? r?.customers?.items ?? [];
+      setHits(items.slice(0, 6).map((c: any) => ({ id: String(c.customerId ?? c.id), name: String(c.fullName ?? c.displayName ?? ''), phone: c.phone ?? null }))); }).catch(() => alive && setHits([]));
+    return () => { alive = false; };
+  }, [dcq, cust]);
   const run = async () => {
     setBusy(true); setErr(null); setRes(null);
-    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: parseDollarsToCents(spend) ?? 0, serviceIds: svc, codeEntered: showCode && code })); }
+    try { setRes(await check(dealId, ticket.trim() ? { ticketNumber: ticket.trim(), codeEntered: showCode && code } : { spendCents: parseDollarsToCents(spend) ?? 0, serviceIds: svc, codeEntered: showCode && code, customerId: cust?.id ?? null })); }
     catch (e) { setErr(errorTextOf(e, tx('cp.failed'))); } finally { setBusy(false); }
   };
   return <FitDialog title={tx('cp.checkTitle', { name })} subtitle={subtitle ?? tx('cp.checkSub')} onClose={onClose} testId="dlg-check"
@@ -277,6 +287,10 @@ export function CheckDialog({ dealId, name, services, onClose, check = posCoupon
       <label className="lf"><span>{tx('cp.spend')}</span><input className="fk-input" inputMode="decimal" value={spend} onChange={(e) => setSpend(e.target.value)} disabled={!!ticket.trim()} data-testid="check-spend" /></label>
       <fieldset className="cp-svcs" disabled={!!ticket.trim()}><legend>{tx('cp.services')}</legend>
         {services.slice(0, 30).map((s) => <label key={s.id} className="cp-chk"><input type="checkbox" checked={svc.includes(s.id)} onChange={(e) => setSvc((x) => (e.target.checked ? [...x, s.id] : x.filter((y) => y !== s.id)))} />{s.name}</label>)}</fieldset>
+      <label className="lf"><span>{tx('cp.checkCustomer')}</span>
+        {cust ? <span className="fk-chip info" data-testid="check-customer">{cust.name}<button type="button" className="fk-chip-x" aria-label={tx('pos.cancel')} onClick={() => setCust(null)} disabled={!!ticket.trim()}>✕</button></span>
+          : <input className="fk-input" type="search" value={cq} onChange={(e) => setCq(e.target.value)} disabled={!!ticket.trim()} placeholder={tx('cp.checkCustomerPh')} data-testid="check-customer-find" />}</label>
+      {!cust && hits.length ? <ul className="fk-pick" data-testid="check-customer-hits">{hits.map((h) => <li key={h.id}><button type="button" onClick={() => { setCust({ id: h.id, name: h.name }); setCq(''); }} data-testid="check-customer-option"><b>{h.name}</b><span>{h.phone ?? ''}</span></button></li>)}</ul> : null}
       {showCode ? <label className="cp-chk"><input type="checkbox" checked={code} onChange={(e) => setCode(e.target.checked)} data-testid="check-code" />{tx('cp.codeEntered')}</label> : null}
     </div>
     {err ? <div className="fk-note bad" role="alert">{err}</div> : null}

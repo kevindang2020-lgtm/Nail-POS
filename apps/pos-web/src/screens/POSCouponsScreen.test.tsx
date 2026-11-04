@@ -10,6 +10,7 @@ const { disc, cp } = vi.hoisted(() => ({
 vi.mock('../api/posDiscountsApi', () => ({ posDiscountsApi: disc }));
 vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: vi.fn().mockResolvedValue([]) } }));
+vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: { quickSearch: vi.fn().mockResolvedValue({ items: [{ customerId: 'c-7', fullName: 'Mai Le', phone: '(856) 555-1234' }] }) } }));
 vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Second', isActive: true }] }) } }));
 import { POSCouponsScreen } from './POSCouponsScreen';
 
@@ -74,5 +75,16 @@ describe('POSCouponsScreen', () => {
     fireEvent.click(screen.getByTestId('health-run'));
     await waitFor(() => expect(cp.runHealth).toHaveBeenCalled());
     expect(await screen.findByTestId('health-run-row')).toHaveTextContent('Linh Owner');
+  });
+  it('a hypothetical check can name the customer (sent to the read-only checker)', async () => {
+    cp.check.mockResolvedValue({ verdict: 'ELIGIBLE', eligible: true, action: '', reasons: [], dealId: 'd1', title: 'vishal', status: 'active', discountPreviewCents: 200, eligibleBaseCents: 1000, context: {} });
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('coupon-check'));
+    fireEvent.change(screen.getByTestId('check-spend'), { target: { value: '10.00' } });
+    fireEvent.change(screen.getByTestId('check-customer-find'), { target: { value: 'Mai' } });
+    fireEvent.click(await screen.findByTestId('check-customer-option'));
+    expect(screen.getByTestId('check-customer')).toHaveTextContent('Mai Le');
+    fireEvent.click(screen.getByTestId('check-run'));
+    await waitFor(() => expect(cp.check).toHaveBeenCalledWith('d1', expect.objectContaining({ customerId: 'c-7', spendCents: 1000 })));
   });
 });

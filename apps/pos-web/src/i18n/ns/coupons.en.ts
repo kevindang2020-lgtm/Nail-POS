@@ -2,6 +2,8 @@
 // Front Desk POS only. A coupon is the same record the Promotions and Discounts screens show; nothing here sends messages.
 export const COUPONS_EN = {
   'cp.title': 'Coupons & Promotions', 'cp.subtitle': 'Offer codes, eligibility, redemptions and the discounts Checkout actually applied',
+  'cp.checkCustomer': 'Customer (optional)',
+  'cp.checkCustomerPh': 'Name or phone — for new-customer and once-per-customer rules',
   'cp.healthHistory': 'Check history',
   'cp.healthRun': 'Run check now',
   'cp.healthNoRuns': 'No recorded checks yet.',
