@@ -37,7 +37,7 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     fireEvent.change(input, { target: { value: '176.50' } });
     fireEvent.click(screen.getByText('Reconcile'));
     expect(await screen.findByText(/matched \$176.50/)).toBeTruthy();
-    expect(posCashDrawerApi.reconcile).toHaveBeenCalledWith(17650, undefined, TODAY);
+    expect(posCashDrawerApi.reconcile).toHaveBeenCalledWith(17650, undefined, TODAY, expect.any(String));   // D15: an Idempotency-Key per count
   });
 
   it('voids a movement from the list', async () => {
@@ -57,6 +57,27 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     fireEvent.click(screen.getByText('Cash out'));                        // direction
     fireEvent.change(await screen.findByLabelText(/Amount/), { target: { value: '5.00' } });
     fireEvent.click(screen.getByText('Record'));
-    await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledWith('out', 500, undefined, undefined, TODAY));
+    await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledWith('out', 500, undefined, undefined, TODAY, expect.any(String)));
+  });
+
+  it('a cash-out that failed and is retried reuses its Idempotency-Key (recorded once); the next cash-out gets a new key (D15)', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.movement as any).mockReset();
+    (posCashDrawerApi.movement as any).mockRejectedValueOnce(new Error('network')).mockResolvedValue(drawer({ paidOutCents: 500, expectedCashCents: 17150 }));
+    render(<POSCashDrawerScreen />);
+    await screen.findByText('Cash Drawer');
+    fireEvent.click(screen.getByText('Cash out'));
+    fireEvent.change(await screen.findByLabelText(/Amount/), { target: { value: '5.00' } });
+    fireEvent.click(screen.getByText('Record'));
+    await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect((screen.getByText('Record') as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(screen.getByText('Record'));
+    await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledTimes(2));
+    const calls = (posCashDrawerApi.movement as any).mock.calls;
+    expect(calls[1][5]).toBe(calls[0][5]);
+    fireEvent.change(await screen.findByLabelText(/Amount/), { target: { value: '5.00' } });
+    fireEvent.click(screen.getByText('Record'));
+    await waitFor(() => expect(posCashDrawerApi.movement).toHaveBeenCalledTimes(3));
+    expect((posCashDrawerApi.movement as any).mock.calls[2][5]).not.toBe(calls[0][5]);
   });
 });

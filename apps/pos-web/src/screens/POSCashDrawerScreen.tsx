@@ -1,5 +1,6 @@
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { createIntentKeys } from '@aipowersalon/api-client';
 import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement } from '../api/posCashDrawerApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -41,11 +42,12 @@ export function POSCashDrawerScreen() {
   useEffect(() => { load(); }, [load]);
   useRealtime('cash-drawer', load);
 
+  const keys = useRef(createIntentKeys());
   const setFloat = async () => {
     const dollars = Number(floatStr);
     if (!Number.isFinite(dollars) || dollars < 0) { setError(t('pos.enter_the_opening_float')); return; }
     setBusy('float'); setError(null); setNote(null);
-    try { const s = await posCashDrawerApi.open(Math.round(dollars * 100), date || undefined); setD(s); setNote(msg('pos.opening_float_set_to_openingfloatcents', { openingFloatCents: String(money(s.openingFloatCents)) })); }
+    try { const cents = Math.round(dollars * 100); const s = await posCashDrawerApi.open(cents, date || undefined, keys.current.keyFor('float', { cents, date })); keys.current.done('float'); setD(s); setNote(msg('pos.opening_float_set_to_openingfloatcents', { openingFloatCents: String(money(s.openingFloatCents)) })); }
     catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_set_the_float')); }
     finally { setBusy(null); }
   };
@@ -54,7 +56,8 @@ export function POSCashDrawerScreen() {
     if (!Number.isFinite(dollars) || dollars < 0) { setError(t('pos.enter_the_counted_cash_amount')); return; }
     setBusy('reconcile'); setError(null); setNote(null);
     try {
-      const s = await posCashDrawerApi.reconcile(Math.round(dollars * 100), reconNotes.trim() || undefined, date || undefined);
+      const body = { cents: Math.round(dollars * 100), notes: reconNotes.trim() || undefined, date };
+      const s = await posCashDrawerApi.reconcile(body.cents, body.notes, date || undefined, keys.current.keyFor('reconcile', body)); keys.current.done('reconcile');
       const v = s.varianceCents ?? 0;
       setNote(s.status === 'reconciled' ? msg('pos.drawer_reconciled_matched_countedcents', { countedCents: String(money(s.countedCents)) }) : msg('pos.drawer_v0_by_v', { v0: msg(v > 0 ? 'payment.cash.over' : 'payment.cash.short'), v: String(money(Math.abs(v))) }));
       setD(s);
@@ -66,7 +69,9 @@ export function POSCashDrawerScreen() {
     if (!Number.isFinite(dollars) || dollars <= 0) { setError(t('pos.enter_an_amount_greater_than_zero')); return; }
     setBusy('movement'); setError(null); setNote(null);
     try {
-      const s = await posCashDrawerApi.movement(moveDir, Math.round(dollars * 100), moveReason.trim() || undefined, undefined, date || undefined);
+      const body = { moveDir, cents: Math.round(dollars * 100), reason: moveReason.trim() || undefined, date };
+      // one key per cash in/out until it is recorded: a double tap or a retry after a dropped connection records it once
+      const s = await posCashDrawerApi.movement(moveDir, body.cents, body.reason, undefined, date || undefined, keys.current.keyFor('movement', body)); keys.current.done('movement');
       setD(s); setMoveAmt(''); setMoveReason('');
       setNote(msg('pos.recorded_v0_of_v1', { v0: msg(moveDir === 'in' ? 'pos.cash_in_2' : 'pos.cash_out_2'), v1: String(money(Math.round(dollars * 100))) }));
       posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch(() => {});

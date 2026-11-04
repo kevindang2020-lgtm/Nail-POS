@@ -13,12 +13,14 @@ import { DRAWER_MOVEMENT_BODY, DRAWER_OPEN_BODY, DRAWER_RECONCILE_BODY, DRAWER_V
 // hand-offs. Keyed like the POS checkout reads: owner, manager, front desk, reception. Technicians read their own via /tech/me/*.
 @ListQueries(CashDrawerPosControllerListQueries)
 @Controller('pos')
+// D15 (Nov 3 2026): open / count / cash in-out run once per Idempotency-Key — a double tap or a retried request after a
+// dropped connection recorded the same cash out twice.
 export class CashDrawerPosController {
   constructor(private readonly svc: CashDrawerService) {}
   @RequirePermission('pos.checkout.view') @Get('cash-drawer') get(@Req() r: any, @Query('date') date?: string, @Query('registerId') registerId?: string) { return drawerRun(() => this.svc.getDrawer(drawerCtx(r), date, registerId)); }
-  @RequirePermission('checkout.process_payment') @Post('cash-drawer/open') open(@Req() r: any, @Body(ValidatedBody(DRAWER_OPEN_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.openDrawer(drawerCtx(r), b || {})); }
-  @RequirePermission('checkout.process_payment') @Post('cash-drawer/reconcile') reconcile(@Req() r: any, @Body(ValidatedBody(DRAWER_RECONCILE_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.reconcileDrawer(drawerCtx(r), b || {})); }
-  @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement') movement(@Req() r: any, @Body(ValidatedBody(DRAWER_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.addMovement(drawerCtx(r), b || {})); }
+  @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/open') open(@Req() r: any, @Body(ValidatedBody(DRAWER_OPEN_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.openDrawer(drawerCtx(r), b || {})); }
+  @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/reconcile') reconcile(@Req() r: any, @Body(ValidatedBody(DRAWER_RECONCILE_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.reconcileDrawer(drawerCtx(r), b || {})); }
+  @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement') movement(@Req() r: any, @Body(ValidatedBody(DRAWER_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.addMovement(drawerCtx(r), b || {})); }
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/movements') movements(@Req() r: any, @Query('date') date?: string, @Query('registerId') registerId?: string) { return drawerRun(() => this.svc.listMovements(drawerCtx(r), date, registerId)); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement/void') voidMovement(@Req() r: any, @Body(ValidatedBody(DRAWER_VOID_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.voidMovement(drawerCtx(r), b || {})); }
 }
