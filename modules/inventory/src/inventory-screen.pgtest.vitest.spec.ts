@@ -152,6 +152,8 @@ describe('purchase orders — dates, statuses, receiving', () => {
   let draftId = ''; let poId = '';
   it('the expected delivery date is a calendar date string; a draft is not an active PO', async () => {
     draftId = (await inv.createPurchaseOrder(manager, { vendorId: V_OLD, expectedDate: '2026-11-05', lines: [{ productId: P_GEL, quantityOrdered: 6, unitCostCents: 450 }] })).id;
+    // Nov 3 audit: another salon's vendor is refused (it was stored unchecked)
+    expect(await code(inv.createPurchaseOrder(manager, { vendorId: V_T2, lines: [{ productId: P_GEL, quantityOrdered: 1, unitCostCents: 100 }] }))).toBe('VENDOR_NOT_FOUND');
     const r = (await repo.purchaseOrders(manager, {}, await all(), paging())).rows.find((x) => x.id === draftId)!;
     expect(r.expectedDate).toBe('2026-11-05'); expect(r.vendor).toBe('Nail Supply Co'); expect(r.vendorArchived).toBe(true);
     const k = await sup.supplierKpis(manager);

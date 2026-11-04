@@ -957,15 +957,24 @@ export class InventoryService {
     const tax = Math.max(0, parseInt(b?.taxCents, 10) || 0);
     const totals = poTotals(clean, shipping, tax);
     const poNum = 'PO-' + Date.now().toString(36).toUpperCase();
-    const r = await sql<{ id: string }>`INSERT INTO purchase_orders
-      (tenant_id, branch_id, vendor_id, po_number, status, expected_date, notes, subtotal_cents, shipping_cents, tax_cents, total_cents, created_by_user_id)
-      VALUES (${ctx.tenantId}, ${ctx.branchId}, ${b?.vendorId ?? null}, ${poNum}, 'draft', ${b?.expectedDate ?? null}, ${b?.notes ?? null}, ${totals.subtotalCents}, ${shipping}, ${tax}, ${totals.totalCents}, ${ctx.userId}) RETURNING id`.execute(this.need());
-    const poId = r.rows[0].id;
-    for (const l of clean) {
-      await sql`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, unit_cost_cents)
-        VALUES (${ctx.tenantId}, ${poId}, ${l.productId}, ${l.quantityOrdered}, ${l.unitCostCents})`.execute(this.need());
+    // the vendor must be THIS salon's (it was stored unchecked); the PO, its lines and the audit row are one transaction (a failure
+    // part-way left a PO without lines)
+    const vendorId = b?.vendorId ? String(b.vendorId) : null;
+    if (vendorId && !(await sql`SELECT 1 FROM inventory_vendors WHERE id = ${vendorId} AND tenant_id = ${ctx.tenantId}`.execute(this.need()).catch(() => ({ rows: [] }))).rows.length) {
+      throw withCode(new InventoryError(404, 'That vendor was not found.'), 'VENDOR_NOT_FOUND');
     }
-    await this.audit(ctx, 'inventory_po_created', null, null, { id: poId, poNumber: poNum, lines: clean.length, totalCents: totals.totalCents });
+    const poId = await this.need().transaction().execute(async (trx) => {
+      const r = await sql<{ id: string }>`INSERT INTO purchase_orders
+        (tenant_id, branch_id, vendor_id, po_number, status, expected_date, notes, subtotal_cents, shipping_cents, tax_cents, total_cents, created_by_user_id)
+        VALUES (${ctx.tenantId}, ${ctx.branchId}, ${vendorId}, ${poNum}, 'draft', ${b?.expectedDate ?? null}, ${b?.notes ?? null}, ${totals.subtotalCents}, ${shipping}, ${tax}, ${totals.totalCents}, ${ACTOR_UUID.test(ctx.userId) ? ctx.userId : null}) RETURNING id`.execute(trx);
+      const id = r.rows[0].id;
+      for (const l of clean) {
+        await sql`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, unit_cost_cents)
+          VALUES (${ctx.tenantId}, ${id}, ${l.productId}, ${l.quantityOrdered}, ${l.unitCostCents})`.execute(trx);
+      }
+      await this.audit(ctx, 'inventory_po_created', null, null, { id, poNumber: poNum, lines: clean.length, totalCents: totals.totalCents }, trx as unknown as Kysely<DB>);
+      return id;
+    });
     let approvalId: string | null = null;
     if (this.approvals && await this.approvals.needsApproval(ctx.tenantId, 'purchase_order', totals.totalCents).catch(() => false)) {
       try { approvalId = (await this.approvals.request(poActor(ctx), { kind: 'purchase_order', subjectType: 'purchase_order', subjectId: poId, amountCents: totals.totalCents, reason: String(b?.notes ?? '').trim().slice(0, 200) || 'New purchase order' })).request.id; }
