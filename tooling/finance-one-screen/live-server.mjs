@@ -27,6 +27,9 @@ import { InvoicesController } from '../../modules/payments/src/invoices/invoices
 import { InvoicesService } from '../../modules/payments/src/invoices/invoices.service.ts';
 import { InMemoryInvoicesRepository } from '../../modules/payments/src/invoices/invoices.repository.ts';
 import { dataset } from '../checkout-one-screen/fixtures.mjs';
+import { ExpenseService } from '../../modules/finance/src/expense.service.ts';
+import { ExpenseController } from '../../modules/finance/src/expense.controller.ts';
+import * as FB from '../../modules/finance/src/request-schemas.ts';
 import { ValidatedBody } from '../../packages/permissions/src/guards/validated-body.ts';
 import * as B from '../../modules/payments/src/request-schemas.ts';
 const V = (schema, b) => ValidatedBody(schema, { strict: true }).transform(b);
@@ -53,7 +56,26 @@ const C = {
   st: new SettlementsScreenController(stRepo),
   ws: new ReconWorkspaceController(wsRepo, new ExceptionWorkflowService(new KyselyExceptionsRepository(db))),
   iv: new InvoicesController(new InvoicesService(new InMemoryInvoicesRepository()), ivRepo),
+  // Expenses guide (Nov 4 2026): the REAL ExpenseService / controller; an owner sees the salon (the app's branch rule, reduced)
+  ex: new ExpenseController(new ExpenseService(db, { async resolve(_c, requested) { return { branchId: requested ?? null, allowed: null, restricted: null }; } }, null)),
 };
+// a believable month of salon expenses for the pilot salon, created through the service (never inserted around it)
+{
+  const ectx = { tenantId: PILOT, userId: OWNER_USER, role: 'OWNER', permissions: perms('OWNER'), selectedBranchId: BRANCH };
+  const today = new Date(); const ymd = (d) => new Date(today.getTime() - d * 86400000).toISOString().slice(0, 10);
+  const ROWS = [['Sally Beauty', 'supplies', 18432, 'business_card', 1], ['PSE&G', 'utilities', 21455, 'ach', 2], ['Landlord LLC', 'rent', 450000, 'check', 3], ['OPI Distributor', 'supplies', 64210, 'business_card', 4],
+    ['Comcast Business', 'utilities', 12999, 'ach', 6], ['Staples', 'office', 4317, 'business_card', 7], ['Square Hardware', 'equipment', 29900, 'business_card', 9], ['Cleaning Co.', 'cleaning', 15000, 'cash', 10],
+    ['Google Ads', 'marketing', 25000, 'business_card', 12], ['State Farm', 'insurance', 38900, 'ach', 14], ['Nail Supply NJ', 'supplies', 27650, 'cash', 15], ['Water Delivery', 'utilities', 3900, 'cash', 17],
+    ['Repair Tech', 'maintenance', 17500, 'check', 19], ['Instagram Promo', 'marketing', 8000, 'business_card', 21], ['Costco', 'supplies', 11234, 'business_card', 23], ['Accountant', 'professional', 30000, 'check', 26]];
+  const svcX = new ExpenseService(db, { async resolve(_c, requested) { return { branchId: requested ?? null, allowed: null, restricted: null }; } }, null);
+  const cats = new Set(((await svcX.categories(ectx).catch(() => ({ items: [] }))).items ?? []).map((c) => c.key));
+  let n = 0;
+  for (const [vendor, category, cents, pm, daysAgo] of ROWS) {
+    try { await svcX.create(ectx, { vendor, category: cats.has(category) ? category : null, amountCents: cents, incurredOn: ymd(daysAgo), paymentMethod: pm, description: `${vendor} — monthly`, intent: n % 3 === 0 ? 'approve' : n % 3 === 1 ? 'submit' : 'draft', idempotencyKey: `seed-exp-${n}` }); n++; }
+    catch (e) { console.error('expense seed', vendor, e?.code ?? e?.message); }
+  }
+  console.log('expenses seeded', n);
+}
 
 let tenant = 'pilot', lang = 'en', role = 'OWNER', fail = false;
 const USERS = { OWNER: OWNER_USER, MANAGER: MANAGER_USER, FRONT_DESK: DESK_USER };
@@ -75,7 +97,7 @@ async function call(fn) {
     return { status: st, body: { error: { code, message, details: (r && typeof r === 'object' && r.details) || e?.details || {} }, code, message } };
   }
 }
-const FIN = /^\/pos\/(payments\/settlements|deposit-reconciliation\/workspace|invoices)/;
+const FIN = /^\/(pos\/(payments\/settlements|deposit-reconciliation\/workspace|invoices)|owner\/finance)/;
 async function route(method, path, query, body) {
   const r = { ctx: session() }; const m = (re) => path.match(re);
   if (fail && FIN.test(path)) return { status: 503, body: { error: { code: 'SERVICE_UNAVAILABLE', message: 'This is temporarily unavailable. Please try again shortly.' } } };
@@ -119,6 +141,14 @@ async function route(method, path, query, body) {
     if (method === 'GET' && (x = p.match(/^\/reports\/([^/]+)\/export-pdf$/))) return call((res) => C.ws.reportPdf(r, res, x[1], Q.preset, Q.from, Q.to, Q.dateField, Q.processor, Q.bankAccountId, Q.status));
     if (method === 'GET' && (x = p.match(/^\/reports\/([^/]+)$/))) return call(() => C.ws.report(r, x[1], Q.preset, Q.from, Q.to, Q.dateField, Q.processor, Q.bankAccountId, Q.status, Q.page, Q.pageSize));
   }
+  // ── Expenses (/owner/finance) ──
+  if (method === 'GET' && path === '/owner/finance/expenses') return call(() => C.ex.list(r, Q));
+  if (method === 'GET' && path === '/owner/finance/expenses/summary') return call(() => C.ex.summary(r, Q));
+  if (method === 'GET' && path === '/owner/finance/expense-categories') return call(() => C.ex.categories(r));
+  if (method === 'GET' && path === '/owner/finance/dashboard') return call(() => C.ex.dashboard(r, Q.branchId));
+  if (method === 'POST' && path === '/owner/finance/expenses') return call(() => C.ex.create(r, ValidatedBody(FB.FIN_EXPENSE_CREATE_BODY, { strict: true }).transform(body)));
+  if (method === 'POST' && path === '/owner/finance/expenses/recommend-category') return call(() => C.ex.recommend(r, ValidatedBody(FB.FIN_RECOMMEND_BODY, { strict: true }).transform(body)));
+  if (method === 'GET' && (x = m(/^\/owner\/finance\/expenses\/([^/]+)$/))) return call(() => C.ex.detail(r, x[1]));
   // ── Invoices ──
   if (method === 'GET' && path === '/pos/invoices') return call(() => C.iv.list(r, Q.search, Q.status, Q.preset, Q.from, Q.to, Q.dateField, Q.amountMin, Q.amountMax, Q.customerId, Q.sort, Q.page, Q.pageSize));
   if (method === 'GET' && path === '/pos/invoices/summary') return call(() => C.iv.summary(r, Q.search, Q.preset, Q.from, Q.to, Q.dateField, Q.amountMin, Q.amountMax, Q.customerId));

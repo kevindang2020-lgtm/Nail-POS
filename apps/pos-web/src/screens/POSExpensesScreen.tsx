@@ -128,7 +128,7 @@ export function POSExpensesScreen() {
             <button type="button" className="fk-btn" disabled={busy === 'export-csv'} onClick={() => void exportAs('csv')} title={tx('finance.ex.exportScope')} data-testid="export-csv">{tx('pos.export_csv')}</button>
             <button type="button" className="fk-btn" disabled={busy === 'export-xlsx'} onClick={() => void exportAs('xlsx')} title={tx('finance.ex.exportScope')} data-testid="export-xlsx">{tx('pos.export_excel')}</button>
           </> : null}
-          {canManage ? <button type="button" className="fk-btn primary" onClick={() => { setNote(null); setForm(emptyForm(today)); }} data-testid="add-expense">+ {tx('pos.add_expense')}</button> : null}
+          {canManage ? <button type="button" className="fk-btn primary" onClick={() => { setNote(null); setForm(emptyForm(today)); }} data-testid="add-expense">{tx('pos.add_expense')}</button> : null}
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>
@@ -172,7 +172,7 @@ export function POSExpensesScreen() {
           : !list.data ? <div className="fk-loading">{tx('pos.loading_expenses')}</div>
           : rows.length === 0 ? (
             <Empty title={tx(filtered ? 'finance.ex.emptyFiltered' : 'finance.ex.empty')}>
-              {canManage ? <button type="button" className="fk-btn primary" onClick={() => setForm(emptyForm(today))}>+ {tx('pos.add_expense')}</button> : null}
+              {canManage ? <button type="button" className="fk-btn primary" onClick={() => setForm(emptyForm(today))}>{tx('pos.add_expense')}</button> : null}
               {filtered ? <button type="button" className="fk-btn" onClick={clearFilters} data-testid="empty-clear">{tx('finance.clearFilters')}</button>
                 : <button type="button" className="fk-btn" onClick={() => setPeriod({ preset: 'year' })}>{tx('finance.ex.tryAnother')}</button>}
             </Empty>

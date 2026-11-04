@@ -57,7 +57,10 @@ describe('POSExpensesScreen (Expenses guide)', () => {
     expect(within(d).getByText(/Only approved expenses are counted/)).toBeInTheDocument();
   });
   it('a tab, the search, the category, the method and the sort go to the server and return to Page 1', async () => {
-    m.expenses.mockResolvedValue(page([exp()], { total: 40, page: 3 }));
+    // the first answer lands the screen on page 3; after that the server answers the page it is asked for (a mock that always
+    // said "page 3" made the screen's page-sync follow it back to 3 — the assertion then raced the sync)
+    m.expenses.mockImplementation(async (q: { page: number }) => page([exp()], { total: 40, page: q.page }));
+    m.expenses.mockResolvedValueOnce(page([exp()], { total: 40, page: 3 }));
     renderIt(); await screen.findByTestId('expense-row');
     fireEvent.click(screen.getByTestId('tab-bills'));
     await waitFor(() => expect(m.expenses).toHaveBeenLastCalledWith(expect.objectContaining({ tab: 'bills', page: 1 })));

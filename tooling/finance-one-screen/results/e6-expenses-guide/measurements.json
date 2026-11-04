@@ -1,0 +1,463 @@
+{
+ "label": "e6-expenses-guide",
+ "at": "2026-11-04T21:45:17.411Z",
+ "rows": [
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1536x864",
+   "pass": true,
+   "vw": 1536,
+   "vh": 864,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 804,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1440x900",
+   "pass": true,
+   "vw": 1440,
+   "vh": 900,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 840,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "en",
+   "viewport": "1366x768",
+   "pass": true,
+   "vw": 1366,
+   "vh": 768,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 708,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1536x864",
+   "pass": true,
+   "vw": 1536,
+   "vh": 864,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 804,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1440x900",
+   "pass": true,
+   "vw": 1440,
+   "vh": 900,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 840,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "pilot",
+   "lang": "vi",
+   "viewport": "1366x768",
+   "pass": true,
+   "vw": 1366,
+   "vh": 768,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 708,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:3",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1920x1080",
+   "pass": true,
+   "vw": 1920,
+   "vh": 1080,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 1020,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:0",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1536x864",
+   "pass": true,
+   "vw": 1536,
+   "vh": 864,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 804,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:0",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1440x900",
+   "pass": true,
+   "vw": 1440,
+   "vh": 900,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 840,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:0",
+   "errors": []
+  },
+  {
+   "page": "expenses",
+   "tenant": "empty",
+   "lang": "en",
+   "viewport": "1366x768",
+   "pass": true,
+   "vw": 1366,
+   "vh": 768,
+   "docScrollY": 0,
+   "docScrollX": 0,
+   "pageScrollY": 0,
+   "pageScrollX": 0,
+   "box": 708,
+   "modules": {
+    "add-expense": true,
+    "export-csv": true,
+    "kpi-total": true,
+    "kpi-entries": true,
+    "kpi-top": true,
+    "kpi-cats": true,
+    "search": true,
+    "category": true,
+    "method": true,
+    "sort": true,
+    "expenses": true
+   },
+   "pagers": [
+    {
+     "panel": "expenses",
+     "ok": true
+    }
+   ],
+   "smallTargets": [],
+   "smallTargetCount": 0,
+   "minFontPx": 10.5,
+   "rowsPerPanel": "expenses:0",
+   "errors": []
+  }
+ ],
+ "unhandledRoutes": []
+}

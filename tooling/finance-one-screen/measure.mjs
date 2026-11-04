@@ -28,6 +28,7 @@ const PAGES = {
   'recon-fees': { url: '/tenant/payments/deposit-reconciliation', tab: 'tab-fees', container: '.work.fit', modules: ['kpi-expected', 'kpi-difference', 'fees'] },
   'recon-exceptions': { url: '/tenant/payments/deposit-reconciliation', tab: 'tab-exceptions', container: '.work.fit', modules: ['kpi-expected', 'exceptions'] },
   'recon-reports': { url: '/tenant/payments/deposit-reconciliation', tab: 'tab-reports', container: '.work.fit', modules: ['kpi-expected', 'report', 'report-settlement_summary', 'report-processor_comparison', 'report-csv', 'report-pdf'] },
+  expenses: { url: '/tenant/payments/expenses', container: '.work.fit', modules: ['add-expense', 'export-csv', 'kpi-total', 'kpi-entries', 'kpi-top', 'kpi-cats', 'search', 'category', 'method', 'sort', 'expenses'] },
   invoices: { url: '/tenant/payments/invoices', container: '.work.fit', modules: ['kpi-outstanding', 'kpi-paid', 'kpi-drafts', 'kpi-total', 'search', 'status', 'preset-custom', 'sort', 'invoices'] },
 };
 const pages = (process.argv[3] || Object.keys(PAGES).join(',')).split(',');

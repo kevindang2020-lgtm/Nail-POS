@@ -265,3 +265,20 @@ describe('finance — the Expenses screen summary and pages', () => {
     expect(past.page).toBe(3); expect(past.items.map((x: { id: string }) => x.id)).toEqual(p3.items.map((x: { id: string }) => x.id));
   });
 });
+
+// Expenses guide screenshots (Nov 4 2026): a POS sends no branch — the expense belongs to the location it was entered at and
+// shows in that location's list; it used to be filed salon-wide and vanish from the POS list. An explicit null (the Owner
+// App's "All branches") still files it to the whole salon.
+describe('finance — an expense entered on a branch device', () => {
+  it('lands in the session branch and is listed there; an explicit null stays salon-wide', async () => {
+    const pos = { ...owner, selectedBranchId: B1 };
+    const made = await svc.create(pos, { amountCents: 4321, incurredOn: today, vendor: 'POS Vendor', intent: 'approve', idempotencyKey: 'pos-branch-1' } as never);
+    const id = (made as { expense?: { id: string }; id?: string }).expense?.id ?? (made as { id: string }).id;
+    expect((await q(`select branch_id from expenses where id = $1`, [id]))[0]?.branch_id).toBe(B1);
+    const list = await svc.list(pos, { tab: 'all', q: 'POS Vendor' } as never);
+    expect(list.items.map((x: { id: string }) => x.id)).toContain(id);
+    const wide = await svc.create(pos, { amountCents: 1234, incurredOn: today, vendor: 'Salon Wide Vendor', branchId: null, intent: 'approve', idempotencyKey: 'pos-branch-2' } as never);
+    const wid = (wide as { expense?: { id: string }; id?: string }).expense?.id ?? (wide as { id: string }).id;
+    expect((await q(`select branch_id from expenses where id = $1`, [wid]))[0]?.branch_id).toBeNull();
+  });
+});

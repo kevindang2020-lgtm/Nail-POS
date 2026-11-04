@@ -37,7 +37,7 @@ function namesWanted(spec, parentURL) {
 export async function resolve(spec, ctx, next) {
   if (spec === 'vitest') return { url: pathToFileURL(join(HERE, 'vitest-shim.mjs')).href, shortCircuit: true };
   const FIXED = { '@nestjs/common': 'nest-common.mjs', '@nestjs/core': 'nest-core.mjs', 'reflect-metadata': 'reflect-metadata.mjs', rxjs: 'rxjs.mjs', 'rxjs/operators': 'rxjs.mjs', pg: 'pg.mjs' };
-  if (spec === 'kysely') FIXED.kysely = 'kysely.mjs';
+  if (spec === 'kysely' && !process.env.REAL_KYSELY) FIXED.kysely = 'kysely.mjs';   // REAL_KYSELY=1: the repo's real query builder (screens whose repositories use it, e.g. Expenses)
   if (spec === '@electric-sql/pglite') return { url: pathToFileURL(join(HERE, '..', 'pg-standin', 'pglite.mjs')).href, shortCircuit: true };
   if (spec.startsWith('@electric-sql/pglite/')) return { url: pathToFileURL(join(HERE, '..', 'pg-standin', 'contrib.mjs')).href, shortCircuit: true };
   if (FIXED[spec]) {

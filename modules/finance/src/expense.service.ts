@@ -398,7 +398,11 @@ export class ExpenseService {
     }
     // a split across branches is a salon-wide expense: with allocations and no branch named, it is filed to the whole salon,
     // never to the salon's default branch (which would refuse the split — audit F6)
-    const branchId = await this.writableBranch(ctx, i.allocations?.length && i.branchId == null ? null : i.branchId ?? settings.defaultBranchId ?? null);
+    // Expenses guide screenshots (Nov 4 2026): a POS (a branch device) sends no branch — the expense belongs to the location it
+    // was entered at. It used to be filed salon-wide and then vanished from that location's own list. An explicit null (the
+    // Owner App's "All branches") still files it to the whole salon.
+    const unnamed = !Object.prototype.hasOwnProperty.call(i, 'branchId') || i.branchId === undefined;
+    const branchId = await this.writableBranch(ctx, i.allocations?.length && i.branchId == null ? null : unnamed ? (ctx.selectedBranchId ?? settings.defaultBranchId ?? null) : i.branchId ?? settings.defaultBranchId ?? null);
     const { keys, custom } = await this.validKeys(ctx.tenantId);
     const evidence = i.receiptDocumentId ? await this.repo.receiptEvidence(this.db, ctx.tenantId, i.receiptDocumentId) : null;
     if (i.receiptDocumentId && !evidence) throw new ExpenseError('RECEIPT_NOT_FOUND');
