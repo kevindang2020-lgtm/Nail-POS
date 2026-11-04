@@ -76,7 +76,7 @@ export class InventoryScreenRepository extends StockAlertsRepository {
       LEFT JOIN ${this.lastUse(ctx, b)} lu ON lu.product_id = p.id
       LEFT JOIN LATERAL (SELECT max(m.created_at) AS at FROM inventory_stock_movements m WHERE m.tenant_id = ${ctx.tenantId} AND m.branch_id = ${b} AND m.product_id = p.id) am ON true
       CROSS JOIN LATERAL (SELECT coalesce(s.quantity_on_hand, 0)::int AS on_hand, coalesce(s.quantity_reserved, 0)::int AS reserved,
-          (coalesce(uc.unopened, 0) + coalesce(uc.open, 0))::int AS bottles,
+          (coalesce(uc.unopened, 0) + coalesce(uc.open, 0) - coalesce(uc.expired, 0))::int AS bottles,   -- usable, unexpired: the same rule as the stock cache
           coalesce(s.reorder_level_override, p.reorder_level, 0)::int AS rl,
           coalesce(s.reorder_quantity_override, p.reorder_quantity, 0)::int AS rq,
           CASE WHEN coalesce(s.critical_level_override, p.critical_level, 0) > 0 THEN coalesce(s.critical_level_override, p.critical_level)::int
@@ -94,7 +94,7 @@ export class InventoryScreenRepository extends StockAlertsRepository {
 
   private productOut(ctx: InvCtx, r: any) {
     const hide = this.techOnly(ctx);
-    const available = Math.max(0, N(r.bottles) - N(r.reserved) - N(r.expired));
+    const available = Math.max(0, N(r.bottles) - N(r.reserved));   // bottles already excludes expired
     return {
       id: String(r.id), name: r.name, sku: r.sku ?? null, barcode: r.barcode ?? null, upc: r.upc ?? null, colorName: r.color_name ?? null, colorNumber: r.color_number ?? null,
       finish: r.finish ?? null, unit: r.unit_type || 'unit', trackingMode: r.tracking_mode ?? 'quantity', brandId: r.brand_id ?? null, brand: r.brand_name ?? null,
@@ -117,8 +117,8 @@ export class InventoryScreenRepository extends StockAlertsRepository {
     const r = (await sql<any>`SELECT count(*)::int AS products, coalesce(sum(coalesce(uc.unopened, 0)), 0)::int AS unopened, coalesce(sum(coalesce(uc.open, 0)), 0)::int AS open,
         coalesce(sum(coalesce(uc.expiring, 0)), 0)::int AS expiring, coalesce(sum(coalesce(uc.expired, 0)), 0)::int AS expired,
         count(*) FILTER (WHERE sv.severity = 'out_of_stock')::int AS out_of_stock, count(*) FILTER (WHERE k.on_hand <> k.bottles)::int AS drift,
-        coalesce(sum(coalesce(p.cost_cents, 0)::bigint * greatest(k.bottles - coalesce(uc.expired, 0), 0)), 0)::bigint AS value_cents,
-        coalesce(sum(coalesce(p.retail_price_cents, 0)::bigint * greatest(k.bottles - coalesce(uc.expired, 0), 0)), 0)::bigint AS retail_cents,
+        coalesce(sum(coalesce(p.cost_cents, 0)::bigint * greatest(k.bottles, 0)), 0)::bigint AS value_cents,
+        coalesce(sum(coalesce(p.retail_price_cents, 0)::bigint * greatest(k.bottles, 0)), 0)::bigint AS retail_cents,
         count(*) FILTER (WHERE p.cost_cents IS NULL AND k.bottles > 0)::int AS no_cost
       ${from} WHERE p.tenant_id = ${ctx.tenantId} AND p.active = true AND p.archived_at IS NULL`.execute(this.db)).rows[0];
     const units = (await sql<{ unit: string; n: number }>`SELECT coalesce(nullif(p.unit_type, ''), 'unit') AS unit, count(*)::int AS n FROM inventory_units u

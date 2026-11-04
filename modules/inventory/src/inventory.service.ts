@@ -178,7 +178,10 @@ export class InventoryService {
 
   /** Recompute location stock for a product from its bottle rows — the single source of truth. */
   private async recompute(ctx: InvCtx, productId: string, exec: Kysely<DB> = this.need()): Promise<{ onHand: number; before: number }> {
-    const units = await sql<{ status: BottleStatus }>`SELECT status FROM inventory_units
+    // a bottle past its expiration date is not stock (it is never used on a client — consumption skips it — so counting it on hand
+    // hid a real shortage); it counts as expired until someone disposes of it
+    const units = await sql<{ status: BottleStatus }>`SELECT CASE WHEN status IN ('unopened', 'opened', 'low') AND expiration_date IS NOT NULL
+        AND expiration_date < (now() AT TIME ZONE 'UTC')::date THEN 'expired' ELSE status END AS status FROM inventory_units
       WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${productId}`.execute(exec);
     const prev = await sql<{ quantity_on_hand: number }>`SELECT quantity_on_hand FROM inventory_location_stock
       WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${productId}`.execute(exec);
