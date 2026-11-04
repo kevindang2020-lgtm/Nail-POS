@@ -3787,7 +3787,7 @@ POST /webhooks/payments/{processor}  realm=shared  auth=public  domain=payments 
 POST /webhooks/twilio/booking-verification/status  realm=shared  auth=public  domain=booking  unversioned
 POST /webhooks/twilio/sms/inbound  realm=shared  auth=public  domain=communications  unversioned
 POST /webhooks/twilio/sms/status  realm=shared  auth=public  domain=communications  unversioned
-POST /webhooks/voice/retell  realm=shared  auth=session  domain=ai  unversioned
+POST /webhooks/voice/retell  realm=shared  auth=public  domain=ai  unversioned
 PUT /community/advisories/{id}  realm=shared  auth=session  domain=support  perm=community.advisory.draft  guards=RolePermissionGuard,TenantAuthGuard
 PUT /community/comments/{id}  realm=shared  auth=session  domain=support  perm=community.comment.create  guards=RolePermissionGuard,TenantAuthGuard
 PUT /community/posts/{id}  realm=shared  auth=session  domain=support  perm=community.advisory.submit  guards=RolePermissionGuard,TenantAuthGuard

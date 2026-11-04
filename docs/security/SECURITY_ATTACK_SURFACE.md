@@ -14,7 +14,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | realm `shared` | 282 |
 | realm `staff` | 2227 |
 | realm `super_admin` | 1172 |
-| public (no session; each one reviewed by `check:public`) | 123 |
+| public (no session; each one reviewed by `check:public`) | 124 |
 | integration key / OAuth (`auth=api_key`) | 13 |
 | with `@RequireStepUp` (fresh password + code) | 186 |
 | with an idempotency contract | 45 |
@@ -160,6 +160,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/webhooks/twilio/booking-verification/status` | modules/booking/src/customer-booking/booking-verification-webhook.controller.ts:62 | webhook | provider-signed; no rate limit (signature first, before any work) |
 | POST | `/webhooks/twilio/sms/inbound` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:22 | webhook | provider-signed; no rate limit (signature first, before any work) |
 | POST | `/webhooks/twilio/sms/status` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:39 | webhook | provider-signed; no rate limit (signature first, before any work) |
+| POST | `/webhooks/voice/retell` | modules/ai/src/voice-booking/ai-calls-public.controller.ts:21 | webhook | provider-signed; no rate limit (signature first, before any work) |
 
 ## 4. Webhooks (authenticity before any effect)
 
@@ -173,7 +174,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/webhooks/twilio/booking-verification/status` | modules/booking/src/customer-booking/booking-verification-webhook.controller.ts:62 | public |
 | POST | `/webhooks/twilio/sms/inbound` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:22 | public |
 | POST | `/webhooks/twilio/sms/status` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:39 | public |
-| POST | `/webhooks/voice/retell` | modules/ai/src/voice-booking/ai-calls-public.controller.ts:21 | session |
+| POST | `/webhooks/voice/retell` | modules/ai/src/voice-booking/ai-calls-public.controller.ts:21 | public |
 
 Authenticity: payment webhooks — per-tenant HMAC over the raw body, timing-safe, processor bound to the merchant's configured processor, event claim before effects (E7); bank deposits — path token + timestamped signature; Twilio — tenant resolved from the To number / message first, then THAT tenant's token (E2); integrations — signature + replay window.
 
