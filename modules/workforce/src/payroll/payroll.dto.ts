@@ -7,7 +7,14 @@ export type CommissionType = 'percent' | 'flat';
  *  so String(date) is "Mon Jun 01 …" and toISOString() can shift the day in a zone east of UTC — read the local parts.
  *  (Wave 2 fix: period dates came back as "Mon Jun 01" on a real pg pool and broke every pay-period window.) */
 export function ymdOf(v: unknown): string {
-  if (v instanceof Date) return `${v.getFullYear()}-${String(v.getMonth() + 1).padStart(2, '0')}-${String(v.getDate()).padStart(2, '0')}`;
+  if (v instanceof Date) {
+    // node-postgres: local midnight → local parts. PGlite (and any driver that parses DATE as UTC midnight): local parts west of
+    // UTC give the day BEFORE — read the UTC parts when the value is UTC midnight and not local midnight.
+    const utcMidnight = v.getUTCHours() === 0 && v.getUTCMinutes() === 0 && v.getUTCSeconds() === 0 && v.getUTCMilliseconds() === 0;
+    const localMidnight = v.getHours() === 0 && v.getMinutes() === 0 && v.getSeconds() === 0 && v.getMilliseconds() === 0;
+    const [y, m, d] = utcMidnight && !localMidnight ? [v.getUTCFullYear(), v.getUTCMonth(), v.getUTCDate()] : [v.getFullYear(), v.getMonth(), v.getDate()];
+    return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
   return String(v ?? '').slice(0, 10);
 }
 export type PeriodStatus = 'draft' | 'review' | 'finalized' | 'paid' | 'canceled';
