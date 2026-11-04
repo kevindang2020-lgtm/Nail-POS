@@ -117,8 +117,15 @@ export class ServicesService {
   }
 
   // ---- categories ----
-  async createCategory(ctx: ServicesContext, name: string, colorKey?: string): Promise<ServiceCategoryOption> { this.need(ctx, 'pos.services.edit'); if (!name?.trim()) throw withCode(new ValidationError('Category name is required'), 'CATEGORY_NAME_REQUIRED'); const c = await this.repo.createCategory(ctx, name, colorKey); this.log(ctx, 'pos_service_category_created', 'pos_service_category', c.categoryId, undefined, c as any); await this.bustCategories(ctx); return c; }
-  async updateCategory(ctx: ServicesContext, categoryId: string, patch: { name?: string; colorKey?: string; status?: any }): Promise<ServiceCategoryOption> { this.need(ctx, 'pos.services.edit'); const c = await this.repo.updateCategory(ctx, categoryId, patch); if (!c) throw withCode(new ValidationError('Category not found'), 'CATEGORY_NOT_FOUND'); this.log(ctx, 'pos_service_category_updated', 'pos_service_category', categoryId, undefined, c as any); await this.bustCategories(ctx); return c; }
+  /** D3 Service Categories (Nov 3 2026): two categories with the same name (case and spaces ignored) in one location split
+   *  the menu and the reports — refused, except against a merged category (kept only as history). */
+  private async assertCategoryNameFree(ctx: ServicesContext, name: string, exceptId?: string) {
+    const norm = (v: string) => v.trim().replace(/\s+/g, ' ').toLowerCase();
+    const clash = (await this.repo.listCategories(ctx)).find((c) => c.categoryId !== exceptId && String(c.status) !== 'merged' && norm(c.name) === norm(name));
+    if (clash) { const e: any = withCode(new ValidationError('A category with this name already exists here.'), 'CATEGORY_NAME_DUPLICATE'); e.status = 409; throw e; }
+  }
+  async createCategory(ctx: ServicesContext, name: string, colorKey?: string): Promise<ServiceCategoryOption> { this.need(ctx, 'pos.services.edit'); if (!name?.trim()) throw withCode(new ValidationError('Category name is required'), 'CATEGORY_NAME_REQUIRED'); await this.assertCategoryNameFree(ctx, name); const c = await this.repo.createCategory(ctx, name.trim(), colorKey); this.log(ctx, 'pos_service_category_created', 'pos_service_category', c.categoryId, undefined, c as any); await this.bustCategories(ctx); return c; }
+  async updateCategory(ctx: ServicesContext, categoryId: string, patch: { name?: string; colorKey?: string; status?: any }): Promise<ServiceCategoryOption> { this.need(ctx, 'pos.services.edit'); if (patch.name != null) { if (!patch.name.trim()) throw withCode(new ValidationError('Category name is required'), 'CATEGORY_NAME_REQUIRED'); await this.assertCategoryNameFree(ctx, patch.name, categoryId); patch = { ...patch, name: patch.name.trim() }; } const c = await this.repo.updateCategory(ctx, categoryId, patch); if (!c) throw withCode(new ValidationError('Category not found'), 'CATEGORY_NOT_FOUND'); this.log(ctx, 'pos_service_category_updated', 'pos_service_category', categoryId, undefined, c as any); await this.bustCategories(ctx); return c; }
   async archiveCategory(ctx: ServicesContext, categoryId: string, confirm?: boolean): Promise<{ ok: boolean; activeServices: number }> {
     this.need(ctx, 'pos.services.edit');
     const res = await this.repo.archiveCategory(ctx, categoryId, !!confirm);   // with active services and no confirm, the repository writes nothing

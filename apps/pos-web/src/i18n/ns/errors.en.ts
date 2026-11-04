@@ -684,6 +684,7 @@ export const ERRORS_EN = {
   'errors.CATEGORY_REQUIRED': 'Choose a category.',
   'errors.CATEGORY_NOT_IN_SALON': 'That category is not one of this salon\'s.',
   'errors.CATEGORY_NAME_REQUIRED': 'Enter a category name.',
+  'errors.CATEGORY_NAME_DUPLICATE': 'A category with this name already exists here. Use the existing one or choose another name.',
   'errors.CATEGORY_NOT_FOUND': 'That category could not be found.',
   'errors.SERVICE_NAME_REQUIRED': 'Enter a service name.',
   'errors.DISCOUNT_PERCENT_INVALID': 'A percent cannot be more than 100.',

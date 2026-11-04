@@ -39,7 +39,8 @@ describe('ServicesService — category list caching', () => {
     const before = await svc.listCategories(owner());
     await svc.createCategory(owner(), 'Waxing');           // write → bust
     const after = await svc.listCategories(owner());        // must reload, not serve stale
-    expect(spy).toHaveBeenCalledTimes(2);
+    // 1 cached read before + 1 uncached name-clash check inside createCategory (D3: never against a stale cache) + 1 reload
+    expect(spy).toHaveBeenCalledTimes(3);
     expect(after.length).toBe(before.length + 1);
     expect(after.some((c) => c.name === 'Waxing')).toBe(true);
   });

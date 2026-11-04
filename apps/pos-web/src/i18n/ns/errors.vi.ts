@@ -684,6 +684,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.CATEGORY_REQUIRED': 'Hãy chọn danh mục.',
   'errors.CATEGORY_NOT_IN_SALON': 'Danh mục này không thuộc tiệm.',
   'errors.CATEGORY_NAME_REQUIRED': 'Hãy nhập tên danh mục.',
+  'errors.CATEGORY_NAME_DUPLICATE': 'Đã có danh mục cùng tên ở đây. Hãy dùng danh mục đó hoặc chọn tên khác.',
   'errors.CATEGORY_NOT_FOUND': 'Không tìm thấy danh mục này.',
   'errors.SERVICE_NAME_REQUIRED': 'Hãy nhập tên dịch vụ.',
   'errors.DISCOUNT_PERCENT_INVALID': 'Phần trăm không được lớn hơn 100.',

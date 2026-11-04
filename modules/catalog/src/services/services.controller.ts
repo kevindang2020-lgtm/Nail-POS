@@ -20,6 +20,7 @@ function filtersFrom(q: any): ServiceFilters {
 async function run<T>(fn: () => T | Promise<T>): Promise<T> {
   try { return await fn(); } catch (e) {
     if (e instanceof ForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
+    if (e instanceof ValidationError && (e as any).status === 409) throw new HttpException({ code: (e as any).apiCode, message: e.message }, HttpStatus.CONFLICT);
     if (e instanceof ValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
     if ((e as any)?.apiCode === 'SERVICE_TAX_NOT_CONFIGURABLE') throw new HttpException({ code: 'SERVICE_TAX_NOT_CONFIGURABLE', message: (e as Error).message }, HttpStatus.CONFLICT);
     throw e;

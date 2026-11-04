@@ -632,6 +632,7 @@ export const ERROR_REGISTRY = {
   CATEGORY_REQUIRED:              { status: 400, message: 'Choose a category.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CATEGORY_NOT_IN_SALON:          { status: 400, message: 'That category is not one of this salon\'s.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CATEGORY_NAME_REQUIRED:         { status: 400, message: 'Enter a category name.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
+  CATEGORY_NAME_DUPLICATE:        { status: 409, message: 'A category with this name already exists here. Use the existing one or choose another name.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CATEGORY_NOT_FOUND:             { status: 404, message: 'That category could not be found.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   SERVICE_NAME_REQUIRED:          { status: 400, message: 'Enter a service name.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   DISCOUNT_PERCENT_INVALID:       { status: 400, message: 'A percent cannot be more than 100.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
