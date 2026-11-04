@@ -848,3 +848,10 @@ The full table is `NEXT_STEPS.md` §2. In short:
   - Developer merge + M4 (most).
   - Security Deep Scan (`c70f87c5` … `990aff06`).
   - Post-hardening proof `2975758d` (pilot 117/117, restore drill 12/12).
+
+## Nov 3 2026 (late night) — D fixes + API gate sweep
+See docs/GUIDE_QUEUE_2026-11-03.md, section "Nov 3 late night". New migrations: 785 (member numbers unique per salon),
+786 (tenant-consistency triggers on 35 FKs of the new centers), 787 (validate two NOT VALID checks). apps/api gates still
+failing by design until reviewed: role-matrix snapshot, route-domains wire-type ratchet, strict-bodies type proof (15).
+The IDOR table now classifies every route but the new fixtures have not been run live (live-phase14-idor.mjs). Open product
+question for Kevin: Customer Notifications / Email Center read `notifications` salon-wide although rows carry a branch.
