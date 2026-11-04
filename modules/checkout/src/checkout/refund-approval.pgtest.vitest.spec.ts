@@ -95,7 +95,7 @@ describe('every refund path carries the rule', () => {
     const calls = src.match(/reserveRefundAtomic\(ctx, \{[^}]*\}/g) ?? [];
     expect(calls).toHaveLength(3);
     // BUILD_PLAN Phase 9: `approved` is true only inside executeApprovedRefund (opts.approvalId), never from a request body
-    for (const c of calls) expect(c).toMatch(/canApprove: approved \|\| hasPermission\(ctx as any, APPROVE_REFUND_CAPABILITY\), thresholds,/);
+    for (const c of calls) expect(c).toMatch(/canApprove: approved \|\| hasPermission\((ctx as any|permCtx\(ctx\)), APPROVE_REFUND_CAPABILITY\), thresholds,/);
     expect(src).toMatch(/const approved = !!opts\?\.approvalId;/);
     expect(src.match(/\{ approvalId: request\.id \}/g) ?? []).toHaveLength(1);   // the only caller that sets it: the engine's executor
   });

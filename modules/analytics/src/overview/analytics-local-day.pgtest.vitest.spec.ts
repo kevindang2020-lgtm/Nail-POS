@@ -46,7 +46,10 @@ describe('the POS Overview', () => {
     expect(o.context.businessDate).toBe('2026-10-05');
     expect(o.context.timezone).toBe('America/New_York');
     expect(o.kpis.todayRevenue.amountCents).toBe(7000);
-    expect(o.analytics.revenueTrend).toEqual([{ date: '2026-10-04', revenueCents: 9900 }, { date: '2026-10-05', revenueCents: 7000 }]);
+    // the trend is a dense 7-day series ending on the salon's today (days with no paid ticket are a real $0 — fillRevenueTrend)
+    expect(o.analytics.revenueTrend).toHaveLength(7);
+    expect(o.analytics.revenueTrend.slice(-2)).toEqual([{ date: '2026-10-04', revenueCents: 9900 }, { date: '2026-10-05', revenueCents: 7000 }]);
+    expect(o.analytics.revenueTrend.slice(0, 5).every((p: any) => p.revenueCents === 0)).toBe(true);
   });
   it('the arrivals board lists tonight\'s and this morning\'s guests, not last night\'s', async () => {
     const b = new OverviewBoardService(db); b.now = () => NOW;

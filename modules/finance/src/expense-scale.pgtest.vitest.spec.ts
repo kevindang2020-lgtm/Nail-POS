@@ -31,7 +31,7 @@ beforeAll(async () => {
   // 1,000 receipts (10 of them today), 100,000 expenses over three years, 90 % approved, 10 categories, 50 vendors, two branches
   await q(`insert into ocr_documents (tenant_id, branch_id, vendor, total_cents, pipeline_status, document_type, created_at)
     select $1, case when g % 2 = 0 then $2::uuid else $3::uuid end, 'Vendor ' || (g % 50), 1000 + g, case when g % 10 = 0 then 'review_required' else 'posted' end, 'receipt',
-           case when g <= 10 then now() else now() - ((1 + g % 700) || ' days')::interval end
+           case when g <= 10 then timestamptz '2026-10-27T15:00:00Z' else timestamptz '2026-10-27T15:00:00Z' - ((1 + g % 700) || ' days')::interval end   -- the service's fixed clock, not the real now()
     from generate_series(1, ${RECEIPTS}) g`, [T, B1, B2]);
   await q(`insert into expenses (tenant_id, branch_id, status, kind, bill_status, category, category_source, amount_cents, vendor, incurred_on, source, created_by, updated_by, version)
     select $1, case when g % 3 = 0 then null when g % 3 = 1 then $2::uuid else $3::uuid end,

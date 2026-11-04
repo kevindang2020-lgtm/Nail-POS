@@ -44,14 +44,15 @@ describe('an unknown code is a MISS on every route (real controller + service)',
   const cases: [string, () => Promise<unknown>][] = [
     ['giftLookup', () => c.giftLookup(req(), { input: UNKNOWN })],
     ['giftBalance', () => c.giftBalance(req(), UNKNOWN)],
-    ['voidGift', () => c.voidGift(req(), UNKNOWN)],
     ['giftReplace', () => c.giftReplace(req(), { input: UNKNOWN })],
     ['payGift', () => c.payGift(req(), TK, { giftCardCode: UNKNOWN })],
     ['paySplit', async () => { const d = await due(); return c.paySplit(req(), TK, { segments: [{ method: 'gift_card', amountCents: 100, giftCardCode: UNKNOWN }, { method: 'cash', amountCents: d - 100 }] }); }],
-    ['giftReload', () => c.giftReload(req(), TK, { code: UNKNOWN, amountCents: 500 })],
+    ['giftReload', () => c.giftReload(req(), TK, { code: UNKNOWN, amountCents: 2500 })],   // ≥ the salon's $10 gift-card minimum (Gift Cards §15), so the code is what is judged
     ['applyRewardCode', () => c.applyRewardCode(req(), TK, { code: 'RWD-NOPE-0000' })],
   ];
   for (const [name, call] of cases) it(name, async () => { expect(await outcome(call)).toBe('miss'); });
+  // the code-in-the-URL void is retired (410 for every code) — it reveals nothing, so it is neutral, never a hit or a miss
+  it('voidGift (retired)', async () => { expect(await outcome(() => c.voidGift(req(), UNKNOWN))).toBe('neutral'); });
 
   it('coupon routes: the deals engine refusal for an unknown code, through the controller mapping', async () => {
     const svc: any = { applyOffer: async () => { throw new DealRefusedError('That code isn’t valid here.', 400, [{ code: 'unknown_code', message: 'Unknown code.' }]); } };
