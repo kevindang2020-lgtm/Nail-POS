@@ -168,3 +168,13 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   Service Done, Split Payments, layout grid), and slices 3 and 9 stall intermittently (the Booking language-switch test passed
   alone twice; the stall depends on timing).
 
+## Nov 4 2026 (10:14 / 10:15) — 40 files received
+- 33 are byte-identical copies of guides already in batches C and D (Loyalty Complete, Communications, Loyalty Tokens, Four Modules,
+  Phone & Messaging, Customer Retention, Team Management, Five Unfinished Features, Technicians, Tech Appointments, Live Technician
+  Schedule, Tech Queue, Commission Report, Team Performance, Services & Products, Service Categories, Service Pricing, Add-Ons,
+  Membership, Discounts ×2, Products, Inventory, Suppliers, Stock Alerts ×2 (the two files are identical), Payments & Money,
+  Transactions, Cash Drawer, End-of-Day Cash, Refunds & Voids, Split Payments, Tips). Their status is the batch C / D lines above.
+- Batch E — 7 NEW guides (never audited against the code; their screens exist from the Oct 29 Payments & Money build):
+  E1 Gift Cards · E2 Payment Terminals · E3 Settlements · E4 Deposit Reconciliation · E5 Invoices · E6 Expenses ·
+  E7 Loyalty Rewards (full spec) — QUEUED (audit, then build the gaps).
+

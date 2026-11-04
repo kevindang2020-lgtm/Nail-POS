@@ -5,6 +5,7 @@
 //                    continuous free opening), adjacent days, Close / Esc — read from the live-schedule detail
 //   ConflictPanel    "can she take it?" — every reason from /pos/tech-appointments-screen/conflicts, and alternatives
 //                    from the booking engine's openings; it never books or moves anything itself
+import { TechnicianPickerButton } from '../components/TechnicianPickerButton';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
@@ -111,7 +112,7 @@ export function FullDayOverlay({ technicianId, date: date0, today, canPay, onClo
 }
 
 /** Schedule conflict warning: explain every cause for a technician + time, and offer valid alternatives (read only) */
-export function ConflictPanel({ techs, today, initial, testId = 'conflict-panel' }: { techs: { technicianId: string; name: string }[]; today: string; initial?: { technicianId?: string; date?: string; start?: string; minutes?: number; appointmentId?: string; serviceIds?: string[] }; testId?: string }) {
+export function ConflictPanel({ today, initial, initialName, testId = 'conflict-panel' }: { today: string; initialName?: string; initial?: { technicianId?: string; date?: string; start?: string; minutes?: number; appointmentId?: string; serviceIds?: string[] }; testId?: string }) {
   const nav = useNavigate();
   const [tid, setTid] = useState(initial?.technicianId ?? ''); const [date, setDate] = useState(initial?.date ?? today); const [start, setStart] = useState(initial?.start ?? '10:00'); const [mins, setMins] = useState(String(initial?.minutes ?? 45));
   const [run, setRun] = useState(0);
@@ -124,7 +125,7 @@ export function ConflictPanel({ techs, today, initial, testId = 'conflict-panel'
   return (
     <div className="tm-conflict" data-testid={testId}>
       <div className="cg-form four">
-        <label className="fk-field">{tx('tm.col.technician')}<select value={tid} onChange={(e) => setTid(e.target.value)} data-testid="cf-tech"><option value="">{tx('tm.chooseTech')}</option>{techs.map((t) => <option key={t.technicianId} value={t.technicianId}>{t.name}</option>)}</select></label>
+        <label className="fk-field">{tx('tm.col.technician')}<span data-testid="cf-tech"><TechnicianPickerButton value={tid} valueName={tid === initial?.technicianId ? initialName : undefined} emptyLabel={tx('tm.chooseTech')} ariaLabel={tx('tm.col.technician')} date={date} onChange={(id) => setTid(id)} style={{ maxWidth: '100%' }} /></span></label>
         <label className="fk-field">{tx('tm.date')}<input type="date" value={date} onChange={(e) => setDate(e.target.value || today)} data-testid="cf-date" /></label>
         <label className="fk-field">{tx('tm.start')}<input type="time" step={900} value={start} onChange={(e) => setStart(e.target.value)} data-testid="cf-start" /></label>
         <label className="fk-field">{tx('tm.minutes')}<input inputMode="numeric" value={mins} onChange={(e) => setMins(e.target.value.replace(/\D/g, ''))} data-testid="cf-minutes" /></label>

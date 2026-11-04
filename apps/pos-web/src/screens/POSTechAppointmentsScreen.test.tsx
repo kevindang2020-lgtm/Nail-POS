@@ -91,7 +91,7 @@ describe('POSTechAppointmentsScreen', () => {
   });
   it('403 is a permission state', async () => {
     scr.kpis.mockRejectedValue({ status: 403 }); mount();
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/your role cannot see this information/i)).toBeInTheDocument();
   });
   it('reads in Vietnamese: the 24-hour clock, statuses from codes, no English left', async () => {
     await setLanguage('vi');
@@ -99,6 +99,6 @@ describe('POSTechAppointmentsScreen', () => {
     await screen.findAllByText(/Nguyễn Thị Hương/);
     expect(screen.getAllByText(/14:30/).length).toBeGreaterThan(0);
     for (const en of [/2:30 PM/, /No-Show/]) expect(screen.queryByText(en), String(en)).toBeNull();
-    expect(leftoverEnglish(container, ['Nguyễn Thị Hương', 'Mai Pham', 'Gel Manicure', 'Mia', 'MP', 'NH', 'M', '••• 1234', 'VIP']).join(' | ')).toBe('');
+    expect(leftoverEnglish(container, ['Nguyễn Thị Hương', 'Mai Pham', 'Gel Manicure', 'Mia', 'MP', 'NH', 'M', '••• 1234', 'VIP', 'pick', 'America/New_York']).join(' | ')).toBe('');
   });
 });

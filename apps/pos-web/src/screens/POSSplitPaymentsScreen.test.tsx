@@ -57,7 +57,7 @@ describe('POSSplitPaymentsScreen', () => {
   it('a read failure is an error state, never a verified 0; 403 is a permission state', async () => {
     api.summary.mockRejectedValue({ status: 503 }); api.list.mockRejectedValue({ status: 503 });
     mount();
-    expect(await screen.findByText(/could not be reached/i)).toBeInTheDocument();
+    expect((await screen.findAllByText(/could not be reached/i)).length).toBeGreaterThan(0);   // each card says so (summary and list)
     expect(screen.queryByText('$0.00')).toBeNull();
   });
 });

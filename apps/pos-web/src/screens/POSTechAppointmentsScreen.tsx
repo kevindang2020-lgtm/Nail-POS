@@ -19,7 +19,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTechAppointmentsApi } from '../api/posTechAppointmentsApi';
-import { posTechAppointmentsScreenApi, posTechniciansScreenApi } from '../api/posTeamScreensApi';
+import { posTechAppointmentsScreenApi } from '../api/posTeamScreensApi';
 import { posLiveTechnicianScheduleApi } from '../api/posLiveTechnicianScheduleApi';
 import { bookingConflictText } from '../api/posBookingApi';
 import { posCheckInApi } from '../api/posCheckInApi';
@@ -61,8 +61,7 @@ export function POSTechAppointmentsScreen() {
   const hist = useLoad(() => posTechAppointmentsScreenApi.history({ ...periodQuery(hPeriod), page: hp, pageSize: 8 }), [JSON.stringify(hPeriod), hp, tick]);
   const s: any = lanes.data; const k = kp.data?.kpis;
   // the technician pickers (filter · conflict check) list the active team from the directory, not just this card page
-  const roster = useLoad(() => posTechniciansScreenApi.directory({ status: 'active', sort: 'name', pageSize: 100 }), [tick]);
-  const techs: { technicianId: string; name: string }[] = (roster.data?.items ?? []).map((t: any) => ({ technicianId: t.technicianId, name: t.name }));
+  const [techFilterName, setTechFilterName] = useState<string | undefined>(undefined);   // technicians are chosen from the server-paged picker (never a whole-roster list)
   const showDay = (st: string) => { setStatus(st); setDateField('scheduled'); setPeriod(day ? { preset: 'custom', from: day, to: day } : { preset: 'today' }); document.querySelector('[data-testid="appointments-list"]')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); };
   const filtered = !!(q || status !== 'all' || source !== 'all' || techFilter || sort !== 'start' || period.preset !== 'today' || dateField !== 'scheduled');
   const clearAll = () => { setSearch(''); setStatus('all'); setSource('all'); setTechFilter(''); setSort('start'); setPeriod({ preset: 'today' }); setDateField('scheduled'); };
@@ -142,7 +141,7 @@ export function POSTechAppointmentsScreen() {
           {search ? <button type="button" className="fk-x" aria-label={tx('finance.clearSearch')} onClick={() => setSearch('')} data-testid="search-clear">✕</button> : null}</div>
         <select className="fk-select" value={status} onChange={(e) => setStatus(e.target.value)} aria-label={tx('pos.status')} data-testid="status">{STATUSES.map((x) => <option key={x} value={x}>{tx('tm.statusF.' + x)}</option>)}</select>
         <select className="fk-select" value={source} onChange={(e) => setSource(e.target.value)} aria-label={tx('tm.source')} data-testid="source">{['all', 'online', 'in_salon'].map((x) => <option key={x} value={x}>{tx('tm.sourceF.' + x)}</option>)}</select>
-        <select className="fk-select" value={techFilter} onChange={(e) => setTechFilter(e.target.value)} aria-label={tx('tm.col.technician')} data-testid="tech-filter"><option value="">{tx('tm.allTechs')}</option>{techs.map((t) => <option key={t.technicianId} value={t.technicianId}>{t.name}</option>)}</select>
+        <span data-testid="tech-filter"><TechnicianPickerButton value={techFilter} valueName={techFilterName} emptyLabel={tx('tm.allTechs')} anyLabel={tx('tm.allTechs')} ariaLabel={tx('tm.col.technician')} onChange={(id, t) => { setTechFilter(id); setTechFilterName(t?.name); }} /></span>
         <select className="fk-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('cg.sort')} data-testid="sort">{['start', 'newest', 'oldest'].map((x) => <option key={x} value={x}>{tx('tm.sort.' + x)}</option>)}</select>
       </div>
       <div className="fn-tabsrow dsc-periodrow">
@@ -166,7 +165,7 @@ export function POSTechAppointmentsScreen() {
       </FitPanel>
 
       <div className="mos-row two cg-row">
-        <FitPanel testId="conflict-warning" title={tx('tm.conflictTitle')}><ConflictPanel techs={techs} today={today} /></FitPanel>
+        <FitPanel testId="conflict-warning" title={tx('tm.conflictTitle')}><ConflictPanel today={today} /></FitPanel>
         <FitPanel testId="next-available" title={tx('tm.findNext')}><p className="fk-hint">{tx('tm.findNextSub')}</p><button type="button" className="fk-btn primary" onClick={() => setFinder(true)} data-testid="cta-finder">{tx('tm.findNext')}</button></FitPanel>
       </div>
 
@@ -178,7 +177,7 @@ export function POSTechAppointmentsScreen() {
               <td>{h.customer ?? '—'}<span className="fk-li-s">{h.technician ?? ''}{h.apptDate ? ` · ${h.apptDate} ${hm12(h.apptStart)}` : ''}</span></td><td className="t-opt">{h.actor ?? '—'}</td></tr>)}</tbody></table>}
       </FitPanel>
 
-      {detail ? <AppointmentDialog a={detail} techs={techs} today={today} onClose={() => setDetail(null)} onDone={() => { setDetail(null); reload(); }} /> : null}
+      {detail ? <AppointmentDialog a={detail} today={today} onClose={() => setDetail(null)} onDone={() => { setDetail(null); reload(); }} /> : null}
       {fullDay ? <FullDayOverlay technicianId={fullDay} date={day ?? today} today={today} canPay={can('technicians.view_pay')} onClose={() => setFullDay(null)} onAppt={(id) => { setFullDay(null); void openAppt(id); }} /> : null}
       {finder ? <QualifiedFinder today={today} onClose={() => setFinder(false)} /> : null}
     </div>
@@ -187,7 +186,7 @@ export function POSTechAppointmentsScreen() {
 
 /** Appointment / technician assignment details with the original actions (Check In · No-Show · Start · Assign ·
  *  Reschedule · Cancel). A reschedule is checked for conflicts first and explained; the server re-validates on save. */
-function AppointmentDialog({ a, techs, today, onClose, onDone }: { a: any; techs: { technicianId: string; name: string }[]; today: string; onClose: () => void; onDone: () => void }) {
+function AppointmentDialog({ a, today, onClose, onDone }: { a: any; today: string; onClose: () => void; onDone: () => void }) {
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const [techSel, setTechSel] = useState(''); const [when, setWhen] = useState(`${a.date ?? today}T${String(a.startTime ?? '').slice(0, 5)}`); const [reason, setReason] = useState('');
   const [check, setCheck] = useState(false);
@@ -200,7 +199,7 @@ function AppointmentDialog({ a, techs, today, onClose, onDone }: { a: any; techs
       footer={<button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button>}>
       <dl className="fk-dl mo-dl" data-testid="appt-overview">
         <dt>{tx('tm.col.when')}</dt><dd>{a.date} · {hm12(a.startTime)} – {hm12(a.endTime)} · {tx('cg.min', { n: nf(a.durationMinutes) })}</dd>
-        <dt>{tx('tm.col.technician')}</dt><dd>{techs.find((t) => t.technicianId === a.technicianId)?.name ?? a.technicianName ?? '—'}</dd>
+        <dt>{tx('tm.col.technician')}</dt><dd>{a.technicianName ?? '—'}</dd>
         <dt>{tx('tm.source')}</dt><dd>{codeLabel2(a.source)}</dd>
         {a.depositStatus && !['none', 'not_required'].includes(a.depositStatus) ? <><dt>{tx('tm.deposit')}</dt><dd>{codeLabel2(a.depositStatus)}</dd></> : null}
       </dl>
@@ -220,7 +219,7 @@ function AppointmentDialog({ a, techs, today, onClose, onDone }: { a: any; techs
           <button type="button" className="fk-btn ghost" onClick={() => setCheck(true)} data-testid="act-check-conflict">{tx('tm.checkFirst')}</button>
           <button type="button" className="fk-btn" disabled={!!busy || !when} onClick={() => act('resch', () => posTechAppointmentsApi.reschedule(a.appointmentId, { startTime: when.slice(11, 16), date: when.slice(0, 10), ...(techSel ? { technicianId: techSel } : {}), ...ver }))} data-testid="act-reschedule">{tx('pos.reschedule')}</button>
         </div>
-        {check ? <ConflictPanel key={when + techSel} techs={techs} today={today} testId="dlg-conflict" initial={{ technicianId: techSel || a.technicianId, date: when.slice(0, 10), start: when.slice(11, 16), minutes: a.durationMinutes, appointmentId: a.appointmentId, serviceIds: sids }} /> : null}
+        {check ? <ConflictPanel key={when + techSel} initialName={techSel ? undefined : a.technicianName} today={today} testId="dlg-conflict" initial={{ technicianId: techSel || a.technicianId, date: when.slice(0, 10), start: when.slice(11, 16), minutes: a.durationMinutes, appointmentId: a.appointmentId, serviceIds: sids }} /> : null}
         <label className="fk-field wide">{tx('pos.cancel_reason_3')}<input value={reason} onChange={(e) => setReason(e.target.value)} data-testid="cancel-reason" /></label>
         <div className="cg-acts"><button type="button" className="fk-btn danger" disabled={!!busy} onClick={() => { if (!reason.trim()) { setErr(tx('pos.a_reason_is_required_to_cancel')); return; } void act('cancel', () => posTechAppointmentsApi.cancel(a.appointmentId, { reason: reason.trim() })); }} data-testid="act-cancel">{tx('pos.cancel_appointment')}</button></div>
       </> : null}

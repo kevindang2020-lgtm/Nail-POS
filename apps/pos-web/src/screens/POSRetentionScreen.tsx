@@ -68,7 +68,8 @@ const smsLabel = (s: string) => (s === 'upcoming_booking' || s === 'never_visite
 const recipLabel = (s: string) => codeLabel(`people.retention.recipient.${s}`, s);
 const campaignLabel = (s: string) => codeLabel(`people.retention.campaign.${s}`, s);
 const sortLabel = (s: string) => (s === 'priority' || s === 'created_desc' ? tx('rt2.sort.' + s) : codeLabel(`people.retention.sort.${s}`, s));
-const errText = (e: any, fb: string) => errorTextOf(e, fb);
+// a 403 always reads as a permission message (EN / VI), whatever words the error carries
+const errText = (e: any, fb: string) => (e && (e.status === 403 || e.code === 'PERMISSION_DENIED') ? tx('errors.PERMISSION_DENIED') : errorTextOf(e, fb));
 const errDetails = (e: any): Record<string, any> => e?.details?.error?.details ?? e?.details?.details ?? e?.details ?? {};
 const SMS_TONE: Record<string, string> = { eligible: 'ok', recently_contacted: 'warn', upcoming_booking: 'info', no_consent: 'mut', opted_out: 'bad', no_phone: 'mut', invalid_phone: 'bad' };
 const RECIP_TONE: Record<string, string> = { delivered: 'ok', sent: 'info', simulated: 'info', queued: 'warn', submitting: 'warn', excluded: 'mut', blocked: 'mut', failed: 'bad', undelivered: 'bad', unknown: 'warn' };

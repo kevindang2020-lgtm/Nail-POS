@@ -11,7 +11,9 @@ describe('POS main grid', () => {
   it('every .main grid-template-rows has three tracks: header, the alert slot (auto), the screen', () => {
     const rows = [...css.matchAll(/\.main\s*\{[^}]*grid-template-rows:\s*([^;}]+)/g)].map((m) => m[1].trim());
     expect(rows.length).toBeGreaterThanOrEqual(2);
-    for (const r of rows) expect(r).toMatch(/^\d+px\s+auto\s+minmax\(0,\s*1fr\)$/);
+    // the header track is a px value or the --pos-header-height token (which must itself be a px value)
+    for (const r of rows) expect(r).toMatch(/^(\d+px|var\(--pos-header-height\))\s+auto\s+minmax\(0,\s*1fr\)$/);
+    if (rows.some((r) => r.startsWith('var('))) expect(css).toMatch(/--pos-header-height:\s*\d+px/);
   });
   it('the banner lives inside an always-rendered slot, directly before the screen outlet', () => {
     expect(layout).toMatch(/<div className="community-alert-slot"[^>]*><CommunityEmergencyBanner \/><\/div>\s*<Outlet \/>/);

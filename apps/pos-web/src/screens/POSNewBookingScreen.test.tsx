@@ -161,6 +161,7 @@ describe('POSNewBookingScreen — start times come from the server', () => {
 describe('CR-04: Customer Retention → Book appointment (customer preselected by id)', () => {
   const mount = (q: string) => render(<MemoryRouter initialEntries={['/booking/new' + q]}><POSNewBookingScreen /></MemoryRouter>);
   it('loads THAT customer from the server by id (no name / phone in the URL) and saves nothing by opening the form', async () => {
+    create.mockClear(); draftsSave.mockClear();   // calls left by the tests above are not this form's
     getDetail.mockReset(); getDetail.mockResolvedValueOnce({ customerId: 'c-ana', displayName: 'Ana Rivera', firstName: 'Ana', lastName: 'Rivera', phone: '(215) 555-0101', status: 'active' });
     mount('?customerId=c-ana&from=retention');
     const sel = await screen.findByTestId('booking-selected-customer');

@@ -19,9 +19,9 @@ describe('POSServiceDoneScreen', () => {
     expect(screen.getByText('No completed services yet.')).toBeInTheDocument();
   });
 
-  it('renders Service Done Board + AI insights + derived accuracy from tickets', async () => {
+  it('renders Service Done Board + AI insights + the server\'s completion accuracy (no longer derived on the screen)', async () => {
     const withTickets = {
-      kpis: { completedServicesToday: 10, ticketsReadyForReview: 2, ticketsReadyForCheckout: 3, qualityIssuesCount: 1, reopenedServicesToday: 1, averageServiceDurationMinutes: 45, estimatedSalesCents: 50000, estimatedCommissionCents: 12000, addOnRevenueCents: 3500, averageTurnaroundSeconds: 360, customerSatisfactionAvg: 4.6, tipsCapturedCents: 4250, rebookingRatePercent: 67 },
+      kpis: { completionAccuracyPercent: 90, completedServicesToday: 10, ticketsReadyForReview: 2, ticketsReadyForCheckout: 3, qualityIssuesCount: 1, reopenedServicesToday: 1, averageServiceDurationMinutes: 45, estimatedSalesCents: 50000, estimatedCommissionCents: 12000, addOnRevenueCents: 3500, averageTurnaroundSeconds: 360, customerSatisfactionAvg: 4.6, tipsCapturedCents: 4250, rebookingRatePercent: 67 },
       tickets: { items: [
         { ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', isVip: true, serviceCount: 1, serviceNames: ['Acrylic Full Set'], primaryTechnicianName: 'Mia', qualityStatus: 'ok', checkoutStatus: 'ready', status: 'completed', subtotalCents: 9500 },
         { ticketId: 't2', ticketNumber: 'A2', customerName: 'Olivia Brown', serviceCount: 1, serviceNames: ['Gel X'], primaryTechnicianName: 'Leo', qualityStatus: 'ok', checkoutStatus: 'ready', status: 'ready_for_checkout', subtotalCents: 6000 },

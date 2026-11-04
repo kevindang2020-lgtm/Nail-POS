@@ -40,12 +40,15 @@ beforeEach(() => {
 });
 afterEach(async () => { await act(async () => { await setLanguage('en'); }); });
 const mount = () => render(<MemoryRouter><POSLiveTechnicianScheduleScreen /></MemoryRouter>);
+// the board loads after the KPIs (the day comes from them), so the activity row can show the name first: open the day from the board's own button
+const openLinh = async () => fireEvent.click((await screen.findAllByTitle('View the full day'))[0]);
 
 describe('POSLiveTechnicianScheduleScreen', () => {
   it('six KPIs with definitions, every module, and the board paged 12 from the server', async () => {
     mount();
     expect(await screen.findByTestId('kpi-utilization')).toHaveTextContent('13%');
     expect(screen.getByTestId('kpi-working')).toHaveTextContent('1 clocked in now');
+    await screen.findByTestId('live-schedule-pager');   // the board (and its pager) follows the KPIs
     for (const t of ['kpi-available', 'kpi-in-service', 'kpi-break', 'kpi-booked', 'board', 'selected', 'next-available', 'conflict-warning', 'activity', 'live-schedule-pager', 'search', 'status', 'skill', 'view-day', 'view-week', 'to-today'])
       expect(screen.getByTestId(t)).toBeInTheDocument();
     expect(await screen.findAllByText('Trần Mỹ Linh')).not.toHaveLength(0);
@@ -75,7 +78,7 @@ describe('POSLiveTechnicianScheduleScreen', () => {
   });
   it('the overlay actions: Start Break and Block Time go to the existing routes', async () => {
     live.startBreak.mockResolvedValue({}); live.blockTime.mockResolvedValue({});
-    mount(); fireEvent.click((await screen.findAllByText('Trần Mỹ Linh'))[0]);
+    mount(); await openLinh();
     fireEvent.click(await screen.findByTestId('start-break'));
     await waitFor(() => expect(live.startBreak).toHaveBeenCalledWith('t1', { managerOverride: false }));
     fireEvent.change(screen.getByTestId('block-start'), { target: { value: '15:00' } }); fireEvent.change(screen.getByTestId('block-end'), { target: { value: '16:00' } });
@@ -85,7 +88,7 @@ describe('POSLiveTechnicianScheduleScreen', () => {
   it('weekly hours: the impact on booked appointments is shown before saving; save needs the acknowledgement and sends the whole week with its version', async () => {
     ls.shiftImpact.mockResolvedValue({ affected: 1, days: 120, items: [{ appointmentId: 'a9', date: '2026-11-06', start: '16:00', customer: 'Mai Le', reason: 'outside_shift' }] });
     techs.setSchedule.mockResolvedValue({});
-    mount(); fireEvent.click((await screen.findAllByText('Trần Mỹ Linh'))[0]);
+    mount(); await openLinh();
     fireEvent.click(await screen.findByTestId('tab-hours'));
     const end = await screen.findByTestId('wh-end'); expect(end).toHaveValue('17:00');
     fireEvent.change(end, { target: { value: '16:00' } });
@@ -110,7 +113,7 @@ describe('POSLiveTechnicianScheduleScreen', () => {
   });
   it('403 is a permission state', async () => {
     ls.kpis.mockRejectedValue({ status: 403 }); mount();
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/your role cannot see this information/i)).toBeInTheDocument();
   });
   it('reads in Vietnamese: the 24-hour clock, statuses from codes, no English left', async () => {
     await setLanguage('vi');
@@ -119,7 +122,7 @@ describe('POSLiveTechnicianScheduleScreen', () => {
     await screen.findByTestId('activity-row');
     expect(screen.getAllByText(/14:00|15:00/).length).toBeGreaterThan(0);
     for (const en of [/2:00 PM/, 'Available Now', 'Utilization', 'Working Today']) expect(screen.queryByText(en), String(en)).toBeNull();
-    expect(leftoverEnglish(container, ['Trần Mỹ Linh', 'Nguyễn Thị Hương', 'Gel Manicure', 'Manicure', 'training', 'TM']).join(' | ')).toBe('');
+    expect(leftoverEnglish(container, ['Trần Mỹ Linh', 'Nguyễn Thị Hương', 'Gel Manicure', 'Manicure', 'training', 'TM', 'America/New_York']).join(' | ')).toBe('');
   });
   it('F4: Edit Shift for Selected Date — baseline and effective side by side; conflicts first; a stale save keeps the typed edit', async () => {
     const ED = { technician: { technicianId: 't1', name: 'Linh' }, date: '2026-11-06', tz: 'America/New_York', today: '2026-10-30', past: false, canEdit: true,

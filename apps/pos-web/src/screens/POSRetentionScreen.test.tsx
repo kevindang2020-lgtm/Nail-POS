@@ -24,6 +24,7 @@ const list = (items: unknown[], o: Record<string, unknown> = {}) => ({ period, s
 beforeEach(() => {
   for (const f of Object.values(api)) f.mockReset();
   api.summary.mockResolvedValue(SUM);
+  api.smsPricing.mockResolvedValue({ current: null, history: [] });   // the SMS pricing card loads on its own
   api.customers.mockImplementation(async (q: any) => (q.segment === 'never' ? list(NEVER, { segment: 'never', sort: 'created_desc', eligibleOnPage: 0, eligibleMatching: 0 }) : list(AT_RISK)));
   api.readiness.mockResolvedValue({ sender: { route: 'simulated', from: null, a2pStatus: null }, quietHours: { start: null, end: null, until: null }, canSend: true });
   api.preview.mockResolvedValue({ previewId: 'p1', finalBody: 'Lotus: Hi Reply STOP to opt out.', segments: { segments: 1, encoding: 'GSM-7', characters: 30 }, selected: 1, eligible: 1, excluded: 0, excludedReasons: {},

@@ -105,6 +105,13 @@ function route(path: string, q: URLSearchParams): any {
       technicians: q.get('roster') === 'none' ? [] : avail.map(({ technicianId, displayName }) => ({ technicianId, displayName })),
       availableTechnicians: paged ? avail.slice(0, size) : avail, ...(paged ? { technicianPage: { page: 1, pageSize: size, total: N, totalPages: Math.ceil(N / size), totalAll: N } } : {}) };
   }
+  // the rebuilt screens' own read models (Oct 30 2026): KPIs carry the salon day; lists are server pages; no roster anywhere
+  const emptyPage = { items: [], page: 1, pageSize: Number(q.get('pageSize')) || 10, totalItems: 0, totalPages: 1 };
+  if (path === '/pos/tech-appointments-screen/kpis') return { date: '2026-10-26', today: '2026-10-26', tz: 'America/New_York', kpis: { today: 0, booked: 0, checkedIn: 0, inService: 0, completed: 0, cancelled: 0, noShows: 0, online: 0, conflicts: 0 } };
+  if (path === '/pos/live-schedule-screen/kpis') return { date: '2026-10-26', today: '2026-10-26', tz: 'America/New_York', nowMinute: 600, when: 'today', kpis: { clockedIn: 0, availableNow: N, inService: 0, onBreak: 0, scheduledMinutes: 0, bookedMinutes: 0, utilizationPercent: 0, utilizationBasis: 'booked' } };
+  if (path === '/pos/tech-appointments-screen/appointments' || path === '/pos/tech-appointments-screen/history' || path === '/pos/live-schedule-screen/activity') return emptyPage;
+  if (path === '/pos/tech-appointments-screen/week') return { start: '2026-10-26', days: [], technicians: [], page: 1, pageSize: 12, totalItems: N, totalPages: Math.ceil(N / 12) };
+  if (path === '/pos/technicians/live-schedule/board') return route('/pos/technicians/live-schedule/state', new URLSearchParams({ lanePage: q.get('lanePage') || '1', lanePageSize: q.get('lanePageSize') || '12', laneSearch: q.get('search') || '' })).schedule;
   if (path.startsWith('/pos/ai-scheduling-optimizer/recommendations') || path.endsWith('/time-off') || path.endsWith('/locks') || path.endsWith('/service-profiles')) return { items: [], total: 0 };
   if (path.startsWith('/pos/ai-scheduling-optimizer/runs')) return [];
   if (path === '/pos/booking/availability') return [];
@@ -185,11 +192,12 @@ describe('§2 — nothing in the POS loads more than one page of technicians at 
     mount(<POSTechAppointmentsScreen />);
     const pager = await screen.findByTestId('ta-lane-pager');
     expect(await within(pager).findByText(`Page 1 of ${Math.ceil(N / TA_LANE_PAGE_SIZE)}`)).toBeTruthy();
-    expect(screen.getAllByText(/^Tech \d{4}$/).length).toBe(TA_LANE_PAGE_SIZE);
+    const cards = () => within(screen.getByTestId('tech-card-grid')).getAllByText(/^Tech \d{4}$/);   // the board shows the same page of lanes
+    expect(cards().length).toBe(TA_LANE_PAGE_SIZE);
     fireEvent.click(within(pager).getByText('Next'));
     expect(await within(pager).findByText(`Page 2 of ${Math.ceil(N / TA_LANE_PAGE_SIZE)}`)).toBeTruthy();
     fireEvent.change(within(pager).getByRole('searchbox'), { target: { value: 'Tech 0999' } });
-    await waitFor(() => expect(screen.getAllByText(/^Tech \d{4}$/).map((e) => e.textContent)).toEqual(['Tech 0999']));
+    await waitFor(() => expect(cards().map((e) => e.textContent)).toEqual(['Tech 0999']));
     expect(seen.filter((s) => s.path === '/pos/tech-appointments/state').every((s) => s.query.get('lanePageSize') === String(TA_LANE_PAGE_SIZE))).toBe(true);
     expectOnePageAtMost();
   });

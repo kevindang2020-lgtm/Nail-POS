@@ -23,7 +23,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posLiveTechnicianScheduleApi as api } from '../api/posLiveTechnicianScheduleApi';
-import { posLiveScheduleScreenApi, posTechniciansScreenApi } from '../api/posTeamScreensApi';
+import { posLiveScheduleScreenApi } from '../api/posTeamScreensApi';
 import { posTechniciansApi } from '../api/posTechniciansApi';
 import { useCan } from '../components/usePermissions';
 import { useIPadView } from '../components/IPadViewProvider';
@@ -70,8 +70,6 @@ export function POSLiveTechnicianScheduleScreen() {
   const found = useLoad(() => (q.length >= 2 && !q.startsWith('#') ? posLiveScheduleScreenApi.search({ q }) : Promise.resolve(null)), [q]);
   const act = useLoad(() => posLiveScheduleScreenApi.activity({ ...periodQuery(aPeriod), kind: aKind, q: aq || undefined, page: ap, pageSize: 8 }), [JSON.stringify(aPeriod), aKind, aq, ap, tick]);
   useEffect(() => setAp(1), [aq, aKind]);
-  const roster = useLoad(() => posTechniciansScreenApi.directory({ status: 'active', sort: 'name', pageSize: 100 }), [tick]);
-  const techs: { technicianId: string; name: string }[] = (roster.data?.items ?? []).map((t: any) => ({ technicianId: t.technicianId, name: t.name }));
 
   const s: any = st.data; const cols: any[] = s?.schedule?.technicians ?? [];
   const lanes = (view === 'week' ? wk.data?.lanes : undefined) ?? s?.schedule?.lanes;
@@ -163,7 +161,7 @@ export function POSLiveTechnicianScheduleScreen() {
         <FitPanel testId="next-available" title={tx('tm.findNext')}><p className="fk-hint">{tx('tm.findNextSub')}</p><button type="button" className="fk-btn primary" onClick={() => setFinder(true)} data-testid="cta-finder">{tx('tm.findNext')}</button></FitPanel>
       </div>
 
-      <FitPanel testId="conflict-warning" title={tx('tm.conflictTitle')}><ConflictPanel techs={techs} today={today} /></FitPanel>
+      <FitPanel testId="conflict-warning" title={tx('tm.conflictTitle')}><ConflictPanel today={today} /></FitPanel>
 
       <FitPanel testId="activity" title={<>{tx('ls.activity')}{act.data ? <span className="fk-muted"> · {tx('cg.matching', { n: nf(act.data.totalItems) })}</span> : null}</>} footer={<Pager info={pageOf(act.data)} onPage={setAp} label={tx('ls.activity')} />}>
         <div className="mos-tools">
