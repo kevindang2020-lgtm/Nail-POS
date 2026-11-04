@@ -33,7 +33,7 @@ describe.skipIf(!url)('weekly paycheck close-out — the new money steps under r
     await sql`insert into payroll_lines (tenant_id, period_id, technician_id, commission_cents, net_cents, payable_cents) values (${T}, ${PERIOD}, ${TECH}, 100000, 100000, 100000), (${T}, ${PERIOD}, ${TECH2}, 60000, 60000, 60000)`.execute(db);
     const outbox = new OutboxWriter();
     const wf = new PayrollWorkflowService(db as any, { outbox });
-    svc = new PayrollPaycheckService(db as any, { workflow: wf, outbox, pins: { verifyPin: async (_c, techId, pin) => ({ ok: techId === TECH2 && pin === '2468' }) } });
+    svc = new PayrollPaycheckService(db as any, { workflow: wf, outbox, now: () => new Date('2026-10-28T15:00:00Z') /* the suite's week is Oct 12–18: "last month" must be September whatever day it runs */, pins: { verifyPin: async (_c, techId, pin) => ({ ok: techId === TECH2 && pin === '2468' }) } });
     wf.paychecks = svc;
     await svc.calculate(manager(), PERIOD);
     await svc.submit(manager(), PERIOD);

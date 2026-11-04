@@ -49,7 +49,8 @@ describe.skipIf(!url)('gift cards under real concurrency (Postgres)', () => {
   it('there is no payment-less reload any more; a paid reload hold never revives a void card; voiding twice is refused', async () => {
     expect(typeof (repo as any).reloadGiftCard).toBe('undefined');
     await card('GC-RACE-2', 'void', 0);
-    await repo.createPendingGiftCardReload(ctx, { code: 'GC-RACE-2', amountCents: 2500, ticketId: 'd2e00000-0000-4000-8000-0000000000a2', reference: 'GC-****-CE-2' });
+    // a reload of a void card is now refused when it is put on the ticket (it used to be accepted and only skipped at activation)
+    await expect(repo.createPendingGiftCardReload(ctx, { code: 'GC-RACE-2', amountCents: 2500, ticketId: 'd2e00000-0000-4000-8000-0000000000a2', reference: 'GC-****-CE-2' })).rejects.toThrow(/cannot be reloaded/);
     expect((await repo.activatePendingGiftCardReloads(ctx, 'd2e00000-0000-4000-8000-0000000000a2')).activated).toBe(0);
     expect(await bal('GC-RACE-2')).toEqual({ b: 0, s: 'void' });
     await card('GC-RACE-3', 'active', 4000);
