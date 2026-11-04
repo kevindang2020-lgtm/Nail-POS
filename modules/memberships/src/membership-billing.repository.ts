@@ -35,6 +35,22 @@ export interface MembershipBillingRepositoryPort {
   /** issue the new cycle's credits (one 'issued' ledger row per crediting benefit of the plan version), at most once per
    *  cycle (keyed on cycleKey); returns how many rows were written */
   issueCycleCredits?(tenantId: string, membershipId: string, planVersionId: string, cycleKey: string): Promise<number>;
+  /** the first payment's amount (one period's price + the enrollment fee, integer cents) */
+  firstPaymentAmount?(tenantId: string, membershipId: string): Promise<number>;
+  /** a PAID invoice of this salon for this customer, of at least the amount, not already used by another membership payment */
+  paidInvoiceFor?(tenantId: string, customerId: string, invoiceId: string): Promise<{ id: string; totalCents: number; number: string; used: boolean } | null>;
+  /** the customer's paid invoices that are not yet used by a membership payment (newest first) */
+  eligibleInvoices?(tenantId: string, customerId: string): Promise<Array<{ id: string; number: string; totalCents: number; paidAt: string | null }>>;
+  hasSavedCard?(tenantId: string, customerId: string): Promise<boolean>;
+  /** declined first-payment attempts so far (each attempt uses its own processor key: a decline is never replayed) */
+  firstPaymentFailures?(tenantId: string, membershipId: string): Promise<number>;
+  /** ONE transaction: the payment row (idempotent on its key), pending → active with the first period, the first credits,
+   *  activity and audit. duplicate = the key was already used (nothing else is written). */
+  applyFirstPayment?(a: FirstPaymentArgs): Promise<{ applied: boolean; duplicate: boolean; paymentId: string }>;
+}
+export interface FirstPaymentArgs {
+  membership: BillingMembership; actorUserId: string | null; actorRole: string | null; amountCents: number; processor: string; processorRef: string | null;
+  idempotencyKey: string; periodStart: Date; periodEnd: Date | null; nextBillingAt: Date | null; method: string;
 }
 
 let SEQ = 1;
@@ -47,6 +63,20 @@ export class InMemoryMembershipBillingRepository implements MembershipBillingRep
   readonly audits: AuditArgs[] = [];
   private byKey = new Map<string, string>();
   readonly cycleCredits = new Set<string>();
+  firstPaymentCents = 0; savedCard = false; readonly invoices: Array<{ id: string; tenantId: string; customerId: string; number: string; totalCents: number; paid: boolean }> = [];
+  async firstPaymentAmount(): Promise<number> { return this.firstPaymentCents; }
+  async hasSavedCard(): Promise<boolean> { return this.savedCard; }
+  async firstPaymentFailures(_t: string, id: string): Promise<number> { return this.payments.filter((p) => p.membershipId === id && p.kind === 'enrollment' && p.status === 'failed').length; }
+  async paidInvoiceFor(t: string, c: string, id: string) { const i = this.invoices.find((x) => x.id === id && x.tenantId === t && x.customerId === c && x.paid); if (!i) return null; return { id: i.id, totalCents: i.totalCents, number: i.number, used: this.payments.some((p) => p.processor === 'invoice' && p.processorRef === id && p.status === 'succeeded') }; }
+  async eligibleInvoices(t: string, c: string) { return this.invoices.filter((x) => x.tenantId === t && x.customerId === c && x.paid && !this.payments.some((p) => p.processor === 'invoice' && p.processorRef === x.id && p.status === 'succeeded')).map((x) => ({ id: x.id, number: x.number, totalCents: x.totalCents, paidAt: null })); }
+  async applyFirstPayment(a: FirstPaymentArgs) {
+    if (this.byKey.has(a.idempotencyKey)) return { applied: false, duplicate: true, paymentId: this.byKey.get(a.idempotencyKey)! };
+    const m = this.memberships.get(a.membership.membershipId); if (!m || m.status !== 'pending') return { applied: false, duplicate: false, paymentId: '' };
+    const r = await this.recordPayment({ membershipId: m.membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, kind: 'enrollment', amountCents: a.amountCents, taxCents: 0, status: 'succeeded', processor: a.processor, processorRef: a.processorRef, idempotencyKey: a.idempotencyKey, attemptNumber: 1, failureReason: null, periodStart: a.periodStart, periodEnd: a.periodEnd, techAllocCents: 0, ownerAllocCents: 0, settled: true });
+    m.status = 'active'; m.currentPeriodStart = a.periodStart; m.currentPeriodEnd = a.periodEnd; m.nextBillingAt = a.nextBillingAt; m.cyclesBilled = 1; m.startedAt = a.periodStart;
+    this.cycleCredits.add(m.membershipId + '|first');
+    return { applied: true, duplicate: false, paymentId: r.paymentId };
+  }
   async issueCycleCredits(_t: string, membershipId: string, _v: string, cycleKey: string): Promise<number> {
     const k = membershipId + '|' + cycleKey; if (this.cycleCredits.has(k)) return 0; this.cycleCredits.add(k); return 1;
   }

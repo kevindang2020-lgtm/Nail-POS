@@ -8,6 +8,7 @@
 // benefits, activity + audit) from any member row. A historical period never filters a current-state count: it applies to
 // the event lists (activity, payments, redemptions) and, on Members, to the chosen date field only.
 // Every number is the server's (/pos/memberships/*, tenant-scoped, integer cents, the salon's time zone).
+import { MembershipFirstPaymentPanel } from '../components/MembershipFirstPaymentPanel';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
@@ -420,6 +421,7 @@ function MemberDetailsDialog({ id, rev, canManage, onClose, onOpen, onManage, on
   onManage: (m: ManageMember) => void; onProfile: (customerId: string, name: string) => void; onReminder: () => void }) {
   const [t, setT] = useState<DTab>('overview');
   const [pp, setPp] = useState(1); const [rp, setRp] = useState(1); const [ap, setAp] = useState(1);
+  const [fp, setFp] = useState(false);
   useEffect(() => { setT('overview'); setPp(1); setRp(1); setAp(1); }, [id]);
   const d = useLoad(() => posMembershipsApi.memberDetail(id), [id, rev]);
   const pays = useLoad(() => (t === 'billing' ? posMembershipsApi.payments({ membershipId: id, status: 'all', preset: 'all', page: pp, pageSize: 8 }) : Promise.resolve(null)), [id, t, pp, rev]);
@@ -440,6 +442,9 @@ function MemberDetailsDialog({ id, rev, canManage, onClose, onOpen, onManage, on
         <button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button>
       </>}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !x || !m || !l || !b ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+        {/* D6 §16: a pending membership is waiting for its first payment — collect it here */}
+        {m.status === 'pending' && canManage ? (fp ? <MembershipFirstPaymentPanel membershipId={m.membershipId} customerName={m.customerName || '—'} onPaid={() => { setFp(false); d.reload(); }} onLater={() => setFp(false)} />
+          : <div className="fk-note" data-testid="md-first-payment"><span>{tx('admin.membership.fp.stillPending', { name: m.customerName || '—' })}</span> <button type="button" className="fk-btn primary sm" onClick={() => setFp(true)}>{tx('admin.membership.fp.title')}</button></div>) : null}
         <div className="fk-seg mos-dtabs" role="tablist" aria-label={tx('mos.memberDetails')}>
           {tabs.map((k) => <button key={k} type="button" role="tab" aria-selected={t === k} className={t === k ? 'on' : ''} onClick={() => setT(k)} data-testid={'md-tab-' + k}>{tx('mos.dtab.' + k)}</button>)}
         </div>

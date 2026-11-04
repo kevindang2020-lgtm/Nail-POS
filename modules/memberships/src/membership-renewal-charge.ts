@@ -39,7 +39,7 @@ export function renewalChargeFn(db: Kysely<DB>, gateway: MembershipGatewayLike):
     if (!card) return { respstat: 'C', resptext: 'Member has no saved card' };
     const r = await gw.processor.authorizeAndCapture({
       account: card.token, expiry: card.expiry, amountCents: req.amountCents, orderId: req.membershipId, idempotencyKey: req.idempotencyKey,
-      ecomind: 'E', cof: 'M', cofscheduled: 'Y',
+      ecomind: 'E', ...(req.initiator === 'customer' ? { cof: 'C', cofscheduled: 'N' } : { cof: 'M', cofscheduled: 'Y' }),   // first payment: the member is present
     });
     return { retref: r.retref, respstat: r.respstat, resptext: r.respText, amount: r.amountCents != null ? (r.amountCents / 100).toFixed(2) : undefined };
   };

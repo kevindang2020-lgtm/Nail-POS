@@ -48,13 +48,20 @@ export class MembershipEnrollService {
     const now = new Date();
     const interval = plan.billingInterval as BillingInterval;
     const trialDays = Math.max(0, Math.floor(plan.trialDays || 0));
-    const status = trialDays > 0 ? 'trial' : 'active';
+    // D6 Membership guide §16 (Nov 4 2026): "record initial billing only when the provider confirms". A plan with a price and
+    // no trial starts PENDING (no benefits, no credits, no billing date) until the first payment is collected
+    // (POST /pos/memberships/members/:id/first-payment — card on file, or a paid invoice). It used to start active, unpaid.
+    const firstPaymentCents = Math.max(0, Math.round(Number(plan.priceCents || 0))) + Math.max(0, Math.round(Number(plan.enrollmentFeeCents || 0)));
+    const awaitingPayment = trialDays === 0 && firstPaymentCents > 0;
+    const status = trialDays > 0 ? 'trial' : awaitingPayment ? 'pending' : 'active';
 
     let periodEnd: Date | null;
     let nextBillingAt: Date | null;
     if (trialDays > 0) {
       periodEnd = new Date(now.getTime() + trialDays * DAY);
       nextBillingAt = plan.autoRenew ? periodEnd : null;
+    } else if (awaitingPayment) {
+      periodEnd = null; nextBillingAt = null;   // the period starts when the first payment is collected
     } else {
       periodEnd = interval === 'none' || interval === 'custom' ? null : addInterval(now, interval, plan.intervalCount);
       nextBillingAt = plan.autoRenew && periodEnd ? periodEnd : null;
@@ -71,7 +78,7 @@ export class MembershipEnrollService {
     });
 
     const entries = initialIssuedEntries(plan.benefits.map((b) => ({ benefitId: b.benefitId, benefitType: b.benefitType, serviceId: b.serviceId, creditsPerCycle: b.creditsPerCycle, valueCents: b.valueCents })));
-    if (entries.length) await repo.issueInitialCredits(ctx, membershipId, entries, null);
+    if (entries.length && !awaitingPayment) await repo.issueInitialCredits(ctx, membershipId, entries, null);   // a pending membership's credits come with its first payment
 
     await repo.addActivity(ctx, { membershipId, customerId, planId: plan.planId, activityType: 'enrolled', customerName, planName: plan.planName, amountCents: null });
     await repo.addAudit(ctx, { membershipId, planId: plan.planId, planVersionId: plan.planVersionId, action: 'membership_enrolled', prevState: null, newState: status, reason: null, result: 'ok' });
@@ -79,7 +86,7 @@ export class MembershipEnrollService {
     });
     // Best-effort welcome message (in-app). Comms must never fail an enrollment, and it is idempotent on the membership.
     if (this.comms) { try { await this.comms.sendWelcome(ctx, membershipId); } catch { /* swallow: enrollment already succeeded */ } }
-    return { membershipId, memberNumber: memberNum, status, creditsIssued: entries.length };
+    return { membershipId, memberNumber: memberNum, status, creditsIssued: awaitingPayment ? 0 : entries.length, firstPaymentDueCents: awaitingPayment ? firstPaymentCents : 0 };
   }
 
   async listCustomerMemberships(ctx: EnrollContext, customerId: string) {

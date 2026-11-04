@@ -15,7 +15,7 @@ import { workerPrincipal } from '@aipowersalon/permissions';
 const DAY = 86400000;
 
 // ── processor port (the ONLY thing that charges a card) ──
-export interface MembershipChargeRequest { tenantId: string; amountCents: number; currency?: string; customerId: string; membershipId: string; idempotencyKey: string; descriptor?: string }
+export interface MembershipChargeRequest { tenantId: string; amountCents: number; currency?: string; customerId: string; membershipId: string; idempotencyKey: string; descriptor?: string; /** 'customer' = the member is present (first payment); default merchant-initiated renewal */ initiator?: 'customer' | 'merchant' }
 export interface MembershipChargeResult { status: 'succeeded' | 'failed' | 'not_configured'; processor: string; processorRef?: string | null; declineReason?: string | null }
 export interface MembershipChargePort { charge(req: MembershipChargeRequest): Promise<MembershipChargeResult> }
 
@@ -106,6 +106,62 @@ export class MembershipBillingService {
     return { applied: true, status: m.status, paymentId: rec.paymentId, allocated: alloc };
   }
 
+  /** D6 Membership §16 (Nov 4 2026): what a PENDING membership still owes and how it can be paid. */
+  async firstPaymentState(ctx: FirstPaymentCtx, membershipId: string) {
+    const m = await this.repo.getForBilling(membershipId);
+    if (!m || m.tenantId !== ctx.tenantId) throw new FirstPaymentError('That membership could not be found.', 'MEMBERSHIP_NOT_FOUND', 404);
+    const amount = this.repo.firstPaymentAmount ? await this.repo.firstPaymentAmount(m.tenantId, membershipId) : m.priceCents;
+    const pending = m.status === 'pending';
+    return { membershipId, status: m.status, awaitingFirstPayment: pending, amountDueCents: pending ? amount : 0,
+      cardOnFile: pending && this.repo.hasSavedCard ? await this.repo.hasSavedCard(m.tenantId, m.customerId) : false,
+      cardBillingConfigured: !(this.charger instanceof UnconfiguredMembershipChargeAdapter),
+      invoices: pending && this.repo.eligibleInvoices ? (await this.repo.eligibleInvoices(m.tenantId, m.customerId)).filter((i) => i.totalCents >= amount) : [] };
+  }
+
+  /** Collect the first payment of a PENDING membership and activate it — only on a confirmed payment:
+   *   card_on_file  the member's saved card through the salon's gateway (customer-initiated); a decline keeps it pending
+   *   invoice       a PAID invoice of this salon for this customer, at least the amount, not used by another membership
+   *  The payment row, pending → active, the first period, the first credits, activity and audit commit together;
+   *  idempotent per membership (a retry or double tap never charges or activates twice). */
+  async collectFirstPayment(ctx: FirstPaymentCtx, membershipId: string, b: { method?: unknown; invoiceId?: unknown }) {
+    const m = await this.repo.getForBilling(membershipId);
+    if (!m || m.tenantId !== ctx.tenantId) throw new FirstPaymentError('That membership could not be found.', 'MEMBERSHIP_NOT_FOUND', 404);
+    if (m.status !== 'pending') throw new FirstPaymentError('This membership is not waiting for a first payment.', 'MEMBERSHIP_NOT_AWAITING_PAYMENT', 409, { status: m.status });
+    if (!this.repo.applyFirstPayment) throw new FirstPaymentError('First payments cannot be recorded here.', 'MEMBERSHIP_NOT_AWAITING_PAYMENT', 409);
+    const amount = this.repo.firstPaymentAmount ? await this.repo.firstPaymentAmount(m.tenantId, membershipId) : m.priceCents;
+    const method = b?.method === 'card_on_file' ? 'card_on_file' : b?.method === 'invoice' ? 'invoice' : null;
+    if (!method) throw new FirstPaymentError('Choose how the first payment is collected.', 'MEMBERSHIP_PAYMENT_METHOD_REQUIRED', 400);
+    const key = `membership-first:${membershipId}`;
+    let processor: string, processorRef: string | null;
+    if (method === 'invoice') {
+      const id = String(b?.invoiceId ?? '');
+      const inv = this.repo.paidInvoiceFor ? await this.repo.paidInvoiceFor(m.tenantId, m.customerId, id) : null;
+      if (!inv) throw new FirstPaymentError('Choose a paid invoice of this customer.', 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', 409);
+      if (inv.used) throw new FirstPaymentError('That invoice already paid for a membership.', 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', 409);
+      if (inv.totalCents < amount) throw new FirstPaymentError('That invoice is less than the first payment.', 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', 409, { amountDueCents: amount, invoiceCents: inv.totalCents });
+      processor = 'invoice'; processorRef = inv.id;
+    } else {
+      // each attempt has its own processor key (a decline is not replayed to the next try); two staff at once share it
+      const attempt = (this.repo.firstPaymentFailures ? await this.repo.firstPaymentFailures(m.tenantId, membershipId) : 0) + 1;
+      const chargeKey = `${key}:a${attempt}`;
+      const r = await this.charger.charge({ tenantId: m.tenantId, amountCents: amount, customerId: m.customerId, membershipId, idempotencyKey: chargeKey, descriptor: 'membership-first-payment', initiator: 'customer' });
+      if (r.status === 'not_configured') throw new FirstPaymentError('Card-on-file billing is not set up for this salon.', 'MEMBERSHIP_CARD_BILLING_NOT_CONFIGURED', 409, { reason: r.declineReason ?? null });
+      if (r.status !== 'succeeded') {
+        await this.repo.recordPayment({ membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, kind: 'enrollment', amountCents: amount, taxCents: 0, status: 'failed',
+          processor: r.processor, processorRef: r.processorRef ?? null, idempotencyKey: chargeKey, attemptNumber: attempt, failureReason: r.declineReason ?? 'declined', periodStart: null, periodEnd: null, techAllocCents: 0, ownerAllocCents: 0, settled: false });
+        await this.repo.addAudit({ membershipId, tenantId: m.tenantId, branchId: m.branchId, planId: m.planId, actorUserId: ctx.userId, actorRole: ctx.role, action: 'first_payment_declined', prevState: 'pending', newState: 'pending', reason: r.declineReason ?? 'declined', result: 'declined' });
+        throw new FirstPaymentError('The card was declined. The membership stays pending.', 'MEMBERSHIP_FIRST_PAYMENT_DECLINED', 402, { reason: r.declineReason ?? null });
+      }
+      processor = r.processor; processorRef = r.processorRef ?? null;
+    }
+    const start = new Date();
+    const end = m.billingInterval === 'none' || m.billingInterval === 'custom' ? null : addInterval(start, m.billingInterval as BillingInterval, m.intervalCount, start.getUTCDate());
+    const next = m.autoRenew && end ? end : null;
+    const out = await this.repo.applyFirstPayment({ membership: m, actorUserId: ctx.userId, actorRole: ctx.role, amountCents: amount, processor, processorRef, idempotencyKey: key, periodStart: start, periodEnd: end, nextBillingAt: next, method });
+    if (!out.applied && !out.duplicate) throw new FirstPaymentError('This membership is not waiting for a first payment.', 'MEMBERSHIP_NOT_AWAITING_PAYMENT', 409);
+    return { membershipId, status: 'active', paymentId: out.paymentId, duplicate: out.duplicate, amountCents: amount, method, currentPeriodEnd: end ? end.toISOString() : null };
+  }
+
   /** Sweep memberships due for renewal and attempt each charge through the configured processor. With the default
    * (unconfigured) adapter, nothing is charged and nothing changes state — the summary reports them as not configured. */
   async runDueRenewals(now: Date = new Date(), limit = 100): Promise<{ due: number; succeeded: number; failed: number; notConfigured: number; results: Array<{ membershipId: string; outcome: string }> }> {
@@ -156,3 +212,10 @@ export class MembershipBillingService {
 }
 
 export type { BillingMembership };
+
+/** A coded refusal of the first-payment flow (the POS shows the message; the code is in the error registry). */
+export class FirstPaymentError extends Error {
+  constructor(message: string, readonly apiCode: string, readonly status = 409, readonly details: Record<string, unknown> = {}) { super(message); this.name = 'FirstPaymentError'; }
+}
+export interface FirstPaymentCtx { tenantId: string; userId: string | null; role: string | null }
+

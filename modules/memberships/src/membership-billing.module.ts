@@ -12,9 +12,10 @@ import { MembershipCommsModule } from './membership-comms.module';
 import { MembershipCommsService } from './membership-comms.service';
 import type { MembershipChargePort } from './membership-billing.service';
 import { MembershipRenewalScheduler } from './membership-renewal.scheduler';
+import { MembershipFirstPaymentController } from './membership-first-payment.controller';
 
 @Module({
-  controllers: [MembershipBillingController],
+  controllers: [MembershipBillingController, MembershipFirstPaymentController],
   imports: [MembershipCommsModule],
   providers: [
     { provide: 'MembershipBillingRepositoryPort', useFactory: (db: AppDatabase): MembershipBillingRepositoryPort => (db ? new KyselyMembershipBillingRepository(db as any) : new InMemoryMembershipBillingRepository()), inject: [DATABASE] },

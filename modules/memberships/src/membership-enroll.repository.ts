@@ -11,6 +11,8 @@ export interface PlanForEnroll {
   billingInterval: string; intervalCount: number; autoRenew: boolean; trialDays: number;
   techCommissionBasis: string; techSplitPct: number; allocationTiming: string; techFixedCents: number;
   benefits: BenefitRow[];
+  /** the first payment = one period's price + the enrollment fee (integer cents); 0 / absent = nothing to collect */
+  priceCents?: number; enrollmentFeeCents?: number;
 }
 export interface LedgerEntryRow { entryType: string; quantity: number; amountCents: number; benefitId: string | null; reservationRef: string | null }
 export interface MembershipLite { membershipId: string; status: string; planVersionId: string | null; planId: string; customerId: string; branchId: string | null; techCommissionBasis: string; techSplitPct: number }

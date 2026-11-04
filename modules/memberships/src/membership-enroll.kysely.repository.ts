@@ -49,11 +49,11 @@ export class KyselyMembershipEnrollRepository implements MembershipEnrollReposit
   async getPlanForEnroll(ctx: EnrollContext, planId: string, planVersionId?: string): Promise<PlanForEnroll | null> {
     const head = await sql<{
       plan_id: string; name: string; status: string; version_id: string | null; billing_interval: string | null; interval_count: number | null;
-      auto_renew: boolean | null; trial_days: number | null; tech_commission_basis: string | null; tech_split_pct: string | null; allocation_timing: string | null; tech_fixed_cents: string | null;
+      auto_renew: boolean | null; trial_days: number | null; tech_commission_basis: string | null; tech_split_pct: string | null; allocation_timing: string | null; tech_fixed_cents: string | null; price_cents: string | null; enrollment_fee_cents: string | null;
     }>`
       select p.id as plan_id, p.name, p.status,
              ${planVersionId ? sql`${planVersionId}::uuid` : sql`p.current_version_id`} as version_id,
-             v.billing_interval, v.interval_count, v.auto_renew, v.trial_days, v.tech_commission_basis, v.tech_split_pct, v.allocation_timing, v.tech_fixed_cents
+             v.billing_interval, v.interval_count, v.auto_renew, v.trial_days, v.tech_commission_basis, v.tech_split_pct, v.allocation_timing, v.tech_fixed_cents, v.price_cents, v.enrollment_fee_cents
       from membership_plans p
       left join membership_plan_versions v on v.id = ${planVersionId ? sql`${planVersionId}::uuid` : sql`p.current_version_id`}
       where p.id = ${planId} and p.tenant_id = ${ctx.tenantId} limit 1`.execute(this.db);
@@ -67,6 +67,7 @@ export class KyselyMembershipEnrollRepository implements MembershipEnrollReposit
       planId: h.plan_id, planName: h.name, planVersionId: h.version_id, status: h.status,
       billingInterval: h.billing_interval ?? 'month', intervalCount: n(h.interval_count), autoRenew: !!h.auto_renew, trialDays: n(h.trial_days),
       techCommissionBasis: h.tech_commission_basis ?? 'allocated', techSplitPct: n(h.tech_split_pct) || 60, allocationTiming: h.allocation_timing ?? 'on_redemption', techFixedCents: n(h.tech_fixed_cents), benefits,
+      priceCents: n(h.price_cents), enrollmentFeeCents: n(h.enrollment_fee_cents),
     };
   }
 

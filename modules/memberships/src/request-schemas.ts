@@ -43,3 +43,5 @@ const providerResult: BodySchema = S.nullable(S.object({}, [], { additionalPrope
 export const BILLING_CARDPOINTE_BODY: BodySchema = S.object({ membershipId: id, charge: providerResult, attempt: numeric });
 export const BILLING_APPLY_BODY: BodySchema = S.object({ membershipId: id, status: str(32), amountCents: int, processor: str(32), processorRef: str(200), declineReason: str(500), attempt: numeric });
 export const BILLING_PRORATION_BODY: BodySchema = S.object({ membershipId: id, newPriceCents: numeric, changeAt: str(40) });
+/** D6 §16 (Nov 4 2026): collect a pending membership's first payment — the saved card, or a paid invoice of the customer */
+export const FIRST_PAYMENT_BODY: BodySchema = S.object({ method: S.enumOf(['card_on_file', 'invoice']), invoiceId: S.nullable(S.uuid()) }, ['method']);

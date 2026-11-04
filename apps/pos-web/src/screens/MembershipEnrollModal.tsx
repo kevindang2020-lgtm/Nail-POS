@@ -7,6 +7,7 @@ import { posMembershipEnrollApi } from '../api/posMembershipEnrollApi';
 import { centsToUsd } from '@aipowersalon/money';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { ImeSafeInput } from '../components/ImeSafeInput';
+import { MembershipFirstPaymentPanel } from '../components/MembershipFirstPaymentPanel';
 
 // MembershipEnrollModal — enroll a customer into a plan from the POS. Search a customer, pick an active plan, and capture
 // the auto-renew consent the backend requires for auto-renewing plans (negative-option compliance) before enrolling.
@@ -32,6 +33,7 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [pending, setPending] = useState<{ membershipId: string; name: string } | null>(null);
 
   useEffect(() => {
     let alive = true;
@@ -74,6 +76,8 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
       const body = { customerId: customer.id, planId, autoRenewConsent: true, agreementVersion: 'pos-1', channel: 'pos' };
       const res = await (posMembershipEnrollApi.enroll(body, keys.current.keyFor('enroll', body)) as Promise<any>);
       keys.current.done('enroll');
+      // D6 §16: a priced plan without a trial starts pending — collect the first payment here (or later)
+      if (res?.status === 'pending' && res?.membershipId) { setPending({ membershipId: String(res.membershipId), name: customer.name }); setBusy(false); return; }
       onEnrolled(tx('admin.membership.enrolled', { name: customer.name, number: res?.memberNumber ? ` (${res.memberNumber})` : '' }));
     } catch (e: any) { setErr(e?.message || tx('pos.could_not_enroll_this_member')); setBusy(false); }
   };
@@ -87,6 +91,7 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
           <button className="btn" style={{ marginLeft: 'auto', padding: '2px 8px' }} onClick={onClose}>{tx('pos.close')}</button>
         </div>
 
+        {pending ? <MembershipFirstPaymentPanel membershipId={pending.membershipId} customerName={pending.name} onPaid={onEnrolled} onLater={onEnrolled} /> : <>
         {!customer ? (
           <>
             <label style={lbl}>{tx('pos.find_customer')}<ImeSafeInput value={query} onValue={setQuery} style={inp} placeholder={tx('pos.search_by_name_or_phone')} autoFocus /></label>
@@ -124,6 +129,7 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
           <button className="btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
           <button className="btn" style={{ background: GOLD, color: '#fff', border: 'none', fontWeight: 700, opacity: canEnroll ? 1 : 0.6 }} onClick={enroll} disabled={!canEnroll}>{busy ? tx('pos.enrolling') : tx('pos.enroll_member')}</button>
         </div>
+        </>}
       </div>
     </div>
   );

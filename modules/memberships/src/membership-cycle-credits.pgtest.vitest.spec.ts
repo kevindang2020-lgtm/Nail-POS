@@ -45,3 +45,30 @@ describe('renewal issues the cycle credits', () => {
     expect(exp).toEqual([{ benefit_id: '7e000000-0000-4000-8000-0000000000b8', quantity: 1 }]);   // 2 issued − 1 held; Pedi rolls over
   });
 });
+
+describe('D6 §16: first payment on real SQL (Kysely adapter)', () => {
+  it('a paid invoice activates a pending membership in one transaction: payment, period, credits, audit; the invoice cannot pay twice', async () => {
+    const { MembershipBillingService } = await import('./membership-billing.service');
+    const M3 = '7e000000-0000-4000-8000-0000000000a3', M4 = '7e000000-0000-4000-8000-0000000000a4', INV = '7e000000-0000-4000-8000-0000000000c3';
+    await pg.exec(`UPDATE membership_plan_versions SET price_cents = 6000, enrollment_fee_cents = 1500, billing_interval = 'month', interval_count = 1 WHERE id = '${V}';
+      INSERT INTO customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, member_number, auto_renew) VALUES
+        ('${M3}','${T}','${B}','${C}','${P}','${V}','pending','M-CYC3', true), ('${M4}','${T}','${B}','${C}','${P}','${V}','pending','M-CYC4', true);
+      INSERT INTO invoices (id, tenant_id, branch_id, customer_id, invoice_number, status, issue_date, subtotal_cents, tax_cents, total_cents, paid_at)
+        VALUES ('${INV}','${T}','${B}','${C}','INV-0001','paid', current_date, 7500, 0, 7500, now());`);
+    const svc = new MembershipBillingService(repo);
+    const ctx = { tenantId: T, userId: null, role: 'MANAGER' };
+    const st = await svc.firstPaymentState(ctx, M3);
+    expect(st).toMatchObject({ awaitingFirstPayment: true, amountDueCents: 7500, cardBillingConfigured: false });
+    expect(st.invoices.map((i: any) => i.id)).toEqual([INV]);
+    const r = await svc.collectFirstPayment(ctx, M3, { method: 'invoice', invoiceId: INV });
+    expect(r).toMatchObject({ status: 'active', amountCents: 7500 });
+    const m = (await pg.query(`SELECT status, current_period_end IS NOT NULL AS has_end, next_billing_at IS NOT NULL AS has_next, cycles_billed FROM customer_memberships WHERE id = '${M3}'`)).rows[0];
+    expect(m).toEqual({ status: 'active', has_end: true, has_next: true, cycles_billed: 1 });
+    expect((await pg.query(`SELECT kind, status, processor, processor_ref, amount_cents::int AS a FROM membership_payments WHERE customer_membership_id = '${M3}'`)).rows)
+      .toEqual([{ kind: 'enrollment', status: 'succeeded', processor: 'invoice', processor_ref: INV, a: 7500 }]);
+    expect(Number((await pg.query(`SELECT count(*) n FROM membership_credit_ledger WHERE customer_membership_id = '${M3}' AND entry_type = 'issued'`)).rows[0].n)).toBe(2);
+    expect((await pg.query(`SELECT action FROM membership_audit WHERE customer_membership_id = '${M3}'`)).rows.map((x: any) => x.action)).toContain('first_payment_collected');
+    await expect(svc.collectFirstPayment(ctx, M4, { method: 'invoice', invoiceId: INV })).rejects.toMatchObject({ apiCode: 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE' });
+    expect((await pg.query(`SELECT status FROM customer_memberships WHERE id = '${M4}'`)).rows[0].status).toBe('pending');
+  });
+});

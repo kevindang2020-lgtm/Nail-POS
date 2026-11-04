@@ -137,3 +137,10 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   technicians can start the duplicate / intelligence / recommendation scans), 15 strict routes reviewed (no bug), IDOR table
   complete, every route has a domain, Global Rewards salon routes plan-gated. ONE API gate still red: the api-contracts
   wire-type ratchet — 774 routes from the recent builds have no shared wire type (a large typing job; not grandfathered).
+- D6 Membership — BUILT (Nov 4): first payment. A plan with a price and no trial now starts PENDING (no benefits, no credits,
+  no billing date) and is activated only by a confirmed first payment = one period + the enrollment fee: the customer's saved
+  card through the salon's gateway (customer-initiated; a decline keeps it pending and is recorded; each attempt has its own
+  processor key), or a PAID invoice of the customer that covers the amount (never used twice — row lock + check). Payment row,
+  pending → active, first period, first credits, activity and audit commit in one transaction; idempotent. POS: the enroll
+  dialog continues into "First payment" (or "Collect later"); Member Details offers it for a pending member. Card-on-file
+  needs MEMBERSHIP_AUTOBILL_ENABLED + the salon's gateway — without it the button says billing is not set up.

@@ -2,11 +2,11 @@
 // constraint on membership_payments.idempotency_key (ON CONFLICT DO NOTHING) so a replayed renewal can never
 // double-charge or double-advance; everything is scoped by the membership's own tenant_id/branch_id (a system job, not a
 // session). Money is integer cents.
-import { transitionStatus } from '@aipowersalon/database';
+import { transitionStatus, canMoveToSql } from '@aipowersalon/database';
 import { CUSTOMER_MEMBERSHIP } from './membership-machine';
 import { Kysely, sql } from 'kysely';
 import type { DB } from '@aipowersalon/database';
-import type { MembershipBillingRepositoryPort, BillingMembership, RecordPaymentArgs, AdvanceArgs, DunningArgs, ActivityArgs, AuditArgs } from './membership-billing.repository';
+import type { MembershipBillingRepositoryPort, FirstPaymentArgs, BillingMembership, RecordPaymentArgs, AdvanceArgs, DunningArgs, ActivityArgs, AuditArgs } from './membership-billing.repository';
 
 const n = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0;
 const d = (v: unknown): Date | null => (v == null ? null : new Date(v as any));
@@ -123,5 +123,61 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
   async addAudit(a: AuditArgs): Promise<void> {
     await sql`insert into membership_audit (tenant_id, branch_id, customer_membership_id, plan_id, actor_user_id, actor_role, action, prev_state, new_state, reason, result)
       values (${a.tenantId}, ${a.branchId}, ${a.membershipId}, ${a.planId}, ${a.actorUserId}, ${a.actorRole}, ${a.action}, ${a.prevState}, ${a.newState}, ${a.reason}, ${a.result})`.execute(this.db);
+  }
+
+  // ── first payment of a PENDING membership (D6 §16, Nov 4 2026) ──
+  async firstPaymentAmount(tenantId: string, membershipId: string): Promise<number> {
+    const r = await sql<{ c: string }>`select (coalesce(v.price_cents, 0) + coalesce(v.enrollment_fee_cents, 0))::bigint as c from customer_memberships cm
+      left join membership_plan_versions v on v.id = cm.plan_version_id where cm.id = ${membershipId} and cm.tenant_id = ${tenantId}`.execute(this.db);
+    return n(r.rows[0]?.c);
+  }
+  async firstPaymentFailures(tenantId: string, membershipId: string): Promise<number> {
+    const r = await sql<{ n: number }>`select count(*)::int as n from membership_payments where tenant_id = ${tenantId} and customer_membership_id = ${membershipId} and kind = 'enrollment' and status = 'failed'`.execute(this.db);
+    return Number(r.rows[0]?.n ?? 0);
+  }
+  async hasSavedCard(tenantId: string, customerId: string): Promise<boolean> {
+    const r = await sql<{ x: number }>`select 1 as x from customer_payment_methods where tenant_id = ${tenantId} and customer_id = ${customerId} and token is not null limit 1`.execute(this.db);
+    return r.rows.length > 0;
+  }
+  private invoiceUsed(exec: Kysely<any>, tenantId: string, invoiceId: string) {
+    return sql<{ x: number }>`select 1 as x from membership_payments where tenant_id = ${tenantId} and processor = 'invoice' and processor_ref = ${invoiceId} and status = 'succeeded' limit 1`.execute(exec);
+  }
+  async paidInvoiceFor(tenantId: string, customerId: string, invoiceId: string) {
+    if (!/^[0-9a-f-]{36}$/i.test(invoiceId)) return null;
+    const r = await sql<{ id: string; total_cents: string; invoice_number: string }>`select id, total_cents, invoice_number from invoices
+      where tenant_id = ${tenantId} and id = ${invoiceId}::uuid and customer_id = ${customerId} and status = 'paid'`.execute(this.db);
+    const i = r.rows[0]; if (!i) return null;
+    return { id: String(i.id), totalCents: n(i.total_cents), number: String(i.invoice_number), used: (await this.invoiceUsed(this.db as any, tenantId, String(i.id))).rows.length > 0 };
+  }
+  async eligibleInvoices(tenantId: string, customerId: string) {
+    const r = await sql<{ id: string; total_cents: string; invoice_number: string; paid_at: any }>`select i.id, i.total_cents, i.invoice_number, i.paid_at from invoices i
+      where i.tenant_id = ${tenantId} and i.customer_id = ${customerId} and i.status = 'paid'
+        and not exists (select 1 from membership_payments mp where mp.tenant_id = i.tenant_id and mp.processor = 'invoice' and mp.processor_ref = i.id::text and mp.status = 'succeeded')
+      order by i.paid_at desc nulls last, i.id desc limit 20`.execute(this.db);
+    return r.rows.map((x) => ({ id: String(x.id), number: String(x.invoice_number), totalCents: n(x.total_cents), paidAt: x.paid_at ? new Date(x.paid_at).toISOString() : null }));
+  }
+  async applyFirstPayment(a: FirstPaymentArgs): Promise<{ applied: boolean; duplicate: boolean; paymentId: string }> {
+    const m = a.membership;
+    return this.db.transaction().execute(async (trx) => {
+      const tx = new KyselyMembershipBillingRepository(trx as any);
+      // one membership at a time (and one use of an invoice at a time)
+      await sql`select id from customer_memberships where id = ${m.membershipId} and tenant_id = ${m.tenantId} for update`.execute(trx);
+      if (a.processor === 'invoice' && a.processorRef) {
+        await sql`select id from invoices where id = ${a.processorRef}::uuid and tenant_id = ${m.tenantId} for update`.execute(trx);
+        if ((await this.invoiceUsed(trx as any, m.tenantId, a.processorRef)).rows.length) throw Object.assign(new Error('That invoice already paid for a membership.'), { apiCode: 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', status: 409 });
+      }
+      const rec = await tx.recordPayment({ membershipId: m.membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, kind: 'enrollment', amountCents: a.amountCents, taxCents: 0,
+        status: 'succeeded', processor: a.processor, processorRef: a.processorRef, idempotencyKey: a.idempotencyKey, attemptNumber: 1, failureReason: null,
+        periodStart: a.periodStart, periodEnd: a.periodEnd, techAllocCents: 0, ownerAllocCents: 0, settled: true });
+      if (rec.duplicate) return { applied: false, duplicate: true, paymentId: rec.paymentId };
+      const moved = await sql<{ id: string }>`update customer_memberships set status = 'active', started_at = ${a.periodStart}, current_period_start = ${a.periodStart}, current_period_end = ${a.periodEnd},
+          next_billing_at = ${a.nextBillingAt}, cycles_billed = 1, version = version + 1, updated_at = now()
+        where id = ${m.membershipId} and tenant_id = ${m.tenantId} and ${canMoveToSql(CUSTOMER_MEMBERSHIP, 'active')} and status = 'pending' returning id`.execute(trx);
+      if (!moved.rows.length) throw Object.assign(new Error('This membership is not waiting for a first payment.'), { apiCode: 'MEMBERSHIP_NOT_AWAITING_PAYMENT', status: 409 });
+      if (m.planVersionId) await tx.issueCycleCredits(m.tenantId, m.membershipId, m.planVersionId, a.periodStart.toISOString());
+      await tx.addActivity({ membershipId: m.membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, planId: m.planId, activityType: 'first_payment', customerName: m.customerName, planName: m.planName, amountCents: a.amountCents });
+      await tx.addAudit({ membershipId: m.membershipId, tenantId: m.tenantId, branchId: m.branchId, planId: m.planId, actorUserId: a.actorUserId, actorRole: a.actorRole, action: 'first_payment_collected', prevState: 'pending', newState: 'active', reason: `${a.method}${a.processorRef ? ':' + a.processorRef : ''}`, result: 'ok' });
+      return { applied: true, duplicate: false, paymentId: rec.paymentId };
+    });
   }
 }
