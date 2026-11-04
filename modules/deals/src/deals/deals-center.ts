@@ -69,7 +69,7 @@ export class DealsCenter {
     const fb = f.branchId && /^[0-9a-f-]{36}$/i.test(f.branchId) ? f.branchId : null;
     // Deals guide (Nov 4 2026): requested between two salon-local days (inclusive)
     const DAY = /^\d{4}-\d{2}-\d{2}$/; let df = f.from && DAY.test(f.from) ? f.from : null, dt = f.to && DAY.test(f.to) ? f.to : null;
-    if (df && dt && df > dt) throw new DealValidationError('The start date must be on or before the end date.');
+    if (df && dt && df > dt) throw withCode(new DealValidationError('The start date must be on or before the end date.'), 'DATE_RANGE_INVALID');
     const preset = ['today', 'week', 'month', 'year'].includes(String(f.preset)) ? String(f.preset) : null;
     const tz = df || dt || preset ? await tenantTimeZone(this.db, T).catch(() => 'America/New_York') : 'UTC';
     if (preset && !df && !dt) {   // the salon's today, not the server's

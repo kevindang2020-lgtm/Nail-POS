@@ -1125,60 +1125,63 @@ export class InventoryService {
     await this.branch(ctx, toBranchId); // destination belongs to this tenant
     const raw = Array.isArray(b?.lines) ? b.lines : [];
     if (raw.length === 0) throw withCode(new InventoryError(400, 'A transfer needs at least one product line'), 'TRANSFER_LINES_REQUIRED');
-
-    const destCtx: InvCtx = { ...ctx, branchId: toBranchId };
-    const transferNumber = 'TR-' + Date.now().toString(36).toUpperCase();
-    const th = await sql<{ id: string }>`INSERT INTO inventory_transfers
-      (tenant_id, from_branch_id, to_branch_id, transfer_number, status, notes, created_by_user_id)
-      VALUES (${ctx.tenantId}, ${ctx.branchId}, ${toBranchId}, ${transferNumber}, 'completed', ${b?.notes ?? null}, ${ctx.userId}) RETURNING id`.execute(this.need());
-    const transferId = th.rows[0].id;
-
-    let itemCount = 0, unitCount = 0;
+    // validate every line before anything is written
+    const lines: { pid: string; want: number }[] = [];
     for (const l of raw) {
       const pid = l?.productId;
       if (!pid) throw withCode(new InventoryError(400, 'Each line needs a product'), 'LINE_PRODUCT_REQUIRED');
       await this.product(ctx, pid); // tenant ownership + existence
       const want = parseInt(l?.quantity, 10) || 0;
       if (want < 1) throw withCode(new InventoryError(400, 'Each line needs a quantity of at least 1'), 'LINE_QUANTITY_INVALID');
+      lines.push({ pid, want });
+    }
 
-      const srcBefore = (await this.recompute(ctx, pid)).onHand;
-      const destBefore = (await this.recompute(destCtx, pid)).onHand;
-      // claim movable bottles at the source (freshest first) and reassign them to the destination branch
-      const moved = await sql<{ id: string }>`
-        WITH picked AS (
-          SELECT id FROM inventory_units
-          WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${pid}
-            AND status IN ('unopened', 'opened', 'low')
-          ORDER BY CASE status WHEN 'unopened' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END, received_at NULLS LAST
-          LIMIT ${want}
-          FOR UPDATE SKIP LOCKED
-        )
-        UPDATE inventory_units u SET branch_id = ${toBranchId}, storage_location = NULL, updated_at = now()
-        FROM picked WHERE u.id = picked.id RETURNING u.id`.execute(this.need());
-      const movedCount = moved.rows.length;
-
-      const srcAfter = (await this.recompute(ctx, pid)).onHand;
-      const destAfter = (await this.recompute(destCtx, pid)).onHand;
-
-      await sql`INSERT INTO inventory_transfer_lines (tenant_id, transfer_id, product_id, quantity_requested, quantity_moved)
-        VALUES (${ctx.tenantId}, ${transferId}, ${pid}, ${want}, ${movedCount})`.execute(this.need());
-
-      if (movedCount > 0) {
-        await this.move(ctx, pid, null, 'transfer_out', srcBefore, -movedCount, srcAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId });
-        await this.move(destCtx, pid, null, 'transfer_in', destBefore, movedCount, destAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId });
-        itemCount += 1; unitCount += movedCount;
+    const destCtx: InvCtx = { ...ctx, branchId: toBranchId };
+    const transferNumber = 'TR-' + Date.now().toString(36).toUpperCase();
+    // audit D9 (Nov 4 2026): the header, every line, the bottle moves, both ledgers and the audit are ONE transaction under
+    // the stock lock of both locations (taken in branch order, so two opposite transfers cannot deadlock) — a failure part
+    // way used to leave bottles moved with no ledger, or a transfer with half its lines
+    const out = await this.need().transaction().execute(async (trx) => {
+      const pids = lines.map((l) => l.pid);
+      for (const c of [ctx, destCtx].sort((a, z) => String(a.branchId).localeCompare(String(z.branchId)))) await this.lockStock(c, pids, trx);
+      const th = await sql<{ id: string }>`INSERT INTO inventory_transfers
+        (tenant_id, from_branch_id, to_branch_id, transfer_number, status, notes, created_by_user_id)
+        VALUES (${ctx.tenantId}, ${ctx.branchId}, ${toBranchId}, ${transferNumber}, 'completed', ${b?.notes ?? null}, ${ctx.userId}) RETURNING id`.execute(trx);
+      const transferId = th.rows[0].id;
+      let itemCount = 0, unitCount = 0;
+      for (const { pid, want } of lines) {
+        const srcBefore = (await this.recompute(ctx, pid, trx)).onHand;
+        const destBefore = (await this.recompute(destCtx, pid, trx)).onHand;
+        // claim movable bottles at the source (freshest first) and reassign them to the destination branch
+        const moved = await sql<{ id: string }>`
+          WITH picked AS (
+            SELECT id FROM inventory_units
+            WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${pid}
+              AND status IN ('unopened', 'opened', 'low')
+            ORDER BY CASE status WHEN 'unopened' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END, received_at NULLS LAST
+            LIMIT ${want}
+            FOR UPDATE SKIP LOCKED
+          )
+          UPDATE inventory_units u SET branch_id = ${toBranchId}, storage_location = NULL, updated_at = now()
+          FROM picked WHERE u.id = picked.id RETURNING u.id`.execute(trx);
+        const movedCount = moved.rows.length;
+        const srcAfter = (await this.recompute(ctx, pid, trx)).onHand;
+        const destAfter = (await this.recompute(destCtx, pid, trx)).onHand;
+        await sql`INSERT INTO inventory_transfer_lines (tenant_id, transfer_id, product_id, quantity_requested, quantity_moved)
+          VALUES (${ctx.tenantId}, ${transferId}, ${pid}, ${want}, ${movedCount})`.execute(trx);
+        if (movedCount > 0) {
+          await this.move(ctx, pid, null, 'transfer_out', srcBefore, -movedCount, srcAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId }, trx);
+          await this.move(destCtx, pid, null, 'transfer_in', destBefore, movedCount, destAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId }, trx);
+          itemCount += 1; unitCount += movedCount;
+        }
       }
-    }
-
-    if (unitCount === 0) {
-      // nothing was available — don't leave an empty transfer behind
-      await sql`DELETE FROM inventory_transfer_lines WHERE transfer_id = ${transferId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-      await sql`DELETE FROM inventory_transfers WHERE id = ${transferId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-      throw withCode(new InventoryError(409, 'No stock was available to transfer for the selected products'), 'NO_STOCK_TO_TRANSFER');
-    }
-    await sql`UPDATE inventory_transfers SET item_count = ${itemCount}, unit_count = ${unitCount}, updated_at = now() WHERE id = ${transferId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-    await this.audit(ctx, 'inventory_transfer_created', null, null, { id: transferId, transferNumber, toBranchId, items: itemCount, units: unitCount });
-    return this.getTransfer(ctx, transferId);
+      // nothing was available — the transaction rolls back, so no empty transfer is left behind
+      if (unitCount === 0) throw withCode(new InventoryError(409, 'No stock was available to transfer for the selected products'), 'NO_STOCK_TO_TRANSFER');
+      await sql`UPDATE inventory_transfers SET item_count = ${itemCount}, unit_count = ${unitCount}, updated_at = now() WHERE id = ${transferId} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+      await this.audit(ctx, 'inventory_transfer_created', null, null, { id: transferId, transferNumber, toBranchId, items: itemCount, units: unitCount }, trx);
+      return transferId;
+    });
+    return this.getTransfer(ctx, out);
   }
 
   // ---- physical inventory counts (§20) — snapshot, enter, reconcile to system of record ----
@@ -1276,43 +1279,50 @@ export class InventoryService {
   async reconcileCount(ctx: InvCtx, id: string) {
     const c = await this.count(ctx, id);
     if (c.status !== 'in_progress' && c.status !== 'submitted') throw withCode(new InventoryError(409, `Cannot reconcile a ${c.status} count`), 'COUNT_STATE_INVALID');
-    // Phase 12 (#27): CLAIM the transition first — two reconciles of the same count used to both apply the stock
-    // adjustments; now the second is refused (409) before it touches a single bottle
-    await transitionStatus(this.need(), INVENTORY_COUNT, { where: { id, tenant_id: ctx.tenantId }, from: c.status, to: 'reconciled', set: { reconciled_by_user_id: ctx.userId, reconciled_at: sql`now()`, updated_at: sql`now()` } });
-    const lines = await sql<any>`SELECT id, product_id, counted_qty FROM inventory_count_lines
-      WHERE count_id = ${id} AND tenant_id = ${ctx.tenantId} AND is_counted = true AND counted_qty IS NOT NULL`.execute(this.need());
-    let absVariance = 0;
-    for (const l of lines.rows) {
-      const counted = clampCount(l.counted_qty);
-      const cur = (await this.recompute(ctx, l.product_id)).onHand;
-      const delta = counted - cur;
-      if (delta === 0) continue;
-      if (delta > 0) {
-        for (let i = 0; i < delta; i++) {
-          await sql`INSERT INTO inventory_units (tenant_id, branch_id, product_id, status)
-            VALUES (${ctx.tenantId}, ${ctx.branchId}, ${l.product_id}, ${'unopened'})`.execute(this.need());
+    // audit D9 (Nov 4 2026): (1) the claim, every adjustment, the ledger, the variance and the audit are ONE transaction under
+    // the stock lock — a failure part way used to leave the count "reconciled" with only some products adjusted; (2) the
+    // variance is counted − the quantity SNAPSHOT when the count started (expected_qty), applied to today's stock — setting
+    // stock to the counted number undid every sale / receipt made between the count and its reconciliation
+    await this.need().transaction().execute(async (trx) => {
+      // Phase 12 (#27): CLAIM the transition first — a second reconcile of the same count is refused (409)
+      await transitionStatus(trx as unknown as Parameters<typeof transitionStatus>[0], INVENTORY_COUNT, { where: { id, tenant_id: ctx.tenantId }, from: c.status, to: 'reconciled', set: { reconciled_by_user_id: ctx.userId, reconciled_at: sql`now()`, updated_at: sql`now()` } });
+      const lines = await sql<any>`SELECT id, product_id, counted_qty, expected_qty FROM inventory_count_lines
+        WHERE count_id = ${id} AND tenant_id = ${ctx.tenantId} AND is_counted = true AND counted_qty IS NOT NULL`.execute(trx);
+      await this.lockStock(ctx, lines.rows.map((l: any) => String(l.product_id)), trx);
+      let absVariance = 0;
+      for (const l of lines.rows) {
+        const counted = clampCount(l.counted_qty);
+        const delta = counted - Math.max(0, Number(l.expected_qty) || 0);
+        if (delta === 0) continue;
+        const cur = (await this.recompute(ctx, l.product_id, trx)).onHand;
+        if (delta > 0) {
+          for (let k = 0; k < delta; k++) {
+            await sql`INSERT INTO inventory_units (tenant_id, branch_id, product_id, status)
+              VALUES (${ctx.tenantId}, ${ctx.branchId}, ${l.product_id}, ${'unopened'})`.execute(trx);
+          }
+        } else {
+          // mark |delta| movable bottles 'missing' (never more than are on hand now)
+          await sql`
+            WITH picked AS (
+              SELECT id FROM inventory_units
+              WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id}
+                AND status IN ('unopened', 'opened', 'low')
+              ORDER BY CASE status WHEN 'low' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END
+              LIMIT ${-delta} FOR UPDATE SKIP LOCKED
+            )
+            UPDATE inventory_units u SET status = 'missing', updated_at = now() FROM picked WHERE u.id = picked.id`.execute(trx);
         }
-      } else {
-        // mark |delta| movable bottles 'missing' (claim-first so a concurrent sale can't double-remove them)
-        await sql`
-          WITH picked AS (
-            SELECT id FROM inventory_units
-            WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id}
-              AND status IN ('unopened', 'opened', 'low')
-            ORDER BY CASE status WHEN 'low' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END
-            LIMIT ${-delta} FOR UPDATE SKIP LOCKED
-          )
-          UPDATE inventory_units u SET status = 'missing', updated_at = now() FROM picked WHERE u.id = picked.id`.execute(this.need());
+        const after = (await this.recompute(ctx, l.product_id, trx)).onHand;
+        const applied = after - cur;
+        if (applied !== 0) {
+          await this.move(ctx, l.product_id, null, applied > 0 ? 'adjustment_increase' : 'adjustment_decrease', cur, applied, after, 'Count ' + (c.count_number || id), { type: 'inventory_count', id }, trx,
+            { countedQty: counted, expectedAtCount: Number(l.expected_qty) || 0 });
+          absVariance += Math.abs(applied);
+        }
       }
-      const after = (await this.recompute(ctx, l.product_id)).onHand;
-      const applied = after - cur;
-      if (applied !== 0) {
-        await this.move(ctx, l.product_id, null, applied > 0 ? 'adjustment_increase' : 'adjustment_decrease', cur, applied, after, 'Count ' + (c.count_number || id), { type: 'inventory_count', id });
-        absVariance += Math.abs(applied);
-      }
-    }
-    await sql`UPDATE inventory_counts SET variance_units = ${absVariance}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-    await this.audit(ctx, 'inventory_count_reconciled', null, null, { id, varianceUnits: absVariance });
+      await sql`UPDATE inventory_counts SET variance_units = ${absVariance}, updated_at = now() WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+      await this.audit(ctx, 'inventory_count_reconciled', null, null, { id, varianceUnits: absVariance }, trx);
+    });
     return this.getCount(ctx, id);
   }
 

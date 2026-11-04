@@ -20,12 +20,8 @@ export const CASH_DRAWER_SESSION = defineStateMachine({
 
 /** payment_refunds.status — a refund is reserved (or pending / processing) until the processor answers: refunded, failed,
  *  cancelled or voided; a finished refund is never re-opened. */
-export const PAYMENT_REFUND = defineStateMachine({
-  name: 'payment_refund', table: 'payment_refunds', column: 'status',
-  states: ['reserved', 'pending', 'processing', 'refunded', 'failed', 'cancelled', 'voided'],
-  transitions: { reserved: ['pending', 'processing', 'refunded', 'failed', 'cancelled', 'voided'], pending: ['processing', 'refunded', 'failed', 'cancelled', 'voided'], processing: ['refunded', 'failed', 'cancelled'], refunded: ['refunded'] },
-  initial: ['reserved', 'pending'],
-});
+/** payment_refunds.status — defined in @aipowersalon/payments (the gateway webhook moves it too); re-exported here. */
+export { PAYMENT_REFUND } from '@aipowersalon/payments';
 
 /** mobile_pay_devices.status — a Tap-to-Pay phone registers pending; a manager approves (active) or revokes it, and may
  *  re-approve a revoked one. A device can never self-approve (re-registering does not touch the status). */

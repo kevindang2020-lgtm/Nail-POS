@@ -25,8 +25,8 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { logException } from '@aipowersalon/observability';
 import type { TenantMessenger } from '@aipowersalon/notifications';
-import { assertTransition } from '@aipowersalon/database';
-import { INVOICE } from '../payments-lifecycles';
+import { assertTransition, canMoveToSql } from '@aipowersalon/database';
+import { INVOICE, INVOICE_DELIVERY } from '../payments-lifecycles';
 import { normalizeLines, nextInvoiceNumber, type InvoiceLineInput } from './invoices.dto';
 import {
   FinanceError, isUuid, N, iso, ymd, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, dateInPeriod, searchText, digitsOf, likeOf, prefixOf,
@@ -297,7 +297,7 @@ export class InvoicesLedgerRepository {
       reason = res.sent ? null : (res.reason ?? res.status); providerId = res.providerId ?? null; notificationId = res.notificationId && isUuid(res.notificationId) ? res.notificationId : null;
     } catch (e: any) { status = 'failed'; reason = String(e?.message ?? 'send_failed').slice(0, 200); logException(e, { where: 'invoices-ledger.deliver', tenantId: T }); }   // never retried here — it could double-send
     await sql`update invoice_deliveries set status = ${status}, reason = ${reason}, provider_id = ${providerId}, notification_id = ${notificationId}, updated_by = ${actor}, updated_at = now()
-      where tenant_id = ${T} and id = ${deliveryId}::uuid and status = 'submitting'`.execute(this.db);
+      where tenant_id = ${T} and id = ${deliveryId}::uuid and ${canMoveToSql(INVOICE_DELIVERY, status)}`.execute(this.db);
     await audit(this.auditor, ctx, 'payments', 'invoice_delivery_attempted', 'invoice', id, { deliveryId, channel, status, reason, destination: maskDestination(channel, to) }, this.log(ctx));
     return { duplicate: false, attempt: { id: deliveryId, channel, status, reason }, ...(await this.detail(ctx, id))! };
   }

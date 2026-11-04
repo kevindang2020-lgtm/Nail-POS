@@ -34,7 +34,7 @@ export { BankWebhookService } from './deposit-reconciliation/deposit-reconciliat
 export { looksLikeRawPan, isCardSecureToken, tokenizerForGatewayBase } from './payments/card-data';   // the one PCI card-data rule (the purge script uses it too)
 export { calculateRefundAllocations, type OriginalTender, type RefundAllocation } from './refunds-voids/refund-orchestration';   // Functional Decision 20 — used by checkout's ticket-level refund
 export { PaymentWebhookService, settlementTxnIds } from './payments/payment-webhook.service';   // used by the API's Phase 10 settlement-link pgtest
-export { PAYMENT, CHARGEBACK, PAYMENT_GATEWAY, MERCHANT_ONBOARDING, INVOICE, BANK_ACCOUNT, RECONCILIATION_EXCEPTION, RECONCILIATION_PERIOD, WALLET_TOPUP_INTENT } from './payments-lifecycles';   // Phase 12 (#27): checkout, super-admin
+export { PAYMENT, CHARGEBACK, PAYMENT_GATEWAY, MERCHANT_ONBOARDING, INVOICE, BANK_ACCOUNT, RECONCILIATION_EXCEPTION, RECONCILIATION_PERIOD, WALLET_TOPUP_INTENT, PAYMENT_REFUND, INVOICE_DELIVERY } from './payments-lifecycles';   // Phase 12 (#27): checkout, super-admin
 export { integrationsProductionProblems } from './payments/integrations-production-config';   // wave 3 PAYI §125–§126: startup validation of the provider environment
 export { GiftCardsScreenRepository } from './finance-screens/gift-cards-screen.repository';
 export { TipsScreenRepository } from './finance-screens/tips-screen.repository';   // Tips mandate (Oct 29 2026)

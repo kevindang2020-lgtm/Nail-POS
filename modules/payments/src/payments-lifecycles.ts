@@ -124,3 +124,19 @@ export const WALLET_TOPUP_INTENT = defineStateMachine({
   initial: ['CREATED'],
 });
 
+/** payment_refunds.status — POS refunds reserve/settle; the gateway webhook moves pending/processing to its final outcome. */
+export const PAYMENT_REFUND = defineStateMachine({
+  name: 'payment_refund', table: 'payment_refunds', column: 'status',
+  states: ['reserved', 'pending', 'processing', 'refunded', 'failed', 'cancelled', 'voided'],
+  transitions: { reserved: ['pending', 'processing', 'refunded', 'failed', 'cancelled', 'voided'], pending: ['processing', 'refunded', 'failed', 'cancelled', 'voided'], processing: ['refunded', 'failed', 'cancelled'], refunded: ['refunded'] },
+  initial: ['reserved', 'pending'],
+});
+
+/** invoice_deliveries.status — a send attempt is claimed 'submitting' (so a retry with the same key never double-sends),
+ *  then lands on its one outcome; a claim whose outcome was never written stays visible as 'unknown'. Outcomes are final. */
+export const INVOICE_DELIVERY = defineStateMachine({
+  name: 'invoice_delivery', table: 'invoice_deliveries', column: 'status',
+  states: ['submitting', 'submitted', 'simulated', 'blocked', 'failed', 'unknown'],
+  transitions: { submitting: ['submitted', 'simulated', 'blocked', 'failed', 'unknown'] },
+  initial: ['submitting'],
+});

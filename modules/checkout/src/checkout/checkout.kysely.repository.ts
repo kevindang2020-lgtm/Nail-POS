@@ -945,7 +945,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         if (actual <= 0) continue;
         const after = c.balanceCents - actual;
         const ended = c.kind === 'sale' && after === 0 && c.reversedCents + actual >= c.creditedCents;
-        await sql`update gift_cards set balance_cents = ${after}, status = case when ${ended} and status in ('active', 'partially_redeemed', 'redeemed', 'frozen', 'suspended', 'expired', 'delivered', 'claimed') then 'refunded' else status end,
+        await sql`update gift_cards set balance_cents = ${after}, status = case when ${ended} and ${canMoveToSql(GIFT_CARD, 'refunded')} then 'refunded' else status end,
           updated_at = now() where tenant_id = ${T} and id = ${c.giftCardId}::uuid`.execute(k);
         const led: any = (await sql`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, ticket_id, created_by_user_id, idempotency_key)
           values (${T}, ${ctx.branchId || null}, ${c.giftCardId}::uuid, 'cancel', ${-actual}, ${after}, ${ticketId}::uuid, ${userIdOrNull(ctx.userId)}, ${key}) returning id`.execute(k)).rows[0];
@@ -979,6 +979,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
       if (after < 0) return { ok: false as const, reason: 'below_zero' as const };
       // a card emptied by the adjustment reads Redeemed; a Redeemed card given value back is Active (frozen / suspended stay as they are)
       const next = after === 0 && ['active', 'partially_redeemed'].includes(status) ? 'redeemed' : after > 0 && status === 'redeemed' ? 'active' : status;
+      if (next !== status) assertTransition(GIFT_CARD, status, next);
       await sql`update gift_cards set balance_cents = ${after}, status = ${next}, updated_at = now() where tenant_id = ${T} and id = ${cardId}::uuid`.execute(k);
       const led: any = (await sql`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, created_by_user_id)
         values (${T}, ${ctx.branchId || null}, ${cardId}::uuid, 'adjust', ${Number(amountCents)}, ${after}, ${userIdOrNull(ctx.userId)}) returning id`.execute(k)).rows[0];

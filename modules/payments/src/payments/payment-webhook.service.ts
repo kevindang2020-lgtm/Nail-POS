@@ -13,7 +13,7 @@
 // bytes, so live verification needs raw-body capture + the processor's exact scheme/header — wire that when the real
 // gateway sandbox is available. The tenant-isolation logic below is independent of that detail.
 import { canMoveToSql } from '@aipowersalon/database';
-import { PAYMENT, CHARGEBACK, MERCHANT_ONBOARDING } from '../payments-lifecycles';
+import { PAYMENT, CHARGEBACK, MERCHANT_ONBOARDING, PAYMENT_REFUND } from '../payments-lifecycles';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import { maskValueSecrets } from '@aipowersalon/observability';
 import { sql, type Kysely, type RawBuilder, type SqlBool } from 'kysely';
@@ -353,7 +353,7 @@ export class PaymentWebhookService {
       const dup = await this.db.selectFrom('payment_refunds').select(['id', 'status']).where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst();
       // the same refund reported again with its final outcome (pending → refunded / failed): the row moves on; a final row never moves back
       if (dup && ['pending', 'processing'].includes(String(dup.status)) && refundStatus !== 'pending')
-        await this.db.updateTable('payment_refunds').set({ status: refundStatus }).where('tenant_id', '=', tenant.tenantId).where('id', '=', dup.id).where('status', 'in', ['pending', 'processing']).execute();
+        await this.db.updateTable('payment_refunds').set({ status: refundStatus }).where('tenant_id', '=', tenant.tenantId).where('id', '=', dup.id).where('status', 'in', ['pending', 'processing']).where(canMoveToSql(PAYMENT_REFUND, refundStatus) as RawBuilder<SqlBool>).execute();
       // the POS already recorded this refund (it stores its own reference, not the gateway's refund id): the same payment,
       // the same amount, not failed, recorded by the POS (no webhook event) — the callback confirms it, it is not a second refund
       // only a SUCCESSFUL refund confirms the POS's row; a failed / pending report is kept as its own row (never read as "confirmed")

@@ -1239,8 +1239,17 @@
    "cancelled",
    "completed"
   ],
+  "invoice_deliveries.status": [
+   "blocked",
+   "failed",
+   "simulated",
+   "submitted",
+   "submitting",
+   "unknown"
+  ],
   "invoices.status": [
    "cancelled",
+   "credited",
    "draft",
    "failed",
    "open",
