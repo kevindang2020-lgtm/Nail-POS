@@ -87,8 +87,13 @@ describe('Loyalty & Rewards — real tenant data', () => {
     const list = await repo.redemptions(ctx, { page: 1, pageSize: 10 });
     expect(list.totalItems).toBe(1); expect(list.items[0]!.status).toBe('issued');
     const o = await repo.overview(ctx);
-    expect(o.kpis.redemptionsThisMonth).toBe(1); expect(o.kpis.redemptionsPendingThisMonth).toBe(1); expect(o.kpis.pointsRedeemedThisMonth).toBe(200);
+    // Loyalty guide (Nov 4 2026): an issued code is PENDING — Redemptions / Points Redeemed count completed (used) redemptions only
+    expect(o.kpis.redemptionsThisMonth).toBe(0); expect(o.kpis.redemptionsPendingThisMonth).toBe(1); expect(o.kpis.pointsRedeemedThisMonth).toBe(0);
     expect(o.kpis.pointsOutstanding).toBe(400); expect(o.kpis.balanceReconciled).toBe(true);
+    await q(`update loyalty_redemptions set status = 'used' where tenant_id = $1 and code = $2`, [T, r.code]);   // the code is used at checkout
+    const o2 = await repo.overview(ctx);
+    expect(o2.kpis.redemptionsThisMonth).toBe(1); expect(o2.kpis.pointsRedeemedThisMonth).toBe(200); expect(o2.kpis.redemptionsPendingThisMonth).toBe(0);
+    await q(`update loyalty_redemptions set status = 'issued' where tenant_id = $1 and code = $2`, [T, r.code]);
   });
 
   it('void restores the points once, keeps the history, and does not inflate lifetime totals', async () => {

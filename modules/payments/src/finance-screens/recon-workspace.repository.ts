@@ -65,7 +65,8 @@ export class ReconWorkspaceRepository {
   private log = (where: string, ctx: FinanceCtx) => (e: unknown) => logException(e, { where: `recon-workspace.${where}`, tenantId: ctx.tenantId });
 
   async period(ctx: FinanceCtx, q: { preset?: unknown; from?: unknown; to?: unknown }): Promise<Period> {
-    return resolvePeriod(q, await salonTimeZone(this.db, ctx.tenantId), { defaultPreset: 'month' });
+    // allowAll: the Match dialog's pickers search every open record (they used a hard-coded 2021–2030 range)
+    return resolvePeriod(q, await salonTimeZone(this.db, ctx.tenantId), { defaultPreset: 'month', allowAll: true });
   }
   filters(period: Period, q: Record<string, unknown>): ReconFilters {
     const bank = typeof q.bankAccountId === 'string' && q.bankAccountId && q.bankAccountId !== 'all' ? q.bankAccountId : undefined;
@@ -194,10 +195,10 @@ export class ReconWorkspaceRepository {
         coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.status not in ('failed', 'returned')), 0)::bigint as expected,
         coalesce(sum(sb.matched_cents), 0)::bigint as matched,
         count(*) filter (where sb.is_missing)::int as missing, coalesce(sum(sb.expected_cents) filter (where sb.is_missing), 0)::bigint as missing_cents,
-        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.status not in ('failed', 'returned') and sb.arrival < sb.today), 0)::bigint as due_expected,
-        coalesce(sum(sb.matched_cents) filter (where sb.expected_cents > 0 and sb.arrival < sb.today), 0)::bigint as due_matched,
-        count(*) filter (where sb.expected_cents > 0 and sb.arrival >= sb.today)::int as not_due_n,
-        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.arrival >= sb.today), 0)::bigint as not_due_cents,
+        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.status not in ('failed', 'returned') and sb.today > sb.arrival + ${GRACE_DAYS}::int), 0)::bigint as due_expected,
+        coalesce(sum(sb.matched_cents) filter (where sb.expected_cents > 0 and sb.today > sb.arrival + ${GRACE_DAYS}::int), 0)::bigint as due_matched,
+        count(*) filter (where sb.expected_cents > 0 and sb.today <= sb.arrival + ${GRACE_DAYS}::int)::int as not_due_n,
+        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.today <= sb.arrival + ${GRACE_DAYS}::int), 0)::bigint as not_due_cents,
         count(*) filter (where sb.recon_status = 'matched')::int as matched_n, count(*) filter (where sb.recon_status = 'partially_matched')::int as partial_n,
         count(*) filter (where sb.recon_status in ('exception', 'under_review'))::int as exception_n,
         count(*) filter (where sb.recon_status in ('expected', 'pending'))::int as expected_n
@@ -211,7 +212,7 @@ export class ReconWorkspaceRepository {
       expectedDepositsCents: N(k.expected), matchedCents: N(k.matched), settlements: N(k.n), missingDeposits: N(k.missing), missingCents: N(k.missing_cents),
       netDifferenceCents: dueMatched - dueExpected,
       netDifference: { dueMatchedCents: dueMatched, dueExpectedCents: dueExpected, notYetDueCount: N(k.not_due_n), notYetDueCents: N(k.not_due_cents),
-        excludes: 'Payouts whose expected arrival is today or later, and bank deposits not allocated to a settlement.' },
+        excludes: `Payouts not yet ${GRACE_DAYS} days past their expected arrival (counted in Not yet due), and bank deposits not allocated to a settlement.` },
       byStatus: { matched: N(k.matched_n), partiallyMatched: N(k.partial_n), exception: N(k.exception_n), expected: N(k.expected_n), overdue: N(k.missing) },
       unmatchedDeposits: N(u.n), unmatchedDepositCents: N(u.cents), graceDays: GRACE_DAYS, fundingDays: FUNDING_DAYS,
     };
@@ -369,7 +370,7 @@ export class ReconWorkspaceRepository {
     if (amount == null) throw new FinanceError('Enter an amount greater than $0.00.', 'ALLOCATION_AMOUNT_INVALID');
     if (!b.reviewed) throw new FinanceError('Confirm that you reviewed the evidence before matching.', 'ALLOCATION_REVIEW_REQUIRED');
     const note = b.note ? String(b.note).trim().slice(0, 1000) : null;
-    const basis = ['exact_reference', 'amount_and_date', 'similar_amount'].includes(String(b.basis)) ? String(b.basis) : 'manual';
+    const claimed = ['exact_reference', 'amount_and_date', 'similar_amount'].includes(String(b.basis)) ? String(b.basis) : 'manual';
     const T = ctx.tenantId;
     const result = await this.db.transaction().execute(async (trx) => {
       const prior = (await sql<any>`select id from reconciliation_allocations where tenant_id = ${T} and idempotency_key = ${b.idempotencyKey}`.execute(trx)).rows[0];
@@ -390,14 +391,22 @@ export class ReconWorkspaceRepository {
       if (amount < sRemain && amount < dRemain && !b.canApprove) {
         throw new FinanceError('A partial match on both sides needs an owner to approve it.', 'ALLOCATION_NEEDS_APPROVER', 403);
       }
-      const evidence = { basis, settlementRef: s.settlement_id ?? null, depositReference: d.reference ?? null, settlementRemainingBeforeCents: sRemain, depositRemainingBeforeCents: dRemain,
+      // Deposit Recon guide audit (Nov 4 2026): the evidence basis is decided HERE from the two records, never taken from the request —
+      // a claimed "exact reference" that the references do not show is recorded as a manual match (the claim is kept for review)
+      const refsMatch = !!s.settlement_id && !!d.reference && normRef(String(s.settlement_id)).length >= 3 && normRef(String(d.reference)).includes(normRef(String(s.settlement_id)));   // the bank line carries the batch id
+      const sameAmount = N(d.amount_cents) === N(s.expected);
+      const near = Math.abs(N(d.amount_cents) - N(s.expected)) <= Math.max(100, Math.round(N(s.expected) * 0.02));
+      const basis = claimed === 'exact_reference' ? (refsMatch ? 'exact_reference' : 'manual')
+        : claimed === 'amount_and_date' ? (sameAmount ? 'amount_and_date' : 'manual')
+        : claimed === 'similar_amount' ? (near ? 'similar_amount' : 'manual') : 'manual';
+      const evidence = { basis, claimedBasis: claimed, settlementRef: s.settlement_id ?? null, depositReference: d.reference ?? null, settlementRemainingBeforeCents: sRemain, depositRemainingBeforeCents: dRemain,
         reviewedBy: isUuid(ctx.userId) ? ctx.userId : null, reviewedRole: ctx.role ?? null };
       const ins = (await sql<any>`insert into reconciliation_allocations (tenant_id, settlement_id, deposit_id, amount_cents, currency, source, evidence_json, note, idempotency_key, created_by_user_id)
         values (${T}, ${b.settlementId}::uuid, ${b.depositId}::uuid, ${amount}, ${String(d.currency || 'USD')}, ${basis === 'manual' ? 'manual' : 'suggestion_accepted'}, ${JSON.stringify(evidence)}::jsonb, ${note}, ${b.idempotencyKey}, ${isUuid(ctx.userId) ? ctx.userId : null})
         returning id`.execute(trx)).rows[0];
-      return { id: String(ins.id), duplicate: false, amount, settlementRemainingCents: sRemain - amount, depositRemainingCents: dRemain - amount };
+      return { id: String(ins.id), duplicate: false, amount, basis, settlementRemainingCents: sRemain - amount, depositRemainingCents: dRemain - amount };
     });
-    if (!result.duplicate) await audit(this.auditor, ctx, 'reconciliation', 'allocation_created', 'reconciliation_allocation', result.id, { settlementId: b.settlementId, depositId: b.depositId, amountCents: amount, basis }, this.log('audit', ctx));
+    if (!result.duplicate) await audit(this.auditor, ctx, 'reconciliation', 'allocation_created', 'reconciliation_allocation', result.id, { settlementId: b.settlementId, depositId: b.depositId, amountCents: amount, basis: 'basis' in result ? result.basis : claimed }, this.log('audit', ctx));
     return result;
   }
 
@@ -717,12 +726,12 @@ export class ReconWorkspaceRepository {
       }
       case 'net_difference_trend': {
         const rows = (await sql<any>`${this.base(ctx, tz)} select to_char(date_trunc('week', (coalesce(sb.settled_at, sb.created_at) at time zone ${tz}))::date, 'YYYY-MM-DD') as wk,
-            sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.arrival < sb.today)::bigint as due_expected, sum(sb.matched_cents) filter (where sb.expected_cents > 0 and sb.arrival < sb.today)::bigint as due_matched,
-            sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.arrival >= sb.today)::bigint as not_due
+            sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.today > sb.arrival + ${GRACE_DAYS}::int)::bigint as due_expected, sum(sb.matched_cents) filter (where sb.expected_cents > 0 and sb.today > sb.arrival + ${GRACE_DAYS}::int)::bigint as due_matched,
+            sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.today <= sb.arrival + ${GRACE_DAYS}::int)::bigint as not_due
           from sb where ${w.where} group by 1 order by 1 desc limit ${LIMIT}`.execute(this.db)).rows
           .map((r: any) => ({ week: ymd(r.wk), dueExpectedCents: N(r.due_expected), dueMatchedCents: N(r.due_matched), differenceCents: N(r.due_matched) - N(r.due_expected), notYetDueCents: N(r.not_due) }));
         return { columns: [col('week', 'Week of'), money('dueExpectedCents', 'Expected (due)'), money('dueMatchedCents', 'Matched'), money('differenceCents', 'Net difference'), money('notYetDueCents', 'Not yet due (excluded)')],
-          rows, totals: sumOf(rows, ['dueExpectedCents', 'dueMatchedCents', 'differenceCents', 'notYetDueCents']), definition: 'Matched − expected for payouts whose expected arrival has passed, by settlement week.', dateBasis: f.basis };
+          rows, totals: sumOf(rows, ['dueExpectedCents', 'dueMatchedCents', 'differenceCents', 'notYetDueCents']), definition: `Matched − expected for payouts past their expected arrival plus ${GRACE_DAYS} grace days (the same rule as Missing), by settlement week.`, dateBasis: f.basis };
       }
       case 'bank_accounts': {
         const rows = (await sql<any>`with dal as (select a.deposit_id, sum(a.amount_cents)::bigint as allocated from reconciliation_allocations a where a.tenant_id = ${T} and a.unmatched_at is null group by a.deposit_id)

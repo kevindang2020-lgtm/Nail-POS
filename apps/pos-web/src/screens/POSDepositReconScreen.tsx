@@ -354,7 +354,7 @@ function MatchDialog({ init, canApprove, onClose, onDone }: { init: { depositId?
   const dep = useLoad(() => (depositId ? api.deposit(depositId) : Promise.resolve(null)), [depositId]);
   const st = useLoad(() => (settlementId ? api.settlement(settlementId) : Promise.resolve(null)), [settlementId]);
   const choosing: 'settlement' | 'deposit' | null = init.depositId && !settlementId ? 'settlement' : init.settlementId && !depositId ? 'deposit' : null;
-  const allTime = { preset: 'custom', from: '2021-01-01', to: '2030-12-31' };
+  const allTime = { preset: 'all' };   // every open record — never a hard-coded range of years
   const cands = useLoad(() => choosing === 'settlement' ? api.settlements({ ...allTime, open: '1', search: fq || undefined, page: 1, pageSize: 8, sort: 'settled_desc' })
     : choosing === 'deposit' ? api.deposits({ ...allTime, unmatched: '1', search: fq || undefined, page: 1, pageSize: 8 }) : Promise.resolve(null), [choosing, fq]);
   const D: DRow | undefined = dep.data?.deposit; const S: SRow | undefined = st.data?.settlement;

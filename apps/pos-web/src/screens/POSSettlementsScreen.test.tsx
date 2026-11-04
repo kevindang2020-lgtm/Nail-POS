@@ -7,6 +7,8 @@ import { MemoryRouter } from 'react-router-dom';
 
 const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), transactions: vi.fn(), exportCsv: vi.fn(), exportDetail: vi.fn() }));
 vi.mock('../api/posSettlementsApi', () => ({ posSettlementsApi: api }));
+const recon = vi.hoisted(() => ({ raise: vi.fn() }));
+vi.mock('../api/posDepositReconApi', () => ({ posDepositReconApi: recon }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 import { POSSettlementsScreen } from './POSSettlementsScreen';
 
@@ -43,6 +45,27 @@ describe('POSSettlementsScreen', () => {
     expect(await screen.findByTestId('kpi-gross')).toHaveTextContent('Not set up');
     expect(screen.getByTestId('kpi-net')).toHaveTextContent('Not set up');
     expect(screen.getByTestId('kpi-gross')).not.toHaveTextContent('$0.00');
+  });
+  it('Settlements guide (Nov 4 2026): Investigate opens a reconciliation case for the batch (never a second open one)', async () => {
+    api.summary.mockResolvedValue(summary()); api.list.mockResolvedValue(pageOf([row()]));
+    api.detail.mockResolvedValue({ settlement: row(), provenance: { retrievedAt: '2026-10-29T14:05:00Z' }, allocations: [] });
+    api.transactions.mockResolvedValue(pageOf([]));
+    recon.raise.mockResolvedValueOnce({ id: 'x1', existing: false }).mockResolvedValueOnce({ id: 'x1', existing: true });
+    mount();
+    fireEvent.click(await screen.findByText('CP-20260063'));
+    fireEvent.click(await screen.findByTestId('investigate'));
+    expect(screen.getByTestId('inv-kind')).toHaveValue('missing_deposit');   // the payout is not matched in the bank yet
+    fireEvent.change(screen.getByTestId('inv-note'), { target: { value: 'Not on the statement' } });
+    fireEvent.click(screen.getByTestId('inv-submit'));
+    await waitFor(() => expect(recon.raise).toHaveBeenCalledWith({ targetType: 'settlement', targetId: 's-1', kind: 'missing_deposit', note: 'Not on the statement' }));
+    expect(await screen.findByText(/Case opened/)).toBeInTheDocument();
+  });
+  it('Settlements guide §10: while searching, the other tab shows how many refunds match', async () => {
+    api.summary.mockResolvedValue(summary());
+    api.list.mockImplementation(async (q: { tab: string; search?: string }) => (q.tab === 'refunds' ? pageOf([], { total: q.search ? 2 : 0 }) : pageOf(q.search ? [] : [row()])));
+    mount(); await screen.findByText('CP-20260063');
+    fireEvent.change(screen.getByTestId('search'), { target: { value: 'RF-1001' } });
+    await waitFor(() => expect(screen.getByTestId('tab-refunds')).toHaveTextContent('· 2'), { timeout: 2000 });
   });
   it('asks the server for This Month, newest created first, page 1', async () => {
     api.summary.mockResolvedValue(summary()); api.list.mockResolvedValue(pageOf([row()]));

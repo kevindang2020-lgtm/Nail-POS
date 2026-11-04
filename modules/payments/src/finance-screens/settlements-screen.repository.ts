@@ -51,6 +51,8 @@ const maskLast4 = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, '')
 const phoneLast4 = (v: unknown) => { const d = String(v ?? '').replace(/\D/g, ''); return d.length >= 4 ? `•••-${d.slice(-4)}` : null; };
 const normRef = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, '');
 
+/** a connected processor feed with nothing newer than this is shown as stale */
+const STALE_FEED_MS = 3 * 24 * 3_600_000;
 export class SettlementsScreenRepository {
   constructor(private readonly db: Kysely<any>, private readonly auditor: AuditRecorder | null = null) {}
 
@@ -305,9 +307,12 @@ export class SettlementsScreenRepository {
     const cfg = (await sql<any>`select processor, status, configured_at from tenant_payment_config where tenant_id = ${T} limit 1`.execute(this.db)).rows[0];
     const last = (await sql<any>`select max(created_at) as last_at, count(*)::int as n from payment_settlements where tenant_id = ${T}`.execute(this.db)).rows[0] || {};
     const lastEvent = (await sql<any>`select max(created_at) as at from payment_gateway_events where tenant_id = ${T}`.execute(this.db)).rows[0] || {};
-    const state = !cfg ? 'not_configured' : String(cfg.status) !== 'active' ? 'inactive' : N(last.n) === 0 ? 'awaiting_first_settlement' : 'connected';
+    // Settlements guide (Nov 4 2026): a connected feed that has sent nothing for 3 days is STALE — said to the owner, never shown as current
+    const newest = Math.max(last.last_at ? new Date(last.last_at).getTime() : 0, lastEvent.at ? new Date(lastEvent.at).getTime() : 0);
+    const state = !cfg ? 'not_configured' : String(cfg.status) !== 'active' ? 'inactive' : N(last.n) === 0 ? 'awaiting_first_settlement'
+      : newest && Date.now() - newest > STALE_FEED_MS ? 'stale' : 'connected';
     return {
-      state: state as 'not_configured' | 'inactive' | 'awaiting_first_settlement' | 'connected', processor: cfg?.processor ?? null,
+      state: state as 'not_configured' | 'inactive' | 'awaiting_first_settlement' | 'stale' | 'connected', staleAfterHours: STALE_FEED_MS / 3_600_000, processor: cfg?.processor ?? null,
       lastSettlementReceivedAt: iso(last.last_at), lastProviderEventAt: iso(lastEvent.at), ingestion: 'processor_webhook' as const,
       // what the processor feed does NOT carry today (spec §14 boundary — listed, never invented)
       notSupplied: ['fee_components', 'separately_billed_fees', 'expected_payout_date', 'refund_netting_batch', 'reserves'],

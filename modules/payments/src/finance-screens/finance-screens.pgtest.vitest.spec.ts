@@ -236,6 +236,8 @@ describe('AI Deposit Reconciliation — allocations', () => {
     const a = await ws.allocate(ctx, { settlementId: id('s01'), depositId: d1, amountCents: 97500, reviewed: true, idempotencyKey: key(201), basis: 'exact_reference', canApprove: false });
     const again = await ws.allocate(ctx, { settlementId: id('s01'), depositId: d1, amountCents: 97500, reviewed: true, idempotencyKey: key(201), canApprove: false });
     expect(again.duplicate).toBe(true); expect(again.id).toBe(a.id);
+    // Deposit Recon guide audit (Nov 4 2026): the basis is checked against the records (this bank line carries the batch id)
+    expect((await q(`select evidence_json->>'basis' as b from reconciliation_allocations where id = $1`, [a.id])).rows[0].b).toBe('exact_reference');
     const p = all();
     const row = (await ws.listSettlements(ctx, ws.filters(p, { search: 'BATCH-1001' }), pageReq({}))).items[0];
     expect(row.status).toBe('matched'); expect(row.matchedCents).toBe(97500); expect(row.expectedNetCents).toBe(97500);
@@ -246,7 +248,9 @@ describe('AI Deposit Reconciliation — allocations', () => {
 
   it('split payout: one settlement → two deposits; over-allocation refused with the remaining amounts', async () => {
     const d2 = await dep(2, 30000), d3 = await dep(3, 20000);
-    await ws.allocate(ctx, { settlementId: id('s02'), depositId: d2, amountCents: 30000, reviewed: true, idempotencyKey: key(210), canApprove: false });
+    const claimed = await ws.allocate(ctx, { settlementId: id('s02'), depositId: d2, amountCents: 30000, reviewed: true, idempotencyKey: key(210), basis: 'amount_and_date', canApprove: false });
+    // a claimed "amount and date" match whose amounts differ (a split payout) is recorded as manual; the claim is kept beside it
+    expect((await q(`select evidence_json->>'basis' as b, evidence_json->>'claimedBasis' as c from reconciliation_allocations where id = $1`, [claimed.id])).rows[0]).toEqual({ b: 'manual', c: 'amount_and_date' });
     let row = (await ws.listSettlements(ctx, ws.filters(all(), { search: 'BATCH-1002' }), pageReq({}))).items[0];
     expect(row.status).toBe('partially_matched'); expect(row.remainingCents).toBe(18500);
     expect(await code(ws.allocate(ctx, { settlementId: id('s02'), depositId: d3, amountCents: 20000, reviewed: true, idempotencyKey: key(211), canApprove: true }))).toBe('ALLOCATION_EXCEEDS_REMAINING');

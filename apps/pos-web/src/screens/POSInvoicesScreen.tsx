@@ -59,7 +59,8 @@ export function POSInvoicesScreen() {
   const firstRun = useRef(true);
   useEffect(() => { if (firstRun.current) { firstRun.current = false; return; } setPage(1); }, [key]);
   const summary = useLoad(() => api.summary(scope), [JSON.stringify(scope), tick]);
-  const list = useLoad(() => api.list({ ...scope, status: status || undefined, sort, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
+  // each answer carries the reload it answers, so a save is judged only against a list read after it
+  const list = useLoad(() => api.list({ ...scope, status: status || undefined, sort, page, pageSize: fit.rows }).then((d: any) => ({ ...d, forTick: tick })), [key, page, fit.rows, tick]);
   useEffect(() => { if (list.data && list.data.page !== page) setPage(list.data.page); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const perms = summary.data?.permissions ?? { create: can('checkout.process_payment'), recordPayment: can('checkout.process_payment'), manage: can('checkout.manage_overrides') };
   const k = summary.data?.kpis;
@@ -72,13 +73,22 @@ export function POSInvoicesScreen() {
   const rows: Row[] = list.data?.items ?? [];
   const info = list.data ? { page: list.data.page, pageSize: list.data.pageSize, totalItems: list.data.total, totalPages: list.data.pageCount } : null;
   const scopeLabel = summary.data ? (summary.data.period?.from ? `${tx('finance.basisIv.' + summary.data.dateBasis)} · ${fmtYmdSafe(summary.data.period.from)} – ${fmtYmdSafe(summary.data.period.to)}` : tx('finance.iv.scopeAll')) + (summary.data.scope === 'period_and_filters' ? ' · ' + tx('finance.iv.scopeFiltered') : '') : '';
+  // Invoices guide audit (Nov 4 2026): whether a saved invoice is in view is decided by the list the SERVER returns after the save —
+  // the guess said "hidden by your filters" for any period but All time, even This Month with today's invoice in it
+  const pendingSave = useRef<{ id: string; number: string; verb: string; after: number } | null>(null);
   const afterSave = (d: Detail, verb: string) => {
-    setDlg({ kind: 'detail', id: d.invoice.id }); setTick((t) => t + 1);
-    const inv = d.invoice;
-    const outside = (status && status !== inv.displayStatus) || (q && !inv.invoiceNumber.toLowerCase().includes(q.toLowerCase()) && !(inv.customer.name ?? '').toLowerCase().includes(q.toLowerCase())) || period.preset !== 'all' || amountMin != null || amountMax != null;
-    if (!outside && sort === 'created_desc') { setPage(1); setHighlight(inv.id); setTimeout(() => setHighlight(null), 4000); setNote({ tone: 'ok', text: tx(verb, { n: inv.invoiceNumber }) }); }
-    else setNote({ tone: 'ok', text: tx(verb, { n: inv.invoiceNumber }) + ' ' + tx('finance.iv.outsideFilters'), actions: [{ label: tx('finance.iv.viewInvoice'), run: () => setDlg({ kind: 'detail', id: inv.id }) }, { label: tx('finance.clearFilters'), run: clearAll }] });
+    setDlg({ kind: 'detail', id: d.invoice.id });
+    pendingSave.current = { id: d.invoice.id, number: d.invoice.invoiceNumber, verb, after: tick + 1 };
+    if (sort === 'created_desc') setPage(1);
+    setTick((t) => t + 1);
   };
+  useEffect(() => {
+    const p = pendingSave.current; const data: any = list.data;
+    if (!p || !data || list.loading || (data.forTick ?? 0) < p.after) return;
+    pendingSave.current = null;
+    if ((data.items ?? []).some((x: Row) => x.id === p.id)) { setHighlight(p.id); setTimeout(() => setHighlight(null), 4000); setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) }); }
+    else setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) + ' ' + tx('finance.iv.outsideFilters'), actions: [{ label: tx('finance.iv.viewInvoice'), run: () => setDlg({ kind: 'detail', id: p.id }) }, { label: tx('finance.clearFilters'), run: clearAll }] });
+  }, [list.data, list.loading]);   // eslint-disable-line react-hooks/exhaustive-deps
   const exportCsv = async () => { try { download('invoices.csv', await api.exportCsv({ ...scope, status: status || undefined, sort }), 'text/csv;charset=utf-8'); setNote({ tone: 'ok', text: tx('finance.exported') }); } catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } };
 
   return (

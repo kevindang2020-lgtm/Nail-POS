@@ -48,6 +48,26 @@ describe('POSInvoicesScreen', () => {
     await waitFor(() => expect(api.createInvoice).toHaveBeenCalled());
     expect(api.createInvoice.mock.calls[0][0]).toMatchObject({ customerId: 'c-1', send: false, lines: [{ description: 'Gel manicure', quantity: 1, unitPriceCents: 4500 }] });
   });
+  it('Invoices guide audit (Nov 4 2026): a saved invoice in This Month is highlighted, not called "hidden by filters"', async () => {
+    api.lookupCustomers.mockResolvedValue({ items: [{ id: 'c-1', name: 'John Smith', phone: '(856) 555-1234', email: null, invoices: 1 }] });
+    const made = detail({ id: 'i-46', invoiceNumber: 'INV-0046', status: 'draft', displayStatus: 'draft', issueDate: '2026-10-29' });
+    api.createInvoice.mockResolvedValue(made); api.detail.mockResolvedValue(made);
+    mount();
+    await screen.findByText('INV-0002');
+    fireEvent.click(screen.getByTestId('preset-month'));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'month' })));
+    api.list.mockResolvedValue(pageOf([inv({ id: 'i-46', invoiceNumber: 'INV-0046' }), inv()]));
+    fireEvent.click(screen.getByTestId('new-invoice'));
+    fireEvent.change(screen.getByTestId('line-desc'), { target: { value: 'Gel manicure' } });
+    fireEvent.change(screen.getByTestId('line-price'), { target: { value: '45.00' } });
+    fireEvent.change(screen.getByTestId('customer-find'), { target: { value: 'John' } });
+    fireEvent.click(await screen.findByTestId('customer-option'));
+    await waitFor(() => expect(screen.getByTestId('save-draft')).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId('save-draft'));
+    const note = await screen.findByTestId('note');
+    await waitFor(() => expect(note).toHaveTextContent('INV-0046'));
+    expect(note).not.toHaveTextContent(/filters/i);
+  });
   it('Record Payment refuses more than the balance and sends the amount in cents', async () => {
     api.detail.mockResolvedValue(detail()); api.recordPayment.mockResolvedValue(detail({ status: 'partially_paid', displayStatus: 'partially_paid', paidCents: 400, balanceCents: 600 }));
     mount();

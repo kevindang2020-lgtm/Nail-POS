@@ -94,11 +94,13 @@ export class LoyaltyProgramRepository {
                  join customers c on c.id = l.customer_id and c.tenant_id = l.tenant_id
                  where l.tenant_id = ${T} and c.status <> 'archived' group by l.customer_id) x`.execute(this.db),
       sql<any>`select count(*) filter (where active)::int as active, count(*)::int as total from loyalty_rewards where tenant_id = ${T}`.execute(this.db),
-      sql<any>`select count(*) filter (where status <> 'void')::int as completed,
+      // Loyalty guide (Nov 4 2026): Redemptions and Points Redeemed are COMPLETED redemptions (the code was used at checkout);
+      // issued / applied codes are pending and shown beside them — they used to be counted as done
+      sql<any>`select count(*) filter (where status = 'used')::int as completed,
                       count(*) filter (where status in ('issued', 'applied'))::int as pending,
                       count(*) filter (where status = 'used')::int as used,
                       count(*) filter (where status = 'void')::int as voided,
-                      coalesce(sum(points_spent) filter (where status <> 'void'), 0)::bigint as points
+                      coalesce(sum(points_spent) filter (where status = 'used'), 0)::bigint as points
                from loyalty_redemptions where tenant_id = ${T} and created_at >= ${start}`.execute(this.db),
       sql<any>`select p.loyalty_tier as tier, count(*)::int as members, coalesce(sum(greatest(p.points_balance, 0)), 0)::bigint as points
                from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id
@@ -140,7 +142,8 @@ export class LoyaltyProgramRepository {
     const T = ctx.tenantId; const { page, pageSize } = clampPaging(f.page, f.pageSize, 5);
     const tier = f.tier ? sql`and p.loyalty_tier = ${f.tier}` : sql``;
     const raw = String(f.q ?? '').trim(); const digits = raw.replace(/\D/g, '');
-    const search = raw ? sql`and (c.full_name ilike ${'%' + raw + '%'} or coalesce(c.email, '') ilike ${'%' + raw + '%'}${digits.length >= 3 ? sql` or coalesce(c.normalized_phone, '') like ${'%' + digits + '%'}` : sql``})` : sql``;
+    const lk = '%' + raw.replace(/[\\%_]/g, (ch) => '\\' + ch) + '%';   // a typed % or _ is a literal, not a wildcard
+    const search = raw ? sql`and (c.full_name ilike ${lk} or coalesce(c.email, '') ilike ${lk}${digits.length >= 3 ? sql` or coalesce(c.normalized_phone, '') like ${'%' + digits + '%'}` : sql``})` : sql``;
     const base = sql`from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id
                      where p.tenant_id = ${T} and c.status <> 'archived' ${tier} ${search}`;
     const total = N((await sql<any>`select count(*)::int as n ${base}`.execute(this.db)).rows[0]?.n);

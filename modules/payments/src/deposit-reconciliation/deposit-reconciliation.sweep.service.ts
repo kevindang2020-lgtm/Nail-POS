@@ -43,7 +43,12 @@ export class ReconSweepService {
 
     interface Candidate { kind: 'missing_deposit' | 'fee_difference'; ref: string; amountCents: number; title: string; detail: string }
     const candidates: Candidate[] = [];
+    const ws = this.sweepRepo.workspaceState ? await this.sweepRepo.workspaceState(ctx.tenantId) : new Map<string, { allocatedCents: number; status: string }>();
     for (const r of recon.rows) {
+      // the workspace is the source of truth for matches: a payout a person matched (any allocation) is not missing, and a failed /
+      // returned / pending batch never paid out — the legacy engine's own pairing used to raise false cases for both
+      const w = ws.get(r.settlementId);
+      if (r.status === 'missing_deposit' && w && (w.allocatedCents > 0 || ['failed', 'returned', 'pending'].includes(w.status))) continue;
       if (r.status === 'missing_deposit') candidates.push({ kind: 'missing_deposit', ref: `missing_deposit:${r.settlementId}`, amountCents: r.expectedNetCents, title: `Missing deposit — ${money(r.expectedNetCents)} ${r.processorType || 'settlement'}`, detail: `Settlement settled ${String(r.settledAt).slice(0, 10)} has no matching bank deposit past the funding window.` });
     }
     for (const f of fee.rows) {

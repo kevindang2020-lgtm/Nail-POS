@@ -431,13 +431,14 @@ function RedemptionDialog({ id, canVoid, onClose, onVoided, openProfile }: { id:
 
 function LedgerDialog({ customerId, name, onClose }: { customerId?: string; name?: string; onClose: () => void }) {
   const [type, setType] = useState(''); const [page, setPage] = useState(1); const [d, setD] = useState<Paged<Ledger> | null>(null); const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { let alive = true; setErr(null); posLoyaltyApi.ledger({ page, pageSize: 10, entryType: type || undefined, customerId }).then((r) => alive && setD(r)).catch((e) => alive && setErr(errText(e, tx('people.loyalty.loadFailed')))); return () => { alive = false; }; }, [page, type, customerId]);
+  const [retry, setRetry] = useState(0);   // Loyalty guide (Nov 4 2026): Retry re-reads (it set the same page — a no-op)
+  useEffect(() => { let alive = true; setErr(null); posLoyaltyApi.ledger({ page, pageSize: 10, entryType: type || undefined, customerId }).then((r) => alive && setD(r)).catch((e) => alive && setErr(errText(e, tx('people.loyalty.loadFailed')))); return () => { alive = false; }; }, [page, type, customerId, retry]);
   return (
     <FitDialog wide title={name ? tx('people.loyalty.pointHistoryOf', { name }) : tx('people.loyalty.pointsLedger')} subtitle={tx('people.loyalty.ledgerSub')} onClose={onClose} testId="dlg-ledger"
       footer={<><Pager info={d} onPage={setPage} /><button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
       <div className="fk-toolbar"><select aria-label={tx('people.loyalty.entryType')} className="fk-select" value={type} onChange={(e) => { setType(e.target.value); setPage(1); }}>
         <option value="">{tx('people.loyalty.allEntries')}</option>{['earn', 'redeem', 'adjust', 'reverse', 'merge'].map((x) => <option key={x} value={x}>{entryLabel(x)}</option>)}</select></div>
-      {err ? <ErrorRetry message={err} onRetry={() => setPage((p) => p)} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : d.items.length === 0 ? <Empty title={type ? tx('people.fit.noMatch') : tx('people.loyalty.noLedger')} /> : (
+      {err ? <ErrorRetry message={err} onRetry={() => setRetry((n) => n + 1)} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : d.items.length === 0 ? <Empty title={type ? tx('people.fit.noMatch') : tx('people.loyalty.noLedger')} /> : (
         <table className="fk-table"><thead><tr><th>{tx('people.loyalty.when')}</th><th>{tx('pos.customer')}</th><th>{tx('people.loyalty.entryType')}</th><th className="num">{tx('people.loyalty.points')}</th><th className="num">{tx('people.loyalty.balance')}</th><th>{tx('pos.reason_2')}</th></tr></thead>
           <tbody>{d.items.map((l) => <tr key={l.id}><td>{whenTime(l.createdAt)}</td><td>{l.customerName || '—'}</td><td>{entryLabel(l.entryType)}</td><td className={'num ' + (l.delta < 0 ? 'neg' : 'pos')}>{l.delta > 0 ? '+' : ''}{nf(l.delta)}</td><td className="num">{nf(l.balanceAfter)}</td><td>{l.reason || '—'}</td></tr>)}</tbody></table>
       )}

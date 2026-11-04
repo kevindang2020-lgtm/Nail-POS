@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posSettlementsApi } from '../api/posSettlementsApi';
+import { posDepositReconApi } from '../api/posDepositReconApi';
 import { useCan } from '../components/usePermissions';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
@@ -70,6 +71,11 @@ export function POSSettlementsScreen() {
     ? { tab, ...pq, dateField: basis, search: q || undefined, processor: processor || undefined, status: sStatus, bank: sBank, sort: sorts.settlements, page: pages.settlements, pageSize: fit.rows }
     : { tab, ...pq, search: q || undefined, processor: processor || undefined, status: rStatus || undefined, sort: sorts.refunds, page: pages.refunds, pageSize: fit.rows };
   const list = useLoad(() => posSettlementsApi.list(listQ), [JSON.stringify(listQ), tick]);
+  // Settlements guide §10 (Nov 4 2026): one search finds settlements AND refunds — while searching, the other tab's match count
+  // shows on its tab, so a refund id typed on Settlements is never a dead end
+  const otherTab: Tab = tab === 'settlements' ? 'refunds' : 'settlements';
+  const otherQ = q ? { tab: otherTab, ...pq, search: q, processor: processor || undefined, page: 1, pageSize: 1 } : null;
+  const other = useLoad(() => (otherQ ? posSettlementsApi.list(otherQ) : Promise.resolve(null)), [JSON.stringify(otherQ), tick]);
   useEffect(() => { const d = list.data; if (d && d.page !== pages[tab]) setPages((p) => ({ ...p, [tab]: d.page })); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   // a new record since the last look: first on Page 1 when it qualifies; otherwise say so and offer View / Clear Filters
@@ -185,7 +191,7 @@ export function POSSettlementsScreen() {
 
       <FitPanel testId="records" className="fn-records" bodyRef={fit.ref}
         title={<span className="fk-seg fn-tabs" role="tablist">
-          {(['settlements', 'refunds'] as Tab[]).map((t) => <button type="button" role="tab" key={t} aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('finance.st.tab.' + t)}{list.data && tab === t ? ` · ${fmtNumber(list.data.total)}` : ''}</button>)}
+          {(['settlements', 'refunds'] as Tab[]).map((t) => <button type="button" role="tab" key={t} aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('finance.st.tab.' + t)}{list.data && tab === t ? ` · ${fmtNumber(list.data.total)}` : q && other.data && t === otherTab ? ` · ${fmtNumber(other.data.total)}` : ''}</button>)}
         </span>}
         actions={<select className="fk-select" aria-label={tx('finance.sort')} value={sorts[tab]} onChange={(e) => { setSorts((x) => ({ ...x, [tab]: e.target.value })); setPages((p) => ({ ...p, [tab]: 1 })); }} data-testid="sort">
           {(tab === 'settlements' ? S_SORTS : R_SORTS).map((o) => <option key={o} value={o}>{tx('finance.sortBy.' + o)}</option>)}
@@ -257,6 +263,14 @@ export { download as financeDownload };
 
 function SettlementDetail({ id, canExport, onClose, onRecon, onNote }: { id: string; canExport: boolean; onClose: () => void; onRecon: (id: string) => void; onNote: (n: { tone: 'ok' | 'bad'; text: string }) => void }) {
   const d = useLoad(() => posSettlementsApi.detail(id), [id]);
+  // Settlements guide (Nov 4 2026): Investigate — raise (or reopen) the reconciliation case for this batch; never a duplicate of an open case
+  const canInvestigate = useCan()('reconciliation.manage');
+  const [inv, setInv] = useState<null | { kind: string; note: string; busy: boolean; err: string | null }>(null);
+  const investigate = async () => {
+    if (!inv) return; setInv({ ...inv, busy: true, err: null });
+    try { const r = await posDepositReconApi.raise({ targetType: 'settlement', targetId: id, kind: inv.kind, note: inv.note.trim() || undefined }); setInv(null); onNote({ tone: 'ok', text: tx(r?.existing ? 'finance.st.invExisting' : 'finance.st.invRaised') }); }
+    catch (e) { setInv({ ...inv, busy: false, err: (e as Error).message || tx('pos.action_failed') }); }
+  };
   const [tq, setTq] = useState(''); const tqd = useDebounced(tq.trim(), 300);
   const [tp, setTp] = useState(1);
   useEffect(() => setTp(1), [tqd]);
@@ -272,9 +286,17 @@ function SettlementDetail({ id, canExport, onClose, onRecon, onNote }: { id: str
       footer={<>
         <button type="button" className="fk-btn" onClick={() => txRef.current?.scrollIntoView({ behavior: 'smooth' })}>{tx('finance.st.viewTransactions')}</button>
         <button type="button" className="fk-btn" onClick={() => onRecon(id)}>{tx('finance.st.openRecon')}</button>
+        {canInvestigate ? <button type="button" className="fk-btn" onClick={() => setInv({ kind: s && s.bankState !== 'matched' ? 'missing_deposit' : 'amount_mismatch', note: '', busy: false, err: null })} data-testid="investigate">{tx('finance.st.investigate')}</button> : null}
         {canExport ? <button type="button" className="fk-btn" onClick={exportDetail} data-testid="export-detail">{tx('finance.exportDetail')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('finance.st.back')}</button>
       </>}>
+      {inv ? <div className="fk-void" data-testid="investigate-form"><span>{tx('finance.st.invTitle')}</span>
+        <select className="fk-select" value={inv.kind} onChange={(e) => setInv({ ...inv, kind: e.target.value })} aria-label={tx('finance.st.invKind')} data-testid="inv-kind">
+          {['missing_deposit', 'amount_mismatch', 'fee_difference', 'duplicate', 'integration_error'].map((k) => <option key={k} value={k}>{tx('finance.st.invKind.' + k)}</option>)}</select>
+        <input className="fk-search wide" value={inv.note} onChange={(e) => setInv({ ...inv, note: e.target.value })} maxLength={500} placeholder={tx('finance.st.invNote')} aria-label={tx('finance.st.invNote')} data-testid="inv-note" />
+        <button type="button" className="fk-btn" onClick={() => setInv(null)} disabled={inv.busy}>{tx('pos.cancel')}</button>
+        <button type="button" className="fk-btn primary" onClick={() => void investigate()} disabled={inv.busy} data-testid="inv-submit">{tx('finance.st.investigate')}</button>
+        {inv.err ? <span className="fk-err" role="alert">{inv.err}</span> : null}</div> : null}
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !s ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
         <div className="fn-statusline">
           <span className={'fk-chip ' + (PROVIDER_TONE[s.providerStatus] ?? 'mut')}>{tx('finance.st.providerStatus')}: {codeLabel('finance.provider.' + s.providerStatus, s.providerStatus)}</span>

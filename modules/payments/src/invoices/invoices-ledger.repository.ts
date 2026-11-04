@@ -183,7 +183,12 @@ export class InvoicesLedgerRepository {
         count(*) filter (where ib.display_status = 'sent')::int as sent_n
       from ib where ${w.where}`.execute(this.db)).rows[0] || {};
     // cash collected is by PAYMENT date (whatever the list's date basis) — the card says so
-    const cash = (await sql<any>`select coalesce(sum(ip.amount_cents), 0)::bigint as cents, count(*)::int as n from invoice_payments ip where ip.tenant_id = ${T} and ${dateInPeriod(sql`ip.paid_on`, f.period)}`.execute(this.db)).rows[0] || {};
+    // Invoices guide audit (Nov 4 2026): with a search or amount filter on, the Paid card counts the payments of the MATCHING invoices
+    // (any issue date) — it used to count every payment of the period while the scope line said "period and filters"
+    const filtersOn = !!(f.q || f.amountMin != null || f.amountMax != null);
+    const fw = filtersOn ? this.where({ ...f, period: { ...f.period, from: null, to: null } } as InvoiceFilters, { withStatus: false }) : null;
+    const cash = (await sql<any>`${fw ? sql`${this.base(ctx, tz)} ` : sql``}select coalesce(sum(ip.amount_cents), 0)::bigint as cents, count(*)::int as n from invoice_payments ip
+      where ip.tenant_id = ${T} and ${dateInPeriod(sql`ip.paid_on`, f.period)} ${fw ? sql`and ip.invoice_id in (select ib.id from ib where ${fw.where})` : sql``}`.execute(this.db)).rows[0] || {};
     return {
       period: f.period, dateBasis: f.basis, scope: f.q || f.amountMin != null || f.amountMax != null ? 'period_and_filters' : 'period',
       kpis: {

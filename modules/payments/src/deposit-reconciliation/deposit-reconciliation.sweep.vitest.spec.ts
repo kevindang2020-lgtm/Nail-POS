@@ -72,3 +72,27 @@ describe('recon sweep acts as a system job, not a fake user', () => {
     for (const c of seen) expect(c).toMatchObject({ tenantId: 't1', userId: 'system:deposit-reconciliation-sweep', role: 'SYSTEM', actor: 'deposit-reconciliation-sweep' });
   });
 });
+
+describe('recon sweep follows the reconciliation workspace (Deposit Recon guide audit, Nov 4 2026)', () => {
+  const withWorkspace = (state: Record<string, { allocatedCents: number; status: string }>) => {
+    const repo = new InMemorySweepRepository(['t1']) as InMemorySweepRepository & { workspaceState: (t: string) => Promise<Map<string, { allocatedCents: number; status: string }>> };
+    repo.workspaceState = async () => new Map(Object.entries(state));
+    const exc = new InMemoryExceptionsRepository();
+    return { exc, svc: new ReconSweepService(repo, new InMemoryReconRepository({ settlements, deposits }), new InMemoryFeeScheduleRepository(schedules), exc) };
+  };
+  it('a payout a person already matched in the workspace is not raised as missing', async () => {
+    const { exc, svc } = withWorkspace({ S1: { allocatedCents: 97100, status: 'settled' } });
+    await svc.sweepTenant(ctx());
+    expect((await exc.list(ctx())).map((i) => i.sourceRef)).not.toContain('missing_deposit:S1');
+  });
+  it('a failed or returned batch is never "missing a deposit"', async () => {
+    const { exc, svc } = withWorkspace({ S1: { allocatedCents: 0, status: 'returned' } });
+    await svc.sweepTenant(ctx());
+    expect((await exc.list(ctx())).map((i) => i.sourceRef)).not.toContain('missing_deposit:S1');
+  });
+  it('an unmatched, settled, overdue payout is still raised', async () => {
+    const { exc, svc } = withWorkspace({ S1: { allocatedCents: 0, status: 'settled' } });
+    await svc.sweepTenant(ctx());
+    expect((await exc.list(ctx())).map((i) => i.sourceRef)).toContain('missing_deposit:S1');
+  });
+});

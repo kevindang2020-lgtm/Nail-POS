@@ -161,6 +161,9 @@ describe('Invoices — payments, KPIs, void', () => {
     expect(s.kpis.overdueInvoices).toBe(1); expect(s.kpis.overdueCents).toBe(1000);
     expect(s.kpis.cashCollectedCents).toBe(8060); expect(s.kpis.paidInvoices).toBe(1);
     expect(s.kpis.drafts).toBe(1); expect(s.kpis.total).toBe(5); expect(s.kpis.voided).toBe(1);
+    // Invoices guide audit (Nov 4 2026): a search narrows the Paid card to the payments of the matching invoices
+    expect((await repo.summary(ctx, repo.filters(ALL(), { search: 'INV-0003' }))).kpis.cashCollectedCents).toBe(8060);
+    expect((await repo.summary(ctx, repo.filters(ALL(), { search: 'INV-0004' }))).kpis.cashCollectedCents).toBe(0);
     // the status filter narrows the list, not the cards
     const s2 = await repo.summary(ctx, repo.filters(ALL(), { status: 'paid' }));
     expect(s2.kpis.total).toBe(5);
