@@ -1,3 +1,4 @@
+import { PostgresQueryCompiler } from 'kysely';
 import { describe, it, expect } from 'vitest';
 import { KyselyQueueRepository } from './queue.kysely.repository';
 import type { QueueContext } from './queue.repository';
@@ -42,6 +43,9 @@ function makeFakeDb(row: any = null) {
   };
   const db: any = { insertInto: (t: string) => insertB(t), selectFrom: (t: string) => selectB(t === 'pos_queue_items' ? row : undefined), updateTable: (t: string) => updateB(t) };
   db.transaction = () => ({ execute: (fn: any) => fn(db) });
+  // raw sql`` statements (locks, guarded updates) run through Kysely's executor: compile with the real Postgres compiler, answer no rows
+  db.getExecutor = () => { const ex: any = { transformQuery: (n: unknown) => n, compileQuery: (n: any, id: any) => new PostgresQueryCompiler().compileQuery(n, id), withPlugins: () => ex,
+    executeQuery: async () => ({ rows: [] }) }; return ex; };
   return { db, inserts, updates };
 }
 

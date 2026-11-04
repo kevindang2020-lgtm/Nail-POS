@@ -26,6 +26,8 @@ beforeAll(async () => {
   await q(`insert into tickets (id, tenant_id, branch_id, customer_id, primary_technician_id, status, ticket_number, subtotal_cents, total_cents) values ($1,$2,$3,$4,$5,'serving','T1',4500,4500)`, [TK, TA, BA, CUST, MIA]);
   await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status) values ($1,$2,$3,$4,$5,'Manicure',4500,45,4500,'serving')`, [TA, BA, TK, SVC, MIA]);
   await q(`insert into technician_skills (tenant_id, technician_id, skill_group, created_at) values ($1,$2,'manicure',now()), ($1,$2,'gel',now())`, [TA, MIA]);
+  // §59–§60: only a technician with a status row (clocked in / serving / break) is on the staff panel — Mia is serving
+  await q(`insert into technician_statuses (tenant_id, branch_id, technician_id, status) values ($1,$2,$3,'serving')`, [TA, BA, MIA]);
   repo = new KyselyServingRepository(kyselyFor(pg) as never);
 }, 180_000);
 

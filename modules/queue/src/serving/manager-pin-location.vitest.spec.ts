@@ -2,19 +2,22 @@
 // may enter (the identity module's rule, wired by the API as STAFF_BRANCH_ACCESS) and only in her own salon. A fake database
 // answers the three statements the port runs (budget count, budget insert, the salon's managers); the PIN "hash" is the PIN.
 import { describe, it, expect } from 'vitest';
+import { PostgresQueryCompiler } from 'kysely';
 import { KyselyManagerPinPort } from './manager-pin.kysely';
 
 const T = 'd1d1d1d1-0000-4000-8000-000000000001', B1 = 'b1', B2 = 'b2';
 function fakeDb(users: Array<{ id: string; role: string; full_name: string; pin_hash: string; tenant: string }>) {
   const seen: Array<{ sql: string; parameters: unknown[] }> = [];
   const db: any = {
-    getExecutor: () => ({ executeQuery: async (c: { sql: string; parameters: unknown[] }) => {
+    // a query executor as Kysely's raw builder drives it: transform → compile (the real Postgres compiler) → execute
+    getExecutor: () => { const ex: any = { transformQuery: (n: unknown) => n, compileQuery: (n: any, id: any) => new PostgresQueryCompiler().compileQuery(n, id), withPlugins: () => ex,
+      executeQuery: async (c: { sql: string; parameters: unknown[] }) => {
       seen.push(c);
       if (/count\(\*\)/.test(c.sql)) return { rows: [{ n: 0 }] };
       if (/insert into auth_events/.test(c.sql)) return { rows: [{ id: 'charge-1' }] };
       if (/FROM users/.test(c.sql)) return { rows: users.filter((u) => u.tenant === c.parameters[0]) };
       return { rows: [] };
-    } }),
+    } }; return ex; },
     transaction: () => ({ execute: async (fn: (t: unknown) => unknown) => fn(db) }),
   };
   return { db, seen };
