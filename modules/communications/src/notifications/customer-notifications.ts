@@ -15,6 +15,7 @@
 // labelled window + date basis. Recipients and bodies are masked unless the viewer may manage communications. A retry is one
 // confirmed, idempotent, re-checked attempt per failed row (purpose, consent, current contact, setup) — never a bulk resend,
 // never for marketing or one-time codes, and the original failure stays visible.
+import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { sql, type Kysely } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { withCode } from '@aipowersalon/api-contracts';
@@ -90,7 +91,8 @@ const FIX_ROUTES = {
 export class CustomerNotificationsCenter {
   private lastEval = new Map<string, number>();
   constructor(private readonly db: Kysely<any>, private readonly sender: CnSender | null = null, private readonly readinessSvc: CnReadiness | null = null,
-    private readonly env: Record<string, string | undefined> = process.env, private readonly now: () => number = () => Date.now()) {}
+    private readonly env: Record<string, string | undefined> = process.env, private readonly now: () => number = () => Date.now(),
+    private readonly rt: RealtimeEmitter | null = null) {}
 
   // ── guards / helpers ────────────────────────────────────────────────────────────────────────────────────────────────
   private need(ctx: CnContext, perm: 'pos.communications.view' | 'pos.communications.manage') {
@@ -602,6 +604,7 @@ export class CustomerNotificationsCenter {
         on conflict (tenant_id, category) where branch_id is null do update set settings_json = excluded.settings_json, updated_by_user_id = excluded.updated_by_user_id, updated_by = excluded.updated_by, updated_at = now()`.execute(trx);
       await this.audit(ctx, 'notification.alert_settings_saved', null, 'Changed the messaging failure alert thresholds', { settings: s }, trx);
     });
+    notifySettingsChanged(this.rt, ctx.tenantId, 'notification_alerts');   // after the commit: other open screens reload
     return this.alertSettings(ctx);
   }
   async incidents(ctx: CnContext, q: Record<string, unknown> = {}) {

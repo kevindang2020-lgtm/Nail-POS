@@ -82,7 +82,8 @@ export class SetupHealthNightlyScheduler implements OnModuleInit, OnModuleDestro
     if (!runsBackgroundJob('standard') || !setupHealthNightlyEnabled()) return;
     const every = 60 * 60 * 1000;
     const tick = () => runTick({ jobType: 'setup_health.schedule', jobClass: 'standard', everyMs: every }, () => this.tick()).catch((x) => logException(x, { where: 'setup-health.schedule_tick' }));
-    void tick(); this.timer = setInterval(() => { void tick(); }, every);
+    void tick();
+    this.timer = setInterval(() => { void runTick({ jobType: 'setup_health.schedule', jobClass: 'standard', everyMs: every }, () => this.tick()).catch((x) => logException(x, { where: 'setup-health.schedule_tick' })); }, every);
     if (typeof this.timer.unref === 'function') this.timer.unref();
     this.log.log('Setup Health nightly verifier armed (03:00 salon time).');
   }

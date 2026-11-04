@@ -129,7 +129,7 @@ export class TeamDataNightlyScheduler implements OnModuleInit, OnModuleDestroy {
     if (!runsBackgroundJob('report') || !teamDataNightlyEnabled()) return;
     const tick = () => runTick({ jobType: 'team.data_check.schedule', jobClass: 'report', everyMs: TICK_MS }, () => this.tick());
     void tick().catch(logGap('team_nightly_tick_failed'));
-    this.timer = setInterval(() => { void tick().catch(logGap('team_nightly_tick_failed')); }, TICK_MS);
+    this.timer = setInterval(() => { void runTick({ jobType: 'team.data_check.schedule', jobClass: 'report', everyMs: TICK_MS }, () => this.tick()).catch(logGap('team_nightly_tick_failed')); }, TICK_MS);
     if (typeof this.timer.unref === 'function') this.timer.unref();
     this.log.log(`Team data nightly check armed (salon-local ${nightlyLocalHour()}:00, hourly tick).`);
   }

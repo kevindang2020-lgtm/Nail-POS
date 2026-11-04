@@ -2,6 +2,7 @@
 // canonical tables; null (503 SERVICE_UNAVAILABLE) without a database — nothing is ever served from memory.
 import { Module } from '@nestjs/common';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { REALTIME, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { OutboxWriter } from '@aipowersalon/events';
 import { EventsCoreModule } from '@aipowersalon/events/nest';
 import { ShiftOverrideController, SHIFT_OVERRIDES } from './shift-override.controller';
@@ -36,7 +37,7 @@ import { TeamDataAlertsRepository } from './team-data-alerts.repository';
     { provide: TEAM_MEMBERS_LOOKUP, useFactory: (db: AppDatabase) => (db ? new TeamMembersLookupRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_DATA_ALERTS, useFactory: (db: AppDatabase) => (db ? new TeamDataAlertsRepository(db) : null), inject: [DATABASE] },
     { provide: SHIFT_OVERRIDES, useFactory: (db: AppDatabase, outbox: OutboxWriter) => (db ? new ShiftOverrideRepository(db, outbox) : null), inject: [DATABASE, OutboxWriter] },
-    { provide: COMMISSION_REVIEW, useFactory: (db: AppDatabase) => (db ? new CommissionReviewRepository(db) : null), inject: [DATABASE] },
+    { provide: COMMISSION_REVIEW, useFactory: (db: AppDatabase, rt: RealtimeEmitter) => (db ? new CommissionReviewRepository(db, rt) : null), inject: [DATABASE, REALTIME] },
     { provide: TEAM_PERFORMANCE_SCREEN, useFactory: (db: AppDatabase) => (db ? new TeamPerformanceScreenRepository(db) : null), inject: [DATABASE] },
     { provide: COMMISSION_SCREEN, useFactory: (db: AppDatabase) => (db ? new CommissionScreenRepository(db) : null), inject: [DATABASE] },
     { provide: TECH_QUEUE_SCREEN, useFactory: (db: AppDatabase) => (db ? new TechQueueScreenRepository(db) : null), inject: [DATABASE] },

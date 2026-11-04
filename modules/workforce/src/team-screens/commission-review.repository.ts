@@ -12,6 +12,7 @@
 //              transaction. A reviewer whose own pay the finding concerns cannot resolve or dismiss it without a financial
 //              manager permission (the denial is itself recorded). Resolve / dismiss need an explanation.
 //   Money      NOTHING here pays, deducts, refunds, voids, reverses or edits a ledger, snapshot, adjustment or payout.
+import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { dateColumnYmd } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
 import { N, iso, like, paging, served, branchOf, teamPeriod, inPeriod, UUID, actorOf, err, canAny, logGap, type TeamCtx, type TPeriod } from './screen-kit';
@@ -64,7 +65,7 @@ const text = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slic
 
 export class CommissionReviewRepository {
   private readonly screen: CommissionScreenRepository;
-  constructor(private readonly db: Kysely<any>) { this.screen = new CommissionScreenRepository(db); }
+  constructor(private readonly db: Kysely<any>, private readonly rt: RealtimeEmitter | null = null) { this.screen = new CommissionScreenRepository(db); }
   private mustView(ctx: TeamCtx) { if (!canAny(ctx, ...VIEW)) throw err(403, 'FORBIDDEN', 'You do not have permission to view technician pay.'); }
   private mustReview(ctx: TeamCtx) { if (!canAny(ctx, ...REVIEW)) throw err(403, 'FORBIDDEN', 'You do not have permission to review commission discrepancies.'); }
   private brR(ctx: TeamCtx) { const b = branchOf(ctx); return b ? sql`(r.branch_id = ${b} or r.branch_id is null)` : sql`true`; }
@@ -88,6 +89,7 @@ export class CommissionReviewRepository {
       await writeAuditRow(trx, ctx, { module: 'payroll', action: 'compensation.refund_reversal_policy.set', resourceType: 'tenant_settings', resourceId: 'compensation', summary: `Refund-reversal policy set to ${policy}`,
         before: { refundReversalPolicy: before }, after: { refundReversalPolicy: policy }, requestId });
     });
+    notifySettingsChanged(this.rt, T, 'compensation');   // after the commit: other open screens reload
     return { policy: String(policy) };
   }
 

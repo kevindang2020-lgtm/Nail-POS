@@ -39,7 +39,8 @@ describe('every scheduler is instrumented', () => {
   // Process-local timers (metrics flush, presence) do not ask runsBackgroundJob and keep runJob.
   const MULTI_OWNER_BY_DESIGN = new Set(['events/outbox-publisher.ts']);   // concurrent publishers claim rows with SKIP LOCKED
   it('every background scheduler ticks through runTick (single owner across processes)', () => {
-    const background = codeRoots().flatMap((r) => walk(r)).filter((f) => { const s = readFileSync(f, 'utf8'); return /runsBackgroundJob\(/.test(s) && !/export function runsBackgroundJob/.test(s) && !/\bmain\.ts$/.test(f); });
+    const background = codeRoots().flatMap((r) => walk(r)).filter((f) => { const s = readFileSync(f, 'utf8'); return /runsBackgroundJob\(/.test(s) && /set(?:Interval|Timeout)\(/.test(s) && !/export function runsBackgroundJob/.test(s) && !/\bmain\.ts$/.test(f); });
+    // (a file that only ASKS runsBackgroundJob — e.g. the voice module's "is the sweep armed here?" health hint — owns no timer)
     expect(background.length).toBeGreaterThanOrEqual(30);
     const bare: string[] = [];
     for (const f of background) {

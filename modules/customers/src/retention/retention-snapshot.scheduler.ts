@@ -27,7 +27,9 @@ export class RetentionSnapshotWorker implements OnModuleInit, OnModuleDestroy {
     const tick = () => { runTick({ jobType: 'retention.snapshot.nightly', jobClass: 'standard', everyMs: SNAPSHOT_CHECK_MS }, () => this.tick())
       .catch((e) => logException(e, { where: 'retention-snapshot.scheduler.tick' })); };
     tick();
-    this.timer = setInterval(tick, SNAPSHOT_CHECK_MS);
+    // the tick runs through runTick in the callback itself (the job-telemetry guard reads the callback)
+    this.timer = setInterval(() => { runTick({ jobType: 'retention.snapshot.nightly', jobClass: 'standard', everyMs: SNAPSHOT_CHECK_MS }, () => this.tick())
+      .catch((e) => logException(e, { where: 'retention-snapshot.scheduler.tick' })); }, SNAPSHOT_CHECK_MS);
     this.timer.unref?.();
     this.log.log('Retention nightly snapshots armed (hourly check).');
   }

@@ -6,6 +6,7 @@
 import { Inject, Injectable, Module, type OnModuleDestroy, type OnModuleInit } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import { DATABASE, runAsSingleOwner, type AppDatabase } from '@aipowersalon/database';
+import { REALTIME, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { logException, runTick } from '@aipowersalon/observability';
 import { runsBackgroundJob } from '@aipowersalon/config';
 import { NotificationsModule } from './notifications.module';
@@ -48,8 +49,8 @@ export class MessagingIncidentsJob implements OnModuleInit, OnModuleDestroy {
   imports: [NotificationsModule, TenantMessagingModule],
   controllers: [CustomerNotificationsController],
   providers: [
-    { provide: CUSTOMER_NOTIFICATIONS_CENTER, inject: [DATABASE, NotificationsService, TenantMessagingReadinessService],
-      useFactory: (db: AppDatabase, n: NotificationsService, r: TenantMessagingReadinessService) => (db ? new CustomerNotificationsCenter(db as Kysely<any>, n as unknown as CnSender, r as unknown as CnReadiness) : null) },
+    { provide: CUSTOMER_NOTIFICATIONS_CENTER, inject: [DATABASE, NotificationsService, TenantMessagingReadinessService, REALTIME],
+      useFactory: (db: AppDatabase, n: NotificationsService, r: TenantMessagingReadinessService, rt: RealtimeEmitter) => (db ? new CustomerNotificationsCenter(db as Kysely<any>, n as unknown as CnSender, r as unknown as CnReadiness, process.env, () => Date.now(), rt) : null) },
     MessagingIncidentsJob,
   ],
   exports: [CUSTOMER_NOTIFICATIONS_CENTER],
