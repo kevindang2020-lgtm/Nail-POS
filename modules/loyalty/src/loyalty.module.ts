@@ -5,6 +5,7 @@ import { LoyaltyService } from './loyalty.service';
 import { InMemoryLoyaltyRepository, type LoyaltyRepositoryPort } from './loyalty.repository';
 import { KyselyLoyaltyRepository } from './loyalty.kysely.repository';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { AuditService } from '@aipowersalon/audit';
 import { REALTIME, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
 import { GlobalRewardsController, SuperAdminGlobalRewardsController, GLOBAL_REWARDS_SERVICE } from './global-rewards/global-rewards.controller';
 import { GlobalRewardsService } from './global-rewards/global-rewards.service';
@@ -16,7 +17,7 @@ import { CustomerRewardsController, OwnerRewardsController } from './global-rewa
   controllers: [LoyaltyController, GlobalRewardsController, SuperAdminGlobalRewardsController, CustomerRewardsController, OwnerRewardsController],
   providers: [
     { provide: 'LoyaltyRepositoryPort', useFactory: (db: AppDatabase): LoyaltyRepositoryPort => (db ? new KyselyLoyaltyRepository(db) : new InMemoryLoyaltyRepository()), inject: [DATABASE] },   // writes now (rewards catalog), so the primary, not the read replica
-    { provide: LoyaltyService, useFactory: (repo: LoyaltyRepositoryPort) => new LoyaltyService(repo), inject: ['LoyaltyRepositoryPort'] },
+    { provide: LoyaltyService, useFactory: (repo: LoyaltyRepositoryPort, audit?: AuditService) => new LoyaltyService(repo, audit ?? null), inject: ['LoyaltyRepositoryPort', { token: AuditService, optional: true }] },
     // Global Loyalty & Rewards Network (LoyaltyTokens.pdf v1.0 + LoyaltyRules.pdf v2.0). No live funding provider exists:
     // the sandbox one only outside production with GLOBAL_REWARDS_SANDBOX_PROVIDER=on (token-funding-provider.ts).
     { provide: TOKEN_FUNDING_PROVIDER, useFactory: (): TokenFundingProvider | null => fundingProviderFromEnv() },

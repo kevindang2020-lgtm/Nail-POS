@@ -131,3 +131,32 @@ describe('Loyalty & Rewards — real tenant data', () => {
     expect(s.items.map((x) => x.customerId)).toEqual([C2]);
   });
 });
+
+// Loyalty guide (Nov 4 2026): a reward's dates, stock, per-member limit and eligible tiers are checked atomically at redemption
+describe('Loyalty & Rewards — reward availability rules', () => {
+  const RR = id('fa1');
+  it('upcoming / expired refuse; stock and the per-member limit stop at the cap; an ineligible tier is refused; the catalog says why', async () => {
+    await repo.adjust(ctx, { customerId: C1, delta: 5000, reason: 'rules seed', idempotencyKey: key(950) });   // Ann (Gold)
+    await repo.adjust(ctx, { customerId: C2, delta: 5000, reason: 'rules seed', idempotencyKey: key(951) });   // Bea (Regular)
+    await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, starts_on) values ($1,$2,'Ruled reward',10,true,'amount_off',100, current_date + 30)`, [RR, T]);
+    expect(await code(repo.redeem(ctx, { customerId: C1, rewardId: RR, idempotencyKey: key(960) }))).toBe('REWARD_NOT_STARTED');
+    await q(`update loyalty_rewards set starts_on = null, ends_on = current_date - 30 where id = $1`, [RR]);
+    expect(await code(repo.redeem(ctx, { customerId: C1, rewardId: RR, idempotencyKey: key(961) }))).toBe('REWARD_EXPIRED');
+    expect((await repo.rewards(ctx, { page: 1, pageSize: 20 })).items.find((r) => r.id === RR)?.availability).toBe('expired');
+    await q(`update loyalty_rewards set ends_on = null, eligible_tiers = '{Gold}', per_member_limit = 1, stock_total = 2 where id = $1`, [RR]);
+    expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: RR, idempotencyKey: key(962) }))).toBe('REWARD_TIER_NOT_ELIGIBLE');   // Bea is Regular
+    expect((await repo.redeem(ctx, { customerId: C1, rewardId: RR, idempotencyKey: key(963) })).duplicate).toBe(false);
+    expect(await code(repo.redeem(ctx, { customerId: C1, rewardId: RR, idempotencyKey: key(964) }))).toBe('REWARD_MEMBER_LIMIT');
+    await q(`update loyalty_rewards set eligible_tiers = null, per_member_limit = null where id = $1`, [RR]);
+    expect((await repo.redeem(ctx, { customerId: C2, rewardId: RR, idempotencyKey: key(965) })).duplicate).toBe(false);
+    expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: RR, idempotencyKey: key(966) }))).toBe('REWARD_OUT_OF_STOCK');   // 2 of 2 used up
+    const row = (await repo.rewards(ctx, { page: 1, pageSize: 20 })).items.find((r) => r.id === RR)!;
+    expect(row).toMatchObject({ availability: 'out_of_stock', stockTotal: 2, stockLeft: 0 });
+  });
+  it('the last unit in stock goes once (the concurrent case is in loyalty-ledger.postgres-race on real PostgreSQL)', async () => {
+    const RL = id('fa2');
+    await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, stock_total) values ($1,$2,'Last one',10,true,'amount_off',100,1)`, [RL, T]);
+    expect((await repo.redeem(ctx, { customerId: C1, rewardId: RL, idempotencyKey: key(970) })).duplicate).toBe(false);
+    expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: RL, idempotencyKey: key(971) }))).toBe('REWARD_OUT_OF_STOCK');
+  });
+});

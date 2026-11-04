@@ -44,9 +44,20 @@ export function servedPage(page: number, pageSize: number, totalItems: number) {
   return { page: p, totalPages, offset: (p - 1) * pageSize };
 }
 
+/** a reward's availability rules and what they leave, for the catalog and the redeem picker */
+function rewardRules(r: any, today: string) {
+  const stockTotal = r.stock_total == null ? null : N(r.stock_total);
+  const stockLeft = stockTotal == null ? null : Math.max(0, stockTotal - N(r.redemptions));
+  const startsOn = r.starts_on ? String(r.starts_on) : null, endsOn = r.ends_on ? String(r.ends_on) : null;
+  const availability = !r.active ? 'inactive' as const : startsOn && today < startsOn ? 'upcoming' as const : endsOn && today > endsOn ? 'expired' as const : stockLeft === 0 ? 'out_of_stock' as const : 'available' as const;
+  return { startsOn, endsOn, stockTotal, stockLeft, perMemberLimit: r.per_member_limit == null ? null : N(r.per_member_limit),
+    eligibleTiers: Array.isArray(r.eligible_tiers) && r.eligible_tiers.length ? r.eligible_tiers.map(String) : null, availability };
+}
+
 export class LoyaltyProgramError extends Error {
   constructor(message: string, readonly code: 'CUSTOMER_NOT_FOUND' | 'LOYALTY_ALREADY_ENROLLED' | 'LOYALTY_NOT_ENROLLED' | 'REWARD_NOT_FOUND' | 'REWARD_NOT_AVAILABLE'
-    | 'LOYALTY_INSUFFICIENT_POINTS' | 'REDEMPTION_NOT_FOUND' | 'REDEMPTION_NOT_VOIDABLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'LOYALTY_INVALID_ENTRY', readonly status: 400 | 404 | 409 = 400) {
+    | 'LOYALTY_INSUFFICIENT_POINTS' | 'REDEMPTION_NOT_FOUND' | 'REDEMPTION_NOT_VOIDABLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'LOYALTY_INVALID_ENTRY'
+    | 'REWARD_NOT_STARTED' | 'REWARD_EXPIRED' | 'REWARD_OUT_OF_STOCK' | 'REWARD_MEMBER_LIMIT' | 'REWARD_TIER_NOT_ELIGIBLE', readonly status: 400 | 404 | 409 = 400) {
     super(message); this.name = 'LoyaltyProgramError';
   }
 }
@@ -62,7 +73,10 @@ export interface LoyaltyOverview {
   };
   tiers: { tier: string; members: number; pct: number; points: number }[];
 }
-export interface RewardRow { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: 'amount_off' | 'percent_off'; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; updatedAt: string | null; redemptions: number; redemptionsThisMonth: number }
+export interface RewardRow { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: 'amount_off' | 'percent_off'; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; updatedAt: string | null; redemptions: number; redemptionsThisMonth: number 
+  /** Loyalty guide (Nov 4 2026): availability rules and what they leave */
+  startsOn: string | null; endsOn: string | null; stockTotal: number | null; stockLeft: number | null; perMemberLimit: number | null; eligibleTiers: string[] | null;
+  availability: 'available' | 'inactive' | 'upcoming' | 'expired' | 'out_of_stock';}
 export interface MemberRow { customerId: string; profileId: string; customerName: string; avatarUrl: string | null; maskedPhone: string | null; tier: string; pointsBalance: number; totalEarned: number; totalRedeemed: number; enrolledAt: string | null; lastActivityAt: string | null; customerStatus: string }
 export interface RedemptionRow { id: string; customerId: string; customerName: string; rewardId: string; rewardTitle: string; pointsSpent: number; status: 'issued' | 'applied' | 'used' | 'void'; createdAt: string | null; appliedAt: string | null; usedAt: string | null; voidedAt: string | null; ticketId: string | null; expiresAt: string | null; valueCents: number; percent: number; rewardType: string }
 export interface LedgerRow { id: string; customerId: string; customerName: string; entryType: string; delta: number; balanceAfter: number; reason: string | null; sourceTable: string | null; sourceId: string | null; actorUserId: string | null; createdAt: string | null }
@@ -128,14 +142,17 @@ export class LoyaltyProgramRepository {
     const total = N((await sql<any>`select count(*)::int as n from loyalty_rewards r where r.tenant_id = ${T} ${st}`.execute(this.db)).rows[0]?.n);
     const sp = servedPage(page, pageSize, total);
     const { start } = await this.monthStart(ctx);
+    const today = (await sql<{ d: string }>`select to_char((now() at time zone ${(await this.monthStart(ctx)).tz})::date, 'YYYY-MM-DD') as d`.execute(this.db)).rows[0]!.d;
     const rows = (await sql<any>`select r.id, r.title, r.description, r.points_cost, r.active, r.reward_type, r.value_cents, r.percent, r.valid_days, r.created_at, r.updated_at,
+        to_char(r.starts_on, 'YYYY-MM-DD') as starts_on, to_char(r.ends_on, 'YYYY-MM-DD') as ends_on, r.stock_total, r.per_member_limit, r.eligible_tiers,
         (select count(*) from loyalty_redemptions d where d.tenant_id = r.tenant_id and d.reward_id = r.id and d.status <> 'void')::int as redemptions,
         (select count(*) from loyalty_redemptions d where d.tenant_id = r.tenant_id and d.reward_id = r.id and d.status <> 'void' and d.created_at >= ${start})::int as redemptions_month
       from loyalty_rewards r where r.tenant_id = ${T} ${st}
       order by r.created_at desc, r.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => ({ id: String(r.id), title: String(r.title), description: String(r.description ?? ''), pointsCost: N(r.points_cost), active: !!r.active,
       rewardType: r.reward_type === 'percent_off' ? 'percent_off' : 'amount_off', valueCents: N(r.value_cents), percent: N(r.percent), validDays: r.valid_days == null ? null : N(r.valid_days),
-      createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), redemptions: N(r.redemptions), redemptionsThisMonth: N(r.redemptions_month) })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
+      createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), redemptions: N(r.redemptions), redemptionsThisMonth: N(r.redemptions_month),
+      ...rewardRules(r, today) })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 
   async members(ctx: LoyaltyProgramContext, f: { page?: unknown; pageSize?: unknown; tier?: string; q?: string }): Promise<Page<MemberRow>> {
@@ -250,7 +267,7 @@ export class LoyaltyProgramRepository {
       const c = await this.liveCustomer(trx, ctx, b.customerId);
       if (!c) throw new LoyaltyProgramError('That customer is not in this salon.', 'CUSTOMER_NOT_FOUND', 404);
       await lockLoyaltyCustomer(trx, ctx.tenantId, b.customerId);
-      const prof = (await sql<any>`select points_balance from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
+      const prof = (await sql<any>`select points_balance, loyalty_tier from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
       if (!prof) throw new LoyaltyProgramError('Enrol the customer before adjusting points.', 'LOYALTY_NOT_ENROLLED', 409);
       const prior = (await sql<any>`select balance_after, id from loyalty_ledger where tenant_id = ${ctx.tenantId} and source_table = 'pos_loyalty_adjustments' and source_id = ${b.idempotencyKey} and entry_type = 'adjust'`.execute(trx)).rows[0];
       if (prior) return { balanceAfter: N(prior.balance_after), duplicate: true, ledgerId: String(prior.id) };
@@ -286,12 +303,25 @@ export class LoyaltyProgramRepository {
         const bal = N((await sql<any>`select points_balance from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0]?.points_balance);
         return { id: String(prior.id), code: String(prior.code), balanceAfter: bal, duplicate: true };
       }
-      const reward = (await sql<any>`select id, title, points_cost, active, reward_type, value_cents, percent, valid_days from loyalty_rewards where tenant_id = ${ctx.tenantId} and id = ${b.rewardId}`.execute(trx)).rows[0];
+      // the reward row is locked: two redemptions of the last unit in stock cannot both pass the stock check
+      const reward = (await sql<any>`select id, title, points_cost, active, reward_type, value_cents, percent, valid_days, to_char(starts_on, 'YYYY-MM-DD') as starts_on, to_char(ends_on, 'YYYY-MM-DD') as ends_on,
+          stock_total, per_member_limit, eligible_tiers from loyalty_rewards where tenant_id = ${ctx.tenantId} and id = ${b.rewardId} for update`.execute(trx)).rows[0];
       if (!reward) throw new LoyaltyProgramError('That reward is not available.', 'REWARD_NOT_FOUND', 404);
+      // Loyalty guide (Nov 4 2026): dates, stock, the per-member limit and the eligible tiers are checked here, atomically
+      const tz = await tenantTimeZone(trx as unknown as Kysely<any>, ctx.tenantId).catch(() => 'America/New_York');
+      const today = (await sql<{ d: string }>`select to_char((now() at time zone ${tz})::date, 'YYYY-MM-DD') as d`.execute(trx)).rows[0]!.d;
+      if (reward.starts_on && today < String(reward.starts_on)) throw new LoyaltyProgramError('This reward is not available yet.', 'REWARD_NOT_STARTED', 409);
+      if (reward.ends_on && today > String(reward.ends_on)) throw new LoyaltyProgramError('This reward has ended.', 'REWARD_EXPIRED', 409);
+      if (reward.stock_total != null && N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and status <> 'void'`.execute(trx)).rows[0]?.n) >= N(reward.stock_total))
+        throw new LoyaltyProgramError('This reward is out of stock.', 'REWARD_OUT_OF_STOCK', 409);
+      if (reward.per_member_limit != null && N((await sql<any>`select count(*)::int as n from loyalty_redemptions where tenant_id = ${ctx.tenantId} and reward_id = ${b.rewardId} and customer_id = ${b.customerId} and status <> 'void'`.execute(trx)).rows[0]?.n) >= N(reward.per_member_limit))
+        throw new LoyaltyProgramError('This member has reached the limit for this reward.', 'REWARD_MEMBER_LIMIT', 409);
       const worth = (reward.reward_type === 'percent_off' && N(reward.percent) > 0) || (reward.reward_type !== 'percent_off' && N(reward.value_cents) > 0);
       if (!reward.active || !worth) throw new LoyaltyProgramError('That reward is not available right now.', 'REWARD_NOT_AVAILABLE', 409);
-      const prof = (await sql<any>`select points_balance from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
+      const prof = (await sql<any>`select points_balance, loyalty_tier from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
       if (!prof) throw new LoyaltyProgramError('Enrol the customer before redeeming.', 'LOYALTY_NOT_ENROLLED', 409);
+      if (Array.isArray(reward.eligible_tiers) && reward.eligible_tiers.length && !reward.eligible_tiers.map(String).includes(String(prof.loyalty_tier || DEFAULT_TIER)))
+        throw new LoyaltyProgramError("This reward is not available for the member's tier.", 'REWARD_TIER_NOT_ELIGIBLE', 409);
       const cost = N(reward.points_cost);
       if (N(prof.points_balance) < cost) throw new LoyaltyProgramError('Not enough points for this reward.', 'LOYALTY_INSUFFICIENT_POINTS', 409);
       const code = 'RDM' + secureString(8);

@@ -19,9 +19,13 @@ export class RewardValidationError extends Error {}
 
 /** Validates a create (all fields) or an edit (only the fields given, checked against the current reward). A reward must
  *  be WORTH something — the bug being fixed is codes that took nothing off. */
-export function normalizeRewardInput(input: RewardInput, current?: LoyaltyReward): Required<Omit<RewardInput, 'validDays'>> & { validDays: number | null } {
+export type NormalizedReward = { title: string; description: string; pointsCost: number; rewardType: RewardType; valueCents: number; percent: number; validDays: number | null; active: boolean;
+  startsOn: string | null; endsOn: string | null; stockTotal: number | null; perMemberLimit: number | null; eligibleTiers: string[] | null };
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+export function normalizeRewardInput(input: RewardInput, current?: LoyaltyReward): NormalizedReward {
   const m = { title: current?.title ?? '', description: current?.description ?? '', pointsCost: current?.pointsCost ?? 0, rewardType: current?.rewardType ?? 'amount_off',
-    valueCents: current?.valueCents ?? 0, percent: current?.percent ?? 0, validDays: current?.validDays ?? null, active: current?.active ?? true, ...stripUndefined(input) } as any;
+    valueCents: current?.valueCents ?? 0, percent: current?.percent ?? 0, validDays: current?.validDays ?? null, active: current?.active ?? true,
+    startsOn: current?.startsOn ?? null, endsOn: current?.endsOn ?? null, stockTotal: current?.stockTotal ?? null, perMemberLimit: current?.perMemberLimit ?? null, eligibleTiers: current?.eligibleTiers ?? null, ...stripUndefined(input) } as any;
   const title = String(m.title ?? '').trim();
   if (!title) throw withCode(new RewardValidationError('Give the reward a name.'), 'REWARD_NAME_REQUIRED');
   if (title.length > 80) throw withCode(new RewardValidationError('Keep the reward name under 80 characters.'), 'REWARD_NAME_TOO_LONG');
@@ -30,8 +34,16 @@ export function normalizeRewardInput(input: RewardInput, current?: LoyaltyReward
   if (m.rewardType === 'amount_off' && (!Number.isInteger(m.valueCents) || m.valueCents <= 0)) throw withCode(new RewardValidationError('Enter how much the reward takes off.'), 'REWARD_VALUE_REQUIRED');
   if (m.rewardType === 'percent_off' && (!Number.isInteger(m.percent) || m.percent <= 0 || m.percent > 100)) throw withCode(new RewardValidationError('Enter a percent between 1 and 100.'), 'PERCENT_1_100');
   if (m.validDays !== null && m.validDays !== undefined && (!Number.isInteger(m.validDays) || m.validDays <= 0)) throw withCode(new RewardValidationError('Validity must be a whole number of days, or no limit.'), 'VALIDITY_DAYS_INVALID');
+  // Loyalty guide (Nov 4 2026): the availability rules
+  const day = (v: unknown, field: string) => { if (v == null || v === '') return null; const s = String(v); if (!YMD.test(s) || Number.isNaN(Date.parse(s + 'T00:00:00Z'))) throw withCode(new RewardValidationError(`Enter the ${field} date as a calendar day.`), 'DATE_INVALID'); return s; };
+  const startsOn = day(m.startsOn, 'start'), endsOn = day(m.endsOn, 'end');
+  if (startsOn && endsOn && endsOn < startsOn) throw withCode(new RewardValidationError('The end date must be on or after the start date.'), 'DATE_RANGE_INVALID');
+  const count = (v: unknown, min: number) => { if (v == null || v === '') return null; const n = Number(v); if (!Number.isInteger(n) || n < min) throw withCode(new RewardValidationError(min === 0 ? 'Stock must be a whole number (0 or more), or no limit.' : 'The per-member limit must be a whole number of 1 or more, or no limit.'), 'REWARD_LIMIT_INVALID'); return n; };
+  const stockTotal = count(m.stockTotal, 0), perMemberLimit = count(m.perMemberLimit, 1);
+  const tiers = Array.isArray(m.eligibleTiers) ? Array.from(new Set(m.eligibleTiers.map((t: unknown) => String(t ?? '').trim()).filter(Boolean))).slice(0, 20) as string[] : null;
   return { title, description: String(m.description ?? '').trim().slice(0, 300), pointsCost: m.pointsCost, rewardType: m.rewardType,
-    valueCents: m.rewardType === 'amount_off' ? m.valueCents : 0, percent: m.rewardType === 'percent_off' ? m.percent : 0, validDays: m.validDays ?? null, active: !!m.active };
+    valueCents: m.rewardType === 'amount_off' ? m.valueCents : 0, percent: m.rewardType === 'percent_off' ? m.percent : 0, validDays: m.validDays ?? null, active: !!m.active,
+    startsOn, endsOn, stockTotal, perMemberLimit, eligibleTiers: tiers && tiers.length ? tiers : null };
 }
 function stripUndefined<T extends object>(o: T): Partial<T> { return Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined)) as Partial<T>; }
 export interface LoyaltyRedemption { id: string; customerId: string; rewardTitle: string; pointsSpent: number; createdAt: string; }

@@ -36,6 +36,19 @@ describe('LoyaltyService rewards', () => {
     await expect(svc.createReward(frontDesk, { title: 'x', pointsCost: 1, rewardType: 'amount_off', valueCents: 1 })).rejects.toBeInstanceOf(ForbiddenError);
     await expect(svc.updateReward(frontDesk, r.id, { active: false })).rejects.toBeInstanceOf(ForbiddenError);
   });
+  it('a reward change is audited with what changed (before → after); an edit that changes nothing writes no row; a failing recorder does not fail the save', async () => {
+    const rows: any[] = []; const svc = new LoyaltyService(new InMemoryLoyaltyRepository(), { record: async (_c, i) => { rows.push(i); } });
+    const r = await svc.createReward(owner, { title: 'Spring set', pointsCost: 150, rewardType: 'amount_off', valueCents: 500, stockTotal: 25, eligibleTiers: ['VIP'] });
+    expect(rows[0]).toMatchObject({ module: 'loyalty', action: 'reward_created', resourceType: 'loyalty_reward', resourceId: r.id });
+    expect(rows[0].metadata.changes.stockTotal).toEqual({ from: null, to: 25 });
+    await svc.updateReward(owner, r.id, { stockTotal: 40, perMemberLimit: 1 });
+    expect(rows[1]).toMatchObject({ action: 'reward_updated' });
+    expect(rows[1].metadata.changes).toEqual({ stockTotal: { from: 25, to: 40 }, perMemberLimit: { from: null, to: 1 } });
+    await svc.updateReward(owner, r.id, { stockTotal: 40 });
+    expect(rows).toHaveLength(2);
+    const failing = new LoyaltyService(new InMemoryLoyaltyRepository(), { record: async () => { throw new Error('audit down'); } });
+    await expect(failing.createReward(owner, { title: 'x', pointsCost: 1, rewardType: 'amount_off', valueCents: 1 })).resolves.toMatchObject({ title: 'x' });
+  });
 });
 
 const url = process.env.PG_RACE_URL;

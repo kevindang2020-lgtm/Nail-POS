@@ -8,6 +8,7 @@ const str = (max = 200): BodySchema => S.nullable(S.text(max));
 const num: BodySchema = S.nullable(S.number());
 export const REWARD_BODY: BodySchema = S.object({
   title: str(200), description: str(2000), pointsCost: num, rewardType: str(32), valueCents: num, percent: num, validDays: num, active: S.nullable(S.boolean()),
+  startsOn: str(10), endsOn: str(10), stockTotal: num, perMemberLimit: num, eligibleTiers: S.nullable(S.array(S.text(60), { maxItems: 20 })),
 });
 
 // ── Global Loyalty & Rewards Network (LoyaltyTokens.pdf v1.0 + LoyaltyRules.pdf v2.0) ───────────────────────────────

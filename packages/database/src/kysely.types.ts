@@ -502,6 +502,7 @@ export interface MfaRecoveryCodesTable { id: Generated<string>; user_id: string;
 export interface LoyaltyRewardsTable { id: Generated<string>; tenant_id: string; title: string; description: string; points_cost: number; active: boolean; sort_order: number; created_at: Ts;
   reward_type: Generated<string>; value_cents: Generated<number>; percent: Generated<number>; valid_days: number | null; updated_at: TsNull; 
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  starts_on: string | null; ends_on: string | null; stock_total: number | null; per_member_limit: number | null; eligible_tiers: string[] | null;   // migration 795
 }   // 492
 export interface LoyaltyRedemptionsTable { id: Generated<string>; tenant_id: string; customer_id: string; reward_id: string; reward_title: string; points_spent: number; code: string; created_at: Ts;
   status: Generated<string>; reward_type: string | null; value_cents: Generated<number>; percent: Generated<number>; expires_at: TsNull; ticket_id: string | null; applied_at: TsNull; used_at: TsNull; voided_at: TsNull; }   // 492

@@ -27,7 +27,12 @@ import { RewardsNetworkPanel } from './loyalty/RewardsNetworkPanel';
 type Overview = { period: { label: string; start: string; timeZone: string }; kpis: { loyaltyMembers: number; newMembersThisMonth: number; pointsOutstanding: number; ledgerBalance: number; balanceReconciled: boolean;
   activeRewards: number; totalRewards: number; redemptionsThisMonth: number; redemptionsPendingThisMonth: number; redemptionsUsedThisMonth: number; redemptionsVoidedThisMonth: number; pointsRedeemedThisMonth: number };
   tiers: { tier: string; members: number; pct: number; points: number }[] };
-type Reward = { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: RewardType; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; redemptions: number; redemptionsThisMonth: number };
+type Reward = { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: RewardType; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; redemptions: number; redemptionsThisMonth: number;
+  startsOn?: string | null; endsOn?: string | null; stockTotal?: number | null; stockLeft?: number | null; perMemberLimit?: number | null; eligibleTiers?: string[] | null;
+  availability?: 'available' | 'inactive' | 'upcoming' | 'expired' | 'out_of_stock' };
+// Loyalty guide (Nov 4 2026): why a reward cannot be redeemed right now, in the cashier's words (null = it can)
+const availNote = (r: Reward): string | null => r.availability === 'upcoming' ? tx('people.loyalty.avail.upcoming', { date: r.startsOn ?? '' }) : r.availability === 'expired' ? tx('people.loyalty.avail.expired') : r.availability === 'out_of_stock' ? tx('people.loyalty.avail.outOfStock') : null;
+const rulesLine = (r: Reward): string => [r.stockTotal != null ? tx('people.loyalty.stockLeft', { n: nf(r.stockLeft ?? 0), total: nf(r.stockTotal) }) : '', r.perMemberLimit != null ? tx('people.loyalty.perMember', { n: nf(r.perMemberLimit) }) : '', r.eligibleTiers?.length ? r.eligibleTiers.map(tierLabel).join(', ') : '', r.endsOn ? tx('people.loyalty.endsOn', { date: r.endsOn }) : ''].filter(Boolean).join(' · ');
 type Member = { customerId: string; customerName: string; avatarUrl: string | null; maskedPhone: string | null; tier: string; pointsBalance: number; totalEarned: number; totalRedeemed: number; enrolledAt: string | null; lastActivityAt: string | null };
 type Redemption = { id: string; customerId: string; customerName: string; rewardId: string; rewardTitle: string; pointsSpent: number; status: 'issued' | 'applied' | 'used' | 'void'; createdAt: string | null; appliedAt: string | null; usedAt: string | null; voidedAt: string | null; ticketId: string | null; expiresAt: string | null };
 type Ledger = { id: string; customerId: string; customerName: string; entryType: string; delta: number; balanceAfter: number; reason: string | null; sourceTable: string | null; createdAt: string | null };
@@ -176,9 +181,9 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
             <ul className="fk-list">
               {rewards.data.items.map((r) => (
                 <li key={r.id} className="fk-li">
-                  <div className="fk-li-main"><span className="fk-li-t">{r.title}</span><span className="fk-li-s">{rewardValue(r)} · {r.validDays ? tx('people.loyalty.validDays', { n: String(r.validDays) }) : tx('people.loyalty.noExpiry')} · {tx('people.loyalty.redeemedN', { n: nf(r.redemptions) })}</span></div>
+                  <div className="fk-li-main"><span className="fk-li-t">{r.title}</span><span className="fk-li-s">{rewardValue(r)} · {r.validDays ? tx('people.loyalty.validDays', { n: String(r.validDays) }) : tx('people.loyalty.noExpiry')} · {tx('people.loyalty.redeemedN', { n: nf(r.redemptions) })}{rulesLine(r) ? ` · ${rulesLine(r)}` : ''}</span></div>
                   <span className="fk-li-num">{tx('people.loyalty.pts', { n: nf(r.pointsCost) })}</span>
-                  <span className={'fk-chip ' + (r.active ? 'ok' : 'mut')}>{r.active ? tx('pos.active_3') : tx('people.loyalty.inactive')}</span>
+                  <span className={'fk-chip ' + (!r.active ? 'mut' : availNote(r) ? 'warn' : 'ok')} data-testid={`reward-avail-${r.id}`}>{!r.active ? tx('people.loyalty.inactive') : availNote(r) ?? tx('pos.active_3')}</span>
                   <span className="fk-li-acts">
                     <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'rewardRedemptions', reward: r })} aria-label={tx('people.loyalty.viewRedemptions')} title={tx('people.loyalty.viewRedemptions')}>≡</button>
                     {canManage ? <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'reward', reward: r })} aria-label={tx('pos.edit')} title={tx('pos.edit')}>✎</button> : null}
@@ -255,7 +260,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
       </nav>
 
       {dlg?.kind === 'enroll' ? <EnrollDialog onClose={() => setDlg(null)} onDone={(name) => { members.setFilters({ tier: '', q: '' }); setSearch(''); done(tx('people.loyalty.enrolledNote', { name }), ['members']); }} /> : null}
-      {dlg?.kind === 'reward' ? <RewardDialog reward={dlg.reward} onClose={() => setDlg(null)} onDone={(msg) => { rewards.setFilters({ status: '' }); done(msg, ['rewards']); }} /> : null}
+      {dlg?.kind === 'reward' ? <RewardDialog reward={dlg.reward} tiers={tiers.map((t) => t.tier)} onClose={() => setDlg(null)} onDone={(msg) => { rewards.setFilters({ status: '' }); done(msg, ['rewards']); }} /> : null}
       {dlg?.kind === 'adjust' ? <AdjustDialog member={dlg.member} onClose={() => setDlg(null)} onDone={(msg) => done(msg, ['members'])} /> : null}
       {dlg?.kind === 'redeem' ? <RedeemDialog member={dlg.member} onClose={() => setDlg(null)} onDone={(msg) => { reds.setFilters({ status: '' }); done(msg, ['reds', 'members', 'rewards']); }} /> : null}
       {dlg?.kind === 'redemption' ? <RedemptionDialog id={dlg.id} canVoid={canVoid} onClose={() => setDlg(null)} onVoided={(msg) => done(msg, ['reds', 'members'])} openProfile={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} /> : null}
@@ -297,7 +302,11 @@ function EnrollDialog({ onClose, onDone }: { onClose: () => void; onDone: (name:
   );
 }
 
-function RewardDialog({ reward, onClose, onDone }: { reward?: Reward; onClose: () => void; onDone: (msg: string) => void }) {
+function RewardDialog({ reward, tiers, onClose, onDone }: { reward?: Reward; tiers: string[]; onClose: () => void; onDone: (msg: string) => void }) {
+  const [startsOn, setStartsOn] = useState(reward?.startsOn ?? ''); const [endsOn, setEndsOn] = useState(reward?.endsOn ?? '');
+  const [stockTotal, setStockTotal] = useState(reward?.stockTotal != null ? String(reward.stockTotal) : ''); const [perMemberLimit, setPerMemberLimit] = useState(reward?.perMemberLimit != null ? String(reward.perMemberLimit) : '');
+  const [eligible, setEligible] = useState<string[]>(reward?.eligibleTiers ?? []);
+  const tierOptions = [...new Set([...tiers, ...eligible])];
   const [title, setTitle] = useState(reward?.title ?? ''); const [description, setDescription] = useState(reward?.description ?? '');
   const [pointsCost, setPointsCost] = useState(reward ? String(reward.pointsCost) : ''); const [rewardType, setRewardType] = useState<RewardType>(reward?.rewardType ?? 'amount_off');
   const [amount, setAmount] = useState(reward?.valueCents ? (reward.valueCents / 100).toFixed(2) : ''); const [percent, setPercent] = useState(reward?.percent ? String(reward.percent) : '');
@@ -307,7 +316,9 @@ function RewardDialog({ reward, onClose, onDone }: { reward?: Reward; onClose: (
     setErr(null);
     const valueCents = rewardType === 'amount_off' ? parseDollarsToCents(amount) : 0;
     if (rewardType === 'amount_off' && valueCents === null) { setErr(tx('pos.enter_the_amount_in_dollars_and_o3e2')); return; }
-    const body = { title, description, pointsCost: Number(pointsCost), rewardType, valueCents: valueCents ?? 0, percent: rewardType === 'percent_off' ? Number(percent) : 0, validDays: validDays.trim() ? Number(validDays) : null, active };
+    const body = { title, description, pointsCost: Number(pointsCost), rewardType, valueCents: valueCents ?? 0, percent: rewardType === 'percent_off' ? Number(percent) : 0, validDays: validDays.trim() ? Number(validDays) : null, active,
+      startsOn: startsOn || null, endsOn: endsOn || null, stockTotal: stockTotal.trim() ? Number(stockTotal) : null, perMemberLimit: perMemberLimit.trim() ? Number(perMemberLimit) : null, eligibleTiers: eligible.length ? eligible : null };
+    if (startsOn && endsOn && endsOn < startsOn) { setErr(tx('people.loyalty.endsBeforeStarts')); return; }
     setBusy(true);
     try { if (reward) await posLoyaltyApi.updateReward(reward.id, body); else await posLoyaltyApi.createReward(body); onDone(reward ? tx('people.loyalty.rewardSaved', { name: title }) : tx('people.loyalty.rewardCreated', { name: title })); }
     catch (e) { setErr(errText(e, tx('pos.could_not_save'))); } finally { setBusy(false); }
@@ -325,6 +336,13 @@ function RewardDialog({ reward, onClose, onDone }: { reward?: Reward; onClose: (
           ? <label className="fk-field"><span>{tx('pos.dollars_off')}</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} /></label>
           : <label className="fk-field"><span>{tx('pos.percent_value')}</span><input inputMode="numeric" value={percent} onChange={(e) => setPercent(e.target.value.replace(/[^\d]/g, ''))} /></label>}
         <label className="fk-field"><span>{tx('pos.code_valid_for_days_blank_no_1neq')}</span><input inputMode="numeric" value={validDays} onChange={(e) => setValidDays(e.target.value.replace(/[^\d]/g, ''))} /></label>
+        <label className="fk-field"><span>{tx('people.loyalty.startsOn')}</span><input type="date" value={startsOn} onChange={(e) => setStartsOn(e.target.value)} data-testid="reward-starts" /></label>
+        <label className="fk-field"><span>{tx('people.loyalty.endsOnLabel')}</span><input type="date" value={endsOn} onChange={(e) => setEndsOn(e.target.value)} data-testid="reward-ends" /></label>
+        <label className="fk-field"><span>{tx('people.loyalty.stockTotal')}</span><input inputMode="numeric" value={stockTotal} onChange={(e) => setStockTotal(e.target.value.replace(/[^\d]/g, ''))} data-testid="reward-stock" /></label>
+        <label className="fk-field"><span>{tx('people.loyalty.perMemberLimit')}</span><input inputMode="numeric" value={perMemberLimit} onChange={(e) => setPerMemberLimit(e.target.value.replace(/[^\d]/g, ''))} data-testid="reward-limit" /></label>
+        <div className="fk-field span2"><span>{tx('people.loyalty.eligibleTiers')}</span>
+          {tierOptions.length === 0 ? <span className="fk-hint">{tx('people.loyalty.allTiersEligible')}</span> : <div className="fk-seg">{tierOptions.map((t) => { const on = eligible.includes(t); return <button key={t} type="button" className={on ? 'on' : ''} aria-pressed={on} onClick={() => setEligible(on ? eligible.filter((x) => x !== t) : [...eligible, t])}>{tierLabel(t)}</button>; })}</div>}
+          {tierOptions.length && !eligible.length ? <span className="fk-hint">{tx('people.loyalty.allTiersEligible')}</span> : null}</div>
         <label className="fk-check"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> {tx('people.loyalty.rewardActive')}</label>
       </div>
       <div className="fk-hint">{tx('people.loyalty.rewardRulesNote')}</div>
@@ -364,10 +382,12 @@ function AdjustDialog({ member, onClose, onDone }: { member: Member; onClose: ()
 
 function RedeemDialog({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: (msg: string) => void }) {
   const [list, setList] = useState<Reward[] | null>(null); const [pick, setPick] = useState<Reward | null>(null);
+  const [page, setPage] = useState(1); const [info, setInfo] = useState<any>(null);   // Loyalty guide (Nov 4 2026): every active reward is reachable — the old first-50 cap hid the rest
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [code, setCode] = useState<string | null>(null); const [doneMsg, setDoneMsg] = useState<string | null>(null);
   const close = () => (doneMsg ? onDone(doneMsg) : onClose());
   const key = useRef(requestId());
-  useEffect(() => { posLoyaltyApi.rewards({ page: 1, pageSize: 50, status: 'active' }).then((r: any) => setList(r.items)).catch((e) => setErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
+  useEffect(() => { setList(null); posLoyaltyApi.rewards({ page, pageSize: 20, status: 'active' }).then((r: any) => { setList(r.items); setInfo(r); }).catch((e) => setErr(errText(e, tx('people.loyalty.loadFailed')))); }, [page]);
+  const blockOf = (r: Reward): string | null => availNote(r) ?? (r.eligibleTiers?.length && !r.eligibleTiers.includes(member.tier) ? tx('people.loyalty.avail.tier') : null) ?? (r.pointsCost > member.pointsBalance ? tx('people.loyalty.notEnough') : null);
   const save = async () => {
     if (!pick || busy) return; setBusy(true); setErr(null);
     try { const r = await posLoyaltyApi.redeem({ customerId: member.customerId, rewardId: pick.id, idempotencyKey: key.current }); setCode(r.code); setDoneMsg(tx('people.loyalty.redeemedNote', { name: member.customerName, reward: pick.title, balance: nf(r.balanceAfter) })); }   // Loyalty guide (Nov 4 2026): the dialog stays open so the code can be read to the guest — it used to close at once and the code was never seen
@@ -375,12 +395,12 @@ function RedeemDialog({ member, onClose, onDone }: { member: Member; onClose: ()
   };
   return (
     <FitDialog title={tx('people.loyalty.redeem')} subtitle={`${member.customerName} · ${tx('people.loyalty.balanceNow', { n: nf(member.pointsBalance) })}`} onClose={close} busy={busy} testId="dlg-redeem"
-      footer={doneMsg ? <button type="button" className="fk-btn primary" onClick={close} data-testid="redeem-done">{tx('pos.done')}</button> : <><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!pick || busy || (pick && pick.pointsCost > member.pointsBalance) || !!code} onClick={save} data-testid="redeem-confirm">{busy ? tx('pos.saving_2') : pick ? tx('people.loyalty.redeemConfirm', { n: nf(pick.pointsCost) }) : tx('people.loyalty.redeem')}</button></>}>
+      footer={doneMsg ? <button type="button" className="fk-btn primary" onClick={close} data-testid="redeem-done">{tx('pos.done')}</button> : <><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!pick || busy || (pick && !!blockOf(pick)) || !!code} onClick={save} data-testid="redeem-confirm">{busy ? tx('pos.saving_2') : pick ? tx('people.loyalty.redeemConfirm', { n: nf(pick.pointsCost) }) : tx('people.loyalty.redeem')}</button></>}>
       {!list ? <div className="fk-loading">{tx('pos.loading')}</div> : list.length === 0 ? <Empty title={tx('people.loyalty.noActiveRewards')} /> : (
-        <ul className="fk-pick">{list.map((r) => { const short = r.pointsCost > member.pointsBalance; return (
-          <li key={r.id}><button type="button" className={pick?.id === r.id ? 'on' : ''} aria-pressed={pick?.id === r.id} disabled={short} onClick={() => setPick(r)}>
-            <b>{r.title}</b><span>{rewardValue(r)} · {tx('people.loyalty.pts', { n: nf(r.pointsCost) })}{short ? ` · ${tx('people.loyalty.notEnough')}` : ''}</span></button></li>
-        ); })}</ul>
+        <><ul className="fk-pick">{list.map((r) => { const why = blockOf(r); return (
+          <li key={r.id}><button type="button" className={pick?.id === r.id ? 'on' : ''} aria-pressed={pick?.id === r.id} disabled={!!why || !!code} onClick={() => setPick(r)} data-testid={`redeem-pick-${r.id}`}>
+            <b>{r.title}</b><span>{rewardValue(r)} · {tx('people.loyalty.pts', { n: nf(r.pointsCost) })}{why ? ` · ${why}` : ''}</span></button></li>
+        ); })}</ul>{info && info.totalPages > 1 && !code ? <Pager compact info={info} onPage={setPage} /> : null}</>
       )}
       {code ? <div className="fk-preview ok" role="status" data-testid="redeem-code">{tx('people.loyalty.codeIssued', { code })}</div> : null}
       {err ? <div className="fk-err" role="alert">{err}</div> : null}

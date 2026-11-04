@@ -40,5 +40,6 @@ export class LoyaltyController {
 /** Only the reward fields pass through; anything else in the body is ignored. */
 function rewardBody(b: any) {
   const o = b || {};
-  return { title: o.title, description: o.description, pointsCost: o.pointsCost, rewardType: o.rewardType, valueCents: o.valueCents, percent: o.percent, validDays: o.validDays, active: o.active };
+  return { title: o.title, description: o.description, pointsCost: o.pointsCost, rewardType: o.rewardType, valueCents: o.valueCents, percent: o.percent, validDays: o.validDays, active: o.active,
+    startsOn: o.startsOn, endsOn: o.endsOn, stockTotal: o.stockTotal, perMemberLimit: o.perMemberLimit, eligibleTiers: o.eligibleTiers };
 }
