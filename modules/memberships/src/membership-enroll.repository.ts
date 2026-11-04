@@ -60,6 +60,7 @@ export interface MembershipEnrollRepositoryPort {
   addActivity(ctx: EnrollContext, a: ActivityArgs): Promise<void>;
   addAudit(ctx: EnrollContext, a: AuditArgs): Promise<void>;
   /** Run fn in one transaction holding a per-membership lock (benefit reserve / release / redeem). */
+  withTransaction?<T>(fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T>;
   withMembershipLock?<T>(ctx: EnrollContext, membershipId: string, fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T>;
 }
 

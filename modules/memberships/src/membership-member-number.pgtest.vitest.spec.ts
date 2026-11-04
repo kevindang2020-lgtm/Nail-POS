@@ -36,3 +36,22 @@ describe('member numbers are unique per salon', () => {
     await expect(pg.query(`INSERT INTO customer_memberships (tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, member_number) VALUES ('${T}','${B}','${C}','${P}','${V}','pending','M-SAME0001')`)).rejects.toThrow(/duplicate key/);
   });
 });
+
+describe('D6: enrollment is atomic', () => {
+  it('a failure while issuing the first credits leaves no membership behind (it used to stay active with no credits)', async () => {
+    const { MembershipEnrollService } = await import('./membership-enroll.service');
+    const C2 = '7d000000-0000-4000-8000-0000000000d2';
+    await pg.exec(`INSERT INTO customers (id, tenant_id, branch_id, first_name, last_name, full_name) VALUES ('${C2}','${T}','${B}','Z','Y','Z Y');
+      UPDATE membership_plans SET current_version_id = '${V}' WHERE id = '${P}';
+      INSERT INTO membership_benefits (plan_version_id, tenant_id, benefit_type, label, credits_per_cycle) VALUES ('${V}','${T}','service_credit','Pedicure',1);
+      CREATE OR REPLACE FUNCTION _fail_credit() RETURNS trigger AS $$ BEGIN RAISE EXCEPTION 'credit write failed'; END $$ LANGUAGE plpgsql;
+      CREATE TRIGGER _fail_credit BEFORE INSERT ON membership_credit_ledger FOR EACH ROW EXECUTE FUNCTION _fail_credit();`);
+    const svc = new MembershipEnrollService(repo);
+    const plan = await repo.getPlanForEnroll(ctx() as any, P);
+    if (!plan || plan.status !== 'active' || !plan.planVersionId) { await pg.exec(`DROP TRIGGER _fail_credit ON membership_credit_ledger`); return expect(plan).toBeTruthy(); }
+    try {
+      await expect(svc.enroll(ctx() as any, { customerId: C2, planId: P, autoRenewConsent: true })).rejects.toThrow(/credit write failed/);
+    } finally { await pg.exec(`DROP TRIGGER _fail_credit ON membership_credit_ledger`); }
+    expect((await pg.query(`SELECT count(*)::int n FROM customer_memberships WHERE customer_id = '${C2}'`)).rows[0].n).toBe(0);
+  });
+});

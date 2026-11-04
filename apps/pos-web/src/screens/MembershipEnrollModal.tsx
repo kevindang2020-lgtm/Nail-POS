@@ -1,5 +1,6 @@
 import { useEscapeToClose } from '../components/FitKit';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createIntentKeys } from '@aipowersalon/api-client';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { posMembershipsApi } from '../api/posMembershipsApi';
 import { posMembershipEnrollApi } from '../api/posMembershipEnrollApi';
@@ -62,6 +63,7 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
     return () => { alive = false; clearTimeout(t); };
   }, [query, customer]);
 
+  const keys = useRef(createIntentKeys());
   const canEnroll = !!customer && !!planId && consent && !busy;
 
   const enroll = async () => {
@@ -69,7 +71,9 @@ export function MembershipEnrollModal({ onClose, onEnrolled }: { onClose: () => 
     if (!consent) { setErr(tx('pos.please_capture_the_member_s_auto_5i8w')); return; }
     setBusy(true); setErr(null);
     try {
-      const res = await (posMembershipEnrollApi.enroll({ customerId: customer.id, planId, autoRenewConsent: true, agreementVersion: 'pos-1', channel: 'pos' }) as Promise<any>);
+      const body = { customerId: customer.id, planId, autoRenewConsent: true, agreementVersion: 'pos-1', channel: 'pos' };
+      const res = await (posMembershipEnrollApi.enroll(body, keys.current.keyFor('enroll', body)) as Promise<any>);
+      keys.current.done('enroll');
       onEnrolled(tx('admin.membership.enrolled', { name: customer.name, number: res?.memberNumber ? ` (${res.memberNumber})` : '' }));
     } catch (e: any) { setErr(e?.message || tx('pos.could_not_enroll_this_member')); setBusy(false); }
   };

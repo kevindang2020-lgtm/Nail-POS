@@ -60,18 +60,23 @@ export class MembershipEnrollService {
       nextBillingAt = plan.autoRenew && periodEnd ? periodEnd : null;
     }
 
+    // D6: the membership, its first credits, the activity row and the audit row commit together
+    const tx = <T>(fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>) => (this.repo.withTransaction ? this.repo.withTransaction(fn) : fn(this.repo));
+    const { membershipId, memberNum, entries } = await tx(async (repo) => {
     // random, never derived from the customer id (the same customer enrolled twice got the same number)
-    const { membershipId, memberNumber: memberNum } = await this.repo.insertMembership(ctx, {
+    const { membershipId, memberNumber: memberNum } = await repo.insertMembership(ctx, {
       customerId, planId: plan.planId, planVersionId: plan.planVersionId, status, assignedTechnicianId: body.assignedTechnicianId ?? null, memberNumber: memberNumber(),
       startedAt: now, currentPeriodStart: now, currentPeriodEnd: periodEnd, nextBillingAt, termEndAt: null,
       autoRenew: plan.autoRenew, autoRenewConsentAt: plan.autoRenew && body.autoRenewConsent ? now : null, agreementVersion: body.agreementVersion ?? null, enrolledChannel: body.channel ?? 'pos',
     });
 
     const entries = initialIssuedEntries(plan.benefits.map((b) => ({ benefitId: b.benefitId, benefitType: b.benefitType, serviceId: b.serviceId, creditsPerCycle: b.creditsPerCycle, valueCents: b.valueCents })));
-    if (entries.length) await this.repo.issueInitialCredits(ctx, membershipId, entries, null);
+    if (entries.length) await repo.issueInitialCredits(ctx, membershipId, entries, null);
 
-    await this.repo.addActivity(ctx, { membershipId, customerId, planId: plan.planId, activityType: 'enrolled', customerName, planName: plan.planName, amountCents: null });
-    await this.repo.addAudit(ctx, { membershipId, planId: plan.planId, planVersionId: plan.planVersionId, action: 'membership_enrolled', prevState: null, newState: status, reason: null, result: 'ok' });
+    await repo.addActivity(ctx, { membershipId, customerId, planId: plan.planId, activityType: 'enrolled', customerName, planName: plan.planName, amountCents: null });
+    await repo.addAudit(ctx, { membershipId, planId: plan.planId, planVersionId: plan.planVersionId, action: 'membership_enrolled', prevState: null, newState: status, reason: null, result: 'ok' });
+    return { membershipId, memberNum, entries };
+    });
     // Best-effort welcome message (in-app). Comms must never fail an enrollment, and it is idempotent on the membership.
     if (this.comms) { try { await this.comms.sendWelcome(ctx, membershipId); } catch { /* swallow: enrollment already succeeded */ } }
     return { membershipId, memberNumber: memberNum, status, creditsIssued: entries.length };

@@ -20,6 +20,13 @@ const iso = (v: unknown): string | null => (v == null ? null : new Date(v as any
 export class KyselyMembershipEnrollRepository implements MembershipEnrollRepositoryPort {
   constructor(private readonly db: Kysely<DB>, private readonly outbox?: OutboxWriter) {}
 
+  /** D6 (Nov 3 2026): enrollment, its first credits, activity and audit commit together (a failure after the insert left an
+   *  active membership with no credits). */
+  async withTransaction<T>(fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T> {
+    if (this.db.isTransaction) return fn(this);
+    return this.db.transaction().execute((trx) => fn(new KyselyMembershipEnrollRepository(trx, this.outbox)));
+  }
+
   async withMembershipLock<T>(ctx: EnrollContext, membershipId: string, fn: (repo: MembershipEnrollRepositoryPort) => Promise<T>): Promise<T> {
     if (this.db.isTransaction) return fn(this);
     return this.db.transaction().execute(async (trx) => {
@@ -64,7 +71,8 @@ export class KyselyMembershipEnrollRepository implements MembershipEnrollReposit
   }
 
   async insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string; memberNumber: string | null }> {
-    return this.db.transaction().execute(async (trx) => {
+    const inTx = <T>(fn: (trx: any) => Promise<T>) => (this.db.isTransaction ? fn(this.db) : this.db.transaction().execute(fn));
+    return inTx(async (trx) => {
     const cust = await sql<{ id: string }>`select id from customers where (id::text = ${a.customerId} or user_id::text = ${a.customerId}) and tenant_id = ${ctx.tenantId} limit 1`.execute(trx);
     const resolvedCustomerId = cust.rows[0]?.id || a.customerId;
 

@@ -2,6 +2,7 @@
 // TenantAuthGuard + RolePermissionGuard; tenant/branch/role come from req.ctx (session). Enroll/reserve/redeem/release
 // require pos.memberships.manage; lookups require pos.memberships.view. These paths do not collide with the overview /
 // plans controller (members/*, customers/*, and the enroll/reserve/redeem/release verbs are distinct).
+import { Idempotent } from '@aipowersalon/database/nest';
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
 import { CANCEL_BODY, ENROLL_BODY, MEMBERS_BY_CUSTOMERS_BODY, PAUSE_BODY, REDEEM_BODY, RELEASE_BODY, RESERVE_BODY, RESUME_BODY } from './request-schemas';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireFeature } from '@aipowersalon/permissions/guards';
@@ -30,7 +31,7 @@ async function run<T>(fn: () => T | Promise<T>): Promise<T> {
 export class MembershipEnrollController {
   constructor(private readonly svc: MembershipEnrollService) {}
 
-  @Post('enroll') @RequirePermission('pos.memberships.manage')
+  @Idempotent() @Post('enroll') @RequirePermission('pos.memberships.manage')   // D6: a double tap / retry enrolls once
   enroll(@Req() r: any, @Body(ValidatedBody(ENROLL_BODY, { strict: true })) b: EnrollRequest) { return run(() => this.svc.enroll(ctxFrom(r), b)); }
 
   @Get('customers/:customerId/memberships') @RequirePermission('pos.memberships.view')

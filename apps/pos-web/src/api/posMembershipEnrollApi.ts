@@ -7,8 +7,8 @@ import { api } from './client';
 const enc = (s: string) => encodeURIComponent(s);
 
 export const posMembershipEnrollApi = {
-  enroll: (body: { customerId: string; planId: string; planVersionId?: string; autoRenewConsent?: boolean; assignedTechnicianId?: string | null; agreementVersion?: string | null; channel?: string }) =>
-    api.post(`/pos/memberships/enroll`, body),
+  enroll: (body: { customerId: string; planId: string; planVersionId?: string; autoRenewConsent?: boolean; assignedTechnicianId?: string | null; agreementVersion?: string | null; channel?: string }, idempotencyKey?: string) =>
+    api.post(`/pos/memberships/enroll`, body, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),   // D6: a double tap enrolls once
   customerMemberships: (customerId: string) => api.get(`/pos/memberships/customers/${enc(customerId)}/memberships`),
   // Batch member-status for a list of customers (one request for the whole page). Customers absent from the
   // response are non-members. Returns { members: [{ customerId, isMember, planName, status }] }.

@@ -124,3 +124,10 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   in between left the line "received" with no stock — proven by test); the whole receipt is one transaction. Create PO and
   Receive run once per Idempotency-Key (the POS sends one per action), so a double tap no longer makes two drafts or
   receives twice.
+- D6 Membership (more) — FIXED: enrollment wrote the membership, its first credits, activity and audit separately — a
+  failure after the insert left an ACTIVE membership with no credits (proven by test); now one transaction. Enroll runs
+  once per Idempotency-Key (the POS sends one), so a double tap no longer creates a second membership.
+  NOT built: first-period charge at enrollment (the guide: "record initial billing only when the provider confirms" — needs
+  a card-on-file / checkout step that does not exist for memberships yet).
+- D11 Stock Alerts, D16 End-of-Day Cash, D19 Tips — re-checked against their guides: built in the Oct builds (sidebar and
+  page agree; ticket-level tip totals without double counting allocations; cash hand-offs with period / search). No new bug found.
