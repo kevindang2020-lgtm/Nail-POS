@@ -32,6 +32,7 @@ async function makeDb(): Promise<Kysely<any>> {
     create table ocr_documents (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid,
       uploaded_by_user_id uuid, source_channel text, document_type text default 'unknown', vendor text, total_cents bigint,
       document_number text, document_date date, pipeline_status text not null default 'uploaded',
+      subtotal_cents bigint, tax_cents bigint, fees_cents bigint, discount_cents bigint,
       review_status text not null default 'not_started', deleted_at timestamptz, created_at timestamptz default now(), updated_at timestamptz default now(),
       page_count int not null default 1, quality_flags jsonb not null default '[]'::jsonb, extraction_attempts int not null default 0, next_extraction_at timestamptz,
       last_extraction_error text, suggested_expense_id uuid, suggested_match text, retention_hold boolean not null default false, retention_archived_at timestamptz);

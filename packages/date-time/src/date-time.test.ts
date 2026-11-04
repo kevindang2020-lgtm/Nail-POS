@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { zonedParts, businessDate, utcDate, localHour, tzOffsetMs, localDateTimeToEpochMs, epochToLocalDate, isYmd, addDays, minutesSinceMidnight, dayStartMs, monthStartMs } from './index';
+import { zonedParts, businessDate, utcDate, localHour, tzOffsetMs, localDateTimeToEpochMs, epochToLocalDate, isYmd, addDays, minutesSinceMidnight, dayStartMs, monthStartMs, dateColumnYmd } from './index';
 const NJ = 'America/New_York';
 describe('the salon day is not the UTC day', () => {
   it('8:30 pm in New Jersey on Jan 5 is Jan 6 in UTC — businessDate says Jan 5, utcDate says Jan 6', () => {
@@ -47,5 +47,12 @@ describe('dateColumnYmd — a Postgres DATE as YYYY-MM-DD (Oct 23 2026)', async 
     expect(dateColumnYmd('2026-10-23')).toBe('2026-10-23');
     expect(dateColumnYmd('2026-10-23T00:00:00.000Z')).toBe('2026-10-23');
     expect(dateColumnYmd(null)).toBeNull(); expect(dateColumnYmd('')).toBeNull(); expect(dateColumnYmd('nope')).toBeNull(); expect(dateColumnYmd(new Date('x'))).toBeNull();
+  });
+});
+
+describe('dateColumnYmd — a DATE read back at local OR UTC midnight is the stored day (Nov 3)', () => {
+  it('local midnight (node-postgres) and UTC midnight (PGlite) give the same day', () => {
+    expect(dateColumnYmd(new Date(2026, 9, 21))).toBe('2026-10-21');
+    expect(dateColumnYmd(new Date(Date.UTC(2026, 9, 21)))).toBe('2026-10-21');
   });
 });

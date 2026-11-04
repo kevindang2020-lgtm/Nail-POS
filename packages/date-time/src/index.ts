@@ -61,7 +61,14 @@ export function epochToLocalDate(ms: number, tz: string): Ymd { return businessD
  *  App's appointment date, invoices and end-of-day follow-ups. A string (PGlite / a cast) passes through. */
 export function dateColumnYmd(v: unknown): Ymd | null {
   if (v == null || v === '') return null;
-  if (v instanceof Date) return Number.isNaN(v.getTime()) ? null : `${v.getFullYear()}-${pad2(v.getMonth() + 1)}-${pad2(v.getDate())}`;
+  if (v instanceof Date) {
+    if (Number.isNaN(v.getTime())) return null;
+    // node-postgres parses DATE at LOCAL midnight (local parts); PGlite and drivers like it parse it at UTC midnight, where the local
+    // parts west of UTC are the day BEFORE — read UTC parts for a UTC-midnight value that is not also local midnight
+    const utcMidnight = v.getUTCHours() === 0 && v.getUTCMinutes() === 0 && v.getUTCSeconds() === 0 && v.getUTCMilliseconds() === 0;
+    const localMidnight = v.getHours() === 0 && v.getMinutes() === 0 && v.getSeconds() === 0 && v.getMilliseconds() === 0;
+    return utcMidnight && !localMidnight ? `${v.getUTCFullYear()}-${pad2(v.getUTCMonth() + 1)}-${pad2(v.getUTCDate())}` : `${v.getFullYear()}-${pad2(v.getMonth() + 1)}-${pad2(v.getDate())}`;
+  }
   const m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v));
   return m ? m[1] : null;
 }
