@@ -2232,6 +2232,8 @@ export const POS_VI: Record<keyof typeof POS_EN, string> = {
   'pos.data_quality': 'Chất lượng dữ liệu',
   'pos.data_scope': 'Phạm vi dữ liệu',
   'pos.date': 'Ngày',
+  'pos.cash_drawer_register': 'Quầy',
+  'pos.cash_drawer_unassigned': 'Tiền mặt chưa gán quầy',
   'pos.date_fmt': 'Định dạng ngày',
   'pos.date_time': 'Ngày & Giờ',
   'pos.date_to_check': 'Ngày cần kiểm tra',

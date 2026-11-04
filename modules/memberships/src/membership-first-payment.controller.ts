@@ -8,6 +8,7 @@ import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireFeature
 import { Body, Controller, Get, HttpException, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { MembershipBillingService, FirstPaymentError, type FirstPaymentCtx } from './membership-billing.service';
 import { FIRST_PAYMENT_BODY } from './request-schemas';
+import type { MembershipFirstPaymentState, MembershipFirstPaymentResult } from '@aipowersalon/api-contracts/tenant';
 
 const ctxFrom = (req: any): FirstPaymentCtx => ({ tenantId: req?.ctx?.tenantId, userId: req?.ctx?.userId ?? null, role: req?.ctx?.role ?? null });
 async function run<T>(fn: () => Promise<T>): Promise<T> {
@@ -24,8 +25,8 @@ export class MembershipFirstPaymentController {
   constructor(private readonly svc: MembershipBillingService) {}
 
   @Get(':membershipId/first-payment') @RequirePermission('pos.memberships.view')
-  state(@Req() r: any, @Param('membershipId') id: string) { return run(() => this.svc.firstPaymentState(ctxFrom(r), id)); }
+  state(@Req() r: any, @Param('membershipId') id: string): Promise<MembershipFirstPaymentState> { return run(() => this.svc.firstPaymentState(ctxFrom(r), id)); }
 
   @Idempotent() @Post(':membershipId/first-payment') @RequirePermission('pos.memberships.manage')
-  collect(@Req() r: any, @Param('membershipId') id: string, @Body(ValidatedBody(FIRST_PAYMENT_BODY, { strict: true })) b: any) { return run(() => this.svc.collectFirstPayment(ctxFrom(r), id, b ?? {})); }
+  collect(@Req() r: any, @Param('membershipId') id: string, @Body(ValidatedBody(FIRST_PAYMENT_BODY, { strict: true })) b: any): Promise<MembershipFirstPaymentResult> { return run(() => this.svc.collectFirstPayment(ctxFrom(r), id, b ?? {})); }
 }

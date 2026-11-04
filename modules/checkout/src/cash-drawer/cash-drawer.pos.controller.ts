@@ -2,6 +2,7 @@ import { RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guar
 import { Idempotent } from '@aipowersalon/database/nest';   // Constitution 5 §61–66
 import { Controller, Get, Post, Req, Body, Query } from '@nestjs/common';
 import { CashDrawerService } from './cash-drawer.service';
+import type { DrawerRegisterList } from '@aipowersalon/api-contracts/tenant';
 import { drawerCtx, drawerRun } from './cash-drawer.http';
 import { ListQueries } from '@aipowersalon/database';
 import { CashDrawerPosControllerListQueries } from './cash-drawer.pos.list-queries';
@@ -21,6 +22,7 @@ export class CashDrawerPosController {
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/open') open(@Req() r: any, @Body(ValidatedBody(DRAWER_OPEN_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.openDrawer(drawerCtx(r), b || {})); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/reconcile') reconcile(@Req() r: any, @Body(ValidatedBody(DRAWER_RECONCILE_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.reconcileDrawer(drawerCtx(r), b || {})); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement') movement(@Req() r: any, @Body(ValidatedBody(DRAWER_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.addMovement(drawerCtx(r), b || {})); }
+  @RequirePermission('pos.checkout.view') @Get('cash-drawer/registers') registers(@Req() r: any): Promise<DrawerRegisterList> { return drawerRun(() => this.svc.registers(drawerCtx(r))); }
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/movements') movements(@Req() r: any, @Query('date') date?: string, @Query('registerId') registerId?: string) { return drawerRun(() => this.svc.listMovements(drawerCtx(r), date, registerId)); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement/void') voidMovement(@Req() r: any, @Body(ValidatedBody(DRAWER_VOID_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.voidMovement(drawerCtx(r), b || {})); }
 }

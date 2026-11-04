@@ -34,7 +34,21 @@ export class CashDrawerRepository {
   }
 
   /** Register cash for a branch/date: approved cash sales not attributable to a tech cash-to-tech hand-off, minus cash refunds. */
-  async computeRegisterCash(ctx: DrawerCtx, branchId: string, date: string): Promise<Computed> {
+  /** D15 (Nov 4 2026): which payments belong to this register's drawer. A station's drawer reads the cash taken at that
+   *  station (payments.register_id, migration 788); 'main' reads the cash with no live station — so a location without
+   *  stations keeps one drawer with all its cash, as before. */
+  private registerFilter(ctx: DrawerCtx, branchId: string, registerId: string) {
+    if (registerId && registerId !== 'main') return sql`p.register_id = ${registerId}`;
+    return sql`(p.register_id IS NULL OR NOT EXISTS (SELECT 1 FROM pos_stations st WHERE st.tenant_id = ${ctx.tenantId} AND st.branch_id = ${branchId} AND st.id::text = p.register_id AND st.retired_at IS NULL))`;
+  }
+
+  /** The registers a drawer can be kept for at this location: its live stations, plus 'main' (cash with no station). */
+  async registers(ctx: DrawerCtx, branchId: string): Promise<Array<{ registerId: string; name: string }>> {
+    const rows = await sql<{ id: string; name: string | null }>`select id, name from pos_stations where tenant_id = ${ctx.tenantId} and branch_id = ${branchId} and retired_at is null order by name nulls last, id`.execute(this.db);
+    return [{ registerId: 'main', name: rows.rows.length ? 'Unassigned cash' : 'Main register' }, ...rows.rows.map((r) => ({ registerId: String(r.id), name: String(r.name ?? 'Register') }))];
+  }
+
+  async computeRegisterCash(ctx: DrawerCtx, branchId: string, date: string, registerId = 'main'): Promise<Computed> {
     // a payment belongs to the business date it was taken on AT THE BRANCH (was its UTC date: evening cash after 8 pm in
     // New York went to the next day's drawer, so tonight's count came up short and tomorrow's over)
     const tz = await this.zone(ctx, branchId);
@@ -43,11 +57,13 @@ export class CashDrawerRepository {
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', 'in', [...REVENUE_BEARING_STATUSES])   // incl. 'partial' — the cash part of a split (wave 4 PILOT)
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
       .where(sql`(p.ticket_id IS NULL OR NOT EXISTS (SELECT 1 FROM cash_payment_confirmations c WHERE c.ticket_id = p.ticket_id AND c.tenant_id = ${ctx.tenantId} AND c.status = 'confirmed'))` as any)
+      .where(this.registerFilter(ctx, branchId, registerId) as any)
       .executeTakeFirst();   // a failed read must FAIL — it used to read as $0 and reconcile then stored a false shortage (audit Nov 3 2026)
     const refunds = await this.db.selectFrom('payments as p')
       .select((eb: any) => eb.fn.coalesce(eb.fn.sum('p.amount_cents'), sql`0`).as('cents'))
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', '=', 'refunded')
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
+      .where(this.registerFilter(ctx, branchId, registerId) as any)
       .executeTakeFirst();
     return { salesCents: num((sales as any)?.cents), refundsCents: num((refunds as any)?.cents), paymentCount: num((sales as any)?.cnt) };
   }
@@ -69,7 +85,7 @@ export class CashDrawerRepository {
   }
 
   async state(ctx: DrawerCtx, branchId: string, registerId: string, date: string): Promise<DrawerState> {
-    const [c, mv, row] = await Promise.all([this.computeRegisterCash(ctx, branchId, date), this.computeMovements(ctx, branchId, registerId, date), this.getRow(ctx, branchId, registerId, date)]);
+    const [c, mv, row] = await Promise.all([this.computeRegisterCash(ctx, branchId, date, registerId), this.computeMovements(ctx, branchId, registerId, date), this.getRow(ctx, branchId, registerId, date)]);
     const openingFloatCents = row ? num(row.opening_float_cents) : 0;
     const liveExpected = openingFloatCents + c.salesCents - c.refundsCents + mv.paidInCents - mv.paidOutCents;
     // a COUNTED drawer keeps the figures it was counted against — a later payment / refund / float edit used to change a
@@ -110,7 +126,7 @@ export class CashDrawerRepository {
 
   /** Count the drawer and reconcile. reconciled if exact, else discrepancy. */
   async reconcile(ctx: DrawerCtx, branchId: string, registerId: string, date: string, countedCents: number, notes: string | null): Promise<{ applied: boolean; status: DrawerStatus; varianceCents: number; expectedCashCents: number; salesCents: number; refundsCents: number; openingFloatCents: number }> {
-    const c = await this.computeRegisterCash(ctx, branchId, date);
+    const c = await this.computeRegisterCash(ctx, branchId, date, registerId);
     const mv = await this.computeMovements(ctx, branchId, registerId, date);
     const row = await this.getRow(ctx, branchId, registerId, date);
     const openingFloatCents = row ? num(row.opening_float_cents) : 0;
@@ -145,8 +161,8 @@ export class CashDrawerRepository {
     const rows = [];
     for (const b of branches) {
       // NOTE: for ownerList, we might need to select all registers for a branch, but for now we aggregate the 'main' register as a proxy, or select all rows directly
-      const branchRegisters = await this.db.selectFrom('cash_drawer_sessions').select('register_id').distinct().where('tenant_id', '=', ctx.tenantId).where('branch_id', '=', b.id as string).where('business_date', '=', date).execute().catch(() => [{register_id: 'main'}]);
-      if (branchRegisters.length === 0) branchRegisters.push({ register_id: 'main' });
+      // every register of the location (its stations + 'main'), so each drawer shows only its own cash (D15, Nov 4 2026)
+      const branchRegisters = (await this.registers(ctx, b.id as string)).map((r) => ({ register_id: r.registerId }));
       for (const r of branchRegisters) {
         const st = await this.state(ctx, b.id as string, r.register_id as string, date);
         rows.push({ ...st, branchName: b.name });

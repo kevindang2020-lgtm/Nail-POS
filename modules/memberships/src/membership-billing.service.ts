@@ -159,7 +159,7 @@ export class MembershipBillingService {
     const next = m.autoRenew && end ? end : null;
     const out = await this.repo.applyFirstPayment({ membership: m, actorUserId: ctx.userId, actorRole: ctx.role, amountCents: amount, processor, processorRef, idempotencyKey: key, periodStart: start, periodEnd: end, nextBillingAt: next, method });
     if (!out.applied && !out.duplicate) throw new FirstPaymentError('This membership is not waiting for a first payment.', 'MEMBERSHIP_NOT_AWAITING_PAYMENT', 409);
-    return { membershipId, status: 'active', paymentId: out.paymentId, duplicate: out.duplicate, amountCents: amount, method, currentPeriodEnd: end ? end.toISOString() : null };
+    return { membershipId, status: 'active' as const, paymentId: out.paymentId, duplicate: out.duplicate, amountCents: amount, method: method as 'card_on_file' | 'invoice', currentPeriodEnd: end ? end.toISOString() : null };
   }
 
   /** Sweep memberships due for renewal and attempt each charge through the configured processor. With the default

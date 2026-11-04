@@ -36,15 +36,31 @@ export class CashDrawerService {
     return this.repo.ownerList(ctx, normDate(date, await this.today({ ...ctx, branchId: null })));
   }
 
+  /** D15 (Nov 4 2026): the registers this location keeps a drawer for (its stations + 'main' for cash with no station). */
+  async registers(ctx: DrawerCtx): Promise<{ registers: Array<{ registerId: string; name: string }> }> {
+    if (!this.canView(ctx)) throw withCode(new CashDrawerError('forbidden', 'Not allowed.', 403), 'PERMISSION_DENIED');
+    return { registers: await this.repo.registers(ctx, this.branchOf(ctx)) };
+  }
+
+  /** D15 (Nov 4 2026): a drawer is 'main' or one of this location's registers — never another location's station. */
+  private async registerOf(ctx: DrawerCtx, branchId: string, raw: unknown): Promise<string> {
+    const id = typeof raw === 'string' && raw ? raw : 'main';
+    if (id === 'main') return id;
+    const known = await this.repo.registers(ctx, branchId);
+    if (!known.some((r) => r.registerId === id)) throw withCode(new CashDrawerError('bad_request', 'That register is not at this location.', 400), 'REGISTER_NOT_IN_BRANCH');
+    return id;
+  }
+
   async getDrawer(ctx: DrawerCtx, date?: string, registerId = 'main'): Promise<DrawerState> {
     if (!this.canView(ctx)) throw withCode(new CashDrawerError('forbidden', 'Not allowed.', 403), 'PERMISSION_DENIED');
-    return this.repo.state(ctx, this.branchOf(ctx), registerId, normDate(date, await this.today(ctx)));
+    const branchId = this.branchOf(ctx);
+    return this.repo.state(ctx, branchId, await this.registerOf(ctx, branchId, registerId), normDate(date, await this.today(ctx)));
   }
 
   async openDrawer(ctx: DrawerCtx, body: any): Promise<DrawerState> {
     if (!this.has(ctx, 'pos.checkout.take_payment')) throw withCode(new CashDrawerError('forbidden', 'You do not have permission to manage the drawer.', 403), 'DRAWER_PERMISSION_DENIED');
     const branchId = this.branchOf(ctx);
-    const registerId = typeof body?.registerId === 'string' && body.registerId ? body.registerId : 'main';
+    const registerId = await this.registerOf(ctx, branchId, body?.registerId);
     const d = normDate(body?.date, await this.today(ctx));
     const floatCents = this.amount(body, 'openingFloatCents');
     await this.repo.open(ctx, branchId, registerId, d, floatCents);
@@ -64,7 +80,7 @@ export class CashDrawerService {
     if (!Number.isFinite(amount) || amount <= 0) throw withCode(new CashDrawerError('bad_amount', 'Enter an amount greater than zero (in cents).', 400), 'AMOUNT_MUST_BE_POSITIVE');
     const reason = typeof body?.reason === 'string' ? body.reason.slice(0, 80) : null;
     const note = typeof body?.note === 'string' ? body.note.slice(0, 300) : null;
-    const registerId = typeof body?.registerId === 'string' && body.registerId ? body.registerId : 'main';
+    const registerId = await this.registerOf(ctx, branchId, body?.registerId);
     try { await this.repo.addMovement(ctx, branchId, registerId, d, direction, amount, reason, note); }
     catch (e: any) { if (e?.drawerCode === 'DRAWER_ALREADY_COUNTED') throw withCode(new CashDrawerError('already_counted', e.message, 409), 'DRAWER_ALREADY_COUNTED'); throw e; }
     await this.repo.audit(ctx, 'cash_drawer_movement', branchId, { businessDate: d, direction, amountCents: amount, reason, registerId });
@@ -79,7 +95,7 @@ export class CashDrawerService {
     const id = typeof body?.movementId === 'string' ? body.movementId : '';
     if (!id) throw withCode(new CashDrawerError('bad_request', 'Specify the movement to void.', 400), 'DRAWER_MOVEMENT_REQUIRED');
     const d = normDate(body?.date, await this.today(ctx));
-    const registerId = typeof body?.registerId === 'string' && body.registerId ? body.registerId : 'main';
+    const registerId = await this.registerOf(ctx, branchId, body?.registerId);
     const ok = await this.repo.voidMovement(ctx, id);
     if (ok) {
       await this.repo.audit(ctx, 'cash_drawer_movement_void', branchId, { movementId: id, businessDate: d, registerId });
@@ -93,13 +109,13 @@ export class CashDrawerService {
     if (!this.canView(ctx)) throw withCode(new CashDrawerError('forbidden', 'Not allowed.', 403), 'PERMISSION_DENIED');
     const branchId = this.branchOf(ctx);
     const d = normDate(date, await this.today(ctx));
-    return { businessDate: d, movements: await this.repo.listMovements(ctx, branchId, registerId, d) };
+    return { businessDate: d, movements: await this.repo.listMovements(ctx, branchId, await this.registerOf(ctx, branchId, registerId), d) };
   }
 
   async reconcileDrawer(ctx: DrawerCtx, body: any): Promise<DrawerState> {
     if (!this.has(ctx, 'pos.checkout.take_payment')) throw withCode(new CashDrawerError('forbidden', 'You do not have permission to reconcile the drawer.', 403), 'DRAWER_PERMISSION_DENIED');
     const branchId = this.branchOf(ctx);
-    const registerId = typeof body?.registerId === 'string' && body.registerId ? body.registerId : 'main';
+    const registerId = await this.registerOf(ctx, branchId, body?.registerId);
     const d = normDate(body?.date, await this.today(ctx));
     const counted = this.amount(body, 'countedCents');
     const notes = typeof body?.notes === 'string' ? body.notes.slice(0, 500) : null;

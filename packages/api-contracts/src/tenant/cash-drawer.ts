@@ -25,3 +25,6 @@ export interface DrawerState {
 
 // cash-drawer.dto.ts — types, events, helpers for front-desk cash drawer reconciliation.
 export type DrawerStatus = 'open' | 'reconciled' | 'discrepancy' | 'cancelled';
+/** D15 (Nov 4 2026): the registers a location keeps a drawer for — 'main' (cash with no register) first, then its stations. */
+export interface DrawerRegister { registerId: string; name: string }
+export interface DrawerRegisterList { registers: DrawerRegister[] }

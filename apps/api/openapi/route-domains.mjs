@@ -67,7 +67,7 @@ export const SOURCE_DOMAINS = {
   'finance:expense.controller.ts': 'FINANCE',   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026)
   'memberships:membership-billing.controller.ts': 'MEMBERSHIPS', 'memberships:membership-comms.controller.ts': 'MEMBERSHIPS',
   'memberships:membership-compensation.controller.ts': 'MEMBERSHIPS', 'memberships:membership-enroll.controller.ts': 'MEMBERSHIPS',
-  'memberships:memberships.controller.ts': 'MEMBERSHIPS',
+  'memberships:memberships.controller.ts': 'MEMBERSHIPS', 'memberships:membership-first-payment.controller.ts': 'MEMBERSHIPS',
   'deals:bundles': 'DEALS', 'deals:deals': 'DEALS', 'deals:promotions': 'DEALS', 'deals:salon-promotions': 'DEALS',
   'marketing:display-advertising': 'MARKETING',
   // modules/identity

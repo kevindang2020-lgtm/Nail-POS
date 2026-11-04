@@ -2231,6 +2231,8 @@ export const POS_EN = {
   'pos.data_quality': 'Data quality',
   'pos.data_scope': 'Data Scope',
   'pos.date': 'Date',
+  'pos.cash_drawer_register': 'Register',
+  'pos.cash_drawer_unassigned': 'Cash with no register',
   'pos.date_fmt': 'Date fmt',
   'pos.date_time': 'Date & Time',
   'pos.date_to_check': 'Date to check',

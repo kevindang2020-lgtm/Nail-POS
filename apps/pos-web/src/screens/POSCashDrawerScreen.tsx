@@ -1,7 +1,7 @@
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createIntentKeys } from '@aipowersalon/api-client';
-import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement } from '../api/posCashDrawerApi';
+import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister } from '../api/posCashDrawerApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { msg, renderMsg, type Msg } from '../i18n/notice';
@@ -32,13 +32,17 @@ export function POSCashDrawerScreen() {
   const [moveAmt, setMoveAmt] = useState('');
   const [moveDir, setMoveDir] = useState<'in' | 'out'>('out');
   const [moveReason, setMoveReason] = useState('');
+  // D15 (Nov 4 2026): one drawer per register — the picker shows when the location has registers set up
+  const [registers, setRegisters] = useState<DrawerRegister[]>([]);
+  const [registerId, setRegisterId] = useState('main');
+  useEffect(() => { posCashDrawerApi.registers().then((r) => setRegisters(r.registers || [])).catch(() => setRegisters([])); }, []);
 
   const load = useCallback(() => {
-    posCashDrawerApi.state(date || undefined)
+    posCashDrawerApi.state(date || undefined, registerId)
       .then((s) => { setD(s); setError(null); if (!date && s.businessDate) setDate(s.businessDate); setFloatStr((s.openingFloatCents / 100).toFixed(2)); if (s.countedCents != null) setCountStr((s.countedCents / 100).toFixed(2)); })
       .catch((e: { message?: string }) => setError(e?.message || t('pos.failed_to_load_the_cash_drawer')));
-    posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch((e: { message?: string }) => setError(e?.message || t('pos.failed_to_load_the_cash_drawer')));
-  }, [date]);
+    posCashDrawerApi.movements(date || undefined, registerId).then((m) => setMoves(m.movements)).catch((e: { message?: string }) => setError(e?.message || t('pos.failed_to_load_the_cash_drawer')));
+  }, [date, registerId]);
   useEffect(() => { load(); }, [load]);
   useRealtime('cash-drawer', load);
 
@@ -47,7 +51,7 @@ export function POSCashDrawerScreen() {
     const dollars = Number(floatStr);
     if (!Number.isFinite(dollars) || dollars < 0) { setError(t('pos.enter_the_opening_float')); return; }
     setBusy('float'); setError(null); setNote(null);
-    try { const cents = Math.round(dollars * 100); const s = await posCashDrawerApi.open(cents, date || undefined, keys.current.keyFor('float', { cents, date })); keys.current.done('float'); setD(s); setNote(msg('pos.opening_float_set_to_openingfloatcents', { openingFloatCents: String(money(s.openingFloatCents)) })); }
+    try { const cents = Math.round(dollars * 100); const s = await posCashDrawerApi.open(cents, date || undefined, keys.current.keyFor('float', { cents, date, registerId }), registerId); keys.current.done('float'); setD(s); setNote(msg('pos.opening_float_set_to_openingfloatcents', { openingFloatCents: String(money(s.openingFloatCents)) })); }
     catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_set_the_float')); }
     finally { setBusy(null); }
   };
@@ -56,8 +60,8 @@ export function POSCashDrawerScreen() {
     if (!Number.isFinite(dollars) || dollars < 0) { setError(t('pos.enter_the_counted_cash_amount')); return; }
     setBusy('reconcile'); setError(null); setNote(null);
     try {
-      const body = { cents: Math.round(dollars * 100), notes: reconNotes.trim() || undefined, date };
-      const s = await posCashDrawerApi.reconcile(body.cents, body.notes, date || undefined, keys.current.keyFor('reconcile', body)); keys.current.done('reconcile');
+      const body = { cents: Math.round(dollars * 100), notes: reconNotes.trim() || undefined, date, registerId };
+      const s = await posCashDrawerApi.reconcile(body.cents, body.notes, date || undefined, keys.current.keyFor('reconcile', body), registerId); keys.current.done('reconcile');
       const v = s.varianceCents ?? 0;
       setNote(s.status === 'reconciled' ? msg('pos.drawer_reconciled_matched_countedcents', { countedCents: String(money(s.countedCents)) }) : msg('pos.drawer_v0_by_v', { v0: msg(v > 0 ? 'payment.cash.over' : 'payment.cash.short'), v: String(money(Math.abs(v))) }));
       setD(s);
@@ -69,21 +73,21 @@ export function POSCashDrawerScreen() {
     if (!Number.isFinite(dollars) || dollars <= 0) { setError(t('pos.enter_an_amount_greater_than_zero')); return; }
     setBusy('movement'); setError(null); setNote(null);
     try {
-      const body = { moveDir, cents: Math.round(dollars * 100), reason: moveReason.trim() || undefined, date };
+      const body = { moveDir, cents: Math.round(dollars * 100), reason: moveReason.trim() || undefined, date, registerId };
       // one key per cash in/out until it is recorded: a double tap or a retry after a dropped connection records it once
-      const s = await posCashDrawerApi.movement(moveDir, body.cents, body.reason, undefined, date || undefined, keys.current.keyFor('movement', body)); keys.current.done('movement');
+      const s = await posCashDrawerApi.movement(moveDir, body.cents, body.reason, undefined, date || undefined, keys.current.keyFor('movement', body), registerId); keys.current.done('movement');
       setD(s); setMoveAmt(''); setMoveReason('');
       setNote(msg('pos.recorded_v0_of_v1', { v0: msg(moveDir === 'in' ? 'pos.cash_in_2' : 'pos.cash_out_2'), v1: String(money(Math.round(dollars * 100))) }));
-      posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch(() => {});
+      posCashDrawerApi.movements(date || undefined, registerId).then((m) => setMoves(m.movements)).catch(() => {});
     } catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_record_the_movement')); }
     finally { setBusy(null); }
   };
   const voidMovement = async (movementId: string) => {
     setBusy('void'); setError(null); setNote(null);
     try {
-      const s = await posCashDrawerApi.voidMovement(movementId, date || undefined);
+      const s = await posCashDrawerApi.voidMovement(movementId, date || undefined, registerId);
       setD(s); setNote(msg('pos.movement_voided'));
-      posCashDrawerApi.movements(date || undefined).then((m) => setMoves(m.movements)).catch(() => {});
+      posCashDrawerApi.movements(date || undefined, registerId).then((m) => setMoves(m.movements)).catch(() => {});
     } catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_void_the_movement')); }
     finally { setBusy(null); }
   };
@@ -113,6 +117,9 @@ export function POSCashDrawerScreen() {
       <section className="panel" style={{ marginBottom: 14 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <label className="s">{t('pos.date')}{' '}<input type="date" value={date} onChange={(e) => setDate(e.target.value)} style={{ marginLeft: 6, height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', fontFamily: 'inherit', background: '#FFFDF8' }} /></label>
+          {registers.length > 1 ? <label className="s">{t('pos.cash_drawer_register')}{' '}<select aria-label={t('pos.cash_drawer_register')} value={registerId} onChange={(e) => { setRegisterId(e.target.value); setD(null); setMoves([]); setNote(null); setCountStr(''); }} style={{ marginLeft: 6, height: 32, border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', fontFamily: 'inherit', background: '#FFFDF8' }}>
+            {registers.map((r) => <option key={r.registerId} value={r.registerId}>{r.registerId === 'main' ? t('pos.cash_drawer_unassigned') : r.name}</option>)}
+          </select></label> : null}
           {st ? <span style={{ marginLeft: 4, padding: '3px 9px', borderRadius: 999, fontSize: 12, fontWeight: 700, color: st.color, background: st.bg }}>{st.label}</span> : null}
           <button className="btn ghost w-full sm:w-auto sm:ml-auto" style={{ padding: '6px 12px' }} onClick={load}>{t('pos.refresh')}</button>
         </div>

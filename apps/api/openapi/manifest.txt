@@ -522,6 +522,7 @@ GET /pos/campaigns/state  realm=staff  auth=session  domain=marketing  perm=pos.
 GET /pos/campaigns/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/cash-drawer  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-drawer/movements  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
+GET /pos/cash-drawer/registers  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-handoffs  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-handoffs/{technicianId}  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/catalog/add-ons  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -798,6 +799,7 @@ GET /pos/memberships/export/redemptions  realm=staff  auth=session  domain=membe
 GET /pos/memberships/members  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/members/{membershipId}/benefits  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/members/{membershipId}/detail  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/members/{membershipId}/first-payment  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/overview  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/payments  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/plan-performance  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
@@ -2820,6 +2822,7 @@ POST /pos/memberships/comms/reminders/run  realm=staff  auth=session  domain=mem
 POST /pos/memberships/compensation/book/{ticketId}  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/enroll  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  idempotency=optional  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/members/by-customers  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/memberships/members/{membershipId}/first-payment  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  idempotency=optional  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/pause  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/plans  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/plans/{planId}/versions  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard

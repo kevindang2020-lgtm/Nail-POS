@@ -1,4 +1,5 @@
 import { api } from './client';
+import type { MembershipFirstPaymentState, MembershipFirstPaymentResult } from '@aipowersalon/api-contracts/tenant';
 
 // posMembershipEnrollApi — tenant Memberships enrollment / reservation / redemption surface (`/pos/memberships/*`).
 // Tenant + branch are derived from the session; the UI never sends them. Reserve returns a reservationRef that the
@@ -10,9 +11,9 @@ export const posMembershipEnrollApi = {
   enroll: (body: { customerId: string; planId: string; planVersionId?: string; autoRenewConsent?: boolean; assignedTechnicianId?: string | null; agreementVersion?: string | null; channel?: string }, idempotencyKey?: string) =>
     api.post(`/pos/memberships/enroll`, body, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),   // D6: a double tap enrolls once
   /** D6 §16: a pending membership's first payment — what is owed and how it can be paid; collect it (card on file | paid invoice) */
-  firstPayment: (membershipId: string) => api.get<{ membershipId: string; status: string; awaitingFirstPayment: boolean; amountDueCents: number; cardOnFile: boolean; cardBillingConfigured: boolean; invoices: { id: string; number: string; totalCents: number; paidAt: string | null }[] }>(`/pos/memberships/members/${encodeURIComponent(membershipId)}/first-payment`),
+  firstPayment: (membershipId: string) => api.get<MembershipFirstPaymentState>(`/pos/memberships/members/${encodeURIComponent(membershipId)}/first-payment`),
   collectFirstPayment: (membershipId: string, body: { method: 'card_on_file' | 'invoice'; invoiceId?: string | null }, idempotencyKey: string) =>
-    api.post<{ status: string; amountCents: number; duplicate: boolean }>(`/pos/memberships/members/${encodeURIComponent(membershipId)}/first-payment`, body, { 'Idempotency-Key': idempotencyKey }),
+    api.post<MembershipFirstPaymentResult>(`/pos/memberships/members/${encodeURIComponent(membershipId)}/first-payment`, body, { 'Idempotency-Key': idempotencyKey }),
   customerMemberships: (customerId: string) => api.get(`/pos/memberships/customers/${enc(customerId)}/memberships`),
   // Batch member-status for a list of customers (one request for the whole page). Customers absent from the
   // response are non-members. Returns { members: [{ customerId, isMember, planName, status }] }.
