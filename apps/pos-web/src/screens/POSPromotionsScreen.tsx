@@ -116,7 +116,23 @@ export function POSPromotionsScreen() {
     catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('cp.failed')) }); } finally { setBusyRow(null); }
   };
   const openCustomer = (id: string, name: string) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`);
-  const openTicket = (ticketId: string) => nav(`/checkout?ticket=${encodeURIComponent(ticketId)}`);
+  // Promotions guide (Nov 4 2026) "View Receipt": a paid ticket opens its receipt in Transactions; a pending one (code on an
+  // unpaid ticket) still opens Checkout
+  const openTicket = (ticketId: string) => {
+    const r = (reds.data?.items ?? []).find((x: any) => x.ticketId === ticketId);
+    if (r && r.status !== 'applied' && r.ticketNumber) nav(`/tenant/payments/transactions?search=${encodeURIComponent(r.ticketNumber)}`);
+    else nav(`/checkout?ticket=${encodeURIComponent(ticketId)}`);
+  };
+  const [exporting, setExporting] = useState(false);
+  const exportCsv = async () => {
+    setExporting(true);
+    try {
+      const text = tab === 'redemptions' ? await posDiscountsApi.exportRedemptions({ ...redQ }) : await posDiscountsApi.exportList({ ...libQ });
+      const url = URL.createObjectURL(new Blob([String(text)], { type: 'text/csv;charset=utf-8' }));
+      const a = document.createElement('a'); a.href = url; a.download = tab === 'redemptions' ? 'promotion-redemptions.csv' : 'promotions.csv'; document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('cp.failed')) }); } finally { setExporting(false); }
+  };
   const k = kpis.data;
   if (isForbidden(kpis.error)) return <div className="work dsc promo" data-testid="promotions-screen"><h1>{tx('pos.promotions')}</h1><StateBlock error={kpis.error} onRetry={kpis.reload} /></div>;
   const server = current?.data?.period ?? trends.data?.period;
@@ -128,6 +144,7 @@ export function POSPromotionsScreen() {
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.promotions')}</h1><div className="sub">{tx('pos.coupon_codes_and_discounts_for_your_1gks')}</div></div>
         <div className="fk-head-actions">
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
+          {canManage && (tab === 'library' || tab === 'redemptions') ? <button type="button" className="fk-btn" disabled={exporting} onClick={() => void exportCsv()} data-testid="export">{exporting ? tx('pos.loading') : tx('cp.exportCsv')}</button> : null}
           <button type="button" className="fk-btn ghost" onClick={() => setChoose(true)} data-testid="check-promotion">{tx('promo.checkPromotion')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setP({ scope: 'redemptions' })} data-testid="view-history">{tx('promo.viewHistory')}</button>
           {canManage ? <button type="button" className="fk-btn ghost" onClick={() => setAssistant(true)} data-testid="assistant">{tx('promo.assistant')}</button> : null}

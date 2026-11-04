@@ -2,8 +2,8 @@
 // (+ discount value), the vishal 20% row with its masked code, row Pause, the logged read-only checker, the Eligibility Checks
 // scope and a 403 permission state. The server is mocked; the backend contracts are proven by promotions-center.pgtest.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom';
 const { disc, cp, pr, deals } = vi.hoisted(() => ({
   disc: { kpis: vi.fn(), list: vi.fn(), redemptions: vi.fn(), performance: vi.fn(), detail: vi.fn(), exportList: vi.fn(), exportRedemptions: vi.fn() },
   cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn() },
@@ -65,5 +65,19 @@ describe('POSPromotionsScreen', () => {
     disc.kpis.mockRejectedValue({ status: 403 });
     renderScreen();
     expect(await screen.findByText(/cannot see this information/i)).toBeInTheDocument();
+  });
+  it('Export CSV sends the current filters; a paid redemption\'s ticket opens its receipt in Transactions', async () => {
+    disc.exportList.mockResolvedValue('Code,Name\n');
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x') as any; globalThis.URL.revokeObjectURL = vi.fn() as any;
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('export'));
+    await waitFor(() => expect(disc.exportList).toHaveBeenCalledWith(expect.objectContaining({ status: expect.any(String) })));
+    disc.redemptions.mockResolvedValue({ items: [{ id: 'r1', at: '2026-10-30T12:00:00Z', customerId: null, customerName: 'Ana', code: 'X', dealName: 'vishal', dealId: 'd1', ticketId: 't1', ticketNumber: '3001', eligibleSubtotalCents: 1000, discountCents: 200, finalCents: 800, status: 'redeemed' }],
+      page: 1, pageSize: 10, totalItems: 1, totalPages: 1, period: { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' }, totals: { savingsCents: 200, uniqueCustomers: 1 } });
+    const Where = () => { const l = useLocation(); return <div data-testid="where">{l.pathname + l.search}</div>; };
+    render(<MemoryRouter initialEntries={['/tenant/marketing/promotions?scope=redemptions']}><Routes><Route path="/tenant/marketing/promotions" element={<POSPromotionsScreen />} /><Route path="*" element={<Where />} /></Routes></MemoryRouter>);
+    const link = (await screen.findAllByTestId('red-ticket')).find((x) => x.textContent === '#3001')!;
+    fireEvent.click(link);
+    expect(await screen.findByTestId('where')).toHaveTextContent('/tenant/payments/transactions?search=3001');
   });
 });
