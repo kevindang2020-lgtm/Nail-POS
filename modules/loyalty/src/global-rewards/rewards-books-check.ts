@@ -336,7 +336,13 @@ export async function reviewFraudAlert(db: Kysely<any>, a: { alertId: string; to
 
 /** CSV of findings (Super Admin scope), audit-logged; cells that start with = + - @ are prefixed (formula injection). */
 export async function findingsCsv(db: Kysely<any>, actorUserId: string, q: { runId?: string | null }) {
-  const all = await listFindings(db, { runId: q.runId ?? null, outcome: null, pageSize: 100, page: 1 });
+  // C1 audit (Nov 4 2026): every finding, page by page (it took page 1 of 100 — a bigger run exported a partial file)
+  const all = { items: [] as Awaited<ReturnType<typeof listFindings>>['items'] };
+  for (let page = 1; ; page++) {
+    const pg = await listFindings(db, { runId: q.runId ?? null, outcome: null, pageSize: 100, page });
+    all.items.push(...pg.items);
+    if (page >= pg.pageCount || page >= 10_000) break;
+  }
   const cell = (v: unknown) => { const s = v == null ? '' : String(v); const safe = /^[=+\-@]/.test(s) ? `'${s}` : s; return /[",\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe; };
   const lines = [['run', 'check', 'outcome', 'severity', 'salon', 'expected_cents', 'actual_cents', 'delta_cents', 'detail', 'review_status', 'created_at'].join(',')]
     .concat(all.items.map((f) => [f.runKey, f.checkType, f.outcome, f.severity, f.salon ?? '', f.expectedCents ?? '', f.actualCents ?? '', f.deltaCents ?? '', f.detail, f.reviewStatus, f.createdAt].map(cell).join(',')));

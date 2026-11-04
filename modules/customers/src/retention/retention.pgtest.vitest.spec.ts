@@ -173,6 +173,22 @@ describe('Customer Retention — win-back SMS', () => {
     expect(d!.campaign.status).toBe('failed');
   });
 
+  it('C5 audit: a queued text whose turn falls inside quiet hours waits for the end of them (never sent inside)', async () => {
+    const r = (await q(`select r.id, r.campaign_id from retention_sms_recipients r where r.tenant_id = $1 and r.status = 'unknown' limit 1`, [T])).rows[0];
+    await q(`update retention_sms_recipients set status = 'queued' where id = $1`, [r.id]);
+    const tz = (await q(`select coalesce(timezone, 'America/New_York') tz from branches where tenant_id = $1 limit 1`, [T])).rows[0]?.tz ?? 'America/New_York';
+    const h = Number((await q(`select extract(hour from now() at time zone $1)::int h`, [tz])).rows[0].h);
+    const lim = (await q(`insert into campaign_limits (quiet_hours_start, quiet_hours_end, active) values ($1, $2, true) returning id`, [h, (h + 2) % 24])).rows[0].id;
+    try {
+      const before = sent.length;
+      expect((await runRetentionSmsJob(db, messenger, { tenantId: T, recipientId: r.id, campaignId: r.campaign_id })).outcome).toBe('deferred_quiet_hours');
+      expect(sent.length).toBe(before);
+      expect((await q(`select status from retention_sms_recipients where id = $1`, [r.id])).rows[0].status).toBe('queued');
+      const later = (await q(`select run_after > now() as later from jobs where job_type = $1 and payload->>'recipientId' = $2 and idempotency_key like '%:quiet:%'`, [RETENTION_SMS_JOB, r.id])).rows;
+      expect(later).toEqual([{ later: true }]);
+    } finally { await q(`delete from campaign_limits where id = $1`, [lim]); await q(`update retention_sms_recipients set status = 'unknown' where id = $1`, [r.id]); }
+  });
+
   it('campaign history lists only this salon, newest first', async () => {
     const l = await repo.listCampaigns(ctx, { page: 1, pageSize: 10 });
     expect(l.items.length).toBe(2); expect(l.items[0]!.createdAt! >= l.items[1]!.createdAt!).toBe(true);

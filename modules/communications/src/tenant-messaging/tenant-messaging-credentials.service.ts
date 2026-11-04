@@ -207,7 +207,7 @@ export class TenantMessagingCredentialsService {
       // Security fix E1 (Oct 23 2026): the registry through THE number write path, which refuses a number registered to
       // another salon — in the SAME transaction as the credentials, so a refused number leaves nothing behind.
       if (fromNumber) {
-        const reg = await registerTenantNumber(trx as unknown as AppDatabase, { tenantId, phoneNumber: fromNumber, actorUserId });
+        const reg = await registerTenantNumber(trx as unknown as AppDatabase, { tenantId, phoneNumber: fromNumber, actorUserId, branchId: scope ?? null });
         if (!reg.ok) throw withCode(new CredentialsInputError(reg.error), 'MESSAGING_NUMBER_TAKEN');
       }
       let saved: any;

@@ -113,6 +113,21 @@ describe('rule resolution — addendum T01, T02, T19, T03/T04, T05, T06, T07, T2
     expect(cancel.canceled.status).toBe('CANCELED');
     expect((await repo.resolveEarningRule(db, TC, new Date(at.getTime() + 1)) as any).rule.source).toBe('GLOBAL_DEFAULT');
   });
+  it('C1 audit: Use Global Rules cancels a custom rule scheduled to start later', async () => {
+    const at = new Date(Date.now() + 5 * 3_600_000);
+    await repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000, pointTenthsPerIncrement: 20, effectiveFrom: at.toISOString() });
+    await repo.useGlobal(owner(TC, BC), { confirm: true });
+    expect((await repo.resolveEarningRule(db, TC, new Date(at.getTime() + 1)) as any).rule.source).toBe('GLOBAL_DEFAULT');
+    expect((await repo.policyView(owner(TC, BC))).scheduled).toHaveLength(0);
+  });
+  it('C1 audit: a platform cap lowered after activation limits what an active custom rate issues', async () => {
+    const r0 = (await repo.resolveEarningRule(db, TB, new Date()) as any).rule;
+    expect(r0).toMatchObject({ source: 'TENANT_OVERRIDE', pointTenthsPerIncrement: 20 });
+    const prev = (await pg.query(`select custom_max_point_tenths_per_increment v from global_rewards_program limit 1`)).rows[0].v;
+    await pg.query(`update global_rewards_program set custom_max_point_tenths_per_increment = 15`);
+    try { expect((await repo.resolveEarningRule(db, TB, new Date()) as any).rule).toMatchObject({ source: 'TENANT_OVERRIDE', pointTenthsPerIncrement: 15 }); }
+    finally { await pg.query(`update global_rewards_program set custom_max_point_tenths_per_increment = $1`, [prev]); }
+  });
   it('no backdating; out-of-policy rates refused', async () => {
     expect(await code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000, pointTenthsPerIncrement: 10, effectiveFrom: '2026-01-01T00:00:00Z' }))).toBe('EARNING_RULE_INVALID');
     expect(await code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000, pointTenthsPerIncrement: 500 }))).toBe('EARNING_RULE_OUT_OF_POLICY');

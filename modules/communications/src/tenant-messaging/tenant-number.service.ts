@@ -29,8 +29,12 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
  * provider SID / active status. The upsert's own WHERE re-checks ownership, so a race between the read and the write
  * cannot move it either, and migration 684's trigger refuses any UPDATE that changes `tenant_id` from any path.
  */
-export async function registerTenantNumber(db: AppDatabase, input: { tenantId: string; phoneNumber: string; providerSid?: string | null; actorUserId?: string | null }): Promise<{ ok: true } | { ok: false; error: string }> {
+export async function registerTenantNumber(db: AppDatabase, input: { tenantId: string; phoneNumber: string; providerSid?: string | null; actorUserId?: string | null; branchId?: string | null }): Promise<{ ok: true } | { ok: false; error: string }> {
   const { tenantId, phoneNumber } = input;
+  // C4 audit (Nov 4 2026): a branch's own sending number is recorded as that branch's — inbound texts to it then land in
+  // that branch's conversation and the reply goes out from it (branch_id was never written: every text was salon-wide).
+  // undefined = keep whatever the number already says; null = salon-wide.
+  const branchId = input.branchId === undefined ? undefined : input.branchId && UUID_RE.test(input.branchId) ? input.branchId : null;
   const providerSid = input.providerSid ?? null;
   const actor = input.actorUserId && UUID_RE.test(input.actorUserId) ? input.actorUserId : null;   // 641 actor stamp (a uuid user id, else unknown)
   const ownerOf = async (): Promise<string | null> => {
@@ -40,9 +44,10 @@ export async function registerTenantNumber(db: AppDatabase, input: { tenantId: s
   const before = await ownerOf();
   if (before && before !== String(tenantId)) return { ok: false, error: NUMBER_OWNED_BY_ANOTHER_SALON };
   await sql`
-    INSERT INTO tenant_messaging_numbers (tenant_id, phone_number, channel, provider, provider_phone_number_sid, purpose, status, updated_by)
-    VALUES (${tenantId}, ${phoneNumber}, 'sms', 'twilio', ${providerSid}, 'general_sms', 'active', ${actor})
+    INSERT INTO tenant_messaging_numbers (tenant_id, phone_number, channel, provider, provider_phone_number_sid, purpose, status, updated_by, branch_id)
+    VALUES (${tenantId}, ${phoneNumber}, 'sms', 'twilio', ${providerSid}, 'general_sms', 'active', ${actor}, ${branchId ?? null}::uuid)
     ON CONFLICT (phone_number) DO UPDATE SET provider_phone_number_sid = COALESCE(EXCLUDED.provider_phone_number_sid, tenant_messaging_numbers.provider_phone_number_sid),
+      branch_id = ${branchId === undefined ? sql`tenant_messaging_numbers.branch_id` : sql`EXCLUDED.branch_id`},
       status = 'active', released_at = NULL, updated_at = now(), updated_by = EXCLUDED.updated_by
     WHERE tenant_messaging_numbers.tenant_id = EXCLUDED.tenant_id AND ${canMoveToSql(TENANT_MESSAGING_NUMBER, 'active', 'tenant_messaging_numbers')}
   `.execute(db as any);

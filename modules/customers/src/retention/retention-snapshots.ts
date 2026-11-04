@@ -224,7 +224,7 @@ export class RetentionSnapshotRepository {
     if (d.state !== 'available' || !d.run) return { ...d, segment: seg, items: [], page: 1, pageSize, totalItems: 0, totalPages: 1 };
     const T = ctx.tenantId; const q = String(f.q ?? '').trim().slice(0, 100);
     const where = sql`s.tenant_id = ${T} and s.snapshot_local_date = ${d.date}::date and s.definition_version = ${d.run.definitionVersion}
-      and ${seg ? sql`s.segment = ${seg}` : sql`true`} and ${q ? sql`c.full_name ilike ${'%' + q + '%'}` : sql`true`}`;
+      and ${seg ? sql`s.segment = ${seg}` : sql`true`} and ${q ? sql`c.full_name ilike ${'%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%'} escape '\\'` : sql`true`}`;
     const total = N((await sql<any>`select count(*)::int as n from customer_retention_daily_snapshots s join customers c on c.id = s.customer_id and c.tenant_id = s.tenant_id where ${where}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages);
     const rows = (await sql<any>`select s.customer_id, c.full_name, c.normalized_phone, s.segment, s.first_visit_at, s.last_visit_at, s.visit_count, s.net_lifetime_value_cents, s.days_away, s.data_quality

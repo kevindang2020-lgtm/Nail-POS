@@ -158,3 +158,22 @@ Read-only audits of every uploaded guide against the code. Condensed to what mus
 - Bug P1: EOD cash `.catch(() => [])` → expected $0 written into count (tech-cash-handoff.repository.ts:56-63,101-107); not branch-scoped; expected not reduced by refunds/voids; equal count auto-reconciles.
 - Bug P2: finance-scope uses first branch's time zone (finance-scope.ts:60); refund type per row; void lateral first row; processors filter not branch-scoped; tips gift card counted as card; Issue Refund gated on wrong permission (POSPaymentsOverviewScreen.tsx:48).
 - Gaps: Cash Drawer rebuild (search, presets/calendar, pages, activity table + overlay, denominations, manager approval, version check; Money Protection banner to bottom); tips free-form adjustments route.
+
+## Batch C audits (Nov 4 2026 night) — C1 Loyalty Complete, C2 Communications, C3 Four Modules, C4 Phone & Messaging, C5 Retention
+- C1 bugs: Use Global Rules leaves a scheduled custom rule live (global-rewards.repository.ts useGlobal); a lowered platform limit
+  leaves active custom rates above it (resolver never clamps); header stale when a scheduled change starts (no refresh at
+  effective_from); Super Admin findings CSV stops at 100 rows. Open question: custom-earning flag off vs active custom rates.
+- C1 gaps: earning preview at checkout; per-salon low-balance warning levels; Super Admin suspend a rewards account; dual control
+  on global rule publish / program update.
+- C3/C5 bugs: campaign sends spread past quiet hours (checked only at confirm); retention overlay visits not branch-scoped; Setup
+  Health snapshot freshness ignores the date and incomplete coverage; recovery report counts 'unknown' texts as failed; staff
+  invitations say "technician" for every role; snapshot member search treats % and _ as wildcards.
+- C3/C5 gaps: cancel a campaign; campaigns ignore branch Twilio overrides; per-branch retention history; Add Note in the overlay;
+  approved-template choice in the composer; Book Appointment drops the branch; thin Setup Health booking check; First Visit
+  Invitation audience (optional).
+- C2/C4 bugs: a branch's own number — inbound filed salon-wide and replies sent from the salon number (tenant_messaging_numbers.branch_id
+  never written); "Messages Sent Today" counts failed / blocked; Missed tile always 0; timeline 'automated' source not
+  branch-scoped; inbox search lets a masked viewer match phone / email; a STOP text reopens the thread and tops "Longest unanswered".
+- C2/C4 gaps: Rebooking Conversion number; inbox branch selector + activity tiles by branch; booking made from a conversation
+  linked back; source-campaign filter + priority sort; message-text retention; live updates for reminders / campaign delivery;
+  SPF/DKIM/DMARC check; Customer Notifications export.

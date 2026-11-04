@@ -331,3 +331,29 @@ describe('S7 dates in the salon zone; branch scope; versions; KPIs; events', () 
     expect(JSON.stringify(mine)).not.toMatch(/\+1\d{10}|Jane|Twin/);
   });
 });
+
+// C2 audit (Nov 4 2026)
+describe('C2 audit fixes', () => {
+  it('a STOP text does not reopen the thread, add unread or start "awaiting reply"', async () => {
+    const r = await recordInboundSms(db, { tenantId: T, from: '+12675550777', to: '+18565550100', body: 'Thanks!', messageSid: 'SM' + 'c2a'.padEnd(32, '1'), numMedia: 0 });
+    await q(`update communication_threads set status = 'closed', unread_count = 0, awaiting_reply_since = null where id = $1`, [r.threadId]);
+    await recordInboundSms(db, { tenantId: T, from: '+12675550777', to: '+18565550100', body: 'STOP', messageSid: 'SM' + 'c2b'.padEnd(32, '1'), numMedia: 0 });
+    const [t] = (await q(`select status, unread_count, awaiting_reply_since from communication_threads where id = $1`, [r.threadId])).rows;
+    expect(t).toMatchObject({ status: 'closed', unread_count: 0, awaiting_reply_since: null });
+  });
+  it('a viewer without customers.view cannot find a conversation by its full phone number; by name still works', async () => {
+    await recordInboundSms(db, { tenantId: T, from: '+12675550666', to: '+18565550100', body: 'hi', messageSid: 'SM' + 'c2c'.padEnd(32, '1'), numMedia: 0 });
+    expect((await svc.list(owner, { q: '2675550666' })).items.length).toBeGreaterThan(0);
+    expect((await svc.list(viewer, { q: '2675550666' })).items).toHaveLength(0);
+  });
+});
+
+describe('C4 audit: a branch number', () => {
+  it('a text to Branch 2\'s own number is Branch 2\'s conversation, not the salon-wide one', async () => {
+    const { registerTenantNumber } = await import('../tenant-messaging/tenant-number.service');
+    expect(await registerTenantNumber(db, { tenantId: T, phoneNumber: '+18565550222', branchId: B2 })).toEqual({ ok: true });
+    const a = await recordInboundSms(db, { tenantId: T, from: '+12675550533', to: '+18565550100', body: 'to salon', messageSid: 'SM' + 'c4a'.padEnd(32, '1'), numMedia: 0 });
+    const b = await recordInboundSms(db, { tenantId: T, from: '+12675550533', to: '+18565550222', body: 'to branch 2', messageSid: 'SM' + 'c4b'.padEnd(32, '1'), numMedia: 0 });
+    expect(a.branchId).toBeNull(); expect(b.branchId).toBe(B2); expect(b.threadId).not.toBe(a.threadId);
+  });
+});

@@ -202,11 +202,20 @@ async function jobs(db: Kysely<any>, c: CheckCtx): Promise<CheckResult[]> {
       action: daStatus !== 'ready' ? { code: 'open_team', route: ROUTES.team } : null }));
   // retention snapshots (CR-01) when that module records them
   if (await exists(db, 'customer_retention_snapshot_runs')) {
-    const r = (await sql<any>`select r.status, r.started_at, r.finished_at from customer_retention_snapshot_runs r where r.tenant_id = ${c.tenantId} order by coalesce(r.finished_at, r.started_at) desc limit 1`.execute(db)).rows[0];
-    const ok = r && (r.status === 'succeeded' || r.status === 'completed');
-    const at = r?.finished_at ?? r?.started_at;
-    out.push(R('jobs.retention_snapshot', 'jobs', !r ? 'unknown' : !ok ? 'error' : age(at, c.now) > FRESHNESS.snapshot ? 'warning' : 'ready', !r ? 'low' : !ok ? 'high' : 'info', 'customer_retention_snapshot_runs',
-      { verifiedAt: ok ? iso(at) : null, detail: { code: !r ? 'never_run' : !ok ? String(r.status) : age(at, c.now) > FRESHNESS.snapshot ? 'stale' : 'fresh' }, action: !ok || !r ? { code: 'open_retention', route: ROUTES.retention } : null }));
+    // C3 audit (Nov 4 2026): "fresh" means YESTERDAY's salon-local day has a completed snapshot with full (or reconstructed)
+    // coverage — it took the latest run by finish time, so backfilling last March showed fresh, and an incomplete run counted
+    const tz = (await sql<any>`select coalesce((select timezone from branches where tenant_id = ${c.tenantId} and deleted_at is null and timezone is not null order by created_at limit 1), 'America/New_York') as tz`.execute(db)).rows[0]?.tz ?? 'America/New_York';
+    const y = (await sql<any>`select to_char((${c.now.toISOString()}::timestamptz at time zone ${tz})::date - 1, 'YYYY-MM-DD') as y`.execute(db)).rows[0]?.y as string;
+    const last = (await sql<any>`select to_char(r.snapshot_local_date, 'YYYY-MM-DD') as d, r.status, r.coverage, r.finished_at, r.started_at from customer_retention_snapshot_runs r
+      where r.tenant_id = ${c.tenantId} order by r.snapshot_local_date desc, coalesce(r.finished_at, r.started_at) desc limit 1`.execute(db)).rows[0];
+    const ofY = (await sql<any>`select r.status, r.coverage, r.finished_at from customer_retention_snapshot_runs r
+      where r.tenant_id = ${c.tenantId} and r.snapshot_local_date = ${y}::date order by coalesce(r.finished_at, r.started_at) desc limit 1`.execute(db)).rows[0];
+    const done = (r: any) => r && (r.status === 'completed' || r.status === 'succeeded');
+    const code = !last ? 'never_run' : !ofY ? 'stale' : ofY.status === 'failed' ? 'failed' : !done(ofY) ? String(ofY.status) : ofY.coverage === 'incomplete' ? 'incomplete_coverage' : 'fresh';
+    const status: HealthStatus = code === 'never_run' ? 'unknown' : code === 'failed' ? 'error' : code === 'fresh' ? 'ready' : 'warning';
+    out.push(R('jobs.retention_snapshot', 'jobs', status, code === 'never_run' ? 'low' : code === 'failed' ? 'high' : code === 'fresh' ? 'info' : 'medium', 'customer_retention_snapshot_runs',
+      { verifiedAt: code === 'fresh' ? iso(ofY.finished_at) : null, detail: { code, expectedDate: y, latestDate: last?.d ?? null, latestStatus: last ? String(last.status) : null },
+        action: code !== 'fresh' ? { code: 'open_retention', route: ROUTES.retention } : null }));
   }
   return out;
 }

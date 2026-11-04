@@ -54,10 +54,24 @@ export function smsFromEnv(env: NodeJS.ProcessEnv = process.env): SmsSender | nu
     : null;
 }
 
-export function inviteSmsBody(link: string): string {
-  return `AIPowerSalon: you have been invited to join a salon. Set up your technician account here: ${link}`;
+/** C3 audit (Nov 4 2026): the invite text named "technician" for every role — a receptionist was told to set up a
+ *  technician account. A technician (or an invite without a role) keeps the technician text; any other role is named. */
+const isTech = (role?: string | null) => !role || /^tech/i.test(role.trim());
+const roleName = (role: string) => role.trim().toLowerCase().replace(/[_-]+/g, ' ');
+export function inviteSmsBody(link: string, role?: string | null): string {
+  return isTech(role)
+    ? `AIPowerSalon: you have been invited to join a salon. Set up your technician account here: ${link}`
+    : `AIPowerSalon: you have been invited to join a salon team as ${/^[aeiou]/i.test(roleName(role!)) ? 'an' : 'a'} ${roleName(role!)}. Set up your account here: ${link}`;
 }
-export function inviteEmail(link: string): { subject: string; body: string } {
+export function inviteEmail(link: string, role?: string | null): { subject: string; body: string } {
+  if (!isTech(role)) {
+    const r = roleName(role!);
+    return {
+      subject: 'You have been invited to AIPowerSalon',
+      body: `A salon has invited you to join its team on AIPowerSalon as ${/^[aeiou]/i.test(r) ? 'an' : 'a'} ${r}.\n\nSet up your account:\n${link}\n\n` +
+        'If you were not expecting this, you can ignore this message.',
+    };
+  }
   return {
     subject: 'You have been invited to AIPowerSalon',
     body: `A salon has invited you to join AIPowerSalon as a technician.\n\nSet up your account:\n${link}\n\n` +
@@ -110,8 +124,8 @@ export class InvitationDelivery {
     const direct = input.channel === 'sms' ? this.sms : input.channel === 'email' ? this.email : null;
     if (direct) {
       try {
-        if (input.channel === 'sms') await (direct as SmsSender).send(input.to, inviteSmsBody(link));
-        else { const m = inviteEmail(link); await (direct as EmailSender).send(input.to, m.subject, m.body); }
+        if (input.channel === 'sms') await (direct as SmsSender).send(input.to, inviteSmsBody(link, input.role));
+        else { const m = inviteEmail(link, input.role); await (direct as EmailSender).send(input.to, m.subject, m.body); }
         await this.sink.setInvitationDelivery(input.invitationId, 'delivered', null);
         return { delivered: true, deliveryStatus: 'delivered', channel: input.channel, reason: `Sent by ${input.channel}.`, manualToken: null };
       } catch (e: any) {

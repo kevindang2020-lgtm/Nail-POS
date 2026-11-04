@@ -10,7 +10,8 @@
 // Delivery (delivered / undelivered) is not written here: the signed Twilio status callback updates the notifications
 // ledger row, and the campaign report reads it through provider_id — one source, never double counted.
 import { sql, type Kysely } from 'kysely';
-import { registerJobHandler, jobHandlerFor, PermanentJobError, tenantTimeZone, canMoveToSql } from '@aipowersalon/database';
+import { registerJobHandler, jobHandlerFor, PermanentJobError, tenantTimeZone, canMoveToSql, enqueueJob } from '@aipowersalon/database';
+import { quietWindowUntil } from './retention.repository';
 import { logException } from '@aipowersalon/observability';
 import { RETENTION_SMS_CAMPAIGN, RETENTION_SMS_RECIPIENT } from '../customer-lifecycles';
 import type { TenantMessenger } from '@aipowersalon/notifications';
@@ -21,6 +22,17 @@ export async function runRetentionSmsJob(db: Kysely<any>, messenger: TenantMesse
   const tenantId = String(payload.tenantId ?? ''), recipientId = String(payload.recipientId ?? '');
   if (!/^[0-9a-f-]{36}$/i.test(tenantId) || !/^[0-9a-f-]{36}$/i.test(recipientId)) throw withCode(new PermanentJobError('bad retention sms payload'), 'VALIDATION_FAILED');
   const tz = await tenantTimeZone(db, tenantId).catch(() => 'America/New_York');   // "upcoming booking" is a salon-local date
+  // 0. C5 audit (Nov 4 2026): quiet hours are re-checked at SEND time — a text whose turn comes inside them waits (still queued)
+  // for a new job at the end of the quiet window; it is never sent inside it
+  const quiet = await quietWindowUntil(db, tenantId);
+  if (quiet.until) {
+    const still = (await sql<any>`select r.status, r.campaign_id from retention_sms_recipients r where r.tenant_id = ${tenantId} and r.id = ${recipientId}`.execute(db)).rows[0];
+    if (still?.status === 'queued') {
+      await enqueueJob(db, { jobClass: 'standard', jobType: RETENTION_SMS_JOB, tenantId, payload: { tenantId, recipientId, campaignId: String(still.campaign_id) },
+        idempotencyKey: `${recipientId}:quiet:${quiet.until.toISOString()}`, runAfter: quiet.until, maxAttempts: 3 });
+      return { outcome: 'deferred_quiet_hours' };
+    }
+  }
   // 1. claim: queued → submitting (or submitting → unknown), committed before anything leaves the building
   const claim = await db.transaction().execute(async (trx) => {
     const r = (await sql<any>`select r.id, r.status, r.customer_id, r.destination, r.campaign_id, c.body, c.status as campaign_status

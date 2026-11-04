@@ -89,6 +89,17 @@ export function RewardsNetworkPanel() {
   // addendum §6.2: another POS, the owner app or Super Admin changed the rule / wallet → every till refetches (ids only)
   useRealtime(['loyalty'], refreshAll, { relevance: (d) => (d?.event === 'loyalty_network_updated' || !d?.event ? 'full' : 'skip') });
 
+  // C1 audit (Nov 4 2026): when the next scheduled change (salon or global) starts, the header refreshes itself — nothing sends
+  // an event at that moment, so an open screen kept saying "Scheduled" after the change was live
+  useEffect(() => {
+    const times = [st?.scheduled?.[0]?.effectiveFrom, st?.globalNext?.effectiveFrom].map((t) => (t ? Date.parse(t) : NaN)).filter((t) => Number.isFinite(t) && t > Date.now());
+    if (!times.length) return undefined;
+    const wait = Math.min(...times) - Date.now() + 1500;
+    if (wait > 2_147_000_000) return undefined;   // beyond what a timer can hold; a later visit loads it
+    const h = setTimeout(() => { void loadState(); void loadHist(); }, wait);
+    return () => clearTimeout(h);
+  }, [st, loadState, loadHist]);
+
   const done = (text: string) => { setNote({ tone: 'ok', text }); setDlg(null); void loadState(); void loadHist(); purchases.toFirst(); ledger.toFirst(); };
   const fail = (e: unknown, fb: string) => { if (!isStepUpCancelled(e)) setNote({ tone: 'bad', text: errText(e, fb) }); };
 

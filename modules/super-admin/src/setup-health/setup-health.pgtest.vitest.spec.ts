@@ -164,3 +164,18 @@ describe('HL-01 registration from the PM-03 provider snapshots (migration 725)',
     expect(await reg()).toMatchObject({ status: 'action_required', code: 'rejected' });
   });
 });
+
+// C3 audit (Nov 4 2026): retention snapshots are "fresh" only when yesterday's salon day has a completed, covered run
+describe('retention snapshot freshness', () => {
+  const ins = (d: string, status: string, coverage: string | null, finished = 'now()') => q(`insert into customer_retention_snapshot_runs (tenant_id, snapshot_local_date, definition_version, settings_version, segmentation_version, risk_days, approaching_days, time_zone, kind, status, coverage, finished_at)
+    values ($1, ${d}, 'v-test-' || ${d}::text, 1, 's1', 60, 45, 'America/New_York', 'backfill', $2, $3, ${finished})`, [T, status, coverage]);
+  const check = async () => { await unthrottle(); await repo.run(owner, 'manual'); return byKey(await repo.summary(owner, {}))['jobs.retention_snapshot:all']; };
+  it('a backfill of an old day just finished is stale; an incomplete yesterday warns; a complete yesterday is ready', async () => {
+    await ins(`'2026-03-01'::date`, 'completed', 'complete');
+    expect(await check()).toMatchObject({ status: 'warning', code: 'stale' });
+    await ins(`((now() at time zone 'America/New_York')::date - 1)`, 'completed', 'incomplete');
+    expect(await check()).toMatchObject({ status: 'warning', code: 'incomplete_coverage' });
+    await q(`update customer_retention_snapshot_runs set coverage = 'complete' where tenant_id = $1 and snapshot_local_date = (now() at time zone 'America/New_York')::date - 1`, [T]);
+    expect(await check()).toMatchObject({ status: 'ready', code: 'fresh' });
+  });
+});

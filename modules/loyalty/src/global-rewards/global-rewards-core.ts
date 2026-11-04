@@ -93,6 +93,22 @@ export function validateCustomRate(input: { spendIncrementCents?: unknown; point
   return { spendIncrementCents: spend, pointTenthsPerIncrement: pts, minEligibleCents: min, perTicketCapTenths: cap, roundingMode: 'COMPLETED_INCREMENT' };
 }
 
+/** C1 audit (Nov 4 2026): the platform limits override ISSUANCE, not only activation — an active custom rate is clamped to
+ *  today's limits when a sale is earned (a Super Admin lowering the cap took effect only for new activations). Clamping never
+ *  issues MORE than the salon's rule: points and per-ticket cap only go down, the minimum spend and increment only go up. */
+export function clampRateToPolicy(rate: EarningRate, program: ProgramPolicy): { rate: EarningRate; clamped: boolean } {
+  const out: EarningRate = {
+    ...rate,
+    spendIncrementCents: Math.max(rate.spendIncrementCents, program.customMinSpendIncrementCents),
+    pointTenthsPerIncrement: Math.min(rate.pointTenthsPerIncrement, program.customMaxPointTenthsPerIncrement),
+    minEligibleCents: Math.max(rate.minEligibleCents, program.customMinEligibleFloorCents),
+    perTicketCapTenths: rate.perTicketCapTenths == null ? null : Math.min(rate.perTicketCapTenths, program.maxPointTenthsPerTicket),
+  };
+  const clamped = out.spendIncrementCents !== rate.spendIncrementCents || out.pointTenthsPerIncrement !== rate.pointTenthsPerIncrement
+    || out.minEligibleCents !== rate.minEligibleCents || out.perTicketCapTenths !== rate.perTicketCapTenths;
+  return { rate: out, clamped };
+}
+
 /** Super Admin global rate validation (looser than custom — the platform's own range checks). */
 export function validateGlobalRate(input: { spendIncrementCents?: unknown; pointTenthsPerIncrement?: unknown; minEligibleCents?: unknown; perTicketCapTenths?: unknown }, program: ProgramPolicy): EarningRate {
   const wide: ProgramPolicy = { ...program, customMinSpendIncrementCents: 1, customMaxSpendIncrementCents: 1_000_000, customMaxPointTenthsPerIncrement: 10_000, customMinEligibleFloorCents: 0 };

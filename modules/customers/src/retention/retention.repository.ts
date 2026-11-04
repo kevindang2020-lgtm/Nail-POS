@@ -542,7 +542,9 @@ export class RetentionRepository {
         (select count(*) from retention_sms_recipients r where r.tenant_id = ${T} and r.campaign_id = c.id and r.status = 'sent')::int as sent,
         (select count(*) from retention_sms_recipients r join notifications n on n.tenant_id = r.tenant_id and n.provider_id = r.provider_id
            where r.tenant_id = ${T} and r.campaign_id = c.id and r.status = 'sent' and n.status = 'delivered')::int as delivered,
-        (select count(*) from retention_sms_recipients r where r.tenant_id = ${T} and r.campaign_id = c.id and r.status in ('failed', 'blocked', 'unknown'))::int as failed,
+        (select count(*) from retention_sms_recipients r where r.tenant_id = ${T} and r.campaign_id = c.id and r.status in ('failed', 'blocked'))::int as failed,
+        -- C5 audit (Nov 4 2026): a hand-off whose outcome is unknown may have been delivered — never counted as failed
+        (select count(*) from retention_sms_recipients r where r.tenant_id = ${T} and r.campaign_id = c.id and r.status = 'unknown')::int as unknown,
         (select count(distinct r.customer_id) from retention_sms_recipients r where r.tenant_id = ${T} and r.campaign_id = c.id and r.status = 'sent'
            and exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id = r.customer_id and a.created_at > r.sent_at
              and a.created_at < r.sent_at + make_interval(days => ${k.observation})))::int as booked_after,
@@ -576,7 +578,7 @@ export class RetentionRepository {
         campaignObserved: { customers: N(tot.c_customers), visits: N(tot.c_visits), revenueCents: N(tot.c_revenue), avgDaysToReturn: tot.avg_days_to_return == null ? null : Number(tot.avg_days_to_return) },
         unmessagedRecovered: N(tot.unmessaged) },
       campaigns: camps.map((c: any) => ({ campaignId: String(c.id), label: c.label ?? null, confirmedAt: iso(c.confirmed_at), eligible: N(c.eligible_count), sent: N(c.sent), delivered: N(c.delivered),
-        failed: N(c.failed), bookedAfterContact: N(c.booked_after), returnedCustomers: N(c.returned), returnRevenueCents: N(c.return_revenue) })),
+        failed: N(c.failed), unknown: N(c.unknown), bookedAfterContact: N(c.booked_after), returnedCustomers: N(c.returned), returnRevenueCents: N(c.return_revenue) })),
       returns: { items: items.map((x: any) => ({ ticketId: String(x.ticket_id), ticketNumber: x.ticket_number == null ? null : String(x.ticket_number), customerId: String(x.customer_id), customerName: String(x.full_name || ''),
         returnedAt: iso(x.vt), previousVisitAt: iso(x.prev_vt), daysAwayBefore: N(x.gap_days), netCents: N(x.net_cents), campaignId: x.campaign_id ? String(x.campaign_id) : null, messageSentAt: iso(x.sent_at) })),
         page: pg, pageSize, totalItems, totalPages },
@@ -612,19 +614,7 @@ export class RetentionRepository {
   }
 
   /** Platform quiet hours (campaign_limits, salon-local hours) → when the first text may go out. null = now. */
-  async quietUntil(ctx: RetentionContext): Promise<{ start: number | null; end: number | null; until: Date | null }> {
-    const lim = (await sql<any>`select quiet_hours_start, quiet_hours_end from campaign_limits where active order by created_at desc limit 1`.execute(this.db)).rows[0];
-    const s = lim?.quiet_hours_start, e = lim?.quiet_hours_end;
-    if (s == null || e == null || s === e) return { start: s ?? null, end: e ?? null, until: null };
-    const tz = await tenantTimeZone(this.db, ctx.tenantId).catch(() => 'America/New_York');
-    const r = (await sql<any>`select extract(hour from now() at time zone ${tz})::int as h,
-      (date_trunc('day', now() at time zone ${tz}) + make_interval(hours => ${N(e)})) at time zone ${tz} as end_today,
-      (date_trunc('day', now() at time zone ${tz}) + interval '1 day' + make_interval(hours => ${N(e)})) at time zone ${tz} as end_tomorrow`.execute(this.db)).rows[0];
-    const h = N(r.h); const inQuiet = N(s) > N(e) ? (h >= N(s) || h < N(e)) : (h >= N(s) && h < N(e));
-    if (!inQuiet) return { start: N(s), end: N(e), until: null };
-    const until = N(s) > N(e) && h >= N(s) ? new Date(r.end_tomorrow) : new Date(r.end_today);
-    return { start: N(s), end: N(e), until };
-  }
+  async quietUntil(ctx: RetentionContext): Promise<{ start: number | null; end: number | null; until: Date | null }> { return quietWindowUntil(this.db, ctx.tenantId); }
 
   // ── campaigns ──────────────────────────────────────────────────────────────────────────────────────────────────────
   async createDraft(ctx: RetentionContext, d: { body: string; segments: number; audience: Record<string, unknown>; verdicts: { customerId: string; status: string; destination: string | null }[] }): Promise<string> {
@@ -733,6 +723,7 @@ export class RetentionRepository {
     const visits = (await sql<any>`select t.id, t.ticket_number, coalesce(t.paid_at, t.created_at) as vt, coalesce(t.total_cents, 0)::bigint as total_cents,
         (select string_agg(l.service_name_snapshot, ', ' order by l.created_at) from ticket_service_lines l where l.tenant_id = t.tenant_id and l.ticket_id = t.id and l.removed_at is null) as services
       from tickets t where t.tenant_id = ${T} and t.customer_id = ${customerId} and t.removed_at is null and t.status = any(${VISIT}::text[])
+        and ${this.branchPred(k)}   -- C3 audit: the same branches the segment above was computed from (another branch's tickets leaked)
       order by coalesce(t.paid_at, t.created_at) desc, t.id desc limit 12`.execute(this.db)).rows;
     const upcoming = (await sql<any>`select a.id, to_char(a.appt_date, 'YYYY-MM-DD') as appt_date, a.start_time, a.status, a.services from pos_tech_appointments a
       where a.tenant_id = ${T} and a.customer_id = ${customerId} and a.appt_date >= ${k.today}::date and a.status = any(${UPCOMING}::text[])
@@ -767,4 +758,21 @@ export class RetentionRepository {
         at: iso(c.created_at), deliveredAt: iso(c.delivered_at), failure: c.failure_reason ? String(c.failure_reason).slice(0, 160) : null })),
       outreach: outreach.map((o: any) => ({ campaignId: String(o.campaign_id), label: o.label ?? null, status: o.status === 'sent' && o.delivery === 'delivered' ? 'delivered' : o.status === 'sent' && o.delivery === 'failed' ? 'undelivered' : String(o.status), at: iso(o.sent_at ?? o.created_at) })) };
   }
+}
+
+/** Platform quiet hours (campaign_limits, salon-local hours) for one salon → until when nothing may be sent (null = now is fine).
+ *  Shared by the confirm step and — C5 audit (Nov 4 2026) — the send worker itself: a campaign confirmed at 20:58 is spread at
+ *  60 texts a minute, so later texts would otherwise go out inside quiet hours. */
+export async function quietWindowUntil(db: Kysely<any>, tenantId: string): Promise<{ start: number | null; end: number | null; until: Date | null }> {
+  const lim = (await sql<any>`select quiet_hours_start, quiet_hours_end from campaign_limits where active order by created_at desc limit 1`.execute(db)).rows[0];
+  const s = lim?.quiet_hours_start, e = lim?.quiet_hours_end;
+  if (s == null || e == null || s === e) return { start: s ?? null, end: e ?? null, until: null };
+  const tz = await tenantTimeZone(db, tenantId).catch(() => 'America/New_York');
+  const r = (await sql<any>`select extract(hour from now() at time zone ${tz})::int as h,
+    (date_trunc('day', now() at time zone ${tz}) + make_interval(hours => ${N(e)})) at time zone ${tz} as end_today,
+    (date_trunc('day', now() at time zone ${tz}) + interval '1 day' + make_interval(hours => ${N(e)})) at time zone ${tz} as end_tomorrow`.execute(db)).rows[0];
+  const h = N(r.h); const inQuiet = N(s) > N(e) ? (h >= N(s) || h < N(e)) : (h >= N(s) && h < N(e));
+  if (!inQuiet) return { start: N(s), end: N(e), until: null };
+  const until = N(s) > N(e) && h >= N(s) ? new Date(r.end_tomorrow) : new Date(r.end_today);
+  return { start: N(s), end: N(e), until };
 }

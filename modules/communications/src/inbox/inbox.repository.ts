@@ -11,6 +11,8 @@
 //                                 pos_tech_appointments) — nothing is copied into a second store.
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { isValidTimeZone, canMoveToSql } from '@aipowersalon/database';
+import { hasPermission } from '@aipowersalon/permissions';
+import { parseInboundKeyword } from '../notifications/notifications-core';
 import { COMMUNICATION_THREAD, COMMUNICATION_MESSAGE } from '../communications-lifecycles';
 import {
   InboxError, isUuid, normalizePhone, last10, maskPhone, maskEmail, preview, likeOf, deliveryState, answersCustomer, blockReasonCode,
@@ -97,13 +99,17 @@ export class InboxRepository {
   private searchSql(ctx: InboxCtx, q: InboxQuery): Raw {
     const s = q.search; if (!s) return sql`true`;
     const tid = ctx.tenantId; const like = likeOf(s.text); const parts: Raw[] = [];
-    parts.push(sql`t.customer_name ILIKE ${like}`, sql`c.full_name ILIKE ${like}`, sql`t.customer_contact ILIKE ${like}`);
-    if (s.digits) {
+    // C2 audit (Nov 4 2026): a viewer who sees contacts masked (no pos.customers.view) searches by name / id only — matching a
+    // full phone number or e-mail would reveal whose it is (the leak B16 closed on the Email screen)
+    const full = hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view');
+    parts.push(sql`t.customer_name ILIKE ${like}`, sql`c.full_name ILIKE ${like}`);
+    if (full) parts.push(sql`t.customer_contact ILIKE ${like}`);
+    if (s.digits && full) {
       const dl = likeOf(s.digits);
       parts.push(sql`right(regexp_replace(COALESCE(t.contact_normalized, t.customer_contact, ''), '[^0-9]', '', 'g'), 10) LIKE ${dl}`);
       parts.push(sql`right(regexp_replace(COALESCE(c.normalized_phone, c.phone_display, ''), '[^0-9]', '', 'g'), 10) LIKE ${dl}`);
     }
-    if (s.email) parts.push(sql`lower(c.email) LIKE ${likeOf(s.email)}`);
+    if (s.email && full) parts.push(sql`lower(c.email) LIKE ${likeOf(s.email)}`);
     if (s.uuid) {
       parts.push(sql`t.id = ${s.uuid}::uuid`, sql`t.customer_id = ${s.uuid}::uuid`);
       parts.push(sql`EXISTS (SELECT 1 FROM communication_messages mi WHERE mi.tenant_id = ${tid} AND mi.thread_id = t.id AND mi.id = ${s.uuid}::uuid)`);
@@ -186,7 +192,8 @@ export class InboxRepository {
         min(${this.awaiting()}) AS oldest_awaiting
       FROM communication_threads t WHERE t.tenant_id = ${ctx.tenantId} AND ${this.branchScope(ctx, branch)}`.execute(this.db)).rows[0] ?? {};
     // Messages sent today (salon-local day): staff replies from this inbox, split by what the provider has confirmed
-    const m: Row = (await sql<Row>`SELECT count(*)::int AS total,
+    // C2 audit: "sent" counts only texts that left (a failed / blocked reply never left — it is counted under failed only)
+    const m: Row = (await sql<Row>`SELECT count(*) FILTER (WHERE NOT (m.status IN ('failed', 'blocked') OR coalesce(nt.status, '') IN ('failed', 'blocked')))::int AS total,
         count(*) FILTER (WHERE m.notification_id IS NOT NULL AND nt.status IN ('sent', 'delivered'))::int AS submitted,
         count(*) FILTER (WHERE nt.status = 'delivered' OR nt.provider_status = 'delivered')::int AS delivered,
         count(*) FILTER (WHERE m.status IN ('failed', 'blocked') OR nt.status IN ('failed', 'blocked'))::int AS failed,
@@ -195,10 +202,16 @@ export class InboxRepository {
       LEFT JOIN notifications nt ON nt.tenant_id = ${ctx.tenantId} AND nt.id = m.notification_id
       WHERE m.tenant_id = ${ctx.tenantId} AND t.tenant_id = ${ctx.tenantId} AND m.direction = 'outbound' AND ${this.branchScope(ctx, branch)}
         AND m.created_at >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz}`.execute(this.db)).rows[0] ?? {};
+    // C2 audit (Nov 4 2026): "Missed" = calls missed today (salon day) from the call ledger — the tile counted threads in a
+    // 'missed' status nothing ever sets, so it was always 0. The threads count stays beside it.
+    const mc: Row = (await sql<Row>`SELECT count(*)::int AS n FROM call_intelligence_events ce
+      WHERE ce.tenant_id = ${ctx.tenantId} AND (ce.status = 'missed' OR ce.outcome = 'missed')
+        AND ${branch ? sql`ce.branch_id = ${branch}::uuid` : this.branchOk(ctx, sql`ce.branch_id`)}
+        AND COALESCE(ce.started_at, ce.created_at) >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz}`.execute(this.db).catch(() => ({ rows: [{ n: null }] }))).rows[0] ?? {};
     return {
       scope: { branch, tz },
       conversations: { total: n(k.total), open: n(k.open), unreadThreads: n(k.unread_threads), unreadMessages: n(k.unread_messages), replied: n(k.replied),
-        missed: n(k.missed), awaiting: n(k.awaiting), oldestAwaitingSince: iso(k.oldest_awaiting) },
+        missed: mc.n == null ? null : n(mc.n), missedThreads: n(k.missed), awaiting: n(k.awaiting), oldestAwaitingSince: iso(k.oldest_awaiting) },
       channelMix: [{ channel: 'sms', count: n(k.sms) }, { channel: 'email', count: n(k.email) }, { channel: 'call', count: n(k.call) }],
       sentToday: { total: n(m.total), submitted: n(m.submitted), delivered: n(m.delivered), failed: n(m.failed), simulated: n(m.simulated) },
     };
@@ -306,7 +319,7 @@ export class InboxRepository {
     if (want.has('automated') && cid) {
       // ledger rows for this customer that are NOT already an inbox message (no double counting)
       const r = await sql<Row>`SELECT nt.id, nt.channel, nt.subject, nt.body, nt.status, nt.provider_status, nt.failure_reason, nt.purpose, nt.created_at, nt.delivered_at
-        FROM notifications nt WHERE nt.tenant_id = ${tid} AND nt.customer_id = ${cid}::uuid
+        FROM notifications nt WHERE nt.tenant_id = ${tid} AND nt.customer_id = ${cid}::uuid AND ${this.branchOk(ctx, sql`nt.branch_id`)}   -- C2 audit: another branch's receipts / reminders stay hidden
           AND NOT EXISTS (SELECT 1 FROM communication_messages mx WHERE mx.tenant_id = ${tid} AND mx.notification_id = nt.id) ${before(sql`nt.created_at`, sql`nt.id`)}
         ORDER BY nt.created_at DESC, nt.id DESC LIMIT ${L}`.execute(this.db);
       lists.push((r.rows as Row[]).map((x) => { const k = automatedType(x.purpose); const st = deliveryState({ direction: 'outbound', messageStatus: 'sent', notificationId: String(x.id), ledgerStatus: x.status, providerStatus: x.provider_status, failureReason: x.failure_reason, providerErrorCode: null });
@@ -514,7 +527,10 @@ export async function recordInboundSms(db: Db, i: InboundRecord): Promise<Inboun
   return db.transaction().execute(async (trx: Db) => {
     const num: Row | undefined = (await sql<Row>`SELECT n.branch_id FROM tenant_messaging_numbers n WHERE n.tenant_id = ${i.tenantId} AND n.phone_number = ${i.to} LIMIT 1`.execute(trx)).rows[0] as Row | undefined;
     const branchId: string | null = num?.branch_id ? String(num.branch_id) : null;
+    // C4 audit: a text to a BRANCH's own number joins that branch's conversation only (answered from that number); a text to
+    // the salon number joins the customer's latest conversation wherever it is (as before)
     let t = (await sql<Row>`SELECT ${T_COLS} FROM communication_threads t WHERE t.tenant_id = ${i.tenantId} AND t.channel = 'sms' AND t.contact_normalized = ${contact}
+        AND ${branchId ? sql`t.branch_id = ${branchId}::uuid` : sql`true`}
       ORDER BY (t.status <> 'closed') DESC, COALESCE(t.last_message_at, t.created_at) DESC, t.id DESC LIMIT 1 FOR UPDATE`.execute(trx)).rows[0] as Row | undefined;
     let match = t?.customer_match ?? 'none';
     if (!t || !t.customer_id) {
@@ -535,11 +551,14 @@ export async function recordInboundSms(db: Db, i: InboundRecord): Promise<Inboun
       VALUES (${i.tenantId}, ${thread.id}::uuid, 'inbound', 'sms', ${body}, 'customer', 'delivered', ${i.messageSid}, ${i.numMedia || null})
       ${i.messageSid ? sql`ON CONFLICT (tenant_id, provider_message_sid) WHERE provider_message_sid IS NOT NULL AND direction = 'inbound' DO NOTHING` : sql``} RETURNING id`.execute(trx);
     if (!ins.rows.length) return { threadId: String(thread.id), messageId: null, branchId: thread.branch_id ? String(thread.branch_id) : null, duplicate: true, customerMatch: match };
+    // C2 audit (Nov 4 2026): STOP / UNSUBSCRIBE … is kept in the conversation but is not a message waiting for an answer — it
+    // no longer reopens the thread, counts as unread or tops "Longest unanswered" (the composer is blocked for that number)
+    const optOut = parseInboundKeyword(body) === 'stop';
     await sql<Row>`UPDATE communication_threads t SET last_message_at = now(), last_message_preview = ${preview(body)}, last_direction = 'inbound', last_inbound_at = now(),
-        unread_count = t.unread_count + 1, awaiting_reply_since = COALESCE(t.awaiting_reply_since, now()), record_version = t.record_version + 1, updated_at = now()
+        unread_count = t.unread_count + ${optOut ? 0 : 1}, awaiting_reply_since = ${optOut ? sql`NULL` : sql`COALESCE(t.awaiting_reply_since, now())`}, record_version = t.record_version + 1, updated_at = now()
       WHERE t.tenant_id = ${i.tenantId} AND t.id = ${thread.id}::uuid`.execute(trx);
     // a customer writing again reopens a closed / replied / waiting conversation — through the thread machine
-    if (['closed', 'replied', 'pending'].includes(String(thread.status))) {
+    if (!optOut && ['closed', 'replied', 'pending'].includes(String(thread.status))) {
       await sql<Row>`UPDATE communication_threads t SET status = 'open', closed_at = NULL WHERE t.tenant_id = ${i.tenantId} AND t.id = ${thread.id}::uuid AND ${canMoveToSql(COMMUNICATION_THREAD, 'open', 't')}`.execute(trx);
       await sql<Row>`INSERT INTO communication_thread_events (tenant_id, thread_id, event_type, actor_kind, previous_value, new_value, reason)
         VALUES (${i.tenantId}, ${thread.id}::uuid, 'status_changed', 'system', ${String(thread.status)}, 'open', 'customer_message')`.execute(trx);

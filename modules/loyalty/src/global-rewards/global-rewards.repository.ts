@@ -14,7 +14,7 @@ import { canMoveToSql, isValidTimeZone } from '@aipowersalon/database';
 import { monthStartMs } from '@aipowersalon/date-time';
 import { logException } from '@aipowersalon/observability';
 import {
-  GlobalRewardsError, alertLevel, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
+  GlobalRewardsError, alertLevel, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
   purchaseQuantity, isPending, rateLabel, tokensLabel,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
@@ -133,7 +133,9 @@ export class GlobalRewardsRepository {
         logException(new Error('activated CUSTOM earning version is incomplete'), { where: 'global-rewards.resolve', tenantId: trustedTenantId, versionId: String(t.id) });
         return { ok: false, code: 'EARNING_RULE_INVALID', reason: 'custom_version_incomplete', program };
       }
-      return { ok: true, program, rule: { source: 'TENANT_OVERRIDE', versionId: String(t.id), versionNo: n(t.version_no), effectiveFrom: iso(t.effective_from)!, ...rateOf(t) } };
+      const { rate, clamped } = clampRateToPolicy(rateOf(t), program);   // C1 audit: today's platform limits win at issuance
+      if (clamped) logException(new Error('active custom earning rate is outside the platform limits — issued at the limit'), { where: 'global-rewards.resolve', tenantId: trustedTenantId, versionId: String(t.id) });
+      return { ok: true, program, rule: { source: 'TENANT_OVERRIDE', versionId: String(t.id), versionNo: n(t.version_no), effectiveFrom: iso(t.effective_from)!, ...rate } };
     }
     const g = await this.globalRuleAt(x, effectiveAt);
     if (!g) return { ok: false, code: 'LOYALTY_DISABLED', reason: 'no_global_rule', program };
@@ -291,6 +293,13 @@ export class GlobalRewardsRepository {
         if (String(err?.code) === '23505') throw new GlobalRewardsError('Another earning change starts at that exact time. Pick another time.', 'EARNING_POLICY_CONFLICT', 409);
         throw err;
       }
+      // C1 audit (Nov 4 2026): a custom rule scheduled to start AFTER this return would still have switched on at its time —
+      // "Use Global Rules" cancels every scheduled custom change from this moment on (audited, through the machine)
+      const superseded = (await sql<Row>`UPDATE tenant_earning_policy_versions v SET status = 'CANCELED', canceled_by = ${actor(ctx.userId)}, canceled_at = now(), updated_by = ${actor(ctx.userId)},
+          updated_at = now(), record_version = v.record_version + 1
+        WHERE v.tenant_id = ${ctx.tenantId}::uuid AND v.mode = 'CUSTOM' AND v.effective_from > ${at.toISOString()}::timestamptz AND v.id <> ${String(row!.id)}::uuid
+          AND ${canMoveToSql(TENANT_EARNING_POLICY_VERSION, 'CANCELED', 'v')} RETURNING v.id`.execute(trx)).rows.map((r) => String(r.id));
+      for (const id of superseded) await this.auditTenant(trx, ctx, 'loyalty.earning.change_canceled', 'Scheduled custom earning change canceled by the return to global rules', { resourceType: 'tenant_earning_policy_version', resourceId: id, before: { status: 'ACTIVATED' }, after: { status: 'CANCELED' } });
       await this.auditTenant(trx, ctx, 'loyalty.earning.global_selected', `Return to AI PowerSalon global rules from ${at.toISOString()}`,
         { resourceType: 'tenant_earning_policy_version', resourceId: String(row!.id), before: before ? { mode: before.mode, versionId: before.id, rate: before.rate } : { mode: 'GLOBAL' }, after: { mode: 'GLOBAL', effectiveFrom: at.toISOString() }, reason: input.reason ?? null });
       return { before, after: versionOf(row!), effectiveFrom: at.toISOString(), scheduled: at.getTime() > now.getTime() + 1000 };

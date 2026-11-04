@@ -305,7 +305,7 @@ export function POSCommunicationsScreen() {
         <div className="ci-card">
           <div className="ci-card-t">{tx('pos.ai_receptionist_missed_calls')}</div>
           <div className="ci-pair">
-            <div><span>{tx('pos.missed_threads')}</span><b style={{ color: 'var(--aps-danger)' }}>{n(k?.missed)}</b></div>
+            <div><span>{tx('pos.missed_threads')}</span><b style={{ color: 'var(--aps-danger)' }}>{n((k as { missedThreads?: number } | undefined)?.missedThreads)}</b></div>
             <div><span>{tx('pos.ai_calls_handled')}</span><b>{metricText(act === null ? null : act?.aiCallsHandled)}</b></div>
             <div><span>{tx('pos.open_threads')}</span><b>{n(k?.open)}</b></div>
           </div>
