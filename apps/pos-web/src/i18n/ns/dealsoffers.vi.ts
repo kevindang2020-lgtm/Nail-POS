@@ -12,6 +12,7 @@ export const DEALSOFFERS_VI = {
   'do.status.pending': 'Chờ duyệt', 'do.kind': 'Loại', 'do.kind.all': 'Mọi loại', 'do.kind.deal': 'Ưu đãi', 'do.kind.coupon': 'Phiếu giảm giá', 'do.kind.automatic': 'Khuyến mãi tự động', 'do.kind.announcement': 'Thông báo',
   'do.owner': 'Người tạo', 'do.owner.all': 'Tiệm và thợ', 'do.owner.salon': 'Ưu đãi của tiệm', 'do.owner.technician': 'Ưu đãi của thợ', 'do.anyTech': 'Mọi thợ',
   'do.order': 'Thứ tự', 'do.order.oldest': 'Chờ lâu nhất trước', 'do.order.start': 'Bắt đầu sớm nhất trước', 'do.order.newest': 'Yêu cầu mới nhất trước',
+  'do.aprRequested': 'Ngày gửi duyệt',
   'do.basis.created': 'Ngày tạo', 'do.basis.updated': 'Ngày cập nhật', 'do.basis.starts': 'Ngày bắt đầu', 'do.basis.ends': 'Ngày kết thúc', 'do.basis.approved': 'Ngày duyệt', 'do.basis.redeemed': 'Ngày dùng', 'do.basis.active': 'Hoạt động trong khoảng',
   'do.tab.library': 'Ưu đãi', 'do.tab.approvals': 'Duyệt', 'do.tab.redemptions': 'Lịch sử sử dụng', 'do.tab.performance': 'Hiệu quả', 'do.tab.health': 'Tình trạng hệ thống', 'do.tab.settings': 'Cài đặt',
   'do.library': 'Danh sách ưu đãi', 'do.byTech': 'Ưu đãi của thợ · {t}',

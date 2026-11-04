@@ -167,4 +167,11 @@ describe('checker, health, wizard, settings, performance', () => {
     await waitFor(() => expect(offers.redemptions).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', dateField: 'redeemed' })));
     expect(await screen.findByTestId('red-ticket')).toHaveTextContent('#2001');
   });
+  it('the approvals inbox has its own requested-date period sent to the server', async () => {
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('tab-approvals'));
+    const bar = await screen.findByTestId('apr-period');
+    fireEvent.click(within(bar).getByTestId('preset-month'));
+    await waitFor(() => expect(offers.approvals).toHaveBeenLastCalledWith(expect.objectContaining({ preset: 'month', page: 1 })));
+  });
 });

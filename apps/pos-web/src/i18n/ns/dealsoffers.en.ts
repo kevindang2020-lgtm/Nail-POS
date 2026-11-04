@@ -13,6 +13,7 @@ export const DEALSOFFERS_EN = {
   'do.status.pending': 'Pending approval', 'do.kind': 'Kind', 'do.kind.all': 'All kinds', 'do.kind.deal': 'Deal', 'do.kind.coupon': 'Coupon', 'do.kind.automatic': 'Automatic promotion', 'do.kind.announcement': 'Announcement',
   'do.owner': 'Made by', 'do.owner.all': 'Salon and technician', 'do.owner.salon': 'Salon deals', 'do.owner.technician': 'Technician deals', 'do.anyTech': 'Any technician',
   'do.order': 'Order', 'do.order.oldest': 'Oldest waiting first', 'do.order.start': 'Soonest start first', 'do.order.newest': 'Newest request first',
+  'do.aprRequested': 'Requested',
   'do.basis.created': 'Created', 'do.basis.updated': 'Updated', 'do.basis.starts': 'Deal starts', 'do.basis.ends': 'Deal ends', 'do.basis.approved': 'Approved', 'do.basis.redeemed': 'Redeemed', 'do.basis.active': 'Active during range',
   'do.tab.library': 'Deals', 'do.tab.approvals': 'Approvals', 'do.tab.redemptions': 'Redemption History', 'do.tab.performance': 'Performance', 'do.tab.health': 'System health', 'do.tab.settings': 'Settings',
   'do.library': 'Deals library', 'do.byTech': 'Technician deal · {t}',

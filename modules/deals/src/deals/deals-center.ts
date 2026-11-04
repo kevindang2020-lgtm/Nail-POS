@@ -17,7 +17,7 @@
 import { sql, type Kysely } from 'kysely';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { ListQuery } from '@aipowersalon/database';
+import { ListQuery, tenantTimeZone } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
 import { DealsService, DealConflictError, DealForbiddenError, DealValidationError } from './deals.service';
@@ -57,7 +57,7 @@ export class DealsCenter {
 
   /** §9 approval inbox: pending requests, each with the policy comparison a manager decides on. Oldest waiting first by
    *  default (fairness); "start" = the soonest planned start first; "newest" only when asked. */
-  async approvals(ctx: DealContext, f: { q?: string; order?: string; branchId?: string; page?: unknown; pageSize?: unknown }) {
+  async approvals(ctx: DealContext, f: { q?: string; order?: string; branchId?: string; preset?: string; from?: string; to?: string; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId;
     const page = Math.max(1, Math.trunc(Number(f.page)) || 1); const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(f.pageSize)) || 10));
     const order = (APPROVAL_ORDERS as readonly string[]).includes(String(f.order)) ? String(f.order) : 'oldest';
@@ -67,7 +67,22 @@ export class DealsCenter {
     const techName = sql`(select coalesce(nullif(te.full_name, ''), trim(coalesce(te.first_name, '') || ' ' || coalesce(te.last_name, ''))) from technicians te where te.id = d.technician_id and te.tenant_id = d.tenant_id)`;
     // Deals guide (Nov 4 2026): a location filter (salon-wide requests stay visible beside a location's own)
     const fb = f.branchId && /^[0-9a-f-]{36}$/i.test(f.branchId) ? f.branchId : null;
-    const w = sql`d.tenant_id = ${T} and ${this.branch(ctx)} and d.status = 'pending_approval' and (${fb}::uuid is null or d.branch_id = ${fb} or d.branch_id is null)
+    // Deals guide (Nov 4 2026): requested between two salon-local days (inclusive)
+    const DAY = /^\d{4}-\d{2}-\d{2}$/; let df = f.from && DAY.test(f.from) ? f.from : null, dt = f.to && DAY.test(f.to) ? f.to : null;
+    if (df && dt && df > dt) throw new DealValidationError('The start date must be on or before the end date.');
+    const preset = ['today', 'week', 'month', 'year'].includes(String(f.preset)) ? String(f.preset) : null;
+    const tz = df || dt || preset ? await tenantTimeZone(this.db, T).catch(() => 'America/New_York') : 'UTC';
+    if (preset && !df && !dt) {   // the salon's today, not the server's
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
+      const at = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+      const [y, m, d] = today.split('-').map(Number) as [number, number, number];
+      if (preset === 'today') { df = today; dt = today; }
+      else if (preset === 'week') { const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; df = at(y, m - 1, d - dow); dt = at(y, m - 1, d - dow + 6); }
+      else if (preset === 'month') { df = at(y, m - 1, 1); dt = at(y, m, 0); }
+      else { df = `${y}-01-01`; dt = `${y}-12-31`; }
+    }
+    const dw = df || dt ? sql`and (${reqAt} at time zone ${tz})::date between coalesce(${df}::date, '-infinity'::date) and coalesce(${dt}::date, 'infinity'::date)` : sql``;
+    const w = sql`d.tenant_id = ${T} and ${this.branch(ctx)} and d.status = 'pending_approval' and (${fb}::uuid is null or d.branch_id = ${fb} or d.branch_id is null) ${dw}
       and (${raw} = '' or d.title ilike ${l} or coalesce(${techName}, '') ilike ${l} or d.id::text = ${raw.toLowerCase()} or coalesce(d.technician_id::text, '') = ${raw.toLowerCase()})`;
     const total = N((await sql<any>`select count(*)::int as n from deals d where d.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const pg = Math.min(page, totalPages);
@@ -102,7 +117,8 @@ export class DealsCenter {
         ownProposal: tech && !!r.created_by_user_id && String(r.created_by_user_id) === ctx.userId,
       };
     });
-    return { order, items, page: pg, pageSize, totalItems: total, totalPages };
+    const todayTz = new Intl.DateTimeFormat('en-CA', { timeZone: tz === 'UTC' ? await tenantTimeZone(this.db, T).catch(() => 'America/New_York') : tz }).format(new Date());
+    return { order, items, page: pg, pageSize, totalItems: total, totalPages, period: { preset: preset ?? (df || dt ? 'custom' : 'all'), from: df, to: dt, tz, today: todayTz }, dateBasis: 'requested' as const };
   }
 
   /** §10 one detail record: the screen's overview / eligibility / limits / services / usage / version history, plus who owns
@@ -169,7 +185,7 @@ const LIB_SPEC = { filters: { preset: PRESET, status: { type: 'enum', values: ['
   dateField: { type: 'enum', values: DEAL_DATE_FIELDS }, serviceId: { type: 'uuid' }, ownerType: { type: 'enum', values: ['salon', 'technician', 'all'] }, kind: { type: 'enum', values: ['all', ...DEAL_KINDS_ALL] },
   technicianId: { type: 'uuid' }, branchId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const RED_SPEC = { filters: { preset: PRESET, state: { type: 'enum', values: REDEMPTION_STATES }, dealId: { type: 'uuid' }, branchId: { type: 'uuid' }, dateField: { type: 'enum', values: ['redeemed', 'applied', 'finalized'] } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
-const APR_SPEC = { filters: { order: { type: 'enum', values: APPROVAL_ORDERS }, branchId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
+const APR_SPEC = { filters: { order: { type: 'enum', values: APPROVAL_ORDERS }, branchId: { type: 'uuid' }, preset: PRESET }, dateRange: { maxDays: 3700 }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/deals-offers')
@@ -189,7 +205,7 @@ export class DealsCenterController {
   }
 
   @Get('approvals') @RequirePermission('pos.marketing.view') @ListQuery(APR_SPEC)
-  approvals(@Req() r: any, @Query() q: any) { return run(() => this.c().approvals(ctxOf(r), { q: s(q?.q), order: s(q?.order), branchId: s(q?.branchId), page: q?.page, pageSize: q?.pageSize })); }
+  approvals(@Req() r: any, @Query() q: any) { return run(() => this.c().approvals(ctxOf(r), { q: s(q?.q), order: s(q?.order), branchId: s(q?.branchId), preset: s(q?.preset), from: s(q?.from), to: s(q?.to), page: q?.page, pageSize: q?.pageSize })); }
 
   @Get('redemptions') @RequirePermission('pos.marketing.view') @ListQuery(RED_SPEC)
   redemptions(@Req() r: any, @Query() q: any) { return run(() => this.c().redemptions(ctxOf(r), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), dateField: s(q?.dateField), ...per(q), page: q?.page, pageSize: q?.pageSize })); }

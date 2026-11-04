@@ -312,3 +312,14 @@ describe('Deals center — approvals location filter and search', () => {
     expect((await center.approvals(salon, { pageSize: 50, q: pick.title } as any)).items.map((x: any) => x.id)).toContain(pick.id);
   });
 });
+
+describe('Deals center — approvals requested-date range', () => {
+  it('a requested-date range in salon days narrows the inbox; a reversed range is refused', async () => {
+    const salon = { ...owner, branchId: undefined } as any;
+    const all = await center.approvals(salon, { pageSize: 50 } as any);
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date());
+    expect((await center.approvals(salon, { pageSize: 50, from: today, to: today } as any)).totalItems).toBe(all.totalItems);   // every request in this fixture was made today
+    expect((await center.approvals(salon, { pageSize: 50, from: '2020-01-01', to: '2020-01-31' } as any)).totalItems).toBe(0);
+    await expect(center.approvals(salon, { from: '2026-02-01', to: '2026-01-01' } as any)).rejects.toThrow(/start date/);
+  });
+});

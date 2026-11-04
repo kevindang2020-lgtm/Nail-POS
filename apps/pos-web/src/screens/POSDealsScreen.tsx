@@ -84,7 +84,8 @@ export function POSDealsScreen() {
   const branches = useLoad(() => authApi.branches().then((r: any) => (r.branches ?? []).filter((b: any) => b.isActive)), []);
   const libScope = { q: q || undefined, status, kind, ownerType: owner, type, serviceId: serviceId || undefined, technicianId: technicianId || undefined, dateField: basis, branchId: branchId || undefined, ...periodQuery(periods.library) };
   const redScope = { q: q || undefined, state: redState, branchId: branchId || undefined, dateField: redBasis, ...periodQuery(periods.redemptions) };
-  const aprScope = { q: q || undefined, order, branchId: branchId || undefined };
+  const [aprPeriod, setAprPeriod] = useState<PeriodState>({ preset: 'all' });
+  const aprScope = { q: q || undefined, order, branchId: branchId || undefined, ...periodQuery(aprPeriod) };
   const libKey = JSON.stringify([libScope, size]); const redKey = JSON.stringify([redScope, size]); const aprKey = JSON.stringify([aprScope, size]);
   useEffect(() => setPage(1), [libKey]); useEffect(() => setRpage(1), [redKey]); useEffect(() => setApage(1), [aprKey]);
   const kpis = useLoad(() => posDealsOffersApi.kpis(), [tick]);
@@ -100,7 +101,7 @@ export function POSDealsScreen() {
   const libFiltered = status !== 'live' || kind !== 'all' || owner !== 'all' || type !== 'all' || !!serviceId || !!technicianId || periods.library.preset !== 'all';
   const filtered = !!(branchId || q || (tab === 'library' && libFiltered) || (tab === 'redemptions' && (redState !== 'confirmed' || periods.redemptions.preset !== 'all')) || (tab === 'approvals' && order !== 'oldest'));
   const clearAll = () => {
-    setBranchId(''); setRedBasis('redeemed'); setSearch(''); setType('all'); setServiceId(''); setTechnicianId(''); setBasis('created'); setRedState('confirmed'); setOrder('oldest');
+    setBranchId(''); setRedBasis('redeemed'); setAprPeriod({ preset: 'all' }); setSearch(''); setType('all'); setServiceId(''); setTechnicianId(''); setBasis('created'); setRedState('confirmed'); setOrder('oldest');
     setPeriods({ library: { preset: 'all' }, redemptions: { preset: 'all' } });
     const p = new URLSearchParams(params); ['status', 'kind', 'owner'].forEach((k) => p.delete(k)); setParams(p, { replace: true });
   };
@@ -168,6 +169,7 @@ export function POSDealsScreen() {
           <option value="">{tx('cp.allLocations')}</option>{(branches.data ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div> : null}
+      {tab === 'approvals' ? <div data-testid="apr-period"><PeriodBar compact allowAll value={aprPeriod} onChange={setAprPeriod} server={apr.data?.period} basis="requested" onBasis={() => undefined} basisOptions={[{ value: 'requested', label: tx('do.aprRequested') }]} /></div> : null}
       {tab === 'library' || tab === 'redemptions' ? <PeriodBar compact allowAll value={periods[pKey]} onChange={(p) => setPeriods((x) => ({ ...x, [pKey]: p }))} server={server}
         basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
         basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('do.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}
