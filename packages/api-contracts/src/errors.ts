@@ -606,6 +606,7 @@ export const ERROR_REGISTRY = {
   PRICE_INVALID:                  { status: 400, message: 'Enter a price of 0 or more.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CUSTOM_SERVICE_DURATION_REQUIRED:{ status: 400, message: 'A custom service needs a duration in minutes.', domain: 'booking', retryable: false, severity: 'info', action: 'NONE' },
   SERVICE_NOT_FOUND:              { status: 404, message: 'That service could not be found.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
+  SERVICE_TAX_NOT_CONFIGURABLE:   { status: 409, message: 'Services are taxed at the salon\'s tax rate; a per-service tax setting is not available yet.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   DUPLICATE_RESOLUTION_REASON_REQUIRED:{ status: 400, message: 'Give a specific reason to resolve the duplicate.', domain: 'customers', retryable: false, severity: 'info', action: 'NONE' },
   PHONE_CHANGE_IN_PROGRESS:       { status: 409, message: 'A verified change for this customer is being applied. Try again in a moment.', domain: 'customers', retryable: false, severity: 'info', action: 'REFRESH' },
   PHONE_CHANGE_IN_APP_DISABLED:   { status: 409, message: 'Changing the phone number in the app is not available for this salon.', domain: 'customers', retryable: false, severity: 'info', action: 'REFRESH' },

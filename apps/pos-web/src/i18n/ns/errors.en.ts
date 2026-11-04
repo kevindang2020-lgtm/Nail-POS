@@ -658,6 +658,7 @@ export const ERRORS_EN = {
   'errors.PRICE_INVALID': 'Enter a price of 0 or more.',
   'errors.CUSTOM_SERVICE_DURATION_REQUIRED': 'A custom service needs a duration in minutes.',
   'errors.SERVICE_NOT_FOUND': 'That service could not be found.',
+  'errors.SERVICE_TAX_NOT_CONFIGURABLE': 'Services are taxed at the salon\'s tax rate; a per-service tax setting is not available yet.',
   'errors.DUPLICATE_RESOLUTION_REASON_REQUIRED': 'Give a specific reason to resolve the duplicate.',
   'errors.PHONE_CHANGE_IN_PROGRESS': 'A verified change for this customer is being applied. Try again in a moment.',
   'errors.PHONE_CHANGE_IN_APP_DISABLED': 'Changing the phone number in the app is not available for this salon.',

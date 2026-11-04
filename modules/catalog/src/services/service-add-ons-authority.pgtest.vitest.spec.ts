@@ -48,3 +48,12 @@ describe('D1: the "Add-ons" category is the add-on authority; the table is serve
     expect(merged.map((m) => [m.addOnId, m.name, m.source])).toEqual([['x', 'X', 'category'], ['y', 'Y', 'legacy_table']]);
   });
 });
+
+describe('D2 Services (Nov 3 2026): the per-service tax setting is not silently dropped', () => {
+  it('the unchanged setting is accepted; a change is refused with SERVICE_TAX_NOT_CONFIGURABLE (it used to answer saved and store nothing)', async () => {
+    expect(await repo.setTax(ctx, GEL, { isTaxable: true, exemptAllowed: false })).toEqual({ isTaxable: true, exemptAllowed: false });
+    await expect(repo.setTax(ctx, GEL, { isTaxable: false, exemptAllowed: true })).rejects.toMatchObject({ apiCode: 'SERVICE_TAX_NOT_CONFIGURABLE' });
+    expect(await repo.getTax(ctx, GEL)).toEqual({ isTaxable: true, exemptAllowed: false });
+    expect(await repo.setTax(ctx, '5a000000-0000-4000-8000-00000000dead', { isTaxable: true, exemptAllowed: false })).toBeNull();
+  });
+});

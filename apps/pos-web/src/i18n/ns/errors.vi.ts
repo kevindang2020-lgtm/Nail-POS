@@ -658,6 +658,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.PRICE_INVALID': 'Hãy nhập giá từ 0 trở lên.',
   'errors.CUSTOM_SERVICE_DURATION_REQUIRED': 'Dịch vụ tùy chỉnh cần có thời lượng (phút).',
   'errors.SERVICE_NOT_FOUND': 'Không tìm thấy dịch vụ này.',
+  'errors.SERVICE_TAX_NOT_CONFIGURABLE': 'Dịch vụ được tính thuế theo mức thuế của tiệm; chưa thể cài đặt thuế riêng cho từng dịch vụ.',
   'errors.DUPLICATE_RESOLUTION_REASON_REQUIRED': 'Hãy nêu lý do cụ thể để xử lý trùng lặp.',
   'errors.PHONE_CHANGE_IN_PROGRESS': 'Một thay đổi đã xác minh của khách này đang được áp dụng. Hãy thử lại sau giây lát.',
   'errors.PHONE_CHANGE_IN_APP_DISABLED': 'Tiệm không cho đổi số điện thoại trong ứng dụng.',

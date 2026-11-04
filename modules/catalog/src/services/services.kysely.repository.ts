@@ -4,7 +4,7 @@
 // helpers as the in-memory repo. SCOPE is session-derived (tenant_id + branch_id), never the client.
 //
 // Schema note (honest): migration 006 has no add-ons or per-service tax tables, so getAddOns/getTax return safe
-// defaults and setAddOns/setTax are accepted but not persisted by this adapter (documented limitation, not a fake).
+// defaults and setAddOns are accepted but not persisted by this adapter (documented limitation); setTax refuses a change.
 import { categoryAddOnsForService, mergeAddOnRows, canMoveToSql } from '@aipowersalon/database';
 import { recordCatalogChanges, diffFields } from '../catalog-screens/catalog-change-log';
 import { SERVICE_CATEGORY } from '../catalog-lifecycles';
@@ -350,7 +350,12 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
   }
   async setTax(ctx: ServicesContext, serviceId: string, t: ServiceTax): Promise<ServiceTax | null> {
     const s = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select('id').executeTakeFirst().catch(() => undefined);
-    return s ? t : null; // accepted; not persisted (no per-service tax table)
+    if (!s) return null;
+    // there is no per-service tax column: every service is taxed at the salon's rate. A save that would change that used to
+    // answer "saved" (and audit a change) while nothing was stored — now the unchanged setting is accepted and a change is
+    // refused with a coded reason (D2 Services guide, Nov 3 2026)
+    if (t?.isTaxable !== false && !t?.exemptAllowed && t?.overridePercent == null && !t?.taxCategory) return { isTaxable: true, exemptAllowed: false };
+    throw Object.assign(new Error('Services are taxed at the salon\'s tax rate; a per-service tax setting is not available yet.'), { apiCode: 'SERVICE_TAX_NOT_CONFIGURABLE', status: 409 });
   }
 
   async exportRows(ctx: ServicesContext, f: ServiceFilters): Promise<{ headers: string[]; rows: (string | number)[][] }> {
