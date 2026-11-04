@@ -96,8 +96,14 @@ export function POSServicesScreen() {
   const doExport = async () => {
     setExporting(true); setNote(null);
     try {
-      const r: any = await posServicesApi.exportCsv({ search: svcQ || undefined });
-      saveCsv(r?.filename || 'services.csv', typeof r === 'string' ? r : r?.csv ?? '');
+      // D2 (Nov 3 2026): the export is the list the screen shows — the same search, technician and date filters, every page.
+      // It used to call the older export with only the search text (a different matcher, no technician / date filter).
+      const rows: any[] = []; let page = 1, pages = 1;
+      do { const r: any = await posCatalogApi.services({ ...svcScope, page, pageSize: 100 }); rows.push(...(r?.items ?? [])); pages = Number(r?.totalPages) || 1; page++; } while (page <= pages && page <= 200);
+      const esc = (v: unknown) => { const t = v == null ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
+      const csv = [['Id', 'Name', 'Category', 'Price', 'Duration (min)', 'Status', 'Online booking', 'Location', 'Sold (30 days)', 'Created'].join(','),
+        ...rows.map((x) => [x.serviceId, x.name, x.categoryName ?? '', (Number(x.priceCents) / 100).toFixed(2), x.durationMinutes, x.status, x.onlineBookable ? 'yes' : 'no', x.branchName ?? '', x.sold30d, x.createdAt ?? ''].map(esc).join(','))].join('\n');
+      saveCsv('services.csv', csv);
       setNote({ tone: 'ok', text: tx('finance.exported') });
     } catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('finance.state.loadFailed')) }); } finally { setExporting(false); }
   };
