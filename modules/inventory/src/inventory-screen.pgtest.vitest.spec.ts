@@ -148,6 +148,15 @@ describe('products — search, paging, newest first, Last Used By', () => {
   });
 });
 
+describe('Nov 3 audit — location thresholds', () => {
+  it('the product detail status uses this location\'s reorder override, like the list', async () => {
+    const before = (await inv.getProduct(manager, P_GEL)).product;
+    await inv.setLocationStockOverrides(manager, P_GEL, { reorderLevelOverride: 1000, expectedVersion: before.stockVersion });
+    try { expect(['low_stock', 'critical']).toContain((await inv.getProduct(manager, P_GEL)).product.status); }
+    finally { const v = (await inv.getProduct(manager, P_GEL)).product.stockVersion; await inv.setLocationStockOverrides(manager, P_GEL, { reorderLevelOverride: null, expectedVersion: v }); }
+  });
+});
+
 describe('purchase orders — dates, statuses, receiving', () => {
   let draftId = ''; let poId = '';
   it('the expected delivery date is a calendar date string; a draft is not an active PO', async () => {

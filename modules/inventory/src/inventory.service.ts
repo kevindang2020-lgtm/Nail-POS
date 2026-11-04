@@ -558,8 +558,11 @@ export class InventoryService {
     const counts = countsFromUnits(units.rows);
     if (this.isTechOnly(ctx)) { delete p.cost_cents; delete p.retail_price_cents; }
     // the location row's version (Phase 10 §40) — send it back as expectedVersion on the stock-overrides PATCH
-    const stockVersion = branchId ? (await sql<{ version: number }>`SELECT version FROM inventory_location_stock WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${branchId} AND product_id = ${id}`.execute(this.need())).rows[0]?.version ?? 0 : null;
-    return { product: { ...p, ...counts, stockVersion: stockVersion === null ? null : Number(stockVersion), status: stockStatus(counts.onHand, p.reorder_level ?? 0, p.maximum_stock, p.critical_level) }, units: units.rows };
+    const loc = branchId ? (await sql<{ version: number; reorder_level_override: number | null; critical_level_override: number | null }>`SELECT version, reorder_level_override, critical_level_override FROM inventory_location_stock WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${branchId} AND product_id = ${id}`.execute(this.need())).rows[0] : undefined;
+    const stockVersion = branchId ? loc?.version ?? 0 : null;
+    // the status uses this location's thresholds when it overrides them (the list did; this detail used the product defaults)
+    const reorderLvl = loc?.reorder_level_override ?? p.reorder_level ?? 0, critLvl = loc?.critical_level_override ?? p.critical_level ?? null;
+    return { product: { ...p, ...counts, stockVersion: stockVersion === null ? null : Number(stockVersion), status: stockStatus(counts.onHand, reorderLvl, p.maximum_stock, critLvl) }, units: units.rows };
   }
 
   async createProduct(ctx: InvCtx, b: any) {
@@ -892,15 +895,15 @@ export class InventoryService {
 
   async alerts(ctx: InvCtx) {
     const branchId = await this.resolveBranchId(ctx);
-    const low = await sql<any>`SELECT p.id, p.name, p.color_number, p.reorder_level, p.reorder_quantity, coalesce(s.quantity_on_hand,0) AS on_hand,
-        s.reorder_level_override, s.reorder_quantity_override
+    const low = await sql<any>`SELECT p.id, p.name, p.color_number, p.reorder_level, p.reorder_quantity, p.critical_level, p.maximum_stock, coalesce(s.quantity_on_hand,0) AS on_hand,
+        s.reorder_level_override, s.reorder_quantity_override, s.critical_level_override
       FROM inventory_products p LEFT JOIN inventory_location_stock s ON s.product_id = p.id AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId})
       WHERE p.tenant_id = ${ctx.tenantId} AND p.archived_at IS NULL AND coalesce(s.reorder_level_override, p.reorder_level) > 0 AND coalesce(s.quantity_on_hand,0) <= coalesce(s.reorder_level_override, p.reorder_level)
       ORDER BY coalesce(s.quantity_on_hand,0) ASC LIMIT 100`.execute(this.need());
     return { alerts: low.rows.map((p) => {
       const rLvl = p.reorder_level_override ?? p.reorder_level ?? 0;
       const rQty = p.reorder_quantity_override ?? p.reorder_quantity ?? 0;
-      return { productId: p.id, name: p.name, colorNumber: p.color_number, onHand: p.on_hand, status: stockStatus(p.on_hand, rLvl, null), suggested: reorderSuggestion(p.on_hand, rLvl, rQty) };
+      return { productId: p.id, name: p.name, colorNumber: p.color_number, onHand: p.on_hand, status: stockStatus(p.on_hand, rLvl, p.maximum_stock, p.critical_level_override ?? p.critical_level ?? null), suggested: reorderSuggestion(p.on_hand, rLvl, rQty) };   // the same thresholds as the product list
     }) };
   }
 
