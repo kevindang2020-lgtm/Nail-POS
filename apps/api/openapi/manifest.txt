@@ -2600,10 +2600,10 @@ POST /pos/campaigns/{id}/activate  realm=staff  auth=session  domain=marketing  
 POST /pos/campaigns/{id}/cancel  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/campaigns/{id}/complete  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/campaigns/{id}/schedule  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/cash-drawer/movement  realm=staff  auth=session  domain=payments  perm=checkout.process_payment
+POST /pos/cash-drawer/movement  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-drawer/movement/void  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
-POST /pos/cash-drawer/open  realm=staff  auth=session  domain=payments  perm=checkout.process_payment
-POST /pos/cash-drawer/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment
+POST /pos/cash-drawer/open  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
+POST /pos/cash-drawer/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/resolve  realm=staff  auth=session  domain=payments  perm=checkout.manage_overrides  idempotency=optional
 POST /pos/catalog/add-ons  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard

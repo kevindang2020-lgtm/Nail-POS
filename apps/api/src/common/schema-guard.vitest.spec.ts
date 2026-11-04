@@ -158,6 +158,7 @@ describe('schema guard — no raw SQL anywhere references a table that does not 
     'set', 'lateral', 'false', 'true', 'select', 'values', 'unnest', 'generate_series', 'skip',
     'jsonb_array_elements_text', 'jsonb_array_elements',   // set-returning functions (like unnest) — Phase 8 community repositories
     'information_schema', 'now', ...'abcdefghijklmnopqrstuvwxyz'.split(''),
+    'jsonb_to_recordset', 'json_to_recordset', 'jsonb_to_record',   // set-returning functions (batched writes, Nov 2026)
     'excluded',   // ON CONFLICT's pseudo-table (`IS DISTINCT FROM EXCLUDED.col`, finance expense-settings summary stamps, Oct 27 2026)
   ]);
 
@@ -165,6 +166,9 @@ describe('schema guard — no raw SQL anywhere references a table that does not 
     const bad: string[] = [];
     for (const file of codeRoots().flatMap((r) => walk(r))) {
       const src = readFileSync(file, 'utf8');
+      // a CTE may be declared in one template and used in another (`with ${ctes} select … left join snap …`): collect
+      // the CTE names of the whole file
+      const fileCtes = new Set([...src.matchAll(/(?:\bwith\b|,|`)\s*(?:recursive\s+)?([a-z_][a-z0-9_]*)\s+as\s+(?:not\s+)?(?:materialized\s+)?\(/gis)].map((c) => c[1].toLowerCase()));
       for (const m of src.matchAll(/sql(?:<[^>]*>)?`([\s\S]*?)`/g)) {
         const q = m[1]
           .replace(/--[^\n]*/g, ' ')
@@ -172,6 +176,9 @@ describe('schema guard — no raw SQL anywhere references a table that does not 
           // extract(hour FROM created_at) is not a table reference
           .replace(/\b(?:extract|substring|trim|overlay|position)\s*\([^()]*(?:\([^()]*\))?[^()]*\)/gi, ' ')
           .replace(/\bskip\s+locked\b/gi, ' ')
+          // string literals are text ('… recover from the salon'), and IS [NOT] DISTINCT FROM compares values
+          .replace(/'(?:[^']|'')*'/g, "''")
+          .replace(/\bis\s+(?:not\s+)?distinct\s+from\b/gi, ' = ')
           // a row-locking clause names ALIASES of tables already in the FROM list (`FOR UPDATE OF d`), never a table —
           // without this, "UPDATE OF" read as an UPDATE of a table called "of" (customer-display heartbeat, Oct 2026)
           .replace(/\bfor\s+(?:no\s+key\s+update|update|share|key\s+share)\s+of\s+[a-z_][a-z0-9_]*(?:\s*,\s*[a-z_][a-z0-9_]*)*/gi, ' ');
@@ -180,7 +187,7 @@ describe('schema guard — no raw SQL anywhere references a table that does not 
 
         for (const t of q.matchAll(/\b(?:from|join|into|update)\s+([a-z_][a-z0-9_]*)/gi)) {
           const table = t[1].toLowerCase();
-          if (NOT_TABLES.has(table) || ctes.has(table) || table.startsWith('pg_') || tables.has(table)) continue;
+          if (NOT_TABLES.has(table) || ctes.has(table) || fileCtes.has(table) || table.startsWith('pg_') || tables.has(table)) continue;
           bad.push(`${table}  [${file.replace(SRC + '/', '')}]`);
         }
       }

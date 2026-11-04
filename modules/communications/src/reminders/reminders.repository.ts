@@ -48,7 +48,7 @@ export interface ReminderDispatchPort {
    *  'interrupted_unknown' (never retried automatically — the provider may have it). Returns how many. */
   recoverStale(tenantId: string): Promise<number>;
   startRun(tenantId: string, trigger: 'scheduler' | 'jobs_route' | 'manual'): Promise<string | null>;
-  finishRun(runId: string | null, r: { outcome: 'ok' | 'partial' | 'failed'; candidates: number; submitted: number; skipped: number; deferred: number; failed: number; cancelled: number; error?: string | null }): Promise<void>;
+  finishRun(runId: string | null, r: { outcome: 'ok' | 'partial' | 'failed'; candidates: number; submitted: number; skipped: number; deferred: number; failed: number; cancelled: number; error?: string | null }, tenantId?: string): Promise<void>;
 }
 
 export class InMemoryRemindersRepository implements RemindersDataPort {

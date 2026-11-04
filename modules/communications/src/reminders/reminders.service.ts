@@ -190,7 +190,7 @@ export class RemindersService {
       }
     } catch (e) { error = (e as Error)?.message?.slice(0, 300) ?? 'run_failed'; logException(e, { where: 'reminders.dispatch_run' }); }
     summary.skipped = (summary.skipped ?? 0) + r.skipped; summary.deferred = (summary.deferred ?? 0) + r.deferred; summary.cancelled = (summary.cancelled ?? 0) + r.cancelled;
-    await dp.finishRun(runId, { outcome: error ? (r.submitted ? 'partial' : 'failed') : 'ok', ...r, error });
+    await dp.finishRun(runId, { outcome: error ? (r.submitted ? 'partial' : 'failed') : 'ok', ...r, error }, cfg.tenantId);
   }
 
   private toCandidate(r: import('./reminders.repository').ApptCandidateRow, channel: 'sms' | 'email', tz: string): ReminderCandidate {

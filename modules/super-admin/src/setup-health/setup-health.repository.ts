@@ -56,7 +56,7 @@ export class SetupHealthRepository {
       if (!ins.rows.length) {
         const prev = (await sql<any>`select id, status from health_check_runs where tenant_id = ${ctx.tenantId} and trigger_kind = 'nightly' and run_date = ${date}::date`.execute(this.db)).rows[0];
         if (prev.status !== 'failed') return { runId: String(prev.id), duplicate: true };
-        await sql`delete from health_check_results where run_id = ${prev.id}`.execute(this.db);
+        await sql`delete from health_check_results where run_id = ${prev.id} and tenant_id = ${ctx.tenantId}`.execute(this.db);
         const retried = await sql<any>`update health_check_runs r set status = 'running', error = null, started_at = now(), finished_at = null
           where r.tenant_id = ${ctx.tenantId} and r.id = ${prev.id} and ${canMoveToSql(HEALTH_CHECK_RUN, 'running', 'r')} returning r.id`.execute(this.db);
         if (!retried.rows.length) return { runId: String(prev.id), duplicate: true };   // another worker retried it first

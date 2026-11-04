@@ -205,7 +205,7 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
         FOR UPDATE OF d SKIP LOCKED`.execute(trx)).rows;
       for (const r of rows) {
         const to = r.changed ? 'cancelled' : 'failed', why = r.changed ? 'appointment_changed' : 'interrupted_unknown';
-        await sql`UPDATE appointment_reminders_sent SET state = ${to}, reason = ${why}, updated_at = now() WHERE id = ${r.id}::uuid AND ${canMoveToSql(REMINDER_DISPATCH, to)}`.execute(trx);
+        await sql`UPDATE appointment_reminders_sent SET state = ${to}, reason = ${why}, updated_at = now() WHERE id = ${r.id}::uuid AND tenant_id = ${tenantId}::uuid AND ${canMoveToSql(REMINDER_DISPATCH, to)}`.execute(trx);
         await this.event(trx, { tenantId, appointmentId: r.appointment_id, dispatchId: r.id, channel: r.channel, status: to, error: why, occurrenceKey: r.occurrence_key, kind: 'system' });
       }
       return rows.length;
@@ -217,11 +217,11 @@ export class KyselyReminderDispatch implements ReminderDispatchPort {
     try { return (await sql<{ id: string }>`INSERT INTO appointment_reminder_runs (tenant_id, trigger) VALUES (${tenantId}, ${trigger}) RETURNING id`.execute(this.db)).rows[0]?.id ?? null; }
     catch (e) { logException(e, { where: 'reminders.run_start' }); return null; }
   }
-  async finishRun(runId: string | null, r: { outcome: 'ok' | 'partial' | 'failed'; candidates: number; submitted: number; skipped: number; deferred: number; failed: number; cancelled: number; error?: string | null }): Promise<void> {
+  async finishRun(runId: string | null, r: { outcome: 'ok' | 'partial' | 'failed'; candidates: number; submitted: number; skipped: number; deferred: number; failed: number; cancelled: number; error?: string | null }, tenantId?: string): Promise<void> {
     if (!runId) return;
     try {
       await sql`UPDATE appointment_reminder_runs SET finished_at = now(), outcome = ${r.outcome}, candidates = ${r.candidates}, submitted = ${r.submitted}, skipped = ${r.skipped},
-        deferred = ${r.deferred}, failed = ${r.failed}, cancelled = ${r.cancelled}, error = ${r.error ?? null} WHERE id = ${runId}::uuid`.execute(this.db);
+        deferred = ${r.deferred}, failed = ${r.failed}, cancelled = ${r.cancelled}, error = ${r.error ?? null} WHERE id = ${runId}::uuid AND (${tenantId ?? null}::uuid IS NULL OR tenant_id = ${tenantId ?? null}::uuid)`.execute(this.db);
     } catch (e) { logException(e, { where: 'reminders.run_finish' }); }
   }
 

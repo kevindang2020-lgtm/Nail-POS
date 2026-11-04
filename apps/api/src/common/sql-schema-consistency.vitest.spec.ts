@@ -30,7 +30,8 @@ function loadSchema(): Map<string, Set<string>> {
   const files = readdirSync(MIGRATIONS).filter((f) => f.endsWith('.sql')).sort();
 
   for (const f of files) {
-    const sql = readFileSync(join(MIGRATIONS, f), 'utf8');
+    // strip SQL comments first: a "-- Rollback: ALTER TABLE t DROP COLUMN c." note was read as a real DROP (false positive)
+    const sql = readFileSync(join(MIGRATIONS, f), 'utf8').replace(/--[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '');
 
     // CREATE TABLE ... ( col type, col type, ... )
     for (const m of sql.matchAll(/create table (?:if not exists )?([a-z_0-9]+)\s*\(([\s\S]*?)\n\s*\);/gi)) {
@@ -73,6 +74,14 @@ function loadSchema(): Map<string, Set<string>> {
         cols.delete(r[1].toLowerCase()); cols.add(r[2].toLowerCase());
       }
       schema.set(table, cols);
+    }
+    // 543 adds actor stamps in a DO loop (EXECUTE format(...)) the regexes cannot read: updated_by on every tenant table
+    // that has updated_at, deleted_by beside every deleted_at — mirror it for the tables that exist at that point
+    if (/^543_actor_stamp_columns\.sql$/.test(f)) {
+      for (const cols of schema.values()) {
+        if (cols.has('updated_at') && cols.has('tenant_id')) cols.add('updated_by');
+        if (cols.has('deleted_at')) cols.add('deleted_by');
+      }
     }
   }
   return schema;
@@ -131,7 +140,8 @@ describe('every column a write touches actually exists in the schema', () => {
   it('no INSERT or UPDATE references a column that does not exist', () => {
     const offences: Offence[] = [];
     for (const f of codeRoots().flatMap((r) => walk(r))) {
-      const src = readFileSync(f, 'utf8');
+      // whole-line // comments are prose ("then ONE insert into promotion_eligibility_checks (738)"), not SQL
+      const src = readFileSync(f, 'utf8').replace(/^\s*\/\/.*$/gm, '');
       if (!/insert\s+into|update\s+[a-z_0-9]+\s+set/i.test(src)) continue;
       offences.push(...scanWrites(src, f.replace(SRC, 'src'), schema));
     }

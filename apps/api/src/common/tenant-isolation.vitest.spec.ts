@@ -133,6 +133,13 @@ function sqlBlocks(src: string): string[] {
 //      as PATH_ALLOW above). The rest of the module stays guarded — only these exact oversight files are exempt.
 const SUPERADMIN_FILE_ALLOW: { file: string; why: string }[] = [
   {
+    file: 'global-rewards/global-rewards-platform.repository.ts',
+    why:
+      'LoyaltyTokens §4 / §7.5: Super Admin\'s platform-wide reconciliation of the Global Rewards Network (journal balance, ' +
+      'points-ledger drift, reimbursements, token purchases across every salon). Reached only through SuperAdminGuard + ' +
+      'super_admin.billing.view; every salon-scoped statement lives in global-rewards.repository.ts with tenant_id.',
+  },
+  {
     file: 'common/async-export/operations-expiry.repository.ts',
     why:
       'BUILD_PLAN Phase 12: the async-export expiry sweep (job api.operations.expire, a background worker — never reached ' +
@@ -383,7 +390,10 @@ describe('Platform-wide tenant isolation (static)', () => {
     const src = readFileSync(file, 'utf8');
     for (const q of sqlBlocks(src)) {
       const ql = q.toLowerCase();
-      const touches = [...tables].find((t) => new RegExp(`\\b${t}\\b`).test(ql));
+      // a table is TOUCHED when it is read or written (after FROM / JOIN / INTO / UPDATE) — not when an alias or a column
+      // shares its name (`count(distinct a.technician_id) as technicians`, `x.reviews`), which flagged composed screens
+      const named = new Set([...ql.matchAll(/\b(?:from|join|into|update)\s+([a-z_][a-z0-9_]*)/g)].map((m) => m[1]));
+      const touches = [...tables].find((t) => named.has(t));
       if (!touches) continue;                                   // not a tenant-owned-table query
       if (ql.includes('tenant_id')) continue;                   // scoped — good
       if (STMT_ALLOW.some((a) => ql.includes(a.sig))) continue;   // documented safe-by-other-means
