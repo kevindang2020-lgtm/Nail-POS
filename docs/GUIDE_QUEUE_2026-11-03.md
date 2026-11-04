@@ -177,24 +177,23 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - Batch E — 7 NEW guides (never audited against the code; their screens exist from the Oct 29 Payments & Money build):
   E1 Gift Cards · E2 Payment Terminals · E3 Settlements · E4 Deposit Reconciliation · E5 Invoices · E6 Expenses ·
   E7 Loyalty Rewards (full spec) — audited Nov 4; money / safety bugs fixed first (13093f9), E6 rebuilt (14ae52d).
-  - E1 Gift Cards — FIXED: a refunded sale / reload takes its value back off the card (refused before money moves when spent
-    or moved to a replacement); a paid reload is never dropped in silence; no void with an unpaid reload. OPEN: received-card
-    customer link, adjust / reverse action, branch / pending / frozen tabs, rate limit on every lookup, duplicate App route.
-  - E2 Payment Terminals — FIXED: pairing never takes over a paired terminal; one live terminal per register (pair, reassign,
-    re-enable); capture ignores disabled terminals like Capture Routing. OPEN: activity / phone actions location-scoped, Test
-    Connection permission, processor choice at pairing, phone re-enable, filters, device audit history.
-  - E3 Settlements — FIXED: webhook refund outcome (refunded / failed / pending / cancelled), provider settled_at, failed /
-    returned batches out of the money KPIs. OPEN: "not configured" instead of $0 KPIs, stale-import check, Investigate, cross-type search.
-  - E4 Deposit Recon — FIXED: a missing payout stays Missing with a case open; history reads audit_events; assignee must be this
-    salon's (service + trigger 794). OPEN: the legacy sweep as a second engine, client-sent match basis, grace-day consistency,
-    picker years.
+  - E1 Gift Cards — DONE: refund / reload money safety (13093f9); adjust (audited ledger + reason), Pending / Frozen tabs, branch
+    filter, received-card customer link, rate limit on every lookup, settings route moved off the duplicate path (dfcf807).
+  - E2 Payment Terminals — DONE: one live terminal per register (13093f9); activity location-scoped, phone re-enable, null-branch
+    terminals manageable (dfcf807); processor account + request key + verification at pairing, processor filter, Device history
+    tab (799, 82b17b0). Kept by decision: Tap to Pay phone actions stay owner-only and salon-wide.
+  - E3 Settlements — DONE: webhook refund outcomes, failed / returned batches out of KPIs (13093f9); "Not set up" instead of $0,
+    stale-feed state, Investigate, cross-tab search counts (dfcf807, 57bd35b).
+  - E4 Deposit Recon — DONE: missing payout stays Missing, audit history, salon-only assignee (13093f9, 794); server-computed
+    match basis, grace days consistent, legacy sweep skips workspace-allocated settlements, picker reaches every year (57bd35b).
   - E5 Invoices — FIXED: legacy create refuses another salon's customer; reads join within the salon (trigger 793); Paid KPI
     respects search / amount; save note decided from the reloaded list (57bd35b). BUILT Nov 4: credit notes with refund of the
     overpaid part (797, 4d87545); customer filter + invoices on the customer profile (f09cfff); lines from services / retail
     products (c6fe4bd); email / text delivery through the salon's sender with honest Submitted / Delivered status (798, bc76dd3).
     Location scoping: Kevin's decision — salon-wide kept.
-  - E6 Expenses — BUILT to the guide (period bar + Custom Range, 4 server KPIs, server filters, numbered pages newest first,
-    one-key Add, Edit, View with every action, filtered export). Not done: browser screenshots at the guide's viewport sizes.
+  - E6 Expenses — DONE: rebuilt to the guide (14ae52d); screenshots at 1920x1080 / 1536x864 / 1440x900 / 1366x768 in EN, VI
+    and an empty salon all PASS (tooling/finance-one-screen/results/e6-expenses-guide); they exposed and fixed a POS expense
+    filed salon-wide that vanished from the location's list, a doubled "+", a 41 px tab (f9d3f32).
   - E7 Loyalty — DONE: code stays on screen; Redemptions KPI counts used only, ledger Retry, ILIKE escaping (57bd35b); reward
     dates / stock / per-member limit / eligible tiers checked atomically at redemption, with a real-Postgres race test (795,
     dfd0c4e); Manage Tiers (own tiers, threshold, benefits, rename relabels members, held tier cannot retire), member tier change,
