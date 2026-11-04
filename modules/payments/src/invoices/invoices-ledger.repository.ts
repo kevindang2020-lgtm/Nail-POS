@@ -247,6 +247,21 @@ export class InvoicesLedgerRepository {
     return { items: rows.map((c: any) => ({ id: String(c.id), name: String(c.full_name || ''), phone: phoneShown(c.phone_display, c.normalized_phone), email: c.email ?? null, invoices: N(c.invoices) })) };
   }
 
+  /** Invoices guide (Nov 4 2026) §11 line items: this salon's active services and retail products for New Invoice. The line
+   *  keeps its own description and price (a snapshot) — a later catalog change never rewrites an issued invoice. */
+  async catalogLookup(ctx: FinanceCtx, raw: unknown) {
+    const q = searchText(raw); const T = ctx.tenantId;
+    const like = q ? likeOf(q) : null;
+    const services = (await sql<any>`select s.id, s.name, s.price_cents from services s where s.tenant_id = ${T} and s.status = 'active' and s.archived_at is null
+        ${like ? sql`and s.name ilike ${like}` : sql``} order by lower(s.name), s.id limit 12`.execute(this.db)).rows;
+    const products = (await sql<any>`select p.id, p.name, p.sku, p.retail_price_cents from inventory_products p where p.tenant_id = ${T} and p.active and p.is_retail and p.archived_at is null and p.retail_price_cents is not null
+        ${like ? sql`and (p.name ilike ${like} or coalesce(p.sku, '') ilike ${like})` : sql``} order by lower(p.name), p.id limit 12`.execute(this.db)).rows;
+    return { items: [
+      ...services.map((r: any) => ({ kind: 'service' as const, id: String(r.id), name: String(r.name), unitPriceCents: N(r.price_cents), sku: null as string | null })),
+      ...products.map((r: any) => ({ kind: 'product' as const, id: String(r.id), name: String(r.name), unitPriceCents: N(r.retail_price_cents), sku: r.sku ? String(r.sku) : null })),
+    ] };
+  }
+
   private async customerSnapshot(trx: Kysely<any>, ctx: FinanceCtx, customerId: string) {
     const c = (await sql<any>`select id, full_name, phone_display, normalized_phone, email from customers where tenant_id = ${ctx.tenantId} and id = ${customerId}::uuid and archived_at is null`.execute(trx)).rows[0];
     if (!c) throw new FinanceError('Choose a customer from this salon.', 'INVOICE_CUSTOMER_NOT_FOUND', 404);

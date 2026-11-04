@@ -747,6 +747,7 @@ GET /pos/gift-cards/summary  realm=staff  auth=session  domain=payments  perm=po
 GET /pos/gift-cards/{cardId}/detail  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/gift-cards/{cardId}/ledger  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/invoices/catalog  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices/customers/lookup  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices/export  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  async=pos.invoices.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices/state  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard

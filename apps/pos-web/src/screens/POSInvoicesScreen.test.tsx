@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn(), credit: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn(), credit: vi.fn(), catalog: vi.fn() }));
 vi.mock('../api/posInvoicesApi', () => ({ posInvoicesApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 import { POSInvoicesScreen } from './POSInvoicesScreen';
@@ -120,6 +120,22 @@ describe('POSInvoicesScreen', () => {
     fireEvent.click(await screen.findByTestId('customer-filter-option'));
     await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ customerId: 'c-9', page: 1 })));
     fireEvent.click(screen.getByRole('button', { name: /remove filter customer: bob smith/i }));
-    await waitFor(() => expect(api.list.mock.calls.at(-1)![0].customerId).toBeUndefined());
+    await waitFor(() => expect(api.list.mock.calls[api.list.mock.calls.length - 1]![0].customerId).toBeUndefined());
+  });
+  it('a line can be filled from the salon catalog (description + price copied, still editable)', async () => {
+    api.catalog.mockResolvedValue({ items: [{ kind: 'service', id: 's1', name: 'Gel Manicure', unitPriceCents: 4500, sku: null }, { kind: 'product', id: 'p1', name: 'Gel Top Coat', unitPriceCents: 1800, sku: 'GTC-1' }] });
+    mount();
+    await screen.findByText('INV-0002');
+    fireEvent.click(screen.getByTestId('new-invoice'));
+    fireEvent.click(screen.getByTestId('from-catalog'));
+    const opts = await screen.findAllByTestId('catalog-option');
+    fireEvent.click(opts[0]!);
+    expect(screen.getAllByTestId('line-desc')[0]).toHaveValue('Gel Manicure');   // the blank first line is used
+    expect(screen.getAllByTestId('line-price')[0]).toHaveValue('45.00');
+    fireEvent.click(opts[1]!);
+    expect(screen.getAllByTestId('line-desc')[1]).toHaveValue('Gel Top Coat');
+    expect(screen.getByTestId('form-total')).toHaveTextContent('$63.00');
+    fireEvent.change(screen.getByTestId('catalog-find'), { target: { value: 'gel' } });
+    await waitFor(() => expect(api.catalog).toHaveBeenLastCalledWith('gel'));
   });
 });

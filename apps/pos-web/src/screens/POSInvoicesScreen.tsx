@@ -255,6 +255,20 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
   );
 }
 
+// Invoices guide (Nov 4 2026) §11: a line can come from this salon's services / retail products — it is copied into the
+// line (description + price), which stays editable; the invoice keeps that snapshot
+function CatalogPicker({ onPick }: { onPick: (it: { name: string; unitPriceCents: number }) => void }) {
+  const [find, setFind] = useState(''); const fq = useDebounced(find.trim(), 250);
+  const found = useLoad(() => api.catalog(fq), [fq]);
+  return (
+    <div className="iv-catalog" data-testid="catalog-picker">
+      <input className="fk-search wide" type="search" autoFocus value={find} onChange={(e) => setFind(e.target.value)} placeholder={tx('finance.iv.catalogFind')} aria-label={tx('finance.iv.catalogFind')} data-testid="catalog-find" />
+      {found.error ? <StateBlock error={found.error} onRetry={found.reload} /> : !found.data ? <div className="fk-loading">{tx('pos.loading')}</div> : found.data.items.length === 0 ? <div className="fk-hint">{tx('finance.iv.catalogNone')}</div> : (
+        <ul className="fk-pick">{found.data.items.map((it: any) => <li key={it.kind + it.id}><button type="button" onClick={() => onPick(it)} data-testid="catalog-option"><b>{it.name}</b><span>{tx(it.kind === 'service' ? 'finance.iv.kindService' : 'finance.iv.kindProduct')}{it.sku ? ` · ${it.sku}` : ''} · {money(it.unitPriceCents)}</span></button></li>)}</ul>)}
+    </div>
+  );
+}
+
 type Line = { description: string; quantity: string; unit: string };
 function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: string; onClose: () => void; onSaved: (d: Detail, sent: boolean, preview: boolean) => void }) {
   const [customer, setCustomer] = useState<{ id: string; name: string; phone: string | null; email: string | null } | null>(edit?.invoice.customer.id ? { id: edit.invoice.customer.id, name: edit.invoice.customer.name ?? '', phone: edit.invoice.customer.phone, email: edit.invoice.customer.email } : null);
@@ -267,6 +281,7 @@ function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: 
   const [discount, setDiscount] = useState(edit?.invoice.discountCents ? textFromCents(edit.invoice.discountCents) : '');
   const [notes, setNotes] = useState(edit?.invoice.notes ?? '');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
   const key = useRef(requestId());
   const parsed = lines.map((l) => ({ description: l.description.trim(), quantity: Number(l.quantity), unitPriceCents: centsFromText(l.unit) }));
   const okLines = parsed.filter((l) => l.description && Number.isInteger(l.quantity) && l.quantity > 0 && l.unitPriceCents != null);
@@ -319,6 +334,9 @@ function InvoiceForm({ edit, today, onClose, onSaved }: { edit?: Detail; today: 
                 <td className="num">{amt == null ? '—' : money(amt)}</td>
                 <td>{lines.length > 1 ? <button type="button" className="fk-x" aria-label={tx('finance.iv.removeLine')} onClick={() => setLines(lines.filter((_, j) => j !== i))}>✕</button> : null}</td></tr>); })}</tbody></table>
           <button type="button" className="fk-btn sm" onClick={() => setLines([...lines, { description: '', quantity: '1', unit: '' }])} disabled={lines.length >= 200}>+ {tx('finance.iv.addLine')}</button>
+          {' '}<button type="button" className="fk-btn sm" onClick={() => setCatalogOpen((o) => !o)} disabled={lines.length >= 200} data-testid="from-catalog" aria-expanded={catalogOpen}>{tx('finance.iv.fromCatalog')}</button>
+          {catalogOpen ? <CatalogPicker onPick={(it) => { const blank = lines.findIndex((x) => !x.description.trim() && !x.unit.trim()); const ln = { description: it.name, quantity: '1', unit: textFromCents(it.unitPriceCents) };
+            setLines(blank >= 0 ? lines.map((x, j) => (j === blank ? ln : x)) : [...lines, ln]); }} /> : null}
           <div className="fk-grid2">
             <label className="fk-field"><span>{tx('finance.iv.discount')}</span><input inputMode="decimal" value={discount} onChange={(e) => setDiscount(e.target.value)} placeholder="0.00" /></label>
             <label className="fk-field"><span>{tx('finance.iv.tax')}</span><input inputMode="decimal" value={tax} onChange={(e) => setTax(e.target.value)} placeholder="0.00" /></label>

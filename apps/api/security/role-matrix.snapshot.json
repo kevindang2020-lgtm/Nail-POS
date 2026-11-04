@@ -733,6 +733,7 @@
   "GET /pos/invoices/{id}": "AAAADRRRRRRRRRRRR",
   "GET /pos/invoices/{id}/detail": "AAAADRRRRRRRRRRRR",
   "GET /pos/invoices/{id}/pdf": "AAAADRRRRRRRRRRRR",
+  "GET /pos/invoices/catalog": "AAAADRRRRRRRRRRRR",
   "GET /pos/invoices/customers/lookup": "AAAADRRRRRRRRRRRR",
   "GET /pos/invoices/export": "AADDDRRRRRRRRRRRR",
   "GET /pos/invoices/state": "AAAADRRRRRRRRRRRR",

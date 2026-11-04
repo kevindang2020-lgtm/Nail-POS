@@ -84,6 +84,9 @@ export class InvoicesController {
     const c = financeCtx(req); needPermission(c, 'pos.checkout.view');
     return runFinance(() => this.l().customerLookup(c, search));
   }
+  @Get('catalog') @RequirePermission('pos.checkout.process_payment') @ListQuery({ search: { params: ['search'], maxLength: 100 } })
+  catalog(@Req() req: any, @Query('search') search?: string) { const c = financeCtx(req); needPermission(c, 'pos.checkout.process_payment'); return runFinance(() => this.l().catalogLookup(c, search)); }
+
   @Post('new') @RequirePermission('pos.checkout.process_payment')
   createInvoice(@Req() req: any, @Body(ValidatedBody(INVOICE_DRAFT_BODY, { strict: true })) b: any) {
     const c = financeCtx(req); needPermission(c, 'pos.checkout.process_payment');

@@ -260,3 +260,18 @@ describe('Invoices — credit notes and refunds', () => {
     expect(rest.invoice).toMatchObject({ status: 'credited', balanceCents: 0, refundedCents: 0 });   // nothing was paid → no refund
   });
 });
+
+describe('Invoices — catalog lookup for New Invoice lines', () => {
+  it("this salon's active services and retail products only, by name or SKU; archived / inactive / other salon never", async () => {
+    await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Nails'), ($4,$5,$6,'Other')`, [id('d01'), T, B, id('d02'), T2, B2]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status, archived_at) values
+      ($1,$5,$6,$7,'Gel Manicure',45,4500,'active',null), ($2,$5,$6,$7,'Old Gel',45,3000,'active',now()), ($3,$5,$6,$7,'Gel Paused',45,3000,'inactive',null), ($4,$8,$9,$10,'Gel Elsewhere',45,1,'active',null)`,
+      [id('d11'), id('d12'), id('d13'), id('d14'), T, B, id('d01'), T2, B2, id('d02')]);
+    await q(`insert into inventory_products (id, tenant_id, name, sku, is_retail, retail_price_cents, active) values
+      ($1,$4,'Gel Top Coat','GTC-1',true,1800,true), ($2,$4,'Gel Remover (back bar)','GR-1',false,900,true), ($3,$5,'Gel Elsewhere Oil','X-1',true,100,true)`, [id('d21'), id('d22'), id('d23'), T, T2]);
+    const r = await repo.catalogLookup(ctx, 'gel');
+    expect(r.items.map((i) => [i.kind, i.name, i.unitPriceCents])).toEqual([['service', 'Gel Manicure', 4500], ['product', 'Gel Top Coat', 1800]]);
+    expect((await repo.catalogLookup(ctx, 'GTC')).items.map((i) => i.name)).toEqual(['Gel Top Coat']);
+    expect((await repo.catalogLookup(ctx2, 'gel')).items.map((i) => i.name)).toEqual(['Gel Elsewhere', 'Gel Elsewhere Oil']);
+  });
+});

@@ -14,6 +14,7 @@ export const posInvoicesApi = {
   edit: (id: string, b: Q) => api.post<any>(`/pos/invoices/${e(id)}/edit`, b),
   send: (id: string) => api.post<any>(`/pos/invoices/${e(id)}/send`, {}),
   recordPayment: (id: string, b: { amountCents: number; paidOn: string; method: string; reference?: string; note?: string; idempotencyKey: string }) => api.post<any>(`/pos/invoices/${e(id)}/payments`, b),
+  catalog: (search: string) => api.get<any>(`/pos/invoices/catalog`, search ? { search } : {}),
   void: (id: string, reason: string) => api.post<any>(`/pos/invoices/${e(id)}/void`, { reason }),
   credit: (id: string, b: { amountCents: number; reason: string; refundMethod?: string; refundReference?: string; idempotencyKey: string }) => api.post<any>(`/pos/invoices/${e(id)}/credit`, b),
   linkCustomer: (id: string, customerId: string, updateBillTo = false) => api.post<any>(`/pos/invoices/${e(id)}/link-customer`, { customerId, updateBillTo }),
