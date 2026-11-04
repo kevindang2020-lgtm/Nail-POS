@@ -19,18 +19,20 @@ import { PeriodBar, periodQuery, useLoad, StateBlock, fmtYmdSafe, DateField, cen
 import { financeDownload as download } from './POSSettlementsScreen';
 import { deviceToday } from '../lib/deviceToday';
 
-type DisplayStatus = 'draft' | 'sent' | 'overdue' | 'partially_paid' | 'paid' | 'void';
+type DisplayStatus = 'draft' | 'sent' | 'overdue' | 'partially_paid' | 'paid' | 'credited' | 'void';
 type Customer = { id: string | null; state: 'linked' | 'archived' | 'missing' | 'snapshot_only' | 'unlinked'; name: string | null; profileName: string | null; phone: string | null; email: string | null };
 type Row = { id: string; invoiceNumber: string; status: string; displayStatus: DisplayStatus; issueDate: string | null; dueDate: string | null; createdAt: string | null; sentAt: string | null; paidAt: string | null; voidedAt: string | null; voidReason: string | null;
   subtotalCents: number; discountCents: number; taxCents: number; totalCents: number; paidCents: number; balanceCents: number; payments: number; customer: Customer; notes: string | null;
-  actions: { edit: boolean; send: boolean; recordPayment: boolean; void: boolean; linkCustomer: boolean } };
+  creditedCents?: number; refundedCents?: number; credits?: number;
+  actions: { edit: boolean; send: boolean; recordPayment: boolean; void: boolean; linkCustomer: boolean; credit?: boolean } };
 type Detail = { invoice: Row; lines: Array<{ id: string; description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }>; payments: Array<{ id: string; amountCents: number; paidOn: string | null; method: string; reference: string | null; note: string | null; createdAt: string | null; recordedBy: string | null }>;
+  credits?: Array<{ id: string; creditNumber: string; creditCents: number; refundCents: number; refundMethod: string | null; refundReference: string | null; reason: string; issuedOn: string | null; issuedBy: string | null }>;
   delivery: { note: string }; permissions: { recordPayment: boolean; send: boolean; manage: boolean } };
 const money = (c: number | null | undefined) => fmtMoney(c ?? 0);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) || '—' : '—');
 const lbl = (k: string, fb: string) => codeLabel(k, fb);
-const TONE: Record<string, string> = { draft: 'mut', sent: 'info', overdue: 'bad', partially_paid: 'warn', paid: 'ok', void: 'mut' };
-const STATUSES: DisplayStatus[] = ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'void'];
+const TONE: Record<string, string> = { draft: 'mut', sent: 'info', overdue: 'bad', partially_paid: 'warn', paid: 'ok', credited: 'mut', void: 'mut' };
+const STATUSES: DisplayStatus[] = ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'credited', 'void'];
 const SORTS = ['created_desc', 'created_asc', 'issue_desc', 'issue_asc', 'due_asc', 'due_desc', 'amount_desc', 'amount_asc', 'customer_asc'];
 const METHODS = ['cash', 'check', 'card_external', 'bank_transfer', 'other'];
 const errMsg = (e: unknown) => (e as Error)?.message || tx('finance.state.loadFailed');
@@ -49,7 +51,7 @@ export function POSInvoicesScreen() {
   const [page, setPage] = useState(1);
   const [tick, setTick] = useState(0);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string; actions?: { label: string; run: () => void }[] } | null>(null);
-  const [dlg, setDlg] = useState<null | { kind: 'detail'; id: string } | { kind: 'new'; edit?: Detail } | { kind: 'pay'; d: Detail } | { kind: 'void'; d: Detail } | { kind: 'link'; d: Detail } | { kind: 'preview'; id: string; number: string }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'detail'; id: string } | { kind: 'new'; edit?: Detail } | { kind: 'pay'; d: Detail } | { kind: 'void'; d: Detail } | { kind: 'credit'; d: Detail } | { kind: 'link'; d: Detail } | { kind: 'preview'; id: string; number: string }>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const fit = useFitRows<HTMLDivElement>(45, { min: 3, max: 16, reserve: 34 });
   const amountMin = centsFromText(amin), amountMax = centsFromText(amax);
@@ -160,13 +162,14 @@ export function POSInvoicesScreen() {
         onSaved={(d, sent, preview) => { if (preview) { setTick((t) => t + 1); setDlg({ kind: 'preview', id: d.invoice.id, number: d.invoice.invoiceNumber }); } else afterSave(d, dlg.edit ? 'finance.iv.saved' : sent ? 'finance.iv.createdSent' : 'finance.iv.createdDraft'); }} /> : null}
       {dlg?.kind === 'pay' ? <PaymentDialog d={dlg.d} today={summary.data?.period?.today ?? deviceToday()} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d, cents) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx(d.invoice.status === 'paid' ? 'finance.iv.paidInFull' : 'finance.iv.paymentRecorded', { a: money(cents), n: d.invoice.invoiceNumber, b: money(d.invoice.balanceCents) }) }); }} /> : null}
       {dlg?.kind === 'void' ? <VoidDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx('finance.iv.voided', { n: d.invoice.invoiceNumber }) }); }} /> : null}
+      {dlg?.kind === 'credit' ? <CreditDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d, num, refund) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx(refund ? 'finance.iv.creditIssuedRefund' : 'finance.iv.creditIssued', { c: num, n: d.invoice.invoiceNumber, r: money(refund), b: money(d.invoice.balanceCents) }) }); }} /> : null}
       {dlg?.kind === 'link' ? <LinkCustomerDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx('finance.iv.linked', { n: d.invoice.invoiceNumber }) }); }} /> : null}
       {dlg?.kind === 'preview' ? <PdfPreview id={dlg.id} number={dlg.number} onClose={() => setDlg({ kind: 'detail', id: dlg.id })} /> : null}
     </div>
   );
 }
 
-function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }: { id: string; onClose: () => void; onAction: (a: 'pay' | 'void' | 'link' | 'edit' | 'preview', d: Detail) => void; onChanged: (t: string) => void; onError: (t: string) => void; onProfile: (customerId: string) => void }) {
+function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }: { id: string; onClose: () => void; onAction: (a: 'pay' | 'void' | 'link' | 'edit' | 'preview' | 'credit', d: Detail) => void; onChanged: (t: string) => void; onError: (t: string) => void; onProfile: (customerId: string) => void }) {
   const d = useLoad<Detail>(() => api.detail(id), [id]);
   const [busy, setBusy] = useState(false);
   const inv = d.data?.invoice; const p = d.data?.permissions;
@@ -188,6 +191,7 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
         <button type="button" className="fk-btn" disabled={busy} onClick={() => pdf('attachment')} data-testid="download-pdf">{tx('finance.iv.pdf')}</button>
         {inv.actions.send && p.send ? <button type="button" className="fk-btn" disabled={busy} onClick={send} data-testid="send">{tx('finance.iv.send')}</button> : null}
         {inv.actions.linkCustomer && p.manage ? <button type="button" className="fk-btn" onClick={() => onAction('link', d.data!)} data-testid="link-customer">{tx('finance.iv.linkCustomer')}</button> : null}
+        {inv.actions.credit && p.manage ? <button type="button" className="fk-btn" onClick={() => onAction('credit', d.data!)} data-testid="credit">{tx('finance.iv.credit')}</button> : null}
         {inv.actions.void && p.manage ? <button type="button" className="fk-btn danger" onClick={() => onAction('void', d.data!)} data-testid="void">{tx('finance.iv.void')}</button> : null}
         {inv.actions.recordPayment && p.recordPayment ? <button type="button" className="fk-btn primary" onClick={() => onAction('pay', d.data!)} data-testid="record-payment">{tx('finance.iv.recordPayment')}</button> : null}
         <button type="button" className="fk-btn" onClick={onClose}>{tx('finance.iv.back')}</button></> : undefined}>
@@ -210,7 +214,9 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
             {inv.discountCents ? <tr><td>{tx('finance.iv.discount')}</td><td className="num">− {money(inv.discountCents)}</td></tr> : null}
             {inv.taxCents ? <tr><td>{tx('finance.iv.tax')}</td><td className="num">{money(inv.taxCents)}</td></tr> : null}
             <tr className="strong"><td>{tx('finance.iv.col.total')}</td><td className="num">{money(inv.totalCents)}</td></tr>
+            {inv.creditedCents ? <tr><td>{tx('finance.iv.creditNotes')}</td><td className="num" data-testid="credited">− {money(inv.creditedCents)}</td></tr> : null}
             <tr><td>{tx('finance.iv.paidSoFar')}</td><td className="num">− {money(inv.paidCents)}</td></tr>
+            {inv.refundedCents ? <tr><td>{tx('finance.iv.refunded')}</td><td className="num" data-testid="refunded">{money(inv.refundedCents)}</td></tr> : null}
             <tr className="strong"><td>{tx('finance.iv.balanceDue')}</td><td className="num" data-testid="balance">{inv.displayStatus === 'void' ? '—' : money(inv.balanceCents)}</td></tr>
           </tbody></table>
         </div>
@@ -219,6 +225,7 @@ function InvoiceDetail({ id, onClose, onAction, onChanged, onError, onProfile }:
           <tbody>{d.data!.lines.map((l) => <tr key={l.id}><td className="fn-wrap">{l.description}</td><td className="num">{fmtNumber(l.quantity)}</td><td className="num">{money(l.unitPriceCents)}</td><td className="num">{money(l.lineTotalCents)}</td></tr>)}</tbody></table>
         <h3 className="fk-h3" id="payment-history">{tx('finance.iv.paymentHistory')}</h3>
         {d.data!.payments.length === 0 ? <div className="fk-hint">{tx('finance.iv.noPayments')}</div> : <table className="fk-table" data-testid="payments"><tbody>{d.data!.payments.map((pm) => <tr key={pm.id}><td>{fmtYmdSafe(pm.paidOn)}</td><td>{tx('finance.payMethod.' + pm.method)}</td><td>{pm.reference ?? '—'}</td><td>{pm.recordedBy ?? '—'}</td><td className="num">{money(pm.amountCents)}</td></tr>)}</tbody></table>}
+        {d.data!.credits?.length ? <><h3 className="fk-h3">{tx('finance.iv.creditNotes')}</h3><table className="fk-table" data-testid="credits"><tbody>{d.data!.credits.map((c) => <tr key={c.id}><td>{c.creditNumber}</td><td>{fmtYmdSafe(c.issuedOn)}</td><td className="fn-wrap">{c.reason}</td><td>{c.refundCents ? tx('finance.iv.refundShown', { a: money(c.refundCents), m: tx('finance.payMethod.' + (c.refundMethod ?? 'other')) }) : '—'}</td><td>{c.issuedBy ?? '—'}</td><td className="num">− {money(c.creditCents)}</td></tr>)}</tbody></table></> : null}
         {inv.notes ? <><h3 className="fk-h3">{tx('finance.iv.notes')}</h3><div className="fn-wrap">{inv.notes}</div></> : null}
         <div className="fk-hint">{tx('finance.iv.deliveryNote')}</div>
       </>}
@@ -332,6 +339,44 @@ function PaymentDialog({ d, today, onClose, onDone }: { d: Detail; today: string
       {cents != null && cents > inv.balanceCents ? <div className="fk-err">{tx('finance.iv.overBalance')}</div> : null}
       {cents != null && cents > 0 && cents < inv.balanceCents ? <div className="fk-preview">{tx('finance.iv.partialPreview', { b: money(inv.balanceCents - cents) })}</div> : null}
       <div className="fk-hint">{tx('finance.iv.notACharge')}</div>
+      {err ? <div className="fk-err" role="alert">{err}</div> : null}
+    </FitDialog>
+  );
+}
+
+// Invoices guide (Nov 4 2026) §13: a credit note lowers what the invoice asks for; the part beyond the balance is money the
+// customer already paid, so it is refunded (recorded — not a card charge) and the method is required
+function CreditDialog({ d, onClose, onDone }: { d: Detail; onClose: () => void; onDone: (d: Detail, creditNumber: string, refundCents: number) => void }) {
+  const inv = d.invoice; const creditable = inv.totalCents - (inv.creditedCents ?? 0);
+  const [amount, setAmount] = useState(textFromCents(inv.balanceCents > 0 ? inv.balanceCents : creditable)); const [reason, setReason] = useState('');
+  const [method, setMethod] = useState(''); const [reference, setReference] = useState('');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const key = useRef(requestId());
+  const cents = centsFromText(amount);
+  const refund = cents != null ? Math.max(0, cents - inv.balanceCents) : 0;
+  const valid = cents != null && cents > 0 && cents <= creditable && reason.trim().length >= 3 && (refund === 0 || !!method);
+  const submit = async () => {
+    if (!valid || cents == null) return; setBusy(true); setErr(null);
+    try { const r = await api.credit(inv.id, { amountCents: cents, reason: reason.trim(), refundMethod: refund ? method : undefined, refundReference: refund && reference.trim() ? reference.trim() : undefined, idempotencyKey: key.current }); onDone(r, r.creditNumber, refund); }
+    catch (e) { setErr(errMsg(e)); setBusy(false); }
+  };
+  return (
+    <FitDialog title={tx('finance.iv.creditTitle', { n: inv.invoiceNumber })} subtitle={customerText(inv.customer)} onClose={onClose} busy={busy} testId="credit-dialog"
+      footer={<><button type="button" className="fk-btn" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
+        <button type="button" className="fk-btn primary" disabled={!valid || busy} onClick={submit} data-testid="confirm-credit">{busy ? tx('pos.saving') : tx('finance.iv.confirmCredit', { a: cents != null ? money(cents) : '' })}</button></>}>
+      <dl className="fk-dl"><dt>{tx('finance.iv.col.total')}</dt><dd>{money(inv.totalCents)}</dd>{inv.creditedCents ? <><dt>{tx('finance.iv.creditNotes')}</dt><dd>− {money(inv.creditedCents)}</dd></> : null}
+        <dt>{tx('finance.iv.paidSoFar')}</dt><dd>{money(inv.paidCents - (inv.refundedCents ?? 0))}</dd><dt>{tx('finance.iv.balanceDue')}</dt><dd><b>{money(inv.balanceCents)}</b></dd><dt>{tx('finance.iv.creditable')}</dt><dd>{money(creditable)}</dd></dl>
+      <div className="fk-grid2">
+        <label className="fk-field"><span>{tx('finance.iv.creditAmount')} *</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-autofocus data-testid="credit-amount" /></label>
+        <label className="fk-field"><span>{tx('finance.iv.creditReason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-testid="credit-reason" /></label>
+        {refund > 0 ? <>
+          <label className="fk-field"><span>{tx('finance.iv.refundMethod')} *</span><select value={method} onChange={(e) => setMethod(e.target.value)} data-testid="credit-refund-method"><option value="">—</option>{METHODS.map((m) => <option key={m} value={m}>{tx('finance.payMethod.' + m)}</option>)}</select></label>
+          <label className="fk-field"><span>{tx('finance.iv.reference')}</span><input value={reference} onChange={(e) => setReference(e.target.value)} maxLength={120} /></label>
+        </> : null}
+      </div>
+      {cents != null && cents > creditable ? <div className="fk-err">{tx('finance.iv.overCreditable')}</div> : null}
+      {refund > 0 && cents != null && cents <= creditable ? <div className="fk-preview warn" data-testid="credit-refund-preview">{tx('finance.iv.refundPreview', { r: money(refund) })}</div> : null}
+      <div className="fk-hint">{tx('finance.iv.creditNote')}</div>
       {err ? <div className="fk-err" role="alert">{err}</div> : null}
     </FitDialog>
   );

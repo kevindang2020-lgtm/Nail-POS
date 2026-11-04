@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn() }));
+const api = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), lookupCustomers: vi.fn(), createInvoice: vi.fn(), edit: vi.fn(), send: vi.fn(), recordPayment: vi.fn(), void: vi.fn(), linkCustomer: vi.fn(), pdf: vi.fn(), exportCsv: vi.fn(), credit: vi.fn() }));
 vi.mock('../api/posInvoicesApi', () => ({ posInvoicesApi: api }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 import { POSInvoicesScreen } from './POSInvoicesScreen';
@@ -81,5 +81,30 @@ describe('POSInvoicesScreen', () => {
     fireEvent.click(screen.getByTestId('confirm-payment'));
     await waitFor(() => expect(api.recordPayment).toHaveBeenCalled());
     expect(api.recordPayment.mock.calls[0]).toEqual(['i-2', expect.objectContaining({ amountCents: 400, method: 'cash', paidOn: '2026-10-29' })]);
+  });
+  it('a paid invoice is corrected with a credit note: the overpaid part needs a refund method; credits and refunds show in the detail', async () => {
+    const paid = { status: 'paid', displayStatus: 'paid', totalCents: 10000, subtotalCents: 10000, paidCents: 10000, balanceCents: 0, payments: 1, actions: { ...acts, recordPayment: false, credit: true } };
+    api.list.mockResolvedValue(pageOf([inv(paid)]));
+    api.detail.mockResolvedValue(detail(paid));
+    api.credit.mockResolvedValue({ ...detail({ ...paid, creditedCents: 3000, refundedCents: 3000, credits: 1 }), creditNumber: 'CN-0001',
+      credits: [{ id: 'cn1', creditNumber: 'CN-0001', creditCents: 3000, refundCents: 3000, refundMethod: 'cash', refundReference: null, reason: 'Service redone', issuedOn: '2026-10-29', issuedBy: 'Owner' }] });
+    mount();
+    fireEvent.click(await screen.findByText('INV-0002'));
+    fireEvent.click(await screen.findByTestId('credit'));
+    const amount = await screen.findByTestId('credit-amount');
+    expect(amount).toHaveValue('100.00');   // nothing owed: everything left is creditable
+    fireEvent.change(amount, { target: { value: '150.00' } });
+    expect(screen.getByText('That is more than is left to credit on this invoice.')).toBeInTheDocument();
+    fireEvent.change(amount, { target: { value: '30.00' } });
+    fireEvent.change(screen.getByTestId('credit-reason'), { target: { value: 'Service redone' } });
+    expect(screen.getByTestId('credit-refund-preview')).toHaveTextContent('$30.00');
+    expect(screen.getByTestId('confirm-credit')).toBeDisabled();   // the refund method is required
+    fireEvent.change(screen.getByTestId('credit-refund-method'), { target: { value: 'cash' } });
+    api.detail.mockResolvedValue({ ...detail({ ...paid, creditedCents: 3000, refundedCents: 3000, credits: 1 }), credits: [{ id: 'cn1', creditNumber: 'CN-0001', creditCents: 3000, refundCents: 3000, refundMethod: 'cash', refundReference: null, reason: 'Service redone', issuedOn: '2026-10-29', issuedBy: 'Owner' }] });
+    fireEvent.click(screen.getByTestId('confirm-credit'));
+    await waitFor(() => expect(api.credit).toHaveBeenCalledWith('i-2', expect.objectContaining({ amountCents: 3000, reason: 'Service redone', refundMethod: 'cash' })));
+    expect(await screen.findByTestId('credits')).toHaveTextContent('CN-0001');
+    expect(screen.getByTestId('credited')).toHaveTextContent('$30.00');
+    expect(screen.getByTestId('refunded')).toHaveTextContent('$30.00');
   });
 });

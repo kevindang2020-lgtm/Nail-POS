@@ -5,7 +5,7 @@
 // "Role-aware access"):
 //   pos.checkout.view             list · summary · detail · customer lookup · PDF (preview / print / download)
 //   pos.checkout.process_payment  New Invoice (save draft / send) · Send · Record Payment   (front desk included)
-//   pos.checkout.void             Edit a draft · Void (reason) · Link an unlinked customer · Export   (managers / owners)
+//   pos.checkout.void             Edit a draft · Void (reason) · Credit note / refund · Link an unlinked customer · Export   (managers / owners)
 // The older routes (GET state, GET :id, POST, POST :id/status) stay for their callers; :id/status can no longer mark an
 // invoice paid (money is recorded through payments) or void it without a reason.
 import { ListQuery } from '@aipowersalon/database';
@@ -19,7 +19,7 @@ import type { InvoicesContext } from './invoices.dto';
 import { FinanceError, pageReq, type FinanceCtx } from '../finance-screens/finance-scope';
 import { financeCtx, needPermission, runFinance } from '../finance-screens/settlements-screen.controller';
 
-import { CREATE_INVOICE_BODY, INVOICE_STATUS_BODY, INVOICE_DRAFT_BODY, INVOICE_PAYMENT_BODY, INVOICE_VOID_BODY, INVOICE_SEND_BODY, INVOICE_LINK_CUSTOMER_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
+import { CREATE_INVOICE_BODY, INVOICE_STATUS_BODY, INVOICE_DRAFT_BODY, INVOICE_PAYMENT_BODY, INVOICE_VOID_BODY, INVOICE_SEND_BODY, INVOICE_LINK_CUSTOMER_BODY, INVOICE_CREDIT_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 export const INVOICES_LEDGER_REPOSITORY = 'InvoicesLedgerRepository';
 function ctxFrom(req: any): InvoicesContext {
   const c = req?.ctx || {};
@@ -36,7 +36,7 @@ async function run<T>(fn: () => T | Promise<T>): Promise<T> {
 const can = (c: FinanceCtx, p: string) => hasPermission(c as Parameters<typeof hasPermission>[0], p);
 const INVOICE_LIST = {
   filters: {
-    status: { type: 'enum', values: ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'void', 'all'] },
+    status: { type: 'enum', values: ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'credited', 'void', 'all'] },
     preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] },
     dateField: { type: 'enum', values: ['issued', 'due', 'created', 'paid'] },
     amountMin: { type: 'int', min: 0, max: 100_000_000 }, amountMax: { type: 'int', min: 0, max: 100_000_000 }, customerId: { type: 'text', maxLength: 64 },
@@ -126,6 +126,13 @@ export class InvoicesController {
     const c = financeCtx(req); needPermission(c, 'pos.checkout.process_payment');
     return runFinance(() => this.l().recordPayment(c, id, b ?? {}));
   }
+  // Invoices guide (Nov 4 2026) §13: a credit note (and the refund of any overpaid part) — managers / owners, like Void
+  @Post(':id/credit') @RequirePermission('pos.checkout.void')
+  credit(@Req() req: any, @Param('id') id: string, @Body(ValidatedBody(INVOICE_CREDIT_BODY, { strict: true })) b: any) {
+    const c = financeCtx(req); needPermission(c, 'pos.checkout.void');
+    return runFinance(() => this.l().issueCredit(c, id, b ?? {}));
+  }
+
   @Post(':id/void') @RequirePermission('pos.checkout.void')
   voidInvoice(@Req() req: any, @Param('id') id: string, @Body(ValidatedBody(INVOICE_VOID_BODY, { strict: true })) b: any) {
     const c = financeCtx(req); needPermission(c, 'pos.checkout.void');

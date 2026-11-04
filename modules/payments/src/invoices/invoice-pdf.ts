@@ -6,7 +6,7 @@ import { PdfWriter, PAGE, money, longDate, wrapText } from '../finance-screens/f
 
 export interface InvoicePdfData {
   salon: { name: string; address: string | null; phone: string | null };
-  invoice: { invoiceNumber: string; displayStatus: string; issueDate: string | null; dueDate: string | null; subtotalCents: number; discountCents: number; taxCents: number; totalCents: number; paidCents: number; balanceCents: number; notes: string | null; voidReason: string | null;
+  invoice: { invoiceNumber: string; displayStatus: string; issueDate: string | null; dueDate: string | null; subtotalCents: number; discountCents: number; taxCents: number; totalCents: number; paidCents: number; balanceCents: number; creditedCents?: number; refundedCents?: number; notes: string | null; voidReason: string | null;
     customer: { name: string | null; phone: string | null; email: string | null } };
   lines: Array<{ description: string; quantity: number; unitPriceCents: number; lineTotalCents: number }>;
   payments: Array<{ paidOn: string | null; method: string; reference: string | null; amountCents: number }>;
@@ -72,7 +72,9 @@ export function renderInvoicePdf(d: InvoicePdfData): Buffer {
   if (d.invoice.discountCents) totals.push(['Discount', `-${money(d.invoice.discountCents)}`, false]);
   if (d.invoice.taxCents) totals.push(['Tax', money(d.invoice.taxCents), false]);
   totals.push(['Total', money(d.invoice.totalCents), true]);
+  if (d.invoice.creditedCents) totals.push(['Credit notes', `-${money(d.invoice.creditedCents)}`, false]);   // Invoices guide (Nov 4 2026) §13
   if (d.invoice.paidCents) totals.push(['Paid', `-${money(d.invoice.paidCents)}`, false]);
+  if (d.invoice.refundedCents) totals.push(['Refunded', money(d.invoice.refundedCents), false]);
   totals.push([d.invoice.displayStatus === 'void' ? 'Balance (void)' : 'Balance due', money(d.invoice.balanceCents), true]);
   if (y + 16 * totals.length > bottom) { pdf.addPage(); y = PAGE.m; }
   for (const [k, v, strong] of totals) {

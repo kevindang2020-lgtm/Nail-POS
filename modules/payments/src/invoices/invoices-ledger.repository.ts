@@ -14,7 +14,7 @@
 //                    balance, idempotent), and the status follows the balance: partially_paid, then paid.
 //
 // DEFINITIONS (spec §10; INVOICE_DEFINITIONS in the handoff):
-//   balance          total − Σ posted invoice_payments (integer cents)
+//   balance          total − Σ credit notes − (Σ posted invoice_payments − Σ refunds) (integer cents; migration 797)
 //   Overdue          DERIVED: status sent / partially_paid, a due date before today (salon time) and a balance > 0.
 //                    The list, the filter and the KPIs use this one definition; it is never stored.
 //   Outstanding      Σ balance of issued, non-void invoices (sent / partially_paid) with a balance, in scope
@@ -32,7 +32,7 @@ import {
   positiveCents, oneOf, isValidYmd, csvDocument, usd, audit, type AuditRecorder, type FinanceCtx, type Period, type PageReq,
 } from '../finance-screens/finance-scope';
 
-export const INVOICE_LIST_STATUSES = ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'void'] as const;
+export const INVOICE_LIST_STATUSES = ['draft', 'sent', 'overdue', 'partially_paid', 'paid', 'credited', 'void'] as const;
 export type InvoiceListStatus = (typeof INVOICE_LIST_STATUSES)[number];
 export const INVOICE_DATE_BASES = ['issued', 'due', 'created', 'paid'] as const;
 export const INVOICE_SORTS = ['created_desc', 'created_asc', 'issue_desc', 'issue_asc', 'due_asc', 'due_desc', 'amount_desc', 'amount_asc', 'customer_asc'] as const;
@@ -79,19 +79,23 @@ export class InvoicesLedgerRepository {
     const T = ctx.tenantId;
     return sql`with pay as (select ip.invoice_id, coalesce(sum(ip.amount_cents), 0)::bigint as paid, count(*)::int as n, max(ip.paid_on) as last_paid_on
           from invoice_payments ip where ip.tenant_id = ${T} group by ip.invoice_id),
+      cr as (select ic.invoice_id, coalesce(sum(ic.credit_cents), 0)::bigint as credited, coalesce(sum(ic.refund_cents), 0)::bigint as refunded, count(*)::int as n
+          from invoice_credits ic where ic.tenant_id = ${T} group by ic.invoice_id),
       ib as (
         select i.id, i.invoice_number, i.status, i.issue_date, i.due_date, to_char(i.issue_date, 'YYYY-MM-DD') as issue_ymd, to_char(i.due_date, 'YYYY-MM-DD') as due_ymd, i.subtotal_cents, i.tax_cents, i.discount_cents, i.total_cents, i.notes, i.created_at, i.updated_at,
                i.sent_at, i.paid_at, i.voided_at, i.void_reason, i.customer_id, i.bill_to_name, i.bill_to_phone, i.bill_to_phone_digits, i.bill_to_email, i.created_by_user_id,
                c.id as linked_customer_id, c.full_name as customer_name, c.phone_display as customer_phone_display, c.normalized_phone as customer_phone, c.email as customer_email,
                c.archived_at as customer_archived_at,
                coalesce(pay.paid, 0)::bigint as paid_cents, coalesce(pay.n, 0)::int as payments_n, pay.last_paid_on,
-               (i.total_cents - coalesce(pay.paid, 0))::bigint as balance_cents,
+               coalesce(cr.credited, 0)::bigint as credited_cents, coalesce(cr.refunded, 0)::bigint as refunded_cents, coalesce(cr.n, 0)::int as credits_n,
+               (i.total_cents - coalesce(cr.credited, 0) - (coalesce(pay.paid, 0) - coalesce(cr.refunded, 0)))::bigint as balance_cents,
                case when i.status in ('sent', 'partially_paid') and i.due_date is not null and i.due_date < (now() at time zone ${tz})::date
-                         and i.total_cents - coalesce(pay.paid, 0) > 0 then 'overdue' else i.status end as display_status,
+                         and i.total_cents - coalesce(cr.credited, 0) - (coalesce(pay.paid, 0) - coalesce(cr.refunded, 0)) > 0 then 'overdue' else i.status end as display_status,
                coalesce(c.full_name, i.bill_to_name, '') as sort_name
         from invoices i
         left join customers c on c.id = i.customer_id and c.tenant_id = i.tenant_id
         left join pay on pay.invoice_id = i.id
+        left join cr on cr.invoice_id = i.id
         where i.tenant_id = ${T})`;
   }
   private search(raw: string): { where: RawBuilder<boolean>; rank: RawBuilder<number> } {
@@ -149,6 +153,7 @@ export class InvoicesLedgerRepository {
       id: String(r.id), invoiceNumber: String(r.invoice_number), status, displayStatus: display as InvoiceListStatus,
       issueDate: ymd(r.issue_ymd), dueDate: ymd(r.due_ymd), createdAt: iso(r.created_at), sentAt: iso(r.sent_at), paidAt: iso(r.paid_at), voidedAt: iso(r.voided_at), voidReason: r.void_reason ?? null,
       subtotalCents: N(r.subtotal_cents), discountCents: N(r.discount_cents), taxCents: N(r.tax_cents), totalCents: N(r.total_cents), paidCents: N(r.paid_cents), balanceCents: status === 'void' ? 0 : balance,
+      creditedCents: N(r.credited_cents), refundedCents: N(r.refunded_cents), credits: N(r.credits_n),
       payments: N(r.payments_n),
       customer: {
         id: linked ? String(r.linked_customer_id) : null, state: customerState as 'linked' | 'archived' | 'missing' | 'snapshot_only' | 'unlinked',
@@ -159,7 +164,9 @@ export class InvoicesLedgerRepository {
       notes: r.notes ?? null,
       actions: {
         edit: status === 'draft', send: status === 'draft', recordPayment: (status === 'sent' || status === 'partially_paid') && balance > 0,
-        void: (status === 'draft' || status === 'sent') && N(r.payments_n) === 0, linkCustomer: !linked,
+        void: (status === 'draft' || status === 'sent') && N(r.payments_n) === 0 && N(r.credits_n) === 0, linkCustomer: !linked,
+        // Invoices guide (Nov 4 2026) §13: an issued invoice (paid or not) is corrected with a credit note, never zeroed
+        credit: (status === 'sent' || status === 'partially_paid' || status === 'paid') && N(r.total_cents) - N(r.credited_cents) > 0,
       },
     };
   }
@@ -180,7 +187,7 @@ export class InvoicesLedgerRepository {
         coalesce(sum(ib.balance_cents) filter (where ib.status in ('sent', 'partially_paid') and ib.balance_cents > 0), 0)::bigint as outstanding,
         count(*) filter (where ib.display_status = 'overdue')::int as overdue_n, coalesce(sum(ib.balance_cents) filter (where ib.display_status = 'overdue'), 0)::bigint as overdue_cents,
         count(*) filter (where ib.status = 'paid')::int as paid_n, count(*) filter (where ib.status = 'partially_paid')::int as partial_n,
-        count(*) filter (where ib.display_status = 'sent')::int as sent_n
+        count(*) filter (where ib.display_status = 'sent')::int as sent_n, count(*) filter (where ib.status = 'credited')::int as credited_n
       from ib where ${w.where}`.execute(this.db)).rows[0] || {};
     // cash collected is by PAYMENT date (whatever the list's date basis) — the card says so
     // Invoices guide audit (Nov 4 2026): with a search or amount filter on, the Paid card counts the payments of the MATCHING invoices
@@ -189,11 +196,14 @@ export class InvoicesLedgerRepository {
     const fw = filtersOn ? this.where({ ...f, period: { ...f.period, from: null, to: null } } as InvoiceFilters, { withStatus: false }) : null;
     const cash = (await sql<any>`${fw ? sql`${this.base(ctx, tz)} ` : sql``}select coalesce(sum(ip.amount_cents), 0)::bigint as cents, count(*)::int as n from invoice_payments ip
       where ip.tenant_id = ${T} and ${dateInPeriod(sql`ip.paid_on`, f.period)} ${fw ? sql`and ip.invoice_id in (select ib.id from ib where ${fw.where})` : sql``}`.execute(this.db)).rows[0] || {};
+    // money handed back on credit notes leaves the collected figure on the day it was refunded; credits issued are shown beside it
+    const back = (await sql<any>`${fw ? sql`${this.base(ctx, tz)} ` : sql``}select coalesce(sum(ic.refund_cents), 0)::bigint as refunded, coalesce(sum(ic.credit_cents), 0)::bigint as credited, count(*)::int as n from invoice_credits ic
+      where ic.tenant_id = ${T} and ${dateInPeriod(sql`ic.issued_on`, f.period)} ${fw ? sql`and ic.invoice_id in (select ib.id from ib where ${fw.where})` : sql``}`.execute(this.db)).rows[0] || {};
     return {
       period: f.period, dateBasis: f.basis, scope: f.q || f.amountMin != null || f.amountMax != null ? 'period_and_filters' : 'period',
       kpis: {
         outstandingCents: N(k.outstanding), outstandingInvoices: N(k.outstanding_n), overdueInvoices: N(k.overdue_n), overdueCents: N(k.overdue_cents),
-        cashCollectedCents: N(cash.cents), paymentsRecorded: N(cash.n), paidInvoices: N(k.paid_n), partiallyPaidInvoices: N(k.partial_n),
+        cashCollectedCents: N(cash.cents) - N(back.refunded), grossCollectedCents: N(cash.cents), refundedCents: N(back.refunded), creditedCents: N(back.credited), creditNotes: N(back.n), creditedInvoices: N(k.credited_n), paymentsRecorded: N(cash.n), paidInvoices: N(k.paid_n), partiallyPaidInvoices: N(k.partial_n),
         drafts: N(k.drafts), draftCents: N(k.draft_cents), total: N(k.total), voided: N(k.void_n), sent: N(k.sent_n),
       },
       dataAsOf: new Date().toISOString(),
@@ -209,8 +219,12 @@ export class InvoicesLedgerRepository {
     const lines = (await sql<any>`select id, description, quantity, unit_price_cents, line_total_cents, position from invoice_lines where tenant_id = ${T} and invoice_id = ${id}::uuid order by position asc, id asc`.execute(this.db)).rows;
     const payments = (await sql<any>`select ip.id, ip.amount_cents, to_char(ip.paid_on, 'YYYY-MM-DD') as paid_on, ip.method, ip.reference, ip.note, ip.created_at, coalesce(u.full_name, u.email) as recorded_by
       from invoice_payments ip left join users u on u.id = ip.recorded_by_user_id and u.tenant_id = ip.tenant_id where ip.tenant_id = ${T} and ip.invoice_id = ${id}::uuid order by ip.created_at asc, ip.id asc`.execute(this.db)).rows;
+    const credits = (await sql<any>`select ic.id, ic.credit_number, ic.credit_cents, ic.refund_cents, ic.refund_method, ic.refund_reference, ic.reason, to_char(ic.issued_on, 'YYYY-MM-DD') as issued_on, ic.created_at, coalesce(u.full_name, u.email) as issued_by
+      from invoice_credits ic left join users u on u.id = ic.created_by and u.tenant_id = ic.tenant_id where ic.tenant_id = ${T} and ic.invoice_id = ${id}::uuid order by ic.created_at asc, ic.id asc`.execute(this.db)).rows;
     return {
       invoice: this.row(r),
+      credits: credits.map((c: any) => ({ id: String(c.id), creditNumber: String(c.credit_number), creditCents: N(c.credit_cents), refundCents: N(c.refund_cents), refundMethod: c.refund_method ?? null, refundReference: c.refund_reference ?? null,
+        reason: String(c.reason), issuedOn: ymd(c.issued_on), createdAt: iso(c.created_at), issuedBy: c.issued_by ?? null })),
       lines: lines.map((l: any) => ({ id: String(l.id), description: String(l.description), quantity: N(l.quantity), unitPriceCents: N(l.unit_price_cents), lineTotalCents: N(l.line_total_cents), position: N(l.position) })),
       payments: payments.map((p: any) => ({ id: String(p.id), amountCents: N(p.amount_cents), paidOn: ymd(p.paid_on), method: String(p.method), reference: p.reference ?? null, note: p.note ?? null, createdAt: iso(p.created_at), recordedBy: p.recorded_by ?? null })),
       delivery: { email: 'not_connected', sms: 'not_connected', note: 'Invoice delivery to customers is not connected. Sending marks the invoice issued; share the PDF with the customer.' },
@@ -365,7 +379,8 @@ export class InvoicesLedgerRepository {
       if (st === 'draft') throw new FinanceError('Send the invoice before recording a payment.', 'INVOICE_NOT_PAYABLE', 409);
       if (st !== 'sent' && st !== 'partially_paid') throw new FinanceError('This invoice cannot be paid.', 'INVOICE_NOT_PAYABLE', 409, { status: st });
       const paid = N((await sql<any>`select coalesce(sum(amount_cents), 0)::bigint as p from invoice_payments where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.p);
-      const balance = N(inv.total_cents) - paid;
+      const cr = (await sql<any>`select coalesce(sum(credit_cents), 0)::bigint as c, coalesce(sum(refund_cents), 0)::bigint as r from invoice_credits where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0] || {};
+      const balance = N(inv.total_cents) - N(cr.c) - (paid - N(cr.r));   // a credit note lowers what is owed (migration 797)
       if (amount > balance) throw new FinanceError('That is more than the balance due.', 'INVOICE_PAYMENT_EXCEEDS_BALANCE', 409, { balanceCents: balance });
       const pay = (await sql<any>`insert into invoice_payments (tenant_id, invoice_id, amount_cents, currency, paid_on, method, reference, note, idempotency_key, recorded_by_user_id)
         values (${T}, ${id}::uuid, ${amount}, 'USD', ${paidOn}::date, ${method}, ${reference}, ${note}, ${key}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id`.execute(trx)).rows[0];
@@ -377,6 +392,51 @@ export class InvoicesLedgerRepository {
     });
     if (!out.duplicate) await audit(this.auditor, ctx, 'payments', 'invoice_payment_recorded', 'invoice', id, { paymentId: out.paymentId, amountCents: amount, method, paidOn, statusAfter: out.status }, this.log(ctx));
     return { duplicate: out.duplicate, paymentId: out.paymentId, ...(await this.detail(ctx, id))! };
+  }
+
+  /** Credit note (Invoices guide Nov 4 2026 §13): lowers what an issued invoice asks for. Up to the balance it simply
+   *  reduces the balance; beyond it the customer has overpaid, so that part is returned as a recorded refund (method
+   *  required) in the same immutable entry. Idempotent on the request key; the invoice row is locked; audited. */
+  async issueCredit(ctx: FinanceCtx, id: string, b: Record<string, unknown>) {
+    if (!isUuid(id)) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+    const key = String(b.idempotencyKey ?? '');
+    if (!isUuid(key)) throw new FinanceError('This action needs a request id. Try again.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const amount = positiveCents(b.amountCents, MAX_INVOICE_CENTS);
+    if (amount == null) throw new FinanceError('Enter a credit amount greater than $0.00.', 'INVOICE_CREDIT_INVALID', 400, { field: 'amountCents' });
+    const reason = String(b.reason ?? '').trim();
+    if (reason.length < 3) throw new FinanceError('Give a reason for the credit.', 'INVOICE_CREDIT_REASON_REQUIRED', 400, { field: 'reason' });
+    const refundMethod = b.refundMethod == null || b.refundMethod === '' ? null : oneOf(b.refundMethod, PAYMENT_METHODS, 'refundMethod') ?? null;
+    const refundReference = b.refundReference ? String(b.refundReference).trim().slice(0, 120) : null;
+    const tz = await salonTimeZone(this.db, ctx.tenantId); const today = resolvePeriod({ preset: 'today' }, tz).today;
+    const T = ctx.tenantId;
+    const out = await this.db.transaction().execute(async (trx) => {
+      const prior = (await sql<any>`select id, invoice_id, credit_number from invoice_credits where tenant_id = ${T} and idempotency_key = ${key}`.execute(trx)).rows[0];
+      if (prior) { if (String(prior.invoice_id) !== id) throw new FinanceError('This request id was already used.', 'IDEMPOTENCY_KEY_REQUIRED'); return { duplicate: true, creditId: String(prior.id), number: String(prior.credit_number), refund: 0, from: '', to: '' }; }
+      const inv = (await sql<any>`select id, status, total_cents, invoice_number from invoices where tenant_id = ${T} and id = ${id}::uuid for update`.execute(trx)).rows[0];
+      if (!inv) throw new FinanceError('That invoice could not be found.', 'INVOICE_NOT_FOUND', 404);
+      const st = String(inv.status);
+      if (st !== 'sent' && st !== 'partially_paid' && st !== 'paid') throw new FinanceError(st === 'draft' ? 'A draft is edited or voided, not credited.' : 'This invoice cannot be credited.', 'INVOICE_NOT_CREDITABLE', 409, { status: st });
+      const paid = N((await sql<any>`select coalesce(sum(amount_cents), 0)::bigint as p from invoice_payments where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.p);
+      const prev = (await sql<any>`select coalesce(sum(credit_cents), 0)::bigint as c, coalesce(sum(refund_cents), 0)::bigint as r from invoice_credits where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0] || {};
+      const total = N(inv.total_cents), credited = N(prev.c), netPaid = paid - N(prev.r);
+      const creditable = total - credited;
+      if (amount > creditable) throw new FinanceError('That is more than is left to credit on this invoice.', 'INVOICE_CREDIT_EXCEEDS_TOTAL', 409, { creditableCents: creditable });
+      const balance = creditable - netPaid;
+      const refund = Math.max(0, amount - balance);
+      if (refund > 0 && !refundMethod) throw new FinanceError('Part of this credit is money the customer already paid. Choose how it is refunded.', 'INVOICE_REFUND_METHOD_REQUIRED', 400, { refundCents: refund, field: 'refundMethod' });
+      await sql`select pg_advisory_xact_lock(hashtext(${'invoice_credit_number:' + T}))`.execute(trx);
+      const last = (await sql<any>`select max(substring(credit_number from 4)::int) as n from invoice_credits where tenant_id = ${T} and credit_number ~ '^CN-[0-9]+$'`.execute(trx)).rows[0]?.n;
+      const number = `CN-${String(N(last) + 1).padStart(4, '0')}`;
+      const row = (await sql<any>`insert into invoice_credits (tenant_id, invoice_id, credit_number, credit_cents, refund_cents, refund_method, refund_reference, reason, issued_on, idempotency_key, created_by)
+        values (${T}, ${id}::uuid, ${number}, ${amount}, ${refund}, ${refund > 0 ? refundMethod : null}, ${refund > 0 ? refundReference : null}, ${reason.slice(0, 500)}, ${today}::date, ${key}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id`.execute(trx)).rows[0];
+      const leftTotal = creditable - amount, leftNetPaid = netPaid - refund, after = leftTotal - leftNetPaid;
+      const next = leftTotal === 0 ? 'credited' : after === 0 ? 'paid' : leftNetPaid > 0 ? 'partially_paid' : 'sent';
+      assertTransition(INVOICE, st, next);
+      await sql`update invoices set status = ${next}, paid_at = ${next === 'paid' ? sql`coalesce(paid_at, now())` : sql`paid_at`}, updated_at = now() where tenant_id = ${T} and id = ${id}::uuid and status = ${st}`.execute(trx);
+      return { duplicate: false, creditId: String(row.id), number, refund, from: st, to: next, invoiceNumber: String(inv.invoice_number) };
+    });
+    if (!out.duplicate) await audit(this.auditor, ctx, 'payments', 'invoice_credit_issued', 'invoice', id, { creditId: out.creditId, creditNumber: out.number, creditCents: amount, refundCents: out.refund, refundMethod: out.refund ? refundMethod : null, from: out.from, to: out.to, reason: reason.slice(0, 200) }, this.log(ctx));
+    return { duplicate: out.duplicate, creditId: out.creditId, creditNumber: out.number, ...(await this.detail(ctx, id))! };
   }
 
   /** Void with a reason. An invoice with posted payments is NOT voided — it needs a refund / credit (spec §13). */
@@ -392,6 +452,8 @@ export class InvoicesLedgerRepository {
       if (st === 'void') return null;
       const n = N((await sql<any>`select count(*)::int as n from invoice_payments where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.n);
       if (n > 0 || st === 'paid' || st === 'partially_paid') throw new FinanceError('This invoice has payments. Issue a refund or a credit instead of voiding it.', 'INVOICE_HAS_PAYMENTS', 409);
+      const nc = N((await sql<any>`select count(*)::int as n from invoice_credits where tenant_id = ${T} and invoice_id = ${id}::uuid`.execute(trx)).rows[0]?.n);
+      if (nc > 0 || st === 'credited') throw new FinanceError('This invoice has a credit note. Credit the rest instead of voiding it.', 'INVOICE_HAS_CREDITS', 409);
       try { assertTransition(INVOICE, st, 'void'); } catch { throw new FinanceError('This invoice cannot be voided in its current state.', 'INVOICE_STATE_INVALID', 409, { status: st }); }
       await sql`update invoices set status = 'void', voided_at = now(), voided_by_user_id = ${isUuid(ctx.userId) ? ctx.userId : null}, void_reason = ${why.slice(0, 500)}, updated_at = now()
         where tenant_id = ${T} and id = ${id}::uuid and status = ${st}`.execute(trx);
@@ -443,9 +505,9 @@ export class InvoicesLedgerRepository {
     const p = f.period;
     const doc = csvDocument('Invoices',
       [['Generated', new Date().toISOString()], ['Period', p.from && p.to ? `${p.from} to ${p.to} (${p.tz})` : 'All time'], ['Date basis', f.basis], ['Status', f.status ?? 'All'], ['Search', f.q ? 'yes' : '—'], ['Currency', 'USD (amounts in dollars)'],
-       ['Definition', 'Balance = total − recorded payments. Overdue = issued, past its due date, with a balance.']],
-      ['Invoice #', 'Customer', 'Issued', 'Due', 'Status', 'Total', 'Paid', 'Balance'],
-      rows.map((r) => [r.invoiceNumber, r.customer.name ?? 'Unlinked customer', r.issueDate ?? 'Not set', r.dueDate ?? 'Not set', r.displayStatus, usd(r.totalCents), usd(r.paidCents), usd(r.balanceCents)]),
+       ['Definition', 'Balance = total − credit notes − (recorded payments − refunds). Overdue = issued, past its due date, with a balance.']],
+      ['Invoice #', 'Customer', 'Issued', 'Due', 'Status', 'Total', 'Credited', 'Paid', 'Refunded', 'Balance'],
+      rows.map((r) => [r.invoiceNumber, r.customer.name ?? 'Unlinked customer', r.issueDate ?? 'Not set', r.dueDate ?? 'Not set', r.displayStatus, usd(r.totalCents), usd(r.creditedCents), usd(r.paidCents), usd(r.refundedCents), usd(r.balanceCents)]),
       [['Invoices', String(rows.length)], ['Total', usd(rows.reduce((a, r) => a + r.totalCents, 0))], ['Balance due', usd(rows.reduce((a, r) => a + r.balanceCents, 0))]]);
     await audit(this.auditor, ctx, 'payments', 'invoices_exported', 'invoice_report', null, { rows: rows.length, from: p.from, to: p.to, status: f.status ?? null }, this.log(ctx));
     return doc;

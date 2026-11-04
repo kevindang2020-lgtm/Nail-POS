@@ -75,8 +75,9 @@ export const MERCHANT_ONBOARDING = defineStateMachine({
  *  (sent → draft, the old "un-send", is gone: an issued invoice has been seen by its customer.) */
 export const INVOICE = defineStateMachine({
   name: 'invoice', table: 'invoices', column: 'status',
-  states: ['draft', 'sent', 'partially_paid', 'paid', 'void'],
-  transitions: { draft: ['draft', 'sent', 'void'], sent: ['sent', 'partially_paid', 'paid', 'void'], partially_paid: ['partially_paid', 'paid'], paid: ['paid'], void: ['void'] },
+  states: ['draft', 'sent', 'partially_paid', 'paid', 'credited', 'void'],
+  // Invoices guide (Nov 4 2026): an issued invoice is corrected by a credit note (invoice_credits) — 'credited' once credited in full
+  transitions: { draft: ['draft', 'sent', 'void'], sent: ['sent', 'partially_paid', 'paid', 'credited', 'void'], partially_paid: ['partially_paid', 'paid', 'credited'], paid: ['paid', 'credited'], credited: ['credited'], void: ['void'] },
   initial: ['draft'],
 });
 

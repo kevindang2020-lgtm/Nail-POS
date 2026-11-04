@@ -208,3 +208,55 @@ describe('the legacy invoice route stays inside the salon', () => {
   });
 });
 
+
+// Invoices guide (Nov 4 2026) §13: an issued invoice is corrected with an immutable credit note; the part of a credit beyond
+// the balance is money the customer already paid, refunded (method required) in the same entry; nothing is zeroed or erased
+describe('Invoices — credit notes and refunds', () => {
+  it('credit up to the balance lowers it; beyond it refunds the overpaid part; credited in full → credited; idempotent, immutable, audited', async () => {
+    const before = await repo.summary(ctx, repo.filters(ALL(), {}));
+    const made = await repo.create(ctx, { customerId: bob, lines: [line('Gel set', 1, 10000)], send: true, idempotencyKey: key(800) });
+    const inv = made.invoice.id;
+    expect(made.invoice.actions.credit).toBe(true);
+    expect(await code(repo.issueCredit(ctx, inv, { amountCents: 2000, reason: 'x', idempotencyKey: key(801) }))).toBe('INVOICE_CREDIT_REASON_REQUIRED');
+    expect(await code(repo.issueCredit(ctx, inv, { amountCents: 0, reason: 'goodwill', idempotencyKey: key(801) }))).toBe('INVOICE_CREDIT_INVALID');
+    const c1 = await repo.issueCredit(ctx, inv, { amountCents: 2000, reason: 'Late start goodwill', idempotencyKey: key(801) });
+    expect(c1.creditNumber).toMatch(/^CN-\d{4}$/);
+    expect(c1.invoice).toMatchObject({ status: 'sent', balanceCents: 8000, creditedCents: 2000, refundedCents: 0 });
+    expect(c1.credits).toEqual([expect.objectContaining({ creditCents: 2000, refundCents: 0, reason: 'Late start goodwill' })]);
+    const p = await repo.recordPayment(ctx, inv, { amountCents: 5000, paidOn: today(), method: 'cash', idempotencyKey: key(802) });
+    expect(p.invoice).toMatchObject({ status: 'partially_paid', balanceCents: 3000 });
+    expect(await code(repo.recordPayment(ctx, inv, { amountCents: 3001, paidOn: today(), method: 'cash', idempotencyKey: key(803) }))).toBe('INVOICE_PAYMENT_EXCEEDS_BALANCE');   // the credit lowered what is owed
+    expect(await code(repo.issueCredit(ctx, inv, { amountCents: 4000, reason: 'Service redone', idempotencyKey: key(804) }))).toBe('INVOICE_REFUND_METHOD_REQUIRED');
+    const c2 = await repo.issueCredit(ctx, inv, { amountCents: 4000, reason: 'Service redone', refundMethod: 'cash', idempotencyKey: key(804) });
+    expect(c2.invoice).toMatchObject({ status: 'paid', balanceCents: 0, creditedCents: 6000, refundedCents: 1000 });
+    expect(c2.credits[1]).toMatchObject({ creditCents: 4000, refundCents: 1000, refundMethod: 'cash' });
+    const dup = await repo.issueCredit(ctx, inv, { amountCents: 4000, reason: 'Service redone', refundMethod: 'cash', idempotencyKey: key(804) });
+    expect(dup.duplicate).toBe(true); expect(dup.credits.length).toBe(2);
+    expect(await code(repo.issueCredit(ctx, inv, { amountCents: 4001, reason: 'too much', refundMethod: 'cash', idempotencyKey: key(805) }))).toBe('INVOICE_CREDIT_EXCEEDS_TOTAL');
+    expect(await code(repo.issueCredit(ctx2, inv, { amountCents: 100, reason: 'other salon', refundMethod: 'cash', idempotencyKey: key(806) }))).toBe('INVOICE_NOT_FOUND');
+    const c3 = await repo.issueCredit(ctx, inv, { amountCents: 4000, reason: 'Full refund agreed', refundMethod: 'card_external', refundReference: 'RF-9', idempotencyKey: key(807) });
+    expect(c3.invoice).toMatchObject({ status: 'credited', displayStatus: 'credited', balanceCents: 0, creditedCents: 10000, refundedCents: 5000 });
+    expect(c3.invoice.actions).toMatchObject({ credit: false, recordPayment: false, void: false });
+    expect(await code(repo.issueCredit(ctx, inv, { amountCents: 1, reason: 'again', refundMethod: 'cash', idempotencyKey: key(808) }))).toBe('INVOICE_NOT_CREDITABLE');
+    expect(await code(repo.void(ctx, inv, 'want it gone'))).toBe('INVOICE_HAS_PAYMENTS');
+    expect(c3.payments.length).toBe(1); expect(c3.lines.length).toBe(1);   // history kept
+    expect(await code(q(`update invoice_credits set credit_cents = 1 where invoice_id = $1`, [inv]))).toMatch(/immutable/);
+    expect(await code(q(`delete from invoice_credits where invoice_id = $1`, [inv]))).toMatch(/immutable/);
+    expect(audited.filter((a) => a.action === 'invoice_credit_issued' && a.resourceId === inv).length).toBe(3);
+    const after = await repo.summary(ctx, repo.filters(ALL(), {}));
+    expect(after.kpis.refundedCents - before.kpis.refundedCents).toBe(5000);
+    expect(after.kpis.creditedCents - before.kpis.creditedCents).toBe(10000);
+    expect(after.kpis.cashCollectedCents - before.kpis.cashCollectedCents).toBe(0);   // 50.00 in, 50.00 handed back
+    expect(after.kpis.creditedInvoices - before.kpis.creditedInvoices).toBe(1);
+    expect((await repo.list(ctx, repo.filters(ALL(), { status: 'credited' }), pageReq({}))).items.map((x) => x.id)).toContain(inv);
+  });
+  it('a draft is not credited; an unpaid invoice with a credit note is not voided (credit the rest)', async () => {
+    const draft = await repo.create(ctx, { customerId: cat, lines: [line('Polish', 1, 2500)], idempotencyKey: key(820) });
+    expect(await code(repo.issueCredit(ctx, draft.invoice.id, { amountCents: 100, reason: 'draft credit', idempotencyKey: key(821) }))).toBe('INVOICE_NOT_CREDITABLE');
+    const sent = await repo.create(ctx, { customerId: cat, lines: [line('Pedicure', 1, 4000)], send: true, idempotencyKey: key(822) });
+    await repo.issueCredit(ctx, sent.invoice.id, { amountCents: 1000, reason: 'promo applied late', idempotencyKey: key(823) });
+    expect(await code(repo.void(ctx, sent.invoice.id, 'start over'))).toBe('INVOICE_HAS_CREDITS');
+    const rest = await repo.issueCredit(ctx, sent.invoice.id, { amountCents: 3000, reason: 'cancelled service', idempotencyKey: key(824) });
+    expect(rest.invoice).toMatchObject({ status: 'credited', balanceCents: 0, refundedCents: 0 });   // nothing was paid → no refund
+  });
+});

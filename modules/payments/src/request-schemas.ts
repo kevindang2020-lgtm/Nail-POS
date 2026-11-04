@@ -102,6 +102,8 @@ export const INVOICE_PAYMENT_BODY: BodySchema = S.object({
 }, ['amountCents', 'paidOn', 'method', 'idempotencyKey'], { 'x-forbidden': MONEY });
 /** POST /pos/invoices/:id/void — { reason } */
 export const INVOICE_VOID_BODY: BodySchema = S.object({ reason: str(500) }, ['reason']);
+/** POST /pos/invoices/:id/credit — credit note; the overpaid part is refunded with refundMethod (Invoices guide Nov 4 2026 §13) */
+export const INVOICE_CREDIT_BODY: BodySchema = S.object({ amountCents: S.integer({ minimum: 1 }), reason: str(500), refundMethod: str(20), refundReference: str(120), idempotencyKey: S.uuid() }, ['amountCents', 'reason', 'idempotencyKey']);
 /** POST /pos/invoices/:id/send — issue (draft → sent) */
 export const INVOICE_SEND_BODY: BodySchema = S.object({ channel: str(16) });
 /** POST /pos/invoices/:id/link-customer — repair an unlinked invoice (manager) */

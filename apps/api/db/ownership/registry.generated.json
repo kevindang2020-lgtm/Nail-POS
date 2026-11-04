@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 934,
+  "tables": 935,
   "ownership": {
-   "tenant_owned": 622,
+   "tenant_owned": 623,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 90,
    "platform_global": 153,
@@ -19,7 +19,7 @@
   "domain": {
    "IDENTITY": 41,
    "SECURITY": 31,
-   "FINANCE": 81,
+   "FINANCE": 82,
    "AI": 141,
    "AUDIT": 29,
    "OPERATIONS": 73,
@@ -45,10 +45,10 @@
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
    "INTERNAL": 511,
-   "PAYMENT_RESTRICTED": 75,
+   "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 48,
+  "append_only": 49,
   "platform_rows": 99
  },
  "tables": {
@@ -4843,6 +4843,18 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "invoice_credits": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "FINANCE",
+   "sensitivity": "PAYMENT_RESTRICTED",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "invoice_lines": {

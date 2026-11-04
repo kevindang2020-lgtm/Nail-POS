@@ -2799,6 +2799,7 @@ POST /pos/gift-cards/stock/register  realm=staff  auth=session  domain=payments 
 POST /pos/gift-cards/stock/{id}/void  realm=staff  auth=session  domain=payments  perm=pos.checkout.gift_card_issue  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/new  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/invoices/{id}/credit  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/edit  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/link-customer  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/payments  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard

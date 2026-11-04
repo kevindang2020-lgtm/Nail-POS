@@ -2701,6 +2701,7 @@
   "POST /pos/gift-cards/stock/{id}/void": "AAAADRRRRRRRRRRRR",
   "POST /pos/gift-cards/stock/register": "AAAADRRRRRRRRRRRR",
   "POST /pos/invoices": "AAAADRRRRRRRRRRRR",
+  "POST /pos/invoices/{id}/credit": "AADDDRRRRRRRRRRRR",
   "POST /pos/invoices/{id}/edit": "AADDDRRRRRRRRRRRR",
   "POST /pos/invoices/{id}/link-customer": "AADDDRRRRRRRRRRRR",
   "POST /pos/invoices/{id}/payments": "AAAADRRRRRRRRRRRR",

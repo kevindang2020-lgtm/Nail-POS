@@ -15,6 +15,7 @@ export const posInvoicesApi = {
   send: (id: string) => api.post<any>(`/pos/invoices/${e(id)}/send`, {}),
   recordPayment: (id: string, b: { amountCents: number; paidOn: string; method: string; reference?: string; note?: string; idempotencyKey: string }) => api.post<any>(`/pos/invoices/${e(id)}/payments`, b),
   void: (id: string, reason: string) => api.post<any>(`/pos/invoices/${e(id)}/void`, { reason }),
+  credit: (id: string, b: { amountCents: number; reason: string; refundMethod?: string; refundReference?: string; idempotencyKey: string }) => api.post<any>(`/pos/invoices/${e(id)}/credit`, b),
   linkCustomer: (id: string, customerId: string, updateBillTo = false) => api.post<any>(`/pos/invoices/${e(id)}/link-customer`, { customerId, updateBillTo }),
   /** the invoice PDF (preview / print in the browser's PDF viewer, or a download) */
   pdf: (id: string, disposition: 'inline' | 'attachment' = 'inline') => api.exportAsync<Blob>(`/pos/invoices/${e(id)}/pdf`, { disposition }, 'blob'),
