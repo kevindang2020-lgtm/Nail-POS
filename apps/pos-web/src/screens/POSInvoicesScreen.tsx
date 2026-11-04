@@ -8,7 +8,7 @@
 // an immutable entry ≤ balance, partial → Partially Paid → Paid), void (now a reason, refused once money was received).
 // Customer-facing invoices (the PDF) are English only. No print dialog: Print opens the PDF in the browser's viewer.
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posInvoicesApi as api } from '../api/posInvoicesApi';
 import { useCan } from '../components/usePermissions';
@@ -42,6 +42,11 @@ const customerText = (c: Customer) => (c.name ? c.name : c.state === 'missing' ?
 export function POSInvoicesScreen() {
   const can = useCan();
   const nav = useNavigate();
+  // Invoices guide (Nov 4 2026) §07 "Customer" filter + §14 Customer Profiles: ?customerId=&customerName= arrives from a profile;
+  // ?invoiceId= opens that invoice
+  const [params] = useSearchParams();
+  const [cust, setCust] = useState<{ id: string; name: string } | null>(() => { const id = params.get('customerId'); return id ? { id, name: params.get('customerName') || '' } : null; });
+  const [custPick, setCustPick] = useState(false);
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [status, setStatus] = useState('');
   const [period, setPeriod] = useState<PeriodState>({ preset: 'all' });
@@ -53,10 +58,11 @@ export function POSInvoicesScreen() {
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string; actions?: { label: string; run: () => void }[] } | null>(null);
   const [dlg, setDlg] = useState<null | { kind: 'detail'; id: string } | { kind: 'new'; edit?: Detail } | { kind: 'pay'; d: Detail } | { kind: 'void'; d: Detail } | { kind: 'credit'; d: Detail } | { kind: 'link'; d: Detail } | { kind: 'preview'; id: string; number: string }>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
+  useEffect(() => { const iid = params.get('invoiceId'); if (iid) setDlg({ kind: 'detail', id: iid }); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const fit = useFitRows<HTMLDivElement>(45, { min: 3, max: 16, reserve: 34 });
   const amountMin = centsFromText(amin), amountMax = centsFromText(amax);
   const amountBad = (!!amin && amountMin == null) || (!!amax && amountMax == null) || (amountMin != null && amountMax != null && amountMin > amountMax);
-  const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, amountMin: amountBad ? undefined : amountMin ?? undefined, amountMax: amountBad ? undefined : amountMax ?? undefined };
+  const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, customerId: cust?.id, amountMin: amountBad ? undefined : amountMin ?? undefined, amountMax: amountBad ? undefined : amountMax ?? undefined };
   const key = JSON.stringify([scope, status, sort]);
   const firstRun = useRef(true);
   useEffect(() => { if (firstRun.current) { firstRun.current = false; return; } setPage(1); }, [key]);
@@ -67,11 +73,12 @@ export function POSInvoicesScreen() {
   const perms = summary.data?.permissions ?? { create: can('checkout.process_payment'), recordPayment: can('checkout.process_payment'), manage: can('checkout.manage_overrides') };
   const k = summary.data?.kpis;
   const chips: Array<{ k: string; label: string; clear: () => void }> = [];
+  if (cust) chips.push({ k: 'c', label: `${tx('finance.iv.customerChip')}: ${cust.name || '—'}`, clear: () => setCust(null) });
   if (q) chips.push({ k: 'q', label: `“${q}”`, clear: () => setSearch('') });
   if (status) chips.push({ k: 's', label: lbl('finance.iv.status.' + status, status), clear: () => setStatus('') });
   if (period.preset !== 'all') chips.push({ k: 'p', label: `${tx('finance.basisIv.' + basis)}: ${period.preset === 'custom' ? `${fmtYmdSafe(period.from)} – ${fmtYmdSafe(period.to)}` : tx('finance.period.' + period.preset)}`, clear: () => setPeriod({ preset: 'all' }) });
   if (amountMin != null || amountMax != null) chips.push({ k: 'a', label: `${amountMin != null ? money(amountMin) : '…'} – ${amountMax != null ? money(amountMax) : '…'}`, clear: () => { setAmin(''); setAmax(''); } });
-  const clearAll = () => { setSearch(''); setStatus(''); setPeriod({ preset: 'all' }); setBasis('issued'); setAmin(''); setAmax(''); setSort('created_desc'); };
+  const clearAll = () => { setCust(null); setSearch(''); setStatus(''); setPeriod({ preset: 'all' }); setBasis('issued'); setAmin(''); setAmax(''); setSort('created_desc'); };
   const rows: Row[] = list.data?.items ?? [];
   const info = list.data ? { page: list.data.page, pageSize: list.data.pageSize, totalItems: list.data.total, totalPages: list.data.pageCount } : null;
   const scopeLabel = summary.data ? (summary.data.period?.from ? `${tx('finance.basisIv.' + summary.data.dateBasis)} · ${fmtYmdSafe(summary.data.period.from)} – ${fmtYmdSafe(summary.data.period.to)}` : tx('finance.iv.scopeAll')) + (summary.data.scope === 'period_and_filters' ? ' · ' + tx('finance.iv.scopeFiltered') : '') : '';
@@ -126,6 +133,8 @@ export function POSInvoicesScreen() {
           basisOptions={['issued', 'due', 'created', 'paid'].map((b) => ({ value: b, label: tx('finance.basisIv.' + b) }))} />
         <span className="fn-amount"><input className="fk-search xs" inputMode="decimal" value={amin} onChange={(e) => setAmin(e.target.value)} placeholder={tx('finance.iv.min')} aria-label={tx('finance.iv.minAmount')} data-testid="amount-min" />
           –<input className="fk-search xs" inputMode="decimal" value={amax} onChange={(e) => setAmax(e.target.value)} placeholder={tx('finance.iv.max')} aria-label={tx('finance.iv.maxAmount')} data-testid="amount-max" /></span>
+        <span className="fn-cust">{custPick ? <CustomerFilter onPick={(c) => { setCust(c); setCustPick(false); }} onCancel={() => setCustPick(false)} />
+          : <button type="button" className="fk-btn ghost sm" onClick={() => setCustPick(true)} data-testid="customer-filter">{cust ? cust.name || tx('finance.iv.customerChip') : tx('finance.iv.anyCustomer')}</button>}</span>
         <select className="fk-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('finance.sort')} data-testid="sort">{SORTS.map((s) => <option key={s} value={s}>{tx('finance.ivSort.' + s)}</option>)}</select>
         {amountBad ? <span className="fk-err fn-inline-err" role="alert">{tx('finance.iv.amountRangeBad')}</span> : null}
       </div>
@@ -166,6 +175,19 @@ export function POSInvoicesScreen() {
       {dlg?.kind === 'link' ? <LinkCustomerDialog d={dlg.d} onClose={() => setDlg({ kind: 'detail', id: dlg.d.invoice.id })} onDone={(d) => { setTick((t) => t + 1); setDlg({ kind: 'detail', id: d.invoice.id }); setNote({ tone: 'ok', text: tx('finance.iv.linked', { n: d.invoice.invoiceNumber }) }); }} /> : null}
       {dlg?.kind === 'preview' ? <PdfPreview id={dlg.id} number={dlg.number} onClose={() => setDlg({ kind: 'detail', id: dlg.id })} /> : null}
     </div>
+  );
+}
+
+function CustomerFilter({ onPick, onCancel }: { onPick: (c: { id: string; name: string }) => void; onCancel: () => void }) {
+  const [find, setFind] = useState(''); const fq = useDebounced(find.trim(), 250);
+  const found = useLoad(() => (fq.length >= 2 ? api.lookupCustomers(fq) : Promise.resolve({ items: [] })), [fq]);
+  return (
+    <span className="fn-cust-pick" onKeyDown={(e) => { if (e.key === 'Escape') onCancel(); }}>
+      <input className="fk-search" type="search" autoFocus value={find} onChange={(e) => setFind(e.target.value)} placeholder={tx('finance.iv.findCustomer')} aria-label={tx('finance.iv.findCustomer')} data-testid="customer-filter-find" />
+      <button type="button" className="fk-x" aria-label={tx('pos.cancel')} onClick={onCancel}>✕</button>
+      {fq.length >= 2 && found.data?.items?.length ? <ul className="fk-pick fn-cust-list">{found.data.items.map((c: any) => <li key={c.id}><button type="button" onClick={() => onPick({ id: c.id, name: c.name })} data-testid="customer-filter-option"><b>{c.name}</b><span>{c.phone ?? '—'} · {tx('finance.iv.invoicesN', { n: fmtNumber(c.invoices) })}</span></button></li>)}</ul>
+        : fq.length >= 2 && found.data ? <span className="fk-hint">{tx('finance.iv.noCustomerFound')}</span> : null}
+    </span>
   );
 }
 

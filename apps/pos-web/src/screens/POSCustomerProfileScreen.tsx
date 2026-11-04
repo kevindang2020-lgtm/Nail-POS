@@ -13,6 +13,7 @@ import { money, reportError } from './reportsCommon';
 import { t as i18nText } from '@aipowersalon/mobile-sdk/i18n';
 import { customerLanguageName } from '../components/customerLanguage';
 import { codeLabel } from '../components/peopleLabels';
+import { CustomerInvoicesPanel } from '../components/CustomerInvoicesPanel';
 
 type CustomerItem = { customerId: string; fullName: string; phone: string; visitsCount: number; avatarUrl?: string };
 type Visit = { visitId: string; date: string; serviceName: string; technicianName: string; totalCents: number; tipCents: number };
@@ -451,6 +452,9 @@ export function POSCustomerProfileScreen() {
               ) : <div style={{ color: '#A09388', padding: '20px 0', fontSize: 15 }}>{i18nText('pos.no_active_gift_cards_associated_with_h0mk')}</div>}
             </section>
           </div>
+
+          {/* Invoices guide (Nov 4 2026) §14: this customer's invoices and balance */}
+          {selectedId ? <CustomerInvoicesPanel customerId={selectedId} customerName={detail.displayName} /> : null}
 
           {/* Recent Service History */}
           <section style={{ background: '#FFFFFF', borderRadius: 24, border: '1px solid #F1ECE4', boxShadow: '0 8px 24px rgba(0,0,0,0.02)', overflow: 'hidden' }}>

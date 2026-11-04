@@ -107,4 +107,19 @@ describe('POSInvoicesScreen', () => {
     expect(screen.getByTestId('credited')).toHaveTextContent('$30.00');
     expect(screen.getByTestId('refunded')).toHaveTextContent('$30.00');
   });
+  it('arriving from a customer profile filters by that customer and opens the invoice; a customer can be picked and cleared', async () => {
+    api.detail.mockResolvedValue(detail());
+    api.lookupCustomers.mockResolvedValue({ items: [{ id: 'c-9', name: 'Bob Smith', phone: null, email: null, invoices: 3 }] });
+    render(<MemoryRouter initialEntries={['/tenant/payments/invoices?customerId=c-1&customerName=Ann%20Lee&invoiceId=i-2']}><POSInvoicesScreen /></MemoryRouter>);
+    await waitFor(() => expect(api.list).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c-1' })));
+    expect(api.summary).toHaveBeenCalledWith(expect.objectContaining({ customerId: 'c-1' }));
+    expect(await screen.findByText('Customer: Ann Lee')).toBeInTheDocument();
+    await waitFor(() => expect(api.detail).toHaveBeenCalledWith('i-2'));
+    fireEvent.click(screen.getByTestId('customer-filter'));
+    fireEvent.change(screen.getByTestId('customer-filter-find'), { target: { value: 'Bob' } });
+    fireEvent.click(await screen.findByTestId('customer-filter-option'));
+    await waitFor(() => expect(api.list).toHaveBeenLastCalledWith(expect.objectContaining({ customerId: 'c-9', page: 1 })));
+    fireEvent.click(screen.getByRole('button', { name: /remove filter customer: bob smith/i }));
+    await waitFor(() => expect(api.list.mock.calls.at(-1)![0].customerId).toBeUndefined());
+  });
 });
