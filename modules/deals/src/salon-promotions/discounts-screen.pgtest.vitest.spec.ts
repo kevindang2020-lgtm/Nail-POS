@@ -149,3 +149,23 @@ describe('Discounts — Redemption History, performance, details', () => {
     expect(await at(B)).not.toContain(id('ae7'));
   });
 });
+
+// Coupons guide (Nov 4 2026): the "expiring soon" window is the viewer's choice, and the redemption history can be read by
+// the time the code went on the ticket (applied) or the time the ticket was paid (finalized — a pending one has none)
+describe('Discounts — expiring window and redemption date basis', () => {
+  it('expiring soon follows the chosen window (default 7, 1–90 only)', async () => {
+    const k7 = await repo.kpis(ctx);
+    expect(k7.expiringWindowDays).toBe(7); expect(k7.expiringSoon).toBe(1);       // Soon Twenty-Five ends in 3 days
+    const k2 = await repo.kpis(ctx, { expiringDays: 2 });
+    expect(k2.expiringWindowDays).toBe(2); expect(k2.expiringSoon).toBe(0);
+    expect((await repo.kpis(ctx, { expiringDays: 500 })).expiringWindowDays).toBe(7);   // out of range → the default
+  });
+  it('applied vs finalized basis: a pending redemption has no finalized date', async () => {
+    const today = { preset: 'today' };
+    const applied = await repo.redemptions(ctx, { state: 'all', dateField: 'applied', ...today });
+    const finalized = await repo.redemptions(ctx, { state: 'all', dateField: 'finalized', ...today });
+    expect(applied.items.map((x: { id: string }) => x.id)).toContain(id('ae3'));
+    expect(finalized.items.map((x: { id: string }) => x.id)).not.toContain(id('ae3'));
+    expect(finalized.items.map((x: { id: string }) => x.id)).toEqual(expect.arrayContaining([id('ae1'), id('ae2')]));
+  });
+});

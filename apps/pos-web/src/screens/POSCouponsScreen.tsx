@@ -17,6 +17,7 @@ import { posDiscountsApi } from '../api/posDiscountsApi';
 import { posDealsApi, type DealView } from '../api/posDealsApi';
 import { posCouponsApi, type AssistGoal, type CouponCheck } from '../api/posCouponsApi';
 import { posServicesApi } from '../api/posServicesApi';
+import { authApi } from '../api/authApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
@@ -62,21 +63,25 @@ export function POSCouponsScreen() {
   const [assistant, setAssistant] = useState(false);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const [services, setServices] = useState<{ id: string; name: string }[]>([]);
+  // Coupons guide (Nov 4 2026): location filter (the salon's active locations), redemption date basis, expiring window, exports
+  const [branchId, setBranchId] = useState(''); const [redBasis, setRedBasis] = useState('redeemed'); const [expDays, setExpDays] = useState(7);
+  const branches = useLoad(() => authApi.branches().then((r: any) => (r.branches ?? []).filter((b: any) => b.isActive)), []);
+  const [exporting, setExporting] = useState(false);
   useEffect(() => { (posServicesApi.list() as Promise<any>).then((r) => setServices((Array.isArray(r) ? r : r?.items ?? r?.services ?? []).map((s: any) => ({ id: String(s.id ?? s.serviceId), name: String(s.name) })))).catch(() => setServices([])); }, []);
 
-  const libScope = { q: q || undefined, status, type, serviceId: serviceId || undefined, dateField: basis, ...periodQuery(periods.library) };
-  const redScope = { q: q || undefined, state: redState, ...periodQuery(periods.redemptions) };
+  const libScope = { q: q || undefined, status, type, serviceId: serviceId || undefined, dateField: basis, branchId: branchId || undefined, ...periodQuery(periods.library) };
+  const redScope = { q: q || undefined, state: redState, branchId: branchId || undefined, dateField: redBasis, ...periodQuery(periods.redemptions) };
   const libKey = JSON.stringify([libScope, size]); const redKey = JSON.stringify([redScope, size]);
   useEffect(() => setPage(1), [libKey]); useEffect(() => setRpage(1), [redKey]);
-  const kpis = useLoad(() => posDiscountsApi.kpis(), [tick]);
+  const kpis = useLoad(() => posDiscountsApi.kpis({ expiringDays: expDays }), [tick, expDays]);
   const list = useLoad(() => (tab === 'library' ? posDiscountsApi.list({ ...libScope, page, pageSize: size }) : Promise.resolve(null)), [tab, libKey, page, tick]);
   const reds = useLoad(() => (tab === 'redemptions' ? posDiscountsApi.redemptions({ ...redScope, page: rpage, pageSize: size }) : Promise.resolve(null)), [tab, redKey, rpage, tick]);
   const health = useLoad(() => (tab === 'health' ? posCouponsApi.health() : Promise.resolve(null)), [tab, tick]);
   useEffect(() => { const p = list.data?.page; if (p && p !== page) setPage(p); }, [list.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { const p = reds.data?.page; if (p && p !== rpage) setRpage(p); }, [reds.data]);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  const filtered = !!(q || (tab === 'library' && (status !== 'live' || type !== 'all' || serviceId || periods.library.preset !== 'all')) || (tab === 'redemptions' && (redState !== 'confirmed' || periods.redemptions.preset !== 'all')));
-  const clearAll = () => { setSearch(''); setType('all'); setServiceId(''); setBasis('created'); setRedState('confirmed'); setPeriods({ library: { preset: 'all' }, redemptions: { preset: 'all' } }); setStatus('live'); };
+  const filtered = !!(branchId || q || (tab === 'library' && (status !== 'live' || type !== 'all' || serviceId || periods.library.preset !== 'all')) || (tab === 'redemptions' && (redState !== 'confirmed' || periods.redemptions.preset !== 'all')));
+  const clearAll = () => { setBranchId(''); setRedBasis('redeemed'); setSearch(''); setType('all'); setServiceId(''); setBasis('created'); setRedState('confirmed'); setPeriods({ library: { preset: 'all' }, redemptions: { preset: 'all' } }); setStatus('live'); };
   /** a new / duplicated / assistant draft: Page 1 of the library, newest first; say so when the filters hide it */
   const afterCreate = (v: { id: string; title?: string; status?: string }, key: string) => {
     setTab('library'); setPage(1); refresh();
@@ -118,11 +123,20 @@ export function POSCouponsScreen() {
           <select className="fk-select" value={serviceId} onChange={(e) => setServiceId(e.target.value)} aria-label={tx('cp.service')} data-testid="service"><option value="">{tx('cp.anyService')}</option>{services.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
         </> : null}
         {tab === 'redemptions' ? <select className="fk-select" value={redState} onChange={(e) => setRedState(e.target.value)} aria-label={tx('pos.status')} data-testid="red-state">{STATES.map((s) => <option key={s} value={s}>{tx('dsc.rstate.' + s)}</option>)}</select> : null}
+        {(branches.data?.length ?? 0) > 1 && tab !== 'health' ? <select className="fk-select" value={branchId} onChange={(e) => setBranchId(e.target.value)} aria-label={tx('cp.location')} data-testid="branch">
+          <option value="">{tx('cp.allLocations')}</option>{(branches.data ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
+        {tab === 'library' ? <select className="fk-select" value={String(expDays)} onChange={(e) => setExpDays(Number(e.target.value))} aria-label={tx('cp.expiringWindow')} data-testid="expiring-window">
+          {[3, 7, 14, 30].map((n) => <option key={n} value={n}>{tx('cp.expiringIn', { n: String(n) })}</option>)}</select> : null}
+        {canManage && tab !== 'health' ? <button type="button" className="fk-btn ghost" disabled={exporting} data-testid="export" onClick={async () => {
+          setExporting(true);
+          try { const text = tab === 'redemptions' ? await posDiscountsApi.exportRedemptions({ ...redScope }) : await posDiscountsApi.exportList({ ...libScope }); saveText(tab === 'redemptions' ? 'coupon-redemptions.csv' : 'coupons.csv', text); }
+          catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('cp.failed')) }); } finally { setExporting(false); }
+        }}>{exporting ? tx('pos.loading') : tx('cp.exportCsv')}</button> : null}
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div>
       {tab !== 'health' ? <PeriodBar compact allowAll value={periods[pKey]} onChange={(p) => setPeriods((x) => ({ ...x, [pKey]: p }))} server={server}
-        basis={tab === 'library' ? basis : 'redeemed'} onBasis={tab === 'library' ? setBasis : () => undefined}
-        basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('cp.basis.' + b) })) : [{ value: 'redeemed', label: tx('dsc.df.redeemed') }]} /> : null}
+        basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
+        basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('cp.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}
 
       <div className="fk-seg inv2-tabseg" role="tablist" aria-label={tx('cp.title')}>
         {TABS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>{tx('cp.tab.' + t)}</button>)}
@@ -153,7 +167,7 @@ export function POSCouponsScreen() {
         footer={<div className="cp-foot"><Pager info={pageOf(reds.data)} onPage={setRpage} label={tx('cp.tab.redemptions')} /><SizePicker size={size} onSize={setSize} /></div>}>
         {reds.error ? <StateBlock error={reds.error} onRetry={reds.reload} /> : !reds.data ? <div className="fk-loading">{tx('pos.loading')}</div>
           : reds.data.items.length === 0 ? <Empty title={q ? tx('dsc.noMatchSearch', { q }) : tx('dsc.noRedemptions')} />
-          : <RedemptionsTable rows={reds.data.items} onCoupon={(id) => setDetail({ id, tab: 'redemptions' })} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} />}
+          : <RedemptionsTable rows={reds.data.items} onCoupon={(id) => setDetail({ id, tab: 'redemptions' })} onTicket={(ticketId) => nav(`/tenant/payments/transactions?search=${encodeURIComponent(reds.data.items.find((x: any) => x.ticketId === ticketId)?.ticketNumber ?? ticketId)}`)} onCustomer={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} />}
       </FitPanel> : null}
 
       {tab === 'health' ? <FitPanel testId="health" title={<>{tx('cp.tab.health')}{health.data ? <span className={'fk-chip ' + healthTone(health.data.overall)} style={{ marginLeft: 8 }} data-testid="health-overall">{tx('cp.health.' + health.data.overall)}</span> : null}</>}>
@@ -327,4 +341,11 @@ export function AssistantDialog({ services, onClose, onDone, api = posCouponsApi
       <div className="fk-hint"><b>{tx('cp.assistSafety')}</b></div>
     </div> : null}
   </FitDialog>;
+}
+
+/** a CSV the server built, saved by the browser (no print; the file is the export) */
+function saveText(name: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'text/csv;charset=utf-8' }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }

@@ -2,6 +2,13 @@
 // Front Desk POS only. A coupon is the same record the Promotions and Discounts screens show; nothing here sends messages.
 export const COUPONS_EN = {
   'cp.title': 'Coupons & Promotions', 'cp.subtitle': 'Offer codes, eligibility, redemptions and the discounts Checkout actually applied',
+  'cp.location': 'Location',
+  'cp.allLocations': 'All locations',
+  'cp.expiringWindow': 'Expiring window',
+  'cp.expiringIn': 'Expiring in {n} days',
+  'cp.exportCsv': 'Export CSV',
+  'cp.redBasis.applied': 'Code applied',
+  'cp.redBasis.finalized': 'Ticket paid (finalized)',
   'cp.assistant': 'Coupon Assistant', 'cp.newCoupon': 'New Coupon', 'cp.editTitle': 'Edit {name}', 'cp.failed': 'That did not work — please try again.',
   'cp.created': '"{name}" was saved as a draft. Submit and publish it to make it usable at Checkout.', 'cp.saved': '"{name}" was saved (a new version).',
   'cp.duplicated': 'A draft copy "{name}" was created — no codes, uses or history were copied.', 'cp.assistDrafted': '"{name}" was saved as a draft from the assistant. Nothing is live and nothing was sent.',

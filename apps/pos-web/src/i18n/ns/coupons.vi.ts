@@ -1,6 +1,13 @@
 // ns/coupons.vi.ts — Tiếp thị → Phiếu giảm giá (Coupons & Promotions, 30/10/2026) (Tiếng Việt). Chỉ dùng cho POS quầy lễ tân.
 export const COUPONS_VI = {
   'cp.title': 'Phiếu giảm giá & Khuyến mãi', 'cp.subtitle': 'Mã ưu đãi, điều kiện, lượt dùng và số tiền giảm mà Thanh toán thực sự áp dụng',
+  'cp.location': 'Chi nhánh',
+  'cp.allLocations': 'Mọi chi nhánh',
+  'cp.expiringWindow': 'Khoảng sắp hết hạn',
+  'cp.expiringIn': 'Hết hạn trong {n} ngày',
+  'cp.exportCsv': 'Xuất CSV',
+  'cp.redBasis.applied': 'Lúc áp mã',
+  'cp.redBasis.finalized': 'Lúc hóa đơn thanh toán xong',
   'cp.assistant': 'Trợ lý phiếu giảm giá', 'cp.newCoupon': 'Phiếu giảm giá mới', 'cp.editTitle': 'Sửa {name}', 'cp.failed': 'Không thực hiện được — vui lòng thử lại.',
   'cp.created': 'Đã lưu "{name}" dưới dạng nháp. Gửi duyệt và kích hoạt để dùng được khi thanh toán.', 'cp.saved': 'Đã lưu "{name}" (phiên bản mới).',
   'cp.duplicated': 'Đã tạo bản nháp sao chép "{name}" — không sao chép mã, lượt dùng hay lịch sử.', 'cp.assistDrafted': 'Đã lưu "{name}" dưới dạng nháp từ trợ lý. Chưa có gì được kích hoạt hay gửi đi.',

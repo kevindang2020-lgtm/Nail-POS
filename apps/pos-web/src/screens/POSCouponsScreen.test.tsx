@@ -1,7 +1,7 @@
 // POSCouponsScreen — Marketing → Coupons (Coupons & Promotions Management Center, Oct 30 2026): its own title (the route
 // used to render Promotions), the six cards from the server, the vishal row, the read-only checker, the Health tab.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { disc, cp } = vi.hoisted(() => ({
   disc: { kpis: vi.fn(), list: vi.fn(), redemptions: vi.fn(), performance: vi.fn(), detail: vi.fn(), exportList: vi.fn(), exportRedemptions: vi.fn() },
@@ -10,6 +10,7 @@ const { disc, cp } = vi.hoisted(() => ({
 vi.mock('../api/posDiscountsApi', () => ({ posDiscountsApi: disc }));
 vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
 vi.mock('../api/posServicesApi', () => ({ posServicesApi: { list: vi.fn().mockResolvedValue([]) } }));
+vi.mock('../api/authApi', () => ({ authApi: { branches: vi.fn().mockResolvedValue({ branches: [{ id: 'b1', name: 'Main', isActive: true }, { id: 'b2', name: 'Second', isActive: true }] }) } }));
 import { POSCouponsScreen } from './POSCouponsScreen';
 
 const period = { preset: 'all', from: null, to: null, tz: 'America/New_York', today: '2026-10-30' };
@@ -46,5 +47,21 @@ describe('POSCouponsScreen', () => {
   it('Health tab shows the server\'s verified checks', async () => {
     renderScreen('/tenant/marketing/coupons?tab=health');
     expect(await screen.findByTestId('health-overall')).toHaveTextContent('Ready');
+  });
+  it('location filter, expiring window, redemption basis and export go to the server; a redemption opens its ticket', async () => {
+    disc.exportList.mockResolvedValue('Code,Name\n');
+    globalThis.URL.createObjectURL = vi.fn(() => 'blob:x') as any; globalThis.URL.revokeObjectURL = vi.fn() as any;
+    renderScreen();
+    await screen.findByText('••••NG20');
+    fireEvent.change(await screen.findByTestId('branch'), { target: { value: 'b2' } });
+    await waitFor(() => expect(disc.list).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', page: 1 })));
+    fireEvent.change(screen.getByTestId('expiring-window'), { target: { value: '30' } });
+    await waitFor(() => expect(disc.kpis).toHaveBeenLastCalledWith({ expiringDays: 30 }));
+    fireEvent.click(screen.getByTestId('export'));
+    await waitFor(() => expect(disc.exportList).toHaveBeenCalledWith(expect.objectContaining({ branchId: 'b2' })));
+    disc.redemptions.mockResolvedValue({ ...page([{ id: 'r1', at: '2026-10-30T12:00:00Z', customerId: null, customerName: 'Ana', code: 'X', dealName: 'vishal', dealId: 'd1', ticketId: 't1', ticketNumber: '1042', eligibleSubtotalCents: 1000, discountCents: 200, finalCents: 800, status: 'redeemed' }]), totals: { savingsCents: 200, uniqueCustomers: 1 } });
+    fireEvent.click(screen.getByTestId('tab-redemptions'));
+    await waitFor(() => expect(disc.redemptions).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', dateField: 'redeemed' })));
+    expect(await screen.findByTestId('red-ticket')).toHaveTextContent('#1042');
   });
 });

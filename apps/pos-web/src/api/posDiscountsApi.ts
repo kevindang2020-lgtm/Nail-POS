@@ -5,7 +5,7 @@ import { api } from './client';
 type Q = Record<string, unknown>;
 const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== ''));
 export const posDiscountsApi = {
-  kpis: () => api.get<any>(`/pos/discounts/kpis`),
+  kpis: (q: { expiringDays?: number } = {}) => api.get<any>(`/pos/discounts/kpis`, clean(q as Q)),
   list: (q: Q) => api.get<any>(`/pos/discounts`, clean(q)),
   redemptions: (q: Q) => api.get<any>(`/pos/discounts/redemptions`, clean(q)),
   performance: (q: Q) => api.get<any>(`/pos/discounts/performance`, clean(q)),

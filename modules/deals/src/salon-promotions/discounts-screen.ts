@@ -91,14 +91,16 @@ export class DiscountsScreenRepository {
   /** The five cards. Current-state (a period never changes them) except Redemptions, which is all-time and confirmed only —
    *  counted from the redemption ledger (D7, Nov 3 2026: it read the deals' use counters, which disagreed with the ledger
    *  shown under it; the counters stay what caps a coupon). */
-  async kpis(ctx: DiscountsCtx) {
+  async kpis(ctx: DiscountsCtx, opts: { expiringDays?: unknown } = {}) {
     const T = ctx.tenantId;
+    // Coupons guide (Nov 4 2026): the "expiring soon" window is the viewer's choice (1–90 days, default 7)
+    const ed = Math.trunc(Number(opts.expiringDays)); const EXP = Number.isFinite(ed) && ed >= 1 && ed <= 90 ? ed : EXPIRING_DAYS;
     const k = (await sql<any>`select count(*) filter (where life = 'active')::int as active, count(*) filter (where life = 'scheduled')::int as scheduled,
         count(*) filter (where life = 'paused')::int as paused, count(*) filter (where life = 'draft')::int as draft, count(*) filter (where life = 'expired')::int as expired,
         count(*) filter (where life = 'exhausted')::int as exhausted, count(*) filter (where life = 'archived')::int as archived, count(*)::int as total,
         count(*) filter (where life in ('active', 'scheduled', 'paused', 'draft') and discount_type = 'percent')::int as percent,
         count(*) filter (where life in ('active', 'scheduled', 'paused', 'draft') and discount_type <> 'percent')::int as fixed,
-        count(*) filter (where life in ('active', 'scheduled') and ends_at is not null and ends_at > now() and ends_at <= now() + make_interval(days => ${EXPIRING_DAYS}))::int as expiring,
+        count(*) filter (where life in ('active', 'scheduled') and ends_at is not null and ends_at > now() and ends_at <= now() + make_interval(days => ${EXP}))::int as expiring,
         coalesce(sum(redemption_count), 0)::int as used
       from (select ${DCOLS}, ${LIFE} as life from deals d where d.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)}) d`.execute(this.db)).rows[0];
     const r = (await sql<any>`select count(*) filter (where ${CONFIRMED} or r.status = 'applied')::int as events, count(distinct r.customer_id) filter (where ${CONFIRMED})::int as customers, coalesce(sum(r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) filter (where ${CONFIRMED}), 0)::bigint as saved,
@@ -107,7 +109,7 @@ export class DiscountsScreenRepository {
       from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id
       where r.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and (${CONFIRMED} or r.status in ('applied', 'reversed'))`.execute(this.db)).rows[0];
     const today = (await this.period(ctx, {})).today;
-    return { today, activeDiscounts: N(k?.active), percentOff: N(k?.percent), fixedAmount: N(k?.fixed), redemptions: N(r?.events) - N(r?.pending), expiringSoon: N(k?.expiring), expiringWindowDays: EXPIRING_DAYS,
+    return { today, activeDiscounts: N(k?.active), percentOff: N(k?.percent), fixedAmount: N(k?.fixed), redemptions: N(r?.events) - N(r?.pending), expiringSoon: N(k?.expiring), expiringWindowDays: EXP,
       split: { scheduled: N(k?.scheduled), paused: N(k?.paused), draft: N(k?.draft), expired: N(k?.expired), exhausted: N(k?.exhausted), archived: N(k?.archived) },
       // Coupons & Promotions guide §06: Total = every coupon record in scope (archived included, shown separately);
       // discount value = completed redemptions, gross and reversed shown apart, net = gross − reversed
@@ -204,14 +206,16 @@ export class DiscountsScreenRepository {
 
   /** Redemption History — the ledger, newest redemption first. Confirmed by default (paid tickets); pending = applied to
    *  an unpaid ticket (never counted), released = given back before payment, reversed = voided / refunded later. */
-  async redemptions(ctx: DiscountsCtx, f: { q?: string; state?: string; dealId?: string; branchId?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
+  async redemptions(ctx: DiscountsCtx, f: { q?: string; state?: string; dealId?: string; branchId?: string; dateField?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
     const T = ctx.tenantId; const { page, pageSize } = paging(f.page, f.pageSize, 10); const per = await this.period(ctx, f);
     const state = (REDEMPTION_STATES as readonly string[]).includes(String(f.state)) ? String(f.state) : 'confirmed';
     const stW = state === 'confirmed' ? CONFIRMED : state === 'pending' ? sql`r.status = 'applied'` : state === 'released' ? sql`r.status = 'released'` : state === 'reversed' ? sql`r.status in ('reversed', 'partially_reversed')` : sql`true`;
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const { d, phoneish } = this.digits(raw); const code = normalizeCode(raw); const h = code.length >= 3 ? hashCode(T, raw) : '';
     const dealId = f.dealId && UUID.test(f.dealId) ? f.dealId : null;
     const rBranch = f.branchId && UUID.test(f.branchId) ? f.branchId : null;
-    const at = sql`coalesce(r.redeemed_at, r.applied_at, r.created_at)`;
+    // Coupons guide (Nov 4 2026) date basis: 'applied' = when the code went on the ticket; 'finalized' = when the ticket was paid
+    // (a pending redemption has no finalized date and is outside a finalized range); default = the redemption's own time
+    const at = f.dateField === 'applied' ? sql`coalesce(r.applied_at, r.created_at)` : f.dateField === 'finalized' ? sql`r.redeemed_at` : sql`coalesce(r.redeemed_at, r.applied_at, r.created_at)`;
     const from = sql`from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id left join customers cu on cu.id = r.customer_id and cu.tenant_id = r.tenant_id
       left join tickets tk on tk.id = r.ticket_id and tk.tenant_id = r.tenant_id left join deal_coupon_codes cc on cc.id = r.coupon_code_id and cc.tenant_id = r.tenant_id
       left join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id left join users au on au.id = r.applied_by_user_id and au.tenant_id = r.tenant_id left join branches br on br.id = r.branch_id and br.tenant_id = r.tenant_id`;
@@ -335,7 +339,7 @@ const per = (q: any) => ({ preset: s(q?.preset), from: s(q?.from), to: s(q?.to) 
 const PRESET = { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom', 'all'] } as const;
 const LIST_SPEC = { filters: { preset: PRESET, status: { type: 'enum', values: ['live', 'all', ...LIFECYCLES] }, type: { type: 'enum', values: ['percent', 'fixed', 'all'] }, dateField: { type: 'enum', values: DISCOUNT_DATE_FIELDS }, serviceId: { type: 'uuid' }, branchId: { type: 'uuid' } },
   search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
-const RED_SPEC = { filters: { preset: PRESET, state: { type: 'enum', values: REDEMPTION_STATES }, dealId: { type: 'uuid' }, branchId: { type: 'uuid' } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
+const RED_SPEC = { filters: { preset: PRESET, state: { type: 'enum', values: REDEMPTION_STATES }, dealId: { type: 'uuid' }, branchId: { type: 'uuid' }, dateField: { type: 'enum', values: ['redeemed', 'applied', 'finalized'] } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 const PERF_SPEC = { filters: { preset: PRESET }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
@@ -346,24 +350,24 @@ export class DiscountsScreenController {
   private auth(req: any) { const c = ctxFrom(req); if (!c.tenantId || !c.userId) throw withCode(new HttpException('Not authenticated', HttpStatus.UNAUTHORIZED), 'AUTH_REQUIRED'); return c; }
 
   @Get('kpis') @RequirePermission('pos.marketing.view')
-  kpis(@Req() req: any) { return this.r().kpis(this.auth(req)); }
+  kpis(@Req() req: any, @Query('expiringDays') expiringDays?: string) { return this.r().kpis(this.auth(req), { expiringDays }); }
 
   @Get('') @RequirePermission('pos.marketing.view') @ListQuery(LIST_SPEC)
   list(@Req() req: any, @Query() q: any) { return this.r().list(this.auth(req), { q: s(q?.q), status: s(q?.status), type: s(q?.type), dateField: s(q?.dateField), serviceId: s(q?.serviceId), branchId: s(q?.branchId), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
 
   @Get('redemptions') @RequirePermission('pos.marketing.view') @ListQuery(RED_SPEC)
-  redemptions(@Req() req: any, @Query() q: any) { return this.r().redemptions(this.auth(req), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
+  redemptions(@Req() req: any, @Query() q: any) { return this.r().redemptions(this.auth(req), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), dateField: s(q?.dateField), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
 
   @Get('performance') @RequirePermission('pos.marketing.view') @ListQuery(PERF_SPEC)
   performance(@Req() req: any, @Query() q: any) { return this.r().performance(this.auth(req), { q: s(q?.q), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
 
   @AsyncExport({ kind: 'discounts.export' }) @Get('export') @RequirePermission('pos.marketing.manage') @ListQuery({ ...LIST_SPEC, maxLimit: undefined, defaultLimit: undefined })
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="discounts.csv"')
-  exportList(@Req() req: any, @Query() q: any) { return this.r().exportList(this.auth(req), { q: s(q?.q), status: s(q?.status), type: s(q?.type), dateField: s(q?.dateField), ...per(q) }); }
+  exportList(@Req() req: any, @Query() q: any) { return this.r().exportList(this.auth(req), { q: s(q?.q), status: s(q?.status), type: s(q?.type), dateField: s(q?.dateField), serviceId: s(q?.serviceId), branchId: s(q?.branchId), ...per(q) }); }
 
   @AsyncExport({ kind: 'discounts.redemptions.export' }) @Get('export/redemptions') @RequirePermission('pos.marketing.manage') @ListQuery({ ...RED_SPEC, maxLimit: undefined, defaultLimit: undefined })
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="discount-redemptions.csv"')
-  exportRedemptions(@Req() req: any, @Query() q: any) { return this.r().exportRedemptions(this.auth(req), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), ...per(q) }); }
+  exportRedemptions(@Req() req: any, @Query() q: any) { return this.r().exportRedemptions(this.auth(req), { q: s(q?.q), state: s(q?.state), dealId: s(q?.dealId), branchId: s(q?.branchId), dateField: s(q?.dateField), ...per(q) }); }
 
   @Get(':dealId') @RequirePermission('pos.marketing.view')
   detail(@Req() req: any, @Param('dealId') id: string) { return this.r().detail(this.auth(req), id); }
