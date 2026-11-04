@@ -66,12 +66,19 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     // same rule as enrollment (initialIssuedEntries): service / add-on credits issue a quantity, dollar credits an amount;
     // discounts are not credits. Keyed on the cycle so a replayed renewal never issues twice.
     const reason = 'renewal:' + cycleKey;
-    // the previous cycle's unused credits end with it unless the benefit allows rollover (membership_benefits.rollover_allowed)
-    // — they were kept forever, so a member stacked every month's credits. Held credits (an open reservation) are not
-    // expired. Same balance rule as creditBalance (memberships-core). Keyed on the cycle, so a replay expires nothing twice.
+    // the previous cycle's unused credits end with it unless they roll over — the BENEFIT's "Rolls over" or the PLAN's "Unused
+    // credits roll over" (membership_plan_versions.rollover_allowed; Nov 4 2026: the plan switch was saved and ignored). When they
+    // roll over, the plan's "Rollover max (cycles)" caps what carries: at most that many cycles' worth (0 = no cap); the rest
+    // expires (it was ignored too, so credits stacked forever). Held credits (an open reservation) are never expired. Same
+    // balance rule as creditBalance (memberships-core). Keyed on the cycle, so a replay expires nothing twice.
     const endReason = 'cycle_end:' + cycleKey;
     await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
-      select ${tenantId}, ${membershipId}, x.benefit_id, 'expired', b.service_id, greatest(x.q, 0), greatest(x.a, 0), ${endReason}
+      select ${tenantId}, ${membershipId}, x.benefit_id, 'expired', b.service_id,
+             greatest(x.q - case when (b.rollover_allowed or coalesce(v.rollover_allowed, false)) then
+               (case when coalesce(v.rollover_max_cycles, 0) > 0 then b.credits_per_cycle * v.rollover_max_cycles else x.q end) else 0 end, 0),
+             greatest(x.a - case when (b.rollover_allowed or coalesce(v.rollover_allowed, false)) then
+               (case when coalesce(v.rollover_max_cycles, 0) > 0 then b.value_cents * v.rollover_max_cycles else x.a end) else 0 end, 0),
+             ${endReason}
       from (select l.benefit_id,
               sum(case when l.entry_type in ('issued', 'rolled_over', 'restored') then l.quantity when l.entry_type in ('redeemed', 'expired') then -l.quantity when l.entry_type = 'adjusted' then l.quantity else 0 end)
                 - greatest(0, sum(case when l.entry_type = 'reserved' then l.quantity when l.entry_type = 'released' then -l.quantity when l.entry_type = 'redeemed' and l.reservation_ref is not null then -l.quantity else 0 end)) as q,
@@ -80,9 +87,12 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
             from membership_credit_ledger l
             where l.tenant_id = ${tenantId} and l.customer_membership_id = ${membershipId} and l.benefit_id is not null
             group by l.benefit_id) x
-      join membership_benefits b on b.id = x.benefit_id and b.tenant_id = ${tenantId} and not b.rollover_allowed
+      join membership_benefits b on b.id = x.benefit_id and b.tenant_id = ${tenantId}
+      left join membership_plan_versions v on v.id = b.plan_version_id and v.tenant_id = ${tenantId}
       where (x.q > 0 or x.a > 0)
-        and not exists (select 1 from membership_credit_ledger e where e.tenant_id = ${tenantId} and e.customer_membership_id = ${membershipId} and e.reason = ${endReason})`.execute(this.db);
+        and not exists (select 1 from membership_credit_ledger e where e.tenant_id = ${tenantId} and e.customer_membership_id = ${membershipId} and e.reason = ${endReason})
+        and (greatest(x.q - case when (b.rollover_allowed or coalesce(v.rollover_allowed, false)) then (case when coalesce(v.rollover_max_cycles, 0) > 0 then b.credits_per_cycle * v.rollover_max_cycles else x.q end) else 0 end, 0) > 0
+          or greatest(x.a - case when (b.rollover_allowed or coalesce(v.rollover_allowed, false)) then (case when coalesce(v.rollover_max_cycles, 0) > 0 then b.value_cents * v.rollover_max_cycles else x.a end) else 0 end, 0) > 0)`.execute(this.db);
     const r = await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
       select ${tenantId}, ${membershipId}, b.id, 'issued', b.service_id,
              case when b.benefit_type in ('service_credit', 'addon') then b.credits_per_cycle else 0 end,
@@ -91,6 +101,35 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
       where b.plan_version_id = ${planVersionId} and b.tenant_id = ${tenantId}
         and ((b.benefit_type in ('service_credit', 'addon') and b.credits_per_cycle > 0) or (b.benefit_type = 'dollar_credit' and b.value_cents > 0))
         and not exists (select 1 from membership_credit_ledger l where l.tenant_id = ${tenantId} and l.customer_membership_id = ${membershipId} and l.reason = ${reason})`.execute(this.db);
+    return Number(r.numAffectedRows ?? 0);
+  }
+
+  /** Nov 4 2026: the plan's "Credit expiry (days)" (membership_plan_versions.credit_expiry_days) was saved and never applied.
+   *  Credits are spent oldest first, so what is left beyond the credits issued in the last N days is older than N days and
+   *  expires. Held credits are never expired. Once per membership, benefit and day (the reason carries the date), so an extra
+   *  run expires nothing twice. Returns the number of ledger rows written. */
+  async expireAgedCredits(now: Date, limit = 1000): Promise<number> {
+    const day = now.toISOString().slice(0, 10);
+    const reason = 'credit_expiry:' + day;
+    const r = await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
+      select x.tenant_id, x.customer_membership_id, x.benefit_id, 'expired', b.service_id, greatest(x.q - x.recent_q, 0), greatest(x.a - x.recent_a, 0), ${reason}
+      from (select l.tenant_id, l.customer_membership_id, l.benefit_id, max(v.credit_expiry_days) as days,
+              sum(case when l.entry_type in ('issued', 'rolled_over', 'restored') then l.quantity when l.entry_type in ('redeemed', 'expired') then -l.quantity when l.entry_type = 'adjusted' then l.quantity else 0 end)
+                - greatest(0, sum(case when l.entry_type = 'reserved' then l.quantity when l.entry_type = 'released' then -l.quantity when l.entry_type = 'redeemed' and l.reservation_ref is not null then -l.quantity else 0 end)) as q,
+              sum(case when l.entry_type in ('issued', 'rolled_over', 'restored') then l.amount_cents when l.entry_type in ('redeemed', 'expired') then -l.amount_cents when l.entry_type = 'adjusted' then l.amount_cents else 0 end)
+                - greatest(0, sum(case when l.entry_type = 'reserved' then l.amount_cents when l.entry_type = 'released' then -l.amount_cents when l.entry_type = 'redeemed' and l.reservation_ref is not null then -l.amount_cents else 0 end)) as a,
+              coalesce(sum(l.quantity) filter (where l.entry_type in ('issued', 'restored') and l.created_at > ${now}::timestamptz - make_interval(days => v.credit_expiry_days)), 0) as recent_q,
+              coalesce(sum(l.amount_cents) filter (where l.entry_type in ('issued', 'restored') and l.created_at > ${now}::timestamptz - make_interval(days => v.credit_expiry_days)), 0) as recent_a
+            from membership_credit_ledger l
+            join membership_benefits bb on bb.id = l.benefit_id and bb.tenant_id = l.tenant_id
+            join membership_plan_versions v on v.id = bb.plan_version_id and v.tenant_id = l.tenant_id and coalesce(v.credit_expiry_days, 0) > 0
+            join customer_memberships m on m.id = l.customer_membership_id and m.tenant_id = l.tenant_id and m.status in ('active', 'trial', 'grace', 'past_due', 'paused', 'canceling', 'comped')
+            where l.benefit_id is not null
+            group by l.tenant_id, l.customer_membership_id, l.benefit_id, v.credit_expiry_days) x
+      join membership_benefits b on b.id = x.benefit_id and b.tenant_id = x.tenant_id
+      where (x.q - x.recent_q > 0 or x.a - x.recent_a > 0)
+        and not exists (select 1 from membership_credit_ledger e where e.tenant_id = x.tenant_id and e.customer_membership_id = x.customer_membership_id and e.benefit_id = x.benefit_id and e.reason = ${reason})
+      limit ${limit}`.execute(this.db);
     return Number(r.numAffectedRows ?? 0);
   }
 

@@ -72,3 +72,39 @@ describe('D6 §16: first payment on real SQL (Kysely adapter)', () => {
     expect((await pg.query(`SELECT status FROM customer_memberships WHERE id = '${M4}'`)).rows[0].status).toBe('pending');
   });
 });
+
+describe('Nov 4 2026: the plan\'s rollover switch, "Rollover max (cycles)" and "Credit expiry (days)" are applied', () => {
+  const bal = async (m: string, b: string) => Number((await pg.query(`SELECT coalesce(sum(case when entry_type in ('issued','rolled_over','restored') then quantity when entry_type in ('redeemed','expired') then -quantity else 0 end),0)::int n
+    FROM membership_credit_ledger WHERE customer_membership_id = '${m}' AND benefit_id = '${b}'`)).rows[0].n);
+  it('the plan switch rolls credits over even when the benefit box is off; the max-cycles cap expires the excess', async () => {
+    const W3 = '7e000000-0000-4000-8000-0000000000f3', X3 = '7e000000-0000-4000-8000-0000000002a3', BEN = '7e000000-0000-4000-8000-0000000002c3';
+    await pg.exec(`INSERT INTO membership_plan_versions (id, plan_id, tenant_id, version_number, rollover_allowed, rollover_max_cycles) VALUES ('${W3}','${P}','${T}',3,true,2);
+      INSERT INTO membership_benefits (id, plan_version_id, tenant_id, benefit_type, label, credits_per_cycle, rollover_allowed) VALUES ('${BEN}','${W3}','${T}','service_credit','Gel',1,false);
+      INSERT INTO customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, member_number) VALUES ('${X3}','${T}','${B}','${C}','${P}','${W3}','active','M-CYX3');`);
+    for (const k of ['2026-09-01', '2026-10-01', '2026-11-01', '2026-12-01', '2027-01-01']) await repo.issueCycleCredits(T, X3, W3, k + 'T00:00:00.000Z');
+    // never redeemed: at each renewal the carried balance is capped at 2 cycles' worth, then a new cycle is added → 3
+    expect(await bal(X3, BEN)).toBe(3);
+  });
+  it('max cycles 0 = no cap (a plan that rolls over keeps everything, as before)', async () => {
+    const W4 = '7e000000-0000-4000-8000-0000000000f4', X4 = '7e000000-0000-4000-8000-0000000002a4', BEN = '7e000000-0000-4000-8000-0000000000c4';
+    await pg.exec(`INSERT INTO membership_plan_versions (id, plan_id, tenant_id, version_number, rollover_allowed, rollover_max_cycles) VALUES ('${W4}','${P}','${T}',4,true,0);
+      INSERT INTO membership_benefits (id, plan_version_id, tenant_id, benefit_type, label, credits_per_cycle) VALUES ('${BEN}','${W4}','${T}','service_credit','Gel',1);
+      INSERT INTO customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, member_number) VALUES ('${X4}','${T}','${B}','${C}','${P}','${W4}','active','M-CYX4');`);
+    for (const k of ['2026-09-01', '2026-10-01', '2026-11-01', '2026-12-01']) await repo.issueCycleCredits(T, X4, W4, k + 'T00:00:00.000Z');
+    expect(await bal(X4, BEN)).toBe(4);
+  });
+  it('credit expiry (days): what is older than N days expires, oldest spent first; once per day; held credits stay', async () => {
+    const W5 = '7e000000-0000-4000-8000-0000000000f5', X5 = '7e000000-0000-4000-8000-0000000002a5', BEN = '7e000000-0000-4000-8000-0000000000c5';
+    await pg.exec(`INSERT INTO membership_plan_versions (id, plan_id, tenant_id, version_number, rollover_allowed, credit_expiry_days) VALUES ('${W5}','${P}','${T}',5,true,30);
+      INSERT INTO membership_benefits (id, plan_version_id, tenant_id, benefit_type, label, credits_per_cycle) VALUES ('${BEN}','${W5}','${T}','service_credit','Gel',2);
+      INSERT INTO customer_memberships (id, tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, member_number) VALUES ('${X5}','${T}','${B}','${C}','${P}','${W5}','active','M-CYX5');
+      INSERT INTO membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, quantity, amount_cents, reason, created_at) VALUES
+        ('${T}','${X5}','${BEN}','issued',2,0,'renewal:old','2026-09-01T00:00:00Z'),
+        ('${T}','${X5}','${BEN}','redeemed',1,0,'visit','2026-09-10T00:00:00Z'),
+        ('${T}','${X5}','${BEN}','issued',2,0,'renewal:new','2026-10-25T00:00:00Z');`);
+    const now = new Date('2026-11-04T12:00:00Z');
+    expect(await repo.expireAgedCredits(now)).toBeGreaterThanOrEqual(1);
+    expect(await bal(X5, BEN)).toBe(2);                 // the September credit left over (1) expired; the October 2 stay
+    expect(await repo.expireAgedCredits(now)).toBe(0);  // once per day
+  });
+});

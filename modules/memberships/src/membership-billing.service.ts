@@ -164,6 +164,11 @@ export class MembershipBillingService {
 
   /** Sweep memberships due for renewal and attempt each charge through the configured processor. With the default
    * (unconfigured) adapter, nothing is charged and nothing changes state — the summary reports them as not configured. */
+  /** Nov 4 2026: apply each plan's "Credit expiry (days)" — run with the renewals (hourly); idempotent per day */
+  async expireAgedCredits(now: Date = new Date()): Promise<number> {
+    return this.repo.expireAgedCredits ? this.repo.expireAgedCredits(now, 1000) : 0;
+  }
+
   async runDueRenewals(now: Date = new Date(), limit = 100): Promise<{ due: number; succeeded: number; failed: number; notConfigured: number; results: Array<{ membershipId: string; outcome: string }> }> {
     const due = await this.repo.findDue(now, limit);
     let succeeded = 0, failed = 0, notConfigured = 0;

@@ -35,6 +35,8 @@ export interface MembershipBillingRepositoryPort {
   /** issue the new cycle's credits (one 'issued' ledger row per crediting benefit of the plan version), at most once per
    *  cycle (keyed on cycleKey); returns how many rows were written */
   issueCycleCredits?(tenantId: string, membershipId: string, planVersionId: string, cycleKey: string): Promise<number>;
+  /** Nov 4 2026: the plan's credit expiry in days — credits older than that expire (oldest spent first) */
+  expireAgedCredits?(now: Date, limit?: number): Promise<number>;
   /** the first payment's amount (one period's price + the enrollment fee, integer cents) */
   firstPaymentAmount?(tenantId: string, membershipId: string): Promise<number>;
   /** a PAID invoice of this salon for this customer, of at least the amount, not already used by another membership payment */

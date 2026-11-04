@@ -13,7 +13,8 @@ afterEach(() => { process.env = { ...saved }; vi.useRealTimers(); });
 
 const fakes = () => {
   const calls: string[] = [];
-  const billing = { runDueRenewals: vi.fn(async (_now: Date, limit: number) => { calls.push(`renewals:${limit}`); return { due: 0, succeeded: 0, failed: 0, notConfigured: 0, results: [] }; }) };
+  const billing = { runDueRenewals: vi.fn(async (_now: Date, limit: number) => { calls.push(`renewals:${limit}`); return { due: 0, succeeded: 0, failed: 0, notConfigured: 0, results: [] }; }),
+    expireAgedCredits: vi.fn(async () => { calls.push('credit-expiry'); return 0; }) };
   const comms = { runRenewalRemindersDue: vi.fn(async (_now: Date, days: number) => { calls.push(`reminders:${days}`); return { sent: 0, skipped: 0 }; }) };
   return { calls, billing, comms };
 };
@@ -28,7 +29,7 @@ describe('membership renewals are actually run', () => {
     const f = fakes();
     const s = new MembershipRenewalScheduler(f.billing as any, f.comms as any);
     await s.tick(new Date(Date.UTC(2026, 9, 13, 14)));
-    expect(f.calls).toEqual(['reminders:7', 'renewals:100']);
+    expect(f.calls).toEqual(['reminders:7', 'renewals:100', 'credit-expiry']);   // Nov 4 2026: the plans' credit expiry (days) runs with the renewals
   });
   it('armed only when the flag is on (and this process runs critical jobs)', () => {
     vi.useFakeTimers();
