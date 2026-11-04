@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { leftoverEnglish } from './viScan.testkit';
 const { offers, deals } = vi.hoisted(() => ({
-  offers: Object.fromEntries(['kpis', 'library', 'approvals', 'redemptions', 'detail', 'check', 'health', 'suggest', 'draft'].map((k) => [k, vi.fn()])) as Record<string, any>,
+  offers: Object.fromEntries(['kpis', 'library', 'approvals', 'redemptions', 'detail', 'check', 'health', 'suggest', 'draft', 'runHealth', 'healthRuns'].map((k) => [k, vi.fn()])) as Record<string, any>,
   deals: Object.fromEntries(['getSettings', 'pause', 'resume', 'dashboard'].map((k) => [k, vi.fn()])) as Record<string, any>,
 }));
 vi.mock('../api/posDealsOffersApi', () => ({ posDealsOffersApi: offers }));

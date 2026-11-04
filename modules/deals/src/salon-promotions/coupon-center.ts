@@ -11,9 +11,9 @@
 //                                       activates, never sends — Publish (owner/manager) is the separate approval step
 // Tenant pinned in every statement; a branch user sees salon-wide coupons and their branch's. Money is integer cents.
 import { sql, type Kysely } from 'kysely';
-import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { DATABASE, tenantTimeZone } from '@aipowersalon/database';
+import { DATABASE, tenantTimeZone, ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { COUPON_ASSIST_BODY, COUPON_ASSIST_DRAFT_BODY, COUPON_CHECK_BODY } from '../request-schemas';
 import { DealsService, DealConflictError, DealForbiddenError, DealValidationError } from '../deals/deals.service';
@@ -127,6 +127,29 @@ export class CouponCenter {
     const rank: Record<HealthStatus, number> = { ready: 0, unknown: 1, attention: 2, failed: 3 };
     const overall = checks.reduce<HealthStatus>((w, c) => (rank[c.status] > rank[w] ? c.status : w), 'ready');
     return { overall, checkedAt: new Date().toISOString(), checks };
+  }
+
+  /** audit B1–B4 (Nov 4 2026): a recorded run of the same read-only checks (who, when, what) — the history the screen shows */
+  async runHealth(ctx: DealContext) {
+    const r = await this.health(ctx);
+    const area = this.scope === 'coupon' ? 'coupons' : 'deals';
+    const row = (await sql<any>`insert into marketing_health_runs (tenant_id, branch_id, area, overall, checks, checked_by)
+        values (${ctx.tenantId}, ${ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null}, ${area}, ${r.overall}, ${JSON.stringify(r.checks)}::jsonb, ${UUID.test(String(ctx.userId)) ? ctx.userId : null})
+        returning id, created_at`.execute(this.db)).rows[0];
+    return { ...r, runId: String(row.id), checkedAt: iso(row.created_at) };
+  }
+  async healthRuns(ctx: DealContext, f: { page?: unknown; pageSize?: unknown }) {
+    const area = this.scope === 'coupon' ? 'coupons' : 'deals';
+    const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(f.pageSize)) || 10)); const page0 = Math.max(1, Math.trunc(Number(f.page)) || 1);
+    const bw = ctx.branchId && UUID.test(ctx.branchId) ? sql`and (h.branch_id = ${ctx.branchId} or h.branch_id is null)` : sql``;
+    const total = N((await sql<any>`select count(*)::int as n from marketing_health_runs h where h.tenant_id = ${ctx.tenantId} and h.area = ${area} ${bw}`.execute(this.db)).rows[0]?.n);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize)); const page = Math.min(page0, totalPages);
+    const rows = (await sql<any>`select h.id, h.overall, h.checks, h.created_at, coalesce(nullif(u.full_name, ''), u.email) as by_name from marketing_health_runs h
+        left join users u on u.id = h.checked_by and u.tenant_id = h.tenant_id
+        where h.tenant_id = ${ctx.tenantId} and h.area = ${area} ${bw} order by h.created_at desc, h.id desc limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
+    return { items: rows.map((r: any) => { const checks = Array.isArray(r.checks) ? r.checks : [];
+      return { id: String(r.id), overall: String(r.overall), at: iso(r.created_at), by: r.by_name ?? null, attention: checks.filter((c: any) => c?.status !== 'ready').map((c: any) => String(c.key)), checks }; }),
+      page, pageSize, totalItems: total, totalPages };
   }
 
   // ── §16 assistant (rules-v1): suggestions from this salon's own records; it never writes ─────────────────────────
@@ -253,6 +276,11 @@ export class CouponCenterController {
   }
   @Get('health') @RequirePermission('pos.marketing.view')
   health(@Req() r: any) { return this.c().health(ctxOf(r)); }
+  /** a recorded run (read-only checks) and the run history */
+  @Post('health/run') @RequirePermission('pos.marketing.view')
+  runHealth(@Req() r: any) { return run(() => this.c().runHealth(ctxOf(r))); }
+  @Get('health/runs') @RequirePermission('pos.marketing.view') @ListQuery({ maxLimit: 50, defaultLimit: 10, params: ['page'] })
+  healthRuns(@Req() r: any, @Query() q: any) { return run(() => this.c().healthRuns(ctxOf(r), { page: q?.page, pageSize: q?.pageSize })); }
 
   @Post('assistant/suggest') @RequirePermission('pos.marketing.manage')
   suggest(@Req() r: any, @Body(ValidatedBody(COUPON_ASSIST_BODY, { strict: true })) b: any) { return run(() => this.c().suggest(ctxOf(r), String(b?.goal ?? ''))); }

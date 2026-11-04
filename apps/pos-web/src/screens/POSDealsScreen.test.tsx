@@ -9,7 +9,7 @@ import { MemoryRouter } from 'react-router-dom';
 const { deals, offers, disc, cp } = vi.hoisted(() => ({
   deals: Object.fromEntries(['list', 'get', 'getSettings', 'updateSettings', 'create', 'update', 'submit', 'approve', 'reject', 'requestChanges', 'pause', 'resume', 'publish', 'cancel', 'archive',
     'dashboard', 'exportCsv', 'preview', 'coupons', 'generateCodes', 'revokeCode', 'versions', 'analytics'].map((k) => [k, vi.fn()])) as Record<string, any>,
-  offers: Object.fromEntries(['kpis', 'library', 'approvals', 'redemptions', 'detail', 'check', 'health', 'suggest', 'draft'].map((k) => [k, vi.fn()])) as Record<string, any>,
+  offers: Object.fromEntries(['kpis', 'library', 'approvals', 'redemptions', 'detail', 'check', 'health', 'suggest', 'draft', 'runHealth', 'healthRuns'].map((k) => [k, vi.fn()])) as Record<string, any>,
   disc: { kpis: vi.fn(), list: vi.fn(), redemptions: vi.fn(), performance: vi.fn(), detail: vi.fn() },
   cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn() },
 }));
@@ -48,6 +48,7 @@ beforeEach(() => {
   offers.kpis.mockResolvedValue(kpis); offers.library.mockResolvedValue(page([spring, vishal]));
   offers.approvals.mockResolvedValue({ order: 'oldest', ...page([request()]) }); offers.detail.mockResolvedValue(detail);
   offers.redemptions.mockResolvedValue({ ...page([]), totals: { savingsCents: 0, uniqueCustomers: 0 } });
+  offers.healthRuns.mockResolvedValue({ items: [], page: 1, pageSize: 5, totalItems: 0, totalPages: 1 });
   offers.health.mockResolvedValue({ overall: 'attention', checkedAt: '2026-10-30T20:00:00Z', checks: [{ key: 'tech_policy', status: 'attention', count: 1, detail: '1 technician deal(s) are outside the salon\'s current technician-deal rules.', sample: [] }] });
   deals.getSettings.mockResolvedValue(settings);
 });

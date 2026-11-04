@@ -12,6 +12,7 @@
 //   details  overview, eligibility, limits, services, redemptions, approvals & policy, performance, versions; Check / Edit /
 //            Duplicate / lifecycle actions. The checker is Checkout's own engine and changes nothing.
 // Money is the server's (integer cents). A technician deal is never decided by its own proposer (server rule DEAL_SELF_APPROVAL).
+import { HealthRunHistory } from '../components/HealthRunHistory';
 import { authApi } from '../api/authApi';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -230,7 +231,8 @@ export function POSDealsScreen() {
           <ul className="fk-list" data-testid="health-checks">{health.data.checks.map((c: any) => <li key={c.key} className="fk-li" data-testid={'health-' + c.key}>
             <span className={'fk-chip ' + healthTone(c.status)}>{tx('cp.health.' + c.status)}</span>
             <span className="fk-li-t">{tx('do.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span></li>)}</ul>
-          <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div></>}
+          <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div>
+          <HealthRunHistory run={() => posDealsOffersApi.runHealth()} list={(q) => posDealsOffersApi.healthRuns(q)} checkLabel={(k) => tx('do.check.' + k)} onRan={() => health.reload()} /></>}
       </FitPanel> : null}
 
       {tab === 'settings' ? (settings.error ? <StateBlock error={settings.error} onRetry={settings.reload} /> : !settings.data ? <div className="fk-loading">{tx('pos.loading')}</div>

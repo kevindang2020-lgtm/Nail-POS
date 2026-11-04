@@ -349,7 +349,7 @@ export class DiscountsScreenController {
   private r() { if (!this.repo) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'Discounts need the database.' }, HttpStatus.SERVICE_UNAVAILABLE); return this.repo; }
   private auth(req: any) { const c = ctxFrom(req); if (!c.tenantId || !c.userId) throw withCode(new HttpException('Not authenticated', HttpStatus.UNAUTHORIZED), 'AUTH_REQUIRED'); return c; }
 
-  @Get('kpis') @RequirePermission('pos.marketing.view')
+  @Get('kpis') @RequirePermission('pos.marketing.view') @ListQuery({ filters: { expiringDays: { type: 'int', min: 1, max: 90 } } })
   kpis(@Req() req: any, @Query('expiringDays') expiringDays?: string) { return this.r().kpis(this.auth(req), { expiringDays }); }
 
   @Get('') @RequirePermission('pos.marketing.view') @ListQuery(LIST_SPEC)

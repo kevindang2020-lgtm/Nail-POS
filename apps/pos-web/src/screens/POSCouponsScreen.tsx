@@ -9,6 +9,7 @@
 //   redemptions, codes, financials, related campaigns, audit) with Check / Edit / Duplicate / lifecycle actions.
 // Money is the server's (integer cents); codes are masked (only the last four exist). Creating, duplicating or saving an
 // assistant suggestion makes a DRAFT — activation is the separate, permission-checked lifecycle step; nothing here sends.
+import { HealthRunHistory } from '../components/HealthRunHistory';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -175,7 +176,8 @@ export function POSCouponsScreen() {
           <ul className="fk-list" data-testid="health-checks">{health.data.checks.map((c: any) => <li key={c.key} className="fk-li" data-testid={'health-' + c.key}>
             <span className={'fk-chip ' + healthTone(c.status)}>{tx('cp.health.' + c.status)}</span>
             <span className="fk-li-t">{tx('cp.check.' + c.key)}</span><span className="fk-li-s">{c.detail}</span></li>)}</ul>
-          <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div></>}
+          <div className="fk-hint">{tx('cp.healthNote', { t: whenTime(health.data.checkedAt) })}</div>
+          <HealthRunHistory run={() => posCouponsApi.runHealth()} list={(q) => posCouponsApi.healthRuns(q)} checkLabel={(k) => tx('cp.check.' + k)} onRan={() => health.reload()} /></>}
       </FitPanel> : null}
 
       {detail ? <DiscountDetailsDialog id={detail.id} initialTab={detail.tab} tick={tick} onClose={() => setDetail(null)}

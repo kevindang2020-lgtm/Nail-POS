@@ -289,3 +289,17 @@ describe('Coupons — assistant draft is all-or-nothing', () => {
     expect(ok.status).toBe('draft');
   });
 });
+
+// audit B1–B4 (Nov 4 2026): a "Run check" is recorded (who, when, what it found) and listed newest first; the checks stay read-only
+describe('Coupons — recorded health runs', () => {
+  it('records each run and lists them newest first with who ran it', async () => {
+    const dealsBefore = (await q(`select count(*)::int n from deals where tenant_id = $1`, [T]))[0].n;
+    const a = await center.runHealth(ctx); const b = await center.runHealth(ctx);
+    expect(a.runId).not.toBe(b.runId);
+    const runs = await center.healthRuns(ctx, { page: 1, pageSize: 10 });
+    expect(runs.items[0]!.id).toBe(b.runId); expect(runs.items[1]!.id).toBe(a.runId);
+    expect(runs.items[0]).toMatchObject({ overall: b.overall, checks: expect.any(Array) });
+    expect((await q(`select area from marketing_health_runs where id = $1`, [a.runId]))[0].area).toBe('coupons');
+    expect((await q(`select count(*)::int n from deals where tenant_id = $1`, [T]))[0].n).toBe(dealsBefore);   // nothing else changed
+  });
+});

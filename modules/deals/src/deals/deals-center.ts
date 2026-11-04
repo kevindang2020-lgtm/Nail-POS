@@ -140,6 +140,8 @@ export class DealsCenter {
 
   check(ctx: DealContext, id: string, b: Record<string, any>) { return this.center.check(ctx, id, b); }
   health(ctx: DealContext) { return this.center.health(ctx); }
+  runHealth(ctx: DealContext) { return this.center.runHealth(ctx); }
+  healthRuns(ctx: DealContext, f: { page?: unknown; pageSize?: unknown }) { return this.center.healthRuns(ctx, f); }
   suggest(ctx: DealContext, goal: string) { return this.center.suggest(ctx, goal); }
   draft(ctx: DealContext, b: Record<string, any>) { return this.center.draft(ctx, { ...b, kind: 'deal' }); }
 }
@@ -194,6 +196,11 @@ export class DealsCenterController {
 
   @Get('health') @RequirePermission('pos.marketing.view')
   health(@Req() r: any) { return run(() => this.c().health(ctxOf(r))); }
+  /** audit B1–B4 (Nov 4 2026): a recorded run of the read-only checks, and the history */
+  @Post('health/run') @RequirePermission('pos.marketing.view')
+  runHealth(@Req() r: any) { return run(() => this.c().runHealth(ctxOf(r))); }
+  @Get('health/runs') @RequirePermission('pos.marketing.view') @ListQuery({ maxLimit: 50, defaultLimit: 10, params: ['page'] })
+  healthRuns(@Req() r: any, @Query() q: any) { return run(() => this.c().healthRuns(ctxOf(r), { page: q?.page, pageSize: q?.pageSize })); }
 
   @Post('assistant/suggest') @RequirePermission('pos.marketing.manage')
   suggest(@Req() r: any, @Body(ValidatedBody(COUPON_ASSIST_BODY, { strict: true })) b: any) { return run(() => this.c().suggest(ctxOf(r), String(b?.goal ?? ''))); }

@@ -14,6 +14,8 @@ export const posDealsOffersApi = {
   detail: (id: string) => api.get<any>(`/pos/deals-offers/${encodeURIComponent(id)}`),
   check: (id: string, body: { ticketNumber?: string | null; serviceIds?: string[]; spendCents?: number | null; codeEntered?: boolean }) => api.post<CouponCheck>(`/pos/deals-offers/${encodeURIComponent(id)}/check`, body),
   health: () => api.get<any>(`/pos/deals-offers/health`),
+  runHealth: () => api.post<any>(`/pos/deals-offers/health/run`, {}),
+  healthRuns: (q: { page: number; pageSize: number }) => api.get<any>(`/pos/deals-offers/health/runs`, q as unknown as Record<string, unknown>),
   suggest: (goal: AssistGoal) => api.post<any>(`/pos/deals-offers/assistant/suggest`, { goal }),
   draft: (body: Record<string, unknown>) => api.post<any>(`/pos/deals-offers/assistant/draft`, body),
 };

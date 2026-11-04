@@ -598,6 +598,7 @@ GET /pos/communications/inbox/threads/{id}/timeline  realm=staff  auth=session  
 GET /pos/communications/state  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/connected-apps  realm=staff  auth=session  domain=identity  perm=settings.edit
 GET /pos/coupons/health  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/coupons/health/runs  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/coupons/{dealId}/campaigns  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-ai-settings/history  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-ai-settings/history/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -667,6 +668,7 @@ GET /pos/dashboard/top-technicians  realm=staff  auth=session  domain=analytics 
 GET /pos/deals  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/approvals  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/health  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deals-offers/health/runs  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/kpis  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/library  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deals-offers/redemptions  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2706,6 +2708,7 @@ POST /pos/communications/threads/{id}/status  realm=staff  auth=session  domain=
 POST /pos/connected-apps/{id}/revoke  realm=staff  auth=session  domain=identity  perm=settings.edit
 POST /pos/coupons/assistant/draft  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/coupons/assistant/suggest  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/coupons/health/run  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/coupons/{dealId}/check  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-ai-settings/assistant  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/customer-ai-settings/check  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2745,6 +2748,7 @@ POST /pos/customers/{customerId}/wallet/top-ups/{id}/verify  realm=staff  auth=s
 POST /pos/deals  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deals-offers/assistant/draft  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deals-offers/assistant/suggest  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deals-offers/health/run  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deals-offers/{id}/check  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deals/preview  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deals/{id}/approve  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard

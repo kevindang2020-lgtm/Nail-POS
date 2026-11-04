@@ -5,7 +5,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { disc, cp } = vi.hoisted(() => ({
   disc: { kpis: vi.fn(), list: vi.fn(), redemptions: vi.fn(), performance: vi.fn(), detail: vi.fn(), exportList: vi.fn(), exportRedemptions: vi.fn() },
-  cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn() },
+  cp: { check: vi.fn(), campaigns: vi.fn(), health: vi.fn(), suggest: vi.fn(), draft: vi.fn(), duplicate: vi.fn(), runHealth: vi.fn(), healthRuns: vi.fn() },
 }));
 vi.mock('../api/posDiscountsApi', () => ({ posDiscountsApi: disc }));
 vi.mock('../api/posCouponsApi', () => ({ posCouponsApi: cp }));
@@ -23,6 +23,7 @@ beforeEach(() => {
   Object.values(disc).forEach((f) => f.mockReset()); Object.values(cp).forEach((f) => f.mockReset());
   disc.kpis.mockResolvedValue(kpis); disc.list.mockResolvedValue(page([vishal])); disc.redemptions.mockResolvedValue({ ...page([]), totals: { savingsCents: 0, uniqueCustomers: 0 } });
   cp.health.mockResolvedValue({ overall: 'ready', checkedAt: '2026-10-30T20:00:00Z', checks: [{ key: 'counters', status: 'ready', count: 0, detail: 'ok', sample: [] }] });
+  cp.healthRuns.mockResolvedValue({ items: [], page: 1, pageSize: 5, totalItems: 0, totalPages: 1 });
 });
 const renderScreen = (path = '/tenant/marketing/coupons') => render(<MemoryRouter initialEntries={[path]}><POSCouponsScreen /></MemoryRouter>);
 
@@ -63,5 +64,15 @@ describe('POSCouponsScreen', () => {
     fireEvent.click(screen.getByTestId('tab-redemptions'));
     await waitFor(() => expect(disc.redemptions).toHaveBeenLastCalledWith(expect.objectContaining({ branchId: 'b2', dateField: 'redeemed' })));
     expect(await screen.findByTestId('red-ticket')).toHaveTextContent('#1042');
+  });
+  it('Run check now records a run and the history lists it newest first', async () => {
+    cp.runHealth.mockResolvedValue({ overall: 'attention', runId: 'h2' });
+    renderScreen();
+    fireEvent.click(await screen.findByTestId('tab-health'));
+    expect(await screen.findByText('No recorded checks yet.')).toBeInTheDocument();
+    cp.healthRuns.mockResolvedValue({ items: [{ id: 'h2', overall: 'attention', at: '2026-10-30T20:05:00Z', by: 'Linh Owner', attention: ['counters'] }], page: 1, pageSize: 5, totalItems: 1, totalPages: 1 });
+    fireEvent.click(screen.getByTestId('health-run'));
+    await waitFor(() => expect(cp.runHealth).toHaveBeenCalled());
+    expect(await screen.findByTestId('health-run-row')).toHaveTextContent('Linh Owner');
   });
 });

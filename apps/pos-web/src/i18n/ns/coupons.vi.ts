@@ -1,6 +1,10 @@
 // ns/coupons.vi.ts — Tiếp thị → Phiếu giảm giá (Coupons & Promotions, 30/10/2026) (Tiếng Việt). Chỉ dùng cho POS quầy lễ tân.
 export const COUPONS_VI = {
   'cp.title': 'Phiếu giảm giá & Khuyến mãi', 'cp.subtitle': 'Mã ưu đãi, điều kiện, lượt dùng và số tiền giảm mà Thanh toán thực sự áp dụng',
+  'cp.healthHistory': 'Lịch sử kiểm tra',
+  'cp.healthRun': 'Kiểm tra ngay',
+  'cp.healthNoRuns': 'Chưa có lần kiểm tra nào được ghi lại.',
+  'cp.healthAllClear': 'không có vấn đề',
   'cp.location': 'Chi nhánh',
   'cp.allLocations': 'Mọi chi nhánh',
   'cp.expiringWindow': 'Khoảng sắp hết hạn',
