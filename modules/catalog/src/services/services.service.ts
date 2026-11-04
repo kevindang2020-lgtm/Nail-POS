@@ -91,6 +91,12 @@ export class ServicesService {
     this.need(ctx, 'pos.services.edit'); await this.validate(ctx, req, false);
     if (req.priceCents !== undefined) this.need(ctx, 'pos.services.pricing.edit');
     const before = await this.repo.detail(ctx, serviceId); if (!before) throw withCode(new ValidationError('Service not found'), 'SERVICE_NOT_FOUND');
+    // D4 Service Pricing (Nov 3 2026): a price / duration CHANGE goes through PATCH /pos/catalog/services/:id/pricing (reason,
+    // conflict check, price history). This plain edit used to change it with no reason and no history entry; the unchanged
+    // values (an edit form re-sending them) still pass.
+    const priceChange = req.priceCents !== undefined && Number(req.priceCents) !== Number(before.basePriceCents);
+    const durChange = req.durationMinutes !== undefined && Number(req.durationMinutes) !== Number(before.durationMinutes);
+    if (priceChange || durChange) throw withCode(new ValidationError('Say why the price or duration is changing.'), 'CHANGE_REASON_REQUIRED');
     const row = (await this.repo.update(ctx, serviceId, req))!; this.log(ctx, 'pos_service_updated', 'pos_service', serviceId, before, row); return row;
   }
   async archive(ctx: ServicesContext, serviceId: string): Promise<DeleteServiceResult> {

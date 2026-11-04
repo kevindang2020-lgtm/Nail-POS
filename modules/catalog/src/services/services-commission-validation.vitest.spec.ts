@@ -45,3 +45,17 @@ describe('Service commission validation', () => {
     await expect(s.setCommission(ctx, created.serviceId, { type: 'percent', value: 40, byTechnician: [{ technicianId: 't1', type: 'percent', value: -1 }] } as any)).rejects.toBeInstanceOf(ValidationError);
   });
 });
+
+describe('D4 Service Pricing (Nov 3 2026): the plain edit cannot change price or duration', () => {
+  it('a changed price / duration is refused with CHANGE_REASON_REQUIRED; the same values (re-sent by an edit form) pass', async () => {
+    const { ServicesService } = await import('./services.service');
+    const { InMemoryServicesRepository } = await import('./services.repository');
+    const repo = new InMemoryServicesRepository(); const svc = new ServicesService(repo as any);
+    const ctx: any = { tenantId: 't1', branchId: 'b1', userId: 'u1', role: 'OWNER', permissions: ['pos.services.edit', 'pos.services.view', 'pos.services.pricing.edit', 'pos.services.create'] };
+    const cat = await svc.createCategory(ctx, 'Nails');
+    const s = await svc.create(ctx, { name: 'Gel', categoryId: cat.categoryId, durationMinutes: 45, priceCents: 4500 } as any);
+    await expect(svc.update(ctx, s.serviceId, { priceCents: 5000 } as any)).rejects.toMatchObject({ apiCode: 'CHANGE_REASON_REQUIRED' });
+    await expect(svc.update(ctx, s.serviceId, { durationMinutes: 50 } as any)).rejects.toMatchObject({ apiCode: 'CHANGE_REASON_REQUIRED' });
+    expect((await svc.update(ctx, s.serviceId, { name: 'Gel X', priceCents: 4500, durationMinutes: 45 } as any)).name).toBe('Gel X');
+  });
+});
