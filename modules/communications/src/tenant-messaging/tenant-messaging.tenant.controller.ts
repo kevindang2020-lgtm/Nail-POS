@@ -34,10 +34,14 @@ function ctxFrom(req: any): Ctx {
  * the payroll services use. Never decided from a role name.
  */
 export function allowedBranchesOf(ctx: Pick<Ctx, 'branchId' | 'authz'>): string[] | null {
+  const ids = (ctx.authz?.branchIds ?? []).filter((b): b is string => !!b);
+  // Nov 4 2026 (live IDOR run): a user with explicit location grants (user_branch_access → authz.branchIds) is confined to them
+  // whatever the template's scope says — a manager of location 2 only read location 1's messaging activity because the
+  // MANAGER template's scope is salon-wide. A whole-salon user has no grants (branchIds null) and is not confined.
+  if (ids.length) return ids;
   const confined = ctx.authz?.scope === 'BRANCH' || ctx.authz?.scope === 'SELECTED_BRANCHES';
   if (!confined) return null;
-  const ids = (ctx.authz?.branchIds ?? []).filter((b): b is string => !!b);
-  return ids.length ? ids : ctx.branchId ? [ctx.branchId] : [];
+  return ctx.branchId ? [ctx.branchId] : [];
 }
 /** a branch outside the actor's set → 403 (another salon's branch is refused by the service: BRANCH_NOT_FOUND) */
 function mustReachBranch(ctx: Ctx, branchId: string): void {

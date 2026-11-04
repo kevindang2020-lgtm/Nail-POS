@@ -159,6 +159,9 @@ export class TerminalsScreenRepository {
   // ── Tap to Pay iPhones ─────────────────────────────────────────────────────────────────────────────────────────────
   async phoneInventory(ctx: FinanceCtx, now = new Date()): Promise<PhoneRow[]> {
     const T = ctx.tenantId;
+    // Nov 4 2026 (live IDOR run): the same rule as the physical terminals — a location sees its own phones, phones allowed at it
+    // and phones with no location; a location-2 manager read location 1's phone by its id
+    const B = ctx.branchId && /^[0-9a-f-]{36}$/i.test(String(ctx.branchId)) ? String(ctx.branchId) : null;
     const canContact = hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.devices.manage');
     const rows = (await sql<any>`select d.device_id, d.label, d.platform, d.os_version, d.app_version, d.status, d.bound_user_id, d.branch_id, d.tap_to_pay_capable, d.attestation_status, d.paired_via, d.shared,
           d.created_at, d.approved_at, d.last_seen_at, d.last_payment_at, d.last_error_at, d.last_error_code, d.revoked_at, d.revoke_reason,
@@ -168,7 +171,9 @@ export class TerminalsScreenRepository {
         from mobile_pay_devices d
         left join users u on u.id = d.bound_user_id and u.tenant_id = d.tenant_id
         left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id
-        where d.tenant_id = ${T} order by d.created_at desc, d.device_id desc limit ${INVENTORY_CAP}`.execute(this.db)).rows;
+        where d.tenant_id = ${T}
+          ${B ? sql`and (d.branch_id is null or d.branch_id = ${B}::uuid or exists (select 1 from mobile_pay_device_branches x where x.tenant_id = d.tenant_id and x.device_id = d.device_id and x.branch_id = ${B}::uuid))` : sql``}
+        order by d.created_at desc, d.device_id desc limit ${INVENTORY_CAP}`.execute(this.db)).rows;
     return rows.map((r: any) => ({
       deviceId: String(r.device_id), deviceRef: shortRef(String(r.device_id)), label: r.label ?? null, platform: String(r.platform ?? 'unknown'), osVersion: r.os_version ?? null, appVersion: r.app_version ?? null,
       status: String(r.status), staffId: r.bound_user_id ? String(r.bound_user_id) : null, staffName: r.staff_name ?? null,

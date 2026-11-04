@@ -186,6 +186,10 @@ export class MessagingSetupCenter {
   }
 
   async overview(ctx: SetupCtx, branchId: string | null, allowed: string[] | null) {
+    // Nov 4 2026 (live IDOR run): another salon's branch id crashed the readiness read (500) — it is simply not found here
+    if (branchId && !(await sql<any>`select 1 from branches where tenant_id = ${ctx.tenantId} and id = ${branchId}::uuid`.execute(this.db)).rows.length) {
+      throw withCode(new HttpException({ code: 'BRANCH_NOT_FOUND', message: 'Unknown branch.' }, HttpStatus.NOT_FOUND), 'BRANCH_NOT_FOUND');
+    }
     const r = await this.readiness.readiness(ctx.tenantId, branchId, allowed);
     const d = await this.deliveryEvidence(ctx.tenantId, branchId);
     const parts = sixParts(r, d);

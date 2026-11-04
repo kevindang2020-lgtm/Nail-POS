@@ -35,7 +35,9 @@ const q = async (s, p = []) => (await client.query(s, p)).rows;
 
 // ── proof-tenant removal (same approach as live-phase8/9: every *tenant_id column, FK-ordered retries) ─────────────
 /** Tables a trigger keeps forever in the product (immutability), cleared here ONLY for the proof salon on a scratch DB. */
-const PROOF_ONLY_DELETABLE = new Set(['payroll_statements']);
+// Nov 4 2026: commission reviews and the configuration-history tables below refuse DELETE by trigger too (the cleanup left them and
+// then could not remove the proof tenant)
+const PROOF_ONLY_DELETABLE = new Set(['payroll_statements', 'commission_discrepancy_reviews', 'ai_customer_profile_settings_events', 'ai_reputation_config_versions', 'team_data_alerts', 'sms_test_events']);
 async function removeProofTenant(tenantId) {
   const cols = await q(`select c.table_name, c.column_name from information_schema.columns c join information_schema.tables t using (table_schema, table_name)
      where c.table_schema = 'public' and t.table_type = 'BASE TABLE' and c.column_name like '%tenant_id' and c.table_name <> 'tenants' and c.data_type = 'uuid'`);
@@ -125,6 +127,9 @@ const SEED_OVERRIDES = (s) => ({
   tickets: { primary_technician_id: s.tech },
   ticket_service_lines: { technician_id: s.tech },
   tenant_community_settings: { enabled: true },
+  // Nov 4 2026: the generic filler read a CHECK's text as a value for these booleans / enums (22P02); explicit values
+  ai_business_alerts: { metric_id: 'net_sales', operator: 'gt', frequency: 'daily', channel: 'in_app', active: true },
+  ai_business_alert_events: { source: 'manual', operator: 'gt', threshold: 1, preset: 'today', sample_ok: true, triggered: false, state_change: 'unchanged' },
 });
 const token = (s, v) => (v === '$owner' ? s.owner : v === '$techUser' ? s.techUser : v === '$tech' ? s.tech : v);
 const seedLog = [];
