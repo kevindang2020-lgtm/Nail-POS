@@ -10,8 +10,8 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 | A3 | AI Branch Comparison | /tenant/ai/business/branches | BUILT (core) — see docs/ai/AI_BRANCH_COMPARISON.md (health checker, fair scorecard, AI explanation not built) |
 | A4 | AI Business Assistant | /tenant/ai/business | BUILT (core) — see docs/ai/AI_BUSINESS_ASSISTANT.md (stored conversation history, extra ranges, record search not built) |
 | A5 | AI Scheduling Optimizer | /tenant/ai/scheduling-optimizer | BUILT (gaps) — Yesterday / Last 7 presets, health checks branch-scoped in salon time, per-branch runs, device-day fallback; technician full-day overlay and neighbour preview still open (owner decision in SCHEDULING_OPTIMIZER.md) |
-| A6 | AI Queue | /tenant/ai/queue | PARTIAL — salon-day ranges + end day (bb92dd5), free-technicians tile, kept-unassigned counted, failed reads shown, scan needs resolve_alerts; health checker, overlay tabs, search and numbered pages not built |
-| A7 | AI Booking Assistant | /tenant/ai/booking | PARTIAL — invented-slots panel removed (220ee29); past usage kept and labelled after cancel; Usage & history on every AI add-on page. The operations center (requests / holds / verification KPIs, activity overlay, 12-group health check) is NOT built: there is no ai-booking backend module yet |
+| A6 | AI Queue | /tenant/ai/queue | BUILT — salon-day ranges (bb92dd5); Check AI Queue System (13 parts, recorded — 789), assignment history with server search / filters / numbered pages / URL filters, 7-tab guest overlay (8a5c84d) |
+| A7 | AI Booking Assistant | /tenant/ai/booking | BUILT — operations center over the existing booking records, activity, 8-tab overlay, recovery cases (draft-only messages, audited Dismiss), Check AI Booking System (790, 8a5c84d); Review alternatives from POS Booking's availability and Request Manager Approval through POS Approvals (afb238a) |
 | A8 | AI Reception Copilot | /tenant/ai/reception-copilot | BUILT (fixes) — links, reschedule proposal, waitlist claim, midnight windows, sender check, branch scope, Yesterday, menu gating, error texts; name pickers / URL filters / health 'responsible role' still open |
 | A9 | AI Receptionist Settings | /tenant/ai/receptionist/settings | BUILT (core) — versions + history + restore, stale save refused (409), effective source shown, salon fallback, no silent default overwrite, coded errors; NOT built: the live agent reading these settings (shown honestly on the page), consent-script approval, health checker |
 | A10 | AI Calls | /tenant/ai/receptionist/calls | BUILT (fixes) — health never green when the receptionist checks fail, pending-code count branch-scoped and 'unknown' on error, per-branch runs, page kept from the URL, ?call= opens a call; NOT built: caller / dialed-number columns, Twilio SID search, extra date bases, call_links table, SSE |
@@ -155,8 +155,8 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
     filters, salon-day presets, numbered pages 10/20/50, URL filters), guest overlay in 7 tabs. A6 is now BUILT.
   - A7 AI Booking Assistant (8a5c84d): operations center over the existing booking records (counts, request activity with
     search / filters / pages, 8-tab overlay without codes, recovery cases with draft-only messages and audited Dismiss,
-    Check AI Booking System — 790). A7 is now BUILT. Not built: "Request Manager Approval" on a recovery case, and proposed
-    alternative times inside a recovery case (staff open POS Booking for availability).
+    Check AI Booking System — 790). A7 is now BUILT; "Request Manager Approval" and the alternative times on a recovery case
+    followed in afb238a.
   - D6 Membership (1a6d564): the plan's rollover switch, "Rollover max (cycles)" and "Credit expiry (days)" are applied
     (they were saved and ignored); migration 193's fake $49 redemption is removed (791).
   - D2 Services (9a2d583): per-service taxable setting (792) — lines copy it when rung up; checkout, line refunds and the
