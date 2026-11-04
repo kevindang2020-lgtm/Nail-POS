@@ -7,6 +7,7 @@
 //                                   nothing and the answer never reveals whether the address exists.
 import { Body, Controller, Get, Headers, Inject, Optional, Post, Query, Req, Res } from '@nestjs/common';
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
+import { AnonRateLimit } from '@aipowersalon/security/nest';   // Security Deep Scan §28: per-IP limit on public routes
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { recordWebhook } from '@aipowersalon/observability';
 import { EMAIL_EVENTS_BODY, EMPTY_BODY } from '../request-schemas';
@@ -35,7 +36,7 @@ export class EmailPublicController {
     return res.status(200).json(r);
   }
 
-  @Get('public/email/unsubscribe')
+  @Get('public/email/unsubscribe') @AnonRateLimit(60, 15 * 60_000, { bucket: 'email-unsubscribe' })   // public link: 60 / 15 min per address
   async unsubscribePage(@Query('token') token: string, @Res() res: any) {
     const secret = unsubscribeSecret();
     const ok = secret ? !!verifyUnsubscribe(String(token ?? ''), secret) : false;
@@ -46,7 +47,7 @@ export class EmailPublicController {
       `<form method="post" action="?token=${t}"><button type="submit" style="background:#B8933D;color:#fff;border:0;border-radius:9px;padding:12px 20px;font-size:15px;cursor:pointer">Unsubscribe</button></form>`));
   }
 
-  @Post('public/email/unsubscribe')
+  @Post('public/email/unsubscribe') @AnonRateLimit(60, 15 * 60_000, { bucket: 'email-unsubscribe' })
   async unsubscribe(@Query('token') token: string, @Res() res: any, @Body(ValidatedBody(EMPTY_BODY)) _b: any) {
     const secret = unsubscribeSecret(); const v = secret ? verifyUnsubscribe(String(token ?? ''), secret) : null;
     res.setHeader('Content-Type', 'text/html; charset=utf-8'); res.setHeader('Cache-Control', 'no-store');

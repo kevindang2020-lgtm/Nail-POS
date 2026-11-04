@@ -82,6 +82,7 @@ describe('the migrated schema (#19 — the audit is not blind)', () => {
   it('every table the ownership registry classes SECURITY_SECRET has a guarded column — or a reviewed reason', () => {
     const REVIEWED: Record<string, string> = {
       tenant_api_key_uses: 'a usage log (key id, route, method, IP, a was-previous-secret boolean) — no secret value',
+      tenant_messaging_health_checks: 'the messaging readiness check results (721): states, reason codes, the masked sender — the credentials stay in tenant_messaging_credentials (encrypted)',
     };
     const { sensitive } = audit();
     const reg = registrySensitivity();

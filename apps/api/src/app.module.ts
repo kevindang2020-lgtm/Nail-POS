@@ -348,6 +348,7 @@ export class AppModule implements NestModule {
         { path: 'webhooks/twilio/sms/inbound', method: RequestMethod.POST },      // Twilio signature (per-tenant token) — incl. STOP opt-outs
         { path: 'webhooks/twilio/sms/status', method: RequestMethod.POST },       // Twilio signature
         { path: 'webhooks/email/sendgrid', method: RequestMethod.POST },           // Email guide: SendGrid signed event webhook (ECDSA; 503 when no key)
+        { path: 'webhooks/voice/retell', method: RequestMethod.POST },              // AI Calls guide: Retell call events — X-Retell-Signature over rawBody+timestamp (503 when no key)
         { path: 'public/email/unsubscribe', method: RequestMethod.GET },           // Email guide: unsubscribe confirmation page (HMAC token)
         { path: 'public/email/unsubscribe', method: RequestMethod.POST },          // Email guide: RFC 8058 one-click unsubscribe (HMAC token, marketing only)
         { path: 'webhooks/twilio/booking-verification/status', method: RequestMethod.POST }, // Twilio signature, tenant's own token

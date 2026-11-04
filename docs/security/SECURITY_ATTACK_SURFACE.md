@@ -145,8 +145,8 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | GET | `/platform/branding` | modules/tenants/src/branding/branding.controller.ts:22 | public | AnonRateLimit 600 / 5 min per IP |
 | GET | `/public/alert-ack` | apps/api/src/observability/oncall.ts:195 | public | AnonRateLimit 30 / 15 min per IP [class] |
 | POST | `/public/alert-ack` | apps/api/src/observability/oncall.ts:150 | public | AnonRateLimit 30 / 15 min per IP [class] |
-| GET | `/public/email/unsubscribe` | modules/communications/src/email/email-public.controller.ts:39 | public | route-specific limiter or none (TenantRateLimitGuard skips anonymous calls; edge WAF REQUIRES KEVIN) |
-| POST | `/public/email/unsubscribe` | modules/communications/src/email/email-public.controller.ts:50 | public | route-specific limiter or none (TenantRateLimitGuard skips anonymous calls; edge WAF REQUIRES KEVIN) |
+| GET | `/public/email/unsubscribe` | modules/communications/src/email/email-public.controller.ts:40 | public | AnonRateLimit 60 / 15 min per IP (bucket email-unsubscribe) |
+| POST | `/public/email/unsubscribe` | modules/communications/src/email/email-public.controller.ts:51 | public | AnonRateLimit 60 / 15 min per IP (bucket email-unsubscribe) |
 | POST | `/public/mfa-recovery/confirm` | modules/identity/src/auth/mfa-recovery.controller.ts:54 | public | 5 failures burn the recovery token |
 | POST | `/public/mfa-recovery/start` | modules/identity/src/auth/mfa-recovery.controller.ts:39 | public | 5 failures burn the recovery token |
 | POST | `/public/security/approve-device` | modules/identity/src/auth/platform-device-approval.controller.ts:25 | public | AnonRateLimit 20 / 15 min per IP (bucket platform-device-approve) |
@@ -155,7 +155,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/public/website/invitations/accept` | modules/super-admin/src/super-admin-platform/public-website.controller.ts:23 | public | 5 / min per IP, 10-minute lock |
 | POST | `/public/website/leads` | modules/super-admin/src/super-admin-platform/public-website.controller.ts:20 | public | 5 / min per IP, 10-minute lock |
 | POST | `/webhooks/bank/{token}` | modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.controller.ts:17 | webhook | provider-signed; no rate limit (signature first, before any work) |
-| POST | `/webhooks/email/sendgrid` | modules/communications/src/email/email-public.controller.ts:25 | webhook | provider-signed; no rate limit (signature first, before any work) |
+| POST | `/webhooks/email/sendgrid` | modules/communications/src/email/email-public.controller.ts:26 | webhook | provider-signed; no rate limit (signature first, before any work) |
 | POST | `/webhooks/payments/{processor}` | modules/payments/src/payments/payment-webhook.controller.ts:18 | webhook | provider-signed; no rate limit (signature first, before any work) |
 | POST | `/webhooks/twilio/booking-verification/status` | modules/booking/src/customer-booking/booking-verification-webhook.controller.ts:62 | webhook | provider-signed; no rate limit (signature first, before any work) |
 | POST | `/webhooks/twilio/sms/inbound` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:22 | webhook | provider-signed; no rate limit (signature first, before any work) |
@@ -168,7 +168,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/internal/ai-billing/webhook` | modules/ai/src/ai/ai-subscription-billing.service.ts:42 | public |
 | POST | `/voice-transcription/webhook` | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts:170 | api_key |
 | POST | `/webhooks/bank/{token}` | modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.controller.ts:17 | public |
-| POST | `/webhooks/email/sendgrid` | modules/communications/src/email/email-public.controller.ts:25 | public |
+| POST | `/webhooks/email/sendgrid` | modules/communications/src/email/email-public.controller.ts:26 | public |
 | POST | `/webhooks/payments/{processor}` | modules/payments/src/payments/payment-webhook.controller.ts:18 | public |
 | POST | `/webhooks/twilio/booking-verification/status` | modules/booking/src/customer-booking/booking-verification-webhook.controller.ts:62 | public |
 | POST | `/webhooks/twilio/sms/inbound` | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts:22 | public |

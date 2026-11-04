@@ -80,6 +80,9 @@
       ],
       "@aipowersalon/database/nest": [
         "../../packages/database/dist/nest/index.d.ts"
+      ],
+      "@aipowersalon/security/nest": [
+        "../../packages/security/dist/nest/index.d.ts"
       ]
     }
   },

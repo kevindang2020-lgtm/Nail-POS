@@ -16,6 +16,7 @@ const REVIEWED_NOT_SECRET = new Set([
   'synthetic_probe_heartbeats.token',   // C11 probe: a random value written and read back, a credential for nothing
   'users.temp_password_delivery',       // HOW the temporary password was delivered (sms/email), not the password — that is temp_password_hash
   'tenant_messaging_credentials.api_key_sid', // Phase 4: a Twilio API key's SID — an identifier like the account SID; its secret is api_key_secret_enc
+  'tenant_messaging_health_checks.api_key_state', // 721: the readiness check's RESULT for the API key (ok / missing / rejected), never the key
 ]);
 /** Plaintext secrets that EXIST TODAY. Each carries its finding. Adding to this list is a security review, not a fix. */
 const KNOWN_PLAINTEXT: Record<string, string> = {

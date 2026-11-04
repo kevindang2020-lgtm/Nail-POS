@@ -52,6 +52,7 @@ export const SECRETS: readonly SecretEntry[] = [
   { env: 'SCHEDULED_REPORTS_CRON_SECRET', kind: 'shared_secret', protects: '/internal/scheduled-reports/run-due', rotateDays: 180, highEntropy: true },
   { env: 'MEMBERSHIP_BILLING_SECRET', kind: 'shared_secret', protects: '/internal/membership-billing/*', rotateDays: 180, highEntropy: true },
   { env: 'TENANT_WARNING_DISPATCH_CRON_SECRET', kind: 'shared_secret', protects: '/internal/tenant-warnings/dispatch', rotateDays: 180, highEntropy: true },
+  { env: 'EMAIL_UNSUBSCRIBE_SECRET', kind: 'shared_secret', protects: 'the HMAC of email unsubscribe links (/public/email/unsubscribe) — a forged link could unsubscribe someone else', rotateDays: 365, highEntropy: true },
   { env: 'AI_BILLING_WEBHOOK_SECRET', kind: 'shared_secret', protects: '/internal/ai-billing/* (and the billing webhook HMAC)', rotateDays: 180, highEntropy: true },
   // ── Provider credentials (issued by the provider; not fingerprinted — may be low-entropy) ──
   { env: 'OTEL_EXPORTER_OTLP_HEADERS', kind: 'provider_credential', protects: 'the tracing collector\'s auth header (e.g. x-honeycomb-team=…, Authorization=Basic …) for OTLP span export (BUILD_PLAN Phase 11)', rotateDays: 365, highEntropy: false },
@@ -100,6 +101,7 @@ export const NOT_SECRETS: ReadonlySet<string> = new Set([
   'MOBILE_PAY_DEVICE_KEYS',     // Oct 23 2026 Secure Tap to Pay: a POLICY switch (required | optional), not a key
   'AI_MAX_TOKENS',              // a token COUNT limit for AI responses
   'GO_CHECKIN_TOKEN_TTL_DAYS',  // a lifetime in days
+  'SENDGRID_WEBHOOK_VERIFICATION_KEY', // B13 Email: SendGrid's PUBLIC ECDSA key that verifies signed delivery events — public by design (it only checks signatures)
   'CAPTCHA_SITE_KEY',           // Phase 4: the CAPTCHA provider's PUBLIC site key — rendered in every browser by design (the secret is CAPTCHA_SECRET_KEY)
   'PRIVATE_FILES_ROOT',         // Phase 12: a DIRECTORY path for the private store (exports, attachments) — "PRIVATE" names the store, not a secret
   'PRIVATE_S3_BUCKET',          // Phase 12: the private store's bucket NAME (access is by the media IAM credentials, inventoried separately)
