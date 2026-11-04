@@ -16,4 +16,5 @@ export const posTerminalsScreenApi = {
   phoneDetail: (deviceId: string) => api.get<any>(`${B}/tap-to-pay/${e(deviceId)}`),
   activity: (q: Q) => api.get<any>(`${B}/activity`, clean(q)),
   routing: () => api.get<any>(`${B}/routing`),
+  audit: (q: Q) => api.get<any>(`${B}/audit`, clean(q)),
 };

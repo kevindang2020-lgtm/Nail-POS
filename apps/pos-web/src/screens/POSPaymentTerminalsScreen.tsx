@@ -24,7 +24,7 @@ import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodSt
 import { PairingQr, DeviceActivityView } from '../components/TapToPayDevicesPanel';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
 
-type Tab = 'physical' | 'phones' | 'activity' | 'routing';
+type Tab = 'physical' | 'phones' | 'activity' | 'audit' | 'routing';
 type Status = 'ONLINE' | 'OFFLINE' | 'BUSY' | 'PROCESSING' | 'DEGRADED' | 'DISABLED' | 'UNKNOWN';
 type Terminal = { id: string; label: string; model: string | null; provider: string | null; hsn: string | null; serialNumber: string | null; connectionType: string | null; branchId: string | null; branchName: string | null;
   stationId: string | null; registerName: string | null; paired: boolean; pairedAt: string | null; status: Status; group: 'online' | 'attention' | 'disabled' | 'in_use'; attention: string[];
@@ -64,6 +64,7 @@ export function POSPaymentTerminalsScreen() {
   const [dlg, setDlg] = useState<Dlg>(null);
   const [highlight, setHighlight] = useState<string | null>(null);
   const [activityDevice, setActivityDevice] = useState<{ id: string; label: string } | null>(null);
+  const [auditDevice, setAuditDevice] = useState<{ id: string; label: string } | null>(null);
   const refresh = () => setTick((t) => t + 1);
   const summary = useLoad(() => api.summary(), [tick]);
   const routing = useLoad<Routing>(() => api.routing(), [tick]);
@@ -71,6 +72,7 @@ export function POSPaymentTerminalsScreen() {
   const registers: { id: string; name: string }[] = routing.data?.registers ?? [];
   const reasonText = s ? Object.entries(s.reasons as Record<string, number>).filter(([, n]) => n > 0).map(([k, n]) => `${fmtNumber(n)} ${tx('pt.reason.' + k)}`).join(' · ') : '';
   const openActivityFor = (id: string, label: string) => { setDlg(null); setActivityDevice({ id, label }); setTab('activity'); };
+  const openAuditFor = (id: string, label: string) => { setDlg(null); setAuditDevice({ id, label }); setTab('audit'); };
   if (isForbidden(summary.error)) return <div className="work fit pt" data-testid="terminals-screen"><h1>{tx('pos.payment_terminals')}</h1><StateBlock error={summary.error} onRetry={summary.reload} /></div>;
 
   return (
@@ -96,7 +98,7 @@ export function POSPaymentTerminalsScreen() {
 
       <div className="fn-tabsrow">
         <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('pt.tabs')}>
-          {(['physical', 'phones', 'activity', 'routing'] as Tab[]).map((t) => (
+          {(['physical', 'phones', 'activity', 'audit', 'routing'] as Tab[]).map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
               {tx('pt.tab.' + t)}{t === 'phones' && ph ? <span className="fn-tabcount"> · {fmtNumber(ph.active)}/{fmtNumber(ph.total)}</span> : null}
             </button>
@@ -113,9 +115,10 @@ export function POSPaymentTerminalsScreen() {
       {tab === 'physical' ? <PhysicalTab q={q} tick={tick} registers={registers} highlight={highlight} onOpen={(id) => setDlg({ kind: 'terminal', id })} canEdit={canEdit} onPair={() => setDlg({ kind: 'pair' })} clearSearch={() => setSearch('')} /> : null}
       {tab === 'phones' ? <PhonesTab q={q} tick={tick} onOpen={(id) => setDlg({ kind: 'phone', id })} canDevices={canDevices} onAdd={() => setDlg({ kind: 'addPhone' })} clearSearch={() => setSearch('')} /> : null}
       {tab === 'activity' ? <ActivityTab q={q} tick={tick} device={activityDevice} clearDevice={() => setActivityDevice(null)} onOpen={(row) => setDlg({ kind: 'payment', row })} clearSearch={() => setSearch('')} /> : null}
+      {tab === 'audit' ? <AuditTab q={q} tick={tick} device={auditDevice} clearDevice={() => setAuditDevice(null)} clearSearch={() => setSearch('')} onOpen={(r) => setDlg(r.kind === 'iphone' ? { kind: 'phone', id: r.deviceId } : { kind: 'terminal', id: r.deviceId })} /> : null}
       {tab === 'routing' ? <RoutingTab data={routing} canEdit={canEdit} onSaved={(t) => { setNote({ tone: 'ok', text: t }); refresh(); }} onOpenTerminal={(id) => setDlg({ kind: 'terminal', id })} /> : null}
 
-      {dlg?.kind === 'terminal' ? <TerminalDialog id={dlg.id} canEdit={canEdit} registers={registers} onClose={() => setDlg(null)} onChanged={(t) => { setNote({ tone: 'ok', text: t }); refresh(); }} onActivity={openActivityFor} /> : null}
+      {dlg?.kind === 'terminal' ? <TerminalDialog id={dlg.id} canEdit={canEdit} registers={registers} onClose={() => setDlg(null)} onChanged={(t) => { setNote({ tone: 'ok', text: t }); refresh(); }} onActivity={openActivityFor} onHistory={openAuditFor} /> : null}
       {dlg?.kind === 'phone' ? <PhoneDialog id={dlg.id} canDevices={canDevices} onClose={() => setDlg(null)} onChanged={(t) => { setNote({ tone: 'ok', text: t }); refresh(); }} onRevoke={(p) => setDlg({ kind: 'revoke', phone: p })} onActivity={openActivityFor} /> : null}
       {dlg?.kind === 'revoke' ? <RevokeDialog phone={dlg.phone} physicalOnline={s?.online ?? 0} activePhones={ph?.active ?? 0} onClose={() => setDlg({ kind: 'phone', id: dlg.phone.deviceId })} onDone={(t) => { setDlg({ kind: 'phone', id: dlg.phone.deviceId }); setNote({ tone: 'ok', text: t }); refresh(); }} /> : null}
       {dlg?.kind === 'payment' ? <PaymentDialog row={dlg.row} onClose={() => setDlg(null)} onDevice={(r) => setDlg(r.device.kind === 'iphone' ? { kind: 'phone', id: r.device.id! } : { kind: 'terminal', id: r.device.id! })}
@@ -138,13 +141,13 @@ function StatusChip({ t }: { t: Pick<Terminal, 'status' | 'group'> }) {
 }
 
 function PhysicalTab({ q, tick, registers, highlight, onOpen, canEdit, onPair, clearSearch }: { q: string; tick: number; registers: { id: string; name: string }[]; highlight: string | null; onOpen: (id: string) => void; canEdit: boolean; onPair: () => void; clearSearch: () => void }) {
-  const [status, setStatus] = useState(''); const [register, setRegister] = useState(''); const [sort, setSort] = useState('created_desc'); const [page, setPage] = useState(1);
-  const key = JSON.stringify([q, status, register, sort]); useEffect(() => setPage(1), [key]);
+  const [status, setStatus] = useState(''); const [register, setRegister] = useState(''); const [provider, setProvider] = useState(''); const [sort, setSort] = useState('created_desc'); const [page, setPage] = useState(1);
+  const key = JSON.stringify([q, status, register, provider, sort]); useEffect(() => setPage(1), [key]);
   const fit = useFitRows<HTMLDivElement>(42, { min: 3, max: 18, reserve: 34 });
-  const d = useLoad(() => api.physical({ search: q || undefined, status: status || undefined, register: register || undefined, sort, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
+  const d = useLoad(() => api.physical({ search: q || undefined, status: status || undefined, register: register || undefined, provider: provider || undefined, sort, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
   useEffect(() => { if (d.data && d.data.page !== page) setPage(d.data.page); }, [d.data]);   // eslint-disable-line react-hooks/exhaustive-deps
   const rows: Terminal[] = d.data?.items ?? [];
-  const filtered = !!(q || status || register);
+  const filtered = !!(q || status || register || provider);
   return (
     <FitPanel testId="physical" bodyRef={fit.ref} className="fn-records"
       title={<span className="fn-chips">{tx('pt.tab.physical')}{d.data ? <span className="fk-muted"> · {fmtNumber(d.data.total)}</span> : null}</span>}
@@ -153,12 +156,14 @@ function PhysicalTab({ q, tick, registers, highlight, onOpen, canEdit, onPair, c
           <option value="">{tx('finance.allStatuses')}</option>{['online', 'in_use', 'attention', 'disabled'].map((g) => <option key={g} value={g}>{tx('pt.group.' + g)}</option>)}</select>
         <select className="fk-select" value={register} onChange={(e) => setRegister(e.target.value)} aria-label={tx('pt.register')} data-testid="register-filter">
           <option value="">{tx('pt.allRegisters')}</option><option value="none">{tx('pt.noRegister')}</option>{registers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+        <select className="fk-select" value={provider} onChange={(e) => setProvider(e.target.value)} aria-label={tx('pt.processor')} data-testid="provider-filter">
+          <option value="">{tx('pt.allProcessors')}</option>{PROCESSORS.map((p) => <option key={p} value={p}>{lbl('finance.processorName.' + p, p)}</option>)}<option value="none">{tx('pt.processorNotRecorded')}</option></select>
         <select className="fk-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('finance.sort')} data-testid="sort">
           {['created_desc', 'created_asc', 'name_asc', 'status', 'last_seen_desc'].map((o) => <option key={o} value={o}>{tx('pt.sort.' + o)}</option>)}</select>
       </>}
       footer={<Pager info={d.data ? { page: d.data.page, pageSize: d.data.pageSize, totalItems: d.data.total, totalPages: d.data.pageCount } : null} onPage={setPage} label={tx('pt.tab.physical')} />}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading')}</div>
-        : rows.length === 0 ? (filtered ? <Empty title={tx('finance.noMatches')}><button type="button" className="fk-btn" onClick={() => { clearSearch(); setStatus(''); setRegister(''); }}>{tx('finance.clearFilters')}</button></Empty>
+        : rows.length === 0 ? (filtered ? <Empty title={tx('finance.noMatches')}><button type="button" className="fk-btn" onClick={() => { clearSearch(); setStatus(''); setRegister(''); setProvider(''); }}>{tx('finance.clearFilters')}</button></Empty>
           : <Empty title={tx('pt.noTerminals')}><span className="fk-hint">{tx('pt.noTerminalsHint')}</span>{canEdit ? <button type="button" className="fk-btn primary" onClick={onPair}>+ {tx('pt.pairTerminal')}</button> : null}</Empty>)
         : <table className="fk-table fn-table" data-testid="physical-table">
           <thead><tr><th>{tx('pt.col.terminal')}</th><th className="t-opt">{tx('pt.col.type')}</th><th>{tx('pt.col.register')}</th><th>{tx('finance.status')}</th><th>{tx('pt.col.lastSeen')}</th><th className="t-opt">{tx('pt.col.lastTxn')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
@@ -210,6 +215,49 @@ function PhonesTab({ q, tick, onOpen, canDevices, onAdd, clearSearch }: { q: str
               <td>{p.online ? <span className="fk-chip ok">● {tx('pt.seenNow')}</span> : when(p.lastSeenAt)}</td>
               <td>{when(p.lastPaymentAt)}</td>
               <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onOpen(p.deviceId)}>{tx('pt.viewDetails')}</button></td>
+            </tr>))}</tbody>
+        </table>}
+    </FitPanel>
+  );
+}
+
+const PROCESSORS = ['cardpointe', 'fiserv', 'clover'];
+type AuditRow = { id: string; kind: 'terminal' | 'iphone'; deviceId: string; deviceLabel: string; action: string; at: string | null; actor: string | null; role: string | null; detail: Record<string, unknown> };
+// Payment Terminals guide (Nov 4 2026) §16 / §17: Device Audit History — its own date range and page, newest first; revoked and
+// unpaired devices stay listed
+function AuditTab({ q, tick, device, clearDevice, clearSearch, onOpen }: { q: string; tick: number; device: { id: string; label: string } | null; clearDevice: () => void; clearSearch: () => void; onOpen: (r: AuditRow) => void }) {
+  const [period, setPeriod] = useState<PeriodState>({ preset: 'month' });
+  const [kind, setKind] = useState(''); const [page, setPage] = useState(1);
+  const scope = { ...periodQuery(period), search: q || undefined, kind: kind || undefined, deviceId: device?.id };
+  const key = JSON.stringify(scope); useEffect(() => setPage(1), [key]);
+  const fit = useFitRows<HTMLDivElement>(42, { min: 3, max: 18, reserve: 34 });
+  const d = useLoad(() => api.audit({ ...scope, page, pageSize: fit.rows }), [key, page, fit.rows, tick]);
+  useEffect(() => { if (d.data && d.data.page !== page) setPage(d.data.page); }, [d.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const rows: AuditRow[] = d.data?.items ?? [];
+  const filtered = !!(q || kind || device);
+  const detailText = (r: AuditRow) => Object.entries(r.detail).map(([k, v]) => k === 'reachable' ? tx(v ? 'pt.audit.reachable' : 'pt.audit.unreachable') : k === 'atPairing' ? tx('pt.audit.atPairing') : `${lbl('pt.audit.f.' + k, k)}: ${String(v)}`).join(' · ');
+  return (
+    <FitPanel testId="audit" bodyRef={fit.ref} className="fn-records"
+      title={<span className="fn-chips">{tx('pt.tab.audit')}{d.data ? <span className="fk-muted"> · {fmtNumber(d.data.total)}</span> : null}
+        {device ? <span className="fk-chip mut">{device.label}<button type="button" className="fk-chip-x" aria-label={tx('finance.removeFilter', { f: device.label })} onClick={clearDevice}>✕</button></span> : null}</span>}
+      actions={<>
+        <PeriodBar value={period} onChange={setPeriod} server={d.data?.period} compact />
+        <select className="fk-select" value={kind} onChange={(e) => setKind(e.target.value)} aria-label={tx('pt.col.device')} data-testid="audit-kind">
+          <option value="">{tx('pt.allDevices')}</option>{['terminal', 'iphone'].map((g) => <option key={g} value={g}>{tx('pt.kind.' + g)}</option>)}</select>
+      </>}
+      footer={<Pager info={d.data ? { page: d.data.page, pageSize: d.data.pageSize, totalItems: d.data.total, totalPages: d.data.pageCount } : null} onPage={setPage} label={tx('pt.tab.audit')} />}>
+      {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading')}</div>
+        : rows.length === 0 ? <Empty title={tx('pt.noAudit')}>{filtered ? <button type="button" className="fk-btn" onClick={() => { clearSearch(); setKind(''); clearDevice(); }}>{tx('finance.clearFilters')}</button> : null}
+            <button type="button" className="fk-btn" onClick={() => setPeriod({ preset: 'year' })}>{tx('finance.tryThisYear')}</button></Empty>
+        : <table className="fk-table fn-table" data-testid="audit-table">
+          <thead><tr><th>{tx('pt.col.time')}</th><th>{tx('pt.col.device')}</th><th>{tx('pt.audit.event')}</th><th>{tx('pt.audit.by')}</th><th className="t-opt">{tx('pt.audit.details')}</th></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr key={r.id} data-testid="audit-row">
+              <td>{when(r.at)}</td>
+              <td><button type="button" className="fk-li-t link" onClick={() => onOpen(r)}>{r.deviceLabel}</button><span className="fk-li-s">{tx('pt.kind.' + r.kind)}</span></td>
+              <td>{lbl('pt.audit.action.' + r.action, r.action.replace(/^pos_settings_terminal_|^mobile_pay_device_/, '').replace(/_/g, ' '))}</td>
+              <td>{r.actor ?? '—'}{r.role ? <span className="fk-li-s">{lbl('pos.role.' + r.role, r.role)}</span> : null}</td>
+              <td className="t-opt fn-wrap">{detailText(r) || '—'}</td>
             </tr>))}</tbody>
         </table>}
     </FitPanel>
@@ -310,7 +358,7 @@ function RoutingTab({ data, canEdit, onSaved, onOpenTerminal }: { data: { data: 
   );
 }
 
-function TerminalDialog({ id, canEdit, registers, onClose, onChanged, onActivity }: { id: string; canEdit: boolean; registers: { id: string; name: string }[]; onClose: () => void; onChanged: (t: string) => void; onActivity: (id: string, label: string) => void }) {
+function TerminalDialog({ id, canEdit, registers, onClose, onChanged, onActivity, onHistory }: { id: string; canEdit: boolean; registers: { id: string; name: string }[]; onClose: () => void; onChanged: (t: string) => void; onActivity: (id: string, label: string) => void; onHistory?: (id: string, label: string) => void }) {
   const d = useLoad(() => api.physicalDetail(id), [id]);
   const stepUp = useStepUp(tx('pos.stepup_terminals_needs_password'));
   const [busy, setBusy] = useState<string | null>(null); const [msg, setMsg] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
@@ -334,6 +382,7 @@ function TerminalDialog({ id, canEdit, registers, onClose, onChanged, onActivity
         <button type="button" className="fk-btn" onClick={() => d.reload()} disabled={!!busy} data-testid="refresh-status">{tx('pt.refreshStatus')}</button>
         {canEdit && t.paired && t.status !== 'DISABLED' ? <button type="button" className="fk-btn" onClick={test} disabled={!!busy} data-testid="test-connection">{busy === 'test' ? tx('pt.testing') : tx('pos.test_connection')}</button> : null}
         <button type="button" className="fk-btn" onClick={() => onActivity(t.id, t.label)}>{tx('pt.viewActivity')}</button>
+        {onHistory ? <button type="button" className="fk-btn" onClick={() => onHistory(t.id, t.label)} data-testid="terminal-history">{tx('pt.viewHistory')}</button> : null}
         {canEdit ? <button type="button" className="fk-btn" onClick={() => setAsk({ kind: 'rename', value: t.label })} disabled={!!busy}>{tx('pos.rename')}</button> : null}
         {canEdit ? (t.status === 'DISABLED' ? <button type="button" className="fk-btn" disabled={!!busy} onClick={() => run('enable', () => posDevicesApi.enableTerminal(t.id), tx('pt.enabled', { label: t.label }))} data-testid="enable">{tx('pos.enable')}</button>
           : <button type="button" className="fk-btn danger" disabled={!!busy} onClick={() => setAsk({ kind: 'disable', value: '' })} data-testid="disable">{tx('pos.disable')}</button>) : null}
@@ -496,16 +545,22 @@ function PairDialog({ registers, onClose, onDone }: { registers: { id: string; n
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [made, setMade] = useState<{ id: string; label: string } | null>(null); const [verify, setVerify] = useState<{ ok: boolean; detail: string } | null>(null);
   const routing = useLoad<Routing>(() => api.routing(), []);
+  // Payment Terminals guide (Nov 4 2026) §07 step 1: the processor account of this location; one request key per dialog
+  const procs = useLoad(() => posDevicesApi.terminalProcessors(), []);
+  const [merchant, setMerchant] = useState('');
+  useEffect(() => { const first = procs.data?.items?.find((p) => p.usable); if (first && !merchant) setMerchant(first.id); }, [procs.data]);   // eslint-disable-line react-hooks/exhaustive-deps
+  const pairKey = useRef(requestId());
   const taken = (routing.data?.registers ?? []).find((r: RoutingRegister) => r.id === station && r.terminals?.length);
   const submitting = useRef(false);
   const pair = async () => {
     if (submitting.current) return; submitting.current = true; setBusy(true); setErr(null);
     try {
-      const r = await stepUp.run(() => posDevicesApi.pairTerminal({ code, label: label.trim(), stationId: station || undefined, hsn: hsn.trim() || undefined }));
+      const r = await stepUp.run(() => posDevicesApi.pairTerminal({ code, label: label.trim(), stationId: station || undefined, hsn: hsn.trim() || undefined, merchantAccountId: merchant || undefined, idempotencyKey: pairKey.current }));
       if (r?.id && model) await posDevicesApi.renameTerminal(r.id, { terminalType: model });
       setMade({ id: r.id, label: label.trim() }); setStep(4);
-      try { const v = await posDevicesApi.testTerminal(r.id); setVerify({ ok: !!v.reachable, detail: v.detail }); }
-      catch (e) { setVerify({ ok: false, detail: errMsg(e) }); }
+      // the server verifies at pairing when it can (a non-charge probe); otherwise the readiness test answers honestly
+      if (r?.verification) setVerify({ ok: !!r.verification.reachable, detail: r.verification.detail });
+      else { try { const v = await posDevicesApi.testTerminal(r.id); setVerify({ ok: !!v.reachable, detail: v.detail }); } catch (e) { setVerify({ ok: false, detail: errMsg(e) }); } }
     } catch (e) { if (!isStepUpCancelled(e)) setErr(errMsg(e)); }
     finally { setBusy(false); submitting.current = false; }
   };
@@ -524,6 +579,11 @@ function PairDialog({ registers, onClose, onDone }: { registers: { id: string; n
       {step === 1 ? <div className="fk-grid2">
         <label className="fk-field"><span>{tx('pos.device_model')}</span><select value={model} onChange={(e) => setModel(e.target.value)} data-testid="pair-model">{MODELS.map((m) => <option key={m} value={m}>{lbl('pt.model.' + m, m)}</option>)}</select></label>
         <label className="fk-field"><span>{tx('pos.terminal_label')} *</span><input value={label} maxLength={80} onChange={(e) => setLabel(e.target.value)} data-autofocus data-testid="pair-label" /></label>
+        <label className="fk-field span2"><span>{tx('pt.processor')}</span>
+          {procs.error ? <span className="fk-hint">{tx('pt.processorLoadFailed')}</span> : !procs.data ? <span className="fk-hint">{tx('pos.loading')}</span>
+            : procs.data.items.length === 0 ? <span className="fk-hint" data-testid="pair-no-processor">{tx('pt.noProcessorAccount')}</span>
+            : <select value={merchant} onChange={(e) => setMerchant(e.target.value)} data-testid="pair-processor">{procs.data.items.map((p) => <option key={p.id} value={p.id} disabled={!p.usable}>
+                {lbl('finance.processorName.' + p.processor, p.processor)}{p.displayName ? ` · ${p.displayName}` : ''}{p.environment === 'sandbox' ? ` · ${tx('pt.sandbox')}` : ''}{!p.usable ? ` · ${tx('pt.processorPaused')}` : !p.terminalApi ? ` · ${tx('pt.noTerminalApi')}` : ''}</option>)}</select>}</label>
         <div className="fk-hint span2">{tx('pt.processorNote')}</div>
       </div> : null}
       {step === 2 ? <div className="fk-grid2">

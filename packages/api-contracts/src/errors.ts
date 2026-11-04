@@ -456,6 +456,8 @@ export const ERROR_REGISTRY = {
   GIFT_CARD_NUMBERS_REQUIRED:     { status: 400, message: 'Enter at least one card number.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
   GIFT_CARD_NUMBERS_INVALID:      { status: 400, message: 'No valid 16-digit card numbers were found.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
   TERMINAL_ALREADY_PAIRED:        { status: 409, message: 'This terminal is already paired. Unpair it first to pair it again.', domain: 'checkout', retryable: false, severity: 'warning', action: 'NONE' },
+  TERMINAL_PROCESSOR_INVALID: { status: 400, message: 'Choose a processor account of this location.', domain: 'checkout', retryable: false, severity: 'warning', action: 'NONE' },
+  TERMINAL_PROCESSOR_SUSPENDED: { status: 409, message: 'That processor account is paused. Choose another or resume it first.', domain: 'checkout', retryable: false, severity: 'warning', action: 'NONE' },
   TERMINAL_REGISTER_TAKEN:        { status: 409, message: 'This register already uses another terminal. Move or disable that one first.', domain: 'checkout', retryable: false, severity: 'warning', action: 'NONE' },
   GIFT_CARD_ADJUST_AMOUNT_INVALID: { status: 400, message: "Enter the amount to add or take off.", domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
   GIFT_CARD_ADJUST_REASON_REQUIRED: { status: 400, message: "Give a reason for the adjustment.", domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },

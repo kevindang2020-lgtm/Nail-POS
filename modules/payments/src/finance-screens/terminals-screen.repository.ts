@@ -111,7 +111,7 @@ export class TerminalsScreenRepository {
     });
   }
 
-  async physicalList(ctx: FinanceCtx, f: { q: string; group?: PhysicalGroup; stationId?: string; sort: (typeof PHYSICAL_SORTS)[number] }, pr: PageReq): Promise<Paged<PhysicalRow & { matchedBy: string | null }>> {
+  async physicalList(ctx: FinanceCtx, f: { q: string; group?: PhysicalGroup; stationId?: string; provider?: string; sort: (typeof PHYSICAL_SORTS)[number] }, pr: PageReq): Promise<Paged<PhysicalRow & { matchedBy: string | null }>> {
     const all = await this.physicalInventory(ctx);
     const q = f.q;
     const scored = all.map((t) => {
@@ -126,7 +126,9 @@ export class TerminalsScreenRepository {
       return { t, rank: -1, by: null };
     }).filter((x) => x.rank >= 0)
       .filter((x) => !f.group || x.t.group === f.group)
-      .filter((x) => !f.stationId || (f.stationId === 'none' ? !x.t.stationId : x.t.stationId === f.stationId));
+      .filter((x) => !f.stationId || (f.stationId === 'none' ? !x.t.stationId : x.t.stationId === f.stationId))
+      // Payment Terminals guide (Nov 4 2026) §17 "provider" filter: the processor the terminal was paired to ('none' = not linked)
+      .filter((x) => !f.provider || (f.provider === 'none' ? !x.t.provider : sameText(x.t.provider, f.provider)));
     const created = (t: PhysicalRow) => Date.parse(t.pairedAt ?? t.updatedAt ?? '') || 0;
     const cmp: Record<string, (a: PhysicalRow, b: PhysicalRow) => number> = {
       created_desc: (a, b) => created(b) - created(a) || b.id.localeCompare(a.id),
@@ -305,6 +307,45 @@ export class TerminalsScreenRepository {
         };
       }),
       total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount,
+    };
+  }
+
+  // ── Device Audit History (Payment Terminals guide Nov 4 2026 §16 / §17): every pairing, register, test, rename, disable /
+  //    enable, unpair of this location's terminals and every Tap to Pay registration / approval / suspension / revocation,
+  //    newest first, with its own date range and page — revoked and unpaired devices stay in the history ──
+  async auditHistory(ctx: FinanceCtx, f: { period: Period; kind?: 'terminal' | 'iphone'; deviceId?: string; q: string }, pr: PageReq) {
+    const T = ctx.tenantId, B = ctx.branchId && isUuid(ctx.branchId) ? ctx.branchId : null;
+    const base = sql`
+      select a.id::text as id, 'terminal' as kind, a.entity_id as device_id, a.action_type as action, a.created_at, a.role, coalesce(u.full_name, u.email) as actor,
+             t.label as device_label, coalesce(a.after_json, '{}'::jsonb) as detail
+        from settings_audit_logs a
+        left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
+        left join pos_payment_terminals t on t.tenant_id::text = a.tenant_id::text and t.id = a.entity_id
+       where a.tenant_id = ${T} and a.action_type like 'pos_settings_terminal%' ${B ? sql`and (a.branch_id = ${B}::uuid or a.branch_id is null)` : sql``}
+      union all
+      select a.id::text as id, 'iphone' as kind, a.entity_id as device_id, a.action_type as action, a.created_at, a.role, coalesce(u.full_name, u.email) as actor,
+             d.label as device_label, coalesce(a.metadata_json, '{}'::jsonb) as detail
+        from audit_logs a
+        left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
+        join mobile_pay_devices d on d.tenant_id = a.tenant_id and d.device_id = a.entity_id
+       where a.tenant_id = ${T} and a.action_type like 'mobile_pay_device%'`;
+    const parts = [tsInPeriod(sql`h.created_at`, f.period)];
+    if (f.kind) parts.push(sql`h.kind = ${f.kind}`);
+    if (f.deviceId) parts.push(sql`h.device_id = ${f.deviceId}`);
+    if (f.q) parts.push(sql`(coalesce(h.device_label, '') ilike ${likeOf(f.q)} or h.device_id ilike ${likeOf(f.q)} or coalesce(h.actor, '') ilike ${likeOf(f.q)} or h.action ilike ${likeOf(f.q)})`);
+    const where = sql.join(parts, sql` and `);
+    const total = N((await sql<any>`select count(*)::int as n from (${base}) h where ${where}`.execute(this.db)).rows[0]?.n);
+    const pg = clampPage(pr, total);
+    const rows = (await sql<any>`select h.* from (${base}) h where ${where} order by h.created_at desc, h.id desc limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
+    const SAFE = ['reachable', 'stationId', 'reason', 'disabled', 'label', 'provider', 'atPairing', 'status', 'from', 'to'];
+    return {
+      items: rows.map((r: any) => ({
+        id: String(r.id), kind: r.kind as 'terminal' | 'iphone', deviceId: String(r.device_id), deviceLabel: r.device_label ?? (r.kind === 'iphone' ? shortRef(String(r.device_id)) : String(r.device_id)),
+        action: String(r.action), at: iso(r.created_at), actor: r.actor ?? null, role: r.role ?? null,
+        // only plain, non-secret facts of the change (a key, token or phone never leaves)
+        detail: Object.fromEntries(Object.entries(r.detail && typeof r.detail === 'object' ? r.detail : {}).filter(([k, v]) => SAFE.includes(k) && (typeof v !== 'object' || v === null))),
+      })),
+      total, page: pg.page, pageSize: pg.pageSize, pageCount: pg.pageCount, period: f.period, dateBasis: 'audit_event' as const,
     };
   }
 

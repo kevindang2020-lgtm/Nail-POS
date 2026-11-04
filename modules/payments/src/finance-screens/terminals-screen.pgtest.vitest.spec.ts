@@ -170,3 +170,41 @@ describe('Payment Terminals — Payment Activity and routing', () => {
     expect((await repo.routing(ctx2)).mode).toBe('front_desk');
   });
 });
+
+// Payment Terminals guide (Nov 4 2026) §16 / §17: the processor filter, and the Device Audit History with its own date range and
+// page — terminal and Tap to Pay events newest first, revoked devices still listed, nothing of another salon / location
+describe('Payment Terminals — processor filter and Device Audit History', () => {
+  it('filters terminals by the processor they were paired to (none = not linked)', async () => {
+    await q(`update pos_payment_terminals set provider = 'cardpointe' where tenant_id = $1 and id = 'term_000003'`, [T]);
+    const all = await repo.physicalList(ctx, { q: '', sort: 'created_desc' }, pageReq({ pageSize: 50 }));
+    const cp = await repo.physicalList(ctx, { q: '', provider: 'CardPointe', sort: 'created_desc' }, pageReq({ pageSize: 50 }));
+    expect(cp.items.map((t) => t.id)).toEqual(['term_000003']);
+    const none = await repo.physicalList(ctx, { q: '', provider: 'none', sort: 'created_desc' }, pageReq({ pageSize: 50 }));
+    expect(none.total).toBe(all.total - 1);
+  });
+  it('lists terminal and Tap to Pay audit events newest first within the period; kind / device / search narrow it; other salons and locations never', async () => {
+    await q(`insert into settings_audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, after_json, created_at) values
+      ($1,$2,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_000003','{"id":"term_000003","provider":"cardpointe","merchantAccountId":"x"}', now() - interval '3 hours'),
+      ($1,$2,$3,'OWNER','pos_settings_terminal_tested','payments_checkout','term_000003','{"id":"term_000003","reachable":false}', now() - interval '2 hours'),
+      ($1,$6,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_elsewhere','{}', now() - interval '1 hours'),
+      ($4,$5,$7,'OWNER','pos_settings_terminal_paired','payments_checkout','term_000099','{}', now()),
+      ($1,$2,$3,'OWNER','pos_settings_receipts_saved','receipts','receipts','{}', now())`, [T, B, OWNER, T2, B2, id('b9'), id('e9')]);
+    await q(`insert into audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, metadata_json, created_at) values
+      ($1,$2,$3,'OWNER','mobile_pay_device_revoked','mobile_pay_device','iphone-device-0002','{"reason":"Lost phone","token":"secret"}', now() - interval '30 minutes'),
+      ($4,$5,null,'OWNER','mobile_pay_device_revoked','mobile_pay_device','iphone-other','{}', now())`, [T, B, OWNER, T2, B2]);
+    const period = resolvePeriod({ preset: 'today' }, TZ);
+    const h = await repo.auditHistory(ctx, { period, q: '' }, pageReq({}));
+    expect(h.items.map((x) => [x.kind, x.deviceId, x.action])).toEqual([
+      ['iphone', 'iphone-device-0002', 'mobile_pay_device_revoked'], ['terminal', 'term_000003', 'pos_settings_terminal_tested'], ['terminal', 'term_000003', 'pos_settings_terminal_paired']]);
+    expect(h.items[0]).toMatchObject({ deviceLabel: 'Staff iPhone 2', actor: 'Olive Owner', detail: { reason: 'Lost phone' } });
+    expect(JSON.stringify(h.items)).not.toMatch(/secret|merchantAccountId/);
+    expect(h.items[1]!.detail).toEqual({ reachable: false });
+    expect((await repo.auditHistory(ctx, { period, kind: 'terminal', q: '' }, pageReq({}))).total).toBe(2);
+    expect((await repo.auditHistory(ctx, { period, deviceId: 'iphone-device-0002', q: '' }, pageReq({}))).total).toBe(1);
+    expect((await repo.auditHistory(ctx, { period, q: 'patio' }, pageReq({}))).items.map((x) => x.action)).toEqual(['pos_settings_terminal_tested', 'pos_settings_terminal_paired']);
+    const p2 = await repo.auditHistory(ctx, { period, q: '' }, pageReq({ page: 2, pageSize: 2 }));
+    expect(p2).toMatchObject({ page: 2, total: 3, pageCount: 2 }); expect(p2.items.length).toBe(1);
+    const yesterday = resolvePeriod({ preset: 'custom', from: '2020-01-01', to: '2020-01-02' }, TZ);
+    expect((await repo.auditHistory(ctx, { period: yesterday, q: '' }, pageReq({}))).total).toBe(0);
+  });
+});

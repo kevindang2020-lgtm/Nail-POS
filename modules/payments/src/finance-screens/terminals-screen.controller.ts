@@ -3,7 +3,7 @@
 // session (req.ctx), never the query. Read-only: pairing, register assignment, test, disable / enable, unpair stay on the
 // audited step-up settings routes (pos/settings/payments-checkout/terminals*); Tap to Pay approve / suspend / revoke on the
 // mobile-checkout device routes (owner trust decisions, step-up); routing on PATCH pos/settings/payments-checkout (audited).
-//   reads  pos.checkout.view   summary · physical · physical/:id · tap-to-pay · tap-to-pay/:deviceId · activity · routing
+//   reads  pos.checkout.view   summary · physical · physical/:id · tap-to-pay · tap-to-pay/:deviceId · activity · audit · routing
 // Staff phones and customer contact are masked for a role without the matching permission (pos.devices.manage /
 // pos.customers.view).
 import { ListQuery } from '@aipowersalon/database';
@@ -16,7 +16,7 @@ import { financeCtx, needPermission, runFinance } from './settlements-screen.con
 export const TERMINALS_SCREEN_REPOSITORY = 'TerminalsScreenRepository';
 
 const PHYSICAL_LIST = {
-  filters: { status: { type: 'enum', values: ['online', 'attention', 'disabled', 'in_use', 'all'] }, register: { type: 'text', maxLength: 64 } },
+  filters: { status: { type: 'enum', values: ['online', 'attention', 'disabled', 'in_use', 'all'] }, register: { type: 'text', maxLength: 64 }, provider: { type: 'text', maxLength: 32 } },
   sorts: { created_desc: null, created_asc: null, name_asc: null, status: null, last_seen_desc: null },
   search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, params: ['page'],
 } as const;
@@ -32,6 +32,11 @@ const ACTIVITY_LIST = {
   search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'],
 } as const;
 
+const AUDIT_LIST = {
+  filters: { kind: { type: 'enum', values: ['terminal', 'iphone', 'all'] }, deviceId: { type: 'text', maxLength: 128 }, preset: { type: 'enum', values: ['today', 'week', 'month', 'year', 'custom'] } },
+  search: { params: ['search'], maxLength: 100 }, maxLimit: 50, defaultLimit: 12, dateRange: { maxDays: 3700 }, params: ['page'],
+} as const;
+
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/devices/payment-terminals')
 export class TerminalsScreenController {
@@ -42,9 +47,9 @@ export class TerminalsScreenController {
   summary(@Req() req: any) { const c = financeCtx(req); needPermission(c, 'pos.checkout.view'); return runFinance(() => this.r().summary(c)); }
 
   @Get('physical') @RequirePermission('pos.checkout.view') @ListQuery(PHYSICAL_LIST)
-  physical(@Req() req: any, @Query('search') search?: string, @Query('status') status?: string, @Query('register') register?: string, @Query('sort') sort?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+  physical(@Req() req: any, @Query('search') search?: string, @Query('status') status?: string, @Query('register') register?: string, @Query('sort') sort?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string, @Query('provider') provider?: string) {
     const c = financeCtx(req); needPermission(c, 'pos.checkout.view');
-    return runFinance(async () => this.r().physicalList(c, { q: searchText(search), group: oneOf(status, PHYSICAL_GROUPS, 'status'), stationId: register ? String(register).slice(0, 64) : undefined,
+    return runFinance(async () => this.r().physicalList(c, { q: searchText(search), group: oneOf(status, PHYSICAL_GROUPS, 'status'), stationId: register ? String(register).slice(0, 64) : undefined, provider: provider ? String(provider).slice(0, 32) : undefined,
       sort: oneOf(sort, TERMINAL_LIST_SORTS.physical, 'sort') ?? 'created_desc' }, pageReq({ page, pageSize })));
   }
 
@@ -69,6 +74,16 @@ export class TerminalsScreenController {
       const list = await this.r().activityList(c, { period, q: searchText(search), status: oneOf(status, ACTIVITY_STATUSES, 'status'), device: oneOf(device, ACTIVITY_DEVICE_KINDS, 'device'),
         deviceId: deviceId ? String(deviceId).slice(0, 128) : undefined, sort: oneOf(sort, TERMINAL_LIST_SORTS.activity, 'sort') ?? 'time_desc' }, pageReq({ page, pageSize }));
       return { ...list, period, dateBasis: 'transaction' as const };
+    });
+  }
+
+  @Get('audit') @RequirePermission('pos.checkout.view') @ListQuery(AUDIT_LIST)
+  audit(@Req() req: any, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('search') search?: string, @Query('kind') kind?: string,
+    @Query('deviceId') deviceId?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string) {
+    const c = financeCtx(req); needPermission(c, 'pos.checkout.view');
+    return runFinance(async () => {
+      const period = await this.r().period(c, { preset, from, to });
+      return this.r().auditHistory(c, { period, kind: oneOf(kind, ['terminal', 'iphone'] as const, 'kind'), deviceId: deviceId ? String(deviceId).slice(0, 128) : undefined, q: searchText(search) }, pageReq({ page, pageSize }));
     });
   }
 

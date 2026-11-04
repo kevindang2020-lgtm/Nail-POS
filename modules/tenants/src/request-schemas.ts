@@ -101,7 +101,7 @@ export const SETTINGS_RECEIPTS_BODY = section({
 
 // ── POS Settings actions ─────────────────────────────────────────────────────────────────────────────────────────
 /** POST /pos/settings/payments-checkout/terminals/pair — { code, label, stationId?, hsn? } (posDevicesApi) */
-export const TERMINAL_PAIR_BODY = S.object({ code: text(64), label: text(80), stationId: text(64), hsn: text(64) });
+export const TERMINAL_PAIR_BODY = S.object({ code: text(64), label: text(80), stationId: text(64), hsn: text(64), merchantAccountId: text(64), idempotencyKey: text(64) });   // + processor account and request key (Nov 4 2026)
 /** POST …/terminals/:id/register — { stationId: a register of this location | null } */
 export const TERMINAL_REGISTER_BODY = S.object({ stationId: text(64) });
 /** wave 3 PAYI §52: POST …/terminals/:id/rename — { label, terminalType?, serialNumber?, connectionType? }; POST …/terminals/:id/disable — { reason } */

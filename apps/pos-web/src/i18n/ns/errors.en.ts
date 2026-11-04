@@ -430,6 +430,8 @@ export const ERRORS_EN = {
   'errors.GIFT_CARD_NUMBERS_REQUIRED': 'Enter at least one card number.',
   'errors.GIFT_CARD_NUMBERS_INVALID': 'No valid 16-digit card numbers were found.',
   'errors.TERMINAL_ALREADY_PAIRED': 'This terminal is already paired. Unpair it first to pair it again.',
+  'errors.TERMINAL_PROCESSOR_INVALID': 'Choose a processor account of this location.',
+  'errors.TERMINAL_PROCESSOR_SUSPENDED': 'That processor account is paused. Choose another or resume it first.',
   'errors.TERMINAL_REGISTER_TAKEN': 'This register already uses another terminal. Move or disable that one first.',
   'errors.GIFT_CARD_ADJUST_AMOUNT_INVALID': "Enter the amount to add or take off.",
   'errors.GIFT_CARD_ADJUST_REASON_REQUIRED': "Give a reason for the adjustment.",

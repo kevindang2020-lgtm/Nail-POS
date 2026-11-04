@@ -32,7 +32,8 @@
     "@aipowersalon/security": "*",
     "@aipowersalon/customers": "*",
     "@aipowersalon/media": "*",
-    "@aipowersalon/inventory": "*"
+    "@aipowersalon/inventory": "*",
+    "@aipowersalon/observability": "*"
   },
   "devDependencies": {
     "@aipowersalon/testing": "*",

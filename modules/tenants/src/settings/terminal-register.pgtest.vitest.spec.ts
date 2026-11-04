@@ -119,3 +119,43 @@ describe('a terminal with no location', () => {
     await expect(repo.update({ ...owner, tenantId: 'e2000000-0000-4000-8000-0000000000ff' }, 'term_nobranch', { label: 'x' })).rejects.toMatchObject({ code: 'TERMINAL_NOT_FOUND' });
   });
 });
+
+// Payment Terminals guide (Nov 4 2026) §07: 1 processor (this location's account) · 4 verify without charging · a repeated Pair
+// with the same request key returns what it did instead of "already paired"
+describe('pairing: processor account, request key, verification', () => {
+  const MA = 'e2000000-0000-4000-8000-0000000000f1', MA_ELSEWHERE = 'e2000000-0000-4000-8000-0000000000f3';
+  const K1 = 'e2000000-0000-4000-9000-000000000001', K2 = 'e2000000-0000-4000-9000-000000000002';
+  it('lists only this location\'s processor accounts (no secrets), pairs to one, and refuses a paused or another location\'s account', async () => {
+    // one processor account per location (uq_payment_merchant_accounts_branch)
+    await q(`insert into payment_merchant_accounts (id, tenant_id, branch_id, processor, environment, display_name, status, bolt_base_url, bolt_api_key_enc) values
+      ($1,$3,$4,'cardpointe','production','CardPointe main','active','https://bolt.example','enc:x'), ($2,$3,$5,'clover','production','Second shop','active',null,null)`, [MA, MA_ELSEWHERE, T, B1, B2]);
+    const p = await svc.terminalProcessors(owner);
+    expect(p.items.map((x: any) => [x.id, x.processor, x.usable, x.terminalApi])).toEqual([[MA, 'cardpointe', true, true]]);
+    expect(JSON.stringify(p)).not.toMatch(/enc:x|bolt\.example/);
+    await expect(svc.pairTerminal(owner, '444441', 'Elsewhere', undefined, undefined, { merchantAccountId: MA_ELSEWHERE })).rejects.toMatchObject({ code: 'TERMINAL_PROCESSOR_INVALID' });
+    await q(`update payment_merchant_accounts set status = 'paused' where id = $1`, [MA]);
+    expect((await svc.terminalProcessors(owner)).items[0]).toMatchObject({ usable: false });
+    await expect(svc.pairTerminal(owner, '444442', 'Paused', undefined, undefined, { merchantAccountId: MA })).rejects.toMatchObject({ code: 'TERMINAL_PROCESSOR_SUSPENDED' });
+    await q(`update payment_merchant_accounts set status = 'active' where id = $1`, [MA]);
+    const t = await svc.pairTerminal(owner, '464646', 'Clover Flex 2', BACK, undefined, { merchantAccountId: MA, requestKey: K1 });
+    expect(t).toMatchObject({ id: 'term_464646', provider: 'cardpointe', merchantAccountId: MA });
+    expect(t.duplicate).toBeUndefined();
+  });
+  it('the same Pair again (same key) returns the terminal; a different key is still "already paired"', async () => {
+    const again = await svc.pairTerminal(owner, '464646', 'Clover Flex 2', BACK, undefined, { merchantAccountId: MA, requestKey: K1 });
+    expect(again).toMatchObject({ id: 'term_464646', duplicate: true });
+    await expect(svc.pairTerminal(owner, '464646', 'Clover Flex 2', BACK, undefined, { requestKey: K2 })).rejects.toMatchObject({ code: 'TERMINAL_ALREADY_PAIRED' });
+    const audits = await q(`select count(*)::int as n from settings_audit_logs where tenant_id = $1 and action_type = 'pos_settings_terminal_paired' and entity_id = 'term_464646'`, [T]);
+    expect(audits[0].n).toBe(1);   // the replay is not a second pairing
+  });
+  it('with a probe, pairing verifies the terminal without charging and records the outcome (unreachable stays out of Online)', async () => {
+    const calls: any[] = [];
+    const probe = { probe: async (_c: any, t: any) => { calls.push(t); return { probed: true, reachable: false, detail: 'the terminal did not answer' }; } };
+    const svc2 = new PosSettingsService((svc as any).repo, (svc as any).terminals, undefined, undefined, undefined, null, null, probe as any);
+    const t = await svc2.pairTerminal(owner, '575757', 'Clover Mini 2', undefined, 'HSN55', { merchantAccountId: MA, requestKey: 'e2000000-0000-4000-9000-000000000003' });
+    expect(calls).toEqual([{ id: 'term_575757', hsn: 'HSN55', merchantAccountId: MA }]);
+    expect(t.verification).toEqual({ probed: true, reachable: false, detail: 'the terminal did not answer' });
+    const row = (await q(`select last_ping_ok, last_ping_at from pos_payment_terminals where tenant_id = $1 and id = 'term_575757'`, [T]))[0];
+    expect(row.last_ping_ok).toBe(false); expect(row.last_ping_at).not.toBeNull();
+  });
+});

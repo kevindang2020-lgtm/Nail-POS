@@ -430,6 +430,8 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.GIFT_CARD_NUMBERS_REQUIRED': 'Hãy nhập ít nhất một số thẻ.',
   'errors.GIFT_CARD_NUMBERS_INVALID': 'Không tìm thấy số thẻ hợp lệ gồm 16 chữ số.',
   'errors.TERMINAL_ALREADY_PAIRED': 'Máy quẹt thẻ này đã được ghép nối. Hãy hủy ghép nối trước khi ghép lại.',
+  'errors.TERMINAL_PROCESSOR_INVALID': 'Chọn một tài khoản xử lý thanh toán của chi nhánh này.',
+  'errors.TERMINAL_PROCESSOR_SUSPENDED': 'Tài khoản xử lý này đang tạm ngưng. Chọn tài khoản khác hoặc bật lại trước.',
   'errors.TERMINAL_REGISTER_TAKEN': 'Quầy này đang dùng một máy quẹt thẻ khác. Hãy chuyển hoặc tắt máy đó trước.',
   'errors.GIFT_CARD_ADJUST_AMOUNT_INVALID': "Nhập số tiền cần cộng thêm hoặc trừ bớt.",
   'errors.GIFT_CARD_ADJUST_REASON_REQUIRED': "Hãy nêu lý do điều chỉnh.",

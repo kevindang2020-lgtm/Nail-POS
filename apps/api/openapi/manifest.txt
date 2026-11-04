@@ -700,6 +700,7 @@ GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session
 GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/overview  realm=staff  auth=session  domain=operations  perm=pos.devices.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/activity  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/audit  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/physical  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/physical/{terminalId}  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/payment-terminals/routing  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -1058,6 +1059,7 @@ GET /pos/settings/online-google-ai-booking  realm=staff  auth=session  domain=te
 GET /pos/settings/online-google-ai-booking/status  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/payments-checkout  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/payments-checkout/terminals  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/settings/payments-checkout/terminals/processors  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/payments-checkout/terminals/{id}/test  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/payments-checkout/test-connection  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/queue-workflow  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard

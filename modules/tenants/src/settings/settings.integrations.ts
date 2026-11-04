@@ -66,9 +66,16 @@ export const TERMINAL_PROBE_PORT = 'TerminalProbePort';
 // Persistence-agnostic port for terminal pairing. Scope is ALWAYS derived from ctx (tenant + branch) server-side; a
 // terminal belongs to exactly one (tenant, branch) and can never be seen or mutated from another tenant. The in-memory
 // adapter below is the dev/test default; KyselyTerminalPairingRepository persists to `pos_payment_terminals`.
+export interface PairOptions { merchantAccountId?: string | null; requestKey?: string | null }
+export interface ProcessorOption { id: string; processor: string; displayName: string | null; environment: string; status: string; terminalApi: boolean; usable: boolean }
+
 export interface TerminalPairingRepositoryPort {
   list(ctx: SettingsContext): Promise<Terminal[]>;
-  pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string): Promise<Terminal>;
+  /** opts (Payment Terminals guide Nov 4 2026 §07): the processor account chosen at pairing, and the request key that makes a
+   *  repeated Pair return the terminal it paired */
+  pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string, opts?: PairOptions): Promise<Terminal & { duplicate?: boolean }>;
+  /** this location's processor accounts a terminal can be paired to (never a secret) */
+  processors?(ctx: SettingsContext): Promise<ProcessorOption[]>;
   unpair(ctx: SettingsContext, id: string): Promise<{ id: string; status: 'unpaired' }>;
   test(ctx: SettingsContext, id: string): Promise<{ id: string; reachable: boolean; detail: string }>;
   /** Tie a terminal to one of this location's registers (null: no register). */
@@ -87,7 +94,7 @@ export class TerminalPairingService implements TerminalPairingRepositoryPort {
   private key(ctx: SettingsContext): string { return ctx.tenantId + '::' + (ctx.branchId || ''); }
   private list_(ctx: SettingsContext) { const k = this.key(ctx); if (!this.byScope.has(k)) this.byScope.set(k, []); return this.byScope.get(k)!; }
   async list(ctx: SettingsContext): Promise<Terminal[]> { return this.list_(ctx).slice(); }
-  async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string): Promise<Terminal> {
+  async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string, _opts?: PairOptions): Promise<Terminal> {
     if (!/^\d{6}$/.test(pairingCode)) throw new Error('pairing code must be 6 digits');
     const t: Terminal = { id: 'term_' + pairingCode, label, stationId, status: 'paired', pairedAt: new Date().toISOString(), ...(hsn ? { hsn } : {}) };
     const arr = this.list_(ctx); const i = arr.findIndex((x) => x.id === t.id); if (i >= 0) arr[i] = t; else arr.push(t); return t;

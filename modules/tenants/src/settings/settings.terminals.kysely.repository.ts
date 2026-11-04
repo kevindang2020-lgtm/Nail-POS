@@ -7,7 +7,7 @@
 import { sql, type Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { SettingsContext } from './settings.dto';
-import type { Terminal, TerminalPairingRepositoryPort, TerminalRegistryEdit } from './settings.integrations';
+import type { Terminal, TerminalPairingRepositoryPort, TerminalRegistryEdit, PairOptions, ProcessorOption } from './settings.integrations';
 import { terminalOperationalStatus, TERMINAL_STATUS_LABEL } from '@aipowersalon/api-contracts';   // wave 3 PAYI §12 / §50
 
 const iso = (v: any): string => (v ? new Date(v).toISOString() : '');
@@ -98,24 +98,48 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
       .where('tenant_id', '=', ctx.tenantId).where('id', '=', id).execute().catch(() => undefined);
   }
 
-  async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string): Promise<Terminal> {
+  /** Payment Terminals guide (Nov 4 2026) §07 step 1: this location's processor accounts (no secret ever leaves) — a terminal
+   *  can be paired only to an account of this location that is not suspended; terminalApi = the Bolt terminal API is set. */
+  async processors(ctx: SettingsContext): Promise<ProcessorOption[]> {
+    if (!ctx.branchId) return [];
+    const rows: any[] = (await sql<any>`select id::text as id, processor, display_name, environment, status, (bolt_base_url is not null and bolt_api_key_enc is not null) as terminal_api
+        from payment_merchant_accounts where tenant_id = ${ctx.tenantId} and branch_id = ${ctx.branchId} order by created_at asc, id asc`.execute(this.db)).rows;
+    return rows.map((r) => ({ id: String(r.id), processor: String(r.processor), displayName: r.display_name ?? null, environment: String(r.environment), status: String(r.status), terminalApi: !!r.terminal_api,
+      usable: !['paused', 'disabled'].includes(String(r.status)) }));
+  }
+
+  async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string, opts: PairOptions = {}): Promise<Terminal & { duplicate?: boolean }> {
     if (!/^\d{6}$/.test(pairingCode)) throw new Error('pairing code must be 6 digits');
     const id = 'term_' + pairingCode;
+    const key = opts.requestKey && /^[0-9a-f-]{36}$/i.test(opts.requestKey) ? opts.requestKey : null;
+    // step 1: the processor account must be one of THIS location's usable accounts — never another location's or salon's
+    let merchant: ProcessorOption | null = null;
+    if (opts.merchantAccountId) {
+      merchant = (await this.processors(ctx)).find((p) => p.id === opts.merchantAccountId) ?? null;
+      if (!merchant) throw Object.assign(new Error('Choose a processor account of this location.'), { expose: true, status: 400, code: 'TERMINAL_PROCESSOR_INVALID' });
+      if (!merchant.usable) throw terminalConflict('TERMINAL_PROCESSOR_SUSPENDED', 'That processor account is paused. Choose another or resume it first.');
+    }
     // Payment Terminals guide (Nov 4 2026): pairing used to UPSERT — a code already paired (at this location or another one)
     // was silently taken over, its label, register and location overwritten. A paired terminal is unpaired first; an
     // unpaired one is paired again in place (its payment history keeps the same device id).
-    await this.db.transaction().execute(async (trx) => {
+    const dup = await this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('pos_payment_terminals:' || ${ctx.tenantId}))`.execute(trx);
-      const cur: any = await trx.selectFrom('pos_payment_terminals').select(['branch_id', 'status']).where('tenant_id', '=', ctx.tenantId).where('id', '=', id).executeTakeFirst();
+      const cur: any = (await sql<any>`select branch_id, status, pair_request_key from pos_payment_terminals where tenant_id = ${ctx.tenantId} and id = ${id}`.execute(trx)).rows[0];
+      if (cur && cur.status === 'paired' && key && cur.pair_request_key === key) return true;   // the same Pair again: answer what it did
       if (cur && cur.status === 'paired') throw terminalConflict('TERMINAL_ALREADY_PAIRED', cur.branch_id && ctx.branchId && String(cur.branch_id) !== ctx.branchId
         ? 'This terminal is paired at another location. Unpair it there first.' : 'This terminal is already paired. Unpair it first to pair it again.');
       if (stationId) await this.assertRegisterFree(trx, ctx, stationId, id);
-      await trx.insertInto('pos_payment_terminals')
-        .values({ id, tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, label, station_id: stationId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null })
-        .onConflict((oc: any) => oc.columns(['tenant_id', 'id']).doUpdateSet({ label, station_id: stationId || null, branch_id: ctx.branchId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null }).where('pos_payment_terminals.status', '<>', 'paired'))
-        .execute();
+      const prov = merchant ? merchant.processor : null, mid = merchant ? merchant.id : null;
+      await sql`insert into pos_payment_terminals (id, tenant_id, branch_id, label, station_id, status, paired_at, hsn, provider, merchant_account_id, pair_request_key)
+        values (${id}, ${ctx.tenantId}, ${ctx.branchId || null}, ${label}, ${stationId || null}, 'paired', now(), ${hsn || null}, ${prov}, ${mid}, ${key})
+        on conflict (tenant_id, id) do update set label = excluded.label, station_id = excluded.station_id, branch_id = excluded.branch_id, status = 'paired', paired_at = now(), hsn = excluded.hsn,
+          provider = coalesce(excluded.provider, pos_payment_terminals.provider), merchant_account_id = excluded.merchant_account_id, pair_request_key = excluded.pair_request_key,
+          last_ping_at = null, last_ping_ok = null
+        where pos_payment_terminals.status <> 'paired'`.execute(trx);
+      return false;
     });
-    return { id, label, stationId, status: 'paired', pairedAt: new Date().toISOString(), ...(hsn ? { hsn } : {}) };
+    const t = (await this.list(ctx)).find((x) => x.id === id);
+    return { ...(t ?? { id, label, stationId, status: 'paired' as const, pairedAt: new Date().toISOString(), ...(hsn ? { hsn } : {}) }), ...(dup ? { duplicate: true } : {}) };
   }
   /** one live terminal per register: a second one made the register's card charge pick a device at random */
   private async assertRegisterFree(exec: Kysely<DB>, ctx: SettingsContext, stationId: string, terminalId: string): Promise<void> {

@@ -3,6 +3,7 @@
 // ASYNC: the persistence repository is async (Postgres/Kysely or in-memory). The provider/hardware integration
 // services below are in-memory adapters and stay synchronous; only repo-touching methods (and the readiness/status
 // helpers that read payments config) are async.
+import { logException } from '@aipowersalon/observability';
 import { withoutRetiredQueueWorkflowKeys } from './settings.dto';
 import { SALON_AUTO_LOCK_MINUTE_CHOICES, withCode } from '@aipowersalon/api-contracts';   // Oct 12 2026: POS auto-lock
 import { notifySettingsChanged, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
@@ -238,10 +239,27 @@ export class PosSettingsService {
   // Payments & terminals
   async testPayments(ctx: SettingsContext): Promise<ConnectionTest> { this.assertTenantUser(ctx); return (await this.payments(ctx)).testConnection(); }
   async listTerminals(ctx: SettingsContext): Promise<Terminal[]> { this.assertTenantUser(ctx); return this.terminals.list(ctx); }
-  async pairTerminal(ctx: SettingsContext, code: string, label: string, stationId?: string, hsn?: string): Promise<Terminal> {
+  /** Payment Terminals guide (Nov 4 2026) §07: 1 processor (this location's account) · 2 device · 3 register · 4 verify
+   *  (a non-charge probe when one is available — an unverified terminal is never shown Online) · 5 confirm (audited).
+   *  A repeated Pair with the same request key returns what the first one did. */
+  async pairTerminal(ctx: SettingsContext, code: string, label: string, stationId?: string, hsn?: string, opts: { merchantAccountId?: string | null; requestKey?: string | null } = {}): Promise<Terminal & { duplicate?: boolean; verification?: { probed: boolean; reachable: boolean; detail: string } }> {
     this.assertEdit(ctx, 'payments-checkout');
     const register = await this.checkRegister(ctx, stationId);
-    const t = await this.terminals.pair(ctx, code, label, register ?? undefined, hsn); await this.audit(ctx, 'pos_settings_terminal_paired', 'payments_checkout', { id: t.id, stationId: register, hsn: hsn ? 'set' : undefined }); return t;
+    const t = await this.terminals.pair(ctx, code, label, register ?? undefined, hsn, { merchantAccountId: opts.merchantAccountId ?? null, requestKey: opts.requestKey ?? null });
+    if (t.duplicate) return t;
+    await this.audit(ctx, 'pos_settings_terminal_paired', 'payments_checkout', { id: t.id, stationId: register, hsn: hsn ? 'set' : undefined, merchantAccountId: opts.merchantAccountId ?? undefined, provider: t.provider ?? undefined });
+    let verification: { probed: boolean; reachable: boolean; detail: string } | undefined;
+    if (this.terminalProbe && t.hsn) {
+      try {
+        verification = await this.terminalProbe.probe({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null }, { id: t.id, hsn: t.hsn ?? null, merchantAccountId: t.merchantAccountId ?? null });
+        if (verification.probed) { await this.terminals.recordProbe?.(ctx, t.id, verification.reachable); await this.audit(ctx, 'pos_settings_terminal_tested', 'payments_checkout', { id: t.id, reachable: verification.reachable, atPairing: true }); }
+      } catch (e) { logException(e, { where: 'settings.pairTerminal.verify', tenantId: ctx.tenantId }); verification = { probed: false, reachable: false, detail: 'the verification could not run — use Test Connection' }; }
+    }
+    return { ...t, ...(verification ? { verification } : {}) };
+  }
+  async terminalProcessors(ctx: SettingsContext) {
+    this.assertTenantUser(ctx);
+    return { items: this.terminals.processors ? await this.terminals.processors(ctx) : [] };
   }
   /** Oct 6 2026: the register a terminal serves — one of this location's registers, or none. It was a free-text box that no
    *  card charge could ever match, so with two terminals the display's charge could not find its own. */

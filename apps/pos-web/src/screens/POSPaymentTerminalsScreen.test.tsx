@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const api = vi.hoisted(() => ({ summary: vi.fn(), physical: vi.fn(), physicalDetail: vi.fn(), phones: vi.fn(), phoneDetail: vi.fn(), activity: vi.fn(), routing: vi.fn() }));
-const dev = vi.hoisted(() => ({ testTerminal: vi.fn(), renameTerminal: vi.fn(), disableTerminal: vi.fn(), enableTerminal: vi.fn(), unpairTerminal: vi.fn(), pairTerminal: vi.fn(), setTerminalRegister: vi.fn() }));
+const api = vi.hoisted(() => ({ summary: vi.fn(), physical: vi.fn(), physicalDetail: vi.fn(), phones: vi.fn(), phoneDetail: vi.fn(), activity: vi.fn(), routing: vi.fn(), audit: vi.fn() }));
+const dev = vi.hoisted(() => ({ testTerminal: vi.fn(), renameTerminal: vi.fn(), disableTerminal: vi.fn(), enableTerminal: vi.fn(), unpairTerminal: vi.fn(), pairTerminal: vi.fn(), setTerminalRegister: vi.fn(), terminalProcessors: vi.fn() }));
 const mob = vi.hoisted(() => ({ approve: vi.fn(), suspend: vi.fn(), revoke: vi.fn(), createPairing: vi.fn(), activity: vi.fn() }));
 const settings = vi.hoisted(() => ({ updateCategory: vi.fn() }));
 vi.mock('../api/posTerminalsScreenApi', () => ({ posTerminalsScreenApi: api }));
@@ -100,5 +100,42 @@ describe('POSPaymentTerminalsScreen', () => {
     expect(await screen.findByText('RR1')).toBeInTheDocument();
     expect(screen.getAllByText('Not linked').length).toBeGreaterThan(0);
     expect(api.activity.mock.calls[0][0]).toMatchObject({ preset: 'month', dateField: 'transaction' });
+  });
+  it('Pair Terminal: the processor is this location\'s account, one request key per dialog, and the server\'s verification is shown (unreachable stays out of Online)', async () => {
+    dev.terminalProcessors.mockResolvedValue({ items: [{ id: 'ma-1', processor: 'cardpointe', displayName: 'Main MID', environment: 'production', status: 'active', terminalApi: true, usable: true }] });
+    dev.pairTerminal.mockResolvedValue({ id: 'term_123456', status: 'paired', verification: { probed: true, reachable: false, detail: 'the terminal did not answer' } });
+    dev.renameTerminal.mockResolvedValue({});
+    mount();
+    fireEvent.click(await screen.findByTestId('pair-terminal'));
+    expect(await screen.findByTestId('pair-processor')).toHaveValue('ma-1');
+    fireEvent.click(screen.getByTestId('pair-next'));
+    fireEvent.change(screen.getByTestId('pair-code'), { target: { value: '123456' } });
+    fireEvent.click(screen.getByTestId('pair-next'));
+    fireEvent.click(screen.getByTestId('pair-submit'));
+    await waitFor(() => expect(dev.pairTerminal).toHaveBeenCalledWith(expect.objectContaining({ code: '123456', merchantAccountId: 'ma-1', idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/) })));
+    expect(await screen.findByTestId('pair-verify')).toHaveTextContent('the terminal did not answer');
+    expect(dev.testTerminal).not.toHaveBeenCalled();   // the server already verified at pairing
+  });
+  it('no processor account for the location says so; pairing still works without one', async () => {
+    dev.terminalProcessors.mockResolvedValue({ items: [] });
+    mount();
+    fireEvent.click(await screen.findByTestId('pair-terminal'));
+    expect(await screen.findByTestId('pair-no-processor')).toBeInTheDocument();
+  });
+  it('the terminal list filters by processor; Device history lists events with its own period and opens the device', async () => {
+    mount();
+    await screen.findAllByTestId('terminal-row');
+    fireEvent.change(screen.getByTestId('provider-filter'), { target: { value: 'cardpointe' } });
+    await waitFor(() => expect(api.physical).toHaveBeenLastCalledWith(expect.objectContaining({ provider: 'cardpointe', page: 1 })));
+    api.audit.mockResolvedValue({ items: [{ id: 'a1', kind: 'terminal', deviceId: 'term_1', deviceLabel: 'Front Desk Clover', action: 'pos_settings_terminal_tested', at: '2026-10-29T15:00:00Z', actor: 'Olive Owner', role: 'OWNER', detail: { reachable: false } },
+      { id: 'a2', kind: 'iphone', deviceId: 'dev_1', deviceLabel: 'Lisa iPhone', action: 'mobile_pay_device_revoked', at: '2026-10-29T14:00:00Z', actor: 'Olive Owner', role: 'OWNER', detail: { reason: 'Lost phone' } }],
+      page: 1, pageSize: 10, total: 2, pageCount: 1, period: { preset: 'month', from: '2026-10-01', to: '2026-10-31', tz: 'America/New_York', today: '2026-10-29' } });
+    fireEvent.click(screen.getByTestId('tab-audit'));
+    const rows = await screen.findAllByTestId('audit-row');
+    expect(rows[0]).toHaveTextContent('Connection tested'); expect(rows[0]).toHaveTextContent('did not answer the test');
+    expect(rows[1]).toHaveTextContent('Revoked'); expect(rows[1]).toHaveTextContent('Lost phone');
+    expect(api.audit).toHaveBeenCalledWith(expect.objectContaining({ preset: 'month', page: 1 }));
+    fireEvent.change(screen.getByTestId('audit-kind'), { target: { value: 'iphone' } });
+    await waitFor(() => expect(api.audit).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'iphone', page: 1 })));
   });
 });

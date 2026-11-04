@@ -33,7 +33,9 @@ export const posDevicesApi = {
   disableTerminal: (id: string, reason: string) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/disable`, { reason }),
   enableTerminal: (id: string) => api.post<TerminalRegistryRow>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/enable`, {}),
   unpairTerminal: (id: string) => api.post(`/pos/settings/payments-checkout/terminals/${id}/unpair`, {}),
-  pairTerminal: (b: { code: string; label: string; stationId?: string; hsn?: string }) => api.post<{ id: string; status: string }>(`/pos/settings/payments-checkout/terminals/pair`, b),
+  pairTerminal: (b: { code: string; label: string; stationId?: string; hsn?: string; merchantAccountId?: string; idempotencyKey?: string }) => api.post<{ id: string; status: string; duplicate?: boolean; provider?: string | null; verification?: { probed: boolean; reachable: boolean; detail: string } }>(`/pos/settings/payments-checkout/terminals/pair`, b),
+  /** Payment Terminals guide (Nov 4 2026) §07 step 1: this location's processor accounts (no secrets) */
+  terminalProcessors: () => api.get<{ items: Array<{ id: string; processor: string; displayName: string | null; environment: string; status: string; terminalApi: boolean; usable: boolean }> }>(`/pos/settings/payments-checkout/terminals/processors`),
   /** Oct 6 2026: the register a terminal serves (one of this location's registers, or null) — its card charges use it. */
   setTerminalRegister: (id: string, stationId: string | null) => api.post<{ id: string; stationId?: string; registerName?: string }>(`/pos/settings/payments-checkout/terminals/${encodeURIComponent(id)}/register`, { stationId }),
 };

@@ -119,7 +119,10 @@ export class PosSettingsController {
   @Get('payments-checkout/terminals') @RequirePermission('settings.view')
   termList(@Req() r: any) { return this.act(() => this.svc.listTerminals(ctxFrom(r))); }
   @RequireStepUp() @Post('payments-checkout/terminals/pair') @RequirePermission('settings.view')
-  termPair(@Req() r: any, @Body(ValidatedBody(TERMINAL_PAIR_BODY, { strict: true })) b: any) { return this.act(() => this.svc.pairTerminal(ctxFrom(r), b?.code, b?.label || 'Station', b?.stationId, b?.hsn)); }
+  termPair(@Req() r: any, @Body(ValidatedBody(TERMINAL_PAIR_BODY, { strict: true })) b: any) { return this.act(() => this.svc.pairTerminal(ctxFrom(r), b?.code, b?.label || 'Station', b?.stationId, b?.hsn, { merchantAccountId: b?.merchantAccountId || null, requestKey: b?.idempotencyKey || null })); }
+  // Payment Terminals guide (Nov 4 2026) §07 step 1: the processor accounts of this location a terminal can be paired to
+  @Get('payments-checkout/terminals/processors') @RequirePermission('settings.view')
+  termProcessors(@Req() r: any) { return this.act(() => this.svc.terminalProcessors(ctxFrom(r))); }
   // Oct 6 2026: the register a terminal serves (body { stationId: one of this location's registers | null })
   @RequireStepUp() @Post('payments-checkout/terminals/:id/register') @RequirePermission('settings.view')
   termRegister(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(TERMINAL_REGISTER_BODY, { strict: true })) b: any) { return this.act(() => this.svc.setTerminalRegister(ctxFrom(r), id, b?.stationId ?? null)); }
