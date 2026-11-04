@@ -92,7 +92,7 @@ GUIDE_AUDIT_FINDINGS_2026-11-03.md; batch C/D audits have not been run yet.
 - B6 Global Loyalty Final Completion — audited against the guide's invariants (PAID only from a verified provider settlement, one terminal action per hold, books check). FIXED: a settlement arriving for a payable that was put ON_HOLD meanwhile left it silently unpaid while the cash-out was booked — now no journal against it and a high payout alert for finance.
 - B7 Marketing & Growth — audited: unknown cost reads N/A (never 0x), totals reconcile with rows, revenue is code-attributed only. No new bug found.
 - B8 Message Templates — audited: preview is side-effect free and a real-customer preview is permission-gated, salon/branch-scoped and audited. FIXED: creator / editor names joined within the salon.
-- D15 Cash Drawer — FIXED: setting the float again on a counted drawer no longer overwrites the float it was counted against. Open / count / cash in-out run once per Idempotency-Key (a double tap or a retry after a dropped connection recorded the same cash-out twice); the POS keeps one key per action until it succeeds. NOT fixed: cash is per branch, not per register (payments carry no register id — a multi-register branch shows each register the branch's cash).
+- D15 Cash Drawer — FIXED: setting the float again on a counted drawer no longer overwrites the float it was counted against. Open / count / cash in-out run once per Idempotency-Key (a double tap or a retry after a dropped connection recorded the same cash-out twice); the POS keeps one key per action until it succeeds. Per-register drawers BUILT Nov 4 (f1458f9) — see below.
 - B6 (second pass): the 3 always-failing global-rewards cases were PGlite artefacts (one connection cannot run two transactions at once) — rewritten back to back; real concurrency proven by global-rewards.postgres-race (4/4 on Postgres). Suite 72/72.
 - B7 (second pass): date-dependent fixture fixed (gift-card activity "10 days ago" fell outside "this month" on the 1st–10th). 20/20.
 Batch B: every guide audited; bugs fixed above; remaining NOT-built items are listed per guide.
@@ -144,3 +144,10 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   pending → active, first period, first credits, activity and audit commit in one transaction; idempotent. POS: the enroll
   dialog continues into "First payment" (or "Collect later"); Member Details offers it for a pending member. Card-on-file
   needs MEMBERSHIP_AUTOBILL_ENABLED + the salon's gateway — without it the button says billing is not set up.
+- D15 Cash Drawer — BUILT (Nov 4, f1458f9): one drawer per register. Payments record the register that took them
+  (migration 788 payments.register_id, filled from the ticket's checkout register). Each register's drawer counts only its
+  own cash; "Cash with no register" holds payments with no register (older payments, a retired register). A location with
+  no registers set up keeps one drawer as before. Reads and writes for another location's register are refused
+  (REGISTER_NOT_IN_BRANCH). POS Cash Drawer has a register picker (EN/VI), shown only when registers exist. Payments taken
+  before today have no register and land in "Cash with no register". End-of-Day Cash (technician cash) stays per location.
+

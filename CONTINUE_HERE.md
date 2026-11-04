@@ -855,3 +855,13 @@ See docs/GUIDE_QUEUE_2026-11-03.md, section "Nov 3 late night". New migrations: 
 failing by design until reviewed: role-matrix snapshot, route-domains wire-type ratchet, strict-bodies type proof (15).
 The IDOR table now classifies every route but the new fixtures have not been run live (live-phase14-idor.mjs). Open product
 question for Kevin: Customer Notifications / Email Center read `notifications` salon-wide although rows carry a branch.
+
+## Nov 4 2026 — membership first payment + per-register cash drawers
+- c80d642 D6 first payment: a priced plan without a trial starts PENDING; a confirmed payment (saved card through the
+  salon's gateway, or a paid invoice) activates it in one transaction. Card charging needs MEMBERSHIP_AUTOBILL_ENABLED and
+  the salon's gateway wired to MembershipChargePort; without them the POS says billing is not set up.
+- f1458f9 D15 one drawer per register: migration 788 (payments.register_id from tickets.checkout_register_id), GET
+  /pos/cash-drawer/registers, registerId on every drawer call (another location's register refused), POS picker.
+- API gates now: role matrix, route domains, IDOR, strict-bodies all green; the ONLY red one is the api-contracts wire-type
+  ratchet (774 untyped routes, none from Nov 4 work; not grandfathered).
+- The full pos-web suite stalls in this sandbox (only 5 files in 28 min); the touched POS tests were run directly (green).
