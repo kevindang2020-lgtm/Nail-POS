@@ -102,3 +102,21 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - C12 / payroll — FIXED: pay-stub period dates showed one day early when the database driver returns a DATE as UTC midnight (PGlite; any such driver west of UTC). Staff-name lookups in deals / workforce / finance screens now require the same salon. The "Your pay is complete" test failed because its fixture technician (Ana) had no linked user, so there was nobody to notify — fixture fixed; the push works (payroll 67/67).
 - Full-suite sweep of every module (Nov 3 evening) — REAL BUGS FOUND AND FIXED: (1) the all-salon membership renewal-reminder and expiry sweeps never ran — `$now + make_interval(...)` with an untyped parameter is resolved by Postgres as an interval ("timestamptz <= interval"); (2) the same error stopped §149's sweep that releases a cancelled salon's platform number and closes its Twilio subaccount. Both now cast the parameter; tests added. Stale tests rewritten to current behaviour (SID masking, retired gift-card void, dense revenue trend, status-row staff panel, Front Desk-only "live", delivery-receipt owner lookup, refund capability via permCtx) and date-dependent fixtures fixed (follow-up history, expense scale, marketing growth, payroll).
 - Real-Postgres race suites (PG_RACE_URL, all modules) — now all pass. REAL BUGS FOUND AND FIXED: (3) the POS check-in appointment list crashed as soon as there was an appointment (an async loader mapped without Promise.all — every row was a promise); (4) two managers approving a referral reward at once deadlocked ("deadlock detected" instead of a clean conflict) — issue() now locks the referral before the reward, like review(). (5) dateColumnYmd (shared): a DATE read at UTC midnight showed a day early west of UTC (pay stubs, OCR document dates under PGlite-style drivers).
+
+## Nov 3 late night — D-guide bugs + API gate sweep (session continuing batch C/D)
+- D6 Membership — five more bugs fixed (see the D6 line above): member numbers unique per salon (785), month-end period
+  clamp + start-day anchor, benefit reserve/release/redeem locked (real-Postgres race test), walk-in redeem no longer cancels
+  another hold, dollar-credit redeem spends the dollar balance, renewals issue the new cycle's credits.
+  NOT built: first-period charge at enrollment (needs the checkout build); rollover / expiry of the previous cycle's credits.
+- D9 — expired bottles are not on hand anywhere (cache, list, drift, value).
+- D15 — open / count / cash in-out idempotent (POS sends one key per action).
+- API test sweep: 37 failures triaged. REAL BUGS FIXED: the Retell voice webhook was blocked by the tenant-context middleware
+  (no call event could ever arrive); 35 tenant foreign keys from the Oct 30 – Nov 3 builds had no cross-salon trigger (786);
+  reminder recovery / run finish, setup-health rerun, money-protection run and duplicate-review writes now name their
+  tenant; the new centers' status writes run through state machines; settings saves (alert thresholds, refund policy)
+  announce the change; two NOT VALID checks validated (787); unsubscribe link rate-limited. Guard false positives fixed
+  (comments read as SQL, CTEs in other templates, aliases read as tables, 543 DO-loop columns, add-on reads read as 'add').
+  Stale tests rewritten to current truth (refund keeps the sale approved, markSent retired, reopen status, fixtures).
+- STILL FAILING in apps/api (known, not regenerated blindly): role-matrix snapshot (needs a reviewed regeneration),
+  route-domains wire-type ratchet, IDOR route table (92 new routes need a fixture or exemption each), strict-bodies type
+  proof (15 routes need a reviewed entry).
