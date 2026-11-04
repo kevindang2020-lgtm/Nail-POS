@@ -213,7 +213,7 @@ export class PlatformMessagingProvisioner {
     const grace = Math.max(1, Math.min(365, Number(this.env.MESSAGING_OFFBOARD_GRACE_DAYS) || 30));
     const due = (await sql<{ tenant_id: string }>`SELECT c.tenant_id FROM tenant_messaging_credentials c JOIN tenants t ON t.id = c.tenant_id
         WHERE c.provider = 'twilio' AND c.branch_id IS NULL AND c.account_mode = 'platform_managed' AND COALESCE(c.provisioning_step, '') <> 'offboarded'
-          AND t.status = 'cancelled' AND COALESCE(t.closed_at, t.updated_at) < ${now} - make_interval(days => ${grace})
+          AND t.status = 'cancelled' AND COALESCE(t.closed_at, t.updated_at) < ${now}::timestamptz - make_interval(days => ${grace})
         ORDER BY COALESCE(t.closed_at, t.updated_at) LIMIT ${Math.max(1, Math.min(200, limit))}`.execute(this.db)).rows;
     let offboarded = 0, failed = 0;
     for (const d of due) {

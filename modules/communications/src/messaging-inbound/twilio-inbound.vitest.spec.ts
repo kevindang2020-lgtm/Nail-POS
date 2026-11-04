@@ -86,7 +86,7 @@ describe('TwilioInboundService.handleInbound', () => {
 describe('TwilioInboundService.handleStatus (delivery receipts)', () => {
   const notifications = { recordDeliveryStatus: vi.fn(async () => ({ updated: 1 })) };
   // E2: the tenant comes from the stored message row (stubbed here; the pgtest covers the real lookup)
-  const statusSvc = () => { const s = new TwilioInboundService({} as any, notifications as any, testProviderSecrets); (s as any).tenantForMessage = vi.fn(async () => 'ten_1'); return s; };
+  const statusSvc = () => { const s = new TwilioInboundService({} as any, notifications as any, testProviderSecrets); (s as any).tenantForMessage = vi.fn(async () => ({ tenantId: 'ten_1', kind: 'notification' })); return s; };
   const p = { MessageSid: 'SM123', MessageStatus: 'delivered' };
   const sig = () => computeTwilioSignature(TOKEN, URL, p);
   beforeEach(() => { process.env.TWILIO_AUTH_TOKEN = TOKEN; notifications.recordDeliveryStatus.mockClear(); });

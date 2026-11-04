@@ -189,7 +189,7 @@ describe('results + customer history (guide §13, §14)', () => {
     expect(r.skipReasons.reduce((a, x) => a + x.count, 0)).toBe(r.closed.skipped + r.closed.expired);
   });
   it('customer history is newest first and this branch only', async () => {
-    await task(5, { date: '2026-11-03', createdAt: '2026-11-03T20:00:00Z' });
+    await task(5, { date: '2026-11-03', createdAt: new Date(Date.now() + 3_600_000).toISOString() });   // created after every fixture row, whatever day the suite runs
     const h = (await fq.customerHistory(T, B, C(5)))!;
     expect(h.items.length).toBe(2); expect(h.items[0].dueDate).toBe('2026-11-03');
     expect(h.items[1].bookedAfterAt).toBeTruthy();

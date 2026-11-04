@@ -49,7 +49,7 @@ export class KyselyMembershipCommsRepository implements MembershipCommsRepositor
       where cm.status in ('active', 'trial') and cm.auto_renew = true
         and cm.next_billing_at is not null
         and cm.next_billing_at >= ${now}
-        and cm.next_billing_at <= ${now} + make_interval(days => ${withinDays})
+        and cm.next_billing_at <= ${now}::timestamptz + make_interval(days => ${withinDays})
       order by cm.next_billing_at asc limit ${limit}`.execute(this.db);
     return r.rows.map((x) => ({ tenantId: x.tenant_id, membershipId: x.id, customerId: x.customer_id, customerName: x.full_name, planName: x.plan_name, nextBillingAt: iso(x.next_billing_at), phone: x.phone ?? null, salonName: x.salon_name ?? null, branchId: x.branch_id ?? null }));
   }
@@ -67,7 +67,7 @@ export class KyselyMembershipCommsRepository implements MembershipCommsRepositor
         left join membership_plans p on p.id = cm.plan_id
         where cm.status not in ('canceled', 'expired', 'completed', 'pending')
       ) x
-      where x.ends_at is not null and x.ends_at >= ${now} and x.ends_at <= ${now} + make_interval(days => ${withinDays})
+      where x.ends_at is not null and x.ends_at >= ${now} and x.ends_at <= ${now}::timestamptz + make_interval(days => ${withinDays})
       order by x.ends_at asc limit ${limit}`.execute(this.db);
     return r.rows.map((x) => ({ tenantId: x.tenant_id, membershipId: x.id, customerId: x.customer_id, customerName: x.full_name, planName: x.plan_name, nextBillingAt: iso(x.ends_at), phone: x.phone ?? null, salonName: x.salon_name ?? null, branchId: x.branch_id ?? null }));
   }

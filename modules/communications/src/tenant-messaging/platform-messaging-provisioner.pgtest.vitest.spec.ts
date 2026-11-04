@@ -80,7 +80,10 @@ describe('B-16: provisioning a platform-managed salon', () => {
   });
   it('Super Admin sees it as platform-managed and live — SIDs and the step only, never the token', async () => {
     const v = await new TenantMessagingCredentialsService(db, audit as any, testProviderSecrets).getMasked(T);
-    expect(v).toMatchObject({ status: 'configured', accountMode: 'platform_managed', accountSid: SUB_SID, fromNumber: NUMBER, provisioning: { step: 'done', error: null, messagingServiceSid: MG } });
+    // SIDs are masked in every read (Phone & Messaging guide: SID masking) — first two letters + last four
+    const mask = (x: string) => `${x.slice(0, 2)}…${x.slice(-4)}`;
+    expect(v).toMatchObject({ status: 'configured', accountMode: 'platform_managed', accountSid: mask(SUB_SID), fromNumber: NUMBER, provisioning: { step: 'done', error: null, messagingServiceSid: mask(MG) } });
+    expect(JSON.stringify(v)).not.toContain(SUB_SID);
     expect(v.provisioning?.provisionedAt).toEqual(expect.any(String));
     expect(JSON.stringify(v)).not.toContain(SUB_TOKEN);
   });
