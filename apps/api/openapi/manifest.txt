@@ -2818,7 +2818,7 @@ POST /pos/memberships/cancel  realm=staff  auth=session  domain=memberships  per
 POST /pos/memberships/comms/members/{membershipId}/reminder  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/comms/reminders/run  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/compensation/book/{ticketId}  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/memberships/enroll  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/memberships/enroll  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  idempotency=optional  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/members/by-customers  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/pause  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/plans  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
@@ -3731,10 +3731,10 @@ POST /tenant/inventory/counts/{id}/submit  realm=staff  auth=session  domain=inv
 POST /tenant/inventory/products  realm=staff  auth=session  domain=inventory  perm=inventory.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/products/{id}/archive  realm=staff  auth=session  domain=inventory  perm=inventory.archive  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/products/{id}/stock/add  realm=staff  auth=session  domain=inventory  perm=inventory.stock.add  guards=RolePermissionGuard,TenantAuthGuard
-POST /tenant/inventory/purchase-orders  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/purchase-orders  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/purchase-orders/{id}/approve  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.approve  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/purchase-orders/{id}/cancel  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  guards=RolePermissionGuard,TenantAuthGuard
-POST /tenant/inventory/purchase-orders/{id}/receive  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.receive  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/purchase-orders/{id}/receive  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.receive  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/receipt-expense  realm=staff  auth=session  domain=inventory  perm=inventory.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/recipes/{serviceId}/consume  realm=staff  auth=session  domain=inventory  perm=inventory.product_usage.submit  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/screen/products/{productId}/recount  realm=staff  auth=session  domain=inventory  perm=inventory.stock.adjust  guards=RolePermissionGuard,TenantAuthGuard
