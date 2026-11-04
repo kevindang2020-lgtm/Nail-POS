@@ -116,6 +116,9 @@ describe('Service Pricing — audited edits and history', () => {
     expect(h.items.map((x) => [x.serviceName, x.field, x.oldValue, x.newValue])).toEqual([['Classic Pedicure', 'duration_minutes', '50', '55'], ['Gel Manicure', 'price_cents', '5500', '6000']]);
     expect(h.items[1]).toMatchObject({ reason: 'Gel prices up', actor: 'Pat Owner', source: 'pricing_editor' });
     expect((await repo.history(ctx, { q: '$60', page: 1, pageSize: 10 })).totalItems).toBe(1);
+    // D3: Uptown's manager does not see Main's price changes; the all-locations view does
+    expect((await repo.history({ ...ctx, branchId: B2 }, { field: 'pricing', page: 1, pageSize: 10 })).totalItems).toBe(0);
+    expect((await repo.history(ctxAll, { field: 'pricing', page: 1, pageSize: 10 })).totalItems).toBe(2);
     await expect(q(`update catalog_change_log set new_value = '1'`)).rejects.toThrow(/append-only/);
     await expect(q(`delete from catalog_change_log`)).rejects.toThrow(/append-only/);
     // the completed ticket keeps what it was charged

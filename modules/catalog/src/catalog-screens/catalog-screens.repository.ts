@@ -266,7 +266,9 @@ export class CatalogScreensRepository {
     const key = f.addOnKey && /^[A-Za-z0-9_-]{1,64}$/.test(f.addOnKey) ? f.addOnKey : null;
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const cents = moneyOf(raw);
     const fw = field === 'price' ? sql`h.field = 'price_cents'` : field === 'duration' ? sql`h.field = 'duration_minutes'` : field === 'pricing' ? sql`h.field in ('price_cents', 'duration_minutes')` : sql`true`;
-    const w = sql`h.tenant_id = ${T} and ${fw} and ${this.inP(sql`h.changed_at`, per)}
+    // D3 (Nov 3 2026): a location user sees the history of this location's services / categories (and salon-wide ones) —
+    // it showed every location's changes
+    const w = sql`h.tenant_id = ${T} and ${fw} and ${this.inP(sql`h.changed_at`, per)} and ${this.branch(ctx, 's')} and ${this.branch(ctx, 'c')}
       and (${sid}::uuid is null or h.service_id = ${sid} or (h.entity_type = 'service' and h.entity_id = ${sid ?? ''}))
       and (${cid}::uuid is null or (h.entity_type = 'category' and h.entity_id = ${cid ?? ''}) or (h.field = 'category_id' and (h.old_value = ${cid ?? ''} or h.new_value = ${cid ?? ''})))
       and (${key}::text is null or (h.entity_type = 'add_on' and h.entity_id = ${key ?? ''}))
