@@ -222,6 +222,11 @@ export const BRANCH_TABLES = {
   // operational records of one location
   pos_tech_appointments: 'branch', pos_queue_items: 'branch', pos_tech_queue_tickets: 'branch', tickets: 'branch', payments: 'branch',
   payment_attempts: 'branch', booking_holds: 'branch', pos_payment_terminals: 'branch', mobile_pay_devices: 'branch',
+  // Nov 3 2026: the new centers' by-id reads filter on the caller's location (branch_id = it, or a salon-wide null row)
+  ai_business_alert_events: 'branch', ai_receptionist_follow_ups: 'branch', service_add_ons: 'branch', service_categories: 'branch',
+  commission_discrepancy_reviews: 'branch', pos_message_templates: 'branch', payment_refunds: 'branch', referral_redemptions: 'branch',
+  team_data_alerts: 'branch', product_usage_events: 'branch',
+  appointment_reminders_sent: 'branch', sms_test_events: 'branch',   // confined to a branch-scoped login's allowed locations
   // salon-wide by design
   customers: SW('one customer book per salon: a guest of location 2 walks into location 1 (cross-branch-suite.pgtest "salon-wide by design")'),
   services: SW('the menu is salon-wide; per-location prices / availability live in separate tables'),
@@ -257,6 +262,18 @@ export const BRANCH_TABLES = {
   service_follow_up_tasks: SW('a follow-up belongs to its technician (the tech route pins technician_id)'),
   inventory_counts: SW('stock counts are reviewed by the salon\'s inventory managers'),
   purchase_orders: SW('purchasing is salon-wide (one vendor book)'),
+  // Nov 3 2026: the new centers whose by-id read is salon-wide (no location filter in the lookup)
+  ai_receptionist_faqs: SW('the AI receptionist\'s FAQ knowledge is the salon\'s (Business Setup Center reads it salon-wide)'),
+  booking_verification_sessions: SW('booking phone verification history is reviewed salon-wide (one customer book per salon)'),
+  customer_phone_update_sessions: SW('a customer\'s phone change belongs to the salon-wide customer book'),
+  ai_customer_profile_settings_events: SW('history of the salon\'s Customer AI settings (salon-level configuration)'),
+  ai_reputation_config_versions: SW('history of the salon\'s reputation settings (salon-level configuration)'),
+  notifications: SW('customer notification / email records are read salon-wide by Customer Notifications and Email Center'),
+  segment_audience_drafts: SW('marketing audience drafts are salon-wide (owner / manager marketing tool)'),
+  retention_sms_campaigns: SW('retention SMS campaigns are salon-wide (owner / manager marketing tool)'),
+  payment_settlements: SW('processor settlements are reconciled salon-wide (one merchant account book)'),
+  bank_deposits: SW('bank deposits are reconciled salon-wide against the salon\'s settlements'),
+  reconciliation_exceptions: SW('deposit reconciliation cases are worked salon-wide by the owner / finance'),
 };
 /** The branch scope of a by-id route: 'branch' when any of its fixture tables is location-scoped; else 'salon-wide' / 'n/a'. */
 export function branchScopeOf(route) {
