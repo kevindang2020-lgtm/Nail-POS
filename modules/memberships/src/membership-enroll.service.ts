@@ -60,9 +60,9 @@ export class MembershipEnrollService {
       nextBillingAt = plan.autoRenew && periodEnd ? periodEnd : null;
     }
 
-    const memberNum = memberNumber(customerId.slice(0, 6));
-    const { membershipId } = await this.repo.insertMembership(ctx, {
-      customerId, planId: plan.planId, planVersionId: plan.planVersionId, status, assignedTechnicianId: body.assignedTechnicianId ?? null, memberNumber: memberNum,
+    // random, never derived from the customer id (the same customer enrolled twice got the same number)
+    const { membershipId, memberNumber: memberNum } = await this.repo.insertMembership(ctx, {
+      customerId, planId: plan.planId, planVersionId: plan.planVersionId, status, assignedTechnicianId: body.assignedTechnicianId ?? null, memberNumber: memberNumber(),
       startedAt: now, currentPeriodStart: now, currentPeriodEnd: periodEnd, nextBillingAt, termEndAt: null,
       autoRenew: plan.autoRenew, autoRenewConsentAt: plan.autoRenew && body.autoRenewConsent ? now : null, agreementVersion: body.agreementVersion ?? null, enrolledChannel: body.channel ?? 'pos',
     });

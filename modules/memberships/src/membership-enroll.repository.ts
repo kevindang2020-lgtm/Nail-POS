@@ -39,7 +39,7 @@ export interface MembershipEnrollRepositoryPort {
   getCustomerName(ctx: EnrollContext, customerId: string): Promise<string | null>;
   getPlanForEnroll(ctx: EnrollContext, planId: string, planVersionId?: string): Promise<PlanForEnroll | null>;
   getAvailablePlansForMember(ctx: EnrollContext): Promise<AvailablePlanRow[]>;
-  insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string }>;
+  insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string; memberNumber: string | null }>;
   issueInitialCredits(ctx: EnrollContext, membershipId: string, entries: Array<{ benefitId: string; serviceId: string | null; quantity: number; amountCents: number }>, expiresAt: Date | null): Promise<void>;
   getMembershipLite(ctx: EnrollContext, membershipId: string): Promise<MembershipLite | null>;
   getBenefit(ctx: EnrollContext, planVersionId: string, benefitId: string): Promise<BenefitRow | null>;
@@ -125,11 +125,11 @@ export class InMemoryMembershipEnrollRepository implements MembershipEnrollRepos
     return { updated: true, conflict: false };
   }
   async getPlanForEnroll(_c: EnrollContext, planId: string): Promise<PlanForEnroll | null> { return this.plans.get(planId) ?? null; }
-  async insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string }> {
+  async insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string; memberNumber: string | null }> {
     const plan = this.plans.get(a.planId);
     const id = uid('mem');
     this.memberships.set(id, { membershipId: id, tenantId: ctx.tenantId, args: a, status: a.status, planVersionId: a.planVersionId, techCommissionBasis: plan?.techCommissionBasis ?? 'allocated', techSplitPct: plan?.techSplitPct ?? 60, version: 0 });
-    return { membershipId: id };
+    return { membershipId: id, memberNumber: a.memberNumber };
   }
   async issueInitialCredits(ctx: EnrollContext, membershipId: string, entries: Array<{ benefitId: string; serviceId: string | null; quantity: number; amountCents: number }>, _e: Date | null): Promise<void> {
     for (const en of entries) this.ledger.push({ tenantId: ctx.tenantId, membershipId, benefitId: en.benefitId, entryType: 'issued', quantity: en.quantity, amountCents: en.amountCents, serviceId: en.serviceId, ticketId: null, reservationRef: null, reason: 'enrollment' });

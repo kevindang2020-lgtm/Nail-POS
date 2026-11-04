@@ -1,3 +1,4 @@
+import { memberNumber } from './membership-enroll-core';
 // membership-enroll.kysely.repository.ts — Postgres adapter for enrollment / reservation / redemption. All reads/writes
 // are tenant-scoped; the ledger is append-only (inserts only), and the redemption insert is guarded by the service plus
 // the unique index from migration 171. Money is integer cents.
@@ -54,7 +55,7 @@ export class KyselyMembershipEnrollRepository implements MembershipEnrollReposit
     };
   }
 
-  async insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string }> {
+  async insertMembership(ctx: EnrollContext, a: InsertMembershipArgs): Promise<{ membershipId: string; memberNumber: string | null }> {
     return this.db.transaction().execute(async (trx) => {
     const cust = await sql<{ id: string }>`select id from customers where (id::text = ${a.customerId} or user_id::text = ${a.customerId}) and tenant_id = ${ctx.tenantId} limit 1`.execute(trx);
     const resolvedCustomerId = cust.rows[0]?.id || a.customerId;
@@ -65,14 +66,23 @@ export class KyselyMembershipEnrollRepository implements MembershipEnrollReposit
       branchId = bRow.rows[0]?.id || null;
     }
 
+    // Member numbers are unique per salon (migration 785). Allocate under a per-salon lock so two enrollments at once
+    // cannot pick the same number; a random number that already exists is drawn again.
+    await sql`select pg_advisory_xact_lock(hashtext(${'member_number:' + ctx.tenantId}))`.execute(trx);
+    let memberNum = a.memberNumber;
+    for (let i = 0; memberNum && i < 8; i++) {
+      const taken = await sql<{ x: number }>`select 1 as x from customer_memberships where tenant_id = ${ctx.tenantId} and member_number = ${memberNum} limit 1`.execute(trx);
+      if (!taken.rows.length) break;
+      memberNum = memberNumber();
+    }
     const r = await sql<{ id: string }>`
       insert into customer_memberships (tenant_id, branch_id, customer_id, plan_id, plan_version_id, status, assigned_technician_id, member_number, started_at, current_period_start, current_period_end, next_billing_at, term_end_at, auto_renew, auto_renew_consent_at, agreement_version, enrolled_channel, enrolled_by_user_id)
-      values (${ctx.tenantId}, ${branchId}, ${resolvedCustomerId}, ${a.planId}, ${a.planVersionId}, ${a.status}, ${a.assignedTechnicianId}, ${a.memberNumber}, ${a.startedAt}, ${a.currentPeriodStart}, ${a.currentPeriodEnd}, ${a.nextBillingAt}, ${a.termEndAt}, ${a.autoRenew}, ${a.autoRenewConsentAt}, ${a.agreementVersion}, ${a.enrolledChannel}, ${ctx.userId || null})
+      values (${ctx.tenantId}, ${branchId}, ${resolvedCustomerId}, ${a.planId}, ${a.planVersionId}, ${a.status}, ${a.assignedTechnicianId}, ${memberNum}, ${a.startedAt}, ${a.currentPeriodStart}, ${a.currentPeriodEnd}, ${a.nextBillingAt}, ${a.termEndAt}, ${a.autoRenew}, ${a.autoRenewConsentAt}, ${a.agreementVersion}, ${a.enrolledChannel}, ${ctx.userId || null})
       returning id`.execute(trx);
     const membershipId = r.rows[0].id;
     // an enrollment that starts ACTIVE is the activation (a pending one is not — yet)
     if (a.status === 'active') await this.membershipFact(trx, ctx, DOMAIN_EVENTS.MEMBERSHIP_ACTIVATED, membershipId, { customerId: resolvedCustomerId, planId: a.planId, planVersionId: a.planVersionId });
-    return { membershipId };
+    return { membershipId, memberNumber: memberNum };
     });
   }
 
