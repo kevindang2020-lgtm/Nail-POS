@@ -149,7 +149,7 @@ export function POSInventoryAlertsScreen() {
               </tr>) : tab === 'technicians' ? (
               <tr key={r.technicianId ?? 'unknown'} data-testid="tech-row">
                 <td><b className={r.technicianId ? '' : 'fk-muted'}>{r.technicianId ? r.name : tx('sa.unknownTech')}</b></td>
-                <td className="num">{fmtNumber(r.uses)}</td><td className="num">{fmtNumber(r.products)}</td><td className="num"><b>{r.used}</b></td>
+                <td className="num">{fmtNumber(r.uses)}</td><td className="num">{fmtNumber(r.products)}</td><td className="num">{r.used != null ? <b>{r.used}</b> : (r.usedByUnit ?? []).map((u: any, i: number) => <span key={u.unit} data-testid="used-by-unit">{i ? ' · ' : ''}<b>{u.used}</b> {unitLbl(u.unit)}</span>)}</td>
                 <td>{r.lastProduct ?? '—'}</td><td>{when(r.lastUsedAt)}</td>
               </tr>) : (
               <tr key={r.id} data-testid="history-row">

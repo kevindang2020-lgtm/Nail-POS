@@ -126,6 +126,10 @@ describe('recording a product use', () => {
     expect(ledger.byTechnician.map((x) => [x.technicianId, x.name, x.used]).sort()).toEqual([[TA, 'Anna Nguyen', '1'], [TC, 'Anna Nguyen', '2']].sort());
     const techs = await repo.technicians(manager, { search: 'anna' }, await repo.period(manager, {}), paging());
     expect(techs.rows.filter((x) => x.name === 'Anna Nguyen').length).toBe(2);
+    // Nov 3 audit: Anna (TA) used bottles of gel AND pairs of gloves — "Used" is per unit, never one summed number
+    const ta = techs.rows.find((x: any) => x.technicianId === TA)! as any, tc = techs.rows.find((x: any) => x.technicianId === TC)! as any;
+    expect(ta.used).toBeNull(); expect(ta.usedByUnit.map((u: any) => u.unit).sort()).toEqual(['bottle', 'pair']);
+    expect(tc.used).toBe('2'); expect(tc.usedByUnit).toEqual([{ unit: 'pair', used: '2', hundredths: 200 }]);
   });
   it('two uses at once both land, in order, with exact stock', async () => {
     const before = (await repo.pickers(manager, 'Gloves')).products[0].stockHundredths;

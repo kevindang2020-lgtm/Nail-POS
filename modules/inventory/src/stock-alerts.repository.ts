@@ -291,9 +291,16 @@ export class StockAlertsRepository {
     const rows = (await sql<any>`SELECT u.technician_id, max(${name}) AS name, count(*)::int AS uses, count(DISTINCT u.product_id)::int AS products, sum(u.hundredths)::int AS hundredths,
         max(u.occurred_at) AS last_at, (array_agg(p.name ORDER BY u.occurred_at DESC, u.id DESC))[1] AS last_product, max(u.recorded_at) AS last_recorded
       ${base} GROUP BY u.technician_id ORDER BY max(u.recorded_at) DESC, u.technician_id NULLS LAST LIMIT ${pg.pageSize} OFFSET ${(page - 1) * pg.pageSize}`.execute(this.db)).rows;
+    // "Used" per unit: 2 bottles and 4 pairs of gloves are not "6" (it summed every unit type into one number)
+    const ids = rows.map((r: any) => r.technician_id ?? null);
+    const byUnit = ids.length ? (await sql<any>`SELECT u.technician_id, coalesce(p.unit_type, 'unit') AS unit, sum(u.hundredths)::int AS hundredths ${base}
+      AND (u.technician_id = ANY(${ids.filter(Boolean)}::uuid[]) OR (${ids.includes(null)} AND u.technician_id IS NULL))
+      GROUP BY u.technician_id, coalesce(p.unit_type, 'unit') ORDER BY 1, 2`.execute(this.db)).rows : [];
+    const unitsOf = (tid: string | null) => byUnit.filter((x: any) => (x.technician_id ?? null) === tid).map((x: any) => ({ unit: String(x.unit), used: formatQuantity(N(x.hundredths)), hundredths: N(x.hundredths) }));
     return { total, page, pageSize: pg.pageSize, pages, period, rows: rows.map((r: any) => ({
       technicianId: r.technician_id ?? null, name: r.technician_id ? r.name || 'Technician' : 'Unknown / Historical', uses: N(r.uses), products: N(r.products),
-      used: formatQuantity(N(r.hundredths)), usedHundredths: N(r.hundredths), lastUsedAt: iso(r.last_at), lastProduct: r.last_product ?? null,
+      ...(() => { const u = unitsOf(r.technician_id ?? null); return u.length > 1 ? { used: null, usedHundredths: null, usedByUnit: u } : { used: formatQuantity(N(r.hundredths)), usedHundredths: N(r.hundredths), usedByUnit: u }; })(),
+      lastUsedAt: iso(r.last_at), lastProduct: r.last_product ?? null,
     })) };
   }
 
