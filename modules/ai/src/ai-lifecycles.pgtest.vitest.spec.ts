@@ -34,7 +34,9 @@ describe('the machines are the tables the services use', () => {
     expect(SCHEDULE_RECOMMENDATION.can('applied', 'generated')).toBe(false);
   });
   it('agents / follow-ups / investigations / escalations read their table from the machine (one table each)', () => {
-    expect(canTransitionAgent('ready', 'live')).toBe(true); expect(canTransitionAgent('draft', 'ready')).toBe(false); expect(canTransitionAgent('archived', 'draft')).toBe(false);
+    // AI Front Desk guide (Oct 31): the plain status route never makes an agent live — that move exists only in front-desk-center
+    // (routing evidence + owner approval); the machine itself still allows it there
+    expect(canTransitionAgent('ready', 'live')).toBe(false); expect(AI_RECEPTIONIST_AGENT.can('ready', 'live')).toBe(true); expect(canTransitionAgent('draft', 'ready')).toBe(false); expect(canTransitionAgent('archived', 'draft')).toBe(false);
     expect(AI_RECEPTIONIST_AGENT.can('archived', 'ready')).toBe(false);
     expect(canTransitionFollowUp('closed', 'assigned')).toBe(false); expect(AI_RECEPTIONIST_FOLLOW_UP.can('open', 'assigned')).toBe(true);
     expect(STATUS_TRANSITIONS.RESOLVED).toEqual([...MONEY_PROTECTION_INVESTIGATION.transitions.RESOLVED!]); expect(STATUS_TRANSITIONS.OPEN).not.toContain('RESOLVED');
