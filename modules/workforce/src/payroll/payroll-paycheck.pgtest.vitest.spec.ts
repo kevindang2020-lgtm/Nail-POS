@@ -42,7 +42,7 @@ beforeAll(async () => {
     await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status, owner_user_id) values ($1,$2,$2,$3,$4,'active',$5)`, [id, `Salon ${code}`, slug, code, ownerId]);
   }
   await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','America/New_York'), ($3,$4,'Other','active','America/New_York')`, [B, T, B2, T2]);
-  for (const [id, name, user] of [[MIA, 'Mia Chen', MIA_USER], [LEO, 'Leo Tran', null], [ANA, 'Ana Ruiz', null], [DEL_TECH, 'Dee Lim', DELEGATE_TECH]] as const) {
+  for (const [id, name, user] of [[MIA, 'Mia Chen', MIA_USER], [LEO, 'Leo Tran', null], [ANA, 'Ana Ruiz', U(97)], [DEL_TECH, 'Dee Lim', DELEGATE_TECH]] as const) {
     if (user) await q(`insert into users (id, email, full_name, status) values ($1,$2,$3,'active') on conflict do nothing`, [user, `${user}@x.test`, name]).catch(() => undefined);
     await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active${user ? ', user_id' : ''}) values ($1,$2,$3,$4,$5,$6,'active',true${user ? ',$7' : ''})`,
       user ? [id, T, B, name.split(' ')[0], name.split(' ')[1], name, user] : [id, T, B, name.split(' ')[0], name.split(' ')[1], name]);
