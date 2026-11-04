@@ -18,7 +18,7 @@
 //   POST super-admin/loyalty-network/global-rules | global-rules/:id/cancel | program | enrollments/:tenantId
 //   POST super-admin/loyalty-network/purchases/:id/sandbox-advance  (sandbox provider only)
 import { Body, Controller, Get, Header, HttpException, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody, SuperAdminGuard, AsyncExport } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody, SuperAdminGuard, AsyncExport, RequireFeature } from '@aipowersalon/permissions/guards';
 import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
@@ -50,6 +50,7 @@ const PAGE = { filters: {}, search: false, maxLimit: 50, defaultLimit: 20, param
 const pg = (q: any) => ({ page: Number(q?.page) || 1, size: Number(q?.pageSize) || 20 });
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
+@RequireFeature('loyalty')   // plan-gated like the salon's own loyalty program (observe by default, feature-entitlement.ts)
 @Controller('pos/loyalty/network')
 export class GlobalRewardsController {
   constructor(@Inject(GLOBAL_REWARDS_SERVICE) private readonly svc: GlobalRewardsService | null) {}

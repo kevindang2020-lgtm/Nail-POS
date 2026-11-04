@@ -108,7 +108,7 @@ GET /customer/deals/{id}  realm=customer  auth=session  domain=deals
 GET /customer/follow-ups  realm=customer  auth=session  domain=marketing
 GET /customer/follow-ups/{id}  realm=customer  auth=session  domain=marketing
 GET /customer/gift-cards  realm=customer  auth=session  domain=customers
-GET /customer/global-rewards  realm=customer  auth=session  domain=NONE
+GET /customer/global-rewards  realm=customer  auth=session  domain=loyalty
 GET /customer/home  realm=customer  auth=session  domain=customers
 GET /customer/invoices  realm=customer  auth=session  domain=finance
 GET /customer/invoices/{id}  realm=customer  auth=session  domain=finance
@@ -260,7 +260,7 @@ GET /owner/hardware-payment/plan  realm=staff  auth=session  domain=payments  pe
 GET /owner/hardware-payment/tokenizer  realm=staff  auth=session  domain=payments  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/inventory  realm=staff  auth=session  domain=analytics  perm=owner.dashboard.view
 GET /owner/live  realm=staff  auth=session  domain=analytics  perm=owner.dashboard.view
-GET /owner/loyalty/rewards  realm=staff  auth=session  domain=NONE  perm=owner.dashboard.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /owner/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=owner.dashboard.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/marketing  realm=staff  auth=session  domain=analytics  perm=owner.dashboard.view
 GET /owner/me/locale  realm=staff  auth=session  domain=identity  perm=self.profile.view
 GET /owner/me/privacy-export  realm=staff  auth=session  domain=identity  perm=self.profile.view  async=owner.privacy-export
@@ -480,12 +480,12 @@ GET /pos/approvals  realm=staff  auth=session  domain=workforce  perm=approvals.
 GET /pos/approvals/policies  realm=staff  auth=session  domain=workforce  perm=approvals.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/approvals/{id}  realm=staff  auth=session  domain=workforce  perm=approvals.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/audit/events  realm=staff  auth=session  domain=audit  perm=audit.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/customers  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/customers/{id}  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/history  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/missing  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/settings  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/birthdays/summary  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/customers  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/customers/{id}  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/history  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/missing  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/settings  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/birthdays/summary  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking-verification-center/health  realm=staff  auth=session  domain=booking  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking-verification-center/history  realm=staff  auth=session  domain=booking  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking-verification-center/history/{id}  realm=staff  auth=session  domain=booking  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -524,19 +524,19 @@ GET /pos/cash-drawer  realm=staff  auth=session  domain=payments  perm=pos.check
 GET /pos/cash-drawer/movements  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-handoffs  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-handoffs/{technicianId}  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
-GET /pos/catalog/add-ons  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/add-ons/summary  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/add-ons/usage  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/add-ons/{key}  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/categories  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/categories/summary  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/categories/{categoryId}  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/charts  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/customer-history  realm=staff  auth=session  domain=NONE  perm=customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/dashboard  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/history  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/services  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/catalog/services/{serviceId}  realm=staff  auth=session  domain=NONE  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/add-ons  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/add-ons/summary  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/add-ons/usage  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/add-ons/{key}  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/categories  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/categories/summary  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/categories/{categoryId}  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/charts  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/customer-history  realm=staff  auth=session  domain=catalog  perm=customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/dashboard  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/history  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/services  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/catalog/services/{serviceId}  realm=staff  auth=session  domain=catalog  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/check-in/appointments-ready  realm=staff  auth=session  domain=booking  perm=pos.check_in.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/check-in/appointments/search  realm=staff  auth=session  domain=booking  perm=pos.check_in.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/check-in/customers/search  realm=staff  auth=session  domain=booking  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -563,27 +563,27 @@ GET /pos/churn-watch/customers  realm=staff  auth=session  domain=ai  perm=pos.a
 GET /pos/churn-watch/customers/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/churn-watch/history  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/churn-watch/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-discrepancies  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-discrepancies/assignees  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-discrepancies/{id}  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-discrepancies  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-discrepancies/assignees  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-discrepancies/{id}  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/commission-report/state  realm=staff  auth=session  domain=finance  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/export  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  async=pos.commission-screen.export  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/export-history  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/payouts  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/summary  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/technicians  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/technicians/{id}/adjustments  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/technicians/{id}/lines  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/commission-screen/technicians/{id}/tips  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/export  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  async=pos.commission-screen.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/export-history  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/payouts  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/summary  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/technicians  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/technicians/{id}/adjustments  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/technicians/{id}/lines  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/commission-screen/technicians/{id}/tips  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/activity  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/customers  realm=staff  auth=session  domain=NONE  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/staff  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/summary  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/templates  realm=staff  auth=session  domain=NONE  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/threads  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/threads/{id}  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/threads/{id}/messages  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/communications/inbox/threads/{id}/timeline  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/customers  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/staff  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/templates  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/threads  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/threads/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/threads/{id}/messages  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/threads/{id}/timeline  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/state  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/connected-apps  realm=staff  auth=session  domain=identity  perm=settings.edit
 GET /pos/coupons/health  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -673,29 +673,29 @@ GET /pos/deposit-reconciliation/duplicates  realm=staff  auth=session  domain=pa
 GET /pos/deposit-reconciliation/fee-schedules  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/periods  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/deposit-reconciliation/periods/{id}/check-close  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/bank-accounts  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/deposits  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/deposits/{depositId}  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/deposits/{depositId}/suggestions  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/exceptions  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/fees  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/kpis  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/reports/{reportType}  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/reports/{reportType}/export  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  async=pos.deposit-reconciliation.report-export  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/reports/{reportType}/export-pdf  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  async=pos.deposit-reconciliation.report-export-pdf  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/reviewers  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/search  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=NONE  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/bank-accounts  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/deposits  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/deposits/{depositId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/deposits/{depositId}/suggestions  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/exceptions  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/fees  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/kpis  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/reports/{reportType}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/reports/{reportType}/export  realm=staff  auth=session  domain=payments  perm=reconciliation.view  async=pos.deposit-reconciliation.report-export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/reports/{reportType}/export-pdf  realm=staff  auth=session  domain=payments  perm=reconciliation.view  async=pos.deposit-reconciliation.report-export-pdf  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/reviewers  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/search  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/settlements  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/deposit-reconciliation/workspace/settlements/{settlementId}  realm=staff  auth=session  domain=payments  perm=reconciliation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/devices/overview  realm=staff  auth=session  domain=operations  perm=pos.devices.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/activity  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/physical  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/physical/{terminalId}  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/routing  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/summary  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/tap-to-pay  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/devices/payment-terminals/tap-to-pay/{deviceId}  realm=staff  auth=session  domain=operations  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/activity  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/physical  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/physical/{terminalId}  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/routing  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/summary  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/tap-to-pay  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/devices/payment-terminals/tap-to-pay/{deviceId}  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts  realm=staff  auth=session  domain=deals  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts/export  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  async=discounts.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/discounts/export/redemptions  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  async=discounts.redemptions.export  guards=RolePermissionGuard,TenantAuthGuard
@@ -707,11 +707,11 @@ GET /pos/duplicate-review/groups  realm=staff  auth=session  domain=customers  p
 GET /pos/duplicate-review/groups/{id}  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/duplicate-review/history  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/duplicate-review/summary  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/email-center/health  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/email-center/history  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/email-center/messages/{id}  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/email-center/settings  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/email-center/summary  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/email-center/health  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/email-center/history  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/email-center/messages/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/email-center/settings  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/email-center/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/eod-follow-ups/health  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/eod-follow-ups/preview  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/eod-follow-ups/runs  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
@@ -744,41 +744,41 @@ GET /pos/invoices/summary  realm=staff  auth=session  domain=finance  perm=pos.c
 GET /pos/invoices/{id}  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices/{id}/detail  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/invoices/{id}/pdf  realm=staff  auth=session  domain=finance  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/live-schedule-screen/activity  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/live-schedule-screen/kpis  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/live-schedule-screen/search  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/live-schedule-screen/shift-impact  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/live-schedule-screen/activity  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/live-schedule-screen/kpis  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/live-schedule-screen/search  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/live-schedule-screen/shift-impact  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/logs  realm=staff  auth=session  domain=operations  perm=pos.logs.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/ledger  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/members  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/earning/history  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/purchases  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/purchases/{id}  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/state  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/wallet  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/network/wallet/ledger  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/overview  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/redemptions  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/redemptions/{redemptionId}  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/loyalty/rewards  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/ledger  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/members  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/earning/history  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/purchases  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/purchases/{id}  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/state  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/wallet  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/network/wallet/ledger  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/overview  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/redemptions  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/redemptions/{redemptionId}  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/state  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing-growth/activity  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing-growth/economics  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing-growth/journey/{customerId}  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing-growth/reconciliation  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing-growth/search  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing-growth/activity  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing-growth/economics  realm=staff  auth=session  domain=analytics  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing-growth/journey/{customerId}  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing-growth/reconciliation  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing-growth/search  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing-report/state  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing/display-ads/analytics  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing/display-ads/branches/{branchId}/analytics  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing/display-ads/branches/{branchId}/playlist  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing/display-ads/state  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing/display-ads/{id}  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/audience-drafts/{id}  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/customers/{id}  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/customers/{id}/qualification  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/members  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/snapshots/day  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/marketing/segments/summary  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/audience-drafts/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/customers/{id}  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/customers/{id}/qualification  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/members  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/snapshots/day  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/marketing/segments/summary  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/me/backup  realm=staff  auth=session  domain=identity  perm=settings.view  guards=TenantAuthGuard
 GET /pos/me/billing  realm=staff  auth=session  domain=identity  perm=settings.view  guards=TenantAuthGuard
 GET /pos/me/locale  realm=staff  auth=session  domain=identity  perm=self.profile.view
@@ -787,31 +787,31 @@ GET /pos/me/notification-prefs  realm=staff  auth=session  domain=identity  perm
 GET /pos/me/profile  realm=staff  auth=session  domain=identity  perm=self.profile.view  guards=TenantAuthGuard
 GET /pos/me/sessions  realm=staff  auth=session  domain=identity  perm=self.profile.view  guards=TenantAuthGuard
 GET /pos/me/ui-prefs  realm=staff  auth=session  domain=identity  perm=self.profile.view  guards=TenantAuthGuard
-GET /pos/memberships/activity  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/activity  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/comms/reminders/preview  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/coverage/{ticketId}  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/customers/{customerId}/memberships  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/discounts  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/discounts  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/export/members  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  async=pos.memberships.export-members  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/export/payments  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  async=pos.memberships.export-payments  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/export/redemptions  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  async=pos.memberships.export-redemptions  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/members  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/members  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/members/{membershipId}/benefits  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/members/{membershipId}/detail  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/members/{membershipId}/detail  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/overview  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/payments  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/plan-performance  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/payments  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/plan-performance  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/plans  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/plans-list  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/plans-list  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/memberships/plans/{planId}  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/memberships/redemptions  realm=staff  auth=session  domain=NONE  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/memberships/redemptions  realm=staff  auth=session  domain=memberships  perm=pos.memberships.view  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/menu-insights  realm=staff  auth=session  domain=analytics  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/menu-insights/state  realm=staff  auth=session  domain=analytics  perm=pos.services.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/message-templates/connections  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/message-templates/summary  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/message-templates/templates  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/message-templates/templates/{id}  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/message-templates/usage  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/message-templates/connections  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/message-templates/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/message-templates/templates  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/message-templates/templates/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/message-templates/usage  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/alerts  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/alerts/detail  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/money-protection-center/detection/runs  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -965,21 +965,21 @@ GET /pos/reputation/reviews  realm=staff  auth=session  domain=ai  perm=pos.ai_r
 GET /pos/reputation/reviews/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reputation/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reputation/trends  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/customers  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/customers/export  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  async=pos.retention.export  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/customers/{customerId}  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/health  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/recovery  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/settings  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/sms/campaigns  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/sms/campaigns/{campaignId}  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/sms/pricing  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/sms/readiness  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/snapshots/compare  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/snapshots/day  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/snapshots/members  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/snapshots/runs  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/retention/summary  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/customers  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/customers/export  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  async=pos.retention.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/customers/{customerId}  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/health  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/recovery  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/settings  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/sms/campaigns  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/sms/campaigns/{campaignId}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/sms/readiness  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/snapshots/compare  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/snapshots/day  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/snapshots/members  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/snapshots/runs  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/retention/summary  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reviews-center/check  realm=staff  auth=session  domain=customers  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reviews-center/insights  realm=staff  auth=session  domain=customers  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/reviews-center/options  realm=staff  auth=session  domain=customers  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -1061,59 +1061,59 @@ GET /pos/settings/subscription-plan  realm=staff  auth=session  domain=tenants  
 GET /pos/settings/tax  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/technicians-staff  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/tips  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/shift-overrides  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/social-posts/state  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-birthdays/upcoming  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-data-alerts  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-data-alerts/assignees  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-data-alerts/{id}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/customer-links  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/dashboard  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/directory  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/export  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  async=pos.team-members-screen.export  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/live  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/access  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/attendance  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/earnings  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/history  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/performance  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/schedule  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/skills  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/training  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/members/{memberId}/work  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-members-screen/preferred-check  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-onboarding/options  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/composite/comparison  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/dashboard  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/directory  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/export  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  async=pos.team-performance-screen.export  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/technicians/{id}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/technicians/{id}/composite  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/technicians/{id}/reviews  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-performance-screen/technicians/{id}/services  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-training/courses  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-training/members/{memberId}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/team-training/summary  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-birthdays/upcoming  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-data-alerts  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-data-alerts/assignees  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-data-alerts/{id}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/customer-links  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/dashboard  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/directory  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/export  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  async=pos.team-members-screen.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/live  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/access  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/attendance  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/earnings  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/history  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/performance  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/schedule  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/skills  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/training  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/members/{memberId}/work  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-members-screen/preferred-check  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-onboarding/options  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/composite/comparison  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/dashboard  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/directory  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/export  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  async=pos.team-performance-screen.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/technicians/{id}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/technicians/{id}/composite  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/technicians/{id}/reviews  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-performance-screen/technicians/{id}/services  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-training/courses  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-training/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/team-training/summary  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team/permissions/state  realm=staff  auth=session  domain=identity  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team/state  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-appointments-screen/appointments  realm=staff  auth=session  domain=NONE  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-appointments-screen/conflicts  realm=staff  auth=session  domain=NONE  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-appointments-screen/history  realm=staff  auth=session  domain=NONE  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-appointments-screen/kpis  realm=staff  auth=session  domain=NONE  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-appointments-screen/week  realm=staff  auth=session  domain=NONE  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-appointments-screen/appointments  realm=staff  auth=session  domain=workforce  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-appointments-screen/conflicts  realm=staff  auth=session  domain=workforce  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-appointments-screen/history  realm=staff  auth=session  domain=workforce  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-appointments-screen/kpis  realm=staff  auth=session  domain=workforce  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-appointments-screen/week  realm=staff  auth=session  domain=workforce  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-appointments/appointments  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-appointments/appointments/{appointmentId}  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-appointments/kpis  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-appointments/state  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-appointments/technicians  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-queue-screen/search  realm=staff  auth=session  domain=NONE  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-queue-screen/tab-counts  realm=staff  auth=session  domain=NONE  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-queue-screen/technicians/{id}  realm=staff  auth=session  domain=NONE  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-queue-screen/tickets  realm=staff  auth=session  domain=NONE  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/tech-queue-screen/tickets/{id}  realm=staff  auth=session  domain=NONE  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-queue-screen/search  realm=staff  auth=session  domain=workforce  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-queue-screen/tab-counts  realm=staff  auth=session  domain=workforce  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-queue-screen/technicians/{id}  realm=staff  auth=session  domain=workforce  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-queue-screen/tickets  realm=staff  auth=session  domain=workforce  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/tech-queue-screen/tickets/{id}  realm=staff  auth=session  domain=workforce  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-queue/kpis  realm=staff  auth=session  domain=booking  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-queue/state  realm=staff  auth=session  domain=booking  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/tech-queue/technician-lanes  realm=staff  auth=session  domain=booking  perm=pos.tech_queue.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -1124,13 +1124,13 @@ GET /pos/technician-membership/requests  realm=staff  auth=session  domain=workf
 GET /pos/technician-profile-changes  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/technician-profile-policy  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/technicians  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/certifications  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/dashboard  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/directory  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/history  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/{technicianId}/appointments  realm=staff  auth=session  domain=NONE  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/{technicianId}/mapping  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /pos/technicians-screen/{technicianId}/service-history  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/certifications  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/dashboard  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/directory  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/history  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/{technicianId}/appointments  realm=staff  auth=session  domain=workforce  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/{technicianId}/mapping  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/technicians-screen/{technicianId}/service-history  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/technicians/export  realm=staff  auth=session  domain=workforce  perm=pos.technicians.export  async=pos.technicians.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/technicians/kpis  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/technicians/live-schedule/board  realm=staff  auth=session  domain=booking  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -1175,7 +1175,7 @@ GET /pos/webhooks/{id}/deliveries  realm=staff  auth=session  domain=operations 
 GET /pos/workforce-status  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/workforce-status/{technicianId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /public/alert-ack  realm=shared  auth=public  domain=operations
-GET /public/email/unsubscribe  realm=shared  auth=public  domain=NONE
+GET /public/email/unsubscribe  realm=shared  auth=public  domain=communications
 GET /realtime/presence  realm=shared  auth=session  domain=operations  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 GET /realtime/stream  realm=shared  auth=session  domain=operations  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 GET /super-admin/ai-business/overview  realm=super_admin  auth=session  domain=analytics  derived=super_admin.ai.view  guards=SuperAdminGuard
@@ -1402,17 +1402,17 @@ GET /super-admin/integrations/webhooks/events  realm=super_admin  auth=session  
 GET /super-admin/jobs  realm=super_admin  auth=session  domain=operations  perm=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/jobs/stats  realm=super_admin  auth=session  domain=operations  perm=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/kill-switches  realm=super_admin  auth=session  domain=platform  perm=super_admin.system_operations.view  guards=SuperAdminGuard
-GET /super-admin/loyalty-network/books-check/findings  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/books-check/findings.csv  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  async=super-admin.loyalty-network.findings-export  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/books-check/runs  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/enrollments  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/fraud-alerts  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/integrity  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/overview  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/payables  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/purchases  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/reconciliation  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-GET /super-admin/loyalty-network/redemptions/{id}/lineage  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/books-check/findings  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/books-check/findings.csv  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  async=super-admin.loyalty-network.findings-export  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/books-check/runs  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/enrollments  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/fraud-alerts  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/integrity  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/overview  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/payables  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/purchases  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/reconciliation  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+GET /super-admin/loyalty-network/redemptions/{id}/lineage  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
 GET /super-admin/loyalty/config  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.view  guards=SuperAdminGuard
 GET /super-admin/loyalty/corrections  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.view  guards=SuperAdminGuard
 GET /super-admin/loyalty/dashboard  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.view  guards=SuperAdminGuard
@@ -1564,7 +1564,7 @@ GET /super-admin/queue/live-overview  realm=super_admin  auth=session  domain=bo
 GET /super-admin/queue/overview  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.view  guards=SuperAdminGuard
 GET /super-admin/realtime/presence  realm=super_admin  auth=session  domain=operations  derived=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/reconciliation/overview  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.view  guards=SuperAdminGuard
-GET /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=super_admin.system_operations.view  guards=SuperAdminGuard
+GET /super-admin/release-evidence  realm=super_admin  auth=session  domain=operations  derived=super_admin.system_operations.view  guards=SuperAdminGuard
 GET /super-admin/report-builder/catalog  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.view  guards=SuperAdminGuard
 GET /super-admin/report-builder/definitions  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.view  guards=SuperAdminGuard
 GET /super-admin/revenue-residuals/accounting-periods  realm=super_admin  auth=session  domain=finance  derived=super_admin.payments.view  guards=SuperAdminGuard
@@ -1933,8 +1933,8 @@ GET /tenant/messaging/setup/overview  realm=staff  auth=session  domain=communic
 GET /tenant/messaging/setup/overview/branches/{branchId}  realm=staff  auth=session  domain=communications  perm=settings.view  guards=TenantAuthGuard
 GET /tenant/navigation  realm=staff  auth=session  domain=tenants  perm=dashboard.view
 GET /tenant/navigation/badges  realm=staff  auth=session  domain=tenants  perm=dashboard.view
-GET /tenant/setup-health/runs  realm=staff  auth=session  domain=NONE  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
-GET /tenant/setup-health/summary  realm=staff  auth=session  domain=NONE  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/setup-health/runs  realm=staff  auth=session  domain=operations  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /tenant/setup-health/summary  realm=staff  auth=session  domain=operations  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /tenant/sms-plan  realm=staff  auth=session  domain=communications  perm=settings.view
 GET /tenant/system-status  realm=staff  auth=session  domain=tenants  perm=dashboard.view
 PATCH /customer/nail-showcase/posts/{postId}  realm=customer  auth=session  domain=workforce
@@ -1950,8 +1950,8 @@ PATCH /pos/booking/appointments/{appointmentId}  realm=staff  auth=session  doma
 PATCH /pos/bundles/{bundleId}  realm=staff  auth=session  domain=deals  perm=pos.bundles.edit  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/campaign-center/campaigns/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/campaigns/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
-PATCH /pos/catalog/add-ons/{key}  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
-PATCH /pos/catalog/services/{serviceId}/pricing  realm=staff  auth=session  domain=NONE  perm=pos.services.pricing.edit  guards=RolePermissionGuard,TenantAuthGuard
+PATCH /pos/catalog/add-ons/{key}  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
+PATCH /pos/catalog/services/{serviceId}/pricing  realm=staff  auth=session  domain=catalog  perm=pos.services.pricing.edit  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/customer-display/sessions/{sessionId}  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/customer-displays/stations/{stationId}  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/customer-displays/{deviceId}  realm=staff  auth=session  domain=operations  perm=pos.customer_display.manage  guards=RolePermissionGuard,TenantAuthGuard
@@ -1972,7 +1972,7 @@ PATCH /pos/me/avatar  realm=staff  auth=session  domain=identity  perm=self.prof
 PATCH /pos/me/login-alerts  realm=staff  auth=session  domain=identity  perm=self.profile.edit  guards=TenantAuthGuard
 PATCH /pos/me/notification-prefs  realm=staff  auth=session  domain=identity  perm=self.notifications  guards=TenantAuthGuard
 PATCH /pos/me/ui-prefs  realm=staff  auth=session  domain=identity  perm=self.profile.edit  guards=TenantAuthGuard
-PATCH /pos/message-templates/templates/{id}  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+PATCH /pos/message-templates/templates/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/nail-showcase/comments/{commentId}/hide  realm=staff  auth=session  domain=workforce  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/nail-showcase/posts/{postId}/approve  realm=staff  auth=session  domain=workforce  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /pos/nail-showcase/posts/{postId}/hide  realm=staff  auth=session  domain=workforce  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
@@ -2230,8 +2230,8 @@ POST /customer/follow-ups/{id}/respond  realm=customer  auth=session  domain=mar
 POST /customer/gift-cards/claim  realm=customer  auth=session  domain=customers
 POST /customer/gift-cards/{id}/report-lost  realm=customer  auth=session  domain=customers
 POST /customer/gift-cards/{id}/send  realm=customer  auth=session  domain=customers
-POST /customer/global-rewards/opt-in  realm=customer  auth=session  domain=NONE
-POST /customer/global-rewards/withdraw  realm=customer  auth=session  domain=NONE
+POST /customer/global-rewards/opt-in  realm=customer  auth=session  domain=loyalty
+POST /customer/global-rewards/withdraw  realm=customer  auth=session  domain=loyalty
 POST /customer/invoices/{id}/pay  realm=customer  auth=session  domain=finance
 POST /customer/me/delete-account-request  realm=customer  auth=session  domain=identity
 POST /customer/me/favorite-salons/{salonId}  realm=customer  auth=session  domain=customers
@@ -2563,8 +2563,8 @@ POST /pos/api-keys/{id}/rotate  realm=staff  auth=session  domain=operations  pe
 POST /pos/approvals  realm=staff  auth=session  domain=workforce  perm=approvals.request  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/approvals/{id}/cancel  realm=staff  auth=session  domain=workforce  perm=approvals.request  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/approvals/{id}/decide  realm=staff  auth=session  domain=workforce  perm=approvals.decide  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/birthdays/assistant/plan  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/birthdays/assistant/save  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/birthdays/assistant/plan  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/birthdays/assistant/save  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/booking-verification-center/history/{id}/resend  realm=staff  auth=session  domain=booking  perm=pos.booking.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/booking/appointments  realm=staff  auth=session  domain=booking  perm=pos.booking.create  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/booking/appointments/{appointmentId}/arrived  realm=staff  auth=session  domain=booking  perm=pos.booking.check_in  guards=RolePermissionGuard,TenantAuthGuard
@@ -2606,10 +2606,10 @@ POST /pos/cash-drawer/open  realm=staff  auth=session  domain=payments  perm=che
 POST /pos/cash-drawer/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/reconcile  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-handoffs/{technicianId}/resolve  realm=staff  auth=session  domain=payments  perm=checkout.manage_overrides  idempotency=optional
-POST /pos/catalog/add-ons  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/catalog/add-ons/{key}/archive  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/catalog/add-ons/{key}/restore  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/catalog/categories/{categoryId}/reassign  realm=staff  auth=session  domain=NONE  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/add-ons  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/add-ons/{key}/archive  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/add-ons/{key}/restore  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/categories/{categoryId}/reassign  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/appointment/{appointmentId}  realm=staff  auth=session  domain=booking  perm=pos.check_in.appointment  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/create-customer  realm=staff  auth=session  domain=booking  perm=pos.customers.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/walk-in  realm=staff  auth=session  domain=booking  perm=pos.check_in.walk_in  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
@@ -2663,21 +2663,21 @@ POST /pos/checkout/tickets/{ticketId}/rewards/remove  realm=staff  auth=session 
 POST /pos/checkout/tickets/{ticketId}/send-to-customer-display  realm=staff  auth=session  domain=checkout  perm=pos.customer_display.operate  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/churn-watch/check  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/churn-watch/customers/{id}/review  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/run-check  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/assign  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/dismiss  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/investigate  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/notes  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/reopen  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/commission-discrepancies/{id}/resolve  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/conversations  realm=staff  auth=session  domain=NONE  perm=pos.communications.send  idempotency=optional  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/assign  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/follow-up  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/link-customer  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/read  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/reply  realm=staff  auth=session  domain=NONE  perm=pos.communications.send  idempotency=required  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/status  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/communications/inbox/threads/{id}/unread  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/run-check  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/assign  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/dismiss  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/investigate  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/notes  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/reopen  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/commission-discrepancies/{id}/resolve  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/conversations  realm=staff  auth=session  domain=communications  perm=pos.communications.send  idempotency=optional  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/assign  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/follow-up  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/link-customer  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/read  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/reply  realm=staff  auth=session  domain=communications  perm=pos.communications.send  idempotency=required  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/status  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/unread  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/threads  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/threads/{id}/assign  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/threads/{id}/reply  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
@@ -2749,27 +2749,27 @@ POST /pos/deposit-reconciliation/periods  realm=staff  auth=session  domain=paym
 POST /pos/deposit-reconciliation/periods/{id}/close  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/periods/{id}/reopen  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/deposit-reconciliation/rescan  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/allocations  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/allocations/{allocationId}/unmatch  realm=staff  auth=session  domain=NONE  perm=reconciliation.approve  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/bank-accounts  realm=staff  auth=session  domain=NONE  perm=reconciliation.approve  step-up  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/bank-accounts/{bankAccountId}  realm=staff  auth=session  domain=NONE  perm=reconciliation.approve  step-up  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/deposits  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/exceptions  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/assign  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/reopen  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/resolve  realm=staff  auth=session  domain=NONE  perm=reconciliation.approve  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/review  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/deposit-reconciliation/workspace/notes  realm=staff  auth=session  domain=NONE  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/allocations  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/allocations/{allocationId}/unmatch  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/bank-accounts  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  step-up  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/bank-accounts/{bankAccountId}  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  step-up  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/deposits  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/exceptions  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/assign  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/reopen  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/resolve  realm=staff  auth=session  domain=payments  perm=reconciliation.approve  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/review  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/deposit-reconciliation/workspace/notes  realm=staff  auth=session  domain=payments  perm=reconciliation.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/check  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/decision  realm=staff  auth=session  domain=customers  perm=pos.customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/merge  realm=staff  auth=session  domain=customers  perm=pos.customers.merge  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/notes  realm=staff  auth=session  domain=customers  perm=pos.customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/groups/{id}/preview  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/duplicate-review/scan  realm=staff  auth=session  domain=customers  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/email-center/compose  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/email-center/health/check  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/email-center/messages/{id}/resend  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/email-center/test  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/email-center/compose  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/email-center/health/check  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/email-center/messages/{id}/resend  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/email-center/test  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/eod-follow-ups/tasks/{id}/approve  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/eod-follow-ups/tasks/{id}/reject  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/eod-follow-ups/tasks/{id}/send  realm=staff  auth=session  domain=marketing  perm=customers.edit  guards=RolePermissionGuard,TenantAuthGuard
@@ -2789,17 +2789,17 @@ POST /pos/invoices/{id}/payments  realm=staff  auth=session  domain=finance  per
 POST /pos/invoices/{id}/send  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/status  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/void  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/adjust  realm=staff  auth=session  domain=NONE  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/enroll  realm=staff  auth=session  domain=NONE  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/activate  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  step-up  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/drafts  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/drafts/{id}/discard  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/preview  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/use-global  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/earning/versions/{id}/cancel  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/network/purchases  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  step-up  idempotency=required  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/redeem  realm=staff  auth=session  domain=NONE  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/loyalty/redemptions/{redemptionId}/void  realm=staff  auth=session  domain=NONE  perm=pos.checkout.void  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/adjust  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/enroll  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/activate  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  step-up  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/drafts  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/drafts/{id}/discard  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/preview  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/use-global  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/earning/versions/{id}/cancel  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/purchases  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  step-up  idempotency=required  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/redeem  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/redemptions/{redemptionId}/void  realm=staff  auth=session  domain=loyalty  perm=pos.checkout.void  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads/media  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.create  guards=RolePermissionGuard,TenantAuthGuard
@@ -2807,10 +2807,10 @@ POST /pos/marketing/display-ads/{id}/archive  realm=staff  auth=session  domain=
 POST /pos/marketing/display-ads/{id}/pause  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.pause  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads/{id}/publish  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.publish  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads/{id}/restore  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.update  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/marketing/segments/audience-drafts  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/marketing/segments/audience-drafts/{id}/campaign  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/marketing/segments/audience-drafts/{id}/discard  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/marketing/segments/audience-drafts/{id}/recheck  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/marketing/segments/audience-drafts  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/marketing/segments/audience-drafts/{id}/campaign  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/marketing/segments/audience-drafts/{id}/discard  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/marketing/segments/audience-drafts/{id}/recheck  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/me/backup/run  realm=staff  auth=session  domain=identity  perm=settings.edit  guards=TenantAuthGuard
 POST /pos/me/sessions/revoke-all  realm=staff  auth=session  domain=identity  perm=self.profile.edit  guards=TenantAuthGuard
 POST /pos/me/sessions/{id}/revoke  realm=staff  auth=session  domain=identity  perm=self.profile.edit  guards=TenantAuthGuard
@@ -2827,15 +2827,15 @@ POST /pos/memberships/redeem  realm=staff  auth=session  domain=memberships  per
 POST /pos/memberships/release  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/reserve  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/memberships/resume  realm=staff  auth=session  domain=memberships  perm=pos.memberships.manage  feature=memberships  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/connections  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/connections/{id}/disconnect  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/health-check  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/preview  realm=staff  auth=session  domain=NONE  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/render-for-thread/{threadId}  realm=staff  auth=session  domain=NONE  perm=pos.communications.send  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/templates  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/templates/{id}/duplicate  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/templates/{id}/status  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/message-templates/templates/{id}/test  realm=staff  auth=session  domain=NONE  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/connections  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/connections/{id}/disconnect  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/health-check  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/preview  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/render-for-thread/{threadId}  realm=staff  auth=session  domain=communications  perm=pos.communications.send  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/templates  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/templates/{id}/duplicate  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/templates/{id}/status  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/message-templates/templates/{id}/test  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/money-protection-center/alerts/action  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view_alerts  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/money-protection-center/check  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/money-protection-center/detection/run  realm=staff  auth=session  domain=ai  perm=ai_money_protection.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2926,12 +2926,12 @@ POST /pos/reminder-center/reminders/{id}/retry  realm=staff  auth=session  domai
 POST /pos/reputation-settings/check  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reputation-settings/save  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reputation/check  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/health-check  realm=staff  auth=session  domain=NONE  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/sms/campaigns  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/sms/preview  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/snapshots/backfill  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/winback/audience  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/retention/winback/plan  realm=staff  auth=session  domain=NONE  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/health-check  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/sms/campaigns  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/sms/preview  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/snapshots/backfill  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/winback/audience  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/winback/plan  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reviews-center/reviews/{id}/moderate  realm=staff  auth=session  domain=customers  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/salon-promotions  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/salon-promotions/redeem  realm=staff  auth=session  domain=deals  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
@@ -2995,28 +2995,28 @@ POST /pos/settings/payments-checkout/terminals/{id}/unpair  realm=staff  auth=se
 POST /pos/settings/receipts-branding/logo  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/receipts-branding/logo/remove  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/receipts-branding/send-test  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/shift-overrides/preview  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/shift-overrides/preview  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/social-posts  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/social-posts/{id}/status  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/staff-roles  realm=staff  auth=session  domain=identity  perm=roles.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/staff-roles/{id}/archive  realm=staff  auth=session  domain=identity  perm=roles.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/run-check  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/assign  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/dismiss  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/investigate  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/notes  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/reopen  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-data-alerts/{id}/resolve  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-onboarding/staff  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  step-up  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-performance-screen/composite/snapshots  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/assignments  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/assignments/{id}/cancel  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/assignments/{id}/complete  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/assignments/{id}/start  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/certifications  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/certifications/{id}/verify  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/courses  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
-POST /pos/team-training/courses/{id}/archive  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/run-check  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/assign  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/dismiss  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/investigate  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/notes  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/reopen  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-data-alerts/{id}/resolve  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-onboarding/staff  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  step-up  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-performance-screen/composite/snapshots  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/assignments  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/assignments/{id}/cancel  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/assignments/{id}/complete  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/assignments/{id}/start  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/certifications  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/certifications/{id}/verify  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/courses  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/team-training/courses/{id}/archive  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/tech-appointments/appointments  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/tech-appointments/appointments/{appointmentId}/assign-technician  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.assign_technician  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/tech-appointments/appointments/{appointmentId}/cancel  realm=staff  auth=session  domain=booking  perm=pos.tech_appointments.cancel  guards=RolePermissionGuard,TenantAuthGuard
@@ -3093,7 +3093,7 @@ POST /promotions/redeem  realm=shared  auth=session  domain=deals  perm=pos.chec
 POST /promotions/redemptions/{id}/reverse  realm=shared  auth=session  domain=deals  perm=pos.checkout.apply_discount  guards=RolePermissionGuard,TenantAuthGuard
 POST /promotions/validate  realm=shared  auth=session  domain=deals  perm=pos.checkout.apply_discount  guards=RolePermissionGuard,TenantAuthGuard
 POST /public/alert-ack  realm=shared  auth=public  domain=operations
-POST /public/email/unsubscribe  realm=shared  auth=public  domain=NONE
+POST /public/email/unsubscribe  realm=shared  auth=public  domain=communications
 POST /public/mfa-recovery/confirm  realm=shared  auth=public  domain=identity
 POST /public/mfa-recovery/start  realm=shared  auth=public  domain=identity
 POST /public/security/approve-device  realm=shared  auth=public  domain=identity
@@ -3278,18 +3278,18 @@ POST /super-admin/jobs/self-test  realm=super_admin  auth=session  domain=operat
 POST /super-admin/jobs/{id}/cancel  realm=super_admin  auth=session  domain=operations  perm=super_admin.system.manage  guards=SuperAdminGuard
 POST /super-admin/jobs/{id}/retry  realm=super_admin  auth=session  domain=operations  perm=super_admin.system.manage  guards=SuperAdminGuard
 POST /super-admin/kill-switches/{key}  realm=super_admin  auth=session  domain=platform  perm=super_admin.system.manage  step-up  guards=SuperAdminGuard
-POST /super-admin/loyalty-network/books-check/findings/{id}/review  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/books-check/run  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/enrollments/{tenantId}  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/fraud-alerts/{id}/review  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/global-rules  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/global-rules/preview  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/global-rules/{id}/cancel  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/payables/{id}/eligible  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/payables/{id}/hold  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/payables/{id}/payout  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  idempotency=required  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/program  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
-POST /super-admin/loyalty-network/purchases/{id}/sandbox-advance  realm=super_admin  auth=session  domain=NONE  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/books-check/findings/{id}/review  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/books-check/run  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/enrollments/{tenantId}  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/fraud-alerts/{id}/review  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/global-rules  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/global-rules/preview  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/global-rules/{id}/cancel  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/payables/{id}/eligible  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/payables/{id}/hold  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/payables/{id}/payout  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  idempotency=required  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/program  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/purchases/{id}/sandbox-advance  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty/corrections/detect  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.manage  guards=SuperAdminGuard
 POST /super-admin/loyalty/corrections/{id}/review  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.manage  guards=SuperAdminGuard
 POST /super-admin/loyalty/suspicious/detect  realm=super_admin  auth=session  domain=loyalty  derived=super_admin.marketing.manage  guards=SuperAdminGuard
@@ -3422,7 +3422,7 @@ POST /super-admin/queue/notify-branch  realm=super_admin  auth=session  domain=b
 POST /super-admin/queue/snapshot  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  guards=SuperAdminGuard
 POST /super-admin/queue/support-session  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  step-up  guards=SuperAdminGuard
 POST /super-admin/queue/{queueId}/retry-sync  realm=super_admin  auth=session  domain=booking  derived=super_admin.operations.manage  guards=SuperAdminGuard
-POST /super-admin/release-evidence  realm=super_admin  auth=session  domain=NONE  derived=super_admin.system.manage  guards=SuperAdminGuard
+POST /super-admin/release-evidence  realm=super_admin  auth=session  domain=operations  derived=super_admin.system.manage  guards=SuperAdminGuard
 POST /super-admin/report-builder/definitions  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.manage  guards=SuperAdminGuard
 POST /super-admin/report-builder/run  realm=super_admin  auth=session  domain=analytics  derived=super_admin.analytics.manage  guards=SuperAdminGuard
 POST /super-admin/revenue-residuals/accounting-periods  realm=super_admin  auth=session  domain=finance  derived=super_admin.payments.manage  guards=SuperAdminGuard
@@ -3775,14 +3775,14 @@ POST /tenant/messaging/number/buy  realm=staff  auth=session  domain=communicati
 POST /tenant/messaging/number/quote  realm=staff  auth=session  domain=communications  perm=settings.edit  guards=TenantAuthGuard
 POST /tenant/messaging/number/register  realm=staff  auth=session  domain=communications  perm=settings.edit  guards=TenantAuthGuard
 POST /tenant/messaging/registration/refresh  realm=staff  auth=session  domain=communications  perm=settings.edit  guards=TenantAuthGuard
-POST /tenant/setup-health/alerts/{id}/acknowledge  realm=staff  auth=session  domain=NONE  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-POST /tenant/setup-health/run  realm=staff  auth=session  domain=NONE  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/setup-health/alerts/{id}/acknowledge  realm=staff  auth=session  domain=operations  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/setup-health/run  realm=staff  auth=session  domain=operations  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/sms-plan/upgrade  realm=staff  auth=session  domain=communications  perm=settings.edit
 POST /voice-transcription/webhook  realm=shared  auth=api_key  domain=ai  guards=VoiceAuthGuard,VoiceKeyRateLimitGuard
 POST /voice/calls/{callId}/outcome  realm=shared  auth=api_key  domain=ai  guards=VoiceAuthGuard,VoiceKeyRateLimitGuard
 POST /voice/tool  realm=shared  auth=api_key  domain=ai  guards=VoiceAuthGuard,VoiceKeyRateLimitGuard
 POST /webhooks/bank/{token}  realm=shared  auth=public  domain=payments  unversioned
-POST /webhooks/email/sendgrid  realm=shared  auth=public  domain=NONE  unversioned
+POST /webhooks/email/sendgrid  realm=shared  auth=public  domain=communications  unversioned
 POST /webhooks/payments/{processor}  realm=shared  auth=public  domain=payments  unversioned
 POST /webhooks/twilio/booking-verification/status  realm=shared  auth=public  domain=booking  unversioned
 POST /webhooks/twilio/sms/inbound  realm=shared  auth=public  domain=communications  unversioned
@@ -3810,18 +3810,18 @@ PUT /pos/ai-scheduling-optimizer/service-profiles/{serviceId}  realm=staff  auth
 PUT /pos/ai-scheduling-optimizer/settings  realm=staff  auth=session  domain=ai  perm=ai_scheduling.configure  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-voice-transcription/settings  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_settings  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/approvals/policies  realm=staff  auth=session  domain=workforce  perm=approvals.manage_policies  step-up  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/birthdays/customers/{id}/birthday  realm=staff  auth=session  domain=NONE  perm=pos.customers.edit  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/birthdays/settings  realm=staff  auth=session  domain=NONE  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/commission-discrepancies/refund-policy  realm=staff  auth=session  domain=NONE  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/birthdays/customers/{id}/birthday  realm=staff  auth=session  domain=marketing  perm=pos.customers.edit  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/birthdays/settings  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/commission-discrepancies/refund-policy  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/customer-notifications/alert-settings  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/me/language  realm=staff  auth=session  domain=identity  perm=self.profile.edit
 PUT /pos/queue/items/{queueItemId}/service-assignments  realm=staff  auth=session  domain=booking  perm=pos.queue.assign_technician  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/referral-program/codes/{id}/status  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/referral-program/settings  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/retention/settings  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=NONE  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/shift-overrides  realm=staff  auth=session  domain=NONE  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
-PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=NONE  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/retention/settings  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=payroll.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /super-admin/ai-scheduling-optimizer/platform-switch  realm=super_admin  auth=session  domain=ai  perm=super_admin.ai.manage  step-up  guards=SuperAdminGuard
 PUT /super-admin/ai/packages/{code}/availability  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard

@@ -58,6 +58,12 @@ export const SOURCE_DOMAINS = {
   'customers:customer-salons': 'CUSTOMERS', 'customers:customers': 'CUSTOMERS', 'customers:pos-referrals': 'LOYALTY',
   'customers:reviews': 'CUSTOMERS', 'customers:wallet': 'PAYMENTS', 'customers:customer-search': 'CUSTOMERS', 'customers:duplicate-review': 'CUSTOMERS', 'customers:customer-timeline': 'CUSTOMERS',
   'loyalty:loyalty.controller.ts': 'LOYALTY',
+  // Oct 30 – Nov 3 2026 guide builds (each directory is one domain)
+  'catalog:catalog-screens': 'CATALOG', 'communications:email': 'COMMUNICATIONS', 'communications:inbox': 'COMMUNICATIONS',
+  'communications:templates': 'COMMUNICATIONS', 'customers:loyalty': 'LOYALTY', 'customers:retention': 'MARKETING', 'customers:segments': 'MARKETING',
+  'loyalty:global-rewards': 'LOYALTY', 'memberships:membership-lists.ts': 'MEMBERSHIPS', 'payments:finance-screens': 'PAYMENTS',
+  'reports:birthdays': 'MARKETING', 'reports:marketing-growth': 'ANALYTICS', 'super-admin:setup-health': 'OPERATIONS',
+  'workforce:team-screens': 'WORKFORCE', 'workforce:team-staff': 'WORKFORCE',
   'finance:expense.controller.ts': 'FINANCE',   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026)
   'memberships:membership-billing.controller.ts': 'MEMBERSHIPS', 'memberships:membership-comms.controller.ts': 'MEMBERSHIPS',
   'memberships:membership-compensation.controller.ts': 'MEMBERSHIPS', 'memberships:membership-enroll.controller.ts': 'MEMBERSHIPS',
