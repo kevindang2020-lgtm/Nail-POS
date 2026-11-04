@@ -13,11 +13,11 @@ let pg: any;
 beforeAll(async () => { pg = await migratedPglite(); await pg.query("SET TIME ZONE 'UTC'"); }, 120_000);   // pg_get_indexdef prints timestamps in the session zone — the reviewed text is UTC (as the gate pins)
 
 describe('check:unique-tenant-review', () => {
-  it('passes on the schema as migrated: 98 reviewed, every class a reviewed one, none "should be tenant-scoped"', async () => {
+  it('passes on the schema as migrated: 112 reviewed, every class a reviewed one, none "should be tenant-scoped"', async () => {
     const live = (await pg.query(UNREVIEWED_SQL)).rows;
     const reviewed = parseReview(DOC);
-    expect(live).toHaveLength(98);
-    expect(reviewed.size).toBe(98);
+    expect(live).toHaveLength(112);   // the review doc covers every one (98 at 548; the Oct 30 – Nov 3 centers added 14, each reviewed)
+    expect(reviewed.size).toBe(112);
     expect(reviewProblems(live, reviewed)).toEqual([]);
     expect([...reviewed.values()].every((r: any) => CLASSES.includes(r.cls))).toBe(true);
     expect(live.map((r: any) => r.index_name)).not.toContain('uq_payment_gateway_events_processed');

@@ -1,0 +1,76 @@
+-- 786_tenant_consistency_new_centers.sql — B-12 (Nov 3 2026): the tables added by the Oct 30 – Nov 3 guide builds carry
+-- single-column foreign keys between two salon-owned tables with no enforce_tenant_consistency trigger, so a write could
+-- name ANOTHER salon's row (a campaign recipient on salon B's campaign, a vendor contact on salon B's vendor …). The same
+-- trigger every earlier tenant FK has (450 / 517): the referenced row must belong to the same salon (NULLs pass).
+-- Additive only; existing rows are not re-checked. Rollback: DROP TRIGGER trg_tc_<table>__<column> ON <table>; for each.
+
+DROP TRIGGER IF EXISTS trg_tc_ai_billing_invoice_line_snapshots__invoice_link_id ON ai_billing_invoice_line_snapshots;
+CREATE TRIGGER trg_tc_ai_billing_invoice_line_snapshots__invoice_link_id BEFORE INSERT OR UPDATE OF tenant_id, invoice_link_id ON ai_billing_invoice_line_snapshots FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('ai_billing_invoice_links', 'invoice_link_id');
+DROP TRIGGER IF EXISTS trg_tc_ai_business_alert_events__alert_id ON ai_business_alert_events;
+CREATE TRIGGER trg_tc_ai_business_alert_events__alert_id BEFORE INSERT OR UPDATE OF tenant_id, alert_id ON ai_business_alert_events FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('ai_business_alerts', 'alert_id');
+DROP TRIGGER IF EXISTS trg_tc_ai_receptionist_control__branch_id ON ai_receptionist_control;
+CREATE TRIGGER trg_tc_ai_receptionist_control__branch_id BEFORE INSERT OR UPDATE OF tenant_id, branch_id ON ai_receptionist_control FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('branches', 'branch_id');
+DROP TRIGGER IF EXISTS trg_tc_campaign_recipients__campaign_id ON campaign_recipients;
+CREATE TRIGGER trg_tc_campaign_recipients__campaign_id BEFORE INSERT OR UPDATE OF tenant_id, campaign_id ON campaign_recipients FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('campaigns', 'campaign_id');
+DROP TRIGGER IF EXISTS trg_tc_coupon_assistant_drafts__deal_id ON coupon_assistant_drafts;
+CREATE TRIGGER trg_tc_coupon_assistant_drafts__deal_id BEFORE INSERT OR UPDATE OF tenant_id, deal_id ON coupon_assistant_drafts FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('deals', 'deal_id');
+DROP TRIGGER IF EXISTS trg_tc_customer_duplicate_events__group_id ON customer_duplicate_events;
+CREATE TRIGGER trg_tc_customer_duplicate_events__group_id BEFORE INSERT OR UPDATE OF tenant_id, group_id ON customer_duplicate_events FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customer_duplicate_groups', 'group_id');
+DROP TRIGGER IF EXISTS trg_tc_customer_duplicate_groups__last_scan_id ON customer_duplicate_groups;
+CREATE TRIGGER trg_tc_customer_duplicate_groups__last_scan_id BEFORE INSERT OR UPDATE OF tenant_id, last_scan_id ON customer_duplicate_groups FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customer_duplicate_scans', 'last_scan_id');
+DROP TRIGGER IF EXISTS trg_tc_customer_duplicate_merge_ops__group_id ON customer_duplicate_merge_ops;
+CREATE TRIGGER trg_tc_customer_duplicate_merge_ops__group_id BEFORE INSERT OR UPDATE OF tenant_id, group_id ON customer_duplicate_merge_ops FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customer_duplicate_groups', 'group_id');
+DROP TRIGGER IF EXISTS trg_tc_customer_intelligence_snapshots__scan_id ON customer_intelligence_snapshots;
+CREATE TRIGGER trg_tc_customer_intelligence_snapshots__scan_id BEFORE INSERT OR UPDATE OF tenant_id, scan_id ON customer_intelligence_snapshots FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customer_intelligence_scans', 'scan_id');
+DROP TRIGGER IF EXISTS trg_tc_customer_retention_daily_snapshots__run_id ON customer_retention_daily_snapshots;
+CREATE TRIGGER trg_tc_customer_retention_daily_snapshots__run_id BEFORE INSERT OR UPDATE OF tenant_id, run_id ON customer_retention_daily_snapshots FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customer_retention_snapshot_runs', 'run_id');
+DROP TRIGGER IF EXISTS trg_tc_health_check_results__run_id ON health_check_results;
+CREATE TRIGGER trg_tc_health_check_results__run_id BEFORE INSERT OR UPDATE OF tenant_id, run_id ON health_check_results FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('health_check_runs', 'run_id');
+DROP TRIGGER IF EXISTS trg_tc_inventory_vendor_contacts__vendor_id ON inventory_vendor_contacts;
+CREATE TRIGGER trg_tc_inventory_vendor_contacts__vendor_id BEFORE INSERT OR UPDATE OF tenant_id, vendor_id ON inventory_vendor_contacts FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('inventory_vendors', 'vendor_id');
+DROP TRIGGER IF EXISTS trg_tc_inventory_vendor_products__product_id ON inventory_vendor_products;
+CREATE TRIGGER trg_tc_inventory_vendor_products__product_id BEFORE INSERT OR UPDATE OF tenant_id, product_id ON inventory_vendor_products FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('inventory_products', 'product_id');
+DROP TRIGGER IF EXISTS trg_tc_inventory_vendor_products__vendor_id ON inventory_vendor_products;
+CREATE TRIGGER trg_tc_inventory_vendor_products__vendor_id BEFORE INSERT OR UPDATE OF tenant_id, vendor_id ON inventory_vendor_products FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('inventory_vendors', 'vendor_id');
+DROP TRIGGER IF EXISTS trg_tc_invoice_payments__invoice_id ON invoice_payments;
+CREATE TRIGGER trg_tc_invoice_payments__invoice_id BEFORE INSERT OR UPDATE OF tenant_id, invoice_id ON invoice_payments FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('invoices', 'invoice_id');
+DROP TRIGGER IF EXISTS trg_tc_merchant_reimbursements__redemption_id ON merchant_reimbursements;
+CREATE TRIGGER trg_tc_merchant_reimbursements__redemption_id BEFORE INSERT OR UPDATE OF tenant_id, redemption_id ON merchant_reimbursements FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('reward_redemptions', 'redemption_id');
+DROP TRIGGER IF EXISTS trg_tc_notification_retry_requests__new_notification_id ON notification_retry_requests;
+CREATE TRIGGER trg_tc_notification_retry_requests__new_notification_id BEFORE INSERT OR UPDATE OF tenant_id, new_notification_id ON notification_retry_requests FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('notifications', 'new_notification_id');
+DROP TRIGGER IF EXISTS trg_tc_notification_retry_requests__original_notification_id ON notification_retry_requests;
+CREATE TRIGGER trg_tc_notification_retry_requests__original_notification_id BEFORE INSERT OR UPDATE OF tenant_id, original_notification_id ON notification_retry_requests FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('notifications', 'original_notification_id');
+DROP TRIGGER IF EXISTS trg_tc_notifications__retry_of_notification_id ON notifications;
+CREATE TRIGGER trg_tc_notifications__retry_of_notification_id BEFORE INSERT OR UPDATE OF tenant_id, retry_of_notification_id ON notifications FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('notifications', 'retry_of_notification_id');
+DROP TRIGGER IF EXISTS trg_tc_payout_attempts__reimbursement_id ON payout_attempts;
+CREATE TRIGGER trg_tc_payout_attempts__reimbursement_id BEFORE INSERT OR UPDATE OF tenant_id, reimbursement_id ON payout_attempts FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('merchant_reimbursements', 'reimbursement_id');
+DROP TRIGGER IF EXISTS trg_tc_product_usage_adjustments__usage_event_id ON product_usage_adjustments;
+CREATE TRIGGER trg_tc_product_usage_adjustments__usage_event_id BEFORE INSERT OR UPDATE OF tenant_id, usage_event_id ON product_usage_adjustments FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('product_usage_events', 'usage_event_id');
+DROP TRIGGER IF EXISTS trg_tc_promotion_eligibility_checks__branch_id ON promotion_eligibility_checks;
+CREATE TRIGGER trg_tc_promotion_eligibility_checks__branch_id BEFORE INSERT OR UPDATE OF tenant_id, branch_id ON promotion_eligibility_checks FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('branches', 'branch_id');
+DROP TRIGGER IF EXISTS trg_tc_promotion_eligibility_checks__customer_id ON promotion_eligibility_checks;
+CREATE TRIGGER trg_tc_promotion_eligibility_checks__customer_id BEFORE INSERT OR UPDATE OF tenant_id, customer_id ON promotion_eligibility_checks FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('customers', 'customer_id');
+DROP TRIGGER IF EXISTS trg_tc_promotion_eligibility_checks__deal_id ON promotion_eligibility_checks;
+CREATE TRIGGER trg_tc_promotion_eligibility_checks__deal_id BEFORE INSERT OR UPDATE OF tenant_id, deal_id ON promotion_eligibility_checks FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('deals', 'deal_id');
+DROP TRIGGER IF EXISTS trg_tc_promotion_eligibility_checks__ticket_id ON promotion_eligibility_checks;
+CREATE TRIGGER trg_tc_promotion_eligibility_checks__ticket_id BEFORE INSERT OR UPDATE OF tenant_id, ticket_id ON promotion_eligibility_checks FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('tickets', 'ticket_id');
+DROP TRIGGER IF EXISTS trg_tc_reconciliation_allocations__deposit_id ON reconciliation_allocations;
+CREATE TRIGGER trg_tc_reconciliation_allocations__deposit_id BEFORE INSERT OR UPDATE OF tenant_id, deposit_id ON reconciliation_allocations FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('bank_deposits', 'deposit_id');
+DROP TRIGGER IF EXISTS trg_tc_reconciliation_allocations__settlement_id ON reconciliation_allocations;
+CREATE TRIGGER trg_tc_reconciliation_allocations__settlement_id BEFORE INSERT OR UPDATE OF tenant_id, settlement_id ON reconciliation_allocations FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('payment_settlements', 'settlement_id');
+DROP TRIGGER IF EXISTS trg_tc_reimbursement_adjustments__reimbursement_id ON reimbursement_adjustments;
+CREATE TRIGGER trg_tc_reimbursement_adjustments__reimbursement_id BEFORE INSERT OR UPDATE OF tenant_id, reimbursement_id ON reimbursement_adjustments FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('merchant_reimbursements', 'reimbursement_id');
+DROP TRIGGER IF EXISTS trg_tc_retention_sms_recipients__campaign_id ON retention_sms_recipients;
+CREATE TRIGGER trg_tc_retention_sms_recipients__campaign_id BEFORE INSERT OR UPDATE OF tenant_id, campaign_id ON retention_sms_recipients FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('retention_sms_campaigns', 'campaign_id');
+DROP TRIGGER IF EXISTS trg_tc_rewards_journal_lines__entry_id ON rewards_journal_lines;
+CREATE TRIGGER trg_tc_rewards_journal_lines__entry_id BEFORE INSERT OR UPDATE OF tenant_id, entry_id ON rewards_journal_lines FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('rewards_journal_entries', 'entry_id');
+DROP TRIGGER IF EXISTS trg_tc_segment_audience_members__draft_id ON segment_audience_members;
+CREATE TRIGGER trg_tc_segment_audience_members__draft_id BEFORE INSERT OR UPDATE OF tenant_id, draft_id ON segment_audience_members FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('segment_audience_drafts', 'draft_id');
+DROP TRIGGER IF EXISTS trg_tc_service_recommendation_reviews__recommendation_id ON service_recommendation_reviews;
+CREATE TRIGGER trg_tc_service_recommendation_reviews__recommendation_id BEFORE INSERT OR UPDATE OF tenant_id, recommendation_id ON service_recommendation_reviews FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('service_recommendations', 'recommendation_id');
+DROP TRIGGER IF EXISTS trg_tc_service_recommendations__scan_id ON service_recommendations;
+CREATE TRIGGER trg_tc_service_recommendations__scan_id BEFORE INSERT OR UPDATE OF tenant_id, scan_id ON service_recommendations FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('service_recommendation_scans', 'scan_id');
+DROP TRIGGER IF EXISTS trg_tc_tenant_ai_branch_settings__branch_id ON tenant_ai_branch_settings;
+CREATE TRIGGER trg_tc_tenant_ai_branch_settings__branch_id BEFORE INSERT OR UPDATE OF tenant_id, branch_id ON tenant_ai_branch_settings FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('branches', 'branch_id');
+DROP TRIGGER IF EXISTS trg_tc_token_purchase_events__intent_id ON token_purchase_events;
+CREATE TRIGGER trg_tc_token_purchase_events__intent_id BEFORE INSERT OR UPDATE OF tenant_id, intent_id ON token_purchase_events FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('token_purchase_intents', 'intent_id');

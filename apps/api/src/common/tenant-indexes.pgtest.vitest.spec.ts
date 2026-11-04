@@ -60,7 +60,12 @@ describe('537: a tenant-leading index on every tenant table that lacked one', ()
       for (const p of PLANNED) {
         const plan = (await pg.query(`EXPLAIN (FORMAT JSON) SELECT * FROM ${p.table} WHERE tenant_id = '${T}' ORDER BY tenant_id, ${p.second} LIMIT 50`)).rows[0]['QUERY PLAN'];
         const text = JSON.stringify(plan);
-        if (!text.includes(p.index)) wrong.push(`${p.table}: ${text.match(/"Index Name":"(\w+)"/)?.[1] ?? 'no index'}`);
+        if (text.includes(p.index)) continue;
+        // a later migration may add a better tenant-leading index the planner prefers (customer_merge_logs' target index,
+        // the deal approvals' time index …) — what matters is that a tenant-leading index serves the read
+        const idx = text.match(/"Index Name":"(\w+)"/)?.[1];
+        const def = idx ? (await pg.query(`SELECT indexdef FROM pg_indexes WHERE indexname = $1`, [idx])).rows[0]?.indexdef : '';
+        if (!/\(tenant_id[,)]/.test(def ?? '')) wrong.push(`${p.table}: ${idx ?? 'no index'}`);
       }
       for (const t of BY_540) {
         const text = JSON.stringify((await pg.query(`EXPLAIN (FORMAT JSON) SELECT * FROM ${t} WHERE tenant_id = '${T}' LIMIT 50`)).rows[0]['QUERY PLAN']);

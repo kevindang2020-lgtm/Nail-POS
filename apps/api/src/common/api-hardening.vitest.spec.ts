@@ -39,7 +39,9 @@ describe('§69 CSRF — SameSite=lax protects only if GET never changes state', 
       }
     }
     // Reviewed: names that look like verbs but are reads (nothing written in their services).
-    const REVIEWED_READS = new Set(['PosSettingsController.payTest' /* tests a processor connection */, 'TechController.editOptions' /* the options for an edit form */]);
+    const REVIEWED_READS = new Set(['PosSettingsController.payTest' /* tests a processor connection */, 'TechController.editOptions' /* the options for an edit form */,
+      // 'addOn…' is the noun (a service add-on), not the verb: the D5 Add-Ons screen's list / detail / summary / usage reads
+      'CatalogScreensController.addOns', 'CatalogScreensController.addOn', 'CatalogScreensController.addOnSummary', 'CatalogScreensController.addOnUsage']);
     expect(bad.filter((b) => !REVIEWED_READS.has(b))).toEqual([]);
   }, 240_000);
   it('the session cookie is SameSite=lax, httpOnly, secure in production', () => {
