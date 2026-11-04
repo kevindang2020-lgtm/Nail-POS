@@ -205,8 +205,24 @@ export class CouponCenter {
       discountCents: final.discountCents, serviceIds: final.serviceIds, daysOfWeek: final.daysOfWeek, startsAt: final.startsAt, endsAt: final.endsAt, maxRedemptions: final.maxRedemptions,
       maxPerCustomer: final.maxPerCustomer, minSpendCents: final.minSpendCents, newCustomersOnly: final.newCustomersOnly, rules: final.rules, stackable: false, code,
       terms: `Created as a draft from the ${kind === 'coupon' ? 'coupon' : 'deals'} assistant (${sug.method}, goal: ${sug.goal}).` });
-    await sql`insert into coupon_assistant_drafts (tenant_id, deal_id, goal, method, basis_json, suggested_json, final_json, edited_fields, created_by_user_id)
-      values (${ctx.tenantId}, ${view.id}, ${sug.goal}, ${sug.method}, ${JSON.stringify(sug.basis)}::jsonb, ${JSON.stringify(sug.terms)}::jsonb, ${JSON.stringify(final)}::jsonb, ${edited}::text[], ${ctx.userId})`.execute(this.db);
+    // the draft and its provenance row belong together: DealsService.createDeal commits on its own (no transaction hook), so
+    // when the provenance row cannot be written the just-created DRAFT is taken back (it is not live, has no redemptions and
+    // nobody has seen it) — never a coupon without the record of where it came from (audit B2, Nov 3)
+    try {
+      await sql`insert into coupon_assistant_drafts (tenant_id, deal_id, goal, method, basis_json, suggested_json, final_json, edited_fields, created_by_user_id)
+        values (${ctx.tenantId}, ${view.id}, ${sug.goal}, ${sug.method}, ${JSON.stringify(sug.basis)}::jsonb, ${JSON.stringify(sug.terms)}::jsonb, ${JSON.stringify(final)}::jsonb, ${edited}::text[], ${ctx.userId})`.execute(this.db);
+    } catch (e) {
+      await this.db.transaction().execute(async (trx) => {
+        const still = (await sql<any>`select id from deals where tenant_id = ${ctx.tenantId} and id = ${view.id} and status = 'draft' and redemption_count = 0 for update`.execute(trx)).rows[0];
+        if (!still) return;
+        await sql`delete from deal_coupon_codes where tenant_id = ${ctx.tenantId} and deal_id = ${view.id}`.execute(trx);
+        await sql`delete from deal_services where tenant_id = ${ctx.tenantId} and deal_id = ${view.id}`.execute(trx);
+        await sql`delete from deal_coupon_batches where tenant_id = ${ctx.tenantId} and deal_id = ${view.id}`.execute(trx);
+        await sql`delete from deal_versions where tenant_id = ${ctx.tenantId} and deal_id = ${view.id}`.execute(trx);
+        await sql`delete from deals where tenant_id = ${ctx.tenantId} and id = ${view.id} and status = 'draft'`.execute(trx);
+      }).catch((undo: unknown) => { console.error(`assistant draft ${view.id} could not be taken back: ${(undo as Error)?.message ?? undo}`); });
+      throw e;
+    }
     return { deal: view, status: view.status, editedFields: edited, suggestion: sug, note: 'Saved as a draft. Nothing is live and nothing was sent; an owner or manager activates it with Publish.' };
   }
 }

@@ -273,3 +273,19 @@ describe('§11 related campaigns, §19 health, §16 assistant (draft only)', () 
     expect(s.eligibleCustomers).toBe(0);   // C1 visited recently; C2 visited recently; nobody else has visits
   });
 });
+
+// audit B2 (Nov 3): the assistant draft and its provenance row belong together — when the provenance row cannot be written the
+// just-created draft (with its code) is taken back; nothing half-made is left behind
+describe('Coupons — assistant draft is all-or-nothing', () => {
+  it('a failed provenance write leaves no coupon, no code', async () => {
+    const before = (await q(`select count(*)::int n from deals where tenant_id = $1`, [T]))[0].n;
+    const codesBefore = (await q(`select count(*)::int n from deal_coupon_codes where tenant_id = $1`, [T]))[0].n;
+    await q(`alter table coupon_assistant_drafts rename to coupon_assistant_drafts_off`);
+    try { await expect(center.draft(ctx, { goal: 'slow_weekdays', discountPercent: 12, code: 'HALFMADE12' })).rejects.toThrow(); }
+    finally { await q(`alter table coupon_assistant_drafts_off rename to coupon_assistant_drafts`); }
+    expect((await q(`select count(*)::int n from deals where tenant_id = $1`, [T]))[0].n).toBe(before);
+    expect((await q(`select count(*)::int n from deal_coupon_codes where tenant_id = $1`, [T]))[0].n).toBe(codesBefore);
+    const ok = await center.draft(ctx, { goal: 'slow_weekdays', discountPercent: 12, code: 'HALFMADE12' });   // the same code is free again
+    expect(ok.status).toBe('draft');
+  });
+});
