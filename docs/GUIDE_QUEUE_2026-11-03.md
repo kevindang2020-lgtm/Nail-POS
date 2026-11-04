@@ -188,12 +188,17 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   - E4 Deposit Recon — FIXED: a missing payout stays Missing with a case open; history reads audit_events; assignee must be this
     salon's (service + trigger 794). OPEN: the legacy sweep as a second engine, client-sent match basis, grace-day consistency,
     picker years.
-  - E5 Invoices — FIXED: legacy create refuses another salon's customer; reads join within the salon (trigger 793). OPEN: Paid KPI
-    ignores search / amount, "hidden by filters" message, location scoping (Kevin's decision: salon-wide kept), credit note, delivery.
+  - E5 Invoices — FIXED: legacy create refuses another salon's customer; reads join within the salon (trigger 793); Paid KPI
+    respects search / amount; save note decided from the reloaded list (57bd35b). BUILT Nov 4: credit notes with refund of the
+    overpaid part (797, 4d87545); customer filter + invoices on the customer profile (f09cfff); lines from services / retail
+    products (c6fe4bd); email / text delivery through the salon's sender with honest Submitted / Delivered status (798, bc76dd3).
+    Location scoping: Kevin's decision — salon-wide kept.
   - E6 Expenses — BUILT to the guide (period bar + Custom Range, 4 server KPIs, server filters, numbered pages newest first,
     one-key Add, Edit, View with every action, filtered export). Not done: browser screenshots at the guide's viewport sizes.
-  - E7 Loyalty — FIXED: the reward code stays on screen after a front-desk redemption. OPEN: Redemptions KPI counts pending codes,
-    ledger Retry, ILIKE escaping, reward eligibility / stock / limits / dates, tier management, member filters.
+  - E7 Loyalty — DONE: code stays on screen; Redemptions KPI counts used only, ledger Retry, ILIKE escaping (57bd35b); reward
+    dates / stock / per-member limit / eligible tiers checked atomically at redemption, with a real-Postgres race test (795,
+    dfd0c4e); Manage Tiers (own tiers, threshold, benefits, rename relabels members, held tier cannot retire), member tier change,
+    member status filter + sort, reward change audit (796, c28218d).
 - POS suite (Nov 4): every file passes run alone; the 3 files that hung (Serving, Queue, language switch — a stale window.event
   in jsdom) now finish. API gates: silent-catch, raw-sql, audit-writers, error-text, as-any green (f4ab1c1); api-contract still
   fails on the 774-route wire-type backlog.

@@ -883,3 +883,13 @@ question for Kevin: Customer Notifications / Email Center read `notifications` s
   1536×864, 1440×900 and 1366×768.
 - Lesson: in this jsdom setup React's window.event can stay stale between tests and make an effect loop without yielding
   (the file then hangs with no output). The fixed files clear it per test (clearStaleWindowEvent).
+
+## Nov 4 2026 (evening) — E1–E5, E7 open items
+- Commits dfcf807 (E1/E2/E3), 57bd35b (E3/E4/E5/E7), dfd0c4e + c28218d (E7 reward rules, Manage Tiers — migrations 795, 796),
+  4d87545 + f09cfff + c6fe4bd + bc76dd3 (E5 credit notes, customer filter / profile invoices, catalog lines, delivery —
+  migrations 797, 798).
+- E7 and E5 are complete to their guides. Real-Postgres race spec for reward stock:
+  `PG_RACE_URL=postgres://postgres@127.0.0.1:55432/aps npx vitest run src/loyalty/loyalty-reward-stock.postgres-race.vitest.spec.ts`
+  in modules/customers.
+- Still open: E2 (processor choice at pairing, idempotency keys on pairing, filters, device audit history), E6 screenshots,
+  batch A/C/D extras, A7 manager approval / alternative times, the 774-route wire-type backlog.
