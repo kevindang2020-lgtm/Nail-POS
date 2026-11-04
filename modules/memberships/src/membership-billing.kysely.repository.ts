@@ -66,6 +66,23 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     // same rule as enrollment (initialIssuedEntries): service / add-on credits issue a quantity, dollar credits an amount;
     // discounts are not credits. Keyed on the cycle so a replayed renewal never issues twice.
     const reason = 'renewal:' + cycleKey;
+    // the previous cycle's unused credits end with it unless the benefit allows rollover (membership_benefits.rollover_allowed)
+    // — they were kept forever, so a member stacked every month's credits. Held credits (an open reservation) are not
+    // expired. Same balance rule as creditBalance (memberships-core). Keyed on the cycle, so a replay expires nothing twice.
+    const endReason = 'cycle_end:' + cycleKey;
+    await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
+      select ${tenantId}, ${membershipId}, x.benefit_id, 'expired', b.service_id, greatest(x.q, 0), greatest(x.a, 0), ${endReason}
+      from (select l.benefit_id,
+              sum(case when l.entry_type in ('issued', 'rolled_over', 'restored') then l.quantity when l.entry_type in ('redeemed', 'expired') then -l.quantity when l.entry_type = 'adjusted' then l.quantity else 0 end)
+                - greatest(0, sum(case when l.entry_type = 'reserved' then l.quantity when l.entry_type = 'released' then -l.quantity when l.entry_type = 'redeemed' and l.reservation_ref is not null then -l.quantity else 0 end)) as q,
+              sum(case when l.entry_type in ('issued', 'rolled_over', 'restored') then l.amount_cents when l.entry_type in ('redeemed', 'expired') then -l.amount_cents when l.entry_type = 'adjusted' then l.amount_cents else 0 end)
+                - greatest(0, sum(case when l.entry_type = 'reserved' then l.amount_cents when l.entry_type = 'released' then -l.amount_cents when l.entry_type = 'redeemed' and l.reservation_ref is not null then -l.amount_cents else 0 end)) as a
+            from membership_credit_ledger l
+            where l.tenant_id = ${tenantId} and l.customer_membership_id = ${membershipId} and l.benefit_id is not null
+            group by l.benefit_id) x
+      join membership_benefits b on b.id = x.benefit_id and b.tenant_id = ${tenantId} and not b.rollover_allowed
+      where (x.q > 0 or x.a > 0)
+        and not exists (select 1 from membership_credit_ledger e where e.tenant_id = ${tenantId} and e.customer_membership_id = ${membershipId} and e.reason = ${endReason})`.execute(this.db);
     const r = await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
       select ${tenantId}, ${membershipId}, b.id, 'issued', b.service_id,
              case when b.benefit_type in ('service_credit', 'addon') then b.credits_per_cycle else 0 end,

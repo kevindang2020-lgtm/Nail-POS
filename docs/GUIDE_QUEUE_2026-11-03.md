@@ -107,7 +107,7 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - D6 Membership — five more bugs fixed (see the D6 line above): member numbers unique per salon (785), month-end period
   clamp + start-day anchor, benefit reserve/release/redeem locked (real-Postgres race test), walk-in redeem no longer cancels
   another hold, dollar-credit redeem spends the dollar balance, renewals issue the new cycle's credits.
-  NOT built: first-period charge at enrollment (needs the checkout build); rollover / expiry of the previous cycle's credits.
+  Previous cycle's unused credits now expire at renewal unless the benefit allows rollover (held credits stay). NOT built: first-period charge at enrollment (needs the checkout build).
 - D9 — expired bottles are not on hand anywhere (cache, list, drift, value).
 - D15 — open / count / cash in-out idempotent (POS sends one key per action).
 - API test sweep: 37 failures triaged. REAL BUGS FIXED: the Retell voice webhook was blocked by the tenant-context middleware
