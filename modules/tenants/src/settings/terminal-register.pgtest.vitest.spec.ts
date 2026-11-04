@@ -83,3 +83,28 @@ describe('a terminal is tied to one of the location\'s registers', () => {
     await expect(svc.setTerminalRegister({ ...owner, role: 'FRONT_DESK', permissions: ['settings.view'] }, 'term_111111', BACK)).rejects.toThrow();
   });
 });
+
+// Payment Terminals guide (Nov 4 2026): pairing used to upsert — a code already paired anywhere was silently taken over
+describe('pairing never takes over a paired terminal; one live terminal per register', () => {
+  it('a paired code is refused (at this location and at another); unpaired, it pairs again in place', async () => {
+    await expect(svc.pairTerminal(owner, '111111', 'Taken over', BACK)).rejects.toMatchObject({ status: 409, code: 'TERMINAL_ALREADY_PAIRED' });
+    await expect(svc.pairTerminal({ ...owner, branchId: B2 }, '111111', 'Elsewhere', ELSEWHERE)).rejects.toMatchObject({ code: 'TERMINAL_ALREADY_PAIRED', message: /another location/ });
+    expect((await q(`select label, branch_id, station_id from pos_payment_terminals where id = 'term_111111'`))[0]).toEqual({ label: 'Clover Flex', branch_id: B1, station_id: FRONT });
+    await svc.unpairTerminal(owner, 'term_111111');
+    expect((await svc.pairTerminal(owner, '111111', 'Clover Flex 2', FRONT)).label).toBe('Clover Flex 2');
+    expect((await q(`select label, status from pos_payment_terminals where id = 'term_111111'`))[0]).toEqual({ label: 'Clover Flex 2', status: 'paired' });
+  });
+
+  it('a register already served by a live terminal is refused at pairing, at reassignment and at re-enable', async () => {
+    await expect(svc.pairTerminal(owner, '444444', 'Second on Front', FRONT)).rejects.toMatchObject({ code: 'TERMINAL_REGISTER_TAKEN', details: { terminalId: 'term_111111' } });
+    expect(await q(`select id from pos_payment_terminals where id = 'term_444444'`)).toEqual([]);
+    await svc.pairTerminal(owner, '444444', 'Back one', BACK);
+    await expect(svc.setTerminalRegister(owner, 'term_444444', FRONT)).rejects.toMatchObject({ code: 'TERMINAL_REGISTER_TAKEN' });
+    expect(await stationOf('term_444444')).toBe(BACK);
+    // a disabled terminal frees its register; turning it back on while another serves the register is refused
+    await q(`update pos_payment_terminals set disabled_at = now() where id = 'term_111111'`);
+    await svc.setTerminalRegister(owner, 'term_444444', FRONT);
+    const repo = new KyselyTerminalPairingRepository((svc as any).terminals.db);
+    await expect(repo.setDisabled(owner, 'term_111111', false, null)).rejects.toMatchObject({ code: 'TERMINAL_REGISTER_TAKEN' });
+  });
+});

@@ -32,6 +32,8 @@ export class ExceptionWorkflowService {
     if (assigneeUserId != null && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(assigneeUserId))) {
       throw new ReconValidationError('Assignee must be a valid user id');
     }
+    // Deposit Recon guide audit (Nov 4 2026): any well-formed id was accepted — even another salon's user
+    if (assigneeUserId != null && this.repo.userInSalon && !(await this.repo.userInSalon(ctx, String(assigneeUserId)))) throw withCode(new ReconValidationError('Choose a team member of this salon.'), 'RECON_ASSIGNEE_NOT_FOUND');
     const cur = await this.repo.find(ctx, id); if (!cur) throw withCode(new ReconValidationError('Exception not found'), 'RECON_CASE_NOT_FOUND');
     // assigning an open case moves it into review
     const status: ExceptionStatus | undefined = cur.status === 'open' ? 'in_review' : undefined;

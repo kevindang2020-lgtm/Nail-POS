@@ -14,6 +14,9 @@ const iso = (v: any): string => (v ? new Date(v).toISOString() : '');
 
 /** Phase 14 (live IDOR run): another salon's terminal id (or a stale one) is a 404 client error — the exposed-client-error
  *  convention the platform filter answers as what it is (packages/observability isExposedClientError), never a 500. */
+function terminalConflict(code: string, message: string, details?: Record<string, unknown>): Error {
+  return Object.assign(new Error(message), { expose: true, status: 409, code, ...(details ? { details } : {}) });
+}
 function terminalNotFound(): Error {
   return Object.assign(new Error('terminal not found'), { expose: true, status: 404, code: 'TERMINAL_NOT_FOUND' });
 }
@@ -79,6 +82,10 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
   async setDisabled(ctx: SettingsContext, id: string, disabled: boolean, reason: string | null): Promise<Terminal> {
     const set = disabled ? { disabled_at: sql`now()`, disabled_by: ctx.userId ?? null, disabled_reason: reason, updated_at: sql`now()`, updated_by: ctx.userId ?? null }
                          : { disabled_at: null, disabled_by: null, disabled_reason: null, updated_at: sql`now()`, updated_by: ctx.userId ?? null };
+    if (!disabled) {   // re-enabling must not make a second live terminal on its register
+      const row: any = await this.db.selectFrom('pos_payment_terminals').select(['station_id', 'status']).where('tenant_id', '=', ctx.tenantId).where('id', '=', id).executeTakeFirst();
+      if (row?.station_id && row.status === 'paired') await this.assertRegisterFree(this.db, ctx, String(row.station_id), id);
+    }
     let u = this.db.updateTable('pos_payment_terminals').set(set as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
     if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
     const res = await u.executeTakeFirst();
@@ -94,11 +101,27 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
   async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string): Promise<Terminal> {
     if (!/^\d{6}$/.test(pairingCode)) throw new Error('pairing code must be 6 digits');
     const id = 'term_' + pairingCode;
-    await this.db.insertInto('pos_payment_terminals')
-      .values({ id, tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, label, station_id: stationId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null })
-      .onConflict((oc: any) => oc.columns(['tenant_id', 'id']).doUpdateSet({ label, station_id: stationId || null, branch_id: ctx.branchId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null }))
-      .execute();
+    // Payment Terminals guide (Nov 4 2026): pairing used to UPSERT — a code already paired (at this location or another one)
+    // was silently taken over, its label, register and location overwritten. A paired terminal is unpaired first; an
+    // unpaired one is paired again in place (its payment history keeps the same device id).
+    await this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('pos_payment_terminals:' || ${ctx.tenantId}))`.execute(trx);
+      const cur: any = await trx.selectFrom('pos_payment_terminals').select(['branch_id', 'status']).where('tenant_id', '=', ctx.tenantId).where('id', '=', id).executeTakeFirst();
+      if (cur && cur.status === 'paired') throw terminalConflict('TERMINAL_ALREADY_PAIRED', cur.branch_id && ctx.branchId && String(cur.branch_id) !== ctx.branchId
+        ? 'This terminal is paired at another location. Unpair it there first.' : 'This terminal is already paired. Unpair it first to pair it again.');
+      if (stationId) await this.assertRegisterFree(trx as any, ctx, stationId, id);
+      await trx.insertInto('pos_payment_terminals')
+        .values({ id, tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, label, station_id: stationId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null })
+        .onConflict((oc: any) => oc.columns(['tenant_id', 'id']).doUpdateSet({ label, station_id: stationId || null, branch_id: ctx.branchId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null }).where('pos_payment_terminals.status', '<>', 'paired'))
+        .execute();
+    });
     return { id, label, stationId, status: 'paired', pairedAt: new Date().toISOString(), ...(hsn ? { hsn } : {}) };
+  }
+  /** one live terminal per register: a second one made the register's card charge pick a device at random */
+  private async assertRegisterFree(exec: Kysely<DB>, ctx: SettingsContext, stationId: string, terminalId: string): Promise<void> {
+    const other: any = await exec.selectFrom('pos_payment_terminals').select(['id', 'label']).where('tenant_id', '=', ctx.tenantId).where('station_id', '=', stationId)
+      .where('status', '=', 'paired').where('disabled_at', 'is', null).where('id', '<>', terminalId).executeTakeFirst();
+    if (other) throw terminalConflict('TERMINAL_REGISTER_TAKEN', `This register already uses terminal "${other.label ?? other.id}". Move or disable that one first.`, { terminalId: String(other.id) });
   }
 
   /** This location's live registers (pos_stations), id → name. */
@@ -110,9 +133,13 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
   async registerName(ctx: SettingsContext, stationId: string): Promise<string | null> { return (await this.registerNames(ctx)).get(stationId) ?? null; }
   /** Oct 6 2026: tie a terminal to one of this location's registers (the register's card charges then use it). */
   async setRegister(ctx: SettingsContext, id: string, stationId: string | null): Promise<Terminal> {
-    let u = this.db.updateTable('pos_payment_terminals').set({ station_id: stationId }).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
-    const res = await u.executeTakeFirst();
+    const res = await this.db.transaction().execute(async (trx) => {
+      await sql`select pg_advisory_xact_lock(hashtext('pos_payment_terminals:' || ${ctx.tenantId}))`.execute(trx);
+      if (stationId) await this.assertRegisterFree(trx as any, ctx, stationId, id);
+      let u = trx.updateTable('pos_payment_terminals').set({ station_id: stationId }).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
+      if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
+      return u.executeTakeFirst();
+    });
     if (!Number((res as any)?.numUpdatedRows ?? 0)) throw terminalNotFound();
     const t = (await this.list(ctx)).find((x) => x.id === id);
     if (!t) throw terminalNotFound();

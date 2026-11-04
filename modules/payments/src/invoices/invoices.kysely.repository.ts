@@ -23,7 +23,7 @@ export class KyselyInvoicesRepository implements InvoicesRepositoryPort {
       notes: r.notes ?? null, createdAt: r.created_at ? new Date(r.created_at).toISOString() : '' };
   }
   async list(ctx: InvoicesContext): Promise<Invoice[]> {
-    const rows = await this.scoped(this.db.selectFrom('invoices').leftJoin('customers', 'customers.id', 'invoices.customer_id'), ctx)
+    const rows = await this.scoped(this.db.selectFrom('invoices').leftJoin('customers', (j: any) => j.onRef('customers.id', '=', 'invoices.customer_id').onRef('customers.tenant_id', '=', 'invoices.tenant_id')), ctx)
       .select(['invoices.id as id', 'invoices.invoice_number as invoice_number', 'invoices.customer_id as customer_id', 'customers.full_name as customer_name',
         'invoices.status as status', 'invoices.issue_date as issue_date', 'invoices.due_date as due_date', 'invoices.subtotal_cents as subtotal_cents',
         'invoices.tax_cents as tax_cents', 'invoices.total_cents as total_cents', 'invoices.notes as notes', 'invoices.created_at as created_at'])
@@ -31,7 +31,7 @@ export class KyselyInvoicesRepository implements InvoicesRepositoryPort {
     return (rows as any[]).map((r) => this.mapRow(r));
   }
   async get(ctx: InvoicesContext, id: string): Promise<Invoice | null> {
-    const r = await this.scoped(this.db.selectFrom('invoices').leftJoin('customers', 'customers.id', 'invoices.customer_id'), ctx)
+    const r = await this.scoped(this.db.selectFrom('invoices').leftJoin('customers', (j: any) => j.onRef('customers.id', '=', 'invoices.customer_id').onRef('customers.tenant_id', '=', 'invoices.tenant_id')), ctx)
       .where('invoices.id', '=', id)
       .select(['invoices.id as id', 'invoices.invoice_number as invoice_number', 'invoices.customer_id as customer_id', 'customers.full_name as customer_name',
         'invoices.status as status', 'invoices.issue_date as issue_date', 'invoices.due_date as due_date', 'invoices.subtotal_cents as subtotal_cents',
@@ -43,6 +43,11 @@ export class KyselyInvoicesRepository implements InvoicesRepositoryPort {
       .select(['id', 'description', 'quantity', 'unit_price_cents', 'line_total_cents', 'position']).orderBy('position', 'asc').execute().catch(emptyOnReadError('invoices.get'));
     inv.lines = lines.map((l) => ({ id: String(l.id), description: String(l.description), quantity: Number(l.quantity), unitPriceCents: Number(l.unit_price_cents), lineTotalCents: Number(l.line_total_cents), position: Number(l.position) }));
     return inv;
+  }
+  /** a customer of THIS salon (the legacy create took any id, and the read then showed another salon's customer's name) */
+  async customerInSalon(ctx: InvoicesContext, customerId: string): Promise<boolean> {
+    if (!/^[0-9a-f-]{36}$/i.test(customerId)) return false;
+    return !!(await this.db.selectFrom('customers').select('id').where('tenant_id', '=', ctx.tenantId).where('id', '=', customerId).executeTakeFirst());
   }
   async existingNumbers(ctx: InvoicesContext): Promise<string[]> {
     const rows = await this.db.selectFrom('invoices').where('tenant_id', '=', ctx.tenantId).select('invoice_number').execute().catch(emptyOnReadError('invoices.existingNumbers'));
@@ -84,7 +89,7 @@ export class KyselyInvoicesRepository implements InvoicesRepositoryPort {
   }
 
   async listForCustomer(ctx: InvoicesContext, customerId: string): Promise<Invoice[]> {
-    const rows = await this.db.selectFrom('invoices').leftJoin('customers', 'customers.id', 'invoices.customer_id')
+    const rows = await this.db.selectFrom('invoices').leftJoin('customers', (j: any) => j.onRef('customers.id', '=', 'invoices.customer_id').onRef('customers.tenant_id', '=', 'invoices.tenant_id'))
       .where('invoices.tenant_id', '=', ctx.tenantId).where('invoices.customer_id', '=', customerId)
       .where('invoices.status', 'in', ['sent', 'partially_paid', 'paid'])
       .select(['invoices.id as id', 'invoices.invoice_number as invoice_number', 'invoices.customer_id as customer_id', 'customers.full_name as customer_name',

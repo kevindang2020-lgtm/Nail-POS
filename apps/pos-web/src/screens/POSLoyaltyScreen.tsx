@@ -364,24 +364,25 @@ function AdjustDialog({ member, onClose, onDone }: { member: Member; onClose: ()
 
 function RedeemDialog({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: (msg: string) => void }) {
   const [list, setList] = useState<Reward[] | null>(null); const [pick, setPick] = useState<Reward | null>(null);
-  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [code, setCode] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null); const [code, setCode] = useState<string | null>(null); const [doneMsg, setDoneMsg] = useState<string | null>(null);
+  const close = () => (doneMsg ? onDone(doneMsg) : onClose());
   const key = useRef(requestId());
   useEffect(() => { posLoyaltyApi.rewards({ page: 1, pageSize: 50, status: 'active' }).then((r: any) => setList(r.items)).catch((e) => setErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
   const save = async () => {
     if (!pick || busy) return; setBusy(true); setErr(null);
-    try { const r = await posLoyaltyApi.redeem({ customerId: member.customerId, rewardId: pick.id, idempotencyKey: key.current }); setCode(r.code); onDone(tx('people.loyalty.redeemedNote', { name: member.customerName, reward: pick.title, balance: nf(r.balanceAfter) })); }
+    try { const r = await posLoyaltyApi.redeem({ customerId: member.customerId, rewardId: pick.id, idempotencyKey: key.current }); setCode(r.code); setDoneMsg(tx('people.loyalty.redeemedNote', { name: member.customerName, reward: pick.title, balance: nf(r.balanceAfter) })); }   // Loyalty guide (Nov 4 2026): the dialog stays open so the code can be read to the guest — it used to close at once and the code was never seen
     catch (e) { setErr(errText(e, tx('pos.could_not_save'))); key.current = requestId(); } finally { setBusy(false); }
   };
   return (
-    <FitDialog title={tx('people.loyalty.redeem')} subtitle={`${member.customerName} · ${tx('people.loyalty.balanceNow', { n: nf(member.pointsBalance) })}`} onClose={onClose} busy={busy} testId="dlg-redeem"
-      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!pick || busy || (pick && pick.pointsCost > member.pointsBalance) || !!code} onClick={save} data-testid="redeem-confirm">{busy ? tx('pos.saving_2') : pick ? tx('people.loyalty.redeemConfirm', { n: nf(pick.pointsCost) }) : tx('people.loyalty.redeem')}</button></>}>
+    <FitDialog title={tx('people.loyalty.redeem')} subtitle={`${member.customerName} · ${tx('people.loyalty.balanceNow', { n: nf(member.pointsBalance) })}`} onClose={close} busy={busy} testId="dlg-redeem"
+      footer={doneMsg ? <button type="button" className="fk-btn primary" onClick={close} data-testid="redeem-done">{tx('pos.done')}</button> : <><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!pick || busy || (pick && pick.pointsCost > member.pointsBalance) || !!code} onClick={save} data-testid="redeem-confirm">{busy ? tx('pos.saving_2') : pick ? tx('people.loyalty.redeemConfirm', { n: nf(pick.pointsCost) }) : tx('people.loyalty.redeem')}</button></>}>
       {!list ? <div className="fk-loading">{tx('pos.loading')}</div> : list.length === 0 ? <Empty title={tx('people.loyalty.noActiveRewards')} /> : (
         <ul className="fk-pick">{list.map((r) => { const short = r.pointsCost > member.pointsBalance; return (
           <li key={r.id}><button type="button" className={pick?.id === r.id ? 'on' : ''} aria-pressed={pick?.id === r.id} disabled={short} onClick={() => setPick(r)}>
             <b>{r.title}</b><span>{rewardValue(r)} · {tx('people.loyalty.pts', { n: nf(r.pointsCost) })}{short ? ` · ${tx('people.loyalty.notEnough')}` : ''}</span></button></li>
         ); })}</ul>
       )}
-      {code ? <div className="fk-preview ok">{tx('people.loyalty.codeIssued', { code })}</div> : null}
+      {code ? <div className="fk-preview ok" role="status" data-testid="redeem-code">{tx('people.loyalty.codeIssued', { code })}</div> : null}
       {err ? <div className="fk-err" role="alert">{err}</div> : null}
     </FitDialog>
   );

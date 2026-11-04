@@ -4,6 +4,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { systemContext } from '@aipowersalon/tenant-context';
 import { KyselyExceptionsRepository } from './deposit-reconciliation.exceptions.repository';
+import { ExceptionWorkflowService } from './deposit-reconciliation.exceptions.service';
 
 const T = 'a8a8a8a8-0000-4000-8000-000000000001', U = 'a8a8a8a8-0000-4000-8000-0000000000aa';
 let pg: any; let repo: KyselyExceptionsRepository;
@@ -22,3 +23,19 @@ describe('who raised a reconciliation case', () => {
     expect(rows.find((r: any) => r.id === person.id).created_by_user_id).toBe(U);
   });
 });
+
+// Deposit Recon guide audit (Nov 4 2026): any well-formed user id could be assigned — another salon's user included
+describe('a case is assigned only to this salon\'s team', () => {
+  it("another salon's user is refused by the service and by the database (794); this salon's is assigned", async () => {
+    const T2 = 'a8a8a8a8-0000-4000-8000-000000000002', U2 = 'a8a8a8a8-0000-4000-8000-0000000000bb';
+    await pg.exec(`INSERT INTO tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) VALUES ('${T2}', 'R2', 'R2', 'recon-b14b', 'RB14B', 'active')`);
+    await pg.query(`insert into users (id, tenant_id, email, full_name, role, status) values ($1,$2,'o@r.test','Owner R','OWNER','active'), ($3,$4,'x@r2.test','Other','OWNER','active')`, [U, T, U2, T2]);
+    const svc = new ExceptionWorkflowService(repo);
+    const me = { tenantId: T, userId: U, role: 'OWNER', permissions: [] } as any;
+    const c = await svc.create(me, { kind: 'other', title: 'check', amountCents: 0 } as any);
+    await expect(svc.assign(me, c.id, U2)).rejects.toMatchObject({ apiCode: 'RECON_ASSIGNEE_NOT_FOUND' });
+    await expect(pg.query(`update reconciliation_exceptions set assigned_to_user_id = $1 where id = $2`, [U2, c.id])).rejects.toThrow(/cross-tenant/);
+    expect((await svc.assign(me, c.id, U)).assignedToUserId).toBe(U);
+  });
+});
+

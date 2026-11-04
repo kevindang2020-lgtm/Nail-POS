@@ -8,6 +8,6 @@ describe('Commission report permissions', () => {
   it('shows a permission message on 403', async () => {
     for (const f of Object.values(cm)) f.mockRejectedValue({ status: 403 });
     render(<POSCommissionReportScreen />);
-    expect(await screen.findByText(/do not have permission/i)).toBeInTheDocument();
+    expect(await screen.findByText(/your role cannot see this information/i)).toBeInTheDocument();
   });
 });

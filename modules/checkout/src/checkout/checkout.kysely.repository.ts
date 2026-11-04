@@ -34,7 +34,9 @@ import { branchTimeZone, transitionStatus, canMoveToSql, assertTransition, Inval
 import { PAYMENT_ATTEMPT } from './payment-attempt-machine';
 import { LOYALTY_REDEMPTION, PAYMENT_REFUND, TICKET_CHECKOUT } from './checkout-lifecycles';
 import { dayStartMs } from '@aipowersalon/date-time';
-import type { CheckoutContext, CheckoutRepositoryPort, RefundRequestDetail, UnknownRefund } from './checkout.repository';
+import type { CheckoutContext, CheckoutRepositoryPort, RefundRequestDetail, UnknownRefund, GiftCardTicketValue } from './checkout.repository';
+/** gift-card states that END a card (GIFT_CARD): its value is gone, a refund has nothing on it to take back */
+const GIFT_CARD_ENDED = new Set(['void', 'refunded', 'canceled', 'replaced']);
 import { SplitRedemptionError, PaymentPersistenceError } from './checkout.repository';
 import { Money, PaymentMethod, CheckoutSettings, CheckoutTotals } from './checkout-display.dto';
 import { resolveCheckoutSettings, resolveGiftCardSaleSettings } from './checkout-settings.resolver';
@@ -757,12 +759,12 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   async activatePendingGiftCardReloads(ctx: CheckoutContext, ticketId: string): Promise<{ activated: number }> {
     const holds = await this.db.selectFrom('gift_card_transactions').select(['id', 'gift_card_id', 'amount_cents'])
       .where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId).where('type', '=', 'hold')
-      .execute().catch(() => [] as any[]);
-    let activated = 0;
+      .execute();
+    let activated = 0; const failed: string[] = [];
     for (const h of holds as any[]) {
       const already = await this.db.selectFrom('gift_card_transactions').select(['id'])
         .where('tenant_id', '=', ctx.tenantId).where('idempotency_key', '=', 'reload:' + h.id)
-        .executeTakeFirst().catch(() => undefined);
+        .executeTakeFirst();
       if (already) continue;
       const done = await this.db.transaction().execute(async (trx) => {
         const cur = await trx.selectFrom('gift_cards').select(['balance_cents', 'status']).where('id', '=', h.gift_card_id).where('tenant_id', '=', ctx.tenantId).forUpdate().executeTakeFirst();
@@ -774,9 +776,13 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: h.gift_card_id, type: 'adjust', amount_cents: Number(h.amount_cents), balance_after_cents: newBal, created_by_user_id: ctx.userId || null, idempotency_key: 'reload:' + h.id } as any).execute();
         await trx.updateTable('gift_cards').set({ balance_cents: newBal, status: 'active', updated_at: new Date().toISOString() } as any).where('id', '=', h.gift_card_id).where('tenant_id', '=', ctx.tenantId).where(canMoveToSql(GIFT_CARD, 'active') as any).execute();
         return true;
-      }).catch(() => false);
+      }).catch((e) => { failed.push(String(h.gift_card_id) + ' (' + String((e as Error)?.message ?? e) + ')'); return false; });
       if (done) activated++;
     }
+    // Gift Cards guide (Nov 4 2026): a PAID reload that could not be credited (the card ended meanwhile, or the write failed)
+    // used to vanish (`.catch(() => false)`). The others are still credited; then this throws, so afterPaid logs the ticket
+    // and the uncredited hold stays visible for a refund.
+    if (failed.length) throw new Error('GIFT_CARD_RELOAD_NOT_CREDITED: ticket ' + ticketId + ' — ' + failed.join('; '));
     return { activated };
   }
 
@@ -897,6 +903,61 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const phone = d.length === 10 ? '+1' + d : null;
     if (!name && !email && !phone && !message) return;
     await sql`insert into gift_card_recipients (tenant_id, gift_card_id, recipient_name, recipient_phone, recipient_email, message) values (${tenantId}, ${cardId}::uuid, ${name}, ${phone}, ${email}, ${message})`.execute(exec);
+  }
+  /** Gift Cards guide (Nov 4 2026) — the value a ticket put on gift cards: cards SOLD on it (once paid) and RELOADS it
+   *  credited ('reload:<hold>' adjust rows), less earlier refund reversals ('gc-refund:%' cancel rows on this ticket). */
+  private async giftValueRows(exec: Kysely<DB>, tenantId: string, ticketId: string, lock = false): Promise<GiftCardTicketValue[]> {
+    if (!isUuidStr(ticketId)) return [];
+    if (lock) await sql`select id from gift_cards where tenant_id = ${tenantId} and (sale_ticket_id = ${ticketId}::uuid
+      or id in (select gift_card_id from gift_card_transactions where tenant_id = ${tenantId} and ticket_id = ${ticketId}::uuid and type = 'hold')) order by id for update`.execute(exec);
+    const rows: any[] = (await sql`select g.id, g.card_number_last4, g.code, g.status, g.balance_cents, (g.sale_ticket_id is not distinct from ${ticketId}::uuid) as is_sale,
+        (case when g.sale_ticket_id is not distinct from ${ticketId}::uuid and g.status <> 'pending_payment' then g.purchased_cents else 0 end)
+        + coalesce((select sum(a.amount_cents) from gift_card_transactions a join gift_card_transactions h on h.tenant_id = a.tenant_id and a.idempotency_key = 'reload:' || h.id::text
+            where a.tenant_id = ${tenantId} and a.gift_card_id = g.id and a.type = 'adjust' and h.type = 'hold' and h.ticket_id = ${ticketId}::uuid), 0) as credited,
+        coalesce((select -sum(r.amount_cents) from gift_card_transactions r where r.tenant_id = ${tenantId} and r.gift_card_id = g.id and r.ticket_id = ${ticketId}::uuid
+            and r.type = 'cancel' and r.idempotency_key like 'gc-refund:%'), 0) as reversed
+      from gift_cards g where g.tenant_id = ${tenantId} and (g.sale_ticket_id = ${ticketId}::uuid
+        or g.id in (select gift_card_id from gift_card_transactions where tenant_id = ${tenantId} and ticket_id = ${ticketId}::uuid and type = 'hold'))
+      order by g.created_at, g.id`.execute(exec)).rows as any[];
+    return rows.map((r) => ({ giftCardId: String(r.id), last4: r.card_number_last4 ?? (r.code ? String(r.code).slice(-4) : null), status: String(r.status), balanceCents: Number(r.balance_cents),
+      creditedCents: Number(r.credited), reversedCents: Number(r.reversed), kind: r.is_sale ? 'sale' as const : 'reload' as const })).filter((r) => r.creditedCents > 0);
+  }
+  async giftCardValueOnTicket(ctx: CheckoutContext, ticketId: string): Promise<GiftCardTicketValue[]> { return this.giftValueRows(this.db, ctx.tenantId, ticketId); }
+  async reverseGiftCardValueForRefund(ctx: CheckoutContext, ticketId: string, amountCents: Money, refundPaymentId: string, reason: string): Promise<{ reversedCents: Money; shortCents: Money }> {
+    if (!(amountCents > 0)) return { reversedCents: 0, shortCents: 0 };
+    const T = ctx.tenantId;
+    return this.db.transaction().execute(async (trx) => {
+      const k = trx as unknown as Kysely<DB>;
+      let remaining = Number(amountCents), reversed = 0, short = 0;
+      for (const c of await this.giftValueRows(k, T, ticketId, true)) {
+        if (remaining <= 0) break;
+        if (GIFT_CARD_ENDED.has(c.status)) continue;   // a void / refunded / canceled card holds none of that value any more
+        const key = 'gc-refund:' + refundPaymentId + ':' + c.giftCardId;
+        if ((await sql`select 1 from gift_card_transactions where tenant_id = ${T} and idempotency_key = ${key} limit 1`.execute(k)).rows.length) continue;   // a replay
+        const take = Math.min(remaining, c.creditedCents - c.reversedCents);
+        if (take <= 0) continue;
+        const actual = Math.min(take, Math.max(0, c.balanceCents));
+        remaining -= take; short += take - actual;
+        if (actual <= 0) continue;
+        const after = c.balanceCents - actual;
+        const ended = c.kind === 'sale' && after === 0 && c.reversedCents + actual >= c.creditedCents;
+        await sql`update gift_cards set balance_cents = ${after}, status = case when ${ended} and status in ('active', 'partially_redeemed', 'redeemed', 'frozen', 'suspended', 'expired', 'delivered', 'claimed') then 'refunded' else status end,
+          updated_at = now() where tenant_id = ${T} and id = ${c.giftCardId}::uuid`.execute(k);
+        const led: any = (await sql`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, ticket_id, created_by_user_id, idempotency_key)
+          values (${T}, ${ctx.branchId || null}, ${c.giftCardId}::uuid, 'cancel', ${-actual}, ${after}, ${ticketId}::uuid, ${userIdOrNull(ctx.userId)}, ${key}) returning id`.execute(k)).rows[0];
+        await sql`insert into gift_card_adjustments (tenant_id, gift_card_id, amount_cents, balance_before_cents, balance_after_cents, reason, actor_user_id, ledger_entry_id)
+          values (${T}, ${c.giftCardId}::uuid, ${-actual}, ${c.balanceCents}, ${after}, ${'ticket refund: ' + reason}, ${userIdOrNull(ctx.userId)}, ${String(led.id)}::uuid)`.execute(k);
+        reversed += actual;
+      }
+      return { reversedCents: reversed, shortCents: short };
+    });
+  }
+  async pendingGiftCardReloadTicket(ctx: CheckoutContext, cardId: string): Promise<string | null> {
+    if (!isUuidStr(cardId)) return null;
+    const r: any = (await sql`select h.ticket_id from gift_card_transactions h join tickets t on t.id = h.ticket_id and t.tenant_id = h.tenant_id
+      where h.tenant_id = ${ctx.tenantId} and h.gift_card_id = ${cardId}::uuid and h.type = 'hold' and t.status not in ('paid', 'closed', 'void', 'voided', 'cancelled', 'canceled', 'refunded')
+        and not exists (select 1 from gift_card_transactions a where a.tenant_id = h.tenant_id and a.idempotency_key = 'reload:' || h.id::text) limit 1`.execute(this.db)).rows[0];
+    return r?.ticket_id ? String(r.ticket_id) : null;
   }
   /** Gift Cards mandate §15: void by card id with a REASON — the balance write, the compensating ledger row, the
    *  before/after adjustment record and the void stamps are ONE transaction; a void never erases a prior redemption. */

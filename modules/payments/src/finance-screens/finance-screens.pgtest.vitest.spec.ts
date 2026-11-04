@@ -86,6 +86,15 @@ describe('Deposits & Settlements — KPIs, refunds, search, paging', () => {
     expect(s.sourceStatus.state).toBe('connected');
   });
 
+  it('Settlements guide audit (Nov 4 2026): a failed batch is counted on its own and adds nothing to the money', async () => {
+    const p = month();
+    await settle(id('s70'), T, 'FAILED-1', 90000, 1000, 89000, 0, { status: 'failed' });
+    const s = await st.summary(ctx, st.settlementFilters(p, {}), st.refundFilters(p, {}));
+    expect(s.kpis.grossSettledCents).toBe(150000); expect(s.kpis.netProcessorPayoutCents).toBe(97500 + 48500);
+    expect(s.reconciliation.failed).toBe(1);
+    await q(`delete from payment_settlements where id = $1`, [id('s70')]);
+  });
+
   it('the reconciliation strip shows the netted refund as a component — the provider net is not reduced twice', async () => {
     const p = month();
     const s = await st.summary(ctx, st.settlementFilters(p, {}), st.refundFilters(p, {}));
@@ -315,6 +324,14 @@ describe('AI Deposit Reconciliation — allocations', () => {
     expect(ex.items[0].settlementRef).toBe('LATE-1'); expect(ex.items[0].class).toBe('missing');
     const row = (await ws.listSettlements(ctx, ws.filters(all(), { search: 'LATE-1' }), pageReq({}))).items[0];
     expect(row.status).toBe('exception');
+    // Deposit Recon guide audit (Nov 4 2026): the open case shows on the row, and the payout is STILL missing money —
+    // it used to drop out of the Missing KPI and report the moment a case was opened
+    const missing = await ws.report(ctx, 'missing_overdue', ws.filters(all(), {}), pageReq({ pageSize: 50 }));
+    expect(missing.rows.map((r: any) => r.settlement)).toContain('LATE-1');
+    expect((await ws.kpis(ctx, ws.filters(all(), {}))).missingDeposits).toBeGreaterThanOrEqual(1);
+    // the case's history reads the auditor's table (audit_events) — it read only the legacy audit_logs and showed nothing
+    await q(`insert into audit_events (tenant_id, module, action, resource_type, resource_id, actor_role, summary) values ($1,'reconciliation','exception_raised','reconciliation_exception',$2,'OWNER','raised')`, [T, a.id]);
+    expect((await ws.exceptionDetail(ctx, a.id))!.history).toEqual([expect.objectContaining({ action: 'exception_raised', role: 'OWNER' })]);
     const p = all();
     const sum = await ws.report(ctx, 'settlement_summary', ws.filters(p, {}), pageReq({ pageSize: 50 }));
     const k = await ws.kpis(ctx, ws.filters(p, {}));

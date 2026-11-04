@@ -11,6 +11,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { InvoicesLedgerRepository } from './invoices-ledger.repository';
+import { KyselyInvoicesRepository } from './invoices.kysely.repository';
+import { InvoicesService } from './invoices.service';
 import { renderInvoicePdf } from './invoice-pdf';
 import { FinanceError, resolvePeriod, pageReq, addDaysYmd } from '../finance-screens/finance-scope';
 
@@ -189,3 +191,17 @@ describe('Invoices — payments, KPIs, void', () => {
     expect((await repo.customerLookup(ctx2, 'ann@')).items.map((x) => x.name)).toEqual(['Xena Lee']);
   });
 });
+
+// Invoices guide audit (Nov 4 2026): the legacy POST /pos/invoices took another salon's customerId and the read showed that
+// customer's name. The service refuses it, the database refuses it (793), and the read joins customers on the salon.
+describe('the legacy invoice route stays inside the salon', () => {
+  it("another salon's customer is refused by the service and by the database; this salon's is accepted", async () => {
+    const legacy = new InvoicesService(new KyselyInvoicesRepository(db));
+    await expect(legacy.create(ctx as any, { customerId: xena, lines: [line('Gel set', 1, 4500)] } as any)).rejects.toMatchObject({ apiCode: 'INVOICE_CUSTOMER_NOT_FOUND' });
+    await expect(q(`insert into invoices (tenant_id, branch_id, invoice_number, status, customer_id) values ($1,$2,'INV-X-1','draft',$3)`, [T, B, xena])).rejects.toThrow();
+    const ok = await legacy.create(ctx as any, { customerId: ann, lines: [line('Gel set', 1, 4500)] } as any);
+    expect(ok.customerName).toBe('Ann Lee');
+    expect((await legacy.get(ctx as any, ok.id)).customerName).toBe('Ann Lee');
+  });
+});
+

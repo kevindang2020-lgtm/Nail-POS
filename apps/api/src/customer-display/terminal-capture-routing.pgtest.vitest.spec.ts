@@ -83,4 +83,14 @@ describe('terminal capture → Bolt config through the provider router', () => {
     expect(seen).toHaveLength(0);
     await q(`update pos_payment_terminals set disabled_at = null, disabled_reason = null where id = 'term_ch'`);
   });
+  it("Payment Terminals guide (Nov 4 2026): a disabled terminal is not counted — the live one is the location's only terminal, as Capture Routing shows", async () => {
+    await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn, disabled_at) values ('term_ch_old',$1,$2,'Old Clover','paired','HSN-OLD', now())`, [T, BR2]);
+    const seen: any[] = [];
+    const svc = new TerminalCaptureService(db, terminal(seen), mfaDecrypt, undefined, new InMemoryTerminalLeases(), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, paymentSecrets));
+    const out: any = await svc.capture(await paying(BR2));
+    expect(out.outcome).toBe('approved');
+    expect(seen[0].hsn).toBe('HSN-CH');   // it used to find two "paired" terminals and refuse to choose
+    await q(`delete from pos_payment_terminals where id = 'term_ch_old'`);
+  });
 });
+

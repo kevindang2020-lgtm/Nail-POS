@@ -26,6 +26,8 @@ export class InvoicesService {
     this.auth(ctx);
     const lines = normalizeLines(input?.lines || []);
     if (lines.length === 0) throw withCode(new InvoicesValidationError('At least one line item with a description and quantity is required'), 'INVOICE_LINES_REQUIRED');
+    if (input?.customerId && this.repo.customerInSalon && !(await this.repo.customerInSalon(ctx, String(input.customerId))))
+      throw withCode(new InvoicesValidationError('Choose a customer from this salon.'), 'INVOICE_CUSTOMER_NOT_FOUND');
     const totals = computeInvoiceTotals(lines, input?.taxCents || 0);
     const invoiceNumber = nextInvoiceNumber(await this.repo.existingNumbers(ctx));
     return this.repo.create(ctx, {

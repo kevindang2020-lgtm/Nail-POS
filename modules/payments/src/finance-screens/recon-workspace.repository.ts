@@ -101,6 +101,9 @@ export class ReconWorkspaceRepository {
         where s.tenant_id = ${T}),
       sb as (
         select s0.*, to_char(s0.arrival, 'YYYY-MM-DD') as arrival_ymd, least(s0.allocated_cents, greatest(s0.expected_cents, 0))::bigint as matched_cents,
+               -- Deposit Recon guide audit (Nov 4 2026): a payout past its grace days with nothing matched is MISSING even when a case is
+               -- open on it (the case used to outrank it and hide it from the Missing KPI and report)
+               (s0.expected_cents > 0 and s0.allocated_cents = 0 and s0.status not in ('failed', 'returned', 'pending') and s0.today > s0.arrival + ${GRACE_DAYS}::int) as is_missing,
                case when s0.review_x then 'under_review'
                     when s0.open_x or s0.status in ('failed', 'returned') then 'exception'
                     when s0.expected_cents > 0 and s0.allocated_cents >= s0.expected_cents then 'matched'
@@ -188,10 +191,10 @@ export class ReconWorkspaceRepository {
   async kpis(ctx: FinanceCtx, f: ReconFilters) {
     const T = ctx.tenantId, tz = f.period.tz; const w = this.where(ctx, { ...f, status: undefined, open: false });
     const k = (await sql<any>`${this.base(ctx, tz)} select count(*)::int as n,
-        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0), 0)::bigint as expected,
+        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.status not in ('failed', 'returned')), 0)::bigint as expected,
         coalesce(sum(sb.matched_cents), 0)::bigint as matched,
-        count(*) filter (where sb.recon_status = 'overdue')::int as missing, coalesce(sum(sb.expected_cents) filter (where sb.recon_status = 'overdue'), 0)::bigint as missing_cents,
-        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.arrival < sb.today), 0)::bigint as due_expected,
+        count(*) filter (where sb.is_missing)::int as missing, coalesce(sum(sb.expected_cents) filter (where sb.is_missing), 0)::bigint as missing_cents,
+        coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.status not in ('failed', 'returned') and sb.arrival < sb.today), 0)::bigint as due_expected,
         coalesce(sum(sb.matched_cents) filter (where sb.expected_cents > 0 and sb.arrival < sb.today), 0)::bigint as due_matched,
         count(*) filter (where sb.expected_cents > 0 and sb.arrival >= sb.today)::int as not_due_n,
         coalesce(sum(sb.expected_cents) filter (where sb.expected_cents > 0 and sb.arrival >= sb.today), 0)::bigint as not_due_cents,
@@ -594,7 +597,12 @@ export class ReconWorkspaceRepository {
     const e = (await sql<any>`select e.id, e.kind, e.severity, e.title, e.detail, e.amount_cents, e.status, e.source_ref, e.resolution_note, e.resolved_at, e.created_at, coalesce(u.full_name, u.email) as reviewer from reconciliation_exceptions e left join users u on u.id = e.assigned_to_user_id and u.tenant_id = e.tenant_id
       where e.tenant_id = ${ctx.tenantId} and e.id = ${id}::uuid`.execute(this.db)).rows[0];
     if (!e) return null;
-    const audits = (await sql<any>`select action_type as action, created_at, role as actor_role from audit_logs where tenant_id = ${ctx.tenantId} and entity_id = ${id} order by created_at desc limit 20`.execute(this.db)).rows;
+    // Deposit Recon guide audit (Nov 4 2026): this workspace's writes go to audit_events (the auditor) — the history read only
+    // the legacy audit_logs and so showed nothing. Both are read: the auditor's rows, and older rows written to audit_logs.
+    const audits = (await sql<any>`select action, created_at, actor_role from (
+        select action, created_at, actor_role from audit_events where tenant_id = ${ctx.tenantId} and resource_id = ${id}
+        union all select action_type, created_at, role from audit_logs where tenant_id = ${ctx.tenantId} and entity_id = ${id}) h
+      order by created_at desc limit 20`.execute(this.db)).rows;
     return {
       exception: { id: String(e.id), kind: String(e.kind), class: classOfKind(String(e.kind)), severity: String(e.severity), title: String(e.title), detail: e.detail ?? null, amountCents: N(e.amount_cents),
         status: String(e.status), sourceRef: e.source_ref ?? null, reviewer: e.reviewer ?? null, resolutionNote: e.resolution_note ?? null, resolvedAt: iso(e.resolved_at), createdAt: iso(e.created_at) },
@@ -685,7 +693,7 @@ export class ReconWorkspaceRepository {
           rows, totals: sumOf(rows, ['amountCents', 'remainingCents']), definition: 'Bank deposits (by bank posted date) with an unallocated amount.', dateBasis: 'bank_posted' };
       }
       case 'missing_overdue': {
-        const rows = (await sql<any>`${this.base(ctx, tz)} select sb.* from sb where ${w.where} and sb.recon_status = 'overdue' order by sb.arrival asc, sb.id desc limit ${LIMIT}`.execute(this.db)).rows
+        const rows = (await sql<any>`${this.base(ctx, tz)} select sb.* from sb where ${w.where} and sb.is_missing order by sb.arrival asc, sb.id desc limit ${LIMIT}`.execute(this.db)).rows
           .map((r: any) => this.row(r)).map((s) => ({ settlement: s.settlementRef ?? s.id, processor: s.processor ?? '', settled: s.settledAt?.slice(0, 10) ?? '', expectedArrival: `${s.expectedArrival ?? ''}${s.arrivalSourced ? '' : ' (est.)'}`, expectedCents: s.expectedNetCents }));
         return { columns: [col('settlement', 'Settlement'), col('processor', 'Processor'), col('settled', 'Settled'), col('expectedArrival', 'Expected arrival'), money('expectedCents', 'Expected payout')],
           rows, totals: sumOf(rows, ['expectedCents']), definition: `Payouts with nothing matched ${GRACE_DAYS} days after the expected arrival (provider date, else settlement date + ${FUNDING_DAYS} days).`, dateBasis: f.basis };

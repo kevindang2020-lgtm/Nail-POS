@@ -138,7 +138,10 @@ function PerformanceDetails({ id, pq, periodLabel, onClose, onComposite }: { id:
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
   useEffect(() => setPg(1), [tab, sqq]);
   const d = useLoad(() => posTeamPerformanceScreenApi.technician(id, pq), [id, JSON.stringify(pq)]);
-  const list = useLoad(() => (tab === 'services' ? posTeamPerformanceScreenApi.services(id, { ...pq, q: sqq || undefined, page: pg, pageSize: 8 }) : posTeamPerformanceScreenApi.reviews(id, { ...pq, page: pg, pageSize: 6 })), [id, tab, pg, sqq, JSON.stringify(pq)]);
+  // each answer carries the tab it was read for: right after a tab switch the previous tab's rows are never drawn in the new
+  // tab's layout (a services row shown as a review read "No comment")
+  const list0 = useLoad(() => (tab === 'services' ? posTeamPerformanceScreenApi.services(id, { ...pq, q: sqq || undefined, page: pg, pageSize: 8 }) : posTeamPerformanceScreenApi.reviews(id, { ...pq, page: pg, pageSize: 6 })).then((d: any) => (d ? { ...d, forTab: tab } : d)), [id, tab, pg, sqq, JSON.stringify(pq)]);
+  const list = { ...list0, data: list0.data && (list0.data as any).forTab === tab ? list0.data : null };
   const x: any = d.data;
   return (
     <FitDialog wide title={x?.name ?? tx('tp.details')} subtitle={x ? <>{[x.role, x.branch].filter(Boolean).join(' · ')} · {periodLabel}</> : undefined} onClose={onClose} testId="dlg-performance"

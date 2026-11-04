@@ -8,6 +8,8 @@ export interface InvoicesRepositoryPort {
   list(ctx: InvoicesContext): Promise<Invoice[]>;
   get(ctx: InvoicesContext, id: string): Promise<Invoice | null>;
   existingNumbers(ctx: InvoicesContext): Promise<string[]>;
+  /** Optional (database adapter): the customer belongs to this salon */
+  customerInSalon?(ctx: InvoicesContext, customerId: string): Promise<boolean>;
   create(ctx: InvoicesContext, data: InvoiceCreateData): Promise<Invoice>;
   setStatus(ctx: InvoicesContext, id: string, status: string): Promise<Invoice | null>;
   // Customer-facing (self-service): resolve the signed-in customer + their own invoices.

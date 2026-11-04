@@ -240,12 +240,14 @@ export class SettlementsScreenRepository {
   async summary(ctx: FinanceCtx, sf: SettlementFilters, rf: RefundFilters) {
     const T = ctx.tenantId;
     const w = this.settlementWhere(ctx, sf);
+    // Settlements guide audit (Nov 4 2026): a FAILED or RETURNED batch paid nothing — it no longer adds to gross / fees / net /
+    // expected (it is counted on its own, failed_n)
     const s = (await sql<any>`${this.base(ctx)} select count(*)::int as n, count(distinct coalesce(sb.ref, sb.id::text))::int as batches,
-        coalesce(sum(sb.gross_cents), 0)::bigint as gross, coalesce(sum(sb.fee_cents), 0)::bigint as fees, coalesce(sum(sb.net_cents), 0)::bigint as net,
-        coalesce(sum(sb.expected_cents), 0)::bigint as expected, coalesce(sum(sb.refunds_cents), 0)::bigint as refunds_in, coalesce(sum(sb.chargebacks_cents), 0)::bigint as chargebacks_in,
-        coalesce(sum(sb.adjustments_cents), 0)::bigint as adjustments, coalesce(sum(least(sb.allocated_cents, sb.expected_cents)), 0)::bigint as confirmed,
-        coalesce(sum(sb.expected_cents) filter (where sb.allocated_cents > 0), 0)::bigint as expected_matched_set,
-        count(*) filter (where sb.allocated_cents <= 0)::int as unverified_n, count(*) filter (where sb.allocated_cents > 0 and sb.allocated_cents < sb.expected_cents)::int as partial_n,
+        coalesce(sum(sb.gross_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as gross, coalesce(sum(sb.fee_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as fees, coalesce(sum(sb.net_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as net,
+        coalesce(sum(sb.expected_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as expected, coalesce(sum(sb.refunds_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as refunds_in, coalesce(sum(sb.chargebacks_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as chargebacks_in,
+        coalesce(sum(sb.adjustments_cents) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as adjustments, coalesce(sum(least(sb.allocated_cents, sb.expected_cents)) filter (where sb.status not in ('failed', 'returned')), 0)::bigint as confirmed,
+        coalesce(sum(sb.expected_cents) filter (where sb.allocated_cents > 0 and sb.status not in ('failed', 'returned')), 0)::bigint as expected_matched_set,
+        count(*) filter (where sb.allocated_cents <= 0 and sb.status not in ('failed', 'returned'))::int as unverified_n, count(*) filter (where sb.status in ('failed', 'returned'))::int as failed_n, count(*) filter (where sb.allocated_cents > 0 and sb.allocated_cents < sb.expected_cents)::int as partial_n,
         count(*) filter (where sb.allocated_cents > 0 and sb.allocated_cents >= sb.expected_cents)::int as matched_n,
         count(distinct sb.currency)::int as currencies, min(sb.currency) as currency
       from sb where ${w.where}`.execute(this.db)).rows[0] || {};
@@ -291,7 +293,7 @@ export class SettlementsScreenRepository {
         // the same allocation set: bank-confirmed vs the expected payouts of the batches that HAVE a bank match (an unmatched
         // batch is "not verified", counted in `unverified`, never a negative difference)
         differenceCents: bankConfigured ? confirmed - N(s.expected_matched_set) : null,
-        unverified: N(s.unverified_n), partial: N(s.partial_n), matched: N(s.matched_n),
+        unverified: N(s.unverified_n), partial: N(s.partial_n), matched: N(s.matched_n), failed: N(s.failed_n),
         bankFeedConnected: N(banks.feeds) > 0, bankAccounts: N(banks.active), bankDeposits: N(banks.deposits),
       },
     };

@@ -1412,6 +1412,10 @@ export class CheckoutService {
     if (!this.repo.voidGiftCardById) throw withCode(new ValidationError('Voiding a gift card needs the database.'), 'SERVICE_UNAVAILABLE');
     const reason = typeof reasonIn === 'string' ? reasonIn.trim().slice(0, 500) : '';
     if (reason.length < 3) throw withCode(new ValidationError('Give a reason for voiding this card.'), 'GIFT_CARD_VOID_REASON_REQUIRED');
+    // Gift Cards guide (Nov 4 2026): a card with an unpaid reload is not voided — paying that ticket afterwards charged the
+    // customer for a reload the void had made impossible to credit
+    const pendingReload = this.repo.pendingGiftCardReloadTicket ? await this.repo.pendingGiftCardReloadTicket(ctx, cardId) : null;
+    if (pendingReload) throw withCode(new ValidationError('This card has a reload waiting for payment. Void or finish that ticket first.', 'GIFT_CARD_RELOAD_PENDING', { ticketId: pendingReload }), 'GIFT_CARD_RELOAD_PENDING');
     let res;
     try { res = await this.repo.voidGiftCardById(ctx, cardId, reason); }
     catch (e) { if (e instanceof InvalidStateTransitionError) throw withCode(new ValidationError('This gift card is already closed.'), 'GIFT_CARD_NOT_VOIDABLE'); throw e; }
@@ -1445,8 +1449,48 @@ export class CheckoutService {
    * ticket, refunding the whole $40 cash tender counted as a FULL refund and reversed ALL technician commission for
    * the ticket (Functional Decision 10: refunds reverse the CORRESPONDING commission).
    */
+  /**
+   * Gift Cards guide (Nov 4 2026) — a refund of a ticket that SOLD or RELOADED a gift card takes that value back off the
+   * card (refunding the purchase while the card stayed funded gave the money away twice). The card's value is the LAST
+   * part of the ticket a refund reaches: what was paid for everything else is refunded first. A line refund never touches
+   * it. Returns how much has to come off the cards for a ticket whose refunds total `refundedAfterCents`.
+   */
+  private async giftValueToReverse(ctx: CheckoutContext, ticketId: string, refundedAfterCents: number) {
+    if (!this.repo.giftCardValueOnTicket) return { need: 0, cards: [] as Awaited<ReturnType<NonNullable<CheckoutRepositoryPort['giftCardValueOnTicket']>>> };
+    const cards = await this.repo.giftCardValueOnTicket(ctx, ticketId);
+    if (!cards.length) return { need: 0, cards };
+    const pos = await this.ticketRefundPosition(ctx, ticketId);
+    const credited = cards.reduce((n, c) => n + c.creditedCents, 0), reversed = cards.reduce((n, c) => n + c.reversedCents, 0);
+    const otherCaptured = Math.max(0, pos.capturedCents - credited);
+    return { need: Math.max(0, Math.min(credited, refundedAfterCents - otherCaptured) - reversed), cards };
+  }
+  /** refused BEFORE any money moves: the value a refund would take off a card is no longer there (spent, or moved to a replacement card) */
+  private async assertGiftValueRefundable(ctx: CheckoutContext, ticketId: string, amountCents: number) {
+    const pos = await this.ticketRefundPosition(ctx, ticketId);
+    let { need, cards } = await this.giftValueToReverse(ctx, ticketId, pos.refundedCents + amountCents);
+    for (const c of cards) {
+      if (need <= 0) break;
+      const take = Math.min(need, c.creditedCents - c.reversedCents); if (take <= 0) continue;
+      need -= take;
+      if (c.status === 'replaced') throw withCode(new ValidationError('The gift card sold on this ticket was replaced; its value is on the new card. Refund it from that card.', 'GIFT_CARD_VALUE_MOVED', { last4: c.last4 }), 'GIFT_CARD_VALUE_MOVED');
+      if (['void', 'refunded', 'canceled'].includes(c.status)) continue;   // the card was ended: its value is already gone
+      if (c.balanceCents < take) throw withCode(new ValidationError('The gift card value on this ticket has already been spent, so it cannot be refunded in full.', 'GIFT_CARD_VALUE_SPENT',
+        { last4: c.last4, balanceCents: c.balanceCents, neededCents: take }), 'GIFT_CARD_VALUE_SPENT');
+    }
+  }
+
   private async afterRefund(ctx: CheckoutContext, ticketId: string, refundedNowCents: number, body: Pick<RefundRequest, 'reason' | 'serviceLineIds' | 'tipRefunded'>, refundPaymentId?: string | null) {
     const pos = await this.ticketRefundPosition(ctx, ticketId);
+    if (!body.serviceLineIds?.length && refundPaymentId && this.repo.reverseGiftCardValueForRefund) {
+      try {
+        const { need } = await this.giftValueToReverse(ctx, ticketId, pos.refundedCents);
+        if (need > 0) {
+          const r = await this.repo.reverseGiftCardValueForRefund(ctx, ticketId, Math.min(need, refundedNowCents), refundPaymentId, body.reason || 'Refund');
+          this.log(ctx, 'pos_gift_card_value_reversed', 'pos_refund', ticketId, undefined, undefined, { refundPaymentId, reversedCents: r.reversedCents, shortCents: r.shortCents });
+          if (r.shortCents > 0) this.moneyLog.error(`refund ${refundPaymentId} on ticket ${ticketId}: ${r.shortCents} cents of gift card value were spent between the check and the reversal — review the card`);
+        }
+      } catch (e) { this.postPaymentFailed('gift_card_refund_reversal', ctx, ticketId, e); }
+    }
     const wholeTicketRefunded = pos.capturedCents > 0 && pos.refundedCents >= pos.capturedCents;
     await this.reverseCompForRefund(ctx, ticketId, wholeTicketRefunded ? pos.capturedCents : refundedNowCents, pos.capturedCents, body.reason, { serviceLineIds: body.serviceLineIds, tipRefunded: body.tipRefunded, refundPaymentId });
     await this.repo.reverseLoyaltyPoints(ctx, ticketId, refundedNowCents, body.reason || 'Refund');
@@ -1524,7 +1568,7 @@ export class CheckoutService {
     let refunded = 0;
     for (const a of order) {
       try {
-        const r: any = await this.refund(ctx, a.paymentId, { reason: body.reason, managerPin: body.managerPin, amountCents: a.amountToRefundCents }, { deferSideEffects: true });
+        const r: any = await this.refund(ctx, a.paymentId, { reason: body.reason, managerPin: body.managerPin, amountCents: a.amountToRefundCents }, { deferSideEffects: true, linesRefund: !!body.serviceLineIds?.length });
         if (r?.status === 'refunded') { refunded += a.amountToRefundCents; results.push({ ...card(a), paymentId: a.paymentId, method: a.method, amountCents: a.amountToRefundCents, status: 'refunded', refundId: r.refundId }); continue; }
         results.push({ ...card(a), paymentId: a.paymentId, method: a.method, amountCents: a.amountToRefundCents, status: r?.configured === false ? 'not_configured' : String(r?.status ?? 'not_refunded'), error: r?.disabledReason ?? (r?.status === 'approval_pending' ? r.message : undefined), ...(r?.approvalId ? { approvalId: String(r.approvalId) } : {}) });
       } catch (e: any) {
@@ -1594,7 +1638,7 @@ export class CheckoutService {
   }
 
   // ---- refund / void (honest: processor not configured) ----
-  async refund(ctx: CheckoutContext, paymentId: string, body: RefundRequest, opts?: { deferSideEffects?: boolean; approvalId?: string }): Promise<NotConfigured | { refundId: string; status: string } | ApprovalPendingResult> {
+  async refund(ctx: CheckoutContext, paymentId: string, body: RefundRequest, opts?: { deferSideEffects?: boolean; approvalId?: string; linesRefund?: boolean }): Promise<NotConfigured | { refundId: string; status: string } | ApprovalPendingResult> {
     this.need(ctx, 'pos.checkout.refund'); if (!body?.reason?.trim()) throw new ValidationError('Refund requires a reason', 'REFUND_REASON_REQUIRED');
     const p = await this.repo.findPayment(ctx, paymentId); if (!p) throw withCode(new ValidationError('Payment not found'), 'PAYMENT_NOT_FOUND');
     // Oct 28 2026 (Secure Tap §41 / §43, Kevin's decision): a Tap to Pay card payment was captured on the CommerceHub rail —
@@ -1607,6 +1651,7 @@ export class CheckoutService {
     // which also prevents refunding the same payment twice.
     if (!Number.isInteger(amount) || amount <= 0) throw new ValidationError('Refund amount must be a positive whole number of cents', 'REFUND_AMOUNT_INVALID');
     if (p.status !== 'approved' && p.status !== 'partial') throw withCode(new ValidationError('Only an approved or partial payment can be refunded (payment is ' + p.status + ')'), 'PAYMENT_NOT_REFUNDABLE');
+    if (!body.serviceLineIds?.length && !opts?.linesRefund) await this.assertGiftValueRefundable(ctx, p.ticketId, amount);
     // Line-attribution detail (partial refunds): every named line must belong to this payment's ticket — a typo'd id
     // must fail the REQUEST, not silently reverse nothing while the money still moves.
     if (body.serviceLineIds?.length) {

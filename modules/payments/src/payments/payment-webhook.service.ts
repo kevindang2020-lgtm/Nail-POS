@@ -48,6 +48,33 @@ export function centsFrom(o: any, centsKeys: string[], dollarKeys: string[]): nu
   return null;
 }
 function isRefundEvent(e: string): boolean { return e.toLowerCase().includes('refund'); }
+/** Settlements guide (Nov 4 2026): a refund event's OWN outcome — "refund.failed" / "refund_pending" used to be stored as
+ *  refunded because the type merely contained "refund". The body's status wins over the event name. */
+export function mapRefundStatus(eventType: string, body: any): 'refunded' | 'failed' | 'pending' | 'cancelled' {
+  const x = (String(body?.status ?? body?.refundStatus ?? '') + ' ' + eventType).toLowerCase();
+  if (/fail|declin|reject|error/.test(x)) return 'failed';
+  if (/cancel|void/.test(x)) return 'cancelled';
+  if (/pend|process|initiat|creat|submit|queue/.test(x) && !/complet|succe|settl|approv|refunded/.test(x)) return 'pending';
+  return 'refunded';
+}
+/** a settlement batch's outcome from the processor (failed / returned / pending batches are not money in the bank) */
+export function mapSettlementStatus(eventType: string, body: any): 'settled' | 'failed' | 'returned' | 'pending' {
+  const x = (String(body?.status ?? body?.batchStatus ?? '') + ' ' + eventType).toLowerCase();
+  if (/fail|reject|declin|error/.test(x)) return 'failed';
+  if (/return|revers/.test(x)) return 'returned';
+  if (/pend|open|process|submit/.test(x) && !/settled|complet|funded|paid/.test(x)) return 'pending';
+  return 'settled';
+}
+/** the processor's own settlement time (ISO / date / epoch seconds or ms), never the time the callback happened to arrive */
+export function providerTime(body: any, keys: string[]): string | null {
+  for (const k of keys) {
+    const v = body?.[k]; if (v == null || v === '') continue;
+    const n = typeof v === 'number' || /^\d{10,13}$/.test(String(v)) ? Number(v) : NaN;
+    const d = Number.isFinite(n) ? new Date(n < 1e12 ? n * 1000 : n) : /^\d{8}$/.test(String(v)) ? new Date(String(v).replace(/^(\d{4})(\d{2})(\d{2})$/, '$1-$2-$3T12:00:00Z')) : new Date(String(v));
+    if (!Number.isNaN(d.getTime()) && d.getUTCFullYear() > 2000 && d.getTime() < Date.now() + 2 * 86_400_000) return d.toISOString();
+  }
+  return null;
+}
 function isSettlementEvent(e: string): boolean { const x = e.toLowerCase(); return x.includes('settl') || x.includes('batch'); }
 // Chargeback / dispute events land in the `chargebacks` table. Pure + exported so the classification can be unit-tested.
 export function isChargebackEvent(e: string): boolean { const x = e.toLowerCase(); return x.includes('chargeback') || x.includes('dispute'); }
@@ -322,14 +349,19 @@ export class PaymentWebhookService {
     if (isRefundEvent(eventType) && matchedPaymentId) {
       const refundId = pick(body, ['refundId', 'refundReference', 'processorRefundId']) || txnId;
       const amountCents = centsFrom(body, ['amountCents', 'refundCents'], ['amount']) ?? 0;
-      const dup = await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst();
+      const refundStatus = mapRefundStatus(eventType, body);
+      const dup = await this.db.selectFrom('payment_refunds').select(['id', 'status']).where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst();
+      // the same refund reported again with its final outcome (pending → refunded / failed): the row moves on; a final row never moves back
+      if (dup && ['pending', 'processing'].includes(String((dup as any).status)) && refundStatus !== 'pending')
+        await this.db.updateTable('payment_refunds').set({ status: refundStatus } as any).where('tenant_id', '=', tenant.tenantId).where('id', '=', (dup as any).id).where('status', 'in', ['pending', 'processing']).execute();
       // the POS already recorded this refund (it stores its own reference, not the gateway's refund id): the same payment,
       // the same amount, not failed, recorded by the POS (no webhook event) — the callback confirms it, it is not a second refund
-      const posDup = dup ? undefined : await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('payment_id', '=', matchedPaymentId)
+      // only a SUCCESSFUL refund confirms the POS's row; a failed / pending report is kept as its own row (never read as "confirmed")
+      const posDup = dup || refundStatus !== 'refunded' ? undefined : await this.db.selectFrom('payment_refunds').select('id').where('tenant_id', '=', tenant.tenantId).where('payment_id', '=', matchedPaymentId)
         .where('amount_cents', '=', amountCents).where('event_id', 'is', null).where('status', 'not in', ['failed', 'cancelled', 'canceled', 'declined']).executeTakeFirst();
       if (!dup && !posDup) {
         // uq_payment_refunds_processor_refund (565): a concurrent duplicate of the same refund loses here — not an error
-        recordedRefund = await this.db.insertInto('payment_refunds').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_id: matchedPaymentId, payment_gateway_id: tenant.tenantId, processor_type: processorType, amount_cents: amountCents, reason: pick(body, ['reason', 'refundReason']), status: 'refunded', processor_refund_id: refundId, event_id: eventId })
+        recordedRefund = await this.db.insertInto('payment_refunds').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_id: matchedPaymentId, payment_gateway_id: tenant.tenantId, processor_type: processorType, amount_cents: amountCents, reason: pick(body, ['reason', 'refundReason']), status: refundStatus, processor_refund_id: refundId, event_id: eventId })
           .execute().then(() => true, (e: any) => { if (e?.code === '23505') return false; throw e; });
       }
     }
@@ -341,8 +373,10 @@ export class PaymentWebhookService {
         const gross = centsFrom(body, ['grossCents', 'amountCents'], ['gross', 'amount']) ?? 0;
         const fee = centsFrom(body, ['feeCents'], ['fee']) ?? 0;
         const net = centsFrom(body, ['netCents'], ['net']) ?? (gross - fee);
+        const settleStatus = mapSettlementStatus(eventType, body);
         // uq_payment_settlements_settlement (565): a concurrent duplicate batch loses here and links to the winner's row
-        const ins = await this.db.insertInto('payment_settlements').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_gateway_id: tenant.tenantId, processor_type: processorType, settlement_id: settlementId, gross_cents: gross, fee_cents: fee, net_cents: net, currency: 'USD', status: 'settled', event_id: eventId, payload_json_safe: JSON.stringify(payload), settled_at: sql`now()` })
+        const ins = await this.db.insertInto('payment_settlements').values({ tenant_id: tenant.tenantId, branch_id: branchId, payment_gateway_id: tenant.tenantId, processor_type: processorType, settlement_id: settlementId, gross_cents: gross, fee_cents: fee, net_cents: net, currency: 'USD', status: settleStatus, event_id: eventId, payload_json_safe: JSON.stringify(payload),
+          settled_at: settleStatus === 'settled' ? (providerTime(body, ['settledAt', 'settled_at', 'settlementDate', 'settlement_date', 'batchDate', 'batch_date', 'fundedAt', 'date']) ?? sql`now()`) : null })
           .returning(['id']).executeTakeFirst().catch((e: any) => { if (e?.code === '23505') return null; throw e; });
         if (ins) { settlementRowId = ins.id ?? null; recordedSettlement = true; }
         else settlementRowId = ((await this.db.selectFrom('payment_settlements').select('id').where('tenant_id', '=', tenant.tenantId).where('settlement_id', '=', settlementId).executeTakeFirst()))?.id ?? null;

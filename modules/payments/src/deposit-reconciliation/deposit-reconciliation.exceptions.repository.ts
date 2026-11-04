@@ -22,6 +22,8 @@ export interface ExceptionsRepositoryPort {
   create(ctx: ReconContext, input: CreateExceptionInput): Promise<ReconException>;
   find(ctx: ReconContext, id: string): Promise<ReconException | null>;
   update(ctx: ReconContext, id: string, patch: UpdateExceptionPatch): Promise<ReconException | null>;
+  /** Optional (database): an active user of THIS salon — a case is never assigned to another salon's user */
+  userInSalon?(ctx: ReconContext, userId: string): Promise<boolean>;
 }
 
 const iso = (v: any): string => (v == null ? '' : (typeof v === 'string' ? v : new Date(v).toISOString()));
@@ -74,6 +76,9 @@ export class KyselyExceptionsRepository implements ExceptionsRepositoryPort {
       RETURNING *
     `.execute(this.db);
     return toDomain(res.rows[0]);
+  }
+  async userInSalon(ctx: ReconContext, userId: string): Promise<boolean> {
+    return ((await sql`SELECT 1 FROM users WHERE tenant_id = ${ctx.tenantId} AND id = ${userId}::uuid LIMIT 1`.execute(this.db)).rows as any[]).length > 0;
   }
   async find(ctx: ReconContext, id: string): Promise<ReconException | null> {
     const res: any = await sql`SELECT * FROM reconciliation_exceptions WHERE tenant_id = ${ctx.tenantId} AND id = ${id} LIMIT 1`.execute(this.db).catch(() => ({ rows: [] }));

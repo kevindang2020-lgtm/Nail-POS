@@ -177,14 +177,21 @@ export class TerminalCaptureService implements TerminalCapturePort {
     const totals = { totalDueCents: due, tipCents: ticketTotals.tipCents };
 
     // ---- resolve the physical terminal: station-paired first, else the branch's single paired terminal ----
-    const terms: any[] = await this.db.selectFrom('pos_payment_terminals').selectAll()
+    // Payment Terminals guide (Nov 4 2026): a DISABLED terminal is not a candidate — the same rule the Capture Routing screen
+    // shows (terminals-screen routing). It used to count here: with one live and one disabled terminal the location had
+    // no "only terminal", and a register's disabled terminal was chosen and then failed.
+    const allTerms: any[] = await this.db.selectFrom('pos_payment_terminals').selectAll()
       .where('tenant_id', '=', row.tenantId as any).where('status', '=', 'paired')
       .where((eb: any) => eb.or([eb('branch_id', '=', row.branchId as any), eb('branch_id', 'is', null)]))
       .execute().catch(() => []);
     const sessRow: any = await this.db.selectFrom('customer_display_sessions').select(['pos_station_id'])
       .where('id', '=', row.id as any).executeTakeFirst().catch(() => undefined);
     const stationId = sessRow?.pos_station_id ? String(sessRow.pos_station_id) : null;
+    const terms = allTerms.filter((t) => !t.disabled_at);
     const term = (stationId && terms.find((t) => t.station_id === stationId)) || (terms.length === 1 ? terms[0] : null);
+    // nothing live to charge, and the terminal this charge would have used is disabled: say so (not 'no terminal')
+    const ownDisabled = term ? null : stationId ? allTerms.find((t) => t.station_id === stationId && t.disabled_at) : terms.length === 0 && allTerms.length === 1 ? allTerms[0] : null;
+    if (ownDisabled) return this.fail(row, idem, totals.totalDueCents, `terminal "${ownDisabled.label}" is disabled (TERMINAL_DISABLED)`);
     if (!term) return this.fail(row, idem, totals.totalDueCents, terms.length === 0 ? 'no paired terminal for this branch' : stationId ? 'no terminal is tied to this register (Devices → the terminal\'s register)' : 'several terminals are paired and this display serves no register');
     if (!term.hsn) return this.fail(row, idem, totals.totalDueCents, `terminal "${term.label}" has no HSN configured`);
 

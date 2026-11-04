@@ -59,6 +59,8 @@ export interface UnknownRefund {
 }
 export interface RefundRequestDetail { serviceLineIds?: string[]; tipRefunded?: boolean }
 
+/** one card's share of the stored value a ticket created (see giftCardValueOnTicket) */
+export interface GiftCardTicketValue { giftCardId: string; last4: string | null; status: string; balanceCents: Money; creditedCents: Money; reversedCents: Money; kind: 'sale' | 'reload' }
 export interface CheckoutRepositoryPort {
   /** Constitution 8: true when the repository writes domain events in its transactions — the service then leaves realtime to the projection consumer. */
   emitsDomainEvents?(): boolean;
@@ -95,6 +97,14 @@ export interface CheckoutRepositoryPort {
    *  the reasoned void by card id. Optional: the in-memory adapter answers "needs the database". */
   issueGiftCardOnNewTicket?(ctx: CheckoutContext, req: { idempotencyKey: string; customerId: string; amountCents: Money; code: string; reference: string; cardNumber: string; physical: boolean; pin?: string; recipient?: { name?: string; phone?: string; email?: string; message?: string } }): Promise<{ ok: true; existing: boolean; ticketId: string; ticketNumber: string; cardId: string; reference: string; last4: string | null } | { ok: false; reason: 'customer_not_found' | 'not_in_stock' | 'no_location' }>;
   reloadGiftCardOnNewTicket?(ctx: CheckoutContext, req: { cardId: string; customerId: string | null; amountCents: Money; idempotencyKey: string }): Promise<{ ok: true; existing: boolean; ticketId: string; ticketNumber: string; reference: string } | { ok: false; reason: 'not_found' | 'not_reloadable' | 'customer_required' | 'customer_not_found' | 'no_location' }>;
+  /** Gift Cards guide (Nov 4 2026): the stored value a ticket put on gift cards (cards SOLD on it, RELOADS credited by it),
+   *  less what earlier refunds already took back — per card, with the card's balance and status. Optional (database only). */
+  giftCardValueOnTicket?(ctx: CheckoutContext, ticketId: string): Promise<GiftCardTicketValue[]>;
+  /** takes `amountCents` of that value back off the cards (oldest credit first), never below a zero balance; one transaction,
+   *  idempotent per refund payment. Returns what was taken and what could not be (already spent). */
+  reverseGiftCardValueForRefund?(ctx: CheckoutContext, ticketId: string, amountCents: Money, refundPaymentId: string, reason: string): Promise<{ reversedCents: Money; shortCents: Money }>;
+  /** a reload hold on this card whose ticket is not paid yet (a void would leave that payment with nothing to credit) */
+  pendingGiftCardReloadTicket?(ctx: CheckoutContext, cardId: string): Promise<string | null>;
   voidGiftCardById?(ctx: CheckoutContext, cardId: string, reason: string): Promise<{ ok: true; priorBalanceCents: Money } | { ok: false; reason: 'not_found' }>;
   getGiftCard(ctx: CheckoutContext, code: string): Promise<GiftCardDetail | null>;
   /** Resolve a receptionist-entered value to a redeemable code: a 16-digit number maps to its card's code; anything

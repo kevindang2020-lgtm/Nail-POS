@@ -6,7 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 const { mocks } = vi.hoisted(() => ({ mocks: {} as Record<string, any> }));
 vi.mock('../api/posInventoryScreenApi', async () => { const h = await import('./_invmocks.test-helpers');
   mocks.sup = h.anyApi({ kpis: async () => ({ totalSuppliers: 1, inactiveSuppliers: 1, preferredSuppliers: 0, activePurchaseOrders: 0, draftPurchaseOrders: 1, totalPurchaseOrders: 1, openPoValueCents: 0, draftValueCents: 0, brands: 6, brandsWithoutSupplier: 6 }),
-    directory: async () => ({ ...h.emptyPage(), items: [{ id: 'v1', name: 'Acme Beauty Supply', tradeName: null, supplierCode: null, active: true, isPreferred: false, primaryContact: { name: 'Jane Doe', phone: '(856) 555-1212', email: null }, contacts: 1, products: 0, openPurchaseOrders: 0, openValueCents: 0, lastOrderAt: null, matchedVia: null }], totalItems: 1 }) });
+    directory: async () => ({ ...h.emptyPage(), rows: [{ id: 'v1', name: 'Acme Beauty Supply', tradeName: null, supplierCode: null, active: true, isPreferred: false, primaryContact: { name: 'Jane Doe', phone: '(856) 555-1212', email: null }, contacts: 1, products: 0, openPurchaseOrders: 0, openValueCents: 0, lastOrderAt: null, matchedVia: null }], totalItems: 1 }) });
   return { posInventoryScreenApi: h.anyApi(), posSuppliersApi: mocks.sup }; });
 vi.mock('../api/inventoryApi', async () => ({ inventoryApi: (await import('./_invmocks.test-helpers')).anyApi() }));
 import { TenantSuppliersScreen } from './TenantSuppliersScreen';
