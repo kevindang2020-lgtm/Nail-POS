@@ -32,6 +32,9 @@ export interface MembershipBillingRepositoryPort {
   failedRenewalAttempts?(tenantId: string, membershipId: string, periodStart: Date | null): Promise<number>;
   /** a renewal payment already recorded under this key (a charge that went through but was never applied) */
   paymentByKey?(tenantId: string, membershipId: string, idempotencyKey: string): Promise<{ id: string; status: string } | null>;
+  /** issue the new cycle's credits (one 'issued' ledger row per crediting benefit of the plan version), at most once per
+   *  cycle (keyed on cycleKey); returns how many rows were written */
+  issueCycleCredits?(tenantId: string, membershipId: string, planVersionId: string, cycleKey: string): Promise<number>;
 }
 
 let SEQ = 1;
@@ -43,6 +46,10 @@ export class InMemoryMembershipBillingRepository implements MembershipBillingRep
   readonly activities: ActivityArgs[] = [];
   readonly audits: AuditArgs[] = [];
   private byKey = new Map<string, string>();
+  readonly cycleCredits = new Set<string>();
+  async issueCycleCredits(_t: string, membershipId: string, _v: string, cycleKey: string): Promise<number> {
+    const k = membershipId + '|' + cycleKey; if (this.cycleCredits.has(k)) return 0; this.cycleCredits.add(k); return 1;
+  }
 
   /** test/dev helper — seed a billable membership */
   seed(m: BillingMembership) { this.memberships.set(m.membershipId, { ...m }); }

@@ -18,6 +18,13 @@ let svc: MembershipBillingService;
 beforeEach(() => { repo = new InMemoryMembershipBillingRepository(); svc = new MembershipBillingService(repo); });
 
 describe('successful renewal', () => {
+  it('issues the new cycle\'s credits once (D6: renewals never issued any); a failed charge issues none', async () => {
+    repo.seed(base);
+    await svc.applyRenewalResult('m1', { status: 'failed' }, { attempt: 1 });
+    expect(repo.cycleCredits.size).toBe(0);
+    await svc.applyRenewalResult('m1', { status: 'succeeded', amountCents: 8000 }, { attempt: 2 });
+    expect([...repo.cycleCredits]).toEqual(['m1|2026-07-01T00:00:00.000Z']);
+  });
   it('records a settled payment, books to house on_redemption, and advances the period', async () => {
     repo.seed(base);
     const r = await svc.applyRenewalResult('m1', { status: 'succeeded', amountCents: 8000, processor: 'recorded' }, { attempt: 1 });

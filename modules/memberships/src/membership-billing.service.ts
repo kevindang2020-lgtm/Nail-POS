@@ -83,6 +83,8 @@ export class MembershipBillingService {
       const newEnd = periodEnd as Date;
       const nextBilling = m.billingInterval === 'none' || m.billingInterval === 'custom' ? null : newEnd;
       await this.repo.advancePeriod(membershipId, { status: 'active', currentPeriodStart: newStart, currentPeriodEnd: newEnd, nextBillingAt: nextBilling, cyclesBilled: m.cyclesBilled + 1 });
+      // the new cycle's credits (renewal never issued any: a member paid every month and kept only the first month's credits)
+      if (m.planVersionId && this.repo.issueCycleCredits) await this.repo.issueCycleCredits(m.tenantId, membershipId, m.planVersionId, newStart.toISOString());
       await this.repo.addActivity({ membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, planId: m.planId, activityType: 'renewed', customerName: m.customerName, planName: m.planName, amountCents: amount });
       await this.repo.addAudit({ membershipId, tenantId: m.tenantId, branchId: m.branchId, planId: m.planId, actorUserId: actor.userId, actorRole: actor.role, action: 'renewal_succeeded', prevState: m.status, newState: 'active', reason: null, result: 'ok' });
       return { applied: true, status: 'active', paymentId: rec.paymentId, allocated: alloc };

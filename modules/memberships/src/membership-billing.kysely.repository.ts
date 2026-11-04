@@ -62,6 +62,21 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     return { paymentId: ex.rows[0]?.id ?? '', duplicate: true };
   }
 
+  async issueCycleCredits(tenantId: string, membershipId: string, planVersionId: string, cycleKey: string): Promise<number> {
+    // same rule as enrollment (initialIssuedEntries): service / add-on credits issue a quantity, dollar credits an amount;
+    // discounts are not credits. Keyed on the cycle so a replayed renewal never issues twice.
+    const reason = 'renewal:' + cycleKey;
+    const r = await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
+      select ${tenantId}, ${membershipId}, b.id, 'issued', b.service_id,
+             case when b.benefit_type in ('service_credit', 'addon') then b.credits_per_cycle else 0 end,
+             case when b.benefit_type = 'dollar_credit' then b.value_cents else 0 end, ${reason}
+      from membership_benefits b
+      where b.plan_version_id = ${planVersionId} and b.tenant_id = ${tenantId}
+        and ((b.benefit_type in ('service_credit', 'addon') and b.credits_per_cycle > 0) or (b.benefit_type = 'dollar_credit' and b.value_cents > 0))
+        and not exists (select 1 from membership_credit_ledger l where l.tenant_id = ${tenantId} and l.customer_membership_id = ${membershipId} and l.reason = ${reason})`.execute(this.db);
+    return Number(r.numAffectedRows ?? 0);
+  }
+
   async advancePeriod(membershipId: string, p: AdvanceArgs): Promise<void> {
     // Phase 12 (#27): through CUSTOMER_MEMBERSHIP — a membership canceled / expired while this renewal ran is refused (409),
     // never revived to active
