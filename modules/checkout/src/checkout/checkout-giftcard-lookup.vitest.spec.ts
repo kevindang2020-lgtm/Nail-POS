@@ -66,6 +66,15 @@ describe('gift-card lookup + redeem by 16-digit number', () => {
     for (let i = 0; i < 10; i++) expect((await svc.giftCardLookup(ctx, '9999 8888 7777 0000')).found).toBe(false);
     await expect(svc.giftCardLookup(ctx, '9999 8888 7777 1111')).rejects.toThrow(/too many/i);
   });
+  it('Gift Cards guide (Nov 4 2026): every lookup counts toward a wider cap — 60 in 5 minutes, then blocked even for a real card', async () => {
+    const repo = new InMemoryCheckoutRepository();
+    const svc = new CheckoutService(repo, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, undefined, new InMemoryGiftCardLookupThrottle());
+    await repo.issueGiftCard(ctx, { code: 'GC-ABC1', amountCents: 5000, cardNumber: NUM });
+    for (let i = 0; i < 60; i++) expect((await svc.giftCardLookup(ctx, NUM)).found).toBe(true);
+    await expect(svc.giftCardLookup(ctx, NUM)).rejects.toThrow(/too many/i);
+    // another person at the salon is not slowed by it
+    expect((await svc.giftCardLookup({ ...ctx, userId: 'someone_else' } as any, NUM)).found).toBe(true);
+  });
 
   it('replaces a lost/stolen card: mints a new card once and retires the original', async () => {
     const repo = new InMemoryCheckoutRepository();

@@ -2,22 +2,22 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3861 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3862 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3861 |
+| all HTTP routes | 3862 |
 | realm `customer` | 165 |
 | realm `shared` | 282 |
-| realm `staff` | 2242 |
+| realm `staff` | 2243 |
 | realm `super_admin` | 1172 |
 | public (no session; each one reviewed by `check:public`) | 124 |
 | integration key / OAuth (`auth=api_key`) | 13 |
-| with `@RequireStepUp` (fresh password + code) | 186 |
-| with an idempotency contract | 50 |
+| with `@RequireStepUp` (fresh password + code) | 187 |
+| with an idempotency contract | 51 |
 | webhooks | 9 |
 | multipart uploads | 9 |
 | server-sent event streams | 13 |
@@ -261,6 +261,7 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | POST | `/pos/api-keys` | staff |
 | POST | `/pos/api-keys/{id}/rotate` | staff |
 | PUT | `/pos/approvals/policies` | staff |
+| POST | `/pos/checkout/gift-cards/{cardId}/adjust` | staff |
 | POST | `/pos/checkout/gift-cards/{cardId}/void-card` | staff |
 | POST | `/pos/checkout/payments/{paymentId}/refund` | staff |
 | POST | `/pos/checkout/payments/{paymentId}/void` | staff |

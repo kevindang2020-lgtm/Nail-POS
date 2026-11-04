@@ -30,7 +30,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
 
   async list(ctx: SettingsContext): Promise<Terminal[]> {
     let q = this.db.selectFrom('pos_payment_terminals').select(TERMINAL_VIEW_COLUMNS).where('tenant_id', '=', ctx.tenantId);
-    if (ctx.branchId) q = q.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) q = q.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // Payment Terminals guide audit: a terminal with no location shows (and is managed) here
     const rows = await q.orderBy('paired_at', 'asc').execute().catch(() => [] as any[]);
     const names = await this.registerNames(ctx);
     const leases = await this.liveLeases(ctx);
@@ -58,7 +58,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
   }
   private async one(ctx: SettingsContext, id: string): Promise<Terminal | null> {
     let q = this.db.selectFrom('pos_payment_terminals').select(TERMINAL_VIEW_COLUMNS).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) q = q.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) q = q.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // Payment Terminals guide audit: a terminal with no location shows (and is managed) here
     const r = await q.executeTakeFirst().catch(() => undefined);
     if (!r) return null;
     return this.view(r, await this.registerNames(ctx), await this.liveLeases(ctx));
@@ -73,7 +73,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
     if (edit.serialNumber !== undefined) set.serial_number = edit.serialNumber;
     if (edit.connectionType !== undefined) set.connection_type = edit.connectionType;
     let u = this.db.updateTable('pos_payment_terminals').set(set).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) u = u.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // a terminal with no location is this location's to manage too (it can charge here)
     const res = await u.executeTakeFirst();
     if (!Number((res as any)?.numUpdatedRows ?? 0)) throw terminalNotFound();
     const t = await this.one(ctx, id); if (!t) throw terminalNotFound(); return t;
@@ -87,7 +87,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
       if (row?.station_id && row.status === 'paired') await this.assertRegisterFree(this.db, ctx, String(row.station_id), id);
     }
     let u = this.db.updateTable('pos_payment_terminals').set(set as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) u = u.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // a terminal with no location is this location's to manage too (it can charge here)
     const res = await u.executeTakeFirst();
     if (!Number((res as any)?.numUpdatedRows ?? 0)) throw terminalNotFound();
     const t = await this.one(ctx, id); if (!t) throw terminalNotFound(); return t;
@@ -137,7 +137,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
       await sql`select pg_advisory_xact_lock(hashtext('pos_payment_terminals:' || ${ctx.tenantId}))`.execute(trx);
       if (stationId) await this.assertRegisterFree(trx, ctx, stationId, id);
       let u = trx.updateTable('pos_payment_terminals').set({ station_id: stationId }).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-      if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
+      if (ctx.branchId) u = u.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // a terminal with no location is this location's to manage too (it can charge here)
       return u.executeTakeFirst();
     });
     if (!Number((res as any)?.numUpdatedRows ?? 0)) throw terminalNotFound();
@@ -148,7 +148,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
 
   async unpair(ctx: SettingsContext, id: string): Promise<{ id: string; status: 'unpaired' }> {
     let u = this.db.updateTable('pos_payment_terminals').set({ status: 'unpaired' }).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) u = u.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));   // a terminal with no location is this location's to manage too (it can charge here)
     const res = await u.executeTakeFirst();
     const affected = Number(res?.numUpdatedRows ?? 0);
     if (!affected) throw terminalNotFound();
@@ -159,7 +159,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
    *  job with the TerminalProbePort apps/api supplies — this never claims "responding" on its own (§166). */
   async test(ctx: SettingsContext, id: string): Promise<{ id: string; reachable: boolean; detail: string }> {
     let s = this.db.selectFrom('pos_payment_terminals').select(['status', 'disabled_at']).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
-    if (ctx.branchId) s = s.where('branch_id', '=', ctx.branchId);
+    if (ctx.branchId) s = s.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));
     const row = await s.executeTakeFirst();
     if (!row) throw terminalNotFound();
     if (row.disabled_at) return { id, reachable: false, detail: 'terminal is disabled' };

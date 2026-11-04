@@ -95,6 +95,15 @@ describe('payment device identity on Postgres (migration 687)', () => {
     expect((await store.setStatus(TA, 'phone-1', 'active', UA))!.status).toBe('revoked');
   });
 
+  it('Payment Terminals guide audit (Nov 4 2026): a phone switched off and back on is Active with no revoked stamp left behind', async () => {
+    await store.upsertOnRegister(TA, { deviceId: 'phone-susp', branchId: BA, registeredBy: UA });
+    await store.setStatus(TA, 'phone-susp', 'active', UA);
+    const off = (await store.setStatus(TA, 'phone-susp', 'disabled', UA, 'left in the car'))!;
+    expect(off.status).toBe('disabled'); expect(off.revokedAt).toBeTruthy();
+    const on = (await store.setStatus(TA, 'phone-susp', 'active', UA))!;
+    expect(on.status).toBe('active'); expect(on.revokedAt ?? null).toBeNull(); expect(on.revokeReason ?? null).toBeNull();
+  });
+
   it('§14 / §77 (migration 688): a shared salon phone takes Manager B after Manager A; a personal phone refuses another user', async () => {
     const code = 'shared-' + Date.now();
     await pairings.create({ tenantId: TA, branchId: BA, createdBy: UA, codeHash: pairingHash(code), expiresAt: new Date(Date.now() + 60_000), shared: true });

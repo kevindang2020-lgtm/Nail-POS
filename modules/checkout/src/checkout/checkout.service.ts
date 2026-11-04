@@ -1121,6 +1121,12 @@ export class CheckoutService {
     if (this.lookupThrottle) {
       const decision = rateLimitDecision(await this.lookupThrottle.recentFailures(throttleKey), Date.now(), { maxFailures: 10, windowMs: 5 * 60_000, lockMs: 5 * 60_000 });
       if (!decision.allowed) throw withCode(new ValidationError('Too many gift-card lookups. Please wait a moment and try again.'), 'RATE_LIMITED');
+      // Gift Cards guide (Nov 4 2026): EVERY lookup counts toward a wider cap too (60 per 5 minutes per person) — only misses
+      // were limited, so a script reading balances of known numbers was never slowed down
+      const allKey = 'gclookup-all:' + ctx.tenantId + ':' + ctx.userId;
+      const all = rateLimitDecision(await this.lookupThrottle.recentFailures(allKey), Date.now(), { maxFailures: 60, windowMs: 5 * 60_000, lockMs: 5 * 60_000 });
+      if (!all.allowed) throw withCode(new ValidationError('Too many gift-card lookups. Please wait a moment and try again.'), 'RATE_LIMITED');
+      await this.lookupThrottle.recordFailure(allKey);   // the port's "attempt" record (named for misses, used here for every lookup)
     }
     const digits = String(input || '').replace(/\D+/g, '');
     const cardNumberMasked = /^\d{16}$/.test(digits) ? maskCardNumber(digits) : undefined;
@@ -1422,6 +1428,24 @@ export class CheckoutService {
     if (!res.ok) throw withCode(new ValidationError('Gift card not found'), 'GIFT_CARD_INVALID');
     this.log(ctx, 'pos_gift_card_voided', 'gift_cards', cardId, { balanceCents: res.priorBalanceCents }, { balanceCents: 0, status: 'void' }, { reason });
     return { cardId, status: 'void' as const, voidedBalanceCents: res.priorBalanceCents };
+  }
+  /** Gift Cards guide (Nov 4 2026): Adjust balance — a manager's correction (down) or goodwill credit (up), with a reason, audited
+   *  with before / after; it never takes a card below zero or touches an ended / unpaid card. */
+  async adjustGiftCardFromScreen(ctx: CheckoutContext, cardId: string, amountIn: unknown, reasonIn: unknown) {
+    this.need(ctx, 'pos.checkout.void');
+    if (!this.repo.adjustGiftCardById) throw withCode(new ValidationError('Adjusting a gift card needs the database.'), 'SERVICE_UNAVAILABLE');
+    const amount = Number(amountIn);
+    if (!Number.isInteger(amount) || amount === 0) throw withCode(new ValidationError('Enter the amount to add or take off, in cents.'), 'GIFT_CARD_ADJUST_AMOUNT_INVALID');
+    const reason = typeof reasonIn === 'string' ? reasonIn.trim().slice(0, 500) : '';
+    if (reason.length < 3) throw withCode(new ValidationError('Give a reason for the adjustment.'), 'GIFT_CARD_ADJUST_REASON_REQUIRED');
+    const r = await this.repo.adjustGiftCardById(ctx, cardId, amount, reason);
+    if (!r.ok) {
+      if (r.reason === 'not_found') throw withCode(new ValidationError('Gift card not found'), 'GIFT_CARD_INVALID');
+      if (r.reason === 'below_zero') throw withCode(new ValidationError('That would take the card below a zero balance.'), 'GIFT_CARD_ADJUST_BELOW_ZERO');
+      throw withCode(new ValidationError('This gift card cannot be adjusted (it is closed or not paid yet).'), 'GIFT_CARD_NOT_ADJUSTABLE');
+    }
+    this.log(ctx, 'pos_gift_card_adjusted', 'gift_cards', cardId, { balanceCents: r.beforeCents }, { balanceCents: r.afterCents, status: r.status }, { reason, amountCents: amount });
+    return { cardId, amountCents: amount, beforeCents: r.beforeCents, afterCents: r.afterCents, status: r.status };
   }
   // reloadGiftCard (direct, payment-less credit) removed — mandate P0 §142; see createGiftCardReload.
   async voidGiftCard(ctx: CheckoutContext, code: string): Promise<GiftCardDetail> {

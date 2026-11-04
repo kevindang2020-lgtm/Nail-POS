@@ -902,7 +902,11 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const d = (r?.phone ?? '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
     const phone = d.length === 10 ? '+1' + d : null;
     if (!name && !email && !phone && !message) return;
-    await sql`insert into gift_card_recipients (tenant_id, gift_card_id, recipient_name, recipient_phone, recipient_email, message) values (${tenantId}, ${cardId}::uuid, ${name}, ${phone}, ${email}, ${message})`.execute(exec);
+    // Gift Cards guide (Nov 4 2026): a recipient who is already this salon's customer — exactly one customer with that phone
+    // (else that email) — is linked, so the card shows on their profile as "received". Never guessed by name; two matches link none.
+    const one = async (w: ReturnType<typeof sql>) => { const rows = (await sql<{ id: string }>`select id from customers where tenant_id = ${tenantId} and ${w} limit 2`.execute(exec)).rows; return rows.length === 1 ? String(rows[0].id) : null; };
+    const customerId = (phone ? await one(sql`normalized_phone = ${phone}`) : null) ?? (email ? await one(sql`lower(email) = ${email}`) : null);
+    await sql`insert into gift_card_recipients (tenant_id, gift_card_id, customer_id, recipient_name, recipient_phone, recipient_email, message) values (${tenantId}, ${cardId}::uuid, ${customerId}, ${name}, ${phone}, ${email}, ${message})`.execute(exec);
   }
   /** Gift Cards guide (Nov 4 2026) — the value a ticket put on gift cards: cards SOLD on it (once paid) and RELOADS it
    *  credited ('reload:<hold>' adjust rows), less earlier refund reversals ('gc-refund:%' cancel rows on this ticket). */
@@ -961,6 +965,28 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
   /** Gift Cards mandate §15: void by card id with a REASON — the balance write, the compensating ledger row, the
    *  before/after adjustment record and the void stamps are ONE transaction; a void never erases a prior redemption. */
+  async adjustGiftCardById(ctx: CheckoutContext, cardId: string, amountCents: Money, reason: string): Promise<{ ok: true; beforeCents: Money; afterCents: Money; status: string } | { ok: false; reason: 'not_found' | 'not_adjustable' | 'below_zero' }> {
+    if (!isUuidStr(cardId)) return { ok: false, reason: 'not_found' };
+    const T = ctx.tenantId;
+    return this.db.transaction().execute(async (trx) => {
+      const k = trx as unknown as Kysely<DB>;
+      const loc = (await this.giftLocationSql(k, ctx, sql`branch_id`)).w;
+      const card: any = (await sql`select id, balance_cents, status from gift_cards where tenant_id = ${T} and id = ${cardId}::uuid and ${loc} for update`.execute(k)).rows[0];
+      if (!card) return { ok: false as const, reason: 'not_found' as const };
+      const status = String(card.status);
+      if (!['active', 'partially_redeemed', 'redeemed', 'frozen', 'suspended', 'delivered', 'claimed'].includes(status)) return { ok: false as const, reason: 'not_adjustable' as const };
+      const before = Number(card.balance_cents), after = before + Number(amountCents);
+      if (after < 0) return { ok: false as const, reason: 'below_zero' as const };
+      // a card emptied by the adjustment reads Redeemed; a Redeemed card given value back is Active (frozen / suspended stay as they are)
+      const next = after === 0 && ['active', 'partially_redeemed'].includes(status) ? 'redeemed' : after > 0 && status === 'redeemed' ? 'active' : status;
+      await sql`update gift_cards set balance_cents = ${after}, status = ${next}, updated_at = now() where tenant_id = ${T} and id = ${cardId}::uuid`.execute(k);
+      const led: any = (await sql`insert into gift_card_transactions (tenant_id, branch_id, gift_card_id, type, amount_cents, balance_after_cents, created_by_user_id)
+        values (${T}, ${ctx.branchId || null}, ${cardId}::uuid, 'adjust', ${Number(amountCents)}, ${after}, ${userIdOrNull(ctx.userId)}) returning id`.execute(k)).rows[0];
+      await sql`insert into gift_card_adjustments (tenant_id, gift_card_id, amount_cents, balance_before_cents, balance_after_cents, reason, actor_user_id, ledger_entry_id)
+        values (${T}, ${cardId}::uuid, ${Number(amountCents)}, ${before}, ${after}, ${reason}, ${userIdOrNull(ctx.userId)}, ${String(led.id)}::uuid)`.execute(k);
+      return { ok: true as const, beforeCents: before, afterCents: after, status: next };
+    });
+  }
   async voidGiftCardById(ctx: CheckoutContext, cardId: string, reason: string): Promise<{ ok: true; priorBalanceCents: Money } | { ok: false; reason: 'not_found' }> {
     if (!isUuidStr(cardId)) return { ok: false, reason: 'not_found' };
     const T = ctx.tenantId;

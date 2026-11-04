@@ -2638,6 +2638,7 @@ POST /pos/checkout/gift-cards  realm=staff  auth=session  domain=checkout  perm=
 POST /pos/checkout/gift-cards/issue  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_issue  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/gift-cards/lookup  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/gift-cards/replace  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_payment  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/checkout/gift-cards/{cardId}/adjust  realm=staff  auth=session  domain=checkout  perm=pos.checkout.void  step-up  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/gift-cards/{cardId}/reload-ticket  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_issue  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/gift-cards/{cardId}/void-card  realm=staff  auth=session  domain=checkout  perm=pos.checkout.void  step-up  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/gift-cards/{code}/void  realm=staff  auth=session  domain=checkout  perm=pos.checkout.gift_card_issue  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard

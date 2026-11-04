@@ -344,7 +344,8 @@ function POSRoutes() {
         <Route path="tenant/ai/checkout-upsell/settings" element={<AICheckoutUpsellSettingsScreen />} />
         <Route path="tenant/ai/platform" element={<POSAiGovernanceScreen />} />
         <Route path="tenant/ai/platform/settings" element={<POSAiSettingsEditor />} />
-        <Route path="tenant/payments/gift-cards" element={<POSGiftCardSettingsScreen />} />
+        {/* Gift Cards guide (Nov 4 2026): the settings screen had the same path as the redirect above and could never open */}
+        <Route path="tenant/payments/gift-cards/settings" element={<POSGiftCardSettingsScreen />} />
         <Route path="tenant/payments/sell-gift-card" element={<POSSellGiftCardScreen />} />
         <Route path="tenant/payments/reload-gift-card" element={<POSReloadGiftCardScreen />} />
         <Route path="tenant/payments/gift-card-stock" element={<POSGiftCardStockScreen />} />

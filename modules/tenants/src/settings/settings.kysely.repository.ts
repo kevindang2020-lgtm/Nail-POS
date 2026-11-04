@@ -97,7 +97,11 @@ export class KyselySettingsRepository implements SettingsRepositoryPort {
       action_type: row.actionType, entity_type: row.entityType ?? null, entity_id: row.entityId || row.entityType || 'settings', // NOT NULL — a row without an entity was lost (w4 SQL)
       before_json: (row.before == null ? null : JSON.stringify(row.before)), after_json: (row.after == null ? null : JSON.stringify(row.after)),
       metadata: JSON.stringify(metadata), created_at: (row.createdAt ? new Date(row.createdAt) : sql`now()`),
-    }).execute().catch(() => {});
+    }).execute().catch((e: unknown) => {
+      // Payment Terminals guide audit (Nov 4 2026): a lost audit row is said in the log with what it was (it vanished silently);
+      // the settings change itself already happened and is not undone
+      console.error(`[settings-audit] could not record ${row.actionType} on ${row.entityId ?? row.entityType ?? 'settings'} (tenant ${row.tenantId}): ${(e as Error)?.message ?? e}`);
+    });
   }
 
   async listAudit(ctx: SettingsContext, limit: number): Promise<POSSettingsAuditLogRow[]> {

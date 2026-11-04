@@ -108,9 +108,12 @@ export class KyselyMobilePayDeviceStore implements MobilePayDeviceStore {
         status = ${status},
         approved_by = case when ${status} = 'active' then ${actorId || null} else approved_by end,
         approved_at = case when ${status} = 'active' then now() else approved_at end,
-        revoked_at = case when ${blocking} then now() else revoked_at end,
-        revoked_by = case when ${blocking} then ${actorId || null} else revoked_by end,
-        revoke_reason = case when ${blocking} then ${reason || null} else revoke_reason end,
+        -- Payment Terminals guide audit (Nov 4 2026): a phone disabled and then enabled again kept its revoked_at, so the screen
+        -- showed it as Revoked. Re-enabling clears the block stamps (the audit log keeps the history; a revoked phone can never
+        -- become active — canMoveToSql below refuses it).
+        revoked_at = case when ${blocking} then now() when ${status} = 'active' then null else revoked_at end,
+        revoked_by = case when ${blocking} then ${actorId || null} when ${status} = 'active' then null else revoked_by end,
+        revoke_reason = case when ${blocking} then ${reason || null} when ${status} = 'active' then null else revoke_reason end,
         updated_at = now()
       where tenant_id = ${tenantId} and device_id = ${deviceId} and ${canMoveToSql(MOBILE_PAY_DEVICE, status)}
     `.execute(this.db);

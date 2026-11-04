@@ -140,6 +140,12 @@ describe('Payment Terminals — Payment Activity and routing', () => {
     expect(l.items[1].device.staff).toBe('Sam Staff');
     expect(l.items[2].status).toBe('declined');
   });
+  it('Payment Terminals guide audit (Nov 4 2026): a location sees only its own payments; the salon-wide view sees them all', async () => {
+    const B3 = id('b3');
+    await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Second','active',$3) on conflict do nothing`, [B3, T, TZ]);
+    expect((await repo.activityList({ ...ctx, branchId: B3 }, { period: today(), q: '', sort: 'time_desc' }, pageReq({}))).total).toBe(0);
+    expect((await repo.activityList({ ...ctx, branchId: undefined } as typeof ctx, { period: today(), q: '', sort: 'time_desc' }, pageReq({}))).total).toBe(3);
+  });
   it('a customer phone finds only that customer’s payments in this salon; a device filter narrows; a range before today is empty', async () => {
     const a = await repo.activityList(ctx, { period: today(), q: '(215) 555-0101', sort: 'time_desc' }, pageReq({}));
     expect(a.items.every((x) => x.customer?.name === 'Ann Lee')).toBe(true);

@@ -105,6 +105,9 @@ export interface CheckoutRepositoryPort {
   reverseGiftCardValueForRefund?(ctx: CheckoutContext, ticketId: string, amountCents: Money, refundPaymentId: string, reason: string): Promise<{ reversedCents: Money; shortCents: Money }>;
   /** a reload hold on this card whose ticket is not paid yet (a void would leave that payment with nothing to credit) */
   pendingGiftCardReloadTicket?(ctx: CheckoutContext, cardId: string): Promise<string | null>;
+  /** Gift Cards guide (Nov 4 2026): a manager's signed balance adjustment with a reason — card lock, balance, 'adjust' ledger row and the
+   *  before/after adjustment record in one transaction; never below zero, never on an ended or unpaid card */
+  adjustGiftCardById?(ctx: CheckoutContext, cardId: string, amountCents: Money, reason: string): Promise<{ ok: true; beforeCents: Money; afterCents: Money; status: string } | { ok: false; reason: 'not_found' | 'not_adjustable' | 'below_zero' }>;
   voidGiftCardById?(ctx: CheckoutContext, cardId: string, reason: string): Promise<{ ok: true; priorBalanceCents: Money } | { ok: false; reason: 'not_found' }>;
   getGiftCard(ctx: CheckoutContext, code: string): Promise<GiftCardDetail | null>;
   /** Resolve a receptionist-entered value to a redeemable code: a 16-digit number maps to its card's code; anything

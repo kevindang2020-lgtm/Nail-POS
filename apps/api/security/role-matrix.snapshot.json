@@ -2538,6 +2538,7 @@
   "POST /pos/check-in/create-customer": "AAAADRRRRRRRRRRRR",
   "POST /pos/check-in/walk-in": "AAAAARRRRRRRRRRRR",
   "POST /pos/checkout/gift-cards": "AAAADRRRRRRRRRRRR",
+  "POST /pos/checkout/gift-cards/{cardId}/adjust": "AADDDRRRRRRRRRRRR",
   "POST /pos/checkout/gift-cards/{cardId}/reload-ticket": "AAAADRRRRRRRRRRRR",
   "POST /pos/checkout/gift-cards/{cardId}/void-card": "AADDDRRRRRRRRRRRR",
   "POST /pos/checkout/gift-cards/{code}/void": "AAAADRRRRRRRRRRRR",

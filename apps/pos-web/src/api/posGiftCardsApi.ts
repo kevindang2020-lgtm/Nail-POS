@@ -1,4 +1,5 @@
 // posGiftCardsApi.ts — tenant gift-card management (read). Permission-gated pos.checkout.view server-side.
+import type { GiftCardAdjustResult } from '@aipowersalon/api-contracts/tenant';
 import { api } from "./client";
 import type { StockItem, GiftCardBranchLiability, GiftCardClearingTransfer, GiftCardLiabilityReport } from '@aipowersalon/api-contracts/tenant';   // the wire contract (Constitution 13 §15)
 export type { GiftCardBranchLiability, GiftCardClearingTransfer, GiftCardLiabilityReport };
@@ -18,6 +19,7 @@ export const posGiftCardsApi = {
     api.post<any>(`/pos/checkout/gift-cards/issue`, b as Record<string, unknown>),
   reload: (cardId: string, b: { amountCents: number; customerId?: string; idempotencyKey: string }) => api.post<any>(`/pos/checkout/gift-cards/${encodeURIComponent(cardId)}/reload-ticket`, b),
   voidCard: (cardId: string, reason: string) => api.post<any>(`/pos/checkout/gift-cards/${encodeURIComponent(cardId)}/void-card`, { reason }),
+  adjust: (cardId: string, body: { amountCents: number; reason: string }) => api.post<GiftCardAdjustResult>(`/pos/checkout/gift-cards/${encodeURIComponent(cardId)}/adjust`, body),
 };
 const cleanQ = (q: Record<string, unknown>) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== ''));
 import type { StockCounts } from '@aipowersalon/api-contracts/tenant';   // the wire contract (Constitution 13 §15)

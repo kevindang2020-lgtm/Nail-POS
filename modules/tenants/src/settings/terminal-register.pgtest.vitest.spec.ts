@@ -108,3 +108,14 @@ describe('pairing never takes over a paired terminal; one live terminal per regi
     await expect(repo.setDisabled(owner, 'term_111111', false, null)).rejects.toMatchObject({ code: 'TERMINAL_REGISTER_TAKEN' });
   });
 });
+
+describe('a terminal with no location', () => {
+  it('Payment Terminals guide audit (Nov 4 2026): is listed and managed at the location (it charges there); another salon never sees it', async () => {
+    await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status) values ('term_nobranch', $1, null, 'Loose Clover', 'paired')`, [T]);
+    expect((await svc.listTerminals(owner)).some((x: any) => x.id === 'term_nobranch')).toBe(true);
+    const repo = new KyselyTerminalPairingRepository((svc as any).terminals.db);
+    expect((await repo.update(owner, 'term_nobranch', { label: 'Front Clover' })).label).toBe('Front Clover');
+    expect((await repo.setDisabled(owner, 'term_nobranch', true, 'broken')).disabledAt).toBeTruthy();
+    await expect(repo.update({ ...owner, tenantId: 'e2000000-0000-4000-8000-0000000000ff' }, 'term_nobranch', { label: 'x' })).rejects.toMatchObject({ code: 'TERMINAL_NOT_FOUND' });
+  });
+});

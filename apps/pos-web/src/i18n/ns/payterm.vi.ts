@@ -82,4 +82,6 @@ export const PAYTERM_VI: Record<string, string> = {
   'pt.paired': 'Đã ghép nối và xác minh {label}. Máy nằm đầu Trang 1.', 'pt.pairedUnverified': 'Đã ghép nối {label} nhưng chưa xác minh — xem mục Cần xử lý.',
   'pt.addPhoneSub': 'Tạo mã ghép nối một lần cho ứng dụng AIPowerSalon', 'pt.createPairing': 'Tạo mã ghép nối', 'pt.phoneName': 'Tên điện thoại',
   'pt.sharedPhone': 'Máy dùng chung (không gắn với một nhân viên)', 'pt.addPhoneNote': 'Điện thoại ở trạng thái Chờ duyệt cho đến khi quản lý duyệt.',
+  "pt.reenable": "Bật lại",
+  "pt.reenabled": "{label} có thể nhận thanh toán trở lại.",
 };

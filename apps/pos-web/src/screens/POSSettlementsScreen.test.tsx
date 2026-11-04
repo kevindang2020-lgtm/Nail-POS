@@ -36,6 +36,14 @@ describe('POSSettlementsScreen', () => {
     expect(screen.getAllByText('Not bank verified').length).toBeGreaterThan(0);
     expect(screen.getByTestId('active-period').textContent).toMatch(/Oct 1, 2026.*Oct 31, 2026/);
   });
+  it('Settlements guide audit (Nov 4 2026): with no processor set up and no batch, the settlement cards say Not set up — never $0.00', async () => {
+    api.summary.mockResolvedValue(summary({ kpis: { settlements: 0, grossSettledCents: 0, processorFeesCents: 0, netProcessorPayoutCents: 0, refunds: 0, refundsCompleted: 0, refundsOpen: 0, refundsFailed: 0, refundsTotalCents: 0 }, sourceStatus: { state: 'not_configured' } }));
+    api.list.mockResolvedValue(pageOf([]));
+    mount();
+    expect(await screen.findByTestId('kpi-gross')).toHaveTextContent('Not set up');
+    expect(screen.getByTestId('kpi-net')).toHaveTextContent('Not set up');
+    expect(screen.getByTestId('kpi-gross')).not.toHaveTextContent('$0.00');
+  });
   it('asks the server for This Month, newest created first, page 1', async () => {
     api.summary.mockResolvedValue(summary()); api.list.mockResolvedValue(pageOf([row()]));
     mount();

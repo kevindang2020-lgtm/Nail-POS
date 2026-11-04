@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
-const gc = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), ledger: vi.fn(), exportCsv: vi.fn(), issue: vi.fn(), reload: vi.fn(), voidCard: vi.fn(), liability: vi.fn() }));
+const gc = vi.hoisted(() => ({ list: vi.fn(), summary: vi.fn(), detail: vi.fn(), ledger: vi.fn(), exportCsv: vi.fn(), issue: vi.fn(), reload: vi.fn(), voidCard: vi.fn(), adjust: vi.fn(), liability: vi.fn() }));
 const co = vi.hoisted(() => ({ giftCardLookup: vi.fn() }));
 const cust = vi.hoisted(() => ({ quickSearch: vi.fn() }));
 const settings = vi.hoisted(() => ({ getCategory: vi.fn() }));
@@ -50,6 +50,13 @@ describe('POSGiftCardsScreen', () => {
     fireEvent.click(screen.getByTestId('clear-all'));
     await waitFor(() => expect(gc.list.mock.calls.slice(-1)[0]![0].status).toBeUndefined());
   });
+  it('Gift Cards guide (Nov 4 2026): Pending payment and Frozen are their own tabs', async () => {
+    mount(); await screen.findByText('•••• 4821');
+    fireEvent.click(screen.getByTestId('tab-pending'));
+    await waitFor(() => expect(gc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'pending' })));
+    fireEvent.click(screen.getByTestId('tab-frozen'));
+    await waitFor(() => expect(gc.list).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'frozen' })));
+  });
   it('the detail shows the ledger of a partial redemption ($100 · −$65 · $35 left) and Void needs a reason', async () => {
     gc.detail.mockResolvedValue({ card: card(), permissions: { void: true, reload: true },
       totals: { originalCents: 10000, reloadedCents: 0, redeemedCents: 6500, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 3500, transactions: 2, ledgerBalanceCents: 3500, reconciled: true } });
@@ -66,6 +73,21 @@ describe('POSGiftCardsScreen', () => {
     fireEvent.change(screen.getByTestId('void-reason'), { target: { value: 'sold in error' } });
     fireEvent.click(screen.getByTestId('void-submit'));
     await waitFor(() => expect(gc.voidCard).toHaveBeenCalledWith('g1', 'sold in error'));
+  });
+  it('Gift Cards guide (Nov 4 2026): Adjust balance takes off or adds signed cents with a reason', async () => {
+    gc.detail.mockResolvedValue({ card: card(), permissions: { void: true, reload: true },
+      totals: { originalCents: 10000, reloadedCents: 0, redeemedCents: 6500, refundedBackCents: 0, adjustedCents: 0, transferredCents: 0, pendingReloadCents: 0, balanceCents: 3500, transactions: 2, ledgerBalanceCents: 3500, reconciled: true } });
+    gc.ledger.mockResolvedValue(pageOf([]));
+    gc.adjust.mockResolvedValue({ cardId: 'g1', amountCents: -1000, beforeCents: 3500, afterCents: 2500, status: 'partially_redeemed' });
+    mount();
+    fireEvent.click(await screen.findByText('•••• 4821'));
+    fireEvent.click(await screen.findByTestId('adjust'));
+    fireEvent.change(screen.getByTestId('adjust-amount'), { target: { value: '10.00' } });
+    expect(screen.getByTestId('adjust-submit')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('adjust-reason'), { target: { value: 'charged twice' } });
+    fireEvent.click(screen.getByTestId('adjust-submit'));
+    await waitFor(() => expect(gc.adjust).toHaveBeenCalledWith('g1', { amountCents: -1000, reason: 'charged twice' }));
+    expect(await screen.findByText(/balance now \$25\.00/)).toBeInTheDocument();
   });
   it('Issue needs a purchaser, sends cents with one idempotency key, and shows the digital number once', async () => {
     settings.getCategory.mockResolvedValue({ enabled: true, posSalesEnabled: true, presetAmountsCents: [5000, 10000], customAmountEnabled: true, minAmountCents: 1000, maxAmountCents: 50000 });

@@ -1,7 +1,7 @@
 // checkout.controller.ts — tenant POS Checkout & Payment HTTP surface.
 // Two controllers: `/pos/checkout/*` and `/pos/customer-display/*`. Guards: TenantAuthGuard + RolePermissionGuard.
 // tenant/branch/role from req.ctx. Pay/refund/void routes carry base perms; method-specific perms are enforced in the service.
-import type { UnsettledTender } from '@aipowersalon/api-contracts/tenant';
+import type { UnsettledTender, GiftCardAdjustResult } from '@aipowersalon/api-contracts/tenant';
 import { Idempotent } from '@aipowersalon/database/nest';   // Constitution 5 §61–66
 import { CodeLookupLimited, bodyHasCode, splitHasGiftCardCode } from '@aipowersalon/security/nest';   // Phase 14 (Constitution 12): per-caller lookup-by-code limit
 import { DealRefusedError } from '@aipowersalon/deals';
@@ -17,7 +17,7 @@ import type { PaymentMethod } from './checkout-display.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { CheckoutControllerListQueries } from './checkout.list-queries';
 
-import { APPLY_DISCOUNT_BODY, APPLY_OFFER_BODY, DISPLAY_SESSION_CREATE_BODY, DISPLAY_SESSION_UPDATE_BODY, GIFT_CARD_INPUT_BODY, GIFT_CARD_RELOAD_BODY, GIFT_CARD_SALE_BODY, ISSUE_GIFT_CARD_BODY, MOVE_TICKET_BODY, PAYMENT_REFUND_BODY, PAYMENT_VOID_BODY, PAY_CARD_BODY, PAY_CASH_BODY, PAY_GIFT_CARD_BODY, PAY_REWARDS_BODY, EMPTY_REWARDS_BODY, PAY_SPLIT_BODY, PROMO_CODE_BODY, RATING_BODY, RECALCULATE_BODY, RECEIPT_SEND_ALL_BODY, REFUND_SETTLE_BODY, REOPEN_SERVICE_BODY, SEND_TO_DISPLAY_BODY, SET_TIP_BODY, TICKET_REFUND_BODY, GIFT_CARD_ISSUE_BODY, GIFT_CARD_SCREEN_RELOAD_BODY, GIFT_CARD_VOID_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
+import { APPLY_DISCOUNT_BODY, APPLY_OFFER_BODY, DISPLAY_SESSION_CREATE_BODY, DISPLAY_SESSION_UPDATE_BODY, GIFT_CARD_INPUT_BODY, GIFT_CARD_ADJUST_BODY, GIFT_CARD_RELOAD_BODY, GIFT_CARD_SALE_BODY, ISSUE_GIFT_CARD_BODY, MOVE_TICKET_BODY, PAYMENT_REFUND_BODY, PAYMENT_VOID_BODY, PAY_CARD_BODY, PAY_CASH_BODY, PAY_GIFT_CARD_BODY, PAY_REWARDS_BODY, EMPTY_REWARDS_BODY, PAY_SPLIT_BODY, PROMO_CODE_BODY, RATING_BODY, RECALCULATE_BODY, RECEIPT_SEND_ALL_BODY, REFUND_SETTLE_BODY, REOPEN_SERVICE_BODY, SEND_TO_DISPLAY_BODY, SET_TIP_BODY, TICKET_REFUND_BODY, GIFT_CARD_ISSUE_BODY, GIFT_CARD_SCREEN_RELOAD_BODY, GIFT_CARD_VOID_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 function ctxFrom(req: any): CheckoutContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 function filtersFrom(q: any): CheckoutFilters { const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v)); return { search: q.search, status: q.status, station: q.station, technicianId: q.technicianId, paymentMethod: q.paymentMethod, page: n(q.page), pageSize: n(q.pageSize) }; }
 /** a rewards-network refusal (GlobalRewardsError from modules/loyalty, recognised by name — checkout never imports loyalty) */
@@ -131,6 +131,7 @@ export class CheckoutController {
   // Checkout; idempotent by request key) and the reasoned manager void.
   @Idempotent() @Post('gift-cards/issue') @RequirePermission('pos.checkout.gift_card_issue') issueFromScreen(@Req() r: any, @Body(ValidatedBody(GIFT_CARD_ISSUE_BODY, { strict: true })) b: any) { return run(() => this.svc.issueGiftCardFromScreen(ctxFrom(r), b)); }
   @Idempotent() @Post('gift-cards/:cardId/reload-ticket') @RequirePermission('pos.checkout.gift_card_issue') reloadFromScreen(@Req() r: any, @Param('cardId') id: string, @Body(ValidatedBody(GIFT_CARD_SCREEN_RELOAD_BODY, { strict: true })) b: any) { return run(() => this.svc.reloadGiftCardFromScreen(ctxFrom(r), id, b)); }
+  @Idempotent() @RequireStepUp() @Post('gift-cards/:cardId/adjust') @RequirePermission('pos.checkout.void') adjustFromScreen(@Req() r: any, @Param('cardId') id: string, @Body(ValidatedBody(GIFT_CARD_ADJUST_BODY, { strict: true })) b: any): Promise<GiftCardAdjustResult> { return run(() => this.svc.adjustGiftCardFromScreen(ctxFrom(r), id, b?.amountCents, b?.reason)); }
   @Idempotent() @RequireStepUp() @Post('gift-cards/:cardId/void-card') @RequirePermission('pos.checkout.void') voidFromScreen(@Req() r: any, @Param('cardId') id: string, @Body(ValidatedBody(GIFT_CARD_VOID_BODY, { strict: true })) b: any) { return run(() => this.svc.voidGiftCardFromScreen(ctxFrom(r), id, b?.reason)); }
   @CodeLookupLimited('gift_card', { when: splitHasGiftCardCode }) @Idempotent() @Post('tickets/:ticketId/pay/split') @RequirePermission('pos.checkout.take_payment') paySplit(@Req() r: any, @Param('ticketId') id: string, @Body(ValidatedBody(PAY_SPLIT_BODY, { strict: true })) b: any) { return run(() => this.svc.paySplit(ctxFrom(r), id, b)); }
 

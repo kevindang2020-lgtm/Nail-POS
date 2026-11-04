@@ -402,6 +402,7 @@ function PhoneDialog({ id, canDevices, onClose, onChanged, onRevoke, onActivity 
         {canDevices ? <button type="button" className="fk-btn" onClick={() => setHistory((h) => !h)}>{tx('pt.signinsHistory')}</button> : null}
         {canDevices && p.status === 'pending' ? <button type="button" className="fk-btn" disabled={busy} onClick={() => run(() => posMobilePaymentsApi.approve(p.deviceId), tx('pt.approved', { label: p.label ?? p.deviceRef }))} data-testid="approve">{tx('pt.approve')}</button> : null}
         {canDevices && p.status === 'active' ? <button type="button" className="fk-btn" disabled={busy} onClick={() => setSuspending('')} data-testid="suspend">{tx('pt.suspend')}</button> : null}
+        {canDevices && p.status === 'disabled' ? <button type="button" className="fk-btn" disabled={busy} onClick={() => run(() => posMobilePaymentsApi.approve(p.deviceId), tx('pt.reenabled', { label: p.label ?? p.deviceRef }))} data-testid="reenable">{tx('pt.reenable')}</button> : null}
         {canDevices && !ended ? <button type="button" className="fk-btn danger" disabled={busy} onClick={() => onRevoke(p)} data-testid="revoke">{tx('pt.revoke')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !p ? <div className="fk-loading">{tx('pos.loading')}</div> : <>

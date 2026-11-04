@@ -265,4 +265,5 @@ export const FINANCE_EN = {
   "finance.ex.workflow": "Review and payment",
   "finance.ex.created": "Added {d}",
   "finance.ex.payee": "Paid to",
+  "finance.st.notSetUp": "Not set up",
 };

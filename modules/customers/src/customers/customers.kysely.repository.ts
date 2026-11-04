@@ -654,8 +654,8 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
         from gift_cards g
        where g.tenant_id = ${ctx.tenantId} and g.status not in ('pending_payment', 'draft')
          and (g.customer_id = ${id} or exists (select 1 from gift_card_recipients r where r.tenant_id = g.tenant_id and r.gift_card_id = g.id and r.customer_id = ${id}))
-       order by g.created_at desc, g.id desc`.execute(this.db).catch(() => null);
-       
+       order by g.created_at desc, g.id desc`.execute(this.db);   // Gift Cards guide (Nov 4 2026): a failed read is an error, never "no gift cards"
+
     const cards = r?.rows ?? [];
     if (cards.length === 0) return [];
 
@@ -664,8 +664,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       select id, gift_card_id, type, amount_cents, balance_after_cents, created_at, ticket_id
         from gift_card_transactions
        where tenant_id = ${ctx.tenantId} and gift_card_id in (${sql.join(cardIds)})
-       order by created_at desc`.execute(this.db).catch(() => null);
-       
+       order by created_at desc`.execute(this.db);
     const txRows = txs?.rows ?? [];
 
     return cards.map((g: any) => ({

@@ -262,4 +262,5 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.ex.workflow": "Duyệt và thanh toán",
   "finance.ex.created": "Thêm lúc {d}",
   "finance.ex.payee": "Trả cho",
+  "finance.st.notSetUp": "Chưa thiết lập",
 };

@@ -18,7 +18,7 @@
 import { sql, type Kysely } from 'kysely';
 import { terminalOperationalStatus, TERMINAL_FRESH_MS, type TerminalOperationalStatus } from '@aipowersalon/api-contracts';
 import { hasPermission } from '@aipowersalon/permissions';
-import { SURFACE_CARD_TERMINAL, SURFACE_TAP_TO_PAY_IPHONE, TERMINAL_SURFACES, DEVICE_SURFACES, isTerminalSurface } from '../payments/payment-surfaces';
+import { SURFACE_TAP_TO_PAY_IPHONE, TERMINAL_SURFACES, DEVICE_SURFACES, isTerminalSurface } from '../payments/payment-surfaces';
 import {
   FinanceError, N, iso, isUuid, clampPage, resolvePeriod, salonTimeZone, tsInPeriod, digitsOf, likeOf, moneyToCents,
   type FinanceCtx, type PageReq, type Paged, type Period,
@@ -150,7 +150,7 @@ export class TerminalsScreenRepository {
       .map((r: any) => ({ action: String(r.action_type), at: iso(r.created_at), role: r.role ?? null, actor: r.actor ?? null }));
     const payments = (await sql<any>`select p.id, p.amount_cents, p.status, p.created_at, t.ticket_number from payments p
         join tickets t on t.id = p.ticket_id and t.tenant_id = p.tenant_id
-        where p.tenant_id::text = ${T} and p.payment_surface = ${SURFACE_CARD_TERMINAL} and p.device_id = ${id} order by p.created_at desc, p.id desc limit 5`.execute(this.db)).rows
+        where p.tenant_id::text = ${T} and p.payment_surface in (${sql.join(TERMINAL_SURFACES.map((v) => sql`${v}`))}) and p.device_id = ${id} order by p.created_at desc, p.id desc limit 5`.execute(this.db)).rows
       .map((r: any) => ({ paymentId: String(r.id), amountCents: N(r.amount_cents), status: String(r.status), at: iso(r.created_at), ticketNumber: r.ticket_number ?? null }));
     return { terminal: t, history, recentPayments: payments, freshnessMinutes: TERMINAL_FRESH_MS / 60_000,
       source: { status: 'last ping / last transaction recorded by the server', lease: 'payment_terminal_leases', firmware: null as string | null } };
@@ -245,7 +245,7 @@ export class TerminalsScreenRepository {
   }
 
   // ── Payment Activity (payment → ticket → capture device → optional customer) ────────────────────────────────────
-  private activityBase(T: string) {
+  private activityBase(T: string, B: string | null = null) {
     return sql`select p.id, p.ticket_id, p.method, p.amount_cents, p.tip_cents, p.status as raw_status, ${ACTIVITY_STATUS_SQL} as status, p.created_at, p.processor_transaction_id,
         p.payment_surface, p.device_id, p.card_brand, p.card_last4, p.branch_id,
         t.ticket_number, t.customer_id, t.checkout_register_id,
@@ -260,7 +260,8 @@ export class TerminalsScreenRepository {
       left join pos_payment_terminals pt on p.payment_surface in (${sql.join(TERMINAL_SURFACES.map((v) => sql`${v}`))}) and pt.tenant_id = p.tenant_id::text and pt.id = p.device_id
       left join mobile_pay_devices md on p.payment_surface = ${SURFACE_TAP_TO_PAY_IPHONE} and md.tenant_id = p.tenant_id and md.device_id = p.device_id
       left join users mu on mu.id = md.bound_user_id and mu.tenant_id = p.tenant_id
-      where p.tenant_id = ${T} and (p.method = 'card' or p.payment_surface in (${sql.join(DEVICE_SURFACES.map((v) => sql`${v}`))}))`;
+      where p.tenant_id = ${T} and (p.method = 'card' or p.payment_surface in (${sql.join(DEVICE_SURFACES.map((v) => sql`${v}`))}))
+        ${B ? sql`and p.branch_id = ${B}::uuid` : sql``}`;   // Payment Terminals guide audit (Nov 4 2026): a location sees its own payments only
   }
   private activitySearch(q: string) {
     const ors: ReturnType<typeof sql>[] = [];
@@ -276,7 +277,7 @@ export class TerminalsScreenRepository {
     return sql<boolean>`(${sql.join(ors, sql` or `)})`;
   }
   async activityList(ctx: FinanceCtx, f: { period: Period; q: string; status?: string; device?: string; deviceId?: string; sort: (typeof ACTIVITY_SORTS)[number] }, pr: PageReq) {
-    const T = ctx.tenantId;
+    const T = ctx.tenantId; const B = ctx.branchId && /^[0-9a-f-]{36}$/i.test(String(ctx.branchId)) ? String(ctx.branchId) : null;
     const parts = [tsInPeriod(sql`a.created_at`, f.period)];
     if (f.q) parts.push(this.activitySearch(f.q));
     if (f.status) parts.push(sql`a.status = ${f.status}`);
@@ -286,9 +287,9 @@ export class TerminalsScreenRepository {
     if (f.deviceId) parts.push(sql`a.device_id = ${f.deviceId}`);
     const where = sql.join(parts, sql` and `);
     const order = { time_desc: sql`a.created_at desc, a.id desc`, time_asc: sql`a.created_at asc, a.id asc`, amount_desc: sql`a.amount_cents desc, a.created_at desc, a.id desc`, amount_asc: sql`a.amount_cents asc, a.created_at desc, a.id desc` }[f.sort];
-    const total = N((await sql<any>`select count(*)::int as n from (${this.activityBase(T)}) a where ${where}`.execute(this.db)).rows[0]?.n);
+    const total = N((await sql<any>`select count(*)::int as n from (${this.activityBase(T, B)}) a where ${where}`.execute(this.db)).rows[0]?.n);
     const pg = clampPage(pr, total);
-    const rows = (await sql<any>`select a.* from (${this.activityBase(T)}) a where ${where} order by ${order} limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
+    const rows = (await sql<any>`select a.* from (${this.activityBase(T, B)}) a where ${where} order by ${order} limit ${pg.pageSize} offset ${pg.offset}`.execute(this.db)).rows;
     const canContact = hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view');
     return {
       items: rows.map((r: any) => {
@@ -318,6 +319,10 @@ export class TerminalsScreenRepository {
     const last = (await sql<any>`select a.created_at, a.role, coalesce(u.full_name, u.email) as actor, a.before_json->>'customerDisplayCaptureMode' as before_mode, a.after_json->>'customerDisplayCaptureMode' as after_mode
         from settings_audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
         where a.tenant_id = ${T} and a.entity_id = 'payments-checkout'
+          -- the last change to the setting THIS location follows: its own row, else the salon's (not another location's own row)
+          and ${row?.branch_id
+            ? sql`a.branch_id = ${row.branch_id}::uuid`
+            : sql`(a.branch_id is null or a.branch_id not in (select x.branch_id from tenant_settings x where x.tenant_id = ${T} and x.category = 'payments-checkout' and x.branch_id is not null))`}
           and coalesce(a.before_json->>'customerDisplayCaptureMode', 'front_desk') is distinct from coalesce(a.after_json->>'customerDisplayCaptureMode', 'front_desk')
         order by a.created_at desc limit 1`.execute(this.db)).rows[0];
     const stations = (await sql<any>`select s.id, s.name from pos_stations s where s.tenant_id = ${T} ${B ? sql`and s.branch_id = ${B}::uuid` : sql``} and s.retired_at is null order by s.name`.execute(this.db)).rows;

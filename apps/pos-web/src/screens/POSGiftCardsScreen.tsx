@@ -8,6 +8,7 @@
 // the client only and had no issue / reload / void / ledger. Identifiers are masked everywhere; an exact code is only
 // answered by the protected, rate-limited Check Balance. Issue and Reload are payment-first: they open a ticket that
 // Checkout pays; the card holds value only after the payment. Void is a manager's reasoned, step-up, ledgered action.
+import { authApi } from '../api/authApi';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { posGiftCardsApi, type GiftCardLiabilityReport } from '../api/posGiftCardsApi';
@@ -81,7 +82,7 @@ type Person = { id?: string; customerId?: string | null; name: string | null; ph
 type Card = { id: string; card: string; reference: string | null; status: string; spendable: boolean; originalCents: number; balanceCents: number; issuedAt: string | null; createdAt: string | null;
   lastActivityAt: string | null; lastRedeemedAt: string | null; expiresAt: string | null; purchaser: Person | null; recipient: Person | null; delivery: 'digital' | 'physical'; hasPin: boolean; branch: string | null;
   saleTicketId: string | null; matchedBy?: string | null };
-type Group = '' | 'active' | 'redeemed' | 'void';
+type Group = '' | 'active' | 'redeemed' | 'pending' | 'frozen' | 'void';   // Gift Cards guide (Nov 4 2026): Pending (unpaid sales) and Frozen tabs
 type Note = { tone: 'ok' | 'bad'; text: string; actions?: { label: string; run: () => void }[] } | null;
 type Dlg = null | { kind: 'detail'; id: string } | { kind: 'issue' } | { kind: 'balance' } | { kind: 'liability' };
 type More = { delivery: string; balanceMin: string; balanceMax: string; denomination: string };
@@ -107,8 +108,10 @@ export function POSGiftCardsScreen() {
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
   const [note, setNote] = useState<Note>(null); const [dlg, setDlg] = useState<Dlg>(null); const [highlight, setHighlight] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [branchId, setBranchId] = useState('');
+  const branches = useLoad(() => authApi.branches().then((r) => (r.branches ?? []).filter((b) => b.isActive)), []);
   const centsOf = (s: string) => (s.trim() ? centsFromText(s) : null);
-  const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, status: group || undefined, role: role || undefined, sort,
+  const scope = { ...periodQuery(period), dateField: basis, search: q || undefined, status: group || undefined, role: role || undefined, sort, branchId: branchId || undefined,
     delivery: more.delivery || undefined, balanceMin: centsOf(more.balanceMin) ?? undefined, balanceMax: centsOf(more.balanceMax) ?? undefined, denomination: centsOf(more.denomination) ?? undefined };
   const key = JSON.stringify(scope); useEffect(() => setPage(1), [key]);
   const fit = useFitRows<HTMLDivElement>(42, { min: 3, max: 18, reserve: 34 });
@@ -120,13 +123,14 @@ export function POSGiftCardsScreen() {
   const chips: { label: string; clear: () => void }[] = [
     ...(q ? [{ label: tx('gc.chip.search', { q }), clear: () => setSearch('') }] : []),
     ...(group ? [{ label: tx('gc.tab.' + group), clear: () => setGroup('') }] : []),
+    ...(branchId ? [{ label: branches.data?.find((b) => b.id === branchId)?.name ?? tx('gc.branchLabel'), clear: () => setBranchId('') }] : []),
     ...(role ? [{ label: tx('gc.role.' + role), clear: () => setRole('') }] : []),
     ...(period.preset !== 'all' ? [{ label: tx('gc.chip.date', { basis: tx('gc.basis.' + basis), p: periodText(list.data?.period) }), clear: () => setPeriod({ preset: 'all' as PeriodState['preset'] }) }] : []),
     ...(more.delivery ? [{ label: tx('gc.delivery.' + more.delivery), clear: () => setMore({ ...more, delivery: '' }) }] : []),
     ...(more.balanceMin || more.balanceMax ? [{ label: tx('gc.chip.balance', { a: more.balanceMin || '0', b: more.balanceMax || '∞' }), clear: () => setMore({ ...more, balanceMin: '', balanceMax: '' }) }] : []),
     ...(more.denomination ? [{ label: tx('gc.chip.denomination', { a: more.denomination }), clear: () => setMore({ ...more, denomination: '' }) }] : []),
   ];
-  const clearAll = () => { setSearch(''); setGroup(''); setRole(''); setPeriod({ preset: 'all' as PeriodState['preset'] }); setMore(NO_MORE); setSort('issued_desc'); };
+  const clearAll = () => { setSearch(''); setGroup(''); setBranchId(''); setRole(''); setPeriod({ preset: 'all' as PeriodState['preset'] }); setMore(NO_MORE); setSort('issued_desc'); };
   const forbidden = isForbidden(list.error) || isForbidden(sum.error);
   const doExport = async () => {
     setExporting(true);
@@ -168,13 +172,15 @@ export function POSGiftCardsScreen() {
 
       <div className="fn-tabsrow gc-toolbar">
         <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('finance.status')}>
-          {(['', 'active', 'redeemed', 'void'] as Group[]).map((g) => <button key={g || 'all'} type="button" role="tab" aria-selected={group === g} className={group === g ? 'on' : ''} onClick={() => setGroup(g)} data-testid={'tab-' + (g || 'all')}>{tx('gc.tab.' + (g || 'all'))}</button>)}
+          {(['', 'active', 'redeemed', 'pending', 'frozen', 'void'] as Group[]).map((g) => <button key={g || 'all'} type="button" role="tab" aria-selected={group === g} className={group === g ? 'on' : ''} onClick={() => setGroup(g)} data-testid={'tab-' + (g || 'all')}>{tx('gc.tab.' + (g || 'all'))}</button>)}
         </div>
         <div className="fn-search gc-search">
           <input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('gc.searchPh')} aria-label={tx('gc.searchPh')} data-testid="search" />
           {search ? <button type="button" className="fk-x" aria-label={tx('finance.clearSearch')} onClick={() => setSearch('')}>✕</button> : null}
         </div>
         <select className="fk-select" value={role} onChange={(e) => setRole(e.target.value)} aria-label={tx('gc.roleLabel')} data-testid="role"><option value="">{tx('gc.role.all')}</option><option value="purchaser">{tx('gc.role.purchaser')}</option><option value="recipient">{tx('gc.role.recipient')}</option></select>
+        {(branches.data?.length ?? 0) > 1 ? <select className="fk-select" value={branchId} onChange={(e) => setBranchId(e.target.value)} aria-label={tx('gc.branchLabel')} data-testid="branch">
+          <option value="">{tx('gc.allBranches')}</option>{branches.data!.map((b) => <option key={b.id} value={b.id}>{b.name ?? b.id}</option>)}</select> : null}
         <select className="fk-select" value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('finance.sort')} data-testid="sort">{SORTS.map((s) => <option key={s} value={s}>{tx('gc.sort.' + s)}</option>)}</select>
       </div>
       <div className="fn-tabsrow gc-periodrow">
@@ -227,7 +233,7 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
   const led = useLoad(() => posGiftCardsApi.ledger(id, { preset: 'all', page, pageSize: 6 }), [id, page, tick]);
   const stepUp = useStepUp(tx('gc.stepupVoid'));
-  const [mode, setMode] = useState<null | 'reload' | 'void'>(null); const [amount, setAmount] = useState(''); const [reason, setReason] = useState('');
+  const [mode, setMode] = useState<null | 'reload' | 'void' | 'adjust'>(null); const [adjDir, setAdjDir] = useState<'down' | 'up'>('down'); const [amount, setAmount] = useState(''); const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const reloadKey = useMemo(() => requestId(), [mode]);   // eslint-disable-line react-hooks/exhaustive-deps
   const c: Card | undefined = d.data?.card; const tot = d.data?.totals; const perms = d.data?.permissions ?? {};
@@ -239,6 +245,14 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
     try { const r = await posGiftCardsApi.reload(c.id, { amountCents: cents, customerId: c.purchaser?.id, idempotencyKey: reloadKey }); onChanged(tx('gc.reloadStarted', { a: fmtMoney(cents), n: tno(r.ticketNumber) })); onCheckout(r.ticketId); }
     catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
   };
+  // Gift Cards guide (Nov 4 2026): Adjust balance — a manager's correction (take off) or goodwill credit (add), with a reason
+  const adjustable = c && ['active', 'partially_redeemed', 'redeemed', 'frozen', 'suspended', 'delivered', 'claimed'].includes(c.status);
+  const doAdjust = async () => {
+    const cents = centsFromText(amount); if (!c || cents == null || cents <= 0) { setErr(tx('gc.enterAmount')); return; }
+    setBusy(true); setErr(null);
+    try { const r = await stepUp.run(() => posGiftCardsApi.adjust(c.id, { amountCents: adjDir === 'down' ? -cents : cents, reason: reason.trim() })); setMode(null); setReason(''); setAmount(''); d.reload(); setTick((t) => t + 1); onChanged(tx('gc.adjusted', { card: c.card, a: fmtMoney(r.afterCents) })); }
+    catch (e) { if (!isStepUpCancelled(e)) setErr(errMsg(e)); } finally { setBusy(false); }
+  };
   const doVoid = async () => {
     if (!c) return; setBusy(true); setErr(null);
     try { await stepUp.run(() => posGiftCardsApi.voidCard(c.id, reason.trim())); setMode(null); setReason(''); d.reload(); setTick((t) => t + 1); onChanged(tx('gc.voided', { card: c.card })); }
@@ -248,6 +262,7 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
     <FitDialog wide title={c ? c.card : tx('gc.card')} subtitle={c ? `${c.reference ?? ''} · ${tx('gc.delivery.' + c.delivery)}${c.branch ? ' · ' + c.branch : ''}` : undefined} onClose={onClose} busy={busy} testId="detail-dialog"
       footer={c ? <>
         {perms.reload && reloadable ? <button type="button" className="fk-btn" onClick={() => { setMode('reload'); setErr(null); }} disabled={busy} data-testid="reload">{tx('gc.reload')}</button> : null}
+        {perms.void && adjustable ? <button type="button" className="fk-btn" onClick={() => { setMode('adjust'); setErr(null); setAmount(''); setReason(''); }} disabled={busy} data-testid="adjust">{tx('gc.adjust')}</button> : null}
         {perms.void && voidable ? <button type="button" className="fk-btn danger" onClick={() => { setMode('void'); setErr(null); }} disabled={busy} data-testid="void">{tx('gc.void')}</button> : null}
         {c.status === 'pending_payment' && c.saleTicketId ? <button type="button" className="fk-btn" onClick={() => onCheckout(c.saleTicketId!)}>{tx('gc.goToCheckout')}</button> : null}
         {c.purchaser?.id ? <button type="button" className="fk-btn" onClick={() => onCustomer(c.purchaser!.id!)}>{tx('finance.openCustomer')}</button> : null}
@@ -279,6 +294,12 @@ function DetailDialog({ id, onClose, onChanged, onCheckout, onCustomer }: { id: 
           <span className="fk-hint">{tx('gc.reloadNote')}</span>
           <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>
           <button type="button" className="fk-btn primary" onClick={doReload} disabled={busy || !amount.trim()} data-testid="reload-submit">{busy ? tx('pos.saving') : tx('gc.reloadToCheckout')}</button></div> : null}
+        {mode === 'adjust' ? <div className="fk-void" data-testid="adjust-form"><span>{tx('gc.adjustNow', { a: fmtMoney(c.balanceCents) })}</span>
+          <div className="fk-seg" role="radiogroup" aria-label={tx('gc.adjust')}>{(['down', 'up'] as const).map((x) => <button key={x} type="button" role="radio" aria-checked={adjDir === x} className={adjDir === x ? 'on' : ''} onClick={() => setAdjDir(x)} data-testid={'adjust-' + x}>{tx('gc.adjust.' + x)}</button>)}</div>
+          <label className="fk-field"><span>{tx('gc.amount')} *</span><input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} data-testid="adjust-amount" /></label>
+          <label className="fk-field"><span>{tx('gc.adjustReason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-testid="adjust-reason" /></label>
+          <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>
+          <button type="button" className="fk-btn primary" onClick={doAdjust} disabled={busy || reason.trim().length < 3} data-testid="adjust-submit">{busy ? tx('pos.saving') : tx('gc.adjust')}</button></div> : null}
         {mode === 'void' ? <div className="fk-void" data-testid="void-form"><span>{tx('gc.voidConfirm', { a: fmtMoney(c.balanceCents) })}</span>
           <label className="fk-field"><span>{tx('gc.voidReason')} *</span><input value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} data-autofocus data-testid="void-reason" /></label>
           <button type="button" className="fk-btn" onClick={() => setMode(null)} disabled={busy}>{tx('pos.cancel')}</button>

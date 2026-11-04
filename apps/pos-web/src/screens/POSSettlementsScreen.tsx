@@ -100,6 +100,9 @@ export function POSSettlementsScreen() {
   };
 
   const s = summary.data; const k = s?.kpis; const r = s?.reconciliation; const src = s?.sourceStatus;
+  // Settlements guide audit (Nov 4 2026): with no processor feed (not set up / paused) and no batch ever received, the settlement
+  // money cards say "Not set up" — a $0.00 there read as a real zero
+  const noFeed = !!(src && (src.state === 'not_configured' || src.state === 'inactive') && k && k.settlements === 0);
   const kLoading = summary.loading && !s;
   const kErr = summary.error;
   const sourceNote = src && src.state !== 'connected'
@@ -156,10 +159,10 @@ export function POSSettlementsScreen() {
 
       <div className="fk-kpis six" data-testid="kpis">
         {kErr ? <StateBlock error={kErr} onRetry={summary.reload} /> : <>
-          <KpiCard testId="kpi-settlements" label={tx('finance.st.kpi.settlements')} loading={kLoading} value={k ? fmtNumber(k.settlements) : ''} sub={s ? tx('finance.st.kpi.settlementsSub', { basis: tx('finance.basis.' + s.dateBasis) }) : ''} onClick={() => setTab('settlements')} />
-          <KpiCard testId="kpi-gross" label={tx('finance.st.kpi.gross')} loading={kLoading} value={k ? money(k.grossSettledCents) : ''} sub={tx('finance.st.kpi.grossSub')} onClick={() => { setTab('settlements'); setSorts((x) => ({ ...x, settlements: 'gross_desc' })); }} />
-          <KpiCard testId="kpi-fees" label={tx('finance.st.kpi.fees')} loading={kLoading} value={k ? money(k.processorFeesCents) : ''} sub={tx('finance.st.kpi.feesSub')} onClick={() => goRecon()} />
-          <KpiCard testId="kpi-net" label={tx('finance.st.kpi.net')} tone="gold" loading={kLoading} value={k ? money(k.netProcessorPayoutCents) : ''} sub={r ? (r.bankVerified ? tx('finance.st.kpi.netSubBank', { v: money(r.bankConfirmedCents) }) : tx('finance.notBankVerified')) : ''} onClick={() => { setTab('settlements'); setSorts((x) => ({ ...x, settlements: 'net_desc' })); }} />
+          <KpiCard testId="kpi-settlements" label={tx('finance.st.kpi.settlements')} loading={kLoading} value={k ? (noFeed ? tx('finance.st.notSetUp') : fmtNumber(k.settlements)) : ''} sub={s ? tx('finance.st.kpi.settlementsSub', { basis: tx('finance.basis.' + s.dateBasis) }) : ''} onClick={() => setTab('settlements')} />
+          <KpiCard testId="kpi-gross" label={tx('finance.st.kpi.gross')} loading={kLoading} value={k ? (noFeed ? tx('finance.st.notSetUp') : money(k.grossSettledCents)) : ''} sub={tx('finance.st.kpi.grossSub')} onClick={() => { setTab('settlements'); setSorts((x) => ({ ...x, settlements: 'gross_desc' })); }} />
+          <KpiCard testId="kpi-fees" label={tx('finance.st.kpi.fees')} loading={kLoading} value={k ? (noFeed ? tx('finance.st.notSetUp') : money(k.processorFeesCents)) : ''} sub={tx('finance.st.kpi.feesSub')} onClick={() => goRecon()} />
+          <KpiCard testId="kpi-net" label={tx('finance.st.kpi.net')} tone="gold" loading={kLoading} value={k ? (noFeed ? tx('finance.st.notSetUp') : money(k.netProcessorPayoutCents)) : ''} sub={r ? (r.bankVerified ? tx('finance.st.kpi.netSubBank', { v: money(r.bankConfirmedCents) }) : tx('finance.notBankVerified')) : ''} onClick={() => { setTab('settlements'); setSorts((x) => ({ ...x, settlements: 'net_desc' })); }} />
           <KpiCard testId="kpi-refunds" label={tx('finance.st.kpi.refunds')} loading={kLoading} value={k ? fmtNumber(k.refunds) : ''} sub={k ? tx('finance.st.kpi.refundsSub', { c: fmtNumber(k.refundsCompleted), o: fmtNumber(k.refundsOpen), f: fmtNumber(k.refundsFailed) }) : ''} onClick={() => setTab('refunds')} />
           <KpiCard testId="kpi-refunds-total" label={tx('finance.st.kpi.refundsTotal')} loading={kLoading} tone={k && k.refundsTotalCents > 0 ? 'warn' : undefined} value={k ? money(k.refundsTotalCents) : ''} sub={tx('finance.st.kpi.refundsTotalSub')} onClick={() => { setTab('refunds'); setRStatus('completed'); }} />
         </>}

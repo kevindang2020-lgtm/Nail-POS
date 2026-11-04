@@ -96,3 +96,33 @@ describe("a refund takes a ticket's gift-card value back", () => {
     expect(await w.reverseGiftCardValueForRefund(ctxOther, sale.ticketId, 100, id('f6'), 'x')).toEqual({ reversedCents: 0, shortCents: 0 });
   });
 });
+
+describe('a received card is linked to the recipient when they are already this salon\'s customer', () => {
+  it('one customer with that phone → linked; an unknown phone → not linked (never guessed by name)', async () => {
+    const a = await w.issueGiftCardOnNewTicket(ctx, { idempotencyKey: 'gcr-issue-rcpt1', customerId: id('c1'), amountCents: 2500, code: 'GC-GCRTEST010', reference: 'GC-****-0010', cardNumber: '6000123412340010', physical: false,
+      recipient: { name: 'Someone Else', phone: '856-555-1234' } });
+    const b = await w.issueGiftCardOnNewTicket(ctx, { idempotencyKey: 'gcr-issue-rcpt2', customerId: id('c1'), amountCents: 2500, code: 'GC-GCRTEST011', reference: 'GC-****-0011', cardNumber: '6000123412340011', physical: false,
+      recipient: { name: 'John Smith', phone: '609-555-0000' } });
+    if (!a.ok || !b.ok) throw new Error('issue failed');
+    const link = async (cardId: string) => (await q(`select customer_id from gift_card_recipients where gift_card_id = $1`, [cardId])).rows[0].customer_id;
+    expect(await link(a.cardId)).toBe(id('c1'));
+    expect(await link(b.cardId)).toBeNull();
+  });
+});
+
+describe('Adjust balance (a manager decision with a reason)', () => {
+  it('down and up with before/after records; never below zero; an empty card reads redeemed; a closed card is refused', async () => {
+    const a = await w.issueGiftCardOnNewTicket(ctx, { idempotencyKey: 'gcr-issue-adj', customerId: id('c1'), amountCents: 3000, code: 'GC-GCRTEST020', reference: 'GC-****-0020', cardNumber: '6000123412340020', physical: false });
+    if (!a.ok) throw new Error('issue failed');
+    expect(await w.adjustGiftCardById(ctx, a.cardId, -500, 'x')).toEqual({ ok: false, reason: 'not_adjustable' });   // unpaid: nothing to adjust yet
+    await payTicket(a.ticketId);
+    expect(await w.adjustGiftCardById(ctx, a.cardId, -3500, 'too much')).toEqual({ ok: false, reason: 'below_zero' });
+    expect(await w.adjustGiftCardById(ctx, a.cardId, -3000, 'charged on the wrong card')).toEqual({ ok: true, beforeCents: 3000, afterCents: 0, status: 'redeemed' });
+    expect(await w.adjustGiftCardById(ctx, a.cardId, 1000, 'goodwill credit')).toEqual({ ok: true, beforeCents: 0, afterCents: 1000, status: 'active' });
+    const adj = (await q(`select amount_cents, balance_before_cents, balance_after_cents, reason from gift_card_adjustments where gift_card_id = $1 order by created_at, balance_before_cents desc`, [a.cardId])).rows;
+    expect(adj).toEqual([{ amount_cents: -3000, balance_before_cents: 3000, balance_after_cents: 0, reason: 'charged on the wrong card' }, { amount_cents: 1000, balance_before_cents: 0, balance_after_cents: 1000, reason: 'goodwill credit' }]);
+    expect(await w.adjustGiftCardById(ctxOther, a.cardId, 100, 'other salon')).toEqual({ ok: false, reason: 'not_found' });
+    await w.voidGiftCardById(ctx, a.cardId, 'closing it');
+    expect(await w.adjustGiftCardById(ctx, a.cardId, 100, 'after void')).toEqual({ ok: false, reason: 'not_adjustable' });
+  });
+});

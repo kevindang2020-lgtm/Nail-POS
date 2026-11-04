@@ -390,7 +390,7 @@ export function POSSettingsScreen() {
               <button className="btn ghost whitespace-nowrap" onClick={() => nav('/tenant/payments/reload-gift-card')}>{i18nText('pos.reload_gift_card_2')}</button>
               <button className="btn ghost whitespace-nowrap" onClick={() => nav('/tenant/payments/gift-card-lookup')}>{i18nText('pos.gift_card_lookup_2')}</button>
               <button className="btn ghost whitespace-nowrap" onClick={() => nav('/tenant/payments/gift-card-stock')}>{i18nText('pos.physical_card_stock_2')}</button>
-              <button className="btn ghost whitespace-nowrap" onClick={() => nav('/tenant/payments/gift-cards')}>{i18nText('pos.gift_card_settings_2')}</button>
+              <button className="btn ghost whitespace-nowrap" onClick={() => nav('/tenant/payments/gift-cards/settings')}>{i18nText('pos.gift_card_settings_2')}</button>
               <button className="btn ghost whitespace-nowrap" onClick={openPay}>{edit === 'pay' ? i18nText('pos.close') : i18nText('pos.edit')}</button>
             </div>
           </div>

@@ -93,4 +93,6 @@ export const PAYTERM_EN = {
   // add iPhone
   'pt.addPhoneSub': 'Create a one-time pairing code for the AIPowerSalon app', 'pt.createPairing': 'Create pairing code', 'pt.phoneName': 'Phone name',
   'pt.sharedPhone': 'Shared phone (not tied to one staff member)', 'pt.addPhoneNote': 'The phone appears as Pending until a manager approves it.',
+  "pt.reenable": "Turn back on",
+  "pt.reenabled": "{label} can take payments again.",
 } as const;

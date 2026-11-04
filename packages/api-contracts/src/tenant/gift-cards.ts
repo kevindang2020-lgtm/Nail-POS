@@ -29,3 +29,6 @@ export interface GiftCardLiabilityReport {
   totals: { soldCents: number; redeemedCents: number; adjustedCents: number };
 }
 
+
+/** POST /pos/checkout/gift-cards/:cardId/adjust (Gift Cards guide, Nov 4 2026) — the balance before / after a manager's adjustment */
+export interface GiftCardAdjustResult { cardId: string; amountCents: number; beforeCents: number; afterCents: number; status: string }

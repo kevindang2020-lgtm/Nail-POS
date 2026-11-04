@@ -47,6 +47,8 @@ export const GIFT_CARD_ISSUE_BODY: BodySchema = S.object({
 }, ['customerId', 'amountCents', 'idempotencyKey'], { 'x-forbidden': [...(MONEY ?? []), 'code', 'balanceCents', 'ticketId'] });
 export const GIFT_CARD_SCREEN_RELOAD_BODY: BodySchema = S.object({ customerId: scalar(64), amountCents: cents, idempotencyKey: scalar(64) }, ['amountCents', 'idempotencyKey'], { 'x-forbidden': [...(MONEY ?? []), 'code', 'balanceCents'] });
 export const GIFT_CARD_VOID_BODY: BodySchema = S.object({ reason: str(500) }, ['reason']);
+/** Gift Cards guide (Nov 4 2026): a manager's balance adjustment — signed cents (a correction down, a goodwill credit up) and why */
+export const GIFT_CARD_ADJUST_BODY: BodySchema = S.object({ amountCents: S.integer({ minimum: -10_000_000, maximum: 10_000_000 }), reason: str(500) }, ['amountCents', 'reason']);
 export const RECEIPT_SEND_ALL_BODY: BodySchema = S.object({ channels: S.nullable(S.array(S.text(10), { maxItems: 4 })) });
 export const TICKET_REFUND_BODY: BodySchema = money({ reason: scalar(1000), amountCents: cents, managerPin: scalar(32), serviceLineIds: S.nullable(S.array(scalar(64), { maxItems: 200 })), tipRefunded: bool });
 export const PAYMENT_REFUND_BODY: BodySchema = TICKET_REFUND_BODY;
