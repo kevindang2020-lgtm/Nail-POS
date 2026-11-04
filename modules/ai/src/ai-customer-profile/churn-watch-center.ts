@@ -11,6 +11,8 @@
 // A review is current while the signal has not RISEN above the level it was reviewed at (and a deferral has not passed its
 // date); a rising signal returns to Needs Review. Nothing here texts, books, edits a customer or changes points.
 import { sql, type Kysely } from 'kysely';
+import { canMoveToSql } from '@aipowersalon/database';
+import { CHURN_WATCH_REVIEW } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { customerSearchPredicate, CI_RULE_VERSION } from './customer-intelligence-center';
@@ -247,7 +249,8 @@ export class ChurnWatchCenter {
         await sql`insert into churn_watch_reviews (tenant_id, customer_id, status, level_at_review, due_on, reviewed_by, reviewed_at, updated_by, version)
           values (${T}, ${id}::uuid, ${action}, ${c.churn_level}, ${action === 'deferred' ? dueOn : null}::date, ${uuidOrNull(ctx.userId)}, now(), ${uuidOrNull(ctx.userId)}, 1)
           on conflict (tenant_id, customer_id) do update set status = excluded.status, level_at_review = excluded.level_at_review, due_on = excluded.due_on,
-            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = churn_watch_reviews.version + 1`.execute(trx);
+            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = churn_watch_reviews.version + 1
+          where ${canMoveToSql(CHURN_WATCH_REVIEW, action, 'churn_watch_reviews')}`.execute(trx);
       }
       if (action === 'reopened') await sql`delete from churn_watch_reviews where tenant_id = ${T} and customer_id = ${id}::uuid`.execute(trx);
       await sql`insert into churn_watch_review_events (id, tenant_id, customer_id, event_type, level, note, actor_user_id)

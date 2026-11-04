@@ -302,3 +302,40 @@ export const RECEPTION_COPILOT_ACTION = defineStateMachine({
   transitions: { pending: ['succeeded', 'failed', 'unknown'] },
   initial: ['pending'],
 });
+
+/** service_recommendations.status (766) — a suggestion is OPEN while the latest scan still produces it; a scan that no
+ *  longer produces it SUPERSEDES it; when it returns it is open again (with a new generated date). The rescan's upsert
+ *  refreshes an open one in place (open → open). */
+export const SERVICE_RECOMMENDATION = defineStateMachine({
+  name: 'service_recommendation', table: 'service_recommendations', column: 'status',
+  states: ['open', 'superseded'],
+  transitions: { open: ['open', 'superseded'], superseded: ['open'] },
+  initial: ['open'],
+});
+
+/** A scan / detection run: running → completed (or succeeded) | failed. One per table, written by its own center. */
+export const CUSTOMER_INTELLIGENCE_SCAN = defineStateMachine({
+  name: 'customer_intelligence_scan', table: 'customer_intelligence_scans', column: 'status',
+  states: ['running', 'completed', 'failed'], transitions: { running: ['completed', 'failed'] }, initial: ['running'],
+});
+export const SERVICE_RECOMMENDATION_SCAN = defineStateMachine({
+  name: 'service_recommendation_scan', table: 'service_recommendation_scans', column: 'status',
+  states: ['running', 'completed', 'failed'], transitions: { running: ['completed', 'failed'] }, initial: ['running'],
+});
+export const MONEY_PROTECTION_RUN = defineStateMachine({
+  name: 'money_protection_run', table: 'money_protection_detection_runs', column: 'status',
+  states: ['running', 'succeeded', 'failed'], transitions: { running: ['succeeded', 'failed'] }, initial: ['running'],
+});
+/** A manager's review mark on a customer / suggestion (reviewed, deferred, not applicable): any mark may replace any other. */
+const REVIEW = ['reviewed', 'deferred'] as const;
+export const CHURN_WATCH_REVIEW = defineStateMachine({
+  name: 'churn_watch_review', table: 'churn_watch_reviews', column: 'status', states: ['reviewed', 'deferred'], transitions: ALL(REVIEW), initial: ['reviewed', 'deferred'],
+});
+export const REBOOKING_REVIEW = defineStateMachine({
+  name: 'rebooking_review', table: 'rebooking_reviews', column: 'status', states: ['reviewed', 'deferred'], transitions: ALL(REVIEW), initial: ['reviewed', 'deferred'],
+});
+const SR_REVIEW = ['reviewed', 'deferred', 'not_applicable'] as const;
+export const SERVICE_RECOMMENDATION_REVIEW = defineStateMachine({
+  name: 'service_recommendation_review', table: 'service_recommendation_reviews', column: 'status',
+  states: ['reviewed', 'deferred', 'not_applicable'], transitions: ALL(SR_REVIEW), initial: ['reviewed', 'deferred', 'not_applicable'],
+});

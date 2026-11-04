@@ -140,3 +140,19 @@ export const SEGMENT_AUDIENCE_DRAFT = defineStateMachine({
   transitions: { draft: ['discarded', 'expired'] },
   initial: ['draft'],
 });
+
+/** customer_duplicate_scans.status (761): running → completed | failed. */
+export const CUSTOMER_DUPLICATE_SCAN = defineStateMachine({
+  name: 'customer_duplicate_scan', table: 'customer_duplicate_scans', column: 'status',
+  states: ['running', 'completed', 'failed'], transitions: { running: ['completed', 'failed'] }, initial: ['running'],
+});
+/** customer_duplicate_groups.status (761): a group is reviewed (in review / deferred / kept separate), resolved by a scan
+ *  that no longer finds it, reopened (pending) by new evidence or a manager, and MERGED — the one end state (its sources
+ *  are archived; it can never reappear). A scan re-touches every live group in place (self-moves). */
+const DUP_ALL = ['pending', 'in_review', 'deferred', 'failed', 'kept_separate', 'resolved', 'merged'] as const;
+export const CUSTOMER_DUPLICATE_GROUP = defineStateMachine({
+  name: 'customer_duplicate_group', table: 'customer_duplicate_groups', column: 'status',
+  states: ['pending', 'in_review', 'deferred', 'failed', 'kept_separate', 'resolved', 'merged'],
+  transitions: { pending: DUP_ALL, in_review: DUP_ALL, deferred: DUP_ALL, failed: DUP_ALL, kept_separate: DUP_ALL, resolved: DUP_ALL },
+  initial: ['pending', 'deferred', 'kept_separate'],
+});

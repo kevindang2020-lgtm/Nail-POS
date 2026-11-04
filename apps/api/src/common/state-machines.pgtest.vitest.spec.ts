@@ -86,8 +86,9 @@ describe('values the gate found outside their CHECK (V1) — fixed', () => {
 });
 
 describe('each machine reproduces its domain\'s table (allowed / refused)', () => {
-  it('payroll period: draft → review → finalized → paid (terminal); review → draft (send back); finalized → draft (reopen); draft → canceled (terminal, Weekly Paycheck close-out §3.4)', () => {
-    expect(moves(PAYROLL_PERIOD)).toEqual(['draft>canceled', 'draft>finalized', 'draft>review', 'finalized>draft', 'finalized>paid', 'review>draft', 'review>finalized']);
+  it('payroll period: draft → review → finalized → paid; paid → finalized (system: voided payout); review → draft (send back); finalized → draft (reopen); draft → canceled (terminal, Weekly Paycheck close-out §3.4)', () => {
+    // + paid > finalized: a voided payout makes a paid week owe money again (Kevin's decision Oct 28 2026; the system's move only)
+    expect(moves(PAYROLL_PERIOD)).toEqual(['draft>canceled', 'draft>finalized', 'draft>review', 'finalized>draft', 'finalized>paid', 'paid>finalized', 'review>draft', 'review>finalized']);
     expect(PAYROLL_PERIOD.can('review', 'canceled') || PAYROLL_PERIOD.can('finalized', 'canceled') || PAYROLL_PERIOD.can('canceled', 'draft')).toBe(false);   // only a draft is canceled; canceled is terminal
   });
   it('purchase order: inventory-core PO_TRANSITIONS exactly (no skipping draft → received; cancelled / closed terminal)', () => {
@@ -106,7 +107,7 @@ describe('each machine reproduces its domain\'s table (allowed / refused)', () =
     for (const t of ['active', 'pending', 'trial', 'paused']) expect(CUSTOMER_MEMBERSHIP.can('canceled', t) || CUSTOMER_MEMBERSHIP.can('expired', t), t).toBe(false);
   });
   it('loyalty code, invitation, holds, verification, deals, drawers: the moves their writers make — and no way back from an end state', () => {
-    expect(moves(LOYALTY_REDEMPTION)).toEqual(['applied>applied', 'applied>issued', 'applied>used', 'issued>applied']);
+    expect(moves(LOYALTY_REDEMPTION)).toEqual(['applied>applied', 'applied>issued', 'applied>used', 'issued>applied', 'issued>void']);   // an unused code can be voided
     expect(moves(USER_INVITATION)).toEqual(['pending>accepted', 'pending>cancelled', 'pending>expired']);
     for (const end of ['released', 'converted', 'expired']) expect(BOOKING_HOLD.states.some((t) => BOOKING_HOLD.can(end, t)), end).toBe(false);
     expect(BOOKING_VERIFICATION_SESSION.can('locked', 'verified')).toBe(true);           // the staff override

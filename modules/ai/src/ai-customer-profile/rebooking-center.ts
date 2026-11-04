@@ -18,6 +18,8 @@
 // opportunity returns to Due for Review. A booking made after the last evaluation is read LIVE from the Booking Calendar,
 // so a stale snapshot can never offer a second booking.
 import { sql, type Kysely } from 'kysely';
+import { canMoveToSql } from '@aipowersalon/database';
+import { REBOOKING_REVIEW } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { customerSearchPredicate, CI_RULE_VERSION } from './customer-intelligence-center';
@@ -344,7 +346,8 @@ export class RebookingCenter {
         await sql`insert into rebooking_reviews (tenant_id, customer_id, status, opportunity_since, due_on, reviewed_by, reviewed_at, updated_by, version)
           values (${T}, ${id}::uuid, ${action}, ${c.rebooking_since ?? null}, ${action === 'deferred' ? dueOn : null}::date, ${uuidOrNull(ctx.userId)}, now(), ${uuidOrNull(ctx.userId)}, 1)
           on conflict (tenant_id, customer_id) do update set status = excluded.status, opportunity_since = excluded.opportunity_since, due_on = excluded.due_on,
-            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = rebooking_reviews.version + 1`.execute(trx);
+            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = rebooking_reviews.version + 1
+          where ${canMoveToSql(REBOOKING_REVIEW, action, 'rebooking_reviews')}`.execute(trx);
       }
       if (action === 'reopened') await sql`delete from rebooking_reviews where tenant_id = ${T} and customer_id = ${id}::uuid`.execute(trx);
       await sql`insert into rebooking_review_events (id, tenant_id, customer_id, event_type, opportunity_since, note, actor_user_id)

@@ -16,6 +16,8 @@
 // service-level) · Service inactive (deactivated since the evaluation) · Superseded (no longer suggested — history only).
 // "Open AI Booking Assistant" re-checks all of that and returns a one-use prefill for POS → Booking: never an appointment.
 import { sql, type Kysely } from 'kysely';
+import { canMoveToSql } from '@aipowersalon/database';
+import { SERVICE_RECOMMENDATION, SERVICE_RECOMMENDATION_REVIEW, SERVICE_RECOMMENDATION_SCAN } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
@@ -198,12 +200,13 @@ export class ServiceRecommendationsCenter {
             on conflict (tenant_id, customer_id, service_id, rec_type) do update set confidence = excluded.confidence, times_completed = excluded.times_completed,
               last_completed_at = excluded.last_completed_at, preferred_technician_id = excluded.preferred_technician_id, evaluated_at = now(), scan_id = excluded.scan_id,
               rule_version = excluded.rule_version, superseded_at = null,
-              generated_at = case when service_recommendations.status = 'superseded' then now() else service_recommendations.generated_at end, status = 'open'`.execute(trx);
+              generated_at = case when service_recommendations.status = 'superseded' then now() else service_recommendations.generated_at end, status = 'open'
+            where ${canMoveToSql(SERVICE_RECOMMENDATION, 'open', 'service_recommendations')}`.execute(trx);
         }
         const superseded = N((await sql<Row>`with u as (update service_recommendations set status = 'superseded', superseded_at = now()
-          where tenant_id = ${T} and status = 'open' and scan_id is distinct from ${scanId}::uuid returning 1) select count(*)::int as n from u`.execute(trx)).rows[0]?.n);
+          where tenant_id = ${T} and status = 'open' and ${canMoveToSql(SERVICE_RECOMMENDATION, 'superseded')} and scan_id is distinct from ${scanId}::uuid returning 1) select count(*)::int as n from u`.execute(trx)).rows[0]?.n);
         await sql`update service_recommendation_scans set status = 'completed', finished_at = now(), customers_evaluated = ${live}, generated = ${sugg.length},
-          counts = ${JSON.stringify({ ...counts, superseded })}::jsonb, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId}`.execute(trx);
+          counts = ${JSON.stringify({ ...counts, superseded })}::jsonb, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId} and ${canMoveToSql(SERVICE_RECOMMENDATION_SCAN, 'completed')}`.execute(trx);
         return { reused: false, scan: this.scanOut((await sql<Row>`select id, status, customers_evaluated, generated, counts, rule_version, started_at, finished_at, duration_ms
           from service_recommendation_scans where tenant_id = ${T} and id = ${scanId}`.execute(trx)).rows[0]) };
       });
@@ -456,7 +459,8 @@ export class ServiceRecommendationsCenter {
         await sql`insert into service_recommendation_reviews (tenant_id, recommendation_id, status, generated_at_reviewed, due_on, reviewed_by, reviewed_at, updated_by, version)
           values (${T}, ${String(r.id)}::uuid, ${action}, ${r.generated_at}, ${action === 'deferred' ? dueOn : null}::date, ${uuidOrNull(ctx.userId)}, now(), ${uuidOrNull(ctx.userId)}, 1)
           on conflict (tenant_id, recommendation_id) do update set status = excluded.status, generated_at_reviewed = excluded.generated_at_reviewed, due_on = excluded.due_on,
-            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = service_recommendation_reviews.version + 1`.execute(trx);
+            reviewed_by = excluded.reviewed_by, reviewed_at = now(), updated_by = excluded.updated_by, version = service_recommendation_reviews.version + 1
+          where ${canMoveToSql(SERVICE_RECOMMENDATION_REVIEW, action, 'service_recommendation_reviews')}`.execute(trx);
       }
       if (action === 'reopened') await sql`delete from service_recommendation_reviews where tenant_id = ${T} and recommendation_id = ${String(r.id)}::uuid`.execute(trx);
       await sql`insert into service_recommendation_events (id, tenant_id, recommendation_id, customer_id, event_type, note, actor_user_id)

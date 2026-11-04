@@ -24,8 +24,8 @@
 //   • check          — "Check AI Money Protection System": read-only.
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
-import { branchTimeZone, assertTransition } from '@aipowersalon/database';
-import { MONEY_PROTECTION_ALERT } from '../ai-lifecycles';
+import { branchTimeZone, assertTransition, canMoveToSql } from '@aipowersalon/database';
+import { MONEY_PROTECTION_ALERT, MONEY_PROTECTION_RUN } from '../ai-lifecycles';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { RULE_CATALOG } from './ai-money-protection-catalog';
 import type { MoneyProtectionFlags } from './ai-money-protection-flags';
@@ -448,11 +448,11 @@ export class MoneyProtectionCenter {
     try {
       const r = await this.deps.detect(T);
       await sql`update money_protection_detection_runs set status = 'succeeded', finished_at = clock_timestamp(), evaluated = ${r.evaluated}, created_alerts = ${r.created},
-        updated_alerts = ${r.updated}, layers = ${JSON.stringify(r.layers)}::jsonb where id = ${runId}`.execute(this.db);
+        updated_alerts = ${r.updated}, layers = ${JSON.stringify(r.layers)}::jsonb where id = ${runId} and tenant_id = ${T} and ${canMoveToSql(MONEY_PROTECTION_RUN, 'succeeded')}`.execute(this.db);
       return { id: runId, status: 'succeeded', reused: false, evaluated: r.evaluated, created: r.created, updated: r.updated };
     } catch (e) {
       const code = e instanceof Error && /DISABLED/.test(e.message) ? 'module_disabled' : 'detection_failed';
-      await sql`update money_protection_detection_runs set status = 'failed', finished_at = clock_timestamp(), error_code = ${code} where id = ${runId}`.execute(this.db);
+      await sql`update money_protection_detection_runs set status = 'failed', finished_at = clock_timestamp(), error_code = ${code} where id = ${runId} and tenant_id = ${T} and ${canMoveToSql(MONEY_PROTECTION_RUN, 'failed')}`.execute(this.db);
       if (trigger === 'manual') throw new MoneyCenterError(code === 'module_disabled' ? 'Money Protection is not active for this salon.' : 'Detection could not finish. Run the system check.', 'MC_DETECTION_FAILED', 503, { runId });
       return { id: runId, status: 'failed', reused: false, errorCode: code };
     }

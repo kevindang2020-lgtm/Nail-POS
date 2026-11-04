@@ -11,6 +11,8 @@
 // with no 300-customer cap. Every state is counted, so the six cards always reconcile: scanned = active + rebooking soon +
 // due for return + inactive + long-term inactive + insufficient history (never served + under-cadence).
 import { sql, type Kysely } from 'kysely';
+import { canMoveToSql } from '@aipowersalon/database';
+import { CUSTOMER_INTELLIGENCE_SCAN } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, toStoredCustomerPhone, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
@@ -218,7 +220,7 @@ export class CustomerIntelligenceCenter {
               rebooking_since timestamptz, rebooking_due_on date, rebooking_window_end date)`.execute(trx);
         }
         await sql`update customer_intelligence_scans set status = 'completed', finished_at = now(), scanned = ${rows.length}, counts = ${JSON.stringify(counts)}::jsonb,
-          archived_excluded = ${archived}, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId}`.execute(trx);
+          archived_excluded = ${archived}, duration_ms = ${Math.max(0, Math.round(this.now() - started))} where tenant_id = ${T} and id = ${scanId} and ${canMoveToSql(CUSTOMER_INTELLIGENCE_SCAN, 'completed')}`.execute(trx);
         const row = (await sql<Row>`select id, status, scanned, counts, archived_excluded, rule_version, tunables, started_at, finished_at, duration_ms
           from customer_intelligence_scans where tenant_id = ${T} and id = ${scanId}`.execute(trx)).rows[0];
         return { reused: false, scan: this.scanOut(row) };

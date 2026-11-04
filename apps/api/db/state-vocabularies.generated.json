@@ -537,6 +537,10 @@
    "withdrawn",
    "won"
   ],
+  "churn_watch_reviews.status": [
+   "deferred",
+   "reviewed"
+  ],
   "commission_discrepancy_reviews.status": [
    "ASSIGNED",
    "DISMISSED",
@@ -711,6 +715,24 @@
    "skipped",
    "unavailable"
   ],
+  "customer_duplicate_groups.status": [
+   "deferred",
+   "failed",
+   "in_review",
+   "kept_separate",
+   "merged",
+   "pending",
+   "resolved"
+  ],
+  "customer_duplicate_merge_ops.status": [
+   "completed",
+   "failed"
+  ],
+  "customer_duplicate_scans.status": [
+   "completed",
+   "failed",
+   "running"
+  ],
   "customer_identities.status": [
    "active",
    "disabled"
@@ -737,6 +759,19 @@
    "imported",
    "invalid",
    "valid"
+  ],
+  "customer_intelligence_scans.status": [
+   "completed",
+   "failed",
+   "running"
+  ],
+  "customer_intelligence_snapshots.status": [
+   "active",
+   "due_for_return",
+   "inactive",
+   "insufficient_history",
+   "long_term_inactive",
+   "rebooking_soon"
   ],
   "customer_legal_holds.status": [
    "active",
@@ -1348,6 +1383,11 @@
    "RESOLVED_SYSTEM_ERROR",
    "WAITING_FOR_INFORMATION"
   ],
+  "money_protection_detection_runs.status": [
+   "failed",
+   "running",
+   "succeeded"
+  ],
   "money_protection_investigations.status": [
    "CLOSED",
    "ESCALATED",
@@ -1878,6 +1918,10 @@
    "in_service",
    "pending"
   ],
+  "rebooking_reviews.status": [
+   "deferred",
+   "reviewed"
+  ],
   "reception_copilot_action_ledger.state": [
    "failed",
    "pending",
@@ -2183,6 +2227,20 @@
    "rejected",
    "sent",
    "skipped"
+  ],
+  "service_recommendation_reviews.status": [
+   "deferred",
+   "not_applicable",
+   "reviewed"
+  ],
+  "service_recommendation_scans.status": [
+   "completed",
+   "failed",
+   "running"
+  ],
+  "service_recommendations.status": [
+   "open",
+   "superseded"
   ],
   "service_template_categories.status": [
    "active",

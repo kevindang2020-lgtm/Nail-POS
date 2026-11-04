@@ -21,6 +21,8 @@
 // Never: an automatic merge, a money movement, a refund, a cancelled membership or booking, a message, or consent copied
 // from one profile to another. The health check only reads.
 import { sql, type Kysely } from 'kysely';
+import { canMoveToSql } from '@aipowersalon/database';
+import { CUSTOMER_DUPLICATE_GROUP, CUSTOMER_DUPLICATE_SCAN } from '../customer-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import type { OutboxWriter } from '@aipowersalon/events';
@@ -142,7 +144,7 @@ export class DuplicateReviewCenter {
         const res = await this.detect(trx, T, scanId, ctx.userId);
         await sql`update customer_duplicate_scans set status = 'completed', finished_at = now(), customers_scanned = ${res.scanned}, groups_found = ${res.found},
           groups_new = ${res.created}, groups_reopened = ${res.reopened}, groups_resolved = ${res.resolved}, oversized_keys = ${res.oversized}
-          where id = ${scanId}`.execute(trx);
+          where id = ${scanId} and tenant_id = ${T} and ${canMoveToSql(CUSTOMER_DUPLICATE_SCAN, 'completed')}`.execute(trx);
         const row = (await sql<Row>`select id, status, finished_at, customers_scanned, groups_found, groups_new, groups_reopened, groups_resolved, oversized_keys, rule_version from customer_duplicate_scans where tenant_id = ${T} and id = ${scanId}`.execute(trx)).rows[0];
         return { reused: false, scan: this.scanOut(row) };
       });
@@ -229,12 +231,12 @@ export class DuplicateReviewCenter {
       await sql`update customer_duplicate_groups set reasons = ${reasons}::text[], confidence = ${conf}, rule_version = ${DR_RULE_VERSION}, evidence = ${JSON.stringify(ev)}::jsonb,
           evidence_hash = ${evHash}, status = ${status}, last_seen_at = now(), last_scan_id = ${scanId},
           updated_at = case when ${changed || !!reopen} then now() else updated_at end, updated_by = case when ${changed || !!reopen} then null else updated_by end, version = version + case when ${changed || !!reopen} then 1 else 0 end
-        where id = ${prev.id}`.execute(trx);
+        where id = ${prev.id} and tenant_id = ${T} and ${canMoveToSql(CUSTOMER_DUPLICATE_GROUP, status)}`.execute(trx);
       if (reopen) { await this.event(trx, T, prev.id, 'reopened', null, null, { from: prev.status, reason: reopen, confidence: conf, scanId }); reopened++; }
     }
     // open groups this scan no longer finds (a profile was edited, archived or merged elsewhere): resolved, history kept
     const gone = (await sql<Row>`update customer_duplicate_groups set status = 'resolved', updated_at = now(), updated_by = null, version = version + 1
-      where tenant_id = ${T} and status = any(${[...DR_OPEN_STATUSES]}::text[]) and not (id = any(${seenIds}::uuid[])) returning id`.execute(trx)).rows;
+      where tenant_id = ${T} and status = any(${[...DR_OPEN_STATUSES]}::text[]) and ${canMoveToSql(CUSTOMER_DUPLICATE_GROUP, 'resolved')} and not (id = any(${seenIds}::uuid[])) returning id`.execute(trx)).rows;
     for (const g of gone) await this.event(trx, T, g.id, 'resolved', null, null, { reason: 'no_longer_detected', scanId });
     void actor;
     return { scanned, found: sets.size, created, reopened, resolved: gone.length, oversized };
@@ -478,7 +480,7 @@ export class DuplicateReviewCenter {
           reviewed_at = case when ${decision === 'keep_separate' || decision === 'defer'} then now() else reviewed_at end,
           reviewed_by = case when ${decision === 'keep_separate' || decision === 'defer'} then ${uuidOrNull(ctx.userId)}::uuid else reviewed_by end,
           assigned_to = coalesce(${assignee}::uuid, assigned_to), due_on = coalesce(${dueOn}::date, due_on)
-        where id = ${g.id}`.execute(trx);
+        where id = ${g.id} and tenant_id = ${T} and ${canMoveToSql(CUSTOMER_DUPLICATE_GROUP, to)}`.execute(trx);
       const type = decision === 'keep_separate' ? 'kept_separate' : decision === 'defer' ? 'deferred' : decision === 'in_review' ? 'in_review' : decision === 'reopen' ? 'reopened' : 'evidence_requested';
       await this.event(trx, T, g.id, type, ctx.userId, note, { from, to, assignee, dueOn });
       await audit(trx, { groupId: g.id, decision, from, to });
@@ -606,7 +608,7 @@ export class DuplicateReviewCenter {
         await sql`insert into customer_duplicate_merge_ops (id, tenant_id, group_id, idempotency_key, preview_hash, survivor_id, source_ids, status, result, actor_user_id)
           values (${opId}, ${T}, ${g.id}, ${key}, ${previewHash}, ${survivorId}, ${pv.sources}::uuid[], 'completed', ${JSON.stringify(result)}::jsonb, ${uuidOrNull(ctx.userId)})`.execute(trx);
         await sql`update customer_duplicate_groups set status = 'merged', merged_at = now(), survivor_id = ${survivorId}, merge_op_id = ${opId},
-          reviewed_at = now(), reviewed_by = ${uuidOrNull(ctx.userId)}, version = version + 1, updated_at = now(), updated_by = ${uuidOrNull(ctx.userId)} where id = ${g.id}`.execute(trx);
+          reviewed_at = now(), reviewed_by = ${uuidOrNull(ctx.userId)}, version = version + 1, updated_at = now(), updated_by = ${uuidOrNull(ctx.userId)} where id = ${g.id} and tenant_id = ${T} and ${canMoveToSql(CUSTOMER_DUPLICATE_GROUP, 'merged')}`.execute(trx);
         await this.event(trx, T, g.id, 'merged', ctx.userId, null, { operationId: opId, survivorId, sourceIds: pv.sources, moved: merged.moved, acknowledged: [...acked].sort() });
         await audit(trx, { groupId: g.id, operationId: opId, survivorId, sourceIds: pv.sources, moved: merged.moved });
         return { operationId: opId, status: 'completed', errorCode: null, result, replayed: false };
