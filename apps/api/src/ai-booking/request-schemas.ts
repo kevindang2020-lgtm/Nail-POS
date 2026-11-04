@@ -32,3 +32,5 @@ export const AIB_MINT_LINK_BODY: BodySchema = S.object({ source: str(40), branch
 export const AIB_REVOKE_LINK_BODY: BodySchema = S.object({ jti: str(200), reason: str(1000) });
 /** A7 AI Booking Assistant (Nov 4 2026): dismiss a recovery case — the reason is required and audited */
 export const AIB_RECOVERY_DISMISS_BODY: BodySchema = S.object({ reason: S.text(300) }, ['reason']);
+/** A7 (Nov 4 2026): ask a manager about a recovery case — what to approve, recorded in the salon's approvals */
+export const AIB_RECOVERY_APPROVAL_BODY: BodySchema = S.object({ reason: S.text(500) }, ['reason']);

@@ -226,8 +226,12 @@ export interface AibRequestDetail extends AibActivityRow {
   holds: Array<{ holdId: string; status: string; channel: string; startAt: string | null; endAt: string | null; expiresAt: string | null; releasedAt: string | null; releaseReason: string | null; convertedAppointmentId: string | null }>;
   tools: Array<{ tool: string; kind: string; status: string; result: string | null; error: string | null; requests: number; at: string | null; finishedAt: string | null }>;
 }
-export interface AibRecoveryCase { key: string; type: string; urgency: 'high' | 'medium' | 'low'; requestId: string | null; at: string | null; customerName: string | null; maskedPhone: string | null; appointmentId: string | null; date: string | null; reason: string | null; source: string; attempts: number }
+export interface AibRecoveryCase { key: string; type: string; urgency: 'high' | 'medium' | 'low'; requestId: string | null; at: string | null; customerName: string | null; maskedPhone: string | null; appointmentId: string | null; date: string | null; reason: string | null; source: string; attempts: number;
+  /** A7 guide §10: the latest manager-approval request about this case (POS Approvals), if one was made */
+  approval?: { id: string; status: string; at: string | null } | null }
 export interface AibRecoveryList { cases: AibRecoveryCase[]; dismissedCount: number; note: string }
+/** A7 guide §10 "Review Alternative": POS Booking's real open starts for the case day — suggestions only */
+export interface AibAlternatives { key: string; date: string; serviceIds: string[]; preferredTechnicianId: string | null; alternatives: Array<{ technicianId: string; technicianName: string; start: string; preferred: boolean }>; totalOpen: number; note: string | null; safety: string }
 export interface AqLastHealth { run: AqHealthRun | null }
 export interface AibLastHealth { run: AibHealthRun | null }
 export interface AibDismissResult { dismissed: boolean; key: string }

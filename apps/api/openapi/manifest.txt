@@ -317,6 +317,7 @@ GET /pos/ai-booking/activity  realm=staff  auth=session  domain=ai  perm=ai_book
 GET /pos/ai-booking/health  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-booking/overview  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-booking/recovery  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/recovery/{caseKey}/alternatives  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-booking/requests/{requestId}  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/alerts  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/appointments/metrics  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2434,6 +2435,7 @@ POST /pos/access/preview  realm=staff  auth=session  domain=identity  perm=roles
 POST /pos/ai-analytics/center/check  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-booking/health/run  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-booking/recovery/{caseKey}/dismiss  realm=staff  auth=session  domain=ai  perm=ai_booking.view  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-booking/recovery/{caseKey}/request-approval  realm=staff  auth=session  domain=ai  perm=ai_booking.view  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts/{id}/evaluate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/ask  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard

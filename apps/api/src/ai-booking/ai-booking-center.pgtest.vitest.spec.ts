@@ -4,6 +4,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { AiBookingCenter } from './ai-booking-center';
+import { TenantApprovalsService } from '@aipowersalon/workforce';
+import { OutboxWriter } from '@aipowersalon/events';
 
 const T = 'a7b40000-0000-4000-8000-000000000001', B = 'a7b40000-0000-4000-8000-000000000002', B2 = 'a7b40000-0000-4000-8000-000000000003';
 const C1 = 'a7b40000-0000-4000-8000-0000000000c1', TE = 'a7b40000-0000-4000-8000-0000000000e1';
@@ -87,6 +89,39 @@ describe('A7 recovery', () => {
     await center.dismissRecovery(ctx, key, 'Called the guest back and booked by phone');
     expect((await center.recovery(ctx)).cases.find((c) => c.key === key)).toBeUndefined();
     expect(audited.filter((a) => a.action === 'ai_booking_recovery_dismissed')).toHaveLength(1);   // through the audit module
+  });
+});
+
+// guide §10 "Review Alternative" / "Request Manager Approval": alternatives are POS Booking's own open times (never invented,
+// nothing held); approval goes to the salon's ONE approvals engine, one live request per case, shown on the case
+describe('A7 recovery: alternatives and manager approval', () => {
+  it('alternatives come from the availability engine for the case day; past starts today are dropped; suggestions only', async () => {
+    await ev('r6', 'BOOKING_INTENT_DETECTED', 20); await ev('r6', 'BOOKING_ATTEMPTED', 21); await ev('r6', 'BOOKING_FAILED', 22, { outcome: 'failed', failure: 'TECHNICIAN_UNAVAILABLE' });
+    const asked: any[] = [];
+    center.availability = async (c, q) => { asked.push({ branch: c.branchId, ...q }); return [{ technicianId: TE, name: 'Lan Tran', slots: ['09:00', '10:30', '15:00'] }, { technicianId: 'x', name: 'Mai', slots: ['10:00'] }]; };
+    const key = (await center.recovery(ctx)).cases.find((c) => c.requestId === 'r6')!.key;
+    const a = await center.alternatives(ctx, key);
+    // the clock is Nov 4 15:00 UTC = 10:00 New York: 09:00 and 10:00 have passed, 10:30 and 15:00 remain
+    expect(asked).toEqual([{ branch: B, date: '2026-11-04', serviceIds: undefined }]);
+    expect(a.alternatives.map((x) => [x.technicianName, x.start])).toEqual([['Lan Tran', '10:30'], ['Lan Tran', '15:00']]);
+    expect(a.safety).toMatch(/nothing is held, booked or sent/);
+    expect(a.note).toMatch(/default service length/);
+    await expect(center.alternatives(ctx, 'failed:not-a-case')).rejects.toThrow(/no longer open/);
+    await expect(center.alternatives({ ...ctx, branchId: null }, key)).rejects.toThrow(/Choose a location/);
+  });
+  it('Request Manager Approval: reason required, one live request per case, visible on the case and in Approvals', async () => {
+    center.approvals = new TenantApprovalsService(kyselyFor(pg) as any, new OutboxWriter()) as any;
+    const key = (await center.recovery(ctx)).cases.find((c) => c.requestId === 'r6')!.key;
+    await expect(center.requestApproval(ctx, key, 'no')).rejects.toThrow(/at least 3/);
+    const first: any = await center.requestApproval(ctx, key, 'Offer the guest a 15% courtesy discount for the failed booking');
+    const again: any = await center.requestApproval(ctx, key, 'asking twice');
+    expect(first.approval.created).toBe(true); expect(again.approval.created).toBe(false);
+    expect(again.approval.request.id).toBe(first.approval.request.id);
+    const row = (await pg.query(`select kind, subject_type, subject_id, status, title from tenant_approval_requests where tenant_id = $1 and subject_id = $2`, [T, key])).rows;
+    expect(row).toEqual([{ kind: 'other', subject_type: 'ai_booking_recovery_case', subject_id: key, status: 'pending', title: expect.stringContaining('AI booking recovery: failed request') }]);
+    expect((await center.recovery(ctx)).cases.find((c) => c.key === key)?.approval).toMatchObject({ status: 'pending' });
+    expect(audited.filter((x) => x.action === 'ai_booking_recovery_approval_requested')).toHaveLength(2);
+    await expect(center.requestApproval(ctx, 'hold:00000000-0000-4000-8000-000000000000', 'not a real case')).rejects.toThrow(/no longer open/);
   });
 });
 

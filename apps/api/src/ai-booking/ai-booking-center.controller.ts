@@ -9,9 +9,10 @@ import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { branchOrNull } from '@aipowersalon/tenant-context';
-import type { AibActivityPage, AibOverview, AibRequestDetail, AibRecoveryList, AibHealthRun, AibLastHealth, AibDismissResult } from '@aipowersalon/api-contracts/tenant';
-import { AiBookingCenter, AiBookingCenterError, type BkCtx } from './ai-booking-center';
-import { AIB_RECOVERY_DISMISS_BODY } from './request-schemas';
+import type { AibActivityPage, AibOverview, AibRequestDetail, AibRecoveryList, AibHealthRun, AibLastHealth, AibDismissResult, AibAlternatives } from '@aipowersalon/api-contracts/tenant';
+import { AiBookingCenter, AiBookingCenterError, type BkCtx, type BkApprovalsPort } from './ai-booking-center';
+import { BookingService } from '@aipowersalon/booking';
+import { AIB_RECOVERY_DISMISS_BODY, AIB_RECOVERY_APPROVAL_BODY } from './request-schemas';
 import { ListQueries } from '@aipowersalon/database';
 import { AiBookingCenterControllerListQueries } from './ai-booking-center.list-queries';
 
@@ -28,8 +29,11 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 export class AiBookingCenterController {
   private readonly center: AiBookingCenter;
-  constructor(@Inject(DATABASE) db: AppDatabase, @Optional() audit?: AuditService) {
+  constructor(@Inject(DATABASE) db: AppDatabase, @Optional() audit?: AuditService, @Optional() booking?: BookingService, @Optional() @Inject('TENANT_APPROVALS') approvals?: BkApprovalsPort) {
     this.center = new AiBookingCenter(db as unknown as Kysely<any>, process.env, Date.now, audit ? (c, i) => audit.record(c, i) : undefined);
+    // guide §10: alternatives come from POS Booking's own availability engine; manager approval from the salon's approvals engine
+    if (booking) this.center.availability = (c, q) => booking.availability({ tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions }, q);
+    if (approvals) this.center.approvals = approvals;
   }
 
   @Get('overview') @RequirePermission('ai_booking.view')
@@ -49,6 +53,14 @@ export class AiBookingCenterController {
 
   @Idempotent() @Post('recovery/:caseKey/dismiss') @RequirePermission('ai_booking.view')
   dismiss(@Req() r: any, @Param('caseKey') key: string, @Body(ValidatedBody(AIB_RECOVERY_DISMISS_BODY, { strict: true })) b: any): Promise<AibDismissResult> { return run(() => this.center.dismissRecovery(ctxOf(r), key, b?.reason)); }
+
+  /** §10 Review Alternative: real open times from POS Booking's availability — a suggestion; nothing is held or booked */
+  @Get('recovery/:caseKey/alternatives') @RequirePermission('ai_booking.view')
+  alternatives(@Req() r: any, @Param('caseKey') key: string): Promise<AibAlternatives> { return run(() => this.center.alternatives(ctxOf(r), key)); }
+
+  /** §10 Request Manager Approval: one live request per case in the salon's approvals (POS Approvals) */
+  @Idempotent() @Post('recovery/:caseKey/request-approval') @RequirePermission('ai_booking.view')
+  requestApproval(@Req() r: any, @Param('caseKey') key: string, @Body(ValidatedBody(AIB_RECOVERY_APPROVAL_BODY, { strict: true })) b: any) { return run(() => this.center.requestApproval(ctxOf(r), key, b?.reason)); }
 
   @Get('health') @RequirePermission('ai_booking.view')
   lastHealth(@Req() r: any): Promise<AibLastHealth> { return run(() => this.center.lastHealth(ctxOf(r))); }

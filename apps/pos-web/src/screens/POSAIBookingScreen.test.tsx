@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage } from '@aipowersalon/mobile-sdk/i18n';
-const { bk, pkg } = vi.hoisted(() => ({ bk: { overview: vi.fn(), activity: vi.fn(), detail: vi.fn(), recovery: vi.fn(), dismiss: vi.fn(), lastHealth: vi.fn(), runHealth: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
+const { bk, pkg } = vi.hoisted(() => ({ bk: { overview: vi.fn(), activity: vi.fn(), detail: vi.fn(), recovery: vi.fn(), dismiss: vi.fn(), lastHealth: vi.fn(), runHealth: vi.fn(), alternatives: vi.fn(), requestApproval: vi.fn() }, pkg: { detail: vi.fn(), startTrial: vi.fn(), cancel: vi.fn() } }));
 vi.mock('../api/posAiBookingCenterApi', () => ({ posAiBookingCenterApi: bk }));
 vi.mock('../api/posAiUsageApi', () => ({ posAiUsageScreenApi: pkg }));
 import { POSAIBookingScreen } from './POSAIBookingScreen';
@@ -93,5 +93,24 @@ describe('A7 AI Booking Assistant', () => {
     fireEvent.click(screen.getByTestId('bkh-run'));
     expect(await screen.findByText('4 thợ đang làm việc.')).toBeTruthy();
     expect(screen.getByTestId('bkh-entitlement').textContent).toContain('chủ tiệm');
+  });
+  it('recovery: Review alternatives shows POS Booking\'s real open times (suggestions only); Request manager approval needs what to approve and shows its state', async () => {
+    bk.alternatives.mockResolvedValue({ key: 'failed:r3', date: '2026-11-04', serviceIds: [], preferredTechnicianId: null, totalOpen: 2, note: 'default', safety: 's',
+      alternatives: [{ technicianId: 't1', technicianName: 'Lan', start: '10:30', preferred: false }, { technicianId: 't2', technicianName: 'Mai', start: '15:00', preferred: false }] });
+    bk.requestApproval.mockResolvedValue({ key: 'failed:r3', approval: { created: true } });
+    render(<MemoryRouter><POSAIBookingScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('bk-rec-alternatives'));
+    const slots = await screen.findAllByTestId('bk-rec-alt-slot');
+    expect(slots.map((x) => x.textContent)).toEqual(['10:30 · Lan', '15:00 · Mai']);
+    expect(screen.getByTestId('bk-rec-alt')).toHaveTextContent('nothing is held, booked or sent');
+    expect(bk.alternatives).toHaveBeenCalledWith('failed:r3');
+    fireEvent.click(screen.getByTestId('bk-rec-approval'));
+    expect(screen.getByTestId('bk-rec-approval-go')).toBeDisabled();
+    fireEvent.change(screen.getByTestId('bk-rec-approval-why'), { target: { value: 'Courtesy discount for the failed booking' } });
+    bk.recovery.mockResolvedValue({ cases: [{ key: 'failed:r3', type: 'repeated_attempts', urgency: 'high', requestId: 'r3', at: '2026-11-03T15:08:00Z', customerName: 'Ava Kim', maskedPhone: '••• 9876', appointmentId: null, date: null, reason: null, source: 'AI_PHONE_RECEPTIONIST', attempts: 2, approval: { id: 'ap1', status: 'pending', at: '2026-11-04T15:00:00Z' } }], dismissedCount: 0, note: '' });
+    fireEvent.click(screen.getByTestId('bk-rec-approval-go'));
+    await waitFor(() => expect(bk.requestApproval).toHaveBeenCalledWith('failed:r3', 'Courtesy discount for the failed booking'));
+    expect(await screen.findByTestId('bk-rec-approval-state')).toHaveTextContent('Manager approval: waiting');
+    expect(screen.queryByTestId('bk-rec-approval')).toBeNull();   // a live request is not asked again
   });
 });

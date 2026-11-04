@@ -48,7 +48,20 @@ export function bkPeriod(preset: string | undefined, today: string, from?: strin
   return { preset: 'all', from: null, to: null };
 }
 
+/** POS Booking's availability engine (BookingService.availability) — the same open starts POS Booking offers; never invented */
+export type BkAvailabilityPort = (ctx: BkCtx & { branchId: string }, q: { date: string; serviceIds?: string[]; technicianId?: string }) => Promise<{ technicianId: string; name: string; slots: string[] }[]>;
+/** the salon's ONE approvals engine (modules/workforce TenantApprovalsService) — only the two calls used here */
+export interface BkApprovalsPort {
+  request(actor: BkCtx, body: Record<string, unknown>): Promise<{ id?: string; request?: { id: string; status: string }; created?: boolean } & Record<string, unknown>>;
+}
+export const RECOVERY_SUBJECT = 'ai_booking_recovery_case';
+const CASE_KEY = /^(failed|hold|verify|unconfirmed):[0-9a-zA-Z-]{1,100}$/;
+
 export class AiBookingCenter {
+  /** guide §10 "Review Alternative" / "Request Manager Approval": bound by the controller when the engines are present */
+  availability: BkAvailabilityPort | null = null;
+  approvals: BkApprovalsPort | null = null;
+
   constructor(private readonly db: Kysely<any>, private readonly env: Record<string, string | undefined> = process.env, private readonly now: () => number = Date.now,
     /** the salon audit trail (modules/audit AuditService.record) — the API binds it; tests may leave it out */
     private readonly audit?: (ctx: { tenantId: string; branchId: string | null; userId: string | null; role: string | null }, input: { module: string; action: string; resourceType: string; resourceId: string; metadata: Record<string, unknown> }) => Promise<unknown>) {}
@@ -232,9 +245,73 @@ export class AiBookingCenter {
     for (const a of unconfirmed) cases.push({ key: 'unconfirmed:' + a.id, type: 'unconfirmed_appointment', urgency: 'medium', requestId: null, at: iso(a.created_at), customerName: a.customer_name ?? null,
       maskedPhone: mask(a.customer_phone), appointmentId: String(a.id), date: ymd(a.appt_date), reason: 'not_confirmed', source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
     const open = cases.filter((c) => !dismissed.has(c.key));
+    // guide §10: a case a manager was asked about shows that request's state (pending / approved / rejected / …)
+    if (open.length) {
+      const ap = (await sql<any>`select distinct on (subject_id) subject_id, id, status, created_at from tenant_approval_requests
+          where tenant_id = ${ctx.tenantId} and subject_type = ${RECOVERY_SUBJECT} and subject_id in (${sql.join(open.map((c) => sql`${c.key}`))})
+          order by subject_id, created_at desc`.execute(this.db).catch((e: unknown) => { console.warn(`approval state not read: ${(e as Error)?.message ?? e}`); return { rows: [] as Array<Record<string, any>> }; })).rows;
+      const byKey = new Map(ap.map((a: any) => [String(a.subject_id), { id: String(a.id), status: String(a.status), at: iso(a.created_at) }]));
+      for (const c of open) c.approval = byKey.get(c.key) ?? null;
+    }
     const rank = (u: string) => (u === 'high' ? 0 : u === 'medium' ? 1 : 2);
     open.sort((a, b) => rank(a.urgency) - rank(b.urgency) || String(b.at).localeCompare(String(a.at)));
     return { cases: open, dismissedCount: cases.length - open.length, note: 'Suggestions only: nothing is sent, booked or charged until staff act in POS Booking.' };
+  }
+
+  /** the open case behind a key — only a case the list would show can be acted on (never an arbitrary key) */
+  private async openCase(ctx: BkCtx, key: string): Promise<any> {
+    if (!CASE_KEY.test(String(key))) throw new AiBookingCenterError('That case could not be found.', 'NOT_FOUND', 404);
+    const c = (await this.recovery(ctx)).cases.find((x: any) => x.key === key);
+    if (!c) throw new AiBookingCenterError('That case is no longer open.', 'NOT_FOUND', 404);
+    return c;
+  }
+
+  /** §10 "Review Alternative": real open starts from POS Booking's own availability for the case's day (today when it has
+   *  passed), the appointment's services and technician first when the case has them. A suggestion only — nothing is held,
+   *  booked or sent; the slot is re-checked when staff book it in POS Booking. */
+  async alternatives(ctx: BkCtx, key: string) {
+    this.need(ctx, 'ai_booking.view');
+    if (!this.availability) throw new AiBookingCenterError('Availability is not connected on this server.', 'SERVICE_UNAVAILABLE', 503);
+    if (!ctx.branchId) throw new AiBookingCenterError('Choose a location to see its open times.', 'BRANCH_REQUIRED', 400);
+    const c = await this.openCase(ctx, key);
+    const today = todayIn(await this.zone(ctx), this.now());
+    const date = c.date && DAY.test(c.date) && c.date >= today ? c.date : today;
+    let serviceIds: string[] = [], technicianId: string | null = null, durationNote: string | null = null;
+    if (c.appointmentId) {
+      const a = (await sql<any>`select services, technician_id from pos_tech_appointments where tenant_id = ${ctx.tenantId} and id::text = ${c.appointmentId}`.execute(this.db)).rows[0];
+      serviceIds = jsonList(a?.services).map((x: any) => String(x?.serviceId ?? '')).filter((x) => UUID.test(x));
+      technicianId = a?.technician_id ? String(a.technician_id) : null;
+    } else if (key.startsWith('hold:')) {
+      const h = (await sql<any>`select service_ids_json, technician_id from booking_holds where tenant_id = ${ctx.tenantId} and id::text = ${key.slice(5)}`.execute(this.db)).rows[0];
+      serviceIds = jsonList(h?.service_ids_json).map((x: any) => String(x)).filter((x) => UUID.test(x));
+      technicianId = h?.technician_id ? String(h.technician_id) : null;
+    }
+    if (!serviceIds.length) durationNote = 'The request named no service, so the salon\'s default service length is used — confirm the service in POS Booking.';
+    const rows = await this.availability({ ...ctx, branchId: ctx.branchId }, { date, serviceIds: serviceIds.length ? serviceIds : undefined });
+    // today: a start that has already passed in the salon's time is not an alternative
+    const tz = await this.zone(ctx);
+    const nowHm = date === today ? new Intl.DateTimeFormat('en-GB', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date(this.now())) : null;
+    const slots = rows.flatMap((r) => r.slots.filter((start) => !nowHm || start > nowHm).map((start) => ({ technicianId: r.technicianId, technicianName: r.name, start, preferred: technicianId != null && r.technicianId === technicianId })));
+    slots.sort((a, b) => Number(b.preferred) - Number(a.preferred) || a.start.localeCompare(b.start) || a.technicianName.localeCompare(b.technicianName));
+    return { key, date, serviceIds, preferredTechnicianId: technicianId, alternatives: slots.slice(0, 12), totalOpen: slots.length,
+      note: rows.length === 0 ? 'No technician is working this day.' : slots.length === 0 ? 'No qualified technician has an open time this day.' : durationNote,
+      safety: 'Suggestions only — nothing is held, booked or sent. Book the chosen time in POS Booking, which checks it again.' };
+  }
+
+  /** §10 "Request Manager Approval": a request in the salon's ONE approvals engine (POS Approvals) — one live request per case
+   *  (asking twice returns the open one). Approval records the decision; staff still act in POS Booking. */
+  async requestApproval(ctx: BkCtx, key: string, reason: unknown) {
+    this.need(ctx, 'ai_booking.view');
+    if (!this.approvals) throw new AiBookingCenterError('Approvals are not connected on this server.', 'SERVICE_UNAVAILABLE', 503);
+    const why = typeof reason === 'string' ? reason.trim().slice(0, 500) : '';
+    if (why.length < 3) throw new AiBookingCenterError('Say what the manager should approve (at least 3 characters).', 'REASON_REQUIRED');
+    const c = await this.openCase(ctx, key);
+    const title = `AI booking recovery: ${String(c.type).replace(/_/g, ' ')}${c.customerName ? ` — ${c.customerName}` : ''}${c.date ? ` (${c.date})` : ''}`;
+    const r = await this.approvals.request(ctx, { kind: 'other', subjectType: RECOVERY_SUBJECT, subjectId: key, reason: why, title,
+      payload: { caseType: c.type, requestId: c.requestId ?? null, appointmentId: c.appointmentId ?? null, date: c.date ?? null, failureReason: c.reason ?? null } });
+    await this.audit?.({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: UUID.test(ctx.userId) ? ctx.userId : null, role: ctx.role ?? null },
+      { module: 'ai_booking', action: 'ai_booking_recovery_approval_requested', resourceType: 'ai_booking_recovery_case', resourceId: key, metadata: { reason: why } });
+    return { key, approval: r };
   }
 
   async dismissRecovery(ctx: BkCtx, key: string, reason: unknown) {

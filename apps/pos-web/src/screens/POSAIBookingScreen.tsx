@@ -18,7 +18,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
 import { fmtInZone } from '../i18n/format';
 import { money } from './reportsCommon';
-import { posAiBookingCenterApi as api, type AibOverview, type AibActivityPage, type AibRequestDetail, type AibRecoveryList, type AibRecoveryCase, type AibHealthRun, type AibHealthCheck, type AibHealthStatus } from '../api/posAiBookingCenterApi';
+import { posAiBookingCenterApi as api, type AibOverview, type AibActivityPage, type AibRequestDetail, type AibRecoveryList, type AibRecoveryCase, type AibAlternatives, type AibHealthRun, type AibHealthCheck, type AibHealthStatus } from '../api/posAiBookingCenterApi';
 
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 const errOf = (e: unknown) => (e instanceof Error && e.message ? e.message : t('pos.something_went_wrong'));
@@ -107,7 +107,17 @@ function RecoveryCard({ tick, onOpen, onBooking, onChanged }: { tick: number; on
   const [err, setErr] = useState<string | null>(null);
   const [draft, setDraft] = useState<{ key: string; text: string } | null>(null);
   const [dismiss, setDismiss] = useState<{ key: string; reason: string } | null>(null);
+  const [alt, setAlt] = useState<{ key: string; data: AibAlternatives | null; err: string | null } | null>(null);
+  const [ask, setAsk] = useState<{ key: string; reason: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState<string | null>(null);
+  // guide §10 Review Alternative: POS Booking's own open times for the case day — suggestions only
+  const review = (key: string) => { setAlt({ key, data: null, err: null }); api.alternatives(key).then((x) => setAlt({ key, data: x, err: null })).catch((e) => setAlt({ key, data: null, err: errOf(e) })); };
+  const doAsk = async () => {
+    if (!ask || ask.reason.trim().length < 3) return;
+    setBusy(true);
+    try { await api.requestApproval(ask.key, ask.reason.trim()); setAsk(null); setSent(ask.key); onChanged(); } catch (e) { setErr(errOf(e)); } finally { setBusy(false); }
+  };
   useEffect(() => { api.recovery().then((x) => { setD(x); setErr(null); }).catch((e) => setErr(errOf(e))); }, [tick]);
   const doDismiss = async () => {
     if (!dismiss?.reason.trim()) return;
@@ -134,8 +144,29 @@ function RecoveryCard({ tick, onOpen, onBooking, onChanged }: { tick: number; on
               <button type="button" className="btn ghost" onClick={() => onBooking(c.date)}>{t('growth.aiBooking.openBooking')}</button>
               <button type="button" className="btn ghost" onClick={() => setDraft({ key: c.key, text: draftFor(c) })} data-testid="bk-rec-draft">{t('growth.aiBooking.rec.prepare')}</button>
               {c.requestId ? <button type="button" className="btn ghost" onClick={() => onOpen(c.requestId!)}>{t('growth.aiBooking.rec.history')}</button> : null}
+              <button type="button" className="btn ghost" onClick={() => review(c.key)} data-testid="bk-rec-alternatives">{t('growth.aiBooking.rec.review')}</button>
+              {c.approval && (c.approval.status === 'pending' || c.approval.status === 'approved') ? null
+                : <button type="button" className="btn ghost" onClick={() => setAsk({ key: c.key, reason: '' })} data-testid="bk-rec-approval">{t('growth.aiBooking.rec.askManager')}</button>}
               <button type="button" className="btn ghost" onClick={() => setDismiss({ key: c.key, reason: '' })} data-testid="bk-rec-dismiss">{t('growth.aiBooking.rec.dismiss')}</button>
             </div>
+            {c.approval ? <div className="sub" style={{ marginTop: 6 }} data-testid="bk-rec-approval-state">{t('growth.aiBooking.rec.approvalState', { s: word('growth.aiBooking.rec.approvalStatus.', c.approval.status) })}</div>
+              : sent === c.key ? <div className="sub" style={{ marginTop: 6 }}>{t('growth.aiBooking.rec.approvalSent')}</div> : null}
+            {alt?.key === c.key ? <div style={{ marginTop: 8, border: '1px dashed var(--line)', borderRadius: 8, padding: 8 }} data-testid="bk-rec-alt">
+              {alt.err ? <div className="err">{alt.err}</div> : !alt.data ? <div className="sub">{t('pos.loading')}</div> : <>
+                <div className="sub">{t('growth.aiBooking.rec.altFor', { date: alt.data.date })}</div>
+                {alt.data.alternatives.length ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                  {alt.data.alternatives.map((x) => <button key={x.technicianId + x.start} type="button" className="btn ghost" onClick={() => onBooking(alt.data!.date)} data-testid="bk-rec-alt-slot" title={t('growth.aiBooking.rec.altOpen')}>
+                    {x.start} · {x.technicianName}{x.preferred ? ` · ${t('growth.aiBooking.rec.altSameTech')}` : ''}</button>)}
+                </div> : null}
+                {alt.data.note ? <div className="sub" style={{ marginTop: 6 }}>{word('growth.aiBooking.rec.altNote.', alt.data.alternatives.length ? 'default_length' : 'none')}</div> : null}
+                <div className="sub" style={{ marginTop: 6 }}>{t('growth.aiBooking.rec.altSafety')}</div>
+              </>}
+            </div> : null}
+            {ask?.key === c.key ? <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+              <input value={ask.reason} onChange={(e) => setAsk({ key: c.key, reason: e.target.value })} placeholder={t('growth.aiBooking.rec.askWhat')} aria-label={t('growth.aiBooking.rec.askWhat')} style={{ flex: '1 1 260px', height: 34, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px' }} data-testid="bk-rec-approval-why" />
+              <button type="button" className="btn" disabled={busy || ask.reason.trim().length < 3} onClick={() => void doAsk()} data-testid="bk-rec-approval-go">{t('growth.aiBooking.rec.askManager')}</button>
+              <button type="button" className="btn ghost" onClick={() => setAsk(null)}>{t('pos.cancel')}</button>
+            </div> : null}
             {draft?.key === c.key ? <div style={{ marginTop: 8 }}>
               <textarea aria-label={t('growth.aiBooking.rec.prepare')} value={draft.text} onChange={(e) => setDraft({ key: c.key, text: e.target.value })} rows={3} style={{ width: '100%', border: '1px solid var(--line)', borderRadius: 8, padding: 8, fontFamily: 'inherit' }} data-testid="bk-rec-draft-text" />
               <div className="sub">{t('growth.aiBooking.rec.draftNote')}</div>
