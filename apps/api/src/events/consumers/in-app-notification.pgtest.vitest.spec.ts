@@ -197,13 +197,14 @@ describe('notifications.in_app — customers get English', () => {
   const CVI = 'ea100000-0000-4000-8000-0000000000c9', AVI = 'ea100000-0000-4000-8000-0000000000a9';
   beforeAll(async () => {
     await sql`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, preferred_language) values (${CVI}, ${T}, ${B}, 'Lan', 'Nguyễn', 'Nguyễn Lan', 'vi')`.execute(db);
+    // not on top of A1 (same technician, 14:30): the no-overlap constraint refuses a double booking
     await sql`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, services, status)
-      values (${AVI}, ${T}, ${B}, ${TECH}, ${CVI}, 'Nguyễn Lan', '2026-10-20', '14:30', '15:30', '[]', 'booked')`.execute(db);
+      values (${AVI}, ${T}, ${B}, ${TECH}, ${CVI}, 'Nguyễn Lan', '2026-10-20', '16:30', '17:30', '[]', 'booked')`.execute(db);
   });
   it('cancelled by the salon, rescheduled (once), checked in — each in English for a customer marked Vietnamese', async () => {
     await emit(DOMAIN_EVENTS.APPOINTMENT_CANCELED, { type: 'appointment', id: AVI }, { appointmentId: AVI, status: 'cancelled' });
     const c = await rows('customer_notifications', `customer_id = '${CVI}' and type = 'warning'`);
-    expect(c.map((r) => [r.title, r.body])).toEqual([['Appointment cancelled', 'Your appointment on Oct 20, 2026 at 2:30 PM was cancelled by the salon.']]);
+    expect(c.map((r) => [r.title, r.body])).toEqual([['Appointment cancelled', 'Your appointment on Oct 20, 2026 at 4:30 PM was cancelled by the salon.']]);
     await emit(DOMAIN_EVENTS.APPOINTMENT_RESCHEDULED, { type: 'appointment', id: AVI }, { appointmentId: AVI });
     await emit(DOMAIN_EVENTS.APPOINTMENT_RESCHEDULED, { type: 'appointment', id: AVI }, { appointmentId: AVI });
     const r = await rows('customer_notifications', `customer_id = '${CVI}' and type = 'booking'`);

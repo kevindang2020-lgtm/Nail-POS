@@ -21,7 +21,8 @@ const row = (n: string) => ({
 beforeAll(async () => {
   const pg = await migratedPglite();
   await pg.exec(`INSERT INTO tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) VALUES ('${T}','G','Glamour','glamour','GLAM01','active') ON CONFLICT (id) DO NOTHING;
-                 INSERT INTO branches (id, tenant_id, name) VALUES ('${B}','${T}','Downtown') ON CONFLICT (id) DO NOTHING;`);
+                 INSERT INTO branches (id, tenant_id, name) VALUES ('${B}','${T}','Downtown') ON CONFLICT (id) DO NOTHING;
+                 INSERT INTO customers (id, tenant_id, branch_id, first_name, last_name, full_name, status) VALUES ('${U('01')}','${T}','${B}','Olivia','Brown','Olivia Brown','active') ON CONFLICT (id) DO NOTHING;`);
   db = kyselyFor(pg);
   repo = new KyselyDailyFollowUpRepository(db, new OutboxWriter());
 }, 60_000);
@@ -45,17 +46,25 @@ describe('followup.tasks_generated — one fact per nightly batch (§80)', () =>
     expect(n.n).toBe(1);
   });
 
-  it('markSent and markStatus emit per-task facts with the owning technician, not the message text', async () => {
+  it('markStatus and the claimed send emit per-task facts with the owning technician, not the message text', async () => {
     const task: any = (await sql`SELECT id, technician_id FROM service_follow_up_tasks WHERE ticket_service_line_id = ${U('11')}`.execute(db)).rows[0];
-    // Phase 12 (#27): a SENT follow-up can no longer be skipped / dismissed (the service always refused it; the write now
-    // refuses it too) — so the status change comes first (skipped), then the send (skipped → sent is a real flow).
     await repo.markStatus(T, task.id, 'skipped' as any, 'customer opted out');
-    await repo.markSent(T, task.id, 'Hope you love your nails!', U('06'), null);
+    // the old unguarded markSent is retired: a send goes through claimSend (row lock, cooldown, booked check, app check)
+    expect((repo as any).markSent).toBeUndefined();
     const out = (await sql`SELECT event_type, payload_json FROM outbox_events WHERE aggregate_id = ${task.id} ORDER BY occurred_at`.execute(db)).rows as any[];
-    expect(out.map((r) => r.event_type)).toEqual(['followup.task_status_changed', 'followup.task_sent']);
-    const sent = typeof out[1].payload_json === 'string' ? JSON.parse(out[1].payload_json) : out[1].payload_json;
-    expect(sent).toMatchObject({ taskId: task.id, technicianId: task.technician_id, status: 'sent', hasNotification: false });
-    expect(JSON.stringify(out)).not.toMatch(/Hope you love|opted out/);               // §95: text stays in the row
+    expect(out.map((r) => r.event_type)).toEqual(['followup.task_status_changed']);
+    expect(JSON.stringify(out)).not.toMatch(/opted out/);                              // §95: text stays in the row
+
+    const t2: any = (await sql`SELECT id, technician_id FROM service_follow_up_tasks WHERE ticket_service_line_id = ${U('12')}`.execute(db)).rows[0];
+    await sql`UPDATE service_follow_up_tasks SET customer_app_user_id = ${U('07')} WHERE id = ${t2.id}`.execute(db);
+    const r = await repo.claimSend({ tenantId: T, taskId: t2.id, actorUserId: U('06'), message: 'Hope you love your nails!', allowedFrom: ['pending'], approve: false,
+      override: null, cooldownHours: 0, today: '2026-09-18', title: (n: string) => `A note from ${n}` } as any);
+    expect(r.outcome).toBe('sent');
+    const sentOut = (await sql`SELECT event_type, payload_json FROM outbox_events WHERE aggregate_id = ${t2.id} ORDER BY occurred_at`.execute(db)).rows as any[];
+    expect(sentOut.map((x) => x.event_type)).toEqual(['followup.task_sent']);
+    const sent = typeof sentOut[0].payload_json === 'string' ? JSON.parse(sentOut[0].payload_json) : sentOut[0].payload_json;
+    expect(sent).toMatchObject({ taskId: t2.id, technicianId: t2.technician_id, status: 'sent', hasNotification: true });
+    expect(JSON.stringify(sentOut)).not.toMatch(/Hope you love/);
   });
 
   it("a follow-up write names its tenant: another salon's tenant id updates NOTHING, even with the right task id", async () => {
@@ -70,7 +79,8 @@ describe('followup.tasks_generated — one fact per nightly batch (§80)', () =>
     expect(after.customer_viewed_at).toBeNull();
   });
   it("a customer's reply records followup.customer_replied (declared and projected, produced by nothing until now)", async () => {
-    const task: any = (await sql`SELECT id FROM service_follow_up_tasks WHERE ticket_service_line_id = ${U('11')}`.execute(db)).rows[0];
+    // a reply comes in on a SENT follow-up (task 12 was sent above); a skipped one can never be replied to
+    const task: any = (await sql`SELECT id FROM service_follow_up_tasks WHERE ticket_service_line_id = ${U('12')}`.execute(db)).rows[0];
     await repo.markStatus(T, task.id, 'customer_replied' as any);
     const out = (await sql`SELECT event_type, payload_json FROM outbox_events WHERE aggregate_id = ${task.id} ORDER BY occurred_at DESC LIMIT 1`.execute(db)).rows as any[];
     expect(out[0].event_type).toBe('followup.customer_replied');

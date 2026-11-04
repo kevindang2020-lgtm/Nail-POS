@@ -17,7 +17,6 @@ const posCtx: any = { tenantId: T, branchId: B, userId: OWNER, role: 'OWNER', pe
 let db: any; let svc: CheckoutService;
 const pts = async () => (await sql<any>`select available_tenths::int a, reserved_tenths::int h from global_rewards_accounts where identity_id = ${IDV}`.execute(db)).rows[0];
 async function ticket(totalCents: number) {
-  n++;
   const tk: any = (await sql`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents) values (${T}, ${B}, ${C}, 'ready_checkout', ${totalCents}, 0, 0, ${totalCents}) returning id`.execute(db)).rows[0];
   await sql`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents) values (${T}, ${B}, ${tk.id}, ${SVC}, 'Gel', ${totalCents}, 60, ${totalCents})`.execute(db);
   return String(tk.id);

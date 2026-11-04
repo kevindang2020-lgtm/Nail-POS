@@ -423,7 +423,7 @@ describe('Phase 12 — service-done: the checkout handoff is a fact (§67)', () 
     await sql`INSERT INTO tickets (id, tenant_id, branch_id, customer_id, status) VALUES (${TK5}, ${T}, ${B}, ${'dddddddd-dddd-dddd-dddd-dddddddddddd'}, 'serving') ON CONFLICT (id) DO NOTHING`.execute(db);
     const sd = new KyselyServiceDoneRepository(db, new OutboxWriter());
     expect(await sd.setCheckoutStatus(ctx, TK5, 'sent_to_checkout' as any, 'sent_to_checkout' as any)).toBe(true);
-    await sd.setCheckoutStatus(ctx, TK5, 'none' as any, 'reopened' as any);
+    await sd.setCheckoutStatus(ctx, TK5, 'reopened' as any, 'reopened' as any);   // what the reopen path writes ('none' was never a valid checkout status)
     const out = (await sql`SELECT event_type, correlation_id FROM outbox_events WHERE aggregate_id = ${TK5}`.execute(db)).rows as any[];
     expect(out.map((r) => r.event_type)).toEqual(['ticket.ready_for_checkout']);
     expect(out[0].correlation_id).toBe(`ticket:${TK5}`);

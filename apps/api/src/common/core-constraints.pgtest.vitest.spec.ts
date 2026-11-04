@@ -305,7 +305,9 @@ describe('(f) payments ↔ settlement batch (§19)', () => {
   it('every status the webhook writes to a payment (settled / refunded / voided) is inside the payments CHECK', async () => {
     const secret = 'p10-test-webhook-secret';   // test fixture, not a credential
     const resolver: any = { resolveTenantByMerchantId: async () => ({ tenantId: TA, webhookSecret: secret, merchantIdMasked: '***A' }) };
-    for (const [ev, want] of [['settlement.completed', 'settled'], ['refund.completed', 'refunded'], ['transaction.voided', 'voided']]) {
+    // a refund never moves the ORIGINAL tender (6a69195, guide audit Nov 3 2026: marking it 'refunded' erased a partially
+    // refunded sale) — the payment stays approved and the refund is its own payment_refunds row
+    for (const [ev, want] of [['settlement.completed', 'settled'], ['refund.completed', 'approved'], ['transaction.voided', 'voided']]) {
       const txn = `rr-st-${want}`;
       const p = await insertMinimal('payments', { tenant_id: TA, branch_id: BA, ticket_id: KA, method: 'card', status: 'approved', processor_transaction_id: txn });
       const body = { merchantId: 'MID-A', eventType: ev, eventId: `evt-${want}-p10`, transactionId: txn, amountCents: 100 };
@@ -313,6 +315,7 @@ describe('(f) payments ↔ settlement batch (§19)', () => {
       const res = await new PaymentWebhookService(db, resolver).handle('fiserv', raw, body, sig, { 'x-webhook-signature': sig });
       expect(res.status, ev).toBe(200);
       expect((await pg.query(`SELECT status FROM payments WHERE id = $1`, [p])).rows[0].status, ev).toBe(want);
+      if (ev === 'refund.completed') expect((await pg.query(`SELECT status FROM payment_refunds WHERE payment_id = $1`, [p])).rows.map((r: any) => r.status), ev).toEqual(['refunded']);
     }
   });
 });
