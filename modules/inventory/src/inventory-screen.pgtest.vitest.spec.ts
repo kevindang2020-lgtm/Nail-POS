@@ -195,6 +195,16 @@ describe('purchase orders — dates, statuses, receiving', () => {
     const d = await repo.purchaseOrder(manager, poId);
     expect(d.lines[0]).toMatchObject({ ordered: 30, received: 20, remaining: 10 }); expect(d.receipts.length).toBe(1); expect(d.receipts[0].quantity).toBe(20);
   });
+  it('D10: a receipt that fails part-way leaves nothing behind (the line is not marked received without its stock)', async () => {
+    const line = (await q(`select id from purchase_order_lines where purchase_order_id = $1`, [poId]))[0].id;
+    await q(`update inventory_products set archived_at = now() where id = $1`, [P_DRIFT]);   // the stock write will refuse the product
+    try {
+      expect(await code(inv.receivePurchaseOrder(manager, poId, { lines: [{ lineId: line, quantity: 5 }] }))).toBe('PRODUCT_NOT_FOUND');
+    } finally { await q(`update inventory_products set archived_at = null where id = $1`, [P_DRIFT]); }
+    const l = (await q(`select quantity_received from purchase_order_lines where id = $1`, [line]))[0];
+    expect(Number(l.quantity_received)).toBe(20);   // was 25: claimed, with no stock created
+    expect((await repo.product(manager, P_DRIFT)).product.onHand).toBe(23);
+  });
   it('an order with no supplier can be linked to one (audited); a cancelled one cannot', async () => {
     expect((await repo.purchaseOrders(manager, { unlinked: 'true' }, await all(), paging())).rows.map((r) => r.id)).toEqual([poId]);
     const { id: vNew } = await inv.createVendor(manager, { name: 'Pro Nail Wholesale', phone: '215-555-0000' });

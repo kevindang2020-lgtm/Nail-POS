@@ -1027,12 +1027,16 @@ export class InventoryService {
     if (!canReceivePO(po.status)) throw withCode(new InventoryError(409, `Cannot receive a ${po.status} purchase order`), 'PO_STATE_INVALID');
     const reqLines: { lineId: string; quantity: number; lotNumber?: string; expirationDate?: string }[] = Array.isArray(b?.lines) ? b.lines : [];
     if (reqLines.length === 0) throw withCode(new InventoryError(400, 'Nothing to receive'), 'NOTHING_TO_RECEIVE');
+    // D10 Suppliers (Nov 3 2026): the line claim and the stock it creates were separate writes — a failure after the claim
+    // left the line "received" with no stock. The whole receipt (claims, units, movements, status, audit) is now one transaction.
+    const newStatus = await this.need().transaction().execute(async (trx0) => {
+    const trx = trx0 as unknown as Kysely<DB>;
     let receivedAny = false;
     for (const rl of reqLines) {
       const want = parseInt(rl?.quantity as any, 10) || 0;
       if (want <= 0) continue;
       const lineRow = await sql<any>`SELECT id, product_id, quantity_ordered, quantity_received, unit_cost_cents, lot_number, expiration_date, storage_location
-        FROM purchase_order_lines WHERE id = ${rl.lineId} AND purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
+        FROM purchase_order_lines WHERE id = ${rl.lineId} AND purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
       const line = lineRow.rows[0];
       if (!line) throw withCode(new InventoryError(404, 'Purchase order line not found'), 'PO_LINE_NOT_FOUND');
       const take = receivableQty(line.quantity_ordered, line.quantity_received, want);
@@ -1045,7 +1049,7 @@ export class InventoryService {
             updated_at = now()
         WHERE id = ${line.id} AND purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}
           AND quantity_received + ${take} <= quantity_ordered
-        RETURNING id`.execute(this.need());
+        RETURNING id`.execute(trx);
       if (!claim.rows[0]) continue; // lost the race — another receiver already took it
       // only AFTER the claim do we create physical stock (units + 'purchase_received' movement + recompute)
       let remaining = take;
@@ -1055,18 +1059,20 @@ export class InventoryService {
           quantity: chunk, costCents: line.unit_cost_cents || undefined,
           lotNumber: rl?.lotNumber ?? line.lot_number ?? null, expirationDate: rl?.expirationDate ?? line.expiration_date ?? null,
           storageLocation: line.storage_location ?? null, purchaseOrderId: id, note: 'PO ' + (po.po_number || id),
-        }, { fromPo: true });
+        }, { fromPo: true, exec: trx });
         remaining -= chunk;
       }
       receivedAny = true;
     }
     if (!receivedAny) throw withCode(new InventoryError(409, 'Those lines are already fully received'), 'PO_ALREADY_RECEIVED');
-    const allLines = await sql<any>`SELECT quantity_ordered AS "quantityOrdered", quantity_received AS "quantityReceived" FROM purchase_order_lines WHERE purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
-    const newStatus = poReceivingStatus(allLines.rows) === 'received' ? 'received' : 'partial';
+    const allLines = await sql<any>`SELECT quantity_ordered AS "quantityOrdered", quantity_received AS "quantityReceived" FROM purchase_order_lines WHERE purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+    const st = poReceivingStatus(allLines.rows) === 'received' ? 'received' : 'partial';
     // Phase 12 (#27): only from a receivable state — a PO cancelled while these lines were received is NOT flipped back
     // to received (it was, before: the unconditional update overwrote the cancel)
-    await transitionStatus(this.need(), PURCHASE_ORDER, { where: { id, tenant_id: ctx.tenantId }, from: ['approved', 'ordered', 'partial'], to: newStatus, set: { received_at: newStatus === 'received' ? sql`now()` : sql`received_at`, updated_at: sql`now()` } });
-    await this.audit(ctx, 'inventory_po_received', null, null, { id, status: newStatus });
+    await transitionStatus(trx, PURCHASE_ORDER, { where: { id, tenant_id: ctx.tenantId }, from: ['approved', 'ordered', 'partial'], to: st, set: { received_at: st === 'received' ? sql`now()` : sql`received_at`, updated_at: sql`now()` } });
+    await this.audit(ctx, 'inventory_po_received', null, null, { id, status: st }, trx);
+    return st;
+    });
     return this.getPurchaseOrder(ctx, id);
   }
 

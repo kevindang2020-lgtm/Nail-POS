@@ -120,3 +120,7 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - STILL FAILING in apps/api (known, not regenerated blindly): role-matrix snapshot (needs a reviewed regeneration),
   route-domains wire-type ratchet, IDOR route table (92 new routes need a fixture or exemption each), strict-bodies type
   proof (15 routes need a reviewed entry).
+- D10 Suppliers — FIXED: receiving a purchase order claimed the line and created the stock in separate writes (a failure
+  in between left the line "received" with no stock — proven by test); the whole receipt is one transaction. Create PO and
+  Receive run once per Idempotency-Key (the POS sends one per action), so a double tap no longer makes two drafts or
+  receives twice.

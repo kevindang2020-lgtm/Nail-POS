@@ -15,6 +15,7 @@
 //   * Alerts: the Stock Alerts list itself (one source of truth with the sidebar badge).
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createIntentKeys } from '@aipowersalon/api-client';
 import { useInlineConfirm, useEventCallback } from '@aipowersalon/ui';
 import { parseDollarsToCents } from '@aipowersalon/ui';
 import { inventoryApi, type InvProduct, type PurchaseOrderLine, type InvVendor, type TransferBranch, type CountDetail, type ServiceRecipe } from '../api/inventoryApi';
@@ -484,15 +485,19 @@ function CreatePOModal({ products, onClose, onSaved }: { products: InvProduct[];
   const removeLine = (i: number) => setLines((p) => (p.length > 1 ? p.filter((_, idx) => idx !== i) : p));
   const subtotal = lines.reduce((s, l) => s + (parseInt(l.quantity, 10) || 0) * (parseDollarsToCents(l.costDollars) ?? 0), 0);
   const total = subtotal + (parseDollarsToCents(shipping) ?? 0);
+  const poKeys = useRef(createIntentKeys());
   const save = async () => {
     const clean = lines.filter((l) => l.productId && (parseInt(l.quantity, 10) || 0) > 0);
     if (clean.length === 0) { setError(tx('pos.add_at_least_one_product_line_rsup')); return; }
     setSaving(true); setError(null);
     try {
-      await inventoryApi.createPurchaseOrder({
+      const body = {
         vendorId: vendorId || null, expectedDate: expectedDate || null, shippingCents: (parseDollarsToCents(shipping) ?? 0),
         lines: clean.map((l) => ({ productId: l.productId, quantityOrdered: parseInt(l.quantity, 10) || 0, unitCostCents: (parseDollarsToCents(l.costDollars) ?? 0) })),
-      });
+      };
+      // one key per draft until it is created: a double tap or a retry creates ONE purchase order (D10)
+      await inventoryApi.createPurchaseOrder(body, poKeys.current.keyFor('create', body));
+      poKeys.current.done('create');
       onSaved();
     } catch (e: any) { setError(e?.message || tx('pos.could_not_create_purchase_order')); } finally { setSaving(false); }
   };
@@ -551,13 +556,14 @@ function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () 
     }).catch((e: any) => setError(e?.message || tx('pos.could_not_load_purchase_order')));
   }, [poId]);
   const setR = (id: string, k: keyof RecvLine, v: string) => setRecv((p) => ({ ...p, [id]: { ...p[id], [k]: v } }));
+  const recvKeys = useRef(createIntentKeys());
   const save = async () => {
     const payload = (lines || [])
       .map((l) => ({ lineId: l.id, quantity: parseInt(recv[l.id]?.quantity || '0', 10) || 0, lotNumber: recv[l.id]?.lot || undefined, expirationDate: recv[l.id]?.exp || undefined }))
       .filter((x) => x.quantity > 0);
     if (payload.length === 0) { setError(tx('pos.enter_a_quantity_to_receive_on_1h96')); return; }
     setSaving(true); setError(null);
-    try { await inventoryApi.receivePurchaseOrder(poId, { lines: payload }); onSaved(); }
+    try { await inventoryApi.receivePurchaseOrder(poId, { lines: payload }, recvKeys.current.keyFor('receive', { poId, payload })); recvKeys.current.done('receive'); onSaved(); }   // D10: a retried receipt counts once
     catch (e: any) { setError(e?.message || tx('pos.could_not_receive_purchase_order')); } finally { setSaving(false); }
   };
   return (
