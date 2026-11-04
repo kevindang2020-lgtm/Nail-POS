@@ -150,4 +150,21 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   no registers set up keeps one drawer as before. Reads and writes for another location's register are refused
   (REGISTER_NOT_IN_BRANCH). POS Cash Drawer has a register picker (EN/VI), shown only when registers exist. Payments taken
   before today have no register and land in "Cash with no register". End-of-Day Cash (technician cash) stays per location.
+- Nov 4 (later) — BUILT / FIXED:
+  - A6 AI Queue (8a5c84d): Check AI Queue System (13 parts, read-only, recorded — 789), assignment history (server search,
+    filters, salon-day presets, numbered pages 10/20/50, URL filters), guest overlay in 7 tabs. A6 is now BUILT.
+  - A7 AI Booking Assistant (8a5c84d): operations center over the existing booking records (counts, request activity with
+    search / filters / pages, 8-tab overlay without codes, recovery cases with draft-only messages and audited Dismiss,
+    Check AI Booking System — 790). A7 is now BUILT. Not built: "Request Manager Approval" on a recovery case, and proposed
+    alternative times inside a recovery case (staff open POS Booking for availability).
+  - D6 Membership (1a6d564): the plan's rollover switch, "Rollover max (cycles)" and "Credit expiry (days)" are applied
+    (they were saved and ignored); migration 193's fake $49 redemption is removed (791).
+  - D2 Services (9a2d583): per-service taxable setting (792) — lines copy it when rung up; checkout, line refunds and the
+    finance amount-due tax only the taxable part. A per-service RATE / exemption / tax category is still refused. Dashboard
+    and Service Done "estimated tax" figures still use the whole subtotal (estimates). The older add-on route no longer deletes.
+  - Live IDOR run (2a0e384): 11/11 on PostgreSQL after fixing 3 location leaks and 1 crash.
+- STILL OPEN: the guides' smaller extras (each row above); the api-contracts wire-type ratchet (774 routes); POS suite —
+  run in 12 slices: 13 tests in 8 files fail (Live Technician Schedule ×5, roster-1000 ×2, New Booking, Retention ×2,
+  Service Done, Split Payments, layout grid), and slices 3 and 9 stall intermittently (the Booking language-switch test passed
+  alone twice; the stall depends on timing).
 

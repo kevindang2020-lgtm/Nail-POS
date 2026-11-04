@@ -865,3 +865,11 @@ question for Kevin: Customer Notifications / Email Center read `notifications` s
 - API gates now: role matrix, route domains, IDOR, strict-bodies all green; the ONLY red one is the api-contracts wire-type
   ratchet (774 untyped routes, none from Nov 4 work; not grandfathered).
 - The full pos-web suite stalls in this sandbox (only 5 files in 28 min); the touched POS tests were run directly (green).
+
+## Nov 4 2026 (later) — A6, A7, membership rollover, per-service tax, live IDOR
+- Commits 8a5c84d (A6 + A7), 1a6d564 (membership), 9a2d583 (per-service tax, add-on route), 2a0e384 (live IDOR 11/11).
+  Migrations 789–792.
+- POS suite: run it in slices (`npx vitest run --shard=i/12`) — the single run stalls on this 2-CPU sandbox. 13 tests in 8
+  files fail (list in docs/GUIDE_QUEUE_2026-11-03.md); slices 3 and 9 stall intermittently.
+- Live IDOR: `DATABASE_URL=postgres://postgres@127.0.0.1:55432/aps node apps/api/scripts/live-phase14-idor.mjs` after
+  `npm run build` in apps/api.
