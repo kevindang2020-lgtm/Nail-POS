@@ -7,18 +7,18 @@ import { canTransition, splitMembershipRevenue } from './memberships-core';
 
 export type BillingInterval = 'month' | 'quarter' | 'six_month' | 'year' | 'none' | 'custom';
 
-/** Advance a date by N billing intervals. 'none'/'custom' do not auto-advance (prepaid / bespoke terms). */
-export function addInterval(start: Date, interval: BillingInterval, count = 1): Date {
-  const d = new Date(start.getTime());
+/** Advance a date by N billing intervals. 'none'/'custom' do not auto-advance (prepaid / bespoke terms).
+ *  Month arithmetic clamps to the last day of the target month (Jan 31 + 1 month = Feb 28/29, never Mar 3), and
+ *  `anchorDay` (the day of month the membership started) keeps a later cycle from drifting: Feb 28 + 1 month with
+ *  anchor 31 is Mar 31, not Mar 28. */
+export function addInterval(start: Date, interval: BillingInterval, count = 1, anchorDay?: number | null): Date {
   const c = Math.max(1, Math.floor(count));
-  switch (interval) {
-    case 'month': d.setUTCMonth(d.getUTCMonth() + c); break;
-    case 'quarter': d.setUTCMonth(d.getUTCMonth() + 3 * c); break;
-    case 'six_month': d.setUTCMonth(d.getUTCMonth() + 6 * c); break;
-    case 'year': d.setUTCFullYear(d.getUTCFullYear() + c); break;
-    default: break; // none / custom
-  }
-  return d;
+  const months = interval === 'month' ? c : interval === 'quarter' ? 3 * c : interval === 'six_month' ? 6 * c : interval === 'year' ? 12 * c : 0;
+  if (!months) return new Date(start.getTime()); // none / custom
+  const y = start.getUTCFullYear(), m = start.getUTCMonth() + months;
+  const want = anchorDay && anchorDay >= 1 && anchorDay <= 31 ? Math.max(Math.floor(anchorDay), start.getUTCDate()) : start.getUTCDate();
+  const lastDay = new Date(Date.UTC(y, m + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(y, m, Math.min(want, lastDay), start.getUTCHours(), start.getUTCMinutes(), start.getUTCSeconds(), start.getUTCMilliseconds()));
 }
 
 // ── normalized renewal events (provider-agnostic) ──

@@ -5,6 +5,16 @@ import {
 } from './membership-billing-core';
 
 describe('addInterval', () => {
+  it('month-end: clamps to the last day (never spills into the next month) and does not drift with the start-day anchor', () => {
+    const jan31 = new Date('2026-01-31T15:00:00Z');
+    expect(addInterval(jan31, 'month').toISOString()).toBe('2026-02-28T15:00:00.000Z');          // was Mar 3
+    expect(addInterval(new Date('2028-01-31T15:00:00Z'), 'month').toISOString().slice(0, 10)).toBe('2028-02-29');
+    expect(addInterval(new Date('2026-02-28T15:00:00Z'), 'month', 1, 31).toISOString().slice(0, 10)).toBe('2026-03-31'); // was Mar 28
+    expect(addInterval(new Date('2026-02-28T15:00:00Z'), 'month', 1, 30).toISOString().slice(0, 10)).toBe('2026-03-30');
+    expect(addInterval(new Date('2026-11-30T15:00:00Z'), 'quarter', 1, 31).toISOString().slice(0, 10)).toBe('2027-02-28');
+    expect(addInterval(new Date('2028-02-29T15:00:00Z'), 'year').toISOString().slice(0, 10)).toBe('2029-02-28');
+    expect(addInterval(new Date('2026-03-15T15:00:00Z'), 'month', 1, 31).toISOString().slice(0, 10)).toBe('2026-04-30'); // anchor wins only up to month end
+  });
   const base = new Date('2026-01-15T00:00:00Z');
   it('advances by interval', () => {
     expect(addInterval(base, 'month').toISOString().slice(0, 10)).toBe('2026-02-15');

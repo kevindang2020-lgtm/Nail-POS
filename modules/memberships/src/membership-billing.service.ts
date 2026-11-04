@@ -67,7 +67,7 @@ export class MembershipBillingService {
     const alloc = success ? renewalAllocation(amount, m.techSplitPct, m.allocationTiming) : { techCents: 0, ownerCents: 0 };
 
     const periodStart = success ? (m.currentPeriodEnd ?? m.nextBillingAt ?? new Date()) : (m.currentPeriodStart ?? null);
-    const periodEnd = success ? addInterval(periodStart as Date, m.billingInterval as BillingInterval, m.intervalCount) : (m.currentPeriodEnd ?? null);
+    const periodEnd = success ? addInterval(periodStart as Date, m.billingInterval as BillingInterval, m.intervalCount, m.startedAt ? m.startedAt.getUTCDate() : null) : (m.currentPeriodEnd ?? null);
 
     const rec = await this.repo.recordPayment({
       membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, kind: 'renewal', amountCents: amount, taxCents: 0,
@@ -147,7 +147,7 @@ export class MembershipBillingService {
     const m = await this.repo.getForBilling(membershipId);
     if (!m) return null;
     const start = m.currentPeriodStart ?? m.startedAt ?? new Date();
-    const end = m.currentPeriodEnd ?? addInterval(start, m.billingInterval as BillingInterval, m.intervalCount);
+    const end = m.currentPeriodEnd ?? addInterval(start, m.billingInterval as BillingInterval, m.intervalCount, m.startedAt ? m.startedAt.getUTCDate() : null);
     const changeAt = changeAtISO ? new Date(changeAtISO) : new Date();
     return { membershipId, ...prorate(m.priceCents, Math.max(0, Math.round(newPriceCents)), start, end, changeAt) };
   }
