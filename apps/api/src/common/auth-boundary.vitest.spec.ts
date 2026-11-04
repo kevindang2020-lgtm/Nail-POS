@@ -106,6 +106,7 @@ const EXPECTED_PUBLIC = [
   'POST webhooks/twilio/sms/inbound',                            // Twilio signature (per-tenant token) — STOP opt-outs
   'POST webhooks/twilio/sms/status',                             // Twilio signature
   'POST webhooks/email/sendgrid',                                // SendGrid signed event webhook (ECDSA over timestamp + raw body)
+  'POST webhooks/voice/retell',                                  // Retell call events (X-Retell-Signature over raw body + timestamp; 503 when no key)
   'GET public/email/unsubscribe',                                // unsubscribe page — HMAC token, no data shown
   'POST public/email/unsubscribe',                               // one-click unsubscribe — HMAC token, marketing-only opt-out
   'POST webhooks/twilio/booking-verification/status',            // Twilio signature, tenant's own token
