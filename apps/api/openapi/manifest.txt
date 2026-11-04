@@ -312,6 +312,11 @@ GET /pos/ai-analytics/forecast/readiness  realm=staff  auth=session  domain=ai  
 GET /pos/ai-analytics/forecast/revenue  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/no-show-risk  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-analytics/seasonal-trends  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/activity  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/health  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/overview  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/recovery  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-booking/requests/{requestId}  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/alerts  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/appointments/metrics  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-business/branches/compare  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -385,9 +390,12 @@ GET /pos/ai-queue-assignment/auto-config  realm=staff  auth=session  domain=ai  
 GET /pos/ai-queue-assignment/decisions  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/decisions/analytics  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/entries/{queueEntryId}/decisions  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-queue-assignment/entries/{queueEntryId}/detail  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/entries/{queueEntryId}/panel  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/entries/{queueEntryId}/recommendation  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/export  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.export  async=pos.ai-queue-assignment.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-queue-assignment/health  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/ai-queue-assignment/history  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/overview  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/recommendations/{id}  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/ai-queue-assignment/recommendations/{id}/explanation  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2419,6 +2427,8 @@ POST /pos/access/overrides/{id}/revoke  realm=staff  auth=session  domain=identi
 POST /pos/access/ownership/transfer  realm=staff  auth=session  domain=identity  perm=ownership.transfer  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/access/preview  realm=staff  auth=session  domain=identity  perm=roles.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-analytics/center/check  realm=staff  auth=session  domain=ai  perm=pos.ai_analytics.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-booking/health/run  realm=staff  auth=session  domain=ai  perm=ai_booking.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-booking/recovery/{caseKey}/dismiss  realm=staff  auth=session  domain=ai  perm=ai_booking.view  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/alerts/{id}/evaluate  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-business/ask  realm=staff  auth=session  domain=analytics  perm=pos.ai_business.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2485,6 +2495,7 @@ POST /pos/ai-queue-assignment/entries/{queueEntryId}/plan  realm=staff  auth=ses
 POST /pos/ai-queue-assignment/entries/{queueEntryId}/recommend  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.recommend  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/fair-turn/simulate  realm=staff  auth=session  domain=ai  perm=turn_queue.read  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/groups/{groupId}/plan  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.recommend  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/ai-queue-assignment/health/run  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/plans/{recommendationId}/decision  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.assign  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-queue-assignment/recommendations/{id}/decision  realm=staff  auth=session  domain=ai  perm=ai_queue_assignment.assign  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/ai-review-reputation/escalations/{id}/acknowledge  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.manage  guards=RolePermissionGuard,TenantAuthGuard

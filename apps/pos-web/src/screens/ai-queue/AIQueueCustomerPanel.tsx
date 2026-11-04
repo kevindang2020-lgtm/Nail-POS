@@ -27,7 +27,9 @@ type LiveItem = { queueItemId: string; customerName: string; status: string; ass
 type Roster = { technicianId: string; name: string }[];
 const ACTIVE = ['waiting', 'called', 'assigned', 'ready_for_tech'];
 
-export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged }: { tick: number; roster: Roster; techName: (id: string | null | undefined) => string; can: (p: string) => boolean; onChanged: () => void }) {
+export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged, selectRequest, onDetails }: { tick: number; roster: Roster; techName: (id: string | null | undefined) => string; can: (p: string) => boolean; onChanged: () => void;
+  /** A6 (Nov 4 2026): the guest overlay's "Assign Technician" hands the guest here (assignment goes through this panel's checks) */
+  selectRequest?: { id: string; n: number } | null; onDetails?: (queueEntryId: string) => void }) {
   const [live, setLive] = useState<LiveItem[] | null>(null);
   const [liveErr, setLiveErr] = useState<string | null>(null);
   const [selId, setSelId] = useState<string | null>(null);
@@ -69,6 +71,7 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged }:
   useEffect(() => { void loadLive(); }, [loadLive, tick]);
   useEffect(() => { if (selId) void loadPanel(selId); }, [selId, loadPanel, tick]);
 
+  useEffect(() => { if (selectRequest?.id) { setSelId(selectRequest.id); setPlanOpen(false); setMode(null); setMsg(null); setErr(null); setFullHistory(null); setPastReco(null); } }, [selectRequest?.id, selectRequest?.n]);
   const pick = (qid: string) => { setSelId(qid); setPlanOpen(false); setMode(null); setMsg(null); setErr(null); setFullHistory(null); setPastReco(null); };
   const selected = live?.find((x) => x.queueItemId === selId) || null;
   const guestName = selected?.customerName || tx('pos.this_guest_2');
@@ -159,6 +162,7 @@ export function AIQueueCustomerPanel({ tick, roster, techName, can, onChanged }:
             <>
               {err ? <div role="alert" style={errText}>{err}</div> : null}
               {msg ? <div role="status" style={okText}>{msg}</div> : null}
+              {onDetails ? <div><button type="button" style={btnGhost} onClick={() => onDetails(selId)} data-testid="aq-guest-details">{tx('growth.aiQueue.ov.open')}</button></div> : null}
               {entry ? (
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} aria-label={tx('pos.what_the_engine_knows')}>
                   {entry.requestedTechnicianId ? <span style={pill('#E9F1FA', '#3C7FB6')}>{tx('pos.asked_for')}{' '}{techName(entry.requestedTechnicianId)}</span> : null}

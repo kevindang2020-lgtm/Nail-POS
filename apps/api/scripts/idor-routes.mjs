@@ -84,6 +84,9 @@ export const SEGMENT_FIXTURES = [
   ['/pos/ai-money-protection/investigations/{id}', F('money_protection_investigations')],
   ['/pos/ai-ocr-receipt/documents/{id}', F('ocr_documents')],
   ['/pos/ai-queue-assignment/recommendations/{id}', F('queue_assignment_recommendations')],
+  // A7 (Nov 4 2026): a request id is a correlation id inside ai_booking_conversion_events; the query is salon-scoped (another salon's id answers 404)
+  ['/pos/ai-booking/requests/{requestId}', F('ai_booking_conversion_events', 'correlation_id')],
+  ['/pos/ai-booking/recovery/{caseKey}/dismiss', X('caseKey is a derived key (type:id); the dismissal is stored under the caller\'s salon only and reveals nothing')],
   ['/pos/ai-review-reputation/{id}', F('reviews')],
   ['/pos/ai-scheduling-optimizer/recommendations/{id}', F('schedule_optimization_recommendations')],
   ['/pos/ai-scheduling-optimizer/runs/{id}', F('schedule_optimization_runs')],
@@ -225,6 +228,7 @@ export const BRANCH_TABLES = {
   // Nov 3 2026: the new centers' by-id reads filter on the caller's location (branch_id = it, or a salon-wide null row)
   ai_business_alert_events: 'branch', ai_receptionist_follow_ups: 'branch', service_add_ons: 'branch', service_categories: 'branch',
   commission_discrepancy_reviews: 'branch', pos_message_templates: 'branch', payment_refunds: 'branch', referral_redemptions: 'branch',
+  ai_booking_conversion_events: 'branch',   // A7 (Nov 4 2026): a location user reads its own location's requests; the owner with no location reads all
   team_data_alerts: 'branch', product_usage_events: 'branch',
   appointment_reminders_sent: 'branch', sms_test_events: 'branch',   // confined to a branch-scoped login's allowed locations
   // salon-wide by design

@@ -3,6 +3,7 @@ import type {   // the wire contract (Constitution 13 §15)
   DecisionAnalytics, QueueAssignmentRecommendation, QueueAssignmentPanel, QueueAssignmentDecisionRecord, QueueAssignmentDecisionRequest,
   QueueAssignmentDecisionResponse, QueueRotationPolicyResponse, QueueRotationPolicyUpdate, QueueAutoConfigView, QueueAutoConfigUpdate,
   QueueAutoRunResponse, QueueAutoKillRequest, QueueAutoExclusions, PlanRecommendationView, PlanDecisionRequest, PlanDecisionResponse,
+  AqHistoryPage, AqHistoryItem, AqEntryDetail, AqHealthRun, AqHealthCheck, AqHealthStatus,
 } from '@aipowersalon/api-contracts/tenant';
 // Wraps /pos/ai-queue-assignment/*: overview, the per-customer panel, recommendations + decisions (accept / reject /
 // override / keep unassigned), alerts, the ONE settings source (salon + branch, versioned), rotation policy + fixed
@@ -87,12 +88,19 @@ export interface AqAnalytics {
   alerts: { total: number; autoResolved: number; byType: Record<string, number> };
 }
 export interface AqUsage { range: { from: string; to: string }; byStatus: Record<string, number>; byAction: Record<string, number>; calls: number; costMicroUsd: number; recommendations: number; explanations: number }
+export type { AqHistoryPage, AqHistoryItem, AqEntryDetail, AqHealthRun, AqHealthCheck, AqHealthStatus };
+export interface AqHistoryQuery { q?: string; decision?: string; technicianId?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }
 export type AqExportType = 'decisions' | 'alerts' | 'history';
 export interface AqExportResult { format: 'csv'; filename: string; csv: string; rows?: number }
 
 export const posAIQueueAssignmentApi = {
   // overview (ops)
   overview: () => http<AqOverview>('/overview'),
+  // A6 guide (Nov 4 2026): history search + numbered pages, the guest overlay's facts, Check AI Queue System (read-only)
+  history: (f: AqHistoryQuery) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== null && v !== '') p.set(k, String(v)); const qs = p.toString(); return http<AqHistoryPage>('/history' + (qs ? '?' + qs : '')); },
+  entryDetail: (queueEntryId: string) => http<AqEntryDetail>('/entries/' + id(queueEntryId) + '/detail'),
+  lastHealth: () => http<{ run: AqHealthRun | null }>('/health'),
+  runHealth: () => http<AqHealthRun>('/health/run', { method: 'POST' }),
 
   // per-customer panel + recommendations + decisions (AI layer)
   panel: (queueEntryId: string) => http<QueueAssignmentPanel>('/entries/' + id(queueEntryId) + '/panel'),

@@ -8,11 +8,11 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 930,
+  "tables": 933,
   "ownership": {
-   "tenant_owned": 619,
+   "tenant_owned": 621,
    "platform_identity_tenant_relationship": 44,
-   "tenant_branch_owned": 89,
+   "tenant_branch_owned": 90,
    "platform_global": 153,
    "cross_tenant_platform_data": 25
   },
@@ -20,7 +20,7 @@
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 81,
-   "AI": 138,
+   "AI": 141,
    "AUDIT": 29,
    "OPERATIONS": 73,
    "SUPPORT": 57,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 141,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 507,
+   "INTERNAL": 510,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -185,6 +185,30 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_booking_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_booking_recovery_dismissals": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
   },
@@ -684,6 +708,18 @@
    "delete_policy": "none",
    "has_tenant_id": false,
    "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_queue_health_runs": {
+   "ownership": "tenant_branch_owned",
+   "class": "C",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
   },

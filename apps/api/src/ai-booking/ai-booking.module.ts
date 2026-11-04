@@ -15,10 +15,11 @@ import { AiBookingRevocationService } from './ai-booking-revocation.service';
 import { AiBookingController } from './ai-booking.controller';
 import { AiBookingPublicController } from './ai-booking-public.controller';
 import { AiBookingAdminController } from './ai-booking-admin.controller';
+import { AiBookingCenterController } from './ai-booking-center.controller';
 
 @Module({
   imports: [BookingModule, AiCenterModule, RateLimitModule, CustomerBookingModule],
-  controllers: [AiBookingController, AiBookingPublicController, AiBookingAdminController],
+  controllers: [AiBookingController, AiBookingPublicController, AiBookingAdminController, AiBookingCenterController],
   providers: [AiBookingService, AiBookingMutationService, AiBookingConversionService, AiBookingPublicResolver, AiBookingLinkService, AiBookingRevocationService],  exports: [AiBookingService, AiBookingMutationService, AiBookingConversionService],
 })
 export class AiBookingModule {}

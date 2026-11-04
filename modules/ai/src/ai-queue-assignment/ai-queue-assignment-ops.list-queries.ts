@@ -10,4 +10,6 @@ export const QueueAssignmentOpsControllerListQueries = {
   analytics: { search: false, dateRange: { maxDays: 92 } },
   exportCsv: { filters: { type: { type: 'text' } }, search: false, dateRange: { maxDays: 92 } },
   usage: { search: false, dateRange: { maxDays: 92 } },
+  // A6 guide (Nov 4 2026): assignment history — one search, decision / technician filters, salon-day presets, numbered pages 10 / 20 / 50
+  history: { filters: { decision: { type: 'text' }, technicianId: { type: 'text' }, preset: { type: 'text' } }, search: { params: ['q'] }, maxLimit: 50, dateRange: { maxDays: 366 }, params: ['page'] },
 } satisfies Record<string, ListQuerySpec>;

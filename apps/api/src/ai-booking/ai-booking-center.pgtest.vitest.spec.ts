@@ -1,0 +1,106 @@
+// ai-booking-center.pgtest — A7 AI Booking Assistant guide (Nov 4 2026): the operations center reads the EXISTING records.
+// A request = one assistant session (correlation id); its status comes from the funnel AND the authoritative appointment
+// ("AI said booked", "pending appointment exists" and "confirmed appointment exists" are different facts, §6).
+import { describe, it, expect, beforeAll } from 'vitest';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { AiBookingCenter } from './ai-booking-center';
+
+const T = 'a7b40000-0000-4000-8000-000000000001', B = 'a7b40000-0000-4000-8000-000000000002', B2 = 'a7b40000-0000-4000-8000-000000000003';
+const C1 = 'a7b40000-0000-4000-8000-0000000000c1', TE = 'a7b40000-0000-4000-8000-0000000000e1';
+const A1 = 'a7b40000-0000-4000-8000-0000000000a1', A2 = 'a7b40000-0000-4000-8000-0000000000a2';
+const ctx: any = { tenantId: T, branchId: B, userId: 'a7b40000-0000-4000-8000-0000000000f1', role: 'OWNER', permissions: ['ai_booking.view'] };
+let pg: any; let center: AiBookingCenter;
+const ev = (cid: string, stage: string, minute: number, extra: { outcome?: string; failure?: string; appt?: string; branch?: string } = {}) =>
+  pg.query(`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, failure_reason, appointment_id, correlation_id, created_at) values ($1,$2,'AI_PHONE_RECEPTIONIST',$3,$4,$5,$6,$7,$8)`,
+    [T, extra.branch ?? B, stage, extra.outcome ?? null, extra.failure ?? null, extra.appt ?? null, cid, new Date(Date.UTC(2026, 10, 3, 15, minute)).toISOString()]);
+
+beforeAll(async () => {
+  pg = await migratedPglite(); await pg.exec(`SET TIME ZONE 'UTC'`);
+  await pg.exec(`
+    insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ('${T}','B','B','aib-c','AIBC1','active');
+    insert into branches (id, tenant_id, name, timezone) values ('${B}','${T}','Main','America/New_York'), ('${B2}','${T}','Second','America/New_York');
+    insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, email) values ('${C1}','${T}','${B}','Thảo','Nguyễn','Thảo Nguyễn','+18565551234','thao@example.com');
+    insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name) values ('${TE}','${T}','${B}','Lan','Tran','Lan Tran');
+    insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, customer_phone, source, services, appt_date, start_time, end_time, status) values
+      ('${A1}','${T}','${B}','${TE}','${C1}','Thảo Nguyễn','(856) 555-1234','ai','[{"name":"Gel Manicure","priceCents":4500,"durationMinutes":45}]','2026-11-05','10:00','10:45','confirmed'),
+      ('${A2}','${T}','${B}','${TE}','${C1}','Thảo Nguyễn','(856) 555-1234','ai','[{"name":"Pedicure"}]','2026-11-06','11:00','12:00','booked');
+  `);
+  // r1: booked + confirmed in POS Booking → confirmed;  r2: appointment created, not confirmed → pending confirmation
+  await ev('r1', 'BOOKING_INTENT_DETECTED', 0); await ev('r1', 'OPTIONS_PRESENTED', 1); await ev('r1', 'BOOKING_SUCCEEDED', 2, { appt: A1, outcome: 'succeeded' });
+  await ev('r2', 'BOOKING_INTENT_DETECTED', 3); await ev('r2', 'BOOKING_SUCCEEDED', 4, { appt: A2, outcome: 'succeeded' });
+  // r3: two failed attempts (the AI may have said "booked" — no appointment exists) → failed;  r4: waiting for the code;  r5: other location
+  await ev('r3', 'BOOKING_INTENT_DETECTED', 5); await ev('r3', 'BOOKING_ATTEMPTED', 6); await ev('r3', 'BOOKING_ATTEMPTED', 7); await ev('r3', 'BOOKING_FAILED', 8, { outcome: 'failed', failure: 'APPOINTMENT_CONFLICT' });
+  await ev('r4', 'BOOKING_INTENT_DETECTED', 9); await ev('r4', 'OPTIONS_PRESENTED', 10); await ev('r4', 'CONFIRMATION_REQUESTED', 11);
+  await ev('r5', 'BOOKING_INTENT_DETECTED', 12, { branch: B2 });
+  center = new AiBookingCenter(kyselyFor(pg) as any, {}, () => Date.UTC(2026, 10, 4, 15, 0));
+}, 180_000);
+
+describe('A7 activity: one row per request, status from the authoritative appointment', () => {
+  it('derives each status; newest first; never another location', async () => {
+    const r = await center.activity(ctx, {});
+    expect(r.items.map((x) => [x.requestId, x.status])).toEqual([['r4', 'pending_verification'], ['r3', 'failed'], ['r2', 'pending_confirmation'], ['r1', 'confirmed']]);
+    expect(r.items.find((x) => x.requestId === 'r3')).toMatchObject({ attempts: 2, failureReason: 'APPOINTMENT_CONFLICT', appointmentId: null });
+    expect(r.items.find((x) => x.requestId === 'r1')).toMatchObject({ appointmentDate: '2026-11-05', services: ['Gel Manicure'], technicianName: 'Lan Tran', maskedPhone: '••• 1234' });
+  });
+  it('searches the server over every row: accent-free name, phone digits, email, service, technician, appointment id; filters + pages', async () => {
+    expect((await center.activity(ctx, { q: 'thao nguyen' })).totalItems).toBe(2);
+    expect((await center.activity(ctx, { q: '856-555-1234' })).totalItems).toBe(2);
+    expect((await center.activity(ctx, { q: 'thao@example' })).totalItems).toBe(2);
+    expect((await center.activity(ctx, { q: 'pedicure' })).items.map((x) => x.requestId)).toEqual(['r2']);
+    expect((await center.activity(ctx, { q: A1 })).items.map((x) => x.requestId)).toEqual(['r1']);
+    expect((await center.activity(ctx, { status: 'failed' })).totalItems).toBe(1);
+    const p = await center.activity(ctx, { pageSize: 10 });
+    expect(p).toMatchObject({ pageSize: 10, totalPages: 1, totalItems: 4 });
+    expect((await center.activity(ctx, { basis: 'appointment', preset: 'custom', from: '2026-11-06', to: '2026-11-06' })).items.map((x) => x.requestId)).toEqual(['r2']);
+    await expect(center.activity(ctx, { preset: 'custom', from: '2026-11-09', to: '2026-11-01' })).rejects.toThrow(/before/);
+  });
+  it('the owner without a location sees every location', async () => {
+    expect((await center.activity({ ...ctx, branchId: null }, {})).totalItems).toBe(5);
+  });
+});
+
+describe('A7 overview counts', () => {
+  it('counts by the same derived status, for the period', async () => {
+    const o = await center.overview(ctx, { preset: 'month' });
+    expect(o).toMatchObject({ requests: 4, confirmed: 1, pendingConfirmation: 1, pendingVerification: 1, failed: 1, prepared: 3 });
+    expect(o.period.tz).toBe('America/New_York');
+  });
+});
+
+describe('A7 request detail', () => {
+  it('timeline, service lines and the customer — never a verification code', async () => {
+    const d = await center.detail(ctx, 'r1');
+    expect(d.timeline.map((x) => x.stage)).toEqual(['BOOKING_INTENT_DETECTED', 'OPTIONS_PRESENTED', 'BOOKING_SUCCEEDED']);
+    expect(d.serviceLines[0]).toMatchObject({ name: 'Gel Manicure', priceCents: 4500, durationMinutes: 45 });
+    expect(d.customer.appointments.length).toBe(2);
+    await expect(center.detail(ctx, 'r5')).rejects.toThrow(/could not be found/);   // another location
+  });
+});
+
+describe('A7 recovery', () => {
+  it('lists failed requests and AI appointments not yet confirmed; Dismiss needs a reason and is audited', async () => {
+    const r = await center.recovery(ctx);
+    expect(r.cases.map((c) => c.type)).toEqual(expect.arrayContaining(['repeated_attempts']));
+    const key = r.cases.find((c) => c.requestId === 'r3')!.key;
+    await expect(center.dismissRecovery(ctx, key, '')).rejects.toThrow(/why/);
+    await center.dismissRecovery(ctx, key, 'Called the guest back and booked by phone');
+    expect((await center.recovery(ctx)).cases.find((c) => c.key === key)).toBeUndefined();
+    expect((await pg.query(`select count(*)::int n from audit_logs where action_type = 'ai_booking_recovery_dismissed'`)).rows[0].n).toBe(1);
+  });
+});
+
+describe('A7 Check AI Booking System', () => {
+  it('every part reports; read-only (no appointment, no hold, no message); recorded and read back', async () => {
+    const before = (await pg.query(`select (select count(*) from pos_tech_appointments)::int a, (select count(*) from booking_holds)::int h`)).rows[0];
+    const run = await center.health(ctx);
+    for (const k of ['entitlement', 'permissions', 'provider', 'catalog', 'technicians', 'availability', 'booking_api', 'verification', 'communications', 'sync', 'usage', 'observability']) expect(run.checks.map((c) => c.key)).toContain(k);
+    expect(run.checks.find((c) => c.key === 'entitlement')?.status).toBe('NOT_CONFIGURED');   // no subscription row
+    expect(run.checks.find((c) => c.key === 'provider')?.status).toBe('NOT_CONFIGURED');      // no key in this env
+    expect(run.checks.find((c) => c.key === 'technicians')?.status).toBe('READY');
+    expect((await pg.query(`select (select count(*) from pos_tech_appointments)::int a, (select count(*) from booking_holds)::int h`)).rows[0]).toEqual(before);
+    expect((await center.lastHealth(ctx)).run).toMatchObject({ runId: run.runId });
+  });
+  it('without ai_booking.view nothing is read', async () => {
+    await expect(center.activity({ ...ctx, permissions: [], role: 'TECHNICIAN' }, {})).rejects.toThrow(/permission/);
+  });
+});

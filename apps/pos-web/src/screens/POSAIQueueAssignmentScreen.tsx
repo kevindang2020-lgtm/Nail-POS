@@ -21,6 +21,8 @@ import { AIQueueSettingsCard } from './ai-queue/AIQueueSettingsCard';
 import { AIQueueRotationCard } from './ai-queue/AIQueueRotationCard';
 import { AIQueueAutoCard } from './ai-queue/AIQueueAutoCard';
 import { AIQueueAnalyticsCard } from './ai-queue/AIQueueAnalyticsCard';
+import { AIQueueHealthDialog, AIQueueHistoryCard, AIQueueEntryOverlay } from './ai-queue/AIQueueCenter';
+import { useNavigate } from 'react-router-dom';
 import { Stat, muted, errText, mins, errMsg, autoOffReason, when } from './ai-queue/aiQueueUi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
@@ -37,6 +39,11 @@ export function POSAIQueueAssignmentScreen() {
   const [ov, setOv] = useState<AqOverview | null>(null);
   const [ovErr, setOvErr] = useState<string | null>(null);
   const [staff, setStaff] = useState<{ technicianId: string; name: string }[]>([]);
+  // A6 guide (Nov 4 2026): Check AI Queue System, the guest overlay, and handing a guest to the panel to assign
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [overlay, setOverlay] = useState<string | null>(null);
+  const [selectRequest, setSelectRequest] = useState<{ id: string; n: number } | null>(null);
+  const nav = useNavigate();
 
   useEffect(() => {
     api.overview().then((o) => { setOv(o); setOvErr(null); }).catch((e) => setOvErr(errMsg(e, tx('growth.aiQueue.err.overview'))));
@@ -69,6 +76,7 @@ export function POSAIQueueAssignmentScreen() {
           <p style={{ ...muted, marginLeft: 4 }}>{tx('pos.recommends_technicians_staff_keep_control')}</p>
         </div>
         <div className='gap-2 flex items-center flex-wrap sm:flex-nowrap'>
+          <button className='btn whitespace-nowrap !h-8' onClick={() => setHealthOpen(true)} data-testid="aq-check">{tx('growth.aiQueue.h.title')}</button>
           <button className='btn whitespace-nowrap !h-8' onClick={bump}>{tx('pos.refresh')}</button>
         </div>
       </div>
@@ -98,15 +106,20 @@ export function POSAIQueueAssignmentScreen() {
           </div>
         ) : null}
 
-        <AIQueueCustomerPanel tick={tick} roster={roster} techName={techName} can={can} onChanged={bump} />
+        <AIQueueCustomerPanel tick={tick} roster={roster} techName={techName} can={can} onChanged={bump} selectRequest={selectRequest} onDetails={setOverlay} />
         <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 380px), 1fr))', alignItems: 'start' }}>
           <AIQueueAlertsCard tick={tick} can={can} techName={techName} roster={roster} onChanged={bump} />
           <AIQueueAutoCard tick={tick} can={can} roster={roster} onChanged={bump} />
           <AIQueueSettingsCard tick={tick} can={can} onChanged={bump} />
           <AIQueueRotationCard tick={tick} can={can} roster={roster} techName={techName} />
         </div>
+        <AIQueueHistoryCard tick={tick} roster={roster} onOpen={setOverlay} />
         <AIQueueAnalyticsCard tick={tick} can={can} techName={techName} />
       </div>
+      {healthOpen ? <AIQueueHealthDialog onClose={() => setHealthOpen(false)} /> : null}
+      {overlay ? <AIQueueEntryOverlay queueEntryId={overlay} techName={techName} onClose={() => setOverlay(null)}
+        onAssign={can('ai_queue_assignment.assign') ? (id) => { setOverlay(null); setSelectRequest((r) => ({ id, n: (r?.n ?? 0) + 1 })); } : undefined}
+        onViewBooking={(_apptId, date) => nav('/booking' + (date ? '?date=' + encodeURIComponent(date) : ''))} /> : null}
     </div>
   );
 }

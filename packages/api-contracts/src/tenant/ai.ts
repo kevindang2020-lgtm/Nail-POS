@@ -185,3 +185,49 @@ export interface PlanRecommendationView { recommendationId: string; kind: 'visit
 export type PlanDecisionType = 'accepted' | 'adjusted' | 'rejected' | 'kept_unassigned';
 export interface PlanDecisionRequest { decision: PlanDecisionType; lines?: { queueItemId: string; serviceId: string; technicianId: string }[]; reason?: string | null; feedbackCode?: string | null; idempotencyKey?: string | null }
 export interface PlanDecisionResponse { decision: QueueAssignmentDecisionRecord; applied: boolean; result: import('./queue').AssignPlanResult | null; replayed?: boolean }
+
+// ── A6 AI Queue guide (Nov 4 2026): history search, guest overlay facts, Check AI Queue System ──
+export type AqHealthStatus = 'READY' | 'ATTENTION_REQUIRED' | 'FAILED' | 'DISABLED' | 'NOT_CONFIGURED' | 'UNKNOWN';
+export interface AqHealthCheck { key: string; label: string; status: AqHealthStatus; evidence: string; failure: string | null; fix: string | null; facts: Record<string, string | number>; checkedAt: string }
+export interface AqHealthRun { runId: string | null; overall: AqHealthStatus; checkedAt: string; checks: AqHealthCheck[]; note: string }
+export interface AqHistoryItem {
+  decisionId: string; queueEntryId: string; recommendationId: string | null; decision: string; applied: boolean; reason: string | null; feedbackCode: string | null; decidedBy: string | null; createdAt: string | null;
+  customerName: string | null; maskedPhone: string | null; customerId: string | null; ticketId: string | null; appointmentId: string | null; entryStatus: string | null;
+  technicianId: string | null; technicianName: string | null; previousTechnicianId: string | null; previousTechnicianName: string | null;
+}
+export interface AqHistoryPage { period: { preset: string; from: string | null; to: string | null; tz: string; today: string }; page: number; pageSize: number; totalItems: number; totalPages: number; order: 'newest'; items: AqHistoryItem[] }
+export interface AqEntryDetail {
+  queueEntryId: string; status: string; source: string; priority: string; isVip: boolean; checkedInAt: string | null; calledAt: string | null; startedAt: string | null; waitMinutes: number | null;
+  ticketId: string | null; appointmentId: string | null; assignedTechnicianId: string | null; requestedServices: Array<{ serviceId: string | null; name: string | null }>; notes: string | null;
+  customer: { customerId: string | null; name: string | null; maskedPhone: string | null; preferredTechnicianId: string | null; customerSince: string | null; paidVisits: number; lastVisitAt: string | null };
+  appointments: Array<{ appointmentId: string; date: string; startAt: string | null; endAt: string | null; status: string; source: string; technicianId: string | null; technicianName: string | null }>;
+  events: Array<{ eventType: string; deliveryStatus: string; attempts: number; occurredAt: string | null; publishedAt: string | null }>;
+}
+
+// ── A7 AI Booking Assistant guide (Nov 4 2026): the operations center over the existing booking records ──
+export type AibHealthStatus = 'READY' | 'ATTENTION_REQUIRED' | 'FAILED' | 'DISABLED' | 'NOT_CONFIGURED' | 'UNKNOWN';
+export interface AibHealthCheck { key: string; status: AibHealthStatus; evidence: string; failure: string | null; fix: string | null; owner: string; facts: Record<string, string | number>; checkedAt: string }
+export interface AibHealthRun { runId: string | null; overall: AibHealthStatus; checkedAt: string; checks: AibHealthCheck[]; note: string }
+export interface AibPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
+export interface AibOverview { period: AibPeriod; requests: number; prepared: number; pendingVerification: number; pendingConfirmation: number; confirmed: number; failed: number; liveHolds: number; expiredHolds: number; definitions: Record<string, string> }
+export interface AibActivityRow {
+  requestId: string; status: string; source: string; createdAt: string | null; updatedAt: string | null; customerName: string | null; maskedPhone: string | null; customerId: string | null;
+  appointmentId: string | null; appointmentDate: string | null; appointmentTime: string | null; appointmentStatus: string | null; services: string[]; technicianId: string | null; technicianName: string | null;
+  failureReason: string | null; attempts: number; events: number;
+}
+export interface AibActivityPage { period: AibPeriod; basis: string; page: number; pageSize: number; totalItems: number; totalPages: number; order: 'newest'; items: AibActivityRow[] }
+export interface AibRequestDetail extends AibActivityRow {
+  branchId: string | null;
+  customer: { customerId: string | null; name: string | null; maskedPhone: string | null; verified: boolean; appointments: Array<{ appointmentId: string; date: string | null; time: string | null; status: string; source: string }> };
+  serviceLines: Array<{ name: string | null; priceCents: number | null; durationMinutes: number | null }>;
+  timeline: Array<{ stage: string; outcome: string | null; failureReason: string | null; appointmentId: string | null; latencyMs: number | null; at: string | null }>;
+  verification: Array<{ status: string; channel: string; maskedPhone: string; attempts: number; resends: number; expiresAt: string | null; verifiedAt: string | null; failureReason: string | null; at: string | null }>;
+  communications: Array<{ kind: string; provider: string; providerReference: string | null; sentAt: string | null; status: string }>;
+  holds: Array<{ holdId: string; status: string; channel: string; startAt: string | null; endAt: string | null; expiresAt: string | null; releasedAt: string | null; releaseReason: string | null; convertedAppointmentId: string | null }>;
+  tools: Array<{ tool: string; kind: string; status: string; result: string | null; error: string | null; requests: number; at: string | null; finishedAt: string | null }>;
+}
+export interface AibRecoveryCase { key: string; type: string; urgency: 'high' | 'medium' | 'low'; requestId: string | null; at: string | null; customerName: string | null; maskedPhone: string | null; appointmentId: string | null; date: string | null; reason: string | null; source: string; attempts: number }
+export interface AibRecoveryList { cases: AibRecoveryCase[]; dismissedCount: number; note: string }
+export interface AqLastHealth { run: AqHealthRun | null }
+export interface AibLastHealth { run: AibHealthRun | null }
+export interface AibDismissResult { dismissed: boolean; key: string }

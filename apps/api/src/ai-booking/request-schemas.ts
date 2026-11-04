@@ -30,3 +30,5 @@ export const AIB_PUBLIC_VERIFY_CHECK_BODY: BodySchema = S.object({ ...link, book
 // Super Admin (tenant from the path)
 export const AIB_MINT_LINK_BODY: BodySchema = S.object({ source: str(40), branchId: str(64), allowedServiceIds: ids, partnerId: str(120), campaignId: str(120), ttlDays: S.nullable(S.number()) });
 export const AIB_REVOKE_LINK_BODY: BodySchema = S.object({ jti: str(200), reason: str(1000) });
+/** A7 AI Booking Assistant (Nov 4 2026): dismiss a recovery case — the reason is required and audited */
+export const AIB_RECOVERY_DISMISS_BODY: BodySchema = S.object({ reason: S.text(300) }, ['reason']);

@@ -105,6 +105,7 @@ import { POSIntegrationsScreen } from './screens/POSIntegrationsScreen';
 import { POSDepositReconScreen } from './screens/POSDepositReconScreen';
 import { POSAiAnalyticsScreen } from './screens/POSAiAnalyticsScreen';
 import { POSAiPackageScreen } from './screens/POSAiPackageScreen';
+import { POSAIBookingScreen } from './screens/POSAIBookingScreen';
 import { POSAIReviewAssistantScreen } from './screens/POSAIReviewAssistantScreen';
 import { POSAIFraudProtectionAssistantScreen } from './screens/POSAIFraudProtectionAssistantScreen';
 import { POSAICustomerProfileAssistantScreen } from './screens/POSAICustomerProfileAssistantScreen';
@@ -399,7 +400,7 @@ function POSRoutes() {
         <Route path="tenant/payments/deposit-reconciliation" element={<POSDepositReconScreen />} />
         <Route path="tenant/integrations/sms" element={<POSMessagingSetupScreen />} />
         <Route path="tenant/reports/ai" element={<POSAiAnalyticsScreen />} />
-        <Route path="tenant/ai/booking" element={<POSAiPackageScreen code="ai_booking_assistant" title={t('pos.ai_booking_assistant')} />} />
+        <Route path="tenant/ai/booking" element={<POSAIBookingScreen />} />
         <Route path="tenant/ai/scheduling" element={<Navigate to="/tenant/ai/scheduling-optimizer" replace />} />{/* BUILD_PLAN Phase 7: one optimizer entry */}
         <Route path="tenant/ai/customer-insights" element={<POSAICustomerProfileAssistantScreen />} />
         <Route path="tenant/ai/checkout-upsell" element={<POSAICheckoutUpsellAssistantScreen />} />

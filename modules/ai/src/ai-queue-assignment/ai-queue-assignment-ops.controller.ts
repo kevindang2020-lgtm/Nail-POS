@@ -9,6 +9,8 @@ import { AQ_ALERT_NOTE_BODY, AQ_ALERT_REPAIR_BODY, AQ_SETTINGS_BODY, AQ_THRESHOL
 import { Controller, Get, Post, Put, Param, Query, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { QueueAlertService, QueueAlertNotFoundError, QueueAlertConflictError } from './ai-queue-assignment-alerts.service';
 import { QueueOpsService, QueueOpsConflictError } from './ai-queue-assignment-ops.service';
+import { QueueAssignmentCenter } from './ai-queue-assignment-center';
+import type { AqHistoryPage, AqEntryDetail, AqHealthRun, AqLastHealth } from '@aipowersalon/api-contracts/tenant';
 import { QueueAssignmentForbiddenError, QueueAssignmentValidationError, QueueAssignmentDisabledError, type QueueAssignmentContext } from './ai-queue-assignment.dto';
 import { ListQueries } from '@aipowersalon/database';
 import { QueueAssignmentOpsControllerListQueries } from './ai-queue-assignment-ops.list-queries';
@@ -46,7 +48,20 @@ export async function opsRun<T>(fn: () => Promise<T>): Promise<T> {
 @Controller('pos/ai-queue-assignment')
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 export class QueueAssignmentOpsController {
-  constructor(private readonly ops: QueueOpsService, private readonly alerts: QueueAlertService) {}
+  constructor(private readonly ops: QueueOpsService, private readonly alerts: QueueAlertService, private readonly center: QueueAssignmentCenter) {}
+
+  // ── A6 guide (Nov 4 2026): history search + numbered pages, the guest overlay's facts, Check AI Queue System ──
+  @Get('history') @RequirePermission('ai_queue_assignment.view')
+  history(@Req() r: any, @Query('q') q?: string, @Query('decision') decision?: string, @Query('technicianId') technicianId?: string, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('page') page?: string, @Query('pageSize') pageSize?: string): Promise<AqHistoryPage> {
+    return opsRun(() => this.center.history(opsCtxFrom(r), { q, decision, technicianId, preset, from, to, page, pageSize }));
+  }
+  @Get('entries/:queueEntryId/detail') @RequirePermission('ai_queue_assignment.view')
+  entryDetail(@Req() r: any, @Param('queueEntryId') id: string): Promise<AqEntryDetail> { return opsRun(() => this.center.entryDetail(opsCtxFrom(r), id)); }
+  @Get('health') @RequirePermission('ai_queue_assignment.view')
+  lastHealth(@Req() r: any): Promise<AqLastHealth> { return opsRun(async () => ({ run: await this.center.lastHealth(opsCtxFrom(r)) })); }
+  /** read-only: it tests every dependency and records the result; it never assigns anyone */
+  @Post('health/run') @RequirePermission('ai_queue_assignment.view')
+  runHealth(@Req() r: any): Promise<AqHealthRun> { return opsRun(() => this.center.health(opsCtxFrom(r))); }
 
   @Get('overview') @RequirePermission('ai_queue_assignment.view')
   overview(@Req() r: any) { return opsRun(() => this.ops.overview(opsCtxFrom(r))); }

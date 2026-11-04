@@ -20,6 +20,7 @@ import { QueueServiceOpsAdapter, type QueueOpsQueuePort } from './ai-queue-assig
 import { KyselyQueueOpsRead, InMemoryQueueOpsRead, type QueueOpsReadPort } from './ai-queue-assignment-ops.repository';
 import { RealtimeOpsEmitter, KyselyQueueAlertNotifier, type OpsEmitterPort, type QueueAlertNotifierPort } from './ai-queue-assignment-ops.notifications';
 import { QueueOpsService } from './ai-queue-assignment-ops.service';
+import { QueueAssignmentCenter } from './ai-queue-assignment-center';
 import { QueueOpsScheduler } from './ai-queue-assignment-ops.jobs';
 import { QueueAssignmentOpsController } from './ai-queue-assignment-ops.controller';
 import { OwnerQueueAssignmentController } from './ai-queue-assignment-owner.controller';
@@ -53,6 +54,11 @@ import { KyselyQueueSuperAdminRead, InMemoryQueueSuperAdminRead, type QueueSuper
       provide: QueueSuperAdminService,
       useFactory: (read: QueueSuperAdminReadPort, settings: QueueAssignmentSettingsPort, emitter: OpsEmitterPort, db: AppDatabase) => new QueueSuperAdminService(read, settings, emitter, db ?? null),
       inject: ['QueueOpsSuperAdminRead', QUEUE_ASSIGNMENT_SETTINGS, 'QueueOpsEmitter', DATABASE],
+    },
+    {
+      provide: QueueAssignmentCenter,
+      useFactory: (db: AppDatabase, settings: QueueAssignmentSettingsPort, queue: QueueOpsQueuePort, ent: QueueAssignmentEntitlementPort) => new QueueAssignmentCenter(db ?? null, settings, queue, ent),
+      inject: [DATABASE, QUEUE_ASSIGNMENT_SETTINGS, 'QueueOpsQueuePort', 'QueueAssignmentEntitlementPort'],
     },
     QueueOpsScheduler,
   ],
