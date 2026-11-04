@@ -44,6 +44,25 @@ export const PARAM_FIXTURES = {
   statementId: F('payroll_statements', 'id', { over: { technician_id: '$tech' } }),   // Oct 21 2026 weekly paychecks: /pos/payroll/paychecks/statements/{statementId}, /tech/payroll/statements/{statementId}   // Oct 21 2026 finance: /owner/finance/vendors/{vendorId}/spend
   // ↑ also Oct 27 2026 (17.5) the pay-stub PDFs: /pos/payroll/paychecks/statements/{statementId}/pay-stub.pdf, /owner/payroll/paychecks/statements/{statementId}/pay-stub.pdf,
   //   /tech/payroll/statements/{statementId}/pay-stub.pdf — salon B gets 404 STATEMENT_NOT_FOUND for salon A's statement (no PDF bytes)
+  // Nov 3 2026 Payments / Deposit Reconciliation screens: /pos/payments/settlements/{settlementId}[/export|/transactions],
+  //   /pos/deposit-reconciliation/workspace/settlements/{settlementId} — salon A's processor settlement batch
+  settlementId: F('payment_settlements'),
+  paymentId: F('payments'),   // Nov 3 2026 Transactions screen: GET /pos/payments/transactions/{paymentId}
+  depositId: F('bank_deposits'),   // Nov 3 2026 Deposit Reconciliation workspace: deposits/{depositId}[/suggestions]
+  exceptionId: F('reconciliation_exceptions'),   // Nov 3 2026 Deposit Reconciliation workspace: exceptions/{exceptionId}
+  reportType: { value: 'settlement_summary' },   // Nov 3 2026 Deposit Reconciliation reports/{reportType}: a report KIND (REPORT_TYPES), always the caller's salon
+  businessDate: { value: '2026-01-15' },   // Nov 3 2026 Cash Handoffs: /{technicianId}/{businessDate}/detail — the seeder's date, so A's seeded handoff is that day
+  terminalId: F('pos_payment_terminals'),   // Nov 3 2026 Payment Terminals screen: physical/{terminalId}
+  cardId: F('gift_cards'),   // Nov 3 2026 Gift Cards screen: /pos/gift-cards/{cardId}/detail | ledger
+  redemptionId: F('loyalty_redemptions'),   // Nov 3 2026 Loyalty Program: GET /pos/loyalty/redemptions/{redemptionId}
+  // Nov 3 2026 Coupons & Promotions: /pos/coupons/{dealId}/campaigns, /pos/discounts/{dealId}, /pos/promotions/{dealId}/activity —
+  //   the coupon screens read only deals of kind 'coupon'
+  dealId: F('deals', 'id', { over: { kind: 'coupon' } }),
+  categoryId: F('service_categories'),   // Nov 3 2026 Catalog screens: GET /pos/catalog/categories/{categoryId}
+  // Nov 3 2026 Team screens (members, birthdays, training): a member id is the staff USER id (a login-less technician's id is
+  //   accepted as a fallback — resolveMember / the roster); salon A's owner is a member
+  memberId: F('users'),
+  poId: F('purchase_orders'),   // Nov 3 2026 Inventory screen: GET /tenant/inventory/screen/purchase-orders/{poId}
 };
 
 // ── `{id}` (and a few named params) by the path segment(s) in front of it ─────────────────────────────────────────
@@ -91,6 +110,61 @@ export const SEGMENT_FIXTURES = [
   ['/tenant/inventory/transfers/{id}', F('inventory_transfers')],
   ['/tenant/locations/{id}', F('branches')],
   ['/pos/ai-customer-profile/duplicates/{groupId}', F('customers')],   // a duplicate group is keyed by a customer of the salon
+
+  // Nov 3 2026 — the centers / screens added by the recent builds (each: the table its by-id read looks up)
+  ['/pos/ai-business/center/alerts/events/{id}', F('ai_business_alert_events')],   // AI Business Center: alert explain
+  ['/pos/ai-business/center/reports/{id}', F('ai_business_report_jobs')],
+  ['/pos/ai/business-setup/faqs/{id}', F('ai_receptionist_faqs')],                 // Business Setup Center
+  ['/pos/ai/calendar-center/appointments/{id}', F('pos_tech_appointments')],       // AI Calendar Center
+  // AI Calls / Receptionist Center: `ref` is the call's provider_call_id (its row id is accepted too)
+  ['/pos/ai/calls-center/calls/{ref}', F('voice_call_outcomes', 'provider_call_id')],
+  ['/pos/ai/receptionist-center/calls/{ref}', F('voice_call_outcomes', 'provider_call_id')],
+  ['/pos/ai/copilot-center/customers/{id}', F('customers')],                       // Reception Copilot overlay
+  ['/pos/ai/follow-ups-center/tasks/{id}', F('ai_receptionist_follow_ups')],
+  ['/pos/birthdays/customers/{id}', F('customers')],
+  ['/pos/booking-verification-center/history/{id}', F('booking_verification_sessions')],
+  ['/pos/campaign-center/campaigns/{id}', F('campaigns')],                         // + /audit /events /recipients
+  ['/pos/catalog/add-ons/{key}', F('service_add_ons', 'add_on_key')],              // Catalog: an add-on is addressed by its key
+  ['/pos/churn-watch/customers/{id}', F('customers')],
+  ['/pos/commission-discrepancies/{id}', F('commission_discrepancy_reviews')],     // Commission Review (F1)
+  ['/pos/commission-screen/technicians/{id}', F('technicians')],                   // + /lines /tips /adjustments
+  ['/pos/communications/inbox/threads/{id}', F('communication_threads')],          // + /messages /timeline
+  ['/pos/customer-ai-settings/history/{id}', F('ai_customer_profile_settings_events')],
+  ['/pos/customer-intelligence/customers/{id}', F('customers')],
+  ['/pos/customer-notifications/records/{id}', F('notifications')],
+  ['/pos/customer-phone-center/requests/{id}', F('customer_phone_update_sessions')],
+  ['/pos/customer-search/customers/{id}', F('customers')],
+  ['/pos/customer-timeline/customers/{id}', F('customers')],
+  // Customer Timeline: an event id is COMPOSED ('<source>:<row id>[:<state>]') — no column holds it, so a well-formed id;
+  // the customer (salon A's) is the record under test and is checked first
+  ['/pos/customer-timeline/customers/{id}/events/{eventId}', { value: 'appt:00000000-0000-0000-0000-000000000000:booked' }],
+  ['/pos/deals-offers/{id}', F('deals')],
+  ['/pos/duplicate-review/groups/{id}', F('customer_duplicate_groups')],
+  ['/pos/email-center/messages/{id}', F('notifications', 'id', { over: { channel: 'email' } })],   // Email Center reads email notifications only
+  ['/pos/eod-follow-ups/tasks/{id}', F('service_follow_up_tasks')],
+  ['/pos/follow-up-queue/tasks/{id}', F('service_follow_up_tasks')],
+  ['/pos/loyalty/network/purchases/{id}', F('token_purchase_intents')],            // Global Rewards: a token purchase
+  ['/pos/marketing/segments/audience-drafts/{id}', F('segment_audience_drafts')],
+  ['/pos/marketing/segments/customers/{id}', F('customers')],
+  ['/pos/message-templates/templates/{id}', F('pos_message_templates')],
+  ['/pos/payments/refunds-voids/{kind}', { value: 'refund' }],                     // overrides the global `kind`: 'refund' | 'void' only
+  ['/pos/payments/refunds-voids/{kind}/{id}', F('payment_refunds')],
+  ['/pos/rebooking/customers/{id}', F('customers')],
+  ['/pos/receipt-center/documents/{id}', F('ocr_documents')],
+  ['/pos/referral-program/referrals/{id}', F('referral_redemptions')],
+  ['/pos/reminder-center/reminders/{id}', F('appointment_reminders_sent')],        // a SENT reminder (an upcoming one is a composed 'u:…' id)
+  ['/pos/reputation-settings/history/{id}', F('ai_reputation_config_versions')],
+  ['/pos/reputation/reviews/{id}', F('reviews')],
+  ['/pos/retention/sms/campaigns/{campaignId}', F('retention_sms_campaigns')],
+  ['/pos/reviews-center/reviews/{id}', F('reviews')],
+  ['/pos/service-recommendations/recommendations/{id}', F('service_recommendations')],
+  ['/pos/team-data-alerts/{id}', F('team_data_alerts')],
+  ['/pos/team-performance-screen/technicians/{id}', F('technicians')],             // + /composite /reviews /services
+  ['/pos/tech-queue-screen/technicians/{id}', F('technicians')],
+  ['/pos/tech-queue-screen/tickets/{id}', F('pos_tech_queue_tickets')],
+  ['/tenant/inventory/stock-alerts/events/{eventId}', F('product_usage_events')],  // a product usage event (read at the caller's branch)
+  ['/tenant/messaging/setup/activity/{kind}', { value: 'test_sms' }],              // overrides the global `kind`: ACTIVITY_KINDS
+  ['/tenant/messaging/setup/activity/{kind}/{id}', F('sms_test_events')],
 ];
 
 // ── whole routes that are not IDOR targets, with the reason ──────────────────────────────────────────────────────

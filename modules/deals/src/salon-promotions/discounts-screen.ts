@@ -88,7 +88,9 @@ export class DiscountsScreenRepository {
   }
   private digits(raw: string) { let d = raw.replace(/\D/g, ''); if (d.length === 11 && d.startsWith('1')) d = d.slice(1); return { d, phoneish: d.length >= 4 && !/[a-z]/i.test(raw) }; }
 
-  /** The five cards. Current-state (a period never changes them) except Redemptions, which is all-time and confirmed only. */
+  /** The five cards. Current-state (a period never changes them) except Redemptions, which is all-time and confirmed only —
+   *  counted from the redemption ledger (D7, Nov 3 2026: it read the deals' use counters, which disagreed with the ledger
+   *  shown under it; the counters stay what caps a coupon). */
   async kpis(ctx: DiscountsCtx) {
     const T = ctx.tenantId;
     const k = (await sql<any>`select count(*) filter (where life = 'active')::int as active, count(*) filter (where life = 'scheduled')::int as scheduled,
@@ -105,7 +107,7 @@ export class DiscountsScreenRepository {
       from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id
       where r.tenant_id = ${T} and ${this.kindW()} and ${this.branch(ctx)} and (${CONFIRMED} or r.status in ('applied', 'reversed'))`.execute(this.db)).rows[0];
     const today = (await this.period(ctx, {})).today;
-    return { today, activeDiscounts: N(k?.active), percentOff: N(k?.percent), fixedAmount: N(k?.fixed), redemptions: N(k?.used), expiringSoon: N(k?.expiring), expiringWindowDays: EXPIRING_DAYS,
+    return { today, activeDiscounts: N(k?.active), percentOff: N(k?.percent), fixedAmount: N(k?.fixed), redemptions: N(r?.events) - N(r?.pending), expiringSoon: N(k?.expiring), expiringWindowDays: EXPIRING_DAYS,
       split: { scheduled: N(k?.scheduled), paused: N(k?.paused), draft: N(k?.draft), expired: N(k?.expired), exhausted: N(k?.exhausted), archived: N(k?.archived) },
       // Coupons & Promotions guide §06: Total = every coupon record in scope (archived included, shown separately);
       // discount value = completed redemptions, gross and reversed shown apart, net = gross − reversed

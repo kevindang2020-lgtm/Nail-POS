@@ -63,7 +63,8 @@ describe('Discounts — the five cards', () => {
     expect(k.activeDiscounts).toBe(3);                 // Spring Glow, Soon Twenty-Five, Big Spend (scheduled, paused, expired, exhausted, archived are not)
     expect(k.percentOff).toBe(3);                      // live & scheduled list: Spring, Paused, Soon
     expect(k.fixedAmount).toBe(2);                     // Five Off (scheduled), Big Spend
-    expect(k.redemptions).toBe(3);                     // the coupons' confirmed use counters
+    expect(k.redemptions).toBe(2);                     // confirmed redemptions in the ledger (the counters say 3 — they cap, they do not count)
+    expect(k.redemptions).toBe(k.ledger.confirmedEvents);
     expect(k.expiringSoon).toBe(1);                    // Soon (3 days); no end date / already ended never count
     expect(k.split).toEqual({ scheduled: 1, paused: 1, draft: 0, expired: 1, exhausted: 1, archived: 1 });   // + archived (Coupons guide, Oct 30 2026)
     expect(k.ledger.confirmedEvents).toBe(2); expect(k.ledger.pendingAtCheckout).toBe(1); expect(k.ledger.savingsCents).toBe(4000);
