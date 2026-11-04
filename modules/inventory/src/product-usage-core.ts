@@ -22,7 +22,7 @@ export function parseQuantity(v: unknown): number | null {
 }
 export const formatQuantity = (h: number): string => { const sign = h < 0 ? '-' : ''; const a = Math.abs(h); const w = Math.floor(a / HUNDREDTHS), f = a % HUNDREDTHS; return sign + (f ? `${w}.${String(f).padStart(2, '0').replace(/0$/, '')}` : String(w)); };
 
-export interface BottleRow { id: string; status: BottleStatus; remainingPercent: number | null; createdAt: string }
+export interface BottleRow { id: string; status: BottleStatus; remainingPercent: number | null; createdAt: string; /** YYYY-MM-DD; sealed bottles are used soonest-expiring first */ expiresOn?: string | null }
 /** What a usable bottle still holds, in hundredths. */
 export function remainingOf(b: Pick<BottleRow, 'status' | 'remainingPercent'>): number {
   if (!USABLE_STATUSES.includes(b.status)) return 0;
@@ -35,7 +35,8 @@ export interface Take { unitId: string; takenHundredths: number; remainingBefore
 /** The order bottles are used in (see the header). */
 export function consumptionOrder(bottles: BottleRow[], preferredUnitId?: string | null): BottleRow[] {
   const rank = (b: BottleRow) => (b.id === preferredUnitId ? 0 : b.status === 'low' ? 1 : b.status === 'opened' ? 2 : 3);
-  return bottles.filter((b) => remainingOf(b) > 0).sort((a, b) => rank(a) - rank(b) || (rank(a) < 3 ? remainingOf(a) - remainingOf(b) : 0) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
+  const exp = (b: BottleRow) => b.expiresOn || '9999-12-31';
+  return bottles.filter((b) => remainingOf(b) > 0).sort((a, b) => rank(a) - rank(b) || (rank(a) < 3 ? remainingOf(a) - remainingOf(b) : exp(a).localeCompare(exp(b))) || a.createdAt.localeCompare(b.createdAt) || a.id.localeCompare(b.id));
 }
 /** Allocate `want` hundredths across the bottles; `short` is what the bottles could not cover. */
 export function allocate(bottles: BottleRow[], want: number, preferredUnitId?: string | null): { takes: Take[]; short: number } {

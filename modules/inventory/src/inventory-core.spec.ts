@@ -116,7 +116,7 @@ ok('countLineState match/over/short', countLineState(5, 5) === 'match' && countL
 // ---- service recipes ----
 ok('recipeCostCents sums qty×cost', recipeCostCents([{ quantity: 2, costCents: 150 }, { quantity: 3, costCents: 100 }]) === 600);
 ok('recipeCostCents ignores null costs', recipeCostCents([{ quantity: 2, costCents: null }, { quantity: 1, costCents: 250 }]) === 250);
-ok('recipeCostCents floors fractional qty', recipeCostCents([{ quantity: 2.9, costCents: 100 }]) === 200);
+ok('recipeCostCents is exact for fractional qty (audit D9)', recipeCostCents([{ quantity: 2.9, costCents: 100 }]) === 290 && recipeCostCents([{ quantity: 0.25, costCents: 1000 }]) === 250);
 ok('recipeCostCents empty = 0', recipeCostCents([]) === 0);
 
 console.log(`inventory-core: ${pass} passed, ${fail} failed`);

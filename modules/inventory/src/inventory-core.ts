@@ -198,6 +198,8 @@ export function summarizeCount(lines: { expectedQty: number; countedQty: number 
 
 // ---- service recipes (§13) ----
 /** Total per-service product cost of a recipe, in integer cents. */
-export function recipeCostCents(lines: { quantity: number; costCents: number | null | undefined }[]): number {
-  return lines.reduce((sum, l) => sum + Math.max(0, Math.floor(l.quantity || 0)) * Math.max(0, Math.floor(l.costCents || 0)), 0);
+export function recipeCostCents(lines: { quantity: number | string; costCents: number | null | undefined }[]): number {
+  // audit D9: a recipe quantity has up to two decimals (0.1 bottle) — exact in hundredths, rounded once at the end
+  const h = lines.reduce((sum, l) => sum + Math.max(0, Math.round(Number(l.quantity || 0) * 100)) * Math.max(0, Math.floor(l.costCents || 0)), 0);
+  return Math.round(h / 100);
 }

@@ -96,7 +96,8 @@ export class StockAlertsRepository {
         FROM product_usage_events e WHERE e.tenant_id = ${ctx.tenantId} AND e.branch_id = ${b}
       UNION ALL
       SELECT m.product_id, l.technician_id, m.created_at AS occurred_at, m.created_at AS recorded_at, 'service_recipe' AS source, NULL::uuid AS event_id, m.id AS id,
-             (greatest(0, -coalesce(m.quantity_change, 0)) * 100)::int AS hundredths
+             -- the exact amount a recipe took (audit D9); older rows recorded whole bottles only
+             coalesce((m.metadata_json->>'quantityHundredths')::int, (greatest(0, -coalesce(m.quantity_change, 0)) * 100)::int) AS hundredths
         FROM inventory_stock_movements m LEFT JOIN ticket_service_lines l ON m.related_type = 'ticket_line' AND l.id = m.related_id AND l.tenant_id = m.tenant_id
        WHERE m.tenant_id = ${ctx.tenantId} AND m.branch_id = ${b} AND m.movement_type = 'service_usage'
     )`;

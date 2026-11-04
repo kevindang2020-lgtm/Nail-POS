@@ -88,7 +88,8 @@ export class KyselyInventoryRead implements InventoryReadPort {
         SELECT MAX(mv.created_at) FILTER (WHERE mv.movement_type = 'retail_sale')   AS last_retail_sale_at,
                MAX(mv.created_at) FILTER (WHERE mv.movement_type = 'service_usage') AS last_usage_at,
                COALESCE(SUM(-mv.quantity_change) FILTER (WHERE mv.movement_type = 'retail_sale'   AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS retail_units,
-               COALESCE(SUM(-mv.quantity_change) FILTER (WHERE mv.movement_type = 'service_usage' AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS consumption_units
+               -- a recipe use records its exact amount (audit D9: 0.1 bottle leaves the bottle count unchanged)
+               COALESCE(SUM(coalesce((mv.metadata_json->>'quantityHundredths')::numeric / 100, -mv.quantity_change)) FILTER (WHERE mv.movement_type = 'service_usage' AND mv.created_at >= now() - (${win}||' days')::interval), 0) AS consumption_units
         FROM inventory_stock_movements mv
         WHERE mv.tenant_id = p.tenant_id AND mv.branch_id = ${branchId} AND mv.product_id = p.id
       ) m ON true

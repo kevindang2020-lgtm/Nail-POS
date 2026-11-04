@@ -872,21 +872,24 @@ function CatalogEditModal({ kind, item, onClose, onSaved }: { kind: 'category' |
   );
 }
 
-function RecipeEditorModal({ serviceId, products, onClose, onSaved }: { serviceId: string; products: InvProduct[]; onClose: () => void; onSaved: () => void }) {
+export function RecipeEditorModal({ serviceId, products, onClose, onSaved }: { serviceId: string; products: InvProduct[]; onClose: () => void; onSaved: () => void }) {
   const [recipe, setRecipe] = useState<ServiceRecipe | null>(null);
-  const [lines, setLines] = useState<{ productId: string; quantity: number }[]>([]);
+  const [lines, setLines] = useState<{ productId: string; quantity: string }[]>([]);   // text: up to two decimals (0.1 bottle — audit D9)
   const [addPid, setAddPid] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { (async () => { try { const r = await inventoryApi.serviceRecipe(serviceId); setRecipe(r); setLines(r.lines.map((l) => ({ productId: l.product_id, quantity: l.quantity }))); } catch (e: any) { setErr(e?.message || tx('pos.could_not_load_recipe')); } })(); }, [serviceId]);
+  useEffect(() => { (async () => { try { const r = await inventoryApi.serviceRecipe(serviceId); setRecipe(r); setLines(r.lines.map((l) => ({ productId: l.product_id, quantity: String(Number(l.quantity)) }))); } catch (e: any) { setErr(e?.message || tx('pos.could_not_load_recipe')); } })(); }, [serviceId]);
   const prodName = (id: string) => { const p = products.find((x) => x.id === id); return p ? `${p.name}${p.color_number ? ' #' + p.color_number : ''}` : (recipe?.lines.find((l) => l.product_id === id)?.product_name || id.slice(0, 8)); };
   const prodCost = (id: string): number => { const p = products.find((x) => x.id === id) as ({ cost_cents?: number | null } | undefined); return (p?.cost_cents ?? recipe?.lines.find((l) => l.product_id === id)?.cost_cents ?? 0) || 0; };
-  const add = () => { if (!addPid || lines.some((l) => l.productId === addPid)) return; setLines((x) => [...x, { productId: addPid, quantity: 1 }]); setAddPid(''); };
-  const setQty = (pid: string, q: number) => setLines((x) => x.map((l) => (l.productId === pid ? { ...l, quantity: Math.max(1, q) } : l)));
+  const add = () => { if (!addPid || lines.some((l) => l.productId === addPid)) return; setLines((x) => [...x, { productId: addPid, quantity: '1' }]); setAddPid(''); };
+  const setQty = (pid: string, raw: string) => { const m = /^\d{0,6}(?:\.\d{0,2})?/.exec(raw.replace(/[^0-9.]/g, '')); setLines((x) => x.map((l) => (l.productId === pid ? { ...l, quantity: m ? m[0] : '' } : l))); };
+  const hundredths = (q: string) => { const m = /^(\d{1,6})(?:\.(\d{1,2}))?$/.exec(q); return m ? Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0')) : 0; };
+  const lineCents = (l: { productId: string; quantity: string }) => Math.round(hundredths(l.quantity) * prodCost(l.productId) / 100);
+  const invalid = lines.some((l) => hundredths(l.quantity) <= 0);
   const remove = (pid: string) => setLines((x) => x.filter((l) => l.productId !== pid));
-  const totalCents = lines.reduce((s, l) => s + l.quantity * prodCost(l.productId), 0);
+  const totalCents = lines.reduce((s, l) => s + lineCents(l), 0);
   const available = products.filter((p) => !lines.some((l) => l.productId === p.id));
-  const save = async () => { setBusy(true); setErr(null); try { await inventoryApi.setServiceRecipe(serviceId, lines); onSaved(); } catch (e: any) { setErr(e?.message || tx('pos.could_not_save_recipe')); setBusy(false); } };
+  const save = async () => { setBusy(true); setErr(null); try { await inventoryApi.setServiceRecipe(serviceId, lines.map((l) => ({ productId: l.productId, quantity: hundredths(l.quantity) / 100 }))); onSaved(); } catch (e: any) { setErr(e?.message || tx('pos.could_not_save_recipe')); setBusy(false); } };
   return (
     <div className="inv-ov" onClick={onClose}>
       <div className="inv-modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 620 }}>
@@ -902,8 +905,8 @@ function RecipeEditorModal({ serviceId, products, onClose, onSaved }: { serviceI
                     {lines.map((l) => (
                       <div key={l.productId} className="it-row" style={{ gridTemplateColumns: '2fr 1fr 1fr auto' }}>
                         <span className="it-name"><b>{prodName(l.productId)}</b></span>
-                        <span><input className="if-in" style={{ width: 64, height: 30 }} inputMode="numeric" value={String(l.quantity)} onChange={(e) => setQty(l.productId, parseInt(e.target.value.replace(/[^0-9]/g, '') || '1', 10))} /></span>
-                        <span style={{ fontSize: 13 }}>{money(l.quantity * prodCost(l.productId))}</span>
+                        <span><input className="if-in" style={{ width: 72, height: 30 }} inputMode="decimal" aria-invalid={hundredths(l.quantity) <= 0} value={l.quantity} onChange={(e) => setQty(l.productId, e.target.value)} data-testid="recipe-qty" /></span>
+                        <span style={{ fontSize: 13 }}>{money(lineCents(l))}</span>
                         <span style={{ textAlign: 'right' }}><button className="btn" onClick={() => remove(l.productId)}>{tx('pos.remove')}</button></span>
                       </div>
                     ))}
@@ -923,7 +926,7 @@ function RecipeEditorModal({ serviceId, products, onClose, onSaved }: { serviceI
           <div style={{ marginTop: 12, fontWeight: 700 }}>{tx('pos.recipe_cost_per_service')}{' '}{money(totalCents)}</div>
           {err && <div className="inv-err">{err}</div>}
         </div>
-        <div className="im-f"><button className="btn" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn primary" onClick={save} disabled={busy}>{busy ? tx('pos.saving_2') : tx('pos.save_recipe')}</button></div>
+        <div className="im-f"><button className="btn" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn primary" onClick={save} disabled={busy || invalid} data-testid="recipe-save">{busy ? tx('pos.saving_2') : tx('pos.save_recipe')}</button></div>
       </div>
     </div>
   );

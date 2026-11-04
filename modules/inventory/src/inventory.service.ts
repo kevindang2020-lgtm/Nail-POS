@@ -1369,7 +1369,7 @@ export class InventoryService {
     const rows = await sql<any>`
       SELECT s.id, s.name, s.price_cents, COALESCE(r.n, 0) AS recipe_lines, COALESCE(r.units, 0) AS recipe_units
       FROM services s
-      LEFT JOIN (SELECT service_id, count(*)::int AS n, COALESCE(sum(quantity), 0)::int AS units FROM service_product_recipes WHERE tenant_id = ${ctx.tenantId} GROUP BY service_id) r ON r.service_id = s.id
+      LEFT JOIN (SELECT service_id, count(*)::int AS n, COALESCE(sum(quantity), 0)::float8 AS units FROM service_product_recipes WHERE tenant_id = ${ctx.tenantId} GROUP BY service_id) r ON r.service_id = s.id
       WHERE s.tenant_id = ${ctx.tenantId} AND (${branchId}::uuid IS NULL OR s.branch_id = ${branchId}) AND s.archived_at IS NULL AND s.status = 'active'
       ORDER BY s.sort_order, s.name`.execute(this.need());
     return { services: rows.rows };
@@ -1378,7 +1378,7 @@ export class InventoryService {
   async getServiceRecipe(ctx: InvCtx, serviceId: string): Promise<ServiceRecipe> {
     const s = await this.service(ctx, serviceId);
     const lines = await sql<any>`
-      SELECT r.id, r.product_id, r.quantity, p.name AS product_name, p.color_number, p.cost_cents
+      SELECT r.id, r.product_id, r.quantity::float8 AS quantity, p.name AS product_name, p.color_number, p.cost_cents
       FROM service_product_recipes r JOIN inventory_products p ON p.id = r.product_id
       WHERE r.service_id = ${serviceId} AND r.tenant_id = ${ctx.tenantId} ORDER BY p.name`.execute(this.need());
     const cost = recipeCostCents(lines.rows.map((l: any) => ({ quantity: l.quantity, costCents: l.cost_cents })));
@@ -1392,11 +1392,14 @@ export class InventoryService {
     const clean: { productId: string; quantity: number }[] = [];
     for (const l of reqLines) {
       const pid = l?.productId;
-      const qty = Math.max(1, Math.floor(Number(l?.quantity) || 0));
-      if (!pid || seen.has(pid) || qty < 1) continue;
-      const p = await sql`SELECT id FROM inventory_products WHERE id = ${pid} AND tenant_id = ${ctx.tenantId} AND archived_at IS NULL`.execute(this.need());
+      if (!pid || seen.has(pid)) continue;
+      // audit D9: an exact amount with up to two decimals (0.1 bottle); it was floored to whole bottles (minimum 1)
+      const h = parseQuantity(l?.quantity);
+      if (h == null) throw withCode(new InventoryError(400, 'Enter how much was used — a positive amount with up to two decimals.'), 'USAGE_QUANTITY_INVALID');
+      const p = await sql<{ id: string; unit_type: string | null }>`SELECT id, unit_type FROM inventory_products WHERE id = ${pid} AND tenant_id = ${ctx.tenantId} AND archived_at IS NULL`.execute(this.need());
       if (!p.rows[0]) throw withCode(new InventoryError(400, 'A selected product no longer exists'), 'PRODUCT_NOT_FOUND');
-      seen.add(pid); clean.push({ productId: pid, quantity: qty });
+      if (!allowsFraction(p.rows[0].unit_type) && h % HUNDREDTHS !== 0) throw withCode(new InventoryError(400, 'This product is counted in whole units only.'), 'USAGE_FRACTION_NOT_ALLOWED');
+      seen.add(pid); clean.push({ productId: pid, quantity: h / HUNDREDTHS });
     }
     await sql`DELETE FROM service_product_recipes WHERE service_id = ${serviceId} AND tenant_id = ${ctx.tenantId}`.execute(this.need());
     for (const l of clean) {
@@ -1406,9 +1409,9 @@ export class InventoryService {
     return this.getServiceRecipe(ctx, serviceId);
   }
 
-  /** Deduct a service's recipe from stock (e.g. when the service is performed). For each line, claim
-   *  quantity×multiplier movable units (most-used first), mark them 'empty', and write a service_usage
-   *  movement. Deducts only what's on hand (reports any shortfall) — never goes negative. */
+  /** Deduct a service's recipe from stock (e.g. when the service is performed). For each line, take quantity × multiplier
+   *  (hundredths of the product's unit) from the bottles — open bottles first — and write a service_usage movement whose
+   *  metadata carries the exact amount. Deducts only what's on hand (reports any shortfall) — never goes negative. */
   async consumeServiceRecipe(ctx: InvCtx, serviceId: string, multiplier = 1, opts: { exec?: Kysely<DB>; related?: { type: string; id: string }; reason?: string; audit?: string } = {}): Promise<{ serviceId: string; multiplier: number; deducted: { productId: string; requested: number; deducted: number }[] }> {
     // audit D9: a manual call (no caller transaction) is ONE transaction — the stock lock taken below then holds until the
     // bottles, ledger and audit are written (outside a transaction it was released at once and a failure left half a deduction)
@@ -1423,24 +1426,24 @@ export class InventoryService {
     await this.lockStock(ctx, lines.rows.map((l: any) => String(l.product_id)), exec);
     const result: { productId: string; requested: number; deducted: number }[] = [];
     for (const l of lines.rows) {
-      const want = Math.max(0, Math.floor(l.quantity) * mult);
+      // audit D9: the recipe amount (hundredths of the unit) is TAKEN from the bottles like a recorded use — the open bottle's
+      // remaining % goes down, a sealed one is opened only when needed; it used to empty one whole bottle per unit
+      const want = Math.max(0, Math.round(Number(l.quantity) * HUNDREDTHS) * mult);
       if (want <= 0) { result.push({ productId: l.product_id, requested: 0, deducted: 0 }); continue; }
+      const bottles = (await sql<{ id: string; status: BottleStatus; estimated_remaining_percent: number | null; created_at: string; expires_on: string | null }>`
+        SELECT id, status, estimated_remaining_percent, created_at::text AS created_at, to_char(expiration_date, 'YYYY-MM-DD') AS expires_on FROM inventory_units
+         WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id} AND status IN ('unopened', 'opened', 'low')
+           -- an expired bottle is never used on a client; sealed bottles soonest-expiring first
+           AND (expiration_date IS NULL OR expiration_date >= (now() AT TIME ZONE 'UTC')::date)
+         ORDER BY created_at, id FOR UPDATE`.execute(exec)).rows.map((b): BottleRow => ({ id: b.id, status: b.status, remainingPercent: b.estimated_remaining_percent == null ? null : Number(b.estimated_remaining_percent), createdAt: String(b.created_at), expiresOn: b.expires_on }));
+      const plan = allocate(bottles, want);   // never negative: what the bottles cannot cover is the shortfall
+      const taken = want - plan.short;
       const before = (await this.recompute(ctx, l.product_id, exec)).onHand;
-      await sql`
-        WITH picked AS (
-          SELECT id FROM inventory_units
-          WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id}
-            AND status IN ('unopened', 'opened', 'low')
-            -- an expired bottle is never used on a client (it used to be picked like any other); soonest-expiring first
-            AND (expiration_date IS NULL OR expiration_date >= (now() AT TIME ZONE 'UTC')::date)
-          ORDER BY CASE status WHEN 'low' THEN 0 WHEN 'opened' THEN 1 ELSE 2 END, expiration_date ASC NULLS LAST, id
-          LIMIT ${want} FOR UPDATE SKIP LOCKED
-        )
-        UPDATE inventory_units u SET status = 'empty', updated_at = now() FROM picked WHERE u.id = picked.id`.execute(exec);
+      for (const t of plan.takes) await this.applyBottle(ctx, t.unitId, t.toStatus, t.remainingAfter, t.fromStatus, exec);
       const after = (await this.recompute(ctx, l.product_id, exec)).onHand;
-      const deducted = before - after;
-      if (deducted > 0) await this.move(ctx, l.product_id, null, 'service_usage', before, -deducted, after, opts.reason ?? 'Service usage', opts.related ?? { type: 'service', id: serviceId }, exec);
-      result.push({ productId: l.product_id, requested: want, deducted });
+      if (taken > 0) await this.move(ctx, l.product_id, plan.takes.length === 1 ? plan.takes[0].unitId : null, 'service_usage', before, after - before, after, opts.reason ?? 'Service usage', opts.related ?? { type: 'service', id: serviceId }, exec,
+        { quantityHundredths: taken, requestedHundredths: want, shortHundredths: plan.short, takes: plan.takes });
+      result.push({ productId: l.product_id, requested: want / HUNDREDTHS, deducted: taken / HUNDREDTHS });
     }
     await this.audit(ctx, opts.audit ?? 'service_recipe_consumed', null, null, { serviceId, multiplier: mult, lines: result.length, related: opts.related ?? null }, exec);
     return { serviceId, multiplier: mult, deducted: result };

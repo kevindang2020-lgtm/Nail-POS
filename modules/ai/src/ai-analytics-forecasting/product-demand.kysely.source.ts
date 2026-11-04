@@ -23,7 +23,8 @@ export class KyselyProductDemandSource implements ProductDemandSource {
         SELECT generate_series((${today} - (${String(days)}::int - 1)), ${today}, interval '1 day')::date AS d
       )
       SELECT spine.d AS date,
-             COALESCE(SUM(-m.quantity_change), 0)::float AS demand
+             -- a recipe use records its exact amount in metadata (audit D9); a retail sale is whole units
+             COALESCE(SUM(CASE WHEN m.movement_type = 'service_usage' THEN coalesce((m.metadata_json->>'quantityHundredths')::numeric / 100, -m.quantity_change) ELSE -m.quantity_change END), 0)::float AS demand
       FROM spine
       LEFT JOIN inventory_stock_movements m
         ON (m.created_at at time zone ${tz})::date = spine.d
