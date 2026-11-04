@@ -26,7 +26,7 @@ import { RewardsNetworkPanel } from './loyalty/RewardsNetworkPanel';
 
 type Overview = { period: { label: string; start: string; timeZone: string }; kpis: { loyaltyMembers: number; newMembersThisMonth: number; pointsOutstanding: number; ledgerBalance: number; balanceReconciled: boolean;
   activeRewards: number; totalRewards: number; redemptionsThisMonth: number; redemptionsPendingThisMonth: number; redemptionsUsedThisMonth: number; redemptionsVoidedThisMonth: number; pointsRedeemedThisMonth: number };
-  tiers: { tier: string; members: number; pct: number; points: number }[] };
+  tiers: { tier: string; members: number; pct: number; points: number; minPoints?: number | null; benefits?: string; configured?: boolean }[] };
 type Reward = { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: RewardType; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; redemptions: number; redemptionsThisMonth: number;
   startsOn?: string | null; endsOn?: string | null; stockTotal?: number | null; stockLeft?: number | null; perMemberLimit?: number | null; eligibleTiers?: string[] | null;
   availability?: 'available' | 'inactive' | 'upcoming' | 'expired' | 'out_of_stock' };
@@ -110,7 +110,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
   const membersFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const redFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const rewards = useServerList<Reward, { status: string }>((q) => posLoyaltyApi.rewards({ page: q.page, pageSize: q.pageSize, status: q.status || undefined }), catalogFit.rows, { status: '' });
-  const members = useServerList<Member, { tier: string; q: string }>((q) => posLoyaltyApi.members({ page: q.page, pageSize: q.pageSize, tier: q.tier || undefined, q: q.q || undefined }), membersFit.rows, { tier: '', q: '' });
+  const members = useServerList<Member, { tier: string; q: string; status: string; sort: string }>((q) => posLoyaltyApi.members({ page: q.page, pageSize: q.pageSize, tier: q.tier || undefined, q: q.q || undefined, status: q.status || undefined, sort: q.sort || undefined }), membersFit.rows, { tier: '', q: '', status: '', sort: '' });
   const reds = useServerList<Redemption, { status: string }>((q) => posLoyaltyApi.redemptions({ page: q.page, pageSize: q.pageSize, status: q.status || undefined }), redFit.rows, { status: '' });
   const [search, setSearch] = useState('');
   const debounced = useDebounced(search, 300);
@@ -118,7 +118,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
 
   // overlays
   const [dlg, setDlg] = useState<null | { kind: 'enroll' } | { kind: 'reward'; reward?: Reward } | { kind: 'adjust'; member: Member } | { kind: 'redeem'; member: Member }
-    | { kind: 'redemption'; id: string } | { kind: 'ledger'; customerId?: string; name?: string } | { kind: 'tiers' } | { kind: 'rewardRedemptions'; reward: Reward }>(null);
+    | { kind: 'redemption'; id: string } | { kind: 'ledger'; customerId?: string; name?: string } | { kind: 'tiers' } | { kind: 'memberTier'; member: Member } | { kind: 'rewardRedemptions'; reward: Reward }>(null);
   const done = (text: string, lists: ('rewards' | 'members' | 'reds')[]) => {
     setNote({ tone: 'ok', text }); setDlg(null); loadOverview();
     if (lists.includes('rewards')) rewards.toFirst(); if (lists.includes('members')) members.toFirst(); if (lists.includes('reds')) reds.toFirst();
@@ -199,11 +199,15 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
         <FitPanel testId="panel-members" title={tx('people.loyalty.members')} bodyRef={membersFit.ref}
           actions={<>
             <input type="search" className="fk-search" aria-label={tx('people.loyalty.searchMembers')} placeholder={tx('people.loyalty.searchMembers')} value={search} onChange={(e) => setSearch(e.target.value)} />
+            <select className="fk-select" aria-label={tx('people.loyalty.memberStatus')} value={members.filters.status} onChange={(e) => members.setFilters({ status: e.target.value })} data-testid="members-status">
+              <option value="">{tx('people.loyalty.allStatuses')}</option><option value="active">{tx('pos.active_3')}</option><option value="inactive">{tx('people.loyalty.inactive')}</option></select>
+            <select className="fk-select" aria-label={tx('people.loyalty.sortBy')} value={members.filters.sort} onChange={(e) => members.setFilters({ sort: e.target.value })} data-testid="members-sort">
+              <option value="">{tx('people.loyalty.sort.newest')}</option><option value="balance">{tx('people.loyalty.sort.balance')}</option><option value="activity">{tx('people.loyalty.sort.activity')}</option></select>
             {members.filters.tier ? <span className="fk-chip info">{tierLabel(members.filters.tier)} <button type="button" className="fk-chip-x" aria-label={tx('people.loyalty.showAllTiers')} onClick={() => members.setFilters({ tier: '' })}>✕</button></span> : null}
           </>}
           footer={<Pager compact info={members.data} onPage={members.setPage} />}>
           {members.err ? <ErrorRetry message={members.err} onRetry={members.refresh} /> : !members.data ? <div className="fk-loading">{tx('pos.loading')}</div> : members.data.items.length === 0 ? (
-            members.filters.tier || members.filters.q ? <Empty title={tx('people.fit.noMatch')}><button type="button" className="fk-btn ghost" onClick={() => { members.setFilters({ tier: '', q: '' }); setSearch(''); }}>{tx('pos.clear_all')}</button></Empty>
+            members.filters.tier || members.filters.q || members.filters.status ? <Empty title={tx('people.fit.noMatch')}><button type="button" className="fk-btn ghost" onClick={() => { members.setFilters({ tier: '', q: '', status: '' }); setSearch(''); }}>{tx('pos.clear_all')}</button></Empty>
               : <Empty title={tx('people.loyalty.noMembers')}>{canEditPoints ? <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'enroll' })}>{tx('people.loyalty.enroll')}</button> : null}</Empty>
           ) : (
             <ul className="fk-list">
@@ -218,6 +222,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
                   <span className="fk-li-acts">
                     <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'redeem', member: m })} disabled={!canEditPoints} aria-label={tx('people.loyalty.redeem')} title={tx('people.loyalty.redeem')}>🎁</button>
                     <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'adjust', member: m })} disabled={!canEditPoints} aria-label={tx('people.loyalty.adjust')} title={tx('people.loyalty.adjust')}>±</button>
+                    {canManage ? <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'memberTier', member: m })} aria-label={tx('people.loyalty.changeTier')} title={tx('people.loyalty.changeTier')} data-testid={`member-tier-${m.customerId}`}>⇅</button> : null}
                     <button type="button" className="fk-ibtn" onClick={() => setDlg({ kind: 'ledger', customerId: m.customerId, name: m.customerName })} aria-label={tx('people.loyalty.pointHistory')} title={tx('people.loyalty.pointHistory')}>≡</button>
                   </span>
                 </li>
@@ -265,7 +270,8 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
       {dlg?.kind === 'redeem' ? <RedeemDialog member={dlg.member} onClose={() => setDlg(null)} onDone={(msg) => { reds.setFilters({ status: '' }); done(msg, ['reds', 'members', 'rewards']); }} /> : null}
       {dlg?.kind === 'redemption' ? <RedemptionDialog id={dlg.id} canVoid={canVoid} onClose={() => setDlg(null)} onVoided={(msg) => done(msg, ['reds', 'members'])} openProfile={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)} /> : null}
       {dlg?.kind === 'ledger' ? <LedgerDialog customerId={dlg.customerId} name={dlg.name} onClose={() => setDlg(null)} /> : null}
-      {dlg?.kind === 'tiers' ? <TiersDialog tiers={tiers} onClose={() => setDlg(null)} onPick={(tier) => { members.setFilters({ tier }); setDlg(null); }} /> : null}
+      {dlg?.kind === 'tiers' ? <TiersDialog canManage={canManage} onChanged={loadOverview} onClose={() => setDlg(null)} onPick={(tier) => { members.setFilters({ tier }); setDlg(null); }} /> : null}
+      {dlg?.kind === 'memberTier' ? <MemberTierDialog member={dlg.member} onClose={() => setDlg(null)} onDone={(msg) => done(msg, ['members'])} /> : null}
       {dlg?.kind === 'rewardRedemptions' ? <RewardRedemptionsDialog reward={dlg.reward} onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'redemption', id })} /> : null}
     </div>
   );
@@ -466,15 +472,81 @@ function LedgerDialog({ customerId, name, onClose }: { customerId?: string; name
   );
 }
 
-function TiersDialog({ tiers, onClose, onPick }: { tiers: Overview['tiers']; onClose: () => void; onPick: (tier: string) => void }) {
-  const total = useMemo(() => tiers.reduce((a, t) => a + t.members, 0), [tiers]);
+type TierRow = { id: string; name: string; rank: number; minPoints: number | null; benefits: string; active: boolean; members: number };
+type TierList = { items: TierRow[]; unconfigured: { name: string; members: number }[] };
+// Manage Tiers (Loyalty guide Nov 4 2026): the salon's own tiers — threshold and benefits are what the salon types; no
+// automatic promotion formula is invented. Renaming relabels members; a tier members still hold cannot be retired.
+function TiersDialog({ canManage, onClose, onPick, onChanged }: { canManage: boolean; onClose: () => void; onPick: (tier: string) => void; onChanged: () => void }) {
+  const [d, setD] = useState<TierList | null>(null); const [err, setErr] = useState<string | null>(null);
+  const [edit, setEdit] = useState<null | { id?: string; name: string; rank: string; minPoints: string; benefits: string; active: boolean }>(null);
+  const [busy, setBusy] = useState(false); const [formErr, setFormErr] = useState<string | null>(null); const [saved, setSaved] = useState<string | null>(null);
+  const load = useCallback(() => { setErr(null); posLoyaltyApi.tiers().then(setD).catch((e) => setErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
+  useEffect(() => { load(); }, [load]);
+  const open = (t?: TierRow, name = '') => { setFormErr(null); setSaved(null); setEdit(t ? { id: t.id, name: t.name, rank: String(t.rank), minPoints: t.minPoints == null ? '' : String(t.minPoints), benefits: t.benefits, active: t.active } : { name, rank: String(d?.items.length ?? 0), minPoints: '', benefits: '', active: true }); };
+  const save = async () => {
+    if (!edit || busy) return;
+    if (!edit.name.trim()) { setFormErr(tx('people.loyalty.tierNameRequired')); return; }
+    setBusy(true); setFormErr(null);
+    const body = { name: edit.name.trim(), rank: edit.rank.trim() ? Number(edit.rank) : null, minPoints: edit.minPoints.trim() ? Number(edit.minPoints) : null, benefits: edit.benefits.trim() || null, active: edit.active };
+    try { if (edit.id) await posLoyaltyApi.updateTier(edit.id, body); else await posLoyaltyApi.createTier(body); setSaved(tx('people.loyalty.tierSaved', { name: body.name })); setEdit(null); load(); onChanged(); }
+    catch (e) { setFormErr(errText(e, tx('pos.could_not_save'))); } finally { setBusy(false); }
+  };
   return (
-    <FitDialog title={tx('people.loyalty.manageTiers')} subtitle={tx('people.loyalty.tiersSub')} onClose={onClose} testId="dlg-tiers" footer={<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button>}>
-      {tiers.length === 0 ? <Empty title={tx('people.loyalty.noMembers')} /> : (
-        <table className="fk-table"><thead><tr><th>{tx('people.loyalty.tier')}</th><th className="num">{tx('people.loyalty.members')}</th><th className="num">%</th><th className="num">{tx('people.loyalty.points')}</th><th>{tx('people.loyalty.qualification')}</th><th /></tr></thead>
-          <tbody>{tiers.map((t) => <tr key={t.tier}><td><b>{tierLabel(t.tier)}</b></td><td className="num">{nf(t.members)}</td><td className="num">{total ? Math.round((t.members / total) * 1000) / 10 : 0}%</td><td className="num">{nf(t.points)}</td><td className="fk-muted">{tx('people.loyalty.noQualification')}</td><td><button type="button" className="fk-link" onClick={() => onPick(t.tier)}>{tx('people.loyalty.showMembers')}</button></td></tr>)}</tbody></table>
+    <FitDialog wide title={tx('people.loyalty.manageTiers')} subtitle={tx('people.loyalty.tiersSub')} onClose={onClose} busy={busy} testId="dlg-tiers"
+      footer={<>{canManage && !edit ? <button type="button" className="fk-btn primary" onClick={() => open()} data-testid="tier-add">{tx('people.loyalty.addTier')}</button> : null}<button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.close')}</button></>}>
+      {err ? <ErrorRetry message={err} onRetry={load} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : (
+        <>
+          {d.items.length === 0 && d.unconfigured.length === 0 ? <Empty title={tx('people.loyalty.noTiers')} /> : (
+            <table className="fk-table"><thead><tr><th>{tx('people.loyalty.tier')}</th><th className="num">{tx('people.loyalty.members')}</th><th className="num">{tx('people.loyalty.threshold')}</th><th>{tx('people.loyalty.benefits')}</th><th>{tx('pos.status')}</th><th /></tr></thead>
+              <tbody>
+                {d.items.map((t) => <tr key={t.id} data-testid={`tier-row-${t.name}`}><td><b>{tierLabel(t.name)}</b></td><td className="num">{nf(t.members)}</td><td className="num">{t.minPoints == null ? '—' : tx('people.loyalty.pts', { n: nf(t.minPoints) })}</td><td className="fk-muted">{t.benefits || '—'}</td>
+                  <td><span className={'fk-chip ' + (t.active ? 'ok' : 'mut')}>{t.active ? tx('pos.active_3') : tx('people.loyalty.retired')}</span></td>
+                  <td>{t.members ? <button type="button" className="fk-link" onClick={() => onPick(t.name)}>{tx('people.loyalty.showMembers')}</button> : null}{canManage ? <> <button type="button" className="fk-link" onClick={() => open(t)} data-testid={`tier-edit-${t.name}`}>{tx('pos.edit')}</button></> : null}</td></tr>)}
+                {d.unconfigured.map((u) => <tr key={'u' + u.name} data-testid={`tier-row-${u.name}`}><td><b>{tierLabel(u.name)}</b></td><td className="num">{nf(u.members)}</td><td className="num">—</td><td className="fk-muted">{tx('people.loyalty.noQualification')}</td><td><span className="fk-chip mut">{tx('people.loyalty.labelOnly')}</span></td>
+                  <td><button type="button" className="fk-link" onClick={() => onPick(u.name)}>{tx('people.loyalty.showMembers')}</button>{canManage ? <> <button type="button" className="fk-link" onClick={() => open(undefined, u.name)} data-testid={`tier-setup-${u.name}`}>{tx('people.loyalty.setUpTier')}</button></> : null}</td></tr>)}
+              </tbody></table>
+          )}
+          {edit ? (
+            <div className="fk-grid2" data-testid="tier-form">
+              <label className="fk-field"><span>{tx('people.loyalty.tierName')}</span><input data-autofocus value={edit.name} maxLength={40} onChange={(e) => setEdit({ ...edit, name: e.target.value })} data-testid="tier-name" /></label>
+              <label className="fk-field"><span>{tx('people.loyalty.tierOrder')}</span><input inputMode="numeric" value={edit.rank} onChange={(e) => setEdit({ ...edit, rank: e.target.value.replace(/[^\d]/g, '') })} /></label>
+              <label className="fk-field"><span>{tx('people.loyalty.thresholdLabel')}</span><input inputMode="numeric" value={edit.minPoints} onChange={(e) => setEdit({ ...edit, minPoints: e.target.value.replace(/[^\d]/g, '') })} data-testid="tier-threshold" /></label>
+              <label className="fk-check"><input type="checkbox" checked={edit.active} onChange={(e) => setEdit({ ...edit, active: e.target.checked })} data-testid="tier-active" /> {tx('people.loyalty.tierActive')}</label>
+              <label className="fk-field span2"><span>{tx('people.loyalty.benefits')}</span><input value={edit.benefits} maxLength={500} onChange={(e) => setEdit({ ...edit, benefits: e.target.value })} data-testid="tier-benefits" /></label>
+              <div className="span2"><button type="button" className="fk-btn ghost" onClick={() => setEdit(null)} disabled={busy}>{tx('pos.cancel')}</button> <button type="button" className="fk-btn primary" onClick={save} disabled={busy} data-testid="tier-save">{busy ? tx('pos.saving_2') : tx('people.loyalty.saveTier')}</button></div>
+              {edit.id ? <div className="fk-hint span2">{tx('people.loyalty.renameNote')}</div> : null}
+            </div>
+          ) : null}
+          {formErr ? <div className="fk-err" role="alert">{formErr}</div> : null}
+          {saved ? <div className="fk-preview ok" role="status">{saved}</div> : null}
+        </>
       )}
       <div className="fk-hint">{tx('people.loyalty.tiersNote')}</div>
+    </FitDialog>
+  );
+}
+
+function MemberTierDialog({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: (msg: string) => void }) {
+  const [d, setD] = useState<TierList | null>(null); const [tier, setTier] = useState(''); const [reason, setReason] = useState('');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { posLoyaltyApi.tiers().then(setD).catch((e) => setErr(errText(e, tx('people.loyalty.loadFailed')))); }, []);
+  const options = d ? [...new Set([...d.items.filter((t) => t.active).map((t) => t.name), 'Regular'])].filter((n) => n.toLowerCase() !== member.tier.toLowerCase()) : [];
+  const save = async () => {
+    if (!tier || reason.trim().length < 3 || busy) return; setBusy(true); setErr(null);
+    try { const r = await posLoyaltyApi.setMemberTier(member.customerId, { tier, reason: reason.trim() }); onDone(tx('people.loyalty.tierChangedNote', { name: member.customerName, tier: tierLabel(r?.tier ?? tier) })); }
+    catch (e) { setErr(errText(e, tx('pos.could_not_save'))); } finally { setBusy(false); }
+  };
+  return (
+    <FitDialog title={tx('people.loyalty.changeTier')} subtitle={`${member.customerName} · ${tierLabel(member.tier)}`} onClose={onClose} busy={busy} testId="dlg-member-tier"
+      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={!tier || reason.trim().length < 3 || busy} onClick={save} data-testid="member-tier-save">{busy ? tx('pos.saving_2') : tx('people.loyalty.changeTier')}</button></>}>
+      {!d && !err ? <div className="fk-loading">{tx('pos.loading')}</div> : d ? (
+        <div className="fk-grid2">
+          <label className="fk-field"><span>{tx('people.loyalty.newTier')}</span><select data-autofocus value={tier} onChange={(e) => setTier(e.target.value)} data-testid="member-tier-pick"><option value="">—</option>{options.map((o) => <option key={o} value={o}>{tierLabel(o)}</option>)}</select></label>
+          <label className="fk-field"><span>{tx('pos.reason_2')}</span><input value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} data-testid="member-tier-reason" /></label>
+        </div>
+      ) : null}
+      <div className="fk-hint">{tx('people.loyalty.tierChangeAudit')}</div>
+      {err ? <div className="fk-err" role="alert">{err}</div> : null}
     </FitDialog>
   );
 }

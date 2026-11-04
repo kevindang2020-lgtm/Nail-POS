@@ -160,3 +160,59 @@ describe('Loyalty & Rewards — reward availability rules', () => {
     expect(await code(repo.redeem(ctx, { customerId: C2, rewardId: RL, idempotencyKey: key(971) }))).toBe('REWARD_OUT_OF_STOCK');
   });
 });
+
+// Loyalty guide (Nov 4 2026) "Manage Tiers" + member filters: configured tiers with threshold and benefits, rename relabels
+// members and reward rules in one transaction, a held tier cannot be retired, a member moves only to a real tier, all audited
+describe('Loyalty & Rewards — Manage Tiers and member filters', () => {
+  it('create / rename / retire tiers with validation; renaming relabels members and reward eligibility; every change audited', async () => {
+    const before = audited.length;
+    expect(await code(repo.saveTier(ctx, { name: '  ' }))).toBe('LOYALTY_TIER_INVALID');
+    const gold = await repo.saveTier(ctx, { name: 'Gold', rank: 2, minPoints: 1000, benefits: 'Free polish change' });
+    expect(gold).toMatchObject({ name: 'Gold', minPoints: 1000, members: 1, active: true });   // Ann was already Gold
+    expect(await code(repo.saveTier(ctx, { name: 'gold' }))).toBe('LOYALTY_TIER_EXISTS');
+    const silver = await repo.saveTier(ctx, { name: 'Silver', rank: 1, minPoints: 500 });
+    expect(silver.members).toBe(0);
+    const ov = await repo.overview(ctx);
+    expect(ov.tiers.find((t) => t.tier === 'Gold')).toMatchObject({ configured: true, minPoints: 1000, benefits: 'Free polish change' });
+    expect(ov.tiers.find((t) => t.tier === 'Silver')).toMatchObject({ members: 0, configured: true });   // configured, nobody yet — still listed
+    const RG = id('fa3');
+    await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, eligible_tiers) values ($1,$2,'Gold perk',10,true,'amount_off',100,'{Gold}')`, [RG, T]);
+    const renamed = await repo.saveTier(ctx, { id: gold.id, name: 'Gold Club', rank: 2, minPoints: 1000, benefits: 'Free polish change' });
+    expect(renamed).toMatchObject({ name: 'Gold Club', members: 1 });
+    expect((await repo.members(ctx, { page: 1, pageSize: 50, tier: 'Gold Club' })).items.map((m) => m.customerId)).toEqual([C1]);
+    expect((await q(`select eligible_tiers from loyalty_rewards where id = $1`, [RG])).rows[0].eligible_tiers).toEqual(['Gold Club']);
+    expect(await code(repo.saveTier(ctx, { id: gold.id, name: 'Gold Club', active: false }))).toBe('LOYALTY_TIER_IN_USE');   // Ann still holds it
+    expect(await code(repo.saveTier(ctx, { id: id('fff'), name: 'Nope' }))).toBe('LOYALTY_TIER_NOT_FOUND');
+    expect(await code(repo.saveTier(ctx2, { id: silver.id, name: 'Stolen' }))).toBe('LOYALTY_TIER_NOT_FOUND');   // another salon cannot touch it
+    const acts = audited.slice(before).map((a) => a.action);
+    expect(acts).toEqual(['tier_created', 'tier_created', 'tier_updated']);
+    const list = await repo.tierList(ctx);
+    expect(list.items.map((t) => t.name)).toEqual(['Silver', 'Gold Club']);   // by rank
+    expect(list.unconfigured.map((u) => u.name)).toContain('Regular');
+  });
+  it('a member moves only to an active configured tier (or the default); the move is audited with a reason; retiring then works', async () => {
+    const list = await repo.tierList(ctx); const gc = list.items.find((t) => t.name === 'Gold Club')!;
+    expect(await code(repo.setMemberTier(ctx, { customerId: C1, tier: 'Diamond', reason: 'promo' }))).toBe('LOYALTY_TIER_NOT_FOUND');
+    expect(await code(repo.setMemberTier(ctx, { customerId: C1, tier: 'Silver', reason: '' }))).toBe('LOYALTY_TIER_INVALID');
+    expect(await code(repo.setMemberTier(ctx, { customerId: CX, tier: 'Silver', reason: 'other salon' }))).toBe('LOYALTY_NOT_ENROLLED');
+    const before = audited.length;
+    expect((await repo.setMemberTier(ctx, { customerId: C1, tier: 'silver', reason: 'downgrade after review' })).tier).toBe('Silver');
+    expect(audited.slice(before).map((a) => a.action)).toEqual(['member_tier_changed']);
+    expect((await repo.saveTier(ctx, { id: gc.id, name: 'Gold Club', active: false })).active).toBe(false);   // nobody holds it now
+    expect(await code(repo.setMemberTier(ctx, { customerId: C1, tier: 'Gold Club', reason: 'retired tier' }))).toBe('LOYALTY_TIER_NOT_FOUND');
+    expect((await repo.setMemberTier(ctx, { customerId: C1, tier: 'Regular', reason: 'back to default' })).tier).toBe('Regular');
+  });
+  it('members filter by customer status and sort by newest enrolment / balance / activity', async () => {
+    await q(`update customers set status = 'inactive' where id = $1`, [C2]);
+    expect((await repo.members(ctx, { page: 1, pageSize: 50, status: 'inactive' })).items.map((m) => m.customerId)).toEqual([C2]);
+    expect((await repo.members(ctx, { page: 1, pageSize: 50, status: 'active' })).items.map((m) => m.customerId)).not.toContain(C2);
+    await q(`update customers set status = 'active' where id = $1`, [C2]);
+    const byBal = (await repo.members(ctx, { page: 1, pageSize: 50, sort: 'balance' })).items;
+    expect(byBal.map((m) => m.pointsBalance)).toEqual([...byBal.map((m) => m.pointsBalance)].sort((a, b) => b - a));
+    const newest = (await repo.members(ctx, { page: 1, pageSize: 50 })).items;
+    expect(newest[0]!.customerId).toBe(C3);   // enrolled last
+    const act = (await repo.members(ctx, { page: 1, pageSize: 50, sort: 'activity' })).items;
+    const ts = act.map((m) => m.lastActivityAt).filter(Boolean) as string[];
+    expect(ts).toEqual([...ts].sort().reverse());
+  });
+});

@@ -20,6 +20,7 @@ import { LOYALTY_REDEMPTION } from './loyalty-redemption-machine';
 export interface AuditRecorder { record(ctx: { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null }, input: { module: string; action: string; resourceType?: string | null; resourceId?: string | null; metadata?: Record<string, unknown> }): Promise<unknown> }
 type AuditItem = { action: string; resourceType: string; resourceId: string; metadata: Record<string, unknown> };
 
+export interface TierRow { id: string; name: string; rank: number; minPoints: number | null; benefits: string; active: boolean; members: number }
 export interface LoyaltyProgramContext { tenantId: string; branchId?: string; userId: string; role: string; permissions: string[] }
 export interface Page<T> { items: T[]; page: number; pageSize: number; totalItems: number; totalPages: number }
 
@@ -57,7 +58,8 @@ function rewardRules(r: any, today: string) {
 export class LoyaltyProgramError extends Error {
   constructor(message: string, readonly code: 'CUSTOMER_NOT_FOUND' | 'LOYALTY_ALREADY_ENROLLED' | 'LOYALTY_NOT_ENROLLED' | 'REWARD_NOT_FOUND' | 'REWARD_NOT_AVAILABLE'
     | 'LOYALTY_INSUFFICIENT_POINTS' | 'REDEMPTION_NOT_FOUND' | 'REDEMPTION_NOT_VOIDABLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'LOYALTY_INVALID_ENTRY'
-    | 'REWARD_NOT_STARTED' | 'REWARD_EXPIRED' | 'REWARD_OUT_OF_STOCK' | 'REWARD_MEMBER_LIMIT' | 'REWARD_TIER_NOT_ELIGIBLE', readonly status: 400 | 404 | 409 = 400) {
+    | 'REWARD_NOT_STARTED' | 'REWARD_EXPIRED' | 'REWARD_OUT_OF_STOCK' | 'REWARD_MEMBER_LIMIT' | 'REWARD_TIER_NOT_ELIGIBLE'
+    | 'LOYALTY_TIER_INVALID' | 'LOYALTY_TIER_EXISTS' | 'LOYALTY_TIER_IN_USE' | 'LOYALTY_TIER_NOT_FOUND', readonly status: 400 | 404 | 409 = 400) {
     super(message); this.name = 'LoyaltyProgramError';
   }
 }
@@ -71,7 +73,7 @@ export interface LoyaltyOverview {
     redemptionsThisMonth: number; redemptionsPendingThisMonth: number; redemptionsUsedThisMonth: number; redemptionsVoidedThisMonth: number;
     pointsRedeemedThisMonth: number;
   };
-  tiers: { tier: string; members: number; pct: number; points: number }[];
+  tiers: { tier: string; members: number; pct: number; points: number; minPoints?: number | null; benefits?: string; configured?: boolean }[];
 }
 export interface RewardRow { id: string; title: string; description: string; pointsCost: number; active: boolean; rewardType: 'amount_off' | 'percent_off'; valueCents: number; percent: number; validDays: number | null; createdAt: string | null; updatedAt: string | null; redemptions: number; redemptionsThisMonth: number 
   /** Loyalty guide (Nov 4 2026): availability rules and what they leave */
@@ -120,6 +122,7 @@ export class LoyaltyProgramRepository {
                from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id
                where p.tenant_id = ${T} and c.status <> 'archived' group by p.loyalty_tier order by members desc, p.loyalty_tier`.execute(this.db),
     ]);
+    const conf = await this.configuredTiers(T);
     const mm = m.rows[0] || {}; const members = N(mm.members);
     const r = rd.rows[0] || {};
     const outstanding = N(mm.outstanding), ledger = N(l.rows[0]?.ledger);
@@ -132,7 +135,12 @@ export class LoyaltyProgramRepository {
         redemptionsThisMonth: N(r.completed), redemptionsPendingThisMonth: N(r.pending), redemptionsUsedThisMonth: N(r.used), redemptionsVoidedThisMonth: N(r.voided),
         pointsRedeemedThisMonth: N(r.points),
       },
-      tiers: tiers.rows.map((t: any) => ({ tier: String(t.tier || DEFAULT_TIER), members: N(t.members), pct: members ? Math.round((N(t.members) / members) * 1000) / 10 : 0, points: N(t.points) })),
+      // Loyalty guide (Nov 4 2026): a configured tier shows its threshold / benefits; a configured tier nobody holds yet is
+      // still listed (0 members) — a label in use that was never configured shows as it always did
+      tiers: [...tiers.rows.map((t: any) => { const name = String(t.tier || DEFAULT_TIER); const cf = conf.find((x) => x.name.toLowerCase() === name.toLowerCase());
+          return { tier: name, members: N(t.members), pct: members ? Math.round((N(t.members) / members) * 1000) / 10 : 0, points: N(t.points), minPoints: cf?.minPoints ?? null, benefits: cf?.benefits ?? '', configured: !!cf }; }),
+        ...conf.filter((cf) => cf.active && !tiers.rows.some((t: any) => String(t.tier || DEFAULT_TIER).toLowerCase() === cf.name.toLowerCase()))
+          .map((cf) => ({ tier: cf.name, members: 0, pct: 0, points: 0, minPoints: cf.minPoints, benefits: cf.benefits, configured: true }))],
     };
   }
 
@@ -155,20 +163,25 @@ export class LoyaltyProgramRepository {
       ...rewardRules(r, today) })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 
-  async members(ctx: LoyaltyProgramContext, f: { page?: unknown; pageSize?: unknown; tier?: string; q?: string }): Promise<Page<MemberRow>> {
+  async members(ctx: LoyaltyProgramContext, f: { page?: unknown; pageSize?: unknown; tier?: string; q?: string; status?: string; sort?: string }): Promise<Page<MemberRow>> {
     const T = ctx.tenantId; const { page, pageSize } = clampPaging(f.page, f.pageSize, 5);
     const tier = f.tier ? sql`and p.loyalty_tier = ${f.tier}` : sql``;
+    // Loyalty guide (Nov 4 2026) "filter tier / status, sort newest enrolment first": status is the customer's own status
+    // (active / inactive); sort is newest enrolment (default), highest balance, or most recent activity — ties break on id
+    const status = f.status === 'active' || f.status === 'inactive' ? sql`and c.status = ${f.status}` : sql``;
+    const order = f.sort === 'balance' ? sql`p.points_balance desc, p.created_at desc, p.id desc`
+      : f.sort === 'activity' ? sql`last_activity desc nulls last, p.created_at desc, p.id desc` : sql`p.created_at desc, p.id desc`;
     const raw = String(f.q ?? '').trim(); const digits = raw.replace(/\D/g, '');
     const lk = '%' + raw.replace(/[\\%_]/g, (ch) => '\\' + ch) + '%';   // a typed % or _ is a literal, not a wildcard
     const search = raw ? sql`and (c.full_name ilike ${lk} or coalesce(c.email, '') ilike ${lk}${digits.length >= 3 ? sql` or coalesce(c.normalized_phone, '') like ${'%' + digits + '%'}` : sql``})` : sql``;
     const base = sql`from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id
-                     where p.tenant_id = ${T} and c.status <> 'archived' ${tier} ${search}`;
+                     where p.tenant_id = ${T} and c.status <> 'archived' ${tier} ${status} ${search}`;
     const total = N((await sql<any>`select count(*)::int as n ${base}`.execute(this.db)).rows[0]?.n);
     const sp = servedPage(page, pageSize, total);
     const rows = (await sql<any>`select p.id as profile_id, p.customer_id, c.full_name, c.avatar_url, c.phone_display, c.status as customer_status, p.loyalty_tier, p.points_balance,
         p.total_earned_points, p.total_redeemed_points, p.created_at,
         (select max(l.created_at) from loyalty_ledger l where l.tenant_id = p.tenant_id and l.customer_id = p.customer_id) as last_activity
-      ${base} order by p.created_at desc, p.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
+      ${base} order by ${order} limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { items: rows.map((r: any) => ({ customerId: String(r.customer_id), profileId: String(r.profile_id), customerName: String(r.full_name || ''), avatarUrl: r.avatar_url ?? null,
       maskedPhone: maskPhone(r.phone_display ?? null), tier: String(r.loyalty_tier || DEFAULT_TIER), pointsBalance: N(r.points_balance), totalEarned: N(r.total_earned_points),
       totalRedeemed: N(r.total_redeemed_points), enrolledAt: iso(r.created_at), lastActivityAt: iso(r.last_activity), customerStatus: String(r.customer_status) })), page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
@@ -234,6 +247,92 @@ export class LoyaltyProgramRepository {
     if (isUuid(ctx.branchId)) return ctx.branchId;
     if (customerBranch) return customerBranch;
     return ((await sql<any>`select id from branches where tenant_id = ${ctx.tenantId} order by created_at limit 1`.execute(db)).rows[0]?.id) ?? null;
+  }
+
+  // ── Manage Tiers (Loyalty guide Nov 4 2026): the salon's own tier list; renaming relabels members and reward rules in
+  //    the same transaction; a tier members still hold cannot be retired (never silently reset); every change is audited ──
+  private async configuredTiers(T: string, db: any = this.db): Promise<TierRow[]> {
+    const rows = (await sql<any>`select id, name, rank, min_points, benefits, active from loyalty_tiers where tenant_id = ${T} order by rank, lower(name), id`.execute(db).catch((e: unknown) => {
+      logException(e, { where: 'loyalty-program.tiers', tenantId: T }); return NO_ROWS; })).rows;
+    return rows.map((r: any) => ({ id: String(r.id), name: String(r.name), rank: N(r.rank), minPoints: r.min_points == null ? null : N(r.min_points), benefits: String(r.benefits || ''), active: !!r.active, members: 0 }));
+  }
+  /** every configured tier (retired too) with its live member count, then labels in use that were never configured */
+  async tierList(ctx: LoyaltyProgramContext): Promise<{ items: TierRow[]; unconfigured: { name: string; members: number }[] }> {
+    const T = ctx.tenantId;
+    const conf = await this.configuredTiers(T);
+    const counts = (await sql<any>`select p.loyalty_tier as tier, count(*)::int as n from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id
+        where p.tenant_id = ${T} and c.status <> 'archived' group by p.loyalty_tier`.execute(this.db)).rows;
+    const n = (name: string) => counts.filter((c: any) => String(c.tier || DEFAULT_TIER).toLowerCase() === name.toLowerCase()).reduce((a: number, c: any) => a + N(c.n), 0);
+    return { items: conf.map((t) => ({ ...t, members: n(t.name) })),
+      unconfigured: counts.map((c: any) => String(c.tier || DEFAULT_TIER)).filter((name: string, i: number, all: string[]) => all.indexOf(name) === i && !conf.some((t) => t.name.toLowerCase() === name.toLowerCase())).map((name: string) => ({ name, members: n(name) })) };
+  }
+  async saveTier(ctx: LoyaltyProgramContext, b: { id?: string | null; name: string; rank?: number | null; minPoints?: number | null; benefits?: string | null; active?: boolean | null }): Promise<TierRow> {
+    const T = ctx.tenantId; const name = String(b.name ?? '').trim().replace(/\s+/g, ' ');
+    if (!name || name.length > 40) throw new LoyaltyProgramError('A tier needs a name of up to 40 characters.', 'LOYALTY_TIER_INVALID');
+    const rank = b.rank == null ? 0 : Math.trunc(Number(b.rank)); const minPoints = b.minPoints == null ? null : Math.trunc(Number(b.minPoints));
+    if (!Number.isFinite(rank) || rank < 0 || rank > 1000) throw new LoyaltyProgramError('The order must be a whole number from 0 to 1000.', 'LOYALTY_TIER_INVALID');
+    if (minPoints != null && (!Number.isFinite(minPoints) || minPoints < 0 || minPoints > 100_000_000)) throw new LoyaltyProgramError('The points threshold must be a whole number of 0 or more.', 'LOYALTY_TIER_INVALID');
+    const benefits = String(b.benefits ?? '').trim(); if (benefits.length > 500) throw new LoyaltyProgramError('Benefits can be up to 500 characters.', 'LOYALTY_TIER_INVALID');
+    if (b.id != null && !isUuid(b.id)) throw new LoyaltyProgramError('Tier not found.', 'LOYALTY_TIER_NOT_FOUND', 404);
+    const actor = isUuid(ctx.userId) ? ctx.userId : null;
+    const audits: AuditItem[] = [];
+    const id = await this.db.transaction().execute(async (trx) => {
+      const clash = (await sql<any>`select id from loyalty_tiers where tenant_id = ${T} and lower(name) = lower(${name}) ${b.id ? sql`and id <> ${b.id}` : sql``}`.execute(trx)).rows[0];
+      if (clash) throw new LoyaltyProgramError('A tier with that name already exists.', 'LOYALTY_TIER_EXISTS', 409);
+      if (!b.id) {
+        const row = (await sql<any>`insert into loyalty_tiers (tenant_id, name, rank, min_points, benefits, active, created_by, updated_by) values (${T}, ${name}, ${rank}, ${minPoints}, ${benefits}, ${b.active ?? true}, ${actor}, ${actor}) returning id`.execute(trx)).rows[0];
+        audits.push({ action: 'loyalty.tier_created', resourceType: 'loyalty_tier', resourceId: String(row.id), metadata: { name, rank, minPoints, benefits } });
+        return String(row.id);
+      }
+      const cur = (await sql<any>`select id, name, rank, min_points, benefits, active from loyalty_tiers where tenant_id = ${T} and id = ${b.id} for update`.execute(trx)).rows[0];
+      if (!cur) throw new LoyaltyProgramError('Tier not found.', 'LOYALTY_TIER_NOT_FOUND', 404);
+      const active = b.active ?? !!cur.active;
+      const holders = N((await sql<any>`select count(*)::int as n from customer_loyalty_profiles where tenant_id = ${T} and lower(loyalty_tier) = lower(${String(cur.name)})`.execute(trx)).rows[0]?.n);
+      if (!active && cur.active && holders > 0) throw new LoyaltyProgramError(`${holders} member(s) are in this tier. Move them to another tier before retiring it.`, 'LOYALTY_TIER_IN_USE', 409);
+      let relabelled = 0;
+      if (String(cur.name) !== name) {
+        relabelled = N((await sql<any>`with u as (update customer_loyalty_profiles set loyalty_tier = ${name}, updated_at = now() where tenant_id = ${T} and lower(loyalty_tier) = lower(${String(cur.name)}) returning 1) select count(*)::int as n from u`.execute(trx)).rows[0]?.n);
+        await sql`update loyalty_rewards set eligible_tiers = array_replace(eligible_tiers, ${String(cur.name)}, ${name}), updated_at = now() where tenant_id = ${T} and ${String(cur.name)} = any(eligible_tiers)`.execute(trx);
+      }
+      await sql`update loyalty_tiers set name = ${name}, rank = ${rank}, min_points = ${minPoints}, benefits = ${benefits}, active = ${active}, updated_by = ${actor}, updated_at = now() where tenant_id = ${T} and id = ${b.id}`.execute(trx);
+      const changes: Record<string, { from: unknown; to: unknown }> = {};
+      const before = { name: String(cur.name), rank: N(cur.rank), minPoints: cur.min_points == null ? null : N(cur.min_points), benefits: String(cur.benefits || ''), active: !!cur.active };
+      const after = { name, rank, minPoints, benefits, active };
+      for (const k of Object.keys(after) as (keyof typeof after)[]) if (before[k] !== after[k]) changes[k] = { from: before[k], to: after[k] };
+      if (Object.keys(changes).length) audits.push({ action: 'loyalty.tier_updated', resourceType: 'loyalty_tier', resourceId: String(b.id), metadata: { changes, membersRelabelled: relabelled } });
+      return String(b.id);
+    });
+    await this.flush(ctx, audits);
+    return (await this.tierList(ctx)).items.find((t) => t.id === id)!;
+  }
+  /** move one member to another tier: an active configured tier, or the default every enrolment starts in */
+  async setMemberTier(ctx: LoyaltyProgramContext, b: { customerId: string; tier: string; reason: string }): Promise<MemberRow> {
+    const T = ctx.tenantId; const tier = String(b.tier ?? '').trim(); const reason = String(b.reason ?? '').trim();
+    if (!isUuid(b.customerId)) throw new LoyaltyProgramError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
+    if (reason.length < 3) throw new LoyaltyProgramError('Say why the tier is changing (at least 3 characters).', 'LOYALTY_TIER_INVALID');
+    const conf = await this.configuredTiers(T);
+    const target = conf.find((t) => t.active && t.name.toLowerCase() === tier.toLowerCase())?.name ?? (tier.toLowerCase() === DEFAULT_TIER.toLowerCase() ? DEFAULT_TIER : null);
+    if (!target) throw new LoyaltyProgramError('Pick one of the salon\'s tiers.', 'LOYALTY_TIER_NOT_FOUND', 404);
+    const audits: AuditItem[] = [];
+    await this.db.transaction().execute(async (trx) => {
+      const prof = (await sql<any>`select loyalty_tier from customer_loyalty_profiles where tenant_id = ${T} and customer_id = ${b.customerId} for update`.execute(trx)).rows[0];
+      if (!prof) throw new LoyaltyProgramError('Enrol the customer before changing the tier.', 'LOYALTY_NOT_ENROLLED', 409);
+      const from = String(prof.loyalty_tier || DEFAULT_TIER);
+      if (from === target) return;
+      await sql`update customer_loyalty_profiles set loyalty_tier = ${target}, updated_at = now() where tenant_id = ${T} and customer_id = ${b.customerId}`.execute(trx);
+      audits.push({ action: 'loyalty.member_tier_changed', resourceType: 'customer', resourceId: b.customerId, metadata: { from, to: target, reason } });
+    });
+    await this.flush(ctx, audits);
+    return this.memberById(ctx, b.customerId);
+  }
+  private async memberById(ctx: LoyaltyProgramContext, customerId: string): Promise<MemberRow> {
+    const r = (await sql<any>`select p.id as profile_id, p.customer_id, c.full_name, c.avatar_url, c.phone_display, c.status as customer_status, p.loyalty_tier, p.points_balance,
+        p.total_earned_points, p.total_redeemed_points, p.created_at, (select max(l.created_at) from loyalty_ledger l where l.tenant_id = p.tenant_id and l.customer_id = p.customer_id) as last_activity
+      from customer_loyalty_profiles p join customers c on c.id = p.customer_id and c.tenant_id = p.tenant_id where p.tenant_id = ${ctx.tenantId} and p.customer_id = ${customerId}`.execute(this.db)).rows[0];
+    if (!r) throw new LoyaltyProgramError('Customer not found.', 'CUSTOMER_NOT_FOUND', 404);
+    return { customerId: String(r.customer_id), profileId: String(r.profile_id), customerName: String(r.full_name || ''), avatarUrl: r.avatar_url ?? null,
+      maskedPhone: maskPhone(r.phone_display ?? null), tier: String(r.loyalty_tier || DEFAULT_TIER), pointsBalance: N(r.points_balance), totalEarned: N(r.total_earned_points),
+      totalRedeemed: N(r.total_redeemed_points), enrolledAt: iso(r.created_at), lastActivityAt: iso(r.last_activity), customerStatus: String(r.customer_status) };
   }
 
   /** Enrol a salon customer (one profile per tenant + customer). Never creates a customer; a second enrol is a 409. */

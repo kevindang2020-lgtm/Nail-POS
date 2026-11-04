@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), rewards: vi.fn(), members: vi.fn(), redemptions: vi.fn(), redeem: vi.fn(), createReward: vi.fn() } }));
+const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), rewards: vi.fn(), members: vi.fn(), redemptions: vi.fn(), redeem: vi.fn(), createReward: vi.fn(), tiers: vi.fn(), createTier: vi.fn(), updateTier: vi.fn(), setMemberTier: vi.fn() } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 vi.mock('../api/posLoyaltyApi', () => ({ posLoyaltyApi: api }));
 import { POSLoyaltyScreen } from './POSLoyaltyScreen';
@@ -90,6 +90,50 @@ describe('POSLoyaltyScreen', () => {
     fireEvent.change(within(dlg).getByTestId('reward-ends'), { target: { value: '2027-01-31' } });
     fireEvent.click(within(dlg).getByRole('button', { name: /save reward/i }));
     await waitFor(() => expect(api.createReward).toHaveBeenCalledWith(expect.objectContaining({ title: 'Spring set', startsOn: '2026-12-01', endsOn: '2027-01-31', stockTotal: 25, perMemberLimit: 1, eligibleTiers: ['VIP'] })));
+  });
+  it('Manage Tiers lists configured tiers with threshold and benefits, sets up a label-only tier, and shows a refused retire', async () => {
+    let list: any = { items: [{ id: 't1', name: 'VIP', rank: 1, minPoints: 1000, benefits: 'Free polish', active: true, members: 1 }], unconfigured: [{ name: 'Regular', members: 1 }] };
+    api.tiers.mockImplementation(async () => list);
+    api.createTier.mockImplementation(async (b: any) => { list = { items: [...list.items, { id: 't2', ...b, members: 1 }], unconfigured: [] }; return list.items[1]; });
+    api.updateTier.mockRejectedValue({ status: 409, code: 'LOYALTY_TIER_IN_USE', message: 'Members are in this tier.' });
+    mount();
+    fireEvent.click(await screen.findByRole('button', { name: /manage tiers/i }));
+    const dlg = await screen.findByTestId('dlg-tiers');
+    expect(await within(dlg).findByTestId('tier-row-VIP')).toHaveTextContent('Free polish');
+    expect(within(dlg).getByTestId('tier-row-VIP')).toHaveTextContent('1,000');
+    expect(within(dlg).getByTestId('tier-row-Regular')).toHaveTextContent('Label only');
+    fireEvent.click(within(dlg).getByTestId('tier-setup-Regular'));
+    expect(within(dlg).getByTestId('tier-name')).toHaveValue('Regular');
+    fireEvent.change(within(dlg).getByTestId('tier-threshold'), { target: { value: '0' } });
+    fireEvent.click(within(dlg).getByTestId('tier-save'));
+    await waitFor(() => expect(api.createTier).toHaveBeenCalledWith(expect.objectContaining({ name: 'Regular', minPoints: 0, active: true })));
+    expect(await within(dlg).findByRole('status')).toHaveTextContent('Tier Regular saved.');
+    fireEvent.click(within(dlg).getByTestId('tier-edit-VIP'));
+    fireEvent.click(within(dlg).getByTestId('tier-active'));
+    fireEvent.click(within(dlg).getByTestId('tier-save'));
+    expect(await within(dlg).findByRole('alert')).toBeInTheDocument();
+    expect(api.updateTier).toHaveBeenCalledWith('t1', expect.objectContaining({ active: false }));
+  });
+  it('an owner moves a member to another tier with a reason; members can be filtered by status and sorted', async () => {
+    const m = { customerId: 'c1', customerName: 'Ann Lee', avatarUrl: null, maskedPhone: null, tier: 'Regular', pointsBalance: 500, totalEarned: 500, totalRedeemed: 0, enrolledAt: null };
+    api.members.mockResolvedValue({ ...empty, items: [m], totalItems: 1 });
+    api.tiers.mockResolvedValue({ items: [{ id: 't1', name: 'VIP', rank: 1, minPoints: null, benefits: '', active: true, members: 0 }, { id: 't9', name: 'Old', rank: 2, minPoints: null, benefits: '', active: false, members: 0 }], unconfigured: [] });
+    api.setMemberTier.mockResolvedValue({ ...m, tier: 'VIP' });
+    mount();
+    fireEvent.click(await screen.findByTestId('member-tier-c1'));
+    const dlg = await screen.findByTestId('dlg-member-tier');
+    const pick = await within(dlg).findByTestId('member-tier-pick');
+    expect(Array.from((pick as HTMLSelectElement).options).map((o) => o.value)).toEqual(['', 'VIP']);   // retired and current tiers are not offered
+    fireEvent.change(pick, { target: { value: 'VIP' } });
+    expect(within(dlg).getByTestId('member-tier-save')).toBeDisabled();   // a reason is required
+    fireEvent.change(within(dlg).getByTestId('member-tier-reason'), { target: { value: 'loyal guest' } });
+    fireEvent.click(within(dlg).getByTestId('member-tier-save'));
+    await waitFor(() => expect(api.setMemberTier).toHaveBeenCalledWith('c1', { tier: 'VIP', reason: 'loyal guest' }));
+    await waitFor(() => expect(screen.queryByTestId('dlg-member-tier')).toBeNull());
+    fireEvent.change(screen.getByTestId('members-status'), { target: { value: 'inactive' } });
+    await waitFor(() => expect(api.members).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'inactive', page: 1 })));
+    fireEvent.change(screen.getByTestId('members-sort'), { target: { value: 'balance' } });
+    await waitFor(() => expect(api.members).toHaveBeenLastCalledWith(expect.objectContaining({ sort: 'balance', status: 'inactive', page: 1 })));
   });
 });
 

@@ -158,6 +158,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   loyalty_rewards: 'ut',
   loyalty_suspicious_cases: 'ut',
   loyalty_templates: 'c',
+  loyalty_tiers: 'cut',
   membership_plans: 'ut',
   merchant_account_alerts: 'ut',
   merchant_funding_profiles: 'c',

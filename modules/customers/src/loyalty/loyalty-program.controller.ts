@@ -4,6 +4,7 @@
 // Tenant / branch / role come from the session (req.ctx), never the body or the query.
 //   reads   pos.customers.view          overview · rewards · members · redemptions · redemptions/:id · ledger
 //   writes  pos.customers.loyalty.edit  enroll · adjust · redeem   (the existing loyalty-edit capability; unchanged policy)
+//           pos.settings.edit           tiers · tiers/:id · members/:id/tier  (owners / managers — Manage Tiers, Nov 4 2026)
 //           pos.checkout.void           redemptions/:id/void       (owners / managers: the void / override capability — checkout.manage_overrides; front desk cannot)
 import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireFeature, ValidatedBody } from '@aipowersalon/permissions/guards';
@@ -11,7 +12,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { withCode } from '@aipowersalon/api-contracts';
 import { LoyaltyProgramRepository, LoyaltyProgramError, type LoyaltyProgramContext } from './loyalty-program.repository';
-import { LOYALTY_ENROLL_BODY, LOYALTY_PROGRAM_ADJUST_BODY, LOYALTY_REDEEM_BODY, LOYALTY_VOID_BODY } from '../request-schemas';
+import { LOYALTY_ENROLL_BODY, LOYALTY_PROGRAM_ADJUST_BODY, LOYALTY_REDEEM_BODY, LOYALTY_VOID_BODY, LOYALTY_TIER_BODY, LOYALTY_MEMBER_TIER_BODY } from '../request-schemas';
 
 export const LOYALTY_PROGRAM_REPOSITORY = 'LoyaltyProgramRepository';
 
@@ -48,8 +49,29 @@ export class LoyaltyProgramController {
   @Get('rewards') @RequirePermission('pos.customers.view') @ListQuery({ filters: { status: { type: 'enum', values: ['active', 'inactive'] } }, search: false, maxLimit: 50, defaultLimit: 10, params: ['page'] })
   rewards(@Req() r: any, @Query() q: any) { const c = ctxFrom(r); need(c, 'pos.customers.view'); return run(() => this.db().rewards(c, { page: q?.page, pageSize: q?.pageSize, status: s(q?.status) })); }
 
-  @Get('members') @RequirePermission('pos.customers.view') @ListQuery({ filters: { tier: { type: 'text', maxLength: 80 } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] })
-  members(@Req() r: any, @Query() q: any) { const c = ctxFrom(r); need(c, 'pos.customers.view'); return run(() => this.db().members(c, { page: q?.page, pageSize: q?.pageSize, tier: s(q?.tier), q: s(q?.q) })); }
+  @Get('members') @RequirePermission('pos.customers.view') @ListQuery({ filters: { tier: { type: 'text', maxLength: 80 }, status: { type: 'enum', values: ['active', 'inactive'] }, sort: { type: 'enum', values: ['newest', 'balance', 'activity'] } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] })
+  members(@Req() r: any, @Query() q: any) { const c = ctxFrom(r); need(c, 'pos.customers.view'); return run(() => this.db().members(c, { page: q?.page, pageSize: q?.pageSize, tier: s(q?.tier), q: s(q?.q), status: s(q?.status), sort: s(q?.sort) })); }
+
+  @Get('tiers') @RequirePermission('pos.customers.view')
+  tiers(@Req() r: any) { const c = ctxFrom(r); need(c, 'pos.customers.view'); return run(() => this.db().tierList(c)); }
+
+  @Post('tiers') @RequirePermission('pos.settings.edit')
+  createTier(@Req() r: any, @Body(ValidatedBody(LOYALTY_TIER_BODY, { strict: true })) b: any) {
+    const c = ctxFrom(r); need(c, 'pos.settings.edit');
+    return run(() => this.db().saveTier(c, { name: String(b?.name ?? ''), rank: b?.rank ?? null, minPoints: b?.minPoints ?? null, benefits: b?.benefits ?? null, active: b?.active ?? null }));
+  }
+
+  @Post('tiers/:tierId') @RequirePermission('pos.settings.edit')
+  updateTier(@Req() r: any, @Param('tierId') id: string, @Body(ValidatedBody(LOYALTY_TIER_BODY, { strict: true })) b: any) {
+    const c = ctxFrom(r); need(c, 'pos.settings.edit');
+    return run(() => this.db().saveTier(c, { id, name: String(b?.name ?? ''), rank: b?.rank ?? null, minPoints: b?.minPoints ?? null, benefits: b?.benefits ?? null, active: b?.active ?? null }));
+  }
+
+  @Post('members/:customerId/tier') @RequirePermission('pos.settings.edit')
+  memberTier(@Req() r: any, @Param('customerId') id: string, @Body(ValidatedBody(LOYALTY_MEMBER_TIER_BODY, { strict: true })) b: any) {
+    const c = ctxFrom(r); need(c, 'pos.settings.edit');
+    return run(() => this.db().setMemberTier(c, { customerId: id, tier: String(b?.tier ?? ''), reason: String(b?.reason ?? '') }));
+  }
 
   @Get('redemptions') @RequirePermission('pos.customers.view') @ListQuery({ filters: { status: { type: 'enum', values: ['pending', 'issued', 'applied', 'used', 'void'] }, rewardId: { type: 'uuid' }, customerId: { type: 'uuid' } }, search: false, maxLimit: 50, defaultLimit: 10, params: ['page'] })
   redemptions(@Req() r: any, @Query() q: any) { const c = ctxFrom(r); need(c, 'pos.customers.view'); return run(() => this.db().redemptions(c, { page: q?.page, pageSize: q?.pageSize, status: s(q?.status), rewardId: s(q?.rewardId), customerId: s(q?.customerId) })); }

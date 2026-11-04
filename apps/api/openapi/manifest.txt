@@ -772,6 +772,7 @@ GET /pos/loyalty/redemptions  realm=staff  auth=session  domain=loyalty  perm=po
 GET /pos/loyalty/redemptions/{redemptionId}  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/state  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/tiers  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing-growth/activity  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing-growth/economics  realm=staff  auth=session  domain=analytics  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/marketing-growth/journey/{customerId}  realm=staff  auth=session  domain=analytics  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2806,6 +2807,7 @@ POST /pos/invoices/{id}/status  realm=staff  auth=session  domain=finance  perm=
 POST /pos/invoices/{id}/void  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/adjust  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/enroll  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/members/{customerId}/tier  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/earning/activate  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  step-up  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/earning/drafts  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/earning/drafts/{id}/discard  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
@@ -2816,6 +2818,8 @@ POST /pos/loyalty/network/purchases  realm=staff  auth=session  domain=loyalty  
 POST /pos/loyalty/redeem  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/redemptions/{redemptionId}/void  realm=staff  auth=session  domain=loyalty  perm=pos.checkout.void  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/tiers  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/tiers/{tierId}  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads/media  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/marketing/display-ads/{id}/archive  realm=staff  auth=session  domain=marketing  perm=pos.customer_display_ads.archive  guards=RolePermissionGuard,TenantAuthGuard

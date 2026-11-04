@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 933,
+  "tables": 934,
   "ownership": {
-   "tenant_owned": 621,
+   "tenant_owned": 622,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 90,
    "platform_global": 153,
@@ -33,7 +33,7 @@
    "COMMUNICATIONS": 41,
    "CHECKOUT": 12,
    "DEALS": 18,
-   "LOYALTY": 34,
+   "LOYALTY": 35,
    "MEMBERSHIPS": 11,
    "ANALYTICS": 18,
    "INVENTORY": 29,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 141,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 510,
+   "INTERNAL": 511,
    "PAYMENT_RESTRICTED": 75,
    "PUBLIC": 6
   },
@@ -5074,6 +5074,18 @@
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "loyalty_tiers": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "LOYALTY",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"

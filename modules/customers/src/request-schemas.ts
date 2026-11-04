@@ -67,6 +67,10 @@ export const LOYALTY_PROGRAM_ADJUST_BODY: BodySchema = S.object({ customerId: S.
 export const LOYALTY_REDEEM_BODY: BodySchema = S.object({ customerId: S.uuid(), rewardId: S.uuid(), idempotencyKey: S.uuid() }, ['customerId', 'rewardId', 'idempotencyKey']);
 /** POST /pos/loyalty/redemptions/:id/void — { reason } */
 export const LOYALTY_VOID_BODY: BodySchema = S.object({ reason: S.text(300) }, ['reason']);
+/** POST /pos/loyalty/tiers (create) and POST /pos/loyalty/tiers/:tierId (edit) — Manage Tiers (Loyalty guide Nov 4 2026) */
+export const LOYALTY_TIER_BODY: BodySchema = S.object({ name: S.text(40), rank: S.nullable(S.integer({ minimum: 0 })), minPoints: S.nullable(S.integer({ minimum: 0 })), benefits: str(500), active: bool }, ['name']);
+/** POST /pos/loyalty/members/:customerId/tier — { tier, reason } */
+export const LOYALTY_MEMBER_TIER_BODY: BodySchema = S.object({ tier: S.text(40), reason: S.text(300) }, ['tier', 'reason']);
 
 // ── Customer Retention mandate (Oct 29 2026): consent-checked win-back SMS (retention.controller.ts) ──────────────────
 /** POST /pos/retention/sms/preview — exact customer ids OR the active filters (server-resolved "select all matching") */
