@@ -74,7 +74,10 @@ GUIDE_AUDIT_FINDINGS_2026-11-03.md; batch C/D audits have not been run yet.
 - B1 Segments — FIXED: `%` / `_` in e-mail search were wildcards ("%" matched everyone); discard / link-to-campaign audit now in the same transaction as the change; dollar inputs parsed exactly (no float × 100).
 - B2 Coupons — FIXED: Check-coupon spend parsed exactly; ticket-number lookup was already branch-scoped; assistant stats / removed tickets fixed earlier. NOT fixed: the assistant's draft deal and its provenance row are two writes (DealsService.createDeal has no transaction hook — needs a repository-port change).
 - B3 Deals — FIXED: "technician deals within rules" health check now applies all six rules (min price, redemption cap, new-customer, duration added); approvals active-deal count fixed earlier.
-- B4 Promotions — removed lines fixed earlier. NOT built (B1–B4): health-run history tables, coupon branch filter / Open Ticket / export / created-finalized basis / configurable expiring window, deals branch filter / Open Ticket / approvals search, promotions export / View Receipt.
+- B4 Promotions — removed lines fixed earlier. BUILT Nov 4 (B1–B4 gaps): coupon location filter / export / Open Ticket / applied-vs-
+  finalized basis / configurable expiring window / customer in the checker (5dd6721, 1dd3181); deals location filter on every tab,
+  Open Ticket, approvals requested-date period (798d294, e50ae6b); promotions export + View Receipt (388446b); assistant draft
+  all-or-nothing (58d6e09); recorded health runs with history for Coupons and Deals (800, 4018a73).
 - B9 Notifications — FIXED: at most two resends per original (a resend of a resend was unlimited; new code NOTIFICATION_RETRY_LIMIT); "accepted by provider" no longer shows the creation time as the acceptance time. Earlier: after_fix evidence for every channel.
 - B11 Booking Phone Verification — FIXED: the overlay offers Resend only when the number on record matches (same rule as the resend itself); "latest provider outcome" uses the same rule as the error count; a page past the end shows the last page.
 - B16 Email — FIXED: a masked viewer cannot search by the e-mail address they are not allowed to see. ("auth_failed → down" reviewed: correct, the issue code keeps the difference.) Earlier: bounced in the delivery denominator, no resend of bounces.
