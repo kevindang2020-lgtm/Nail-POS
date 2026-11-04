@@ -176,5 +176,25 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   Transactions, Cash Drawer, End-of-Day Cash, Refunds & Voids, Split Payments, Tips). Their status is the batch C / D lines above.
 - Batch E — 7 NEW guides (never audited against the code; their screens exist from the Oct 29 Payments & Money build):
   E1 Gift Cards · E2 Payment Terminals · E3 Settlements · E4 Deposit Reconciliation · E5 Invoices · E6 Expenses ·
-  E7 Loyalty Rewards (full spec) — QUEUED (audit, then build the gaps).
+  E7 Loyalty Rewards (full spec) — audited Nov 4; money / safety bugs fixed first (13093f9), E6 rebuilt (14ae52d).
+  - E1 Gift Cards — FIXED: a refunded sale / reload takes its value back off the card (refused before money moves when spent
+    or moved to a replacement); a paid reload is never dropped in silence; no void with an unpaid reload. OPEN: received-card
+    customer link, adjust / reverse action, branch / pending / frozen tabs, rate limit on every lookup, duplicate App route.
+  - E2 Payment Terminals — FIXED: pairing never takes over a paired terminal; one live terminal per register (pair, reassign,
+    re-enable); capture ignores disabled terminals like Capture Routing. OPEN: activity / phone actions location-scoped, Test
+    Connection permission, processor choice at pairing, phone re-enable, filters, device audit history.
+  - E3 Settlements — FIXED: webhook refund outcome (refunded / failed / pending / cancelled), provider settled_at, failed /
+    returned batches out of the money KPIs. OPEN: "not configured" instead of $0 KPIs, stale-import check, Investigate, cross-type search.
+  - E4 Deposit Recon — FIXED: a missing payout stays Missing with a case open; history reads audit_events; assignee must be this
+    salon's (service + trigger 794). OPEN: the legacy sweep as a second engine, client-sent match basis, grace-day consistency,
+    picker years.
+  - E5 Invoices — FIXED: legacy create refuses another salon's customer; reads join within the salon (trigger 793). OPEN: Paid KPI
+    ignores search / amount, "hidden by filters" message, location scoping (Kevin's decision: salon-wide kept), credit note, delivery.
+  - E6 Expenses — BUILT to the guide (period bar + Custom Range, 4 server KPIs, server filters, numbered pages newest first,
+    one-key Add, Edit, View with every action, filtered export). Not done: browser screenshots at the guide's viewport sizes.
+  - E7 Loyalty — FIXED: the reward code stays on screen after a front-desk redemption. OPEN: Redemptions KPI counts pending codes,
+    ledger Retry, ILIKE escaping, reward eligibility / stock / limits / dates, tier management, member filters.
+- POS suite (Nov 4): every file passes run alone; the 3 files that hung (Serving, Queue, language switch — a stale window.event
+  in jsdom) now finish. API gates: silent-catch, raw-sql, audit-writers, error-text, as-any green (f4ab1c1); api-contract still
+  fails on the 774-route wire-type backlog.
 

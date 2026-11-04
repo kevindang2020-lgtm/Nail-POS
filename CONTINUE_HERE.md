@@ -873,3 +873,13 @@ question for Kevin: Customer Notifications / Email Center read `notifications` s
   files fail (list in docs/GUIDE_QUEUE_2026-11-03.md); slices 3 and 9 stall intermittently.
 - Live IDOR: `DATABASE_URL=postgres://postgres@127.0.0.1:55432/aps node apps/api/scripts/live-phase14-idor.mjs` after
   `npm run build` in apps/api.
+
+## Nov 4 2026 — batch E (7 new payment guides) + POS suite + gates
+- Commits: 852d6cb (POS suite slices green; paged technician pickers), 13093f9 (batch E money / safety fixes), 14ae52d (E6
+  Expenses rebuilt to the guide; the 3 hanging POS test files fixed), f4ab1c1 (API ratchets green again).
+- Per-guide status and what is still open: docs/GUIDE_QUEUE_2026-11-03.md, section "Nov 4 2026 (10:14 / 10:15)".
+- Next: the open items of E1–E5 and E7 (listed there), then batch A/C/D extras, then the 774-route wire-type backlog
+  (check:api-contract is the one API gate still red). Expenses still needs the guide's browser screenshots at 1920×1080,
+  1536×864, 1440×900 and 1366×768.
+- Lesson: in this jsdom setup React's window.event can stay stale between tests and make an effect loop without yielding
+  (the file then hangs with no output). The fixed files clear it per test (clearStaleWindowEvent).
