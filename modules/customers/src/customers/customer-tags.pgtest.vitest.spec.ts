@@ -19,6 +19,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { MIGRATIONS_DIR } from '@aipowersalon/database';
 import { PGlite } from '@electric-sql/pglite';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { Kysely, PostgresAdapter, PostgresIntrospector, PostgresQueryCompiler } from 'kysely';
@@ -60,21 +61,10 @@ let otherCustomerId: string;
 const q = (s: string, p: any[] = []) => pg.query(s, p).then((r: any) => r.rows);
 
 beforeAll(async () => {
-  pg = new PGlite();
-  const dir = MIGRATIONS_DIR;
-  for (const f of readdirSync(dir).filter((x) => x.endsWith('.sql')).sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0))) {
-    const s = readFileSync(join(dir, f), 'utf8').replace(/CREATE\s+EXTENSION[^;]*;/gi, '');
-    if (f.startsWith('381')) await pg.exec(s);           // the new migration is NOT tolerant
-    else try { await pg.exec(s); } catch { /* pg_trgm / btree_gist */ }
-  }
-  const db = new Kysely<any>({
-    dialect: {
-      createAdapter: () => new PostgresAdapter(),
-      createDriver: () => new PgliteDriver(pg) as any,
-      createIntrospector: (d: any) => new PostgresIntrospector(d),
-      createQueryCompiler: () => new PostgresQueryCompiler(),
-    },
-  });
+  // the shared, strict migration runner (this file used to apply every migration itself and swallow failures — a migration that did
+  // not apply here, e.g. 404's gift-card number columns, made the repository's real queries fail and the test read that as "none")
+  pg = await migratedPglite() as unknown as PGlite;
+  const db = kyselyFor(pg as never);
   repo = new KyselyCustomersRepository(db as any);
 
   await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values

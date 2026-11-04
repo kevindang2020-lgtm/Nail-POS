@@ -6,14 +6,17 @@ import { routeBodyFailures, type RouteBodyCase } from '@aipowersalon/testing';
 import { ReferralsController as R } from './pos-referrals/pos-referrals.controller';
 import { ReviewsCenterController as V } from './reviews/reviews-center.controller';
 
-const I = '22222222-2222-4222-8222-222222222222';
 const CASES: RouteBodyCase[] = [
-  { route: 'POST /pos/referrals/record', ctl: R, handler: 'record', today: [{ code: 'MAI10', referredCustomerId: I }], bad: [{ code: ['MAI10'] }, 'code'] },
-  { route: 'POST /pos/referrals/:id/reward', ctl: R, handler: 'reward', today: [{ rewardCents: 1000 }], bad: [{ rewardCents: 1000, status: 'rewarded' }, 'status'] },
   { route: 'POST /pos/reviews-center/reviews/:id/moderate', ctl: V, handler: 'moderate',
     today: [{ action: 'hide', reasonCode: 'spam', reasonText: null, evidence: null, expectedVersion: 0, idempotencyKey: 'k-1' }, { action: 'unhide', reasonCode: null, reasonText: null, evidence: null, expectedVersion: 1, idempotencyKey: 'k-2' }],
     bad: [{ action: 'hide', reasonCode: 'spam', expectedVersion: 0, idempotencyKey: 'k-3', hidden: true }, 'hidden'] },
 ];
+describe('retired referral routes (Referral Program guide, Oct 30): recording goes through /pos/referral-program', () => {
+  it('POST /pos/referrals/record and /:id/reward no longer exist on the controller', () => {
+    expect((R.prototype as any).record).toBeUndefined();
+    expect((R.prototype as any).reward).toBeUndefined();
+  });
+});
 describe('customers (round 2) — validated bodies, route by route', () => {
   for (const c of CASES) it(c.route, () => expect(routeBodyFailures(c, bodyPipeOf as any)).toEqual([]));
 });
