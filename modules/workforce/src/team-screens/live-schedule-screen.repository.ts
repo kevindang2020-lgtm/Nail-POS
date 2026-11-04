@@ -96,7 +96,7 @@ export class LiveScheduleScreenRepository {
       union all select sc.id, sc.technician_id, 'schedule', case when sc.is_working then 'weekly_hours' else 'weekly_off' end, sc.day_of_week::text, to_char(sc.start_time, 'HH24:MI'), to_char(sc.end_time, 'HH24:MI'), '', null, null, null::uuid, coalesce(sc.updated_at, sc.created_at) from technician_schedules sc where sc.tenant_id = ${T}`;
     const w = sql`te.tenant_id = ${T} and ${this.br(ctx)} and ${inPeriod(sql`x.at`, per)} and (${kind} = 'all' or x.kind = ${kind}) and (${tid}::uuid is null or x.technician_id = ${tid})
       and (${raw} = '' or coalesce(te.full_name, '') ilike ${l} or x.action ilike ${l} or coalesce(x.subject, '') ilike ${l} or coalesce(x.new_value, '') ilike ${l})`;
-    const from = sql`from (${ev}) x join technicians te on te.id = x.technician_id and te.tenant_id = ${T} left join users u on u.id = x.actor_id`;
+    const from = sql`from (${ev}) x join technicians te on te.id = x.technician_id and te.tenant_id = ${T} left join users u on u.id = x.actor_id and u.tenant_id = ${T}`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where te.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select x.*, te.full_name, coalesce(nullif(u.full_name, ''), u.email) as actor ${from} where te.tenant_id = ${T} and ${w} order by x.at desc, x.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { period: per, items: rows.map((r: any) => ({ id: String(r.id), technicianId: String(r.technician_id), technician: r.full_name ?? null, kind: String(r.kind), action: String(r.action ?? ''), field: r.field ?? null,

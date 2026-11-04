@@ -115,7 +115,7 @@ export class DealsCenter {
         (select coalesce(nullif(u.full_name, ''), u.email) from users u where u.id = d.approved_by_user_id) as approved_by
       from deals d where d.tenant_id = ${T} and d.id = ${id}`.execute(this.db)).rows[0];
     const approvals = (await sql<any>`select a.id, a.decision, a.reason, a.deal_version, a.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor
-      from deal_approvals a left join users u on u.id = a.approver_user_id where a.tenant_id = ${T} and a.deal_id = ${id} order by a.created_at desc, a.id desc limit 50`.execute(this.db)).rows;
+      from deal_approvals a left join users u on u.id = a.approver_user_id and u.tenant_id = a.tenant_id where a.tenant_id = ${T} and a.deal_id = ${id} order by a.created_at desc, a.id desc limit 50`.execute(this.db)).rows;
     const perf = (await sql<any>`select count(*) filter (where r.status in ('redeemed', 'partially_reversed'))::int as n,
         coalesce(sum(r.amount_discounted_cents) filter (where r.status in ('redeemed', 'partially_reversed', 'reversed')), 0)::bigint as gross,
         coalesce(sum(coalesce(r.reversed_cents, 0)) filter (where r.status in ('redeemed', 'partially_reversed', 'reversed')), 0)::bigint as reversed,

@@ -221,11 +221,11 @@ export class SplitPaymentsScreenRepository {
       left join lateral (select m.id, m.direction from cash_drawer_movements m where m.tenant_id = p.tenant_id and m.source_type = 'payment' and m.source_id = p.id and m.voided_at is null order by m.created_at limit 1) d on true
       where p.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid order by p.created_at, p.id`.execute(this.db)).rows;
     const refunds = (await sql<any>`select r.id, r.payment_id, r.amount_cents, r.reason, r.status, r.processor_refund_id, r.created_at, coalesce(u.full_name, u.email) as actor
-      from payment_refunds r join payments p on p.id = r.payment_id and p.tenant_id = r.tenant_id left join users u on u.id = r.created_by_user_id where r.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid order by r.created_at desc`.execute(this.db)).rows;
+      from payment_refunds r join payments p on p.id = r.payment_id and p.tenant_id = r.tenant_id left join users u on u.id = r.created_by_user_id and u.tenant_id = r.tenant_id where r.tenant_id = ${T} and p.ticket_id = ${ticketId}::uuid order by r.created_at desc`.execute(this.db)).rows;
     const lines = (await sql<any>`select l.id, l.service_name_snapshot as name, l.line_total_cents, l.line_kind, tc.full_name as technician from ticket_service_lines l left join technicians tc on tc.id = l.technician_id and tc.tenant_id = l.tenant_id
       where l.tenant_id = ${T} and l.ticket_id = ${ticketId}::uuid and l.removed_at is null order by l.created_at, l.id`.execute(this.db)).rows;
     const tipAlloc = (await sql<any>`select x.technician_id, x.tip_cents, tc.full_name from ticket_tip_allocations x left join technicians tc on tc.id = x.technician_id and tc.tenant_id = x.tenant_id where x.tenant_id = ${T} and x.ticket_id = ${ticketId}::uuid order by x.tip_cents desc`.execute(this.db)).rows;
-    const auditRows = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor from audit_logs a left join users u on u.id = a.user_id
+    const auditRows = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor from audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.entity_id = ${ticketId} and (a.action_type like '%pay%' or a.action_type like '%refund%' or a.action_type like '%void%' or a.action_type like '%split%') order by a.created_at desc limit 20`.execute(this.db)).rows;
     const state = (st: string) => (CONFIRMED as readonly string[]).includes(st) ? 'confirmed' : (REFUNDS as readonly string[]).includes(st) ? 'reversal' : FAILED.includes(st) ? 'failed' : 'pending';
     return {

@@ -77,7 +77,7 @@ export class PromotionsCenter {
     const dealId = f.dealId && UUID.test(f.dealId) ? f.dealId : null;
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw); const digits = raw.replace(/\D/g, ''); const phoneish = digits.length >= 4 && /^[\d\s()+.-]+$/.test(raw);
     const from = sql`from promotion_eligibility_checks k join deals d on d.id = k.deal_id and d.tenant_id = k.tenant_id left join customers cu on cu.id = k.customer_id and cu.tenant_id = k.tenant_id
-      left join tickets tk on tk.id = k.ticket_id and tk.tenant_id = k.tenant_id left join users u on u.id = k.created_by_user_id`;
+      left join tickets tk on tk.id = k.ticket_id and tk.tenant_id = k.tenant_id left join users u on u.id = k.created_by_user_id and u.tenant_id = k.tenant_id`;
     const w = sql`k.tenant_id = ${T} and ${this.branch(ctx)} and ${vW} and ${this.inP(sql`k.created_at`, per)} and (${dealId}::uuid is null or k.deal_id = ${dealId})
       and (${raw} = '' or coalesce(cu.full_name, '') ilike ${l} or d.title ilike ${l} or (${phoneish} and regexp_replace(coalesce(cu.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'})
         or (${raw.includes('@')} and coalesce(cu.email, '') ilike ${l}) or coalesce(tk.ticket_number::text, '') = ${raw.replace(/^#/, '')}
@@ -162,13 +162,13 @@ export class PromotionsCenter {
   // ── §12 Audit tab ─────────────────────────────────────────────────────────────────────────────────────────────────
   async activity(ctx: DealContext, dealId: string) {
     if (!UUID.test(String(dealId))) throw this.notFound();
-    const d = (await sql<any>`select d.id, d.created_at, d.created_by_user_id, coalesce(nullif(u.full_name, ''), u.email) as creator from deals d left join users u on u.id = d.created_by_user_id
+    const d = (await sql<any>`select d.id, d.created_at, d.created_by_user_id, coalesce(nullif(u.full_name, ''), u.email) as creator from deals d left join users u on u.id = d.created_by_user_id and u.tenant_id = d.tenant_id
       where d.tenant_id = ${ctx.tenantId} and d.id = ${dealId} and d.kind = 'coupon' and ${this.branch(ctx)}`.execute(this.db)).rows[0];
     if (!d) throw this.notFound();
     const rows = (await sql<any>`select a.id, a.created_at, a.action_type, a.role, a.metadata_json, coalesce(nullif(u.full_name, ''), u.email) as actor
-      from audit_logs a left join users u on u.id = a.user_id where a.tenant_id = ${ctx.tenantId} and a.entity_type = 'deal' and a.entity_id = ${dealId}
+      from audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id where a.tenant_id = ${ctx.tenantId} and a.entity_type = 'deal' and a.entity_id = ${dealId}
       order by a.created_at desc, a.id desc limit 100`.execute(this.db)).rows;
-    const origin = (await sql<any>`select x.goal, x.method, x.edited_fields, x.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from coupon_assistant_drafts x left join users u on u.id = x.created_by_user_id
+    const origin = (await sql<any>`select x.goal, x.method, x.edited_fields, x.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from coupon_assistant_drafts x left join users u on u.id = x.created_by_user_id and u.tenant_id = x.tenant_id
       where x.tenant_id = ${ctx.tenantId} and x.deal_id = ${dealId} order by x.created_at, x.id limit 1`.execute(this.db)).rows[0];
     const meta = (m: any) => (m && typeof m === 'object' ? m : {});
     return { dealId, createdAt: iso(d.created_at), createdBy: d.creator ?? null,

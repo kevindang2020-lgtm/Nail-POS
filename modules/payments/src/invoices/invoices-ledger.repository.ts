@@ -203,7 +203,7 @@ export class InvoicesLedgerRepository {
     const T = ctx.tenantId;
     const lines = (await sql<any>`select id, description, quantity, unit_price_cents, line_total_cents, position from invoice_lines where tenant_id = ${T} and invoice_id = ${id}::uuid order by position asc, id asc`.execute(this.db)).rows;
     const payments = (await sql<any>`select ip.id, ip.amount_cents, to_char(ip.paid_on, 'YYYY-MM-DD') as paid_on, ip.method, ip.reference, ip.note, ip.created_at, coalesce(u.full_name, u.email) as recorded_by
-      from invoice_payments ip left join users u on u.id = ip.recorded_by_user_id where ip.tenant_id = ${T} and ip.invoice_id = ${id}::uuid order by ip.created_at asc, ip.id asc`.execute(this.db)).rows;
+      from invoice_payments ip left join users u on u.id = ip.recorded_by_user_id and u.tenant_id = ip.tenant_id where ip.tenant_id = ${T} and ip.invoice_id = ${id}::uuid order by ip.created_at asc, ip.id asc`.execute(this.db)).rows;
     return {
       invoice: this.row(r),
       lines: lines.map((l: any) => ({ id: String(l.id), description: String(l.description), quantity: N(l.quantity), unitPriceCents: N(l.unit_price_cents), lineTotalCents: N(l.line_total_cents), position: N(l.position) })),

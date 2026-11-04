@@ -332,9 +332,9 @@ export class SettlementsScreenRepository {
         coalesce(u.full_name, u.email) as created_by
       from reconciliation_allocations a join bank_deposits d on d.id = a.deposit_id and d.tenant_id = a.tenant_id
       left join bank_accounts b on b.id = d.bank_account_id and b.tenant_id = d.tenant_id
-      left join users u on u.id = a.created_by_user_id
+      left join users u on u.id = a.created_by_user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.settlement_id = ${id}::uuid order by a.created_at desc, a.id desc`.execute(this.db)).rows;
-    const notes = (await sql<any>`select n.id, n.body, n.created_at, n.author_role, coalesce(u.full_name, u.email) as author from reconciliation_notes n left join users u on u.id = n.author_user_id
+    const notes = (await sql<any>`select n.id, n.body, n.created_at, n.author_role, coalesce(u.full_name, u.email) as author from reconciliation_notes n left join users u on u.id = n.author_user_id and u.tenant_id = n.tenant_id
       where n.tenant_id = ${T} and n.target_type = 'settlement' and n.target_id = ${id}::uuid order by n.created_at desc limit 20`.execute(this.db)).rows;
     return {
       settlement: this.settlementRow(row),

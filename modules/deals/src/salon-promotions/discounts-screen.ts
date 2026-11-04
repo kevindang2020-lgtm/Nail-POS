@@ -212,7 +212,7 @@ export class DiscountsScreenRepository {
     const at = sql`coalesce(r.redeemed_at, r.applied_at, r.created_at)`;
     const from = sql`from deal_redemptions r join deals d on d.id = r.deal_id and d.tenant_id = r.tenant_id left join customers cu on cu.id = r.customer_id and cu.tenant_id = r.tenant_id
       left join tickets tk on tk.id = r.ticket_id and tk.tenant_id = r.tenant_id left join deal_coupon_codes cc on cc.id = r.coupon_code_id and cc.tenant_id = r.tenant_id
-      left join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id left join users au on au.id = r.applied_by_user_id left join branches br on br.id = r.branch_id and br.tenant_id = r.tenant_id`;
+      left join technicians te on te.id = r.technician_id and te.tenant_id = r.tenant_id left join users au on au.id = r.applied_by_user_id and au.tenant_id = r.tenant_id left join branches br on br.id = r.branch_id and br.tenant_id = r.tenant_id`;
     // a redemption belongs to the branch where it was USED (a salon-wide deal used at branch B showed on branch A's screen)
     const rb = ctx.branchId && UUID.test(ctx.branchId) ? sql`(r.branch_id = ${ctx.branchId} or r.branch_id is null)` : sql`true`;
     const w = sql`r.tenant_id = ${T} and ${this.kindW()} and ${rb} and ${stW} and ${this.inP(at, per)} and (${dealId}::uuid is null or r.deal_id = ${dealId}) and (${rBranch}::uuid is null or r.branch_id = ${rBranch})
@@ -275,7 +275,7 @@ export class DiscountsScreenRepository {
         (select count(*) from deal_coupon_codes c where c.tenant_id = d.tenant_id and c.deal_id = d.id)::int as codes,
         (select count(*) from deal_coupon_codes c where c.tenant_id = d.tenant_id and c.deal_id = d.id and c.status = 'active' and c.revoked_at is null)::int as active_codes,
         (select count(*) from deal_coupon_codes c where c.tenant_id = d.tenant_id and c.deal_id = d.id and c.customer_id is not null)::int as wallet_codes
-      from deals d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id left join users u on u.id = d.created_by_user_id
+      from deals d left join branches b on b.id = d.branch_id and b.tenant_id = d.tenant_id left join users u on u.id = d.created_by_user_id and u.tenant_id = d.tenant_id
       where d.tenant_id = ${T} and d.id = ${dealId} and ${this.kindW()} and ${this.branch(ctx)}`.execute(this.db)).rows[0];
     if (!r) throw nf();
     const services = (await sql<any>`select s.id, s.name from deal_services ds join services s on s.id = ds.service_id and s.tenant_id = ds.tenant_id where ds.tenant_id = ${T} and ds.deal_id = ${dealId} order by s.name, s.id`.execute(this.db)).rows;
@@ -283,7 +283,7 @@ export class DiscountsScreenRepository {
         count(*) filter (where r.status in ('reversed', 'partially_reversed'))::int as reversed, count(distinct r.customer_id) filter (where ${CONFIRMED})::int as customers,
         coalesce(sum(r.amount_discounted_cents - coalesce(r.reversed_cents, 0)) filter (where ${CONFIRMED}), 0)::bigint as saved, max(r.redeemed_at) as last_at
       from deal_redemptions r where r.tenant_id = ${T} and r.deal_id = ${dealId}`.execute(this.db)).rows[0];
-    const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from deal_versions v left join users u on u.id = v.changed_by_user_id
+    const versions = (await sql<any>`select v.id, v.version, v.terms, v.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor from deal_versions v left join users u on u.id = v.changed_by_user_id and u.tenant_id = v.tenant_id
       where v.tenant_id = ${T} and v.deal_id = ${dealId} order by v.version desc, v.created_at desc limit 20`.execute(this.db)).rows;
     const rules = r.rules && typeof r.rules === 'object' ? r.rules : null;
     const ruleCount = rules ? JSON.stringify(rules).split('"type"').length - 1 : 0;

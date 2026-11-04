@@ -148,7 +148,7 @@ export class TechAppointmentsScreenRepository {
     const w = sql`h.tenant_id = ${T} and ${inPeriod(sql`h.created_at`, per)} and (${kind} = 'all' or h.change_type ilike ${'%' + kind.replace(/ed$/, '') + '%'})
       and (${raw} = '' or h.change_type ilike ${l} or coalesce(h.field, '') ilike ${l} or coalesce(a.customer_name, '') ilike ${l} or coalesce(te.full_name, '') ilike ${l} or coalesce(u.full_name, '') ilike ${l})`;
     const from = sql`from appointment_change_log h left join pos_tech_appointments a on a.id = h.appointment_id and a.tenant_id = h.tenant_id left join technicians te on te.id = a.technician_id and te.tenant_id = a.tenant_id
-      left join users u on u.id = h.actor_id`;
+      left join users u on u.id = h.actor_id and u.tenant_id = h.tenant_id`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where h.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select h.id, h.appointment_id, h.change_type, h.field, h.old_value, h.new_value, h.actor_type, h.source, h.created_at, a.customer_name, a.appt_date, a.start_time, te.full_name as tech, coalesce(nullif(u.full_name, ''), u.email) as actor
       ${from} where h.tenant_id = ${T} and ${w} order by h.created_at desc, h.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;

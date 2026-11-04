@@ -90,7 +90,7 @@ export class TechQueueScreenRepository {
       where q.tenant_id = ${T} and q.id = ${id} and ${this.br(ctx)}`.execute(this.db)).rows[0];
     if (!r) throw err(404, 'TICKET_NOT_FOUND', 'That ticket is not in this salon.');
     const hist = r.queue_item_id ? (await sql<any>`select h.id, h.from_status, h.to_status, h.action, h.source, h.reason, h.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor, ft.full_name as from_tech, tt.full_name as to_tech
-      from pos_queue_status_history h left join users u on u.id = h.actor_id left join technicians ft on ft.id = h.from_technician and ft.tenant_id = h.tenant_id left join technicians tt on tt.id = h.to_technician and tt.tenant_id = h.tenant_id
+      from pos_queue_status_history h left join users u on u.id = h.actor_id and u.tenant_id = h.tenant_id left join technicians ft on ft.id = h.from_technician and ft.tenant_id = h.tenant_id left join technicians tt on tt.id = h.to_technician and tt.tenant_id = h.tenant_id
       where h.tenant_id = ${T} and h.queue_item_id = ${r.queue_item_id} order by h.created_at desc, h.id desc limit 50`.execute(this.db)).rows : [];
     const own = [['created', r.created_at], ['assigned', r.assigned_at], ['accepted', r.accepted_at], ['started', r.started_at], ['technician_notified', r.technician_notified_at], ['customer_notified', r.customer_notified_at],
       ...(TQ_CLOSED.includes(String(r.status)) ? [[String(r.status), r.updated_at]] : []), ...(r.paid_at ? [['paid', r.paid_at]] : [])].filter(([, at]) => !!at)

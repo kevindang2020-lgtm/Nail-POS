@@ -232,7 +232,7 @@ export class TechniciansScreenRepository {
       union all select e.id, e.technician_id, e.event_type, coalesce(e.from_value, '') || case when e.to_value is not null then ' → ' || e.to_value else '' end || case when e.reason is not null then ' · ' || e.reason else '' end, e.actor_user_id, e.occurred_at, 'employment' from technician_employment_events e where e.tenant_id = ${T}`;
     const w = sql`(${tid}::uuid is null or x.technician_id = ${tid}) and ${inPeriod(sql`x.at`, per)} and te.tenant_id = ${T} and ${this.br(ctx)}
       and (${raw} = '' or x.kind ilike ${l} or coalesce(x.detail, '') ilike ${l} or coalesce(te.full_name, '') ilike ${l})`;
-    const from = sql`from (${events}) x join technicians te on te.id = x.technician_id and te.tenant_id = ${T} left join users u on u.id = x.actor_id`;
+    const from = sql`from (${events}) x join technicians te on te.id = x.technician_id and te.tenant_id = ${T} left join users u on u.id = x.actor_id and u.tenant_id = ${T}`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where te.tenant_id = ${T} and ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select x.id, x.technician_id, x.kind, x.detail, x.at, x.source, te.full_name, coalesce(nullif(u.full_name, ''), u.email) as actor ${from} where te.tenant_id = ${T} and ${w} order by x.at desc, x.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     return { period: per, items: rows.map((r: any) => ({ id: String(r.id), technicianId: String(r.technician_id), technician: r.full_name ?? null, kind: String(r.kind ?? ''), detail: r.detail ? String(r.detail).slice(0, 300) : null,

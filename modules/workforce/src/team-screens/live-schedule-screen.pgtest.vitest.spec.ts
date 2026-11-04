@@ -20,7 +20,7 @@ beforeAll(async () => {
   const r = (await q(`select to_char((now() at time zone 'America/New_York')::date, 'YYYY-MM-DD') as d, extract(dow from (now() at time zone 'America/New_York')::date)::int as w`)).rows[0]; today = r.d; dow = r.w;
   for (const [tid, n, tenant, br, ph] of [[VISHAL, 'Vishal verma', T, B, '+18565550001'], [KEVIN, 'Kevin Dang', T, B, '+18565550002'], [CD, 'CD T6805', T, B, '+18565550003'], [OTHER, 'Vishal Other', T2, BX, '+18565550001']])
     await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active, role_label, phone_display) values ($1,$2,$3,$4,'x',$4,'active',true,'Technician',$5)`, [tid, tenant, br, n, ph]);
-  await q(`insert into users (id, email, full_name, role, status) values ($1, 'owner@pilot.test', 'Owner One', 'OWNER', 'active')`, [U]);
+  await q(`insert into users (id, tenant_id, email, full_name, role, status) values ($1, $2, 'owner@pilot.test', 'Owner One', 'OWNER', 'active')`, [U, T]);
   await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1,$2,$3,'Nails')`, [id('d9'), T, B]);
   await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values ($1,$2,$3,$4,'Gel Manicure',45,5500,'active')`, [GEL, T, B, id('d9')]);
   await q(`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values ($1,$2,$3,$4)`, [T, B, VISHAL, GEL]);

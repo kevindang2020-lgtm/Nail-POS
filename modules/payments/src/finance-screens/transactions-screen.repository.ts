@@ -203,7 +203,7 @@ export class TransactionsScreenRepository {
     const settlement = r.settlement_batch_id ? (await sql<any>`select s.id, s.settlement_id, s.processor_type, s.status, s.settled_at, s.gross_cents, s.net_cents, s.expected_deposit_date, s.actual_deposit_date, s.reconciliation_status
         from payment_settlements s where s.tenant_id = ${ctx.tenantId} and s.id = ${r.settlement_batch_id}::uuid`.execute(this.db)).rows[0] ?? null : null;
     const refunds = (await sql<any>`select r.id, r.amount_cents, r.reason, r.status, r.processor_refund_id, r.created_at, r.settled_at, coalesce(u.full_name, u.email) as actor
-        from payment_refunds r left join users u on u.id = r.created_by_user_id where r.tenant_id = ${ctx.tenantId} and r.payment_id = ${paymentId}::uuid order by r.created_at desc, r.id desc`.execute(this.db)).rows;
+        from payment_refunds r left join users u on u.id = r.created_by_user_id and u.tenant_id = r.tenant_id where r.tenant_id = ${ctx.tenantId} and r.payment_id = ${paymentId}::uuid order by r.created_at desc, r.id desc`.execute(this.db)).rows;
     const can = (p: string) => hasPermission(ctx as Parameters<typeof hasPermission>[0], p);
     return {
       tender: { ...tender, surchargeCents: N(r.surcharge_cents), refundableCents: tender.counted ? Math.max(0, tender.grossCents - tender.refundedCents - tender.refundPendingCents) : 0 },

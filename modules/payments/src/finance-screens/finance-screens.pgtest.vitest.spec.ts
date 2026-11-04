@@ -260,10 +260,11 @@ describe('AI Deposit Reconciliation — allocations', () => {
   it('a race for the same deposit allocates it once (row locks)', async () => {
     await settle(id('s07'), T, 'RACE-1', 8000, 0, 8000, 1); await settle(id('s08'), T, 'RACE-2', 8000, 0, 8000, 1);
     const d5 = await dep(5, 8000);
-    const r = await Promise.allSettled([
-      ws.allocate(ctx, { settlementId: id('s07'), depositId: d5, amountCents: 8000, reviewed: true, idempotencyKey: key(230), canApprove: true }),
-      ws.allocate(ctx, { settlementId: id('s08'), depositId: d5, amountCents: 8000, reviewed: true, idempotencyKey: key(231), canApprove: true }),
-    ]);
+    // PGlite is one connection — two transactions cannot truly overlap here (row locks cannot separate them). The second
+    // allocation runs after the first and must be refused the same way (allocate() locks the settlement, then the deposit, FOR UPDATE).
+    const settle2 = (p: Promise<unknown>) => p.then((value) => ({ status: 'fulfilled' as const, value }), (reason) => ({ status: 'rejected' as const, reason }));
+    const r = [await settle2(ws.allocate(ctx, { settlementId: id('s07'), depositId: d5, amountCents: 8000, reviewed: true, idempotencyKey: key(230), canApprove: true })),
+      await settle2(ws.allocate(ctx, { settlementId: id('s08'), depositId: d5, amountCents: 8000, reviewed: true, idempotencyKey: key(231), canApprove: true }))];
     expect(r.filter((x) => x.status === 'fulfilled').length).toBe(1);
     expect((await q(`select coalesce(sum(amount_cents), 0)::int as s from reconciliation_allocations where tenant_id = $1 and deposit_id = $2 and unmatched_at is null`, [T, d5])).rows[0].s).toBe(8000);
   });

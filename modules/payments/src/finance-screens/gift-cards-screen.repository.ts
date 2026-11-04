@@ -252,7 +252,7 @@ export class GiftCardsScreenRepository {
           (t.type = 'hold' and not exists (select 1 from gift_card_transactions c where c.tenant_id = t.tenant_id and c.idempotency_key = 'reload:' || t.id::text)) as pending,
           (select a.reason from gift_card_adjustments a where a.tenant_id = t.tenant_id and a.ledger_entry_id = t.id limit 1) as reason
         from gift_card_transactions t
-        left join users u on u.id = t.created_by_user_id
+        left join users u on u.id = t.created_by_user_id and u.tenant_id = t.tenant_id
         left join tickets tk on tk.id = t.ticket_id and tk.tenant_id = t.tenant_id
         left join branches b on b.id = t.branch_id and b.tenant_id = t.tenant_id
         where t.tenant_id = ${T} and t.gift_card_id = ${id}::uuid and ${per}

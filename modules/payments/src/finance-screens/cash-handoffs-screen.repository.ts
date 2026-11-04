@@ -63,7 +63,7 @@ export class CashHandoffsScreenRepository {
           created_at, updated_at, version, denominations_json, resolution_reason, resolved_by_user_id, resolved_at, drawer_transfer_cents from tech_cash_handoffs where tenant_id = ${T}) h on h.technician_id = e.technician_id and h.business_date = e.bd
       left join technicians tc on tc.id = coalesce(h.technician_id, e.technician_id) and tc.tenant_id = ${T}
       left join branches b on b.id = coalesce(h.branch_id, e.branch_id) and b.tenant_id = ${T}
-      left join users cu on cu.id = h.reconciled_by_user_id left join users ru on ru.id = h.resolved_by_user_id left join users su on su.id = h.submitted_by_user_id`;
+      left join users cu on cu.id = h.reconciled_by_user_id and cu.tenant_id = h.tenant_id left join users ru on ru.id = h.resolved_by_user_id and ru.tenant_id = h.tenant_id left join users su on su.id = h.submitted_by_user_id and su.tenant_id = h.tenant_id`;
   }
   private static readonly DIFF = sql`(case when a.counted_cents is null then null else a.counted_cents - a.expected_cents end)`;
   /** the screen's state: awaiting (open / submitted), balanced, resolved (reconciled after a review), under review (short / over), cancelled */
@@ -173,12 +173,12 @@ export class CashHandoffsScreenRepository {
     const canContact = hasPermission(ctx as Parameters<typeof hasPermission>[0], 'pos.customers.view');
     const lines = (await sql<any>`select c.id, c.ticket_id, c.amount_cents, c.confirmed_at, c.notes, t.ticket_number, t.status as ticket_status, t.total_cents as ticket_total_cents, cx.full_name as customer_name, cx.normalized_phone as customer_phone, cx.id as customer_id, u.full_name as confirmed_by,
         (select count(*)::int from payments p where p.tenant_id = c.tenant_id and p.ticket_id = c.ticket_id and p.status not in ('refunded', 'refund', 'voided', 'void', 'reversed', 'declined', 'failed')) as tenders
-      from cash_payment_confirmations c join tickets t on t.id = c.ticket_id and t.tenant_id = c.tenant_id left join customers cx on cx.id = coalesce(c.customer_id, t.customer_id) and cx.tenant_id = c.tenant_id left join users u on u.id = c.confirmed_by_user_id
+      from cash_payment_confirmations c join tickets t on t.id = c.ticket_id and t.tenant_id = c.tenant_id left join customers cx on cx.id = coalesce(c.customer_id, t.customer_id) and cx.tenant_id = c.tenant_id left join users u on u.id = c.confirmed_by_user_id and u.tenant_id = c.tenant_id
       where c.tenant_id = ${T} and c.status = 'confirmed' and c.technician_id = ${technicianId}::uuid and (c.confirmed_at at time zone ${tz})::date = ${businessDate}::date order by c.confirmed_at, c.id`.execute(this.db)).rows;
     const events = (await sql<any>`select e.id, e.event_type, e.amount_cents, e.expected_cents, e.counted_total_cents, e.variance_cents, e.denominations_json, e.reason, e.drawer_movement_id, e.idempotency_key, e.created_at, coalesce(u.full_name, u.email) as actor
-      from tech_cash_handoff_events e left join users u on u.id = e.actor_user_id where e.tenant_id = ${T} and e.technician_id = ${technicianId}::uuid and e.business_date = ${businessDate}::date order by e.created_at desc, e.id desc`.execute(this.db)).rows;
+      from tech_cash_handoff_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.technician_id = ${technicianId}::uuid and e.business_date = ${businessDate}::date order by e.created_at desc, e.id desc`.execute(this.db)).rows;
     const movements = r.handoff_id ? (await sql<any>`select m.id, m.direction, m.amount_cents, m.register_id, m.created_at, m.voided_at, to_char(m.business_date, 'YYYY-MM-DD') as business_date from cash_drawer_movements m where m.tenant_id = ${T} and m.source_type = 'tech_cash_handoff' and m.source_id = ${String(r.handoff_id)}::uuid order by m.created_at desc`.execute(this.db)).rows : [];
-    const auditRows = (await sql<any>`select a.action, a.created_at, a.role, a.metadata, coalesce(u.full_name, u.email) as actor from owner_audit_log a left join users u on u.id = a.user_id
+    const auditRows = (await sql<any>`select a.action, a.created_at, a.role, a.metadata, coalesce(u.full_name, u.email) as actor from owner_audit_log a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.entity_type = 'tech_cash_handoff' and a.entity_id = ${technicianId} and a.metadata->>'businessDate' = ${businessDate} order by a.created_at desc limit 50`.execute(this.db)).rows;
     return {
       unit, denominations: Array.isArray(r.denominations_json) ? r.denominations_json : (r.denominations_json ? JSON.parse(String(r.denominations_json)) : null),

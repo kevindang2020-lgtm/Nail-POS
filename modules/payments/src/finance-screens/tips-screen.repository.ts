@@ -252,7 +252,7 @@ export class TipsScreenRepository {
     const adj = (await sql<any>`select j.id, j.technician_id, tc.full_name as tech_name, j.amount_cents, j.reason, j.status, j.source, j.created_at, j.refund_payment_id, coalesce(u.full_name, u.email) as actor
       from compensation_adjustments j left join technicians tc on tc.id = j.technician_id and tc.tenant_id = j.tenant_id left join users u on u.id = coalesce(j.approved_by, j.requested_by)
       where j.tenant_id = ${T} and j.ticket_id = ${ticketId}::uuid and j.category = 'tip_correction' order by j.created_at desc, j.id desc`.execute(this.db)).rows;
-    const auditRows = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor, a.metadata_json from audit_logs a left join users u on u.id = a.user_id
+    const auditRows = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor, a.metadata_json from audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.entity_id = ${ticketId} and (a.action_type like '%tip%' or a.action_type like '%refund%' or a.action_type like '%void%') order by a.created_at desc limit 20`.execute(this.db)).rows;
     const snapBy = new Map<string, any>(snaps.map((s: any) => [String(s.technician_id ?? ''), s]));
     const corrBy = new Map<string, { manual: number; reversed: number }>();

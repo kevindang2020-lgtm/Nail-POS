@@ -145,7 +145,7 @@ export class TerminalsScreenRepository {
     if (!t) throw new FinanceError('That terminal could not be found.', 'TERMINAL_NOT_FOUND', 404);
     const T = String(ctx.tenantId);
     const history = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor, a.after_json, a.metadata
-        from settings_audit_logs a left join users u on u.id = a.user_id
+        from settings_audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
         where a.tenant_id::text = ${T} and a.entity_id = ${id} order by a.created_at desc limit 25`.execute(this.db)).rows
       .map((r: any) => ({ action: String(r.action_type), at: iso(r.created_at), role: r.role ?? null, actor: r.actor ?? null }));
     const payments = (await sql<any>`select p.id, p.amount_cents, p.status, p.created_at, t.ticket_number from payments p
@@ -214,7 +214,7 @@ export class TerminalsScreenRepository {
     const d = (await this.phoneInventory(ctx)).find((x) => x.deviceId === deviceId);
     if (!d) throw new FinanceError('That device could not be found.', 'DEVICE_NOT_FOUND', 404);
     const T = ctx.tenantId;
-    const history = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor from audit_logs a left join users u on u.id = a.user_id
+    const history = (await sql<any>`select a.action_type, a.created_at, a.role, coalesce(u.full_name, u.email) as actor from audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
         where a.tenant_id = ${T} and a.entity_id = ${deviceId} order by a.created_at desc limit 25`.execute(this.db)).rows
       .map((r: any) => ({ action: String(r.action_type), at: iso(r.created_at), role: r.role ?? null, actor: r.actor ?? null }));
     const payments = (await sql<any>`select p.id, p.amount_cents, p.status, p.created_at, t.ticket_number from payments p join tickets t on t.id = p.ticket_id and t.tenant_id = p.tenant_id
@@ -311,7 +311,7 @@ export class TerminalsScreenRepository {
     const j = row?.settings_json && typeof row.settings_json === 'object' ? row.settings_json : {};
     const mode: 'front_desk' | 'terminal' = j.customerDisplayCaptureMode === 'terminal' ? 'terminal' : 'front_desk';
     const last = (await sql<any>`select a.created_at, a.role, coalesce(u.full_name, u.email) as actor, a.before_json->>'customerDisplayCaptureMode' as before_mode, a.after_json->>'customerDisplayCaptureMode' as after_mode
-        from settings_audit_logs a left join users u on u.id = a.user_id
+        from settings_audit_logs a left join users u on u.id = a.user_id and u.tenant_id = a.tenant_id
         where a.tenant_id = ${T} and a.entity_id = 'payments-checkout'
           and coalesce(a.before_json->>'customerDisplayCaptureMode', 'front_desk') is distinct from coalesce(a.after_json->>'customerDisplayCaptureMode', 'front_desk')
         order by a.created_at desc limit 1`.execute(this.db)).rows[0];

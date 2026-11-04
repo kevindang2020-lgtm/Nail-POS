@@ -243,7 +243,7 @@ export class ReconWorkspaceRepository {
       join payment_settlements s on s.id = a.settlement_id and s.tenant_id = a.tenant_id
       join bank_deposits d on d.id = a.deposit_id and d.tenant_id = a.tenant_id
       left join bank_accounts b on b.id = d.bank_account_id and b.tenant_id = d.tenant_id
-      left join users u on u.id = a.created_by_user_id left join users u2 on u2.id = a.unmatched_by_user_id
+      left join users u on u.id = a.created_by_user_id and u.tenant_id = a.tenant_id left join users u2 on u2.id = a.unmatched_by_user_id and u2.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and ${cond} order by a.created_at desc, a.id desc limit 50`.execute(this.db)).rows;
     return rows.map((a: any) => ({
       id: String(a.id), settlementId: String(a.settlement_id), settlementRef: a.settlement_ref ?? null, processor: a.processor_type ?? null, depositId: String(a.deposit_id),
@@ -253,7 +253,7 @@ export class ReconWorkspaceRepository {
     }));
   }
   private async notesOf(ctx: FinanceCtx, type: 'settlement' | 'deposit' | 'exception', id: string) {
-    const rows = (await sql<any>`select n.id, n.body, n.created_at, n.author_role, coalesce(u.full_name, u.email) as author from reconciliation_notes n left join users u on u.id = n.author_user_id
+    const rows = (await sql<any>`select n.id, n.body, n.created_at, n.author_role, coalesce(u.full_name, u.email) as author from reconciliation_notes n left join users u on u.id = n.author_user_id and u.tenant_id = n.tenant_id
       where n.tenant_id = ${ctx.tenantId} and n.target_type = ${type} and n.target_id = ${id}::uuid order by n.created_at desc, n.id desc limit 30`.execute(this.db)).rows;
     return rows.map((n: any) => ({ id: String(n.id), body: String(n.body), createdAt: iso(n.created_at), author: n.author ?? null, authorRole: n.author_role ?? null }));
   }
@@ -278,7 +278,7 @@ export class ReconWorkspaceRepository {
                             and strpos(d.reference_normalized, regexp_replace(upper(s.settlement_id), '[^A-Z0-9]', '', 'g')) > 0))) as candidates_n
         from bank_deposits d left join dal on dal.deposit_id = d.id
         left join bank_accounts b on b.id = d.bank_account_id and b.tenant_id = d.tenant_id
-        left join users u on u.id = d.created_by_user_id
+        left join users u on u.id = d.created_by_user_id and u.tenant_id = d.tenant_id
         where d.tenant_id = ${T})`;
   }
   private depositRow(r: any) {
@@ -569,7 +569,7 @@ export class ReconWorkspaceRepository {
       left join payment_settlements s on s.tenant_id = e.tenant_id and s.id::text = coalesce(nullif(split_part(e.source_ref, ':', 2), ''), e.source_ref)
       left join bank_deposits d on d.tenant_id = e.tenant_id and d.id::text = coalesce(nullif(split_part(e.source_ref, ':', 2), ''), e.source_ref)
       left join bank_accounts b on b.tenant_id = d.tenant_id and b.id = d.bank_account_id
-      left join users u on u.id = e.assigned_to_user_id
+      left join users u on u.id = e.assigned_to_user_id and u.tenant_id = e.tenant_id
       where ${sql.join(parts, sql` and `)}`;
     const k = (await sql<any>`select count(*)::int as n, count(*) filter (where e.status = 'open' or e.status = 'reopened')::int as open_n, count(*) filter (where e.status = 'in_review')::int as review_n,
         count(*) filter (where e.status = 'escalated')::int as esc_n, count(*) filter (where e.status = 'resolved')::int as resolved_n,
@@ -591,7 +591,7 @@ export class ReconWorkspaceRepository {
   }
   async exceptionDetail(ctx: FinanceCtx, id: string) {
     if (!isUuid(id)) return null;
-    const e = (await sql<any>`select e.id, e.kind, e.severity, e.title, e.detail, e.amount_cents, e.status, e.source_ref, e.resolution_note, e.resolved_at, e.created_at, coalesce(u.full_name, u.email) as reviewer from reconciliation_exceptions e left join users u on u.id = e.assigned_to_user_id
+    const e = (await sql<any>`select e.id, e.kind, e.severity, e.title, e.detail, e.amount_cents, e.status, e.source_ref, e.resolution_note, e.resolved_at, e.created_at, coalesce(u.full_name, u.email) as reviewer from reconciliation_exceptions e left join users u on u.id = e.assigned_to_user_id and u.tenant_id = e.tenant_id
       where e.tenant_id = ${ctx.tenantId} and e.id = ${id}::uuid`.execute(this.db)).rows[0];
     if (!e) return null;
     const audits = (await sql<any>`select action_type as action, created_at, role as actor_role from audit_logs where tenant_id = ${ctx.tenantId} and entity_id = ${id} order by created_at desc limit 20`.execute(this.db)).rows;
