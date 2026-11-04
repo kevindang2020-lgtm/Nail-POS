@@ -63,9 +63,20 @@ export function computeUpsellCapturePercent(ticketsWithAddOn: number, paidTicket
   if (!(paidTickets > 0)) return 0;
   return Math.round((Math.max(0, ticketsWithAddOn) / paidTickets) * 100);
 }
+/** D2 Services (Nov 4 2026): the part of the discounted subtotal that is taxed. A line marked not taxable (its service's
+ *  setting, copied onto the line when it was rung up) is left out; the ticket discount is shared across lines by price.
+ *  When every line is taxable this is EXACTLY the discounted subtotal — the number every ticket was taxed on before. */
+export function taxableSubtotal(lines: { priceCents: Money; taxable?: boolean }[], discountCents: Money): Money {
+  const gross = lines.reduce((a, l) => a + l.priceCents, 0);
+  const eff = Math.max(0, gross - (discountCents || 0));
+  const taxGross = lines.reduce((a, l) => a + (l.taxable === false ? 0 : l.priceCents), 0);
+  if (taxGross === gross) return eff;
+  if (gross <= 0) return 0;
+  return Math.round((eff * taxGross) / gross);
+}
 // totals per chosen payment method — card carries surcharge, cash/gift do not (reuses computeTotals)
-export function totalsForMethod(subtotalCents: Money, tipCents: Money, settings: CheckoutSettings, method: PaymentMethod, giftCardChargeCents: Money = 0): CheckoutTotals {
-  const t = computeTotals(subtotalCents, tipCents, settings, method, giftCardChargeCents);
+export function totalsForMethod(subtotalCents: Money, tipCents: Money, settings: CheckoutSettings, method: PaymentMethod, giftCardChargeCents: Money = 0, taxableCents?: Money): CheckoutTotals {
+  const t = computeTotals(subtotalCents, tipCents, settings, method, giftCardChargeCents, taxableCents);
   t.paymentMethod = method;
   return t;
 }

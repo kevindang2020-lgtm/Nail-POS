@@ -18,7 +18,7 @@ import {
 import {
   POSCheckoutFullState, POSCheckoutTicketRow, POSCheckoutKpisFull, buildCheckoutAnalytics, POSCheckoutPaymentSettingsFull, CheckoutKpis,
   POSCustomerDisplayDevice, POSCustomerDisplaySession, PaymentRecord, CheckoutFilters, TicketStatus, FiservStatus,
-  CheckoutTicketDetail, totalsForMethod, subtotalFromLines, GiftCard, GiftCardDetail, IssueGiftCardRequest, CheckoutInProgressError, DisplayBusyError, type OpenDisplaySession } from './checkout.dto';
+  CheckoutTicketDetail, totalsForMethod, subtotalFromLines, taxableSubtotal, GiftCard, GiftCardDetail, IssueGiftCardRequest, CheckoutInProgressError, DisplayBusyError, type OpenDisplaySession } from './checkout.dto';
 import { clampPageSize, clampPage, withCode } from '@aipowersalon/api-contracts';
 import { generateCardNumber, lastFour, maskFromLast4 } from '@aipowersalon/gift-cards';
 import type { CustomerDisplayCheckout } from '@aipowersalon/api-contracts/customer';
@@ -40,6 +40,8 @@ export interface ServiceLine {
   /** line_kind (service / add_on / retail / upgrade), the quantity, the catalog unit price and the product, when known —
    *  the customer display shows add-ons, products, quantities and original-vs-charged prices from them (23-inch spec §32). */
   kind?: string; quantity?: number; catalogCents?: Money; productId?: string | null;
+  /** D2 Services (Nov 4 2026): false = this line is not taxed (its service's setting, copied when it was rung up) */
+  taxable?: boolean;
 }
 export interface Ticket {
   ticketId: string; ticketNumber: string; customerId: string; customerName: string; customerInitials: string; customerPhone?: string;
@@ -289,6 +291,8 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
   }
   private coreSettings(): CheckoutSettings { return DEFAULT_CHECKOUT_SETTINGS; }
   private effSubtotal(t: Ticket) { return Math.max(0, subtotalFromLines(t.lines) - t.discountCents); }
+  /** the taxed part of the discounted subtotal (a line marked not taxable is left out) */
+  private effTaxable(t: Ticket) { return taxableSubtotal(t.lines, t.discountCents); }
   // Mirror of the kysely helper: pending gift-card sale + reload value on this ticket (stable across activation).
   private giftCardChargeFor(ctx: CheckoutContext, ticketId: string): number {
     const sale = this._pendingSales.filter((p) => p.tenantId === ctx.tenantId && p.ticketId === ticketId).reduce((a, p) => a + p.amountCents, 0);
@@ -297,11 +301,11 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
   }
   async totalsFor(ctx: CheckoutContext, id: string, method?: PaymentMethod) {
     const t = this._ticket(ctx, id); if (!t) return null;
-    return totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), method || t.method, this.giftCardChargeFor(ctx, id));
+    return totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), method || t.method, this.giftCardChargeFor(ctx, id), this.effTaxable(t));
   }
 
   private toRow(ctx: CheckoutContext, t: Ticket): POSCheckoutTicketRow {
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method, undefined, this.effTaxable(t));
     return {
       ticketId: t.ticketId, ticketNumber: t.ticketNumber, tenantId: ctx.tenantId, branchId: ctx.branchId, customerId: t.customerId, customerName: t.customerName,
       customerPhone: t.customerPhone, isVip: t.isVip, station: t.station, serviceCount: t.lines.length, completedAt: t.finishedAt, finishedAt: t.finishedAt,
@@ -326,7 +330,7 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
     const isToday = (iso: string) => iso.slice(0, 10) === new Date().toISOString().slice(0, 10);
     const unpaid = all.filter((t) => t.status !== 'paid' && t.status !== 'failed' && t.status !== 'on_hold');   // a held ticket waits aside (Oct 6 2026)
     const paidToday = pays.filter((p) => p.status === 'approved' && isToday(p.createdAt));
-    const readyTotals = unpaid.map((t) => totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method));
+    const readyTotals = unpaid.map((t) => totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method, undefined, this.effTaxable(t)));
 
     // Surcharge + tax collected today, method-agnostic (same rule as the Kysely path): charged total per paid ticket
     // minus its base (subtotal + tip + tax) is the surcharge added — straight card includes it, cash/gift = 0, and a
@@ -338,7 +342,7 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
     let surchargeCollectedCents = 0, taxCollectedCents = 0;
     for (const [tid, charged] of chargedByTicket) {
       const t = ticketById.get(tid); if (!t) continue;
-      const sub = this.effSubtotal(t); const tax = taxCents(sub, taxRate); const base = sub + t.tipCents + tax;
+      const sub = this.effSubtotal(t); const tax = taxCents(this.effTaxable(t), taxRate); const base = sub + t.tipCents + tax;
       surchargeCollectedCents += Math.max(0, charged - base);
       taxCollectedCents += tax;
     }
@@ -395,7 +399,7 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
 
   async detail(ctx: CheckoutContext, id: string) {
     const t = this._ticket(ctx, id); if (!t) return null;
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method, undefined, this.effTaxable(t));
     return {
       ticketId: t.ticketId, ticketNumber: t.ticketNumber,
       customer: { customerId: t.customerId, fullName: t.customerName, initials: t.customerInitials, phone: t.customerPhone, email: t.customerEmail, isVip: t.isVip, loyaltyTier: t.loyaltyTier },
@@ -592,7 +596,7 @@ export class InMemoryCheckoutRepository implements CheckoutRepositoryPort {
   async paymentsForTicket(ctx: CheckoutContext, ticketId: string) { return this.P(ctx).filter((p) => p.ticketId === ticketId).map((p) => ({ ...p })); }
   async customerDisplayCheckout(ctx: CheckoutContext, ticketId: string): Promise<CustomerDisplayCheckout | null> {
     const t = this._ticket(ctx, ticketId); if (!t) return null;
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method, this.giftCardChargeFor(ctx, ticketId));
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, this.coreSettings(), t.method, this.giftCardChargeFor(ctx, ticketId), this.effTaxable(t));
     return buildCustomerDisplayCheckout({
       ticketNumber: t.ticketNumber, createdAt: t.createdAt, ticketStatus: t.status, lines: t.lines, discountCents: t.discountCents,
       discountSnapshot: t.discountSnapshot ?? null, totals, surchargeLabel: this.coreSettings().surchargeLabel,

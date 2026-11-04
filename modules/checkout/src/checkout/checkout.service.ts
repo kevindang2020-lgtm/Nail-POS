@@ -1473,7 +1473,7 @@ export class CheckoutService {
     const out = new Map<string, { netCents: number; taxCents: number; paidCents: number }>();
     for (const l of tk?.lines || []) {
       const net = lineNetCents(tk?.discountSnapshot, l.serviceLineId, l.priceCents);
-      const tax = taxCents(net, rate);
+      const tax = l.taxable === false ? 0 : taxCents(net, rate);   // D2 Services (Nov 4 2026): a line that was not taxed refunds no tax
       out.set(l.serviceLineId, { netCents: net, taxCents: tax, paidCents: net + tax });
     }
     return out;

@@ -198,7 +198,7 @@ export class CatalogScreensRepository {
         min(s.price_cents) filter (where s.status = 'active' and s.price_cents > 0) as lo, max(s.price_cents) filter (where s.status = 'active' and s.price_cents > 0) as hi ${from} where ${w}`.execute(this.db)).rows[0];
     const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select s.id, s.name, s.description, s.category_id, c.name as category_name, c.status as category_status, s.price_cents, s.duration_minutes, s.commission_type, s.commission_value,
-        s.online_booking_enabled, s.ai_booking_enabled, s.status, s.branch_id, b.name as branch_name, s.created_at, s.updated_at, ${s0.via} as matched_via,
+        s.online_booking_enabled, s.ai_booking_enabled, s.is_taxable, s.status, s.branch_id, b.name as branch_name, s.created_at, s.updated_at, ${s0.via} as matched_via,
         (select count(*) from service_add_ons ao where ao.tenant_id = s.tenant_id and ao.service_id = s.id and ao.is_active)::int as add_ons,
         (select count(*) from technician_services ts join technicians te on te.id = ts.technician_id and te.tenant_id = ts.tenant_id
           where ts.tenant_id = s.tenant_id and ts.service_id = s.id and coalesce(te.is_active, true) and te.archived_at is null)::int as qualified,
@@ -212,7 +212,7 @@ export class CatalogScreensRepository {
   private serviceRow(r: any) {
     return { serviceId: String(r.id), name: String(r.name), description: r.description ?? null, categoryId: r.category_id ? String(r.category_id) : null, categoryName: r.category_name ?? null,
       categoryArchived: r.category_status === 'archived', isAddOnService: isAddOnCategory(r.category_name ?? ''), priceCents: N(r.price_cents), durationMinutes: N(r.duration_minutes),
-      commissionType: r.commission_type ?? null, commissionValue: r.commission_value == null ? null : Number(r.commission_value), onlineBookable: !!r.online_booking_enabled, aiBookable: !!r.ai_booking_enabled,
+      commissionType: r.commission_type ?? null, commissionValue: r.commission_value == null ? null : Number(r.commission_value), onlineBookable: !!r.online_booking_enabled, aiBookable: !!r.ai_booking_enabled, taxable: r.is_taxable !== false,
       status: String(r.status ?? 'active'), branchId: r.branch_id ? String(r.branch_id) : null, branchName: r.branch_name ?? null, addOns: N(r.add_ons), qualifiedTechnicians: N(r.qualified),
       sold30d: N(r.sold_30d), matchedVia: r.matched_via ?? null, createdAt: iso(r.created_at), updatedAt: iso(r.updated_at) };
   }

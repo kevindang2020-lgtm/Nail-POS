@@ -76,8 +76,9 @@ export function tipOptions(subtotalCents: Money, percents: number[], selectedCen
 // below from the actual card segments and is captured + disclosed at payment time (see CheckoutService.paySplit and the
 // POS split screen disclosure line). This closes the prior loophole where splitting a sale avoided the card surcharge:
 // the card dollars in a split now carry the same surcharge they would as a straight card payment.
-export function computeTotals(subtotalCents: Money, tipCents: Money, settings: CheckoutSettings, method: PaymentMethod, giftCardChargeCents: Money = 0): CheckoutTotals {
-  const taxCents = taxOf(subtotalCents, settings.taxRatePercent);
+export function computeTotals(subtotalCents: Money, tipCents: Money, settings: CheckoutSettings, method: PaymentMethod, giftCardChargeCents: Money = 0, taxableCents?: Money): CheckoutTotals {
+  // D2 Services (Nov 4 2026): tax on the TAXABLE part (a service marked not taxable is left out); omitted = the whole subtotal
+  const taxCents = taxOf(taxableCents == null ? subtotalCents : Math.max(0, Math.min(taxableCents, subtotalCents)), settings.taxRatePercent);
   const isCard = method === "card";
   // One source of truth for the surcharge: the compliance-capped engine below (≤3% network cap; debit/prepaid
   // exclusion applies at capture when the processor reports funding).

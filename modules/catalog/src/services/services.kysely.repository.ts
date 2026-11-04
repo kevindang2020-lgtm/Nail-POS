@@ -4,7 +4,8 @@
 // helpers as the in-memory repo. SCOPE is session-derived (tenant_id + branch_id), never the client.
 //
 // Schema note (honest): migration 006 has no add-ons or per-service tax tables, so getAddOns/getTax return safe
-// defaults and setAddOns are accepted but not persisted by this adapter (documented limitation); setTax refuses a change.
+// defaults are accepted but not persisted by this adapter (documented limitation); setAddOns updates by key and never deletes; setTax stores taxable / not
+// taxable (792) and refuses a rate / exemption / category.
 import { categoryAddOnsForService, mergeAddOnRows, canMoveToSql } from '@aipowersalon/database';
 import { recordCatalogChanges, diffFields } from '../catalog-screens/catalog-change-log';
 import { SERVICE_CATEGORY } from '../catalog-lifecycles';
@@ -22,7 +23,7 @@ import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
 interface Row {
   serviceId: string; categoryId: string; name: string; description: string; basePriceCents: number; durationMinutes: number;
   status: ServiceStatus; onlineBookingEnabled: boolean; aiBookingEnabled: boolean; customerAppBookingEnabled: boolean; commissionType: CommissionType;
-  commissionValue: number; sortOrder: number; createdAt: string; updatedAt: string;
+  commissionValue: number; sortOrder: number; createdAt: string; updatedAt: string; isTaxable: boolean;
   mapping: ServiceTechnicianMappingRow[]; bookingsCount: number; revenueCents: number;
   usage: { appointmentLines: number; ticketLines: number; reportRefs: number };
 }
@@ -61,7 +62,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
   private async loadRows(ctx: ServicesContext): Promise<Row[]> {
     const svc = await this.scoped(this.db.selectFrom('services'), ctx)
       .select(['id', 'category_id', 'name', 'description', 'duration_minutes', 'price_cents', 'commission_type', 'commission_value',
-        'online_booking_enabled', 'ai_booking_enabled', 'customer_app_booking_enabled', 'status', 'sort_order', 'created_at', 'updated_at']).orderBy('sort_order').execute().catch(() => []);
+        'online_booking_enabled', 'ai_booking_enabled', 'customer_app_booking_enabled', 'status', 'sort_order', 'created_at', 'updated_at', 'is_taxable' as any]).orderBy('sort_order').execute().catch(() => []);
     const ids = svc.map((s: any) => s.id);
     // mapping (technician_services + technician display names)
     const maps = ids.length ? await this.scoped(this.db.selectFrom('technician_services as ts'), ctx, 'ts')
@@ -79,7 +80,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
       serviceId: s.id, categoryId: s.category_id, name: s.name, description: s.description || '', basePriceCents: Number(s.price_cents),
       durationMinutes: Number(s.duration_minutes), status: s.status as ServiceStatus, onlineBookingEnabled: !!s.online_booking_enabled,
       aiBookingEnabled: !!s.ai_booking_enabled, customerAppBookingEnabled: !!s.customer_app_booking_enabled, commissionType: s.commission_type as CommissionType, commissionValue: Number(s.commission_value),
-      sortOrder: Number(s.sort_order), createdAt: iso(s.created_at), updatedAt: iso(s.updated_at),
+      sortOrder: Number(s.sort_order), createdAt: iso(s.created_at), updatedAt: iso(s.updated_at), isTaxable: (s as any).is_taxable !== false,
       mapping: mapBy[s.id] || [], bookingsCount: lineBy[s.id]?.cnt || 0, revenueCents: lineBy[s.id]?.rev || 0,
       usage: { appointmentLines: 0, ticketLines: lineBy[s.id]?.cnt || 0, reportRefs: 0 },
     }));
@@ -89,7 +90,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
     return {
       serviceId: s.serviceId, tenantId: ctx.tenantId, branchId: ctx.branchId, categoryId: s.categoryId, categoryName: catName,
       name: s.name, description: s.description, basePriceCents: s.basePriceCents, durationMinutes: s.durationMinutes, bufferMinutes: 5,
-      isActive: s.status === 'active', isTaxable: true, bookingEnabled: true, checkoutEnabled: true,
+      isActive: s.status === 'active', isTaxable: s.isTaxable !== false, bookingEnabled: true, checkoutEnabled: true,
       onlineBookingEnabled: s.onlineBookingEnabled, aiBookingEnabled: s.aiBookingEnabled, technicianSkillRequired: [],
       addOnsCount: 0, commissionType: s.commissionType, commissionValue: s.commissionValue, sortOrder: s.sortOrder,
       createdAt: s.createdAt, updatedAt: s.updatedAt,
@@ -170,7 +171,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
   async detail(ctx: ServicesContext, serviceId: string): Promise<POSServiceDetail | null> {
     const all = await this.loadRows(ctx); const s = all.find((x) => x.serviceId === serviceId); if (!s) return null;
     const cats = await this.cats(ctx); const catName = cats.find((c) => c.categoryId === s.categoryId)?.name || '';
-    return { ...this.toRow(ctx, s, catName), addOns: [], technicianMapping: s.mapping, commission: { type: s.commissionType, value: s.commissionValue }, tax: { isTaxable: true, exemptAllowed: false }, auditSummary: [{ lastAction: 'updated', lastActorRole: ctx.role, lastAt: s.updatedAt }] };
+    return { ...this.toRow(ctx, s, catName), addOns: [], technicianMapping: s.mapping, commission: { type: s.commissionType, value: s.commissionValue }, tax: { isTaxable: s.isTaxable !== false, exemptAllowed: false }, auditSummary: [{ lastAction: 'updated', lastActorRole: ctx.role, lastAt: s.updatedAt }] };
   }
 
   async create(ctx: ServicesContext, req: CreateServiceRequest): Promise<POSServiceRow> {
@@ -328,34 +329,64 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
     }));
     return mergeAddOnRows(category, legacy).map(({ source: _source, ...a }) => a);
   }
+  /** The older per-service add-on route (PATCH /pos/services/:id/add-ons). Nov 4 2026: it DELETED every add-on row of the service
+   *  and re-inserted the list it was sent — so a list from an old client wiped the add-ons made in the Add-Ons screen (archived
+   *  ones and their history too). Now nothing is deleted: rows are matched by add-on key and updated, new keys are added, and an
+   *  add-on left out of the list is set inactive (restorable from the Add-Ons screen). Every change is in the catalog history. */
   async setAddOns(ctx: ServicesContext, serviceId: string, addOns: ServiceAddOn[]): Promise<ServiceAddOn[] | null> {
     const s = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select('id').executeTakeFirst().catch(() => undefined);
     if (!s) return null;
     const branchId = await this.resolveBranchId(ctx);
     await this.db.transaction().execute(async (trx) => {
-      await trx.deleteFrom('service_add_ons').where('tenant_id', '=', ctx.tenantId).where('service_id', '=', serviceId).execute();
-      if (addOns.length) {
-        await trx.insertInto('service_add_ons').values(addOns.map((a, i) => ({
-          tenant_id: ctx.tenantId, branch_id: branchId, service_id: serviceId,
-          add_on_key: a.addOnId, name: a.name, price_cents: a.priceCents, duration_delta_minutes: a.durationDeltaMinutes,
-          is_taxable: a.isTaxable, is_active: a.isActive, sort_order: i, updated_at: new Date(),
-        }))).execute();
+      const existing: any[] = await trx.selectFrom('service_add_ons').selectAll().where('tenant_id', '=', ctx.tenantId).where('service_id', '=', serviceId).execute();
+      const byKey = new Map(existing.map((r) => [String(r.add_on_key), r]));
+      const sent = new Set<string>();
+      const changes: any[] = [];
+      for (const [i, a] of addOns.entries()) {
+        const key = String(a.addOnId); sent.add(key);
+        const ex = byKey.get(key);
+        const next = { name: a.name, price_cents: a.priceCents, duration_delta_minutes: a.durationDeltaMinutes, is_taxable: a.isTaxable, is_active: a.isActive, sort_order: i };
+        if (!ex) {
+          await trx.insertInto('service_add_ons').values({ tenant_id: ctx.tenantId, branch_id: branchId, service_id: serviceId, add_on_key: key, ...next, updated_at: new Date() } as any).execute();
+          changes.push(...diffFields('add_on', key, {}, { name: a.name, price_cents: a.priceCents, is_active: a.isActive }, { serviceId, source: 'pos' }));
+        } else {
+          await trx.updateTable('service_add_ons').set({ ...next, updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
+          changes.push(...diffFields('add_on', key, { name: ex.name, price_cents: Number(ex.price_cents), duration_delta_minutes: Number(ex.duration_delta_minutes), is_taxable: !!ex.is_taxable, is_active: !!ex.is_active },
+            { name: a.name, price_cents: a.priceCents, duration_delta_minutes: a.durationDeltaMinutes, is_taxable: a.isTaxable, is_active: a.isActive }, { serviceId, source: 'pos' }));
+        }
       }
+      for (const ex of existing) {
+        if (sent.has(String(ex.add_on_key)) || !ex.is_active) continue;
+        await trx.updateTable('service_add_ons').set({ is_active: false, updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
+        changes.push(...diffFields('add_on', String(ex.add_on_key), { is_active: true }, { is_active: false }, { serviceId, source: 'pos' }));
+      }
+      if (changes.length) await recordCatalogChanges(trx as any, ctx as any, changes);
     });
-    return addOns;
+    return this.getAddOns(ctx, serviceId);
   }
   async getTax(ctx: ServicesContext, serviceId: string): Promise<ServiceTax | null> {
-    const s = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select('id').executeTakeFirst().catch(() => undefined);
-    return s ? { isTaxable: true, exemptAllowed: false } : null;
+    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable' as any]).executeTakeFirst().catch(() => undefined);
+    return s ? { isTaxable: s.is_taxable !== false, exemptAllowed: false } : null;
   }
+
   async setTax(ctx: ServicesContext, serviceId: string, t: ServiceTax): Promise<ServiceTax | null> {
-    const s = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select('id').executeTakeFirst().catch(() => undefined);
+    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable' as any]).executeTakeFirst().catch(() => undefined);
     if (!s) return null;
-    // there is no per-service tax column: every service is taxed at the salon's rate. A save that would change that used to
-    // answer "saved" (and audit a change) while nothing was stored — now the unchanged setting is accepted and a change is
-    // refused with a coded reason (D2 Services guide, Nov 3 2026)
-    if (t?.isTaxable !== false && !t?.exemptAllowed && t?.overridePercent == null && !t?.taxCategory) return { isTaxable: true, exemptAllowed: false };
-    throw Object.assign(new Error('Services are taxed at the salon\'s tax rate; a per-service tax setting is not available yet.'), { apiCode: 'SERVICE_TAX_NOT_CONFIGURABLE', status: 409 });
+    // D2 Services (Nov 4 2026): taxable / not taxable is stored per service (792); every ticket line copies it when rung up, so
+    // a change applies to new tickets only. The RATE stays the salon's / location's; a per-service rate, an exemption
+    // workflow or a tax category are not available and are refused with a coded reason (never answered "saved").
+    if (t?.exemptAllowed || t?.overridePercent != null || t?.taxCategory) {
+      throw Object.assign(new Error('Services are taxed at the salon\'s tax rate; a per-service rate, exemption or tax category is not available.'), { apiCode: 'SERVICE_TAX_NOT_CONFIGURABLE', status: 409 });
+    }
+    const next = t?.isTaxable !== false;
+    const before = s.is_taxable !== false;
+    if (next !== before) {
+      await this.db.transaction().execute(async (trx) => {
+        await (trx as any).updateTable('services').set({ is_taxable: next, updated_at: new Date() }).where('tenant_id', '=', ctx.tenantId).where('id', '=', serviceId).execute();
+        await recordCatalogChanges(trx as any, ctx as any, diffFields('service', serviceId, { is_taxable: before }, { is_taxable: next }, { serviceId, source: 'pos' }));
+      });
+    }
+    return { isTaxable: next, exemptAllowed: false };
   }
 
   async exportRows(ctx: ServicesContext, f: ServiceFilters): Promise<{ headers: string[]; rows: (string | number)[][] }> {

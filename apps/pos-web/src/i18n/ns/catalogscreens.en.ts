@@ -140,7 +140,7 @@ export const CATALOGSCREENS_EN = {
   'cg.f.duration': 'Duration (minutes)',
   'cg.f.description': 'Description',
   'cg.f.online': 'Bookable online',
-  'cg.f.ai': 'Bookable by the AI receptionist',
+  'cg.f.ai': 'Bookable by the AI receptionist', 'cg.f.taxable': 'Taxable (sales tax at the salon rate)', 'cg.f.taxableHint': 'Applies to tickets rung up from now on; tickets already rung up keep their tax.',
   'cg.f.reason': 'Reason for the change',
   'cg.f.reasonOptional': 'Reason (optional)',
   'cg.f.reasonPh': 'e.g. new supplier price, menu refresh',

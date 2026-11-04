@@ -140,7 +140,7 @@ export const CATALOGSCREENS_VI = {
   'cg.f.duration': 'Thời lượng (phút)',
   'cg.f.description': 'Mô tả',
   'cg.f.online': 'Cho đặt online',
-  'cg.f.ai': 'Cho lễ tân AI đặt lịch',
+  'cg.f.ai': 'Cho lễ tân AI đặt lịch', 'cg.f.taxable': 'Chịu thuế (thuế bán hàng theo mức của tiệm)', 'cg.f.taxableHint': 'Áp dụng cho các hóa đơn tạo từ bây giờ; hóa đơn đã tạo giữ nguyên thuế.',
   'cg.f.reason': 'Lý do thay đổi',
   'cg.f.reasonOptional': 'Lý do (không bắt buộc)',
   'cg.f.reasonPh': 'vd. giá nhà cung cấp mới, làm mới bảng giá',

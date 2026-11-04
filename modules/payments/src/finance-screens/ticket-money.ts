@@ -17,6 +17,12 @@ export const TICKET_LINES_T: RawBuilder<number> =
   sql<number>`(select coalesce(sum(l.line_total_cents), 0) from ticket_service_lines l where l.tenant_id = t.tenant_id and l.ticket_id = t.id and l.removed_at is null)`;
 /** Net sales of the ticket aliased `t`: its lines less its discount, never below zero. */
 export const TICKET_NET_SALES_T: RawBuilder<number> = sql<number>`greatest(0, ${TICKET_LINES_T} - coalesce(t.discount_cents, 0))`;
+/** Σ live TAXABLE line totals (D2 Services, Nov 4 2026: a line can be marked not taxable). */
+export const TICKET_TAXABLE_LINES_T: RawBuilder<number> =
+  sql<number>`(select coalesce(sum(l.line_total_cents) filter (where l.is_taxable), 0) from ticket_service_lines l where l.tenant_id = t.tenant_id and l.ticket_id = t.id and l.removed_at is null)`;
+/** The taxed part of net sales — the discount shared across lines by price, the same rule as checkout's taxableSubtotal. */
+export const TICKET_TAXABLE_NET_T: RawBuilder<number> =
+  sql<number>`(case when ${TICKET_TAXABLE_LINES_T} = ${TICKET_LINES_T} then ${TICKET_NET_SALES_T} when ${TICKET_LINES_T} <= 0 then 0 else round(${TICKET_NET_SALES_T}::numeric * ${TICKET_TAXABLE_LINES_T} / ${TICKET_LINES_T}) end)`;
 
 /** The checkout default when a salon never saved a tax setting (checkout-display.dto DEFAULT_CHECKOUT_SETTINGS). Kept in step
  *  by checkout's own test (checkout-settings-tax-parity.vitest.spec.ts). */
@@ -42,12 +48,12 @@ export async function taxRates(db: Kysely<any>, tenantId: string): Promise<(bran
   };
 }
 
-export interface TicketDueInput { branchId: string | null; status: string; netSalesCents: number; tipCents: number; collectedCents: number; collectedSurchargeCents: number; paidTotalCents?: number | null }
+export interface TicketDueInput { branchId: string | null; status: string; netSalesCents: number; taxableNetCents?: number | null; tipCents: number; collectedCents: number; collectedSurchargeCents: number; paidTotalCents?: number | null }
 export interface TicketDue { totalCents: number; dueCents: number; taxCents: number }
 
 /** Total owed and still due. A PAID ticket owes nothing more; its total is what was collected (written at payment). */
 export function ticketDue(x: TicketDueInput, rate: number): TicketDue {
-  const tax = taxCents(Math.max(0, x.netSalesCents), rate);
+  const tax = taxCents(Math.max(0, x.taxableNetCents ?? x.netSalesCents), rate);
   if (x.status === 'paid') {
     const total = x.paidTotalCents != null && x.paidTotalCents > 0 ? x.paidTotalCents : x.collectedCents;
     return { totalCents: total, dueCents: 0, taxCents: tax };
@@ -59,7 +65,7 @@ export function ticketDue(x: TicketDueInput, rate: number): TicketDue {
 /** Every UNPAID ticket that has collected something (partly paid), with its exact total and amount still due — computed
  *  here, once per request, so SQL screens can join the answer instead of guessing it. `scope` narrows to a location. */
 export async function openTicketDues(db: Kysely<any>, tenantId: string, confirmed: readonly string[], branchId?: string | null): Promise<Map<string, TicketDue>> {
-  const rows = (await sql<any>`select t.id, t.branch_id, t.status, coalesce(t.tip_cents, 0)::bigint as tip, ${TICKET_NET_SALES_T}::bigint as net,
+  const rows = (await sql<any>`select t.id, t.branch_id, t.status, coalesce(t.tip_cents, 0)::bigint as tip, ${TICKET_NET_SALES_T}::bigint as net, ${TICKET_TAXABLE_NET_T}::bigint as taxable_net,
         pay.collected, pay.surcharge
       from tickets t join lateral (select coalesce(sum(p.amount_cents), 0)::bigint as collected, coalesce(sum(p.surcharge_cents), 0)::bigint as surcharge, count(*) as n
         from payments p where p.tenant_id = t.tenant_id and p.ticket_id = t.id and p.status in (${sql.join([...confirmed])})) pay on pay.n > 0
@@ -68,7 +74,7 @@ export async function openTicketDues(db: Kysely<any>, tenantId: string, confirme
      order by t.created_at desc limit 5000`.execute(db)).rows;
   const rate = await taxRates(db, tenantId);
   const out = new Map<string, TicketDue>();
-  for (const r of rows) out.set(String(r.id), ticketDue({ branchId: r.branch_id ?? null, status: String(r.status), netSalesCents: Number(r.net), tipCents: Number(r.tip), collectedCents: Number(r.collected), collectedSurchargeCents: Number(r.surcharge) }, rate(r.branch_id ?? null)));
+  for (const r of rows) out.set(String(r.id), ticketDue({ branchId: r.branch_id ?? null, status: String(r.status), netSalesCents: Number(r.net), taxableNetCents: Number(r.taxable_net), tipCents: Number(r.tip), collectedCents: Number(r.collected), collectedSurchargeCents: Number(r.surcharge) }, rate(r.branch_id ?? null)));
   return out;
 }
 /** The dues as a joinable `(values …) od(id, total_cents, due_cents)` — an empty map still yields a typed empty relation. */

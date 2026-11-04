@@ -8,6 +8,8 @@ export const posServicesApi = {
   update: (id: string, body: Record<string, unknown>) => api.patch(`/pos/services/${id}`, body),
   archive: (id: string) => api.post(`/pos/services/${id}/archive`),
   reactivate: (id: string) => api.post(`/pos/services/${id}/reactivate`),
+  // D2 Services (Nov 4 2026): taxable / not taxable per service (applies to tickets rung up from now on)
+  setTaxable: (id: string, isTaxable: boolean) => api.patch(`/pos/services/${id}/tax`, { isTaxable, exemptAllowed: false }),
   // categories — backend: @Get/@Post '/pos/services/categories', @Patch/@Post 'categories/:categoryId[/archive]'
   createCategory: (body: Record<string, unknown>) => api.post(`/pos/services/categories`, body),
   updateCategory: (categoryId: string, body: Record<string, unknown>) => api.patch(`/pos/services/categories/${categoryId}`, body),

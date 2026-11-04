@@ -133,6 +133,7 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
   const [status, setStatus] = useState(service?.status === 'inactive' ? 'inactive' : 'active');
   const [online, setOnline] = useState(service ? !!service.onlineBookable : false); const [ai, setAi] = useState(service ? !!service.aiBookable : false);
   const [desc, setDesc] = useState(service?.description ?? '');
+  const [taxable, setTaxable] = useState(service ? service.taxable !== false : true);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   useEffect(() => { if (!service && !cat && categories.length) setCat(categories[0].categoryId); }, [categories]);   // eslint-disable-line react-hooks/exhaustive-deps
@@ -152,7 +153,12 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
       if (service) {
         if (priceChanged) await posCatalogApi.updatePricing(service.serviceId, { priceCents: cents, durationMinutes: m, reason: reason.trim(), ...(service.updatedAt ? { expectedUpdatedAt: service.updatedAt } : {}) });
         await posServicesApi.update(service.serviceId, common);
-      } else await posServicesApi.create({ ...common, priceCents: cents, durationMinutes: m });
+        if (taxable !== (service.taxable !== false)) await posServicesApi.setTaxable(service.serviceId, taxable);
+      } else {
+        const made: any = await posServicesApi.create({ ...common, priceCents: cents, durationMinutes: m });
+        const newId = made?.serviceId ?? made?.id;
+        if (!taxable && newId) await posServicesApi.setTaxable(String(newId), false);
+      }
       onSaved(service ? tx('cg.svc.saved', { name: name.trim() }) : tx('cg.svc.created', { name: name.trim() }));
     } catch (e) { setErr(errorTextOf(e, tx('pos.save_failed'))); } finally { setBusy(false); }
   };
@@ -170,7 +176,9 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
           ? <label className="fk-field wide">{tx('cg.f.reason')}<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} placeholder={tx('cg.f.reasonPh')} data-testid="service-reason" /></label> : null}
         <label className="cg-chk"><input type="checkbox" checked={online} onChange={(e) => setOnline(e.target.checked)} data-testid="service-online" /> {tx('cg.f.online')}</label>
         <label className="cg-chk"><input type="checkbox" checked={ai} onChange={(e) => setAi(e.target.checked)} /> {tx('cg.f.ai')}</label>
+        <label className="cg-chk"><input type="checkbox" checked={taxable} onChange={(e) => setTaxable(e.target.checked)} data-testid="service-taxable" /> {tx('cg.f.taxable')}</label>
       </div>
+      {service && taxable !== (service.taxable !== false) ? <p className="fk-hint" data-testid="service-taxable-hint">{tx('cg.f.taxableHint')}</p> : null}
       {service ? <p className="fk-hint">{tx('cg.svc.historyRule')}</p> : null}
       {err ? <div className="fk-note bad" role="alert" data-testid="service-error"><span>{err}</span></div> : null}
     </FitDialog>

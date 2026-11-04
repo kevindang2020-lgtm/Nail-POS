@@ -53,11 +53,13 @@ beforeAll(async () => {
   await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, email) values ($1,$2,$3,'Ann','Lee','Ann Lee','+12155550101','ann@example.com'), ($4,$5,$6,'Ann','Other','Ann Other','+12155550101',null)`, [id('c1'), T, B, id('c9'), T2, B2]);
   await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, checkout_register_id) values ($1,$2,$3,$4,'paid',5000,'041',$5), ($6,$2,$3,$4,'paid',3000,'042',null), ($7,$8,$9,$10,'paid',9000,'099',null)`,
     [id('t1'), T, B, id('c1'), id('s1'), id('t2'), id('t9'), T2, B2, id('c9')]);
+  // Nov 4 2026: the payments sit inside the salon's CURRENT day (they were now − 1…4 h, which fell on yesterday between midnight
+  // and 4 a.m. New York time, so the 'today' assertions failed at night)
   await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, status, processor_transaction_id, payment_surface, device_id, card_brand, card_last4, created_at) values
-    ($1,$2,$3,$4,'card',5000,'approved','RETREF-1','cardpointe_terminal','term_000001','VISA','4242', now() - interval '1 hour'),
-    ($5,$2,$3,$6,'card',3000,'approved','FCH-2','tap_to_pay_iphone','iphone-device-0001','MC','5454', now() - interval '2 hours'),
-    ($7,$2,$3,$6,'card',1234,'declined',null,null,null,null,null, now() - interval '3 hours'),
-    ($8,$2,$3,$6,'cash',700,'approved',null,'cash',null,null,null, now() - interval '4 hours'),
+    ($1,$2,$3,$4,'card',5000,'approved','RETREF-1','cardpointe_terminal','term_000001','VISA','4242', (greatest(now(), (date_trunc('day', now() at time zone 'America/New_York') + interval '5 hours') at time zone 'America/New_York') - interval '1 hour')),
+    ($5,$2,$3,$6,'card',3000,'approved','FCH-2','tap_to_pay_iphone','iphone-device-0001','MC','5454', (greatest(now(), (date_trunc('day', now() at time zone 'America/New_York') + interval '5 hours') at time zone 'America/New_York') - interval '2 hours')),
+    ($7,$2,$3,$6,'card',1234,'declined',null,null,null,null,null, (greatest(now(), (date_trunc('day', now() at time zone 'America/New_York') + interval '5 hours') at time zone 'America/New_York') - interval '3 hours')),
+    ($8,$2,$3,$6,'cash',700,'approved',null,'cash',null,null,null, (greatest(now(), (date_trunc('day', now() at time zone 'America/New_York') + interval '5 hours') at time zone 'America/New_York') - interval '4 hours')),
     ($9,$10,$11,$12,'card',9000,'approved','RETREF-9','cardpointe_terminal','term_000099',null,null, now())`,
     [id('p1'), T, B, id('t1'), id('p2'), id('t2'), id('p3'), id('p4'), id('p9'), T2, B2, id('t9')]);
   await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'payments-checkout', '{"customerDisplayCaptureMode":"terminal"}'::jsonb)`, [T]);

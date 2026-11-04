@@ -14,7 +14,7 @@
 // The old /pos/reports/transactions rendered a UTC DATE as midnight UTC (Oct 22 5:17 AM showed as Oct 21 8:00 PM in New
 // York), called every non-refund row "completed" and computed Net as Gross − discount on payment rows that always carry
 // discount 0. Writes (refund, void, receipts) stay on the authorised Checkout routes; nothing here moves money.
-import { TICKET_NET_SALES_T, ticketDue, taxRates } from './ticket-money';
+import { TICKET_NET_SALES_T, TICKET_TAXABLE_NET_T, ticketDue, taxRates } from './ticket-money';
 import { Logger } from '@nestjs/common';
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
@@ -223,7 +223,7 @@ export class TransactionsScreenRepository {
   private async ticket(ctx: FinanceCtx, ticketId: string) {
     const T = ctx.tenantId;
     const t = (await sql<any>`select t.id, t.ticket_number, t.status, t.customer_id, t.paid_at, t.created_at, coalesce(t.subtotal_cents, 0)::bigint as subtotal_cents, coalesce(t.discount_cents, 0)::bigint as discount_cents,
-        coalesce(t.tax_cents, 0)::bigint as tax_cents, coalesce(t.surcharge_cents, 0)::bigint as surcharge_cents, coalesce(t.tip_cents, 0)::bigint as tip_cents, coalesce(t.total_cents, 0)::bigint as total_cents, t.branch_id, ${TICKET_NET_SALES_T}::bigint as net_sales_cents
+        coalesce(t.tax_cents, 0)::bigint as tax_cents, coalesce(t.surcharge_cents, 0)::bigint as surcharge_cents, coalesce(t.tip_cents, 0)::bigint as tip_cents, coalesce(t.total_cents, 0)::bigint as total_cents, t.branch_id, ${TICKET_NET_SALES_T}::bigint as net_sales_cents, ${TICKET_TAXABLE_NET_T}::bigint as taxable_net_cents
       from tickets t where t.tenant_id = ${T} and t.id = ${ticketId}::uuid`.execute(this.db)).rows[0];
     if (!t) return null;
     const tenders = (await sql<any>`select p.id, p.method, p.amount_cents, coalesce(p.tip_cents, 0) as tip_cents, coalesce(p.surcharge_cents, 0) as surcharge_cents, p.status, p.processor_transaction_id, p.processor_reference_id, p.gift_card_last4, p.payment_surface, p.created_at
@@ -236,7 +236,7 @@ export class TransactionsScreenRepository {
     const paid = tenders.filter((p: any) => state(String(p.status)) === 'confirmed').reduce((a: number, p: any) => a + N(p.amount_cents), 0);
     // what is still due is computed exactly (ticket-money.ts): total_cents / locked_total_cents are not an unpaid ticket's total
     const confirmedRows = tenders.filter((p: any) => state(String(p.status)) === 'confirmed');
-    const owed = ticketDue({ branchId: t.branch_id ?? null, status: String(t.status), netSalesCents: N(t.net_sales_cents), tipCents: N(t.tip_cents), collectedCents: paid,
+    const owed = ticketDue({ branchId: t.branch_id ?? null, status: String(t.status), netSalesCents: N(t.net_sales_cents), taxableNetCents: N(t.taxable_net_cents), tipCents: N(t.tip_cents), collectedCents: paid,
       collectedSurchargeCents: confirmedRows.reduce((a: number, p: any) => a + N(p.surcharge_cents), 0), paidTotalCents: N(t.total_cents) },
       (await taxRates(this.db, T))(t.branch_id ?? null));
     return {

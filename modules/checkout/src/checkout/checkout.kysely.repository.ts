@@ -42,7 +42,7 @@ import {
   POSCheckoutFullState, POSCheckoutTicketRow, POSCheckoutKpisFull, buildCheckoutAnalytics, POSCheckoutPaymentSettingsFull, CheckoutKpis,
   CheckoutAttentionItem, ReadyStaffRow, CheckoutPotentialRevenue, buildStaffRows, capStaffRows,
   POSCustomerDisplayDevice, POSCustomerDisplaySession, PaymentRecord, CheckoutFilters, TicketStatus, resolvePaymentStatus,
-  CheckoutTicketDetail, totalsForMethod, subtotalFromLines, GiftCard, GiftCardDetail, computeUpsellCapturePercent,
+  CheckoutTicketDetail, totalsForMethod, subtotalFromLines, taxableSubtotal, GiftCard, GiftCardDetail, computeUpsellCapturePercent,
   buildUpsellMix, effectiveLineKind, CheckoutInProgressError, DisplayBusyError, type OpenDisplaySession } from './checkout.dto';
 import { PosKpiSnapshots } from '@aipowersalon/reports';
 import type { CustomerDisplayCheckout } from '@aipowersalon/api-contracts/customer';
@@ -133,7 +133,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
 
   private async hydrate(ctx: CheckoutContext, t: any): Promise<Ticket> {
     const lines = await this.scoped(this.db.selectFrom('ticket_service_lines'), ctx).where('ticket_id', '=', t.id)
-      .select(['id', 'service_name_snapshot', 'technician_id', 'line_total_cents', 'line_kind', 'is_add_on', 'quantity', 'price_cents_snapshot', 'product_id']).orderBy('created_at', 'asc').orderBy('id', 'asc').execute().catch(() => []);   // the order they were added (id breaks a tie) — stable, so a refresh never reorders the customer's ticket
+      .select(['id', 'service_name_snapshot', 'technician_id', 'line_total_cents', 'line_kind', 'is_add_on', 'quantity', 'price_cents_snapshot', 'product_id', 'is_taxable' as any]).orderBy('created_at', 'asc').orderBy('id', 'asc').execute().catch(() => []);   // the order they were added (id breaks a tie) — stable, so a refresh never reorders the customer's ticket
     let custName = '', phone: string | undefined, email: string | undefined, vip = false;
     // merged from the developer tree (Oct 23 2026): the E.164 number first (an SMS receipt needs it), the display form second
     if (t.customer_id) { const c: { full_name?: string | null; phone_display?: string | null; normalized_phone?: string | null; email?: string | null } | undefined = await this.scoped(this.db.selectFrom('customers'), ctx).where('id', '=', t.customer_id).select(['full_name', 'phone_display', 'normalized_phone', 'email']).executeTakeFirst().catch(() => undefined); if (c) { custName = c.full_name || ''; phone = c.normalized_phone || c.phone_display || undefined; email = c.email || undefined; } }
@@ -154,7 +154,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const gcCharge = await this.giftCardChargeFor(ctx, t.id);
     return {
       ticketId: t.id, ticketNumber: t.ticket_number ? '#' + t.ticket_number : '#' + String(t.id).slice(0, 6), customerId: t.customer_id || '', customerName: custName, customerInitials: initials(custName || '?'), customerPhone: phone, customerEmail: email, isVip: vip,
-      station: t.station_label || undefined, registerId: t.checkout_register_id ? String(t.checkout_register_id) : undefined, lines: lines.map((l: any) => ({ serviceLineId: l.id, serviceName: l.service_name_snapshot, technicianId: l.technician_id || undefined, technicianName: l.technician_id ? lineNames[l.technician_id] : undefined, priceCents: Number(l.line_total_cents || 0), kind: effectiveLineKind(l.line_kind, l.is_add_on), quantity: l.quantity == null ? undefined : Number(l.quantity), catalogCents: l.price_cents_snapshot == null ? undefined : Number(l.price_cents_snapshot), productId: l.product_id ?? null })),
+      station: t.station_label || undefined, registerId: t.checkout_register_id ? String(t.checkout_register_id) : undefined, lines: lines.map((l: any) => ({ serviceLineId: l.id, serviceName: l.service_name_snapshot, technicianId: l.technician_id || undefined, technicianName: l.technician_id ? lineNames[l.technician_id] : undefined, priceCents: Number(l.line_total_cents || 0), kind: effectiveLineKind(l.line_kind, l.is_add_on), quantity: l.quantity == null ? undefined : Number(l.quantity), catalogCents: l.price_cents_snapshot == null ? undefined : Number(l.price_cents_snapshot), productId: l.product_id ?? null, taxable: l.is_taxable !== false })),
       primaryTechName: primaryTech, helperTechName: undefined, loyaltyTier: undefined, qualityApproved: true, finishedAt: iso(t.created_at), notes: '', tipCents: Number(t.tip_cents || 0), tipType: (t as any).tip_type || 'none', tipPercent: (t as any).tip_percent == null ? null : Number((t as any).tip_percent), discountCents: Number(t.discount_cents || 0),
       method: ((t.chosen_payment_method as PaymentMethod) || 'card'), lockedTotalCents: t.locked_total_cents != null ? Number(t.locked_total_cents) : null, status: boardStatus(t), createdAt: iso(t.created_at), giftCardChargeCents: gcCharge,
       discountSnapshot: t.discount_snapshot ? (typeof t.discount_snapshot === 'string' ? JSON.parse(t.discount_snapshot) : t.discount_snapshot) : undefined,
@@ -169,14 +169,16 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
 
   private effSubtotal(t: Ticket) { return Math.max(0, subtotalFromLines(t.lines) - t.discountCents); }
+  /** D2 Services (Nov 4 2026): the taxed part of the discounted subtotal (a line marked not taxable is left out) */
+  private effTaxable(t: Ticket) { return taxableSubtotal(t.lines, t.discountCents); }
 
   async totalsFor(ctx: CheckoutContext, id: string, method?: PaymentMethod): Promise<CheckoutTotals | null> {
     const t = await this._ticket(ctx, id); if (!t) return null;
     const settings = await this.resolveSettings(ctx);
-    return totalsForMethod(this.effSubtotal(t), t.tipCents, settings, method || t.method, t.giftCardChargeCents ?? 0);
+    return totalsForMethod(this.effSubtotal(t), t.tipCents, settings, method || t.method, t.giftCardChargeCents ?? 0, this.effTaxable(t));
   }
   private toRow(ctx: CheckoutContext, t: Ticket, settings: CheckoutSettings): POSCheckoutTicketRow {
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0, this.effTaxable(t));
     return { ticketId: t.ticketId, ticketNumber: t.ticketNumber, tenantId: ctx.tenantId, branchId: ctx.branchId, customerId: t.customerId, customerName: t.customerName, customerPhone: t.customerPhone, isVip: t.isVip, station: t.station, serviceCount: t.lines.length, completedAt: t.finishedAt, finishedAt: t.finishedAt, subtotalCents: totals.subtotalCents, tipCents: totals.tipCents, taxCents: totals.taxCents, surchargeCents: totals.surchargeCents, discountCents: t.discountCents, totalDueCents: totals.totalDueCents, status: t.status, primaryTechnicianName: t.primaryTechName, helperTechnicianName: undefined, servicesLabel: t.lines[0]?.serviceName ? (t.lines[0].serviceName + (t.lines.length > 1 ? ` +${t.lines.length - 1}` : "")) : undefined };
   }
   /** The checkout BOARD's tickets: every ticket still open (any age — an unpaid ticket stays until it is settled) plus
@@ -235,7 +237,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const since = dayStart.getTime(); const isToday = (at: string | null | undefined) => !!at && Date.parse(at) >= since;
     const unpaid = all.filter((t) => t.status !== 'paid' && t.status !== 'failed' && t.status !== 'on_hold');   // a held ticket waits aside (Oct 6 2026)
     const paidToday = pays.filter((p) => p.status === 'approved' && isToday(p.createdAt));
-    const readyTotals = unpaid.map((t) => totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0));
+    const readyTotals = unpaid.map((t) => totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0, this.effTaxable(t)));
     // Surcharge + tax collected today, method-agnostic: a paid ticket's charged total (sum of its approved payments
     // today) minus its base (subtotal + tip + tax) is exactly the surcharge that was added — works for straight card
     // (amount includes surcharge), cash/gift (no surcharge → 0), and split (Option A: the card segment carries the
@@ -247,7 +249,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     let surchargeCollectedCents = 0, taxCollectedCents = 0;
     for (const [tid, charged] of chargedByTicket) {
       const t = ticketById.get(tid); if (!t) continue;
-      const sub = this.effSubtotal(t); const tax = taxCents(sub, taxRate); const base = sub + t.tipCents + tax;
+      const sub = this.effSubtotal(t); const tax = taxCents(this.effTaxable(t), taxRate); const base = sub + t.tipCents + tax;
       surchargeCollectedCents += Math.max(0, charged - base);
       taxCollectedCents += tax;
     }
@@ -363,7 +365,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   async detail(ctx: CheckoutContext, id: string): Promise<CheckoutTicketDetail | null> {
     const t = await this._ticket(ctx, id); if (!t) return null;
     const settings = await this.resolveSettings(ctx);
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0, this.effTaxable(t));
     // Real per-line category + commission from the service-line snapshots (category only — the commission block is the authority preview, see below).
     const rawLines = await this.scoped(this.db.selectFrom('ticket_service_lines'), ctx).where('ticket_id', '=', id)
       .select(['id', 'service_id', 'technician_id', 'line_total_cents', 'commission_type_snapshot', 'commission_value_snapshot']).execute().catch(() => [] as any[]);
@@ -1106,7 +1108,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   async customerDisplayCheckout(ctx: CheckoutContext, ticketId: string): Promise<CustomerDisplayCheckout | null> {
     const t = await this._ticket(ctx, ticketId); if (!t) return null;
     const settings = await this.resolveSettings(ctx);
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, t.giftCardChargeCents ?? 0, this.effTaxable(t));
     const payments = await this.paymentsForTicket(ctx, ticketId).catch(() => [] as PaymentRecord[]);
     const earned: any = t.status === 'paid'
       ? await this.db.selectFrom('loyalty_point_earnings').where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId)
@@ -1547,7 +1549,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const t = await this._ticket(ctx, ticketId); const d = await this.deviceRow(ctx, deviceId); if (!t || !d) return null;
     const publicToken = randomBytes(24).toString('base64url'); const tokenHash = createHash('sha256').update(publicToken).digest('hex');
     const settings = await this.resolveSettings(ctx);
-    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method);
+    const totals = totalsForMethod(this.effSubtotal(t), t.tipCents, settings, t.method, undefined, this.effTaxable(t));
     // ── Reserve the display (spec §85–§86, §180) ── one transaction, the display's row locked: retire its expired
     // sessions, then look at what it is showing. Another customer → DISPLAY_BUSY (never displace them, least of all
     // mid-payment); the SAME ticket re-sent → its old session is retired and a fresh one (new token) replaces it.
