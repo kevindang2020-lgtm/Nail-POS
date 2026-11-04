@@ -893,3 +893,13 @@ question for Kevin: Customer Notifications / Email Center read `notifications` s
   in modules/customers.
 - Still open: E2 (processor choice at pairing, idempotency keys on pairing, filters, device audit history), E6 screenshots,
   batch A/C/D extras, A7 manager approval / alternative times, the 774-route wire-type backlog.
+
+## Nov 4 2026 (night) — E2 / E6 / A7 / B1–B4 / D9
+- E2, E6, A7 (alternatives + manager approval) and the B1–B4 marketing gaps are done (see GUIDE_QUEUE "Nov 4" lines;
+  migrations 799, 800).
+- D9 Inventory (5591134, 5e3f4fa, migration 801): transfers / counts / bottle changes / manual deduction are each one
+  transaction; one low-stock rule; reorder subtracts committed POs; PO lines carry the supplier pack.
+- State-machine gate green again: PAYMENT_REFUND now lives in @aipowersalon/payments (checkout re-exports it);
+  new INVOICE_DELIVERY machine; gift card take-back / adjust go through GIFT_CARD.
+- Still open (in order): D9 recipe unit conversion + gaps list; B9–B18, D1 gaps, A-row not-built items (A2–A5, A8–A20),
+  batch C; the 774-route wire-type backlog.
