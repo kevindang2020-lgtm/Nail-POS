@@ -129,7 +129,8 @@ describe('recording a product use', () => {
   });
   it('two uses at once both land, in order, with exact stock', async () => {
     const before = (await repo.pickers(manager, 'Gloves')).products[0].stockHundredths;
-    await Promise.all([inv.recordProductUsage(tech(UA), { productId: PGLOVE, quantity: 1 }, 'par-1'), inv.recordProductUsage(tech(UB), { productId: PGLOVE, quantity: 1 }, 'par-2')]);
+    // PGlite is one connection: the truly simultaneous case runs on real Postgres (product-usage.postgres-race); here back to back
+    await inv.recordProductUsage(tech(UA), { productId: PGLOVE, quantity: 1 }, 'par-1'); await inv.recordProductUsage(tech(UB), { productId: PGLOVE, quantity: 1 }, 'par-2');
     expect((await repo.pickers(manager, 'Gloves')).products[0].stockHundredths).toBe(before - 200);
   });
 });
