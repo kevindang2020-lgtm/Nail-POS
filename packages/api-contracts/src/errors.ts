@@ -1098,6 +1098,7 @@ export const ERROR_REGISTRY = {
   WALK_IN_CHECKIN_DISABLED:       { status: 409, message: 'Walk-in check-in is turned off here.', domain: 'queue', retryable: false, severity: 'info', action: 'REFRESH' },
   CLOCK_OUT_ACTIVE_SERVICE:       { status: 409, message: 'You are still on an active service. Finish it or hand it off before clocking out — or ask a manager.', domain: 'workforce', retryable: false, severity: 'info', action: 'REFRESH' },
   END_AFTER_START:                { status: 400, message: 'The end time must be after the start time.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
+  SLOT_IN_PAST:                   { status: 400, message: 'That time has already passed. Pick a later time.', domain: 'booking', retryable: false, severity: 'info', action: 'NONE' },
   SLOT_REQUIRED:                  { status: 400, message: 'Choose a time slot.', domain: 'booking', retryable: false, severity: 'info', action: 'NONE' },
   SLOT_BOOKING_FAILED:            { status: 409, message: 'That time could not be booked. Choose another time.', domain: 'booking', retryable: false, severity: 'info', action: 'REFRESH' },
   BLOCK_NOT_CREATED:              { status: 409, message: 'The blocked time could not be saved.', domain: 'booking', retryable: false, severity: 'info', action: 'REFRESH' },

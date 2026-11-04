@@ -56,6 +56,7 @@ export interface TicketsTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
 export interface TicketServiceLinesTable {
+  is_taxable: Generated<boolean>;   // migration 792: the line's taxable flag, snapshotted from the service at insert
   id: Generated<string>; tenant_id: string; branch_id: string; ticket_id: string; service_id: string | null;
   product_id: string | null;
   technician_id: string | null; service_name_snapshot: string; price_cents_snapshot: number;
@@ -458,6 +459,7 @@ export interface ServiceCategoriesTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
 export interface ServicesCatalogTable {
+  is_taxable: Generated<boolean>;   // migration 792 (D2 Services, Nov 4 2026): a service the salon does not tax
   id: Generated<string>; tenant_id: string; branch_id: string; category_id: string; name: string; description: string | null;
   duration_minutes: number; price_cents: number; commission_type: string; commission_value: number;
   online_booking_enabled: boolean; customer_app_booking_enabled: boolean; ai_booking_enabled: boolean;

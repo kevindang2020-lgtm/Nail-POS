@@ -9,6 +9,7 @@ const T = 'a7b40000-0000-4000-8000-000000000001', B = 'a7b40000-0000-4000-8000-0
 const C1 = 'a7b40000-0000-4000-8000-0000000000c1', TE = 'a7b40000-0000-4000-8000-0000000000e1';
 const A1 = 'a7b40000-0000-4000-8000-0000000000a1', A2 = 'a7b40000-0000-4000-8000-0000000000a2';
 const ctx: any = { tenantId: T, branchId: B, userId: 'a7b40000-0000-4000-8000-0000000000f1', role: 'OWNER', permissions: ['ai_booking.view'] };
+const audited: Array<Record<string, unknown>> = [];
 let pg: any; let center: AiBookingCenter;
 const ev = (cid: string, stage: string, minute: number, extra: { outcome?: string; failure?: string; appt?: string; branch?: string } = {}) =>
   pg.query(`insert into ai_booking_conversion_events (tenant_id, branch_id, source, stage, outcome, failure_reason, appointment_id, correlation_id, created_at) values ($1,$2,'AI_PHONE_RECEPTIONIST',$3,$4,$5,$6,$7,$8)`,
@@ -32,7 +33,7 @@ beforeAll(async () => {
   await ev('r3', 'BOOKING_INTENT_DETECTED', 5); await ev('r3', 'BOOKING_ATTEMPTED', 6); await ev('r3', 'BOOKING_ATTEMPTED', 7); await ev('r3', 'BOOKING_FAILED', 8, { outcome: 'failed', failure: 'APPOINTMENT_CONFLICT' });
   await ev('r4', 'BOOKING_INTENT_DETECTED', 9); await ev('r4', 'OPTIONS_PRESENTED', 10); await ev('r4', 'CONFIRMATION_REQUESTED', 11);
   await ev('r5', 'BOOKING_INTENT_DETECTED', 12, { branch: B2 });
-  center = new AiBookingCenter(kyselyFor(pg) as any, {}, () => Date.UTC(2026, 10, 4, 15, 0));
+  center = new AiBookingCenter(kyselyFor(pg) as any, {}, () => Date.UTC(2026, 10, 4, 15, 0), async (c, i) => { audited.push({ ...c, ...i }); });
 }, 180_000);
 
 describe('A7 activity: one row per request, status from the authoritative appointment', () => {
@@ -85,7 +86,7 @@ describe('A7 recovery', () => {
     await expect(center.dismissRecovery(ctx, key, '')).rejects.toThrow(/why/);
     await center.dismissRecovery(ctx, key, 'Called the guest back and booked by phone');
     expect((await center.recovery(ctx)).cases.find((c) => c.key === key)).toBeUndefined();
-    expect((await pg.query(`select count(*)::int n from audit_logs where action_type = 'ai_booking_recovery_dismissed'`)).rows[0].n).toBe(1);
+    expect(audited.filter((a) => a.action === 'ai_booking_recovery_dismissed')).toHaveLength(1);   // through the audit module
   });
 });
 

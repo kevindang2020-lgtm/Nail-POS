@@ -109,7 +109,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
       const cur: any = await trx.selectFrom('pos_payment_terminals').select(['branch_id', 'status']).where('tenant_id', '=', ctx.tenantId).where('id', '=', id).executeTakeFirst();
       if (cur && cur.status === 'paired') throw terminalConflict('TERMINAL_ALREADY_PAIRED', cur.branch_id && ctx.branchId && String(cur.branch_id) !== ctx.branchId
         ? 'This terminal is paired at another location. Unpair it there first.' : 'This terminal is already paired. Unpair it first to pair it again.');
-      if (stationId) await this.assertRegisterFree(trx as any, ctx, stationId, id);
+      if (stationId) await this.assertRegisterFree(trx, ctx, stationId, id);
       await trx.insertInto('pos_payment_terminals')
         .values({ id, tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, label, station_id: stationId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null })
         .onConflict((oc: any) => oc.columns(['tenant_id', 'id']).doUpdateSet({ label, station_id: stationId || null, branch_id: ctx.branchId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null }).where('pos_payment_terminals.status', '<>', 'paired'))
@@ -135,7 +135,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
   async setRegister(ctx: SettingsContext, id: string, stationId: string | null): Promise<Terminal> {
     const res = await this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('pos_payment_terminals:' || ${ctx.tenantId}))`.execute(trx);
-      if (stationId) await this.assertRegisterFree(trx as any, ctx, stationId, id);
+      if (stationId) await this.assertRegisterFree(trx, ctx, stationId, id);
       let u = trx.updateTable('pos_payment_terminals').set({ station_id: stationId }).where('tenant_id', '=', ctx.tenantId).where('id', '=', id);
       if (ctx.branchId) u = u.where('branch_id', '=', ctx.branchId);
       return u.executeTakeFirst();

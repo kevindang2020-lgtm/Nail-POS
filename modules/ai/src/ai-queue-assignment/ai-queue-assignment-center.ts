@@ -8,6 +8,7 @@
 //   entryDetail(ctx)  §8  what the guest overlay shows beside the engine panel: verified customer facts (no "prefers X"
 //                         guess), related appointments, and the audit trail (decisions + the queue events' delivery).
 // Every query is scoped to the caller's salon AND location.
+import { withCode } from '@aipowersalon/api-contracts';   // a refusal's registry code beside its English
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
 import { QueueAssignmentForbiddenError, QueueAssignmentDisabledError, QueueAssignmentValidationError, type QueueAssignmentContext } from './ai-queue-assignment.dto';
@@ -16,6 +17,12 @@ import type { QueueAssignmentEntitlementPort } from './ai-queue-assignment-entit
 import type { QueueOpsQueuePort } from './ai-queue-assignment-ops.ports';
 import { technicianIsFree } from './ai-queue-assignment-detection';
 
+/** a stored JSON list (array column or JSON text); anything else is an empty list, said in the log — never a thrown read */
+function jsonList(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== 'string' || !v.trim()) return [];
+  try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch (e) { console.warn(`not a JSON list: ${(e as Error)?.message ?? e}`); return [] as unknown[]; }
+}
 export type QueueHealthStatus = 'READY' | 'ATTENTION_REQUIRED' | 'FAILED' | 'DISABLED' | 'NOT_CONFIGURED' | 'UNKNOWN';
 export interface QueueHealthCheck { key: string; label: string; status: QueueHealthStatus; evidence: string; failure: string | null; fix: string | null; facts: Record<string, string | number>; checkedAt: string }
 export interface QueueHealthRun { runId: string | null; overall: QueueHealthStatus; checkedAt: string; checks: QueueHealthCheck[]; note: string }
@@ -39,7 +46,7 @@ export function historyPeriod(preset: string | undefined, today: string, from?: 
   if (p === 'custom') return { preset: p, from: from || null, to: to || null };
   return { preset: 'all', from: null, to: null };
 }
-const iso = (v: unknown) => (v ? new Date(v as any).toISOString() : null);
+const iso = (v: unknown) => (v ? new Date(v as string | number | Date).toISOString() : null);
 const like = (q: string) => '%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
 const maskPhone = (p: unknown) => { const d = String(p ?? '').replace(/[^0-9]/g, ''); return d.length >= 4 ? '••• ' + d.slice(-4) : null; };
 /** the order the overall status takes the worst of */
@@ -56,9 +63,9 @@ export class QueueAssignmentCenter {
 
   private need(ctx: QueueAssignmentContext, perm: string) {
     if (!ctx?.userId || !ctx?.tenantId) throw new QueueAssignmentForbiddenError('Not signed in.');
-    if (!hasPermission(ctx as any, perm)) throw new QueueAssignmentForbiddenError(`You need the "${perm}" permission for this.`);
+    if (!hasPermission(ctx as Parameters<typeof hasPermission>[0], perm)) throw new QueueAssignmentForbiddenError(`You need the "${perm}" permission for this.`);
   }
-  private get d(): Kysely<any> { if (!this.db) throw new QueueAssignmentValidationError('The queue history needs the database.'); return this.db; }
+  private get d(): Kysely<any> { if (!this.db) throw withCode(new QueueAssignmentValidationError('The queue history needs the database.'), 'SERVICE_UNAVAILABLE'); return this.db; }
   private tz(ctx: QueueAssignmentContext) { return sql`coalesce((select b.timezone from branches b where b.id = ${ctx.branchId} and b.tenant_id = ${ctx.tenantId}), 'UTC')`; }
 
   // ── §4 history: search + filters + numbered pages ─────────────────────────────────────────────────────────────────
@@ -69,9 +76,9 @@ export class QueueAssignmentCenter {
     const today = todayIn(zone, this.now());
     const period = historyPeriod(f0.preset, today, f0.from, f0.to);
     const f = { ...f0, from: period.from ?? undefined, to: period.to ?? undefined };
-    if (f.from && !DAY.test(f.from)) throw new QueueAssignmentValidationError('Choose a valid From date.');
-    if (f.to && !DAY.test(f.to)) throw new QueueAssignmentValidationError('Choose a valid To date.');
-    if (f.from && f.to && f.to < f.from) throw new QueueAssignmentValidationError('The To date is before the From date.');
+    if (f.from && !DAY.test(f.from)) throw withCode(new QueueAssignmentValidationError('Choose a valid From date.'), 'DATE_INVALID');
+    if (f.to && !DAY.test(f.to)) throw withCode(new QueueAssignmentValidationError('Choose a valid To date.'), 'DATE_INVALID');
+    if (f.from && f.to && f.to < f.from) throw withCode(new QueueAssignmentValidationError('The To date is before the From date.'), 'DATE_RANGE_INVALID');
     const size = (PAGE_SIZES as readonly number[]).includes(Number(f.pageSize)) ? Number(f.pageSize) : 20;
     const page = Math.max(1, Math.min(10_000, Math.floor(Number(f.page) || 1)));
     const tz = this.tz(ctx);
@@ -122,7 +129,7 @@ export class QueueAssignmentCenter {
   // ── §8 guest overlay: verified facts, appointments, audit ─────────────────────────────────────────────────────────
   async entryDetail(ctx: QueueAssignmentContext, queueEntryId: string) {
     this.need(ctx, 'ai_queue_assignment.view');
-    if (!UUID.test(queueEntryId)) throw new QueueAssignmentValidationError('That queue entry could not be found.');
+    if (!UUID.test(queueEntryId)) throw withCode(new QueueAssignmentValidationError('That queue entry could not be found.'), 'QUEUE_ITEM_NOT_FOUND');
     const e: any = (await sql<any>`select qi.id, qi.customer_id, qi.customer_name, qi.customer_phone, qi.status, qi.source, qi.priority, qi.is_vip, qi.checked_in_at, qi.called_at, qi.started_at,
         qi.ticket_id, qi.appointment_id, qi.assigned_technician_id, qi.requested_services, qi.notes,
         c.preferred_technician_id, c.created_at as customer_since,
@@ -130,7 +137,7 @@ export class QueueAssignmentCenter {
         (select max(k.created_at) from tickets k where k.tenant_id = qi.tenant_id and k.customer_id = qi.customer_id and k.status = 'paid') as last_visit_at
       from pos_queue_items qi left join customers c on c.tenant_id = qi.tenant_id and c.id = qi.customer_id
       where qi.tenant_id = ${ctx.tenantId} and qi.branch_id = ${ctx.branchId} and qi.id = ${queueEntryId}`.execute(this.d)).rows[0];
-    if (!e) throw new QueueAssignmentValidationError('That queue entry could not be found.');
+    if (!e) throw withCode(new QueueAssignmentValidationError('That queue entry could not be found.'), 'QUEUE_ITEM_NOT_FOUND');
     // appointments live in pos_tech_appointments (the legacy `appointments` table was dropped in 041): date + 'HH:MM' in the salon's zone
     const tz = this.tz(ctx);
     const appts = e.customer_id ? (await sql<any>`select a.id, a.appt_date, a.start_time, a.end_time, a.status, a.source, a.technician_id,
@@ -141,8 +148,8 @@ export class QueueAssignmentCenter {
         and a.appt_date >= (now() at time zone ${tz})::date - 1 and a.appt_date < (now() at time zone ${tz})::date + 14
       order by a.appt_date asc, a.start_time asc limit 20`.execute(this.d)).rows : [];
     const events = (await sql<any>`select o.event_type, o.publish_status, o.attempt_count, o.occurred_at, o.published_at from outbox_events o
-      where o.tenant_id = ${ctx.tenantId} and o.aggregate_id = ${queueEntryId} order by o.occurred_at desc limit 20`.execute(this.d).catch(() => ({ rows: [] as any[] }))).rows;
-    const services = Array.isArray(e.requested_services) ? e.requested_services : (() => { try { return JSON.parse(e.requested_services ?? '[]'); } catch { return []; } })();
+      where o.tenant_id = ${ctx.tenantId} and o.aggregate_id = ${queueEntryId} order by o.occurred_at desc limit 20`.execute(this.d).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows;
+    const services = jsonList(e.requested_services);
     return {
       queueEntryId, status: e.status, source: e.source, priority: e.priority, isVip: !!e.is_vip,
       checkedInAt: iso(e.checked_in_at), calledAt: iso(e.called_at), startedAt: iso(e.started_at),
@@ -281,7 +288,7 @@ export class QueueAssignmentCenter {
       const ins: any = (await sql<any>`insert into ai_queue_health_runs (tenant_id, branch_id, overall, checks, checked_by)
         values (${ctx.tenantId}, ${ctx.branchId}, ${overall}, ${JSON.stringify(out)}::jsonb, ${UUID.test(String(ctx.userId)) ? ctx.userId : null}) returning id`.execute(this.d)).rows[0];
       runId = ins?.id ? String(ins.id) : null;
-    } catch { /* the result is still shown; it is only not kept */ }
+    } catch (e) { console.warn(`ai-queue health run not kept (the result is still shown): ${(e as Error)?.message ?? e}`); }
     return { runId, overall, checkedAt: at, checks: out, note: NOTE };
   }
 }

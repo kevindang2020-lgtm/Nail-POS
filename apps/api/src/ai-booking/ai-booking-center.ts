@@ -12,6 +12,12 @@
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
 
+/** a stored JSON list (array column or JSON text); anything else is an empty list, said in the log */
+function jsonList(v: unknown): unknown[] {
+  if (Array.isArray(v)) return v;
+  if (typeof v !== 'string' || !v.trim()) return [];
+  try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch (e) { console.warn(`not a JSON list: ${(e as Error)?.message ?? e}`); return [] as unknown[]; }
+}
 export type BkHealthStatus = 'READY' | 'ATTENTION_REQUIRED' | 'FAILED' | 'DISABLED' | 'NOT_CONFIGURED' | 'UNKNOWN';
 export interface BkHealthCheck { key: string; status: BkHealthStatus; evidence: string; failure: string | null; fix: string | null; owner: string; facts: Record<string, string | number>; checkedAt: string }
 export interface BkCtx { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
@@ -25,7 +31,7 @@ const PACKAGE = 'ai_booking_assistant';
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const N = (v: unknown) => Number(v ?? 0) || 0;
-const iso = (v: unknown) => (v ? new Date(v as any).toISOString() : null);
+const iso = (v: unknown) => (v ? new Date(v as string | number | Date).toISOString() : null);
 const ymd = (v: unknown) => (v == null ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
 const like = (q: string) => q.replace(/[\\%_]/g, (m) => '\\' + m);
 const mask = (p: unknown) => { const d = String(p ?? '').replace(/[^0-9]/g, ''); return d.length >= 4 ? '••• ' + d.slice(-4) : null; };
@@ -43,11 +49,13 @@ export function bkPeriod(preset: string | undefined, today: string, from?: strin
 }
 
 export class AiBookingCenter {
-  constructor(private readonly db: Kysely<any>, private readonly env: Record<string, string | undefined> = process.env, private readonly now: () => number = Date.now) {}
+  constructor(private readonly db: Kysely<any>, private readonly env: Record<string, string | undefined> = process.env, private readonly now: () => number = Date.now,
+    /** the salon audit trail (modules/audit AuditService.record) — the API binds it; tests may leave it out */
+    private readonly audit?: (ctx: { tenantId: string; branchId: string | null; userId: string | null; role: string | null }, input: { module: string; action: string; resourceType: string; resourceId: string; metadata: Record<string, unknown> }) => Promise<unknown>) {}
 
   private need(ctx: BkCtx, perm: string) {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBookingCenterError('Not signed in.', 'PERMISSION_DENIED', 403);
-    if (!hasPermission(ctx as any, perm)) throw new AiBookingCenterError(`You need the "${perm}" permission for this.`, 'PERMISSION_DENIED', 403);
+    if (!hasPermission(ctx as Parameters<typeof hasPermission>[0], perm)) throw new AiBookingCenterError(`You need the "${perm}" permission for this.`, 'PERMISSION_DENIED', 403);
   }
   private async zone(ctx: BkCtx): Promise<string> {
     const r = (await sql<any>`select timezone from branches where tenant_id = ${ctx.tenantId} and (${ctx.branchId}::uuid is null or id = ${ctx.branchId}) and timezone is not null
@@ -149,7 +157,7 @@ export class AiBookingCenter {
       failureReason: r.failure_reason ?? null, attempts: N(r.attempts), events: N(r.events) };
   }
   private services(v: unknown): Array<{ name: string | null; priceCents: number | null; durationMinutes: number | null }> {
-    const list = Array.isArray(v) ? v : (() => { try { return JSON.parse(String(v ?? '[]')); } catch { return []; } })();
+    const list = jsonList(v);
     return (Array.isArray(list) ? list : []).map((s: any) => ({ name: s?.name ?? s?.serviceName ?? null, priceCents: s?.priceCents ?? s?.price_cents ?? null, durationMinutes: s?.durationMinutes ?? s?.duration_minutes ?? null }));
   }
 
@@ -164,13 +172,13 @@ export class AiBookingCenter {
       where tenant_id = ${ctx.tenantId} ${branch} and coalesce(correlation_id, id::text) = ${id} order by created_at asc, id asc limit 200`.execute(this.db)).rows;
     const verifications = (await sql<any>`select v.id, v.status, v.channel, v.phone_mask, v.attempt_count, v.resend_count, v.expires_at, v.verified_at, v.last_sent_at, v.failure_reason, v.provider,
         v.provider_verification_sid, v.booking_hold_id, v.created_at from booking_verification_sessions v
-      where v.tenant_id = ${ctx.tenantId} and v.correlation_id::text = ${id} order by v.created_at asc limit 20`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows;
+      where v.tenant_id = ${ctx.tenantId} and v.correlation_id::text = ${id} order by v.created_at asc limit 20`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows;
     const holdIds = verifications.map((v: any) => v.booking_hold_id).filter(Boolean);
     const holds = (await sql<any>`select id, status, channel, start_time, end_time, expires_at, released_at, release_reason, converted_appointment_id, created_at from booking_holds
       where tenant_id = ${ctx.tenantId} and (${holdIds.length ? sql`id in (${sql.join(holdIds)})` : sql`false`} or (${r.appt_id ?? null}::uuid is not null and converted_appointment_id = ${r.appt_id ?? null}::uuid))
-      order by created_at asc limit 20`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows;
+      order by created_at asc limit 20`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows;
     const tools = r.appt_id ? (await sql<any>`select tool_name, tool_kind, status, business_result, error_category, requests, requested_at, finished_at from voice_tool_executions
-      where tenant_id = ${ctx.tenantId} and related_id = ${String(r.appt_id)} order by requested_at asc limit 50`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows : [];
+      where tenant_id = ${ctx.tenantId} and related_id = ${String(r.appt_id)} order by requested_at asc limit 50`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows : [];
     const nearby = r.customer_id ? (await sql<any>`select id, appt_date, start_time, status, source from pos_tech_appointments where tenant_id = ${ctx.tenantId} and customer_id = ${r.customer_id}
       and appt_date between current_date - 60 and current_date + 60 order by appt_date asc, start_time asc limit 12`.execute(this.db)).rows : [];
     return {
@@ -215,7 +223,7 @@ export class AiBookingCenter {
     }
     const ver = (await sql<any>`select v.id, v.correlation_id, v.status, v.expires_at, v.phone_mask, v.failure_reason, v.created_at from booking_verification_sessions v
       where v.tenant_id = ${ctx.tenantId} ${vb} and v.channel = 'ai_receptionist' and v.status in ('expired','locked','failed') and v.created_at >= now() - interval '1 day'
-      order by v.created_at desc limit 50`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows;
+      order by v.created_at desc limit 50`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows;
     for (const v of ver) cases.push({ key: 'verify:' + v.id, type: 'verification_' + v.status, urgency: 'medium', requestId: v.correlation_id ? String(v.correlation_id) : null, at: iso(v.created_at),
       customerName: null, maskedPhone: v.phone_mask ?? null, appointmentId: null, date: null, reason: v.failure_reason ?? null, source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
     const unconfirmed = (await sql<any>`select a.id, a.appt_date, a.start_time, a.customer_name, a.customer_phone, a.created_at from pos_tech_appointments a
@@ -234,12 +242,11 @@ export class AiBookingCenter {
     if (!/^(failed|hold|verify|unconfirmed):[0-9a-zA-Z-]{1,100}$/.test(String(key))) throw new AiBookingCenterError('That case could not be found.', 'NOT_FOUND', 404);
     const why = typeof reason === 'string' ? reason.trim().slice(0, 300) : '';
     if (!why) throw new AiBookingCenterError('Say why the case is dismissed.', 'REASON_REQUIRED');
-    await this.db.transaction().execute(async (trx) => {
-      await sql`insert into ai_booking_recovery_dismissals (tenant_id, case_key, reason, dismissed_by) values (${ctx.tenantId}, ${key}, ${why}, ${UUID.test(ctx.userId) ? ctx.userId : null})
-        on conflict (tenant_id, case_key) do nothing`.execute(trx);
-      await sql`insert into audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, metadata_json)
-        values (${ctx.tenantId}, ${ctx.branchId}, ${UUID.test(ctx.userId) ? ctx.userId : null}, ${ctx.role}, 'ai_booking_recovery_dismissed', 'ai_booking_recovery_case', ${key}, ${JSON.stringify({ reason: why })}::jsonb)`.execute(trx);
-    });
+    await sql`insert into ai_booking_recovery_dismissals (tenant_id, case_key, reason, dismissed_by) values (${ctx.tenantId}, ${key}, ${why}, ${UUID.test(ctx.userId) ? ctx.userId : null})
+      on conflict (tenant_id, case_key) do nothing`.execute(this.db);
+    // through the audit module (it used to write audit_logs itself)
+    await this.audit?.({ tenantId: ctx.tenantId, branchId: ctx.branchId ?? null, userId: UUID.test(ctx.userId) ? ctx.userId : null, role: ctx.role ?? null },
+      { module: 'ai_booking', action: 'ai_booking_recovery_dismissed', resourceType: 'ai_booking_recovery_case', resourceId: key, metadata: { reason: why } });
     return { dismissed: true, key };
   }
 
@@ -260,7 +267,8 @@ export class AiBookingCenter {
     const attempt = async (key: string, owner: string, fn: () => Promise<void>) => {
       try { await fn(); } catch (e: any) { add(key, 'UNKNOWN', 'The check could not read its data.', owner, {}, String(e?.message ?? e).slice(0, 200), 'Run the check again; if it repeats, that data source is down.'); }
     };
-    const bAnd = (alias: string) => (B ? sql`and ${sql.ref(alias + '.branch_id')} = ${B}` : sql``);
+    // the two aliases the checks use, as literal SQL (never an identifier built from a value)
+    const bAnd = (alias: 'a' | 't') => (!B ? sql`` : alias === 'a' ? sql`and a.branch_id = ${B}` : sql`and t.branch_id = ${B}`);
     let subStatus: string | null = null;
 
     await attempt('entitlement', 'Owner', async () => {
@@ -274,7 +282,7 @@ export class AiBookingCenter {
         live && !trialOver ? (s.status === 'past_due' ? 'A payment is past due.' : null) : 'New AI booking work is blocked; staff keep booking normally in POS Booking.', live && !trialOver ? null : 'Reactivate the add-on from this page (an explicit, confirmed action).');
     });
     await attempt('permissions', 'Owner', async () => {
-      const p: any = (await sql<any>`select value from platform_settings where setting_key = 'ai.auto_actions_disabled' limit 1`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows[0];
+      const p: any = (await sql<any>`select value from platform_settings where setting_key = 'ai.auto_actions_disabled' limit 1`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows[0];
       const off = p && ['true', '"true"', 'TRUE'].includes(String(p.value));
       add('permissions', off ? 'DISABLED' : 'READY', off ? 'AI actions are switched off platform-wide.' : 'No platform-wide block; your role can view this page.', 'Super Admin', {}, off ? 'Blocked platform-wide.' : null, off ? 'Ask AIPowerSalon support.' : null);
     });
@@ -327,7 +335,7 @@ export class AiBookingCenter {
         st === 'READY' ? null : 'AI Calendar and POS Booking may show an update late.', st === 'READY' ? null : 'Check the event publisher in System Operations.');
     });
     await attempt('usage', 'Owner', async () => {
-      const s: any = (await sql<any>`select current_period_starts_at, usage_limit from tenant_ai_subscriptions where tenant_id = ${T} and package_code = ${PACKAGE} order by created_at desc limit 1`.execute(this.db).catch(() => ({ rows: [] as any[] }))).rows[0];
+      const s: any = (await sql<any>`select current_period_starts_at, usage_limit from tenant_ai_subscriptions where tenant_id = ${T} and package_code = ${PACKAGE} order by created_at desc limit 1`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows[0];
       if (!s) return add('usage', 'NOT_CONFIGURED', 'No subscription, so no usage period.', 'Owner');
       const u: any = (await sql<any>`select coalesce(sum(usage_amount) filter (where status = 'success'), 0)::bigint used from ai_usage_logs where tenant_id = ${T} and package_code = ${PACKAGE} and created_at >= ${s.current_period_starts_at}`.execute(this.db)).rows[0];
       const limit = N(s.usage_limit); const used = N(u.used); const pct = limit ? Math.round((used / limit) * 100) : 0;
@@ -348,7 +356,7 @@ export class AiBookingCenter {
     try {
       const ins: any = (await sql<any>`insert into ai_booking_health_runs (tenant_id, branch_id, overall, checks, checked_by) values (${T}, ${B}, ${overall}, ${JSON.stringify(out)}::jsonb, ${UUID.test(ctx.userId) ? ctx.userId : null}) returning id`.execute(this.db)).rows[0];
       runId = ins?.id ? String(ins.id) : null;
-    } catch { /* shown, only not kept */ }
+    } catch (e) { console.warn(`ai-booking health run not kept (the result is still shown): ${(e as Error)?.message ?? e}`); }
     return { runId, overall, checkedAt: at, checks: out, note: NOTE };
   }
 }

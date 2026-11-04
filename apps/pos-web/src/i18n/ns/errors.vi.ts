@@ -1003,6 +1003,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.WALK_IN_CHECKIN_DISABLED': 'Tiếp nhận khách vãng lai đang tắt ở đây.',
   'errors.CLOCK_OUT_ACTIVE_SERVICE': 'Bạn vẫn đang làm một dịch vụ. Hãy hoàn tất hoặc chuyển giao trước khi chấm công ra — hoặc nhờ quản lý.',
   'errors.END_AFTER_START': 'Giờ kết thúc phải sau giờ bắt đầu.',
+  'errors.SLOT_IN_PAST': 'Giờ này đã qua. Hãy chọn giờ muộn hơn.',
   'errors.SLOT_REQUIRED': 'Hãy chọn khung giờ.',
   'errors.SLOT_BOOKING_FAILED': 'Không đặt được giờ này. Hãy chọn giờ khác.',
   'errors.BLOCK_NOT_CREATED': 'Không lưu được khoảng thời gian chặn.',

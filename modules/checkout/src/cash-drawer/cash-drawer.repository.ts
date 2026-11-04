@@ -6,7 +6,7 @@ import { REVENUE_BEARING_STATUSES } from '@aipowersalon/api-contracts';
 import { CASH_DRAWER_SESSION } from '../checkout/checkout-lifecycles';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
-import { Kysely, sql } from 'kysely';
+import { Kysely, sql, type RawBuilder, type SqlBool } from 'kysely';
 import { branchTimeZone, tenantTimeZone, type DB } from '@aipowersalon/database';
 import { businessDate } from '@aipowersalon/date-time';
 import { DrawerState, DrawerStatus, OwnerDrawerSummary, CashMovement, num, isUuid } from './cash-drawer.dto';
@@ -37,7 +37,7 @@ export class CashDrawerRepository {
   /** D15 (Nov 4 2026): which payments belong to this register's drawer. A station's drawer reads the cash taken at that
    *  station (payments.register_id, migration 788); 'main' reads the cash with no live station — so a location without
    *  stations keeps one drawer with all its cash, as before. */
-  private registerFilter(ctx: DrawerCtx, branchId: string, registerId: string) {
+  private registerFilter(ctx: DrawerCtx, branchId: string, registerId: string): RawBuilder<SqlBool> {
     if (registerId && registerId !== 'main') return sql`p.register_id = ${registerId}`;
     return sql`(p.register_id IS NULL OR NOT EXISTS (SELECT 1 FROM pos_stations st WHERE st.tenant_id = ${ctx.tenantId} AND st.branch_id = ${branchId} AND st.id::text = p.register_id AND st.retired_at IS NULL))`;
   }
@@ -57,13 +57,13 @@ export class CashDrawerRepository {
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', 'in', [...REVENUE_BEARING_STATUSES])   // incl. 'partial' — the cash part of a split (wave 4 PILOT)
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
       .where(sql`(p.ticket_id IS NULL OR NOT EXISTS (SELECT 1 FROM cash_payment_confirmations c WHERE c.ticket_id = p.ticket_id AND c.tenant_id = ${ctx.tenantId} AND c.status = 'confirmed'))` as any)
-      .where(this.registerFilter(ctx, branchId, registerId) as any)
+      .where(this.registerFilter(ctx, branchId, registerId))
       .executeTakeFirst();   // a failed read must FAIL — it used to read as $0 and reconcile then stored a false shortage (audit Nov 3 2026)
     const refunds = await this.db.selectFrom('payments as p')
       .select((eb: any) => eb.fn.coalesce(eb.fn.sum('p.amount_cents'), sql`0`).as('cents'))
       .where('p.tenant_id', '=', ctx.tenantId).where('p.branch_id', '=', branchId).where('p.method', '=', 'cash').where('p.status', '=', 'refunded')
       .where(sql`(p.created_at at time zone ${tz})::date = ${date}` as any)
-      .where(this.registerFilter(ctx, branchId, registerId) as any)
+      .where(this.registerFilter(ctx, branchId, registerId))
       .executeTakeFirst();
     return { salesCents: num((sales as any)?.cents), refundsCents: num((refunds as any)?.cents), paymentCount: num((sales as any)?.cnt) };
   }

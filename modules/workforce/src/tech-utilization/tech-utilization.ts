@@ -21,7 +21,7 @@ export async function loadTechUtilization(db: Kysely<any>, scope: UtilScope, dat
   const busyRows = await db.selectFrom('pos_tech_appointments')
     .where('tenant_id', '=', scope.tenantId).where('appt_date', '=', day).where('status', 'not in', ['cancelled', 'no_show'])
     .$if(!!scope.branchId, (qb: any) => qb.where((eb: any) => eb.or([eb('branch_id', '=', scope.branchId), eb('branch_id', 'is', null)])))
-    .groupBy('technician_id').select((eb: any) => ['technician_id as technicianId', eb.fn.sum('duration_minutes').as('busyMin')]).execute().catch(() => { busyUnknown = true; return [] as any[]; });
+    .groupBy('technician_id').select((eb: any) => ['technician_id as technicianId', eb.fn.sum('duration_minutes').as('busyMin')]).execute().catch(() => { busyUnknown = true; return [] as Array<{ technicianId: string; busyMin: unknown }>; });
   const busyMap = new Map<string, number>(busyRows.map((r) => [String(r.technicianId), Number(r.busyMin || 0)]));
 
   const availMap = new Map<string, number>();

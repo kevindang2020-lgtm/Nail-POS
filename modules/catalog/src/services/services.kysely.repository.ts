@@ -62,7 +62,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
   private async loadRows(ctx: ServicesContext): Promise<Row[]> {
     const svc = await this.scoped(this.db.selectFrom('services'), ctx)
       .select(['id', 'category_id', 'name', 'description', 'duration_minutes', 'price_cents', 'commission_type', 'commission_value',
-        'online_booking_enabled', 'ai_booking_enabled', 'customer_app_booking_enabled', 'status', 'sort_order', 'created_at', 'updated_at', 'is_taxable' as any]).orderBy('sort_order').execute().catch(() => []);
+        'online_booking_enabled', 'ai_booking_enabled', 'customer_app_booking_enabled', 'status', 'sort_order', 'created_at', 'updated_at', 'is_taxable']).orderBy('sort_order').execute().catch(() => []);
     const ids = svc.map((s: any) => s.id);
     // mapping (technician_services + technician display names)
     const maps = ids.length ? await this.scoped(this.db.selectFrom('technician_services as ts'), ctx, 'ts')
@@ -80,7 +80,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
       serviceId: s.id, categoryId: s.category_id, name: s.name, description: s.description || '', basePriceCents: Number(s.price_cents),
       durationMinutes: Number(s.duration_minutes), status: s.status as ServiceStatus, onlineBookingEnabled: !!s.online_booking_enabled,
       aiBookingEnabled: !!s.ai_booking_enabled, customerAppBookingEnabled: !!s.customer_app_booking_enabled, commissionType: s.commission_type as CommissionType, commissionValue: Number(s.commission_value),
-      sortOrder: Number(s.sort_order), createdAt: iso(s.created_at), updatedAt: iso(s.updated_at), isTaxable: (s as any).is_taxable !== false,
+      sortOrder: Number(s.sort_order), createdAt: iso(s.created_at), updatedAt: iso(s.updated_at), isTaxable: s.is_taxable !== false,
       mapping: mapBy[s.id] || [], bookingsCount: lineBy[s.id]?.cnt || 0, revenueCents: lineBy[s.id]?.rev || 0,
       usage: { appointmentLines: 0, ticketLines: lineBy[s.id]?.cnt || 0, reportRefs: 0 },
     }));
@@ -347,30 +347,30 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
         const ex = byKey.get(key);
         const next = { name: a.name, price_cents: a.priceCents, duration_delta_minutes: a.durationDeltaMinutes, is_taxable: a.isTaxable, is_active: a.isActive, sort_order: i };
         if (!ex) {
-          await trx.insertInto('service_add_ons').values({ tenant_id: ctx.tenantId, branch_id: branchId, service_id: serviceId, add_on_key: key, ...next, updated_at: new Date() } as any).execute();
+          await trx.insertInto('service_add_ons').values({ tenant_id: ctx.tenantId, branch_id: branchId, service_id: serviceId, add_on_key: key, ...next, updated_at: new Date() }).execute();
           changes.push(...diffFields('add_on', key, {}, { name: a.name, price_cents: a.priceCents, is_active: a.isActive }, { serviceId, source: 'pos' }));
         } else {
-          await trx.updateTable('service_add_ons').set({ ...next, updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
+          await trx.updateTable('service_add_ons').set({ ...next, updated_at: new Date() }).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
           changes.push(...diffFields('add_on', key, { name: ex.name, price_cents: Number(ex.price_cents), duration_delta_minutes: Number(ex.duration_delta_minutes), is_taxable: !!ex.is_taxable, is_active: !!ex.is_active },
             { name: a.name, price_cents: a.priceCents, duration_delta_minutes: a.durationDeltaMinutes, is_taxable: a.isTaxable, is_active: a.isActive }, { serviceId, source: 'pos' }));
         }
       }
       for (const ex of existing) {
         if (sent.has(String(ex.add_on_key)) || !ex.is_active) continue;
-        await trx.updateTable('service_add_ons').set({ is_active: false, updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
+        await trx.updateTable('service_add_ons').set({ is_active: false, updated_at: new Date() }).where('tenant_id', '=', ctx.tenantId).where('id', '=', ex.id).execute();
         changes.push(...diffFields('add_on', String(ex.add_on_key), { is_active: true }, { is_active: false }, { serviceId, source: 'pos' }));
       }
-      if (changes.length) await recordCatalogChanges(trx as any, ctx as any, changes);
+      if (changes.length) await recordCatalogChanges(trx, ctx, changes);
     });
     return this.getAddOns(ctx, serviceId);
   }
   async getTax(ctx: ServicesContext, serviceId: string): Promise<ServiceTax | null> {
-    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable' as any]).executeTakeFirst().catch(() => undefined);
+    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable']).executeTakeFirst().catch(() => undefined);
     return s ? { isTaxable: s.is_taxable !== false, exemptAllowed: false } : null;
   }
 
   async setTax(ctx: ServicesContext, serviceId: string, t: ServiceTax): Promise<ServiceTax | null> {
-    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable' as any]).executeTakeFirst().catch(() => undefined);
+    const s: any = await this.scoped(this.db.selectFrom('services'), ctx).where('id', '=', serviceId).select(['id', 'is_taxable']).executeTakeFirst().catch(() => undefined);
     if (!s) return null;
     // D2 Services (Nov 4 2026): taxable / not taxable is stored per service (792); every ticket line copies it when rung up, so
     // a change applies to new tickets only. The RATE stays the salon's / location's; a per-service rate, an exemption
@@ -382,8 +382,8 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
     const before = s.is_taxable !== false;
     if (next !== before) {
       await this.db.transaction().execute(async (trx) => {
-        await (trx as any).updateTable('services').set({ is_taxable: next, updated_at: new Date() }).where('tenant_id', '=', ctx.tenantId).where('id', '=', serviceId).execute();
-        await recordCatalogChanges(trx as any, ctx as any, diffFields('service', serviceId, { is_taxable: before }, { is_taxable: next }, { serviceId, source: 'pos' }));
+        await trx.updateTable('services').set({ is_taxable: next, updated_at: new Date() }).where('tenant_id', '=', ctx.tenantId).where('id', '=', serviceId).execute();
+        await recordCatalogChanges(trx, ctx, diffFields('service', serviceId, { is_taxable: before }, { is_taxable: next }, { serviceId, source: 'pos' }));
       });
     }
     return { isTaxable: next, exemptAllowed: false };

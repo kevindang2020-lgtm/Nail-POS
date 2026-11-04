@@ -1,3 +1,4 @@
+import { withCode } from '@aipowersalon/api-contracts';
 import { TechnicianNotSkilledError, type TechnicianSkillsPort } from '../booking/technician-skills.port';
 // customer-booking.service.ts — validates and creates a customer self-booking. Reuses the tech-appointments pure
 // conflict helpers (addMinutesToTime, detectTechnicianConflict) so customer bookings honour the same double-booking
@@ -181,7 +182,7 @@ export class CustomerBookingService {
   private async assertNotPast(ctx: CustomerBookingContext, date: string, startTime: string) {
     if (!this.repo.salonNow) return;
     const now = await this.repo.salonNow(ctx);
-    if (date < now.date || (date === now.date && minutesOf(startTime) <= now.minutes)) throw new BookingValidationError('That time has already passed. Pick a later time.');
+    if (date < now.date || (date === now.date && minutesOf(startTime) <= now.minutes)) throw withCode(new BookingValidationError('That time has already passed. Pick a later time.'), 'SLOT_IN_PAST');
   }
   async book(ctx: CustomerBookingContext, body: CreateBookingRequest): Promise<BookingResult> {
     // Sep 2026 merge (developer's multi-salon booking): a client-named salon is honoured ONLY when it is one of this

@@ -51,7 +51,10 @@ describe('Live Technician Schedule', () => {
     expect(r.kpis).toMatchObject({ workingToday: 2, clockedIn: 2, availableNow: 1, inService: 0, onBreak: 1, bookedMinutes: 95, appointments: 2, scheduledMinutes: 690, utilizationPercent: 14, utilizationBasis: 'forecast' });
   });
   it('a past day never advertises live counts; nothing scheduled = utilization N/A', async () => {
-    const r = await repo.kpis(ctx, { date: '2020-01-01' });
+    // a past day on a DIFFERENT weekday from today: Vishal's weekly hours are on today's weekday (2020-01-01 is a Wednesday,
+    // so on a Wednesday that date had planned hours and the test failed)
+    const past = ['2020-01-05', '2020-01-06', '2020-01-07', '2020-01-01', '2020-01-02', '2020-01-03', '2020-01-04'].find((d) => new Date(d + 'T12:00:00Z').getUTCDay() !== dow)!;
+    const r = await repo.kpis(ctx, { date: past });
     expect(r.when).toBe('past');
     expect(r.kpis).toMatchObject({ availableNow: null, inService: null, onBreak: null, clockedIn: null, bookedMinutes: 0, utilizationPercent: null, utilizationBasis: 'booked' });
   });

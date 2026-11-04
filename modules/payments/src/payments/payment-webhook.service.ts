@@ -352,8 +352,8 @@ export class PaymentWebhookService {
       const refundStatus = mapRefundStatus(eventType, body);
       const dup = await this.db.selectFrom('payment_refunds').select(['id', 'status']).where('tenant_id', '=', tenant.tenantId).where('processor_refund_id', '=', refundId).executeTakeFirst();
       // the same refund reported again with its final outcome (pending → refunded / failed): the row moves on; a final row never moves back
-      if (dup && ['pending', 'processing'].includes(String((dup as any).status)) && refundStatus !== 'pending')
-        await this.db.updateTable('payment_refunds').set({ status: refundStatus } as any).where('tenant_id', '=', tenant.tenantId).where('id', '=', (dup as any).id).where('status', 'in', ['pending', 'processing']).execute();
+      if (dup && ['pending', 'processing'].includes(String(dup.status)) && refundStatus !== 'pending')
+        await this.db.updateTable('payment_refunds').set({ status: refundStatus }).where('tenant_id', '=', tenant.tenantId).where('id', '=', dup.id).where('status', 'in', ['pending', 'processing']).execute();
       // the POS already recorded this refund (it stores its own reference, not the gateway's refund id): the same payment,
       // the same amount, not failed, recorded by the POS (no webhook event) — the callback confirms it, it is not a second refund
       // only a SUCCESSFUL refund confirms the POS's row; a failed / pending report is kept as its own row (never read as "confirmed")

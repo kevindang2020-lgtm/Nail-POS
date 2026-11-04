@@ -178,7 +178,7 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     const r = await sql<{ x: number }>`select 1 as x from customer_payment_methods where tenant_id = ${tenantId} and customer_id = ${customerId} and token is not null limit 1`.execute(this.db);
     return r.rows.length > 0;
   }
-  private invoiceUsed(exec: Kysely<any>, tenantId: string, invoiceId: string) {
+  private invoiceUsed(exec: Kysely<DB>, tenantId: string, invoiceId: string) {
     return sql<{ x: number }>`select 1 as x from membership_payments where tenant_id = ${tenantId} and processor = 'invoice' and processor_ref = ${invoiceId} and status = 'succeeded' limit 1`.execute(exec);
   }
   async paidInvoiceFor(tenantId: string, customerId: string, invoiceId: string) {
@@ -186,7 +186,7 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
     const r = await sql<{ id: string; total_cents: string; invoice_number: string }>`select id, total_cents, invoice_number from invoices
       where tenant_id = ${tenantId} and id = ${invoiceId}::uuid and customer_id = ${customerId} and status = 'paid'`.execute(this.db);
     const i = r.rows[0]; if (!i) return null;
-    return { id: String(i.id), totalCents: n(i.total_cents), number: String(i.invoice_number), used: (await this.invoiceUsed(this.db as any, tenantId, String(i.id))).rows.length > 0 };
+    return { id: String(i.id), totalCents: n(i.total_cents), number: String(i.invoice_number), used: (await this.invoiceUsed(this.db, tenantId, String(i.id))).rows.length > 0 };
   }
   async eligibleInvoices(tenantId: string, customerId: string) {
     const r = await sql<{ id: string; total_cents: string; invoice_number: string; paid_at: any }>`select i.id, i.total_cents, i.invoice_number, i.paid_at from invoices i
@@ -198,12 +198,12 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
   async applyFirstPayment(a: FirstPaymentArgs): Promise<{ applied: boolean; duplicate: boolean; paymentId: string }> {
     const m = a.membership;
     return this.db.transaction().execute(async (trx) => {
-      const tx = new KyselyMembershipBillingRepository(trx as any);
+      const tx = new KyselyMembershipBillingRepository(trx);
       // one membership at a time (and one use of an invoice at a time)
       await sql`select id from customer_memberships where id = ${m.membershipId} and tenant_id = ${m.tenantId} for update`.execute(trx);
       if (a.processor === 'invoice' && a.processorRef) {
         await sql`select id from invoices where id = ${a.processorRef}::uuid and tenant_id = ${m.tenantId} for update`.execute(trx);
-        if ((await this.invoiceUsed(trx as any, m.tenantId, a.processorRef)).rows.length) throw Object.assign(new Error('That invoice already paid for a membership.'), { apiCode: 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', status: 409 });
+        if ((await this.invoiceUsed(trx, m.tenantId, a.processorRef)).rows.length) throw Object.assign(new Error('That invoice already paid for a membership.'), { apiCode: 'MEMBERSHIP_INVOICE_NOT_ELIGIBLE', status: 409 });
       }
       const rec = await tx.recordPayment({ membershipId: m.membershipId, tenantId: m.tenantId, branchId: m.branchId, customerId: m.customerId, kind: 'enrollment', amountCents: a.amountCents, taxCents: 0,
         status: 'succeeded', processor: a.processor, processorRef: a.processorRef, idempotencyKey: a.idempotencyKey, attemptNumber: 1, failureReason: null,

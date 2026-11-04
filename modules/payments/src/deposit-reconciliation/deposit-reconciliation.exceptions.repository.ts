@@ -78,7 +78,7 @@ export class KyselyExceptionsRepository implements ExceptionsRepositoryPort {
     return toDomain(res.rows[0]);
   }
   async userInSalon(ctx: ReconContext, userId: string): Promise<boolean> {
-    return ((await sql`SELECT 1 FROM users WHERE tenant_id = ${ctx.tenantId} AND id = ${userId}::uuid LIMIT 1`.execute(this.db)).rows as any[]).length > 0;
+    return ((await sql`SELECT 1 FROM users WHERE tenant_id = ${ctx.tenantId} AND id = ${userId}::uuid LIMIT 1`.execute(this.db)).rows as unknown[]).length > 0;
   }
   async find(ctx: ReconContext, id: string): Promise<ReconException | null> {
     const res: any = await sql`SELECT * FROM reconciliation_exceptions WHERE tenant_id = ${ctx.tenantId} AND id = ${id} LIMIT 1`.execute(this.db).catch(() => ({ rows: [] }));

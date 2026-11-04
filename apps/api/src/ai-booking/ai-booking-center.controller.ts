@@ -2,7 +2,9 @@
 // under pos/ai-booking. Reads only (overview · activity · detail · recovery · health); the two writes are Check AI Booking
 // System (records a read-only run) and Dismiss a recovery case (reason required, audited). Tenant / location / role from
 // the session; every route names its permission and the service checks it again.
-import { Body, Controller, Get, HttpException, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, Inject, Optional, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import type { Kysely } from 'kysely';
+import { AuditService } from '@aipowersalon/audit';
 import { DATABASE, type AppDatabase } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
@@ -26,7 +28,9 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 export class AiBookingCenterController {
   private readonly center: AiBookingCenter;
-  constructor(@Inject(DATABASE) db: AppDatabase) { this.center = new AiBookingCenter(db as any); }
+  constructor(@Inject(DATABASE) db: AppDatabase, @Optional() audit?: AuditService) {
+    this.center = new AiBookingCenter(db as unknown as Kysely<any>, process.env, Date.now, audit ? (c, i) => audit.record(c, i) : undefined);
+  }
 
   @Get('overview') @RequirePermission('ai_booking.view')
   overview(@Req() r: any, @Query('preset') preset?: string, @Query('from') from?: string, @Query('to') to?: string): Promise<AibOverview> { return run(() => this.center.overview(ctxOf(r), { preset, from, to })); }

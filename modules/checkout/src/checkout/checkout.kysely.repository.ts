@@ -135,7 +135,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
 
   private async hydrate(ctx: CheckoutContext, t: any): Promise<Ticket> {
     const lines = await this.scoped(this.db.selectFrom('ticket_service_lines'), ctx).where('ticket_id', '=', t.id)
-      .select(['id', 'service_name_snapshot', 'technician_id', 'line_total_cents', 'line_kind', 'is_add_on', 'quantity', 'price_cents_snapshot', 'product_id', 'is_taxable' as any]).orderBy('created_at', 'asc').orderBy('id', 'asc').execute().catch(() => []);   // the order they were added (id breaks a tie) — stable, so a refresh never reorders the customer's ticket
+      .select(['id', 'service_name_snapshot', 'technician_id', 'line_total_cents', 'line_kind', 'is_add_on', 'quantity', 'price_cents_snapshot', 'product_id', 'is_taxable']).orderBy('created_at', 'asc').orderBy('id', 'asc').execute().catch(() => []);   // the order they were added (id breaks a tie) — stable, so a refresh never reorders the customer's ticket
     let custName = '', phone: string | undefined, email: string | undefined, vip = false;
     // merged from the developer tree (Oct 23 2026): the E.164 number first (an SMS receipt needs it), the display form second
     if (t.customer_id) { const c: { full_name?: string | null; phone_display?: string | null; normalized_phone?: string | null; email?: string | null } | undefined = await this.scoped(this.db.selectFrom('customers'), ctx).where('id', '=', t.customer_id).select(['full_name', 'phone_display', 'normalized_phone', 'email']).executeTakeFirst().catch(() => undefined); if (c) { custName = c.full_name || ''; phone = c.normalized_phone || c.phone_display || undefined; email = c.email || undefined; } }
@@ -918,7 +918,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
             and r.type = 'cancel' and r.idempotency_key like 'gc-refund:%'), 0) as reversed
       from gift_cards g where g.tenant_id = ${tenantId} and (g.sale_ticket_id = ${ticketId}::uuid
         or g.id in (select gift_card_id from gift_card_transactions where tenant_id = ${tenantId} and ticket_id = ${ticketId}::uuid and type = 'hold'))
-      order by g.created_at, g.id`.execute(exec)).rows as any[];
+      order by g.created_at, g.id`.execute(exec)).rows as Array<Record<string, unknown>>;
     return rows.map((r) => ({ giftCardId: String(r.id), last4: r.card_number_last4 ?? (r.code ? String(r.code).slice(-4) : null), status: String(r.status), balanceCents: Number(r.balance_cents),
       creditedCents: Number(r.credited), reversedCents: Number(r.reversed), kind: r.is_sale ? 'sale' as const : 'reload' as const })).filter((r) => r.creditedCents > 0);
   }

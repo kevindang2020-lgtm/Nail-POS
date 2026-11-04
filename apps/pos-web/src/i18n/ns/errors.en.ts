@@ -1003,6 +1003,7 @@ export const ERRORS_EN = {
   'errors.WALK_IN_CHECKIN_DISABLED': 'Walk-in check-in is turned off here.',
   'errors.CLOCK_OUT_ACTIVE_SERVICE': 'You are still on an active service. Finish it or hand it off before clocking out — or ask a manager.',
   'errors.END_AFTER_START': 'The end time must be after the start time.',
+  'errors.SLOT_IN_PAST': 'That time has already passed. Pick a later time.',
   'errors.SLOT_REQUIRED': 'Choose a time slot.',
   'errors.SLOT_BOOKING_FAILED': 'That time could not be booked. Choose another time.',
   'errors.BLOCK_NOT_CREATED': 'The blocked time could not be saved.',

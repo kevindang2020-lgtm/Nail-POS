@@ -45,7 +45,7 @@ export class MembershipRenewalScheduler implements OnModuleInit, OnModuleDestroy
     try {
       const r = await this.comms.runRenewalRemindersDue(now, 7, 500);
       const b = await this.billing.runDueRenewals(now, 100);
-      const expired = await this.billing.expireAgedCredits(now).catch(() => 0);   // the plans' credit expiry (days)
+      const expired = await this.billing.expireAgedCredits(now).catch((e) => { this.log.warn(`membership credit expiry failed (renewals still ran): ${(e as Error)?.message ?? e}`); return 0; });   // the plans' credit expiry (days)
       if (expired) this.log.log(`membership credits expired by age: ${expired}`);
       if ((b as any)?.due) this.log.log(`membership renewals: ${JSON.stringify({ due: b.due, succeeded: b.succeeded, failed: b.failed, notConfigured: b.notConfigured, reminders: r })}`);
     } finally { this.running = false; }

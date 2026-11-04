@@ -176,7 +176,7 @@ function TechCommissionDetails({ row, pq, periodLabel, onClose }: { row: any; pq
     : tab === 'adjustments' ? posCommissionScreenApi.adjustments(id, { ...pq, page: pg, pageSize: 8 }) : posCommissionScreenApi.payouts({ ...pq, technicianId: id, page: pg, pageSize: 8 })).then((r: any) => ({ forTab, r })); }, [tab, lqq, pg, id, JSON.stringify(pq)]);
   // the data of THIS tab only: switching tabs used to draw the previous tab's rows in the new tab's table until the load finished
   // (service lines appeared as tips of $0.00)
-  const x: any = d.data && (d.data as any).forTab === tab ? (d.data as any).r : null;
+  const dd = d.data as { forTab: string; r: any } | null; const x: any = dd && dd.forTab === tab ? dd.r : null;
   return (
     <FitDialog wide title={row.technicianName ?? tx('cm.details')} subtitle={<>{periodLabel} · {tx('cm.basis.checkout')}</>} onClose={onClose} testId="dlg-commission"
       footer={<button type="button" className="fk-btn primary" onClick={onClose} data-testid="commission-close">{tx('pos.close')}</button>}>
