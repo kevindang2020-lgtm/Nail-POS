@@ -4,16 +4,20 @@
 import { api } from "./client";
 
 const enc = encodeURIComponent;
-import type { FinanceInboxTab, FinanceExpense, FinanceCategory, FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceExpensePage, FinanceCategoryList, FinanceCategoryRecommendation, FinanceExpenseCreateResult, FinanceExpenseCreateRequest, FinanceAttachResult, FinancePaymentMatch, FinancePaymentLinkRequest, FinanceSettings, FinanceSettingsRequest } from '@aipowersalon/api-contracts/tenant';
+import type { FinanceInboxTab, FinanceExpense, FinanceCategory, FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceExpensePage, FinanceCategoryList, FinanceCategoryRecommendation, FinanceExpenseCreateResult, FinanceExpenseCreateRequest, FinanceAttachResult, FinancePaymentMatch, FinancePaymentLinkRequest, FinanceSettings, FinanceSettingsRequest, FinanceExpenseSummary, FinanceExpenseUpdateRequest, FinanceExpenseResult, FinanceExpenseDetail } from '@aipowersalon/api-contracts/tenant';
 export type ExpenseTab = FinanceInboxTab;
-export type { FinanceExpense as FinExpense, FinanceCategory as FinCategory, FinanceDashboard as FinDashboard, FinanceReport as FinReport, FinanceExportPayload };
+export type { FinanceExpenseSummary as FinSummary, FinanceExpenseDetail as FinDetail, FinanceExpense as FinExpense, FinanceCategory as FinCategory, FinanceDashboard as FinDashboard, FinanceReport as FinReport, FinanceExportPayload };
 
 export const posExpensesApi = {
   // the finance module
   dashboard: () => api.get<FinanceDashboard>(`/owner/finance/dashboard`),
   report: (period: string) => api.get<FinanceReport>(`/owner/finance/reports`, { period }),
-  expenses: (q: { tab: ExpenseTab; period?: string; q?: string; page?: number }) => api.get<FinanceExpensePage>(`/owner/finance/expenses`, q),
-  detail: (id: string) => api.get<{ expense: FinanceExpense }>(`/owner/finance/expenses/${enc(id)}`),
+  reportRange: (from: string, to: string) => api.get<FinanceReport>(`/owner/finance/reports`, { period: 'custom', from, to }),
+  expenses: (q: { tab: ExpenseTab | 'all'; period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string; sort?: 'created' | 'date' | 'amount'; page?: number; pageSize?: number }) => api.get<FinanceExpensePage>(`/owner/finance/expenses`, q),
+  /** Expenses guide (Nov 4 2026): the four KPIs over the whole filtered set, with the period the server resolved */
+  kpis: (q: { period?: string; from?: string; to?: string; q?: string; category?: string; paymentMethod?: string }) => api.get<FinanceExpenseSummary>(`/owner/finance/expenses/summary`, q),
+  update: (id: string, body: FinanceExpenseUpdateRequest) => api.patch<FinanceExpenseResult>(`/owner/finance/expenses/${enc(id)}`, body as unknown as Record<string, unknown>),
+  detail: (id: string) => api.get<FinanceExpenseDetail>(`/owner/finance/expenses/${enc(id)}`),
   categories: () => api.get<FinanceCategoryList>(`/owner/finance/expense-categories`),
   recommend: (vendor: string) => api.post<FinanceCategoryRecommendation>(`/owner/finance/expenses/recommend-category`, { vendor }),
   createExpense: (body: FinanceExpenseCreateRequest) => api.post<FinanceExpenseCreateResult>(`/owner/finance/expenses`, body as unknown as Record<string, unknown>),
@@ -26,7 +30,7 @@ export const posExpensesApi = {
   deleteDraft: (id: string) => api.del(`/owner/finance/expenses/${enc(id)}`),
   duplicateDecision: (id: string, decision: 'not_duplicate' | 'duplicate', reason: string) => api.post(`/owner/finance/expenses/${enc(id)}/duplicate-decision`, { decision, reason }),
   billPayment: (id: string, amountCents: number, idempotencyKey: string) => api.post(`/owner/finance/expenses/${enc(id)}/bill-payments`, { amountCents, idempotencyKey }),
-  exportFile: (format: 'csv' | 'xlsx', period: string) => api.exportAsync<FinanceExportPayload>(`/owner/finance/expenses/export`, { format, period }, 'json'),
+  exportFile: (format: 'csv' | 'xlsx', period: string, filters: { from?: string; to?: string; category?: string; paymentMethod?: string; q?: string } = {}) => api.exportAsync<FinanceExportPayload>(`/owner/finance/expenses/export`, { format, period, ...filters }, 'json'),
   // Oct 27 2026 — §142 the receipt document carries the finance suggestion of an existing expense; a person links it here
   attachReceipt: (expenseId: string, documentId: string) => api.post<FinanceAttachResult>(`/owner/finance/expenses/${enc(expenseId)}/documents`, { documentId, role: 'receipt' }),
   // §62/§63 the payment / bank transaction behind an expense — looked up (UNMATCHED honestly without a feed), linked or cleared by a person

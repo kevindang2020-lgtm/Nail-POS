@@ -232,6 +232,7 @@
   "GET /owner/finance/expenses": "AADDDRRRRRRRRRRRR",
   "GET /owner/finance/expenses/{id}": "AADDDRRRRRRRRRRRR",
   "GET /owner/finance/expenses/export": "AADDDRRRRRRRRRRRR",
+  "GET /owner/finance/expenses/summary": "AADDDRRRRRRRRRRRR",
   "GET /owner/finance/payment-mix": "AADDDRRRRRRRRRRRR",
   "GET /owner/finance/receipts/{documentId}/suggested-expense": "AADDDRRRRRRRRRRRR",
   "GET /owner/finance/reports": "AADDDRRRRRRRRRRRR",

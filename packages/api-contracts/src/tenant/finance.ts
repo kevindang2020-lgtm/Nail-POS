@@ -24,6 +24,13 @@ export interface FinanceExpense {
   createdAt: string; updatedAt: string; version: number;
 }
 export interface FinanceExpensePage { items: FinanceExpense[]; total: number; page: number; pageSize: number }
+/** GET expenses/summary (Expenses guide, Nov 4 2026) — the four KPIs over the whole filtered set (approved expenses only) and the
+ *  period the server resolved in the salon's time zone. */
+export interface FinanceExpenseSummary {
+  period: { preset: 'today' | 'week' | 'month' | 'year' | 'custom' | 'all'; from: string | null; to: string | null; tz: string; today: string };
+  totalCents: number; entries: number; categoriesUsed: number;
+  topCategory: { key: string; label: string; totalCents: number } | null;
+}
 export interface FinanceDuplicateMatch { id: string; status: 'exact' | 'possible'; reason: string }
 export interface FinanceDuplicateResult { status: 'exact' | 'possible' | 'none'; matches: FinanceDuplicateMatch[] }
 /** GET expenses/:id — the expense with its lines, branch split, documents, bill payments, history and duplicate matches. */

@@ -228,3 +228,40 @@ describe('§163 run 3 (Oct 27 2026): an expense rule naming an unknown vendor', 
     expect(await q(`select 1 from expense_category_rules where tenant_id = $1 and vendor_id = $2`, [T, unknownVendor])).toHaveLength(0);
   });
 });
+
+// Expenses guide (Nov 4 2026): the screen's four KPIs over the WHOLE filtered set, numbered pages newest-created first,
+// and a page past the end served as the last page. A separate salon keeps these rows apart from the cases above.
+describe('finance — the Expenses screen summary and pages', () => {
+  const T3 = 'f9000000-0000-4000-8000-000000000003', O3 = 'f9000000-0000-4000-8000-0000000000e7';
+  const own3: FinanceCtx = { tenantId: T3, userId: O3, role: 'OWNER', permissions: ALL };
+  it('Total / Entries / Top Category by amount / Categories Used — approved only, every page, same filters as the list', async () => {
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code) values ($1,'S3','S3','fin-c','FINC')`, [T3]);
+    await q(`insert into tenant_settings (id, tenant_id, branch_id, category, settings_json) values (gen_random_uuid(), $1, NULL, 'business-branch', '{"timezone":"UTC"}'::jsonb)`, [T3]);
+    await q(`insert into users (id, tenant_id, first_name, last_name, full_name, email, status, role) values ($1,$2,'S','S','S S','s@fin.test','active','OWNER')`, [O3, T3]);
+    const mk = async (k: string, cents: number, category: string, intent: 'approve' | 'draft', incurredOn = today, paymentMethod: string | null = 'cash') =>
+      (await svc.create(own3, { amountCents: cents, incurredOn, vendor: 'Vendor ' + k, category, paymentMethod, intent, idempotencyKey: 'scr-' + k } as never)).expense;
+    for (let i = 0; i < 5; i++) await mk('sup' + i, 1000, 'supplies', 'approve');   // 5 × $10 = $50 supplies (more entries)
+    await mk('rent', 8000, 'rent', 'approve');                                      // one $80 rent: the top category by AMOUNT
+    await mk('draft', 99900, 'rent', 'draft');                                      // a draft is not counted
+    await mk('old', 7000, 'utilities', 'approve', '2020-01-15');                    // outside the month
+    const s = await svc.summary(own3, { period: 'month' });
+    expect(s).toMatchObject({ totalCents: 13000, entries: 6, categoriesUsed: 2, topCategory: { key: 'rent', totalCents: 8000 } });
+    expect(s.period).toMatchObject({ preset: 'month', tz: 'UTC', today });
+    expect((await svc.summary(own3, { period: 'month', category: 'supplies' })).totalCents).toBe(5000);
+    expect((await svc.summary(own3, { from: '2020-01-01', to: '2020-01-31' }))).toMatchObject({ totalCents: 7000, entries: 1, period: { preset: 'custom', from: '2020-01-01', to: '2020-01-31' } });
+    expect(await code(svc.summary(own3, { from: '2020-02-01', to: '2020-01-01' }))).toBe('EXPENSE_INVALID');
+    // empty is a real zero
+    expect(await svc.summary(own3, { from: '2019-01-01', to: '2019-01-31' })).toMatchObject({ totalCents: 0, entries: 0, categoriesUsed: 0, topCategory: null });
+  });
+  it('pages are newest-created first with no repeats; a page past the end is the last page', async () => {
+    const p1 = await svc.list(own3, { tab: 'all', sort: 'created', page: 1, pageSize: 3 } as never);
+    const p2 = await svc.list(own3, { tab: 'all', sort: 'created', page: 2, pageSize: 3 } as never);
+    const p3 = await svc.list(own3, { tab: 'all', sort: 'created', page: 3, pageSize: 3 } as never);
+    expect(p1.total).toBe(8);
+    expect(p1.items[0].vendor).toBe('Vendor old');   // the last one created comes first
+    const ids = [...p1.items, ...p2.items, ...p3.items].map((x: { id: string }) => x.id);
+    expect(new Set(ids).size).toBe(8);
+    const past = await svc.list(own3, { tab: 'all', sort: 'created', page: 9, pageSize: 3 } as never);
+    expect(past.page).toBe(3); expect(past.items.map((x: { id: string }) => x.id)).toEqual(p3.items.map((x: { id: string }) => x.id));
+  });
+});

@@ -6,4 +6,8 @@ export const ExpenseControllerListQueries = {
     filters: { tab: { type: 'text' }, category: { type: 'text' }, vendorId: { type: 'id' }, status: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' }, minCents: { type: 'text' }, maxCents: { type: 'text' } },
     search: { params: ['q'] },
   },
+  summary: {
+    filters: { category: { type: 'text' }, paymentMethod: { type: 'text' }, branchId: { type: 'id' }, period: { type: 'text' } },
+    search: { params: ['q'] },
+  },
 } satisfies Record<string, ListQuerySpec>;

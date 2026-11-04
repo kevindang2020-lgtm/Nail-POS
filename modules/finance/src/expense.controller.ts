@@ -12,7 +12,7 @@ import { ExpenseControllerListQueries } from './expense.list-queries';
 import type { ReportPeriod } from './expense-reports';
 import type { InboxTab } from './expense.repository';
 import type {
-  FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceVendorSpend, FinanceExpensePage, FinanceExpenseDetail, FinanceExpenseCreateResult, FinanceExpenseResult,
+  FinanceDashboard, FinanceReport, FinanceExportPayload, FinanceVendorSpend, FinanceExpensePage, FinanceExpenseSummary, FinanceExpenseDetail, FinanceExpenseCreateResult, FinanceExpenseResult,
   FinanceDeleteResult, FinanceAttachResult, FinanceArchiveResult, FinanceBatchResult, FinanceDuplicateResult, FinanceCategoryRecommendation, FinanceImportResult, FinanceCategoryList,
   FinanceCategoryResult, FinanceRuleList, FinanceRuleResult, FinanceSettings, FinanceExpenseCreateRequest, FinanceExpenseUpdateRequest, FinanceVersionRequest,
   FinanceReasonRequest, FinanceDuplicateDecisionRequest, FinanceBillPaymentRequest, FinanceReimbursementRequest, FinanceAttachRequest, FinanceIdsRequest,
@@ -54,9 +54,9 @@ export class ExpenseController {
     return financeRun(() => this.svc.report(financeCtx(r, branchId), { period: period(p), from, to, branchId: branchId || null }));
   }
   @AsyncExport({ kind: 'owner.finance.expenses.export', maxSyncRows: 20_000, estimate: { table: 'expenses' } })
-  @RequirePermission('owner.expenses.export') @Get('expenses/export') async exportFile(@Req() r: Req, @Query('format') format?: string, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string, @Query('includeUnapproved') inc?: string): Promise<FinanceExportPayload> {
+  @RequirePermission('owner.expenses.export') @Get('expenses/export') async exportFile(@Req() r: Req, @Query('format') format?: string, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string, @Query('includeUnapproved') inc?: string, @Query('category') category?: string, @Query('paymentMethod') paymentMethod?: string, @Query('q') search?: string): Promise<FinanceExportPayload> {
     return financeRun(async () => {
-      const f = await this.svc.exportFile(financeCtx(r, branchId), { format: format === 'xlsx' ? 'xlsx' : 'csv', period: period(p), from, to, branchId: branchId || null, includeUnapproved: inc === '1' || inc === 'true' });
+      const f = await this.svc.exportFile(financeCtx(r, branchId), { format: format === 'xlsx' ? 'xlsx' : 'csv', period: period(p), from, to, branchId: branchId || null, includeUnapproved: inc === '1' || inc === 'true', category: category || undefined, paymentMethod: paymentMethod || undefined, q: search || undefined });
       return { filename: f.filename, contentType: f.contentType, encoding: 'base64', content: Buffer.from(f.bytes).toString('base64'), rowCount: f.rows, totalCents: f.totalCents };
     });
   }
@@ -66,6 +66,10 @@ export class ExpenseController {
   @RequirePermission('owner.expenses.view') @Get('expenses') list(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpensePage> {
     return financeRun(() => this.svc.list(financeCtx(r, q.branchId), { tab: (q.tab as InboxTab) || 'all', from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, vendorId: q.vendorId, status: q.status,
       paymentMethod: q.paymentMethod, q: q.q, minCents: centsQ(q.minCents), maxCents: centsQ(q.maxCents), page: int(q.page), pageSize: int(q.pageSize ?? q.limit), sort: q.sort === 'amount' || q.sort === 'created' ? q.sort : 'date', branchId: q.branchId || null }));
+  }
+  // Expenses guide (Nov 4 2026): declared before expenses/:id so "summary" is never read as an expense id
+  @RequirePermission('owner.expenses.view') @Get('expenses/summary') summary(@Req() r: Req, @Query() q: Record<string, string | undefined>): Promise<FinanceExpenseSummary> {
+    return financeRun(() => this.svc.summary(financeCtx(r, q.branchId), { from: q.from, to: q.to, period: period(q.period) ?? null, category: q.category, paymentMethod: q.paymentMethod, q: q.q, branchId: q.branchId || null }));
   }
   @RequirePermission('owner.expenses.view') @Get('expenses/:id') detail(@Req() r: Req, @Param('id') id: string): Promise<FinanceExpenseDetail> { return financeRun(() => this.svc.detail(financeCtx(r), id)); }
   @RequirePermission('owner.expenses.manage') @Post('expenses') create(@Req() r: Req, @Body(ValidatedBody(FIN_EXPENSE_CREATE_BODY, { strict: true })) b: FinanceExpenseCreateRequest): Promise<FinanceExpenseCreateResult> { return financeRun(() => this.svc.create(financeCtx(r), b as never)); }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSServingScreen } from './POSServingScreen';
@@ -14,13 +14,25 @@ const mockByUrl = (map: Record<string, unknown>) => vi.fn(async (url: any) => {
   for (const frag of Object.keys(map)) if (u.includes(frag)) return { ok: true, status: 200, json: async () => map[frag], headers: { get: () => null } } as any;
   return { ok: true, status: 200, json: async () => ({}), headers: { get: () => null } } as any;
 });
-beforeEach(() => { vi.restoreAllMocks(); });
+// Why this file used to HANG (no output until killed): React 18's dev-mode invokeGuardedCallback saves and restores
+// `window.event` by ASSIGNING it, and under vitest's jsdom global that assignment sticks — after the first fireEvent the
+// global `window.event` stays a stale 'change' Event for every later test. React reads window.event to pick an update's
+// priority, so in the next test the Serving auto-select effect's setSelId never committed while its detail fetch kept
+// re-firing: an endless fetch→setState microtask loop inside act that starved every timer (even the test timeout).
+// Clear the stale value before each test so React sees "no current event", as a real browser does between events.
+const clearStaleWindowEvent = () => { (window as any).event = undefined; };
+beforeEach(() => { vi.restoreAllMocks(); clearStaleWindowEvent(); });
+afterEach(() => { clearStaleWindowEvent(); });
+// The heading, filters and the six panel titles render in the loading skeleton too — wait for the loaded board (the KPI
+// row only exists once /pos/serving/state answered) before asserting on data or changing a data-driven filter.
+const waitForLoaded = () => screen.findByTestId('serving-kpis');
 
 describe('POSServingScreen', () => {
   it('mounts and renders the serving board + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/serving': servingState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     expect(await screen.findByText('Serving')).toBeInTheDocument();
+    await waitForLoaded();
     expect(screen.getByText('No active services.')).toBeInTheDocument();
   });
 
@@ -36,6 +48,7 @@ describe('POSServingScreen', () => {
     globalThis.fetch = mockByUrl({ '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     expect(await screen.findByText('Serving')).toBeInTheDocument();
+    await waitForLoaded();
     expect(screen.getByText('Service Progress Board')).toBeInTheDocument();
     expect(screen.getByText('AI Service Insights')).toBeInTheDocument();
     expect(screen.getByText('Live Service Floor')).toBeInTheDocument();
@@ -62,7 +75,8 @@ describe('POSServingScreen', () => {
       tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', isVip: true, serviceNames: ['Gel X'], primaryTechnicianName: 'Mia', elapsedMinutes: 10, estimatedDurationMinutes: 45, subtotalCents: 6000, status: 'in_progress' }], pagination: { totalItems: 1 } },
       filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] },
     };
-    const detail = { ticketId: 't1', customer: { fullName: 'Jessica Miller', phone: '555-0100', isVip: true }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'in_service' }], subtotalCents: 6000, estimatedEndAt: null };
+    // the server says which moves THIS user may make (allowedActions); Send to Service Done is offered only when it is legal
+    const detail = { ticketId: 't1', allowedActions: ['send_to_service_done'], customer: { fullName: 'Jessica Miller', phone: '555-0100', isVip: true }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'in_service' }], subtotalCents: 6000, estimatedEndAt: null };
     const revData = { ticketId: 't1', currentVersion: 2, revisions: [
       { version: 1, action: 'service_added', summary: 'Added Gel X', actorRole: 'TECH', createdAt: '2026-06-01T00:30:00.000Z' },
       { version: 2, action: 'technician_assigned', summary: 'Assigned Mia', actorRole: 'MANAGER', createdAt: '2026-06-01T00:35:00.000Z' },
@@ -119,6 +133,7 @@ describe('POSServingScreen — header filters (were dead/missing)', () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     await screen.findByText('Serving');
+    await waitForLoaded();   // the facet options arrive with the state
     const sel = screen.getByLabelText('Service filter') as HTMLSelectElement;
     expect(within(sel).getByText('Pedicure')).toBeInTheDocument();
     fireEvent.change(sel, { target: { value: 'Pedicure' } });
@@ -137,6 +152,7 @@ describe('POSServingScreen — header filters (were dead/missing)', () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     await screen.findByText('Serving');
+    await waitForLoaded();   // the 'delayed' option only exists once the facets loaded
     fireEvent.change(screen.getByLabelText('Delay filter'), { target: { value: 'delayed' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/serving/state') && c.url.includes('delayStatus=delayed'))).toBe(true));
   });

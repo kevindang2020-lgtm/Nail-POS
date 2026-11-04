@@ -308,9 +308,25 @@ export class ExpenseService {
     let { from, to } = f;
     if (f.period && !from && !to) ({ from, to } = periodWindow(f.period, await this.today(ctx.tenantId), { from: f.from, to: f.to }));
     for (const d of [from, to]) if (d && !isYmd(d)) throw new ExpenseError('EXPENSE_INVALID', 'Dates must be YYYY-MM-DD.');
-    const { items, total } = await this.repo.list(s, { ...f, from, to });
+    const { items, total, page } = await this.repo.list(s, { ...f, from, to });
     const { custom } = await this.validKeys(ctx.tenantId);
-    return { items: items.map((e) => this.view(e, custom)), total, page: Math.max(1, f.page ?? 1), pageSize: Math.min(Math.max(1, f.pageSize ?? 50), 200) };
+    return { items: items.map((e) => this.view(e, custom)), total, page, pageSize: Math.min(Math.max(1, f.pageSize ?? 50), 200) };
+  }
+  /** Expenses guide (Nov 4 2026): Total · Entries · Top Category (by amount) · Categories Used over the whole filtered set, with
+   *  the period the server resolved in the salon's time zone (the screen shows it; a preset is never a device-clock guess). */
+  async summary(ctx: FinanceCtx, f: Pick<ListFilters, 'from' | 'to' | 'category' | 'paymentMethod' | 'q'> & { branchId?: string | null; period?: ReportPeriod | null }) {
+    this.require(ctx, PERM.view);
+    const s = await this.scope(ctx, f.branchId);
+    const tz = await this.tz(ctx.tenantId); const today = businessDate(tz, this.now());
+    let { from, to } = f; const preset = f.period ?? (from || to ? 'custom' : null);
+    for (const d of [from, to]) if (d && !isYmd(d)) throw new ExpenseError('EXPENSE_INVALID', 'Dates must be YYYY-MM-DD.');
+    if (from && to && from > to) throw new ExpenseError('EXPENSE_INVALID', 'The start date must be on or before the end date.');
+    if (f.period && f.period !== 'custom' && !from && !to) ({ from, to } = periodWindow(f.period, today));
+    const k = await this.repo.summary(s, { from, to, category: f.category, paymentMethod: f.paymentMethod, q: f.q });
+    const { custom } = await this.validKeys(ctx.tenantId);
+    return { period: { preset: (preset ?? 'all') as 'today' | 'week' | 'month' | 'year' | 'custom' | 'all', from: from ?? null, to: to ?? null, tz, today },
+      totalCents: k.totalCents, entries: k.entries, categoriesUsed: k.categoriesUsed,
+      topCategory: k.top ? { key: k.top.key, label: categoryLabel(k.top.key, custom), totalCents: k.top.totalCents } : null };
   }
   private view(e: ExpenseRow, custom: Array<{ key: string; label: string }> = [], today?: string) {
     return { ...e, categoryLabel: categoryLabel(e.category, custom), vendorDisplay: e.vendorName ?? e.vendor,
@@ -1024,13 +1040,18 @@ export class ExpenseService {
   }
 
   // ── export (§97–100, §202) ─────────────────────────────────────────────────────────────────────────────────────────
-  async exportFile(ctx: FinanceCtx, q: { format: 'csv' | 'xlsx'; period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean }) {
+  async exportFile(ctx: FinanceCtx, q: { format: 'csv' | 'xlsx'; period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean; category?: string; paymentMethod?: string; q?: string }) {
     this.require(ctx, PERM.export);
     const s = await this.scope(ctx, q.branchId);
     const today = await this.today(ctx.tenantId);
     let w: DateWindow;
     try { w = periodWindow(q.period ?? 'month', today, { from: q.from, to: q.to }); } catch (e) { throw new ExpenseError('EXPENSE_INVALID', (e as Error).message); }
-    const [rows, { custom, codes }] = await Promise.all([this.repo.exportRows(s, w.from, w.to, !!q.includeUnapproved), this.validKeys(ctx.tenantId)]);
+    const [all, { custom, codes }] = await Promise.all([this.repo.exportRows(s, w.from, w.to, !!q.includeUnapproved), this.validKeys(ctx.tenantId)]);
+    // Expenses guide (Nov 4 2026): the export honours the screen's active filters too (category, method, search words)
+    const fold = (v: unknown) => String(v ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/gi, 'd').toLowerCase();
+    const words = q.q?.trim() ? fold(q.q.trim()) : '';
+    const rows = all.filter((e) => (!q.category || e.category === q.category) && (!q.paymentMethod || e.paymentMethod === q.paymentMethod)
+      && (!words || [e.vendorName, e.vendor, e.description, e.invoiceNumber, e.receiptNumber].some((x) => fold(x).includes(words))));
     const out: ExportRow[] = rows.map((e) => ({ date: e.incurredOn, vendor: e.vendorName ?? e.vendor ?? '', category: categoryLabel(e.category, custom), accountingCode: codes.get(e.category) ?? '', branch: e.branchName ?? (e.branchId ? '' : 'Whole salon'),
       description: e.description ?? '', subtotalCents: e.subtotalCents, taxCents: e.taxCents, totalCents: e.amountCents, paymentMethod: e.paymentMethod ?? '', receiptNumber: e.receiptNumber ?? '',
       invoiceNumber: e.invoiceNumber ?? '', receiptAttached: e.hasReceipt, status: e.status }));

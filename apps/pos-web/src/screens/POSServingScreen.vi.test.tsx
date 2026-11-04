@@ -2,7 +2,7 @@
 // lines, the progress board, a ticket's stage and the staff table (from the server's board words, labelled here), the AI
 // insights written from their id + numbers, and the queue's row action. Names and services the salon typed stay as typed.
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, act, fireEvent } from '@testing-library/react';
+import { render, screen, act, fireEvent, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { setLanguage, useLanguage } from '@aipowersalon/mobile-sdk/i18n';
 import { leftoverEnglish } from './viScan.testkit';
@@ -53,8 +53,13 @@ describe('Serving / Service Done in Vietnamese (WP-C1)', () => {
     globalThis.fetch = byUrl({ '/pos/serving': serving, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     const { container } = render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
     await screen.findAllByText('Nguyễn Thị Hương');
-    for (const vi of ['Kiểm tra chất lượng', 'Đang hong khô', 'Sắp rảnh', 'Ngay bây giờ', '1 dịch vụ sắp vượt thời gian dự kiến', 'Quản lý nên ghé xem Nguyễn Thị Hương', 'Xem ngay', 'Mở hồ sơ', 'Đã dùng 50% công suất'])
+    for (const vi of ['Kiểm tra chất lượng', 'Đang hong khô', '1 dịch vụ đã quá thời gian dự kiến', 'Quản lý nên ghé xem Nguyễn Thị Hương', 'Xem ngay', 'Mở hồ sơ', 'Đã dùng 50% công suất'])
       expect(screen.getAllByText(vi).length, vi).toBeGreaterThan(0);
+    // The staff table no longer has a "next available" column (Soon → "Sắp rảnh" / Now → "Ngay bây giờ"); it shows each
+    // technician's load and status chip, and the status chip is the server's board word labelled in Vietnamese.
+    const staffPanel = within(screen.getByTestId('sv-staff'));
+    expect(staffPanel.getByText('Sắp xong')).toBeInTheDocument();     // 'Finishing Soon'
+    expect(staffPanel.getByText('Có thể phục vụ')).toBeInTheDocument();   // 'Available'
     for (const en of ['Quality Check', 'Drying', 'Available', 'Review Now', 'Open Profile', 'In Progress', '50% utilized', 'vs 30 min ago']) expect(screen.queryByText(en), en).toBeNull();
     expect(leftoverEnglish(container, NAMES).join(' | ')).toBe('');
   });

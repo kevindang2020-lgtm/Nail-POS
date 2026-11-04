@@ -247,6 +247,7 @@ GET /owner/finance/expense-rules  realm=staff  auth=session  domain=finance  per
 GET /owner/finance/expense-settings  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses/export  realm=staff  auth=session  domain=finance  perm=owner.expenses.export  async=owner.finance.expenses.export  guards=RolePermissionGuard,TenantAuthGuard
+GET /owner/finance/expenses/summary  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/expenses/{id}  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /owner/finance/payment-mix  realm=staff  auth=session  domain=analytics  perm=owner.finance.view
 GET /owner/finance/receipts/{documentId}/suggested-expense  realm=staff  auth=session  domain=finance  perm=owner.expenses.view  guards=RolePermissionGuard,TenantAuthGuard

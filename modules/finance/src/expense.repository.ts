@@ -109,19 +109,9 @@ export class ExpenseRepository {
   }
 
   /** §86–87 + §109: one paginated query for every inbox tab, search and filter (never the whole table in memory, §205). */
-  async list(s: Scope, f: ListFilters): Promise<{ items: ExpenseRow[]; total: number }> {
+  /** the date / category / method / search predicates the list and its summary share (Expenses guide, Nov 4 2026: one scope) */
+  private filterWhere(f: ListFilters): ReturnType<typeof sql>[] {
     const where: ReturnType<typeof sql>[] = [];
-    switch (f.tab ?? 'all') {
-      case 'inbox': where.push(sql`e.status IN ('draft', 'pending_review') AND e.archived_at IS NULL`); break;
-      case 'needs_review': where.push(sql`e.status = 'pending_review' AND e.archived_at IS NULL`); break;
-      case 'approved': where.push(sql`e.status = 'approved' AND e.archived_at IS NULL`); break;
-      case 'bills': where.push(sql`e.kind = 'bill' AND e.status <> 'voided' AND e.archived_at IS NULL`); break;
-      case 'duplicates': where.push(sql`e.duplicate_status IN ('possible', 'exact') AND e.status <> 'voided'`); break;
-      case 'archived': where.push(sql`e.archived_at IS NOT NULL`); break;
-      case 'reimbursements': where.push(sql`e.reimbursement_status IN ('pending', 'approved')`); break;
-      case 'voided': where.push(sql`e.status = 'voided'`); break;
-      default: where.push(sql`e.archived_at IS NULL`);
-    }
     if (f.from) where.push(sql`e.incurred_on >= ${f.from}`);
     if (f.to) where.push(sql`e.incurred_on <= ${f.to}`);
     if (f.category) where.push(sql`e.category = ${f.category}`);
@@ -139,16 +129,46 @@ export class ExpenseRepository {
         OR vi_fold(e.description) LIKE '%' || vi_fold(${fold}) || '%' OR e.invoice_number ILIKE ${like}
         OR e.receipt_number ILIKE ${like} OR e.reference_number ILIKE ${like} ${cents != null ? sql`OR e.amount_cents = ${cents}` : sql``})`);
     }
+    return where;
+  }
+
+  async list(s: Scope, f: ListFilters): Promise<{ items: ExpenseRow[]; total: number; page: number }> {
+    const where: ReturnType<typeof sql>[] = [];
+    switch (f.tab ?? 'all') {
+      case 'inbox': where.push(sql`e.status IN ('draft', 'pending_review') AND e.archived_at IS NULL`); break;
+      case 'needs_review': where.push(sql`e.status = 'pending_review' AND e.archived_at IS NULL`); break;
+      case 'approved': where.push(sql`e.status = 'approved' AND e.archived_at IS NULL`); break;
+      case 'bills': where.push(sql`e.kind = 'bill' AND e.status <> 'voided' AND e.archived_at IS NULL`); break;
+      case 'duplicates': where.push(sql`e.duplicate_status IN ('possible', 'exact') AND e.status <> 'voided'`); break;
+      case 'archived': where.push(sql`e.archived_at IS NOT NULL`); break;
+      case 'reimbursements': where.push(sql`e.reimbursement_status IN ('pending', 'approved')`); break;
+      case 'voided': where.push(sql`e.status = 'voided'`); break;
+      default: where.push(sql`e.archived_at IS NULL`);
+    }
+    where.push(...this.filterWhere(f));
     const cond = sql.join(where, sql` AND `);
     const pageSize = Math.min(Math.max(1, f.pageSize ?? 50), 200);
     const page = Math.max(1, f.page ?? 1);
-    const order = f.sort === 'amount' ? sql`e.amount_cents DESC, e.id` : f.sort === 'created' ? sql`e.created_at DESC, e.id` : sql`e.incurred_on DESC, e.created_at DESC, e.id`;
+    const order = f.sort === 'amount' ? sql`e.amount_cents DESC, e.id DESC` : f.sort === 'created' ? sql`e.created_at DESC, e.id DESC` : sql`e.incurred_on DESC, e.created_at DESC, e.id DESC`;   // a unique last key: no row repeats or goes missing across pages
     const base = sql`FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id WHERE e.tenant_id = ${s.tenantId} ${scoped(s)} AND ${cond}`;
-    const [rows, tot] = await Promise.all([
-      sql<Raw>`SELECT ${COLS} ${base} ORDER BY ${order} LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`.execute(this.db),
-      sql<{ c: string }>`SELECT count(*)::text AS c ${base}`.execute(this.db),
+    // a page past the end (a filter shrank the set, the last row was voided) is served as the last page — never an empty Page 8
+    const total = n((await sql<{ c: string }>`SELECT count(*)::text AS c ${base}`.execute(this.db)).rows[0]?.c);
+    const served = Math.min(page, Math.max(1, Math.ceil(total / pageSize)));
+    const rows = await sql<Raw>`SELECT ${COLS} ${base} ORDER BY ${order} LIMIT ${pageSize} OFFSET ${(served - 1) * pageSize}`.execute(this.db);
+    return { items: rows.rows.map(mapExpense), total, page: served };
+  }
+
+  /** Expenses guide (Nov 4 2026) — the four KPIs over the WHOLE filtered set (every page): the counted (approved) expenses in
+   *  the date range matching the same search / category / method as the list. Top Category is by amount (ties → key). */
+  async summary(s: Scope, f: ListFilters): Promise<{ totalCents: number; entries: number; categoriesUsed: number; top: { key: string; totalCents: number } | null }> {
+    const cond = sql.join([counted, sql`e.archived_at IS NULL`, ...this.filterWhere(f)], sql` AND `);
+    const base = sql`FROM expenses e LEFT JOIN inventory_vendors v ON v.id = e.vendor_id AND v.tenant_id = e.tenant_id WHERE e.tenant_id = ${s.tenantId} ${scoped(s)} AND ${cond}`;
+    const [t, top] = await Promise.all([
+      sql<{ total: string; c: string; cats: string }>`SELECT COALESCE(SUM(e.amount_cents), 0)::text AS total, count(*)::text AS c, count(DISTINCT e.category)::text AS cats ${base}`.execute(this.db),
+      sql<{ k: string; total: string }>`SELECT e.category AS k, SUM(e.amount_cents)::text AS total ${base} AND e.category IS NOT NULL GROUP BY e.category ORDER BY SUM(e.amount_cents) DESC, e.category LIMIT 1`.execute(this.db),
     ]);
-    return { items: rows.rows.map(mapExpense), total: n(tot.rows[0]?.c) };
+    const r = t.rows[0];
+    return { totalCents: n(r?.total), entries: n(r?.c), categoriesUsed: n(r?.cats), top: top.rows[0] ? { key: String(top.rows[0].k), totalCents: n(top.rows[0].total) } : null };
   }
 
   /** duplicate candidates: the tenant's non-voided expenses near this one (same total ±0, dates ±3 days) or same refs */

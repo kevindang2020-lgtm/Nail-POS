@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSQueueScreen } from './POSQueueScreen';
@@ -15,13 +15,24 @@ const mockByUrl = (map: Record<string, unknown>) => vi.fn(async (url: any) => {
   return { ok: true, status: 200, json: async () => ({}), headers: { get: () => null } } as any;
 });
 
-beforeEach(() => { vi.restoreAllMocks(); });
+// Why this file used to HANG (no output until killed): React 18's dev-mode invokeGuardedCallback saves and restores
+// `window.event` by ASSIGNING it, and under vitest's jsdom global that assignment sticks — after the first fireEvent the
+// global `window.event` stays a stale Event for every later test. React reads window.event to pick an update's priority,
+// so later tests' effect-driven updates were mis-prioritised into an endless fetch→setState microtask loop inside act
+// that starved every timer (even the test timeout). Clear it around each test, as a real browser has none between events.
+const clearStaleWindowEvent = () => { (window as any).event = undefined; };
+beforeEach(() => { vi.restoreAllMocks(); clearStaleWindowEvent(); });
+afterEach(() => { clearStaleWindowEvent(); });
+// The title, filters and the six panel headings render in the loading skeleton too — wait for the loaded board (the KPI
+// row only exists once /pos/queue/state answered) before asserting on data or changing a data-driven filter.
+const waitForLoaded = () => screen.findByTestId('queue-kpis');
 
 describe('POSQueueScreen', () => {
   it('mounts past loading and renders the queue + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/queue/state': queueState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
     expect(await screen.findByText('Customer Queue')).toBeInTheDocument();
+    await waitForLoaded();
     expect(screen.getByText('No customers waiting.')).toBeInTheDocument();
     // T06 added modules
     expect(screen.getByText('Customer Profile Preview')).toBeInTheDocument();
@@ -43,6 +54,7 @@ describe('POSQueueScreen', () => {
     globalThis.fetch = mockByUrl({ '/pos/queue/state': withItems, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
     expect(await screen.findByText('Customer Queue')).toBeInTheDocument();
+    await waitForLoaded();
     expect(screen.getByText('Queue Flow Board')).toBeInTheDocument();
     expect(screen.getByText('AI Queue Insights')).toBeInTheDocument();
     expect(screen.getByText(/Live Customer Queue/)).toBeInTheDocument();
@@ -105,6 +117,7 @@ describe('POSQueueScreen — header filters drive real refetches (were dead/miss
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
     await screen.findByText('Customer Queue');
+    await waitForLoaded();   // the facet options arrive with the state
     const sel = screen.getByLabelText('Service filter') as HTMLSelectElement;
     expect(within(sel).getByText('Pedicure')).toBeInTheDocument();
     fireEvent.change(sel, { target: { value: 'Pedicure' } });
@@ -115,6 +128,7 @@ describe('POSQueueScreen — header filters drive real refetches (were dead/miss
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
     await screen.findByText('Customer Queue');
+    await waitForLoaded();   // the 'appointment' option only exists once the facets loaded
     fireEvent.change(screen.getByLabelText('Source filter'), { target: { value: 'appointment' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/queue/state') && c.url.includes('source=appointment'))).toBe(true));
   });
@@ -169,8 +183,11 @@ describe('Overview "Assign Tech" deep-link', () => {
     expect(await screen.findByText('Add to Queue / Assign')).toBeInTheDocument();
   });
   it('does NOT open the assign sheet on a normal visit', async () => {
+    globalThis.fetch = mockByUrl({ '/pos/queue/state': queueState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter initialEntries={['/queue']}><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText(/Queue|Waiting/i);
+    // /Queue|Waiting/i now matches many headings (title, Live Customer Queue, Queue Flow Board, …) — wait for the loaded board
+    await screen.findByText('Customer Queue');
+    await waitForLoaded();
     expect(screen.queryByText('Add to Queue / Assign')).not.toBeInTheDocument();
   });
 });

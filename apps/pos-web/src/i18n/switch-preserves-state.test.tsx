@@ -123,14 +123,21 @@ async function quiet(calls: Call[]) {
 }
 function renderAt(path: string) { return render(<MemoryRouter initialEntries={[path]}><App /></MemoryRouter>); }
 
+// Why this file used to HANG (no output until killed): React 18's dev-mode invokeGuardedCallback saves and restores
+// `window.event` by ASSIGNING it, and under vitest's jsdom global that assignment sticks — after the first fireEvent the
+// global `window.event` stays a stale Event for every later test. React reads window.event to pick an update's priority,
+// so the next test's effect-driven updates were mis-prioritised into an endless fetch→setState microtask loop inside act
+// that starved every timer (even the test timeout). Clear it around each test, as a real browser has none between events.
+const clearStaleWindowEvent = () => { (window as any).event = undefined; };
 beforeEach(async () => {
+  clearStaleWindowEvent();
   vi.restoreAllMocks();
   resetPosLanguageForTests();
   await setLanguage('en');
   rt.connects = 0; eventSources = 0;
   (globalThis as any).EventSource = FakeEventSource;
 });
-afterEach(async () => { await setLanguage('en'); });
+afterEach(async () => { await setLanguage('en'); clearStaleWindowEvent(); });
 
 describe('language switch keeps the operator\'s work (§6/§7/§116)', () => {
   it('Booking: selected date, search text, scroll and the shell survive EN → VI → EN; only PUT /pos/me/language is sent', async () => {
