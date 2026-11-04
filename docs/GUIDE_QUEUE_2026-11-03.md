@@ -131,3 +131,9 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   a card-on-file / checkout step that does not exist for memberships yet).
 - D11 Stock Alerts, D16 End-of-Day Cash, D19 Tips — re-checked against their guides: built in the Oct builds (sidebar and
   page agree; ticket-level tip totals without double counting allocations; cash hand-offs with period / search). No new bug found.
+- Nov 4 early — more fixed: D4 plain service edit can no longer change price/duration without the pricing editor; D3 change
+  history location-scoped; D2 export = the filtered list; D6 enrollment atomic + idempotent, unused credits expire at renewal
+  unless rollover; D10 PO receipt atomic, create/receive idempotent. API gates: role matrix reviewed + regenerated (flag:
+  technicians can start the duplicate / intelligence / recommendation scans), 15 strict routes reviewed (no bug), IDOR table
+  complete, every route has a domain, Global Rewards salon routes plan-gated. ONE API gate still red: the api-contracts
+  wire-type ratchet — 774 routes from the recent builds have no shared wire type (a large typing job; not grandfathered).
