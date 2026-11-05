@@ -107,6 +107,10 @@ export const GATES = [
   'supply-chain-injection',
   // Security Deep Scan D5 (Oct 23 2026): every non-literal sql.raw/lit/ref/table/id / CompiledQuery.raw call site is reviewed
   'raw-sql-inputs',
+  // Platform Architecture Audit §192 (Nov 5 2026): the egress gate — every raw network call in server code is reviewed
+  // (outbound-requests.allowlist.json, with the reason it cannot reach an internal address); a URL a person typed goes
+  // through safeOutboundRequest() (https only, DNS-checked against private ranges, no redirects)
+  'outbound-requests',
   // Security Deep Scan §3 (Oct 23 2026): docs/security/SECURITY_ATTACK_SURFACE.md is generated from the route manifest and
   // must match it (regenerate with node apps/api/scripts/attack-surface.mjs after adding or changing a route)
   'attack-surface',

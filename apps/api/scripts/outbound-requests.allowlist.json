@@ -1,0 +1,42 @@
+{
+  "modules/ai/src/ai/ai-providers.ts": {
+    "count": 1,
+    "reason": "postJson() is called only with the providers' fixed hosts (api.openai.com, generativelanguage.googleapis.com, api.anthropic.com) built in this file; no URL comes from a tenant, owner or Super Admin."
+  },
+  "modules/ai/src/ai-review-reputation/ai-review-reputation-ingest.ts": {
+    "count": 1,
+    "reason": "Not a network call: `fetch(ctx, since)` is the ReviewSourceAdapter interface method's declaration."
+  },
+  "modules/ai/src/ai-review-reputation/ai-review-reputation-publish.ts": {
+    "count": 1,
+    "reason": "The default HTTP sender for the Google Business Profile API: the publisher builds https://mybusiness.googleapis.com/v4/\u2026 (fixed host); the review id is a path segment, never a host."
+  },
+  "modules/communications/src/reminders/reminder-center.ts": {
+    "count": 3,
+    "reason": "Not a network call: `fetch` is the local page-loader callback parameter of pastEnd() (a database read)."
+  },
+  "modules/communications/src/tenant-messaging/registration-sync.service.ts": {
+    "count": 1,
+    "reason": "Default HTTP function handed to the Twilio registration client; every URL is built from the fixed hosts in twilio-registration-client.ts / twilio-account-probe.ts (api.twilio.com, messaging.twilio.com); SIDs are path segments."
+  },
+  "modules/communications/src/tenant-messaging/tenant-messaging-credentials.service.ts": {
+    "count": 1,
+    "reason": "Default HTTP function for the Twilio credential checks; URLs are the fixed Twilio hosts in twilio-account-probe.ts; the salon's SIDs / keys are path segments or auth headers, never a host."
+  },
+  "modules/communications/src/tenant-messaging/tenant-messaging-readiness.service.ts": {
+    "count": 1,
+    "reason": "Default HTTP function for the Twilio readiness probe; fixed Twilio hosts only (twilio-account-probe.ts)."
+  },
+  "modules/communications/src/tenant-messaging/tenant-number.service.ts": {
+    "count": 1,
+    "reason": "Default HTTP function for TwilioNumbersClient (fixed api.twilio.com host); phone numbers / SIDs are path or form values."
+  },
+  "modules/super-admin/src/super-admin-platform/super-admin-platform.service.ts": {
+    "count": 1,
+    "reason": "Scheduled-report delivery to REPORTS_NOTIFIER_URL / INVITE_NOTIFIER_URL \u2014 an operator environment variable set at deploy time, not a value typed into any screen; 5 s timeout."
+  },
+  "packages/observability/src/tracing/exporter.ts": {
+    "count": 1,
+    "reason": "OTLP trace exporter: posts to the collector endpoint from the deploy configuration (OTEL exporter endpoint env), never from a request; fetchImpl is injectable for tests."
+  }
+}

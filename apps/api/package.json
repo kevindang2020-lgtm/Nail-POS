@@ -34,6 +34,7 @@
     "check:one-payroll-calculation": "node scripts/check-one-payroll-calculation.mjs",
     "check:one-tax-calculation": "node scripts/check-one-tax-calculation.mjs",
     "check:silent-catch": "node scripts/check-silent-catch.mjs",
+    "check:outbound-requests": "node scripts/check-outbound-requests.mjs",
     "check:as-any": "node scripts/check-as-any.mjs",
     "check:supply-chain-injection": "node scripts/check-supply-chain-injection.mjs",
     "check:raw-sql-inputs": "node scripts/check-raw-sql-inputs.mjs",
