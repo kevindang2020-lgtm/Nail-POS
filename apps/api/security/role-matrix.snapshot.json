@@ -600,6 +600,7 @@
   "GET /pos/customer-notifications/opt-outs": "AAAADRRRRRRRRRRRR",
   "GET /pos/customer-notifications/records": "AAAADRRRRRRRRRRRR",
   "GET /pos/customer-notifications/records/{id}": "AAAADRRRRRRRRRRRR",
+  "GET /pos/customer-notifications/records/export": "AAAADRRRRRRRRRRRR",
   "GET /pos/customer-notifications/summary": "AAAADRRRRRRRRRRRR",
   "GET /pos/customer-phone-center/customers": "AAAAARRRRRRRRRRRR",
   "GET /pos/customer-phone-center/health": "AAAAARRRRRRRRRRRR",

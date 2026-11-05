@@ -222,6 +222,21 @@ export class CustomerNotificationsCenter {
     if (branch) w.push(sql`n.branch_id = ${branch}`);
     return sql.join(w, sql` and `);
   }
+  /** C2 audit (Nov 4 2026): Customer Notifications export — exactly the filtered list, every page; recipients masked unless the
+   *  viewer may see them (the same rule as the list); message bodies are never exported; the export is audited. */
+  async exportCsv(ctx: CnContext, q: Record<string, unknown> = {}) {
+    this.need(ctx, 'pos.communications.view');
+    const first = await this.list(ctx, { ...q, page: 1, pageSize: 50 });
+    const all = [...first.items];
+    for (let p = 2; p <= first.totalPages && p <= 2000; p++) all.push(...(await this.list(ctx, { ...q, page: p, pageSize: 50 })).items);
+    const cell = (v: unknown) => { let x = v == null ? '' : String(v); if (/^[=+\-@\t\r]/.test(x)) x = "'" + x; return /[",\r\n]/.test(x) ? '"' + x.replace(/"/g, '""') + '"' : x; };
+    const head = ['Created', 'Channel', 'Type', 'Status', 'Customer', 'Recipient', 'Delivered', 'Failure', 'Provider code', 'Location', 'Notification ID'];
+    const lines = [head, ...all.map((x) => [x.createdAt ?? '', x.channel, x.type ?? '', x.state ?? x.status, x.customer?.name ?? '', x.recipient, x.deliveredAt ?? '',
+      x.failure ? (x.failure as { category?: string }).category ?? '' : '', x.providerErrorCode ?? '', x.branchId ?? '', x.id])].map((r) => r.map(cell).join(','));
+    await this.audit(ctx, 'notifications.exported', null, `Exported ${all.length} notification record(s)`, { rows: all.length, filters: { tab: q.tab ?? null, channel: q.channel ?? null, type: q.type ?? null, status: q.status ?? null, preset: q.preset ?? null, branchId: q.branchId ?? null } });
+    return lines.join('\r\n') + '\r\n';
+  }
+
   private rowView(ctx: CnContext, r: any) {
     const full = this.full(ctx);
     const fail = classifyFailure({ status: r.status, channel: r.channel, toAddress: r.to_address, failureReason: r.failure_reason, providerErrorCode: r.provider_error_code, providerStatus: r.provider_status });

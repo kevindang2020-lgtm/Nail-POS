@@ -2,10 +2,10 @@
 // 741). Tenant and branch come ONLY from the session (req.ctx); bodies are strict; every service method re-checks the permission.
 // Nothing here sends except POST records/:id/retry — one confirmed, idempotent, re-checked resend of one failed row.
 // Re-subscribing stays on the one existing route, POST /pos/notifications/opt-in (consent note + STOP rules, consent history).
-import { Body, Controller, Get, Headers, HttpException, HttpStatus, Inject, Optional, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, Headers, HttpException, HttpStatus, Inject, Optional, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { withCode } from '@aipowersalon/api-contracts';
 import { ListQuery } from '@aipowersalon/database';
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { EMPTY_BODY, CN_RETRY_BODY, CN_ALERT_SETTINGS_BODY } from '../request-schemas';
 import { asHttp, type CustomerNotificationsCenter, type CnContext } from './customer-notifications';
 
@@ -52,6 +52,14 @@ export class CustomerNotificationsController {
   list(@Req() r: any, @Query() q: any) {
     return run(() => this.c().list(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), branchId: s(q?.branchId),
       sort: s(q?.sort), preset: s(q?.preset), from: s(q?.from), to: s(q?.to), page: q?.page, pageSize: q?.pageSize ?? q?.limit }));
+  }
+
+  // C2 audit (Nov 4 2026): export exactly the filtered list (every page), recipients masked by the same rule, audited
+  @AsyncExport({ kind: 'pos.customer-notifications.export' }) @Get('records/export') @RequirePermission('pos.communications.view') @ListQuery({ ...LIST_SPEC, maxLimit: undefined, defaultLimit: undefined })
+  @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Content-Disposition', 'attachment; filename="customer-notifications.csv"')
+  exportCsv(@Req() r: any, @Query() q: any) {
+    return run(() => this.c().exportCsv(ctxOf(r), { q: s(q?.q), tab: s(q?.tab), basis: s(q?.basis), status: s(q?.status), channel: s(q?.channel), type: s(q?.type), branchId: s(q?.branchId),
+      sort: s(q?.sort), preset: s(q?.preset), from: s(q?.from), to: s(q?.to) }));
   }
 
   @Get('records/:id') @RequirePermission('pos.communications.view')

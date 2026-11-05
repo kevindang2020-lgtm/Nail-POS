@@ -17,7 +17,7 @@ import { posNotificationsApi } from '../api/posNotificationsApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInTz } from '../i18n/format';
-import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
+import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, downloadText } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 
 const SIZES = [10, 20, 50] as const;
@@ -67,6 +67,7 @@ export function POSNotificationsScreen() {
   const [incidents, setIncidents] = useState<Awaited<ReturnType<typeof api.incidents>> | null>(null);
   const [reload, setReload] = useState(0); const refresh = () => setReload((n) => n + 1);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad' | 'warn'; text: string } | null>(null);
+  const [exporting, setExporting] = useState(false);   // C2 audit: export the filtered list
   // Email guide (Oct 31 2026): ?timeline=<customer id> opens that customer's unified email + SMS timeline (linked from Email details)
   const linkedTimeline = /^[0-9a-f-]{36}$/i.test(sp.get('timeline') ?? '') ? String(sp.get('timeline')) : null;
   const [dlg, setDlg] = useState<null | { kind: 'failures' } | { kind: 'health' } | { kind: 'timeline'; customerId: string } | { kind: 'reoptin'; row: CnOptOut } | { kind: 'alerts' }>(linkedTimeline ? { kind: 'timeline', customerId: linkedTimeline } : null);
@@ -97,6 +98,11 @@ export function POSNotificationsScreen() {
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'health' })} data-testid="cn-open-health">{tx('cn.checkHealth')}</button>
           <button type="button" className="fk-btn primary" onClick={() => setDlg({ kind: 'failures' })} data-testid="cn-open-failures">{tx('cn.reviewFailures')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'alerts' })} data-testid="cn-open-alerts">{tx('cn.alertSettings')}</button>
+          <button type="button" className="fk-btn ghost" disabled={tab === 'optouts' || exporting} data-testid="cn-export" onClick={async () => {
+            setExporting(true);
+            try { const { page: _p, pageSize: _s, ...f } = JSON.parse(lq); downloadText('customer-notifications.csv', await api.exportCsv(f)); setNote({ tone: 'ok', text: tx('cn.exported') }); }
+            catch (e) { setNote({ tone: 'bad', text: errorTextOf(e, tx('cn.exportFailed')) }); } finally { setExporting(false); }
+          }}>{exporting ? tx('cn.exporting') : tx('cn.export')}</button>
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="cn-note">{note.text}</div> : null}

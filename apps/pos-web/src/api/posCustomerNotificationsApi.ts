@@ -52,6 +52,8 @@ export const newCnKey = (): string => globalThis.crypto?.randomUUID?.() || `cn-$
 export const posCustomerNotificationsApi = {
   summary: (q: Record<string, unknown>) => api.get<CnSummary>(`${B}/summary`, clean(q)),
   list: (q: Record<string, unknown>) => api.get<CnPage<CnRow> & { window: CnWindow & { tab: string; sort: string }; recipientsMasked: boolean }>(`${B}/records`, clean(q)),
+  /** C2 audit (Nov 4 2026): the filtered list as CSV (every page, masked by the same rule) */
+  exportCsv: (q: Record<string, unknown>) => api.exportAsync<string>(`${B}/records/export`, clean(q), 'text'),
   detail: (id: string) => api.get<CnDetail>(`${B}/records/${enc(id)}`),
   retry: (id: string, key: string) => api.post<{ requestId: string; outcome: string; refusalCode: string | null; newNotificationId: string | null; category: string; replayed: boolean }>(`${B}/records/${enc(id)}/retry`, { confirm: true }, { 'Idempotency-Key': key }),
   failures: (q: Record<string, unknown>) => api.get<{ groups: CnFailureGroup[]; scanned: number; truncated: boolean; window: CnWindow }>(`${B}/failures`, clean(q)),

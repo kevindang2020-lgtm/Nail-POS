@@ -308,3 +308,17 @@ describe('health (§04, §12)', () => {
     expect(await code(center.checkHealth(desk))).toBe('PERMISSION_DENIED');
   });
 });
+
+// C2 audit (Nov 4 2026): export = the filtered list, every page; recipients masked for a masked viewer; no message bodies; audited
+describe('Customer Notifications export', () => {
+  it('exports exactly what the list shows (all pages), masked the same way, and records the export', async () => {
+    const listed = (await center.list(desk, { preset: 'all', channel: 'sms' })).totalItems;
+    const out = await center.exportCsv(desk, { preset: 'all', channel: 'sms' });
+    const lines = out.trim().split('\r\n');
+    expect(lines[0]).toBe('Created,Channel,Type,Status,Customer,Recipient,Delivered,Failure,Provider code,Location,Notification ID');
+    expect(lines.length - 1).toBe(listed);
+    expect(out).not.toMatch(/\+1\d{10}/);   // a masked viewer never gets a full number
+    expect(lines.slice(1).every((l) => l.includes(',sms,'))).toBe(true);
+    expect((await q(sql`select count(*)::int n from audit_events where tenant_id = ${T} and action = 'notifications.exported'`))[0].n).toBeGreaterThan(0);
+  });
+});

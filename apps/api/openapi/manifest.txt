@@ -616,6 +616,7 @@ GET /pos/customer-notifications/health  realm=staff  auth=session  domain=commun
 GET /pos/customer-notifications/incidents  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/opt-outs  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/records  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/customer-notifications/records/export  realm=staff  auth=session  domain=communications  perm=pos.communications.view  async=pos.customer-notifications.export  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/records/{id}  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-notifications/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/customer-phone-center/customers  realm=staff  auth=session  domain=identity  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
