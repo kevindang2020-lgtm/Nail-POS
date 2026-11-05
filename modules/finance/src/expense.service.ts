@@ -34,7 +34,7 @@ import { reconcileBreakdown, allocate, rescaleAllocations, billStatusFor, billDu
 import { detectExpenseDuplicates, type DupResult } from './expense-duplicates';
 import { EXPENSE, EXPENSE_BILL, EXPENSE_REIMBURSEMENT, EXPENSE_DUPLICATE } from './expense-lifecycles';
 import { periodWindow, previousWindow, pctChange, detectRecurring, expenseInsights, type ReportPeriod, type DateWindow } from './expense-reports';
-import { toExpenseCsv, toExpenseXlsx, exportTotalCents, type ExportRow } from './expense-export';
+import { exportTotalCents, ACCOUNTING_EXPORT_ADAPTERS, type ExportRow } from './expense-export';
 import { ExpenseError } from './expense-errors';
 import { matchReceiptToExpenses, matchExpenseToPayments, autoApprovalRulesOf, autoApprovalDecision, type AutoApprovalRule, type PaymentCandidate, type MatchVerdict } from './expense-matching';
 import { digestsDue, monthWindow, lastCompletedMonth, weeklySummary, monthlySummary } from './expense-digests';
@@ -1059,10 +1059,13 @@ export class ExpenseService {
     const out: ExportRow[] = rows.map((e) => ({ date: e.incurredOn, vendor: e.vendorName ?? e.vendor ?? '', category: categoryLabel(e.category, custom), accountingCode: codes.get(e.category) ?? '', branch: e.branchName ?? (e.branchId ? '' : 'Whole salon'),
       description: e.description ?? '', subtotalCents: e.subtotalCents, taxCents: e.taxCents, totalCents: e.amountCents, paymentMethod: e.paymentMethod ?? '', receiptNumber: e.receiptNumber ?? '',
       invoiceNumber: e.invoiceNumber ?? '', receiptAttached: e.hasReceipt, status: e.status }));
-    const name = `expenses-${w.from}-to-${w.to}.${q.format}`;
-    const bytes = q.format === 'xlsx' ? await toExpenseXlsx(out, { title: 'Expenses', period: `${w.from} to ${w.to}` }) : new TextEncoder().encode(toExpenseCsv(out));
+    // §102: through the accounting export port (format adapters registered in expense-export.ts)
+    const adapter = ACCOUNTING_EXPORT_ADAPTERS.get(q.format);
+    if (!adapter) throw new ExpenseError('EXPENSE_INVALID', `Unknown export format: ${q.format}`);
+    const name = `expenses-${w.from}-to-${w.to}.${adapter.extension}`;
+    const bytes = await adapter.render(out, { title: 'Expenses', period: `${w.from} to ${w.to}` });
     await this.auditLog(ctx, 'expenses_exported', { id: ctx.tenantId, branchId: s.branchId }, { severity: 'warning', metadata: { format: q.format, from: w.from, to: w.to, rows: out.length, totalCents: exportTotalCents(out), branchId: s.branchId } });
-    return { filename: name, contentType: q.format === 'xlsx' ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' : 'text/csv; charset=utf-8', bytes, rows: out.length, totalCents: exportTotalCents(out) };
+    return { filename: name, contentType: adapter.contentType, bytes, rows: out.length, totalCents: exportTotalCents(out) };
   }
 
   // ── CSV import of historical expenses (§140) ─────────────────────────────────────────────────────────────────────

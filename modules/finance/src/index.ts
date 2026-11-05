@@ -13,6 +13,6 @@ export { reconcileBreakdown, parseCents, allocate, billStatusFor, billDueState, 
 export { detectExpenseDuplicates, hashDistance } from './expense-duplicates';
 export { EXPENSE, EXPENSE_BILL, EXPENSE_REIMBURSEMENT, EXPENSE_DUPLICATE, COUNTED_STATUSES } from './expense-lifecycles';
 export { periodWindow, previousWindow, pctChange, detectRecurring, expenseInsights, type ReportPeriod } from './expense-reports';
-export { toExpenseCsv, toExpenseXlsx, EXPORT_HEADERS, dollars } from './expense-export';
+export { toExpenseCsv, toExpenseXlsx, EXPORT_HEADERS, dollars, ACCOUNTING_EXPORT_ADAPTERS, csvExportAdapter, xlsxExportAdapter, type AccountingExportPort } from './expense-export';
 export * from './request-schemas';
 export { BillReminderScheduler, billRemindersEnabled } from './bill-reminder.scheduler';

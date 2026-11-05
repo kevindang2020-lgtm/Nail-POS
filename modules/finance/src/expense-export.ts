@@ -58,3 +58,23 @@ export async function toExpenseXlsx(rows: readonly ExportRow[], meta: { title: s
   const buf = await wb.xlsx.writeBuffer();
   return new Uint8Array(buf as ArrayBuffer);
 }
+
+/** Receipt/Expense mandate §102 — the accounting export seam. An export format (today CSV and XLSX; a QuickBooks or Xero
+ *  connector later) is an adapter of this port; the service picks one by key and never hard-wires a provider. Adapters
+ *  receive finished, exact-cents rows and return bytes — they never read the database or see another salon's data. */
+export interface AccountingExportPort {
+  readonly key: string;
+  readonly contentType: string;
+  readonly extension: string;
+  render(rows: readonly ExportRow[], meta: { title: string; period: string }): Promise<Uint8Array>;
+}
+export const csvExportAdapter: AccountingExportPort = {
+  key: 'csv', contentType: 'text/csv; charset=utf-8', extension: 'csv',
+  render: async (rows) => new TextEncoder().encode(toExpenseCsv(rows)),
+};
+export const xlsxExportAdapter: AccountingExportPort = {
+  key: 'xlsx', contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', extension: 'xlsx',
+  render: (rows, meta) => toExpenseXlsx(rows, meta),
+};
+/** the registered adapters; an unknown key is refused by the caller (no silent fallback to another format) */
+export const ACCOUNTING_EXPORT_ADAPTERS: ReadonlyMap<string, AccountingExportPort> = new Map([csvExportAdapter, xlsxExportAdapter].map((a) => [a.key, a]));

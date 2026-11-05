@@ -128,11 +128,11 @@ Key: `ocr-svc` = `modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.service.ts`; 
 | 95 | AI expense insights (advisory) | DONE | `fin-svc:791-802` insights (category moves, duplicates waiting, review waiting, overdue bills, new vendors, recurring) — deterministic, advisory |
 | 96 | Anomaly flags: same receipt twice, unusually high, new vendor, duplicate invoice #, unexpected recurring, same vendor same day — "REVIEW RECOMMENDED" | BUILT Oct 28 (verify V-28) | duplicates (file hash / invoice #) ✓, high amount (`highAmountCents`, `ocr-svc:362`) ✓, new vendor ✓, recurring ✓. **No "same vendor charged multiple times the same day"** flag **Re-audit (Oct 28):** the missing "same vendor several times the same day" flag is built (`same_vendor_same_day`, any amount, vendor id or folded name; it keeps auto-approval from approving it unseen). |
 | 97 | Export for accountant / bookkeeper / tax | DONE | `fin-svc:840` `exportFile`; `fin-ctl:56` |
-| 98 | Formats CSV, XLSX, PDF summary (images on request) | PARTIAL | CSV + XLSX (`fin-exp:31`, `report` §N). **No PDF summary / receipt-image package** |
+| 98 | Formats CSV, XLSX, PDF summary (images on request) | PARTIAL | CSV + XLSX (`fin-exp:31`, `report` §N). **No PDF summary / receipt-image package** — **left for Kevin's call (Nov 5):** a PDF summary is a printable document and the standing rule is no print features; CSV / XLSX cover the accountant |
 | 99 | Export fields (date, vendor, category, branch, description, subtotal, tax, total, method, receipt #, invoice #, attached?, status) | DONE | `fin-exp:15` `EXPORT_HEADERS` (+ Accounting Code, TOTAL row) |
 | 100 | Export security: permission, auth, audit, no public URL | DONE | `owner.expenses.export` (`fin-ctl:56`); audited (`report` §B/§J); bytes on the response only |
 | 101 | Optional read-only ACCOUNTANT role | DONE | `ACCOUNTANT` template (`packages/permissions/src/role-templates.test.ts:22`): view + export |
-| 102 | AccountingExportPort; no hard-wired provider | PARTIAL | export logic is a pure module (`fin-exp`) behind the service; **no named port/adapter interface** for QuickBooks/Xero (none required) |
+| 102 | AccountingExportPort; no hard-wired provider | DONE (Nov 5 2026) | `AccountingExportPort` in `expense-export.ts` (key, content type, extension, `render(rows, meta)`); CSV and XLSX are adapters in `ACCOUNTING_EXPORT_ADAPTERS`; `exportFile` picks by key and refuses an unknown one. A QuickBooks / Xero connector is a new adapter. Test: `expense-export-port.vitest.spec.ts` |
 | 103 | Not a full general ledger — tracks expenses, evidence, bills, vendor spend, exports | DONE | `report` §C; no double-entry claims |
 | 104 | Daily report: new expenses, total, receipts uploaded, needs review, bills due | DONE | `period = 'today'` (`fin-rep:18`); dashboard counts (`fin-svc:758`) |
 | 105 | Weekly report: total, categories, top vendors, branches, review, duplicates, upcoming bills | DONE | `period = 'week'` + `counts` + `recurring` (`fin-svc:771-802`) |
@@ -258,8 +258,8 @@ check (`matchPayment` wrote no audit row); retention re-picked the same kept doc
 
 | status | count |
 |---|---|
-| DONE | 194 |
-| PARTIAL | 16 |
+| DONE | 195 |
+| PARTIAL | 15 |
 | NOT DONE | 1 (§181 — allowed-not-required, decided against) |
 | BLOCKED_EXTERNAL | 1 (§127) |
 | **total section rows** | **212** (217 sections; §165–§170 are one row) |
@@ -267,7 +267,7 @@ check (`matchPayment` wrote no audit row); retention re-picked the same kept doc
 Before the build (read-only audit at `f90c183d`): 145 DONE · 46 PARTIAL · 20 NOT DONE · 1 BLOCKED_EXTERNAL.
 DONE includes §2 "DONE (shape)", §27 "DONE (internals)", §198 "DONE (logic)" — the live reading behind them is BLOCKED_EXTERNAL (Textract, S3, ClamAV).
 NOT DONE rows: 181.
-PARTIAL rows: 1, 44, 50, 73, 96, 98, 102, 153, 154, 158, 162, 191, 197, 203, 208, 210 (87 and 94 DONE Nov 5 2026).
+PARTIAL rows: 1, 44, 50, 73, 96, 98, 153, 154, 158, 162, 191, 197, 203, 208, 210 (87, 94 and 102 DONE Nov 5 2026).
 
 ## Close-out — what the Oct 27 2026 build did with the INTERNAL list (priority order as audited)
 
