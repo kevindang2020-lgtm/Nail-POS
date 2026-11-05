@@ -487,14 +487,21 @@ export class RetentionRepository {
 
   /** Win-back eligibility verdicts for exact customer ids (this tenant only; unknown / other-salon ids → not_found). The hard
    *  gate first (spec §11): a customer with no completed visit is `never_visited` — never part of a "we miss you" text. */
-  async verdicts(db: Kysely<any>, ctx: RetentionContext, ids: string[]): Promise<Map<string, { status: string; phone: string | null; name: string }>> {
+  /** `audience` (C5 gap, Nov 5 2026): 'win_back' (default) — never-visited customers are not win-back recipients; 'first_visit' —
+   *  the First Visit Invitation: ONLY never-visited customers, their consent / opt-out / phone checked like everyone else's;
+   *  a customer who has visited is 'has_visited' (not invited to a first visit) */
+  async verdicts(db: Kysely<any>, ctx: RetentionContext, ids: string[], audience: 'win_back' | 'first_visit' = 'win_back'): Promise<Map<string, { status: string; phone: string | null; name: string }>> {
     const out = new Map<string, { status: string; phone: string | null; name: string }>();
     const valid = [...new Set(ids.filter(isUuid))];
     for (const id of ids) out.set(id, { status: 'not_found', phone: null, name: '' });
     if (!valid.length) return out;
     const k = await this.window(ctx);
     const rows = (await sql<any>`${this.base(ctx, k)} select b.id, b.full_name, b.normalized_phone, b.sms_status, b.visits from b where b.id = any(${valid}::uuid[])`.execute(db)).rows;
-    for (const r of rows) out.set(String(r.id), { status: N(r.visits) === 0 ? 'never_visited' : String(r.sms_status), phone: r.normalized_phone ?? null, name: String(r.full_name || '') });
+    for (const r of rows) {
+      const visited = N(r.visits) > 0;
+      const status = audience === 'first_visit' ? (visited ? 'has_visited' : String(r.sms_status)) : (visited ? String(r.sms_status) : 'never_visited');
+      out.set(String(r.id), { status, phone: r.normalized_phone ?? null, name: String(r.full_name || '') });
+    }
     return out;
   }
 

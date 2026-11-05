@@ -55,12 +55,18 @@ describe('POSRetentionScreen', () => {
     expect(api.customers).toHaveBeenCalledWith(expect.objectContaining({ segment: 'at_risk', preset: 'month' }));
   });
 
-  it('Never Visited rows are listed on their own tab and cannot be selected for a win-back text', async () => {
+  it('Never Visited rows are on their own tab, never in a win-back text — C5 gap: they can get a First Visit Invitation instead', async () => {
     render(<POSRetentionScreen />);
     fireEvent.click(await screen.findByTestId('seg-never'));
     expect(await screen.findByText('Nora Never')).toBeInTheDocument();
-    const cb = screen.getByRole('checkbox', { name: /Nora Never/ }); expect(cb).toBeDisabled();
+    const cb = screen.getByRole('checkbox', { name: /Nora Never/ }); expect(cb).not.toBeDisabled();
     expect(screen.queryAllByTestId('rt-prio')).toHaveLength(0);
+    fireEvent.click(cb);
+    fireEvent.click(screen.getByTestId('send-sms'));
+    expect(await screen.findByTestId('fv-note')).toBeInTheDocument();
+    fireEvent.change(await screen.findByRole('textbox', { name: /message/i }), { target: { value: 'Welcome! Your first visit is 20% off.' } });
+    fireEvent.click(screen.getByTestId('sms-preview'));
+    await waitFor(() => expect(api.preview).toHaveBeenCalledWith(expect.objectContaining({ audience: 'first_visit' })));
   });
 
   it('"Select all eligible" sends the filters, not a page of ids, to the preview', async () => {

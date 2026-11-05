@@ -116,6 +116,17 @@ describe('Customer Retention — win-back SMS', () => {
     expect((await q(`select count(*)::int n from jobs where job_type = $1`, [RETENTION_SMS_JOB])).rows[0].n).toBe(0);   // nothing queued at preview
   });
 
+  it('C5 gap (Nov 5 2026): First Visit Invitation — only never-visited customers, checked like anyone else; "we miss you" wording refused', async () => {
+    await expect(svc.preview(ctx, { customerIds: [F, I], body: 'We miss you! Come back soon.', audience: 'first_visit' })).rejects.toMatchObject({ code: 'SMS_BODY_INVALID' });
+    const inv = await svc.preview(ctx, { customerIds: [F, I, A], body: 'Welcome! Your first manicure is 20% off this month.', audience: 'first_visit' });
+    expect(inv.excludedReasons.has_visited).toBe(1);                // A has visited — not a first-visit invitation
+    expect(inv.excludedReasons.never_visited ?? 0).toBe(0);         // never-visited customers are the audience here
+    const winback = await svc.preview(ctx, { customerIds: [F, I], body: 'We miss you! Book your next visit.' });
+    expect(winback.excludedReasons.never_visited).toBe(2);           // and still never in a win-back text
+    const stored = (await q(`select audience_json from retention_sms_campaigns where id = $1`, [inv.previewId])).rows[0].audience_json;
+    expect(stored.kind).toBe('first_visit');
+  });
+
   it('confirm queues ONE job per eligible recipient and is idempotent', async () => {
     expect(await code(svc.confirm(ctx, { previewId, idempotencyKey: 'x' }))).toBe('IDEMPOTENCY_KEY_REQUIRED');
     expect(await code(svc.confirm(ctx2, { previewId, idempotencyKey: key(1) }))).toBe('SMS_PREVIEW_NOT_FOUND');   // another salon cannot confirm it

@@ -57,7 +57,7 @@ export const RETENTION2_VI = {
   'rt2.days': 'Ngày',
   'rt2.segment': 'Nhóm',
   'rt2.lastContact': 'Liên hệ gần nhất',
-  'rt2.onlyAtRiskSelectable': 'Chỉ khách có nguy cơ nhắn được tin mới chọn được để mời quay lại',
+  'rt2.onlyAtRiskSelectable': 'Chỉ khách có nguy cơ nhắn được tin mới chọn được để mời quay lại', 'rt2.fv.title': 'Lời mời ghé lần đầu', 'rt2.fv.note': 'Chỉ gửi cho khách chưa từng ghé. Sự đồng ý nhận tin, việc hủy nhận và số điện thoại của từng khách đều được kiểm tra; hãy viết lời mời — nội dung kiểu "nhớ bạn" sẽ bị từ chối.', 'rt2.sms.has_visited': 'Đã từng ghé',
   'rt2.bookedFor': 'Đã đặt lịch {date}',
   'rt2.whyTitle': 'Vì sao ưu tiên này?',
   'rt2.why.inactivity': 'Chủ yếu do vắng lâu: {d} ngày từ lần ghé hoàn tất gần nhất, {v} lượt, đã chi {s}.',

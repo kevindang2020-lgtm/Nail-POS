@@ -20,7 +20,10 @@ export const RETENTION_SMS_JOB = 'retention.sms.send';
 
 /** `selection` = the list's filters as they are now (segment, search, period + date basis, priority band, SMS, visits) — the
  *  server resolves "Select all matching" itself, then snapshots the audience into the 20-minute draft (spec §10) */
-export interface PreviewInput { customerIds?: string[]; selection?: ListFilters & { excludeIds?: string[] }; body: string; label?: string }
+export interface PreviewInput { customerIds?: string[]; selection?: ListFilters & { excludeIds?: string[] }; body: string; label?: string; audience?: 'win_back' | 'first_visit' }
+/** C5 gap (Nov 5 2026): a First Visit Invitation goes to people who have never been in — "we miss you / come back" wording does
+ *  not fit them, so it is refused (the guide: "with suitable language") */
+export const COME_BACK_WORDING = /\b(miss(ed)? you|come back|welcome back|been a while|haven'?t seen you|long time no see|return(ing)? (customer|visit))\b/i;
 
 export class RetentionSmsService {
   private readonly pricing: RetentionPricingRepository;
@@ -38,6 +41,8 @@ export class RetentionSmsService {
     // C5 audit (Nov 4 2026): a campaign sends the SAME text to everyone — a template placeholder ({first_name}, {{booking_link}})
     // would go out literally, so it is refused until it is replaced with real words
     if (/\{\{?\s*[a-z_][a-z0-9_.]*\s*\}?\}/i.test(raw)) throw new RetentionError('Replace the {placeholders} with real words — a campaign sends the same text to every customer.', 'SMS_BODY_INVALID');
+    const kind = input.audience === 'first_visit' ? 'first_visit' : 'win_back';
+    if (kind === 'first_visit' && COME_BACK_WORDING.test(raw)) throw new RetentionError('This goes to people who have never visited — write an invitation, not a "we miss you" message.', 'SMS_BODY_INVALID');
     const body = composeRetentionSms(raw, await this.salonName(ctx));
     if (body.length > 640) throw new RetentionError('The message is too long (640 characters at most, including the salon name and STOP line).', 'SMS_BODY_INVALID');
     let ids: string[]; let audience: Record<string, unknown>;
@@ -45,15 +50,15 @@ export class RetentionSmsService {
       const exclude = new Set((input.selection.excludeIds ?? []).filter(isUuid));
       ids = (await this.repo.matchingIds(ctx, input.selection)).filter((id) => !exclude.has(id));
       const { excludeIds: _x, ...flt } = input.selection; void _x;
-      audience = { mode: 'all_matching', segment: input.selection.segment ?? 'at_risk', q: input.selection.q ?? null, excluded: exclude.size,
+      audience = { kind, mode: 'all_matching', segment: input.selection.segment ?? (kind === 'first_visit' ? 'never' : 'at_risk'), q: input.selection.q ?? null, excluded: exclude.size,
         filters: Object.fromEntries(Object.entries(flt).filter(([kk, v]) => kk !== 'segment' && kk !== 'q' && v != null && v !== '')) };
     } else {
       ids = [...new Set((input.customerIds ?? []).map(String))];
-      audience = { mode: 'selected', count: ids.length };
+      audience = { kind, mode: 'selected', count: ids.length };
     }
     if (!ids.length) throw new RetentionError('Select at least one customer.', 'SMS_NO_RECIPIENTS');
     if (ids.length > MAX_SELECTION) throw new RetentionError(`Select at most ${MAX_SELECTION} customers per campaign.`, 'SMS_SELECTION_TOO_LARGE');
-    const verdicts = await this.repo.verdicts(this.db, ctx, ids);
+    const verdicts = await this.repo.verdicts(this.db, ctx, ids, kind);
     // one text per destination: a second profile with the same phone is excluded (the first selected wins)
     const seen = new Set<string>();
     const list = ids.map((id) => {
@@ -92,7 +97,7 @@ export class RetentionSmsService {
     if (sender.route === 'not_configured') throw new RetentionError('Text messaging is not set up for this salon.', 'SMS_NOT_CONFIGURED', 503);
     const quiet = await this.repo.quietUntil(ctx);
     const result = await this.db.transaction().execute(async (trx) => {
-      const c = (await sql<any>`select id, status, expires_at > now() as fresh from retention_sms_campaigns where tenant_id = ${ctx.tenantId} and id = ${b.previewId} for update`.execute(trx)).rows[0];
+      const c = (await sql<any>`select id, status, audience_json, expires_at > now() as fresh from retention_sms_campaigns where tenant_id = ${ctx.tenantId} and id = ${b.previewId} for update`.execute(trx)).rows[0];
       if (!c) throw new RetentionError('That preview was not found.', 'SMS_PREVIEW_NOT_FOUND', 404);
       if (c.status !== 'draft') {
         // confirmed already (another tap / another terminal with a different key): the campaign as it is
@@ -101,7 +106,7 @@ export class RetentionSmsService {
       if (!c.fresh) { await sql`update retention_sms_campaigns set status = 'expired', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}::uuid, updated_at = now() where tenant_id = ${ctx.tenantId} and id = ${b.previewId} and ${canMoveToSql(RETENTION_SMS_CAMPAIGN, 'expired')}`.execute(trx); throw new RetentionError('The preview expired. Preview again.', 'SMS_PREVIEW_EXPIRED', 409); }
       const recips = (await sql<any>`select id, customer_id, destination, eligibility from retention_sms_recipients where tenant_id = ${ctx.tenantId} and campaign_id = ${b.previewId} for update`.execute(trx)).rows;
       const eligibleBefore = recips.filter((r: any) => r.eligibility === 'eligible');
-      const now = await this.repo.verdicts(trx, ctx, eligibleBefore.map((r: any) => String(r.customer_id)));
+      const now = await this.repo.verdicts(trx, ctx, eligibleBefore.map((r: any) => String(r.customer_id)), c.audience_json?.kind === 'first_visit' ? 'first_visit' : 'win_back');
       const changed = eligibleBefore.filter((r: any) => { const v = now.get(String(r.customer_id)); return !v || v.status !== 'eligible' || v.phone !== r.destination; });
       if (changed.length && !b.acceptChanges) {
         const reasons: Record<string, number> = {};

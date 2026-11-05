@@ -57,7 +57,7 @@ export const RETENTION2_EN = {
   'rt2.days': 'Days',
   'rt2.segment': 'Segment',
   'rt2.lastContact': 'Last contact',
-  'rt2.onlyAtRiskSelectable': 'Only At Risk customers who can be texted can be selected for a win-back text',
+  'rt2.onlyAtRiskSelectable': 'Only At Risk customers who can be texted can be selected for a win-back text', 'rt2.fv.title': 'First Visit Invitation', 'rt2.fv.note': 'Only customers who have never visited. Each customer\'s text consent, opt-out and phone are checked; write an invitation — "we miss you" wording is refused.', 'rt2.sms.has_visited': 'Has visited',
   'rt2.bookedFor': 'Booked for {date}',
   'rt2.whyTitle': 'Why this priority?',
   'rt2.why.inactivity': 'Mostly a long absence: {d} days since the last completed visit, {v} visits, {s} spent.',

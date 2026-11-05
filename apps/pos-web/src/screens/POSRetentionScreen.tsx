@@ -67,7 +67,7 @@ const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', da
 const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const segLabel = (s: string, p?: Period | null) => (s === 'at_risk' ? tx('rt2.seg.at_risk', { d: String(p?.riskDays ?? 60) }) : s === 'approaching' ? tx('rt2.seg.approaching', { a: String(p?.approachingDays ?? 45), d: String((p?.riskDays ?? 60) - 1) })
   : ['returning', 'recovered', 'never_visited', 'new_visitors'].includes(s) ? tx('rt2.seg.' + s) : s === 'rebooked' || s === 'contacted' ? tx('wb.seg.' + s) : codeLabel(`people.retention.segment.${s}`, s));
-const smsLabel = (s: string) => (s === 'upcoming_booking' || s === 'never_visited' ? tx('rt2.sms.' + s) : codeLabel(`people.retention.sms.${s}`, s));
+const smsLabel = (s: string) => (s === 'upcoming_booking' || s === 'never_visited' || s === 'has_visited' ? tx('rt2.sms.' + s) : codeLabel(`people.retention.sms.${s}`, s));
 const recipLabel = (s: string) => codeLabel(`people.retention.recipient.${s}`, s);
 const campaignLabel = (s: string) => codeLabel(`people.retention.campaign.${s}`, s);
 const sortLabel = (s: string) => (s === 'priority' || s === 'created_desc' ? tx('rt2.sort.' + s) : codeLabel(`people.retention.sort.${s}`, s));
@@ -138,7 +138,8 @@ export function POSRetentionScreen() {
   const pickSegment = (s: Segment, srt = '') => { setSegment(s); setSort(srt); setPage(1); if (!WINBACK.has(s)) setFlt((f) => ({ ...f, band: '' })); clearSelIfAny(); };
   const setFilter = (patch: Partial<Filters>) => { setFlt((f) => ({ ...f, ...patch })); clearSelIfAny(); };
   const changePeriod = (p: PeriodState) => { setPeriod(p); clearSelIfAny(); };
-  const canPick = (r: Row) => r.smsStatus === 'eligible' && r.segment === 'at_risk';
+  // C5 gap (Nov 5 2026): on the Never Visited tab, customers can be picked for a First Visit Invitation (the server checks consent)
+  const canPick = (r: Row) => (r.smsStatus === 'eligible' && r.segment === 'at_risk') || (segment === 'never' && r.segment === 'never_visited');
   const isSelected = (r: Row) => (sel.mode === 'ids' ? sel.ids.has(r.customerId) : canPick(r) && !sel.excludeIds.has(r.customerId));
   const toggle = (r: Row) => {
     if (sel.mode === 'matching') { const ex = new Set(sel.excludeIds); if (ex.has(r.customerId)) ex.delete(r.customerId); else ex.add(r.customerId); setSel({ ...sel, excludeIds: ex }); return; }
@@ -350,6 +351,7 @@ export function POSRetentionScreen() {
         </FitDialog>
       ) : null}
       {dlg?.kind === 'compose' ? <ComposeDialog ready={ready} sel={dlg.single ? { mode: 'ids', ids: new Map([[dlg.single.customerId, dlg.single]]) } : sel} onClose={() => setDlg(null)}
+        audience={(dlg.single ? dlg.single.segment === 'never_visited' : segment === 'never') ? 'first_visit' : 'win_back'}
         onQueued={(r) => { setDlg(canViewCampaigns ? { kind: 'campaign', id: r.campaignId } : null); if (!dlg.single) setSel(EMPTY_SEL); setNote({ tone: 'ok', text: r.duplicate ? tx('people.retention.alreadyQueued') : tx('people.retention.queuedNote', { n: nf(r.queued) }) }); setReload((n) => n + 1); }} /> : null}
       {dlg?.kind === 'customer' ? <CustomerDialog id={dlg.id} onClose={() => setDlg(null)} openProfile={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)}
         book={book} canText={!smsBlocked} canNote={can('pos.customers.notes.edit')} onText={(r) => setDlg({ kind: 'compose', single: r })}
@@ -370,7 +372,7 @@ type Preview = { previewId: string; finalBody: string; segments: { segments: num
   sender: Readiness['sender']; canSend: boolean; blockedReason: string | null; quietHours: { deferredUntil: string; start: number; end: number } | null; estimatedSegments: number; costEstimateCents: number | null; estimate?: Estimate;
   roster: { customerId: string; customerName: string; maskedPhone: string | null; eligibility: string }[]; expiresInMinutes: number };
 
-function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | null; sel: Selection; onClose: () => void; onQueued: (r: { campaignId: string; queued: number; duplicate: boolean }) => void }) {
+function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }: { ready: Readiness | null; sel: Selection; onClose: () => void; onQueued: (r: { campaignId: string; queued: number; duplicate: boolean }) => void; audience?: 'win_back' | 'first_visit' }) {
   const [body, setBody] = useState(''); const [label, setLabel] = useState('');
   // C5 audit (Nov 4 2026) §12.2: start from one of the salon's active SMS templates (follow-up / promotions / general). A
   // {placeholder} must be replaced before preview — a campaign sends the same words to everyone (the server refuses it).
@@ -387,8 +389,8 @@ function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | n
   const doPreview = async () => {
     setBusy(true); setErr(null); setChanged(null);
     try {
-      const p = await posRetentionApi.preview(sel.mode === 'ids' ? { customerIds: [...sel.ids.keys()], body, label: label.trim() || undefined }
-        : { selection: { ...sel.filter, excludeIds: [...sel.excludeIds] }, body, label: label.trim() || undefined });
+      const p = await posRetentionApi.preview(sel.mode === 'ids' ? { customerIds: [...sel.ids.keys()], body, label: label.trim() || undefined, audience }
+        : { selection: { ...sel.filter, excludeIds: [...sel.excludeIds] }, body, label: label.trim() || undefined, audience });
       setPv(p); key.current = requestId();
     } catch (e) { setErr(errText(e, tx('people.retention.previewFailed'))); } finally { setBusy(false); }
   };
@@ -407,7 +409,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | n
     : sender.route === 'simulated' ? tx('people.retention.sender.simulated') : tx('people.retention.smsNotConfigured');
   const len = body.trim().length;
   return (
-    <FitDialog wide title={tx('people.retention.composeTitle')} subtitle={<>{pv ? tx('people.retention.previewCounts', { s: nf(pv.selected), e: nf(pv.eligible), x: nf(pv.excluded) }) : tx('people.retention.composeCount', { n: nf(count) })} · {senderText}</>}
+    <FitDialog wide title={audience === 'first_visit' ? tx('rt2.fv.title') : tx('people.retention.composeTitle')} subtitle={<>{pv ? tx('people.retention.previewCounts', { s: nf(pv.selected), e: nf(pv.eligible), x: nf(pv.excluded) }) : tx('people.retention.composeCount', { n: nf(count) })} · {senderText}</>}
       onClose={onClose} busy={busy} testId="dlg-compose"
       footer={<>
         <span className="rt-steps" aria-hidden>{['select', 'preview', 'confirm', 'queue', 'results'].map((s, i) => <span key={s} className={i <= (pv ? 2 : 1) ? 'on' : ''}>{i + 1}. {tx(`people.retention.step.${s}`)}</span>)}</span>
@@ -418,6 +420,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | n
             : <button type="button" className="fk-btn primary" disabled={busy || !pv.canSend} onClick={() => doConfirm(false)} data-testid="sms-confirm">{busy ? tx('pos.saving_2') : tx('people.retention.confirmSend', { n: nf(pv.eligible) })}</button>}
         </>}
       </>}>
+      {audience === 'first_visit' ? <div className="fk-note info" data-testid="fv-note"><span>{tx('rt2.fv.note')}</span></div> : null}
       {!pv ? <>
         {tpls && tpls.length ? <label className="fk-field"><span>{tx('rt5.template')}</span><select defaultValue="" onChange={(e) => void useTemplate(e.target.value)} data-testid="rt-template"><option value="">{tx('rt5.templateNone')}</option>{tpls.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label> : null}
         <label className="fk-field"><span>{tx('people.retention.message')}</span><textarea data-autofocus value={body} maxLength={560} onChange={(e) => setBody(e.target.value)} placeholder={tx('people.retention.messagePlaceholder')} /></label>

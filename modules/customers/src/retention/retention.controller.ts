@@ -167,7 +167,7 @@ export class RetentionController {
     return run(() => this.s().preview(c, { customerIds: Array.isArray(b?.customerIds) ? b.customerIds.map(String) : undefined,
       // the FULL filter set (period, basis, band, SMS, visits, branch) — the server resolves "all matching" against it
       selection: b?.selection ? { ...listFilters(b.selection), excludeIds: Array.isArray(b.selection.excludeIds) ? b.selection.excludeIds.map(String) : [] } : undefined,
-      body: String(b?.body ?? ''), label: str(b?.label) }));
+      body: String(b?.body ?? ''), label: str(b?.label), audience: b?.audience === 'first_visit' ? 'first_visit' : 'win_back' }));
   }
 
   @Post('sms/campaigns') @RequirePermission('pos.marketing.manage')
