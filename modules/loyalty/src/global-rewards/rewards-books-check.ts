@@ -319,7 +319,7 @@ export async function listFraudAlerts(db: Kysely<any>, q: { status?: string | nu
   const rows = (await sql<Row>`SELECT a.id, a.signal, a.severity, a.confidence, a.identity_id, a.tenant_id, a.evidence, a.status, a.review_note, a.reviewed_at, a.created_at FROM loyalty_fraud_alerts a
     WHERE ${where} ORDER BY CASE a.severity WHEN 'high' THEN 0 WHEN 'medium' THEN 1 ELSE 2 END, a.created_at DESC LIMIT ${s} OFFSET ${off}`.execute(db)).rows;
   // the customer is shown by a short reference only (no phone / name): privacy-limited review
-  return { total, page: p, pageSize: s, pageCount: Math.max(1, Math.ceil(total / s)), items: rows.map((r) => ({ id: String(r.id), signal: r.signal, severity: r.severity, confidence: Number(r.confidence), customerRef: r.identity_id ? 'C-' + String(r.identity_id).slice(-6) : null,
+  return { total, page: p, pageSize: s, pageCount: Math.max(1, Math.ceil(total / s)), items: rows.map((r) => ({ id: String(r.id), signal: r.signal, severity: r.severity, confidence: Number(r.confidence), customerRef: r.identity_id ? 'C-' + String(r.identity_id).slice(-6) : null, hasAccount: !!r.identity_id,
     tenantId: r.tenant_id ? String(r.tenant_id) : null, evidence: r.evidence ?? {}, status: r.status, reviewNote: r.review_note ?? null, reviewedAt: iso(r.reviewed_at), createdAt: iso(r.created_at) })) };
 }
 

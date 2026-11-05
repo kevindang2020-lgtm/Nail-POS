@@ -34,6 +34,8 @@ export const GR_SANDBOX_ADVANCE_BODY: BodySchema = S.object({ status: str(40) })
 // Final Completion guide §05–§09 (Super Admin): a review needs a reason; payout actions carry no amount (the server owns it)
 export const GR_REVIEW_BODY: BodySchema = S.object({ to: str(20), note: str(1000) });
 export const GR_PAYABLE_HOLD_BODY: BodySchema = S.object({ reason: str(500) });
+/** C1 audit (Nov 4 2026): Super Admin suspends / reactivates a customer's rewards account (reason required) */
+export const GR_ACCOUNT_STATUS_BODY: BodySchema = S.object({ status: S.enumOf(['suspended', 'active']), reason: str(500) }, ['status', 'reason']);
 // Customer App opt-in / withdrawal (Final Completion guide §10)
 export const GR_OPT_IN_BODY: BodySchema = S.object({ termsVersion: str(40), accept: bool });
 export const GR_WITHDRAW_BODY: BodySchema = S.object({ reason: str(300) });

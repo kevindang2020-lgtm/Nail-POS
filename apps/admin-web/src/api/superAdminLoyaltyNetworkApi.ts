@@ -39,7 +39,7 @@ export interface Integrity {
 export interface BooksRun { id: string; runKey: string; trigger: string; status: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null; checks: number; failed: number; warnings: number; attempts: number; error: string | null }
 export interface Finding { id: string; runId: string; runKey: string; checkType: string; outcome: string; severity: string; tenantId: string | null; salon: string | null; expectedCents: number | null; actualCents: number | null; deltaCents: number | null; affectedIds: string[]; detail: string; recommendedAction: string | null; reviewStatus: string; reviewedAt: string | null; reviewNote: string | null; createdAt: string | null }
 export interface Payable { id: string; tenantId: string; salon: string | null; redemptionId: string; ticketId: string | null; amountCents: number; adjustedCents: number; owedCents: number; status: string; holdReason: string | null; providerRef: string | null; paidAt: string | null; createdAt: string | null; pointTenths: number }
-export interface FraudAlert { id: string; signal: string; severity: string; confidence: number; customerRef: string | null; tenantId: string | null; evidence: Record<string, unknown>; status: string; reviewNote: string | null; reviewedAt: string | null; createdAt: string | null }
+export interface FraudAlert { id: string; signal: string; severity: string; confidence: number; customerRef: string | null; hasAccount?: boolean; tenantId: string | null; evidence: Record<string, unknown>; status: string; reviewNote: string | null; reviewedAt: string | null; createdAt: string | null }
 export interface Lineage {
   redemption: { id: string; redeemingSalonId: string; ticketId: string; tenderPaymentId: string | null; pointTenths: number; valueCents: number; status: string; heldAt: string | null; confirmedAt: string | null; releasedAt: string | null; reversedCents: number };
   funding: { earnId: string; earningSalonId: string; pointTenths: number; backingCents: number; ruleSource: string; ruleVersionId: string | null; at: string | null }[];
@@ -77,4 +77,6 @@ export const superAdminLoyaltyNetworkApi = {
   requestPayout: (id: string, key: string) => api.postOnce<unknown>(`${B}/payables/${enc(id)}/payout`, {}, key),
   fraudAlerts: (q: { status?: string; page: number; pageSize: number }) => api.get<Paged<FraudAlert>>(`${B}/fraud-alerts`, q),
   reviewFraud: (id: string, to: string, note: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/review`, { to, note }),
+  /** C1 audit (Nov 4 2026) §4.4: pause / lift the pause on the rewards account the alert is about (step-up, reason) */
+  alertAccountStatus: (id: string, status: 'suspended' | 'active', reason: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/account-status`, { status, reason }),
 };

@@ -10,6 +10,8 @@ import { GlobalRewardsError, validateGlobalRate, previewRows, rateLabel, type Pu
 import type { TokenFundingProvider } from './token-funding-provider';
 import { runBooksCheck, integritySummary, listRuns, listFindings, reviewFinding, listPayables, lineage, listFraudAlerts, reviewFraudAlert, findingsCsv } from './rewards-books-check';
 import { markPayoutEligible, holdPayable, requestPayout, type PayoutProvider } from './rewards-payouts';
+import { canMoveToSql } from '@aipowersalon/database';
+import { GLOBAL_REWARDS_ACCOUNT } from './global-rewards-lifecycles';
 import { flagState } from './global-rewards-flags';
 
 export class GlobalRewardsService {
@@ -139,6 +141,29 @@ export class GlobalRewardsService {
     });
     if (!ok) throw new GlobalRewardsError('That payable cannot be put on hold now.', 'EARNING_POLICY_CONFLICT', 409);
     return { id, status: 'ON_HOLD' };
+  }
+  /** C1 audit (Nov 4 2026) — guide §4.4: Super Admin pauses a suspected compromised rewards account (earning and redeeming
+   *  already require an active account) or lifts the pause. Points stay where they are; reason ≥ 10 characters; audited. */
+  async setAccountStatus(identityId: string, to: 'suspended' | 'active', reason: string, actorUserId: string) {
+    if (to !== 'suspended' && to !== 'active') throw new GlobalRewardsError('status must be suspended or active.', 'VALIDATION_FAILED', 400, { field: 'status' });
+    const why = String(reason ?? '').trim();
+    if (why.length < 10) throw new GlobalRewardsError('Give a reason of at least 10 characters.', 'VALIDATION_FAILED', 400, { field: 'reason' });
+    const moved = await this.repo.database.transaction().execute(async (trx) => {
+      const r = (await sql<{ identity_id: string }>`UPDATE global_rewards_accounts ga SET status = ${to}, version = ga.version + 1, updated_at = now()
+        WHERE ga.identity_id = ${identityId}::uuid AND ga.status <> ${to} AND ${canMoveToSql(GLOBAL_REWARDS_ACCOUNT, to, 'ga')} RETURNING ga.identity_id`.execute(trx)).rows[0];
+      if (r) await this.auditPlatformAction(trx, actorUserId, to === 'suspended' ? 'loyalty.account_suspended' : 'loyalty.account_reactivated', 'global_rewards_account', identityId, { reason: why });
+      return !!r;
+    });
+    if (!moved) throw new GlobalRewardsError(to === 'suspended' ? 'That rewards account is not active (or does not exist).' : 'That rewards account is not suspended (or does not exist).', 'EARNING_POLICY_CONFLICT', 409);
+    return { identityId, status: to };
+  }
+  /** the account a fraud alert is about (the console addresses the alert, never the identity id) */
+  async setAccountStatusForAlert(alertId: string, to: 'suspended' | 'active', reason: string, actorUserId: string) {
+    const a = (await sql<{ identity_id: string | null }>`SELECT identity_id FROM loyalty_fraud_alerts WHERE id = ${alertId}::uuid`.execute(this.repo.database)).rows[0];
+    if (!a) throw new GlobalRewardsError('That alert was not found.', 'RESOURCE_NOT_FOUND', 404);
+    if (!a.identity_id) throw new GlobalRewardsError('This alert is not about one customer account.', 'EARNING_POLICY_CONFLICT', 409);
+    const r = await this.setAccountStatus(String(a.identity_id), to, reason, actorUserId);
+    return { alertId, status: r.status };
   }
   /** no approved payout provider → PAYOUT_PROVIDER_UNAVAILABLE; the payable stays owed (never PAID by hand) */
   async requestPayout(id: string, actorUserId: string, idempotencyKey: string) {

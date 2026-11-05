@@ -57,7 +57,7 @@ export function LoyaltyIntegrityTab({ onNote }: { onNote: (tone: 'ok' | 'bad', t
   const [fp, setFp] = useState(1); const [findings, setFindings] = useState<Paged<Finding> | null>(null);
   const [pp, setPp] = useState(1); const [payables, setPayables] = useState<Paged<Payable> | null>(null);
   const [alerts, setAlerts] = useState<Paged<FraudAlert> | null>(null);
-  const [dlg, setDlg] = useState<null | { kind: 'finding'; f: Finding } | { kind: 'fraud'; a: FraudAlert } | { kind: 'hold'; p: Payable } | { kind: 'lineage'; id: string }>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'finding'; f: Finding } | { kind: 'fraud'; a: FraudAlert } | { kind: 'acct'; a: FraudAlert } | { kind: 'hold'; p: Payable } | { kind: 'lineage'; id: string }>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(() => {
     setErr(null);
@@ -130,13 +130,15 @@ export function LoyaltyIntegrityTab({ onNote }: { onNote: (tone: 'ok' | 'bad', t
           <table className="w-full text-sm" data-testid="sa-ln-fraud"><thead><tr className="text-left text-xs uppercase text-[#9a8876]"><th className="py-2">Signal</th><th>Severity</th><th>Confidence</th><th>Customer</th><th>Evidence</th><th>Status</th><th /></tr></thead>
             <tbody>{alerts.items.map((a) => <tr key={a.id} className="border-t border-[#f0e6d5]"><td className="py-2 font-semibold">{label(a.signal)}</td><td><StatusBadge tone={TONE[a.severity] ?? 'neutral'}>{a.severity}</StatusBadge></td>
               <td>{Math.round(a.confidence * 100)}%</td><td className="font-mono text-xs">{a.customerRef ?? '—'}</td><td className="max-w-[320px] truncate font-mono text-xs">{JSON.stringify(a.evidence)}</td>
-              <td><StatusBadge tone={TONE[a.status] ?? 'neutral'}>{label(a.status)}</StatusBadge></td><td><button type="button" className={btn()} onClick={() => setDlg({ kind: 'fraud', a })}>Review</button></td></tr>)}</tbody></table>}
+              <td><StatusBadge tone={TONE[a.status] ?? 'neutral'}>{label(a.status)}</StatusBadge></td><td className="flex gap-1"><button type="button" className={btn()} onClick={() => setDlg({ kind: 'fraud', a })}>Review</button>{a.hasAccount ? <button type="button" className={btn()} onClick={() => setDlg({ kind: 'acct', a })} data-testid="sa-ln-acct">Account</button> : null}</td></tr>)}</tbody></table>}
       </section>
 
       {dlg?.kind === 'finding' ? <ReasonDialog title={`Review: ${label(dlg.f.checkType)}`} options={['INVESTIGATING', 'RESOLVED', 'ACCEPTED', 'OPEN'].filter((o) => o !== dlg.f.reviewStatus)} onClose={() => setDlg(null)}
         onSubmit={async (to, note) => { await netApi.reviewFinding(dlg.f.id, to, note); onNote('ok', 'Finding updated. No ledger was changed.'); load(); }} /> : null}
       {dlg?.kind === 'fraud' ? <ReasonDialog title={`Review alert: ${label(dlg.a.signal)}`} options={['INVESTIGATING', 'DISMISSED', 'CONFIRMED', 'OPEN'].filter((o) => o !== dlg.a.status)} onClose={() => setDlg(null)}
         onSubmit={async (to, note) => { await netApi.reviewFraud(dlg.a.id, to, note); onNote('ok', 'Alert updated.'); load(); }} /> : null}
+      {dlg?.kind === 'acct' ? <ReasonDialog title={`Rewards account ${dlg.a.customerRef ?? ''}`} options={['suspended', 'active']} onClose={() => setDlg(null)}
+        onSubmit={async (to, note) => { await netApi.alertAccountStatus(dlg.a.id, to as 'suspended' | 'active', note); onNote('ok', to === 'suspended' ? 'Account suspended: it cannot earn or redeem until reactivated. Points are kept.' : 'Account reactivated.'); load(); }} /> : null}
       {dlg?.kind === 'hold' ? <ReasonDialog title="Put payable on hold" onClose={() => setDlg(null)} onSubmit={async (_to, note) => { await netApi.holdPayable(dlg.p.id, note); onNote('ok', 'Payable on hold.'); load(); }} /> : null}
       {dlg?.kind === 'lineage' ? <LineageDialog redemptionId={dlg.id} onClose={() => setDlg(null)} /> : null}
     </div>

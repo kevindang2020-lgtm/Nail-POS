@@ -3207,6 +3207,7 @@
   "POST /super-admin/loyalty-network/books-check/findings/{id}/review": "RRRRRRAADADDDDADD",
   "POST /super-admin/loyalty-network/books-check/run": "RRRRRRAADADDDDADD",
   "POST /super-admin/loyalty-network/enrollments/{tenantId}": "RRRRRRAADADDDDADD",
+  "POST /super-admin/loyalty-network/fraud-alerts/{id}/account-status": "RRRRRRAADADDDDADD",
   "POST /super-admin/loyalty-network/fraud-alerts/{id}/review": "RRRRRRAADADDDDADD",
   "POST /super-admin/loyalty-network/global-rules": "RRRRRRAADADDDDADD",
   "POST /super-admin/loyalty-network/global-rules/{id}/cancel": "RRRRRRAADADDDDADD",

@@ -2,21 +2,21 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3878 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3879 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3878 |
+| all HTTP routes | 3879 |
 | realm `customer` | 165 |
 | realm `shared` | 282 |
 | realm `staff` | 2259 |
-| realm `super_admin` | 1172 |
+| realm `super_admin` | 1173 |
 | public (no session; each one reviewed by `check:public`) | 124 |
 | integration key / OAuth (`auth=api_key`) | 13 |
-| with `@RequireStepUp` (fresh password + code) | 187 |
+| with `@RequireStepUp` (fresh password + code) | 188 |
 | with an idempotency contract | 53 |
 | webhooks | 9 |
 | multipart uploads | 9 |
@@ -343,6 +343,7 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | POST | `/super-admin/integrations/connections/{id}/credentials/rotate` | super_admin |
 | POST | `/super-admin/kill-switches/{key}` | super_admin |
 | POST | `/super-admin/loyalty-network/enrollments/{tenantId}` | super_admin |
+| POST | `/super-admin/loyalty-network/fraud-alerts/{id}/account-status` | super_admin |
 | POST | `/super-admin/loyalty-network/global-rules` | super_admin |
 | POST | `/super-admin/loyalty-network/global-rules/{id}/cancel` | super_admin |
 | POST | `/super-admin/loyalty-network/payables/{id}/eligible` | super_admin |

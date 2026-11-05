@@ -26,7 +26,7 @@ import { GlobalRewardsService } from './global-rewards.service';
 import { GlobalRewardsError, type PurchaseStatus } from './global-rewards-core';
 import type { GrCtx } from './global-rewards.repository';
 import { GR_PREVIEW_BODY, GR_DRAFT_BODY, GR_ACTIVATE_BODY, GR_USE_GLOBAL_BODY, GR_BUY_TOKENS_BODY, GR_EMPTY_BODY, GR_GLOBAL_RULE_BODY, GR_PROGRAM_BODY,
-  GR_ENROLLMENT_BODY, GR_SANDBOX_ADVANCE_BODY, GR_REVIEW_BODY, GR_PAYABLE_HOLD_BODY } from '../request-schemas';
+  GR_ENROLLMENT_BODY, GR_SANDBOX_ADVANCE_BODY, GR_REVIEW_BODY, GR_PAYABLE_HOLD_BODY, GR_ACCOUNT_STATUS_BODY } from '../request-schemas';
 
 export const GLOBAL_REWARDS_SERVICE = 'GlobalRewardsService';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -151,6 +151,12 @@ export class SuperAdminGlobalRewardsController {
   // money out: step-up + one request key; with no approved payout provider this answers PAYOUT_PROVIDER_UNAVAILABLE
   @RequireStepUp() @Post('payables/:id/payout') @RequirePermission('super_admin.billing.manage') @Idempotent({ required: true })
   payout(@Req() r: any, @Param('id') pid: string, @Body(ValidatedBody(GR_EMPTY_BODY, { strict: true })) _b: any) { return runGr(() => this.s().requestPayout(id(pid), this.actor(r), String(r?.headers?.['idempotency-key'] ?? ''))); }
+  // C1 audit (Nov 4 2026) §4.4: pause / lift the pause on the rewards account an alert is about (step-up, reason, audited) —
+  // the console never sees the customer's identity id, only the alert
+  @RequireStepUp() @Post('fraud-alerts/:id/account-status') @RequirePermission('super_admin.billing.manage')
+  accountStatus(@Req() r: any, @Param('id') aid: string, @Body(ValidatedBody(GR_ACCOUNT_STATUS_BODY, { strict: true })) b: any) {
+    return runGr(() => this.s().setAccountStatusForAlert(id(aid), String(b?.status ?? '') as 'suspended', String(b?.reason ?? ''), this.actor(r)));
+  }
   @Get('fraud-alerts') @RequirePermission('super_admin.billing.view') @ListQuery({ filters: { status: { type: 'enum', values: ['OPEN', 'INVESTIGATING', 'DISMISSED', 'CONFIRMED'] } }, search: false, maxLimit: 100, defaultLimit: 25, params: ['page', 'pageSize'] })
   fraudAlerts(@Query() q: any) { return runGr(() => this.s().fraudAlerts({ status: q?.status || null, page: Number(q?.page) || 1, pageSize: Number(q?.pageSize) || 25 })); }
   @Post('fraud-alerts/:id/review') @RequirePermission('super_admin.billing.manage')

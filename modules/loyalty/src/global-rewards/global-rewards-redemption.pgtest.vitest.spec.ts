@@ -11,6 +11,7 @@ import { holdForTicket, releaseHold, finalizeForPaidTicket, reverseRedemptionFor
 import { expireHolds } from './global-rewards-checkout';
 import { GlobalRewardsError } from './global-rewards-core';
 import { GR_FLAGS } from './global-rewards-flags';
+import { GlobalRewardsService } from './global-rewards.service';
 
 const P = 'd7340000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -309,5 +310,24 @@ describe('LoyaltyRules §8.2 — T13 exactly as written', () => {
     expect(Number((await q(`select available_cents from tenant_token_wallets where tenant_id = $1`, [TA]))[0].available_cents)).toBe(walletA0);
     expect((await q(`select count(*)::int n from token_wallet_ledger where tenant_id = $1`, [TA]))[0].n).toBe(ledA0);
     expect(await unbalanced()).toBe(0);
+  });
+});
+
+// C1 audit (Nov 4 2026) §4.4: Super Admin pauses a suspected compromised account — redeeming stops; lifting it restores it
+describe('Super Admin suspends a rewards account', () => {
+  it('suspended → no redemption quote; reason required; reactivate restores; audited', async () => {
+    const svc = new GlobalRewardsService(repo, null, null);
+    expect(await code(svc.setAccountStatus(IDV, 'suspended', 'short', SA))).toBe('VALIDATION_FAILED');
+    expect(await svc.setAccountStatus(IDV, 'suspended', 'Phone number reported stolen', SA)).toEqual({ identityId: IDV, status: 'suspended' });
+    const t = await openTicket(TB, BB, custOf[TB], 4000);
+    expect(t).toBeTruthy();
+    const no: any = await redemptionQuote(db, repo, { tenantId: TB, customerId: custOf[TB], dueCents: 4000 });
+    expect(no.available).toBe(false);
+    expect(await code(svc.setAccountStatus(IDV, 'suspended', 'Phone number reported stolen', SA))).toBe('EARNING_POLICY_CONFLICT');
+    const alertId = (await q(`insert into loyalty_fraud_alerts (signal, severity, confidence, dedupe_key, identity_id, evidence) values ('unusual_spend', 'high', 0.9, 'c1-test-' || $1::text, $1::uuid, '{}'::jsonb) returning id`, [IDV]))[0].id;
+    expect(await svc.setAccountStatusForAlert(alertId, 'active', 'Owner confirmed the phone is back', SA)).toEqual({ alertId, status: 'active' });
+    expect(((await redemptionQuote(db, repo, { tenantId: TB, customerId: custOf[TB], dueCents: 4000 })) as any).available).toBe(true);
+    const acts = (await q(`select action_type from audit_logs where entity_id::text = $1 order by created_at`, [IDV])).map((r: any) => String(r.action_type));
+    expect(acts.some((a: string) => a.endsWith('account_suspended'))).toBe(true); expect(acts.some((a: string) => a.endsWith('account_reactivated'))).toBe(true);
   });
 });

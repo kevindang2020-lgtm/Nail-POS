@@ -3313,6 +3313,7 @@ POST /super-admin/kill-switches/{key}  realm=super_admin  auth=session  domain=p
 POST /super-admin/loyalty-network/books-check/findings/{id}/review  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty-network/books-check/run  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty-network/enrollments/{tenantId}  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
+POST /super-admin/loyalty-network/fraud-alerts/{id}/account-status  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty-network/fraud-alerts/{id}/review  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty-network/global-rules  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.manage  step-up  guards=RolePermissionGuard,SuperAdminGuard
 POST /super-admin/loyalty-network/global-rules/preview  realm=super_admin  auth=session  domain=loyalty  perm=super_admin.billing.view  guards=RolePermissionGuard,SuperAdminGuard
