@@ -16,6 +16,7 @@ type AuditActor = Parameters<typeof recordAuditStrict>[1];
 import { isNotConfiguredSender, isSimulatedSender, emailFromAddress, type EmailSender, type TenantEmailRequest, type TenantSendResult } from '@aipowersalon/notifications';
 import { CnError, type CustomerNotificationsCenter, type CnContext } from '../notifications/customer-notifications';
 import { type EmailPolicyPort, EMAIL_RE } from './email-policy';
+import { checkSenderIdentity, type DnsResolver, type SenderIdentityResult } from './sender-identity';
 
 export type EcContext = CnContext;
 export interface EcMessenger { sendEmail(req: TenantEmailRequest): Promise<TenantSendResult & { duplicate?: boolean }> }
@@ -50,7 +51,8 @@ export function emailCategory(r: { purpose?: string | null; source_type?: string
 
 export class EmailCenter {
   constructor(private readonly db: Kysely<any>, private readonly cn: CustomerNotificationsCenter, private readonly messenger: EcMessenger | null,
-    private readonly sender: EmailSender | null, private readonly policy: EmailPolicyPort | null, private readonly env: NodeJS.ProcessEnv = process.env, private readonly now: () => number = Date.now) {}
+    private readonly sender: EmailSender | null, private readonly policy: EmailPolicyPort | null, private readonly env: NodeJS.ProcessEnv = process.env, private readonly now: () => number = Date.now,
+    private readonly dns?: DnsResolver) {}
 
   private need(ctx: EcContext, p: string) { if (!hasPermission(ctx as unknown as PermCtx, p)) throw err('You do not have permission to do this.', 'PERMISSION_DENIED', 403); }
   private audit(ctx: EcContext, action: string, id: string | null, summary: string, metadata: Record<string, unknown> = {}, status: 'success' | 'failure' = 'success') {
@@ -113,7 +115,8 @@ export class EmailCenter {
     const T = ctx.tenantId;
     const configured = !!this.sender && !isNotConfiguredSender(this.sender); const testSender = !!this.sender && isSimulatedSender(this.sender);
     const configuration = !this.sender || !configured ? 'not_configured' : testSender ? 'incomplete' : 'ready_to_check';
-    const last = (await sql<any>`select provider_health, issue_code, detail, checked_at from email_health_checks where tenant_id = ${T}::uuid order by checked_at desc limit 1`.execute(this.db)).rows[0];
+    const last = (await sql<any>`select provider_health, issue_code, detail, checked_at, sender_identity, sender_identity_json from email_health_checks where tenant_id = ${T}::uuid order by checked_at desc limit 1`.execute(this.db)).rows[0];
+    const sid: SenderIdentityResult | null = last?.sender_identity_json ? (typeof last.sender_identity_json === 'string' ? JSON.parse(last.sender_identity_json) : last.sender_identity_json) : null;
     const lastOk = (await sql<any>`select checked_at from email_health_checks where tenant_id = ${T}::uuid and provider_health = 'healthy' order by checked_at desc limit 1`.execute(this.db)).rows[0];
     const stale = last ? this.now() - new Date(last.checked_at).getTime() > 24 * 3600_000 : true;
     const provider = !configured ? 'unknown' : !last ? 'not_checked' : stale ? 'unknown' : String(last.provider_health);
@@ -126,7 +129,10 @@ export class EmailCenter {
     const degraded = N(f.failed) >= 3 && N(f.failed) / Math.max(1, N(f.attempts)) >= 0.25;
     const layers = [
       { key: 'configuration', state: configuration, detail: configuration === 'not_configured' ? 'No email provider is configured for this platform (SENDGRID_API_KEY is not set).' : testSender ? 'Test sender — emails are recorded, nothing leaves this environment.' : 'A provider API key is configured (its value is never shown).', next: configuration === 'not_configured' ? 'configure_provider' : null },
-      { key: 'sender_identity', state: 'unknown', detail: `From ${emailFromAddress(this.env)} with your salon's display name. Domain authentication (SPF / DKIM / DMARC) is checked in the provider's account and cannot be read from here.`, next: 'verify_domain' },
+      // C2 audit: read from public DNS at the last check (SPF includes the provider, DKIM selector records, DMARC) — unknown until checked / on a lookup error
+      { key: 'sender_identity', state: !sid || stale ? 'unknown' : sid.overall, detail: !sid ? `From ${emailFromAddress(this.env)} with your salon's display name. Run a check to read the domain's SPF / DKIM / DMARC records.`
+          : `${sid.domain ?? '—'}: SPF ${sid.spf.replace(/_/g, ' ')}, DKIM ${sid.dkim}, DMARC ${sid.dmarc}${sid.dmarcPolicy ? ` (policy ${sid.dmarcPolicy})` : ''}.`,
+        records: sid ? { domain: sid.domain, spf: sid.spf, dkim: sid.dkim, dmarc: sid.dmarc, dmarcPolicy: sid.dmarcPolicy } : null, checkedAt: sid?.checkedAt ?? null, next: sid?.overall === 'verified' && !stale ? null : 'verify_domain' },
       { key: 'provider_health', state: provider, detail: last ? String(last.detail ?? '') : 'Never checked.', checkedAt: iso(last?.checked_at), lastSuccessAt: iso(lastOk?.checked_at), next: provider === 'healthy' ? null : last?.issue_code === 'auth_failed' ? 'correct_credentials' : 'retry_health_check' },
       { key: 'callbacks', state: callbacks, detail: !cbConfigured ? 'Signed delivery events are not set up (SENDGRID_WEBHOOK_VERIFICATION_KEY is not set) — delivery cannot be confirmed.' : ev?.at ? `Last verified event ${iso(ev.at)}.` : 'No verified delivery event has arrived yet.', lastEventAt: iso(ev?.at), next: callbacks === 'receiving' ? null : 'check_webhook' },
       { key: 'recent_failures', state: degraded ? 'degraded' : 'ok', detail: `${N(f.failed)} of ${N(f.attempts)} email attempts failed in the last 24 hours.`, lastReason: f.last_reason ?? null, lastFailedAt: iso(f.last_fail), next: degraded ? 'open_failures' : null },
@@ -146,10 +152,11 @@ export class EmailCenter {
     const provider = !configured ? 'unknown' : !v ? 'unknown' : v.status === 'healthy' ? 'healthy' : 'down';   // auth_failed and down are both 'down'; issue_code keeps which (the next step differs)
     const cb = await this.callbacksConfigured();
     const overall = !configured ? 'setup_required' : provider === 'healthy' && cb ? 'ready' : 'attention_required';
-    await sql`insert into email_health_checks (tenant_id, trigger_type, configuration, sender_identity, provider_health, callbacks, overall, issue_code, detail, checked_by)
-      values (${T}::uuid, 'manual', ${!configured ? 'not_configured' : isSimulatedSender(this.sender) ? 'incomplete' : 'ready_to_check'}, 'unknown', ${provider}, ${cb ? 'unknown' : 'not_configured'}, ${overall},
+    const sid = await checkSenderIdentity(emailFromAddress(this.env), this.dns, this.now);   // never throws: a failed lookup is 'unknown'
+    await sql`insert into email_health_checks (tenant_id, trigger_type, configuration, sender_identity, sender_identity_json, provider_health, callbacks, overall, issue_code, detail, checked_by)
+      values (${T}::uuid, 'manual', ${!configured ? 'not_configured' : isSimulatedSender(this.sender) ? 'incomplete' : 'ready_to_check'}, ${sid.overall}, ${JSON.stringify(sid)}::jsonb, ${provider}, ${cb ? 'unknown' : 'not_configured'}, ${overall},
               ${v?.status && v.status !== 'healthy' ? v.status : !configured ? 'not_configured' : null}, ${v?.detail ?? (configured ? 'The provider cannot report a status.' : 'No email provider is configured.')}, ${UUID.test(String(ctx.userId)) ? ctx.userId : null}::uuid)`.execute(this.db);
-    await this.audit(ctx, 'email.health_checked', null, `Email provider check: ${provider}`, { provider, overall });
+    await this.audit(ctx, 'email.health_checked', null, `Email provider check: ${provider}`, { provider, overall, senderIdentity: sid.overall });
     return this.health(ctx);
   }
 

@@ -182,6 +182,14 @@ describe('the center — honest KPIs, health, history, isolation (guide §07, §
     expect(await code(center.checkHealth(viewer))).toBe('PERMISSION_DENIED');
     expect(await code(q(sql`delete from email_health_checks where tenant_id = ${T}`))).not.toBe('ok');   // append-only
   });
+  it('C2 audit: the check reads SPF / DKIM / DMARC from DNS for the sending domain (verified only when all three pass)', async () => {
+    const domain = String(ENV.EMAIL_FROM ?? ENV.SENDGRID_FROM ?? 'nailsalons@aipowersalon.com').split('@').pop()!.replace(/>.*$/, '').toLowerCase();
+    const dns = { resolveTxt: async (n: string) => { if (n === domain) return [['v=spf1 include:sendgrid.net ~all']]; if (n === `_dmarc.${domain}`) return [['v=DMARC1; p=reject']]; throw Object.assign(new Error('nf'), { code: 'ENOTFOUND' }); },
+      resolveCname: async (n: string) => { if (n === `s1._domainkey.${domain}`) return ['s1.domainkey.u1.wl.sendgrid.net']; throw Object.assign(new Error('nf'), { code: 'ENOTFOUND' }); } };
+    const c3 = new EmailCenter(db, cn, svc, mail, new KyselyEmailPolicy(db, ENV), ENV, () => Date.now(), dns);
+    const h = await c3.checkHealth(owner2);   // the other salon: no check in the last minute
+    expect(h.layers.find((l: any) => l.key === 'sender_identity')).toMatchObject({ state: 'verified', records: { spf: 'pass', dkim: 'pass', dmarc: 'pass', dmarcPolicy: 'reject' } });
+  });
   it('history: search by name / phone / subject / provider id; beyond page 1; newest first; viewers see masked addresses', async () => {
     for (let i = 0; i < 25; i++) await svc.sendEmail({ tenantId: T, branchId: B, to: 'ava@example.com', subject: `Paging subject ${String(i).padStart(2, '0')}`, body: 'b', purpose: 'notification', customerId: C1 });
     const p1 = await center.history(owner, { q: 'Paging subject', pageSize: 10, preset: 'today' });
