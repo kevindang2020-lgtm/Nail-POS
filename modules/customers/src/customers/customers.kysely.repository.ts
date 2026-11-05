@@ -130,6 +130,31 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return r;
   }
 
+  /** last completed snapshot day of each of the last 6 months → Active ÷ visited customers (null = no reliable data) */
+  async retentionSeries(ctx: CustomersContext): Promise<{ month: string; date: string | null; ratePercent: number | null; reason: string | null }[]> {
+    const now = new Date(); const months: string[] = [];
+    for (let i = 5; i >= 0; i--) { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1)); months.push(d.toISOString().slice(0, 7)); }
+    const since = `${months[0]}-01`;
+    const runs: any[] = await this.db.selectFrom('customer_retention_snapshot_runs').select(['snapshot_local_date', 'definition_version', 'status', 'coverage', 'has_branch'])
+      .where('tenant_id', '=', ctx.tenantId).where('snapshot_local_date', '>=', since).where('status', '=', 'completed')
+      .orderBy('snapshot_local_date', 'desc').execute();
+    const day = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+    const out: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[] = [];
+    for (const m of months) {
+      const r = runs.find((x) => day(x.snapshot_local_date).startsWith(m) && x.coverage !== 'incomplete');
+      if (!r) { out.push({ month: m, date: null, ratePercent: null, reason: 'missing' }); continue; }
+      if (ctx.branchId && !r.has_branch) { out.push({ month: m, date: day(r.snapshot_local_date), ratePercent: null, reason: 'no_branch_data' }); continue; }
+      let q = this.db.selectFrom('customer_retention_daily_snapshots as s').select(['s.segment', (eb: any) => eb.fn.countAll().as('n')])
+        .where('s.tenant_id', '=', ctx.tenantId).where('s.snapshot_local_date', '=', day(r.snapshot_local_date)).where('s.definition_version', '=', r.definition_version);
+      if (ctx.branchId) { const b = ctx.branchId; q = q.where((eb: any) => eb.or([eb('s.last_visit_branch_id', '=', b), eb.and([eb('s.last_visit_branch_id', 'is', null), eb('s.home_branch_id', '=', b)])])); }
+      const rows: any[] = await q.groupBy('s.segment').execute();
+      const n = (seg: string) => Number(rows.find((x) => x.segment === seg)?.n) || 0;
+      const visited = n('active') + n('approaching') + n('at_risk');
+      out.push({ month: m, date: day(r.snapshot_local_date), ratePercent: visited > 0 ? Math.round((n('active') / visited) * 1000) / 10 : null, reason: visited > 0 ? null : 'no_visits' });
+    }
+    return out;
+  }
+
   async query(ctx: CustomersContext, f: CustomerFilters): Promise<POSCustomersFullState> {
     const all = await this.load(ctx); const dup = this.dupSet(all);
     const matched = this.filtered(all, f, dup);
@@ -168,6 +193,15 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       avgSpend: avgSpendTrend,
       inactive: null, retention: null, clv: null, // need historical monthly snapshots — not fabricated
     };
+    // F1 §37: month-by-month retention from the nightly retention snapshots (the last completed day of each of the last 6
+    // months). Retention = Active ÷ customers who have visited. A month with no completed snapshot — or, for a location view,
+    // one computed before locations were recorded — is a gap (null), never an estimate.
+    const retentionSeries = await this.retentionSeries(ctx).catch(() => [] as { month: string; date: string | null; ratePercent: number | null; reason: string | null }[]);
+    // F1 §39: Recent Customer Activity from the whole salon (latest visits and newly added profiles), not the visible page
+    const recentActivity = [
+      ...all.filter((c) => c.lastVisitAt).map((c) => ({ customerId: c.customerId, displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind: 'visit' as const, at: c.lastVisitAt as string })),
+      ...all.filter((c) => c.createdAt && this.daysSince(c.createdAt) <= 30).map((c) => ({ customerId: c.customerId, displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind: 'added' as const, at: c.createdAt as string })),
+    ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime() || a.customerId.localeCompare(b.customerId)).slice(0, 8);
     // full-base right-rail aggregations (across all customers, not the current page)
     const tally = (arr: (string | undefined)[]) => { const m = new Map<string, number>(); for (const x of arr) { const key = (x || '').trim(); if (key) m.set(key, (m.get(key) || 0) + 1); } return [...m.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count); };
     const directory = {
@@ -192,7 +226,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
-      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory,
+      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity,
       filterFacets: {
         segments: ['never', 'new', 'returning', 'vip'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: [...new Set(all.map((c) => c.loyaltyTier))], visitRanges: ['0', '1-3', '4-9', '10+'],

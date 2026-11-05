@@ -268,5 +268,13 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "dup.health.d.loyalty_after_merge.INSUFFICIENT_DATA": "No merged profile to check yet.",
   "dup.health.d.oversized_keys.PASSED": "No phone, email or name is shared by more than 20 profiles.",
   "dup.health.d.oversized_keys.WARNING": "Some phones, emails or names are shared by more than 20 profiles (for example the salon's own number) and are not grouped. Clean them up in Customers.",
-  "dup.health.d.oversized_keys.INSUFFICIENT_DATA": "No scan yet."
+  "dup.health.d.oversized_keys.INSUFFICIENT_DATA": "No scan yet.",
+  "cd.page.showing": "Showing {from}–{to} of {total}",
+  "cd.page.rows": "Rows",
+  "cd.ret.empty": "The monthly trend appears once the nightly retention snapshots have run.",
+  "cd.ret.noData": "No completed snapshot this month",
+  "cd.ret.noBranch": "Location not recorded for this month",
+  "cd.act.empty": "No customer activity yet.",
+  "cd.act.visit": "Visited",
+  "cd.act.added": "New profile added"
 };

@@ -8863,6 +8863,8 @@ export interface CustomerRetentionDailySnapshotsTable {
   calculated_at: Generated<Ts>;
   is_vip: boolean | null;
   loyalty_tier: string | null;
+  last_visit_branch_id: string | null;   // 812
+  home_branch_id: string | null;   // 812
 }
 export interface CustomerRetentionSnapshotRunsTable {
   id: Generated<string>;
@@ -8891,6 +8893,7 @@ export interface CustomerRetentionSnapshotRunsTable {
   created_at: Generated<Ts>;
   updated_at: Generated<Ts>;
   updated_by: string | null;   // drift patch Oct 30 2026 (migrations 724–732)
+  has_branch: Generated<boolean>;   // 812
 }
 export interface HealthCheckAlertsTable {
   id: Generated<string>;

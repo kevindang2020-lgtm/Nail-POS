@@ -46,6 +46,8 @@ type CustomersState = {
   filterFacets: { segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[] };
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
 };
 type ImpSampleRow = { rowNumber: number; firstName: string; lastName: string; phone?: string; email?: string; birthday?: string; action: 'create' | 'update' | 'duplicate' | 'error'; reason?: string };
 type ImpPreview = { totalRows: number; toCreate: number; toUpdate: number; duplicates: number; errors: number; invalidEmailsDropped: number; detectedColumns: Record<string, string | undefined>; sample: ImpSampleRow[] };
@@ -117,7 +119,7 @@ export function POSCustomersScreen() {
   const [loyaltyTier, setLoyaltyTier] = useState('');
   const [spendBand, setSpendBand] = useState('');
   const [page, setPage] = useState(1);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(10);   // F1 §28: 10 / 25 / 50 rows
   const [moreOpen, setMoreOpen] = useState(false);
   // profile drawer
   const [profileRow, setProfileRow] = useState<Row | null>(null);
@@ -159,7 +161,7 @@ export function POSCustomersScreen() {
     const t = setTimeout(() => load(buildQ()), search ? 250 : 0);
     return () => clearTimeout(t);
      
-  }, [load, search, status, segment, source, tag, loyaltyTier, spendBand, page, buildQ]);
+  }, [load, search, status, segment, source, tag, loyaltyTier, spendBand, page, pageSize, buildQ]);
 
   const [dupOpenCount, setDupOpenCount] = useState(0); const [dupOverlay, setDupOverlay] = useState(false);
   const loadDups = useCallback(() => posDuplicateReviewApi.summary().then((r: any) => setDupOpenCount(Number(r?.kpis?.open ?? 0))).catch(() => setDupOpenCount(0)), []);
@@ -278,7 +280,8 @@ export function POSCustomersScreen() {
   const srcMax = Math.max(1, ...srcCounts.map(([, n]) => n));
   const srcTotal = Math.max(1, srcCounts.reduce((a, [, n]) => a + n, 0));
   const tagCounts: [string, number][] = dir?.topTags?.length ? dir.topTags.map((x) => [x.name, x.count] as [string, number]) : tally(rows.flatMap((r) => r.tags || []));
-  const recentActivity = [...rows].filter((r) => r.lastVisitAt).sort((a, b) => new Date(b.lastVisitAt!).getTime() - new Date(a.lastVisitAt!).getTime()).slice(0, 6);
+  const recentActivity = s.recentActivity ?? [];   // F1 §39: whole-salon feed from the server, not the visible page
+  const retSeries = s.retentionSeries ?? [];
   const rfmMax = an ? Math.max(1, ...an.rfm.map((x) => x.count)) : 1;
 
   // pagination window
@@ -549,7 +552,12 @@ export function POSCustomersScreen() {
             </div>
             {/* pagination */}
             <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderTop: '1px solid var(--line)', gap: 8, flexWrap: 'wrap' }}>
-              <div className="s muted">{tx('pos.showing')}{' '}{from} {tx('pos.to')}{' '}{to} {tx('pos.of')}{' '}{nf(pg.totalItems)} {tx('pos.customers_2')}</div>
+              <div className="s muted" data-testid="cd-showing">{tx('cd.page.showing', { from: nf(from), to: nf(to), total: nf(pg.totalItems) })}</div>
+              <label className="s muted" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>{tx('cd.page.rows')}
+                <select aria-label={tx('cd.page.rows')} value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }} style={{ height: 28 }}>
+                  {[10, 25, 50].map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </label>
               <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
                 <button className="btn ghost" disabled={pg.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
                 {pageBtns.map((b, i) => b === '…' ? <span key={'e' + i} className="s muted" style={{ padding: '0 4px' }}>…</span> : (
@@ -608,7 +616,17 @@ export function POSCustomersScreen() {
             <div>
               <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 800 }}>{an.retentionRatePercent}%</div>
               <div className="s muted">{tx('pos.retention_rate_current_repeat_rate')}</div>
-              <div className="s muted" style={{ marginTop: 10 }}>{tx('pos.month_over_month_series_needs_a_1971')}</div>
+              {retSeries.some((m) => m.ratePercent != null) ? (
+                <div data-testid="cd-ret-series" style={{ display: 'flex', alignItems: 'flex-end', gap: 6, height: 70, marginTop: 10 }}>
+                  {retSeries.map((m) => (
+                    <div key={m.month} style={{ flex: 1, textAlign: 'center' }} title={m.ratePercent == null ? tx(m.reason === 'no_branch_data' ? 'cd.ret.noBranch' : 'cd.ret.noData') : `${m.ratePercent}%`}>
+                      <div style={{ height: m.ratePercent == null ? 2 : Math.max(3, Math.round((m.ratePercent / 100) * 50)), background: m.ratePercent == null ? '#E5DCCB' : 'var(--aps-orange)', borderRadius: 3 }} />
+                      <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 3 }}>{m.ratePercent == null ? '—' : `${m.ratePercent}%`}</div>
+                      <div style={{ fontSize: 9.5, color: 'var(--muted)' }}>{m.month.slice(5)}/{m.month.slice(2, 4)}</div>
+                    </div>
+                  ))}
+                </div>
+              ) : <div className="s muted" style={{ marginTop: 10 }} data-testid="cd-ret-empty">{tx('cd.ret.empty')}</div>}
             </div>
           ) : <div className="muted">{tx('pos.loading')}</div>}
         </section>
@@ -627,11 +645,11 @@ export function POSCustomersScreen() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,28%)] gap-3 items-start" style={{ marginTop: 12 }} data-testid="cd-bottom-row">
         <section className="panel" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/overview')}>{tx('pos.view_all_4')}</button></div>
-          {recentActivity.length === 0 ? <div className="muted">{tx('pos.no_recent_visits_on_this_page')}</div> : recentActivity.map((r) => (
-            <div key={r.customerId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+          {recentActivity.length === 0 ? <div className="muted">{tx('cd.act.empty')}</div> : recentActivity.map((r) => (
+            <div key={r.kind + r.customerId} data-testid="cd-activity-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }} onClick={() => openProfile(rows.find((x) => x.customerId === r.customerId) ?? ({ customerId: r.customerId, displayName: r.displayName, avatarUrl: r.avatarUrl, tags: [] } as unknown as Row))}>
               <ProfileAvatarWithPreview name={r.displayName} url={r.avatarUrl} size={28} type="customer" />
-              <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 12 }}>{r.displayName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.last_visit')}</div></div>
-              <span className="s muted" style={{ marginLeft: 'auto' }}>{fmtDate(r.lastVisitAt)}</span>
+              <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 12 }}>{r.displayName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx(r.kind === 'visit' ? 'cd.act.visit' : 'cd.act.added')}</div></div>
+              <span className="s muted" style={{ marginLeft: 'auto' }}>{fmtDate(r.at)}</span>
             </div>
           ))}
         </section>

@@ -25,7 +25,7 @@ describe('POSCustomersScreen', () => {
     expect(screen.getByText('At Risk')).toBeInTheDocument();
     // empty table + pagination summary
     expect(screen.getByText('No matching customers.')).toBeInTheDocument();
-    expect(screen.getByText(/Showing 0 to 0 of 0 customers/)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 0–0 of 0/)).toBeInTheDocument();
   });
 
   it('renders the reference modules wired from state rows (8 KPIs, 6 summary cards, table, right rail, bottom analytics)', async () => {
@@ -59,7 +59,7 @@ describe('POSCustomersScreen', () => {
     expect(screen.getByText('Customer Lifetime Value')).toBeInTheDocument();
     expect(screen.getByText('RFM Analysis')).toBeInTheDocument();
     expect(screen.getByText('Recent Customer Activity')).toBeInTheDocument();
-    expect(screen.getByText(/Showing 1 to 3 of 3 customers/)).toBeInTheDocument();
+    expect(screen.getByText(/Showing 1–3 of 3/)).toBeInTheDocument();
   });
 
   it('opens the customer profile drawer when a customer name is clicked', async () => {
@@ -191,6 +191,38 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(kids.indexOf(row)).toBeGreaterThan(kids.findIndex((k) => /Customers/.test(k.textContent ?? '')));
   });
 
+  it('F1 §28: rows per page is 10 / 25 / 50 and changing it refetches page 1 with pageSize=', async () => {
+    const f = mockFetch(state); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    const sel = screen.getByLabelText('Rows') as HTMLSelectElement;
+    expect(Array.from(sel.options).map((o) => o.value)).toEqual(['10', '25', '50']);
+    expect(f.mock.calls.some((c: any[]) => /pageSize=10\b/.test(String(c[0])))).toBe(true);
+    fireEvent.change(sel, { target: { value: '25' } });
+    await waitFor(() => expect(f.mock.calls.some((c: any[]) => /pageSize=25\b/.test(String(c[0])) && /page=1\b/.test(String(c[0])))).toBe(true));
+  });
+
+  it('F1 §37/§39: retention trend draws the snapshot months (gaps shown as —) and Recent Activity is the server feed', async () => {
+    globalThis.fetch = mockFetch({ ...state,
+      analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 61 },
+      retentionSeries: [{ month: '2026-09', date: null, ratePercent: null, reason: 'missing' }, { month: '2026-10', date: '2026-10-31', ratePercent: 62.5, reason: null }],
+      recentActivity: [{ customerId: 'c-9', displayName: 'Lan Tran', kind: 'added', at: '2026-11-04T10:00:00Z' }, { customerId: 'c-8', displayName: 'Mai Vo', kind: 'visit', at: '2026-11-03T10:00:00Z' }],
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    const series = await screen.findByTestId('cd-ret-series');
+    expect(series.textContent).toMatch(/62.5%/);
+    expect(series.textContent).toMatch(/—/);
+    const acts = screen.getAllByTestId('cd-activity-row');
+    expect(acts.map((a) => a.textContent)).toEqual([expect.stringMatching(/Lan Tran.*New profile added/), expect.stringMatching(/Mai Vo.*Visited/)]);
+  });
+
+  it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
+    globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('cd-ret-empty')).toBeInTheDocument();
+    expect(screen.queryByTestId('cd-ret-series')).toBeNull();
+  });
+
   it('F1 §18: Review Duplicates opens the safe queue overlay; a group opens the compare overlay (nothing merges from the list)', async () => {
     const calls: string[] = [];
     globalThis.fetch = vi.fn(async (url: any, init?: any) => {
@@ -198,7 +230,7 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
       const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
       if (u.includes('/duplicate-review/summary')) return ok({ kpis: { open: 1 } });
       if (u.includes('/duplicate-review/groups?') || u.endsWith('/duplicate-review/groups')) return ok({ items: [{ id: 'g1', confidence: 'strong', reasons: ['phone'], members: [{ customerId: 'c1', name: 'Jessica Miller' }, { customerId: 'c2', name: 'Jess Miller' }] }], total: 1, page: 1, pageSize: 10, totalPages: 1 });
-      if (u.includes('/duplicate-review/groups/g1')) return ok({ id: 'g1', status: 'pending', version: 1, members: [], confidence: 'strong', reasons: ['phone'], why: [] });
+      if (u.includes('/duplicate-review/groups/g1')) return ok({ group: { id: 'g1', status: 'pending', version: 1, confidence: 'strong', ruleVersion: 1, detectedAt: '2026-11-01T00:00:00Z' }, members: [], evidence: [], events: [] });
       if (u.includes('/pos/customers/state')) return ok(richState);
       return ok({});
     }) as any;

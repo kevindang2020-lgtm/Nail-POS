@@ -292,6 +292,10 @@ export interface POSCustomersFullState extends POSCustomersState {
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   // Full-base aggregations for the right rail (computed across ALL customers, not just the current page).
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  // F1 §37: last 6 months of retention from the nightly snapshots (null rate = no reliable snapshot for that month; reason says why)
+  retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
+  // F1 §39: the salon's latest customer activity (visits + profiles added in the last 30 days), newest first, max 8
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
 }
 
 // duplicate detection (§16): group by exact phone, exact email, or similar first+last name

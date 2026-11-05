@@ -266,5 +266,13 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "dup.health.d.loyalty_after_merge.INSUFFICIENT_DATA": "Chưa có hồ sơ đã gộp để kiểm tra.",
   "dup.health.d.oversized_keys.PASSED": "Không số điện thoại, email hay tên nào dùng chung cho hơn 20 hồ sơ.",
   "dup.health.d.oversized_keys.WARNING": "Một số số điện thoại, email hoặc tên dùng chung cho hơn 20 hồ sơ (ví dụ số của tiệm) nên không được nhóm. Hãy dọn dẹp trong Khách hàng.",
-  "dup.health.d.oversized_keys.INSUFFICIENT_DATA": "Chưa quét lần nào."
+  "dup.health.d.oversized_keys.INSUFFICIENT_DATA": "Chưa quét lần nào.",
+  "cd.page.showing": "Hiển thị {from}–{to} trên {total}",
+  "cd.page.rows": "Số dòng",
+  "cd.ret.empty": "Xu hướng theo tháng sẽ hiện khi dữ liệu giữ chân khách hằng đêm đã chạy.",
+  "cd.ret.noData": "Tháng này chưa có dữ liệu hoàn tất",
+  "cd.ret.noBranch": "Tháng này chưa ghi nhận chi nhánh",
+  "cd.act.empty": "Chưa có hoạt động khách hàng.",
+  "cd.act.visit": "Đã ghé tiệm",
+  "cd.act.added": "Hồ sơ mới được thêm"
 };
