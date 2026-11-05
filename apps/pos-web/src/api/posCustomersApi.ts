@@ -13,7 +13,7 @@ export const posCustomersApi = {
   // Top-bar quick search: backend filters by name/phone/email via the `search` query param.
   quickSearch: (q: string) => api.get<any>(`/pos/customers/search`, { search: q, pageSize: 8 }),
   duplicates: () => api.get(`/pos/customers/duplicates`),
-  create: (body: Record<string, unknown>) => api.post(`/pos/customers`, body),
+  create: (body: Record<string, unknown>, idempotencyKey?: string) => api.post(`/pos/customers`, body, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
   exportCsv: (q?: Record<string, unknown>) => api.exportAsync<{ format: string; filename: string; csv: string }>(`/pos/customers/export`, q),
   getDetail: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}`),
   appointments: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/appointments`),

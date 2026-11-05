@@ -228,11 +228,16 @@ export function POSCustomersScreen() {
       } else setNote(e?.message || tx('pos.save_failed'));
     } finally { setBusy(null); }
   };
+  const addKey = useRef<{ sig: string; key: string } | null>(null);
   const doAdd = async () => {
     if (!aFirst.trim() || !aPhone.trim()) { setNote(tx('pos.first_name_and_mobile_phone_are_1ege')); return; }
     setNote(null); setBusy('add');
     try {
-      await posCustomersApi.create({ firstName: aFirst.trim(), lastName: aLast.trim() || undefined, phone: aPhone.trim(), email: aEmail.trim() || undefined, smsOptIn: aSms, emailOptIn: aEmailOpt, marketingOptIn: aMkt });
+      const body = { firstName: aFirst.trim(), lastName: aLast.trim() || undefined, phone: aPhone.trim(), email: aEmail.trim() || undefined, smsOptIn: aSms, emailOptIn: aEmailOpt, marketingOptIn: aMkt };
+      // F1 §53: one key per distinct submission — a retry of the same form replays; an edited form is a new request
+      const sig = JSON.stringify(body); if (addKey.current?.sig !== sig) addKey.current = { sig, key: newRequestKey() };
+      await posCustomersApi.create(body, addKey.current.key);
+      addKey.current = null;
       setAddOpen(false); setAFirst(''); setALast(''); setAPhone(''); setAEmail(''); setASms(true); setAEmailOpt(false); setAMkt(false);
       await Promise.all([refetch(), loadDups()]);
     } catch (e: any) { setNote(e?.message || tx('pos.could_not_add_customer_possible_duplicate_ntur')); } finally { setBusy(null); }

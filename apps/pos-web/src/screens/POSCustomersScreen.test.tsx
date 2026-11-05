@@ -283,6 +283,32 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     await waitFor(() => expect(document.activeElement).toBe(opener));
   });
 
+  it('F1 §53: Add Customer sends an Idempotency-Key; a retry after a lost answer reuses the same key', async () => {
+    const posts: { body: any; key?: string }[] = []; let fail = true;
+    globalThis.fetch = vi.fn(async (url: any, init: any = {}) => {
+      const u = String(url); const method = String(init.method || 'GET').toUpperCase();
+      if (method === 'POST' && /\/pos\/customers$/.test(u)) {
+        const h = init.headers instanceof Headers ? init.headers.get('Idempotency-Key') : init.headers?.['Idempotency-Key'];
+        posts.push({ body: JSON.parse(init.body), key: h });
+        if (fail) { fail = false; return { ok: false, status: 503, json: async () => ({ message: 'Network hiccup' }), headers: { get: () => null } } as any; }
+        return { ok: true, status: 201, json: async () => ({ customerId: 'n1' }), headers: { get: () => null } } as any;
+      }
+      return { ok: true, status: 200, json: async () => (u.includes('/pos/customers/state') ? state : {}), headers: { get: () => null } } as any;
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByText('+ Add Customer'));
+    fireEvent.change(screen.getByPlaceholderText('First name *'), { target: { value: 'Lan' } });
+    fireEvent.change(screen.getByPlaceholderText('Mobile phone *'), { target: { value: '2155550199' } });
+    const create = screen.getByRole('button', { name: /Create customer/i });
+    fireEvent.click(create);
+    await waitFor(() => expect(posts.length).toBe(1));
+    await waitFor(() => expect(create).not.toBeDisabled());
+    fireEvent.click(create);
+    await waitFor(() => expect(posts.length).toBe(2));
+    expect(posts[0].key).toBeTruthy();
+    expect(posts[1].key).toBe(posts[0].key);
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);

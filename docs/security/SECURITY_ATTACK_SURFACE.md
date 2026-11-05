@@ -17,7 +17,7 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | public (no session; each one reviewed by `check:public`) | 124 |
 | integration key / OAuth (`auth=api_key`) | 13 |
 | with `@RequireStepUp` (fresh password + code) | 188 |
-| with an idempotency contract | 57 |
+| with an idempotency contract | 58 |
 | webhooks | 9 |
 | multipart uploads | 9 |
 | server-sent event streams | 13 |

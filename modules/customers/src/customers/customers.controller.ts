@@ -10,6 +10,7 @@ import type { CustomersContext } from './customers.repository';
 import type { CustomerFilters, CreateCustomerRequest, EditCustomerRequest } from './customers.dto';
 import { CustomerVersionConflict } from './customers.dto';
 import { ListQueries } from '@aipowersalon/database';
+import { Idempotent } from '@aipowersalon/database/nest';
 import { CustomersControllerListQueries } from './customers.list-queries';
 
 import { CREATE_CUSTOMER_BODY, CUSTOMER_IMPORT_BODY, CUSTOMER_LOYALTY_BODY, CUSTOMER_MEMBERSHIP_BODY, CUSTOMER_NOTES_BODY, CUSTOMER_TAGS_BODY, DUPLICATE_MERGE_BODY, EDIT_CUSTOMER_BODY, LOYALTY_ADJUST_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
@@ -50,7 +51,8 @@ export class CustomersController {
 
   // list + create + import
   @Get('') @RequirePermission('pos.customers.view') list(@Req() r: any, @Query() q: any) { return run(() => this.svc.list(ctxFrom(r), filtersFrom(q))); }
-  @Post('') @RequirePermission('pos.customers.create') create(@Req() r: any, @Body(ValidatedBody(CREATE_CUSTOMER_BODY, { strict: true })) b: CreateCustomerRequest) { return run(() => this.svc.create(ctxFrom(r), b)); }
+  // F1 §53: a repeated tap or a retry after a lost answer replays the first result (Idempotency-Key), never a second profile
+  @Post('') @RequirePermission('pos.customers.create') @Idempotent() create(@Req() r: any, @Body(ValidatedBody(CREATE_CUSTOMER_BODY, { strict: true })) b: CreateCustomerRequest) { return run(() => this.svc.create(ctxFrom(r), b)); }
   @Post('import') @RequirePermission('pos.customers.import') import(@Req() r: any, @Body(ValidatedBody(CUSTOMER_IMPORT_BODY, { strict: true })) b: any) { return run(() => this.svc.import(ctxFrom(r), b?.csv)); }
   @Post('import/preview') @RequirePermission('pos.customers.import') importPreview(@Req() r: any, @Body(ValidatedBody(CUSTOMER_IMPORT_BODY, { strict: true })) b: any) { return run(() => this.svc.importPreview(ctxFrom(r), b?.csv, { updateExisting: !!b?.updateExisting })); }
   @Post('import/commit') @RequirePermission('pos.customers.import') importCommit(@Req() r: any, @Body(ValidatedBody(CUSTOMER_IMPORT_BODY, { strict: true })) b: any) { return run(() => this.svc.importCommit(ctxFrom(r), b?.csv, { updateExisting: !!b?.updateExisting })); }

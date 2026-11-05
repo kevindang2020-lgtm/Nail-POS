@@ -45,6 +45,9 @@
       "@aipowersalon/events/nest": [
         "../../packages/events/dist/nest/index.d.ts"
       ],
+      "@aipowersalon/database/nest": [
+        "../../packages/database/dist/nest/index.d.ts"
+      ],
       "@aipowersalon/permissions": [
         "../../packages/permissions/dist/index.d.ts"
       ],
