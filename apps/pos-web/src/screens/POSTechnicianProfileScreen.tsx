@@ -22,6 +22,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { formatCentsOrDash } from '@aipowersalon/money';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
+import { WeeklyDaysOffPanel, TechnicianSkillsPanel } from '../components/TechnicianDaysOffSkills';
 
 const money = (c: number | null | undefined) => formatCentsOrDash(c == null ? null : Number(c));
 const tm = (iso?: string | null) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
@@ -102,7 +103,7 @@ export function POSTechnicianProfileScreen() {
 
       {/* §9 Overview — compact cards */}
       <div className="kpis" aria-label={t('pos.overview')}>
-        {card(t('people.techProfile.primaryBranch'), d.branchName || d.branchId || '—', d.appAccess?.allowedBranches?.length > 1 ? t('pos.length_branches', { length: String(d.appAccess.allowedBranches.length) }) : undefined)}
+        {card(t('people.techProfile.primaryBranch'), d.branchName || '—', d.appAccess?.allowedBranches?.length > 1 ? t('pos.length_branches', { length: String(d.appAccess.allowedBranches.length) }) : undefined)}
         {card(t('people.techProfile.currentCustomer'), lane?.currentServiceCustomer || (wf?.currentTicketId ? t('pos.in_service') : '—'), lane?.currentServiceName || undefined)}
         {card(t('pos.next_appointment'), next ? tm(next.startTime) : '—', next ? `${next.customerName}${next.services?.length ? ` · ${next.services.map((s: any) => s.serviceName || s.name).filter(Boolean).join(', ')}` : ''}` : t('pos.nothing_more_today'))}
         {card(t('people.techProfile.appointmentsToday'), appts ? String(appts.length) : '…')}
@@ -129,8 +130,8 @@ export function POSTechnicianProfileScreen() {
 
       <SectionShell open={open.branches} onToggle={() => toggle('branches')} title={t('pos.branches')} gate={true}>
         {d.appAccess?.allowedBranches?.length ? (
-          <div style={{ fontSize: 12.5 }}>{d.appAccess.allowedBranches.map((b: string) => <span key={b} className={'pill ' + (b === d.branchId ? 'ok' : '')} style={{ marginRight: 6 }}>{b === d.branchId ? t('pos.primary') : ''}{b}</span>)}</div>
-        ) : <div className="muted" style={{ fontSize: 12 }}>{t('pos.primary_branch_only')}{d.branchName || d.branchId || '—'}{t('pos.branch_access_is_granted_under_team_18bw')}</div>}
+          <div style={{ fontSize: 12.5 }}>{d.appAccess.allowedBranches.map((b: string) => <span key={b} className={'pill ' + (b === d.branchId ? 'ok' : '')} style={{ marginRight: 6 }} title={b}>{b === d.branchId ? t('pos.primary') : ''}{d.branchNames?.[b] ?? '—'}</span>)}</div>
+        ) : <div className="muted" style={{ fontSize: 12 }}>{t('pos.primary_branch_only')}{d.branchName || '—'}{t('pos.branch_access_is_granted_under_team_18bw')}</div>}
         <button className="btn ghost" style={{ marginTop: 8, fontSize: 11 }} onClick={() => nav('/tenant/team/permissions')}>{t('pos.manage_branch_access')}</button>
       </SectionShell>
 
@@ -142,11 +143,13 @@ export function POSTechnicianProfileScreen() {
           </table>
         ) : <div className="muted" style={{ fontSize: 12 }}>{t('pos.no_weekly_schedule_set')}</div>}
         {today ? <div className="muted" style={{ fontSize: 11.5, marginTop: 6 }}>{t('pos.today_4')}{' '}{today.isWorking ? `${today.startTime}–${today.endTime}` : t('people.techProfile.off')}{d.schedule?.unavailableDates?.length ? ` · ${t('people.techProfile.unavailableDates', { count: String(d.schedule.unavailableDates.length) })}` : ''}</div> : null}
+        <WeeklyDaysOffPanel technicianId={technicianId} canEdit={can('pos.technicians.schedule.edit')} />
       </SectionShell>
 
       <SectionShell open={open.skills} onToggle={() => toggle('skills')} title={t('pos.skills_services')} onViewAll={() => nav('/technicians/skill-requests')} gate={true}>
         <div style={{ fontSize: 12.5, marginBottom: 6 }}>{d.skills?.skillGroups?.length ? d.skills.skillGroups.map((g: string) => <span key={g} className="pill ok" style={{ marginRight: 6 }}>{g}</span>) : <span className="muted">{t('pos.no_skill_groups_yet')}</span>}</div>
         <div className="muted" style={{ fontSize: 12 }}>{d.servicesCount ?? d.services?.serviceIds?.length ?? 0} {t('pos.approved_services_booking_and_queue_eligibility_ipd9')}</div>
+        <TechnicianSkillsPanel technicianId={technicianId} canEdit={can('pos.technicians.skills.edit')} />
       </SectionShell>
 
       <SectionShell open={open.queue} onToggle={() => toggle('queue')} title={t('pos.queue_current_service')} onViewAll={() => nav('/tech-queue')} gate={true}>

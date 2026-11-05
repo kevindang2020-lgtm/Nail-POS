@@ -44,7 +44,11 @@ export class LiveScheduleScreenRepository {
                 - coalesce((select sum(extract(epoch from ((bk->>'endLocalTime')::time - (bk->>'startLocalTime')::time)) / 60) from jsonb_array_elements(o.breaks_json) bk), 0) end
               from technician_shift_overrides o where o.tenant_id = ${T} and o.technician_id = te.id and o.local_shift_date = ${d.date}::date and (${branchOf(ctx)}::uuid is null or o.branch_id = ${branchOf(ctx)}) limit 1),
             (select sum(extract(epoch from (sh.end_time - sh.start_time)) / 60) from technician_shifts sh where sh.tenant_id = ${T} and sh.technician_id = te.id and sh.shift_date = ${d.date}::date and coalesce(sh.status, 'scheduled') not in ('cancelled', 'canceled')),
-            (select sum(extract(epoch from (sc.end_time - sc.start_time)) / 60 - coalesce(extract(epoch from (sc.lunch_end_time - sc.lunch_start_time)) / 60, 0)) from technician_schedules sc where sc.tenant_id = ${T} and sc.technician_id = te.id and sc.day_of_week = extract(dow from ${d.date}::date) and sc.is_working), 0) as mins,
+            (select sum(extract(epoch from (sc.end_time - sc.start_time)) / 60 - coalesce(extract(epoch from (sc.lunch_end_time - sc.lunch_start_time)) / 60, 0)) from technician_schedules sc where sc.tenant_id = ${T} and sc.technician_id = te.id and sc.day_of_week = extract(dow from ${d.date}::date) and sc.is_working
+              -- G3: a repeating weekly day off zeroes the weekly template for D (a date override above still wins)
+              and not exists (select 1 from technician_weekly_off_rules wo where wo.tenant_id = ${T} and wo.technician_id = te.id and wo.status = 'ACTIVE' and wo.effective_from <= ${d.date}::date
+                and (wo.effective_to is null or wo.effective_to >= ${d.date}::date) and extract(dow from ${d.date}::date)::smallint = any(wo.weekdays)
+                and (${branchOf(ctx)}::uuid is null or wo.branch_id is null or wo.branch_id = ${branchOf(ctx)}))), 0) as mins,
           exists (select 1 from technician_time_off tf where tf.tenant_id = ${T} and tf.technician_id = te.id and tf.status = 'approved'
             and tf.starts_at <= (${d.date}::date)::timestamp at time zone ${d.tz} and tf.ends_at >= ((${d.date}::date + 1))::timestamp at time zone ${d.tz}) as off,
           ws.clock_status, ws.queue_status, coalesce(ws.manual_unavailable, false) as manual,

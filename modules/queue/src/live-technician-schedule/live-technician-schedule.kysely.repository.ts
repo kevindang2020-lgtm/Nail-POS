@@ -106,8 +106,17 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
       if (ctx.branchId) to = to.where((eb) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));
       for (const r of await to.execute().catch(() => [] as any[])) offToday.add(String((r as any).technician_id));
     }
+    // G3 (Nov 5 2026, migration 816): a manager's repeating weekly day off removes the weekly shift for this date (the
+    // same precedence as Booking: a date override below still wins; an open punch still shows the technician)
+    const weeklyOff = new Set<string>();
+    if (ids.length) {
+      const wo = (await sql<any>`select distinct r.technician_id from technician_weekly_off_rules r where r.tenant_id = ${ctx.tenantId} and r.status = 'ACTIVE'
+          and r.technician_id = any(${ids}::uuid[]) and (${ctx.branchId ?? null}::uuid is null or r.branch_id is null or r.branch_id = ${ctx.branchId ?? null}::uuid)
+          and r.effective_from <= ${date}::date and (r.effective_to is null or r.effective_to >= ${date}::date) and extract(dow from ${date}::date)::smallint = any(r.weekdays)`.execute(this.db)).rows;
+      for (const r of wo) weeklyOff.add(String(r.technician_id));
+    }
     const shiftBy: Record<string, LiveShift | undefined> = {};
-    for (const r of shiftRows) shiftBy[r.technician_id] = r.is_working && !offToday.has(r.technician_id) ? { startTime: (r.start_time || '09:00').slice(0, 5), endTime: (r.end_time || '18:00').slice(0, 5), breakStartTime: r.lunch_start_time ? r.lunch_start_time.slice(0, 5) : undefined, breakEndTime: r.lunch_end_time ? r.lunch_end_time.slice(0, 5) : undefined } : undefined;
+    for (const r of shiftRows) shiftBy[r.technician_id] = r.is_working && !offToday.has(r.technician_id) && !weeklyOff.has(r.technician_id) ? { startTime: (r.start_time || '09:00').slice(0, 5), endTime: (r.end_time || '18:00').slice(0, 5), breakStartTime: r.lunch_start_time ? r.lunch_start_time.slice(0, 5) : undefined, breakEndTime: r.lunch_end_time ? r.lunch_end_time.slice(0, 5) : undefined } : undefined;
     // F4 (Oct 30 2026): a date-specific override (technician_shift_overrides) beats the weekly template for this date —
     // DAY_OFF removes the shift, CUSTOM_SHIFT replaces start / end / break. Approved time off still wins; punches still show.
     if (ids.length && ctx.branchId) {

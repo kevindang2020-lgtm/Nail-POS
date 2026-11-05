@@ -40,3 +40,4 @@ export { BOOKING_DEPOSIT } from './booking-lifecycles';
 export { BookingDepositsModule, BOOKING_DEPOSITS_TOKEN } from './deposits/booking-deposits.module';
 export { APPOINTMENT_DEPOSIT } from './booking-lifecycles';
 export * from './booking/shift-overrides';
+export * from './booking/weekly-off';   // G3 (Nov 5 2026): repeating weekly days off — one precedence for every schedule reader

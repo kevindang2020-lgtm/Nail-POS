@@ -363,7 +363,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 |---|---|---|
 | G1 | Customer Profile & Global Loyalty Protection (owner-approved bonus points) | BUILT — see the G1 section below |
 | G2 | Refer a Friend / Referral Rewards build | BUILT (two-sided salon vouchers + hard budget) — see the G2 section below |
-| G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | NOT AUDITED yet |
+| G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | BUILT (P1 branch names, P2 weekly days off, P3 Skills Catalog) — see the G3 section below |
 | G4 | Individual Technician Tipping at Checkout (per-tech tips on the customer display) | NOT AUDITED yet |
 | G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
 | G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
@@ -461,4 +461,55 @@ sides)**, sits beside loyalty points and the (blocked) cash payout.
 - **Not built (PARTIAL):** a customer-facing voucher list in the Customer App wallet screen (the coupon is in the wallet the
   checkout reads; the app's Offers screen is unchanged), SMS delivery of the friend's code (the POS shows it once; sending
   waits on the messaging consent rules), and a Super Admin cross-salon budget report.
+
+### G3 Technician Profile & Team Management — built (Nov 5 2026)
+
+Audit first (P0): the profile page (`POSTechnicianProfileScreen`, route `/technicians/:technicianId`) and the Employee
+quick-view drawer both exist and are kept. Existing pieces reused, not duplicated: the weekly template
+(`technician_schedules`), one-date overrides (`technician_shift_overrides`, 719, Edit Shift for Selected Date), approved time
+off, the ONE eligibility table `technician_services`, and the technician Skill Requests flow (053/475/583). What was missing:
+repeating weekly days off with effective dates, and a reusable Skills Catalog.
+
+- **P1 Branch names:** the profile's Primary Branch card and Branches section showed raw branch ids. The detail now returns
+  `branchName` / `branchNames` (this salon's branches only); the id stays in the hover title only.
+- **P2 Weekly days off (§7):** new table `technician_weekly_off_rules` (weekdays, effective from / to, version, history in the
+  append-only `technician_weekly_off_events`).
+  - Schedule › Days Off: Set Day Off / Working Pattern → Repeat every week (weekday chips, one or several), Starts on, Ends on or
+    "until changed", reason. Review Conflicts shows Before / After and every confirmed booking on the new off days; Save is
+    disabled until the preview ran, and a booking must be acknowledged (409 `SCHEDULE_CONFLICT` otherwise). Bookings are never
+    cancelled, moved or reassigned. Remove Recurrence from a date. A month calendar shows each date's source; History.
+  - One day / a few dates go through the existing Edit Shift for Selected Date (link) — a one-date working override wins for
+    that date only.
+  - Versioned: a new pattern ends the current rule the day before it starts; past dates keep their rule. Optimistic version
+    (`VERSION_CONFLICT`). Audit row + outbox event (`technician_schedule_updated` to the branch and the technician's room).
+  - **One precedence for every reader** (`modules/booking/src/booking/weekly-off.ts`): date override > weekly day-off rule >
+    weekly template > store hours. Wired into Booking's schedule reader (`techSchedules` — staff booking, Customer App, AI
+    receptionist and availability read through it), the Live Technician Schedule board, the Team lookup / preferred-staff
+    check, the date-shift editor baseline and the Live Schedule KPIs. Branch-local calendar weekday, not a UTC repeat.
+- **P3 Skills Catalog (§8):** tables `tenant_skills` (name unique per salon, category, description, required certification;
+  archived, never deleted), `tenant_skill_services` (links to EXISTING services — no price or duration), and
+  `technician_skill_assignments` (approved by, proficiency, effective / expiry, revoked with a reason).
+  - Manage Skills Catalog dialog: search (name, category or linked service), Active / Archived / All, numbered pages newest
+    first, create / edit / archive / restore. `pos.technicians.skills.edit` to change; viewers read only.
+  - Profile › Skills & Services › Assign Skills: several at once; each grants its linked active services in
+    `technician_services` (`granted_via 'skill:<id>'`) — an existing grant is never duplicated or overwritten. A manager cannot
+    approve skills for themself (`SKILL_SELF_APPROVAL`); technicians keep using Skill Requests.
+  - Remove: shows the services it takes away and the future bookings that use them (kept for review, acknowledged), removes
+    only what that skill granted and no other live skill also links; a manager's direct grant stays. History kept.
+  - Status shown from the record: Approved / Pending (future start) / Expired / Inactive (archived skill) / Removed.
+- **Migration 816**, state machines `TECHNICIAN_WEEKLY_OFF_RULE`, `TENANT_SKILL`, `TECHNICIAN_SKILL_ASSIGNMENT`; B-12 tenant
+  triggers; 9 new error codes (EN/VI); POS namespace `teamprofilex` (`tpx.*`).
+- **Tests:** `weekly-off-skills.pgtest` (11 — the §16 scenarios: Mon + Tue weekly, one-time Friday, working override, conflict,
+  next-month change, Remove Recurrence, cross-salon, Gel Extensions created once, assign, remove with a future booking,
+  archive), `TechnicianDaysOffSkills.test` (3). Existing team-screens (112), live schedule (6) and profile tests green; common
+  suite green.
+- **Not built (PARTIAL):**
+  - §13 one-click Technician System Health Checker (the Team Data Accuracy Alerts and per-module health checks exist; no
+    single technician-wide report yet).
+  - §12 directory search by skill / certification and the month-grid From / To picker on every profile list.
+  - Bulk apply of a days-off pattern / skills to several technicians (§10 Manager Bulk Assignment).
+  - Tech Queue's own walk-in eligibility reads the workforce state (clock / queue), not the schedule; a technician on a weekly
+    day off who is not clocked in is already not offered, but the queue does not name the rule as the reason.
+  - Pre-existing, not from this change: `customer-booking-reschedule.vitest.spec` "a time that already passed" fails at this
+    hour of the day on the base commit too.
 

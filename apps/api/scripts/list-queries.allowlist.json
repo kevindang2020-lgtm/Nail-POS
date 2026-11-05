@@ -208,6 +208,10 @@
     "modules/customers/src/loyalty/loyalty-bonus.controller.ts#LoyaltyBonusController.preview": {
       "kind": "not-a-list",
       "reason": "Customer Profile & Global Loyalty Protection (Nov 4 2026): ONE preview of a bonus (current points, after, token cost) for ?customerId & ?points — never a list or a filter of rows"
+    },
+    "modules/workforce/src/team-screens/weekly-off-skills.controller.ts#WeeklyDaysOffController.list": {
+      "kind": "fixed-size",
+      "reason": "G3 Technician Profile (Nov 5 2026): ONE technician's days-off editor — ?technicianId picks the technician, ?month the calendar month (28-31 days); rule list and history are capped (history 25), never a filtered row list"
     }
   }
 }

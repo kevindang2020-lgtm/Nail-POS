@@ -26,7 +26,8 @@ export const PARAM_FIXTURES = {
   appointmentId: F('pos_tech_appointments'), serviceId: F('services'), branchId: F('branches'), userId: F('users'),
   queueItemId: F('pos_queue_items'), queueEntryId: F('pos_queue_items'), checkInId: F('pos_queue_items'),
   planId: F('membership_plans'), membershipId: F('customer_memberships'), productId: F('inventory_products'),
-  bundleId: F('bundles'), techQueueTicketId: F('pos_tech_queue_tickets'), threadId: F('tech_dm_threads'),
+  bundleId: F('bundles'), techQueueTicketId: F('pos_tech_queue_tickets'), assignmentId: F('technician_skill_assignments'),   // G3 (Nov 5 2026): a technician's skill assignment
+  threadId: F('tech_dm_threads'),
   jobId: F('ai_receptionist_provisioning_jobs'), attachmentId: F('support_ticket_attachments'),
   providerCallId: F('voice_call_outcomes', 'provider_call_id'), code: F('gift_cards', 'code'),
   kind: { value: 'transaction' },

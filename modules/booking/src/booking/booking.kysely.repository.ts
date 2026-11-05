@@ -15,6 +15,7 @@ import { recordAppointmentChanges } from '@aipowersalon/appointments';
 import type { BookingRepositoryPort, BookingContext, BookingQueryOpts, RosterRec, BkItem, TechRec, SvcRec, BookingCreateOpts, RescheduleOptions, UpdateOptions, HoldGuard } from './booking.repository';
 import { lockedForeignHold } from '../customer-booking/booking-hold-locked-check';
 import { effectiveDaySchedule, addLocalDays, type ShiftOverride } from './shift-overrides';
+import { weeklyOffTechs } from './weekly-off';
 import { pbTimeOffToBlock,
   POSBookingFullState, POSBookingAppointmentRow, POSBookingKpisFull, BookingFilters, PBStatus, PBSource, PBDepositStatus,
   BookingSettings, DEFAULT_BOOKING_SETTINGS, BookingIntegrationStatus, DEFAULT_INTEGRATION_STATUS,
@@ -156,8 +157,12 @@ export class KyselyBookingRepository implements BookingRepositoryPort {
   }
 
   async techSchedules(ctx: BookingContext, dayOfWeek: number, date?: string): Promise<Record<string, PBTechDaySchedule>> {
-    const base = await this.recurringSchedules(ctx, dayOfWeek);
-    if (!date) return base;
+    const recurring = await this.recurringSchedules(ctx, dayOfWeek);
+    if (!date) return recurring;
+    // G3 (Nov 5 2026): a manager's repeating weekly day off beats the weekly template (a date override still beats both)
+    const off = await weeklyOffTechs(this.db, ctx.tenantId, ctx.branchId ?? null, date);
+    const base: Record<string, PBTechDaySchedule> = { ...recurring };
+    for (const t of off) base[t] = { isWorking: false, startTime: null, endTime: null, lunchStartTime: null, lunchEndTime: null, shifts: null, breaks: null };
     const prev = addLocalDays(date, -1); const ov = await this.shiftOverrides(ctx, [date, prev]);
     if (!ov.size) return base;
     const out: Record<string, PBTechDaySchedule> = { ...base };

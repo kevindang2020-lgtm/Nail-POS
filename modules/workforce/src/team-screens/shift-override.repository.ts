@@ -14,7 +14,7 @@
 //            cancelled, shortened or moved.
 import { sql, type Kysely } from 'kysely';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
-import { effectiveDaySchedule, addLocalDays, type ShiftOverride, type PBTechDaySchedule } from '@aipowersalon/booking';
+import { effectiveDaySchedule, addLocalDays, weeklyOffTechs, type ShiftOverride, type PBTechDaySchedule } from '@aipowersalon/booking';
 import { localDateTimeToEpochMs } from '@aipowersalon/date-time';
 import { N, iso, branchOf, teamPeriod, UUID, err, canAny, type TeamCtx } from './screen-kit';
 import { writeAuditRow } from './audit-rows';
@@ -48,6 +48,8 @@ export class ShiftOverrideRepository {
     const r = (await sql<any>`select sc.is_working, to_char(sc.start_time, 'HH24:MI') as s, to_char(sc.end_time, 'HH24:MI') as e, to_char(sc.lunch_start_time, 'HH24:MI') as ls, to_char(sc.lunch_end_time, 'HH24:MI') as le, sc.shifts, sc.breaks
       from technician_schedules sc where sc.tenant_id = ${ctx.tenantId} and sc.technician_id = ${technicianId} and sc.day_of_week = extract(dow from ${date}::date) and (${b}::uuid is null or sc.branch_id = ${b} or sc.branch_id is null)
       order by (sc.branch_id is null), sc.updated_at desc nulls last limit 1`.execute(this.db)).rows[0];
+    // G3 (Nov 5 2026): the recurring baseline includes the manager's repeating weekly day off (a date override still wins)
+    if ((await weeklyOffTechs(this.db, ctx.tenantId, b, date, [technicianId])).has(technicianId)) return { isWorking: false, startTime: null, endTime: null, lunchStartTime: null, lunchEndTime: null, shifts: null, breaks: null };
     if (!r) return null;
     return { isWorking: !!r.is_working, startTime: r.s, endTime: r.e, lunchStartTime: r.ls, lunchEndTime: r.le, shifts: Array.isArray(r.shifts) && r.shifts.length ? r.shifts : null, breaks: Array.isArray(r.breaks) && r.breaks.length ? r.breaks : null };
   }

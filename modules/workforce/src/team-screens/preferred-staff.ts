@@ -12,7 +12,7 @@ export interface DayFacts {
   technicianId: string; name: string; active: boolean; inBranch: boolean;
   missingServices: string[];                       // requested services this technician has no approved mapping for
   schedule: PBTechDaySchedule | null | undefined;  // effective day (override applied); null/undefined → no weekly row
-  scheduleSource: 'override' | 'override_off' | 'weekly' | 'none';
+  scheduleSource: 'override' | 'override_off' | 'weekly_off_rule' | 'weekly' | 'none';   // weekly_off_rule: G3 repeating weekly day off
   blocks: { startTime: string; endTime: string; reason: string }[];   // blocked times + approved time off (as blocks)
   appointments: { id: string; startTime: string; endTime: string; status: string }[];   // chair-holding only
 }
@@ -48,7 +48,7 @@ export function evaluateWindow(f: DayFacts, startMin: number | null, durationMin
   checks.push({ key: 'branch', ok: f.inBranch });
   checks.push({ key: 'qualified', ok: f.missingServices.length === 0, ...(f.missingServices.length ? { detail: { missing: f.missingServices } } : {}) });
   checks.push({ key: 'past', ok: startMin >= notBeforeMin });
-  const dayOff = f.scheduleSource === 'override_off' || (f.schedule != null && f.schedule.isWorking === false);
+  const dayOff = f.scheduleSource === 'override_off' || f.scheduleSource === 'weekly_off_rule' || (f.schedule != null && f.schedule.isWorking === false);
   const startsInShift = !dayOff && noBreaks.some((w) => w.start <= startMin && startMin < w.end);
   const fitsShift = !dayOff && noBreaks.some((w) => w.start <= startMin && end <= w.end);
   checks.push({ key: 'shift', ok: startsInShift, detail: { source: f.scheduleSource, dayOff, windows: noBreaks.map((w) => `${hhmm(w.start)}–${hhmm(Math.min(w.end, 1439))}`) } });

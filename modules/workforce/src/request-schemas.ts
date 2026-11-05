@@ -307,3 +307,14 @@ export const TDA_INVESTIGATE_BODY: BodySchema = S.object({ note: str(2000), expe
 export const TDA_NOTE_BODY: BodySchema = S.object({ note: S.text(2000), expectedVersion: S.number() }, ['note', 'expectedVersion']);
 export const TDA_RESOLVE_BODY: BodySchema = S.object({ note: S.text(2000), expectedVersion: S.number() }, ['note', 'expectedVersion']);
 export const TDA_REASON_BODY: BodySchema = S.object({ reason: S.text(2000), expectedVersion: S.number() }, ['reason', 'expectedVersion']);
+
+// Technician Profile & Team Management guide (Nov 5 2026, G3, migration 816): repeating weekly days off + the Skills Catalog.
+const ids = (n = 100): BodySchema => S.nullable(S.array(S.text(64), { maxItems: n }));
+export const WEEKLY_OFF_BODY: BodySchema = S.object({
+  technicianId: S.text(64), weekdays: S.array(S.integer(), { maxItems: 7 }), effectiveFrom: S.text(10), effectiveTo: str(10), reason: str(500), expectedVersion: num, acknowledgeConflicts: bool, allBranches: bool,
+}, ['technicianId', 'weekdays', 'effectiveFrom']);
+export const WEEKLY_OFF_END_BODY: BodySchema = S.object({ technicianId: S.text(64), ruleId: S.text(64), endFrom: S.text(10), reason: str(500), expectedVersion: num }, ['technicianId', 'ruleId', 'endFrom']);
+export const SKILL_BODY: BodySchema = S.object({ id: str(64), name: S.text(80), category: str(60), description: str(500), requiredCertification: str(120), serviceIds: ids(), expectedVersion: num }, ['name']);
+export const SKILL_ARCHIVE_BODY: BodySchema = S.object({ archived: bool, reason: str(500) });
+export const SKILL_ASSIGN_BODY: BodySchema = S.object({ technicianId: S.text(64), skillIds: S.array(S.text(64), { maxItems: 50 }), proficiency: str(20), effectiveFrom: str(10), expiresOn: str(10) }, ['technicianId', 'skillIds']);
+export const SKILL_REVOKE_BODY: BodySchema = S.object({ technicianId: S.text(64), assignmentId: S.text(64), reason: S.text(500), expectedVersion: num, acknowledgeBookings: bool }, ['technicianId', 'assignmentId', 'reason']);

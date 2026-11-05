@@ -1087,6 +1087,9 @@ GET /pos/settings/tax  realm=staff  auth=session  domain=tenants  perm=settings.
 GET /pos/settings/technicians-staff  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/settings/tips  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/skills-catalog  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/skills-catalog/technician/{technicianId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/skills-catalog/technician/{technicianId}/removal-impact/{assignmentId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/social-posts/state  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -1197,6 +1200,7 @@ GET /pos/turn-queue/settings  realm=staff  auth=session  domain=workforce  perm=
 GET /pos/turn-queue/technicians/{technicianId}/summary  realm=staff  auth=session  domain=workforce  perm=technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/webhooks  realm=staff  auth=session  domain=operations  perm=pos.webhooks.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/webhooks/{id}/deliveries  realm=staff  auth=session  domain=operations  perm=pos.webhooks.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/weekly-days-off  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/workforce-status  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/workforce-status/{technicianId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /public/alert-ack  realm=shared  auth=public  domain=operations
@@ -3043,6 +3047,10 @@ POST /pos/settings/receipts-branding/logo  realm=staff  auth=session  domain=ten
 POST /pos/settings/receipts-branding/logo/remove  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/receipts-branding/send-test  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/shift-overrides/preview  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/skills-catalog  realm=staff  auth=session  domain=workforce  perm=pos.technicians.skills.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/skills-catalog/assign  realm=staff  auth=session  domain=workforce  perm=pos.technicians.skills.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/skills-catalog/revoke  realm=staff  auth=session  domain=workforce  perm=pos.technicians.skills.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/skills-catalog/{id}/archive  realm=staff  auth=session  domain=workforce  perm=pos.technicians.skills.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/social-posts  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/social-posts/{id}/status  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/staff-roles  realm=staff  auth=session  domain=identity  perm=roles.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
@@ -3136,6 +3144,8 @@ POST /pos/webhooks/{id}/pause  realm=staff  auth=session  domain=operations  per
 POST /pos/webhooks/{id}/resume  realm=staff  auth=session  domain=operations  perm=pos.webhooks.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/webhooks/{id}/rotate-secret  realm=staff  auth=session  domain=operations  perm=pos.webhooks.manage  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/webhooks/{id}/test  realm=staff  auth=session  domain=operations  perm=pos.webhooks.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/weekly-days-off/end  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/weekly-days-off/preview  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/workforce-status/{technicianId}/unavailable  realm=staff  auth=session  domain=workforce  perm=pos.technicians.manage_status  guards=RolePermissionGuard,TenantAuthGuard
 POST /promotions/redeem  realm=shared  auth=session  domain=deals  perm=pos.checkout.apply_discount  guards=RolePermissionGuard,TenantAuthGuard
 POST /promotions/redemptions/{id}/reverse  realm=shared  auth=session  domain=deals  perm=pos.checkout.apply_discount  guards=RolePermissionGuard,TenantAuthGuard
@@ -3878,6 +3888,7 @@ PUT /pos/retention/sms/pricing  realm=staff  auth=session  domain=marketing  per
 PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=payroll.manage  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/weekly-days-off  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
 PUT /super-admin/ai-scheduling-optimizer/platform-switch  realm=super_admin  auth=session  domain=ai  perm=super_admin.ai.manage  step-up  guards=SuperAdminGuard
 PUT /super-admin/ai/packages/{code}/availability  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard
 PUT /super-admin/community-moderation/settings  realm=super_admin  auth=session  domain=support  derived=super_admin.technicians.manage  step-up  guards=SuperAdminGuard

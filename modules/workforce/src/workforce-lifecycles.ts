@@ -267,3 +267,26 @@ export const TEAM_STAFF_CERTIFICATION = defineStateMachine({
   states: ['UNVERIFIED', 'VERIFIED', 'REJECTED', 'REVOKED'],
   transitions: { UNVERIFIED: ['VERIFIED', 'REJECTED'], VERIFIED: ['REVOKED'] }, initial: ['UNVERIFIED'],
 });
+
+// Technician Profile & Team Management guide (Nov 5 2026, G3, migration 816)
+/** a repeating weekly day-off rule: changing the pattern ends the current rule (dates; a rule that never started ENDS) */
+export const TECHNICIAN_WEEKLY_OFF_RULE = defineStateMachine({
+  name: 'technician_weekly_off_rule', table: 'technician_weekly_off_rules', column: 'status',
+  states: ['ACTIVE', 'ENDED'],
+  transitions: { ACTIVE: ['ENDED'] },
+  initial: ['ACTIVE'],
+});
+/** a Skills Catalog entry: archived (never deleted), restorable */
+export const TENANT_SKILL = defineStateMachine({
+  name: 'tenant_skill', table: 'tenant_skills', column: 'status',
+  states: ['active', 'archived'],
+  transitions: { active: ['archived'], archived: ['active'] },
+  initial: ['active'],
+});
+/** a technician's skill: approved by a manager, revoked with a reason (history kept; a new assignment is a new row) */
+export const TECHNICIAN_SKILL_ASSIGNMENT = defineStateMachine({
+  name: 'technician_skill_assignment', table: 'technician_skill_assignments', column: 'status',
+  states: ['APPROVED', 'REVOKED'],
+  transitions: { APPROVED: ['REVOKED'] },
+  initial: ['APPROVED'],
+});

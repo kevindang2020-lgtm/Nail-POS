@@ -2525,6 +2525,10 @@
    "active",
    "archived"
   ],
+  "technician_skill_assignments.status": [
+   "APPROVED",
+   "REVOKED"
+  ],
   "technician_skill_change_requests.status": [
    "approved",
    "draft",
@@ -2552,6 +2556,10 @@
    "READY",
    "SERVING",
    "UNAVAILABLE"
+  ],
+  "technician_weekly_off_rules.status": [
+   "ACTIVE",
+   "ENDED"
   ],
   "technician_workforce_state.clock_status": [
    "CLOCKED_IN",
@@ -2764,6 +2772,10 @@
    "pending_approval",
    "rejected",
    "scheduled"
+  ],
+  "tenant_skills.status": [
+   "active",
+   "archived"
   ],
   "tenant_sms_billing_cycles.status": [
    "closed",

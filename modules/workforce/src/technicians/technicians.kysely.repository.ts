@@ -287,10 +287,16 @@ export class KyselyTechniciansRepository implements TechniciansRepositoryPort {
 
   async detail(ctx: TechniciansContext, id: string): Promise<POSTechnicianDetail | null> {
     const all = await this.load(ctx, id); const t = all.find((x) => x.technicianId === id); if (!t) return null;
+    const appAccess = (await this.getAppAccess(ctx, id))!;
+    // G3 (Nov 5 2026): resolve the primary and allowed branch ids to names (this salon's branches only)
+    const row = this.toRow(ctx, t) as POSTechnicianRow & { branchId?: string | null };
+    const bids = [...new Set([row.branchId, ...((appAccess as { allowedBranches?: string[] }).allowedBranches ?? [])].filter((x): x is string => typeof x === 'string' && /^[0-9a-f-]{36}$/i.test(x)))];
+    const branchNames: Record<string, string> = {};
+    if (bids.length) for (const b of await this.db.selectFrom('branches').select(['id', 'name']).where('tenant_id', '=', ctx.tenantId).where('id', 'in', bids).execute()) branchNames[String(b.id)] = String(b.name);
     return {
-      ...this.toRow(ctx, t), schedule: (await this.getSchedule(ctx, id))!, shift: { shiftStatus: t.shiftStatus, onBreak: t.workingStatus === 'on_break' },
+      ...row, branchNames, branchName: row.branchId ? branchNames[row.branchId] ?? null : null, schedule: (await this.getSchedule(ctx, id))!, shift: { shiftStatus: t.shiftStatus, onBreak: t.workingStatus === 'on_break' },
       skills: { skillGroups: t.skillGroups }, services: { serviceIds: t.serviceIds }, commission: { defaultPercent: t.commissionPercent, byService: [], byCategory: [], tipHandling: 'keep', payrollPeriod: 'biweekly' },
-      appAccess: (await this.getAppAccess(ctx, id))!, permissions: (await this.getPermissions(ctx, id))!,
+      appAccess, permissions: (await this.getPermissions(ctx, id))!,
       payroll: (await this.payrollSummary(ctx, id))!, auditSummary: [{ lastAction: 'updated', lastActorRole: ctx.role, lastAt: t.updatedAt }],
     };
   }

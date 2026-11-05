@@ -44,7 +44,7 @@ PostgreSQL stops when the container restarts. Start it again with `pg_ctlcluster
 
 - Nov 5: latest unit ca75e5b (C5 First Visit Invitation). Open gap lists are at the end of `docs/GUIDE_QUEUE_2026-11-03.md`.
 - Nov 5 (later): Batch F added to the guide queue; working F1 Customer Directory (commits 4819af4 … a9c8860). F1 done / remaining is in the F1 section at the end of `docs/GUIDE_QUEUE_2026-11-03.md`; metric definitions in `docs/customer-directory-metrics.md`.
-- Nov 5 (afternoon): Batch G (15 guides). G1 loyalty bonus approvals (3a7571d) and G2 Refer a Friend salon vouchers (migration 815) built; next G3 Technician Profile, then G4 Split Tips, G7 Advertising, G9 Backup. Status per guide in the Batch G table of `docs/GUIDE_QUEUE_2026-11-03.md`.
+- Nov 5 (afternoon): Batch G (15 guides). G1 loyalty bonus approvals (3a7571d), G2 Refer a Friend salon vouchers (b79e6fd, migration 815) and G3 Technician Profile weekly days off + Skills Catalog (migration 816) built; next G4 Split Tips, then G7 Advertising, G9 Backup. Status per guide in the Batch G table of `docs/GUIDE_QUEUE_2026-11-03.md`.
 
 
 | Area | State |

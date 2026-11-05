@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 939,
+  "tables": 944,
   "ownership": {
-   "tenant_owned": 627,
+   "tenant_owned": 632,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 90,
    "platform_global": 153,
@@ -27,7 +27,7 @@
    "BOOKING": 43,
    "MARKETING": 22,
    "PAYMENTS": 59,
-   "WORKFORCE": 73,
+   "WORKFORCE": 76,
    "CUSTOMERS": 57,
    "CATALOG": 21,
    "COMMUNICATIONS": 41,
@@ -38,17 +38,17 @@
    "ANALYTICS": 18,
    "INVENTORY": 29,
    "PLATFORM": 17,
-   "TENANTS": 27
+   "TENANTS": 29
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 142,
-   "CONFIDENTIAL": 162,
+   "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 514,
+   "INTERNAL": 516,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 49,
+  "append_only": 50,
   "platform_rows": 99
  },
  "tables": {
@@ -9812,6 +9812,18 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "technician_skill_assignments": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "WORKFORCE",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "technician_skill_change_requests": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -9911,6 +9923,30 @@
   "technician_turn_state": {
    "ownership": "tenant_branch_owned",
    "class": "C",
+   "domain": "WORKFORCE",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "technician_weekly_off_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "WORKFORCE",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "technician_weekly_off_rules": {
+   "ownership": "tenant_owned",
+   "class": "B",
    "domain": "WORKFORCE",
    "sensitivity": "CONFIDENTIAL",
    "retention_class": "indefinite",
@@ -10716,6 +10752,30 @@
    "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "tenant_skill_services": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "TENANTS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "tenant_skills": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "TENANTS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
   },

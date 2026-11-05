@@ -204,6 +204,8 @@ export interface POSTechnicianDetail extends POSTechnicianRow {
   schedule: TechnicianSchedule; shift: TechnicianShift; skills: TechnicianSkills; services: TechnicianServicesMap;
   commission: TechnicianCommissionConfig; payroll: TechnicianPayrollSummary; appAccess: TechnicianAppAccess; permissions: TechnicianPermissions;
   auditSummary: { lastAction: string; lastActorRole: string; lastAt: string }[];
+  /** G3 (Nov 5 2026): branch ids resolved to names (primary + allowed branches) — the profile never shows a raw id */
+  branchNames?: Record<string, string>; branchName?: string | null;
 }
 
 export interface CreateTechnicianRequest {

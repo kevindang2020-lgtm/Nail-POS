@@ -12,7 +12,7 @@
 //                   (or her earliest valid start) — and the qualified alternatives that pass the same checks. Never books.
 // Tenant is literal in every statement; branch is the session's. Read only.
 import { sql, type Kysely } from 'kysely';
-import { effectiveDaySchedule, addLocalDays, pbTimeOffToBlock, type ShiftOverride, type PBTechDaySchedule } from '@aipowersalon/booking';
+import { effectiveDaySchedule, addLocalDays, pbTimeOffToBlock, weeklyOffTechs, type ShiftOverride, type PBTechDaySchedule } from '@aipowersalon/booking';
 import { CHAIR_HOLDING_STATUSES } from '@aipowersalon/api-contracts';
 import { localDateTimeToEpochMs } from '@aipowersalon/date-time';
 import { N, iso, like, err, maskPhone, phoneDigits, paging, served, branchOf, teamPeriod, minuteOf, UUID, canAny, type TeamCtx, type TPeriod } from './screen-kit';
@@ -139,6 +139,7 @@ export class TeamMembersLookupRepository {
       sql<any>`select a.id, a.technician_id, a.start_time, a.end_time, a.status from pos_tech_appointments a where a.tenant_id = ${T} and a.technician_id = any(${cids}::uuid[]) and a.appt_date = ${date}::date
         and a.status = any(${HOLDING}::text[]) and (${b}::uuid is null or a.branch_id = ${b} or a.branch_id is null) order by a.start_time, a.id`.execute(this.db),
     ]);
+    const weeklyOff = cids.length ? await weeklyOffTechs(this.db, T, b, date, cids) : new Set<string>();   // G3: repeating weekly days off
     const group = <X>(rows: X[], key: (x: X) => string) => { const m = new Map<string, X[]>(); for (const x of rows) { const k = key(x); const a = m.get(k) ?? []; a.push(x); m.set(k, a); } return m; };
     const wk = new Map<string, any>(weekly.rows.map((r: any) => [String(r.technician_id), r]));
     const ov = new Map<string, any>(overrides.rows.map((r: any) => [`${r.technician_id}|${r.d}`, r]));
@@ -148,7 +149,8 @@ export class TeamMembersLookupRepository {
     const nameOf = new Map<string, string>(svc.map((s: any) => [String(s.id), String(s.name)]));
     const facts = (c: any): DayFacts => {
       const id = String(c.id); const w = wk.get(id);
-      const base: PBTechDaySchedule | null = w ? { isWorking: !!w.is_working, startTime: w.s, endTime: w.e, lunchStartTime: w.ls, lunchEndTime: w.le,
+      const wOff = weeklyOff.has(id);
+      const base: PBTechDaySchedule | null = wOff ? { isWorking: false, startTime: null, endTime: null, lunchStartTime: null, lunchEndTime: null, shifts: null, breaks: null } : w ? { isWorking: !!w.is_working, startTime: w.s, endTime: w.e, lunchStartTime: w.ls, lunchEndTime: w.le,
         shifts: Array.isArray(w.shifts) && w.shifts.length ? w.shifts : null, breaks: Array.isArray(w.breaks) && w.breaks.length ? w.breaks : null } : null;
       const o = toOverride(ov.get(`${id}|${date}`)); const po = toOverride(ov.get(`${id}|${prev}`));
       const schedule = effectiveDaySchedule(base, o, po);
@@ -156,7 +158,7 @@ export class TeamMembersLookupRepository {
       const mapped = new Set<string>((c.mapped ?? []).map(String));
       return { technicianId: id, name: String(c.name), active: c.status === 'active' && c.is_active !== false, inBranch: !b || c.branch_id == null || String(c.branch_id) === b,
         missingServices: ids.filter((x) => !mapped.has(x)).map((x) => nameOf.get(x) ?? x),
-        schedule, scheduleSource: o ? (o.overrideType === 'DAY_OFF' ? 'override_off' : 'override') : w ? 'weekly' : 'none',
+        schedule, scheduleSource: o ? (o.overrideType === 'DAY_OFF' ? 'override_off' : 'override') : wOff ? 'weekly_off_rule' : w ? 'weekly' : 'none',
         blocks: [...(bl.get(id) ?? []).map((x: any) => ({ startTime: String(x.start_time).slice(0, 5), endTime: String(x.end_time).slice(0, 5), reason: String(x.reason || 'blocked') })), ...offBlocks],
         appointments: (ap.get(id) ?? []).map((a: any) => ({ id: String(a.id), startTime: String(a.start_time).slice(0, 5), endTime: String(a.end_time).slice(0, 5), status: String(a.status) })) };
     };

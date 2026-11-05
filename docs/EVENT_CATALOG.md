@@ -67,7 +67,7 @@ reservation (`apps/api/scripts/event-producers.reserved.json`: 0). Consumers are
 | `technician.turn_queue_changed` | `modules/workforce/src/turn-queue/turn-ledger.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `technician.profile_updated` | `modules/workforce/src/tech-profile/tech-profile.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `technician.time_off_changed` | `modules/workforce/src/time-off/technician-time-off.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
-| `technician.shift_override_changed` | `modules/workforce/src/team-screens/shift-override.repository.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
+| `technician.shift_override_changed` | `modules/workforce/src/team-screens/shift-override.repository.ts`<br>`modules/workforce/src/team-screens/weekly-days-off.repository.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `technician.membership_requested` | `modules/workforce/src/tech-profile/tech-profile.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `technician.profile_change_held` | `modules/workforce/src/tech-profile/tech-profile.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |
 | `technician.membership_approved` | `modules/workforce/src/tech-profile/tech-profile.service.ts` | `apps/api/src/events/consumers/realtime-projection.consumer.ts` |

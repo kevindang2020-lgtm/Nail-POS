@@ -27,15 +27,21 @@ import { TeamMembersLookupController, TEAM_MEMBERS_LOOKUP } from './team-members
 import { TeamMembersLookupRepository } from './team-members-lookup.repository';
 import { TeamDataAlertsController, TEAM_DATA_ALERTS } from './team-data-alerts.controller';
 import { TeamDataAlertsRepository } from './team-data-alerts.repository';
+import { WeeklyDaysOffController, SkillsCatalogController, WEEKLY_DAYS_OFF, SKILLS_CATALOG } from './weekly-off-skills.controller';
+import { WeeklyDaysOffRepository } from './weekly-days-off.repository';
+import { SkillsCatalogRepository } from './skills-catalog.repository';
 
 @Module({
   imports: [EventsCoreModule],
-  controllers: [ShiftOverrideController, TechniciansScreenController, TechAppointmentsScreenController, LiveScheduleScreenController, TechQueueScreenController, CommissionScreenController, TeamPerformanceScreenController, CommissionReviewController, TeamMembersScreenController, TeamDataAlertsController, TeamMembersLookupController],
+  controllers: [ShiftOverrideController, TechniciansScreenController, TechAppointmentsScreenController, LiveScheduleScreenController, TechQueueScreenController, CommissionScreenController, TeamPerformanceScreenController, CommissionReviewController, TeamMembersScreenController, TeamDataAlertsController, TeamMembersLookupController, WeeklyDaysOffController, SkillsCatalogController],
   providers: [
     // Team Management (30 Oct 2026): the /tenant/team/members read model and its Data Accuracy Alerts (migration 722)
     { provide: TEAM_MEMBERS_SCREEN, useFactory: (db: AppDatabase) => (db ? new TeamMembersScreenRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_MEMBERS_LOOKUP, useFactory: (db: AppDatabase) => (db ? new TeamMembersLookupRepository(db) : null), inject: [DATABASE] },
     { provide: TEAM_DATA_ALERTS, useFactory: (db: AppDatabase) => (db ? new TeamDataAlertsRepository(db) : null), inject: [DATABASE] },
+    // Technician Profile guide (Nov 5 2026, G3, migration 816): repeating weekly days off + the Skills Catalog
+    { provide: WEEKLY_DAYS_OFF, useFactory: (db: AppDatabase, outbox: OutboxWriter) => (db ? new WeeklyDaysOffRepository(db, outbox) : null), inject: [DATABASE, OutboxWriter] },
+    { provide: SKILLS_CATALOG, useFactory: (db: AppDatabase) => (db ? new SkillsCatalogRepository(db) : null), inject: [DATABASE] },
     { provide: SHIFT_OVERRIDES, useFactory: (db: AppDatabase, outbox: OutboxWriter) => (db ? new ShiftOverrideRepository(db, outbox) : null), inject: [DATABASE, OutboxWriter] },
     { provide: COMMISSION_REVIEW, useFactory: (db: AppDatabase, rt: RealtimeEmitter) => (db ? new CommissionReviewRepository(db, rt) : null), inject: [DATABASE, REALTIME] },
     { provide: TEAM_PERFORMANCE_SCREEN, useFactory: (db: AppDatabase) => (db ? new TeamPerformanceScreenRepository(db) : null), inject: [DATABASE] },
