@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Hanken+Grotesque:wght@500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../src/styles.css">
+<style>
+  /* override the app's 100vh lock so both story frames lay out and can be captured */
+  html, body { height: auto !important; overflow: visible !important; background: #EDE2D2; }
+  #story { padding: 26px; }
+  .frame { position: relative; width: 1320px; height: 842px; overflow: hidden; border-radius: 14px; box-shadow: 0 18px 48px rgba(0,0,0,.18); border: 1px solid #d8cbb6; margin-bottom: 40px; }
+</style>
+</head>
+<body>
+<div id="story"></div>
+<script src="./bundle.js"></script>
+</body>
+</html>

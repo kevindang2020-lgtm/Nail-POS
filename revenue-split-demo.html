@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI PowerSalon — Layered Residual Split Demo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;700&family=Hanken+Grotesque:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--cream:#F7EFE3;--ivory:#FFFDF8;--ink:#2A2018;--muted:#7C6F5E;--gold:#A96F22;--gold-deep:#7A4E14;
+        --seg-plat:#A96F22;--seg-fis:#3E3427;--seg-ten:#D8B36A;--seg-cost:#CFC4B2;--line:#E6D9C4;--claw:#8C3B2E}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--cream);color:var(--ink);font-family:'Hanken Grotesque',system-ui,sans-serif;
+       -webkit-font-smoothing:antialiased;padding:28px 16px 60px}
+  .wrap{max-width:720px;margin:0 auto}
+  h1{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:clamp(26px,5vw,36px);color:var(--gold-deep);line-height:1.1}
+  .sub{color:var(--muted);margin:8px 0 26px;font-size:15px;max-width:56ch}
+  .card{background:var(--ivory);border:1px solid var(--line);border-radius:14px;padding:18px 18px 20px;margin-bottom:16px}
+  .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  @media(min-width:560px){.grid{grid-template-columns:1fr 1fr 1fr 1fr 1fr}}
+  label{display:block;font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+  input{width:100%;font:inherit;font-size:17px;font-weight:600;color:var(--ink);background:#fff;
+        border:1px solid var(--line);border-radius:9px;padding:9px 10px}
+  input:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+  .note{font-size:13px;color:var(--claw);margin-top:8px;min-height:17px}
+  .stage{padding-top:6px}
+  .stageTitle{font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px}
+  .bar{display:flex;height:56px;border-radius:10px;overflow:hidden;border:1px solid var(--line)}
+  .seg{display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:13px;
+       white-space:nowrap;overflow:hidden;transition:width .35s ease}
+  @media(prefers-reduced-motion:reduce){.seg{transition:none}}
+  .seg.cost{background:repeating-linear-gradient(45deg,var(--seg-cost),var(--seg-cost) 6px,#BFB29D 6px,#BFB29D 12px);color:var(--ink)}
+  .seg.plat{background:var(--seg-plat)} .seg.ten{background:var(--seg-ten);color:var(--ink)} .seg.fis{background:var(--seg-fis)}
+  .bracket{position:relative;height:26px;margin-top:6px}
+  .bracket .b{position:absolute;top:0;height:12px;border:2px solid var(--gold-deep);border-top:none;border-radius:0 0 8px 8px;transition:left .35s ease,width .35s ease}
+  .bracket .t{position:absolute;top:13px;font-size:12px;font-weight:700;color:var(--gold-deep);transform:translateX(-50%);white-space:nowrap}
+  .ledger{display:grid;grid-template-columns:1fr auto;row-gap:10px;margin-top:6px;font-size:15px}
+  .ledger .who{display:flex;align-items:center;gap:9px}
+  .dot{width:12px;height:12px;border-radius:4px;flex:0 0 12px}
+  .amt{font-family:'Playfair Display',Georgia,serif;font-weight:700;font-size:19px;text-align:right}
+  .amt.claw{color:var(--claw)}
+  .rule{border-top:1px dashed var(--line);grid-column:1/-1;margin:2px 0}
+  .recon{margin-top:12px;font-size:13px;color:var(--muted)}
+  .recon b{color:var(--gold-deep)}
+  .foot{font-size:12.5px;color:var(--muted);margin-top:18px;max-width:60ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>The residual pool, layer by layer</h1>
+  <p class="sub">Costs come off the top first. The net pool splits by the Fiserv agreement. The salon's share is carved
+  out of AI PowerSalon's contractual portion — never added on top. Every figure below is computed by the production
+  split engine, to the cent.</p>
+
+  <div class="card">
+    <div class="grid">
+      <div><label for="g">Gross residual $</label><input id="g" inputmode="decimal" value="1000.00"></div>
+      <div><label for="c">Applicable costs $</label><input id="c" inputmode="decimal" value="100.00"></div>
+      <div><label for="pa">AI PowerSalon %</label><input id="pa" inputmode="decimal" value="40"></div>
+      <div><label for="pp">Fiserv %</label><input id="pp" inputmode="decimal" value="35"></div>
+      <div><label for="ps">Salon %</label><input id="ps" inputmode="decimal" value="25"></div>
+    </div>
+    <div class="note" id="note"></div>
+  </div>
+
+  <div class="card stage">
+    <div class="stageTitle">Gross residual → net pool → layered split</div>
+    <div class="bar" id="bar"></div>
+    <div class="bracket" id="bracket"></div>
+
+    <div class="stageTitle">On the books</div>
+    <div class="ledger" id="ledger"></div>
+    <div class="recon" id="recon"></div>
+  </div>
+
+  <p class="foot">The bracket spans AI PowerSalon's contractual share; the salon's incentive lives inside it as an
+  AI PowerSalon-managed payable. Percentages stay configurable per agreement. Negative pools (clawback periods)
+  show in red — the salon shares a clawback, never profits from one.</p>
+</div>
+<script>/*__ENGINE__*/</script>
+<script>
+(function(){
+  var $=function(id){return document.getElementById(id)};
+  var fmt=function(c){var s=(Math.abs(c)/100).toLocaleString('en-US',{minimumFractionDigits:2});return (c<0?'−$':'$')+s};
+  function dollars(el){var v=parseFloat(String(el.value).replace(/[^0-9.\-]/g,''));return Math.round((isFinite(v)?v:0)*100)}
+  function pct(el){var v=parseFloat(el.value);return isFinite(v)?v:0}
+  function seg(cls,label,frac){var d=document.createElement('div');d.className='seg '+cls;d.style.width=(Math.max(frac,0)*100)+'%';d.textContent=frac>0.09?label:'';d.title=label;return d}
+  function row(color,who,cents,claw){return '<div class="who"><span class="dot" style="background:'+color+'"></span>'+who+'</div><div class="amt'+(claw?' claw':'')+'">'+fmt(cents)+'</div>'}
+  function render(){
+    var flat={ai:pct($('pa')),processor:pct($('pp')),salon:pct($('ps'))};
+    var sum=flat.ai+flat.processor+flat.salon;
+    $('note').textContent=Math.abs(sum-100)>1e-9?'Percentages total '+sum+'% — an agreement must total exactly 100%. Showing the normalized split.':'';
+    var gross=dollars($('g')),costs=Math.abs(dollars($('c')));
+    var r=RevSplit.computeLayeredResidualSplit(gross,RevSplit.layeredFromFlat(flat),{applicableCostsCents:costs});
+    var basis=Math.max(Math.abs(gross),1),neg=r.netPoolCents<0;
+    var bar=$('bar');bar.innerHTML='';
+    bar.appendChild(seg('cost','costs '+fmt(costs),costs/basis));
+    bar.appendChild(seg('plat','AI PowerSalon '+fmt(r.platformRetainedCents),Math.abs(r.platformRetainedCents)/basis));
+    bar.appendChild(seg('ten','salon '+fmt(r.platformOwesTenantCents),Math.abs(r.platformOwesTenantCents)/basis));
+    bar.appendChild(seg('fis','Fiserv '+fmt(r.processorRetainedCents),Math.abs(r.processorRetainedCents)/basis));
+    var left=costs/basis*100,width=(Math.abs(r.platformRetainedCents)+Math.abs(r.platformOwesTenantCents))/basis*100;
+    $('bracket').innerHTML='<div class="b" style="left:'+left+'%;width:'+width+'%"></div>'+
+      '<div class="t" style="left:'+(left+width/2)+'%">contractual '+fmt(r.processorOwesPlatformCents)+' — salon share carved from it</div>';
+    $('ledger').innerHTML=
+      row('var(--seg-cost)','Applicable costs (off the top)',-costs||0,false)+
+      '<div class="rule"></div>'+
+      row('var(--seg-fis)','Fiserv retains',r.processorRetainedCents,neg)+
+      row('var(--gold-deep)','Fiserv owes AI PowerSalon (contractual)',r.processorOwesPlatformCents,neg)+
+      row('var(--seg-ten)','AI PowerSalon owes salon (managed payable)',r.platformOwesTenantCents,neg)+
+      row('var(--seg-plat)','AI PowerSalon retains',r.platformRetainedCents,neg);
+    var ok=r.contractualReconciles&&r.economicReconciles;
+    $('recon').innerHTML='Net pool '+fmt(r.netPoolCents)+' = '+fmt(r.platformRetainedCents)+' + '+fmt(r.processorRetainedCents)+' + '+fmt(r.platformOwesTenantCents)+' — <b>'+(ok?'reconciles to the cent':'does not reconcile')+'</b>'+(r.tenantShareCapped?' · salon % capped at the contractual share':'')+(neg?' · clawback period':'');
+  }
+  ['g','c','pa','pp','ps'].forEach(function(id){$(id).addEventListener('input',render)});
+  render();
+})();
+</script>
+</body>
+</html>

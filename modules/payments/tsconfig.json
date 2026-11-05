@@ -1,0 +1,69 @@
+{
+  "compilerOptions": {
+    "target": "ES2021",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "strict": true,
+    "esModuleInterop": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "skipLibCheck": true,
+    "types": [
+      "node"
+    ],
+    "paths": {
+      "@aipowersalon/api-contracts": [
+        "../../packages/api-contracts/dist/index.d.ts"
+      ],
+      "@aipowersalon/auth": [
+        "../../packages/auth/dist/index.d.ts"
+      ],
+      "@aipowersalon/database": [
+        "../../packages/database/dist/index.d.ts"
+      ],
+      "@aipowersalon/permissions": [
+        "../../packages/permissions/dist/index.d.ts"
+      ],
+      "@aipowersalon/permissions/guards": [
+        "../../packages/permissions/dist/guards/index.d.ts"
+      ],
+      "@aipowersalon/observability": [
+        "../../packages/observability/dist/index.d.ts"
+      ],
+      "@aipowersalon/security": [
+        "../../packages/security/dist/index.d.ts"
+      ],
+      "@aipowersalon/security-center": [
+        "../../modules/security-center/dist/index.d.ts"
+      ],
+      "@aipowersalon/api-contracts/*": [
+        "../../packages/api-contracts/dist/*/index.d.ts"
+      ],
+      "@aipowersalon/payments": [
+        "../../modules/payments/dist/index.d.ts"
+      ],
+      "@aipowersalon/api-contracts/customer": [
+        "../../packages/api-contracts/dist/customer/index.d.ts"
+      ],
+      "@aipowersalon/customers": [
+        "../../modules/customers/dist/index.d.ts"
+      ],
+      "@aipowersalon/ai": [
+        "../../modules/ai/dist/index.d.ts"
+      ],
+      "@aipowersalon/config": [
+        "../../packages/config/dist/index.d.ts"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "src/**/*.test.ts",
+    "src/**/*.spec.ts"
+  ]
+}

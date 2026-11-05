@@ -1,0 +1,84 @@
+DONE      Threat model completed
+DONE      Trust boundaries documented
+DONE      Data classification completed
+DONE      Authentication realms implemented
+DONE      Passwords securely hashed
+DONE      MFA implemented
+DONE      Passkeys supported
+DONE      Session rotation works
+DONE      Session revocation works
+DONE      Device trust implemented
+DONE      Device revocation works
+DONE      Authorization deny-by-default works
+DONE      Tenant isolation enforced
+DONE      Branch isolation enforced
+PARTIAL   Composite DB constraints implemented where appropriate  — triggers chosen over composite FKs (decision D2, revised) — same guarantee, no key rewrite
+DONE      Cross-tenant tests pass
+DONE      Platform/tenant realms separated
+DONE      Support Mode secure
+PARTIAL   Support Mode expires  — support sessions carry expires_at, but no code path grants access THROUGH a support session today — nothing to expire; if impersonation is built, its guard must enforce expiry
+DONE      Support actions audited
+PARTIAL   TLS enforced  — TLS terminated at Railway's edge (D5); HSTS sent in production
+PARTIAL   Database private  — Railway private network; the app warns at boot on a public host without TLS — the network itself is Railway's
+PARTIAL   Redis private  — same as the database
+PARTIAL   Secrets Manager implemented  — Railway variables are the secrets store (decision D4); inventory + rotation tracking built
+DONE      No secrets in source
+DONE      No secrets in frontend/mobile
+DONE      Key management implemented
+DONE      Key rotation documented
+PARTIAL   WAF implemented  — Railway's edge (decision D5); application-level abuse controls built (rate limits, fraud, IP blocks) — no dedicated WAF product
+DONE      Rate limiting implemented
+DONE      OTP abuse protection implemented
+DONE      API validation implemented
+DONE      Mass-assignment prevented
+DONE      SQL injection protection implemented
+DONE      XSS protection implemented
+DONE      CSRF protection implemented where required
+DONE      CORS restricted
+DONE      SSRF protections implemented
+DONE      Payment tokenization architecture verified
+DONE      CVV never stored
+DONE      Payment webhooks verified
+DONE      Twilio webhooks verified
+PARTIAL   OAuth secured  — PKCE/state present in the integration framework; no production OAuth provider live yet
+DONE      API keys hashed/scoped
+PARTIAL   Webhooks deduplicated  — billing and membership webhooks dedupe by event/idempotency key; not verified for every provider
+DONE      Realtime subscriptions authorized
+DONE      Realtime payloads sanitized
+NOT DONE  Workers least privileged  — one database role serves the API and every worker; no per-worker credentials
+DONE      Events tenant-validated
+DONE      AI tools authorized
+PARTIAL   AI cross-tenant isolation tested  — retrieval filters by tenant BEFORE search by construction; no production code calls it yet
+PARTIAL   Prompt injection tests pass  — Constitution 10 evaluation cases; the voice line's identity no longer rests on what the model or caller says (M12)
+DONE      File upload validation works
+PARTIAL   Malware scanning works  — scanner port + S3-tag scanner built; NotConnected unless an evidence bucket with scanning is configured
+PARTIAL   Object storage private by default  — evidence private; the media store is public BY DESIGN for public images only (M2, verified)
+DONE      Signed URLs expire
+DONE      Fraud risk engine implemented
+DONE      Booking abuse controls implemented
+DONE      SMS pumping controls implemented
+PARTIAL   Coupon/gift-card abuse controls implemented  — 16-digit CSPRNG numbers make enumeration infeasible; no per-caller lookup rate limit
+DONE      Security events implemented
+DONE      Security alerts implemented
+DONE      Security Center implemented
+DONE      Audit immutable
+PARTIAL   Backup encrypted  — Railway-managed backups; encryption at rest is the platform's — not verifiable from this repo
+PARTIAL   Backup access restricted  — Railway project access; restore only through the scratch-restore workflow (SECURITY_DR.md)
+PARTIAL   PITR enabled  — a Railway plan setting — enable it; not visible from this repo
+PARTIAL   Restore test completed  — the verifier is built and tested; a real drill against a real backup has not been run
+DONE      DR security validated
+DONE      Secure CI/CD implemented
+DONE      Secret scanning implemented
+DONE      Dependency scanning implemented
+NOT DONE  Container scanning implemented  — no image scan in CI (L3)
+NOT DONE  IaC scanning implemented  — no IaC beyond railway.json; no scanner (L3)
+DONE      Security regression suite implemented
+PARTIAL   Penetration tests completed where possible  — automated IDOR suite; an independent human test and real-device mobile testing still needed (§286, §288)
+DONE      Incident-response runbooks created
+DONE      No known critical vulnerability remains
+DONE      Build passes
+DONE      Type checking passes
+NOT DONE  Lint passes  — NOT RUN — eslint is wired (npm run lint) with --max-warnings=99999, so it cannot fail on warnings; not part of the gates
+NOT DONE  Tests pass  — evidence missing
+
+§324: 58 DONE · 19 PARTIAL · 5 NOT DONE of 82

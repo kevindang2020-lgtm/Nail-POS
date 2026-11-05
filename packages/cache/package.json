@@ -1,0 +1,26 @@
+{
+  "name": "@aipowersalon/cache",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The tenant-scoped read-through cache PORT (Constitution 13 \u00a794) and the ONE Redis client factory (makeIoredis: an instrumented ioredis client, role-labelled for Constitution 11 \u00a744 telemetry). Which store a feature uses, and every connection URL, remain the API's decision. Purpose-specific, not a generic 'utils' package (\u00a7115).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/observability": "*",
+    "ioredis": "^5.4.1"
+  }
+}

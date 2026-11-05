@@ -1,0 +1,16 @@
+-- 369_schema_drift_fixes.sql -- one missing column, found by PREPARE-ing every raw SQL statement in the API
+-- against a real Postgres.
+--
+-- `narrative-provenance.repository.ts` runs:
+--
+--     insert into ai_report_narratives (...) values (...)
+--     on conflict (run_id) do update set updated_at = now()
+--
+-- The UNIQUE (run_id) constraint exists. `updated_at` does NOT -- the table (migration 263) has only created_at.
+-- So the statement threw, and unlike most reads in this codebase it has no .catch(): the narrative insert failed
+-- outright, every time.
+--
+-- Adding the column rather than gutting the upsert, because the upsert is RIGHT: a conflict here means a report
+-- narrative is being REGENERATED for the same run, and "when was this last regenerated" is exactly what you want
+-- recorded. Every other table in this schema carries updated_at; this one was simply missed.
+ALTER TABLE ai_report_narratives ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ NOT NULL DEFAULT now();

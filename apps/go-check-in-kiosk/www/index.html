@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>AI PowerSalon — Check-In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Hanken+Grotesque:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --aps-cream:#FBF7EF; --aps-cream-2:#F4ECDD; --aps-ink:#2B2620; --aps-ink-soft:#6B6253;
+    --aps-gold:#C2A24A; --aps-gold-d:#A6852F; --aps-gold-soft:#E9DCB8; --aps-line:#E7DcC6;
+    --aps-ok:#3F7D52; --aps-bad:#9B463A; --aps-shadow:0 18px 50px rgba(64,52,28,.16);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{
+    font-family:'Hanken Grotesque',system-ui,sans-serif;color:var(--aps-ink);
+    background:radial-gradient(120% 120% at 50% 0%,#FFFDF8 0%,var(--aps-cream) 45%,var(--aps-cream-2) 100%);
+    display:flex;align-items:center;justify-content:center;padding:24px;overflow:hidden;
+  }
+  .kiosk{width:min(560px,100%);max-height:100vh;display:flex;flex-direction:column}
+  .card{
+    background:#FFFCF6;border:1px solid var(--aps-line);border-radius:28px;box-shadow:var(--aps-shadow);
+    padding:38px 32px;display:flex;flex-direction:column;gap:18px;min-height:0;
+  }
+  .brand{font-family:'Playfair Display',serif;font-weight:700;font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:var(--aps-gold-d);text-align:center}
+  h1{font-family:'Playfair Display',serif;font-weight:700;font-size:34px;line-height:1.12;margin:2px 0 0;text-align:center}
+  p.sub{margin:0;text-align:center;color:var(--aps-ink-soft);font-size:17px}
+  .phone-display{font-size:34px;font-weight:700;letter-spacing:.04em;text-align:center;min-height:46px;padding:8px 0;color:var(--aps-ink)}
+  .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+  .key{
+    font-family:'Hanken Grotesque';font-size:28px;font-weight:600;padding:18px 0;border-radius:18px;
+    background:var(--aps-cream);border:1px solid var(--aps-line);color:var(--aps-ink);cursor:pointer;user-select:none;
+    transition:transform .06s ease,background .15s ease;
+  }
+  .key:active{transform:scale(.96);background:var(--aps-gold-soft)}
+  .key.fn{font-size:20px;color:var(--aps-ink-soft)}
+  .btn{
+    font-family:'Hanken Grotesque';font-weight:700;font-size:20px;padding:18px 22px;border-radius:18px;border:0;cursor:pointer;
+    background:linear-gradient(180deg,var(--aps-gold) 0%,var(--aps-gold-d) 100%);color:#fff;box-shadow:0 10px 24px rgba(166,133,47,.34);
+    transition:transform .06s ease,filter .15s ease;
+  }
+  .btn:active{transform:translateY(1px)}
+  .btn:disabled{filter:grayscale(.4) opacity(.55);cursor:default}
+  .btn.ghost{background:transparent;color:var(--aps-ink-soft);box-shadow:none;border:1px solid var(--aps-line)}
+  .btn.full{width:100%}
+  .branch-list{display:flex;flex-direction:column;gap:12px;margin-top:8px}
+  .consent{display:flex;gap:8px;align-items:flex-start;text-align:left;font-size:12.5px;color:var(--aps-ink-soft);margin:4px 0 14px;line-height:1.35}
+  .consent input{margin-top:2px;width:18px;height:18px;flex:none}
+  .row{display:flex;gap:12px}
+  .row>*{flex:1}
+  .list{display:flex;flex-direction:column;gap:10px;overflow:auto;max-height:46vh;padding:2px}
+  .opt{
+    text-align:left;background:var(--aps-cream);border:1px solid var(--aps-line);border-radius:16px;padding:16px 18px;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:17px;font-weight:600;transition:background .15s ease,border-color .15s ease;
+  }
+  .opt.sel{background:var(--aps-gold-soft);border-color:var(--aps-gold)}
+  .opt .meta{color:var(--aps-ink-soft);font-weight:500;font-size:14px}
+  .field{display:flex;flex-direction:column;gap:6px}
+  .field label{font-size:14px;font-weight:600;color:var(--aps-ink-soft)}
+  .field input{font-family:'Hanken Grotesque';font-size:20px;padding:14px 16px;border-radius:14px;border:1px solid var(--aps-line);background:var(--aps-cream);color:var(--aps-ink)}
+  .big-ico{font-size:64px;text-align:center;line-height:1}
+  .ok{color:var(--aps-ok)} .bad{color:var(--aps-bad)}
+  .muted{color:var(--aps-ink-soft);font-size:14px;text-align:center}
+  .hidden{display:none!important}
+  .appt-card{background:var(--aps-cream);border:1px solid var(--aps-gold-soft);border-radius:18px;padding:18px;text-align:center}
+  .appt-card .time{font-family:'Playfair Display',serif;font-size:26px;font-weight:700}
+  .spinner{width:34px;height:34px;border:3px solid var(--aps-gold-soft);border-top-color:var(--aps-gold-d);border-radius:50%;margin:8px auto;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+</style>
+    <!-- AI PowerSalon brand (synced from /brand via scripts/sync-brand.mjs) -->
+    <link rel="icon" href="/brand/favicon.ico" sizes="any" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/brand/favicon-16.png" />
+    <link rel="apple-touch-icon" href="/brand/apple-touch-icon.png" />
+    <link rel="manifest" href="/brand/manifest.webmanifest" />
+    <meta name="theme-color" content="#A96F22" />
+    <link rel="preload" as="image" href="/brand/aipowersalon-logo.png" />
+    <link rel="stylesheet" href="/brand/brand-tokens.css" />
+  </head>
+<body>
+<div class="kiosk">
+  <div class="card" id="card">
+    <div class="brand">AIPowerSalon</div>
+    <div id="screen"></div>
+  </div>
+</div>
+
+<script>
+// ----------------------------------------------------------------------------------------------------------------
+// AIPowerSalon Go Check-In kiosk. Self-contained: derives the device slug from ?slug=, opens a session, and drives
+// the public API. tenant_id/branch_id are resolved entirely on the server from the slug — the kiosk never sends them.
+// API base: same origin by default; override with ?api=https://your-api.
+// ----------------------------------------------------------------------------------------------------------------
+const qs = new URLSearchParams(location.search);
+const SLUG = qs.get('slug') || (location.pathname.match(/go-check-in\/([^\/]+)/)?.[1]) || '';
+const API = (qs.get('api') || (window.APS_API_BASE || '') || '').replace(/\/+$/,''); // '' => same origin (set window.APS_API_BASE for a packaged/native build)
+const url = (p) => `${API}/go-check-in${p}`;
+let SESSION = null, TOKEN = null, CONFIG = null, STATE = {};
+
+const el = document.getElementById('screen');
+function render(html){ el.innerHTML = html; }
+function esc(s){ return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+async function api(method, path, body, withToken){
+  const headers = { 'Content-Type':'application/json' };
+  if (withToken && TOKEN) headers['x-checkin-token'] = TOKEN;
+  const res = await fetch(url(path), { method, headers, body: body?JSON.stringify(body):undefined });
+  const text = await res.text(); let data; try { data = text?JSON.parse(text):{}; } catch { data = { message:text }; }
+  if (!res.ok) throw Object.assign(new Error(data?.message||('HTTP '+res.status)), { status:res.status, code:data?.code });
+  return data;
+}
+
+function loading(msg){ render(`<div class="spinner"></div><p class="sub">${esc(msg||'One moment…')}</p>`); }
+
+// ---------------- screens ----------------
+function welcome(){
+  render(`
+    <h1>${esc(CONFIG?.salonName||'Welcome')}</h1>
+    <p class="sub">Tap below to check in for your visit.</p>
+    <div class="big-ico">💅</div>
+    <button class="btn full" id="go">Check In</button>
+    <p class="muted">Have an appointment or walking in — we’ll take care of both.</p>`);
+  document.getElementById('go').onclick = phoneEntry;
+}
+
+function phoneEntry(){
+  STATE.phone = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','⌫','0','✓'];
+  render(`
+    <h1>Enter your phone</h1>
+    <p class="sub">We’ll find your profile or appointment.</p>
+    <div class="phone-display" id="pd">—</div>
+    <div class="keypad">${keys.map(k=>`<button class="key ${(k==='⌫'||k==='✓')?'fn':''}" data-k="${k}">${k}</button>`).join('')}</div>
+    <button class="btn ghost full" id="back">Back</button>`);
+  const pd = document.getElementById('pd');
+  const fmt = (d)=>{ if(!d) return '—'; const x=d.slice(0,10); if(x.length<=3)return x; if(x.length<=6)return `(${x.slice(0,3)}) ${x.slice(3)}`; return `(${x.slice(0,3)}) ${x.slice(3,6)}-${x.slice(6)}`; };
+  el.querySelectorAll('.key').forEach(b=>b.onclick=()=>{
+    const k=b.dataset.k;
+    if(k==='⌫') STATE.phone=STATE.phone.slice(0,-1);
+    else if(k==='✓'){ if(STATE.phone.length>=7) doLookup(); return; }
+    else if(STATE.phone.length<10) STATE.phone+=k;
+    pd.textContent=fmt(STATE.phone);
+  });
+  document.getElementById('back').onclick = welcome;
+}
+
+async function doLookup(){
+  loading('Looking you up…');
+  try{
+    const r = await api('POST', `/session/${SESSION}/lookup-phone`, { phone: STATE.phone }, true);
+    STATE.lookup = r;
+    if (r.askFrontDesk || r.ambiguous) return askFrontDesk('We found more than one profile with this phone number. Please ask the front desk to check you in.');
+    if (r.match && r.match.source==='tenant' && r.appointment) return appointmentFound(r);
+    if (r.match && r.match.source==='tenant') return matchConfirm(r, false);
+    if (r.match && r.match.source==='central') return matchConfirm(r, true);
+    return newCustomer();
+  }catch(e){ return errorScreen(e); }
+}
+
+function appointmentFound(r){
+  const a=r.appointment;
+  render(`
+    <div class="brand">Appointment found</div>
+    <h1>Hi ${esc(r.match.firstName)}!</h1>
+    <div class="appt-card">
+      <div class="time">Today at ${esc(a.startTimeLabel)}</div>
+      <div style="margin-top:6px;font-weight:600">${esc(a.serviceName)}</div>
+      ${a.technicianName?`<div class="meta" style="margin-top:2px;color:var(--aps-ink-soft)">with ${esc(a.technicianName)}</div>`:''}
+    </div>
+    <button class="btn full" id="here">I’m Here ✓</button>
+    <button class="btn ghost full" id="walk">I’d like something else (walk-in)</button>`);
+  document.getElementById('here').onclick = async ()=>{
+    loading('Checking you in…');
+    try{ const c = await api('POST', `/session/${SESSION}/check-in-appointment`, { appointmentId:a.appointmentId }, true); confirmation(c); }
+    catch(e){ errorScreen(e); }
+  };
+  document.getElementById('walk').onclick = ()=> startWalkIn(r.match.firstName, r.match.customerId);
+}
+
+function matchConfirm(r, isCentral){
+  const m=r.match;
+  render(`
+    <div class="brand">${isCentral?'Is this you?':'Welcome back'}</div>
+    <h1>${esc(m.firstName)} ${esc(m.lastInitial)}</h1>
+    ${isCentral && m.maskedEmail?`<p class="sub">${esc(m.maskedEmail)}</p>`:''}
+    <p class="sub">${isCentral?'We’ll set up your profile at this salon.':'Let’s get you checked in.'}</p>
+    <button class="btn full" id="yes">Yes, that’s me</button>
+    <button class="btn ghost full" id="no">Not me</button>`);
+  document.getElementById('yes').onclick = async ()=>{
+    if (isCentral){
+      // link: create a profile under THIS tenant from the safe central match, then continue to walk-in
+      loading('Setting up your profile…');
+      try{ const c = await api('POST', `/session/${SESSION}/create-customer`, { firstName:m.firstName, phone:STATE.phone }, true); startWalkIn(c.firstName, c.customerId); }
+      catch(e){ errorScreen(e); }
+    } else {
+      startWalkIn(m.firstName, m.customerId);
+    }
+  };
+  document.getElementById('no').onclick = newCustomer;
+}
+
+function newCustomer(){
+  if (CONFIG && CONFIG.settings && CONFIG.settings.newCustomerEnabled===false) return askFrontDesk('We couldn’t find your profile.');
+  render(`
+    <div class="brand">New here? Welcome!</div>
+    <h1>Create your profile</h1>
+    <div class="field"><label>First name</label><input id="fn" autocomplete="off" /></div>
+    <div class="field"><label>Last name</label><input id="ln" autocomplete="off" /></div>
+    <div class="field"><label>Email (optional)</label><input id="em" autocomplete="off" inputmode="email" /></div>
+    <label class="consent"><input type="checkbox" id="sms" /><span>Text me appointment reminders &amp; check-in updates from ${esc(CONFIG?.salonName||'this salon')}. Up to ~6 msgs/mo. Msg &amp; data rates may apply. Reply STOP to opt out, HELP for help.</span></label>
+    <button class="btn full" id="create">Continue</button>
+    <button class="btn ghost full" id="back">Back</button>`);
+  document.getElementById('back').onclick = phoneEntry;
+  document.getElementById('create').onclick = async ()=>{
+    const firstName=document.getElementById('fn').value.trim();
+    const lastName=document.getElementById('ln').value.trim();
+    const email=document.getElementById('em').value.trim();
+    const smsConsent=!!document.getElementById('sms').checked;          // explicit opt-in; unchecked = not opted in (never blocks check-in)
+    if(!firstName) return;
+    loading('Creating your profile…');
+    try{ const c = await api('POST', `/session/${SESSION}/create-customer`, { firstName, lastName, email, phone:STATE.phone, smsConsent }, true); startWalkIn(c.firstName, c.customerId); }
+    catch(e){ errorScreen(e); }
+  };
+}
+
+async function startWalkIn(firstName, customerId){
+  STATE.firstName=firstName; STATE.customerId=customerId; STATE.services=[]; STATE.techId=null;
+  if (CONFIG && CONFIG.settings && CONFIG.settings.walkinCheckinEnabled===false) return askFrontDesk('Please see the front desk to check in.');
+  loading('Loading services…');
+  try{
+    const sv = await api('GET', `/session/${SESSION}/services`, null, true);
+    STATE.serviceList = sv.services||[];
+    serviceSelect();
+  }catch(e){ errorScreen(e); }
+}
+
+function serviceSelect(){
+  const list = STATE.serviceList;
+  if (!list.length){ return confirmWalkIn(); } // service selection disabled or none → straight to confirm
+  render(`
+    <div class="brand">Hi ${esc(STATE.firstName)}</div>
+    <h1>Choose your service</h1>
+    <div class="list">${list.map(s=>`
+      <button class="opt ${STATE.services.includes(s.id)?'sel':''}" data-id="${s.id}">
+        <span>${esc(s.name)}</span>
+        <span class="meta">${s.durationMinutes?esc(s.durationMinutes)+' min':''}</span>
+      </button>`).join('')}</div>
+    <button class="btn full" id="next" ${STATE.services.length?'':'disabled'}>Continue</button>`);
+  el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{
+    const id=b.dataset.id; const i=STATE.services.indexOf(id);
+    if(i>=0) STATE.services.splice(i,1); else STATE.services.push(id);
+    serviceSelect();
+  });
+  document.getElementById('next').onclick = ()=> (CONFIG.settings.technicianPreferenceEnabled!==false ? techSelect() : confirmWalkIn());
+}
+
+async function techSelect(){
+  loading('Loading technicians…');
+  try{
+    const t = await api('GET', `/session/${SESSION}/technicians`, null, true);
+    const techs = t.technicians||[];
+    if(!techs.length) return confirmWalkIn();
+    render(`
+      <h1>Any preference?</h1>
+      <p class="sub">Choose a technician, or no preference.</p>
+      <div class="list">
+        <button class="opt ${STATE.techId===null?'sel':''}" data-id="">No preference</button>
+        ${techs.map(x=>`<button class="opt ${STATE.techId===x.technicianId?'sel':''}" data-id="${x.technicianId}"><span>${esc(x.name)}</span>${x.available?'<span class="meta ok">available</span>':''}</button>`).join('')}
+      </div>
+      <button class="btn full" id="next">Continue</button>`);
+    el.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{ STATE.techId=b.dataset.id||null; techSelectRefresh(techs); });
+    document.getElementById('next').onclick = confirmWalkIn;
+  }catch(e){ errorScreen(e); }
+}
+function techSelectRefresh(techs){ el.querySelectorAll('.opt').forEach(b=>b.classList.toggle('sel',(b.dataset.id||null)===STATE.techId)); }
+
+async function confirmWalkIn(){
+  loading('Checking you in…');
+  try{
+    const c = await api('POST', `/session/${SESSION}/check-in-walk-in`, {
+      customerId: STATE.customerId, customerName: STATE.firstName, phone: STATE.phone,
+      serviceIds: STATE.services, technicianId: STATE.techId || undefined,
+    }, true);
+    confirmation(c);
+  }catch(e){ errorScreen(e); }
+}
+
+function confirmation(c){
+  if (c.status==='already_checked_in') return alreadyChecked(c);
+  const wait = (c.estimatedWaitMinutes!=null && CONFIG.settings.showWaitEstimate!==false);
+  render(`
+    <div class="big-ico ok">✓</div>
+    <h1>You’re checked in!</h1>
+    <p class="sub">Thanks${c.firstName?`, ${esc(c.firstName)}`:''}. Please have a seat — we’ll be with you shortly.</p>
+    ${wait?`<div class="appt-card"><div class="time">~${esc(c.estimatedWaitMinutes)} min</div><div class="meta" style="color:var(--aps-ink-soft)">estimated wait</div></div>`:''}
+    <button class="btn full" id="done">Done</button>`);
+  document.getElementById('done').onclick = finish;
+}
+
+function alreadyChecked(c){
+  render(`
+    <div class="big-ico">⏳</div>
+    <h1>You’re already checked in</h1>
+    <p class="sub">Please wait for the front desk or your technician.</p>
+    <button class="btn full" id="done">Done</button>`);
+  document.getElementById('done').onclick = finish;
+}
+
+function askFrontDesk(msg){
+  render(`
+    <div class="big-ico">🔔</div>
+    <h1>Please see the front desk</h1>
+    <p class="sub">${esc(msg||'Our team will be happy to help you check in.')}</p>
+    <button class="btn full" id="done">Start over</button>`);
+  document.getElementById('done').onclick = finish;
+}
+
+function errorScreen(e){
+  const offline = !e.status; // network error
+  if (e.status===429) return askFrontDesk('Too many attempts — please ask the front desk for help.');
+  render(`
+    <div class="big-ico bad">${offline?'📶':'⚠️'}</div>
+    <h1>${offline?'Connection issue':'Something went wrong'}</h1>
+    <p class="sub">${esc(e.message||'Please try again or ask the front desk.')}</p>
+    <button class="btn full" id="retry">Try again</button>
+    <button class="btn ghost full" id="fd">Ask front desk</button>`);
+  document.getElementById('retry').onclick = phoneEntry;
+  document.getElementById('fd').onclick = ()=>askFrontDesk();
+}
+
+async function finish(){
+  try{ await api('POST', `/session/${SESSION}/complete`, null, true); }catch{}
+  boot(); // fresh session for the next guest
+}
+
+// heartbeat to keep the session warm + device "last seen" fresh
+setInterval(()=>{ if(SESSION&&TOKEN) api('POST', `/session/${SESSION}/heartbeat`, null, true).catch(()=>{}); }, 60000);
+
+async function boot(){
+  if(!SLUG){ render(`<h1>Setup needed</h1><p class="sub">This kiosk has no check-in code. Add <code>?slug=YOUR_SLUG</code> to the URL.</p>`); return; }
+  loading('Connecting…');
+  try{
+    CONFIG = await api('GET', `/${SLUG}/config`);
+    if (CONFIG.branches && CONFIG.branches.length > 1) { branchPicker(); return; } // multi-branch kiosk: pick a location first
+    await startSession(null);
+  }catch(e){
+    if(e.status===403) return render(`<h1>Check-in is off</h1><p class="sub">${esc(e.message)}</p>`);
+    if(e.status===404) return render(`<h1>Not available</h1><p class="sub">This check-in code isn’t recognized.</p>`);
+    errorScreen(e);
+  }
+}
+
+// Multi-branch: let the guest choose which location they're checking in at; the chosen branch is sent to start-session
+// and validated server-side against the device's allow-list.
+function branchPicker(){
+  const bs = CONFIG.branches || [];
+  render(`
+    <h1>${esc(CONFIG.salonName||'Welcome')}</h1>
+    <p class="sub">Which location are you checking in at?</p>
+    <div class="branch-list">${bs.map(b=>`<button class="btn full branch" data-b="${esc(b.id)}">${esc(b.name)}</button>`).join('')}</div>`);
+  el.querySelectorAll('.branch').forEach(btn=>btn.onclick=()=>startSession(btn.dataset.b));
+}
+
+async function startSession(branchId){
+  loading('Connecting…');
+  try{
+    const s = await api('POST', `/${SLUG}/start-session`, branchId?{ branchId }:undefined);
+    SESSION = s.sessionId; TOKEN = s.sessionToken; CONFIG = s.config || CONFIG;
+    welcome();
+  }catch(e){
+    if(e.status===403) return render(`<h1>Check-in is off</h1><p class="sub">${esc(e.message)}</p>`);
+    if(e.status===400 && CONFIG.branches && CONFIG.branches.length>1) return branchPicker(); // branch not allowed — re-pick
+    if(e.status===404) return render(`<h1>Not available</h1><p class="sub">This check-in code isn’t recognized.</p>`);
+    errorScreen(e);
+  }
+}
+boot();
+</script>
+</body>
+</html>

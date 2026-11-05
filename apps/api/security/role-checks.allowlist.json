@@ -1,0 +1,491 @@
+{
+ "_doc": "check:role-checks allowlist (BUILD_PLAN Phase 9, Constitution 2 \u00a7148). Every role-NAME comparison left in backend code, with WHY it is not a permission. Only shrinks: a new one fails the gate. Regenerate only to remove entries.",
+ "entries": [
+  {
+   "file": "apps/api/src/common/tenant-context.middleware.ts",
+   "match": "*",
+   "count": 3,
+   "reason": "Agent A (tenant-context middleware): the SUPER_ADMIN plane split (the one cross-tenant principal skips client-key stripping and the RLS tenant binding) and customer sessions skipping staff re-authorization. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/auth-flow.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/auth-login.service.ts",
+   "match": "*",
+   "count": 12,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.) BUILD_PLAN Phase 13 D: +2 in authorizeResume (a biometric sign-in never resumes a SUPER_ADMIN; a CUSTOMER carries the role defaults, as at password sign-in). Oct 12 2026 merge (AUTH): +1 \u2014 a TECHNICIAN login is refused while her GLOBAL tech profile is paused/locked/suspended (the human's identity status, not a permission)."
+  },
+  {
+   "file": "modules/identity/src/auth/auth-session-token.ts",
+   "match": "*",
+   "count": 3,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/auth-user.repository.ts",
+   "match": "*",
+   "count": 2,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/authorization-state.ts",
+   "match": "*",
+   "count": 9,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.) Oct 12 2026 merge (AUTH): +1 \u2014 a TECHNICIAN's enterable branches are her employment grants (grants \u2192 home \u2192 none), never the OWN scope's 'any branch'."
+  },
+  {
+   "file": "modules/identity/src/auth/password-reset-core.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/reset-authz.ts",
+   "match": "*",
+   "count": 17,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/auth/system-password-reset.service.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/customer-security/customer-security.guard.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/identity/src/staff-roles/staff-roles.ts",
+   "match": "*",
+   "count": 2,
+   "reason": "Agent A owns identity (sign-in, session minting, refresh, password reset, staff roles): realm routing, the SUPER_ADMIN plane split and the role -> permission / template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/super-admin-platform.repository.ts",
+   "match": "*",
+   "count": 6,
+   "reason": "Agent A / platform user administration: role LABELS, validation of a target user's role (must be manager / owner to manage a branch), the invited role's platform_role column. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/super-admin-platform.service.ts",
+   "match": "*",
+   "count": 14,
+   "reason": "Agent A owns the platform user-role path: validation of the role being set / invited (input vocabulary), the SUPER_ADMIN plane split and the last-owner guard on a target user. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "modules/workforce/src/team-permissions/access.service.ts",
+   "match": "*",
+   "count": 7,
+   "reason": "Agent A's team-permissions service: owner IDENTITY for ownership transfer / last-owner and the role -> template mapping (users.role writes). (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/decision.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/guards/platform-domain.guard.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/guards/role-scoped.guards.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/guards/super-admin.guard.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/rbac.ts",
+   "match": "*",
+   "count": 3,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/role-templates.ts",
+   "match": "*",
+   "count": 5,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "packages/permissions/src/security-core.ts",
+   "match": "*",
+   "count": 7,
+   "reason": "Agent A's authorization core (rbac / security-core / role-templates / decision / guards): realm routing, the SUPER_ADMIN plane split and the role -> template mapping itself. (Whole-file entry: another agent is still editing this file; the count caps it.)"
+  },
+  {
+   "file": "apps/api/src/account/account.service.ts",
+   "match": "const requestType: RequestType = expectedRole === 'customer' ? 'delete' : 'deactivate';",
+   "count": 1,
+   "reason": "Realm of the account request ('customer' self-delete vs staff deactivate) \u2014 picks the flow for the caller's plane; not a grant."
+  },
+  {
+   "file": "apps/api/src/account/account.service.ts",
+   "match": "const isCustomer = expectedRole === 'customer';",
+   "count": 1,
+   "reason": "Realm of the account request ('customer' self-delete vs staff deactivate) \u2014 picks the flow for the caller's plane; not a grant."
+  },
+  {
+   "file": "apps/api/src/session/auto-logout.dto.ts",
+   "match": "if (role === \"SUPER_ADMIN\") return true;",
+   "count": 1,
+   "reason": "The salon's idle auto-logout POLICY is configured per role category (exemptOwnerAdmin / applyToManagers / allowReceptionExtend) \u2014 a session-lifetime setting addressed to roles, not an authorization decision."
+  },
+  {
+   "file": "apps/api/src/session/auto-logout.dto.ts",
+   "match": "if (role === \"OWNER\" || role === \"ADMIN\") return !!opts.exemptOwnerAdmin;",
+   "count": 1,
+   "reason": "The salon's idle auto-logout POLICY is configured per role category (exemptOwnerAdmin / applyToManagers / allowReceptionExtend) \u2014 a session-lifetime setting addressed to roles, not an authorization decision."
+  },
+  {
+   "file": "apps/api/src/session/auto-logout.dto.ts",
+   "match": "if (role === \"MANAGER\") return !opts.applyToManagers;",
+   "count": 1,
+   "reason": "The salon's idle auto-logout POLICY is configured per role category (exemptOwnerAdmin / applyToManagers / allowReceptionExtend) \u2014 a session-lifetime setting addressed to roles, not an authorization decision."
+  },
+  {
+   "file": "apps/api/src/session/auto-logout.dto.ts",
+   "match": "if (role === \"OWNER\" || role === \"MANAGER\" || role === \"ADMIN\" || role === \"SUPER_ADMIN\") return true;",
+   "count": 1,
+   "reason": "The salon's idle auto-logout POLICY is configured per role category (exemptOwnerAdmin / applyToManagers / allowReceptionExtend) \u2014 a session-lifetime setting addressed to roles, not an authorization decision."
+  },
+  {
+   "file": "apps/api/src/session/auto-logout.dto.ts",
+   "match": "if (role === \"RECEPTION\" || role === \"FRONT_DESK\") return !!allowReceptionExtend;",
+   "count": 1,
+   "reason": "The salon's idle auto-logout POLICY is configured per role category (exemptOwnerAdmin / applyToManagers / allowReceptionExtend) \u2014 a session-lifetime setting addressed to roles, not an authorization decision."
+  },
+  {
+   "file": "modules/ai/src/ai/ai-knowledge.ts",
+   "match": "&& (c.allowedRoles.length === 0 || c.allowedRoles.includes(f.role)));",
+   "count": 1,
+   "reason": "AI knowledge-base chunk AUDIENCE authored as data (chunk.allowedRoles) \u2014 content addressing; the caller's permission to use the assistant is checked separately."
+  },
+  {
+   "file": "modules/booking/src/customer-phone/customer-phone-update.service.ts",
+   "match": "if (ctx.source === 'staff_pos' && ctx.role === 'RECEPTION' && !settings.allowReceptionistUpdates) {",
+   "count": 1,
+   "reason": "Salon policy setting allowReceptionistUpdates is addressed to the RECEPTION role by name (Phase 3 spec E-series); the phone update itself is permission-gated."
+  },
+  {
+   "file": "modules/communications/src/communications/communications-overview-core.ts",
+   "match": "export function isTenantUserRole(role: string): boolean { return (TENANT_USER_ROLES as readonly string[]).incl",
+   "count": 1,
+   "reason": "Validates the RECIPIENT roles a platform announcement is addressed to (input vocabulary), not the caller's authority."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-appeals.ts",
+   "match": "if (params.role === 'owner' || params.role === 'tenant_admin' || params.role === 'branch_manager') return { ok",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-appeals.ts",
+   "match": "if (reviewer.role !== 'moderator') return { ok: false, reason: 'moderator_required' };",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'owner' || viewer.role === 'tenant_admin') return allow('same_tenant_admin');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'branch_manager') {",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'receptionist') return deny('receptionist_no_private_incident_read');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'technician') return deny('technician_no_private_incident_read');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'moderator' && viewer.moderationCaseId) return allow('moderator_case');",
+   "count": 2,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.tenantId === record.ownerTenantId && viewer.role !== 'technician') return allow('own_tenant_draft')",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-classification.ts",
+   "match": "if (viewer.role === 'moderator') return allow('moderator');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-evidence.ts",
+   "match": "if (viewer.role !== 'owner' && viewer.role !== 'tenant_admin' && viewer.role !== 'branch_manager') {",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-evidence.ts",
+   "match": "if (viewer.role === 'moderator' && viewer.moderationCaseId) {",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-input.ts",
+   "match": "if (!TENANT_ROLES.includes(role)) throw invalid(field, 'unknown_role');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (!AUTHOR.has(ctx.role)) return err('author_role_required');",
+   "count": 2,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "const moderator = ctx.role === 'moderator';",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (!APPROVER.has(ctx.role)) return err('approver_role_required');           // receptionist/technician cannot",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (!APPROVER.has(ctx.role)) return err('approver_role_required');",
+   "count": 2,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (!moderator && !APPROVER.has(ctx.role)) return err('approver_role_required');",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (ctx.role === 'receptionist') return ctx.receptionistApprovalRequired;",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community-workflow.ts",
+   "match": "if (ctx.role === 'technician') return true; // technicians never publish directly",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (role === 'moderator') {",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (v.role !== 'moderator') {",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (!APPROVER_ROLES.has(v.role)) throw new CommunityError('permission_denied', 403, { role: v.role });",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (!APPROVER_ROLES.has(v.role)) throw new CommunityError('incident_read_not_allowed', 403, { role: v.role });",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "const scope = v.role === 'branch_manager' ? { branchOnly: ctx.branchId || null } : { branchOnly: undefined };",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (post.originTenantId !== v.ctx.tenantId && v.role !== 'moderator' && post.visibility !== 'community_publish",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "&& v.role !== 'owner' && v.role !== 'tenant_admin' && post.originBranchId && post.originBranchId !== v.ctx.bra",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "if (v.settings.branchVisibility !== 'own_branch' || v.role === 'owner' || v.role === 'tenant_admin') return un",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/safety/src/tenant-safety-community/community.service.ts",
+   "match": "canAppeal: own && APPROVER_ROLES.has(v.role) && (r.status === 'rejected' || r.status === 'removed'),",
+   "count": 1,
+   "reason": "Safety Community (Phase 8) role VOCABULARY (owner / tenant_admin / branch_manager / receptionist / technician / moderator \u2014 the community-permissions.ts safety floor: a receptionist may never approve). Since Phase 9 a session's community role is DERIVED FROM ITS PERMISSIONS (communityRoleOf: platform plane \u2192 moderator, owner.branches.compare \u2192 owner, community.advisory.approve \u2192 branch_manager, community.advisory.draft \u2192 receptionist); these lines compare that derived vocabulary, and communityRole() keeps the legacy name mapping only for contexts with no permissions (internal callers / fixtures)."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-ai-ocr-receipt/super-admin-ai-ocr-receipt-core.ts",
+   "match": "if (!SUPPORT_ROLES.has(req.role)) return { granted: false, error: 'FORBIDDEN_ROLE' };",
+   "count": 1,
+   "reason": "Platform plane: OCR support access for platform support roles (role names of the PLATFORM plane)."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-maintenance/maintenance-core.ts",
+   "match": "if (role && EMERGENCY_ROLES.has(role)) return { allow: true };",
+   "count": 1,
+   "reason": "Platform maintenance mode admits roles BY NAME as configured by the platform (state.allowedRoles) and always the platform plane (emergency access)."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-maintenance/maintenance-core.ts",
+   "match": "if (role && state.allowedRoles.includes(role)) return { allow: true };",
+   "count": 1,
+   "reason": "Platform maintenance mode admits roles BY NAME as configured by the platform (state.allowedRoles) and always the platform plane (emergency access)."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/access-request-core.ts",
+   "match": "export function isGrantableRole(role: string): boolean { return GRANTABLE.includes(role); }",
+   "count": 1,
+   "reason": "Platform access requests: validates the REQUESTED role (input vocabulary) and that only the platform plane approves a SUPER_ADMIN request."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/access-request-core.ts",
+   "match": "if (requestedRole === 'SUPER_ADMIN') return approverRole === 'SUPER_ADMIN';",
+   "count": 1,
+   "reason": "Platform access requests: validates the REQUESTED role (input vocabulary) and that only the platform plane approves a SUPER_ADMIN request."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-platform/access-request-core.ts",
+   "match": "return requestedRole === 'OWNER' || requestedRole === 'SUPER_ADMIN';",
+   "count": 1,
+   "reason": "Platform access requests: validates the REQUESTED role (input vocabulary) and that only the platform plane approves a SUPER_ADMIN request."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-security/security.kysely.repository.ts",
+   "match": "return rows.map((r: any) => ({ userId: String(r.id), name: r.full_name || '\u2014', role: r.role, mfaEnabled: !!r.m",
+   "count": 1,
+   "reason": "Platform security dashboard LABEL (privileged = Super Admin / owner) \u2014 display only."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-staff/workforce-core.ts",
+   "match": "return (WORKER_ROLES as readonly string[]).includes((role || '').toUpperCase());",
+   "count": 1,
+   "reason": "Platform workforce directory classifies a USER RECORD's role (directory category filter), not the caller."
+  },
+  {
+   "file": "modules/workforce/src/tech-profile/tech-workplaces.service.ts",
+   "match": "if (role !== 'TECHNICIAN') return base;",
+   "count": 1,
+   "reason": "The technician override vocabulary applies only to the TECHNICIAN base role \u2014 the role -> permission mapping itself (permissionsAtTarget)."
+  },
+  {
+   "file": "modules/workforce/src/technicians/tech-app-access.middleware.ts",
+   "match": "if (!ctx || ctx.role !== 'TECHNICIAN' || !ctx.tenantId || !ctx.userId || !this.db) return next();",
+   "count": 1,
+   "reason": "Technician-app plane: the salon's tech-app kill switch applies to technician sessions (realm routing)."
+  },
+  {
+   "file": "packages/auth/src/security.ts",
+   "match": "if (ctx.role === 'SUPER_ADMIN') return false;",
+   "count": 1,
+   "reason": "Platform plane: the SUPER_ADMIN session-lifetime ceiling and its cross-tenant exemption (packages/auth sits below packages/permissions)."
+  },
+  {
+   "file": "packages/auth/src/security.ts",
+   "match": "if (role === 'SUPER_ADMIN') {",
+   "count": 1,
+   "reason": "Platform plane: the SUPER_ADMIN session-lifetime ceiling and its cross-tenant exemption (packages/auth sits below packages/permissions)."
+  },
+  {
+   "file": "packages/permissions/src/principal.ts",
+   "match": "export function isPlatformPrincipal(p: RoleLike): boolean { return roleOf(p) === 'SUPER_ADMIN'; }",
+   "count": 1,
+   "reason": "THE plane helpers (isPlatformPrincipal / isCustomerPrincipal / isDevicePrincipal) \u2014 the one place backend code asks which plane a principal is on."
+  },
+  {
+   "file": "packages/permissions/src/principal.ts",
+   "match": "export function isCustomerPrincipal(p: RoleLike): boolean { return roleOf(p) === 'CUSTOMER'; }",
+   "count": 1,
+   "reason": "THE plane helpers (isPlatformPrincipal / isCustomerPrincipal / isDevicePrincipal) \u2014 the one place backend code asks which plane a principal is on."
+  },
+  {
+   "file": "packages/permissions/src/principal.ts",
+   "match": "export function isDevicePrincipal(p: RoleLike): boolean { return roleOf(p) === 'CUSTOMER_DISPLAY'; }",
+   "count": 1,
+   "reason": "THE plane helpers (isPlatformPrincipal / isCustomerPrincipal / isDevicePrincipal) \u2014 the one place backend code asks which plane a principal is on."
+  },
+  {
+   "file": "apps/api/src/common/async-export/async-export.service.ts",
+   "match": "*",
+   "count": 4,
+   "reason": "Agent A (Phase 12 async exports): the SUPER_ADMIN plane split (a platform export has no salon, runs across salons as its request did, and is authorized by the DERIVED platform key) and the customer realm (a customer principal is not in the staff authorization state; its own account row is re-checked instead). Authorization itself is the route's guards + permissions."
+  },
+  {
+   "file": "apps/api/src/common/async-export/legacy-export-jobs.ts",
+   "match": "*",
+   "count": 1,
+   "reason": "Agent A (Phase 12): the pre-Phase-12 billing / revenue-residual export jobs are platform records \u2014 only a platform principal may read them through /super-admin/operations (then the job's own key decides)."
+  },
+  {
+   "file": "modules/identity/src/auth/biometric-auth.ts",
+   "match": "*",
+   "count": 2,
+   "reason": "BUILD_PLAN Phase 13 D (Constitution 6 \u00a737): realm routing of the biometric device credential \u2014 the SUPER_ADMIN plane is refused Face ID (platform accounts use password + authenticator), and the branch picker is skipped for the two realms that have no branch to pick at sign-in (CUSTOMER, OWNER), exactly as password sign-in does."
+  },
+  {
+   "file": "modules/identity/src/auth/branch-access.ts",
+   "match": "session.role === 'TECHNICIAN'",
+   "count": 1,
+   "reason": "Oct 12 2026 merge (AUTH, workforce audit P2 #28): branch selection fails CLOSED for a TECHNICIAN session \u2014 her branches are her employment (one user_branch_access grant per membership), an identity fact of the base role, not a capability a permission could express; owners/staff keep the documented fail-open."
+  },
+  {
+   "file": "modules/queue/src/tech/tech.service.ts",
+   "match": "role !== 'TECHNICIAN'",
+   "count": 2,
+   "reason": "Oct 12 2026 merge (AUTH, workforce audit P0 #13): a TECHNICIAN token is never a manager in the Tech App even when a per-salon override handed it technicians.edit \u2014 a technician must not decide her own skill request / resolve manager messages. Belt-and-braces on top of the permission. Oct 13 2026 (wave 4): the same identity fact opens the salon help inbox to the front desk (technicians.view) while a technician keeps reading only her own messages."
+  },
+  {
+   "file": "modules/workforce/src/tech-profile/media-access-core.ts",
+   "match": "*",
+   "count": 2,
+   "reason": "Technician Profile merge (WF, Oct 12 2026): /media/* private-object read decision. SUPER_ADMIN = the platform plane split; the staff-role set (OWNER/MANAGER/FRONT_DESK/RECEPTION) applies ONLY together with a DB-confirmed active membership of the owning profile at the session's tenant \u2014 the media route resolves a bare session (cookie/bearer), not a permission set. Move to a resolved permission when /media carries the authorization state."
+  },
+  {
+   "file": "modules/super-admin/src/super-admin-staff/super-admin-staff.kysely.repository.ts",
+   "match": "u.role !== 'TECHNICIAN'",
+   "count": 1,
+   "reason": "Technician Profile merge (WF, Oct 12 2026): branch-transfer data move \u2014 only a TECHNICIAN login has the technician roster / membership / branch-grant rows to move (the role -> template mapping, not an authorization decision; the route itself is SuperAdminGuard + permission)."
+  }
+ ]
+}

@@ -1,0 +1,19 @@
+{
+  "// note": "Monorepo root config. Each app under apps/* has its own self-contained tsconfig.json that its build uses. This root file exists for editor/root tooling and documents the shared compiler baseline; it intentionally compiles nothing itself.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "forceConsistentCasingInFileNames": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true
+  },
+  "include": [],
+  "exclude": ["node_modules", "**/dist", "**/build"]
+}

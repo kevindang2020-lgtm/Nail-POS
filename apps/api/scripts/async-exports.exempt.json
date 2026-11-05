@@ -1,0 +1,19 @@
+{
+  "_": "BUILD_PLAN Phase 12 (Constitution 5 §32–33): manifest export / download / csv GETs that do NOT build a file, so they are not @AsyncExport routes. check:async-exports fails on a stale entry.",
+  "routes": {
+    "GET /pos/payroll/periods/{id}/exports": "the payroll export AUDIT list (who exported which period, format, sha256) — JSON rows, not a file (Payroll mandate §83)",
+    "GET /super-admin/audit-logs/export-flags": "a list of export-review flags (JSON page), not a file",
+    "GET /super-admin/platform/report-exports": "a list of report-export records, not a file",
+    "GET /super-admin/billing/exports/jobs/{token}": "pre-Phase-12 job status; aliased: the job is GET /super-admin/operations/{jobId} (legacy-export-jobs.ts)",
+    "GET /super-admin/billing/exports/jobs/{token}/download": "streams the file the pre-Phase-12 job already built; aliased: GET /super-admin/operations/{jobId}/download",
+    "GET /super-admin/revenue-residuals/export-jobs": "pre-Phase-12 job list; each job is also GET /super-admin/operations/{id}",
+    "GET /super-admin/revenue-residuals/export-jobs/{id}": "pre-Phase-12 job status; aliased: GET /super-admin/operations/{id} (+ /download)",
+    "GET /super-admin/scheduled-reports/runs/{runId}/download": "streams a scheduled report run's stored file (built by the scheduler, not on request)",
+    "GET /tenant/help/tickets/{id}/attachments/{attachmentId}/download": "streams an uploaded attachment from the private attachment store",
+    "GET /customer/operations/{id}/download": "the async contract's own download (streams the stored result)",
+    "GET /owner/operations/{id}/download": "the async contract's own download (streams the stored result)",
+    "GET /pos/operations/{id}/download": "the async contract's own download (streams the stored result)",
+    "GET /super-admin/operations/{id}/download": "the async contract's own download (streams the stored result)",
+    "GET /tech/operations/{id}/download": "the async contract's own download (streams the stored result)"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "_comment": "BUILD_PLAN Phase 12 (#17): mutating routes whose body is not yet validated with @Body(ValidatedBody(schema)) — route → owning module. ONLY SHRINKS: validate a route, then remove its line (node apps/api/scripts/check-validated-bodies.mjs --write).",
+  "routes": {
+    "POST /integrations/inbound/:connectionId": "super-admin",
+    "POST /voice/tool": "ai",
+    "POST /webhooks/bank/:token": "payments",
+    "POST /webhooks/payments/:processor": "payments"
+  }
+}

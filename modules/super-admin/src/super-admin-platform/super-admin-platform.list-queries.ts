@@ -1,0 +1,58 @@
+// super-admin-platform.list-queries.ts — BUILD_PLAN Phase 12 (Constitution 5 §47–§52, DoD #21/#22/#23): the declared filters, sorts,
+// search and date-range cap of each list endpoint in super-admin-platform.controller.ts (@ListQueries on the controller). The legacy
+// parameter names are the handlers' own and keep working; filter[x], q, sort, limit and from/to are the canonical forms
+// (packages/api-contracts/src/list-query.ts). Unknown filter[x] / sort → 400; a range over maxDays → 400.
+import type { ListQuerySpec } from '@aipowersalon/database';
+
+const BRANCH_DIRECTORY_SPEC = {
+  filters: { status: { type: 'text' }, tenant: { type: 'id', aliases: ['tenant', 'tenantId'] }, city: { type: 'text' }, healthMin: { type: 'number', min: 0, max: 100 }, healthMax: { type: 'number', min: 0, max: 100 } },
+  search: { params: ['search'] },
+  sorts: { name: null, tenantName: null, city: null, status: null, staff: null, todaysAppts: null, revenueMtdCents: null, healthScore: null, queueWaiting: null, openTickets: null, manager: null },
+  defaultSort: '-revenueMtdCents', sortParams: ['sort'], dirParams: ['dir', 'direction'], unsignedDirection: 'desc', legacySort: { by: 'sort', dir: 'dir' },
+  limitParams: ['pageSize'], maxLimit: 100, params: ['page'],
+} satisfies ListQuerySpec;
+
+export const SuperAdminPlatformControllerListQueries = {
+  applications: { filters: { status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  leads: { filters: { status: { type: 'text' }, kind: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  hardware: { filters: { status: { type: 'text' }, tenantId: { type: 'id' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  auditLogs: { filters: { tenantId: { type: 'id' }, userId: { type: 'id' }, action: { type: 'text' }, entityType: { type: 'text' } }, limitParams: ['pageSize'], search: false, dateRange: { maxDays: 'analytics' }, params: ['page'] },
+  paymentGatewaysState: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] }, params: ['page'] },
+  paymentGatewaysExport: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] } },
+  pgStatusBreakdown: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] }, params: ['page'] },
+  pgTopProcessors: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] }, params: ['page'] },
+  pgRecentEvents: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] }, params: ['page'] },
+  pgRecentActivity: { filters: { status: { type: 'text' }, processor: { type: 'text' }, setupStage: { type: 'text' }, settlementStatus: { type: 'text' } }, search: { params: ['search'] }, dateRange: { maxDays: 'analytics', from: ['dateFrom'], to: ['dateTo'] }, params: ['page'] },
+  tenantPerformance: { filters: { growthDirection: { type: 'text' }, state: { type: 'text' }, status: { type: 'text' }, plan: { type: 'text' }, minVolume: { type: 'number' }, maxVolume: { type: 'number' } }, search: { params: ['search'] }, sorts: { rank: null, salonName: null, tenantName: null, monthlyCardVolume: null, monthlyCardVolumeCents: null, transactionCount: null, averageTicket: null, averageTicketCents: null, growth: null, growthPercent: null, lastActive: null }, defaultSort: '-monthlyCardVolume', sortParams: ['sortBy'], dirParams: ['sortDirection'], unsignedDirection: 'desc', legacySort: { by: 'sortBy', dir: 'sortDirection' }, params: ['page'] },
+  topPerforming: { search: false },
+  users: { filters: { role: { type: 'text' }, tenantId: { type: 'id' }, branchId: { type: 'id' }, status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  usersDashboard: { filters: { role: { type: 'text' } }, search: { params: ['search'] } },
+  branchesDirectory: BRANCH_DIRECTORY_SPEC,
+  branchesExport: { ...BRANCH_DIRECTORY_SPEC, filters: { ...BRANCH_DIRECTORY_SPEC.filters, ids: { type: 'id', multi: true } } },
+  branchTransferPreflight: { filters: { destTenantId: { type: 'id' } }, search: false },
+  platformServices: { filters: { category: { type: 'text' }, status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformProducts: { filters: { category: { type: 'text' }, status: { type: 'text' }, lowStock: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformCategories: { limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformBrands: { limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformSuppliers: { limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformServiceCategories: { limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  tenantServiceCategories: { filters: { tenantId: { type: 'id' } }, search: false },
+  platformAppointments: { filters: { status: { type: 'text' }, source: { type: 'text' }, date: { type: 'date' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformPayments: { filters: { status: { type: 'text' }, method: { type: 'text' }, processor: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  paymentsTransactions: { filters: { tenantId: { type: 'id' }, branchId: { type: 'id' }, method: { type: 'text' }, status: { type: 'text' }, refundStatus: { type: 'text' }, settlementStatus: { type: 'text' }, customerId: { type: 'id' }, deviceId: { type: 'id' }, merchantAccount: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, sorts: { amount: 'pm.amount_cents', date: 'pm.created_at', status: 'pm.status' }, defaultSort: '-date', sortParams: ['sort'], dirParams: ['direction'], unsignedDirection: 'desc', legacySort: { by: 'sort', dir: 'direction' }, dateRange: { maxDays: 'analytics', from: ['startDate'], to: ['endDate'] }, params: ['page'] },
+  platformCustomers: { filters: { status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  customerDuplicates: { limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  tenantProductCategories: { filters: { tenantId: { type: 'id' } }, search: false },
+  privacyRequests: { filters: { status: { type: 'text' } }, limitParams: ['pageSize'], search: false, params: ['page'] },
+  platformReportExports: { filters: { reportKey: { type: 'text' }, format: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformReminders: { filters: { channel: { type: 'text' }, status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformAutomations: { filters: { status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformIntegrations: { filters: { processor: { type: 'text' }, status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformDevices: { filters: { category: { type: 'text' }, status: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  platformSecurity: { filters: { severity: { type: 'text' } }, limitParams: ['pageSize'], search: { params: ['search'] }, params: ['page'] },
+  invitations: { filters: { status: { type: 'text' }, tenantId: { type: 'id' } }, limitParams: ['pageSize'], search: false, params: ['page'] },
+  accessRequests: { filters: { status: { type: 'text' }, tenantId: { type: 'id' } }, limitParams: ['pageSize'], search: false, params: ['page'] },
+  usersExport: { filters: { role: { type: 'text' }, tenantId: { type: 'id' }, branchId: { type: 'id' }, status: { type: 'text' } }, search: { params: ['search'] } },
+  tenantUsersAndBranches: { filters: { tenantId: { type: 'id' } }, search: false },
+  sessions: { filters: { active: { type: 'text' } }, search: false },
+} satisfies Record<string, ListQuerySpec>;

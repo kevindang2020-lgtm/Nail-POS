@@ -1,0 +1,61 @@
+AIPowerSalon Website — Full Server Setup Guide (Hetzner + GoDaddy)
+===================================================================
+Goal: serve this folder at https://yourdomain.com
+Replace yourdomain.com and SERVER_IP with the real values.
+
+STEP 0 — What you need from the owner
+  - This zip
+  - Hetzner server IP + SSH root access (password or key)
+  - The GoDaddy domain name (and GoDaddy login if DNS not yet set)
+
+STEP 1 — Point the domain (GoDaddy)
+  My Products -> domain -> Manage DNS. Set:
+     A   @     SERVER_IP   TTL 600
+     A   www   SERVER_IP   TTL 600
+  Remove any old A/CNAME records for @ and www (parking/forwarding).
+  Wait 5-30 min. Check: ping yourdomain.com -> should show SERVER_IP.
+
+STEP 2 — Install nginx (on the server)
+  ssh root@SERVER_IP
+  apt update && apt install -y nginx
+  ufw allow 'Nginx Full'        (if ufw is active)
+  ALSO open ports 80 + 443 in the Hetzner Cloud Firewall (console),
+  if one is attached — ufw alone is not enough.
+
+STEP 3 — Upload the website
+  On the server:   mkdir -p /var/www/aipowersalon
+  From your computer, inside the unzipped folder:
+     scp -r index.html assets root@SERVER_IP:/var/www/aipowersalon/
+  Keep the structure exactly — index.html loads assets/ by relative path.
+
+STEP 4 — nginx site config
+  nano /etc/nginx/sites-available/aipowersalon
+  Paste (edit domain):
+     server {
+         listen 80;
+         listen [::]:80;
+         server_name yourdomain.com www.yourdomain.com;
+         root /var/www/aipowersalon;
+         index index.html;
+         location / { try_files $uri $uri/ /index.html; }
+     }
+  Then:
+     ln -s /etc/nginx/sites-available/aipowersalon /etc/nginx/sites-enabled/
+     rm -f /etc/nginx/sites-enabled/default
+     nginx -t          (must say OK)
+     systemctl reload nginx
+  Test: http://yourdomain.com shows the site.
+
+STEP 5 — Free HTTPS
+  apt install -y certbot python3-certbot-nginx
+  certbot --nginx -d yourdomain.com -d www.yourdomain.com
+  Choose "redirect HTTP to HTTPS". Renewal is automatic.
+
+UPDATING LATER
+  Re-run the scp command from Step 3 — files overwrite instantly.
+
+FORMS
+  Applications are delivered by email: when a visitor submits the
+  form, their email app opens pre-filled to nailsalon@aipowersalon.com
+  and they press Send. When the backend API is live, set API_BASE in
+  assets/js/main.js and submissions will save directly instead.

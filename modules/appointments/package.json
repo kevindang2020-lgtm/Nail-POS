@@ -1,0 +1,39 @@
+{
+  "name": "@aipowersalon/appointments",
+  "version": "0.1.0",
+  "private": true,
+  "description": "The appointments domain module (Constitution 13 Phase 6). Depends on packages only; consumed compiled by apps/api.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/api-contracts": "*",
+    "@aipowersalon/config": "*",
+    "@aipowersalon/database": "*",
+    "@aipowersalon/date-time": "*",
+    "@aipowersalon/events": "*",
+    "@aipowersalon/money": "*",
+    "@aipowersalon/permissions": "*",
+    "@aipowersalon/realtime-contracts": "*",
+    "@nestjs/common": "^10.4.22",
+    "kysely": "^0.27.4"
+  },
+  "devDependencies": {
+    "@aipowersalon/testing": "*",
+    "@electric-sql/pglite": "0.5.1",
+    "@types/node": "20.11.30"
+  }
+}

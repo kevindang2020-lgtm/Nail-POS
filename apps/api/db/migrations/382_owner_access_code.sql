@@ -1,0 +1,12 @@
+-- 382_owner_access_code.sql — the Owner App's optional "Owner Access Code" second factor.
+--
+-- The Owner login screen (design) has an Owner Access Code field. It is NOT a second password and is NEVER checked
+-- on the client: it is validated server-side in the 'owner' branch of auth-login.service, and ONLY when the owner
+-- has a code configured. This column is that per-owner store — a HASH, never the code itself, exactly like
+-- password_hash. It is nullable and defaults to NULL, so:
+--
+--   • every existing owner keeps signing in with just email/phone + password (no code required), and
+--   • enforcement turns on for an owner the moment a hash is written here (provisioning UI is a separate step).
+--
+-- Fail-open when unset, fail-closed (generic "incorrect" message, no enumeration) when set.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS owner_access_code_hash TEXT;

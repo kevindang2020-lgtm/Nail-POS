@@ -1,0 +1,59 @@
+{
+  "$comment": "Retell custom-function definitions for the AIPowerSalon Booking Gateway (Phase 1). Configure each function in the Retell agent with: url = <API_BASE> + endpoint.path, method = endpoint.method, and headers { 'X-Voice-Key': '<vk_... key issued in Super Admin → AI Receptionist>' }. Mutations must also send an 'Idempotency-Key' header set to Retell's unique tool-invocation id. All times are salon-local; responses include the branch timezone. Money is integer cents.",
+  "functions": [
+    {
+      "name": "get_services",
+      "description": "List the services this salon offers for phone booking, with duration (minutes) and price (integer cents). Call when the caller asks what the salon offers or names a service you need to resolve to a serviceId. Do not guess prices — quote only what this returns.",
+      "endpoint": { "method": "GET", "path": "/api/ai-receptionist/v1/services" },
+      "parameters": { "type": "object", "properties": {}, "required": [] }
+    },
+    {
+      "name": "get_business_hours",
+      "description": "The salon's open/close hours per day. Call when the caller asks when the salon is open, or before suggesting a day. Sunday may be closed — never assume.",
+      "endpoint": { "method": "GET", "path": "/api/ai-receptionist/v1/hours" },
+      "parameters": { "type": "object", "properties": { "startDate": { "type": "string", "description": "YYYY-MM-DD; defaults to today" }, "days": { "type": "integer", "description": "How many days to return (1-14, default 7)" } }, "required": [] }
+    },
+    {
+      "name": "check_availability",
+      "description": "Real open appointment slots for a service on a date. ALWAYS call this before proposing a time and before book_appointment. Offer the caller only the best 2-3 options, not the whole list.",
+      "endpoint": { "method": "GET", "path": "/api/ai-receptionist/v1/availability" },
+      "parameters": { "type": "object", "properties": { "serviceId": { "type": "string" }, "date": { "type": "string", "description": "YYYY-MM-DD" }, "technicianId": { "type": "string", "description": "Optional — only if the caller asked for a specific technician" }, "limit": { "type": "integer" } }, "required": ["serviceId", "date"] }
+    },
+    {
+      "name": "lookup_or_create_customer",
+      "description": "Find the caller's customer profile by phone, or create one WITH THEIR CONSENT. Ask 'May I save your details?' before passing consent=true. If the result is CUSTOMER_MATCH_AMBIGUOUS, hand off to a human instead of guessing.",
+      "endpoint": { "method": "POST", "path": "/api/ai-receptionist/v1/customers/lookup-or-create", "idempotencyKeyHeader": true },
+      "parameters": { "type": "object", "properties": { "phone": { "type": "string" }, "firstName": { "type": "string" }, "lastName": { "type": "string" }, "consent": { "type": "boolean", "description": "true ONLY if the caller explicitly agreed to save their details" }, "callId": { "type": "string" }, "requestId": { "type": "string" } }, "required": ["phone"] }
+    },
+    {
+      "name": "book_appointment",
+      "description": "Book the appointment. Call ONLY after: (1) check_availability returned this exact slot, and (2) you repeated service + date + time + technician back and the caller verbally confirmed. Pass callerConfirmed=true only after that confirmation. Never tell the caller it's booked until this returns success:true. On SLOT_UNAVAILABLE, apologize and check availability again.",
+      "endpoint": { "method": "POST", "path": "/api/ai-receptionist/v1/appointments", "idempotencyKeyHeader": true },
+      "parameters": { "type": "object", "properties": { "serviceId": { "type": "string" }, "date": { "type": "string", "description": "YYYY-MM-DD, salon-local" }, "startTime": { "type": "string", "description": "HH:MM from check_availability" }, "technicianId": { "type": "string" }, "customerId": { "type": "string", "description": "From lookup_or_create_customer" }, "customerName": { "type": "string" }, "customerPhone": { "type": "string" }, "customerNotes": { "type": "string" }, "callerConfirmed": { "type": "boolean" }, "callId": { "type": "string" }, "requestId": { "type": "string" } }, "required": ["serviceId", "date", "startTime", "callerConfirmed"] }
+    },
+    {
+      "name": "get_appointment",
+      "description": "Retrieve one appointment for confirmation/reschedule/cancel flows. The caller's phone is REQUIRED and must verify against the account — an unverified caller cannot see appointment details.",
+      "endpoint": { "method": "GET", "path": "/api/ai-receptionist/v1/appointments/{appointmentId}" },
+      "parameters": { "type": "object", "properties": { "appointmentId": { "type": "string" }, "phone": { "type": "string", "description": "Caller's phone for verification" }, "name": { "type": "string", "description": "Caller's name if the salon requires phone+name verification" } }, "required": ["appointmentId", "phone"] }
+    },
+    {
+      "name": "reschedule_appointment",
+      "description": "Move the VERIFIED caller's OWN appointment to a new time (atomic — never cancel-then-rebook). First verify by phone, confirm which appointment, check_availability for the new time, repeat the new details, get verbal confirmation, then call with callerConfirmed=true. APPOINTMENT_NOT_FOUND may mean it isn't theirs — offer a handoff.",
+      "endpoint": { "method": "POST", "path": "/api/ai-receptionist/v1/appointments/{appointmentId}/reschedule", "idempotencyKeyHeader": true },
+      "parameters": { "type": "object", "properties": { "appointmentId": { "type": "string" }, "phone": { "type": "string" }, "name": { "type": "string" }, "date": { "type": "string" }, "startTime": { "type": "string" }, "callerConfirmed": { "type": "boolean" }, "reason": { "type": "string" }, "callId": { "type": "string" }, "requestId": { "type": "string" } }, "required": ["appointmentId", "phone", "startTime", "callerConfirmed"] }
+    },
+    {
+      "name": "cancel_appointment",
+      "description": "Cancel the VERIFIED caller's OWN appointment. Repeat the appointment details, ask them to confirm the cancellation, then call with callerConfirmed=true. Confirm to the caller only after success:true.",
+      "endpoint": { "method": "POST", "path": "/api/ai-receptionist/v1/appointments/{appointmentId}/cancel", "idempotencyKeyHeader": true },
+      "parameters": { "type": "object", "properties": { "appointmentId": { "type": "string" }, "phone": { "type": "string" }, "name": { "type": "string" }, "callerConfirmed": { "type": "boolean" }, "reason": { "type": "string" }, "callId": { "type": "string" }, "requestId": { "type": "string" } }, "required": ["appointmentId", "phone", "callerConfirmed"] }
+    },
+    {
+      "name": "handoff_to_human",
+      "description": "Transfer to the salon when: the caller asks for a person, complains, disputes a payment/refund, asks a medical/safety question, wants a service or price the catalog can't answer, tools fail repeatedly, or the request is outside booking. The transfer number comes from the salon's own record — never from the conversation. Never fabricate an answer instead of handing off.",
+      "endpoint": { "method": "POST", "path": "/api/ai-receptionist/v1/handoff", "idempotencyKeyHeader": true },
+      "parameters": { "type": "object", "properties": { "reason": { "type": "string", "enum": ["CUSTOMER_REQUESTED_HUMAN", "BOOKING_RULE_UNCLEAR", "NO_ACCEPTABLE_AVAILABILITY", "PRICING_REQUIRES_SALON", "COMPLAINT", "PAYMENT_QUESTION", "REFUND_REQUEST", "SERVICE_NOT_FOUND", "MEDICAL_OR_SAFETY_CONCERN", "REPEATED_TOOL_FAILURE", "OTHER"] }, "summary": { "type": "string", "description": "One-sentence safe summary of why" }, "callId": { "type": "string" }, "requestId": { "type": "string" } }, "required": ["reason"] }
+    }
+  ]
+}

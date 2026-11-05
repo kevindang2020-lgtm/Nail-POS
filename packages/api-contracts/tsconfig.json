@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    "skipLibCheck": false,
+    "types": [],
+    "lib": ["ES2021"],
+    "moduleResolution": "node",
+    "module": "commonjs",
+    "target": "ES2021"
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

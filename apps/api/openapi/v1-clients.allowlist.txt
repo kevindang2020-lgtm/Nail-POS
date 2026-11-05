@@ -1,0 +1,3 @@
+# check:v1-clients allowlist (apps/api/scripts/check-v1-clients.mjs) — `<repo-relative file>  <rule>  # reason`.
+# BUILD_PLAN Phase 12: empty — every app, the kiosk and the shared packages call /api/v1 (or a path that stays put by the
+# shared list in packages/api-client/src/api-version.ts). ONLY SHRINKS: an entry that matches nothing fails.

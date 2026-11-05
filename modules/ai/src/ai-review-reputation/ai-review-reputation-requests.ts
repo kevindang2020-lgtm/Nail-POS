@@ -1,0 +1,57 @@
+// ai-review-reputation-requests.ts — PURE post-visit review-request logic. Ethical rules enforced here:
+//   • NO GATING: eligibility never depends on the visit's rating/sentiment. Every eligible customer is asked — you cannot
+//     route only-happy customers to public review sites or suppress requests for unhappy ones. (There is deliberately no
+//     rating parameter in the eligibility function.)
+//   • Consent + opt-out + quiet hours + cooldown + frequency cap are always honored.
+//   • At most ONE controlled reminder.
+//   • Idempotent per (tenant, appointment/visit, customer, channel) so a replayed completion event never double-sends.
+import type { ReviewRequestPolicy } from './ai-review-reputation-settings';
+
+export interface CompletedVisit { tenantId: string; branchId?: string | null; customerId: string | null; appointmentId?: string | null; ticketId?: string | null; completedAt: string; visitValueCents: number; channelContact?: boolean; }
+
+export function reviewRequestIdempotencyKey(v: { tenantId: string; appointmentId?: string | null; ticketId?: string | null; customerId: string | null; channel: string }): string {
+  const visit = v.appointmentId || v.ticketId || 'novisit';
+  return `${v.tenantId}|${visit}|${v.customerId || 'nocust'}|${v.channel}`;
+}
+
+export interface EligibilityChecks { optedOut: boolean; lastRequestAt: string | null; requestsInPeriod: number; hasContact: boolean; }
+export interface EligibilityResult { eligible: boolean; reason: string; }
+
+/** Decide whether to send a post-visit review request. NOTE: intentionally takes no rating/sentiment — gating is forbidden. */
+export function evaluateRequestEligibility(visit: CompletedVisit, config: ReviewRequestPolicy, checks: EligibilityChecks, now: Date): EligibilityResult {
+  if (!config.enabled) return { eligible: false, reason: 'requests_disabled' };
+  if (!visit.customerId) return { eligible: false, reason: 'no_customer' };
+  if (!checks.hasContact) return { eligible: false, reason: 'no_contact_method' };
+  if (checks.optedOut) return { eligible: false, reason: 'opted_out' };
+  if (visit.visitValueCents < config.minVisitValueCents) return { eligible: false, reason: 'below_min_value' };
+  if (checks.requestsInPeriod >= config.maxPerCustomerPerPeriod) return { eligible: false, reason: 'frequency_cap' };
+  if (checks.lastRequestAt) {
+    const days = (now.getTime() - new Date(checks.lastRequestAt).getTime()) / 86_400_000;
+    if (days < config.cooldownDays) return { eligible: false, reason: 'cooldown' };
+  }
+  return { eligible: true, reason: 'ok' };
+}
+
+/** Compute a send time: apply the configured delay, then shift out of quiet hours into the next allowed window. */
+export function computeSendTime(completedAt: string, config: ReviewRequestPolicy, ref?: Date): Date {
+  const base = new Date(new Date(completedAt).getTime() + config.delayMinutes * 60_000);
+  void ref;
+  const inQuiet = (h: number): boolean => (config.quietHoursStart <= config.quietHoursEnd
+    ? h >= config.quietHoursStart && h < config.quietHoursEnd
+    : h >= config.quietHoursStart || h < config.quietHoursEnd);
+  const t = new Date(base);
+  let guard = 0;
+  while (inQuiet(t.getHours()) && guard++ < 48) { t.setHours(t.getHours() + 1, 0, 0, 0); }
+  return t;
+}
+
+export interface ReviewRequestState { status: string; sentAt: string | null; reminderSent: boolean; converted: boolean; optedOut: boolean; }
+/** One controlled reminder: only if the first send was delivered, not converted, not opted-out, no prior reminder, and enough time passed. */
+export function shouldSendReminder(req: ReviewRequestState, reminderAfterHours: number, now: Date, config: ReviewRequestPolicy): boolean {
+  if (!config.oneReminder) return false;
+  if (req.reminderSent || req.converted || req.optedOut) return false;
+  if (req.status !== 'sent' && req.status !== 'delivered') return false;
+  if (!req.sentAt) return false;
+  const hours = (now.getTime() - new Date(req.sentAt).getTime()) / 3_600_000;
+  return hours >= reminderAfterHours;
+}

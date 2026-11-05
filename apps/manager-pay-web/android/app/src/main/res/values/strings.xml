@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">AIPowerSalon Pay</string>
+    <string name="title_activity_main">AIPowerSalon Pay</string>
+    <string name="package_name">com.aipowersalon.pay</string>
+    <string name="custom_url_scheme">com.aipowersalon.pay</string>
+</resources>

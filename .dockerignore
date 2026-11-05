@@ -1,0 +1,47 @@
+# Build context for the API image (Dockerfile). Phase 11 (Constitution 4 §141/§142, audit E8): secrets, keys, scratch
+# and test fixtures never enter the context — so they can never be COPY'd into a layer by accident.
+**/node_modules
+**/dist
+.git
+.github
+.gitignore
+*.md
+/mnt
+**/*.log
+**/.DS_Store
+# transcripts / local artifacts that must never enter an image
+*.zip
+# secrets and key material
+.env*
+**/.env*
+**/*.pem
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.crt
+**/id_rsa*
+**/.npmrc
+**/secrets
+# local data written at runtime (local-disk media, private support attachments) — never baked into an image
+apps/api/media
+apps/api/private-attachments
+**/uploads
+# tests, fixtures, coverage, scratch
+**/*.spec.ts
+**/*.spec.tsx
+**/*.test.ts
+**/*.test.tsx
+**/coverage
+**/__fixtures__
+**/fixtures
+**/scratch
+**/tmp
+**/.vitest-cache
+**/playwright-report
+**/test-results
+# IaC and editor state (not part of the API image)
+deploy/terraform/.terraform
+**/*.tfstate
+**/*.tfstate.*
+.vscode
+.idea

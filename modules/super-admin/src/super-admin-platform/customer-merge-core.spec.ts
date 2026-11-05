@@ -1,0 +1,54 @@
+/**
+ * customer-merge-core.spec.ts — lineage-preserving customer merge (§25). DB-free: audit() is a no-op and the repo is
+ * faked, so this verifies the guardrails — merge is permitted only inside an active support session for the tenant,
+ * needs a reason, can't merge a customer into itself, and surfaces not_found when the repo reports a missing customer.
+ */
+import { SuperAdminPlatformService, PlatformError } from './super-admin-platform.service';
+
+let pass = 0, fail = 0;
+function check(name: string, cond: boolean): void { if (cond) { pass++; console.log('  PASS  ' + name); } else { fail++; console.log('  FAIL  ' + name); } }
+async function throwsAsync(name: string, fn: () => Promise<unknown>, code?: string) {
+  try { await fn(); check(name, false); }
+  catch (e: any) { check(name, e instanceof PlatformError && (!code || e.code === code)); }
+}
+
+const CTX = { userId: 'sa-1', email: 'admin@aipowersalon.io' };
+const T = 'tenant-1';
+const activeSession = { id: 'sess-1', tenant_id: T, ended_at: null, expires_at: new Date(Date.now() + 3600_000).toISOString() };
+const repo = (sessions: any[], mergeResult: any) => ({
+  async supportSessions(active: boolean) { return active ? sessions.filter((s) => !s.ended_at && new Date(s.expires_at).getTime() > Date.now()) : sessions.slice(); },
+  async mergeCustomers() { return mergeResult; },
+}) as any;
+const GOOD = { sessionId: 'sess-1', tenantId: T, sourceCustomerId: 'src', targetCustomerId: 'tgt', reason: 'merging an obvious duplicate' };
+
+async function main(): Promise<void> {
+  console.log('\n== merge inside an active session writes lineage + returns the log id ==');
+  {
+    const svc = new SuperAdminPlatformService(repo([activeSession], { mergeLogId: 'log-1', sourceArchived: true, snapshot: {} }));
+    const res: any = await svc.mergeCustomers(CTX, GOOD);
+    check('returns ok with merge log id + source/target', res.ok === true && res.mergeLogId === 'log-1' && res.sourceCustomerId === 'src' && res.targetCustomerId === 'tgt');
+  }
+
+  console.log('\n== guardrails ==');
+  {
+    const svc = new SuperAdminPlatformService(repo([activeSession], { mergeLogId: 'x', sourceArchived: true, snapshot: {} }));
+    await throwsAsync('rejects merging a customer into itself', () => svc.mergeCustomers(CTX, { ...GOOD, targetCustomerId: 'src' }), 'invalid');
+    await throwsAsync('rejects missing target', () => svc.mergeCustomers(CTX, { ...GOOD, targetCustomerId: '' }), 'invalid');
+    await throwsAsync('rejects reason under 5 chars', () => svc.mergeCustomers(CTX, { ...GOOD, reason: 'x' }), 'invalid');
+    await throwsAsync('rejects missing auth context', () => svc.mergeCustomers({}, GOOD), 'invalid');
+    await throwsAsync('rejects tenant mismatch', () => svc.mergeCustomers(CTX, { ...GOOD, tenantId: 'other' }), 'invalid');
+  }
+
+  console.log('\n== unknown / inactive session and missing customer ==');
+  {
+    const noSess = new SuperAdminPlatformService(repo([], { mergeLogId: 'x', sourceArchived: true, snapshot: {} }));
+    await throwsAsync('rejects when no active session', () => noSess.mergeCustomers(CTX, GOOD), 'not_found');
+    const missing = new SuperAdminPlatformService(repo([activeSession], null));
+    await throwsAsync('surfaces not_found when a customer is missing/archived', () => missing.mergeCustomers(CTX, GOOD), 'not_found');
+  }
+
+  console.log(`\n──────────── ${pass}/${pass + fail} passed ────────────\n`);
+  if (fail > 0) process.exit(1);
+}
+
+main().catch((e) => { console.error(e); process.exit(1); });

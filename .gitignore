@@ -1,0 +1,83 @@
+# AI PowerSalon — .gitignore
+#
+# Written Jul 28, 2026, before the first push. The repository had NO .gitignore at all, so a first
+# `git add .` would have committed ~762 packages of node_modules, five built `dist/` trees, and any
+# real `.env` a developer creates. Every pattern below was verified against this repo's actual layout,
+# not copied from a template.
+
+# ── Dependencies ────────────────────────────────────────────────────────────────────────────────────
+node_modules/
+.npm/
+.pnpm-store/
+
+# ── Build output (five Vite frontends + the API's compiled output) ───────────────────────────────────
+dist/
+dist-frontends/
+build/
+.vite/
+*.tsbuildinfo
+
+# ── Secrets. The committed files are `.env*.example` / `.env.production.template` (placeholders only);
+#    a real `.env` must never be committed. The negations below keep the examples tracked. ───────────
+.env
+.env.*
+!.env.example
+!.env.development.example
+!.env.local.example
+!.env.production.example
+!.env.staging.example
+!.env.production.template
+
+# Credential files referenced by the mobile/push setup — these are private keys and service accounts.
+*.p8
+*.p12
+*.mobileprovision
+google-services.json
+GoogleService-Info.plist
+# BUILD_PLAN Phase 13 D (Constitution 6 §303 "no provider secret exists in app"): signing keys, store credentials and APNs
+# keys never enter the repo. (Three upload keystores + key.properties were committed before this rule — they stay tracked
+# until Kevin rotates them; tooling/mobile/check-native-config.mjs refuses any NEW one.)
+*.jks
+*.keystore
+key.properties
+*.p8
+*.p12
+*.mobileprovision
+*.provisionprofile
+firebase-service-account*.json
+service-account*.json
+
+# ── Local run artifacts ─────────────────────────────────────────────────────────────────────────────
+*.log
+npm-debug.log*
+coverage/
+.nyc_output/
+# partial output of the security audit orchestrator; regenerated on every run
+# (git has no inline comments — a trailing '# …' becomes part of the pattern and silently fails to match)
+.security-audit-partial.json
+test-results/
+playwright-report/
+
+# ── Editor / OS noise ───────────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+*.swp
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+
+# Python bytecode (never commit)
+__pycache__/
+*.pyc
+
+# runtime export / upload storage written by the API in development (never source)
+apps/api/private-files/
+apps/api/firebase-admin.json
+
+# Security cleanup 2026-11-04
+*.timestamp-*.mjs
+**/android/key.properties
+*.keystore

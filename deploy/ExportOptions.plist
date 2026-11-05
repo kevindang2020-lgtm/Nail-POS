@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- App Store export options for build-ios.sh. Replace TEAM_ID and add a provisioningProfiles entry per app
+     (key = bundle id, value = profile name) once your profiles exist in the Apple Developer portal. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>method</key><string>app-store</string>
+  <key>teamID</key><string>TEAM_ID</string>
+  <key>uploadSymbols</key><true/>
+  <key>signingStyle</key><string>automatic</string>
+  <!-- For manual signing, set <key>signingStyle</key><string>manual</string> and:
+  <key>provisioningProfiles</key><dict>
+    <key>com.aipowersalon.customer</key><string>AIPowerSalon Customer AppStore</string>
+    <key>com.aipowersalon.owner</key><string>AIPowerSalon Owner AppStore</string>
+    <key>com.aipowersalon.technician</key><string>AIPowerSalon Tech AppStore</string>
+    <key>com.aipowersalon.display</key><string>AIPowerSalon Display AppStore</string>
+    <key>com.aipowersalon.checkin</key><string>AIPowerSalon CheckIn AppStore</string>
+  </dict> -->
+</dict>
+</plist>

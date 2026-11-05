@@ -1,0 +1,864 @@
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useInlineConfirm, useEventCallback } from '@aipowersalon/ui';
+import { POSCustomerPhoneEditor } from './POSCustomerPhoneEditor';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { posCustomersApi } from '../api/posCustomersApi';
+import { authApi } from '../api/authApi';
+import { useIPadView } from '../components/IPadViewProvider';
+import { customerRequest } from '../components/ipad-modules';
+import { api } from '../api/client';
+import { useRealtime } from '../realtime/useRealtime';
+import { SYNC_POLICY } from '@aipowersalon/realtime-client';
+import { AiAssistantPanel } from '../components/AiAssistantPanel';
+import { MembershipChip, useMemberStatusMap } from './MembershipChip';
+import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
+import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
+import { statusLabel } from '../i18n/status-label';
+import { ImeSafeInput } from '../components/ImeSafeInput';
+import { CUSTOMER_LANGUAGES, customerLanguageCode } from '../components/customerLanguage';
+import { codeLabel, customerStatusLabel, customerSegmentLabel, membershipStatusLabel } from '../components/peopleLabels';
+import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
+import { serverText } from '../i18n/server-text';   // WP-E §40: Telex / VNI typing never searches mid-composition
+
+// POS Customers — the salon's complete CRM directory (reference layout, 1:1). Consumes the canonical rich
+// /pos/customers/state (KPIs + analytics + paginated rows + filter facets) behind TenantAuthGuard + RolePermissionGuard;
+// tenant/branch/role are derived server-side from the session (never the browser). Every visible module binds to real
+// state data: 8 KPIs, 6 summary cards, 5 category tabs, the directory table, server-side pagination, demographics,
+// tags, sources, CLV, RFM, retention, and recent activity. Filters/tabs/pagination round-trip to the backend
+// (CustomerFilters: search/status/segment/source/tag/loyaltyTier/spendBand/page/pageSize). Add Customer → POST create,
+// Export → GET export (CSV download), Edit → PATCH update, CSV import + duplicate-merge are wired under "More".
+
+type Row = {
+  customerId: string; displayName: string; phone?: string; email?: string; status: string; source: string; avatarUrl?: string; birthday?: string;
+  visitCount: number; lastVisitAt?: string | null; nextAppointmentAt?: string | null; totalSpendCents: number; averageSpendCents: number;
+  loyaltyPoints: number; loyaltyTier?: string; isVip: boolean; tags: string[]; duplicateRisk?: string; marketingOptIn: boolean; smsOptIn: boolean; emailOptIn: boolean;
+  preferredName?: string | null; preferredLanguage?: string | null; preferredBranchId?: string | null;   // Decision 1 (profile, not notes)
+};
+type Pg = { page: number; pageSize: number; totalItems: number; totalPages: number };
+type CustomersState = {
+  kpisFull: { totalCustomers: number; newCustomersToday: number; returningCustomersToday: number; vipCustomers: number; birthdayThisMonth: number; inactiveCustomers: number; duplicateProfiles: number; loyaltyMembers: number; averageSpendCents: number };
+  analytics?: { ageGroups: { label: string; count: number }[]; lifetimeValue: { totalRevenueCents: number; totalCustomers: number; repeatRatePercent: number; avgClvCents: number }; rfm: { segment: string; count: number }[]; retentionRatePercent: number };
+  rows: { items: Row[]; pagination: Pg };
+  filterFacets: { segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[] };
+  trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
+  directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+};
+type DupMember = { customerId: string; displayName: string; phone?: string; email?: string; status?: string; visitCount?: number; totalSpendCents?: number; loyaltyPoints?: number; loyaltyTier?: string; createdAt?: string; tags?: string[] };
+type DupGroup = { duplicateGroupId: string; reason: string; members: DupMember[] };
+type ImpSampleRow = { rowNumber: number; firstName: string; lastName: string; phone?: string; email?: string; birthday?: string; action: 'create' | 'update' | 'duplicate' | 'error'; reason?: string };
+type ImpPreview = { totalRows: number; toCreate: number; toUpdate: number; duplicates: number; errors: number; invalidEmailsDropped: number; detectedColumns: Record<string, string | undefined>; sample: ImpSampleRow[] };
+type ImpResult = { created: number; updated: number; duplicatesSkipped: number; errors: number; invalidEmailsDropped: number; totalRows: number; errorSamples: { rowNumber: number; reason: string }[] };
+
+const money = (c: number) => fmtMoney(c || 0);
+const nf = (x: number) => fmtNumber(x || 0);
+const fmtTrend = (t: number | null | undefined) => {
+  if (t == null) return null;
+  const up = t >= 0;
+  return { text: `${up ? '▲' : '▼'} ${Math.abs(t)}%`, up };
+};
+const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric' }) || iso; } catch { return iso; } };
+const stTone = (s: string) => (/active/i.test(s) ? 'ok' : /at.?risk/i.test(s) ? 'warn' : /block/i.test(s) ? 'bad' : /inactive|archiv/i.test(s) ? 'warn' : 'mut');
+const tierColor = (t?: string) => (/platinum/i.test(t || '') ? '#6E59C7' : /gold/i.test(t || '') ? '#C9971B' : /silver/i.test(t || '') ? '#8A8F98' : /bronze/i.test(t || '') ? '#B07A3C' : '#8A7A66');
+
+// 8 KPI icons (colored circular) — dedicated to this screen.
+const KI: Record<string, JSX.Element> = {
+  group: <><circle cx="8" cy="8" r="3" /><path d="M2 19c0-3 2.7-5 6-5M15 8.5a3 3 0 100-5M16 14c2.8.3 5 2.2 5 5" /></>,
+  userplus: <><circle cx="9" cy="8" r="3" /><path d="M3 19c0-3.3 2.7-6 6-6M16 10v6M13 13h6" /></>,
+  repeat: <><path d="M4 9a8 8 0 0113-3l3 3M20 15a8 8 0 01-13 3l-3-3" /><path d="M20 5v4h-4M4 19v-4h4" /></>,
+  crown: <><path d="M4 18h16M3 7l4 4 5-6 5 6 4-4-2 9H5z" /></>,
+  userx: <><circle cx="9" cy="8" r="3" /><path d="M3 19c0-3.3 2.7-6 6-6M15 9l5 5M20 9l-5 5" /></>,
+  dollar: <><circle cx="12" cy="12" r="9" /><path d="M12 7v10M14.5 9.2c-.5-.8-1.5-1.2-2.5-1.2-1.4 0-2.5.8-2.5 2s1.1 1.8 2.5 2 2.5.8 2.5 2-1.1 2-2.5 2c-1 0-2-.4-2.5-1.2" /></>,
+  card: <><rect x="2.5" y="5.5" width="19" height="13" rx="2.4" /><path d="M2.5 9.8h19M6 14.5h4" /></>,
+  loyalty: <><path d="M12 3l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9 6.8 19.2l1-5.8L3.5 9.2l5.9-.9z" /></>,
+};
+function KIcon({ name }: { name: string }) { return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round" width={17} height={17} aria-hidden>{KI[name]}</svg>; }
+
+const PALETTE = ['#6E59C7', '#2C6BB0', '#E8852B', '#2E7D32', '#C0392B', '#B0A0C8'];
+const Donut = ({ items }: { items: { label: string; count: number }[] }) => {
+  const total = items.reduce((a, x) => a + x.count, 0);
+  if (total === 0) return <div className="muted">{tx('pos.no_data_yet')}</div>;
+  let acc = 0; const R = 52, C = 2 * Math.PI * R;
+  return (
+    <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+      <svg viewBox="0 0 140 140" style={{ width: 112, height: 112, flex: 'none' }}>
+        {items.map((it, i) => { const dash = (it.count / total) * C; const seg = <circle key={i} cx="70" cy="70" r={R} fill="none" stroke={PALETTE[i % PALETTE.length]} strokeWidth="15" strokeDasharray={`${dash} ${C - dash}`} strokeDashoffset={-acc} transform="rotate(-90 70 70)" strokeLinecap="butt" />; acc += dash; return seg; })}
+        <circle cx="70" cy="70" r="36" fill="#fff" />
+      </svg>
+      <div style={{ flex: 1 }}>{items.map((it, i) => (<div key={i} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, padding: '2px 0' }}><span style={{ width: 9, height: 9, borderRadius: 2, background: PALETTE[i % PALETTE.length] }} /><span>{it.label}</span><span style={{ marginLeft: 'auto', color: '#8A7A66', fontWeight: 600 }}>{Math.round((it.count / total) * 1000) / 10}%</span></div>))}</div>
+    </div>
+  );
+};
+
+const srcLabel = (s: string) => statusLabel('source', s);   // every source code has a canonical label in ns/status (WP-D1)
+
+const ipt: React.CSSProperties = { height: 34, border: '1px solid var(--line)', borderRadius: 9, padding: '0 10px', background: '#FFFDF8', fontFamily: 'inherit', fontSize: 12.5, color: 'var(--text)' };
+const sel: React.CSSProperties = { ...ipt, minWidth: 118 };
+const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px' };
+
+export function POSCustomersScreen() {
+  const nav = useNavigate();
+  const [s, setS] = useState<CustomersState | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+  // filters / paging (all round-trip to the backend)
+  // Checkout One-Screen mandate §59 (Oct 28 2026): Checkout's "Open Customer" hands over ?q=<name>&customerId=<id> — the
+  // list opens filtered to that guest and their profile opens once their row arrives (context kept, no re-search).
+  const [urlParams] = useSearchParams();
+  const [search, setSearch] = useState(() => urlParams.get('q') || '');
+  const pendingProfileId = useRef<string | null>(urlParams.get('customerId'));
+  const [status, setStatus] = useState('');
+  const [segment, setSegment] = useState(''); // drives tabs + Groups
+  const [source, setSource] = useState('');
+  const [tag, setTag] = useState('');
+  const [loyaltyTier, setLoyaltyTier] = useState('');
+  const [spendBand, setSpendBand] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 8;
+  const [moreOpen, setMoreOpen] = useState(false);
+  // profile drawer
+  const [profileRow, setProfileRow] = useState<Row | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const openProfile = (row: Row) => {
+    setProfileRow(row); setProfile(null); setProfileBusy(true);
+    (posCustomersApi.getDetail(row.customerId) as Promise<any>).then((d) => setProfile(d)).catch(() => setProfile(null)).finally(() => setProfileBusy(false));
+  };
+  // edit drawer
+  const [editId, setEditId] = useState<string | null>(null);
+  // Smooth Refresh spec §14/§49: the version the edit form was OPENED on. A background refetch may bring a newer row
+  // while the receptionist types; the save still says which copy it was based on, so a concurrent change elsewhere is
+  // reported (VERSION_CONFLICT) instead of silently overwritten — and the unsaved form is never reset by the refetch.
+  const [editVersion, setEditVersion] = useState<number | undefined>(undefined);
+  const [eEmail, setEEmail] = useState(''); const [eStatus, setEStatus] = useState('active');
+  // Decision 1: preferred name / language / branch are profile fields edited with the profile (pos.customers.edit).
+  const [ePrefName, setEPrefName] = useState(''); const [ePrefLang, setEPrefLang] = useState(''); const [ePrefBranch, setEPrefBranch] = useState('');
+  const [branchOptions, setBranchOptions] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => { authApi.branches().then((r: any) => setBranchOptions((r?.branches || []).map((b: any) => ({ id: b.id, name: b.name || b.city || tx('pos.branch') })))).catch(() => {}); }, []);
+  const [eVip, setEVip] = useState(false); const [eSms, setESms] = useState(false); const [eEmailOpt, setEEmailOpt] = useState(false); const [eMkt, setEMkt] = useState(false);
+  // add customer
+  const [addOpen, setAddOpen] = useState(false);
+  const [aFirst, setAFirst] = useState(''); const [aLast, setALast] = useState(''); const [aPhone, setAPhone] = useState(''); const [aEmail, setAEmail] = useState(''); const [aSms, setASms] = useState(true); const [aEmailOpt, setAEmailOpt] = useState(false); const [aMkt, setAMkt] = useState(false);
+  // duplicates + csv import
+  const [dups, setDups] = useState<DupGroup[]>([]);
+  const [dupSel, setDupSel] = useState<Record<string, string>>({});
+  const [dupBusy, setDupBusy] = useState<string | null>(null);
+  const [importCsv, setImportCsv] = useState('');
+  const [impPreview, setImpPreview] = useState<ImpPreview | null>(null);
+  const [impResult, setImpResult] = useState<ImpResult | null>(null);
+  const [updateExisting, setUpdateExisting] = useState(false);
+
+  const buildQ = useEventCallback(() => ({ search: search || undefined, status: status || undefined, segment: segment || undefined, source: source || undefined, tag: tag || undefined, loyaltyTier: loyaltyTier || undefined, spendBand: spendBand || undefined, page, pageSize }));
+  const load = useCallback((q: Record<string, unknown>) => (api.get('/pos/customers/state', q) as Promise<CustomersState>).then((d) => setS(d)).catch((e: any) => setError(e?.message || tx('pos.failed_to_load_customers'))), []);
+  const refetch = () => load(buildQ());
+  // Smooth Refresh spec §28/§62: a customer created or edited on another device appears on this list — refetch on
+  // customer events (routed to the 'customers' screen) and every 45 s while visible (the §81 detail class). The list
+  // keeps its search/filters (buildQ) and the open edit form survives (state lives in this component, not the rows).
+  useRealtime('customers', () => { void load(buildQ()); }, { intervalMs: SYNC_POLICY.detailMs });
+  useEffect(() => {
+    const t = setTimeout(() => load(buildQ()), search ? 250 : 0);
+    return () => clearTimeout(t);
+     
+  }, [load, search, status, segment, source, tag, loyaltyTier, spendBand, page, buildQ]);
+
+  const loadDups = useCallback(() => (posCustomersApi.duplicates() as Promise<DupGroup[]>).then(setDups).catch(() => setDups([])), []);
+  useEffect(() => { loadDups(); }, [loadDups]);
+
+  // when any filter changes, return to page 1
+  const setFilter = (fn: (v: string) => void) => (v: string) => { fn(v); setPage(1); };
+  const pickTab = (segId: string) => { setSegment(segId); setPage(1); };
+
+  const openEdit = (c: Row) => {
+    if (editId === c.customerId) { setEditId(null); return; }
+    setEditId(c.customerId); setEditVersion((c as any).version); setNote(null);
+    setEEmail(c.email || ''); setEStatus(c.status || 'active');
+    setEPrefName(c.preferredName || ''); setEPrefLang(customerLanguageCode(c.preferredLanguage)); setEPrefBranch(c.preferredBranchId || '');
+    setEVip(!!c.isVip); setESms(!!c.smsOptIn); setEEmailOpt(!!c.emailOptIn); setEMkt(!!c.marketingOptIn);
+  };
+  // Phone changes are a FLOW, not a field: enter → duplicate-check → SMS code → the customer proves it. The number
+  // does not change until somebody proves they hold it.
+  const [phoneEditFor, setPhoneEditFor] = useState<{ id: string; name: string; masked: string | null } | null>(null);
+
+  const saveEdit = async (id: string) => {
+    setNote(null); setBusy(id);
+    try {
+      // NOTE what is NOT sent: `phone`.
+      //
+      // The generic customer update no longer writes the phone number — it used to, with no E.164 normalization, no
+      // duplicate check, no verification and no audit, which meant a receptionist could point a customer's booking
+      // codes and appointment reminders at any handset in one PATCH.
+      //
+      // Sending `phone` here would now be a SILENT NO-OP: the receptionist types a new number, sees no error, and
+      // the number never changes. That is worse than the hole. Phone changes go through Edit Phone Number, which
+      // verifies by SMS before the number becomes real.
+      await posCustomersApi.update(id, { isVip: eVip, smsOptIn: eSms, emailOptIn: eEmailOpt, marketingOptIn: eMkt, status: eStatus, preferredName: ePrefName.trim(), preferredLanguage: ePrefLang.trim(), preferredBranchId: ePrefBranch || null, ...(eEmail.trim() ? { email: eEmail.trim() } : {}) , ...(editVersion != null ? { expectedVersion: editVersion } : {}) });
+      setEditId(null); await refetch();
+    } catch (e: any) {
+      if (e?.status === 409 && e?.code === 'VERSION_CONFLICT') {
+        // Keep the form open with what they typed; load the newer copy so they can re-apply and save against it.
+        setNote(tx('pos.this_customer_was_changed_on_another_1fnz'));
+        setEditVersion(typeof e?.details?.currentVersion === 'number' ? e.details.currentVersion : undefined);
+        await refetch();
+      } else setNote(e?.message || tx('pos.save_failed'));
+    } finally { setBusy(null); }
+  };
+  const doAdd = async () => {
+    if (!aFirst.trim() || !aPhone.trim()) { setNote(tx('pos.first_name_and_mobile_phone_are_1ege')); return; }
+    setNote(null); setBusy('add');
+    try {
+      await posCustomersApi.create({ firstName: aFirst.trim(), lastName: aLast.trim() || undefined, phone: aPhone.trim(), email: aEmail.trim() || undefined, smsOptIn: aSms, emailOptIn: aEmailOpt, marketingOptIn: aMkt });
+      setAddOpen(false); setAFirst(''); setALast(''); setAPhone(''); setAEmail(''); setASms(true); setAEmailOpt(false); setAMkt(false);
+      await Promise.all([refetch(), loadDups()]);
+    } catch (e: any) { setNote(e?.message || tx('pos.could_not_add_customer_possible_duplicate_ntur')); } finally { setBusy(null); }
+  };
+  const doExport = async () => {
+    setNote(null); setBusy('export');
+    try {
+      const r = await posCustomersApi.exportCsv(buildQ());
+      const blob = new Blob([r.csv || ''], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob); const a = document.createElement('a');
+      a.href = url; a.download = r.filename || 'customers.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+    } catch (e: any) { setNote(e?.message || tx('pos.export_failed_permission_required')); } finally { setBusy(null); }
+  };
+  const onImportFile = (e: { target: HTMLInputElement }) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { setImportCsv(String(reader.result || '')); setImpPreview(null); setImpResult(null); setNote(null); }; reader.readAsText(file); };
+  const doImportPreview = async () => { if (!importCsv.trim()) { setNote(tx('pos.paste_csv_or_load_a_csv_6rl1')); return; } setNote(null); setImpResult(null); setBusy('imp-preview'); try { setImpPreview(await posCustomersApi.importPreview(importCsv, updateExisting) as ImpPreview); } catch (e: any) { setNote(e?.message || tx('pos.preview_failed')); } finally { setBusy(null); } };
+  const doImportCommit = async () => { if (!importCsv.trim()) { setNote(tx('pos.nothing_to_import')); return; } setNote(null); setBusy('imp-commit'); try { const r = await posCustomersApi.importCommit(importCsv, updateExisting) as ImpResult; setImpResult(r); setImpPreview(null); setImportCsv(''); await Promise.all([refetch(), loadDups()]); } catch (e: any) { setNote(e?.message || tx('pos.import_failed')); } finally { setBusy(null); } };
+  const { confirm: askConfirm, confirmUi } = useInlineConfirm();
+  const doMerge = async (groupId: string) => { const primary = dupSel[groupId]; if (!primary) { setNote(tx('pos.choose_which_profile_to_keep_as_1fma')); return; } setNote(null); setDupBusy(groupId); try { await posCustomersApi.merge(groupId, primary); await Promise.all([refetch(), loadDups()]); } catch (e: any) { setNote(e?.message || tx('pos.merge_failed')); } finally { setDupBusy(null); } };
+
+  // One batch member-status request for the whole roster page; non-members are absent from the map. Called before the
+  // early returns (optional-chained off `s`) so the hook order stays stable while customers are still loading.
+  useEffect(() => {
+    const want = pendingProfileId.current; if (!want || !s) return;
+    const row = (s.rows?.items ?? []).find((r) => r.customerId === want);
+    if (row) { pendingProfileId.current = null; openProfile(row); }
+  }, [s]);   // eslint-disable-line react-hooks/exhaustive-deps -- once, when the guest's row first arrives
+  const memberStatus = useMemberStatusMap((s?.rows?.items ?? []).map((r) => r.customerId));
+
+  if (error && !s) return <div className="work"><div className="err">{error}</div></div>;
+  if (!s) return <div className="work"><div className="state">{tx('pos.loading_customers')}</div></div>;
+
+  const k = s.kpisFull; const an = s.analytics; const rows = s.rows.items;
+  const tr = s.trends;
+  const pg: Pg = Object.assign({ page: 1, pageSize, totalItems: rows.length, totalPages: 1 }, s.rows.pagination || {});
+  const pct = (n: number) => (k.totalCustomers ? Math.round((n / k.totalCustomers) * 1000) / 10 : 0);
+  const atRisk = an?.rfm.find((x) => /at.?risk/i.test(x.segment))?.count ?? k.inactiveCustomers;
+  const topSpenders = s.directory?.topSpendersCount ?? rows.filter((r) => r.totalSpendCents >= 100000).length; // full-base top 5%, else page-scoped ($1k+)
+
+  const kpis8 = [
+    { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, ic: 'group', color: '#2E7D32', bg: '#EAF4EC' },
+    { l: tx('pos.new_customers'), v: nf(k.newCustomersToday), sub: tx('people.customers.kpi.recent'), trend: tr?.newCustomers, ic: 'userplus', color: '#6E59C7', bg: '#EFEAFA' },
+    { l: tx('pos.returning_customers_2'), v: nf(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, ic: 'repeat', color: '#2C6BB0', bg: '#E9F1FA' },
+    { l: tx('pos.vip_customers'), v: nf(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, ic: 'crown', color: '#E8852B', bg: '#FDEFE0' },
+    { l: tx('pos.inactive_customers_2'), v: nf(k.inactiveCustomers), sub: tx('pos.needs_attention_2'), trend: undefined, ic: 'userx', color: '#C0392B', bg: '#FBEAE8' },
+    { l: tx('pos.retention_rate'), v: an ? `${an.retentionRatePercent}%` : '—', sub: tx('pos.repeat_rate_2'), trend: undefined, ic: 'dollar', color: '#2E7D32', bg: '#EAF4EC' },
+    { l: tx('pos.avg_spend_per_customer'), v: money(k.averageSpendCents), sub: tx('pos.per_customer_2'), trend: tr?.avgSpend, ic: 'card', color: '#2C6BB0', bg: '#E9F1FA' },
+    { l: tx('pos.loyalty_members'), v: nf(k.loyaltyMembers), sub: tx('pos.loyaltymembers_of_total', { loyaltyMembers: String(pct(k.loyaltyMembers)) }), trend: undefined, ic: 'loyalty', color: '#C0392B', bg: '#FBEAE8' },
+  ];
+  const summary6 = [
+    { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, seg: '' },
+    { l: tx('pos.new_this_month'), v: nf(k.newCustomersToday), sub: tx('pos.recent_additions'), trend: tr?.newCustomers, seg: 'new' },
+    { l: tx('pos.returning_this_month'), v: nf(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, seg: 'returning' },
+    { l: tx('pos.vip_customers'), v: nf(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, seg: 'vip' },
+    { l: tx('pos.at_risk_customers'), v: nf(atRisk), sub: tx('pos.needs_attention_2'), trend: undefined, seg: 'at_risk' },
+    { l: tx('pos.top_spenders'), v: nf(topSpenders), sub: s.directory ? tx('pos.5_of_total_revenue') : tx('pos.on_this_page_1k'), trend: undefined, seg: '' },
+  ];
+  const tabs = [
+    { id: '', l: tx('pos.all_customers'), n: k.totalCustomers },
+    { id: 'new', l: tx('pos.new_customers'), n: k.newCustomersToday },
+    { id: 'returning', l: tx('pos.returning'), n: k.returningCustomersToday },
+    { id: 'vip', l: tx('pos.vip_customers'), n: k.vipCustomers },
+    { id: 'at_risk', l: tx('pos.at_risk'), n: atRisk },
+  ];
+
+  // right-rail derivations — prefer full-base backend aggregations; fall back to page-scoped if absent
+  const dir = s.directory;
+  const tally = (arr: string[]): [string, number][] => { const m = new Map<string, number>(); for (const x of arr) { const key = (x || '').trim(); if (key) m.set(key, (m.get(key) || 0) + 1); } return [...m.entries()].sort((a, b) => b[1] - a[1]); };
+  const srcCounts: [string, number][] = dir?.sources?.length ? dir.sources.map((x) => [x.name, x.count] as [string, number]) : tally(rows.map((r) => r.source).filter(Boolean) as string[]);
+  const srcMax = Math.max(1, ...srcCounts.map(([, n]) => n));
+  const srcTotal = Math.max(1, srcCounts.reduce((a, [, n]) => a + n, 0));
+  const tagCounts: [string, number][] = dir?.topTags?.length ? dir.topTags.map((x) => [x.name, x.count] as [string, number]) : tally(rows.flatMap((r) => r.tags || []));
+  const recentActivity = [...rows].filter((r) => r.lastVisitAt).sort((a, b) => new Date(b.lastVisitAt!).getTime() - new Date(a.lastVisitAt!).getTime()).slice(0, 6);
+  const rfmMax = an ? Math.max(1, ...an.rfm.map((x) => x.count)) : 1;
+
+  // pagination window
+  const from = pg.totalItems === 0 ? 0 : (pg.page - 1) * pg.pageSize + 1;
+  const to = Math.min(pg.page * pg.pageSize, pg.totalItems);
+  const pageBtns: (number | '…')[] = [];
+  if (pg.totalPages <= 7) { for (let i = 1; i <= pg.totalPages; i++) pageBtns.push(i); }
+  else { for (let i = 1; i <= 5; i++) pageBtns.push(i); pageBtns.push('…'); pageBtns.push(pg.totalPages); }
+
+  return (
+    <div className="work" style={{ paddingBottom: 16 }}>
+      <div className="vh" style={{ marginBottom: 10 }}>
+        <h1>{tx('pos.customers')}</h1>
+        <div className="sub">{tx('pos.manage_and_grow_your_customer_relationships')}</div>
+      </div>
+      {confirmUi}
+      <AiAssistantPanel packageCode="ai_customer_profile_assistant" cta={tx('pos.summarize_customer')} action="profile" buildPrompt={() => "Summarize this nail-salon customer's preferences and flag VIP or churn risk. Be brief."} />
+
+      {/* 8 KPI cards */}
+      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+        {kpis8.map((c) => (
+          <div key={c.l} style={card}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 28, height: 28, borderRadius: '50%', background: c.bg, color: c.color, display: 'grid', placeItems: 'center', flex: 'none' }}><KIcon name={c.ic} /></span>
+              <span style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700, lineHeight: 1.1 }}>{c.l}</span>
+            </div>
+            <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 21, fontWeight: 800, marginTop: 7 }}>{c.v}</div>
+            {(() => { const tt = fmtTrend(c.trend); return tt ? <div style={{ fontSize: 10.5, marginTop: 2, color: tt.up ? '#2E7D32' : '#C0392B', fontWeight: 700 }}>{tt.text} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{tx('pos.vs_last_month')}</span></div> : <div style={{ fontSize: 10.5, color: 'var(--muted)', marginTop: 2 }}>{c.sub}</div>; })()}
+          </div>
+        ))}
+      </div>
+
+      {/* Header */}
+
+
+      {note ? <div className="err" style={{ marginBottom: 12 }}>{note}</div> : null}
+
+      {/* Toolbar */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+        <ImeSafeInput type="search" enterKeyHint="search" placeholder={tx('pos.search_by_name_phone_email_loyalty_smpn')} value={search} onValue={(v) => { setSearch(v); setPage(1); }} style={{ ...ipt, flex: 1, minWidth: 240, height: 36 }} />
+        <select value={status} onChange={(e) => setFilter(setStatus)(e.target.value)} style={sel}><option value="">{tx('pos.all_status')}</option>{s.filterFacets.statuses.map((x) => <option key={x} value={x}>{customerStatusLabel(x)}</option>)}</select>
+        <select value={tag} onChange={(e) => setFilter(setTag)(e.target.value)} style={sel}><option value="">{tx('pos.all_tags')}</option>{s.filterFacets.tags.map((x) => <option key={x} value={x}>{x}</option>)}</select>
+        <select value={segment} onChange={(e) => setFilter(setSegment)(e.target.value)} style={sel}><option value="">{tx('pos.all_groups')}</option>{s.filterFacets.segments.map((x) => <option key={x} value={x}>{customerSegmentLabel(x)}</option>)}</select>
+        <select value={source} onChange={(e) => setFilter(setSource)(e.target.value)} style={sel}><option value="">{tx('pos.all_sources_2')}</option>{s.filterFacets.sources.map((x) => <option key={x} value={x}>{srcLabel(x)}</option>)}</select>
+        <button className="btn ghost" onClick={() => setMoreOpen((v) => !v)}>{tx('pos.more_filters')}</button>
+        <button className="btn ghost" disabled={busy === 'export'} onClick={doExport}>{busy === 'export' ? tx('pos.exporting') : tx('pos.export_2')}</button>
+        <button className="btn" style={{ background: '#A9824C', borderColor: '#A9824C', color: '#fff' }} onClick={() => { setAddOpen((v) => !v); setNote(null); }}>{tx('pos.add_customer')}</button>
+      </div>
+
+      {moreOpen ? (
+        <section className="panel" style={{ marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+            <select value={loyaltyTier} onChange={(e) => setFilter(setLoyaltyTier)(e.target.value)} style={sel}><option value="">{tx('pos.any_loyalty_tier')}</option>{s.filterFacets.loyaltyTiers.map((x) => <option key={x} value={x}>{x}</option>)}</select>
+            <select value={spendBand} onChange={(e) => setFilter(setSpendBand)(e.target.value)} style={sel}><option value="">{tx('pos.any_spend_band')}</option>{s.filterFacets.spendRanges.map((x) => <option key={x} value={x}>{x}</option>)}</select>
+            <button className="btn ghost" onClick={() => { setStatus(''); setTag(''); setSegment(''); setSource(''); setLoyaltyTier(''); setSpendBand(''); setSearch(''); setPage(1); }}>{tx('pos.clear_all')}</button>
+            <span style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <label className="btn ghost" style={{ cursor: 'pointer' }}>{tx('pos.import_csv')}<input type="file" accept=".csv,text/csv" onChange={onImportFile} style={{ display: 'none' }} /></label>
+            </span>
+          </div>
+          {importCsv || impPreview || impResult ? (
+            <div style={{ marginTop: 10, borderTop: '1px solid var(--line)', paddingTop: 10 }}>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                <label className="s" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}><input type="checkbox" checked={updateExisting} onChange={(e) => { setUpdateExisting(e.target.checked); setImpPreview(null); setImpResult(null); }} /> {tx('pos.update_existing')}</label>
+                <button className="btn ghost" disabled={busy === 'imp-preview' || !importCsv.trim()} onClick={doImportPreview}>{busy === 'imp-preview' ? tx('pos.checking') : tx('pos.preview')}</button>
+                <button className="btn" disabled={busy === 'imp-commit' || !impPreview || ((impPreview.toCreate ?? 0) === 0 && (!updateExisting || (impPreview.toUpdate ?? 0) === 0))} onClick={doImportCommit}>{busy === 'imp-commit' ? tx('pos.importing') : impPreview ? tx('pos.import_tocreate_v1', { toCreate: String(impPreview.toCreate), v1: String(updateExisting && (impPreview.toUpdate ?? 0) > 0 ? tx('pos.update_toupdate', { toUpdate: String(impPreview.toUpdate) }) : '') }) : tx('pos.import')}</button>
+                <span className="s muted">{tx('pos.handles_large_lists_50k_duplicates_matched_b1xv')}</span>
+              </div>
+              {impPreview ? (() => {
+                const cols = impPreview.detectedColumns || {};
+                const COLS: { k: string; l: string }[] = [{ k: 'firstName', l: tx('pos.first_name_2') }, { k: 'lastName', l: tx('pos.last_name') }, { k: 'fullName', l: tx('pos.full_name') }, { k: 'phone', l: tx('pos.phone') }, { k: 'email', l: tx('pos.email') }, { k: 'birthday', l: tx('pos.birthday') }];
+                const tile = (n: number, label: string, bg: string, fg: string) => (
+                  <div style={{ background: bg, color: fg, borderRadius: 8, padding: '6px 10px', minWidth: 78 }}><div style={{ fontFamily: '"Playfair Display",serif', fontWeight: 800, fontSize: 17 }}>{nf(n)}</div><div style={{ fontSize: 10.5, fontWeight: 600 }}>{label}</div></div>
+                );
+                const aTone = (a: string) => a === 'create' ? { bg: '#EAF4EC', fg: '#2E7D32' } : a === 'update' ? { bg: '#E9F1FA', fg: '#2C6BB0' } : a === 'duplicate' ? { bg: '#EFEAFA', fg: '#6E59C7' } : { bg: '#FBEAE8', fg: '#C0392B' };
+                return (
+                  <div style={{ marginTop: 10 }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 800, letterSpacing: '.04em', marginBottom: 5 }}>{tx('pos.detected_columns')}</div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 10 }}>
+                      {COLS.map((c) => { const mapped = (cols as any)[c.k] !== undefined; return <span key={c.k} className="pill" style={{ background: mapped ? '#EAF4EC' : '#F2ECE0', color: mapped ? '#2E7D32' : '#8A7A66' }}>{c.l}: {mapped ? tx('pos.mapped') : tx('pos.not_found_2')}</span>; })}
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+                      {tile(impPreview.totalRows, 'rows', '#F4ECDD', '#5a4413')}
+                      {tile(impPreview.toCreate, 'to create', '#EAF4EC', '#2E7D32')}
+                      {updateExisting ? tile(impPreview.toUpdate, 'to update', '#E9F1FA', '#2C6BB0') : null}
+                      {tile(impPreview.duplicates, 'duplicates', '#EFEAFA', '#6E59C7')}
+                      {tile(impPreview.errors, 'errors', '#FBEAE8', '#C0392B')}
+                      {impPreview.invalidEmailsDropped ? tile(impPreview.invalidEmailsDropped, 'bad emails', '#FFF6E5', '#B5821F') : null}
+                    </div>
+                    {impPreview.sample?.length ? (
+                      <div style={{ border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 11.5 }}>
+                          <thead><tr style={{ background: 'var(--page)', textAlign: 'left' }}>{['#', tx('pos.name'), tx('pos.phone'), tx('pos.email'), tx('pos.action'), tx('pos.note')].map((h) => <th key={h} style={{ padding: '5px 8px', color: 'var(--muted)', fontWeight: 700, borderBottom: '1px solid var(--line)' }}>{h}</th>)}</tr></thead>
+                          <tbody>
+                            {impPreview.sample.slice(0, 8).map((r) => {
+                              const t = aTone(r.action); return (
+                                <tr key={r.rowNumber} style={{ borderBottom: '1px solid var(--line)' }}>
+                                  <td style={{ padding: '5px 8px', color: 'var(--muted)' }}>{r.rowNumber}</td>
+                                  <td style={{ padding: '5px 8px', fontWeight: 600 }}>{[r.firstName, r.lastName].filter(Boolean).join(' ') || '—'}</td>
+                                  <td style={{ padding: '5px 8px' }}>{r.phone || '—'}</td>
+                                  <td style={{ padding: '5px 8px' }}>{r.email || '—'}</td>
+                                  <td style={{ padding: '5px 8px' }}><span className="pill" style={{ background: t.bg, color: t.fg, textTransform: 'capitalize' }}>{codeLabel(`people.customer.importAction.${r.action}`, r.action)}</span></td>
+                                  <td style={{ padding: '5px 8px', color: 'var(--muted)' }}>{r.reason || '—'}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        {impPreview.sample.length > 8 ? <div className="s muted" style={{ padding: '5px 8px' }}>+ {impPreview.sample.length - 8} {tx('pos.more_rows_in_the_file')}</div> : null}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })() : null}
+              {impResult ? (
+                <div style={{ marginTop: 10 }}>
+                  <div style={{ background: '#EAF4EC', color: '#2E7D32', borderRadius: 8, padding: '8px 10px', fontSize: 12.5, fontWeight: 600 }}>{tx('pos.imported')}{' '}{nf(impResult.created)}{(impResult.updated ?? 0) > 0 ? tx('pos.updated_updated', { updated: String(nf(impResult.updated)) }) : ''}{impResult.duplicatesSkipped ? tx('pos.skipped_duplicatesskipped_duplicate_plural', { duplicatesSkipped: String(nf(impResult.duplicatesSkipped)), plural: String(impResult.duplicatesSkipped === 1 ? '' : 's') }) : ''}{impResult.errors ? tx('pos.errors_error_plural', { errors: String(nf(impResult.errors)), plural: String(impResult.errors === 1 ? '' : 's') }) : ''} {tx('pos.of')}{' '}{nf(impResult.totalRows)} {tx('pos.rows')}</div>
+                  {impResult.errorSamples?.length ? (
+                    <div style={{ marginTop: 6, border: '1px solid #E8B7B0', borderRadius: 8, padding: '7px 10px', background: '#FFFCFB' }}>
+                      <div style={{ fontSize: 11, color: '#9B2C20', fontWeight: 800, marginBottom: 3 }}>{tx('pos.error_report')}</div>
+                      {impResult.errorSamples.slice(0, 6).map((e) => <div key={e.rowNumber} className="s" style={{ fontSize: 11.5 }}>{tx('pos.row')}{' '}{e.rowNumber}: {e.reason}</div>)}
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </section>
+      ) : null}
+
+      {addOpen ? (
+        <section className="panel" style={{ marginBottom: 12, borderColor: 'var(--gline)' }}>
+          <h2 style={{ marginTop: 0 }}>{tx('pos.add_customer_2')}</h2>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 8, alignItems: 'center' }}>
+            <input placeholder={tx('pos.first_name')} value={aFirst} onChange={(e) => setAFirst(e.target.value)} style={ipt} />
+            <input placeholder={tx('pos.last_name')} value={aLast} onChange={(e) => setALast(e.target.value)} style={ipt} />
+            <input type="tel" inputMode="tel" placeholder={tx('pos.mobile_phone')} value={aPhone} onChange={(e) => setAPhone(e.target.value)} style={ipt} />
+            <input type="email" placeholder={tx('pos.email')} value={aEmail} onChange={(e) => setAEmail(e.target.value)} style={ipt} />
+            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={aSms} onChange={(e) => setASms(e.target.checked)} /> {tx('pos.sms_consent')}</label>
+            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={aEmailOpt} onChange={(e) => setAEmailOpt(e.target.checked)} /> {tx('pos.email_consent')}</label>
+            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={aMkt} onChange={(e) => setAMkt(e.target.checked)} /> {tx('pos.marketing')}</label>
+            <button className="btn" disabled={busy === 'add'} onClick={doAdd}>{busy === 'add' ? tx('pos.adding') : tx('pos.create_customer')}</button>
+          </div>
+          <div className="s muted" style={{ marginTop: 6 }}>{tx('pos.phone_is_normalized_and_checked_for_1sv9')}</div>
+        </section>
+      ) : null}
+
+      {dups.length > 0 ? (
+        <section className="panel" style={{ marginBottom: 12, borderColor: 'var(--gline)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+            <h2 style={{ margin: 0 }}>{tx('pos.duplicate_profiles')}{' '}{dups.length} {tx('pos.group')}{enPlural(dups.length > 1 ? 's' : '')}</h2>
+            <span className="s muted" style={{ marginLeft: 'auto' }}>{tx('pos.review_each_match_pick_the_record_oozy')}</span>
+          </div>
+          <div className="overflow-x-auto w-full">
+            <div className='grid gap-3 min-w-[700px]'>
+              {dups.map((g) => {
+                const primary = dupSel[g.duplicateGroupId];
+                const diff = (key: keyof DupMember) => new Set(g.members.map((m) => String(m[key] ?? ''))).size > 1;
+                const fields: { key: keyof DupMember; label: string; fmt: (m: DupMember) => string }[] = [
+                  { key: 'phone', label: tx('pos.phone'), fmt: (m) => m.phone || '—' },
+                  { key: 'email', label: tx('pos.email'), fmt: (m) => m.email || '—' },
+                  { key: 'status', label: tx('pos.status'), fmt: (m) => m.status || '—' },
+                  { key: 'visitCount', label: tx('pos.visits'), fmt: (m) => String(m.visitCount ?? '—') },
+                  { key: 'totalSpendCents', label: tx('pos.total_spent'), fmt: (m) => (m.totalSpendCents != null ? money(m.totalSpendCents) : '—') },
+                  { key: 'loyaltyPoints', label: tx('pos.loyalty'), fmt: (m) => (m.loyaltyPoints != null ? tx('pos.loyaltypoints_pts_v1', { loyaltyPoints: String(nf(m.loyaltyPoints)), v1: String(m.loyaltyTier ? ` · ${m.loyaltyTier}` : '') }) : '—') },
+                  { key: 'createdAt', label: tx('pos.created'), fmt: (m) => fmtDate(m.createdAt) },
+                ];
+                const conflictCount = fields.filter((f) => diff(f.key)).length;
+                const others = g.members.filter((m) => m.customerId !== primary);
+                return (
+                  <div key={g.duplicateGroupId} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--page)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
+                      <span style={{ fontWeight: 700, fontSize: 13 }}>{tx('pos.matched_by')}{' '}{g.reason}</span>
+                      <span className="pill warn" style={{ marginLeft: 8 }}>{conflictCount} {tx('pos.conflicting_field')}{enPlural(conflictCount === 1 ? '' : 's')}</span>
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${g.members.length},1fr)`, gap: 0, fontSize: 12, border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: 'var(--card)' }}>
+                      <div style={{ padding: '7px 9px', fontWeight: 700, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{tx('pos.keep_as_primary')}</div>
+                      {g.members.map((m) => (
+                        <label key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, background: primary === m.customerId ? '#FCEFD8' : 'transparent' }}>
+                          <input type="radio" name={'dup_' + g.duplicateGroupId} checked={primary === m.customerId} onChange={() => setDupSel((p) => ({ ...p, [g.duplicateGroupId]: m.customerId }))} />
+                          <span style={{ fontWeight: 800 }}>{m.displayName}</span>
+                        </label>
+                      ))}
+                      <div style={{ padding: '7px 9px', color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{tx('pos.customer_id')}</div>
+                      {g.members.map((m) => (<div key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', background: primary === m.customerId ? '#FFFCF6' : 'transparent' }}>#{m.customerId}</div>))}
+                      {fields.map((f) => (
+                        <Fragment key={String(f.key)}>
+                          <div style={{ padding: '7px 9px', color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{f.label}{diff(f.key) ? <span title={tx('pos.differs')} style={{ color: '#C0392B', marginLeft: 4 }}>●</span> : null}</div>
+                          {g.members.map((m) => (<div key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', fontWeight: diff(f.key) ? 700 : 400, background: primary === m.customerId ? '#FFFCF6' : 'transparent' }}>{f.fmt(m)}</div>))}
+                        </Fragment>
+                      ))}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
+                      <span className="s muted" style={{ fontSize: 11 }}>
+                        {primary ? <>{tx('pos.visits_appointments_reviews_spend_from')}{' '}{others.length} {tx('pos.other_record')}{enPlural(others.length === 1 ? '' : 's')} {tx('pos.transfer_to_the_primary_the_duplicate')}{others.length === 1 ? ' is' : tx('pos.s_are')} {tx('pos.archived_never_deleted')}</> : tx('pos.select_which_record_survives')}
+                      </span>
+                      <button className="btn" disabled={dupBusy === g.duplicateGroupId || !primary} style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 12.5, background: primary ? 'var(--aps-orange)' : undefined, borderColor: primary ? 'var(--aps-orange)' : undefined, color: primary ? '#fff' : undefined }} onClick={() => { if (!primary) return; askConfirm(tx('people.customers.mergeConfirm', { count: String(others.length + 1), name: String(g.members.find((m) => m.customerId === primary)?.displayName ?? '') }), () => { void doMerge(g.duplicateGroupId); }, { confirmLabel: tx('pos.merge_profiles') }); }}>{dupBusy === g.duplicateGroupId ? tx('pos.merging') : tx('pos.merge_into_primary')}</button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      ) : null}
+
+      {/* 6 summary cards */}
+      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6  gap-2">
+        {summary6.map((c) => (
+          <button key={c.l} onClick={() => { setSegment(c.seg); setPage(1); }} style={{ ...card, textAlign: 'left', cursor: 'pointer', borderColor: segment === c.seg && c.seg ? 'var(--aps-orange)' : 'var(--line)' }}>
+            <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700 }}>{c.l}</div>
+            <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 20, fontWeight: 800, marginTop: 5 }}>{c.v}</div>
+            {(() => { const tt = fmtTrend(c.trend); return tt ? <div style={{ fontSize: 10, marginTop: 2, color: tt.up ? '#2E7D32' : '#C0392B', fontWeight: 700 }}>{tt.text} <span style={{ color: 'var(--muted)', fontWeight: 400 }}>{tx('pos.vs_last_month')}</span></div> : <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>{c.sub}</div>; })()}
+          </button>
+        ))}
+      </div>
+
+      {/* main split: directory (left) + analytics rail (right) */}
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_312px] gap-3 items-start">
+        <div>
+          <div className="overflow-x-auto wi-full mb-3">
+            <div className="flex whitespace-nowrap gap-1 border-b border-(--line)  min-w-125">
+              {tabs.map((t) => {
+                const on = segment === t.id;
+                return <button key={t.l} onClick={() => pickTab(t.id)} style={{ background: 'none', border: 'none', borderBottom: on ? '2px solid var(--aps-orange)' : '2px solid transparent', padding: '8px 12px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 12.5, fontWeight: on ? 800 : 600, color: on ? 'var(--text)' : 'var(--muted)' }}>{t.l} <span style={{ color: 'var(--muted)', fontWeight: 600 }}>{nf(t.n)}</span></button>;
+              })}
+            </div>
+          </div>
+
+          {/* directory table */}
+          <section className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, minWidth: 850 }}>
+                <thead>
+                  <tr style={{ background: '#FBF5EA', color: 'var(--muted)', textAlign: 'left' }}>
+                    {[tx('pos.customer'), tx('pos.contact'), tx('pos.loyalty'), tx('pos.last_visit_3'), tx('pos.total_visits_2'), tx('pos.total_spent_2'), tx('pos.avg_spent'), tx('pos.status'), tx('pos.actions')].map((h, i) => (
+                      <th key={h} style={{ padding: '9px 12px', fontSize: 10.5, fontWeight: 800, letterSpacing: '.03em', textAlign: i >= 4 && i <= 6 ? 'right' : 'left', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.length === 0 ? <tr><td colSpan={9} style={{ padding: 20, color: 'var(--muted)' }}>{tx('pos.no_matching_customers')}</td></tr> : rows.map((c) => (
+                    <Fragment key={c.customerId}>
+                      <tr key={c.customerId} style={{ borderTop: '1px solid var(--line)' }}>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+                            <ProfileAvatarWithPreview name={c.displayName} url={c.avatarUrl} size={32} type="customer" subtitle={c.phone || c.email || undefined} />
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 800, cursor: 'pointer' }} onClick={() => openProfile(c)} title={tx('pos.open_profile')}>{c.displayName} {c.isVip ? <span className="pill warn" style={{ marginLeft: 2 }}>VIP</span> : null} {memberStatus[c.customerId] ? <MembershipChip planName={memberStatus[c.customerId].planName} status={memberStatus[c.customerId].status} compact /> : null}</div>
+                              <div style={{ fontSize: 10.5, color: 'var(--muted)' }}>#{c.customerId}</div>
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: '8px 12px' }}><div>{c.phone || '—'}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{c.email || '—'}</div></td>
+                        <td style={{ padding: '8px 12px' }}><div style={{ fontWeight: 700, color: tierColor(c.loyaltyTier) }}>{c.loyaltyTier || '—'}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{nf(c.loyaltyPoints)} {tx('pos.pts')}</div></td>
+                        <td style={{ padding: '8px 12px', whiteSpace: 'nowrap' }}>{fmtDate(c.lastVisitAt)}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>{c.visitCount}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>{money(c.totalSpendCents)}</td>
+                        <td style={{ padding: '8px 12px', textAlign: 'right' }}>{money(c.averageSpendCents)}</td>
+                        <td style={{ padding: '8px 12px' }}><span className={'pill ' + stTone(c.status)} style={{ textTransform: 'capitalize' }}>{customerStatusLabel(c.status)}</span></td>
+                        <td style={{ padding: '8px 12px' }}>
+                          <div style={{ display: 'flex', gap: 4 }}>
+                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.message')} onClick={() => nav('/messages')}>✉</button>
+                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.profile_activity')} onClick={() => openProfile(c)}>▦</button>
+                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.edit')} onClick={() => openEdit(c)}>⋯</button>
+                          </div>
+                        </td>
+                      </tr>
+                      {editId === c.customerId ? (
+                        <tr><td colSpan={9} style={{ background: '#FFFDF8', borderTop: '1px solid var(--line)' }}>
+                          <div style={{ padding: 10, display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 8, alignItems: 'center' }}>
+                            {/* NOT a text input any more.
+                                Typing here used to change — immediately and silently — where every booking code and
+                                appointment reminder went, with no validation, no duplicate check, and no proof the
+                                customer held the number. Now it opens a flow that verifies by SMS first. */}
+                            <button
+                              className="btn"
+                              onClick={() => setPhoneEditFor({ id: c.customerId, name: c.displayName || tx('pos.this_customer'), masked: c.phone || null })}
+                              style={{ justifySelf: 'start' }}
+                            >
+                              {tx('pos.edit_phone_number')}
+                            </button>
+                            <input type="email" placeholder={tx('pos.email')} value={eEmail} onChange={(e) => setEEmail(e.target.value)} style={ipt} />
+                            <input aria-label={tx('pos.preferred_name')} placeholder={tx('pos.preferred_name_what_they_like_to_1kgy')} maxLength={60} value={ePrefName} onChange={(e) => setEPrefName(e.target.value)} style={ipt} />
+                            <select aria-label={tx('pos.preferred_language_2')} value={ePrefLang} onChange={(e) => setEPrefLang(e.target.value)} style={ipt}>
+                              <option value="">{tx('people.customer.language.notSet')}</option>
+                              {CUSTOMER_LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.name}</option>)}
+                            </select>
+                            <select aria-label={tx('pos.preferred_branch_2')} value={ePrefBranch} onChange={(e) => setEPrefBranch(e.target.value)} style={ipt}>
+                              <option value="">{tx('pos.no_preferred_branch')}</option>
+                              {branchOptions.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                            </select>
+                            <select value={eStatus} onChange={(e) => setEStatus(e.target.value)} style={ipt}><option value="active">{tx('pos.active')}</option><option value="inactive">{tx('pos.inactive')}</option><option value="archived">{tx('pos.archived')}</option></select>
+                            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={eVip} onChange={(e) => setEVip(e.target.checked)} /> VIP</label>
+                            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={eSms} onChange={(e) => setESms(e.target.checked)} /> SMS</label>
+                            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={eEmailOpt} onChange={(e) => setEEmailOpt(e.target.checked)} /> {tx('pos.email')}</label>
+                            <label className="s" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><input type="checkbox" checked={eMkt} onChange={(e) => setEMkt(e.target.checked)} /> {tx('pos.marketing')}</label>
+                            <button className="btn" disabled={busy === c.customerId} onClick={() => saveEdit(c.customerId)}>{busy === c.customerId ? tx('pos.saving_2') : tx('pos.save_2')}</button>
+                          </div>
+
+                          {phoneEditFor?.id === c.customerId ? (
+                            <div style={{ padding: '0 10px 12px' }}>
+                              <POSCustomerPhoneEditor
+                                customerId={phoneEditFor.id}
+                                customerName={phoneEditFor.name}
+                                currentMasked={phoneEditFor.masked}
+                                onDone={() => { setPhoneEditFor(null); void refetch(); }}
+                                onCancel={() => setPhoneEditFor(null)}
+                              />
+                            </div>
+                          ) : null}
+                        </td></tr>
+                      ) : null}
+                    </Fragment>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* pagination */}
+            <div style={{ display: 'flex', alignItems: 'center', padding: '10px 12px', borderTop: '1px solid var(--line)', gap: 8, flexWrap: 'wrap' }}>
+              <div className="s muted">{tx('pos.showing')}{' '}{from} {tx('pos.to')}{' '}{to} {tx('pos.of')}{' '}{nf(pg.totalItems)} {tx('pos.customers_2')}</div>
+              <div style={{ marginLeft: 'auto', display: 'flex', gap: 4, alignItems: 'center' }}>
+                <button className="btn ghost" disabled={pg.page <= 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>‹</button>
+                {pageBtns.map((b, i) => b === '…' ? <span key={'e' + i} className="s muted" style={{ padding: '0 4px' }}>…</span> : (
+                  <button key={b} onClick={() => setPage(b)} className={'btn' + (b === pg.page ? '' : ' ghost')} style={{ padding: '4px 15px', ...(b === pg.page ? { background: 'var(--aps-orange)', borderColor: 'var(--aps-orange)', color: '#fff' } : {}) }}>{b}</button>
+                ))}
+                <button className="btn ghost" disabled={pg.page >= pg.totalPages} onClick={() => setPage((p) => Math.min(pg.totalPages, p + 1))}>›</button>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* right analytics rail */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <section className="panel" style={{ margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_demographics')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+            <div className="s muted" style={{ marginBottom: 8 }}>{tx('pos.age_groups')}</div>
+            {an && an.ageGroups.length > 0 ? <Donut items={an.ageGroups} /> : <div className="muted">{tx('pos.no_birthdays_on_file_yet')}</div>}
+          </section>
+          <section className="panel" style={{ margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.top_customer_tags')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/customers')}>{tx('pos.view_all_4')}</button></div>
+            {tagCounts.length === 0 ? <div className="muted">{tx('pos.no_tags_on_this_page')}</div> : tagCounts.slice(0, 6).map(([t, n]) => (
+              <div key={t} style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}><span className="pill" style={{ background: '#FCEFD8', color: '#8B5A18' }}>{t}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>{nf(n)} {tx('pos.customers_2')}</span></div>
+            ))}
+          </section>
+          <section className="panel" style={{ margin: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_sources')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+            {srcCounts.length === 0 ? <div className="muted">{tx('pos.no_source_data_on_this_page')}</div> : srcCounts.slice(0, 6).map(([src, n]) => (
+              <div key={src} style={{ marginBottom: 8 }}>
+                <div style={{ display: 'flex', fontSize: 11.5, marginBottom: 3 }}><span>{srcLabel(src)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(n)} · {Math.round((n / srcTotal) * 1000) / 10}%</span></div>
+                <div style={{ height: 7, background: '#EFE6D6', borderRadius: 4 }}><div style={{ width: `${Math.round((n / srcMax) * 100)}%`, height: 7, background: 'var(--aps-orange)', borderRadius: 4 }} /></div>
+              </div>
+            ))}
+          </section>
+        </div>
+      </div>
+
+      {/* bottom analytics: CLV · Retention Trend · RFM · Recent Activity */}
+   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-14">
+        <section className="panel" style={{ margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_lifetime_value')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+          {!an ? <div className="muted">{tx('pos.loading')}</div> : (
+            <div>
+              <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 800, color: '#A96F22' }}>{money(an.lifetimeValue.avgClvCents)}</div>
+              <div className="s muted" style={{ marginBottom: 10 }}>{tx('pos.average_clv')}</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, borderTop: '1px solid var(--line)', paddingTop: 8 }}>
+                <div><div className="s muted">{tx('pos.total_revenue')}</div><div style={{ fontWeight: 700, fontSize: 12 }}>{money(an.lifetimeValue.totalRevenueCents)}</div></div>
+                <div><div className="s muted">{tx('pos.customers')}</div><div style={{ fontWeight: 700, fontSize: 12 }}>{nf(an.lifetimeValue.totalCustomers)}</div></div>
+                <div><div className="s muted">{tx('pos.repeat_rate')}</div><div style={{ fontWeight: 700, fontSize: 12 }}>{an.lifetimeValue.repeatRatePercent}%</div></div>
+              </div>
+            </div>
+          )}
+        </section>
+        <section className="panel" style={{ margin: 0 }}>
+          <h2 style={{ marginTop: 0 }}>{tx('pos.customer_retention_trend')}</h2>
+          {an ? (
+            <div>
+              <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 800 }}>{an.retentionRatePercent}%</div>
+              <div className="s muted">{tx('pos.retention_rate_current_repeat_rate')}</div>
+              <div className="s muted" style={{ marginTop: 10 }}>{tx('pos.month_over_month_series_needs_a_1971')}</div>
+            </div>
+          ) : <div className="muted">{tx('pos.loading')}</div>}
+        </section>
+        <section className="panel" style={{ margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.rfm_analysis')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+          {an && an.rfm.length > 0 ? an.rfm.map((x) => (
+            <div key={x.segment} style={{ marginBottom: 7 }}>
+              <div style={{ display: 'flex', fontSize: 11.5 }}><span>{serverText(x.segment)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(x.count)} · {an.lifetimeValue.totalCustomers ? Math.round((x.count / an.lifetimeValue.totalCustomers) * 1000) / 10 : 0}%</span></div>
+              <div style={{ height: 7, background: '#EFE6D6', borderRadius: 4, marginTop: 3 }}><div style={{ width: `${Math.round((x.count / rfmMax) * 100)}%`, height: 7, background: '#A96F22', borderRadius: 4 }} /></div>
+            </div>
+          )) : <div className="muted">{tx('pos.no_customers_to_segment_yet')}</div>}
+        </section>
+        <section className="panel" style={{ margin: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/overview')}>{tx('pos.view_all_4')}</button></div>
+          {recentActivity.length === 0 ? <div className="muted">{tx('pos.no_recent_visits_on_this_page')}</div> : recentActivity.map((r) => (
+            <div key={r.customerId} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
+              <ProfileAvatarWithPreview name={r.displayName} url={r.avatarUrl} size={28} type="customer" />
+              <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 12 }}>{r.displayName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('pos.last_visit')}</div></div>
+              <span className="s muted" style={{ marginLeft: 'auto' }}>{fmtDate(r.lastVisitAt)}</span>
+            </div>
+          ))}
+        </section>
+      </div>
+      {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={() => setProfileRow(null)} nav={nav} /> : null}
+    </div>
+  );
+}
+
+function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail: any; busy: boolean; onClose: () => void; nav: (to: string) => void }) {
+  const { open: openIPad } = useIPadView();
+  const [tab, setTab] = useState<'overview' | 'loyalty' | 'visits' | 'notes'>('overview');
+  const d = detail;
+  // editable state (synced from the detail payload)
+  const [eNotes, setENotes] = useState<any>(null);
+  const [eTags, setETags] = useState<string[]>(row.tags || []);
+  const [newTag, setNewTag] = useState('');
+  const [adjOpen, setAdjOpen] = useState(false);
+  const [adjPts, setAdjPts] = useState(0);
+  const [adjReason, setAdjReason] = useState('');
+  const [saving, setSaving] = useState<string | null>(null);
+  const [saved, setSaved] = useState<string | null>(null);
+  useEffect(() => { if (d?.notes) setENotes({ ...d.notes }); }, [d]);
+  const flash = (kk: string) => { setSaved(kk); setTimeout(() => setSaved((s) => (s === kk ? null : s)), 1800); };
+  const saveNotes = async () => { if (!eNotes) return; setSaving('notes'); try { await posCustomersApi.setNotes(row.customerId, eNotes); flash('notes'); } catch { /* surfaced via no flash */ } finally { setSaving(null); } };
+  const saveTags = async (next: string[]) => { setETags(next); setSaving('tags'); try { await posCustomersApi.setTags(row.customerId, next); flash('tags'); } catch { /* */ } finally { setSaving(null); } };
+  const saveLoyalty = async () => { setSaving('loyalty'); try { await posCustomersApi.setLoyalty(row.customerId, { ...(d?.loyalty || {}), points: adjPts, tier: d?.loyalty?.tier || row.loyaltyTier || 'Regular', reason: adjReason }); flash('loyalty'); setAdjOpen(false); setAdjReason(''); } catch { /* */ } finally { setSaving(null); } };
+  const st = row.status;
+  const loy = d?.loyalty as { points: number; earned: number; redeemed: number; tier: string; tierThresholdPoints: number } | undefined;
+  const mem = d?.membership as { plan: string; status: string; renewalDate?: string; benefits: string[]; billingStatus: string } | undefined;
+  const gcs = (d?.giftCards as { giftCardId: string; maskedCode: string; balanceCents: number; status: string }[]) || [];
+  const visits = (d?.recentVisits as { visitId: string; date: string; serviceName: string; technicianName: string; totalCents: number; tipCents: number }[]) || [];
+  const TABS: { id: typeof tab; l: string }[] = [
+    { id: 'overview', l: tx('pos.overview') }, { id: 'loyalty', l: tx('pos.loyalty_membership') }, { id: 'visits', l: tx('pos.visits') }, { id: 'notes', l: tx('pos.notes_preferences') },
+  ];
+  const Row3 = ({ k, v }: { k: string; v: React.ReactNode }) => (
+    <div style={{ display: 'flex', padding: '14px 0', borderBottom: '1px solid #F1ECE4', fontSize: 14 }}>
+      <span style={{ color: '#8A7A6D' }}>{k}</span>
+      <span style={{ marginLeft: 'auto', fontWeight: 600, color: '#2C2A29', textAlign: 'right' }}>{v}</span>
+    </div>
+  );
+  const H = ({ t }: { t: string }) => <h3 style={{ margin: '24px 0 12px', fontSize: 13, color: '#B5821F', letterSpacing: '0.06em', fontWeight: 800, textTransform: 'uppercase' }}>{t}</h3>;
+  return (
+    <>
+      <div onClick={onClose} style={{ position: 'fixed', inset: 0, background: 'rgba(30,20,8,.28)', zIndex: 60 }} />
+      <aside role="dialog" aria-label={tx('pos.displayname_profile', { displayName: String(row.displayName) })} className="no-scrollbar" style={{ position: 'fixed', top: 0, right: 0, height: '100vh', width: 540, maxWidth: '94vw', background: '#FFFFFF', borderLeft: '1px solid #EFEAE1', boxShadow: '-24px 0 80px rgba(0,0,0,0.08)', zIndex: 61, display: 'flex', flexDirection: 'column' }}>
+        <div style={{ padding: '32px', background: '#FAFAF9', borderBottom: '1px solid #EFEAE1' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            <ProfileAvatarWithPreview name={row.displayName} url={row.avatarUrl} size={64} type="customer" subtitle={row.phone || row.email || undefined} />
+            <div style={{ minWidth: 0, flex: 1, marginTop: 4 }}>
+              <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 26, fontWeight: 800, color: '#2C2A29' }}>{row.displayName} {row.isVip ? <span style={{ background: '#FDEFE0', color: '#C26A12', fontSize: 11, padding: '3px 8px', borderRadius: 12, verticalAlign: 'middle', marginLeft: 6 }}>VIP</span> : null}</div>
+              <div style={{ fontSize: 13, color: '#8A7A6D', marginTop: 4 }}>#{row.customerId.split('-')[0]}{row.loyaltyTier ? ` · ${row.loyaltyTier}` : ''}</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button onClick={() => openIPad(customerRequest((detail || row) as any))} style={{ background: '#FFFFFF', border: '1px solid #EADBB6', borderRadius: 20, padding: '8px 16px', fontSize: 13, fontWeight: 600, color: '#2C2A29', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }} onMouseOver={e => e.currentTarget.style.background = '#F8F6F3'} onMouseOut={e => e.currentTarget.style.background = '#FFFFFF'}>{tx('pos.full_view')}</button>
+              <button onClick={onClose} aria-label={tx('pos.close')} style={{ background: '#FFFFFF', border: '1px solid #EFEAE1', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#8A7A6D', cursor: 'pointer', transition: 'all 0.2s' }} onMouseOver={e => { e.currentTarget.style.background = '#FDF0EE'; e.currentTarget.style.color = '#C0392B'; }} onMouseOut={e => { e.currentTarget.style.background = '#FFFFFF'; e.currentTarget.style.color = '#8A7A6D'; }}>✕</button>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 20, alignItems: 'center' }}>
+            <span style={{ textTransform: 'capitalize', background: st === 'active' ? '#EEF7EF' : '#F8F6F3', color: st === 'active' ? '#2E7D32' : '#8A7A6D', padding: '6px 12px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: '1px solid', borderColor: st === 'active' ? '#A5D6A7' : '#EFEAE1' }}>• {customerStatusLabel(st)}</span>
+            {row.loyaltyTier ? <span style={{ background: 'linear-gradient(135deg, #FDFBF7 0%, #F1ECE4 100%)', color: '#B5821F', borderRadius: 20, padding: '6px 12px', fontSize: 13, fontWeight: 700, border: '1px solid #EADBB6' }}>{nf(row.loyaltyPoints)} {tx('pos.pts')}</span> : null}
+            <button style={{ marginLeft: 'auto', background: '#F8F6F3', border: '1px solid #EFEAE1', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#2C2A29', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => nav('/messages')}>{tx('pos.message_2')}</button>
+            <button style={{ background: '#2C2A29', border: '1px solid #2C2A29', borderRadius: 20, padding: '6px 16px', fontSize: 13, fontWeight: 600, color: '#FFFFFF', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }} onClick={() => nav('/booking')}>{tx('pos.booking_2')}</button>
+          </div>
+        </div>
+        <div className="no-scrollbar" style={{ display: 'flex', gap: 24, padding: '0 32px', borderBottom: '1px solid #EFEAE1', overflowX: 'auto', background: '#FAFAF9' }}>
+          {TABS.map((t) => (
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ background: 'none', border: 'none', borderBottom: tab === t.id ? '2px solid #D4AF37' : '2px solid transparent', padding: '16px 4px', cursor: 'pointer', fontFamily: 'inherit', fontSize: 14, fontWeight: tab === t.id ? 700 : 500, color: tab === t.id ? '#2C2A29' : '#8A7A6D', whiteSpace: 'nowrap', transition: 'all 0.2s' }}>{t.l}</button>
+          ))}
+        </div>
+        <div className="no-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '24px 32px 60px' }}>
+          {busy && !d ? <div style={{ fontSize: 14, color: '#8A7A6D', textAlign: 'center', padding: 40 }}>{tx('pos.loading_profile')}</div> : null}
+
+          {tab === 'overview' ? (<>
+            <H t={tx('pos.contact_2')} />
+            <Row3 k={tx('pos.phone')} v={row.phone || '—'} />
+            <Row3 k={tx('pos.email')} v={row.email || '—'} />
+            <Row3 k={tx('pos.birthday')} v={row.birthday ? fmtDate(row.birthday) : '—'} />
+            <Row3 k={tx('pos.source')} v={row.source ? statusLabel('source', row.source) : '—'} />
+            <H t={tx('pos.lifetime_2')} />
+            <Row3 k={tx('pos.total_visits_3')} v={nf(row.visitCount)} />
+            <Row3 k={tx('pos.total_spent')} v={money(row.totalSpendCents)} />
+            <Row3 k={tx('pos.avg_spent_2')} v={money(row.averageSpendCents)} />
+            <Row3 k={tx('pos.last_visit')} v={fmtDate(row.lastVisitAt)} />
+            <Row3 k={tx('pos.next_appointment')} v={fmtDate(row.nextAppointmentAt)} />
+            <H t={tx('pos.communication_consent_2')} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              {[['SMS', row.smsOptIn], [tx('pos.email'), row.emailOptIn], [tx('pos.marketing'), row.marketingOptIn]].map(([l, on]) => (
+                <span key={l as string} style={{ background: on ? '#EEF7EF' : '#F8F6F3', color: on ? '#2E7D32' : '#8A7A6D', padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: '1px solid', borderColor: on ? '#A5D6A7' : '#EFEAE1' }}>{l as string}: {on ? tx('pos.on') : tx('pos.off')}</span>
+              ))}
+            </div>
+            <H t={tx('pos.tags').toUpperCase()} />
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center', marginTop: 8 }}>
+              {eTags.map((tg) => (
+                <span key={tg} style={{ background: 'linear-gradient(135deg, #FDFBF7 0%, #F1ECE4 100%)', color: '#B5821F', padding: '6px 14px', borderRadius: 20, fontSize: 13, fontWeight: 600, border: '1px solid #EADBB6', display: 'inline-flex', alignItems: 'center', gap: 6 }}>{tg}
+                  <button aria-label={tx('pos.remove_tg', { tg: String(tg) })} onClick={() => saveTags(eTags.filter((x) => x !== tg))} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#8B5A18', fontWeight: 800, fontSize: 14, display: 'flex', alignItems: 'center', padding: 0 }}>×</button>
+                </span>
+              ))}
+              <input value={newTag} onChange={(e) => setNewTag(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && newTag.trim()) { saveTags([...new Set([...eTags, newTag.trim()])]); setNewTag(''); } }} placeholder={tx('pos.add_tag')} style={{ border: '1px dashed #D2C4B3', borderRadius: 20, padding: '6px 14px', fontSize: 13, width: 100, background: '#FAFAF9', outline: 'none' }} />
+              {saving === 'tags' ? <span style={{ fontSize: 12, color: '#8A7A6D' }}>{tx('pos.saving')}</span> : saved === 'tags' ? <span style={{ fontSize: 12, color: '#2E7D32' }}>{tx('pos.saved_3')}</span> : null}
+            </div>
+          </>) : null}
+
+          {tab === 'loyalty' ? (<>
+            <div style={{ display: 'flex', alignItems: 'center' }}><H t={tx('pos.loyalty_2')} />
+              <button style={{ marginLeft: 'auto', background: '#F8F6F3', border: '1px solid #EFEAE1', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#2C2A29', cursor: 'pointer' }} onClick={() => { setAdjPts(loy?.points ?? row.loyaltyPoints); setAdjOpen((v) => !v); }}>{tx('pos.adjust_points_2')}</button>
+            </div>
+            {adjOpen ? (
+              <div style={{ border: '1px solid #EADBB6', borderRadius: 16, padding: 16, marginBottom: 16, background: '#FAFAF9' }}>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+                  <label style={{ width: 100, fontSize: 13, color: '#8A7A6D', fontWeight: 600 }}>{tx('pos.new_balance')}</label>
+                  <input type="number" min={0} value={adjPts} onChange={(e) => setAdjPts(Math.max(0, Number(e.target.value) || 0))} style={{ flex: 1, border: '1px solid #EFEAE1', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
+                  <label style={{ width: 100, fontSize: 13, color: '#8A7A6D', fontWeight: 600 }}>{tx('pos.reason_2')}</label>
+                  <input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder={tx('pos.e_g_service_recovery')} style={{ flex: 1, border: '1px solid #EFEAE1', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' }} />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button style={{ background: '#2C2A29', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer' }} disabled={saving === 'loyalty' || !adjReason.trim()} onClick={saveLoyalty}>{saving === 'loyalty' ? tx('pos.saving_2') : tx('pos.save_adjustment_2')}</button>
+                  <button style={{ background: '#F8F6F3', color: '#2C2A29', border: '1px solid #EFEAE1', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer' }} onClick={() => setAdjOpen(false)}>{tx('pos.cancel')}</button>
+                  {saved === 'loyalty' ? <span style={{ color: '#2E7D32', alignSelf: 'center', fontSize: 13, fontWeight: 600, marginLeft: 8 }}>{tx('pos.saved_3')}</span> : null}
+                </div>
+              </div>
+            ) : null}
+            <Row3 k={tx('pos.tier')} v={loy?.tier || row.loyaltyTier || '—'} />
+            <Row3 k={tx('pos.points_balance')} v={nf(loy?.points ?? row.loyaltyPoints)} />
+            {loy ? <Row3 k={tx('pos.lifetime_earned_2')} v={nf(loy.earned)} /> : null}
+            {loy ? <Row3 k={tx('pos.lifetime_redeemed')} v={nf(loy.redeemed)} /> : null}
+            <H t={tx('pos.membership_4')} />
+            {mem && mem.status !== 'none' ? (<>
+              <Row3 k={tx('pos.plan')} v={mem.plan} />
+              <Row3 k={tx('pos.status')} v={<span style={{ textTransform: 'capitalize' }}>{membershipStatusLabel(mem.status)}</span>} />
+              <Row3 k={tx('pos.renewal')} v={fmtDate(mem.renewalDate)} />
+              <Row3 k={tx('pos.billing')} v={mem.billingStatus || '—'} />
+            </>) : <div style={{ fontSize: 14, color: '#8A7A6D', padding: '12px 0' }}>{tx('pos.no_active_membership')}</div>}
+            <H t={tx('pos.gift_cards_3')} />
+            {gcs.length ? gcs.map((g) => <Row3 key={g.giftCardId} k={g.maskedCode} v={<>{money(g.balanceCents)} <span style={{ color: '#8A7A6D', fontWeight: 400, fontSize: 12 }}>· {codeLabel(`people.giftCard.status.${g.status}`, g.status)}</span></>} />) : <div style={{ fontSize: 14, color: '#8A7A6D', padding: '12px 0' }}>{tx('pos.no_gift_cards')}</div>}
+          </>) : null}
+
+          {tab === 'visits' ? (<>
+            <H t={tx('pos.recent_visits')} />
+            {visits.length ? visits.map((v) => (
+              <div key={v.visitId} style={{ display: 'flex', alignItems: 'center', padding: '16px 0', borderBottom: '1px solid #F1ECE4' }}>
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 15, color: '#2C2A29' }}>{v.serviceName || tx('pos.service_3')}</div>
+                  <div style={{ fontSize: 13, color: '#8A7A6D', marginTop: 4 }}>{fmtDate(v.date)}{v.technicianName ? ` · ${v.technicianName}` : ''}</div>
+                </div>
+                <div style={{ marginLeft: 'auto', textAlign: 'right' }}>
+                  <div style={{ fontWeight: 700, fontSize: 16, color: '#2C2A29' }}>{money(v.totalCents)}</div>
+                  {v.tipCents ? <div style={{ fontSize: 12, color: '#B5821F', fontWeight: 600, marginTop: 2 }}>{tx('pos.tip')}{' '}{money(v.tipCents)}</div> : null}
+                </div>
+              </div>
+            )) : <div style={{ fontSize: 14, color: '#8A7A6D', padding: '20px 0', textAlign: 'center' }}>{tx('pos.no_visit_history_yet')}</div>}
+            <div style={{ marginTop: 24, fontSize: 13, color: '#8A7A6D', textAlign: 'center', background: '#FAFAF9', padding: '16px', borderRadius: 12, border: '1px dashed #D2C4B3' }}>{tx('pos.full_visit_appointment_and_transaction_history_s27e')}</div>
+          </>) : null}
+
+          {tab === 'notes' ? (eNotes ? (<>
+            <H t={tx('pos.safety')} />
+            <label style={{ display: 'block', marginBottom: 6, color: '#C0392B', fontWeight: 700, fontSize: 13 }}>{tx('pos.warnings_critical_shown_across_booking_check_xwcb')}</label>
+            <textarea value={eNotes.warnings || ''} onChange={(e) => setENotes({ ...eNotes, warnings: e.target.value })} rows={2} style={{ width: '100%', border: '1px solid #FADEDC', borderRadius: 12, padding: '12px 16px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', background: '#FDF0EE', outline: 'none' }} />
+            <label style={{ display: 'block', margin: '20px 0 6px', color: '#B5821F', fontWeight: 700, fontSize: 13 }}>{tx('pos.allergies_sensitivities')}</label>
+            <textarea value={eNotes.allergyNotes || ''} onChange={(e) => setENotes({ ...eNotes, allergyNotes: e.target.value })} rows={2} style={{ width: '100%', border: '1px solid #EADBB6', borderRadius: 12, padding: '12px 16px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', background: '#FFFDF8', outline: 'none' }} />
+
+            <H t={tx('pos.preferences')} />
+            {([['preferredTechnician', 'pos.preferred_technician'], ['preferredStyle', 'people.customer.notes.preferredStyle'], ['servicePreferences', 'people.customer.notes.servicePreferences']] as const).map(([key, labelKey]) => (
+              <div key={key} style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 12 }}>
+                <label style={{ width: 140, fontSize: 13, color: '#8A7A6D', fontWeight: 600 }}>{tx(labelKey)}</label>
+                <input value={eNotes[key] || ''} onChange={(e) => setENotes({ ...eNotes, [key]: e.target.value })} style={{ flex: 1, border: '1px solid #EFEAE1', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' }} />
+              </div>
+            ))}
+
+            <H t={tx('pos.salon_notes_2')} />
+            <textarea value={eNotes.salonNotes || ''} onChange={(e) => setENotes({ ...eNotes, salonNotes: e.target.value })} rows={3} style={{ width: '100%', border: '1px solid #EFEAE1', borderRadius: 12, padding: '12px 16px', fontSize: 14, fontFamily: 'inherit', resize: 'vertical', outline: 'none' }} />
+
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginTop: 24, padding: '20px', background: '#FAFAF9', borderRadius: 16, border: '1px dashed #D2C4B3' }}>
+              <button style={{ background: '#2C2A29', color: '#FFFFFF', border: 'none', padding: '10px 20px', borderRadius: 24, fontSize: 14, fontWeight: 600, cursor: 'pointer', transition: 'all 0.2s' }} disabled={saving === 'notes'} onClick={saveNotes}>{saving === 'notes' ? tx('pos.saving_2') : tx('pos.save_notes_2')}</button>
+              {saved === 'notes' ? <span style={{ color: '#2E7D32', fontSize: 14, fontWeight: 600 }}>{tx('pos.saved_3')}</span> : null}
+              <span style={{ marginLeft: 'auto', fontSize: 12, color: '#8A7A6D' }}>{tx('pos.safety_notes_are_preserved_in_audit_h77k')}</span>
+            </div>
+          </>) : <div style={{ fontSize: 14, color: '#8A7A6D', textAlign: 'center', padding: 40 }}>{tx('pos.loading_notes')}</div>) : null}
+        </div>
+      </aside>
+    </>
+  );
+}

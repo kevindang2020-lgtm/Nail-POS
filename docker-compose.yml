@@ -1,0 +1,22 @@
+# docker-compose.yml — local Postgres 16 for AIPowerSalon dev/testing.
+# Start with:  docker compose up -d db   (the setup script does this for you)
+services:
+  db:
+    image: postgres:16
+    container_name: aipowersalon-db
+    environment:
+      POSTGRES_USER: aps
+      POSTGRES_PASSWORD: aps
+      POSTGRES_DB: aps
+    ports:
+      - "5432:5432"
+    volumes:
+      - aipowersalon-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aps -d aps"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  aipowersalon-pgdata:

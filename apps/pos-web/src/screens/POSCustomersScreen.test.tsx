@@ -1,0 +1,283 @@
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { render, screen, fireEvent, within, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import { POSCustomersScreen } from './POSCustomersScreen';
+
+const pagination = (totalItems: number) => ({ page: 1, pageSize: 8, totalItems, totalPages: Math.max(1, Math.ceil(totalItems / 8)) });
+const state = {
+  kpisFull: { totalCustomers: 0, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0 },
+  rows: { items: [], pagination: pagination(0) },
+  filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+};
+const mockFetch = (s: unknown) => vi.fn(async () => ({ ok: true, status: 200, json: async () => s, headers: { get: () => null } } as any));
+beforeEach(() => { vi.restoreAllMocks(); });
+
+describe('POSCustomersScreen', () => {
+  it('mounts and renders the reference shell: header, 8 KPIs, toolbar, tabs, empty table', async () => {
+    globalThis.fetch = mockFetch(state) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByText('Customers')).toBeInTheDocument();
+    expect(screen.getByText('Manage and grow your customer relationships')).toBeInTheDocument();
+    // toolbar + add
+    expect(screen.getByText('+ Add Customer')).toBeInTheDocument();
+    // 5 category tabs
+    expect(screen.getByText('All Customers')).toBeInTheDocument();
+    expect(screen.getByText('At Risk')).toBeInTheDocument();
+    // empty table + pagination summary
+    expect(screen.getByText('No matching customers.')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 0 to 0 of 0 customers/)).toBeInTheDocument();
+  });
+
+  it('renders the reference modules wired from state rows (8 KPIs, 6 summary cards, table, right rail, bottom analytics)', async () => {
+    const withRows = {
+      kpisFull: { totalCustomers: 100, newCustomersToday: 4, returningCustomersToday: 12, vipCustomers: 20, birthdayThisMonth: 3, inactiveCustomers: 8, duplicateProfiles: 2, loyaltyMembers: 55, averageSpendCents: 24575 },
+      analytics: { ageGroups: [{ label: '26-35', count: 2 }], lifetimeValue: { totalRevenueCents: 429600, totalCustomers: 3, repeatRatePercent: 67, avgClvCents: 143200 }, rfm: [{ segment: 'Champions', count: 2 }, { segment: 'At Risk', count: 1 }], retentionRatePercent: 67 },
+      rows: { items: [
+        { customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'olivia@email.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5203, loyaltyPoints: 2450, loyaltyTier: 'Gold', isVip: true, tags: ['VIP', 'High Spender'], marketingOptIn: true, smsOptIn: true, emailOptIn: true },
+        { customerId: 'CUST-1002', displayName: 'Emma Wilson', phone: '(555) 234-5678', email: 'emma@email.com', status: 'active', source: 'walk_in', visitCount: 18, lastVisitAt: '2026-05-04', totalSpendCents: 89200, averageSpendCents: 4958, loyaltyPoints: 1280, loyaltyTier: 'Silver', isVip: false, tags: ['Loyalty Member'], marketingOptIn: true, smsOptIn: true, emailOptIn: true },
+        { customerId: 'CUST-1003', displayName: 'Sophia Martinez', phone: '(555) 345-6789', email: 'sophia@email.com', status: 'active', source: 'online_booking', visitCount: 31, lastVisitAt: '2026-05-03', totalSpendCents: 215600, averageSpendCents: 6955, loyaltyPoints: 3680, loyaltyTier: 'Platinum', isVip: true, tags: ['VIP'], marketingOptIn: true, smsOptIn: true, emailOptIn: true },
+      ], pagination: pagination(3) },
+      filterFacets: { segments: ['new', 'returning'], statuses: ['active', 'inactive'], loyaltyTiers: ['Gold', 'Silver'], visitRanges: [], spendRanges: ['$500+'], sources: ['walk_in', 'online_booking'], tags: ['VIP', 'Loyalty Member'] },
+    };
+    globalThis.fetch = mockFetch(withRows) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByRole('heading', { name: 'Customers', level: 1 })).toBeInTheDocument();
+    // 8 KPIs (reference set)
+    expect(screen.getByText('Retention Rate')).toBeInTheDocument();
+    expect(screen.getByText('Avg. Spend per Customer')).toBeInTheDocument();
+    expect(screen.getByText('Loyalty Members')).toBeInTheDocument();
+    // 6 summary cards
+    expect(screen.getByText('New This Month')).toBeInTheDocument();
+    expect(screen.getByText('Top Spenders')).toBeInTheDocument();
+    // table rows + columns
+    expect(screen.getAllByText('Olivia Brown').length).toBeGreaterThan(0);
+    expect(screen.getByText('#CUST-1003')).toBeInTheDocument();
+    // right rail + bottom analytics
+    expect(screen.getByText(/Customer Demographics/)).toBeInTheDocument();
+    expect(screen.getByText('Customer Sources')).toBeInTheDocument();
+    expect(screen.getByText('Top Customer Tags')).toBeInTheDocument();
+    expect(screen.getByText('Customer Lifetime Value')).toBeInTheDocument();
+    expect(screen.getByText('RFM Analysis')).toBeInTheDocument();
+    expect(screen.getByText('Recent Customer Activity')).toBeInTheDocument();
+    expect(screen.getByText(/Showing 1 to 3 of 3 customers/)).toBeInTheDocument();
+  });
+
+  it('opens the customer profile drawer when a customer name is clicked', async () => {
+    globalThis.fetch = mockFetch({
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
+      rows: { items: [{ customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'olivia@email.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5203, loyaltyPoints: 2450, loyaltyTier: 'Gold', isVip: true, tags: ['VIP'], marketingOptIn: true, smsOptIn: true, emailOptIn: true }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    const name = (await screen.findAllByTitle('Open profile'))[0];
+    fireEvent.click(name);
+    const dialog = await screen.findByRole('dialog');
+    expect(within(dialog).getByText('CONTACT')).toBeInTheDocument();
+    expect(within(dialog).getByText('LIFETIME')).toBeInTheDocument();
+    expect(within(dialog).getByText('COMMUNICATION CONSENT')).toBeInTheDocument();
+    // tab strip switches to the loyalty/membership view (all from the real detail payload)
+    fireEvent.click(within(dialog).getByText('Loyalty & Membership'));
+    expect(within(dialog).getByText('MEMBERSHIP')).toBeInTheDocument();
+  });
+
+  it('edits tags from the profile drawer (PATCH /pos/customers/:id/tags)', async () => {
+    const fetchMock = mockFetch({
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
+      rows: { items: [{ customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: 'x', email: 'o@e.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5203, loyaltyPoints: 2450, loyaltyTier: 'Gold', isVip: true, tags: ['VIP'], marketingOptIn: true, smsOptIn: true, emailOptIn: true }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    });
+    globalThis.fetch = fetchMock as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTitle('Open profile'))[0]);
+    const dialog = await screen.findByRole('dialog');
+    const input = within(dialog).getByPlaceholderText('+ add tag');   // Sep 2026 redesign wording
+    fireEvent.change(input, { target: { value: 'Bridal' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+    await waitFor(() => expect((fetchMock.mock.calls as any[]).some((c) => String(c[0]).includes('/tags'))).toBe(true));
+    const tagsCall = (fetchMock.mock.calls as any[]).find((c) => String(c[0]).includes('/tags'));
+    expect(String(tagsCall?.[1]?.method || '')).toMatch(/PATCH/i);
+  });
+
+  it('renders the duplicate merge preview with field-by-field conflict comparison', async () => {
+    const emptyKpis = { totalCustomers: 0, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0 };
+    const baseState = { kpisFull: emptyKpis, rows: { items: [], pagination: pagination(0) }, filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] } };
+    const dupGroups = [{ duplicateGroupId: 'g1', reason: 'phone', members: [
+      { customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'olivia@email.com', status: 'active', visitCount: 24, totalSpendCents: 124800, loyaltyPoints: 2450, loyaltyTier: 'Gold', createdAt: '2024-03-01' },
+      { customerId: 'CUST-1099', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'o.brown@gmail.com', status: 'active', visitCount: 3, totalSpendCents: 15000, loyaltyPoints: 100, loyaltyTier: 'Bronze', createdAt: '2026-01-10' },
+    ] }];
+    globalThis.fetch = vi.fn(async (url: any) => ({ ok: true, status: 200, json: async () => (String(url).includes('/duplicates') ? dupGroups : baseState), headers: { get: () => null } } as any)) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByText(/Duplicate Profiles/)).toBeInTheDocument();
+    // conflict comparison present (email + visits + spend + loyalty + created differ → 5 conflicts)
+    expect(screen.getByText(/5 conflicting fields/)).toBeInTheDocument();
+    expect(screen.getByText('#CUST-1099')).toBeInTheDocument();
+    // merge button disabled until a primary is chosen
+    const mergeBtn = screen.getByText('Merge into primary') as HTMLButtonElement;
+    expect(mergeBtn).toBeDisabled();
+    fireEvent.click(screen.getAllByRole('radio')[0]);
+    expect(mergeBtn).not.toBeDisabled();
+  });
+
+  it('renders the CSV import preview (detected columns + per-row actions) after loading a file', async () => {
+    const emptyKpis = { totalCustomers: 0, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0 };
+    const baseState = { kpisFull: emptyKpis, rows: { items: [], pagination: pagination(0) }, filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] } };
+    const preview = { totalRows: 4, toCreate: 2, toUpdate: 0, duplicates: 1, errors: 1, invalidEmailsDropped: 0, detectedColumns: { firstName: 'mapped', lastName: 'mapped', phone: 'mapped', email: 'mapped' }, sample: [
+      { rowNumber: 1, firstName: 'Grace', lastName: 'Lee', phone: '(555) 201-7788', email: 'grace@x.com', action: 'create' },
+      { rowNumber: 2, firstName: 'Olivia', lastName: 'Brown', phone: '(555) 123-4567', email: 'o@x.com', action: 'duplicate', reason: 'phone matches #CUST-1001' },
+      { rowNumber: 3, firstName: 'Ethan', lastName: 'Park', action: 'error', reason: 'missing mobile phone' },
+    ] };
+    globalThis.fetch = vi.fn(async (url: any) => ({ ok: true, status: 200, json: async () => (String(url).includes('/import/preview') ? preview : baseState), headers: { get: () => null } } as any)) as any;
+    const { container } = render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    fireEvent.click(screen.getByText(/More Filters/));
+    const fileInput = container.querySelector('input[type=file]') as HTMLInputElement;
+    const file = new File(['first,last,phone,email\nGrace,Lee,5552017788,grace@x.com'], 'c.csv', { type: 'text/csv' });
+    fireEvent.change(fileInput, { target: { files: [file] } });
+    const previewBtn = await screen.findByText('Preview');
+    fireEvent.click(previewBtn);
+    expect(await screen.findByText('DETECTED COLUMNS')).toBeInTheDocument();
+    expect(screen.getByText(/phone matches/)).toBeInTheDocument();
+    expect(screen.getByText('missing mobile phone')).toBeInTheDocument();
+    expect(screen.getByText('duplicate')).toBeInTheDocument();
+  });
+});
+
+// ── 2026-07-03 additional coverage for the substantive Customers flows: filters driving the real state refetch,
+// CSV import COMMIT (prior test only covered preview), and the duplicate MERGE action (prior test only previewed).
+const facets = { segments: ['vip', 'regular'], statuses: ['active', 'inactive'], loyaltyTiers: ['gold', 'silver'], visitRanges: [], spendRanges: ['0-100', '100+'], sources: ['walk_in', 'online'], tags: ['nail-art', 'gel'] };
+const oneRow = { customerId: 'c1', firstName: 'Jessica', lastName: 'Miller', phone: '415-555-1212', email: 'j@e.com', status: 'active', source: 'walk_in', isVip: false, lastVisitAt: '2026-05-01', totalVisits: 5, lifetimeSpendCents: 12000, loyaltyPoints: 100 };
+const richState = { ...state, kpisFull: { ...state.kpisFull, totalCustomers: 1 }, rows: { items: [oneRow], pagination: pagination(1) }, filterFacets: facets };
+
+const recCustomers = (opts: { commit?: any; dups?: any[] } = {}) => {
+  const calls: { url: string; method: string; body?: any }[] = [];
+  const fn = vi.fn(async (url: any, init?: any) => {
+    const u = String(url); const method = init?.method || 'GET';
+    let body: any; try { body = init?.body ? JSON.parse(init.body) : undefined; } catch { /* */ }
+    calls.push({ url: u, method, body });
+    const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+    if (u.includes('/customers/import/preview')) return ok({ columns: ['first_name', 'phone'], rows: [{ action: 'create', firstName: 'New', phone: '555-0100' }], summary: { create: 1, update: 0, skip: 0 } });
+    if (u.includes('/customers/import/commit')) return ok(opts.commit ?? { created: 1, updated: 0, skipped: 0 });
+    if (u.includes('/customers/duplicates') && /\/merge$/.test(u)) return ok({ merged: true });
+    if (u.includes('/customers/duplicates')) return ok(opts.dups ?? []);
+    if (u.includes('/pos/customers/state')) return ok(richState);
+    return ok({});
+  });
+  (fn as any).calls = calls;
+  return fn;
+};
+
+describe('POSCustomersScreen — filters and bulk flows', () => {
+  it('the status filter drives a real state refetch with status=', async () => {
+    const f = recCustomers(); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    const statusSel = Array.from(document.querySelectorAll('select')).find((el) => within(el).queryByText('All Status'))!;
+    fireEvent.change(statusSel, { target: { value: 'inactive' } });
+    await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/customers/state') && c.url.includes('status=inactive'))).toBe(true));
+  });
+
+  it('the search box refetches state with search=', async () => {
+    const f = recCustomers(); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    fireEvent.change(screen.getByPlaceholderText(/Search by name, phone, email/), { target: { value: 'Jessica' } });
+    await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/customers/state') && c.url.includes('search=Jessica'))).toBe(true));
+  });
+
+  it('merging a duplicate group posts primaryCustomerId to the real merge endpoint', async () => {
+    const dupGroup = { duplicateGroupId: 'g1', reason: 'same phone', members: [
+      { customerId: 'c1', displayName: 'Jessica Miller', phone: '415-555-1212', email: 'j@e.com', totalVisits: 5, lifetimeSpendCents: 12000 },
+      { customerId: 'c2', displayName: 'Jess Miller', phone: '415-555-1212', email: 'jess@e.com', totalVisits: 2, lifetimeSpendCents: 3000 },
+    ] };
+    const f = recCustomers({ dups: [dupGroup] }); globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    // pick a primary (radio) then merge
+    const primaryPick = document.querySelector('input[type="radio"]') as HTMLInputElement | null;
+    if (primaryPick) fireEvent.click(primaryPick);
+    fireEvent.click(await screen.findByText(/Merge into primary/i));
+    fireEvent.click(await screen.findByRole('button', { name: 'Merge profiles' }));   // inline confirm dialog
+    await waitFor(() => expect((f as any).calls.some((c: any) => /\/customers\/duplicates\/g1\/merge$/.test(c.url) && c.method === 'POST')).toBe(true));
+  });
+
+  it('Smooth Refresh spec §14/§49: the edit form sends the version it was opened on; a VERSION_CONFLICT keeps the form open and reloads', async () => {
+    const st = {
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
+      rows: { items: [{ customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: 'x', email: 'o@e.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5203, loyaltyPoints: 2450, loyaltyTier: 'Gold', isVip: true, tags: ['VIP'], marketingOptIn: true, smsOptIn: true, emailOptIn: true }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    };
+    (st as any).rows.items[0].version = 7;
+    const calls: { url: string; method: string; body: any }[] = [];
+    let patchCount = 0;
+    globalThis.fetch = vi.fn(async (url: any, init: any = {}) => {
+      const method = String(init.method || 'GET').toUpperCase();
+      calls.push({ url: String(url), method, body: init.body ? JSON.parse(init.body) : null });
+      if (method === 'PATCH' && /\/pos\/customers\/CUST-1001$/.test(String(url))) {
+        patchCount++;
+        return { ok: false, status: 409, json: async () => ({ message: 'This customer was changed on another device.', code: 'VERSION_CONFLICT', currentVersion: 8 }), headers: { get: () => null } } as any;
+      }
+      return { ok: true, status: 200, json: async () => st, headers: { get: () => null } } as any;
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTitle('Edit'))[0]);
+    fireEvent.click(await screen.findByText('Save'));
+    await waitFor(() => expect(patchCount).toBe(1));
+    const patch = calls.find((c) => c.method === 'PATCH')!;
+    expect(patch.body.expectedVersion).toBe(7);                                  // the copy the form was opened on
+    expect(await screen.findByText(/changed on another device/i)).toBeInTheDocument();
+    expect(screen.getByText('Save')).toBeInTheDocument();                         // form still open — nothing typed is lost
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(patchCount).toBe(2));
+    expect(calls.filter((c) => c.method === 'PATCH')[1].body.expectedVersion).toBe(8);   // re-save against the newer copy
+  });
+
+  it('Decision 1: preferred name / language / branch are edited with the profile and saved in the same PATCH', async () => {
+    const st: any = {
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0 },
+      rows: { items: [{ customerId: 'CUST-2', displayName: 'Nguyen Thi Hoa', phone: 'x', email: 'h@e.com', status: 'active', source: 'walk_in', visitCount: 1, totalSpendCents: 0, averageSpendCents: 0, loyaltyPoints: 0, isVip: false, tags: [], marketingOptIn: false, smsOptIn: false, emailOptIn: false, preferredName: 'Hoa', version: 3 }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    };
+    const calls: { url: string; method: string; body: any }[] = [];
+    globalThis.fetch = vi.fn(async (url: any, init: any = {}) => {
+      const method = String(init.method || 'GET').toUpperCase();
+      calls.push({ url: String(url), method, body: init.body ? JSON.parse(init.body) : null });
+      if (/\/auth\/branches/.test(String(url))) return { ok: true, status: 200, json: async () => ({ branches: [{ id: 'b-moore', name: 'Moorestown' }] }), headers: { get: () => null } } as any;
+      return { ok: true, status: 200, json: async () => st, headers: { get: () => null } } as any;
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByTitle('Edit'))[0]);
+    expect((screen.getByLabelText('Preferred name') as HTMLInputElement).value).toBe('Hoa');   // opened with the saved value
+    fireEvent.change(screen.getByLabelText('Preferred language'), { target: { value: 'vi' } });   // WP-I: an English / Tiếng Việt picker that stores en / vi
+    await screen.findByRole('option', { name: 'Moorestown' });
+    fireEvent.change(screen.getByLabelText('Preferred branch'), { target: { value: 'b-moore' } });
+    fireEvent.click(screen.getByText('Save'));
+    await waitFor(() => expect(calls.some((c) => c.method === 'PATCH')).toBe(true));
+    expect(calls.find((c) => c.method === 'PATCH')!.body).toMatchObject({ preferredName: 'Hoa', preferredLanguage: 'vi', preferredBranchId: 'b-moore', expectedVersion: 3 });
+  });
+});
+
+describe('Smooth Refresh spec §28/§62 — the Customers list is on the sync layer', () => {
+  it('a customer event from another device refetches the list with the current search kept; a failed refetch keeps the list', async () => {
+    const { REALTIME_EVENT } = await import('../realtime/realtime-client');
+    const st: any = {
+      kpisFull: { totalCustomers: 1, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 1, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 1, averageSpendCents: 5203 },
+      rows: { items: [{ customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: 'x', email: 'o@e.com', status: 'active', source: 'walk_in', visitCount: 24, lastVisitAt: '2026-05-05', totalSpendCents: 124800, averageSpendCents: 5203, loyaltyPoints: 2450, loyaltyTier: 'Gold', isVip: true, tags: ['VIP'], marketingOptIn: true, smsOptIn: true, emailOptIn: true }], pagination: pagination(1) },
+      filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] },
+    };
+    let calls = 0; let fail = false;
+    globalThis.fetch = vi.fn(async (url: any) => {
+      if (/\/pos\/customers\/state/.test(String(url))) { calls++; if (fail) return { ok: false, status: 502, json: async () => ({ message: 'Bad gateway' }), headers: { get: () => null } } as any; }
+      return { ok: true, status: 200, json: async () => st, headers: { get: () => null } } as any;
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findAllByTitle('Edit');
+    const before = calls;
+    window.dispatchEvent(new CustomEvent(REALTIME_EVENT, { detail: { event: 'customer_profile_updated', screens: ['customers'] } }));
+    await waitFor(() => expect(calls).toBeGreaterThan(before));
+    fail = true;
+    window.dispatchEvent(new CustomEvent(REALTIME_EVENT, { detail: { event: 'customer_profile_updated', screens: ['customers'] } }));
+    await waitFor(() => expect(calls).toBeGreaterThan(before + 1));
+    expect((await screen.findAllByTitle('Edit')).length).toBeGreaterThan(0);      // list still on screen
+    expect(screen.queryByText('Bad gateway')).toBeNull();
+  });
+});

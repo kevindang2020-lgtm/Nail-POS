@@ -1,0 +1,22 @@
+{
+  "name": "@aipowersalon/web-push",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Browser push (FCM web tokens) for the desktop apps — pos-web, owner-web, admin-web. ONE client, ONE service worker, served by tooling/vite/web-push-sw.mjs.",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@aipowersalon/api-contracts": "*",
+    "firebase": "^12.19.0"
+  },
+  "peerDependencies": {
+    "react": "^18.3.1"
+  }
+}

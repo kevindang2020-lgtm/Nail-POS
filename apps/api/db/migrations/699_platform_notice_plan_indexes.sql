@@ -1,0 +1,21 @@
+-- migrate: no-transaction
+-- 699_platform_notice_plan_indexes.sql — Platform Announcement mandate §98 (Oct 27 2026): indexes reviewed against query plans.
+-- Measured with EXPLAIN (ANALYZE, BUFFERS), best of 5, on a platform-scale fixture (scripts/platform-announcements-explain.mjs:
+-- 3,000 salons, 20,000 notices of which 19,800 are history, 1.88M target rows, 765k receipts — PERFORMANCE_REPORT.md
+-- "Platform Announcements (§98)"):
+--   platform_notices (ends_at) WHERE published   POS active() snapshot          0.86 ms → 0.43 ms (run 1: 0.78 → 0.28; 289 → 175 buffers)
+--      674's idx_platform_notices_live (starts_at, ends_at) has to read every published notice that ever STARTED (all the
+--      history) — the snapshot runs on every POS on every change and every safety sync, and history only grows. Keyed on
+--      ends_at, an expired notice falls outside the range scan; (ends_at IS NULL) rows are found by the same index.
+--   platform_notices (updated_at DESC, id)        Super Admin list page 1       20.1 ms → 0.68 ms; status filter 5.7 → 0.66 ms
+--      the list is ORDER BY updated_at DESC, id LIMIT 25 — 674's (lifecycle_status, updated_at) cannot serve it without a
+--      status, so every page sorted the whole table.
+-- Measured and NOT added: anything for the receipt stats (0.5 ms on idx_platform_notice_receipts_notice), nextChangeAt
+-- (3.7–5.8 ms; the starts_at half already uses 674's index) or the status count (4.6 ms: a derived CASE status cannot be indexed
+-- and the Super Admin count is one query per page view). The salon-name search (773–899 ms) was a QUERY problem, not an index one: the
+-- correlated EXISTS could not use the PARTIAL target indexes (WHERE target_type = …); platform-notice.service.ts now
+-- matches salons first and reads their targets by uq_platform_notice_targets_tenant / _branch (salon search page
+-- 1,540 ms → 46 ms by the rewrite → 11 ms with the list index; "holiday" page 941 → 32 → 6.3 ms).
+-- CONCURRENTLY: the POS reads platform_notices all day; one statement at a time, outside a transaction.
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_platform_notices_live_ends ON platform_notices (ends_at) WHERE lifecycle_status = 'published';
+CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_platform_notices_recent ON platform_notices (updated_at DESC, id);

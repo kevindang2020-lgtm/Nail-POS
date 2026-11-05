@@ -1,0 +1,35 @@
+{
+  "name": "aipowersalon-customer-display",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@aipowersalon/api-client": "*",
+    "@aipowersalon/mobile-sdk": "*",
+    "@aipowersalon/money": "*",
+    "@aipowersalon/realtime-contracts": "*",
+    "@aipowersalon/ui": "*",
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
+    "@fontsource/hanken-grotesk": "5.3.0",
+    "@fontsource/playfair-display": "5.3.0",
+    "capacitor-secure-storage-plugin": "^0.13.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "~5.4.5",
+    "vite": "^5.4.8"
+  }
+}

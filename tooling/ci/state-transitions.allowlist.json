@@ -1,0 +1,11 @@
+{
+  "$comment": "check:state-transitions (apps/api/scripts/audit-state-transitions.mjs) — BUILD_PLAN Phase 12 / Constitution 5 §74–78 (#27). unguarded: status writes NOT yet moved onto their lifecycle's state machine, per file|table.column (count). Only shrinks: a new status write outside a machine fails the gate; moving a writer onto its machine requires --update.",
+  "unguarded": {
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.bank_status": 1,
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.data_import_status": 1,
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.hardware_status": 1,
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.identity_status": 1,
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.merchant_status": 1,
+    "modules/super-admin/src/onboarding/onboarding.kysely.repository.ts|onboarding_records.training_status": 1
+  }
+}

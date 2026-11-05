@@ -1,0 +1,29 @@
+{
+  "name": "@aipowersalon/security",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Encryption primitives (AES-256-GCM, both wire formats at rest) and display masking, shared by the API. Pure: no env, no DB. Built to dist/ \u2014 backend packages are consumed compiled (apps/api pins rootDir).",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./nest": {
+      "types": "./dist/nest/index.d.ts",
+      "default": "./dist/nest/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@nestjs/common": "^10.4.22"
+  }
+}

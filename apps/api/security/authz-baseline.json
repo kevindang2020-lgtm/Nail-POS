@@ -1,0 +1,27 @@
+{
+ "note": "Routes reachable by a session of ANY realm that rely on their handler/service to authorize. Only ever remove entries. Constitution 12 §27.",
+ "routes": [
+  "GET /ai/dashboard",
+  "GET /ai/dashboard/feedback",
+  "GET /ai/dashboard/settings",
+  "GET /auth/branches",
+  "GET /auth/me",
+  "GET /auth/mfa/status",
+  "GET /me/access-requests",
+  "GET /me/privacy-export",
+  "POST /ai/:packageCode",
+  "POST /ai/dashboard/feedback",
+  "POST /ai/dashboard/settings",
+  "POST /ai/ocr/scan-receipt",
+  "POST /auth/change-password",
+  "POST /auth/mfa/confirm",
+  "POST /auth/mfa/enroll",
+  "POST /auth/select-branch",
+  "POST /auth/webauthn/register/begin",
+  "POST /auth/webauthn/register/finish",
+  "POST /me/access-requests",
+  "POST /me/access-requests/:id/cancel",
+  "POST /push/register",
+  "POST /push/unregister"
+ ]
+}

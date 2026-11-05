@@ -1,0 +1,45 @@
+/* brand-tokens.css — AI PowerSalon shared brand tokens (SINGLE SOURCE OF TRUTH).
+   Synced into every app's public/brand/brand-tokens.css by scripts/sync-brand.mjs and linked from each
+   app's index.html. These tokens mirror brand/platform-brand.ts. Do not redefine gold/cream values
+   per-app — consume --brand-* everywhere (buttons, sidebar active, links, focus rings, badges, charts). */
+:root{
+  /* brand */
+  --brand-primary:#A96F22;
+  --brand-primary-hover:#96601D;
+  --brand-primary-active:#84561A;
+  --brand-gold:#A96F22;
+  --brand-deep-gold:#84561A;
+  --brand-bronze:#C9971B;
+  --brand-ivory:#FBF6EC;
+  --brand-warm-white:#FEFDFC;
+  --brand-page:#F7EFE3;
+  --brand-surface:#FFFFFF;
+  --brand-surface-muted:#FBF6EC;
+  --brand-border:#E7DCC9;
+  --brand-text:#2A2118;
+  --brand-text-muted:#8A7A66;
+  /* semantic (kept distinct from gold for clarity) */
+  --brand-success:#2E7D32;
+  --brand-warning:#C9971B;
+  --brand-danger:#C0392B;
+  --brand-info:#2C5B93;
+  --brand-trial:#5B4B93;
+  /* type */
+  --brand-serif:"Playfair Display",Georgia,serif;
+  --brand-sans:"Hanken Grotesque","Segoe UI",system-ui,Arial,sans-serif;
+
+  /* Back-compat aliases: existing apps reference --gold / --page / --line etc.
+     Mapping them here keeps one source of truth without touching every component. */
+  --gold:var(--brand-gold);
+  --gold-2:var(--brand-bronze);
+  --gold-soft:#EBD9BC;
+  --page:var(--brand-page);
+  --panel:var(--brand-surface);
+  --ink:var(--brand-text);
+  --muted:var(--brand-text-muted);
+  --line:var(--brand-border);
+  --ok:var(--brand-success);
+  --warn:var(--brand-warning);
+  --danger:var(--brand-danger);
+  --info:var(--brand-info);
+}

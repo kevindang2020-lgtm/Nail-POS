@@ -1,0 +1,102 @@
+# AI PowerSalon — continuous security audit (Jul 26, 2026).
+#
+# Kevin's rule: security checks run on EVERY code change (fast lane), not only on the nightly schedule.
+#   fast  — every push + pull request: all static security gates (tenant isolation, RBAC coverage, unguarded
+#           routes, SQL/type drift, …) + committed-secret scan + quick auth/permission suites.  ~1 min.
+#   full  — nightly at 1:00 AM (and on demand): fast + every real-schema pgtest suite (tenant/branch isolation,
+#           provenance, payments) + dependency audit.  The generated SECURITY_REPORT.md is uploaded as an artifact.
+name: security-audit
+
+# Constitution 12 §209: least privilege for the workflow's token. It only reads the code and uploads a report
+# artifact (which uses the Actions runtime token, not this one), so it never needs write access to the repository.
+permissions:
+  contents: read
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 1 * * *'   # 1:00 AM daily (runner timezone: UTC — adjust if you want 1 AM Eastern: '0 6 * * *')
+
+jobs:
+  fast:
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:packages   # backend packages are consumed compiled (Constitution 13 §128, §140)
+      - run: npm run build:modules    # domain modules build after packages, before the API (§140)
+      - run: npm run security:fast
+      - run: npm run architecture:test   # Constitution 13 §229–230: no new cycle, back-edge, deep import or duplicate
+      - run: npm run ci:gates            # Constitution 13 Phase 11: every repository gate + the two module audits (8 gates never ran in CI)
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: security-report-fast, path: SECURITY_REPORT.md }
+
+  tests:
+    # Constitution 13 Phase 11: the API, module and app suites run on every push, read at the FILE level (a test file that
+    # fails to load is a failure, not a smaller count).
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [api, modules, apps, packages]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run build:modules
+      - run: npm run ci:test:${{ matrix.suite }}
+
+  race:
+    # The real-PostgreSQL concurrency tests (*.postgres-race.vitest.spec.ts — 26 files / 90 tests on Oct 4 2026). PGlite is
+    # one session and cannot show a race; these race real connections behind deterministic lock gates. They never ran in
+    # CI before (they skip without PG_RACE_URL) — which is how two simultaneous gift-card taps debiting a card twice went
+    # unseen. The runner FAILS on a missing PG_RACE_URL, any skipped test, or an empty discovery, never passes quietly.
+    # Steps replayed locally against a freshly created, empty Postgres 16 database: migrate 502/502 in 4 s; 90/90 pass.
+    if: github.event_name == 'push' || github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env: { POSTGRES_PASSWORD: postgres, POSTGRES_DB: race }
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/race
+      PG_RACE_URL: postgres://postgres:postgres@localhost:5432/race
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run build:packages
+      - run: npm run build:modules
+      - run: npm run db:migrate          # every db/migrations/*.sql, in order, onto the empty service database
+      - run: npm run ci:test:race
+
+  full:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci
+      - run: npm run security:full
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with: { name: security-report-full, path: SECURITY_REPORT.md }

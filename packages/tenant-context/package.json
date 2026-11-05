@@ -1,0 +1,22 @@
+{
+  "name": "@aipowersalon/tenant-context",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Trusted tenant context (Constitution 13 \u00a772\u201374): the TenantContext / BranchContext / RequestContext shapes, the ONE derivation of a request's context from its verified session (contextFromSession), and the ONE factory for a worker or scheduler acting for a tenant with no user (systemContext). No app implements its own currentTenant logic; nothing here is a global mutable (\u00a774). Foundation: dependency-free, framework-free.",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

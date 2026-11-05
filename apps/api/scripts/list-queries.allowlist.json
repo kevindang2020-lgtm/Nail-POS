@@ -1,0 +1,16 @@
+{
+  "_doc": "check:list-queries allowlist (BUILD_PLAN Phase 12, DoD #21-#23). GET handlers that read the query string but are NOT lists. Only shrinks. kind: not-a-list | fixed-size.",
+  "entries": {
+    "modules/workforce/src/tech-profile/media.controller.ts#MediaController.serve": { "kind": "not-a-list", "reason": "Technician Profile merge (WF, Oct 12 2026): serves ONE media object; ?exp=&sig= are the signed-URL proof for a private object (media-access-core verifyMediaSignature), never a filter" },
+    "observability/oncall.ts#AlertAckPublicController.confirm": { "kind": "not-a-list", "reason": "BUILD_PLAN Phase 14 C: the confirmation page for ONE alert-acknowledgement link; ?t= is the signed single-use token, never a filter" },
+    "mobile-config/app-config.controller.ts#AppConfigController.get": { "kind": "not-a-list", "reason": "BUILD_PLAN Phase 13 B: ONE config object for one app; ?app=&platform=&version= identify the caller build, never a filter" },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.state": { "kind": "not-a-list", "reason": "one checkout session; ?token= is the display's session token, not a filter" },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.stream": { "kind": "not-a-list", "reason": "an SSE stream of one checkout session; ?token= authenticates the display" },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceCurrent": { "kind": "not-a-list", "reason": "the paired device's current state; ?deviceToken= authenticates the device" },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceStream": { "kind": "not-a-list", "reason": "an SSE stream for one paired device; ?deviceToken= authenticates it" },
+    "customer-display/customer-display.controller.ts#CustomerDisplayController.deviceAds": { "kind": "fixed-size", "reason": "the ad playlist for one paired device (bounded by the display-ads rules); ?deviceToken= authenticates it" },
+    "oauth/oauth.controller.ts#OAuthController.describe": { "kind": "not-a-list", "reason": "OAuth 2.1 authorize request — the query string is the protocol's (client_id, redirect_uri, scope, state, PKCE)" },
+    "ai-booking/ai-booking.controller.ts#AiBookingController.getAppointment": { "kind": "not-a-list", "reason": "one appointment by id; ?source= names the calling integration" },
+    "common/platform-flags.ts#FlagRolloutController.get": { "kind": "not-a-list", "reason": "one feature flag's rollout; ?tenantId= asks for that salon's resolution" }
+  }
+}

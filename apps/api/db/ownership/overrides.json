@@ -1,0 +1,151 @@
+{
+ "$comment": "Hand decisions for the ownership registry (apps/api/scripts/db-ownership.mjs). Each entry overrides the heuristic class (A-E) and/or domain and MUST say why. Remove an entry when its table is dropped (the gate fails on a stale one).",
+ "tables": {
+  "process_heartbeats": {
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 B (Constitution 11 \u00a7154, \u00a749): one row per API / worker process boot (build labels, memory / CPU, the registry digest the System Operations dashboards read) \u2014 platform telemetry like system_health_snapshots"
+  },
+  "device_biometric_credentials": {
+   "ownership": "D",
+   "domain": "IDENTITY",
+   "reason": "BUILD_PLAN Phase 13 D (Constitution 6 \u00a737-39): a person's Face ID device credential (hashed secret bound to a device id), owned by the user like sessions / refresh_tokens / auth_devices; tenant_id only records the salon of the enrolling session (NULL for a cross-salon customer identity); redeemed by credential id before any tenant context exists"
+  },
+  "realtime_stream_tickets": {
+   "ownership": "D",
+   "domain": "IDENTITY",
+   "reason": "BUILD_PLAN Phase 13 (Constitution 6 \u00a728-32): single-use 60 s tickets bound to a person's SESSION (like sessions / refresh_tokens) that open a realtime stream from a native app; redeemed by hash before any tenant context exists"
+  },
+  "api_operations": {
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 12: the async operation records (exports today) - the job-queue side of the API, beside jobs; tenant_id NULL = a platform (Super Admin) operation"
+  },
+  "community_appeals": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_comment_reports": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_comment_versions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_disputes": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_post_versions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_posts": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_redactions": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_related_posts": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_reports": {
+   "ownership": "E",
+   "reason": "the owners' safety community (Constitution 1 \u00a73 E example 'approved safety-community posts'): one post is read by every salon; visibility is decided by moderation status, not by tenant_id"
+  },
+  "community_risk_fingerprints": {
+   "ownership": "A",
+   "domain": "SECURITY",
+   "reason": "platform moderation signal (hashed fingerprints) used by Super Admin only; never shown to a salon"
+  },
+  "gift_card_settlement_batches": {
+   "ownership": "E",
+   "reason": "cross-salon gift card clearing: a batch nets redemptions between issuing and redeeming tenants (program-level, see gift_card_clearing_entries)"
+  },
+  "nail_showcase_comments": {
+   "ownership": "E",
+   "reason": "public nail showcase: a comment/reaction on a published post is visible across salons; the post's own visibility rules apply"
+  },
+  "nail_showcase_photos": {
+   "ownership": "E",
+   "reason": "public nail showcase: published rows are cross-salon by design; tenant_id (nullable) records the originating salon, not the audience"
+  },
+  "nail_showcase_posts": {
+   "ownership": "E",
+   "reason": "public nail showcase: published rows are cross-salon by design; tenant_id (nullable) records the originating salon, not the audience"
+  },
+  "nail_showcase_reactions": {
+   "ownership": "E",
+   "reason": "public nail showcase: a comment/reaction on a published post is visible across salons; the post's own visibility rules apply"
+  },
+  "reviews": {
+   "ownership": "B",
+   "reason": "a salon's review of its own visit: tenant-owned; global_tech_profile_id only attributes it to the technician's platform profile"
+  },
+  "tenants": {
+   "ownership": "A",
+   "domain": "TENANTS",
+   "reason": "the tenant registry itself: platform-global, keyed by id (no tenant_id by definition)"
+  },
+  "mobile_app_versions": {
+   "ownership": "A",
+   "domain": "PLATFORM",
+   "reason": "BUILD_PLAN Phase 13 B (Constitution 6 \u00a755-57): the store apps' version policy (minimum / recommended / latest per app and native platform) - the same binaries serve every salon, so it is platform-global and Super Admin-owned"
+  },
+  "mobile_app_installs_seen": {
+   "ownership": "A",
+   "domain": "PLATFORM",
+   "reason": "BUILD_PLAN Phase 13 B (Constitution 6 \u00a7150): hashed install id -> app version for the version distribution; no tenant, no user, no raw device id"
+  },
+  "telemetry_log_events": {
+   "ownership": "E",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 A (Constitution 11 \u00a7291-292): the platform's own redacted log store - lines from every salon's requests and from platform work, read only by Super Admin request search (super_admin.telemetry.*); tenant_id is a NULLable label for filtering, never a scope; written only by the telemetry sink through the worker pool; 14-day retention"
+  },
+  "telemetry_spans": {
+   "ownership": "E",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 A: the trace half of the same store (spans of sampled traces), same readers, same writer, same window"
+  },
+  "oncall_contacts": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (Constitution 11 \u00a7262-264): the platform on-call chain (who is paged, in what order, quiet hours) - platform configuration, edited only by Super Admin with step-up"
+  },
+  "alert_escalations": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a7264-265): each step of a PLATFORM alert's escalation and its acknowledgement (screen or signed single-use link); platform alerts only (tenant_id IS NULL)"
+  },
+  "slo_validations": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a780): the platform SLO verdicts computed from platform_request_metrics_minute - one row per SLO, no tenant data"
+  },
+  "synthetic_monitoring_settings": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (\u00a792-95): single-row platform setting; test_tenant_id NAMES the one salon Kevin designates for the kiosk probe - a reference, not a scope (the row belongs to the platform)"
+  },
+  "synthetic_probe_results": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C: latest result per synthetic probe (rows = probes); platform health, no tenant data"
+  },
+  "observability_signal_state": {
+   "ownership": "A",
+   "domain": "OPERATIONS",
+   "reason": "BUILD_PLAN Phase 14 C (D8): last-seen platform signal values (break-glass mode) so a toggle opens one security incident fleet-wide"
+  },
+  "code_lookup_attempts": {
+   "domain": "SECURITY",
+   "reason": "BUILD_PLAN Phase 14 D (Constitution 12): the lookup-by-code limiter's attempt ledger (gift-card / coupon / deal code guesses) - one weighted row per attempt, keyed by hashed caller / IP and the salon, read only by the limiter; minutes-long window, swept by the central retention executor"
+  },
+  "turn_unit_rules": {
+   "domain": "WORKFORCE",
+   "reason": "Fair Turn Engine (wave 2, migration 601): versioned turn-unit weights per service / category / duration \u2014 read and written only by the workforce turn-queue module (turn-queue.service saveRule / retireRule, turn-ledger loadTurnRules)"
+  }
+ }
+}
