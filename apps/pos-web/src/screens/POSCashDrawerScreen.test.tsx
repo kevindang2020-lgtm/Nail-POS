@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
 vi.mock('../api/posCashDrawerApi', async (orig) => ({ ...(await orig<typeof import('../api/posCashDrawerApi')>()), posCashDrawerApi: { registers: vi.fn(), state: vi.fn(), open: vi.fn(), reconcile: vi.fn(), movement: vi.fn(), movements: vi.fn(), voidMovement: vi.fn(), approve: vi.fn(), history: vi.fn() } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
+vi.mock('../components/AiAssistantPanel', () => ({ AiAssistantPanel: () => <div data-testid="money-protection" /> }));
 import { posCashDrawerApi } from '../api/posCashDrawerApi';
 import { POSCashDrawerScreen } from './POSCashDrawerScreen';
 // the screen uses the business date the SERVER names (the branch's day), never the browser's UTC date (audit Nov 3 2026)
@@ -126,5 +127,21 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     expect(await screen.findByTestId('signed-off')).toHaveTextContent('Mo Manager');
     fireEvent.change(screen.getByTestId('hist-status'), { target: { value: 'needs_review' } });
     await waitFor(() => expect(posCashDrawerApi.history).toHaveBeenLastCalledWith(expect.objectContaining({ status: 'needs_review', page: 1 })));
+  });
+
+  it('D15 gaps: a history row opens the day — counts, sign-off, and that day\'s cash in / out; Money Protection sits at the bottom', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.history as any).mockResolvedValue({ items: [{ businessDate: '2026-06-15', registerId: 'main', register: null, status: 'discrepancy', openingFloatCents: 10000, expectedCashCents: 15000, countedCents: 12000, varianceCents: -3000, countedAt: null, countedBy: 'Fran Desk', notes: null, approvalRequired: true, approvedAt: '2026-06-15T23:00:00Z', approvedBy: 'Mo Manager', approvalNote: 'Change given twice', denominations: { '10000': 1, '1000': 2 } }], total: 1, page: 1, pageSize: 10, pages: 1 });
+    (posCashDrawerApi.movements as any).mockImplementation(async (date?: string) => ({ businessDate: date, movements: date === '2026-06-15' ? [{ id: 'm1', direction: 'out', amountCents: 2000, reason: 'Supplies', note: null, createdAt: null, voided: false }] : [] }));
+    const { container } = render(<POSCashDrawerScreen />);
+    fireEvent.click(await screen.findByTestId('hist-row'));
+    const ov = await screen.findByTestId('hist-overlay');
+    expect(ov).toHaveTextContent('Mo Manager'); expect(ov).toHaveTextContent('$100 × 1');
+    expect(await screen.findByTestId('hist-overlay-move')).toHaveTextContent('Supplies');
+    expect(posCashDrawerApi.movements).toHaveBeenCalledWith('2026-06-15', 'main');
+    fireEvent.click(screen.getByTestId('hist-overlay-close'));
+    expect(screen.queryByTestId('hist-overlay')).toBeNull();
+    const work = container.querySelector('.work')!;
+    expect(work.lastElementChild?.getAttribute('data-testid')).toBe('money-protection');
   });
 });

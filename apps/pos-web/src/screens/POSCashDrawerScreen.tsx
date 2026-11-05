@@ -1,7 +1,7 @@
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createIntentKeys } from '@aipowersalon/api-client';
-import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister, type DrawerHistory } from '../api/posCashDrawerApi';
+import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister, type DrawerHistory, type DrawerHistoryRow } from '../api/posCashDrawerApi';
 import { useCan } from '../components/usePermissions';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -87,7 +87,9 @@ export function POSCashDrawerScreen() {
   };
   // D15 gaps (Nov 5 2026): drawer history — date range, status, search, server pages
   const [hFrom, setHFrom] = useState(''); const [hTo, setHTo] = useState(''); const [hStatus, setHStatus] = useState(''); const [hQ, setHQ] = useState(''); const [hPage, setHPage] = useState(1); const [histTick, setHistTick] = useState(0);
-  const [hist, setHist] = useState<DrawerHistory | null>(null); const [histErr, setHistErr] = useState<string | null>(null);
+  const [hist, setHist] = useState<DrawerHistory | null>(null); const [openRow, setOpenRow] = useState<DrawerHistoryRow | null>(null);
+  const [openMoves, setOpenMoves] = useState<CashMovement[] | null>(null);
+  useEffect(() => { if (!openRow) { setOpenMoves(null); return; } posCashDrawerApi.movements(openRow.businessDate, openRow.registerId).then((m) => setOpenMoves(m.movements)).catch(() => setOpenMoves([])); }, [openRow]); const [histErr, setHistErr] = useState<string | null>(null);
   useEffect(() => { setHPage(1); }, [hFrom, hTo, hStatus, hQ, registerId]);
   useEffect(() => {
     let live = true;
@@ -124,7 +126,6 @@ export function POSCashDrawerScreen() {
 
   return (
     <div className="work">
-      <AiAssistantPanel packageCode="ai_fraud_money_protection" cta={t('pos.check_for_anomalies')} action="fraud_scan" buildPrompt={() => "Review the cash drawer activity for anomalies or possible fraud at a nail salon and flag anything unusual. Be brief."} />
       <div className="vh">
         <h1>{t('pos.cash_drawer')}</h1>
         <div className="sub">{t('pos.register_cash_opening_float_cash_sales_1baa')}</div>
@@ -232,7 +233,7 @@ export function POSCashDrawerScreen() {
         </div>
         {histErr ? <div role="alert" style={{ color: '#A33', fontSize: 12.5 }}>{histErr}</div> : !hist ? <div className="muted">{t('pos.loading')}</div> : hist.items.length === 0 ? <div className="muted" data-testid="hist-empty">{t('cdr.histEmpty')}</div> : <>
           <table className="fk-table" style={{ width: '100%', fontSize: 12.5 }} data-testid="hist-table"><thead><tr><th>{t('cdr.day')}</th><th>{t('cdr.register')}</th><th>{t('pos.status')}</th><th style={{ textAlign: 'right' }}>{t('cdr.expected')}</th><th style={{ textAlign: 'right' }}>{t('pos.counted')}</th><th style={{ textAlign: 'right' }}>{t('cdr.difference')}</th><th>{t('cdr.countedBy')}</th></tr></thead>
-            <tbody>{hist.items.map((r) => <tr key={r.businessDate + r.registerId} data-testid="hist-row"><td>{r.businessDate}</td><td>{r.register ?? (registers.find((x) => x.registerId === r.registerId)?.name ?? t('cdr.mainRegister'))}</td>
+            <tbody>{hist.items.map((r) => <tr key={r.businessDate + r.registerId} data-testid="hist-row" className="inv2-click" style={{ cursor: 'pointer' }} onClick={() => setOpenRow(r)}><td>{r.businessDate}</td><td>{r.register ?? (registers.find((x) => x.registerId === r.registerId)?.name ?? t('cdr.mainRegister'))}</td>
               <td>{STATUS[r.status as DrawerStatus]?.label ?? r.status}{r.approvalRequired ? <span style={{ marginLeft: 6, fontSize: 11 }}>{r.approvedAt ? t('cdr.signedOffShort') : t('cdr.st.needs_review')}</span> : null}</td>
               <td style={{ textAlign: 'right' }}>{r.expectedCashCents == null ? '—' : money(r.expectedCashCents)}</td><td style={{ textAlign: 'right' }}>{r.countedCents == null ? '—' : money(r.countedCents)}</td>
               <td style={{ textAlign: 'right', color: (r.varianceCents ?? 0) < 0 ? '#b3261e' : undefined }}>{r.varianceCents == null ? '—' : (r.varianceCents > 0 ? '+' : r.varianceCents < 0 ? '−' : '') + money(Math.abs(r.varianceCents))}</td>
@@ -240,7 +241,27 @@ export function POSCashDrawerScreen() {
           <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }} data-testid="hist-pager">
             {Array.from({ length: hist.pages }, (_, i) => i + 1).slice(0, 20).map((n) => <button key={n} className={'btn' + (n === hist.page ? '' : ' ghost')} style={{ minWidth: 36 }} onClick={() => setHPage(n)} aria-current={n === hist.page ? 'page' : undefined}>{n}</button>)}
           </div></>}
-      </section>
+            </section>
+
+      {openRow ? <div className="inv-ov" role="dialog" aria-modal="true" data-testid="hist-overlay" onMouseDown={(e) => { if (e.target === e.currentTarget) setOpenRow(null); }}>
+        <div className="inv-modal wide">
+          <div className="im-h">{t('cdr.dayTitle', { day: openRow.businessDate })} · {openRow.register ?? (registers.find((x) => x.registerId === openRow.registerId)?.name ?? t('cdr.mainRegister'))}</div>
+          <div className="im-b" style={{ fontSize: 13 }}>
+            <div>{t('pos.status')}: <b>{STATUS[openRow.status as DrawerStatus]?.label ?? openRow.status}</b></div>
+            <div>{t('pos.opening_float')}: {money(openRow.openingFloatCents)} · {t('cdr.expected')}: {openRow.expectedCashCents == null ? '—' : money(openRow.expectedCashCents)} · {t('pos.counted')}: {openRow.countedCents == null ? '—' : money(openRow.countedCents)} · {t('cdr.difference')}: {openRow.varianceCents == null ? '—' : money(openRow.varianceCents)}</div>
+            <div>{t('cdr.countedBy')}: {openRow.countedBy ?? '—'}{openRow.countedAt ? ` · ${new Date(openRow.countedAt).toLocaleString()}` : ''}{openRow.notes ? ` · ${openRow.notes}` : ''}</div>
+            {openRow.denominations && Object.keys(openRow.denominations).length ? <div>{t('cdr.breakdown')} {DENOMS.filter((c) => openRow.denominations?.[String(c)]).map((c) => `${denomLabel(c)} × ${openRow.denominations![String(c)]}`).join(' · ')}</div> : null}
+            {openRow.approvalRequired ? <div>{openRow.approvedAt ? `${t('cdr.signedOff', { name: openRow.approvedBy ?? '—' })}${openRow.approvalNote ? ' · ' + openRow.approvalNote : ''}` : t('cdr.st.needs_review')}</div> : null}
+            <h3 style={{ fontSize: 13, margin: '10px 0 4px' }}>{t('cdr.movements')}</h3>
+            {openMoves == null ? <div className="muted">{t('pos.loading')}</div> : openMoves.length === 0 ? <div className="muted" data-testid="hist-overlay-nomoves">{t('cdr.noMovements')}</div>
+              : openMoves.map((m) => <div key={m.id} data-testid="hist-overlay-move">{m.direction === 'in' ? '+ ' : '− '}{money(m.amountCents)} · {m.reason || (m.direction === 'in' ? t('pos.cash_in_2') : t('pos.cash_out_2'))}{m.voided ? ` · ${t('pos.voided')}` : ''}</div>)}
+          </div>
+          <div className="im-f"><button className="btn primary" onClick={() => setOpenRow(null)} data-testid="hist-overlay-close">{t('pos.close')}</button></div>
+        </div>
+      </div> : null}
+
+      {/* D15 gaps (Nov 5 2026): the Money Protection check sits at the bottom, under the drawer's own work */}
+      <AiAssistantPanel packageCode="ai_fraud_money_protection" cta={t('pos.check_for_anomalies')} action="fraud_scan" buildPrompt={() => "Review the cash drawer activity for anomalies or possible fraud at a nail salon and flag anything unusual. Be brief."} />
     </div>
   );
 }

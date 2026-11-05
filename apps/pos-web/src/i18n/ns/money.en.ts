@@ -121,4 +121,7 @@ export const MONEY_EN = {
   "cdr.difference": "Difference",
   "cdr.countedBy": "Counted by",
   "cdr.mainRegister": "Main register",
+  "cdr.dayTitle": "Drawer {day}",
+  "cdr.movements": "Cash in / out",
+  "cdr.noMovements": "No cash in or out that day.",
 };

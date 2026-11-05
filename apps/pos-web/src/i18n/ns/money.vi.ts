@@ -121,4 +121,7 @@ export const MONEY_VI = {
   "cdr.difference": "Chênh lệch",
   "cdr.countedBy": "Người đếm",
   "cdr.mainRegister": "Quầy chính",
+  "cdr.dayTitle": "Ngăn kéo {day}",
+  "cdr.movements": "Tiền vào / ra",
+  "cdr.noMovements": "Không có tiền vào hoặc ra trong ngày đó.",
 };
