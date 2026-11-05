@@ -134,6 +134,29 @@ export class RetentionSmsService {
 
   /** Who confirmed which campaign, through the ONE audit writer (modules/audit) once the queue committed; an audit failure
    *  is logged — it never un-queues a confirmed campaign. Body text and phone numbers are not copied into the audit row. */
+  /** C5 audit (Nov 4 2026) — Cancel Campaign: a queued / sending campaign stops; every text not yet handed to the provider is
+   *  blocked ('campaign_canceled'); texts already sent stay sent (nothing is recalled). `audit` runs in the same transaction. */
+  async cancel(ctx: RetentionContext, campaignId: string, reason: string, audit: (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>) {
+    if (!isUuid(campaignId)) throw new RetentionError('Campaign not found.', 'CAMPAIGN_NOT_FOUND', 404);
+    const why = String(reason ?? '').trim();
+    if (why.length < 3) throw new RetentionError('Say why the campaign is canceled.', 'REASON_REQUIRED', 400);
+    return this.db.transaction().execute(async (trx) => {
+      const c = (await sql<any>`select id, status from retention_sms_campaigns where tenant_id = ${ctx.tenantId} and id = ${campaignId} for update`.execute(trx)).rows[0];
+      if (!c) throw new RetentionError('Campaign not found.', 'CAMPAIGN_NOT_FOUND', 404);
+      const moved = (await sql<any>`update retention_sms_campaigns set status = 'canceled', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}::uuid, updated_at = now()
+        where tenant_id = ${ctx.tenantId} and id = ${campaignId} and status in ('queued', 'sending') and ${canMoveToSql(RETENTION_SMS_CAMPAIGN, 'canceled')} returning id`.execute(trx)).rows[0];
+      if (!moved) throw new RetentionError(`This campaign cannot be canceled (it is ${String(c.status)}).`, 'CAMPAIGN_NOT_CANCELABLE', 409, { status: String(c.status) });
+      const stopped = (await sql<any>`update retention_sms_recipients set status = 'blocked', error = 'campaign_canceled', updated_by = ${isUuid(ctx.userId) ? ctx.userId : null}::uuid, updated_at = now()
+        where tenant_id = ${ctx.tenantId} and campaign_id = ${campaignId} and status = 'queued' and ${canMoveToSql(RETENTION_SMS_RECIPIENT, 'blocked')} returning id`.execute(trx)).rows.length;
+      await audit(trx, { campaignId, previousStatus: String(c.status), stoppedTexts: stopped, reason: why });
+      return { campaignId, status: 'canceled' as const, stoppedTexts: stopped, ...(await this.countsIn(trx, ctx.tenantId, campaignId)) };
+    });
+  }
+  private async countsIn(x: Kysely<any>, tenantId: string, campaignId: string) {
+    const r = (await sql<any>`select count(*) filter (where status = 'sent')::int as sent from retention_sms_recipients where tenant_id = ${tenantId} and campaign_id = ${campaignId}`.execute(x)).rows[0] || {};
+    return { sent: Number(r.sent || 0) };
+  }
+
   private async audit(ctx: RetentionContext, campaignId: string, meta: Record<string, unknown>) {
     if (!this.auditor) return;
     try {

@@ -2959,6 +2959,7 @@ POST /pos/reputation-settings/save  realm=staff  auth=session  domain=ai  perm=p
 POST /pos/reputation/check  realm=staff  auth=session  domain=ai  perm=pos.ai_review_reputation.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/health-check  realm=staff  auth=session  domain=marketing  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/sms/campaigns  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/sms/campaigns/{campaignId}/cancel  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/sms/preview  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/snapshots/backfill  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/winback/audience  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  guards=RolePermissionGuard,TenantAuthGuard

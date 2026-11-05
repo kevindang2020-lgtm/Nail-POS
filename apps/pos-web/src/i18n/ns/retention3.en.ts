@@ -88,4 +88,8 @@ export const RETENTION3_EN = {
   'rt3.bookPrefill.loading': 'Loading the customer…',
   'rt3.bookPrefill.failed': 'This customer could not be loaded — the profile may have been deleted or belong to another salon. Search for the customer below.',
   'rt3.bookPrefill.from': 'Customer chosen from Customer Retention — pick services, technician and time, then confirm.',
+  'rt5.cancel': 'Cancel campaign',
+  'rt5.cancelReason': 'Why is this campaign canceled?',
+  'rt5.cancelConfirm': 'Stop unsent texts',
+  'rt5.cancelFailed': 'The campaign could not be canceled.',
 };

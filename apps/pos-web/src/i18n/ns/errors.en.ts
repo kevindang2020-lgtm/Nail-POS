@@ -795,6 +795,7 @@ export const ERRORS_EN = {
   'errors.SMS_NOT_CONFIGURED': 'Text messaging is not set up for this salon.',
   'errors.SMS_NO_ELIGIBLE': 'Nobody in this selection can be texted.',
   'errors.CAMPAIGN_NOT_FOUND': 'That campaign could not be found.',
+  'errors.CAMPAIGN_NOT_CANCELABLE': 'This campaign has already finished and cannot be canceled.',
   'errors.MEMBERSHIP_NOT_FOUND': 'That membership could not be found.',
   'errors.AUTO_RENEW_CONSENT_REQUIRED': 'The customer must agree to auto-renew to join this plan.',
   'errors.BENEFIT_NOT_FOUND': 'That membership benefit could not be found.',

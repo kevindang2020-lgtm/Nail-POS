@@ -35,7 +35,7 @@ export async function runRetentionSmsJob(db: Kysely<any>, messenger: TenantMesse
   }
   // 1. claim: queued → submitting (or submitting → unknown), committed before anything leaves the building
   const claim = await db.transaction().execute(async (trx) => {
-    const r = (await sql<any>`select r.id, r.status, r.customer_id, r.destination, r.campaign_id, c.body, c.status as campaign_status
+    const r = (await sql<any>`select r.id, r.status, r.customer_id, r.destination, r.campaign_id, c.body, c.status as campaign_status, c.branch_id as campaign_branch_id
       from retention_sms_recipients r join retention_sms_campaigns c on c.id = r.campaign_id and c.tenant_id = r.tenant_id
       where r.tenant_id = ${tenantId} and r.id = ${recipientId} for update of r`.execute(trx)).rows[0];
     if (!r) return { skip: 'gone' as const };
@@ -58,17 +58,18 @@ export async function runRetentionSmsJob(db: Kysely<any>, messenger: TenantMesse
     if (why) { await sql`update retention_sms_recipients set status = 'blocked', error = ${why}, updated_at = now() where tenant_id = ${tenantId} and id = ${recipientId} and ${canMoveToSql(RETENTION_SMS_RECIPIENT, 'blocked')}`.execute(trx); return { skip: 'blocked' as const, campaignId: String(r.campaign_id) }; }
     await sql`update retention_sms_recipients set status = 'submitting', submitted_at = now(), updated_at = now() where tenant_id = ${tenantId} and id = ${recipientId} and ${canMoveToSql(RETENTION_SMS_RECIPIENT, 'submitting')}`.execute(trx);
     await sql`update retention_sms_campaigns set status = 'sending', updated_at = now() where tenant_id = ${tenantId} and id = ${r.campaign_id} and ${canMoveToSql(RETENTION_SMS_CAMPAIGN, 'sending')}`.execute(trx);
-    return { send: true as const, to: String(r.destination), body: String(r.body), customerId: String(r.customer_id), campaignId: String(r.campaign_id) };
+    return { send: true as const, to: String(r.destination), body: String(r.body), customerId: String(r.customer_id), campaignId: String(r.campaign_id), branchId: r.campaign_branch_id ? String(r.campaign_branch_id) : null };
   });
   if (!('send' in claim)) { if ('campaignId' in claim && claim.campaignId) await finishCampaign(db, tenantId, claim.campaignId); return { outcome: claim.skip }; }
-  const send = claim as { send: true; to: string; body: string; customerId: string; campaignId: string };
+  const send = claim as { send: true; to: string; body: string; customerId: string; campaignId: string; branchId: string | null };
 
   // 3. the ONE provider call
   let status: 'sent' | 'blocked' | 'failed'; let providerId: string | null = null; let error: string | null = null;
   if (!messenger) { status = 'blocked'; error = 'not_configured'; }
   else {
     try {
-      const res = await messenger.sendSms({ tenantId, to: send.to, body: send.body, purpose: 'marketing', customerId: send.customerId, meter: true });
+      // C3 audit: the campaign's branch — its own Twilio number when it has one (the salon number otherwise)
+      const res = await messenger.sendSms({ tenantId, branchId: send.branchId, to: send.to, body: send.body, purpose: 'marketing', customerId: send.customerId, meter: true });
       status = res.sent ? 'sent' : res.status === 'blocked' ? 'blocked' : 'failed';
       providerId = res.providerId ?? null; error = res.sent ? null : (res.reason ?? res.status);
     } catch (e: any) { status = 'failed'; error = String(e?.message ?? 'send_failed').slice(0, 200); }   // the messenger records its own failures; never retried (could double-send)

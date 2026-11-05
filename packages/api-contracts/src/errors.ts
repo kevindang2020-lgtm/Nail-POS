@@ -875,6 +875,7 @@ export const ERROR_REGISTRY = {
   SMS_NOT_CONFIGURED:             { status: 503, message: 'Text messaging is not set up for this salon.', domain: 'marketing', retryable: false, severity: 'info', action: 'NONE' },
   SMS_NO_ELIGIBLE:                { status: 409, message: 'Nobody in this selection can be texted.', domain: 'marketing', retryable: false, severity: 'info', action: 'NONE' },
   CAMPAIGN_NOT_FOUND:             { status: 404, message: 'That campaign could not be found.', domain: 'marketing', retryable: false, severity: 'info', action: 'NONE' },
+  CAMPAIGN_NOT_CANCELABLE:        { status: 409, message: 'This campaign has already finished and cannot be canceled.', domain: 'marketing', retryable: false, severity: 'info', action: 'REFRESH' },
   MEMBERSHIP_NOT_FOUND:           { status: 404, message: 'That membership could not be found.', domain: 'memberships', retryable: false, severity: 'info', action: 'NONE' },
   AUTO_RENEW_CONSENT_REQUIRED:    { status: 400, message: 'The customer must agree to auto-renew to join this plan.', domain: 'memberships', retryable: false, severity: 'info', action: 'NONE' },
   BENEFIT_NOT_FOUND:              { status: 404, message: 'That membership benefit could not be found.', domain: 'memberships', retryable: false, severity: 'info', action: 'NONE' },

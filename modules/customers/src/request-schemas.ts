@@ -104,6 +104,8 @@ export const SEGMENT_AUDIENCE_DRAFT_BODY: BodySchema = S.object({
 export const SEGMENT_EMPTY_BODY: BodySchema = S.object({});
 /** Win-Back guide §09 / §10 (pos/retention/health-check · winback/plan · winback/audience) */
 export const WINBACK_EMPTY_BODY: BodySchema = S.object({});
+/** C5 audit (Nov 4 2026): cancel a queued / sending campaign — a reason is required (it is audited) */
+export const RETENTION_SMS_CANCEL_BODY: BodySchema = S.object({ reason: str(300) }, ['reason']);
 export const WINBACK_PLAN_BODY: BodySchema = S.object({
   goal: S.enumOf(['inactive_risk', 'inactive_90', 'repeat_visits', 'slow_weekdays', 'promote_service']), channel: S.nullable(S.enumOf(['sms', 'email'])), service: str(60),
 }, ['goal']);

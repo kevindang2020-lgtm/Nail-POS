@@ -87,7 +87,7 @@ export class RetentionError extends Error {
   constructor(message: string, readonly code: 'RETENTION_INVALID_SEGMENT' | 'RETENTION_INVALID_PERIOD' | 'RETENTION_INVALID_SETTINGS' | 'SETTINGS_VERSION_CONFLICT' | 'SMS_BODY_INVALID' | 'SMS_NO_RECIPIENTS' | 'SMS_SELECTION_TOO_LARGE' | 'SMS_PREVIEW_NOT_FOUND'
     | 'SMS_PREVIEW_EXPIRED' | 'SMS_AUDIENCE_CHANGED' | 'SMS_NOT_CONFIGURED' | 'SMS_NO_ELIGIBLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'CAMPAIGN_NOT_FOUND' | 'CUSTOMER_NOT_FOUND'
     | 'RETENTION_INVALID_BRANCH' | 'BRANCH_NOT_AUTHORIZED' | 'SNAPSHOT_INVALID_DATE' | 'SNAPSHOT_INVALID_RANGE' | 'SMS_PRICING_INVALID'
-    | 'RETENTION_INVALID_FILTER' | 'WINBACK_GOAL_INVALID' | 'WINBACK_AUDIENCE_EMPTY' | 'WINBACK_HEALTH_RATE_LIMITED',
+    | 'RETENTION_INVALID_FILTER' | 'WINBACK_GOAL_INVALID' | 'WINBACK_AUDIENCE_EMPTY' | 'WINBACK_HEALTH_RATE_LIMITED' | 'REASON_REQUIRED' | 'CAMPAIGN_NOT_CANCELABLE',
     readonly status: 400 | 403 | 404 | 409 | 429 | 503 = 400, readonly details?: Record<string, unknown>) { super(message); this.name = 'RetentionError'; }
 }
 
@@ -602,8 +602,11 @@ export class RetentionRepository {
 
   /** Which way a text from this salon would go (spec §12: the salon's own sender, never another salon's). */
   async sender(ctx: RetentionContext): Promise<{ route: 'tenant_account' | 'shared' | 'simulated' | 'not_configured'; from: string | null; a2pStatus: string | null }> {
+    // C3 audit: the session branch's own Twilio account wins (the send uses it), else the salon default
+    const br = isUuid(ctx.branchId) ? ctx.branchId : null;
     const cred = (await sql<any>`select from_number, messaging_service_sid from tenant_messaging_credentials
-      where tenant_id = ${ctx.tenantId} and provider = 'twilio' and status = 'configured' and branch_id is null and offboarded_at is null limit 1`.execute(this.db)).rows[0];
+      where tenant_id = ${ctx.tenantId} and provider = 'twilio' and status = 'configured' and (branch_id is null or branch_id = ${br}::uuid) and offboarded_at is null
+      order by (branch_id is null) asc limit 1`.execute(this.db)).rows[0];
     const a2p = (await sql<any>`select campaign_status from tenant_a2p_registrations where tenant_id = ${ctx.tenantId} order by updated_at desc nulls last limit 1`.execute(this.db)).rows[0];
     const last4 = (v: string | null) => (v ? `•••${String(v).slice(-4)}` : null);
     if (cred && (cred.messaging_service_sid || cred.from_number)) return { route: 'tenant_account', from: last4(cred.from_number || cred.messaging_service_sid), a2pStatus: a2p?.campaign_status ?? null };

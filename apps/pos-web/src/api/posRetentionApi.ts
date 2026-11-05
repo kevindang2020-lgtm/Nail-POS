@@ -39,4 +39,6 @@ export const posRetentionApi = {
     api.put<any>(`/pos/retention/sms/pricing`, b as Record<string, unknown>),
   campaigns: (q: { page: number; pageSize: number }) => api.get<any>(`/pos/retention/sms/campaigns`, q),
   campaign: (id: string, q: { page: number; pageSize: number; status?: string }) => api.get<any>(`/pos/retention/sms/campaigns/${enc(id)}`, q),
+  /** C5 audit: stop a queued / sending campaign (sent texts stay sent) */
+  cancelCampaign: (id: string, reason: string) => api.post<any>(`/pos/retention/sms/campaigns/${enc(id)}/cancel`, { reason }),
 };

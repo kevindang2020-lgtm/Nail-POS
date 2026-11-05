@@ -173,6 +173,21 @@ describe('Customer Retention — win-back SMS', () => {
     expect(d!.campaign.status).toBe('failed');
   });
 
+  it('C5 audit: Cancel Campaign stops the unsent texts (audited); a finished campaign cannot be canceled', async () => {
+    const r = (await q(`select r.id, r.campaign_id from retention_sms_recipients r where r.tenant_id = $1 and r.status = 'unknown' limit 1`, [T])).rows[0];
+    await q(`update retention_sms_recipients set status = 'queued' where id = $1`, [r.id]);
+    await q(`update retention_sms_campaigns set status = 'sending' where id = $1`, [r.campaign_id]);
+    const metas: any[] = [];
+    expect(await code(svc.cancel(ctx, r.campaign_id, 'x', async () => {}))).toBe('REASON_REQUIRED');
+    expect(await code(svc.cancel(ctx2, r.campaign_id, 'wrong salon', async () => {}))).toBe('CAMPAIGN_NOT_FOUND');
+    const out = await svc.cancel(ctx, r.campaign_id, 'Typo in the message', async (_t, m) => { metas.push(m); });
+    expect(out).toMatchObject({ status: 'canceled', stoppedTexts: 1 });
+    expect(metas[0]).toMatchObject({ previousStatus: 'sending', stoppedTexts: 1, reason: 'Typo in the message' });
+    expect((await q(`select status, error from retention_sms_recipients where id = $1`, [r.id])).rows[0]).toEqual({ status: 'blocked', error: 'campaign_canceled' });
+    expect(await code(svc.cancel(ctx, r.campaign_id, 'again please', async () => {}))).toBe('CAMPAIGN_NOT_CANCELABLE');
+    await q(`update retention_sms_recipients set status = 'unknown', error = null where id = $1`, [r.id]);
+  });
+
   it('C5 audit: a queued text whose turn falls inside quiet hours waits for the end of them (never sent inside)', async () => {
     const r = (await q(`select r.id, r.campaign_id from retention_sms_recipients r where r.tenant_id = $1 and r.status = 'unknown' limit 1`, [T])).rows[0];
     await q(`update retention_sms_recipients set status = 'queued' where id = $1`, [r.id]);

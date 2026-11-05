@@ -2862,6 +2862,7 @@
   "POST /pos/reputation/check": "AADDDRRRRRRRRRRRR",
   "POST /pos/retention/health-check": "AAAAARRRRRRRRRRRR",
   "POST /pos/retention/sms/campaigns": "AADDDRRRRRRRRRRRR",
+  "POST /pos/retention/sms/campaigns/{campaignId}/cancel": "AADDDRRRRRRRRRRRR",
   "POST /pos/retention/sms/preview": "AADDDRRRRRRRRRRRR",
   "POST /pos/retention/snapshots/backfill": "ADDDDRRRRRRRRRRRR",
   "POST /pos/retention/winback/audience": "AADDDRRRRRRRRRRRR",

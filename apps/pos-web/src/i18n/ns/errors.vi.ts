@@ -795,6 +795,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.SMS_NOT_CONFIGURED': 'Tiệm chưa cài đặt nhắn tin.',
   'errors.SMS_NO_ELIGIBLE': 'Không có khách nào trong lựa chọn này nhắn được.',
   'errors.CAMPAIGN_NOT_FOUND': 'Không tìm thấy chiến dịch này.',
+  'errors.CAMPAIGN_NOT_CANCELABLE': 'Chiến dịch này đã kết thúc và không thể hủy.',
   'errors.MEMBERSHIP_NOT_FOUND': 'Không tìm thấy gói hội viên này.',
   'errors.AUTO_RENEW_CONSENT_REQUIRED': 'Khách phải đồng ý tự động gia hạn để tham gia gói này.',
   'errors.BENEFIT_NOT_FOUND': 'Không tìm thấy quyền lợi hội viên này.',

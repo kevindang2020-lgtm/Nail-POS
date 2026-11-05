@@ -172,6 +172,8 @@ export const SEGMENT_FIXTURES = [
 
 // ── whole routes that are not IDOR targets, with the reason ──────────────────────────────────────────────────────
 export const EXEMPT = [
+  // A7 (Nov 4 2026): Review alternatives — the case is rebuilt from the caller's own salon records (openCase); another salon's key is not found
+  [/^\/pos\/ai-booking\/recovery\/\{caseKey\}\/alternatives$/, X('caseKey is a derived key (type:id) rebuilt from the caller\'s own salon records — another salon\'s key is not found, nothing is revealed')],
   [/^\/pos\/ai-business\/metrics\/\{id\}/, X('a metric KEY from the fixed metric catalog, not a salon record')],
   [/^\/pos\/project-status\/module\/\{moduleKey\}/, X('a platform module key, not a salon record')],
   [/^\/owner\/reports\/\{reportId\}\/export/, X('a report KIND name; the export is always of the caller\'s own salon')],

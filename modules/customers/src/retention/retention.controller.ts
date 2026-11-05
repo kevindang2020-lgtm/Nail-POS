@@ -25,7 +25,7 @@ import { RetentionRepository, RetentionError, RETENTION_SEGMENTS, PERIOD_PRESETS
 import { RetentionSmsService } from './retention-sms.service';
 import { RetentionSnapshotRepository, SNAPSHOT_SEGMENTS } from './retention-snapshots';
 import { RetentionPricingRepository } from './retention-pricing';
-import { RETENTION_SMS_PREVIEW_BODY, RETENTION_SMS_CONFIRM_BODY, RETENTION_SETTINGS_BODY, RETENTION_SNAPSHOT_BACKFILL_BODY, RETENTION_SMS_PRICING_BODY, WINBACK_EMPTY_BODY, WINBACK_PLAN_BODY, WINBACK_AUDIENCE_BODY } from '../request-schemas';
+import { RETENTION_SMS_PREVIEW_BODY, RETENTION_SMS_CONFIRM_BODY, RETENTION_SMS_CANCEL_BODY, RETENTION_SETTINGS_BODY, RETENTION_SNAPSHOT_BACKFILL_BODY, RETENTION_SMS_PRICING_BODY, WINBACK_EMPTY_BODY, WINBACK_PLAN_BODY, WINBACK_AUDIENCE_BODY } from '../request-schemas';
 import { WinBackCenter } from './winback-center';
 
 export const RETENTION_REPOSITORY = 'RetentionRepository';
@@ -174,6 +174,14 @@ export class RetentionController {
   confirm(@Req() q: any, @Body(ValidatedBody(RETENTION_SMS_CONFIRM_BODY, { strict: true })) b: any) {
     const c = ctxFrom(q); need(c, 'pos.marketing.manage');
     return run(() => this.s().confirm(c, { previewId: String(b?.previewId ?? ''), idempotencyKey: String(b?.idempotencyKey ?? ''), acceptChanges: b?.acceptChanges === true, label: str(b?.label) }));
+  }
+
+  /** C5 audit (Nov 4 2026): stop a queued / sending campaign (texts already sent stay sent) — audited with its reason */
+  @Post('sms/campaigns/:campaignId/cancel') @RequirePermission('pos.marketing.manage')
+  cancelCampaign(@Req() q: any, @Param('campaignId') id: string, @Body(ValidatedBody(RETENTION_SMS_CANCEL_BODY, { strict: true })) b: any) {
+    const c = ctxFrom(q); need(c, 'pos.marketing.manage');
+    return run(() => this.s().cancel(c, id, String(b?.reason ?? ''), (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'retention', action: 'retention.sms_campaign.canceled',
+      resourceType: 'retention_sms_campaign', resourceId: id, summary: `Win-back campaign canceled — ${String(meta.stoppedTexts)} unsent text(s) stopped`, after: meta })));
   }
 
   // ── CR-01 historical snapshots (read the stored rows; the job computes them) ───────────────────────────────────────────

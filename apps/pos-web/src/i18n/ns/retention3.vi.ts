@@ -88,4 +88,8 @@ export const RETENTION3_VI = {
   'rt3.bookPrefill.loading': 'Đang tải khách hàng…',
   'rt3.bookPrefill.failed': 'Không tải được khách hàng này — hồ sơ có thể đã bị xóa hoặc thuộc tiệm khác. Hãy tìm khách bên dưới.',
   'rt3.bookPrefill.from': 'Khách được chọn từ Giữ chân khách — chọn dịch vụ, thợ và giờ, rồi xác nhận.',
+  'rt5.cancel': 'Hủy chiến dịch',
+  'rt5.cancelReason': 'Vì sao hủy chiến dịch này?',
+  'rt5.cancelConfirm': 'Dừng các tin chưa gửi',
+  'rt5.cancelFailed': 'Không hủy được chiến dịch.',
 };

@@ -350,7 +350,7 @@ export function POSRetentionScreen() {
         book={book} canText={!smsBlocked} onText={(r) => setDlg({ kind: 'compose', single: r })}
         openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'campaigns' ? <CampaignsDialog onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'campaign', id })} /> : null}
-      {dlg?.kind === 'campaign' ? <CampaignDialog id={dlg.id} onClose={() => setDlg(null)} onBack={() => setDlg({ kind: 'campaigns' })} /> : null}
+      {dlg?.kind === 'campaign' ? <CampaignDialog id={dlg.id} canCancel={can('marketing.manage')} onClose={() => setDlg(null)} onBack={() => setDlg({ kind: 'campaigns' })} /> : null}
       {dlg?.kind === 'recovery' ? <RecoveryDialog period={pq} onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'health' ? <HealthDialog onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} /> : null}
       {dlg?.kind === 'assistant' ? <AssistantDialog onClose={() => setDlg(null)} canManage={can('marketing.manage')} /> : null}
@@ -581,7 +581,9 @@ function CampaignsDialog({ onClose, onOpen }: { onClose: () => void; onOpen: (id
   );
 }
 
-function CampaignDialog({ id, onClose, onBack }: { id: string; onClose: () => void; onBack: () => void }) {
+function CampaignDialog({ id, canCancel = false, onClose, onBack }: { id: string; canCancel?: boolean; onClose: () => void; onBack: () => void }) {
+  // C5 audit (Nov 4 2026): Cancel Campaign — a reason, then every unsent text stops (sent texts stay sent)
+  const [cancelOpen, setCancelOpen] = useState(false); const [why, setWhy] = useState(''); const [cancelBusy, setCancelBusy] = useState(false); const [cancelErr, setCancelErr] = useState<string | null>(null);
   const [page, setPage] = useState(1); const [status, setStatus] = useState(''); const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [tick, setTick] = useState(0);
   useEffect(() => { let alive = true; setErr(null); posRetentionApi.campaign(id, { page, pageSize: 8, status: status || undefined }).then((r) => alive && setD(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [id, page, status, tick]);
   const c = d?.campaign; const counts: Record<string, number> = c?.counts ?? {};
@@ -598,6 +600,15 @@ function CampaignDialog({ id, onClose, onBack }: { id: string; onClose: () => vo
           {STAT.map((s) => <button type="button" key={s} className={'rt-stat ' + (RECIP_TONE[s] ?? '') + (status === s ? ' on' : '')} onClick={() => { setStatus(s); setPage(1); }}><b>{nf(counts[s] || 0)}</b><span>{recipLabel(s)}</span></button>)}
         </div>
         {live ? <div className="fk-hint">{tx('people.retention.liveNote')}</div> : null}
+        {live && canCancel ? (!cancelOpen ? <button type="button" className="fk-btn ghost sm" onClick={() => setCancelOpen(true)} data-testid="campaign-cancel">{tx('rt5.cancel')}</button> : (
+          <div className="fk-row" data-testid="campaign-cancel-form">
+            <input className="fk-in" value={why} onChange={(e) => setWhy(e.target.value)} placeholder={tx('rt5.cancelReason')} aria-label={tx('rt5.cancelReason')} maxLength={300} data-testid="campaign-cancel-reason" />
+            <button type="button" className="fk-btn danger sm" disabled={cancelBusy || why.trim().length < 3} data-testid="campaign-cancel-confirm"
+              onClick={async () => { setCancelBusy(true); setCancelErr(null); try { await posRetentionApi.cancelCampaign(c.id, why.trim()); setCancelOpen(false); setWhy(''); setTick((n) => n + 1); } catch (e) { setCancelErr(errText(e, tx('rt5.cancelFailed'))); } finally { setCancelBusy(false); } }}>{tx('rt5.cancelConfirm')}</button>
+            <button type="button" className="fk-btn ghost sm" onClick={() => setCancelOpen(false)}>{tx('pos.cancel')}</button>
+          </div>))
+          : null}
+        {cancelErr ? <div className="fk-err">{cancelErr}</div> : null}
         <div className="fk-hint">{tx('people.retention.statusRule')}</div>
         {d.recipients.items.length === 0 ? <Empty title={tx('people.fit.noMatch')} /> : (
           <table className="fk-table"><thead><tr><th>{tx('pos.customer')}</th><th>{tx('pos.phone')}</th><th>{tx('pos.status')}</th><th>{tx('people.retention.detail')}</th><th>{tx('people.retention.sentAt')}</th></tr></thead>
