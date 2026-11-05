@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { POSCommunicationsScreen } from './POSCommunicationsScreen';
 
@@ -20,7 +20,7 @@ vi.mock('../api/posCommunicationsApi', () => {
   const ok = (v: unknown) => vi.fn().mockResolvedValue(v);
   return {
     posCommunicationsApi: {
-      inbox: { list: ok(page), summary: ok(summary), detail: ok(detail), read: ok({}), unread: ok({}), reply: vi.fn(), status: vi.fn(), assign: vi.fn(), followUp: vi.fn(), linkCustomer: vi.fn(),
+      inbox: { list: ok(page), summary: ok(summary), sourceCampaigns: ok({ items: [{ value: 'rsms:11111111-1111-4111-8111-111111111111', name: 'October win-back', kind: 'rsms', sentAt: null }], windowDays: 14 }), detail: ok(detail), read: ok({}), unread: ok({}), reply: vi.fn(), status: vi.fn(), assign: vi.fn(), followUp: vi.fn(), linkCustomer: vi.fn(),
         customers: ok({ items: [] }), staff: ok({ items: [] }), templates: ok({ items: [] }), renderTemplate: vi.fn(), older: ok({ messages: [], olderCursor: null }), start: vi.fn(), timeline: ok({ items: [] }) },
       getActivity: vi.fn().mockResolvedValue({
         windowDays: 30,
@@ -84,5 +84,13 @@ describe('POSCommunicationsScreen', () => {
     expect(screen.getByText('Rebooking Conv.')).toBeInTheDocument();
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
     expect(screen.getAllByText(/not tracked yet/i).length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('C2 gap: the source-campaign filter sends the campaign and goes back to page 1', async () => {
+    const { posCommunicationsApi } = await import('../api/posCommunicationsApi');
+    render(<MemoryRouter><POSCommunicationsScreen /></MemoryRouter>);
+    const sel = await screen.findByTestId('ci-campaign');
+    fireEvent.change(sel, { target: { value: 'rsms:11111111-1111-4111-8111-111111111111' } });
+    await waitFor(() => expect((posCommunicationsApi.inbox.list as any)).toHaveBeenLastCalledWith(expect.objectContaining({ campaign: 'rsms:11111111-1111-4111-8111-111111111111', page: '1' })));
   });
 });

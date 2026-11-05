@@ -19,8 +19,11 @@ export interface InboxUrlState {
   from: string; to: string; basis: typeof BASES[number]; page: number; size: number; thread: string | null; awaiting: boolean;
   /** C2 audit (Nov 4 2026): a location filter ('' = every location the user may see) */
   branch: string;
+  /** C2 gap (Nov 5 2026): the campaign a conversation came from ('rsms:<id>' / 'cc:<id>'; '' = any) */
+  campaign: string;
 }
-export const DEFAULT_STATE: InboxUrlState = { sort: 'newest', channel: '', status: '', assignee: '', preset: 'all', from: '', to: '', basis: 'last_activity', page: 1, size: 20, thread: null, awaiting: false, branch: '' };
+export const DEFAULT_STATE: InboxUrlState = { sort: 'newest', channel: '', status: '', assignee: '', preset: 'all', from: '', to: '', basis: 'last_activity', page: 1, size: 20, thread: null, awaiting: false, branch: '', campaign: '' };
+const CAMPAIGN = /^(rsms|cc):[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const oneOf = <T extends string>(v: string | null, list: readonly T[], d: T): T => (v && (list as readonly string[]).includes(v) ? (v as T) : d);
 
 export function readUrlState(sp: URLSearchParams): InboxUrlState {
@@ -36,6 +39,7 @@ export function readUrlState(sp: URLSearchParams): InboxUrlState {
     basis: oneOf(sp.get('basis'), BASES, 'last_activity'), page: Math.max(1, Math.min(10_000, Math.floor(Number(sp.get('page')) || 1))),
     size: (SIZES as readonly number[]).includes(size) ? size : 20, thread: UUID.test(sp.get('thread') ?? '') ? sp.get('thread') : null, awaiting: sp.get('awaiting') === '1',
     branch: UUID.test(sp.get('branch') ?? '') ? String(sp.get('branch')) : '',
+    campaign: CAMPAIGN.test(sp.get('campaign') ?? '') ? String(sp.get('campaign')) : '',
   };
 }
 export function writeUrlState(s: InboxUrlState): URLSearchParams {
@@ -52,11 +56,12 @@ export function writeUrlState(s: InboxUrlState): URLSearchParams {
   if (s.size !== 20) out.set('size', String(s.size));
   if (s.thread) out.set('thread', s.thread);
   if (s.branch) out.set('branch', s.branch);
+  if (s.campaign) out.set('campaign', s.campaign);
   return out;
 }
 /** any filter change → page 1 (the open thread stays) */
 export function withFilter(s: InboxUrlState, patch: Partial<InboxUrlState>): InboxUrlState {
-  const filterKeys: (keyof InboxUrlState)[] = ['sort', 'channel', 'status', 'assignee', 'preset', 'from', 'to', 'basis', 'size', 'awaiting', 'branch'];
+  const filterKeys: (keyof InboxUrlState)[] = ['sort', 'channel', 'status', 'assignee', 'preset', 'from', 'to', 'basis', 'size', 'awaiting', 'branch', 'campaign'];
   const changed = filterKeys.some((k) => k in patch && patch[k] !== s[k]);
   return { ...s, ...patch, page: changed ? 1 : (patch.page ?? s.page) };
 }
@@ -68,6 +73,7 @@ export function listQuery(s: InboxUrlState, q: string): Record<string, string> {
   if (s.assignee) o.assignee = s.assignee;
   if (s.awaiting) o.awaitingOnly = 'true';
   if (s.branch) o.branch = s.branch;
+  if (s.campaign) o.campaign = s.campaign;
   if (s.preset === 'custom') { o.from = s.from; o.to = s.to; }
   const t = q.trim(); if (t) o.q = t.slice(0, 100);
   return o;

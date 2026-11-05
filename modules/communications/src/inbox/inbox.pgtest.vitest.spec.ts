@@ -371,3 +371,19 @@ describe('C2 audit §9.3: a booking made from a conversation is linked back', ()
     expect(await code(svc.linkBooking(otherOwner, tJane, { appointmentId: appt }))).toBe('CONVERSATION_NOT_FOUND');
   });
 });
+
+describe('C2 gap (Nov 5 2026): conversations that came from a campaign', () => {
+  it('source filter keeps threads whose customer was sent the campaign and replied within 14 days; the picker lists it', async () => {
+    const C = id('c2');   // Twin One
+    const camp = (await q(`insert into retention_sms_campaigns (tenant_id, status, body, body_sha256, label) values ($1, 'completed', 'Come back!', 'x', 'October win-back') returning id`, [T])).rows[0].id;
+    await q(`insert into retention_sms_recipients (campaign_id, tenant_id, customer_id, eligibility, status, sent_at) values ($1, $2, $3, 'eligible', 'sent', now() - interval '2 days')`, [camp, T, C]);
+    const inWindow = await thread(T, { branch: B1, customer: C, name: 'Twin One', contact: '+12155550202', activity: new Date(Date.now() - 86_400_000).toISOString() });
+    await thread(T, { branch: B1, customer: C, name: 'Twin One', contact: '+12155550202', activity: new Date(Date.now() - 5 * 86_400_000).toISOString() });   // before the send
+    const r = await svc.list(owner, { campaign: `rsms:${camp}` });
+    expect(r.items.map((x: any) => x.id)).toEqual([inWindow]);
+    expect(r.filters.campaign).toBe(`rsms:${camp}`);
+    const pick = await svc.sourceCampaigns(owner);
+    expect(pick.items.find((x: any) => x.value === `rsms:${camp}`)).toMatchObject({ name: 'October win-back', kind: 'rsms' });
+    expect((await svc.list(otherOwner, { campaign: `rsms:${camp}` })).items).toHaveLength(0);
+  });
+});

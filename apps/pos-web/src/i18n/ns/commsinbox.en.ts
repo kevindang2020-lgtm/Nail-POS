@@ -76,4 +76,7 @@ export const COMMSINBOX_EN = {
   'ci.err.DATE_RANGE_INVALID': 'The start date must be on or before the end date.', 'ci.err.INBOX_CHANNEL_NOT_SUPPORTED': 'This conversation cannot be answered from the inbox.',
   'ci.err.INBOX_ASSIGNEE_INVALID': 'Choose a team member of this salon.', 'ci.err.IDEMPOTENCY_IN_PROGRESS': 'Still sending — wait a moment.',
   'ci.bookPrefill.from': 'Customer chosen from the SMS Inbox conversation. Nothing is booked until you confirm.',
+  'ci.f.campaign': 'Source campaign',
+  'ci.f.anyCampaign': 'Any campaign',
+  'ci.f.campaignHint': 'Conversations with the customers a campaign was sent to, from the send until 14 days after.',
 };

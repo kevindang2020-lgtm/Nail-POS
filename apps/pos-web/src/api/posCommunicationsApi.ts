@@ -58,6 +58,8 @@ export const posCommunicationsApi = {
     /** C2 audit: link the booking made from this conversation back to it */
     linkBooking: (threadId: string, appointmentId: string) => api.post<unknown>(`${I}/threads/${encodeURIComponent(threadId)}/booking`, { appointmentId }),
     summary: (branch?: string | null) => api.get<InboxSummary>(`${I}/summary`, branch ? { branch } : undefined),
+    /** C2 gap (Nov 5 2026): the campaigns of the last 90 days for the source filter (a reply within 14 days of the send) */
+    sourceCampaigns: () => api.get<{ items: { value: string; name: string; kind: 'rsms' | 'cc'; sentAt: string | null }[]; windowDays: number }>(`${I}/source-campaigns`),
     detail: (id: string) => api.get<InboxDetail>(`${I}/threads/${enc(id)}`),
     older: (id: string, before: string) => api.get<{ items: InboxMessage[]; olderCursor: string | null }>(`${I}/threads/${enc(id)}/messages`, { before }),
     timeline: (id: string, q: { before?: string | null; sources?: string | null }) => api.get<{ customerId: string | null; scope: 'customer' | 'contact'; events: InboxTimelineEvent[]; olderCursor: string | null; sources: string[] }>(`${I}/threads/${enc(id)}/timeline`, { ...(q.before ? { before: q.before } : {}), ...(q.sources ? { sources: q.sources } : {}) }),

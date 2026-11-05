@@ -98,6 +98,8 @@ export function POSCommunicationsScreen() {
   }, [live.tick, st.branch]);
   // C2 audit (Nov 4 2026): the location filter (the server refuses a location the user may not see)
   const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  const [campaigns, setCampaigns] = useState<{ value: string; name: string }[]>([]);
+  useEffect(() => { posCommunicationsApi.inbox.sourceCampaigns().then((r) => setCampaigns(r.items ?? []), () => setCampaigns([])); }, []);
   useEffect(() => { authApi.branches().then((r) => setBranches((r.branches ?? []).map((b) => ({ id: String(b.id), name: String(b.name ?? '') })))).catch(() => setBranches([])); }, []);
 
   // ── the open conversation ──
@@ -230,6 +232,8 @@ export function POSCommunicationsScreen() {
         <input className="ci-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('ci.searchPh')} aria-label={tx('ci.searchPh')} data-testid="ci-search" />
         {branches.length > 1 ? <select className="ci-sel" value={st.branch} onChange={(e) => setFilter({ branch: e.target.value })} aria-label={tx('ci.f.branch')} data-testid="ci-branch">
           <option value="">{tx('ci.f.allBranches')}</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
+        {campaigns.length || st.campaign ? <select className="ci-sel" value={st.campaign} onChange={(e) => setFilter({ campaign: e.target.value })} aria-label={tx('ci.f.campaign')} title={tx('ci.f.campaignHint')} data-testid="ci-campaign">
+          <option value="">{tx('ci.f.anyCampaign')}</option>{campaigns.map((c) => <option key={c.value} value={c.value}>{c.name}</option>)}</select> : null}
         <select className="ci-sel" value={st.channel} onChange={(e) => setFilter({ channel: e.target.value })} aria-label={tx('pos.channel_filter')} data-testid="ci-channel">
           <option value="">{tx('pos.all_channels')}</option>{CHANNELS.map((c) => <option key={c} value={c}>{tx('ci.ch.' + c)}</option>)}
         </select>

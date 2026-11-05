@@ -130,6 +130,13 @@ export class InboxRepository {
     else if (q.assignee) w.push(sql`t.assigned_to = ${q.assignee}::uuid`);
     if (q.unreadOnly) w.push(sql`t.unread_count > 0`);
     if (q.awaitingOnly) w.push(sql`${this.awaiting()} IS NOT NULL`);
+    // C2 gap (Nov 5 2026): conversations that came from a campaign — the customer was SENT that campaign's text, and the
+    // conversation had activity from the send up to 14 days after it (the attribution window, stated on the screen)
+    if (q.campaign?.kind === 'rsms') w.push(sql`EXISTS (SELECT 1 FROM retention_sms_recipients rr WHERE rr.tenant_id = ${ctx.tenantId} AND rr.campaign_id = ${q.campaign.id}::uuid
+        AND rr.customer_id = t.customer_id AND rr.status = 'sent' AND rr.sent_at IS NOT NULL AND ${this.activity()} >= rr.sent_at AND ${this.activity()} < rr.sent_at + interval '14 days')`);
+    if (q.campaign?.kind === 'cc') w.push(sql`EXISTS (SELECT 1 FROM campaigns cc JOIN campaign_recipients cr ON cr.tenant_id = cc.tenant_id AND cr.campaign_id = cc.id AND cr.snapshot_version = cc.snapshot_version
+        WHERE cc.tenant_id = ${ctx.tenantId} AND cc.id = ${q.campaign.id}::uuid AND cr.customer_id = t.customer_id AND cr.eligibility = 'eligible' AND cc.status IN ('in_progress', 'completed')
+          AND ${this.activity()} >= COALESCE(cc.scheduled_at, cc.approved_at, cc.created_at) AND ${this.activity()} < COALESCE(cc.completed_at, cc.scheduled_at, cc.approved_at, cc.created_at) + interval '14 days')`);
     if (period.from && period.to) {
       const col = q.basis === 'created' ? sql`t.created_at` : q.basis === 'received' ? sql`t.last_inbound_at` : this.activity();
       w.push(sql`(${col} >= (${period.from}::date)::timestamp AT TIME ZONE ${period.tz} AND ${col} < ((${period.to}::date + 1))::timestamp AT TIME ZONE ${period.tz})`);
@@ -155,6 +162,18 @@ export class InboxRepository {
       lastActivityAt: iso(r.activity_at), lastMessagePreview: r.last_message_preview ?? null, lastDirection: r.last_direction ?? null,
       awaitingSince: r.status !== 'closed' ? iso(r.awaiting_reply_since) : null, followUpDueAt: iso(r.follow_up_due_at), version: n(r.record_version) || 1, createdAt: iso(r.created_at)!,
     };
+  }
+
+  /** C2 gap (Nov 5 2026): the campaigns of the last 90 days a conversation can come from (the inbox's source filter) */
+  async sourceCampaigns(ctx: InboxCtx): Promise<{ items: Array<{ value: string; name: string; kind: 'rsms' | 'cc'; sentAt: string | null }>; windowDays: number }> {
+    const T = ctx.tenantId;
+    const r = await sql<Row>`SELECT 'rsms' AS kind, c.id, COALESCE(c.label, 'Win-back text') AS name, max(rr.sent_at) AS sent_at FROM retention_sms_campaigns c JOIN retention_sms_recipients rr ON rr.campaign_id = c.id AND rr.tenant_id = c.tenant_id
+        WHERE c.tenant_id = ${T} AND rr.status = 'sent' AND rr.sent_at > now() - interval '90 days' GROUP BY c.id, c.label
+      UNION ALL
+      SELECT 'cc', cc.id, cc.name, COALESCE(cc.scheduled_at, cc.approved_at, cc.created_at) FROM campaigns cc
+        WHERE cc.tenant_id = ${T} AND cc.channel = 'sms' AND cc.status IN ('in_progress', 'completed') AND COALESCE(cc.scheduled_at, cc.approved_at, cc.created_at) > now() - interval '90 days'
+      ORDER BY 4 DESC NULLS LAST LIMIT 100`.execute(this.db);
+    return { items: (r.rows as Row[]).map((x) => ({ value: `${x.kind}:${x.id}`, name: String(x.name ?? ''), kind: x.kind === 'cc' ? 'cc' : 'rsms', sentAt: iso(x.sent_at) })), windowDays: 14 };
   }
 
   async list(ctx: InboxCtx, q: InboxQuery): Promise<{ items: ThreadListItem[]; total: number; page: number; pageSize: number; pageCount: number; sort: string; period: InboxPeriod; branch: string | null }> {

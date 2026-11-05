@@ -37,7 +37,7 @@ export async function runInbox<T>(fn: () => Promise<T>): Promise<T> {
 const str = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
 const LIST_SPEC = {
   filters: { channel: { type: 'enum', values: ['sms', 'email', 'call'] }, status: { type: 'enum', values: ['open', 'pending', 'replied', 'missed', 'closed'] }, assignee: { type: 'text', maxLength: 40 },
-    unreadOnly: { type: 'enum', values: ['true', 'false'] }, awaitingOnly: { type: 'enum', values: ['true', 'false'] }, branch: { type: 'text', maxLength: 40 },
+    unreadOnly: { type: 'enum', values: ['true', 'false'] }, awaitingOnly: { type: 'enum', values: ['true', 'false'] }, branch: { type: 'text', maxLength: 40 }, campaign: { type: 'text', maxLength: 48 },
     preset: { type: 'enum', values: ['all', 'today', 'week', 'month', 'year', 'custom'] }, basis: { type: 'enum', values: ['last_activity', 'created', 'received'] } },
   sorts: { newest: null, unread: null, oldest_unanswered: null, follow_up_due: null }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, dateRange: { maxDays: 3700 }, params: ['page'],
 } satisfies ListQuerySpec;   // literal (check:list-queries evaluates it statically) — the same vocabularies as inbox-core
@@ -51,6 +51,10 @@ export class InboxController {
 
   @Get('threads') @RequirePermission('pos.communications.view') @ListQuery(LIST_SPEC)
   list(@Req() r: any, @Query() q: any) { return runInbox(() => this.s().list(inboxCtxFrom(r), q ?? {})); }
+
+  /** C2 gap (Nov 5 2026): the campaigns of the last 90 days for the source-campaign filter */
+  @Get('source-campaigns') @RequirePermission('pos.communications.view') @ListQuery({ search: false })
+  sourceCampaigns(@Req() r: any) { return runInbox(() => this.s().sourceCampaigns(inboxCtxFrom(r))); }
 
   @Get('summary') @RequirePermission('pos.communications.view') @ListQuery({ filters: { branch: { type: 'text', maxLength: 40 } }, search: false })
   summary(@Req() r: any, @Query('branch') branch?: string) { return runInbox(() => this.s().summary(inboxCtxFrom(r), str(branch) === 'all' ? null : str(branch))); }

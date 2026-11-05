@@ -91,6 +91,8 @@ export function parseSearch(raw: unknown): SearchTerm | null {
 export interface InboxQuery {
   sort: InboxSort; channel: InboxChannel | null; status: InboxStatus | null; assignee: 'me' | 'unassigned' | string | null;
   unreadOnly: boolean; awaitingOnly: boolean; branch: string | null; search: SearchTerm | null;
+  /** C2 gap (Nov 5 2026): the campaign a conversation came from — 'rsms:<id>' (win-back SMS) or 'cc:<id>' (Campaign Center) */
+  campaign: { kind: 'rsms' | 'cc'; id: string } | null;
   basis: InboxDateBasis; preset: InboxPreset; from: string | null; to: string | null; page: number; pageSize: number;
 }
 /** Query string → a validated query. Unknown enum values fall back to the default (the @ListQuery interceptor already
@@ -104,7 +106,10 @@ export function parseInboxQuery(q: Record<string, unknown> | null | undefined): 
   const assignee = a === 'me' || a === 'unassigned' ? a : isUuid(a) ? a : null;
   const branch = typeof f.branch === 'string' && f.branch.trim() && f.branch !== 'all' ? f.branch.trim() : null;
   const preset = pick(f.preset, INBOX_PRESETS, (f.from || f.to) ? 'custom' : 'all');
+  const cm = typeof f.campaign === 'string' ? /^(rsms|cc):([0-9a-f-]{36})$/i.exec(f.campaign.trim()) : null;
+  const campaign = cm && isUuid(cm[2]) ? { kind: cm[1].toLowerCase() as 'rsms' | 'cc', id: cm[2] } : null;
   return {
+    campaign,
     sort: pick(f.sort, INBOX_SORTS, 'newest'), channel: pickOrNull(f.channel, INBOX_CHANNELS), status: pickOrNull(f.status, INBOX_STATUSES),
     assignee, unreadOnly: f.unreadOnly === true || f.unreadOnly === 'true', awaitingOnly: f.awaitingOnly === true || f.awaitingOnly === 'true',
     branch, search: parseSearch(f.q ?? f.search), basis: pick(f.basis, INBOX_DATE_BASES, 'last_activity'), preset,

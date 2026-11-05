@@ -77,4 +77,7 @@ export const COMMSINBOX_VI = {
   'ci.err.DATE_RANGE_INVALID': 'Ngày bắt đầu phải trước hoặc bằng ngày kết thúc.', 'ci.err.INBOX_CHANNEL_NOT_SUPPORTED': 'Không thể trả lời cuộc trò chuyện này từ hộp thư.',
   'ci.err.INBOX_ASSIGNEE_INVALID': 'Hãy chọn nhân viên của tiệm.', 'ci.err.IDEMPOTENCY_IN_PROGRESS': 'Đang gửi — chờ một chút.',
   'ci.bookPrefill.from': 'Khách hàng được chọn từ cuộc trò chuyện trong Hộp thư SMS. Chưa đặt gì cho đến khi bạn xác nhận.',
+  'ci.f.campaign': 'Chiến dịch nguồn',
+  'ci.f.anyCampaign': 'Mọi chiến dịch',
+  'ci.f.campaignHint': 'Các cuộc trò chuyện với khách đã nhận chiến dịch, từ lúc gửi đến 14 ngày sau.',
 };

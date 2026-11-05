@@ -58,8 +58,11 @@ export class InboxService {
     this.need(ctx, 'pos.communications.view');
     const query = parseInboxQuery(q);
     const page = await this.repo.list(ctx, query);
-    return { ...page, filters: { channel: query.channel, status: query.status, assignee: query.assignee, unreadOnly: query.unreadOnly, awaitingOnly: query.awaitingOnly, basis: query.basis, hasSearch: !!query.search } };
+    return { ...page, filters: { channel: query.channel, status: query.status, assignee: query.assignee, unreadOnly: query.unreadOnly, awaitingOnly: query.awaitingOnly, basis: query.basis, hasSearch: !!query.search,
+      campaign: query.campaign ? `${query.campaign.kind}:${query.campaign.id}` : null } };
   }
+  /** C2 gap (Nov 5 2026): the campaigns the source filter offers */
+  async sourceCampaigns(ctx: InboxCtx) { this.need(ctx, 'pos.communications.view'); return this.repo.sourceCampaigns(ctx); }
   async summary(ctx: InboxCtx, branch: string | null) {
     this.need(ctx, 'pos.communications.view');
     const k = await this.repo.kpis(ctx, branch);

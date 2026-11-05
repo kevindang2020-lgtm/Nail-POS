@@ -573,6 +573,7 @@
   "GET /pos/commission-screen/technicians/{id}/tips": "AADDDRRRRRRRRRRRR",
   "GET /pos/communications/activity": "AAAADRRRRRRRRRRRR",
   "GET /pos/communications/inbox/customers": "AAAADRRRRRRRRRRRR",
+  "GET /pos/communications/inbox/source-campaigns": "AAAADRRRRRRRRRRRR",
   "GET /pos/communications/inbox/staff": "AAAADRRRRRRRRRRRR",
   "GET /pos/communications/inbox/summary": "AAAADRRRRRRRRRRRR",
   "GET /pos/communications/inbox/templates": "AAAADRRRRRRRRRRRR",

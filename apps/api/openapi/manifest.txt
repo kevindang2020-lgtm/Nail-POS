@@ -590,6 +590,7 @@ GET /pos/commission-screen/technicians/{id}/lines  realm=staff  auth=session  do
 GET /pos/commission-screen/technicians/{id}/tips  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/activity  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/inbox/customers  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/communications/inbox/source-campaigns  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/inbox/staff  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/inbox/summary  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/communications/inbox/templates  realm=staff  auth=session  domain=communications  perm=pos.communications.send  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
