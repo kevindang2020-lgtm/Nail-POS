@@ -260,7 +260,7 @@ New documents, each a queue row:
 
 | Row | Document | Status at Nov 5 |
 |---|---|---|
-| F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | NOT BUILT — first in the queue |
+| F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | IN PROGRESS — see the F1 section below |
 | F2 | Customer Retention — Claude Full Build Spec (different file from the C3/C5 retention guides) | NOT AUDITED yet |
 | F3 | Membership Overview — Claude Build Spec | NOT AUDITED yet (D6 Membership is a different guide) |
 | F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |
@@ -270,3 +270,25 @@ New documents, each a queue row:
 | F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | Oct 27 matrix: 160 DONE / 1 PARTIAL (17.5 pay-stub PDF) of 161 |
 
 Order: F1 → F2 → F3 → the F7 PARTIAL rows → F5 product gaps → F8 17.5 → F4 / F6 as one full run at the end.
+
+### F1 Customer Directory — progress (Nov 5 2026)
+
+Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
+
+- §8 / §40-42: the top AI banner is gone; the AI Customer Profile Assistant is a compact card in the last row beside Recent Activity.
+- §17-18: the inline duplicate comparison is replaced by a compact alert (open groups from `/pos/duplicate-review/summary`) that opens a safe queue overlay → the Duplicate Review centre's compare overlay. Nothing merges from the list.
+- §11-12 / §15: one server definition per number. Tab counts are `segmentCounts` (same filter code as the list, other filters applied). The At Risk tab now filters — it listed everyone before. New / Returning This Month use the salon's calendar month; they showed today's counters before. Definitions: `docs/customer-directory-metrics.md`.
+- §14: phone search matches any format of the number (accent-insensitive names and IME-safe debounce were already in place).
+- §28: page size 10 / 25 / 50 and "Showing X–Y of Z" (server-side pagination was already in place).
+- §30: the row Message action opens or starts the customer's conversation. It used to open a blank send page.
+- §37: Retention Trend from the nightly retention snapshots (6 months; gaps shown as "—"; location rule as on the Retention screen). It was placeholder text before.
+- §39: Recent Customer Activity is a whole-salon server feed (latest visits + profiles added). It was built from the visible page before.
+
+Remaining F1 work:
+
+- §39: bookings, check-ins and loyalty adjustments as their own feed events — PARTIAL.
+- §29: Archived handling in All Customers and KPI denominators is not yet decided or documented.
+- §31: keep scroll position on return.
+- §32-36 / §38: right-rail and lower-card view links and definitions (CLV and RFM docs).
+- §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
+- §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).
