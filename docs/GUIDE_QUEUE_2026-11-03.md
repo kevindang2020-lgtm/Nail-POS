@@ -264,9 +264,9 @@ New documents, each a queue row:
 | F2 | Customer Retention — Claude Full Build Spec (Oct 29) | BUILT — audited Nov 5: this is the Oct 29 mandate `retention.repository.ts` was built from; the Oct 30 Complete Build Guide (C5) extended it. See the F2 section below |
 | F3 | Membership Overview — Claude Build Spec (Oct 29) | BUILT — audited Nov 5: the "Membership Overview mandate" the screen and `memberships.kysely.repository.ts` cite (9 references); see the F3 section below |
 | F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |
-| F5 | Full Platform Architecture & Code Audit — Completion Mandate | Oct 27 matrix: 218 DONE / 41 PARTIAL / 3 BLOCKED of 262 |
+| F5 | Full Platform Architecture & Code Audit — Completion Mandate | Nov 5: 219 DONE / 40 PARTIAL / 3 BLOCKED of 262 (§68 re-verified DONE; §192 egress gate built — still PARTIAL for CSP unsafe-inline) |
 | F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | SKIPPED by Kevin's decision Oct 27; re-uploaded — re-opened |
-| F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Oct 27 matrix: 192 DONE / 18 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 |
+| F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Nov 5: 195 DONE / 15 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 (§87, §94, §102 built; §98 PDF summary waits on Kevin vs the no-print rule) |
 | F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | Oct 27 matrix: 160 DONE / 1 PARTIAL (17.5 pay-stub PDF) of 161 |
 
 Order: F1 → F2 → F3 → the F7 PARTIAL rows → F5 product gaps → F8 17.5 → F4 / F6 as one full run at the end.

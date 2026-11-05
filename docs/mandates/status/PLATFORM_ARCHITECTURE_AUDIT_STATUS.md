@@ -115,7 +115,7 @@ as it already was in the queue. `decision.ts:142` (a BRANCH principal with null 
 | 65 | Requested-client policies (DO_NOT_CONSUME…, COUNT_FULL, COUNT_WEIGHTED, MANAGER_DECIDES) | DONE | `modules/workforce/src/turn-queue/turn-core.ts` (grep hits for all four) |
 | 66 | Explicit appointment turn policy | DONE | `turn-core.ts` turn policy object (defaults §124, validation §166, branch merge) |
 | 67 | Appointment protection before walk-in | DONE | `modules/ai/src/ai-queue-assignment/ai-queue-assignment-appointment.ts`; `tech-queue.kysely.repository.ts` appointment-safe |
-| 68 | Queue states OFF_SHIFT … CLOCKED_OUT separated | PARTIAL | `tech-queue.dto.ts` / `turn-core.ts` carry APPOINTMENT_SOON, NEXT_UP, etc. **Missing:** "Appointment Soon / Hold as real lane states in the Tech Queue (today the POS filter offers Ready / Serving / Break / Off shift only)" — `NEXT_STEPS.md` I-12 **Re-audit (Oct 28):** stale: the server sends Hold and Appointment Soon (`9ded9435`). |
+| 68 | Queue states OFF_SHIFT … CLOCKED_OUT separated | DONE (re-verified Nov 5 2026) | `tech-queue.dto.ts` / `turn-core.ts` carry APPOINTMENT_SOON, NEXT_UP, HOLD …; the server sends Hold and Appointment Soon as lane states (`9ded9435`) and the POS Tech Queue shows and filters them (`POSTechQueueScreen.tsx` status tones + filter options `soon` / `hold`; test `POSTechQueueScreen.test.tsx` "Hold … Appointment Soon as lane states", 200 rows) |
 | 69 | Clock status ≠ queue status | DONE | `technician_workforce_state` (queue) vs `time_clock_*` (`ARCHITECTURE_STATUS.md` Workforce row) |
 | 70 | Time clock events with server timestamps | DONE | `modules/workforce/src/time-clock/` (punches, breaks); pilot phase "Technicians clock in" |
 | 71 | Corrections keep original + reason + manager + audit | DONE | `603_time_clock_break_classification.sql:13-14` (`technician_timecard_adjustments`: original, new, reason, manager, time — append-only) |
@@ -352,8 +352,8 @@ as it already was in the queue. `decision.ts:142` (a BRANCH principal with null 
 
 | Status | Count |
 |---|---|
-| DONE | 218 |
-| PARTIAL | 41 |
+| DONE | 219 |
+| PARTIAL | 40 |
 | NOT DONE | 0 |
 | BLOCKED_EXTERNAL | 3 (§105 Tap to Pay, §189 TLS / at-rest / KMS, §210 hosted backups & PITR) |
 
