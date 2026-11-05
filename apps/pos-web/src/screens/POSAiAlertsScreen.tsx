@@ -19,7 +19,7 @@ import { posAiBusinessApi } from '../api/posAiBusinessApi';
 type Metric = 'net_sales' | 'average_ticket' | 'completed_appointments' | 'cancellation_rate' | 'no_show_rate' | 'customer_retention';
 const METRICS: Metric[] = ['net_sales', 'average_ticket', 'completed_appointments', 'cancellation_rate', 'no_show_rate', 'customer_retention'];
 const UNIT: Record<string, string> = { net_sales: 'cents', average_ticket: 'cents', completed_appointments: 'count', cancellation_rate: 'percent', no_show_rate: 'percent', customer_retention: 'percent' };
-const PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const PRESETS = ['today', 'yesterday', 'week', 'last7', 'month', 'last30', 'last_month', 'quarter', 'year'];
 const RULE_STATUSES = ['all', 'active', 'paused', 'triggered', 'needs_review', 'never_evaluated'];
 const EVENT_STATES = ['all', 'triggered', 'unacknowledged', 'recovered', 'unchanged', 'not_evaluated', 'failed'];
 const STATE_TONE: Record<string, string> = { triggered: 'bad', recovered: 'ok', unchanged: '', not_evaluated: 'warn', failed: 'bad' };

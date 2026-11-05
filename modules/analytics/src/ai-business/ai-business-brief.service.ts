@@ -18,7 +18,7 @@ export interface BriefSource {
   getQueue(ctx: ReportsContext, f?: ReportFilters): Promise<QueueSummary>;
 }
 
-const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
 const rctx = (c: AiBusinessContext): ReportsContext => ({ tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions });
 
 export class AiBusinessBriefService {

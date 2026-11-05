@@ -25,7 +25,7 @@ export interface CustomerGrowth {
   modeledFields: string[];                 // exactly what is modeled — the UI/assistant must not imply more
 }
 
-const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
 const MIN_ACTIVE_SAMPLE = 5;
 const rctx = (c: AiBusinessContext): ReportsContext => ({ tenantId: c.tenantId, branchId: c.branchId, userId: c.userId, role: c.role, permissions: c.permissions });
 

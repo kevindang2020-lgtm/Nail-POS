@@ -24,7 +24,7 @@ type Saved = {
   question: string | null; sharingScope: 'private' | 'tenant'; ownedByMe: boolean; createdAt: string; lastUsedAt: string | null;
 };
 
-const AIB_PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'] as const;
+const AIB_PRESETS = ['today', 'yesterday', 'week', 'last7', 'month', 'last30', 'last_month', 'quarter', 'year'] as const;   // A4: last 7 / 30 days, last month
 const CHIPS: { label: string; intent: string }[] = [
   { get label() { return t('pos.summarize_today'); }, intent: 'daily_summary' },
   { get label() { return t('pos.why_did_revenue_change'); }, intent: 'explain_revenue' },

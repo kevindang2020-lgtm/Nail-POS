@@ -38,7 +38,7 @@ export interface CreateAlertInput {
 }
 export interface UpdateAlertInput { active?: boolean; threshold?: number; title?: string; preset?: string; minSampleSize?: number }
 /** the salon-local periods a rule can watch (the Sales Report's presets) */
-export const ALERT_PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'] as const;
+export const ALERT_PRESETS = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'] as const;
 
 export interface AlertsRepositoryPort {
   list(ctx: AlertContext): Promise<BusinessAlert[]>;

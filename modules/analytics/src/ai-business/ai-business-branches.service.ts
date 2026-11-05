@@ -51,7 +51,7 @@ export interface BranchComparison {
   notes: string[];
 }
 
-const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
 const PAGE_SIZES = [10, 25, 50];
 const YMD = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_CUSTOM_DAYS = 366;

@@ -42,7 +42,7 @@ export interface TechnicianPerformance {
   modeledFields: string[];
 }
 
-const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
 const MIN_TECH_SAMPLE = 5;
 const FAIRNESS_NOTICE =
   'These are operational figures (completed services and attributed service revenue) for the selected period only. '

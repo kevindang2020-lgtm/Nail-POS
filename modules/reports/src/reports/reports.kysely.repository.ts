@@ -147,6 +147,10 @@ export function presetRange(preset: string, now: Date, tz: string): { from: stri
     case 'month': return { from: today.slice(0, 8) + '01', to: today };
     case 'quarter': return { from: `${y}-${String(Math.floor((m - 1) / 3) * 3 + 1).padStart(2, '0')}-01`, to: today };
     case 'year': return { from: `${y}-01-01`, to: today };
+    // A4 (Nov 5 2026): rolling windows ending today (today included) and the whole previous calendar month
+    case 'last7': return { from: add(today, -6), to: today };
+    case 'last30': return { from: add(today, -29), to: today };
+    case 'last_month': { const first = today.slice(0, 8) + '01'; const end = add(first, -1); return { from: end.slice(0, 8) + '01', to: end }; }
     default: return { from: add(today, -7), to: today };
   }
 }
@@ -171,6 +175,7 @@ export function previousPeriodRange(preset: string, now: Date, tz: string): { fr
     case 'month': return { from: shiftMonths(cur.from, -1), to: shiftMonths(cur.to, -1) };
     case 'quarter': return { from: shiftMonths(cur.from, -3), to: shiftMonths(cur.to, -3) };
     case 'year': return { from: shiftMonths(cur.from, -12), to: shiftMonths(cur.to, -12) };
+    case 'last_month': { const end = add(cur.from, -1); return { from: end.slice(0, 8) + '01', to: end }; }   // the whole month before
     default: { const len = Math.round((Date.parse(cur.to) - Date.parse(cur.from)) / 86_400_000) + 1; return { from: add(cur.from, -len), to: add(cur.to, -len) }; }
   }
 }

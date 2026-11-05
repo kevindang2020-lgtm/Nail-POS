@@ -24,7 +24,7 @@ export interface RevenueSource {
   getSales(ctx: ReportsContext, f?: ReportFilters): Promise<{ kpis: SalesKpis; trend: SalesTrend }>;
 }
 
-const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year'];
+const VALID_PRESETS: DatePreset[] = ['today', 'yesterday', 'week', 'month', 'quarter', 'year', 'last7', 'last30', 'last_month'];
 
 function reportsCtx(ctx: AiBusinessContext): ReportsContext {
   return { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions };

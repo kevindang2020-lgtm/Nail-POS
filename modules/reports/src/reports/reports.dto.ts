@@ -124,7 +124,7 @@ export function groupRevenueBy(lines: RevenueLine[]): { key: string; name: strin
 }
 
 // ===== §8/§10/§11 additions: filters, sales KPIs, per-report summaries, tables =====
-export type DatePreset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "custom";
+export type DatePreset = "today" | "yesterday" | "week" | "month" | "quarter" | "year" | "last7" | "last30" | "last_month" | "custom";   // A4 (Nov 5 2026): last 7 / last 30 days, last month
 
 // server-side filters (§11) — applied in the repository, never only in the UI
 export interface ReportFilters {
