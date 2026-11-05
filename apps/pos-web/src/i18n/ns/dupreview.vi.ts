@@ -274,5 +274,7 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "cd.ret.noBranch": "Tháng này chưa ghi nhận chi nhánh",
   "cd.act.empty": "Chưa có hoạt động khách hàng.",
   "cd.act.visit": "Đã ghé tiệm",
-  "cd.act.added": "Hồ sơ mới được thêm"
+  "cd.act.added": "Hồ sơ mới được thêm",
+  "cd.msg.noPerm": "Bạn cần quyền gửi tin nhắn.",
+  "cd.msg.failed": "Không mở được cuộc trò chuyện với khách này."
 };

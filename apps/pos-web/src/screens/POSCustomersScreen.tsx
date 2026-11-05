@@ -11,6 +11,7 @@ import { useRealtime } from '../realtime/useRealtime';
 import { SYNC_POLICY } from '@aipowersalon/realtime-client';
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCan } from '../components/usePermissions';
+import { posCommunicationsApi, newRequestKey } from '../api/posCommunicationsApi';
 import { posDuplicateReviewApi } from '../api/posDuplicateReviewApi';
 import { CompareOverlay } from './POSAICustomerDuplicateReviewScreen';
 import { FitDialog } from '../components/FitKit';
@@ -126,6 +127,18 @@ export function POSCustomersScreen() {
   const [profileRow, setProfileRow] = useState<Row | null>(null);
   const [profile, setProfile] = useState<any>(null);
   const [profileBusy, setProfileBusy] = useState(false);
+  // F1 §30: the row's Message action opens this customer's conversation in the inbox (starting one if none exists) —
+  // it used to open a blank send-a-message page with no customer
+  const [msgBusy, setMsgBusy] = useState<string | null>(null); const [actionErr, setActionErr] = useState<string | null>(null);
+  const msgKey = useRef<{ id: string; key: string } | null>(null);
+  const messageCustomer = (customerId: string) => {
+    if (msgKey.current?.id !== customerId) msgKey.current = { id: customerId, key: newRequestKey() };
+    setMsgBusy(customerId); setActionErr(null);
+    posCommunicationsApi.inbox.start({ customerId }, msgKey.current.key)
+      .then((r) => { msgKey.current = null; nav(`/tenant/communications/sms?thread=${encodeURIComponent(r.threadId)}`); })
+      .catch((e: any) => { msgKey.current = null; setActionErr(e?.message || tx('cd.msg.failed')); })
+      .finally(() => setMsgBusy(null));
+  };
   const openProfile = (row: Row) => {
     setProfileRow(row); setProfile(null); setProfileBusy(true);
     (posCustomersApi.getDetail(row.customerId) as Promise<any>).then((d) => setProfile(d)).catch(() => setProfile(null)).finally(() => setProfileBusy(false));
@@ -440,6 +453,7 @@ export function POSCustomersScreen() {
           <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setDupOverlay(true)} data-testid="dup-review-open">{tx('cd.dup.review')}</button>
         </div>
       ) : null}
+      {actionErr ? <div className="err" role="alert" data-testid="cd-action-err" style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>{actionErr}<button className="btn ghost" style={{ marginLeft: 'auto' }} onClick={() => setActionErr(null)}>{tx('pos.close')}</button></div> : null}
       {dupOverlay ? <DuplicateQueueOverlay canEdit={can('pos.customers.edit')} canMerge={can('pos.customers.merge')} onClose={() => setDupOverlay(false)} onChanged={() => { loadDups(); refetch(); }} /> : null}
 
       {/* 6 summary cards */}
@@ -498,7 +512,7 @@ export function POSCustomersScreen() {
                         <td style={{ padding: '8px 12px' }}><span className={'pill ' + stTone(c.status)} style={{ textTransform: 'capitalize' }}>{customerStatusLabel(c.status)}</span></td>
                         <td style={{ padding: '8px 12px' }}>
                           <div style={{ display: 'flex', gap: 4 }}>
-                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.message')} onClick={() => nav('/messages')}>✉</button>
+                            <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={can('pos.communications.send') ? tx('pos.message') : tx('cd.msg.noPerm')} aria-label={tx('pos.message')} data-testid="cd-row-message" disabled={!can('pos.communications.send') || msgBusy === c.customerId} onClick={() => messageCustomer(c.customerId)}>✉</button>
                             <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.profile_activity')} onClick={() => openProfile(c)}>▦</button>
                             <button className="btn ghost hover:!bg-[#C69A4E] hover:!text-white !border-none" title={tx('pos.edit')} onClick={() => openEdit(c)}>⋯</button>
                           </div>

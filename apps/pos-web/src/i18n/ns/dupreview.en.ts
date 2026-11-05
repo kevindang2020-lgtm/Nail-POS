@@ -276,5 +276,7 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.ret.noBranch": "Location not recorded for this month",
   "cd.act.empty": "No customer activity yet.",
   "cd.act.visit": "Visited",
-  "cd.act.added": "New profile added"
+  "cd.act.added": "New profile added",
+  "cd.msg.noPerm": "You need permission to send messages.",
+  "cd.msg.failed": "Could not open this customer's conversation."
 };

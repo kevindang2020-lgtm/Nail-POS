@@ -231,6 +231,25 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(tab(/^Returning This Month/).textContent).toMatch(/14/);
   });
 
+  it('F1 §30: the row Message action opens (or starts) this customer’s conversation, with an idempotency key', async () => {
+    const calls: { url: string; method: string; body: any; key?: string }[] = [];
+    globalThis.fetch = vi.fn(async (url: any, init: any = {}) => {
+      const u = String(url); const method = String(init.method || 'GET').toUpperCase();
+      const hdr = init.headers ? (init.headers instanceof Headers ? init.headers.get('Idempotency-Key') : (init.headers['Idempotency-Key'] ?? init.headers['idempotency-key'])) : undefined;
+      calls.push({ url: u, method, body: init.body ? JSON.parse(init.body) : null, key: hdr ?? undefined });
+      const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+      if (method === 'POST' && /\/conversations$/.test(u)) return ok({ threadId: '11111111-2222-4333-8444-555555555555', created: false });
+      if (u.includes('/pos/customers/state')) return ok(richState);
+      return ok({});
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('cd-row-message'));
+    await waitFor(() => expect(calls.some((c) => c.method === 'POST' && /\/conversations$/.test(c.url))).toBe(true));
+    const post = calls.find((c) => c.method === 'POST' && /\/conversations$/.test(c.url))!;
+    expect(post.body).toEqual({ customerId: richState.rows.items[0].customerId });
+    expect(post.key).toBeTruthy();
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
