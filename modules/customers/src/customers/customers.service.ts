@@ -185,8 +185,16 @@ export class CustomersService {
     } catch { /* never load-bearing */ }
     return row;
   }
-  async archive(ctx: CustomersContext, id: string): Promise<POSCustomerRow> { this.need(ctx, 'pos.customers.archive'); const row = this.mustFind(await this.repo.setStatus(ctx, id, 'archived')); this.log(ctx, 'pos_customer_archived', 'pos_customer', id, undefined, undefined, { note: 'kept in historical tickets/appointments/receipts/reports' }); return row; }
-  async reactivate(ctx: CustomersContext, id: string): Promise<POSCustomerRow> { this.need(ctx, 'pos.customers.archive'); const row = this.mustFind(await this.repo.setStatus(ctx, id, 'active')); this.log(ctx, 'pos_customer_reactivated', 'pos_customer', id); return row; }
+  /** F1 §60: without the outbox projection, tell open screens directly (ids only) that this profile's status changed */
+  private statusChanged(ctx: CustomersContext, id: string) {
+    if (this.repo.emitsDomainEvents?.()) return;
+    try {
+      this.realtime?.toTenant({ tenantId: ctx.tenantId, branchId: ctx.branchId }, EVENTS.customerProfileUpdated,
+        makeEnvelope({ eventType: EVENTS.customerProfileUpdated, tenantId: ctx.tenantId, branchId: ctx.branchId, resourceType: 'customer', resourceId: id }));
+    } catch (e) { console.warn(`[customers] status realtime notice failed: ${e instanceof Error ? e.message : String(e)}`); }
+  }
+  async archive(ctx: CustomersContext, id: string): Promise<POSCustomerRow> { this.need(ctx, 'pos.customers.archive'); const row = this.mustFind(await this.repo.setStatus(ctx, id, 'archived')); this.log(ctx, 'pos_customer_archived', 'pos_customer', id, undefined, undefined, { note: 'kept in historical tickets/appointments/receipts/reports' }); this.statusChanged(ctx, id); return row; }
+  async reactivate(ctx: CustomersContext, id: string): Promise<POSCustomerRow> { this.need(ctx, 'pos.customers.archive'); const row = this.mustFind(await this.repo.setStatus(ctx, id, 'active')); this.log(ctx, 'pos_customer_reactivated', 'pos_customer', id); this.statusChanged(ctx, id); return row; }
 
   // ---- history ----
   async visits(ctx: CustomersContext, id: string): Promise<CustomerVisitRow[]> { this.need(ctx, 'pos.customers.view'); return this.mustFind(await this.repo.visits(ctx, id)); }

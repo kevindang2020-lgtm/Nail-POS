@@ -459,7 +459,18 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     const all = await this.load(ctx); const c = all.find((x) => x.customerId === id); return c ? this.toRow(ctx, c, this.dupSet(all)) : null;
   }
   async setStatus(ctx: CustomersContext, id: string, status: 'active' | 'inactive' | 'archived'): Promise<POSCustomerRow | null> {
-    const res = await this.scoped(this.db.updateTable('customers'), ctx).set({ status, updated_at: sql`now()`, archived_at: status === 'archived' ? sql`now()` : null }).where('id', '=', id).executeTakeFirst();
+    // F1 §60: archive / restore commits customer.updated (changedFields ['status']) with the row, so every POS showing the
+    // directory refreshes its list and counts (it waited for the 45 s poll before)
+    const res = await this.db.transaction().execute(async (trx) => {
+      const r = await this.scoped(trx.updateTable('customers'), ctx).set({ status, updated_at: sql`now()`, archived_at: status === 'archived' ? sql`now()` : null }).where('id', '=', id).executeTakeFirst();
+      if (Number(r?.numUpdatedRows ?? 0) > 0 && this.outbox) {
+        await this.outbox.write(trx, createDomainEvent({
+          eventType: DOMAIN_EVENTS.CUSTOMER_UPDATED, tenantId: ctx.tenantId, branchId: ctx.branchId, aggregateType: 'customer', aggregateId: id,
+          actorId: ctx.userId, actorType: 'user', payload: { customerId: id, changedFields: ['status'] },
+        }));
+      }
+      return r;
+    });
     if (!Number(res?.numUpdatedRows ?? 0)) return null;
     const all = await this.load(ctx); const c = all.find((x) => x.customerId === id); return c ? this.toRow(ctx, c, this.dupSet(all)) : null;
   }

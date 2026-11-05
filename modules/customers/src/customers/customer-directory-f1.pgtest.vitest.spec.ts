@@ -8,6 +8,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyCustomersRepository } from './customers.kysely.repository';
+import { OutboxWriter } from '@aipowersalon/events';
 
 const P = 'f1d1e000-0000-4000-8000-0000000';
 const id = (n: string) => P + n.padStart(5, '0');
@@ -163,5 +164,20 @@ describe('F1 Customer Directory — spend is net of refunds (§11/§36)', () => 
     await q(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, status, reason) values ($1,$2,$3,1200,'refunded','test'), ($1,$2,$3,500,'pending','test')`, [T, B, id('fa7')]);
     const after = (await repo.query(ctx, { search: 'Cust7' })).rows.items[0];
     expect(after.totalSpendCents).toBe(1800);
+  });
+});
+
+describe('F1 Customer Directory — archive / restore tells other screens (§60)', () => {
+  it('archive and restore each commit one customer.updated (changedFields [status], ids only) with the row', async () => {
+    const r2 = new KyselyCustomersRepository(kyselyFor(pg) as never, new OutboxWriter());
+    const count = async () => (await q(`select payload_json as payload from outbox_events where aggregate_id = $1 and event_type = 'customer.updated' order by created_at`, [id('c8')])).rows;
+    const before = (await count()).length;
+    await r2.setStatus(ctx, id('c8'), 'archived');
+    await r2.setStatus(ctx, id('c8'), 'active');
+    const evs = await count();
+    expect(evs.length - before).toBe(2);
+    const p = evs[evs.length - 1].payload; const pl = typeof p === 'string' ? JSON.parse(p) : p;
+    expect(pl).toMatchObject({ customerId: id('c8'), changedFields: ['status'] });
+    expect(JSON.stringify(pl)).not.toMatch(/Cust8/);
   });
 });
