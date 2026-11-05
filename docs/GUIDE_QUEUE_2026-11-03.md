@@ -247,3 +247,26 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   last-visit location per snapshot row, older days say "not recorded", confined roles stay in their location (812, ab9c60e);
   C5 First Visit Invitation audience for never-visited customers, consent checked, win-back wording refused (813, ca75e5b).
   Batch C open list is now empty except Kevin's 3 decisions.
+
+## Batch F — Nov 5 2026 uploads (40 documents) added to the list
+
+34 of the 40 are byte-identical copies of guides already in Batches C / D / E (checked by MD5): Team Performance,
+Services & Products, Service Categories, Service Pricing, Add-Ons, Membership, Discounts, Products, Inventory, Suppliers,
+Stock Alerts, Stock Alerts Technician Usage, Payments & Money, Transactions, Cash Drawer, End of Day Cash, Refunds & Voids,
+Split Payments, Tips, Gift Cards, Payment Terminals, Settlements, Deposit Reconciliation, Invoices, Expenses, Loyalty Rewards
+(several uploaded twice). Their status is the one recorded above for D1–D20 / E1–E7; they are NOT re-counted.
+
+New documents, each a queue row:
+
+| Row | Document | Status at Nov 5 |
+|---|---|---|
+| F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | NOT BUILT — first in the queue |
+| F2 | Customer Retention — Claude Full Build Spec (different file from the C3/C5 retention guides) | NOT AUDITED yet |
+| F3 | Membership Overview — Claude Build Spec | NOT AUDITED yet (D6 Membership is a different guide) |
+| F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |
+| F5 | Full Platform Architecture & Code Audit — Completion Mandate | Oct 27 matrix: 218 DONE / 41 PARTIAL / 3 BLOCKED of 262 |
+| F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | SKIPPED by Kevin's decision Oct 27; re-uploaded — re-opened |
+| F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Oct 27 matrix: 192 DONE / 18 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 |
+| F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | Oct 27 matrix: 160 DONE / 1 PARTIAL (17.5 pay-stub PDF) of 161 |
+
+Order: F1 → F2 → F3 → the F7 PARTIAL rows → F5 product gaps → F8 17.5 → F4 / F6 as one full run at the end.
