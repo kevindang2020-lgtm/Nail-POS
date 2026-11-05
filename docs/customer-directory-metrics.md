@@ -81,17 +81,20 @@ role without financial access.
 gender or other attribute is inferred from names or photos. Customers without a birth year are not placed in any group,
 and the card shows "No birthdays on file yet" when nobody has one.
 
-**RFM** — inputs: Recency = days since the last settled visit; Frequency = settled visits (all time). Monetary is not
-used in the segment rule today (PARTIAL against §38). Segments, first match wins:
+**RFM** — inputs: Recency = days since the last settled visit; Frequency = settled visits (all time); Monetary = net
+spend. "Top spender" = the top 20 % of visited customers by net spend (at least $1). Segments, first match wins:
 
 | Segment | Rule |
 |---|---|
-| Champions | 8+ visits and last visit ≤ 30 days |
+| No Visits Yet | no settled visit (never Hibernating / At Risk) |
+| Champions | last visit ≤ 30 days and (8+ visits, or 4+ visits and a top spender) |
 | Loyal Customers | 4+ visits and last visit ≤ 90 days |
 | Potential Loyalists | ≤ 3 visits and last visit ≤ 30 days |
 | At Risk (RFM) | 4+ visits and last visit 61–120 days |
-| Cannot Lose Them | 6+ visits and last visit > 120 days |
-| Hibernating | everything else (including never visited) |
+| Cannot Lose Them | last visit > 120 days and (6+ visits, or 3+ visits and a top spender) |
+| Hibernating | everything else |
+
+Segment names are shown in the POS language (EN / VI keys `cd.rfm.*`).
 
 The RFM "At Risk" segment is a different rule from the directory's At Risk tab (salon threshold, any visit count); the
 tab uses the Customer Retention definition so it matches that screen.

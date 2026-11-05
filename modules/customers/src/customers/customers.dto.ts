@@ -267,18 +267,24 @@ export function buildCustomersAnalytics(rows: CustomerAnalyticsInput[]): Custome
   const totalRevenueCents = rows.reduce((a, r) => a + (r.totalSpendCents || 0), 0);
   const repeat = rows.filter((r) => r.visitCount >= RETURNING_MIN_VISITS).length;
   const lifetimeValue = { totalRevenueCents, totalCustomers: n, repeatRatePercent: n ? Math.round((repeat / n) * 100) : 0, avgClvCents: n ? Math.round(totalRevenueCents / n) : 0 };
+  // F1 §38 — R = days since last settled visit, F = settled visits (all time), M = net spend; "top spender" = the top 20 %
+  // of visited customers by net spend (at least $1). A customer with no visit is "No Visits Yet", never Hibernating /
+  // At Risk. First matching rule wins (docs/customer-directory-metrics.md).
+  const visitedSpend = rows.filter((r) => r.visitCount > 0).map((r) => r.totalSpendCents || 0).sort((a, b) => b - a);
+  const topCut = visitedSpend.length ? Math.max(100, visitedSpend[Math.max(0, Math.ceil(visitedSpend.length * 0.2) - 1)]) : Infinity;
   const seg = (r: CustomerAnalyticsInput): string => {
-    const recent = r.recencyDays <= 30, mid = r.recencyDays <= 90, freq = r.visitCount;
-    if (freq >= 8 && recent) return 'Champions';
+    if (r.visitCount === 0) return 'No Visits Yet';
+    const recent = r.recencyDays <= 30, mid = r.recencyDays <= 90, freq = r.visitCount, top = (r.totalSpendCents || 0) >= topCut;
+    if (recent && (freq >= 8 || (freq >= 4 && top))) return 'Champions';
     if (freq >= 4 && mid) return 'Loyal Customers';
     if (freq <= 3 && recent) return 'Potential Loyalists';
     if (r.recencyDays > 60 && r.recencyDays <= 120 && freq >= 4) return 'At Risk';
-    if (r.recencyDays > 120 && freq >= 6) return 'Cannot Lose Them';
+    if (r.recencyDays > 120 && (freq >= 6 || (freq >= 3 && top))) return 'Cannot Lose Them';
     return 'Hibernating';
   };
   const rfmMap: Record<string, number> = {};
   for (const r of rows) { const s = seg(r); rfmMap[s] = (rfmMap[s] || 0) + 1; }
-  const order = ['Champions', 'Loyal Customers', 'Potential Loyalists', 'At Risk', 'Cannot Lose Them', 'Hibernating'];
+  const order = ['Champions', 'Loyal Customers', 'Potential Loyalists', 'At Risk', 'Cannot Lose Them', 'Hibernating', 'No Visits Yet'];
   const rfm = order.map((s) => ({ segment: s, count: rfmMap[s] || 0 })).filter((x) => x.count > 0);
   return { ageGroups, lifetimeValue, rfm, retentionRatePercent: lifetimeValue.repeatRatePercent };
 }

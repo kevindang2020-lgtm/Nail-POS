@@ -282,5 +282,12 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.act.booked": "Booked an appointment",
   "cd.act.loyalty": "Loyalty points adjusted",
   "cd.unavailable": "Couldn't load this right now. The customer list is not affected — it will retry on the next refresh.",
-  "cd.rail.pick": "Choose one to filter the customer list."
+  "cd.rail.pick": "Choose one to filter the customer list.",
+  "cd.rfm.champions": "Champions",
+  "cd.rfm.loyal": "Loyal Customers",
+  "cd.rfm.potential": "Potential Loyalists",
+  "cd.rfm.atRisk": "At Risk",
+  "cd.rfm.cannotLose": "Cannot Lose Them",
+  "cd.rfm.hibernating": "Hibernating",
+  "cd.rfm.noVisits": "No Visits Yet"
 };

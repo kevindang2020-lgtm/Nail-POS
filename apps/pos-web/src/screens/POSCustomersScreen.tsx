@@ -96,6 +96,8 @@ const Donut = ({ items }: { items: { label: string; count: number }[] }) => {
   );
 };
 
+// F1 §38/§67: RFM segment names come from the server in English; the POS shows them in its language
+const RFM_KEY: Record<string, string> = { Champions: 'cd.rfm.champions', 'Loyal Customers': 'cd.rfm.loyal', 'Potential Loyalists': 'cd.rfm.potential', 'At Risk': 'cd.rfm.atRisk', 'Cannot Lose Them': 'cd.rfm.cannotLose', Hibernating: 'cd.rfm.hibernating', 'No Visits Yet': 'cd.rfm.noVisits' };
 const srcLabel = (s: string) => statusLabel('source', s);   // every source code has a canonical label in ns/status (WP-D1)
 
 const ipt: React.CSSProperties = { height: 34, border: '1px solid var(--line)', borderRadius: 9, padding: '0 10px', background: '#FFFDF8', fontFamily: 'inherit', fontSize: 12.5, color: 'var(--text)' };
@@ -141,7 +143,12 @@ export function POSCustomersScreen() {
       .catch((e: any) => { msgKey.current = null; setActionErr(e?.message || tx('cd.msg.failed')); })
       .finally(() => setMsgBusy(null));
   };
+  // F1 §31/§64: the drawer is an overlay over the list, so search / filters / page / scroll stay as they were; on close
+  // focus goes back to the control that opened it (touch and keyboard users land where they were)
+  const profileOpener = useRef<HTMLElement | null>(null);
+  const closeProfile = () => { setProfileRow(null); const el = profileOpener.current; profileOpener.current = null; if (el && el.isConnected) setTimeout(() => el.focus(), 0); };
   const openProfile = (row: Row) => {
+    profileOpener.current = (document.activeElement as HTMLElement | null) ?? null;
     setProfileRow(row); setProfile(null); setProfileBusy(true);
     (posCustomersApi.getDetail(row.customerId) as Promise<any>).then((d) => setProfile(d)).catch(() => setProfile(null)).finally(() => setProfileBusy(false));
   };
@@ -668,7 +675,7 @@ export function POSCustomersScreen() {
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.rfm_analysis')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
           {an && an.rfm.length > 0 ? an.rfm.map((x) => (
             <div key={x.segment} style={{ marginBottom: 7 }}>
-              <div style={{ display: 'flex', fontSize: 11.5 }}><span>{serverText(x.segment)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(x.count)} · {an.lifetimeValue.totalCustomers ? Math.round((x.count / an.lifetimeValue.totalCustomers) * 1000) / 10 : 0}%</span></div>
+              <div style={{ display: 'flex', fontSize: 11.5 }}><span>{RFM_KEY[x.segment] ? tx(RFM_KEY[x.segment]) : serverText(x.segment)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(x.count)} · {an.lifetimeValue.totalCustomers ? Math.round((x.count / an.lifetimeValue.totalCustomers) * 1000) / 10 : 0}%</span></div>
               <div style={{ height: 7, background: '#EFE6D6', borderRadius: 4, marginTop: 3 }}><div style={{ width: `${Math.round((x.count / rfmMax) * 100)}%`, height: 7, background: '#A96F22', borderRadius: 4 }} /></div>
             </div>
           )) : <div className="muted">{tx('pos.no_customers_to_segment_yet')}</div>}
@@ -691,7 +698,7 @@ export function POSCustomersScreen() {
           <AiAssistantPanel packageCode="ai_customer_profile_assistant" cta={tx('pos.summarize_customer')} action="profile" buildPrompt={() => "Summarize this nail-salon customer's preferences and flag VIP or churn risk. Be brief."} />
         </section>
       </div>
-      {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={() => setProfileRow(null)} nav={nav} /> : null}
+      {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={closeProfile} nav={nav} /> : null}
     </div>
   );
 }

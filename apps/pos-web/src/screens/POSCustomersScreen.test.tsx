@@ -272,6 +272,17 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(screen.queryByTestId('cd-rail-overlay')).toBeNull();
   });
 
+  it('F1 §31/§64: closing the profile drawer keeps the list as it was and returns focus to the opener', async () => {
+    globalThis.fetch = vi.fn(async (url: any) => ({ ok: true, status: 200, json: async () => (String(url).includes('/pos/customers/state') ? richState : {}), headers: { get: () => null } } as any)) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    const opener = (await screen.findAllByTitle('Profile / activity'))[0] as HTMLButtonElement;
+    opener.focus(); fireEvent.click(opener);
+    const dlg = await screen.findByRole('dialog');
+    fireEvent.click(within(dlg).getByRole('button', { name: 'Close' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);

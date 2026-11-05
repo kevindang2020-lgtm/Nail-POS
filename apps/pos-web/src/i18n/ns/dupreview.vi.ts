@@ -280,5 +280,12 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "cd.act.booked": "Đã đặt lịch hẹn",
   "cd.act.loyalty": "Đã điều chỉnh điểm thưởng",
   "cd.unavailable": "Chưa tải được mục này. Danh sách khách hàng không bị ảnh hưởng — sẽ thử lại ở lần làm mới tiếp theo.",
-  "cd.rail.pick": "Chọn một mục để lọc danh sách khách hàng."
+  "cd.rail.pick": "Chọn một mục để lọc danh sách khách hàng.",
+  "cd.rfm.champions": "Khách xuất sắc",
+  "cd.rfm.loyal": "Khách trung thành",
+  "cd.rfm.potential": "Khách tiềm năng",
+  "cd.rfm.atRisk": "Có rủi ro",
+  "cd.rfm.cannotLose": "Không thể để mất",
+  "cd.rfm.hibernating": "Lâu không quay lại",
+  "cd.rfm.noVisits": "Chưa ghé tiệm"
 };

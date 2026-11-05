@@ -288,13 +288,13 @@ Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
 - §11 / §36: customer spend (and so CLV and Avg. Spend) is net of completed refunds.
 - §55: export omits spend without financial access; CSV formula guard covers tab / CR.
 - §61 / §62 (partial): scale run at 1,000 / 10,000 customers — the browser gets one page (26 KB); server time 1.29 s → 0.36 s at 10k.
+- §38: RFM uses Monetary (top-20 % spenders) and gives never-visited customers their own segment; names translated in VI.
+- §31 / §64: the profile drawer is an overlay (list, filters, page and scroll stay); focus returns to the opener on close.
 - §16: an analytics read that fails marks that card "unavailable" (with retry on the next refresh) and the list keeps working. It was built from the visible page before.
 
 Remaining F1 work:
 
 - §39: check-ins and profile edits as their own feed events — PARTIAL (visits, new profiles, bookings and loyalty adjustments are in).
-- §31: keep scroll position on return.
-- §38: RFM does not use Monetary — PARTIAL, written up in the metrics doc.
 - §58 / §62: the server still reads every customer in scope and filters in memory (linear; ~3–4 s projected at 100k on PGlite) — move search / filters / counts / paging into SQL.
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
 - §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).
