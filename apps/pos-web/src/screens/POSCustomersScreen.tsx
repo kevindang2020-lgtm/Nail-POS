@@ -40,12 +40,13 @@ type Row = {
 };
 type Pg = { page: number; pageSize: number; totalItems: number; totalPages: number };
 type CustomersState = {
-  kpisFull: { totalCustomers: number; newCustomersToday: number; returningCustomersToday: number; vipCustomers: number; birthdayThisMonth: number; inactiveCustomers: number; duplicateProfiles: number; loyaltyMembers: number; averageSpendCents: number };
+  kpisFull: { totalCustomers: number; newCustomersToday: number; returningCustomersToday: number; vipCustomers: number; birthdayThisMonth: number; inactiveCustomers: number; duplicateProfiles: number; loyaltyMembers: number; averageSpendCents: number; newThisMonth?: number; returningThisMonth?: number; atRiskCustomers?: number; riskDays?: number };
   analytics?: { ageGroups: { label: string; count: number }[]; lifetimeValue: { totalRevenueCents: number; totalCustomers: number; repeatRatePercent: number; avgClvCents: number }; rfm: { segment: string; count: number }[]; retentionRatePercent: number };
   rows: { items: Row[]; pagination: Pg };
   filterFacets: { segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[] };
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  segmentCounts?: Partial<Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>>;
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
   recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
 };
@@ -244,7 +245,9 @@ export function POSCustomersScreen() {
   const tr = s.trends;
   const pg: Pg = Object.assign({ page: 1, pageSize, totalItems: rows.length, totalPages: 1 }, s.rows.pagination || {});
   const pct = (n: number) => (k.totalCustomers ? Math.round((n / k.totalCustomers) * 1000) / 10 : 0);
-  const atRisk = an?.rfm.find((x) => /at.?risk/i.test(x.segment))?.count ?? k.inactiveCustomers;
+  // F1 §11-12: one server definition per number (docs/customer-directory-metrics.md) — no client-side substitutes
+  const atRisk = k.atRiskCustomers ?? an?.rfm.find((x) => /at.?risk/i.test(x.segment))?.count ?? k.inactiveCustomers;
+  const sc = s.segmentCounts;
   const topSpenders = s.directory?.topSpendersCount ?? rows.filter((r) => r.totalSpendCents >= 100000).length; // full-base top 5%, else page-scoped ($1k+)
 
   const kpis8 = [
@@ -259,18 +262,19 @@ export function POSCustomersScreen() {
   ];
   const summary6 = [
     { l: tx('pos.total_customers'), v: nf(k.totalCustomers), sub: tx('pos.all_profiles'), trend: tr?.totalCustomers, seg: '' },
-    { l: tx('pos.new_this_month'), v: nf(k.newCustomersToday), sub: tx('pos.recent_additions'), trend: tr?.newCustomers, seg: 'new' },
-    { l: tx('pos.returning_this_month'), v: nf(k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningCustomersToday)) }), trend: undefined, seg: 'returning' },
+    { l: tx('pos.new_this_month'), v: nf(k.newThisMonth ?? k.newCustomersToday), sub: tx('pos.recent_additions'), trend: tr?.newCustomers, seg: '' },
+    { l: tx('pos.returning_this_month'), v: nf(k.returningThisMonth ?? k.returningCustomersToday), sub: tx('pos.returningcustomerstoday_of_total', { returningCustomersToday: String(pct(k.returningThisMonth ?? k.returningCustomersToday)) }), trend: undefined, seg: 'returning' },
     { l: tx('pos.vip_customers'), v: nf(k.vipCustomers), sub: tx('pos.vipcustomers_of_total', { vipCustomers: String(pct(k.vipCustomers)) }), trend: undefined, seg: 'vip' },
     { l: tx('pos.at_risk_customers'), v: nf(atRisk), sub: tx('pos.needs_attention_2'), trend: undefined, seg: 'at_risk' },
     { l: tx('pos.top_spenders'), v: nf(topSpenders), sub: s.directory ? tx('pos.5_of_total_revenue') : tx('pos.on_this_page_1k'), trend: undefined, seg: '' },
   ];
   const tabs = [
-    { id: '', l: tx('pos.all_customers'), n: k.totalCustomers },
-    { id: 'new', l: tx('pos.new_customers'), n: k.newCustomersToday },
-    { id: 'returning', l: tx('pos.returning'), n: k.returningCustomersToday },
-    { id: 'vip', l: tx('pos.vip_customers'), n: k.vipCustomers },
-    { id: 'at_risk', l: tx('pos.at_risk'), n: atRisk },
+    // F1 §15: each tab's count is the server count for exactly what that tab lists (with the other filters applied)
+    { id: '', l: tx('pos.all_customers'), n: sc?.all ?? k.totalCustomers },
+    { id: 'new', l: tx('pos.new_customers'), n: sc?.new ?? k.newCustomersToday },
+    { id: 'returning', l: tx('pos.returning'), n: sc?.returning ?? k.returningCustomersToday },
+    { id: 'vip', l: tx('pos.vip_customers'), n: sc?.vip ?? k.vipCustomers },
+    { id: 'at_risk', l: tx('pos.at_risk'), n: sc?.at_risk ?? atRisk },
   ];
 
   // right-rail derivations — prefer full-base backend aggregations; fall back to page-scoped if absent

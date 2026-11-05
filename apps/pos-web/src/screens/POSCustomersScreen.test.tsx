@@ -216,6 +216,21 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(acts.map((a) => a.textContent)).toEqual([expect.stringMatching(/Lan Tran.*New profile added/), expect.stringMatching(/Mai Vo.*Visited/)]);
   });
 
+  it('F1 §12/§15: tab counts come from the server count for what each tab lists; month cards use the month counters', async () => {
+    globalThis.fetch = mockFetch({ ...state,
+      kpisFull: { ...state.kpisFull, totalCustomers: 50, newCustomersToday: 1, returningCustomersToday: 2, newThisMonth: 9, returningThisMonth: 14, atRiskCustomers: 6, vipCustomers: 3 },
+      segmentCounts: { all: 50, never: 5, new: 11, returning: 30, vip: 3, at_risk: 6 },
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    await screen.findByText('Customers');
+    const tab = (name: RegExp) => screen.getAllByRole('button').find((b) => name.test(b.textContent ?? '') && /\d/.test(b.textContent ?? ''))!;
+    expect(tab(/^New Customers/).textContent).toMatch(/11/);
+    expect(tab(/^Returning(?! This)/).textContent).toMatch(/30/);
+    expect(tab(/^At Risk\D*\d/).textContent).toMatch(/6/);
+    expect(tab(/^New This Month/).textContent).toMatch(/9/);
+    expect(tab(/^Returning This Month/).textContent).toMatch(/14/);
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);

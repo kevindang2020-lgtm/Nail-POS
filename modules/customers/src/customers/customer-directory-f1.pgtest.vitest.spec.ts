@@ -44,7 +44,48 @@ beforeAll(async () => {
   // last month: 3 active (2 at Main, 1 at Second), 1 at risk, 1 never visited → 3/4 = 75%; Main only → 2/3 = 66.7%
   await run(id('e1'), `${m1}-15`, true, [[id('c1'), 'active', B], [id('c2'), 'active', B], [id('c3'), 'active', B2], [id('c4'), 'at_risk', B], [id('c5'), 'never_visited', null]]);
   await run(id('e2'), `${m2}-20`, false, [[id('c1'), 'active', null], [id('c2'), 'approaching', null]]);
+  // Cust1 also visited 100 days ago; set phones for the search test; salon risk threshold 30 days
+  await q(`insert into tickets (id, tenant_id, branch_id, customer_id, status, total_cents, ticket_number, created_at, paid_at) values ($1,$2,$3,$4,'closed',3000,'91100', now() - interval '100 days', now() - interval '100 days')`, [id('d100'), T, B, id('c1')]);
+  await q(`update customers set normalized_phone = '+12155550101', phone_display = '(215) 555-0101' where id = $1`, [id('c1')]);
+  await q(`insert into tenant_retention_settings (tenant_id, risk_days, approaching_days) values ($1, 30, 20)`, [T]);
   repo = new KyselyCustomersRepository(kyselyFor(pg) as never);
+});
+
+describe('F1 Customer Directory — tabs, counters and search (§11-15)', () => {
+  it('At Risk uses the salon threshold and never-visited is not At Risk; each tab count equals what the tab lists', async () => {
+    const st = await repo.query(ctx, {});
+    // visits: Cust1 38d … Cust10 11d → threshold 30: Cust1..Cust3 (38, 35, 32 days) are At Risk; Newbie never visited
+    const atRisk = await repo.query(ctx, { segment: 'at_risk', pageSize: 50 });
+    expect(atRisk.rows.items.map((r) => r.customerId).sort()).toEqual([id('c1'), id('c2'), id('c3')].sort());
+    expect(st.kpisFull.atRiskCustomers).toBe(3);
+    expect(st.kpisFull.riskDays).toBe(30);
+    for (const seg of ['new', 'returning', 'vip', 'at_risk', 'never'] as const) {
+      const r = await repo.query(ctx, { segment: seg, pageSize: 50 });
+      expect(st.segmentCounts![seg]).toBe(r.rows.pagination.totalItems);
+    }
+    expect(st.segmentCounts!.all).toBe(11);
+    expect(st.segmentCounts!.returning).toBe(1);   // only Cust1 has two visits
+  });
+  it('tab counts follow the other active filters (search narrows every tab)', async () => {
+    const st = await repo.query(ctx, { search: 'Cust1' });   // Cust1 and Cust10
+    expect(st.segmentCounts!.all).toBe(2);
+    expect(st.segmentCounts!.at_risk).toBe(1);
+  });
+  it('New This Month counts profiles added this calendar month (not first-visit customers); the "today" counter stays separate', async () => {
+    const st = await repo.query(ctx, {});
+    const d = new Date(); const addedThisMonth = d.getUTCDate() > 2 ? 1 : st.kpisFull.newThisMonth;   // Newbie (2 days ago) — month edge tolerated
+    expect(st.kpisFull.newThisMonth).toBe(addedThisMonth);
+    expect(st.kpis.newThisMonth).toBe(st.kpisFull.newThisMonth);
+  });
+  it('phone search matches any format of the number; stored values are untouched', async () => {
+    for (const term of ['(215) 555-0101', '215.555.0101', '2155550101', '555-0101']) {
+      const r = await repo.query(ctx, { search: term });
+      expect(r.rows.items.map((x) => x.customerId)).toEqual([id('c1')]);
+    }
+    const row = (await repo.query(ctx, { search: '2155550101' })).rows.items[0];
+    expect(row.phone).toBe('(215) 555-0101');
+    expect((await repo.query(ctx, { search: 'Cust 9' })).rows.items.length).toBe(0);   // a name with a digit is not a phone search
+  });
 });
 
 describe('F1 Customer Directory — retention trend from snapshots (§37)', () => {

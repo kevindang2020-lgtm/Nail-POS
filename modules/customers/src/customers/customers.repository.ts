@@ -1,6 +1,6 @@
 import { monthDayOf, toStorage } from '../birthdays/birthday-core';
 import { normalizePhone } from '../customer-activation-rules/customer-activation-core';
-import { RETURNING_MIN_VISITS } from './customer-segments';
+import { RETURNING_MIN_VISITS, INACTIVE_DAYS } from './customer-segments';
 // customers.repository.ts — persistence port + in-memory adapter for POS Customers.
 // A tenant-scoped, MUTABLE customer DB so create/edit/archive/notes/loyalty/merge changes genuinely persist.
 // Filters (§18) are applied server-side. A different tenant sees its own (empty) DB — isolation. Merge never
@@ -135,6 +135,7 @@ export class InMemoryCustomersRepository implements CustomersRepositoryPort {
     if (f.segment === 'new') rows = rows.filter((c) => c.visitCount === 1);
     if (f.segment === 'returning') rows = rows.filter((c) => c.visitCount >= RETURNING_MIN_VISITS);
     if (f.segment === 'vip') rows = rows.filter((c) => c.isVip);
+    if (f.segment === 'at_risk') rows = rows.filter((c) => c.visitCount >= 1 && this.daysSince(c.lastVisitAt) >= INACTIVE_DAYS);   // F1 §15 (default threshold in memory)
     return rows;
   }
 
@@ -158,7 +159,7 @@ export class InMemoryCustomersRepository implements CustomersRepositoryPort {
     const thisMonth = new Date().getMonth() + 1;
 
     const kpis: CustomerKpis = {
-      totalCustomers: all.length, totalCustomersTrendPercent: 0, newThisMonth: all.filter((c) => c.visitCount <= 1).length, newThisMonthTrendPercent: 0,
+      totalCustomers: all.length, totalCustomersTrendPercent: 0, newThisMonth: all.filter((c) => (c.createdAt || '').slice(0, 7) === new Date().toISOString().slice(0, 7)).length, newThisMonthTrendPercent: 0,
       vipMembers: all.filter((c) => c.isVip).length, vipPercentOfTotal: all.length ? Math.round((all.filter((c) => c.isVip).length / all.length) * 100) : 0,
       returningRatePercent: all.length ? Math.round((all.filter((c) => c.visitCount > 1).length / all.length) * 100) : 0, returningRateTrendPercent: 0,
       birthdaysThisWeek: all.filter((c) => c.birthdayMonth === thisMonth).length, birthdayCustomerAvatars: [], birthdayExtraCount: 0,

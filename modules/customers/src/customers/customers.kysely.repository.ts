@@ -110,9 +110,9 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     };
   }
   private bool(v?: string) { return v === 'true' || v === 'yes' || v === '1'; }
-  private filtered(all: Cust[], f: CustomerFilters, dup: Map<string, DuplicateRisk>): Cust[] {
+  private filtered(all: Cust[], f: CustomerFilters, dup: Map<string, DuplicateRisk>, riskDays = INACTIVE_DAYS): Cust[] {
     let r = all.slice();
-    if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ r = r.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q))); }   /* the whole name too: "nguyen thi huong" */
+    if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ const digits = f.search.replace(/\D/g, ''); const byPhone = digits.length >= 3 && /^[\d\s()+.\-]+$/.test(f.search.trim());   /* F1 §14: "(555) 123-4567", "555.123.4567" and "5551234567" all find the same customer; stored values untouched */ r = r.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q)) || (byPhone && [c.phone, c.normalizedPhone].some((x) => (x ?? '').replace(/\D/g, '').includes(digits)))); }   /* the whole name too: "nguyen thi huong" */
     if (f.status) r = r.filter((c) => c.status === f.status);
     if (f.loyaltyTier) r = r.filter((c) => c.loyaltyTier === f.loyaltyTier);
     if (f.source) r = r.filter((c) => c.source === f.source);
@@ -127,7 +127,23 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     if (f.segment === 'new') r = r.filter((c) => c.visitCount === 1);
     if (f.segment === 'returning') r = r.filter((c) => c.visitCount >= RETURNING_MIN_VISITS);
     if (f.segment === 'vip') r = r.filter((c) => c.isVip);
+    // F1 §15/§29: At Risk = has visited, and no visit for the salon's risk threshold (Customer Retention settings, default 60
+    // days) — the same rule as the Retention screen. Never-visited customers are not At Risk; Archived is a lifecycle status.
+    if (f.segment === 'at_risk') r = r.filter((c) => c.visitCount >= 1 && this.daysSince(c.lastVisitAt) >= riskDays);
     return r;
+  }
+
+  /** the salon's At Risk threshold (Customer Retention settings; 60 days when never set) */
+  private async riskDays(ctx: CustomersContext): Promise<number> {
+    const r = await this.db.selectFrom('tenant_retention_settings').select('risk_days').where('tenant_id', '=', ctx.tenantId).executeTakeFirst().catch(() => undefined);
+    return Number(r?.risk_days) || INACTIVE_DAYS;
+  }
+  /** the location's time zone (or the salon's first location's) — "this month" is the salon's calendar month */
+  private async salonTimeZone(ctx: CustomersContext): Promise<string> {
+    let q = this.db.selectFrom('branches').select('timezone').where('tenant_id', '=', ctx.tenantId);
+    q = ctx.branchId ? q.where('id', '=', ctx.branchId) : q.orderBy('created_at', 'asc');
+    const r = await q.executeTakeFirst().catch(() => undefined);
+    return (r?.timezone as string | undefined) || 'UTC';
   }
 
   /** last completed snapshot day of each of the last 6 months → Active ÷ visited customers (null = no reliable data) */
@@ -157,7 +173,14 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
 
   async query(ctx: CustomersContext, f: CustomerFilters): Promise<POSCustomersFullState> {
     const all = await this.load(ctx); const dup = this.dupSet(all);
-    const matched = this.filtered(all, f, dup);
+    const riskDays = await this.riskDays(ctx);
+    const matched = this.filtered(all, f, dup, riskDays);
+    // F1 §12/§15: tab counts use the same filter code as the list (the other active filters applied), so a tab's number is
+    // exactly what the tab shows
+    const segmentCounts = Object.fromEntries((['', 'never', 'new', 'returning', 'vip', 'at_risk'] as const).map((seg) => [seg || 'all', this.filtered(all, { ...f, segment: seg || undefined }, dup, riskDays).length])) as Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
+    const tz = await this.salonTimeZone(ctx);
+    const monthKey = (d: string | null | undefined) => { if (!d) return ''; try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit' }).format(new Date(d)); } catch { return new Date(d).toISOString().slice(0, 7); } };
+    const curMonth = monthKey(new Date().toISOString());
     const page = clampPage(f.page), pageSize = clampPageSize(f.pageSize, 20);
     const totalItems = matched.length, totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
     const pageRows = matched.slice((page - 1) * pageSize, (page - 1) * pageSize + pageSize);
@@ -211,7 +234,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     };
 
     const kpis: CustomerKpis = {
-      totalCustomers: all.length, totalCustomersTrendPercent: 0, newThisMonth: all.filter((c) => c.visitCount <= 1).length, newThisMonthTrendPercent: 0,
+      totalCustomers: all.length, totalCustomersTrendPercent: 0, newThisMonth: all.filter((c) => monthKey(c.createdAt) === curMonth).length, newThisMonthTrendPercent: 0,
       vipMembers: all.filter((c) => c.isVip).length, vipPercentOfTotal: all.length ? Math.round((all.filter((c) => c.isVip).length / all.length) * 100) : 0,
       returningRatePercent: all.length ? Math.round((all.filter((c) => c.visitCount >= RETURNING_MIN_VISITS).length / all.length) * 100) : 0, returningRateTrendPercent: 0,
       birthdaysThisWeek: all.filter((c) => c.birthdayMonth === thisMonth).length, birthdayCustomerAvatars: [], birthdayExtraCount: 0,
@@ -222,11 +245,17 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       vipCustomers: all.filter((c) => c.isVip).length, birthdayThisMonth: all.filter((c) => c.birthdayMonth === thisMonth).length,
       inactiveCustomers: all.filter((c) => this.daysSince(c.lastVisitAt) >= INACTIVE_DAYS).length, duplicateProfiles: dup.size,
       loyaltyMembers: all.filter((c) => c.loyaltyPoints > 0 || c.loyaltyTier !== 'Regular').length, averageSpendCents: avgSpendAll,
+      // F1 §11-12 (salon calendar month): profiles added this month; returning (2+ visits) customers who visited this month;
+      // At Risk by the salon's risk threshold (see filtered())
+      newThisMonth: all.filter((c) => monthKey(c.createdAt) === curMonth).length,
+      returningThisMonth: all.filter((c) => c.visitCount >= RETURNING_MIN_VISITS && monthKey(c.lastVisitAt) === curMonth).length,
+      atRiskCustomers: all.filter((c) => c.visitCount >= 1 && this.daysSince(c.lastVisitAt) >= riskDays).length,
+      riskDays,
     };
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
-      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity,
+      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts,
       filterFacets: {
         segments: ['never', 'new', 'returning', 'vip'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: [...new Set(all.map((c) => c.loyaltyTier))], visitRanges: ['0', '1-3', '4-9', '10+'],
@@ -780,7 +809,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   }
 
   async exportRows(ctx: CustomersContext, f: CustomerFilters): Promise<{ headers: string[]; rows: (string | number)[][] }> {
-    const all = await this.load(ctx); const dup = this.dupSet(all); const rows = this.filtered(all, f, dup);
+    const all = await this.load(ctx); const dup = this.dupSet(all); const rows = this.filtered(all, f, dup, await this.riskDays(ctx));
     return { headers: ['Id', 'Name', 'Phone', 'Email', 'Status', 'Source', 'Visits', 'TotalSpend', 'Tier', 'VIP', 'MarketingOptIn'], rows: rows.map((c) => [c.customerId, `${c.firstName} ${c.lastName}`, c.phone, c.email, c.status, c.source, c.visitCount, c.totalSpendCents, c.loyaltyTier, c.isVip ? 'yes' : 'no', c.marketingOptIn ? 'yes' : 'no']) };
   }
 }

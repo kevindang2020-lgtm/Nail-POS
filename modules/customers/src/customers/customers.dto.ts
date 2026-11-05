@@ -243,6 +243,8 @@ export interface CustomerFilters {
 export interface POSCustomersKpisFull {
   totalCustomers: number; newCustomersToday: number; returningCustomersToday: number; vipCustomers: number;
   birthdayThisMonth: number; inactiveCustomers: number; duplicateProfiles: number; loyaltyMembers: number; averageSpendCents: number;
+  // F1 §11-12 — see docs/customer-directory-metrics.md
+  newThisMonth?: number; returningThisMonth?: number; atRiskCustomers?: number; riskDays?: number;
 }
 export interface CustomersFilterFacets {
   segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[];
@@ -295,6 +297,7 @@ export interface POSCustomersFullState extends POSCustomersState {
   // F1 §37: last 6 months of retention from the nightly snapshots (null rate = no reliable snapshot for that month; reason says why)
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
   // F1 §39: the salon's latest customer activity (visits + profiles added in the last 30 days), newest first, max 8
+  segmentCounts?: Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
   recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
 }
 
