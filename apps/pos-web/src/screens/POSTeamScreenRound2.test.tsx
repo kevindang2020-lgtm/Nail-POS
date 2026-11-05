@@ -84,6 +84,13 @@ describe('POSTeamScreen round 2A', () => {
     expect(rows[0].textContent).toMatch(/Ticket #H-9001/); expect(document.body.textContent).not.toContain('555-9901');
     expect(api.directory.mock.calls.every((c) => c[0].q !== '8565559901')).toBe(true);
     expect(seen).toContain('mode=customer'); expect(seen).not.toContain('9901');
+    // TM-01 gap (Nov 5 2026): archived staff only when asked, marked Archived
+    expect(api.customerLinks.mock.calls.every((c) => !c[0].archived)).toBe(true);
+    api.customerLinks.mockResolvedValue({ query: { kind: 'phone' }, matchedCustomers: 1, customers: [], page: 1, pageSize: 10, totalItems: 1, totalPages: 1,
+      items: [{ memberId: 't-x', technicianId: 't-x', name: 'Former Tech', roles: ['nail_technician'], code: 'EMP-X', live: 'off', archived: true, reasons: [], moreReasons: 0 }] });
+    fireEvent.click(screen.getByTestId('cl-archived'));
+    await waitFor(() => expect(api.customerLinks).toHaveBeenLastCalledWith(expect.objectContaining({ archived: 'include', page: 1 })));
+    expect(await screen.findByTestId('cl-archived-chip')).toHaveTextContent('Archived');
   });
 
   it('TM-03: ?created=<id> → page 1, newest first, highlighted; hidden by filters → View new employee / Clear filters', async () => {

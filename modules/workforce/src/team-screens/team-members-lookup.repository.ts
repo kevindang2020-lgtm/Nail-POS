@@ -57,7 +57,9 @@ export class TeamMembersLookupRepository {
             from tickets t join cu on cu.id = t.customer_id where t.tenant_id = ${T} and t.helper_technician_id is not null and ${done} and ${brT})`;
   }
 
-  async customerLinks(ctx: TeamCtx, f: { q?: string; page?: unknown; pageSize?: unknown }) {
+  /** TM-01 (Nov 5 2026 gap): `archived` = 'include' also lists staff who have since been archived (marked archived) — the
+   *  customer's history keeps who served them; default: current staff only, as before */
+  async customerLinks(ctx: TeamCtx, f: { q?: string; archived?: string; page?: unknown; pageSize?: unknown }) {
     if (!canAny(ctx, ...CUSTOMER_VIEW)) throw err(403, 'CUSTOMER_SEARCH_FORBIDDEN', 'You do not have permission to search by customer.');
     const raw = String(f.q ?? '').trim().slice(0, 100); const { d, phoneish } = phoneDigits(raw);
     const byPhone = phoneish && d.length >= 7;
@@ -65,10 +67,10 @@ export class TeamMembersLookupRepository {
     const { page, pageSize } = paging(f.page, f.pageSize, 10);
     const today = await this.members.period(ctx, { preset: 'today' }); const R = this.members.roster(ctx, today); const L = this.linkCtes(ctx, raw);
     const g = sql`g as (select m.member_id, max(lk.ref_date) as last_date, count(distinct lk.kind || ':' || lk.ref_id)::int as refs, count(distinct lk.customer_id)::int as customers,
-        array_agg(distinct lk.kind) as kinds from lk join m on m.technician_id = lk.technician_id where m.is_current group by m.member_id)`;
+        array_agg(distinct lk.kind) as kinds from lk join m on m.technician_id = lk.technician_id where (m.is_current or ${f.archived === 'include'}) group by m.member_id)`;
     const head = (await sql<any>`${R}${L}, ${g} select (select count(*)::int from cu) as customers, (select count(*)::int from g) as members`.execute(this.db)).rows[0];
     const total = N(head?.members); const sp = served(page, pageSize, total);
-    const rows = (await sql<any>`${R}${L}, ${g} select m.member_id, m.technician_id, m.user_id, m.name, m.avatar_url, m.roles, m.code, m.live, g.last_date, g.refs, g.customers, g.kinds
+    const rows = (await sql<any>`${R}${L}, ${g} select m.member_id, m.technician_id, m.user_id, m.name, m.avatar_url, m.roles, m.code, m.live, m.is_current, g.last_date, g.refs, g.customers, g.kinds
       from g join m on m.member_id = g.member_id order by g.last_date desc nulls last, m.member_id limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     const tids = rows.map((r: any) => String(r.technician_id));
     const refs = tids.length ? (await sql<any>`${R}${L} select lk.*, cu.full_name as customer_name, cu.phone as customer_phone from lk join cu on cu.id = lk.customer_id
@@ -89,7 +91,7 @@ export class TeamMembersLookupRepository {
             upcoming: x.kind === 'appointment' && String(x.ref_date ?? '') >= today.today }); }
         const reasons = [...seen.values()];
         return { memberId: String(r.member_id), technicianId: String(r.technician_id), userId: r.user_id ? String(r.user_id) : null, name: String(r.name ?? ''), avatarUrl: r.avatar_url ?? null,
-          roles: (r.roles ?? []) as string[], code: String(r.code), live: String(r.live), lastDate: r.last_date ?? null, linkCount: reasons.length, customersMatched: N(r.customers),
+          roles: (r.roles ?? []) as string[], code: String(r.code), live: String(r.live), archived: !r.is_current, lastDate: r.last_date ?? null, linkCount: reasons.length, customersMatched: N(r.customers),
           kinds: (r.kinds ?? []) as string[], reasons: reasons.slice(0, 5), moreReasons: Math.max(0, reasons.length - 5) };
       }),
       page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages,

@@ -28,6 +28,8 @@ export const TEAMROUND2A_EN = {
   'tm2.cl.for': 'for {name}',
   'tm2.cl.more': '+{n} more records',
   'tm2.cl.rule': 'Matched through real records only: appointments and completed tickets of this salon. Every technician on a shared ticket is listed. The customer\'s phone is masked.',
+  'tm2.cl.withArchived': 'Include archived staff',
+  'tm2.cl.archived': 'Archived',
   'tm2.pf.label': 'Preferred technician (optional)',
   'tm2.pf.none': 'No preference',
   'tm2.pf.first': 'Preferred: {n}',

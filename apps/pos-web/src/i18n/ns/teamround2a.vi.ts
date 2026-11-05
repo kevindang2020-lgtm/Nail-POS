@@ -28,6 +28,8 @@ export const TEAMROUND2A_VI = {
   'tm2.cl.for': 'cho {name}',
   'tm2.cl.more': '+{n} hồ sơ khác',
   'tm2.cl.rule': 'Chỉ khớp qua hồ sơ thật: lịch hẹn và phiếu đã hoàn tất của tiệm. Mọi thợ trên cùng một phiếu đều được liệt kê. Số điện thoại khách hàng được che.',
+  'tm2.cl.withArchived': 'Gồm cả nhân viên đã lưu trữ',
+  'tm2.cl.archived': 'Đã lưu trữ',
   'tm2.pf.label': 'Thợ ưu tiên (không bắt buộc)',
   'tm2.pf.none': 'Không ưu tiên',
   'tm2.pf.first': 'Ưu tiên: {n}',

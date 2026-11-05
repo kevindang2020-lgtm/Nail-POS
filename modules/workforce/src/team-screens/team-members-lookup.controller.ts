@@ -10,7 +10,7 @@ import { teamCtx } from './technicians-screen.controller';
 
 export const TEAM_MEMBERS_LOOKUP = 'TeamMembersLookupRepository';
 const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
-const CUSTOMER_LINKS = { search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
+const CUSTOMER_LINKS = { filters: { archived: { type: 'enum', values: ['include', 'exclude'] } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/team-members-screen')
@@ -20,7 +20,7 @@ export class TeamMembersLookupController {
 
   /** TM-01: staff linked to a customer (name or phone) through appointments and completed services, with the reason */
   @Get('customer-links') @RequirePermission('pos.technicians.view') @ListQuery(CUSTOMER_LINKS)
-  customerLinks(@Req() req: any, @Query() q: any) { return this.r().customerLinks(teamCtx(req), { q: s(q?.q), page: q?.page, pageSize: q?.pageSize }); }
+  customerLinks(@Req() req: any, @Query() q: any) { return this.r().customerLinks(teamCtx(req), { q: s(q?.q), archived: s(q?.archived), page: q?.page, pageSize: q?.pageSize }); }
 
   /** TM-04: is the preferred technician valid for this service / date / start — and the qualified alternatives */
   @Get('preferred-check') @RequirePermission('pos.technicians.view')

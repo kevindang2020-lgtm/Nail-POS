@@ -82,6 +82,16 @@ describe('TM-01 customer-linked staff search', () => {
     const o: any = await repo.customerLinks(other, { q: '8565551201' }); expect(names(o)).toEqual(['Other Salon Tech']);
     expect(JSON.stringify(o)).not.toContain(ANNA); expect(JSON.stringify(o)).not.toContain(TK1);
   });
+  it('TM-01 gap (Nov 5 2026): an archived technician who served the customer is listed only when archived staff are included, and marked', async () => {
+    await q(`update technicians set archived_at = now(), status = 'archived' where id = $1`, [LAN]);
+    try {
+      expect(names(await repo.customerLinks(mgr, { q: '8565551201' }))).toEqual(['Anna Lee', 'Kevin Dang']);
+      const r: any = await repo.customerLinks(mgr, { q: '8565551201', archived: 'include' });
+      expect(names(r)).toEqual(['Anna Lee', 'Kevin Dang', 'Lan Vo']);
+      expect(r.items.find((x: any) => x.name === 'Lan Vo').archived).toBe(true);
+      expect(r.items.find((x: any) => x.name === 'Anna Lee').archived).toBe(false);
+    } finally { await q(`update technicians set archived_at = null, status = 'active' where id = $1`, [LAN]); }
+  });
   it('needs customers.view; a too-short query is refused; paging is on the server', async () => {
     await expect(repo.customerLinks(noCustomers, { q: 'mai' })).rejects.toMatchObject({ status: 403 });
     await expect(repo.customerLinks(mgr, { q: 'm' })).rejects.toMatchObject({ status: 422 });
