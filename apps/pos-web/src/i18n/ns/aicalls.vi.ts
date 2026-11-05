@@ -25,6 +25,7 @@ export const AICALLS_VI: Record<string, string> = {
   "aic.col.aiBookings": "Lịch hẹn AI",
   "aic.col.auth": "Xác thực bởi",
   "aic.col.booking": "Đặt lịch",
+  "aic.dialed": "gọi tới {n}",
   "aic.col.caller": "Người gọi",
   "aic.col.customer": "Khách hàng",
   "aic.col.detail": "Chi tiết",

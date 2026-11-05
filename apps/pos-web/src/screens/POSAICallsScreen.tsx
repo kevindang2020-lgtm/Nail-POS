@@ -186,7 +186,7 @@ export function POSAICallsScreen() {
               <tbody>{list.items.map((c: any) => (
                 <tr key={c.id} data-testid="aic-call-row">
                   <td>{when(c.startedAt)}<div className="aic-muted">{c.callRef.slice(0, 14)}</div></td>
-                  <td>{c.callerMasked ?? '—'}<div className="aic-muted">{t(`aic.identity.${c.identity}`)}</div></td>
+                  <td>{c.callerMasked ?? '—'}<div className="aic-muted">{t(`aic.identity.${c.identity}`)}{c.dialedNumber ? ` · ${t('aic.dialed', { n: c.dialedNumber })}` : ''}</div></td>
                   <td>{dur(c.durationSeconds)}</td>
                   <td><Badge tone={STAT_TONE[c.status] ?? 'muted'} label={t(`aic.cstat.${c.status}`)} testId={`aic-status-${c.status}`} /></td>
                   <td>{(c.intents ?? []).join(', ') || '—'}</td>

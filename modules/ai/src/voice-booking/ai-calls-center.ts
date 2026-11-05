@@ -30,6 +30,9 @@ const trace = () => `aic-${randomUUID().slice(0, 8)}`;
 export const AIC_STALE_HOURS = 2;
 const RANK: Record<RcState, number> = { FAILED: 6, UNKNOWN: 5, BLOCKED_EXTERNAL: 4, NOT_CONFIGURED: 3, WARNING: 2, DISABLED: 1, READY: 0 };
 
+/** '+12155550101' → '•••-•••-0101' (A10: the caller without contact permission) */
+const maskNumber = (v: string) => { const d = v.replace(/\D/g, ''); return d.length >= 4 ? `•••-•••-${d.slice(-4)}` : '•••'; };
+
 export class AiCallsCenter {
   constructor(private readonly db: Kysely<any>, private readonly rc: ReceptionistCenter, private readonly env: NodeJS.ProcessEnv = process.env) {}
   private branch(ctx: RcCtx): string | null { return isUuid(ctx.branchId) ? ctx.branchId : null; }
@@ -95,7 +98,7 @@ export class AiCallsCenter {
     const refs = page.items.map((i) => i.callRef);
     if (!refs.length) return page;
     const T = ctx.tenantId;
-    const ex: Row[] = (await sql<Row>`select o.provider_call_id ref, o.agent_ref, coalesce(o.last_synced_at, o.updated_at) synced, o.ended_at, coalesce(o.started_at, o.created_at) st,
+    const ex: Row[] = (await sql<Row>`select o.provider_call_id ref, o.agent_ref, coalesce(o.last_synced_at, o.updated_at) synced, o.ended_at, coalesce(o.started_at, o.created_at) st, o.caller_number, o.dialed_number,
         (select count(*)::int from voice_tool_executions x where x.tenant_id = o.tenant_id and x.provider_call_id = o.provider_call_id) tools,
         (select count(*)::int from voice_tool_executions x where x.tenant_id = o.tenant_id and x.provider_call_id = o.provider_call_id and x.status = 'failed') tool_failed,
         (select count(*)::int from voice_tool_executions x where x.tenant_id = o.tenant_id and x.provider_call_id = o.provider_call_id and x.related_type = 'appointment' and x.status = 'succeeded') appts
@@ -107,7 +110,9 @@ export class AiCallsCenter {
         const e = by.get(i.callRef);
         const stale = !!e && !e.ended_at && Date.now() - new Date(e.st).getTime() > AIC_STALE_HOURS * 3_600_000;
         return { ...i, status: stale && i.status === 'in_progress' ? 'unknown' : i.status, agentRef: e?.agent_ref ?? null, lastSyncedAt: iso(e?.synced),
-          tools: { requested: N(e?.tools), failed: N(e?.tool_failed) }, linkedAppointments: N(e?.appts) };
+          tools: { requested: N(e?.tools), failed: N(e?.tool_failed) }, linkedAppointments: N(e?.appts),
+          // A10: the salon number that was dialed (the caller is already shown, masked, from the call record)
+          callerMasked: i.callerMasked ?? (e?.caller_number ? maskNumber(String(e.caller_number)) : null), dialedNumber: e?.dialed_number ?? null };
       }),
     };
   }

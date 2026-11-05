@@ -164,6 +164,15 @@ describe('metrics, detail, health, paging, isolation — guide §07–§12, §17
     expect(page.items[0].status).toBe('unknown');
     expect((await ac.reconciliation(own)).staleInProgress.map((x) => x.callRef)).toContain('call_stale');
   });
+  it('A10 (Nov 5): the dialed salon number and the caller are kept from the signed event; the list shows which number was called', async () => {
+    await send(ev('call_started', 'call_nums', 'agent_a', { start_timestamp: at(5), from_number: '+12155550199', to_number: '+18565550100' }));
+    const o = await q1(sql`select caller_number, dialed_number from voice_call_outcomes where tenant_id = ${TA} and provider_call_id = 'call_nums'`);
+    expect(o).toMatchObject({ caller_number: '+12155550199', dialed_number: '+18565550100' });
+    await send(ev('call_ended', 'call_nums', 'agent_a', { start_timestamp: at(5), end_timestamp: at(1), from_number: '+19999999999', to_number: '+18565550100' }));
+    expect((await q1(sql`select caller_number from voice_call_outcomes where tenant_id = ${TA} and provider_call_id = 'call_nums'`)).caller_number).toBe('+12155550199');   // first value wins
+    const page = await ac.calls(own, { q: 'call_nums' });
+    expect(page.items[0]).toMatchObject({ dialedNumber: '+18565550100' });
+  });
   it('CD-01 opening a call is audited; Front Desk sees no transcript link; recording is honest (no consent → none)', async () => {
     await sql`insert into call_transcripts (tenant_id, branch_id, provider, provider_call_id, status) values (${TA}, ${BA}, 'retell', 'call_ooo', 'completed')`.execute(db).catch(() => undefined);
     const before = N((await q1(sql`select count(*)::int n from audit_events where tenant_id = ${TA} and action = 'ai_call.viewed'`)).n);

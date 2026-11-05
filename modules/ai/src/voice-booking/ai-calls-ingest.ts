@@ -99,8 +99,12 @@ export class AiCallsIngest {
       const tz = await branchTimeZone(trx, who.tenantId, branchId).catch((e) => ledgerWarn('handoff.branch_tz', e));
       for (const signal of signals) await recordHandoff(trx, { tenantId: who.tenantId, branchId, providerCallId: ev.callId, source: 'retell_webhook', sourceKey: key, signal, callerPhone: caller ?? null, summary: ev.facts.summary ?? null, tz });
     } : undefined;
+    // A10 (Nov 5 2026): who called / which salon number — first value wins on the canonical record
+    const outbound = body?.call?.direction === 'outbound';
+    const num = (v: unknown) => (typeof v === 'string' && /^\+?[0-9]{7,15}$/.test(v.trim()) ? v.trim() : null);
+    const numbers = { caller: num(outbound ? body?.call?.to_number : body?.call?.from_number), dialed: num(outbound ? body?.call?.from_number : body?.call?.to_number) };
     return this.apply({ tenantId: who.tenantId, branchId: who.branchId, provider: 'retell', key, type: ev.type, callId: ev.callId, occurredAt: ev.occurredAt,
-      payloadSha: sha(rawBody), auth: 'provider_signature', facts: ev.facts, after });
+      payloadSha: sha(rawBody), auth: 'provider_signature', facts: ev.facts, after, numbers });
   }
 
   /** the agent's own POST /voice/calls/:id/outcome — recorded as an event too (authenticated by the integration key) */
@@ -110,7 +114,7 @@ export class AiCallsIngest {
   }
 
   private async apply(e: { tenantId: string; branchId: string | null; provider: string; key: string; type: string; callId: string; occurredAt: string | null;
-    payloadSha: string; auth: string; facts: CallFacts | null; alreadyMerged?: boolean; after?: (trx: Kysely<any>, branchId: string) => Promise<void> }): Promise<IngestResult> {
+    payloadSha: string; auth: string; facts: CallFacts | null; alreadyMerged?: boolean; after?: (trx: Kysely<any>, branchId: string) => Promise<void>; numbers?: { caller: string | null; dialed: string | null } }): Promise<IngestResult> {
     return this.db.transaction().execute(async (trx) => {
       const ins: Row | undefined = (await sql<Row>`insert into voice_call_events (tenant_id, branch_id, provider, provider_event_key, event_type, provider_call_id, occurred_at,
           payload_sha256, auth, disposition, failure_reason)
@@ -126,6 +130,8 @@ export class AiCallsIngest {
       if (!e.branchId || !e.facts) return { accepted: true, disposition: 'failed', reason: 'branch_unresolved', callRef: e.callId };
       const disposition = await this.merge(trx, { tenantId: e.tenantId, branchId: e.branchId, provider: e.provider, callId: e.callId, occurredAt: e.occurredAt, facts: e.facts });
       if (disposition !== 'applied') await sql`update voice_call_events set disposition = ${disposition} where id = ${ins.id}`.execute(trx);
+      if (e.numbers && (e.numbers.caller || e.numbers.dialed)) await sql`update voice_call_outcomes set caller_number = coalesce(caller_number, ${e.numbers.caller}), dialed_number = coalesce(dialed_number, ${e.numbers.dialed})
+        where tenant_id = ${e.tenantId} and provider_call_id = ${e.callId}`.execute(trx);
       if (e.after) await e.after(trx, e.branchId);
       return { accepted: true, disposition, callRef: e.callId };
     });

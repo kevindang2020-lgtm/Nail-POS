@@ -25,6 +25,7 @@ export const AICALLS_EN: Record<string, string> = {
   "aic.col.aiBookings": "AI bookings",
   "aic.col.auth": "Verified by",
   "aic.col.booking": "Booking",
+  "aic.dialed": "to {n}",
   "aic.col.caller": "Caller",
   "aic.col.customer": "Customer",
   "aic.col.detail": "Detail",
