@@ -85,7 +85,9 @@ const br = (branchId?: string) => ({ branchId: branchId || 'all' });
 export const ownerFinanceExpensesApi = {
   dashboard: (branchId?: string) => api.get<FinanceDashboard>('/owner/finance/dashboard', br(branchId)),
   report: (period: string, branchId?: string) => api.get<FinanceReport>('/owner/finance/reports', { period, ...br(branchId) }),
-  list: (tab: FinanceInboxTab, period: string | undefined, branchId?: string) => api.get<FinanceExpensePage>('/owner/finance/expenses', { tab, ...(period ? { period } : {}), ...br(branchId) }),
+  // Receipt/Expense mandate §87: the list's own filters (category / vendor / payment method / search) go to the server
+  list: (tab: FinanceInboxTab, period: string | undefined, branchId?: string, f: { q?: string; category?: string; vendorId?: string; paymentMethod?: string } = {}) =>
+    api.get<FinanceExpensePage>('/owner/finance/expenses', { tab, ...(period ? { period } : {}), ...br(branchId), ...Object.fromEntries(Object.entries(f).filter(([, v]) => !!v)) }),
   categories: () => api.get<FinanceCategoryList>('/owner/finance/expense-categories'),
   renameCategory: (key: string, label: string) => api.patch<FinanceCategoryResult>(`/owner/finance/expense-categories/${encF(key)}`, { label }),
   rules: () => api.get<FinanceRuleList>('/owner/finance/expense-rules'),

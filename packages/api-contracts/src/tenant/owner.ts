@@ -138,6 +138,9 @@ export interface OwnerFinanceSummary {
   taxCollectedCents: number; tipsCents: number; discountsCents: number;
   // top revenue-generating services in the period (by paid line totals), highest first.
   topServices: { name: string; revenueCents: number }[];
+  /** Receipt/Expense mandate §94: sales (services + retail, before tax / tips / gift cards) in the same period, and approved
+   *  expenses ÷ sales as a percent (null when there were no sales). `expenseRatioBasis` is the methodology shown with it. */
+  salesCents?: number; expenseToSalesPct?: number | null; expenseRatioBasis?: string;
 }
 
 export interface OwnerPaymentMethod { method: string; amountCents: number; count: number; percentage: number }

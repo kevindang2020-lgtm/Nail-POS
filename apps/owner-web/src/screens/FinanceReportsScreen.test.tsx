@@ -41,6 +41,21 @@ beforeEach(() => {
 });
 
 describe('FinanceReportsScreen', () => {
+  it('Receipt/Expense §94: Expenses ÷ Sales shows with its method; no sales → "—", never 0 % or ∞', async () => {
+    (ownerFinanceApi.summary as any).mockResolvedValue(summary({ salesCents: 4000000, expenseToSalesPct: 30, expenseRatioBasis: 'Approved expenses ÷ sales (services + retail, before tax, tips and gift cards).' }));
+    const { unmount } = render(<FinanceReportsScreen />);
+    const tile = await screen.findByTestId('kpi-expense-ratio');
+    expect(tile).toHaveTextContent('30%');
+    expect(tile).toHaveTextContent('of $40,000 sales');
+    expect(screen.getByTestId('expense-ratio-basis')).toHaveTextContent(/before tax, tips and gift cards/);
+    unmount();
+    (ownerFinanceApi.summary as any).mockResolvedValue(summary({ salesCents: 0, expenseToSalesPct: null, expenseRatioBasis: 'x' }));
+    render(<FinanceReportsScreen />);
+    const t2 = await screen.findByTestId('kpi-expense-ratio');
+    await waitFor(() => expect(t2).toHaveTextContent('—'));
+    expect(t2).toHaveTextContent('No sales this period');
+  });
+
   it('renders the summary KPIs with the right money formatting', async () => {
     render(<FinanceReportsScreen />);
     expect(await screen.findByText('$48,500')).toBeInTheDocument();       // revenue hero (whole dollars)

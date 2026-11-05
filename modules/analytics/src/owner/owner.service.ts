@@ -592,6 +592,9 @@ export class OwnerService {
       averageTicketCents: txns > 0 ? Math.round(paidSales / txns) : 0, totalTransactions: txns,   // sales ÷ paid tickets — the POS reports' definition (wave 4 pilot)
       taxCollectedCents: taxDisc.taxCents, tipsCents: tips, discountsCents: taxDisc.discountCents,
       topServices: topSvcs,
+      // §94: the expense-to-sales ratio, with its method stated next to it (one decimal; null without sales)
+      salesCents: paidSales, expenseToSalesPct: paidSales > 0 ? Math.round((expensesCur / paidSales) * 1000) / 10 : null,
+      expenseRatioBasis: 'Approved expenses ÷ sales (services + retail, before tax, tips and gift cards) for the same period and location. Commission and payroll are not in the expenses. Not a tax figure.',
     };
   }
 

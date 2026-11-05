@@ -101,6 +101,11 @@ export function FinanceReportsScreen() {
               <div className="val" style={{ fontSize: 17 }}>{loading && !sum ? <div className="owner-skel" style={{ width: 80, height: 24, margin: '0 auto' }} /> : money2(sum!.averageTicketCents)}</div>
               <div className="sub flat">{loading && !sum ? <div className="owner-skel" style={{ width: 40, height: 12, margin: '4px auto 0' }} /> : `${sum!.totalTransactions} txns`}</div>
             </div>
+            <div className="owner-kpi" data-testid="kpi-expense-ratio">
+              <div className="label" title={sum?.expenseRatioBasis ?? ''}>Expenses ÷ Sales</div>
+              <div className="val" style={{ fontSize: 17 }}>{loading && !sum ? <div className="owner-skel" style={{ width: 60, height: 24, margin: '0 auto' }} /> : sum!.expenseToSalesPct == null ? '—' : `${sum!.expenseToSalesPct}%`}</div>
+              <div className="sub flat">{loading && !sum ? null : sum!.expenseToSalesPct == null ? 'No sales this period' : `of ${money(sum!.salesCents ?? 0)} sales`}</div>
+            </div>
             <div className="owner-kpi">
               <div className="label">Transactions</div>
               <div className="val">{loading && !sum ? <div className="owner-skel" style={{ width: 40, height: 24, margin: '0 auto' }} /> : sum!.totalTransactions}</div>
@@ -116,6 +121,7 @@ export function FinanceReportsScreen() {
             </div>
           </div>
 
+          {sum?.expenseRatioBasis ? <div className="muted" data-testid="expense-ratio-basis" style={{ fontSize: 11.5, margin: '0 16px 10px' }}>Expenses ÷ Sales: {sum.expenseRatioBasis}</div> : null}
           <div className="owner-chartcard">
             <div className="head"><div className="t">Payment Mix</div></div>
             {loading && !mix ? (

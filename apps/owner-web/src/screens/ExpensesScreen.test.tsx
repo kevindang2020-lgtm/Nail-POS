@@ -37,12 +37,29 @@ const openForm = () => fireEvent.click(screen.getByLabelText('Add expense'));
 const ready = () => screen.findByText('Where the money went');
 
 describe('ExpensesScreen', () => {
+  it('Receipt/Expense §87: search, category, payment method and "only this vendor" filter the list on the server; Clear resets', async () => {
+    f.list.mockResolvedValue({ items: [expense({ vendorId: 'v-sally' })], total: 1, page: 1, pageSize: 50 });
+    render(<ExpensesScreen />);
+    await ready();
+    fireEvent.change(screen.getByLabelText('Filter by category'), { target: { value: 'supplies' } });
+    await waitFor(() => expect(f.list).toHaveBeenLastCalledWith('needs_review', undefined, 'branch-b', expect.objectContaining({ category: 'supplies' })));
+    fireEvent.change(screen.getByLabelText('Filter by payment method'), { target: { value: 'cash' } });
+    await waitFor(() => expect(f.list).toHaveBeenLastCalledWith('needs_review', undefined, 'branch-b', expect.objectContaining({ category: 'supplies', paymentMethod: 'cash' })));
+    fireEvent.click(await screen.findByTestId('ex-only-vendor'));
+    await waitFor(() => expect(f.list).toHaveBeenLastCalledWith('needs_review', undefined, 'branch-b', expect.objectContaining({ vendorId: 'v-sally' })));
+    expect(screen.getByTestId('ex-vendor-chip')).toHaveTextContent('Sally Beauty');
+    fireEvent.change(screen.getByLabelText('Search expenses'), { target: { value: 'gel' } });
+    await waitFor(() => expect(f.list).toHaveBeenLastCalledWith('needs_review', undefined, 'branch-b', expect.objectContaining({ q: 'gel' })));
+    fireEvent.click(screen.getByText('Clear filters'));
+    await waitFor(() => expect(f.list).toHaveBeenLastCalledWith('needs_review', undefined, 'branch-b', { q: undefined, category: undefined, paymentMethod: undefined, vendorId: undefined }));
+  });
+
   it('renders the KPIs, the review inbox and where the money went', async () => {
     render(<ExpensesScreen />);
     await ready();
     expect(screen.getAllByText('$250.00').length).toBeGreaterThan(1);           // KPI + row + report
     expect(screen.getByText('Sally Beauty')).toBeInTheDocument();
-    expect(f.list).toHaveBeenCalledWith('needs_review', undefined, 'branch-b');
+    expect(f.list).toHaveBeenCalledWith('needs_review', undefined, 'branch-b', { q: undefined, category: undefined, paymentMethod: undefined, vendorId: undefined });
     expect(screen.getByText(/Approved expenses only/)).toBeInTheDocument();
   });
 

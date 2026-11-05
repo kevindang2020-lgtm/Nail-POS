@@ -39,6 +39,10 @@ describe('getFinanceSummary — net profit and trends', () => {
     expect(out.taxCollectedCents).toBe(8000);
     expect(out.tipsCents).toBe(5000);
     expect(out.discountsCents).toBe(2000);
+    // Receipt/Expense §94: approved expenses ÷ sales (not ÷ revenue, which carries tax / tips / gift cards) = 20000 / 100000
+    expect(out.salesCents).toBe(100000);
+    expect(out.expenseToSalesPct).toBe(20);
+    expect(out.expenseRatioBasis).toMatch(/Approved expenses ÷ sales/);
   });
 
   it('requires owner.finance.view', async () => {

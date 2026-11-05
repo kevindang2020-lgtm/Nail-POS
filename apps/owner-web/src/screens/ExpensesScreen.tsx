@@ -21,6 +21,8 @@ const errStatus = (e: unknown) => Number((e as { status?: number })?.status ?? 0
 const errMsg = (e: unknown, fallback: string) => String((e as { message?: string })?.message || fallback);
 const TABS: Array<{ key: FinanceInboxTab; label: string }> = [{ key: 'needs_review', label: 'Review' }, { key: 'approved', label: 'Approved' }, { key: 'bills', label: 'Bills' }, { key: 'duplicates', label: 'Duplicates' }];
 const STATUS: Record<string, string> = { draft: 'Draft', pending_review: 'Needs review', approved: 'Approved', rejected: 'Rejected', voided: 'Voided' };
+/** the payment methods an expense records (the POS Expenses list uses the same values) */
+const PAY_METHODS: Array<[string, string]> = [['business_card', 'Business card'], ['cash', 'Cash'], ['check', 'Check'], ['ach', 'ACH'], ['bank_transfer', 'Bank transfer'], ['personal_card', 'Personal card (reimburse)'], ['other', 'Other']];
 const EMPTY = { kind: 'expense' as 'expense' | 'bill', category: '', amount: '', incurredOn: todayStr(), vendor: '', description: '', dueDate: '' };
 type Ask = { e: FinanceExpense; action: 'reject' | 'void' | 'not_duplicate' | 'duplicate' | 'pay' };
 
@@ -47,6 +49,10 @@ export function ExpensesScreen() {
   const { effectiveBranchId, branches = [] } = useOwnerBranch();
   const [period, setPeriod] = useState<OwnerPeriod>('month');
   const [tab, setTab] = useState<FinanceInboxTab>('needs_review');
+  // §87: list filters, applied on the server (category / vendor / payment method / search)
+  const [fq, setFq] = useState(''); const [fqApplied, setFqApplied] = useState('');
+  const [fCat, setFCat] = useState(''); const [fMethod, setFMethod] = useState(''); const [fVendor, setFVendor] = useState<{ id: string; name: string } | null>(null);
+  useEffect(() => { const t = setTimeout(() => setFqApplied(fq.trim()), 300); return () => clearTimeout(t); }, [fq]);
   const [rows, setRows] = useState<FinanceExpense[] | null>(null);
   const [dash, setDash] = useState<FinanceDashboard | null>(null);
   const [report, setReport] = useState<FinanceReport | null>(null);
@@ -88,11 +94,11 @@ export function ExpensesScreen() {
 
   const load = useCallback(() => {
     setLoading(true); setErr(null);
-    Promise.all([fin.list(tab, tab === 'approved' ? period : undefined, effectiveBranchId), fin.dashboard(effectiveBranchId), fin.report(period, effectiveBranchId), fin.categories()])
+    Promise.all([fin.list(tab, tab === 'approved' ? period : undefined, effectiveBranchId, { q: fqApplied || undefined, category: fCat || undefined, paymentMethod: fMethod || undefined, vendorId: fVendor?.id }), fin.dashboard(effectiveBranchId), fin.report(period, effectiveBranchId), fin.categories()])
       .then(([l, d, r, c]) => { setRows(l.items); setDash(d); setReport(r); setCats(c.categories.filter((x) => x.active)); })
       .catch((e: unknown) => setErr(errStatus(e) === 403 ? 'You do not have access to expenses.' : errMsg(e, 'Unable to load expenses.')))
       .finally(() => setLoading(false));
-  }, [tab, period, effectiveBranchId]);
+  }, [tab, period, effectiveBranchId, fqApplied, fCat, fMethod, fVendor]);
   useEffect(() => { load(); }, [load]);
 
   const label = (key: string) => cats.find((c) => c.key === key)?.label ?? key;
@@ -408,6 +414,18 @@ export function ExpensesScreen() {
             {TABS.map((x) => <button key={x.key} role="tab" aria-selected={tab === x.key} className={tab === x.key ? 'owner-actbtn primary' : 'owner-actbtn'} style={{ minHeight: 40 }} onClick={() => setTab(x.key)}>{x.label}</button>)}
           </div>
 
+          <div style={{ display: 'flex', gap: 6, marginBottom: 10, flexWrap: 'wrap', alignItems: 'center' }} data-testid="ex-filters">
+            <input className="owner-input" type="search" aria-label="Search expenses" placeholder="Search vendor, description, invoice, amount" value={fq} onChange={(e) => setFq(e.target.value)} style={{ flex: '1 1 220px', minHeight: 40 }} />
+            <select className="owner-input" aria-label="Filter by category" value={fCat} onChange={(e) => setFCat(e.target.value)} style={{ maxWidth: 200, minHeight: 40 }}>
+              <option value="">All categories</option>{cats.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+            </select>
+            <select className="owner-input" aria-label="Filter by payment method" value={fMethod} onChange={(e) => setFMethod(e.target.value)} style={{ maxWidth: 200, minHeight: 40 }}>
+              <option value="">All payment methods</option>{PAY_METHODS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+            </select>
+            {fVendor && <button className="owner-actbtn" data-testid="ex-vendor-chip" aria-label={`Vendor filter: ${fVendor.name}. Remove`} style={{ minHeight: 40 }} onClick={() => setFVendor(null)}>Vendor: {fVendor.name} ✕</button>}
+            {(fq || fCat || fMethod || fVendor) && <button className="owner-actbtn" style={{ minHeight: 40 }} onClick={() => { setFq(''); setFCat(''); setFMethod(''); setFVendor(null); }}>Clear filters</button>}
+          </div>
+
           {tab === 'needs_review' && openIds.length > 1 && (
             <div style={{ display: 'flex', gap: 6, marginBottom: 8, flexWrap: 'wrap' }}>
               <button className="owner-actbtn primary" disabled={busy} onClick={bulkApprove}>Approve all clean</button>
@@ -420,7 +438,7 @@ export function ExpensesScreen() {
           {rows && rows.map((e) => (
             <div key={e.id} className="owner-chartcard" style={{ padding: '10px 14px', marginBottom: 8 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8 }}>
-                <div style={{ fontWeight: 600 }}>{e.vendorDisplay || e.vendor || e.categoryLabel}</div>
+                <div style={{ fontWeight: 600 }}>{e.vendorDisplay || e.vendor || e.categoryLabel}{e.vendorId && fVendor?.id !== e.vendorId && <button className="owner-actbtn" style={{ marginLeft: 8, fontSize: 11.5, minHeight: 32, padding: "2px 8px" }} data-testid="ex-only-vendor" onClick={() => setFVendor({ id: e.vendorId!, name: e.vendorDisplay || e.vendor || 'vendor' })}>Only this vendor</button>}</div>
                 <div style={{ fontWeight: 600 }}>{money(e.amountCents)}</div>
               </div>
               <div className="muted" style={{ fontSize: 11.5, marginTop: 2 }}>

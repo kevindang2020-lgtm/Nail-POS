@@ -117,14 +117,14 @@ Key: `ocr-svc` = `modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.service.ts`; 
 | 84 | Original evidence immutable after approval; replacement = new version/attachment with audit | DONE | `fin-svc:696-705` `attachDocument(role: 'replacement' | 'supporting')` + history; OCR original never overwritten |
 | 85 | Draft delete allowed; approved → ARCHIVED / VOIDED | DONE | `fin-svc:543-556` `deleteDraft`; `void` with reason (`fin-svc:535`); `archive` (`fin-svc:557`) |
 | 86 | Search by vendor, amount, date, category, branch, invoice #, receipt #, description, status | DONE | `expense.list-queries.ts` + `fin-ctl.list`: `q` searches vendor, description, invoice / receipt / reference numbers AND an exact amount (`$88.99` → cents), `minCents` / `maxCents`; `fin-scale` 'search' (page of 20 of > 100 hits); the POS / Owner list bars send `q` + tab + period (category / vendor / method chips not drawn) |
-| 87 | Filters: today/week/month/year/custom + branch, category, vendor, status, payment method | PARTIAL | the API takes `category`, `vendorId`, `paymentMethod`, `status`, `branchId`, `period` (`fin-scale` 'filtered'); the two list screens expose tab + period + search + branch — no category / vendor / method chips yet |
+| 87 | Filters: today/week/month/year/custom + branch, category, vendor, status, payment method | DONE (Nov 5 2026) | API takes `category`, `vendorId`, `paymentMethod`, `status`, `branchId`, `period`. POS Expenses: period + category + payment method + search (vendor / description / invoice / amount). Owner Expenses: search + category + payment method + "Only this vendor" (vendorId) + Clear filters, all sent to the server (`ExpensesScreen.test.tsx` §87) |
 | 88 | Dashboard: this month, this year, bills due, overdue, needs review, possible duplicates | DONE | `fin-svc:758` `dashboard`; `fin-ctl:51`; `report` §B B-57 |
 | 89 | Category summary for a month | DONE | `fin-rep` byCategory with all ten defaults (`report` §M) |
 | 90 | Do not double-count payroll | DONE | `report` §M "Payroll is never added from the payroll module"; `source = 'payroll'` only by an owner's manual record |
 | 91 | Trends: month vs last, year vs last, category / vendor changes | DONE | `fin-svc:771-802` previous window + `insights` (category moves ±15 %, new vendors) |
 | 92 | Vendor spend (month, year, category) | DONE | `fin-svc:827` `vendorSpend`; `fin-ctl:62` |
 | 93 | Branch comparison | BUILT Oct 28 (verify V-28) | report byBranch (`fin-svc:802` reconciles); `rps` §69 by branch **Re-audit (Oct 28):** F6 — a split across branches on an expense filed to ONE branch was accepted and then ignored by the branch report. Fixed in `0c6d0a0f`: such a split is refused; a split expense is filed salon-wide. |
-| 94 | Expense-to-revenue ratio with labelled methodology | PARTIAL | P&L revenue − commission − approved expenses (`report` §M) exists; **no explicit ratio KPI with a methodology label** on the screens |
+| 94 | Expense-to-revenue ratio with labelled methodology | DONE (Nov 5 2026) | Owner Finance & Reports: **Expenses ÷ Sales** tile + the method line under the KPIs (`OwnerFinanceSummary.expenseToSalesPct` / `expenseRatioBasis`): approved expenses ÷ sales (services + retail, before tax, tips and gift cards), same period and location; "—" with no sales. Tests: `owner-financial-kpis.vitest.spec.ts`, `FinanceReportsScreen.test.tsx` |
 | 95 | AI expense insights (advisory) | DONE | `fin-svc:791-802` insights (category moves, duplicates waiting, review waiting, overdue bills, new vendors, recurring) — deterministic, advisory |
 | 96 | Anomaly flags: same receipt twice, unusually high, new vendor, duplicate invoice #, unexpected recurring, same vendor same day — "REVIEW RECOMMENDED" | BUILT Oct 28 (verify V-28) | duplicates (file hash / invoice #) ✓, high amount (`highAmountCents`, `ocr-svc:362`) ✓, new vendor ✓, recurring ✓. **No "same vendor charged multiple times the same day"** flag **Re-audit (Oct 28):** the missing "same vendor several times the same day" flag is built (`same_vendor_same_day`, any amount, vendor id or folded name; it keeps auto-approval from approving it unseen). |
 | 97 | Export for accountant / bookkeeper / tax | DONE | `fin-svc:840` `exportFile`; `fin-ctl:56` |
@@ -258,8 +258,8 @@ check (`matchPayment` wrote no audit row); retention re-picked the same kept doc
 
 | status | count |
 |---|---|
-| DONE | 192 |
-| PARTIAL | 18 |
+| DONE | 194 |
+| PARTIAL | 16 |
 | NOT DONE | 1 (§181 — allowed-not-required, decided against) |
 | BLOCKED_EXTERNAL | 1 (§127) |
 | **total section rows** | **212** (217 sections; §165–§170 are one row) |
@@ -267,7 +267,7 @@ check (`matchPayment` wrote no audit row); retention re-picked the same kept doc
 Before the build (read-only audit at `f90c183d`): 145 DONE · 46 PARTIAL · 20 NOT DONE · 1 BLOCKED_EXTERNAL.
 DONE includes §2 "DONE (shape)", §27 "DONE (internals)", §198 "DONE (logic)" — the live reading behind them is BLOCKED_EXTERNAL (Textract, S3, ClamAV).
 NOT DONE rows: 181.
-PARTIAL rows: 1, 44, 50, 73, 87, 94, 96, 98, 102, 153, 154, 158, 162, 191, 197, 203, 208, 210.
+PARTIAL rows: 1, 44, 50, 73, 96, 98, 102, 153, 154, 158, 162, 191, 197, 203, 208, 210 (87 and 94 DONE Nov 5 2026).
 
 ## Close-out — what the Oct 27 2026 build did with the INTERNAL list (priority order as audited)
 
