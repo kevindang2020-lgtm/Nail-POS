@@ -224,3 +224,8 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - Nov 5 — A2 date presets last 7 / last 30 / last month (4c01ed6); A7 the dialed number is kept and shown on calls (807,
   339a320); D9 bottle actions Expired / Missing / Found / Throw away (2b11499 — one transaction each, Missing and Found need
   stock-adjust, a thrown-away bottle cannot come back).
+- Nov 5 (cont.) — D9 bottles that arrive damaged on a purchase order (808, 3e09fad); D9 change a draft purchase order — a pending
+  approval is withdrawn by its requester and re-filed for the new total (5ec746b); D1 Team Performance helper contribution,
+  service-completion date, export needs reports.export (6534233); Tips free-form adjustment route + POS "Add or remove tip"
+  (db161c8). Still open in D9: variants, in-transit transfers, PO line discounts. D15 Cash Drawer rebuild extras (search,
+  presets, pages, activity overlay, denominations, manager approval, version check) not built yet.
