@@ -186,17 +186,17 @@ export class RetentionController {
 
   // ── CR-01 historical snapshots (read the stored rows; the job computes them) ───────────────────────────────────────────
   @Get('snapshots/day') @RequirePermission('pos.customers.view')
-  snapshotDay(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.customers.view'); return run(() => this.sn().day(c, str(f?.date))); }
+  snapshotDay(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.customers.view'); return run(() => this.sn().day(c, str(f?.date), str(f?.branch))); }
 
   @Get('snapshots/members') @RequirePermission('pos.customers.view')
-  @ListQuery({ filters: { segment: { type: 'enum', values: SNAPSHOT_SEGMENTS }, date: { type: 'date' } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] })
+  @ListQuery({ filters: { segment: { type: 'enum', values: SNAPSHOT_SEGMENTS }, date: { type: 'date' }, branch: { type: 'text', maxLength: 40 } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, params: ['page'] })
   snapshotMembers(@Req() q: any, @Query() f: any) {
     const c = ctxFrom(q); need(c, 'pos.customers.view');
-    return run(() => this.sn().members(c, { date: str(f?.date), segment: str(f?.segment), q: str(f?.q), page: f?.page, pageSize: f?.pageSize }));
+    return run(() => this.sn().members(c, { date: str(f?.date), segment: str(f?.segment), q: str(f?.q), branch: str(f?.branch), page: f?.page, pageSize: f?.pageSize }));
   }
 
   @Get('snapshots/compare') @RequirePermission('pos.customers.view')
-  snapshotCompare(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.customers.view'); return run(() => this.sn().compare(c, str(f?.a), str(f?.b))); }
+  snapshotCompare(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.customers.view'); return run(() => this.sn().compare(c, str(f?.a), str(f?.b), str(f?.branch))); }
 
   @Get('snapshots/runs') @RequirePermission('pos.customers.view')
   @ListQuery({ search: false, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 400 }, params: ['page'] })

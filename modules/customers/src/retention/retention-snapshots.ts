@@ -47,7 +47,7 @@ async function zoneOf(db: Kysely<any>, tenantId: string): Promise<string> {
 }
 
 /** the snapshot-run columns runOut / day() read — never the whole row */
-const SNAP_RUN_COLS = sql`r.id, to_char(r.snapshot_local_date, 'YYYY-MM-DD') as snapshot_local_date, r.status, r.coverage, r.coverage_reason, r.kind, r.definition_version, r.settings_version,
+const SNAP_RUN_COLS = sql`r.has_branch, r.id, to_char(r.snapshot_local_date, 'YYYY-MM-DD') as snapshot_local_date, r.status, r.coverage, r.coverage_reason, r.kind, r.definition_version, r.settings_version,
   r.segmentation_version, r.risk_days, r.approaching_days, r.time_zone, r.customers_count, r.rows_written, r.attempts, r.last_error,
   r.source_watermark, r.earliest_ticket_at, r.started_at, r.finished_at`;
 
@@ -116,31 +116,32 @@ export class RetentionSnapshotRepository {
       const quality = opts.kind === 'nightly' && date === String(yesterday) ? 'complete' : 'reconstructed';
       const rows = await this.db.transaction().execute(async (trx) => {
         const r = (await sql<any>`with tw as (select ((${date}::date + 1)::timestamp at time zone ${tz}) as e),
-          tv as (select t.id, t.customer_id, coalesce(t.paid_at, t.created_at) as vt, coalesce(t.total_cents, 0)::bigint as total_cents
+          tv as (select t.id, t.customer_id, t.branch_id, coalesce(t.paid_at, t.created_at) as vt, coalesce(t.total_cents, 0)::bigint as total_cents
                  from tickets t, tw where t.tenant_id = ${T} and t.customer_id is not null and t.status = any(${VISIT}::text[])
                    and (t.removed_at is null or t.removed_at >= tw.e) and coalesce(t.paid_at, t.created_at) < tw.e),
           v as (select tv.customer_id, count(*)::int as visits, min(tv.vt) as first_vt, max(tv.vt) as last_vt, sum(tv.total_cents)::bigint as spend from tv group by tv.customer_id),
+          lb as (select distinct on (tv.customer_id) tv.customer_id, tv.branch_id from tv order by tv.customer_id, tv.vt desc, tv.id desc),
           rf as (select tv.customer_id, coalesce(sum(pr.amount_cents), 0)::bigint as refunded
                  from payment_refunds pr join payments p on p.id = pr.payment_id and p.tenant_id = pr.tenant_id join tv on tv.id = p.ticket_id, tw
                  where pr.tenant_id = ${T} and pr.status = 'refunded' and pr.created_at < tw.e group by tv.customer_id),
-          c as (select c.id from customers c, tw where c.tenant_id = ${T} and c.created_at < tw.e
+          c as (select c.id, c.branch_id as home_branch_id from customers c, tw where c.tenant_id = ${T} and c.created_at < tw.e
                  and (c.status <> 'archived' or (c.archived_at is not null and c.archived_at >= tw.e))),
-          x as (select c.id, coalesce(v.visits, 0) as visits, v.first_vt, v.last_vt, greatest(0, coalesce(v.spend, 0) - coalesce(rf.refunded, 0))::bigint as net,
+          x as (select c.id, c.home_branch_id, lb.branch_id as last_branch_id, coalesce(v.visits, 0) as visits, v.first_vt, v.last_vt, greatest(0, coalesce(v.spend, 0) - coalesce(rf.refunded, 0))::bigint as net,
                  case when v.last_vt is null then null else (${date}::date - (v.last_vt at time zone ${tz})::date) end as days,
                  -- Customer Segments §11: the VIP flag / loyalty tier IN FORCE are recorded only for a COMPLETE (nightly, yesterday)
                  -- day; a reconstructed day leaves them NULL (a past VIP flag is not reproducible — never invented)
                  case when ${quality}::text = 'complete' then (lp.vip_since is not null or coalesce(lp.loyalty_tier, '') ~* 'vip') end as is_vip,
                  case when ${quality}::text = 'complete' then coalesce(lp.loyalty_tier, 'Regular') end as loyalty_tier
-                 from c left join v on v.customer_id = c.id left join rf on rf.customer_id = c.id
+                 from c left join v on v.customer_id = c.id left join lb on lb.customer_id = c.id left join rf on rf.customer_id = c.id
                  left join lateral (select clp.loyalty_tier, clp.vip_since from customer_loyalty_profiles clp where clp.tenant_id = ${T} and clp.customer_id = c.id order by clp.created_at limit 1) lp on true),
           ins as (insert into customer_retention_daily_snapshots (tenant_id, customer_id, snapshot_local_date, definition_version, settings_version, segment, first_visit_at, last_visit_at,
-                   visit_count, net_lifetime_value_cents, days_away, data_quality, run_id, source_watermark, calculated_at, is_vip, loyalty_tier)
+                   visit_count, net_lifetime_value_cents, days_away, data_quality, run_id, source_watermark, calculated_at, is_vip, loyalty_tier, last_visit_branch_id, home_branch_id)
                  select ${T}, x.id, ${date}::date, ${dv}, ${def.version ?? -1},
                    case when x.visits = 0 then 'never_visited' when x.days >= ${def.riskDays} then 'at_risk' when x.days >= ${def.approachingDays} then 'approaching' else 'active' end,
-                   x.first_vt, x.last_vt, x.visits, x.net, x.days, ${quality}, ${runId}::uuid, ${src.wm ?? null}, now(), x.is_vip, x.loyalty_tier
+                   x.first_vt, x.last_vt, x.visits, x.net, x.days, ${quality}, ${runId}::uuid, ${src.wm ?? null}, now(), x.is_vip, x.loyalty_tier, x.last_branch_id, x.home_branch_id
                  from x on conflict do nothing returning 1)
           select (select count(*) from ins)::int as written, (select count(*) from c)::int as customers`.execute(trx)).rows[0];
-        const fin = (await sql<{ id: string }>`update customer_retention_snapshot_runs set status = 'completed', coverage = ${quality}, coverage_reason = null, rows_written = ${N(r.written)}, customers_count = ${N(r.customers)},
+        const fin = (await sql<{ id: string }>`update customer_retention_snapshot_runs set status = 'completed', coverage = ${quality}, coverage_reason = null, rows_written = ${N(r.written)}, customers_count = ${N(r.customers)}, has_branch = true,
           source_watermark = ${src.wm ?? null}, earliest_ticket_at = ${src.earliest ?? null}, finished_at = now(), updated_at = now() where tenant_id = ${T} and id = ${runId} and ${canMoveToSql(CUSTOMER_RETENTION_SNAPSHOT_RUN, 'completed')}
           returning id`.execute(trx)).rows[0];
         // another run finished this day first: roll back this one's rows (the day keeps the first, complete result)
@@ -198,8 +199,30 @@ export class RetentionSnapshotRepository {
       lastError: r.last_error ? String(r.last_error).slice(0, 200) : null, sourceWatermark: iso(r.source_watermark), earliestTicketAt: iso(r.earliest_ticket_at), startedAt: iso(r.started_at), finishedAt: iso(r.finished_at) };
   }
 
-  /** GET one historical date: state (available / incomplete / missing / running / failed) + segment counts — read only */
-  async day(ctx: RetentionContext, date: unknown) {
+  /** C3/C5 gap (Nov 5 2026): one location's customers on a snapshot day — the location of their last visit that day, or their
+   *  home location if they had never visited */
+  private branchPred(branches: string[] | null) {
+    return branches ? sql`(s.last_visit_branch_id = any(${branches}::uuid[]) or (s.last_visit_branch_id is null and s.home_branch_id = any(${branches}::uuid[])))` : sql`true`;
+  }
+  /** the locations a history view covers — the same rule as the live screen (CR-02): a location-confined role sees only its
+   *  location(s) (it saw the whole salon's history before); a requested location must be one of the authorized ones */
+  async branchOf(ctx: RetentionContext, raw: unknown): Promise<string[] | null> {
+    const req = typeof raw === 'string' && raw.trim() && raw.trim() !== 'all' ? raw.trim() : null;
+    const confined = ctx.authz?.scope === 'BRANCH' || ctx.authz?.scope === 'SELECTED_BRANCHES';
+    if (!req && !confined) return null;
+    const rows = (await sql<any>`select b.id::text as id from branches b where b.tenant_id = ${ctx.tenantId} and b.deleted_at is null`.execute(this.db)).rows.map((r: any) => String(r.id));
+    const own = (ctx.authz?.branchIds ?? []).filter((b): b is string => typeof b === 'string' && /^[0-9a-f-]{36}$/i.test(b));
+    const allowed = confined ? rows.filter((id) => (own.length ? own : [ctx.branchId]).includes(id)) : rows;
+    if (!req) return allowed;
+    if (!/^[0-9a-f-]{36}$/i.test(req) || !rows.includes(req)) throw new RetentionError('Unknown branch.', 'RETENTION_INVALID_BRANCH');
+    if (!allowed.includes(req)) throw new RetentionError('You do not have access to that branch.', 'BRANCH_NOT_AUTHORIZED', 403);
+    return [req];
+  }
+
+  /** GET one historical date: state (available / incomplete / missing / running / failed) + segment counts — read only.
+   *  With a location: only that location's customers; a day computed before locations were recorded says so (no_branch_data). */
+  async day(ctx: RetentionContext, date: unknown, branchRaw: unknown = null) {
+    const branch = await this.branchOf(ctx, branchRaw);
     if (!validDay(date)) throw new RetentionError('Choose a valid date.', 'SNAPSHOT_INVALID_DATE');
     const { today, tz } = await this.todayOf(ctx.tenantId);
     if (date >= today) return { date, today, timeZone: tz, state: 'not_completed' as const, unverifiable: true, run: null, counts: null };
@@ -208,23 +231,25 @@ export class RetentionSnapshotRepository {
     const run = this.runOut(r);
     if (r.status !== 'completed') return { date, today, timeZone: tz, state: r.status === 'failed' ? 'failed' as const : 'running' as const, unverifiable: true, run, counts: null };
     if (r.coverage === 'incomplete') return { date, today, timeZone: tz, state: 'incomplete' as const, unverifiable: true, run, counts: null };
+    if (branch && !r.has_branch) return { date, today, timeZone: tz, state: 'no_branch_data' as const, unverifiable: true, run, counts: null, branch };
     const c = (await sql<any>`select count(*)::int as total, count(*) filter (where s.segment = 'never_visited')::int as never_visited, count(*) filter (where s.segment = 'active')::int as active,
         count(*) filter (where s.segment = 'approaching')::int as approaching, count(*) filter (where s.segment = 'at_risk')::int as at_risk,
         coalesce(sum(s.net_lifetime_value_cents) filter (where s.segment = 'at_risk'), 0)::bigint as lapsed
-      from customer_retention_daily_snapshots s where s.tenant_id = ${ctx.tenantId} and s.snapshot_local_date = ${date}::date and s.definition_version = ${r.definition_version}`.execute(this.db)).rows[0] || {};
-    return { date, today, timeZone: tz, state: 'available' as const, unverifiable: false, run,
+      from customer_retention_daily_snapshots s where s.tenant_id = ${ctx.tenantId} and s.snapshot_local_date = ${date}::date and s.definition_version = ${r.definition_version} and ${this.branchPred(branch)}`.execute(this.db)).rows[0] || {};
+    return { date, today, timeZone: tz, state: 'available' as const, unverifiable: false, run, branch,
       counts: { total: N(c.total), never_visited: N(c.never_visited), active: N(c.active), approaching: N(c.approaching), at_risk: N(c.at_risk), lapsedValueCents: N(c.lapsed) } };
   }
 
   /** GET the members of a historical segment (drill-down), paged; names are today's profile names, the figures that day's */
-  async members(ctx: RetentionContext, f: { date?: unknown; segment?: unknown; q?: unknown; page?: unknown; pageSize?: unknown }) {
-    const d = await this.day(ctx, f.date);
+  async members(ctx: RetentionContext, f: { date?: unknown; segment?: unknown; q?: unknown; branch?: unknown; page?: unknown; pageSize?: unknown }) {
+    const d = await this.day(ctx, f.date, f.branch);
+    const branch = (d as { branch?: string[] | null }).branch ?? null;
     const pageSize = Math.max(1, Math.min(50, Math.trunc(Number(f.pageSize)) || 10)); const page = Math.max(1, Math.trunc(Number(f.page)) || 1);
     const seg = (SNAPSHOT_SEGMENTS as readonly string[]).includes(String(f.segment)) ? String(f.segment) : null;
     if (d.state !== 'available' || !d.run) return { ...d, segment: seg, items: [], page: 1, pageSize, totalItems: 0, totalPages: 1 };
     const T = ctx.tenantId; const q = String(f.q ?? '').trim().slice(0, 100);
     const where = sql`s.tenant_id = ${T} and s.snapshot_local_date = ${d.date}::date and s.definition_version = ${d.run.definitionVersion}
-      and ${seg ? sql`s.segment = ${seg}` : sql`true`} and ${q ? sql`c.full_name ilike ${'%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%'} escape '\\'` : sql`true`}`;
+      and ${seg ? sql`s.segment = ${seg}` : sql`true`} and ${this.branchPred(branch)} and ${q ? sql`c.full_name ilike ${'%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%'} escape '\\'` : sql`true`}`;
     const total = N((await sql<any>`select count(*)::int as n from customer_retention_daily_snapshots s join customers c on c.id = s.customer_id and c.tenant_id = s.tenant_id where ${where}`.execute(this.db)).rows[0]?.n);
     const totalPages = Math.max(1, Math.ceil(total / pageSize)); const p = Math.min(page, totalPages);
     const rows = (await sql<any>`select s.customer_id, c.full_name, c.normalized_phone, s.segment, s.first_visit_at, s.last_visit_at, s.visit_count, s.net_lifetime_value_cents, s.days_away, s.data_quality
@@ -236,14 +261,15 @@ export class RetentionSnapshotRepository {
   }
 
   /** GET two dates side by side: counts, deltas and who moved between segments (only when BOTH dates are available) */
-  async compare(ctx: RetentionContext, a: unknown, b: unknown) {
-    const A = await this.day(ctx, a), B = await this.day(ctx, b);
+  async compare(ctx: RetentionContext, a: unknown, b: unknown, branchRaw: unknown = null) {
+    const A = await this.day(ctx, a, branchRaw), B = await this.day(ctx, b, branchRaw);
+    const branch = (A as { branch?: string[] | null }).branch ?? null;
     if (A.state !== 'available' || B.state !== 'available' || !A.counts || !B.counts || !A.run || !B.run) return { a: A, b: B, comparable: false, delta: null, transitions: [], definitionChanged: null };
     const delta = Object.fromEntries((['total', ...SNAPSHOT_SEGMENTS] as const).map((k) => [k, (B.counts as Record<string, number>)[k]! - (A.counts as Record<string, number>)[k]!]));
     const T = ctx.tenantId;
     const tr = (await sql<any>`select coalesce(x.segment, 'not_a_customer') as from_segment, coalesce(y.segment, 'not_a_customer') as to_segment, count(*)::int as n
-      from (select s.customer_id, s.segment from customer_retention_daily_snapshots s where s.tenant_id = ${T} and s.snapshot_local_date = ${A.date}::date and s.definition_version = ${A.run.definitionVersion}) x
-      full join (select s.customer_id, s.segment from customer_retention_daily_snapshots s where s.tenant_id = ${T} and s.snapshot_local_date = ${B.date}::date and s.definition_version = ${B.run.definitionVersion}) y
+      from (select s.customer_id, s.segment from customer_retention_daily_snapshots s where s.tenant_id = ${T} and s.snapshot_local_date = ${A.date}::date and s.definition_version = ${A.run.definitionVersion} and ${this.branchPred(branch)}) x
+      full join (select s.customer_id, s.segment from customer_retention_daily_snapshots s where s.tenant_id = ${T} and s.snapshot_local_date = ${B.date}::date and s.definition_version = ${B.run.definitionVersion} and ${this.branchPred(branch)}) y
         on y.customer_id = x.customer_id
       where x.segment is distinct from y.segment group by 1, 2 order by 3 desc, 1, 2 limit 20`.execute(this.db)).rows;
     return { a: A, b: B, comparable: true, delta, definitionChanged: A.run.definitionVersion !== B.run.definitionVersion,

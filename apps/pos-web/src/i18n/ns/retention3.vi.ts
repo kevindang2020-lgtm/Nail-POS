@@ -6,7 +6,7 @@ export const RETENTION3_VI = {
   'rt3.hist.date': 'Tính đến ngày',
   'rt3.hist.compare': 'So sánh với',
   'rt3.hist.compareClear': 'Không so sánh',
-  'rt3.hist.tenantOnly': 'Lịch sử tính cho toàn tiệm (mọi chi nhánh).',
+  'rt3.hist.tenantOnly': 'Lịch sử tính cho toàn tiệm (mọi chi nhánh).', 'rt3.hist.branch': 'Chi nhánh', 'rt3.hist.allBranches': 'Mọi chi nhánh', 'rt3.hist.branchRule': 'Khách được tính tại chi nhánh của lần ghé cuối trong ngày đó (khách chưa từng ghé tính tại chi nhánh gốc).', 'rt3.hist.state.no_branch_data': 'Ngày {date} được tính trước khi ghi nhận chi nhánh — hãy chọn Mọi chi nhánh, hoặc tính lại ngày đó.',
   'rt3.hist.unverifiable': 'Chưa đủ / không thể xác minh —',
   'rt3.hist.verified': 'Ảnh chụp đã lưu —',
   'rt3.hist.state.available': '{date} · {cov} · Nguy cơ từ {d} ngày, Sắp nguy cơ từ {a} · định nghĩa {v}',

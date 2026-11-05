@@ -6,7 +6,7 @@ export const RETENTION3_EN = {
   'rt3.hist.date': 'As of date',
   'rt3.hist.compare': 'Compare with',
   'rt3.hist.compareClear': 'No comparison',
-  'rt3.hist.tenantOnly': 'History covers the whole salon (all branches).',
+  'rt3.hist.tenantOnly': 'History covers the whole salon (all branches).', 'rt3.hist.branch': 'Location', 'rt3.hist.allBranches': 'All locations', 'rt3.hist.branchRule': 'Customers counted at the location of their last visit that day (never-visited customers at their home location).', 'rt3.hist.state.no_branch_data': '{date} was calculated before locations were recorded — choose All locations, or recalculate the day.',
   'rt3.hist.unverifiable': 'Incomplete / unverifiable —',
   'rt3.hist.verified': 'Stored snapshot —',
   'rt3.hist.state.available': '{date} · {cov} · At Risk from {d} days, Approaching from {a} · definition {v}',

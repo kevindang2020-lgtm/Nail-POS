@@ -359,7 +359,7 @@ export function POSRetentionScreen() {
       {dlg?.kind === 'recovery' ? <RecoveryDialog period={pq} onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'health' ? <HealthDialog onClose={() => setDlg(null)} openCustomer={(id) => setDlg({ kind: 'customer', id })} /> : null}
       {dlg?.kind === 'assistant' ? <AssistantDialog onClose={() => setDlg(null)} canManage={can('marketing.manage')} /> : null}
-      {dlg?.kind === 'history' ? <HistoryDialog onClose={() => setDlg(null)} canBackfill={canEditSettings} openCustomer={(id) => setDlg({ kind: 'customer', id })} /> : null}
+      {dlg?.kind === 'history' ? <HistoryDialog onClose={() => setDlg(null)} canBackfill={canEditSettings} openCustomer={(id) => setDlg({ kind: 'customer', id })} branches={scope?.branches ?? []} /> : null}
       {dlg?.kind === 'settings' ? <SettingsDialog canPricing={canViewCampaigns} onClose={() => setDlg(null)} onSaved={() => { setDlg(null); setNote({ tone: 'ok', text: tx('rt2.settingsSaved') }); refresh(); }} /> : null}
     </div>
   );
@@ -716,8 +716,10 @@ function PricingSection() {
 const HSEGS = ['never_visited', 'active', 'approaching', 'at_risk'] as const;
 const HTONE: Record<string, string> = { at_risk: 'bad', approaching: 'warn', active: 'ok', never_visited: 'mut', not_a_customer: 'mut' };
 const hSeg = (s: string) => tx('rt3.seg.' + s);
-function HistoryDialog({ onClose, canBackfill, openCustomer }: { onClose: () => void; canBackfill: boolean; openCustomer: (id: string) => void }) {
+function HistoryDialog({ onClose, canBackfill, openCustomer, branches = [] }: { onClose: () => void; canBackfill: boolean; openCustomer: (id: string) => void; branches?: { branchId: string; name: string }[] }) {
   const [today, setToday] = useState('');
+  // C3/C5 gap (Nov 5 2026): one location's history (customers by their last visit's location that day)
+  const [hBranch, setHBranch] = useState('');
   const [date, setDate] = useState(''); const [cmp, setCmp] = useState('');
   const [day, setDay] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [tick, setTick] = useState(0);
   const [seg, setSeg] = useState<string>('at_risk'); const [page, setPage] = useState(1); const [mem, setMem] = useState<any>(null);
@@ -730,10 +732,10 @@ function HistoryDialog({ onClose, canBackfill, openCustomer }: { onClose: () => 
     posRetentionApi.snapshotRuns({ page: 1, pageSize: 1 }).then((r) => { const t = String(r.to); setToday(t); const y = ymdAdd(t, -1); setDate(y); setBf({ from: ymdAdd(t, -30), to: y }); })
       .catch((e) => setErr(errText(e, tx('people.retention.loadFailed'))));
   }, [date]);
-  useEffect(() => { if (!date) return; let alive = true; setErr(null); posRetentionApi.snapshotDay(date).then((r) => alive && setDay(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, tick]);
+  useEffect(() => { if (!date) return; let alive = true; setErr(null); posRetentionApi.snapshotDay(date, hBranch || undefined).then((r) => alive && setDay(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, tick, hBranch]);
   useEffect(() => { if (!date || day?.state !== 'available') { setMem(null); return; } let alive = true;
-    posRetentionApi.snapshotMembers({ date, segment: seg || undefined, page, pageSize: 6 }).then((r) => alive && setMem(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, day?.state, seg, page, tick]);
-  useEffect(() => { if (!date || !cmp) { setComp(null); return; } let alive = true; posRetentionApi.snapshotCompare(cmp, date).then((r) => alive && setComp(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, cmp, tick]);
+    posRetentionApi.snapshotMembers({ date, segment: seg || undefined, branch: hBranch || undefined, page, pageSize: 6 }).then((r) => alive && setMem(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, day?.state, seg, page, tick, hBranch]);
+  useEffect(() => { if (!date || !cmp) { setComp(null); return; } let alive = true; posRetentionApi.snapshotCompare(cmp, date, hBranch || undefined).then((r) => alive && setComp(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [date, cmp, tick, hBranch]);
   useEffect(() => { if (!today) return; let alive = true; posRetentionApi.snapshotRuns({ from: ymdAdd(today, -60), to: today, page: runPage, pageSize: 5 }).then((r) => alive && setRuns(r)).catch((e) => alive && setErr(errText(e, tx('people.retention.loadFailed')))); return () => { alive = false; }; }, [today, runPage, tick]);
   const backfill = async () => {
     setBfBusy(true); setBfNote(null);
@@ -751,7 +753,9 @@ function HistoryDialog({ onClose, canBackfill, openCustomer }: { onClose: () => 
         {today ? <DateField label={tx('rt3.hist.date')} value={date} onChange={(v) => { setDate(v); setPage(1); }} today={today} max={ymdAdd(today, -1)} testId="hist-date" /> : null}
         {today ? <DateField label={tx('rt3.hist.compare')} value={cmp} onChange={setCmp} today={today} max={ymdAdd(today, -1)} testId="hist-compare" /> : null}
         {cmp ? <button type="button" className="fk-link" onClick={() => setCmp('')}>{tx('rt3.hist.compareClear')}</button> : null}
-        <span className="fk-hint">{tx('rt3.hist.tenantOnly')}</span>
+        {branches.length > 1 ? <select className="fk-select" value={hBranch} onChange={(e) => { setHBranch(e.target.value); setPage(1); }} aria-label={tx('rt3.hist.branch')} data-testid="hist-branch">
+          <option value="">{tx('rt3.hist.allBranches')}</option>{branches.map((b) => <option key={b.branchId} value={b.branchId}>{b.name}</option>)}</select> : null}
+        <span className="fk-hint">{hBranch ? tx('rt3.hist.branchRule') : tx('rt3.hist.tenantOnly')}</span>
       </div>
       {err ? <div className="fk-err" role="alert">{err}</div> : null}
       {day ? <div className={'rt3-state ' + (day.unverifiable ? 'warn' : 'ok')} data-testid="hist-state" data-state={day.state}>

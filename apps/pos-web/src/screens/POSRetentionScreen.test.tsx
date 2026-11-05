@@ -114,7 +114,7 @@ describe('POSRetentionScreen', () => {
     fireEvent.click(await screen.findByTestId('open-history'));
     const st = await screen.findByTestId('hist-state');
     expect(st).toHaveTextContent(/Incomplete \/ unverifiable/); expect(st.getAttribute('data-state')).toBe('missing');
-    expect(api.snapshotDay).toHaveBeenCalledWith('2026-10-29');
+    expect(api.snapshotDay).toHaveBeenCalledWith('2026-10-29', undefined);   // no location chosen = every location
     expect(api.snapshotMembers).not.toHaveBeenCalled();   // no stored day → nothing listed, nothing invented
   });
 

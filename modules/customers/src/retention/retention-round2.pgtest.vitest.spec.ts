@@ -175,6 +175,23 @@ describe('CR-02 branch activity', () => {
     const sAll = await repo.summary(ctx, {});
     expect(sAll.scope.label).toBe('tenant_wide'); expect(sAll.segments.all).toBe(sB.segments.all);   // the same customers, never duplicated
   });
+  it('C3/C5 gap (Nov 5 2026): history by location — last visit\'s location that day; older days say "not recorded"; confined users stay in their location', async () => {
+    const d = await dayAgo(3); await snaps.computeDay(T, d, { kind: 'backfill' });
+    const all = await snaps.day(ctx, d); const a = await snaps.day(ctx, d, BA); const b = await snaps.day(ctx, d, BB);
+    expect(a.state).toBe('available'); expect(b.state).toBe('available');
+    expect(a.counts!.total + b.counts!.total).toBeLessThanOrEqual(all.counts!.total);   // a customer belongs to ONE location that day
+    const inA = await snaps.members(ctx, { date: d, branch: BA, q: 'Abby', page: 1, pageSize: 50 });
+    const inB = await snaps.members(ctx, { date: d, branch: BB, q: 'Abby', page: 1, pageSize: 50 });
+    expect(inA.items.map((x: any) => x.customerId)).toEqual([AB]); expect(inB.items).toHaveLength(0);   // her last visit was at A
+    // a day computed before locations were recorded: no per-location figure (never a wrong one)
+    const old = await dayAgo(90);
+    await q(`update customer_retention_snapshot_runs set has_branch = false where tenant_id = $1 and snapshot_local_date = $2::date`, [T, old]);
+    expect((await snaps.day(ctx, old, BA)).state).toBe('no_branch_data');
+    expect((await snaps.day(ctx, old)).state).toBe('available');
+    const confined = { ...ctx, role: 'MANAGER', authz: { scope: 'BRANCH', branchIds: [BA] } };
+    expect((await snaps.day(confined, d)).counts!.total).toBe(a.counts!.total);
+    await expect(snaps.day(confined, d, BB)).rejects.toMatchObject({ code: 'BRANCH_NOT_AUTHORIZED' });
+  });
   it('unknown-branch tickets are counted and shown, never allocated to a branch', async () => {
     const s = await repo.summary(ctx, {}); expect(s.scope.unknownBranchVisits).toBe(1);
     const g = (await repo.customers(ctx, { segment: 'all', q: 'Gwen', page: 1, pageSize: 5 })).items[0]!;
