@@ -387,3 +387,25 @@ describe('C2 gap (Nov 5 2026): conversations that came from a campaign', () => {
     expect((await svc.list(otherOwner, { campaign: `rsms:${camp}` })).items).toHaveLength(0);
   });
 });
+
+describe('C2 gap (Nov 5 2026): a delivery report refreshes the reminder / campaign / notification screens live', () => {
+  it('a signed status callback for a sent text emits message_delivery_updated (ids + status only)', async () => {
+    const env = { sid: process.env.TWILIO_ACCOUNT_SID, tok: process.env.TWILIO_AUTH_TOKEN };
+    process.env.TWILIO_ACCOUNT_SID = 'AC' + 'f'.repeat(32); process.env.TWILIO_AUTH_TOKEN = 'platform-token-ib';
+    try {
+      const sid = 'SM' + 'dl'.padEnd(32, '7');
+      await q(`insert into notifications (tenant_id, channel, to_address, body, status, provider_id) values ($1, 'sms', '+12155550202', 'Reminder: tomorrow 10am', 'sent', $2)`, [T, sid]);
+      const notifications = new NotificationsService(new KyselyNotificationsRepository(db), platformSms, noEmail, undefined, new KyselyOptOutRepository(db));
+      const hook = new TwilioInboundService(db, notifications, testProviderSecrets, realtime);
+      const URL = 'https://api.pilot.test/webhooks/twilio/sms/status';
+      const p = { MessageSid: sid, MessageStatus: 'delivered', AccountSid: 'AC' + 'f'.repeat(32) };
+      const before = events.length;
+      const r: any = await hook.handleStatus({ sid, status: 'delivered', signature: computeTwilioSignature('platform-token-ib', URL, p), url: URL, params: p });
+      expect(r.status).toBe('recorded');
+      const fresh = events.slice(before).filter((e) => e.event === 'message_delivery_updated');
+      expect(fresh).toHaveLength(1);
+      expect(fresh[0]).toMatchObject({ tenantId: T, payload: { messageSid: sid, status: 'delivered' } });
+      expect(JSON.stringify(fresh)).not.toMatch(/\+1\d{10}|Reminder/);
+    } finally { for (const [k, v] of [['TWILIO_ACCOUNT_SID', env.sid], ['TWILIO_AUTH_TOKEN', env.tok]] as const) { if (v === undefined) delete process.env[k]; else process.env[k] = v; } }
+  });
+});

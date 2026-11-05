@@ -138,6 +138,14 @@ export class TwilioInboundService {
     } catch (e) { logException(e, { where: 'twilio-inbound.emit', kind }); }
   }
 
+  /** C2 gap (Nov 5 2026): any sent text's delivery moved → the reminder / campaign / notification screens refetch (salon room;
+   *  the message's provider id and its new status only — never a phone or text) */
+  private notifyDelivery(tenantId: string, messageSid: string, status: string): void {
+    if (!this.realtime) return;
+    try { this.realtime.toTenant({ tenantId } as Parameters<RealtimeEmitter['toTenant']>[0], EVENTS.messageDeliveryUpdated, { messageSid, status: String(status).slice(0, 20) }); }
+    catch (e) { logException(e, { where: 'twilio-inbound.notifyDelivery' }); }
+  }
+
   /** a staff reply's provider status moved → the inbox showing that conversation refetches (ids only) */
   private async notifyInboxDelivery(tenantId: string, messageSid: string): Promise<void> {
     if (!this.db || !this.realtime) return;
@@ -189,7 +197,7 @@ export class TwilioInboundService {
     if (owner?.kind === 'test') return { status: 'recorded', updated: await this.recordTestStatus(tenantId, input.sid, input.status, input.params?.ErrorCode || null) };
     // wave 3 PAYI §87: ErrorCode (e.g. 30007) and NumSegments ride along — stored for support, never shown to a customer
     const { updated } = await this.notifications.recordDeliveryStatus(input.sid, input.status, { errorCode: input.params?.ErrorCode || null, segments: input.params?.NumSegments ? Number(input.params.NumSegments) : null }, { tenantId });
-    if (updated > 0) await this.notifyInboxDelivery(tenantId, input.sid);
+    if (updated > 0) { await this.notifyInboxDelivery(tenantId, input.sid); this.notifyDelivery(tenantId, input.sid, input.status); }
     return { status: 'recorded', updated };
   }
 }

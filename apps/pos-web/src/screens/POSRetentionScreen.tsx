@@ -38,6 +38,7 @@ import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, downloadText, type PageInfo } from '../components/FitKit';
 import { PeriodBar, periodQuery, fmtYmdSafe, DateField, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { HealthDialog, AssistantDialog } from './RetentionWinBack';
+import { useRealtime } from '../realtime/useRealtime';
 
 type Segment = 'all' | 'returning' | 'approaching' | 'at_risk' | 'never' | 'recovered' | 'active' | 'at_risk_90' | 'at_risk_180' | 'returned' | 'contactable' | 'new_visitors' | 'rebooked' | 'contacted';
 type SmsStatus = 'eligible' | 'no_phone' | 'invalid_phone' | 'no_consent' | 'opted_out' | 'recently_contacted' | 'upcoming_booking';
@@ -176,6 +177,8 @@ export function POSRetentionScreen() {
     catch (e) { setNote({ tone: 'bad', text: errText(e, tx('rt2.exportFailed')) }); } finally { setExporting(false); }
   };
   const refresh = () => { loadSummary(); setReload((n) => n + 1); };
+  // C2 gap (Nov 5 2026): win-back texts' delivery reports refresh the screen live; a 60 s safety sync otherwise
+  useRealtime(['retention'], () => refresh(), { intervalMs: 60_000 });
   const k = sum?.kpis; const segs = sum?.segments; const per = sum?.period ?? list?.period ?? null;
   const defaultSort = WINBACK.has(segment) ? 'priority' : segment === 'all' || segment === 'never' ? 'created_desc' : segment === 'approaching' ? 'oldest_visit' : 'newest_visit';
   const currentSort = list?.sort ?? (sort || defaultSort);

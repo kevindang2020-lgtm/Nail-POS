@@ -94,6 +94,9 @@ export const EVENTS = {
   // text arrived, a staff reply was submitted, a provider status moved, read / unread, assigned, closed / reopened, snoozed,
   // customer linked. Ids + kind + thread version only (never a phone, a name or message text); the inbox refetches.
   conversationUpdated: "conversation_updated",
+  // C2 gap (Nov 5 2026): a provider delivery report moved a sent text / e-mail (reminder, campaign, win-back, notification) —
+  // ids + status only; the reminder / campaign / notification screens refetch (they polled before)
+  messageDeliveryUpdated: "message_delivery_updated",
   // Team Management TM-05 (gap sweep, Oct 30 2026): a team member was added — Team screens refetch (ids only)
   teamMemberCreated: "team_member_created",
   // Global Loyalty & Rewards Network (Oct 30 2026): the salon's earning rule / wallet / a token purchase changed — refetch (ids only)
@@ -150,6 +153,7 @@ export const EVENT_VERSIONS: Record<EventName, number> = {
   expense_updated: 1,
   platform_announcement_updated: 1,
   conversation_updated: 1,
+  message_delivery_updated: 1,
   team_member_created: 1,
   loyalty_network_updated: 1,
 };
@@ -246,6 +250,7 @@ const AFFECTS: Record<string, string[]> = {
   expense_updated: ["expenses", "finance-reports", "dashboard"],
   platform_announcement_updated: ["platform-announcements"],
   conversation_updated: ["communications"],
+  message_delivery_updated: ["communications", "notifications", "campaigns", "reminders", "retention"],
   team_member_created: ["technicians", "team-permissions"],
   loyalty_network_updated: ["loyalty"],
   daily_follow_up_tasks_created: ["follow-ups"],

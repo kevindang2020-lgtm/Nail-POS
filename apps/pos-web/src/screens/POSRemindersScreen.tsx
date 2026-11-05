@@ -16,6 +16,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId }
 import { RangeCalendar } from '../components/FinanceKit';
 import { reportError } from './reportsCommon';
 import { errorTextOf } from '../i18n/error-text';
+import { useRealtime } from '../realtime/useRealtime';
 
 // the success note is a sentinel, worded at render in the cashier's language (Vietnamese POS mandate §59)
 const NOTE_OK = '\u0000ok';
@@ -80,6 +81,8 @@ export function POSRemindersScreen() {
 
   // ── center ──
   const [tick, setTick] = useState(0);
+  // C2 gap (Nov 5 2026): a delivery report (sent / delivered / failed) refreshes the counts and lists live; a 60 s safety sync otherwise
+  useRealtime(['reminders'], () => setTick((x) => x + 1), { intervalMs: 60_000 });
   const [kpiPreset, setKpiPreset] = useState<'today' | 'week' | 'month' | 'year'>('today');
   const [kpis, setKpis] = useState<RcKpis | null>(null);
   const [health, setHealth] = useState<RcHealth | null>(null);
