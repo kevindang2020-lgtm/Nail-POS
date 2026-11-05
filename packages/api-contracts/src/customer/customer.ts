@@ -64,7 +64,10 @@ export interface CustomerDeal { id: string; title: string; description: string |
   kind?: 'deal' | 'coupon' | 'announcement'; terms?: string | null; discountType?: string | null; discountPercent?: number | null; discountCents?: number | null;
   originalPriceCents?: number | null; finalPriceCents?: number | null; requiresCode?: boolean; bookable?: boolean }
 
-export interface CustomerReferral { code: string; shareMessage: string }
+/** Refer a Friend build (Nov 5 2026): `offer` is the salon's LIVE two-sided voucher offer — null when the salon has none set, the
+ *  program is off or its budget is used up; the app then makes no money claim. */
+export interface CustomerReferralOffer { friendRewardCents: number; referrerRewardCents: number; minSpendCents: number; expiryDays: number }
+export interface CustomerReferral { code: string; shareMessage: string; salonName?: string | null; offer?: CustomerReferralOffer | null }
 
 export interface CustomerProfile { fullName: string | null; firstName: string | null; lastName: string | null; email: string | null; phone: string | null; birthday: string | null; smsOptIn: boolean; emailOptIn: boolean; marketingOptIn: boolean; phoneVerified: boolean; avatarUrl: string | null }
 

@@ -12,6 +12,7 @@ import { sql, type Kysely, type Transaction } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { ReferralProgram, ReferralProgramError } from '@aipowersalon/customers';
+import { ReferralVoucherIssuer } from '@aipowersalon/deals';
 
 export class ReferralQualificationConsumer implements EventConsumer {
   readonly name = 'customers.referral_qualification';
@@ -24,7 +25,7 @@ export class ReferralQualificationConsumer implements EventConsumer {
   async handle(e: DomainEvent<any>, trx: Transaction<DB>): Promise<void> {
     const tenantId = e.tenantId!;
     const db = trx as unknown as Kysely<any>;
-    const rp = new ReferralProgram(db);
+    const rp = new ReferralProgram(db, new ReferralVoucherIssuer());   // salon vouchers: the referrer's coupon is issued in this transaction
     try {
       if (e.eventType === DOMAIN_EVENTS.CHECKOUT_COMPLETED) {
         const ticketId = String(e.payload?.ticketId ?? e.aggregateId ?? '');

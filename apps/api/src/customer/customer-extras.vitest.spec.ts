@@ -23,6 +23,15 @@ describe('CustomerService — addresses / deals / referral', () => {
     expect(r?.shareMessage).toContain('REFABC123');
     expect(await make({ serviceProgressEnabled: async () => true, resolveCustomerId: async () => null }).getReferral(ctx)).toBeNull();
   });
+  it('Refer a Friend (Nov 5 2026): the share text promises money only for a live, funded salon offer', async () => {
+    const live = make({ getOrCreateReferralCode: async () => 'REFX', referralOffer: async () => ({ salonName: 'Lux Nails', offer: { friendRewardCents: 1000, referrerRewardCents: 1500, minSpendCents: 3000, expiryDays: 90 } }) });
+    const r = await live.getReferral(ctx);
+    expect(r).toMatchObject({ salonName: 'Lux Nails', offer: { friendRewardCents: 1000, referrerRewardCents: 1500 } });
+    expect(r?.shareMessage).toBe('Get $10 off your first visit at Lux Nails (minimum spend $30)! Use my code REFX when you sign up.');
+    const none = await make({ getOrCreateReferralCode: async () => 'REFX', referralOffer: async () => ({ salonName: 'Lux Nails', offer: null }) }).getReferral(ctx);
+    expect(none?.offer).toBeNull();
+    expect(none?.shareMessage).not.toMatch(/\$/);
+  });
   it('getProfile returns the record; null without a customer', async () => {
     const svc = make({ profile: async () => ({ fullName: 'A', email: 'a@e.com', phone: '5', smsOptIn: true, emailOptIn: false }) });
     expect((await svc.getProfile(ctx))?.email).toBe('a@e.com');

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useScopedQuery, OfflineStatus } from '@aipowersalon/mobile-sdk';
 import { useNavigate } from 'react-router-dom';
 import { customerApi, type CustomerHome, type BookableService } from '../api/customerApi';
+import type { CustomerReferralOffer } from '@aipowersalon/api-contracts/customer';
 import { customerNailShowcaseApi, type NSPostView } from '../api/customerNailShowcaseApi';
 import { PayBanner } from './PayBanner';
 import { apptWhen } from '../lib/appt';
@@ -12,6 +13,14 @@ import { GuestModal } from '../components/GuestModal';
 const money = (c: number) => centsToUsdWhole(c);
 const initials = (name: string) => (name || '').trim().split(/\s+/).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || '🙂';
 const firstName = (name: string) => (name || '').trim().split(/\s+/)[0] || '';
+const usd = (c: number) => (c % 100 === 0 ? `$${c / 100}` : `$${(c / 100).toFixed(2)}`);
+/** Refer a Friend build R030–R033: the banner states the salon's LIVE offer — never a hard-coded amount. "You both get $X" only
+ *  when both sides really get the same; no amount at all when the salon has no funded offer. */
+export function referralLine(o: CustomerReferralOffer | null | undefined): string {
+  if (!o) return 'Invite friends to your salon.';
+  if (o.friendRewardCents === o.referrerRewardCents) return `You both get ${usd(o.friendRewardCents)} in rewards.`;
+  return `Give your friend ${usd(o.friendRewardCents)}, earn ${usd(o.referrerRewardCents)}.`;
+}
 
 
 
@@ -41,6 +50,7 @@ export function HomeScreen() {
   const [unread, setUnread] = useState(0);
   const [ratePrompt, setRatePrompt] = useState<any | null>(null);
   const [inspo, setInspo] = useState<NSPostView[]>([]);
+  const [refOffer, setRefOffer] = useState<CustomerReferralOffer | null>(null);
 
   useEffect(() => {
     let live = true;
@@ -55,6 +65,7 @@ export function HomeScreen() {
     if (!guest) {
       customerApi.notifications().then((d) => { if (live) setUnread(d.unreadCount); }).catch(() => { /* badge is best-effort */ });
       customerApi.pendingTechRatings().then((d) => { if (live) setRatePrompt(d.pending[0] ?? null); }).catch(() => { /* prompt is best-effort */ });
+      customerApi.referral().then((r) => { if (live) setRefOffer(r?.offer ?? null); }).catch(() => { /* no offer known → the banner makes no money claim */ });
     }
     customerNailShowcaseApi.feed({ sort: 'trending', limit: 10 }).then((r) => { if (live) setInspo((r.posts || []).filter((p) => p.photos && p.photos.length).slice(0, 8)); }).catch(() => { /* inspiration is best-effort */ });
     return () => { live = false; };
@@ -365,7 +376,7 @@ export function HomeScreen() {
       <div className="cust-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12, background: 'linear-gradient(135deg, var(--customer-purple-100), var(--customer-pink-light))' }}>
         <div style={{ flex: 1 }}>
           <div style={{ fontWeight: 800 }}>Refer a Friend, Earn Rewards!</div>
-          <div className="cust-sub" style={{ margin: '2px 0 10px' }}>You both get $10 in rewards.</div>
+          <div className="cust-sub" style={{ margin: '2px 0 10px' }}>{referralLine(refOffer)}</div>
           <button onClick={() => guest ? promptGuest('Sign in to invite friends and earn rewards.') : share()} className="cust-btn" style={{ width: 'auto', padding: '0 18px', height: 40, fontSize: 14 }}>Invite Friends</button>
         </div>
         <div aria-hidden style={{ fontSize: 40 }}>🎁</div>

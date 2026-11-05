@@ -50,6 +50,8 @@ export interface CustomerDataPort {
   setDefaultAddress(ctx: CustomerContext, customerId: string, id: string): Promise<boolean>;
   listDeals(ctx: CustomerContext): Promise<CustomerDeal[]>;
   getOrCreateReferralCode(ctx: CustomerContext, customerId: string): Promise<string>;
+  /** the salon's live Refer a Friend voucher offer (null = no money claim) */
+  referralOffer?(ctx: CustomerContext): Promise<{ salonName: string | null; offer: import('@aipowersalon/api-contracts/customer').CustomerReferralOffer | null }>;
   profile(ctx: CustomerContext, customerId: string): Promise<CustomerProfile>;
   checkInAppointment(ctx: CustomerContext, customerId: string, appointmentId: string): Promise<CustomerCheckInResult>;
   listRewards(ctx: CustomerContext, customerId: string): Promise<RewardsView>;

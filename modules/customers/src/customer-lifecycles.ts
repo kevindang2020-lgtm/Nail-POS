@@ -66,6 +66,20 @@ export const REFERRAL = defineStateMachine({
 
 /** referral_rewards.state — the reward obligation. ISSUED (points / credit posted once) is not paid cash; a cash payout with
  *  no approved provider is BLOCKED_EXTERNAL, never "paid". A retried issuance after FAILED reuses the same issuance key. */
+/** Refer a Friend build (Nov 5 2026, migration 815): one salon-local referral voucher (friend / referrer). PENDING (the
+ *  referrer's, until the friend's verified paid first visit) → AVAILABLE (a live wallet coupon) → REDEEMED at Checkout; VOID
+ *  (refund / reversal / dispute, unused), EXPIRED (past its date, unused) and RELEASED (a pending one that can no longer
+ *  qualify) free the budget it held. */
+export const REFERRAL_VOUCHER = defineStateMachine({
+  name: 'referral_voucher', table: 'referral_vouchers', column: 'state',
+  states: ['PENDING', 'AVAILABLE', 'REDEEMED', 'EXPIRED', 'VOID', 'RELEASED'],
+  transitions: {
+    PENDING: ['AVAILABLE', 'RELEASED', 'VOID'],
+    AVAILABLE: ['REDEEMED', 'EXPIRED', 'VOID'],
+  },
+  initial: ['PENDING', 'AVAILABLE'],
+});
+
 export const REFERRAL_REWARD = defineStateMachine({
   name: 'referral_reward', table: 'referral_rewards', column: 'state',
   states: ['PENDING_APPROVAL', 'APPROVED', 'ISSUED', 'REJECTED', 'REVERSED', 'BLOCKED_EXTERNAL', 'FAILED'],

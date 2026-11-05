@@ -27,6 +27,9 @@ export const RP_SETTINGS_BODY: BodySchema = S.object({
   enabled: S.nullable(S.boolean()), rewardType: S.nullable(S.enumOf([...RP_REWARD_TYPES])), rewardPoints: S.nullable(S.integer()), rewardCents: S.nullable(S.integer()),
   requiresApproval: S.nullable(S.boolean()), separationOfDuties: S.nullable(S.boolean()), minQualifyingSpendCents: S.nullable(S.integer()), qualificationWindowDays: S.nullable(S.integer()),
   recordGraceHours: S.nullable(S.integer()), expectedVersion: S.integer(),
+  // Refer a Friend build (Nov 5 2026): two-sided salon vouchers + the hard campaign budget
+  friendRewardCents: S.nullable(S.integer()), referrerRewardCents: S.nullable(S.integer()), voucherMinSpendCents: S.nullable(S.integer()), voucherExpiryDays: S.nullable(S.integer()),
+  budgetTotalCents: S.nullable(S.integer()), budgetMonthlyCents: S.nullable(S.integer()), perReferrerCap: S.nullable(S.integer()), budgetWarnPercent: S.nullable(S.integer()),
 }, ['expectedVersion']);
 export const RP_ASSIST_BODY: BodySchema = S.object({ goal: S.enumOf([...RP_GOALS]), channel: S.nullable(S.enumOf(['sms', 'email'])), budgetCents: S.nullable(S.integer()) }, ['goal']);
 export const RP_ASSIST_SAVE_BODY: BodySchema = S.object({ goal: S.enumOf([...RP_GOALS]), channel: S.nullable(S.enumOf(['sms', 'email'])), message: txt(1000), idempotencyKey: S.text(120) }, ['goal', 'idempotencyKey']);

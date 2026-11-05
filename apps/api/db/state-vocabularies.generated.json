@@ -1985,6 +1985,14 @@
    "REJECTED",
    "REVERSED"
   ],
+  "referral_vouchers.state": [
+   "AVAILABLE",
+   "EXPIRED",
+   "PENDING",
+   "REDEEMED",
+   "RELEASED",
+   "VOID"
+  ],
   "reminder_flow_state.status": [
    "active",
    "disabled",

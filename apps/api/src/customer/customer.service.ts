@@ -147,7 +147,14 @@ export class CustomerService {
     const id = await this.repo.resolveCustomerId(ctx);
     if (!id) return null;
     const code = await this.repo.getOrCreateReferralCode(ctx, id);
-    return { code, shareMessage: `Book your next appointment with me! Use my code ${code} when you sign up.` };
+    const o = this.repo.referralOffer ? await this.repo.referralOffer(ctx) : { salonName: null, offer: null };
+    const $ = (c: number) => (c % 100 === 0 ? `$${c / 100}` : `$${(c / 100).toFixed(2)}`);
+    const where = o.salonName ? ` at ${o.salonName}` : '';
+    // the share text promises money ONLY when the salon has a live, funded offer (Refer a Friend build R031)
+    const shareMessage = o.offer
+      ? `Get ${$(o.offer.friendRewardCents)} off your first visit${where}${o.offer.minSpendCents ? ` (minimum spend ${$(o.offer.minSpendCents)})` : ''}! Use my code ${code} when you sign up.`
+      : `Book your next appointment${where} with me! Use my code ${code} when you sign up.`;
+    return { code, shareMessage, salonName: o.salonName, offer: o.offer };
   }
 
   async getNotifications(ctx: CustomerContext): Promise<CustomerNotificationsResult> {

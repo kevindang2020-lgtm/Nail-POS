@@ -234,6 +234,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   referral_program_settings: 'cut',
   referral_redemptions: 'ut',
   referral_rewards: 'ut',
+  referral_vouchers: 'ut',
   reminder_channel_config: 'ut',
   reminder_flow_state: 'ut',
   reminder_plan_features: 'ut',

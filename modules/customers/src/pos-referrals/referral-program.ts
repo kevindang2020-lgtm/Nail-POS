@@ -12,11 +12,21 @@
 import { sql, type Kysely } from 'kysely';
 import { utcDate } from '@aipowersalon/date-time';
 import { canMoveToSql } from '@aipowersalon/database';
-import { REFERRAL, REFERRAL_REWARD, REFERRAL_CODE } from '../customer-lifecycles';
+import { REFERRAL, REFERRAL_REWARD, REFERRAL_CODE, REFERRAL_VOUCHER } from '../customer-lifecycles';
 import { applyLoyaltyEntry } from '../loyalty/loyalty-ledger.service';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
 import { isUuid, RetentionRepository, type RetentionContext } from '../retention/retention.repository';
 import { SegmentsRepository, type SegmentFilters } from '../segments/segments.repository';
+
+/** Refer a Friend build (Nov 5 2026): the referral voucher issuer on the ONE discount authority (deals — provided under the
+ *  global token REFERRAL_VOUCHERS; this module cannot import deals, which depends on it). Every call runs in OUR transaction. */
+export interface ReferralVoucherPort {
+  issue(x: Kysely<any>, a: { tenantId: string; customerId: string; role: 'friend' | 'referrer'; faceCents: number; minSpendCents: number; expiresAt: string }): Promise<{ dealId: string; couponCodeId: string; code: string; hint: string }>;
+  revoke(x: Kysely<any>, tenantId: string, couponCodeId: string, reason: string): Promise<boolean>;
+  usage(x: Kysely<any>, tenantId: string, ids: string[]): Promise<Map<string, { used: boolean; status: string; expiresAt: string | null; ticketId: string | null; discountCents: number }>>;
+}
+export interface RpBudget { totalCents: number | null; monthlyCents: number | null; committedCents: number; committedThisMonthCents: number; remainingCents: number | null;
+  remainingThisMonthCents: number | null; perReferralCents: number; redeemedCents: number; outstandingCents: number; pendingCents: number; warn: boolean; exhausted: boolean }
 
 export class ReferralProgramError extends Error {
   constructor(message: string, readonly code: string, readonly status = 400, readonly details?: Record<string, unknown>) { super(message); }
@@ -29,7 +39,7 @@ export const RP_TABS = ['all', 'pending', 'qualified', 'review', 'approved', 'is
 export const RP_SORTS = ['newest', 'oldest', 'name_asc', 'name_desc'] as const;
 export const RP_BASES = ['recorded', 'qualified', 'decided', 'issued', 'transaction'] as const;
 export const RP_PRESETS = ['today', 'week', 'month', 'year', 'custom'] as const;
-export const RP_REWARD_TYPES = ['loyalty_points', 'cash_payout'] as const;
+export const RP_REWARD_TYPES = ['loyalty_points', 'cash_payout', 'salon_voucher'] as const;
 export const RP_GOALS = ['first_time_customers', 'existing_refer_friends', 'low_demand_weekdays', 'review_performance'] as const;
 export const RP_REVIEW_ACTIONS = ['approve', 'reject', 'investigate', 'clear_review'] as const;
 export const RP_ELIGIBILITY = ['ELIGIBLE_TO_RECORD', 'RECORDED_WAITING_FOR_QUALIFICATION', 'QUALIFIED_PENDING_APPROVAL', 'INELIGIBLE', 'REVIEW_REQUIRED', 'ERROR_UNKNOWN'] as const;
@@ -70,32 +80,53 @@ export interface RpSettings {
   enabled: boolean; rewardType: (typeof RP_REWARD_TYPES)[number] | null; rewardPoints: number | null; rewardCents: number | null;
   requiresApproval: boolean; separationOfDuties: boolean; minQualifyingSpendCents: number; qualificationWindowDays: number | null;
   recordGraceHours: number; version: number; isDefault: boolean; updatedAt: string | null; configured: boolean;
+  // Refer a Friend build (Nov 5 2026): the two-sided salon voucher reward and its campaign budget (rewardType 'salon_voucher')
+  friendRewardCents: number | null; referrerRewardCents: number | null; voucherMinSpendCents: number; voucherExpiryDays: number;
+  budgetTotalCents: number | null; budgetMonthlyCents: number | null; perReferrerCap: number | null; budgetWarnPercent: number;
 }
 export interface RpListFilters { tab?: unknown; q?: unknown; rewardType?: unknown; basis?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown; branch?: unknown }
 
 export class ReferralProgram {
   readonly ret: RetentionRepository;
   readonly seg: SegmentsRepository;
-  constructor(readonly db: Kysely<any>) { this.ret = new RetentionRepository(db); this.seg = new SegmentsRepository(db, this.ret); }
+  constructor(readonly db: Kysely<any>, readonly vouchers: ReferralVoucherPort | null = null) { this.ret = new RetentionRepository(db); this.seg = new SegmentsRepository(db, this.ret); }
 
   // ── policy (guide §19 decision register: nothing is invented — a missing reward means "waiting for the owner") ───────
   async settings(ctx: { tenantId: string }, db: Kysely<any> = this.db): Promise<RpSettings> {
-    const r = (await sql<any>`select enabled, reward_type, reward_points, reward_cents, requires_approval, separation_of_duties, min_qualifying_spend_cents, qualification_window_days, record_grace_hours, version, updated_at from referral_program_settings where tenant_id = ${ctx.tenantId}`.execute(db)).rows[0];
+    const r = (await sql<any>`select enabled, reward_type, reward_points, reward_cents, requires_approval, separation_of_duties, min_qualifying_spend_cents, qualification_window_days, record_grace_hours, version, updated_at, friend_reward_cents, referrer_reward_cents, voucher_min_spend_cents, voucher_expiry_days, budget_total_cents, budget_monthly_cents, per_referrer_cap, budget_warn_percent from referral_program_settings where tenant_id = ${ctx.tenantId}`.execute(db)).rows[0];
     const rewardType = pick(RP_REWARD_TYPES, r?.reward_type) ?? null;
     return {
       enabled: r ? !!r.enabled : true, rewardType, rewardPoints: r?.reward_points == null ? null : N(r.reward_points), rewardCents: r?.reward_cents == null ? null : N(r.reward_cents),
       requiresApproval: r ? !!r.requires_approval : true, separationOfDuties: !!r?.separation_of_duties, minQualifyingSpendCents: N(r?.min_qualifying_spend_cents),
       qualificationWindowDays: r?.qualification_window_days == null ? null : N(r.qualification_window_days), recordGraceHours: r ? N(r.record_grace_hours) : 24,
       version: r ? N(r.version) : RP_POLICY_VERSION_NONE, isDefault: !r, updatedAt: iso(r?.updated_at), configured: !!rewardType,
+      friendRewardCents: r?.friend_reward_cents == null ? null : N(r.friend_reward_cents), referrerRewardCents: r?.referrer_reward_cents == null ? null : N(r.referrer_reward_cents),
+      voucherMinSpendCents: N(r?.voucher_min_spend_cents), voucherExpiryDays: r?.voucher_expiry_days == null ? 90 : N(r.voucher_expiry_days),
+      budgetTotalCents: r?.budget_total_cents == null ? null : N(r.budget_total_cents), budgetMonthlyCents: r?.budget_monthly_cents == null ? null : N(r.budget_monthly_cents),
+      perReferrerCap: r?.per_referrer_cap == null ? null : N(r.per_referrer_cap), budgetWarnPercent: r?.budget_warn_percent == null ? 80 : N(r.budget_warn_percent),
     };
   }
   async saveSettings(ctx: RefCtx, b: Record<string, unknown>, audit: (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<void>) {
     const rewardType = b.rewardType == null ? null : pick(RP_REWARD_TYPES, b.rewardType);
-    if (b.rewardType != null && !rewardType) throw new ReferralProgramError('Choose loyalty points or a cash payout.', 'REFERRAL_POLICY_INVALID');
+    if (b.rewardType != null && !rewardType) throw new ReferralProgramError('Choose salon vouchers for both people, loyalty points or a cash payout.', 'REFERRAL_POLICY_INVALID');
     const points = b.rewardPoints == null ? null : Math.trunc(N(b.rewardPoints));
     const cents = b.rewardCents == null ? null : Math.trunc(N(b.rewardCents));
     if (rewardType === 'loyalty_points' && !(points && points > 0 && points <= 100000)) throw new ReferralProgramError('Enter the points to award (1 – 100,000).', 'REFERRAL_POLICY_INVALID');
     if (rewardType === 'cash_payout' && !(cents && cents > 0 && cents <= 1000000)) throw new ReferralProgramError('Enter the payout amount.', 'REFERRAL_POLICY_INVALID');
+    // Refer a Friend build R014 / R020: separate friend / referrer amounts ($1 – $500, whole dollars or cents), voucher terms
+    // and the hard campaign budget (required — no unbudgeted promise is ever published)
+    const cents$ = (v: unknown) => (v == null || v === '' ? null : Math.trunc(N(v)));
+    const friend = cents$(b.friendRewardCents); const referrer = cents$(b.referrerRewardCents);
+    const vMin = cents$(b.voucherMinSpendCents) ?? 0; const vDays = cents$(b.voucherExpiryDays) ?? 90;
+    const budget = cents$(b.budgetTotalCents); const monthly = cents$(b.budgetMonthlyCents); const perRef = cents$(b.perReferrerCap); const warn = cents$(b.budgetWarnPercent) ?? 80;
+    if (rewardType === 'salon_voucher') {
+      if (!(friend != null && friend >= 100 && friend <= 50000) || !(referrer != null && referrer >= 100 && referrer <= 50000)) throw new ReferralProgramError('Set both rewards between $1 and $500.', 'REFERRAL_POLICY_INVALID', 400, { field: friend == null || friend < 100 || friend > 50000 ? 'friendRewardCents' : 'referrerRewardCents' });
+      if (!(budget != null && budget >= friend + referrer && budget <= 100000000)) throw new ReferralProgramError('Set a campaign budget that covers at least one referral (both rewards).', 'REFERRAL_POLICY_INVALID', 400, { field: 'budgetTotalCents' });
+      if (monthly != null && !(monthly >= friend + referrer && monthly <= budget)) throw new ReferralProgramError('A monthly cap must cover one referral and be no more than the total budget.', 'REFERRAL_POLICY_INVALID', 400, { field: 'budgetMonthlyCents' });
+      if (vMin < 0 || vMin > 10000000 || vDays < 7 || vDays > 365) throw new ReferralProgramError('Vouchers last 7 – 365 days; the minimum spend is $0 or more.', 'REFERRAL_POLICY_INVALID', 400, { field: vDays < 7 || vDays > 365 ? 'voucherExpiryDays' : 'voucherMinSpendCents' });
+      if (perRef != null && (perRef < 1 || perRef > 1000)) throw new ReferralProgramError('Successful referrals per customer: 1 – 1,000.', 'REFERRAL_POLICY_INVALID', 400, { field: 'perReferrerCap' });
+      if (warn < 1 || warn > 100) throw new ReferralProgramError('The budget warning is 1 – 100 %.', 'REFERRAL_POLICY_INVALID', 400, { field: 'budgetWarnPercent' });
+    }
     const minSpend = Math.trunc(N(b.minQualifyingSpendCents));
     const windowDays = b.qualificationWindowDays == null ? null : Math.trunc(N(b.qualificationWindowDays));
     const grace = b.recordGraceHours == null ? 24 : Math.trunc(N(b.recordGraceHours));
@@ -109,13 +140,22 @@ export class ReferralProgram {
       const cur = await this.settings(ctx, trx);
       if (cur.version !== expected) throw new ReferralProgramError('Someone else changed the referral policy. Reload and try again.', 'VERSION_CONFLICT', 409, { currentVersion: cur.version });
       const v = { enabled: b.enabled == null ? cur.enabled : !!b.enabled, requiresApproval: b.requiresApproval == null ? cur.requiresApproval : !!b.requiresApproval, sod: b.separationOfDuties == null ? cur.separationOfDuties : !!b.separationOfDuties };
+      // voucher fields are kept when the owner changes another setting without sending them; a non-voucher policy keeps them stored
+      const isV = rewardType === 'salon_voucher';
+      const vs = { friend: isV ? friend : b.friendRewardCents === undefined ? cur.friendRewardCents : friend, referrer: isV ? referrer : b.referrerRewardCents === undefined ? cur.referrerRewardCents : referrer,
+        vMin: b.voucherMinSpendCents === undefined ? cur.voucherMinSpendCents : vMin, vDays: b.voucherExpiryDays === undefined ? cur.voucherExpiryDays : vDays,
+        budget: isV ? budget : b.budgetTotalCents === undefined ? cur.budgetTotalCents : budget, monthly: b.budgetMonthlyCents === undefined ? cur.budgetMonthlyCents : monthly,
+        perRef: b.perReferrerCap === undefined ? cur.perReferrerCap : perRef, warn: b.budgetWarnPercent === undefined ? cur.budgetWarnPercent : warn };
       if (cur.isDefault) await sql`insert into referral_program_settings (tenant_id, enabled, reward_type, reward_points, reward_cents, requires_approval, separation_of_duties,
-          min_qualifying_spend_cents, qualification_window_days, record_grace_hours, version, created_by, updated_by)
+          min_qualifying_spend_cents, qualification_window_days, record_grace_hours, version, created_by, updated_by,
+          friend_reward_cents, referrer_reward_cents, voucher_min_spend_cents, voucher_expiry_days, budget_total_cents, budget_monthly_cents, per_referrer_cap, budget_warn_percent)
         values (${ctx.tenantId}, ${v.enabled}, ${rewardType}, ${rewardType === 'loyalty_points' ? points : null}, ${rewardType === 'cash_payout' ? cents : null}, ${v.requiresApproval}, ${v.sod},
-          ${minSpend}, ${windowDays}, ${grace}, 1, ${a}, ${a})`.execute(trx);
+          ${minSpend}, ${windowDays}, ${grace}, 1, ${a}, ${a}, ${vs.friend}, ${vs.referrer}, ${vs.vMin}, ${vs.vDays}, ${vs.budget}, ${vs.monthly}, ${vs.perRef}, ${vs.warn})`.execute(trx);
       else await sql`update referral_program_settings set enabled = ${v.enabled}, reward_type = ${rewardType}, reward_points = ${rewardType === 'loyalty_points' ? points : null},
           reward_cents = ${rewardType === 'cash_payout' ? cents : null}, requires_approval = ${v.requiresApproval}, separation_of_duties = ${v.sod}, min_qualifying_spend_cents = ${minSpend},
-          qualification_window_days = ${windowDays}, record_grace_hours = ${grace}, version = version + 1, updated_by = ${a}, updated_at = now()
+          qualification_window_days = ${windowDays}, record_grace_hours = ${grace}, friend_reward_cents = ${vs.friend}, referrer_reward_cents = ${vs.referrer},
+          voucher_min_spend_cents = ${vs.vMin}, voucher_expiry_days = ${vs.vDays}, budget_total_cents = ${vs.budget}, budget_monthly_cents = ${vs.monthly},
+          per_referrer_cap = ${vs.perRef}, budget_warn_percent = ${vs.warn}, version = version + 1, updated_by = ${a}, updated_at = now()
         where tenant_id = ${ctx.tenantId} and version = ${expected}`.execute(trx);
       const after = await this.settings(ctx, trx);
       await audit(trx, { before: cur, after });
@@ -197,8 +237,14 @@ export class ReferralProgram {
     } else reasons.push({ code: 'first_time', ok: true, text: 'No completed visit yet — the referral qualifies at the first completed, paid visit.' });
     const flags = await this.fraudSignals(T, String(code.customer_id), rid, null, db);
     for (const f of flags) reasons.push({ code: f.code, ok: false, text: f.detail });
+    const $ = (c: number | null | undefined) => `$${((c ?? 0) / 100).toFixed(2)}`;
+    if (policy.rewardType === 'salon_voucher' && policy.configured) {
+      const bud = await this.budget(db, T, policy);
+      if (bud.exhausted) { reasons.push({ code: 'budget_exhausted', ok: false, text: 'The referral budget is used up, so no new referral can be activated until the owner raises it.' }); return out('INELIGIBLE', { policy, ...info }); }
+      reasons.push({ code: 'budget_available', ok: true, text: `Budget available: ${$(bud.remainingCents)} left${bud.remainingThisMonthCents != null ? `, ${$(bud.remainingThisMonthCents)} this month` : ''}.` });
+    }
     reasons.push(policy.configured
-      ? { code: 'reward_policy', ok: true, text: policy.rewardType === 'loyalty_points' ? `Reward on qualification: ${policy.rewardPoints} loyalty points to the referrer${policy.requiresApproval ? ', after manager approval' : ''}.` : `Reward on qualification: a cash payout — no payout provider is approved, so it will show as Blocked (external).` }
+      ? { code: 'reward_policy', ok: true, text: policy.rewardType === 'salon_voucher' ? `Rewards: the new customer gets a ${$(policy.friendRewardCents)} voucher for their first visit${policy.voucherMinSpendCents ? ` (minimum spend ${$(policy.voucherMinSpendCents)})` : ''}; the referrer gets a ${$(policy.referrerRewardCents)} voucher after that visit is paid${policy.requiresApproval ? ' and a manager approves it' : ''}. Vouchers expire after ${policy.voucherExpiryDays} days.` : policy.rewardType === 'loyalty_points' ? `Reward on qualification: ${policy.rewardPoints} loyalty points to the referrer${policy.requiresApproval ? ', after manager approval' : ''}.` : `Reward on qualification: a cash payout — no payout provider is approved, so it will show as Blocked (external).` }
       : { code: 'reward_policy_missing', ok: false, text: 'No reward is set yet. The referral can be recorded and qualified; the reward waits until the owner sets one.' });
     return out(flags.length ? 'REVIEW_REQUIRED' : 'ELIGIBLE_TO_RECORD', { policy, ...info, flags });
   }
@@ -220,11 +266,69 @@ export class ReferralProgram {
     return flags;
   }
 
+  // ── Refer a Friend build (Nov 5 2026): salon vouchers + the campaign budget ─────────────────────────────────────────
+  /** bring AVAILABLE vouchers up to date with the discount authority: used at Checkout → REDEEMED; past their date unused → EXPIRED */
+  async reconcileVouchers(x: Kysely<any>, T: string): Promise<void> {
+    if (!this.vouchers) return;
+    const rows = (await sql<any>`select id, coupon_code_id, expires_at from referral_vouchers where tenant_id = ${T} and state = 'AVAILABLE' and coupon_code_id is not null
+      order by created_at limit 5000`.execute(x)).rows;
+    if (!rows.length) return;
+    const use = await this.vouchers.usage(x, T, rows.map((r: any) => String(r.coupon_code_id)));
+    for (const r of rows) {
+      const u = use.get(String(r.coupon_code_id));
+      if (u?.used) await sql`update referral_vouchers set state = 'REDEEMED', redeemed_at = coalesce(redeemed_at, now()), ticket_id = ${u.ticketId}, row_version = row_version + 1, updated_at = now()
+        where tenant_id = ${T} and id = ${r.id} and ${canMoveToSql(REFERRAL_VOUCHER, 'REDEEMED')}`.execute(x);
+      else if (r.expires_at && new Date(r.expires_at).getTime() <= Date.now()) await sql`update referral_vouchers set state = 'EXPIRED', closed_reason = 'Expired unused', row_version = row_version + 1, updated_at = now()
+        where tenant_id = ${T} and id = ${r.id} and ${canMoveToSql(REFERRAL_VOUCHER, 'EXPIRED')}`.execute(x);
+    }
+  }
+  /** R020–R022: what the campaign has committed (pending + available + redeemed vouchers) against its caps — in dollars */
+  async budget(x: Kysely<any>, T: string, policy: RpSettings): Promise<RpBudget> {
+    const r = (await sql<any>`select
+        coalesce(sum(face_cents) filter (where state in ('PENDING', 'AVAILABLE', 'REDEEMED')), 0)::bigint as committed,
+        coalesce(sum(face_cents) filter (where state in ('PENDING', 'AVAILABLE', 'REDEEMED') and created_at >= date_trunc('month', now())), 0)::bigint as month,
+        coalesce(sum(face_cents) filter (where state = 'REDEEMED'), 0)::bigint as redeemed,
+        coalesce(sum(face_cents) filter (where state = 'AVAILABLE'), 0)::bigint as outstanding,
+        coalesce(sum(face_cents) filter (where state = 'PENDING'), 0)::bigint as pending
+      from referral_vouchers where tenant_id = ${T}`.execute(x)).rows[0];
+    const per = (policy.friendRewardCents ?? 0) + (policy.referrerRewardCents ?? 0);
+    const committed = N(r?.committed); const month = N(r?.month);
+    const remaining = policy.budgetTotalCents == null ? null : policy.budgetTotalCents - committed;
+    const remainingMonth = policy.budgetMonthlyCents == null ? null : policy.budgetMonthlyCents - month;
+    return { totalCents: policy.budgetTotalCents, monthlyCents: policy.budgetMonthlyCents, committedCents: committed, committedThisMonthCents: month, remainingCents: remaining,
+      remainingThisMonthCents: remainingMonth, perReferralCents: per, redeemedCents: N(r?.redeemed), outstandingCents: N(r?.outstanding), pendingCents: N(r?.pending),
+      warn: policy.budgetTotalCents != null && committed * 100 >= policy.budgetTotalCents * policy.budgetWarnPercent,
+      exhausted: policy.rewardType === 'salon_voucher' && ((remaining != null && remaining < per) || (remainingMonth != null && remainingMonth < per) || policy.budgetTotalCents == null) };
+  }
+  /** make a voucher spendable: issue its wallet coupon on the discount authority (in our transaction) */
+  private async openVoucher(trx: Kysely<any>, T: string, v: any, policy: RpSettings): Promise<{ code: string; hint: string; expiresAt: string }> {
+    if (!this.vouchers) throw new ReferralProgramError('Referral vouchers are not available on this server. Nothing was saved.', 'REFERRAL_VOUCHERS_UNAVAILABLE', 503);
+    const expiresAt = new Date(Date.now() + policy.voucherExpiryDays * 86400000).toISOString();
+    const c = await this.vouchers.issue(trx, { tenantId: T, customerId: String(v.customer_id), role: v.role, faceCents: N(v.face_cents), minSpendCents: N(v.min_spend_cents), expiresAt });
+    const moved = (await sql<any>`update referral_vouchers set state = 'AVAILABLE', coupon_code_id = ${c.couponCodeId}, code_hint = ${c.hint}, expires_at = ${expiresAt}, available_at = now(),
+        row_version = row_version + 1, updated_at = now() where tenant_id = ${T} and id = ${v.id} and ${canMoveToSql(REFERRAL_VOUCHER, 'AVAILABLE')} returning id`.execute(trx)).rows[0];
+    if (!moved) throw new ReferralProgramError('This voucher can no longer be opened.', 'REFERRAL_VOUCHER_STATE_CONFLICT', 409);
+    return { code: c.code, hint: c.hint, expiresAt };
+  }
+  /** close a referral's vouchers that were never spent (rejected / refunded / reversed referral): pending → RELEASED, unused available → VOID */
+  async closeVouchers(trx: Kysely<any>, T: string, referralId: string, reason: string, roles: ('friend' | 'referrer')[]): Promise<{ closed: number; alreadyUsed: number }> {
+    const rows = (await sql<any>`select id, role, state, coupon_code_id from referral_vouchers where tenant_id = ${T} and referral_id = ${referralId} and role = any(${roles}::text[])
+      and state in ('PENDING', 'AVAILABLE') for update`.execute(trx)).rows;
+    let closed = 0; let used = 0;
+    for (const v of rows) {
+      if (v.state === 'PENDING') { await sql`update referral_vouchers set state = 'RELEASED', closed_reason = ${reason}, row_version = row_version + 1, updated_at = now() where id = ${v.id} and ${canMoveToSql(REFERRAL_VOUCHER, 'RELEASED')}`.execute(trx); closed++; continue; }
+      const ok = this.vouchers && v.coupon_code_id ? await this.vouchers.revoke(trx, T, String(v.coupon_code_id), reason) : false;
+      if (ok) { await sql`update referral_vouchers set state = 'VOID', closed_reason = ${reason}, row_version = row_version + 1, updated_at = now() where id = ${v.id} and ${canMoveToSql(REFERRAL_VOUCHER, 'VOID')}`.execute(trx); closed++; }
+      else used++;   // already on a ticket / used: the discount stands; shown for review, never clawed back silently
+    }
+    return { closed, alreadyUsed: used };
+  }
+
   // ── record (guide §08 step 4) — one canonical referral; a duplicate returns the same referral ──────────────────────
   async record(ctx: RefCtx, b: { code?: unknown; referredCustomerId?: unknown; idempotencyKey?: unknown }) {
     const T = ctx.tenantId;
     const key = str(b.idempotencyKey, 120) ?? null;
-    const res = await this.db.transaction().execute(async (trx): Promise<{ id: string; duplicate: boolean; qualifyTicket?: string | null }> => {
+    const res = await this.db.transaction().execute(async (trx): Promise<{ id: string; duplicate: boolean; qualifyTicket?: string | null; friendVoucher?: { code: string; hint: string; faceCents: number; expiresAt: string } | null }> => {
       if (isUuid(b.referredCustomerId)) await sql`select pg_advisory_xact_lock(hashtext(${'referral:' + T + ':' + b.referredCustomerId}))`.execute(trx);
       if (key) {
         const prior = (await sql<any>`select referral_id from referral_events where tenant_id = ${T} and idempotency_key = ${'record:' + key}`.execute(trx)).rows[0];
@@ -239,8 +343,8 @@ export class ReferralProgram {
       if (c.result === 'INELIGIBLE') {
         const first = c.reasons.find((r) => !r.ok);
         const codeMap: Record<string, string> = { self_referral: 'SELF_REFERRAL', self_referral_identity: 'SELF_REFERRAL', code_unknown: 'REFERRAL_CODE_UNKNOWN', code_disabled: 'REFERRAL_CODE_DISABLED',
-          code_expired: 'REFERRAL_CODE_DISABLED', already_referred: 'REFERRAL_EXISTS', not_first_time: 'REFERRAL_NOT_FIRST_TIME', program_disabled: 'REFERRAL_PROGRAM_DISABLED' };
-        throw new ReferralProgramError(first?.text ?? 'This referral is not eligible.', codeMap[first?.code ?? ''] ?? 'REFERRAL_INELIGIBLE', first?.code === 'already_referred' ? 409 : 400, { reasons: c.reasons });
+          code_expired: 'REFERRAL_CODE_DISABLED', already_referred: 'REFERRAL_EXISTS', not_first_time: 'REFERRAL_NOT_FIRST_TIME', program_disabled: 'REFERRAL_PROGRAM_DISABLED', budget_exhausted: 'REFERRAL_BUDGET_EXHAUSTED' };
+        throw new ReferralProgramError(first?.text ?? 'This referral is not eligible.', codeMap[first?.code ?? ''] ?? 'REFERRAL_INELIGIBLE', first?.code === 'already_referred' || first?.code === 'budget_exhausted' ? 409 : 400, { reasons: c.reasons });
       }
       if (c.result === 'ERROR_UNKNOWN') throw new ReferralProgramError('The eligibility check could not finish. Nothing was saved; try again.', 'REFERRAL_CHECK_FAILED', 503);
       const info = c.codeInfo!; const flags: Flag[] = c.flags ?? [];
@@ -257,13 +361,38 @@ export class ReferralProgram {
       }
       const id = String(ins.id);
       await this.event(trx, T, id, null, 'recorded', null, state, ctx.userId, flags.length ? 'Risk signals — a person must review' : null, `code:${info.code}`, key ? 'record:' + key : null, { flags, policyVersion: c.policy?.version ?? 0 });
+      // Refer a Friend build R021 / R035 / R037: activation reserves BOTH rewards against the hard budget (the settings row lock
+      // serialises two front desks), opens the friend's first-visit voucher now (unless a person must review first) and keeps the
+      // referrer's PENDING until the friend's verified paid first visit. No budget → nothing is saved (no unfunded promise).
+      let friendVoucher: { code: string; hint: string; faceCents: number; expiresAt: string } | null = null;
+      const pol = c.policy!;
+      if (pol.rewardType === 'salon_voucher' && pol.enabled) {
+        if (!this.vouchers) throw new ReferralProgramError('Referral vouchers are not available on this server. Nothing was saved.', 'REFERRAL_VOUCHERS_UNAVAILABLE', 503);
+        await sql`select tenant_id from referral_program_settings where tenant_id = ${T} for update`.execute(trx);
+        await this.reconcileVouchers(trx, T);
+        const bud = await this.budget(trx, T, pol);
+        if (bud.exhausted) throw new ReferralProgramError('The referral budget is used up, so no new referral can be activated. The owner can raise the budget.', 'REFERRAL_BUDGET_EXHAUSTED', 409, { remainingCents: bud.remainingCents, remainingThisMonthCents: bud.remainingThisMonthCents, perReferralCents: bud.perReferralCents });
+        if (pol.perReferrerCap != null) {
+          const n = N((await sql<any>`select count(*)::int as n from referral_vouchers where tenant_id = ${T} and role = 'referrer' and customer_id = ${info.referrerCustomerId} and state not in ('VOID', 'RELEASED')`.execute(trx)).rows[0]?.n);
+          if (n >= pol.perReferrerCap) throw new ReferralProgramError(`This customer has reached the limit of ${pol.perReferrerCap} referral reward(s).`, 'REFERRAL_REFERRER_CAP', 409);
+        }
+        const br = isUuid(ctx.branchId) ? ctx.branchId : null;
+        const fv = (await sql<any>`insert into referral_vouchers (tenant_id, branch_id, referral_id, customer_id, role, face_cents, min_spend_cents, state, policy_version)
+          values (${T}, ${br}, ${id}, ${b.referredCustomerId}, 'friend', ${pol.friendRewardCents}, ${pol.voucherMinSpendCents}, 'PENDING', ${pol.version}) returning id, customer_id, role, face_cents, min_spend_cents`.execute(trx)).rows[0];
+        await sql`insert into referral_vouchers (tenant_id, branch_id, referral_id, customer_id, role, face_cents, min_spend_cents, state, policy_version)
+          values (${T}, ${br}, ${id}, ${info.referrerCustomerId}, 'referrer', ${pol.referrerRewardCents}, ${pol.voucherMinSpendCents}, 'PENDING', ${pol.version})`.execute(trx);
+        if (!flags.length) { const o = await this.openVoucher(trx, T, fv, pol); friendVoucher = { code: o.code, hint: o.hint, faceCents: N(fv.face_cents), expiresAt: o.expiresAt }; }
+        await this.event(trx, T, id, null, 'vouchers_reserved', state, state, ctx.userId, flags.length ? 'Budget reserved; the friend\'s voucher waits for the review' : 'Budget reserved; friend voucher available, referrer voucher pending the first paid visit', null, `vouchers:${id}`,
+          { friendCents: pol.friendRewardCents, referrerCents: pol.referrerRewardCents, budgetRemainingCents: bud.remainingCents == null ? null : bud.remainingCents - bud.perReferralCents, friendHint: friendVoucher?.hint ?? null });
+      }
       // a first visit that already happened inside the grace period qualifies now (same rules as the Checkout event)
       const t = (await sql<any>`select t.id from tickets t where t.tenant_id = ${T} and t.customer_id = ${b.referredCustomerId} and t.removed_at is null and t.status = any(${VISIT}::text[])
         order by coalesce(t.paid_at, t.created_at) asc, t.id asc limit 1`.execute(trx)).rows[0];
-      return { id, duplicate: false, qualifyTicket: t ? String(t.id) : null };
+      return { id, duplicate: false, qualifyTicket: t ? String(t.id) : null, friendVoucher };
     });
     if (!res.duplicate && res.qualifyTicket) await this.qualifyForTicket(T, res.qualifyTicket, `record:${res.id}`);
-    return { ...(await this.detail(ctx, res.id, { full: false })), duplicate: res.duplicate };
+    // the friend's voucher code is shown ONCE (stored only as a hash); it is also in the friend's wallet for Checkout
+    return { ...(await this.detail(ctx, res.id, { full: false })), duplicate: res.duplicate, friendVoucher: (res as { friendVoucher?: unknown }).friendVoucher ?? null };
   }
 
   async event(trx: Kysely<any>, T: string, referralId: string, rewardId: string | null, type: string, from: string | null, to: string | null, actor: unknown, reason: string | null,
@@ -301,6 +430,7 @@ export class ReferralProgram {
       const fail = async (reason: string, text: string, to: string | null) => {
         await this.event(trx, T, String(r.id), null, 'qualification_failed', r.state, to ?? r.state, null, text, `ticket:${ticketId}`, `qualify-fail:${ticketId}`, { reason, evaluator: QUALIFIER });
         if (to) await this.moveReferral(trx, T, String(r.id), to, sql`decided_at = now(), review_reason = ${text}`);
+        if (to === 'REJECTED') await this.closeVouchers(trx, T, String(r.id), text, ['referrer']);   // the referrer's pending voucher frees its budget
         return { outcome: reason, referralId: String(r.id) };
       };
       if (t.removed_at || !VISIT.includes(String(t.status)) || !t.paid_at) return fail('not_paid', 'The visit is not a completed, paid Checkout.', null);
@@ -326,8 +456,14 @@ export class ReferralProgram {
         return { outcome: 'qualified_no_policy', referralId: String(r.id), rewardId: null };
       }
       const needsPerson = policy.requiresApproval || flags.length > 0 || from === 'UNDER_REVIEW';
+      // a salon-voucher reward is the referrer's voucher reserved at activation (its face value as then); else today's policy
+      const rv = policy.rewardType === 'salon_voucher' ? (await sql<any>`select face_cents from referral_vouchers where tenant_id = ${T} and referral_id = ${r.id} and role = 'referrer' and state = 'PENDING'`.execute(trx)).rows[0] : null;
+      if (policy.rewardType === 'salon_voucher' && !rv) {
+        await this.event(trx, T, String(r.id), null, 'awaiting_policy', null, null, null, 'This referral was recorded before salon vouchers were set up (no budget was reserved); a manager decides it by hand.', null, `no-voucher:${r.id}`);
+        return { outcome: 'qualified_no_voucher', referralId: String(r.id), rewardId: null };
+      }
       const rw = (await sql<any>`insert into referral_rewards (tenant_id, referral_id, recipient_customer_id, reward_type, points, amount_cents, policy_version, state, updated_by)
-        values (${T}, ${r.id}, ${r.referrer_customer_id}, ${policy.rewardType}, ${policy.rewardType === 'loyalty_points' ? policy.rewardPoints : null}, ${policy.rewardType === 'cash_payout' ? policy.rewardCents : null},
+        values (${T}, ${r.id}, ${r.referrer_customer_id}, ${policy.rewardType}, ${policy.rewardType === 'loyalty_points' ? policy.rewardPoints : null}, ${policy.rewardType === 'cash_payout' ? policy.rewardCents : rv ? N(rv.face_cents) : null},
           ${policy.version}, ${needsPerson ? 'PENDING_APPROVAL' : 'APPROVED'}, null)
         on conflict (tenant_id, referral_id) do nothing returning id`.execute(trx)).rows[0];
       if (!rw) return { outcome: 'duplicate', referralId: String(r.id) };
@@ -359,6 +495,17 @@ export class ReferralProgram {
       await this.moveReward(trx, T, rewardId, 'BLOCKED_EXTERNAL', sql`issue_error = ${'No payout provider is approved for referral cash payouts. Nothing was paid.'}, updated_by = ${a}`);
       await this.event(trx, T, String(w.referral_id), rewardId, 'payout_blocked', w.state, 'BLOCKED_EXTERNAL', a, 'No approved payout provider', null, `blocked:${rewardId}`);
       return { rewardId, state: 'BLOCKED_EXTERNAL', duplicate: false };
+    }
+    if (w.reward_type === 'salon_voucher') {
+      // Refer a Friend build R041: the referrer's PENDING voucher becomes a live wallet coupon — once (its state guards it)
+      const v = (await sql<any>`select id, customer_id, role, face_cents, min_spend_cents, state from referral_vouchers where tenant_id = ${T} and referral_id = ${w.referral_id} and role = 'referrer' for update`.execute(trx)).rows[0];
+      if (!v || !['PENDING', 'AVAILABLE'].includes(v.state)) throw new ReferralProgramError('The referrer\'s voucher is no longer open (released or voided).', 'REFERRAL_VOUCHER_STATE_CONFLICT', 409, { state: v?.state ?? null });
+      let hint: string | null = null;
+      if (v.state === 'PENDING') hint = (await this.openVoucher(trx, T, v, await this.settings({ tenantId: T }, trx))).hint;
+      await this.moveReward(trx, T, rewardId, 'ISSUED', sql`issued_at = now(), issued_by = ${a}, issuance_key = ${key}, issue_error = null, updated_by = ${a}`);
+      if (w.ref_state === 'APPROVED') await this.moveReferral(trx, T, String(w.referral_id), 'REWARD_ISSUED');
+      await this.event(trx, T, String(w.referral_id), rewardId, 'reward_issued', w.state, 'ISSUED', a, null, `referral_voucher:${v.id}`, key, { voucherCents: N(v.face_cents), hint, source });
+      return { rewardId, state: 'ISSUED', duplicate: false, ledgerEntryId: null };
     }
     if (await this.rewardsSwitchOff(T, w.ref_branch, trx)) {
       await this.event(trx, T, String(w.referral_id), rewardId, 'issue_held', w.state, w.state, a, 'Referral rewards are turned off in Settings → Loyalty & Memberships.', null, null);
@@ -418,6 +565,8 @@ export class ReferralProgram {
         if (w && ['PENDING_APPROVAL', 'APPROVED', 'FAILED', 'BLOCKED_EXTERNAL'].includes(w.state)) await this.moveReward(trx, T, String(w.id), 'REJECTED', sql`decided_at = now(), decided_by = ${actorId(ctx)}, decision_reason = ${reason}`);
         else if (w && w.state === 'ISSUED') throw new ReferralProgramError('This reward was already issued — reverse it instead.', 'REFERRAL_REWARD_STATE_CONFLICT', 409);
         await this.moveReferral(trx, T, id, 'REJECTED', sql`decided_at = now(), review_reason = ${reason}, updated_by = ${actorId(ctx)}`);
+        await this.reconcileVouchers(trx, T);
+        await this.closeVouchers(trx, T, id, reason ?? 'Referral rejected', ['friend', 'referrer']);
         await this.event(trx, T, id, w ? String(w.id) : null, 'rejected', r.state, 'REJECTED', ctx.userId, reason, null, null);
       } else if (action === 'investigate') {
         await this.moveReferral(trx, T, id, 'UNDER_REVIEW', sql`review_reason = ${reason}, updated_by = ${actorId(ctx)}`);
@@ -427,6 +576,9 @@ export class ReferralProgram {
         const to = !r.qualifying_ticket_id ? 'PENDING_QUALIFICATION' : w && w.state === 'PENDING_APPROVAL' ? 'REWARD_PENDING_APPROVAL' : w && w.state === 'APPROVED' ? 'APPROVED' : 'QUALIFIED';
         await this.moveReferral(trx, T, id, to, sql`review_reason = ${reason ?? 'Review cleared'}, updated_by = ${actorId(ctx)}`);
         await this.event(trx, T, id, w ? String(w.id) : null, 'review_cleared', 'UNDER_REVIEW', to, ctx.userId, reason, null, null);
+        // a friend's voucher held for the review opens now (budget was reserved at activation)
+        const fv = (await sql<any>`select id, customer_id, role, face_cents, min_spend_cents from referral_vouchers where tenant_id = ${T} and referral_id = ${id} and role = 'friend' and state = 'PENDING' for update`.execute(trx)).rows[0];
+        if (fv && policy.rewardType === 'salon_voucher') { const o = await this.openVoucher(trx, T, fv, policy); await this.event(trx, T, id, null, 'friend_voucher_opened', null, null, ctx.userId, null, `referral_voucher:${fv.id}`, `friend-open:${id}`, { hint: o.hint }); }
         // a qualified referral whose reward was never created (no policy at the time, or a risk hold) gets one now
         if (to === 'QUALIFIED' && !w && policy.configured && policy.enabled) {
           const rw = (await sql<any>`insert into referral_rewards (tenant_id, referral_id, recipient_customer_id, reward_type, points, amount_cents, policy_version, state)
@@ -457,6 +609,11 @@ export class ReferralProgram {
       const le = await applyLoyaltyEntry(trx, { tenantId: T, customerId: String(w.recipient_customer_id), entryType: 'reverse', delta: -N(w.points), clampToBalance: true,
         sourceTable: 'referral_rewards', sourceId: rewardId, reason, actorUserId: isUuid(actor) ? actor : null, legacyType: 'reverse_referral', legacySource: 'referral' });
       ledgerId = le.ledgerId; shortfall = N(w.points) + le.delta;   // points already spent stay spent; the rest is shown for review
+    }
+    if (w.reward_type === 'salon_voucher') {   // an unused voucher is voided (its budget freed); a used one stands and is shown as the shortfall
+      await this.reconcileVouchers(trx, T);
+      const c = await this.closeVouchers(trx, T, String(w.referral_id), reason, ['referrer']);
+      shortfall = c.alreadyUsed > 0 ? N(w.amount_cents) : 0;
     }
     await this.moveReward(trx, T, rewardId, 'REVERSED', sql`reversed_at = now(), reversed_by = ${isUuid(actor) ? actor : null}, reversal_reason = ${reason}, reversal_ledger_id = ${ledgerId}, reversal_shortfall = ${shortfall}`);
     if (w.ref_state === 'REWARD_ISSUED') await this.moveReferral(trx, T, String(w.referral_id), 'REVERSED', sql`review_reason = ${reason}`);
@@ -491,6 +648,7 @@ export class ReferralProgram {
     const why = 'The qualifying visit was refunded.';
     if (w && w.state === 'ISSUED') { await this.reverseReward(outer, T, String(w.id), why, null, `refund:${refundId}`); return { outcome: 'reversed' }; }
     if (w && ['PENDING_APPROVAL', 'APPROVED', 'FAILED', 'BLOCKED_EXTERNAL'].includes(w.state)) await this.moveReward(outer, T, String(w.id), 'REJECTED', sql`decided_at = now(), decision_reason = ${why}`);
+    await this.closeVouchers(outer, T, String(r.id), why, ['referrer']);   // a pending referrer voucher frees its budget
     if (r.state !== 'UNDER_REVIEW' && ['QUALIFIED', 'REWARD_PENDING_APPROVAL', 'APPROVED'].includes(r.state)) await this.moveReferral(outer, T, String(r.id), 'UNDER_REVIEW', sql`review_reason = ${why}`);
     await this.event(outer, T, String(r.id), w ? String(w.id) : null, 'refund_review', r.state, 'UNDER_REVIEW', null, why, `refund:${refundId}`, `refund:${refundId}`, { netPaidCents: net });
     return { outcome: 'under_review' };
@@ -579,6 +737,8 @@ export class ReferralProgram {
       cashPaidCents: 0, cashPaidEvidence: 'none' as const,
       associatedRevenueCents: N(rev.v), associatedRevenueNote: 'Collected on the qualifying visits (refunds subtracted). Associated, not proven to be caused by the referral.',
       legacyMarked: { count: N(s.legacy_marked), cents: N(s.legacy_marked_cents), note: 'Typed by hand before Oct 31 2026 with no issuance record; not counted as issued or paid.' },
+      /** Refer a Friend build R020–R022: the voucher campaign budget (null when the program does not use salon vouchers) */
+      budget: policy.rewardType === 'salon_voucher' ? await this.budget(this.db, T, policy) : null,
       policy, lastUpdated: new Date().toISOString(),
     };
   }
@@ -628,6 +788,8 @@ export class ReferralProgram {
         issueError: reward.issue_error ?? null, reversedAt: iso(reward.reversed_at), reversalReason: reward.reversal_reason ?? null, reversalDelta: reward.rv_delta == null ? null : N(reward.rv_delta),
         reversalShortfall: reward.reversal_shortfall == null ? null : N(reward.reversal_shortfall),
         disposition: reward.state === 'ISSUED' ? (reward.reward_type === 'loyalty_points' ? 'points_issued' : 'credit_issued') : reward.state === 'BLOCKED_EXTERNAL' ? 'payout_blocked_external' : reward.state.toLowerCase() } : null,
+      vouchers: (await sql<any>`select id, role, face_cents, min_spend_cents, state, code_hint, expires_at, available_at, redeemed_at, closed_reason from referral_vouchers where tenant_id = ${T} and referral_id = ${id} order by role`.execute(this.db)).rows
+        .map((v: any) => ({ id: String(v.id), role: v.role, faceCents: N(v.face_cents), minSpendCents: N(v.min_spend_cents), state: v.state, hint: v.code_hint ?? null, expiresAt: iso(v.expires_at), availableAt: iso(v.available_at), redeemedAt: iso(v.redeemed_at), closedReason: v.closed_reason ?? null })),
       communication: { items: [], note: 'No referral invitation or confirmation messages are sent by this program; nothing to show.' },
       audit: events.map((e: any) => ({ type: e.event_type, from: e.from_state, to: e.to_state, reason: e.reason, source: e.source_ref, idempotencyKey: e.idempotency_key, at: iso(e.created_at), actor: e.actor_name ?? (e.event_type === 'qualified' || e.event_type.startsWith('refund') ? 'Checkout event' : null),
         meta: typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata })),
@@ -691,12 +853,22 @@ export class ReferralProgram {
     if (!pol.enabled) add('reward_policy', 'attention_required', 'The referral program is turned off: no new referrals can be recorded.', `referral_program_settings v${pol.version}`, 'Turn it on in Policy when ready.');
     else if (!pol.configured) add('reward_policy', 'attention_required', 'No reward is set. Referrals can qualify, but no reward is created until the owner chooses one.', 'referral_program_settings: reward_type empty', 'Set the reward type and value in Policy (owner decision).');
     else if (off) add('reward_policy', 'attention_required', 'Settings → Loyalty & Memberships has Referral rewards turned off, so rewards stay approved but are not issued.', 'tenant_settings loyalty-memberships.referralReward = false', 'Turn Referral rewards on, then retry the approved rewards.');
-    else add('reward_policy', 'ready', pol.rewardType === 'loyalty_points' ? `${pol.rewardPoints} loyalty points per qualified referral${pol.requiresApproval ? ', manager approval required' : ''}.` : 'Cash payout configured (blocked — no payout provider).', `referral_program_settings v${pol.version}`);
+    else add('reward_policy', 'ready', pol.rewardType === 'salon_voucher' ? `Salon vouchers: $${(pol.friendRewardCents! / 100).toFixed(2)} for the new customer, $${(pol.referrerRewardCents! / 100).toFixed(2)} for the referrer${pol.requiresApproval ? ', manager approval required' : ''}.` : pol.rewardType === 'loyalty_points' ? `${pol.rewardPoints} loyalty points per qualified referral${pol.requiresApproval ? ', manager approval required' : ''}.` : 'Cash payout configured (blocked — no payout provider).', `referral_program_settings v${pol.version}`);
     const led = await safe(async () => (await sql<any>`select count(*)::int as issued,
         count(*) filter (where le.id is null or le.delta <> rw.points or le.source_id <> rw.id)::int as mismatched
       from referral_rewards rw left join loyalty_ledger le on le.id = rw.ledger_entry_id and le.tenant_id = rw.tenant_id where rw.tenant_id = ${T} and rw.state in ('ISSUED', 'REVERSED') and rw.reward_type = 'loyalty_points'`.execute(this.db)).rows[0]);
     if (!led) add('ledger_issuance', 'unknown', 'Issued rewards could not be checked against the loyalty ledger.', 'loyalty_ledger: query failed');
     else add('ledger_issuance', N(led.mismatched) ? 'failed' : 'ready', N(led.mismatched) ? `${N(led.mismatched)} issued reward(s) do not match a loyalty ledger entry.` : `${N(led.issued)} issued reward(s), each matched to exactly one loyalty ledger entry.`, 'referral_rewards.ledger_entry_id → loyalty_ledger (source referral_rewards)', N(led.mismatched) ? 'Investigate before issuing more rewards.' : null);
+    if (pol.rewardType === 'salon_voucher') {
+      const bud = await safe(async () => this.budget(this.db, T, pol), 'budget');
+      if (!bud) add('voucher_budget', 'unknown', 'The referral budget could not be read.', 'referral_vouchers: query failed');
+      else add('voucher_budget', bud.exhausted ? 'attention_required' : bud.warn ? 'attention_required' : 'ready',
+        bud.exhausted ? 'The referral budget is used up: new referrals cannot be activated.' : `$${(bud.committedCents / 100).toFixed(2)} committed of $${((bud.totalCents ?? 0) / 100).toFixed(2)}${bud.warn ? ` (${pol.budgetWarnPercent}% warning reached)` : ''}.`,
+        'referral_vouchers face values in PENDING / AVAILABLE / REDEEMED', bud.exhausted || bud.warn ? 'Raise the budget in Policy (owner decision) or let it run out.' : null);
+      const vm = await safe(async () => (await sql<any>`select count(*)::int as n from referral_vouchers v where v.tenant_id = ${T} and v.state in ('AVAILABLE', 'REDEEMED') and v.coupon_code_id is null`.execute(this.db)).rows[0], 'vouchers');
+      add('voucher_issuance', !vm ? 'unknown' : N(vm.n) ? 'failed' : this.vouchers ? 'ready' : 'failed', !vm ? 'Vouchers could not be checked.' : N(vm.n) ? `${N(vm.n)} open voucher(s) have no wallet coupon.` : this.vouchers ? 'Every open voucher is a single-use wallet coupon on the discount engine.' : 'The voucher issuer is not running on this server.',
+        'referral_vouchers.coupon_code_id → deal_coupon_codes', N(vm?.n) || !this.vouchers ? 'Investigate before activating more referrals.' : null);
+    }
     const blocked = await safe(async () => (await sql<any>`select count(*)::int as n from referral_rewards where tenant_id = ${T} and state = 'BLOCKED_EXTERNAL'`.execute(this.db)).rows[0]);
     add('payout_provider', pol.rewardType === 'cash_payout' || N(blocked?.n) ? 'attention_required' : 'ready', pol.rewardType === 'cash_payout' || N(blocked?.n) ? `No payout provider is approved; ${N(blocked?.n)} cash reward(s) are blocked and nothing was paid.` : 'Not used — rewards are loyalty points, not cash.', 'no payout adapter in this system', pol.rewardType === 'cash_payout' ? 'BLOCKED_EXTERNAL: an approved payout provider and finance approval are needed.' : null);
     const dup = await safe(async () => (await sql<any>`select (select count(*)::int from (select referred_customer_id from referral_redemptions where tenant_id = ${T} and referred_customer_id is not null group by 1 having count(*) > 1) a) as dup_ref,

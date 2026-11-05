@@ -94,6 +94,7 @@ export function POSReferralsScreen() {
         </div>
       </div>
 
+      {k?.budget ? <div className={`fk-hint${k.budget.exhausted || k.budget.warn ? ' warn' : ''}`} data-testid="rfp-budget">{k.budget.exhausted ? tx('rfp.budget.exhausted') : tx('rfp.budget.line', { used: fmtMoney(k.budget.committedCents), total: fmtMoney(k.budget.totalCents ?? 0), left: fmtMoney(k.budget.remainingCents ?? 0), redeemed: fmtMoney(k.budget.redeemedCents) })}</div> : null}
       <div className="fk-kpis six" data-testid="rfp-kpis">
         <KpiCard label={tx('rfp.kpi.codes')} value={nf(k?.codes)} sub={k ? tx('rfp.kpi.codesSub', { n: nf(k.codesActive) }) : undefined} loading={!k} onClick={() => setDlg({ kind: 'codes' })} testId="rfp-kpi-codes" />
         <KpiCard label={tx('rfp.kpi.total')} value={nf(k?.totalReferrals)} sub={k ? tx('rfp.kpi.totalSub', { n: nf(k.waitingForVisit) }) : undefined} loading={!k} onClick={() => setTab('all')} testId="rfp-kpi-total" />
@@ -107,7 +108,7 @@ export function POSReferralsScreen() {
       <div className="rt-filters sg-tools rfp-tools">
         <input className="fk-input fk-search sg-search" type="search" placeholder={tx('rfp.search')} aria-label={tx('rfp.search')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="rfp-search" />
         <select className="fk-select" aria-label={tx('rfp.rewardType')} value={rewardType} onChange={(e) => setRewardType(e.target.value)} data-testid="rfp-reward-type">
-          <option value="">{tx('rfp.rewardType.any')}</option><option value="loyalty_points">{tx('rfp.rewardType.loyalty_points')}</option><option value="cash_payout">{tx('rfp.rewardType.cash_payout')}</option></select>
+          <option value="">{tx('rfp.rewardType.any')}</option><option value="loyalty_points">{tx('rfp.rewardType.loyalty_points')}</option><option value="cash_payout">{tx('rfp.rewardType.cash_payout')}</option><option value="salon_voucher">{tx('rfp.rewardType.salon_voucher')}</option></select>
         <div className="fk-seg rfp-presets">
           {PRESETS.map((p) => <button key={p} type="button" className={preset === p ? 'on' : ''} aria-pressed={preset === p} onClick={() => { setPreset(preset === p ? '' : p); setCalOpen(false); }} data-testid={'rfp-preset-' + p}>{tx('rfp.preset.' + p)}</button>)}
           <button type="button" className={preset === 'custom' ? 'on' : ''} aria-pressed={preset === 'custom'} aria-haspopup="dialog" aria-expanded={calOpen} onClick={() => setCalOpen((o) => !o)} data-testid="rfp-preset-custom">{preset === 'custom' && range ? rangeText : tx('rfp.preset.custom')}</button>
@@ -222,7 +223,7 @@ function RecordPanel({ canManage, onRecorded }: { canManage: boolean; onRecorded
     if (!code.trim() || !picked) { setNote(tx('rfp.form.needBoth')); return; }
     setBusy(true); setNote(null);
     try { const r = await posReferralProgramApi.record({ code: code.trim(), referredCustomerId: picked.customerId, idempotencyKey: key });
-      setNote(r.duplicate ? tx('rfp.form.duplicate') : tx('rfp.form.recorded')); setCode(''); setFind(''); setPicked(null); onRecorded(r.id); }
+      setNote(r.duplicate ? tx('rfp.form.duplicate') : r.friendVoucher ? tx('rfp.form.recordedVoucher', { amt: fmtMoney(r.friendVoucher.faceCents), code: r.friendVoucher.code }) : tx('rfp.form.recorded')); setCode(''); setFind(''); setPicked(null); onRecorded(r.id); }
     catch (e: any) { setNote(errorTextOf(e, tx('rfp.form.recordFailed'))); } finally { setBusy(false); }
   };
   const recordable = verdict && (verdict.result === 'ELIGIBLE_TO_RECORD' || verdict.result === 'REVIEW_REQUIRED');
@@ -374,10 +375,13 @@ function CodesDialog({ canManage, onClose, onChanged }: { canManage: boolean; on
   );
 }
 
+const d$ = (c: number | null | undefined) => (c == null ? '' : (c / 100).toFixed(2));
 function PolicyDialog({ canManage, onClose, onSaved }: { canManage: boolean; onClose: () => void; onSaved: () => void }) {
   const [p, setP] = useState<any | null>(null); const [f, setF] = useState<any>({}); const [note, setNote] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   useEffect(() => { posReferralProgramApi.settings().then((x) => { setP(x); setF({ enabled: x.enabled, rewardType: x.rewardType ?? '', rewardPoints: x.rewardPoints ?? '', rewardDollars: x.rewardCents != null ? (x.rewardCents / 100).toFixed(2) : '',
-    requiresApproval: x.requiresApproval, separationOfDuties: x.separationOfDuties, minDollars: (x.minQualifyingSpendCents / 100).toFixed(2), windowDays: x.qualificationWindowDays ?? '', graceHours: x.recordGraceHours }); }).catch((e) => setNote(errorTextOf(e, tx('rfp.loading')))); }, []);
+    requiresApproval: x.requiresApproval, separationOfDuties: x.separationOfDuties, minDollars: (x.minQualifyingSpendCents / 100).toFixed(2), windowDays: x.qualificationWindowDays ?? '', graceHours: x.recordGraceHours,
+    friendDollars: d$(x.friendRewardCents), referrerDollars: d$(x.referrerRewardCents), vMinDollars: d$(x.voucherMinSpendCents ?? 0), vDays: x.voucherExpiryDays ?? 90, budgetDollars: d$(x.budgetTotalCents), monthlyDollars: d$(x.budgetMonthlyCents),
+    perRef: x.perReferrerCap ?? '', warnPct: x.budgetWarnPercent ?? 80 }); }).catch((e) => setNote(errorTextOf(e, tx('rfp.loading')))); }, []);
   const set = (k: string, v: unknown) => setF((o: any) => ({ ...o, [k]: v }));
   const save = async () => {
     setBusy(true); setNote(null);
@@ -385,7 +389,9 @@ function PolicyDialog({ canManage, onClose, onSaved }: { canManage: boolean; onC
     try {
       await posReferralProgramApi.saveSettings({ enabled: !!f.enabled, rewardType: f.rewardType || null, rewardPoints: f.rewardType === 'loyalty_points' && f.rewardPoints !== '' ? Number(f.rewardPoints) : null,
         rewardCents: f.rewardType === 'cash_payout' ? cents(String(f.rewardDollars)) : null, requiresApproval: !!f.requiresApproval, separationOfDuties: !!f.separationOfDuties,
-        minQualifyingSpendCents: cents(String(f.minDollars)) ?? 0, qualificationWindowDays: f.windowDays === '' ? null : Number(f.windowDays), recordGraceHours: Number(f.graceHours), expectedVersion: p.version });
+        minQualifyingSpendCents: cents(String(f.minDollars)) ?? 0, qualificationWindowDays: f.windowDays === '' ? null : Number(f.windowDays), recordGraceHours: Number(f.graceHours), expectedVersion: p.version,
+        ...(f.rewardType === 'salon_voucher' ? { friendRewardCents: cents(String(f.friendDollars)), referrerRewardCents: cents(String(f.referrerDollars)), voucherMinSpendCents: cents(String(f.vMinDollars)) ?? 0,
+          voucherExpiryDays: Number(f.vDays), budgetTotalCents: cents(String(f.budgetDollars)), budgetMonthlyCents: cents(String(f.monthlyDollars)), perReferrerCap: f.perRef === '' ? null : Number(f.perRef), budgetWarnPercent: Number(f.warnPct) } : {}) });
       onSaved(); onClose();
     } catch (e: any) { setNote(errorTextOf(e, tx('rfp.actionFailed'))); } finally { setBusy(false); }
   };
@@ -396,9 +402,16 @@ function PolicyDialog({ canManage, onClose, onSaved }: { canManage: boolean; onC
         <div className="fk-hint">{tx('rfp.policyNote')}</div>
         <label className="fk-check"><input type="checkbox" checked={!!f.enabled} disabled={!canManage} onChange={(e) => set('enabled', e.target.checked)} data-testid="rfp-pol-enabled" /> {tx('rfp.pol.enabled')}</label>
         <label className="fk-field"><span>{tx('rfp.pol.rewardType')}</span><select className="fk-select" value={f.rewardType} disabled={!canManage} onChange={(e) => set('rewardType', e.target.value)} data-testid="rfp-pol-type">
-          <option value="">{tx('rfp.pol.none')}</option><option value="loyalty_points">{tx('rfp.rewardType.loyalty_points')}</option><option value="cash_payout">{tx('rfp.rewardType.cash_payout')}</option></select></label>
+          <option value="">{tx('rfp.pol.none')}</option><option value="loyalty_points">{tx('rfp.rewardType.loyalty_points')}</option><option value="cash_payout">{tx('rfp.rewardType.cash_payout')}</option><option value="salon_voucher">{tx('rfp.rewardType.salon_voucher')}</option></select></label>
         {f.rewardType === 'loyalty_points' ? <label className="fk-field"><span>{tx('rfp.pol.points')}</span><input className="fk-input" inputMode="numeric" value={f.rewardPoints} disabled={!canManage} onChange={(e) => set('rewardPoints', e.target.value.replace(/\D/g, ''))} data-testid="rfp-pol-points" /></label> : null}
         {f.rewardType === 'cash_payout' ? <><label className="fk-field"><span>{tx('rfp.pol.cash')}</span><input className="fk-input" inputMode="decimal" value={f.rewardDollars} disabled={!canManage} onChange={(e) => set('rewardDollars', e.target.value)} /></label><div className="fk-hint warn">{tx('rfp.pol.cashBlocked')}</div></> : null}
+        {f.rewardType === 'salon_voucher' ? <div className="rfp-voucher" data-testid="rfp-pol-voucher">
+          <div className="fk-hint">{tx('rfp.pol.voucherNote')}</div>
+          {([['friendDollars', 'rfp.pol.friend', 'decimal'], ['referrerDollars', 'rfp.pol.referrer', 'decimal'], ['vMinDollars', 'rfp.pol.vMin', 'decimal'], ['vDays', 'rfp.pol.vDays', 'numeric'],
+            ['budgetDollars', 'rfp.pol.budget', 'decimal'], ['monthlyDollars', 'rfp.pol.monthly', 'decimal'], ['perRef', 'rfp.pol.perRef', 'numeric'], ['warnPct', 'rfp.pol.warnPct', 'numeric']] as const).map(([k2, label, mode]) => (
+            <label key={k2} className="fk-field"><span>{tx(label)}</span><input className="fk-input" inputMode={mode} value={f[k2]} disabled={!canManage}
+              onChange={(e) => set(k2, mode === 'numeric' ? e.target.value.replace(/\D/g, '') : e.target.value)} placeholder={k2 === 'monthlyDollars' || k2 === 'perRef' ? tx('rfp.pol.noLimit') : undefined} data-testid={`rfp-pol-${k2}`} /></label>))}
+        </div> : null}
         <label className="fk-check"><input type="checkbox" checked={!!f.requiresApproval} disabled={!canManage} onChange={(e) => set('requiresApproval', e.target.checked)} data-testid="rfp-pol-approval" /> {tx('rfp.pol.approval')}</label>
         <label className="fk-check"><input type="checkbox" checked={!!f.separationOfDuties} disabled={!canManage} onChange={(e) => set('separationOfDuties', e.target.checked)} /> {tx('rfp.pol.sod')}</label>
         <label className="fk-field"><span>{tx('rfp.pol.minSpend')}</span><input className="fk-input" inputMode="decimal" value={f.minDollars} disabled={!canManage} onChange={(e) => set('minDollars', e.target.value)} /></label>

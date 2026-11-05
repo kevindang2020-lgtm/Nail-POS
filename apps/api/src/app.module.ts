@@ -25,7 +25,7 @@ import { TechCashHandoffModule, TimeClockModule, PosTeamModule, TeamPermissionsM
 import { TenantApprovalsModule } from '@aipowersalon/workforce';   // BUILD_PLAN Phase 9 (agent D): the salon approvals engine (@Global)
 import { BookingModule, CustomerBookingModule, CustomerPhoneModule, CustomerActivationModule } from '@aipowersalon/booking';
 import { SuperAdminAutomationModule, SuperAdminPlansModule, FeatureEntitlementsModule } from '@aipowersalon/platform';
-import { SalonPromotionsModule, BundlesModule, PromotionsModule, DealsModule } from '@aipowersalon/deals';
+import { SalonPromotionsModule, BundlesModule, PromotionsModule, DealsModule, ReferralVouchersModule } from '@aipowersalon/deals';
 import { ServiceAddOnsModule, ServicesModule } from '@aipowersalon/catalog';
 import { attachDbTelemetry, setTickCoordinator } from '@aipowersalon/observability';
 import { stampActor } from './common/actor-stamp';
@@ -140,7 +140,7 @@ import { DbConstraintRetrierModule } from './common/db-constraint-retrier.module
     QueueModule, ServingModule, ServiceDoneModule, CheckoutModule, MobileCheckoutModule, CustomersModule, TechniciansModule, TeamScreensModule, TeamStaffModule,
     ServicesModule, BundlesModule, MembershipChargeWiringModule, StaffBranchAccessWiringModule, MembershipsModule, MembershipBillingModule, MembershipEnrollModule, MembershipCompModule, MembershipCommsModule, MenuInsightsModule, DevicesModule, ApiWebhooksModule, DeploymentsModule, LogsModule, ReportsModule,
     GiftCardsModule,
-    LoyaltyModule, GlobalRewardsCheckoutModule, DisplayAdvertisingModule, SalonPromotionsModule, DealsModule, AiMarketingModule, AiMarketingSendModule, MoneyProtectionModule, VoiceTranscriptionModule, QueueAssignmentModule, AiSchedulingModule, ReviewsModule, CustomerSearchModule, DuplicateReviewModule, CustomerTimelineModule, CommissionReportModule, RefundsVoidsModule, PosSettingsModule, PosProjectStatusModule,
+    LoyaltyModule, GlobalRewardsCheckoutModule, DisplayAdvertisingModule, SalonPromotionsModule, DealsModule, ReferralVouchersModule, AiMarketingModule, AiMarketingSendModule, MoneyProtectionModule, VoiceTranscriptionModule, QueueAssignmentModule, AiSchedulingModule, ReviewsModule, CustomerSearchModule, DuplicateReviewModule, CustomerTimelineModule, CommissionReportModule, RefundsVoidsModule, PosSettingsModule, PosProjectStatusModule,
     AiBusinessModule,
     AiInventoryModule,
     AiOcrReceiptModule,

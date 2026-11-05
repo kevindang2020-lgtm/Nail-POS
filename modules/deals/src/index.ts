@@ -22,3 +22,4 @@ export { KyselyDealsMarketplace } from './deals/deals-marketplace.kysely';
 export { DealsLifecycleScheduler, runDealsLifecycle, registerDealsJobHandlers, DEALS_JOB } from './engine/deals-lifecycle.scheduler';
 export { DealForbiddenError, DealValidationError, DealConflictError } from './deals/deals.service';
 export { DEAL_REDEMPTION_HOLD, DEAL_REDEMPTION, DEAL, DEAL_COUPON_CODE, BUNDLE } from './engine/deal-lifecycles';   // BUILD_PLAN Phase 12 (#27): the deal lifecycles' state machines
+export { ReferralVouchersModule, ReferralVoucherIssuer, REFERRAL_VOUCHERS, type IssuedVoucher, type VoucherUsage, type VoucherRole } from './salon-promotions/referral-vouchers';   // Referral Rewards build (Nov 5 2026)

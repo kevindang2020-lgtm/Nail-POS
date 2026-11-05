@@ -362,7 +362,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | # | Guide | Status (Nov 5) |
 |---|---|---|
 | G1 | Customer Profile & Global Loyalty Protection (owner-approved bonus points) | BUILT — see the G1 section below |
-| G2 | Refer a Friend / Referral Rewards build | NOT AUDITED yet — A18 Referral Program fixes exist |
+| G2 | Refer a Friend / Referral Rewards build | BUILT (two-sided salon vouchers + hard budget) — see the G2 section below |
 | G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | NOT AUDITED yet |
 | G4 | Individual Technician Tipping at Checkout (per-tech tips on the customer display) | NOT AUDITED yet |
 | G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
@@ -426,3 +426,39 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
     - Visits "empty vs disconnected".
   - A push notification beyond the owner alert.
   - Owner re-authentication for high-value awards.
+
+### G2 Refer a Friend / Referral Rewards — built (Nov 5 2026)
+
+The existing Referral Program (A18, migration 751) is extended, not duplicated. A new reward type, **Salon vouchers (both
+sides)**, sits beside loyalty points and the (blocked) cash payout.
+
+- **Policy (R014, R020):** Owner sets the new-customer voucher and the referrer voucher separately ($1–$500 each), the voucher
+  minimum spend, how long vouchers last (7–365 days), a **required** campaign budget, an optional monthly cap, an optional
+  per-referrer limit and a warning percentage. A voucher policy without a budget (or one smaller than a single referral) is
+  refused, never defaulted.
+- **One discount authority (R026, R038–R041):** a voucher is a customer-bound, single-use wallet coupon on the deals engine
+  (`modules/deals/src/salon-promotions/referral-vouchers.ts`, global token `REFERRAL_VOUCHERS`, so customers does not import
+  deals). Checkout finds it in the customer's wallet like any coupon. Never cash, a gift card, global points or tokens. The code
+  is shown once and stored only as a hash + hint.
+- **Activation (R021, R035, R037):** recording a referral locks the policy row, checks the budget, the monthly cap and the
+  per-referrer limit, then reserves BOTH amounts. The friend's voucher opens at once (held if a person must review risk
+  signals first; it opens when the review is cleared). The referrer's voucher stays PENDING. No budget → `REFERRAL_BUDGET_EXHAUSTED`
+  and nothing is saved; no issuer on the server → `REFERRAL_VOUCHERS_UNAVAILABLE` (503), nothing saved.
+- **Qualification:** the friend's first completed, PAID visit (the existing rule) creates the reward and opens the referrer's
+  voucher in the same transaction, once (approval still applies when the salon requires it). No loyalty ledger entry.
+- **Closing:** a rejected referral voids the unused friend voucher and releases the pending referrer one; a refund below the
+  rule releases the pending referrer voucher; a reversed reward voids the referrer's unused voucher (a used one stands and is
+  shown as the shortfall). Used / expired vouchers reconcile from the deals ledger (REDEEMED / EXPIRED).
+- **Budget display:** summary + health show committed / remaining / redeemed and the warning; health also checks that every
+  open voucher has its wallet coupon. The referral detail lists both vouchers with state and hint.
+- **Customer App (R030–R033):** `GET /customer/referral` returns the salon's LIVE offer (null when off, not vouchers, or out of
+  budget). The Home banner was hard-coded "You both get $10" — now: "You both get $X" only when both amounts are equal, "Give
+  your friend $X, earn $Y" otherwise, and no money claim at all without a funded offer. The share text follows the same rule.
+- **Migration 815:** settings columns, CHECKs widened (`salon_voucher`), new table `referral_vouchers`
+  (UNIQUE tenant + referral + role; B-12 tenant trigger on referral_id), machine `REFERRAL_VOUCHER`.
+- **Tests:** `referral-vouchers.pgtest` (11, apps/api), `customer-extras` (offer / share text), `HomeReferralLine.test` (3);
+  existing referral pgtests (23) unchanged and green; common suite green.
+- **Not built (PARTIAL):** a customer-facing voucher list in the Customer App wallet screen (the coupon is in the wallet the
+  checkout reads; the app's Offers screen is unchanged), SMS delivery of the friend's code (the POS shows it once; sending
+  waits on the messaging consent rules), and a Super Admin cross-salon budget report.
+

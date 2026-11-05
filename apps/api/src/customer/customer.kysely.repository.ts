@@ -421,6 +421,20 @@ export class KyselyCustomerRepository implements CustomerDataPort {
     return row?.code ?? code;
   }
 
+  /** Refer a Friend build R030–R033: what the app may promise — only a configured, enabled salon-voucher offer with budget left */
+  async referralOffer(ctx: CustomerContext) {
+    const r = (await sql<any>`select t.name as salon, s.enabled, s.reward_type, s.friend_reward_cents, s.referrer_reward_cents, s.voucher_min_spend_cents, s.voucher_expiry_days,
+        s.budget_total_cents, s.budget_monthly_cents,
+        (select coalesce(sum(v.face_cents), 0)::bigint from referral_vouchers v where v.tenant_id = t.id and v.state in ('PENDING', 'AVAILABLE', 'REDEEMED')) as committed,
+        (select coalesce(sum(v.face_cents), 0)::bigint from referral_vouchers v where v.tenant_id = t.id and v.state in ('PENDING', 'AVAILABLE', 'REDEEMED') and v.created_at >= date_trunc('month', now())) as month
+      from tenants t left join referral_program_settings s on s.tenant_id = t.id where t.id = ${ctx.tenantId}`.execute(this.db)).rows[0];
+    if (!r) return { salonName: null, offer: null };
+    const per = Number(r.friend_reward_cents ?? 0) + Number(r.referrer_reward_cents ?? 0);
+    const live = r.enabled && r.reward_type === 'salon_voucher' && r.friend_reward_cents != null && r.referrer_reward_cents != null && r.budget_total_cents != null
+      && Number(r.budget_total_cents) - Number(r.committed) >= per && (r.budget_monthly_cents == null || Number(r.budget_monthly_cents) - Number(r.month) >= per);
+    return { salonName: r.salon ?? null, offer: live ? { friendRewardCents: Number(r.friend_reward_cents), referrerRewardCents: Number(r.referrer_reward_cents), minSpendCents: Number(r.voucher_min_spend_cents ?? 0), expiryDays: Number(r.voucher_expiry_days ?? 90) } : null };
+  }
+
   // ── Default salon (Oct 3 2026) ──
   async homeSalon(ctx: CustomerContext, customerId: string): Promise<HomeSalon | null> {
     const r: any = await this.db.selectFrom('customers as c').innerJoin('branches as b', 'b.id', 'c.branch_id')

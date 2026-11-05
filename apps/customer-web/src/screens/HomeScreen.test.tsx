@@ -11,7 +11,7 @@ vi.mock('../api/customerApi', () => ({
     bookingOptions: vi.fn(),
     notifications: vi.fn(),
     pendingTechRatings: vi.fn(async () => ({ pending: [] })),
-    referral: vi.fn(),
+    referral: vi.fn(async () => ({ code: 'REFX', shareMessage: 'x', offer: null })),   // Refer a Friend: no funded offer → no money claim
   },
 }));
 import { customerApi } from '../api/customerApi';
