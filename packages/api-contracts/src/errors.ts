@@ -1091,6 +1091,7 @@ export const ERROR_REGISTRY = {
   BOTTLE_REPORT_PENDING:          { status: 409, message: 'This bottle already has a pending report of that type.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   PO_NOT_PENDING:                 { status: 409, message: 'This purchase order is not waiting for approval.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   PO_ALREADY_RECEIVED:            { status: 409, message: 'Those lines are already fully received.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
+  RECEIVE_DAMAGED_INVALID:        { status: 400, message: 'More damaged bottles than were received on this line.', domain: 'inventory', retryable: false, severity: 'warning', action: 'NONE' },
   TRANSFER_NOT_FOUND:             { status: 404, message: 'That transfer could not be found.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   VENDOR_NAME_REQUIRED:           { status: 400, message: 'Enter a vendor name.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   // V-5 all modules (Oct 27 2026) — queue: free-text refusals as codes (route statuses unchanged; withCode)

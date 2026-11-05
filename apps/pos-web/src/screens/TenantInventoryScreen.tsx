@@ -540,7 +540,7 @@ function CreatePOModal({ products, onClose, onSaved }: { products: InvProduct[];
   );
 }
 
-type RecvLine = { quantity: string; lot: string; exp: string };
+type RecvLine = { quantity: string; damaged: string; lot: string; exp: string };
 function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () => void; onSaved: () => void }) {
   const [lines, setLines] = useState<PurchaseOrderLine[] | null>(null);
   const [recv, setRecv] = useState<Record<string, RecvLine>>({});
@@ -551,7 +551,7 @@ function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () 
     inventoryApi.purchaseOrder(poId).then((r) => {
       setLines(r.lines); setPoNumber(r.purchaseOrder?.po_number || '');
       const init: Record<string, RecvLine> = {};
-      r.lines.forEach((l) => { init[l.id] = { quantity: String(Math.max(0, l.quantity_ordered - l.quantity_received)), lot: l.lot_number || '', exp: l.expiration_date || '' }; });
+      r.lines.forEach((l) => { init[l.id] = { quantity: String(Math.max(0, l.quantity_ordered - l.quantity_received)), damaged: '', lot: l.lot_number || '', exp: l.expiration_date || '' }; });
       setRecv(init);
     }).catch((e: any) => setError(e?.message || tx('pos.could_not_load_purchase_order')));
   }, [poId]);
@@ -559,7 +559,7 @@ function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () 
   const recvKeys = useRef(createIntentKeys());
   const save = async () => {
     const payload = (lines || [])
-      .map((l) => ({ lineId: l.id, quantity: parseInt(recv[l.id]?.quantity || '0', 10) || 0, lotNumber: recv[l.id]?.lot || undefined, expirationDate: recv[l.id]?.exp || undefined }))
+      .map((l) => ({ lineId: l.id, quantity: parseInt(recv[l.id]?.quantity || '0', 10) || 0, damaged: parseInt(recv[l.id]?.damaged || '0', 10) || undefined, lotNumber: recv[l.id]?.lot || undefined, expirationDate: recv[l.id]?.exp || undefined }))
       .filter((x) => x.quantity > 0);
     if (payload.length === 0) { setError(tx('pos.enter_a_quantity_to_receive_on_1h96')); return; }
     setSaving(true); setError(null);
@@ -582,9 +582,10 @@ function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () 
                     <div key={l.id} className="if-row" style={{ alignItems: 'end' }}>
                       <div className="if" style={{ flex: 2 }}>
                         <span>{l.product_name}{l.color_number ? ` #${l.color_number}` : ''}</span>
-                        <div style={{ fontSize: 12, color: 'var(--muted,#8A7A66)', paddingTop: 4 }}>{tx('pos.ordered')}{' '}{l.quantity_ordered} {tx('pos.received_2')}{' '}{l.quantity_received} {tx('pos.remaining_2')}{' '}{remaining}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted,#8A7A66)', paddingTop: 4 }}>{tx('pos.ordered')}{' '}{l.quantity_ordered} {tx('pos.received_2')}{' '}{l.quantity_received} {tx('pos.remaining_2')}{' '}{remaining}{l.quantity_damaged_units ? <> · {tx('inv.recvDamagedSoFar', { n: l.quantity_damaged_units })}</> : null}</div>
                       </div>
                       <label className="if"><span>{tx('pos.receive')}</span><input value={recv[l.id]?.quantity ?? ''} onChange={(e) => setR(l.id, 'quantity', e.target.value)} inputMode="numeric" disabled={remaining === 0} /></label>
+                      <label className="if"><span>{tx('inv.recvDamaged')}</span><input value={recv[l.id]?.damaged ?? ''} onChange={(e) => setR(l.id, 'damaged', e.target.value)} inputMode="numeric" placeholder="0" disabled={remaining === 0} data-testid={'recv-damaged-' + l.id} /></label>
                       <label className="if"><span>{tx('pos.lot')}</span><input value={recv[l.id]?.lot ?? ''} onChange={(e) => setR(l.id, 'lot', e.target.value)} placeholder={tx('pos.optional_3')} disabled={remaining === 0} /></label>
                       <label className="if"><span>{tx('pos.expiration')}</span><input type="date" value={recv[l.id]?.exp ?? ''} onChange={(e) => setR(l.id, 'exp', e.target.value)} disabled={remaining === 0} /></label>
                     </div>

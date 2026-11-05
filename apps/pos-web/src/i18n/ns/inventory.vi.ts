@@ -75,6 +75,8 @@ export const INVENTORY_VI = {
   'inv.bottleAct.missing': 'Bị thất lạc',
   'inv.bottleAct.found': 'Đã tìm thấy',
   'inv.bottleAct.dispose': 'Bỏ đi',
+  'inv.recvDamaged': 'Chai bị hư',
+  'inv.recvDamagedSoFar': '{n} chai đến nơi bị hư',
   'inv.bottleNote': 'Mở chai không có nghĩa là đã dùng hết. Chai hết hạn, hư hỏng hoặc đã hết không được tính là có thể dùng.',
   'inv.noSuppliersLinked': 'Sản phẩm này chưa liên kết nhà cung cấp.',
   'inv.col.supplier': 'Nhà cung cấp',

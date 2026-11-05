@@ -28,7 +28,7 @@ export interface PurchaseOrderSummary {
 }
 export interface PurchaseOrderLine {
   id: string; product_id: string; product_name: string; color_number?: string | null;
-  quantity_ordered: number; quantity_received: number; unit_cost_cents?: number; lot_number?: string | null; expiration_date?: string | null;
+  quantity_ordered: number; quantity_received: number; quantity_damaged_units?: number; unit_cost_cents?: number; lot_number?: string | null; expiration_date?: string | null;
 }
 export interface PurchaseOrderDetail { purchaseOrder: any; lines: PurchaseOrderLine[] }
 export interface TransferBranch { id: string; name: string; city?: string | null; state?: string | null }

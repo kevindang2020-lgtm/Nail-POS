@@ -988,6 +988,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BOTTLE_REPORT_PENDING': 'Chai này đã có một báo cáo cùng loại đang chờ.',
   'errors.PO_NOT_PENDING': 'Đơn đặt hàng này không ở trạng thái chờ duyệt.',
   'errors.PO_ALREADY_RECEIVED': 'Các dòng này đã nhận đủ.',
+  'errors.RECEIVE_DAMAGED_INVALID': 'Số chai hư nhiều hơn số đã nhận trên dòng này.',
   'errors.TRANSFER_NOT_FOUND': 'Không tìm thấy phiếu chuyển kho này.',
   'errors.VENDOR_NAME_REQUIRED': 'Hãy nhập tên nhà cung cấp.',
   'errors.TECHNICIAN_REQUIRED_FOR_TECH_QUEUE': 'Hãy chỉ định thợ trước khi chuyển khách vào hàng chờ thợ.',

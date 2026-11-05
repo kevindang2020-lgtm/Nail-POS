@@ -988,6 +988,7 @@ export const ERRORS_EN = {
   'errors.BOTTLE_REPORT_PENDING': 'This bottle already has a pending report of that type.',
   'errors.PO_NOT_PENDING': 'This purchase order is not waiting for approval.',
   'errors.PO_ALREADY_RECEIVED': 'Those lines are already fully received.',
+  'errors.RECEIVE_DAMAGED_INVALID': 'More damaged bottles than were received on this line.',
   'errors.TRANSFER_NOT_FOUND': 'That transfer could not be found.',
   'errors.VENDOR_NAME_REQUIRED': 'Enter a vendor name.',
   'errors.TECHNICIAN_REQUIRED_FOR_TECH_QUEUE': 'Assign a technician before moving the guest to the Tech Queue.',

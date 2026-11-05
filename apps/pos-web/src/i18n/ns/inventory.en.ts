@@ -75,6 +75,8 @@ export const INVENTORY_EN = {
   'inv.bottleAct.missing': 'Missing',
   'inv.bottleAct.found': 'Found',
   'inv.bottleAct.dispose': 'Throw away',
+  'inv.recvDamaged': 'Damaged bottles',
+  'inv.recvDamagedSoFar': '{n} bottles arrived damaged',
   'inv.bottleNote': 'Opening a bottle does not use it up. Expired, damaged and empty bottles are not counted as available.',
   'inv.noSuppliersLinked': 'No supplier is linked to this product yet.',
   'inv.col.supplier': 'Supplier',

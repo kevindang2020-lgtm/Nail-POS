@@ -42,4 +42,25 @@ describe('purchase units on a purchase order', () => {
     const [l] = await q(`select quantity_received from purchase_order_lines where id = $1`, [line.id]);
     expect(Number(l.quantity_received)).toBe(2);   // the line stays in cases
   });
+  it('D9 gaps: bottles that arrive damaged are received but go straight to Damaged; too many is refused, nothing written', async () => {
+    const { id: vendorId } = await inv.createVendor(manager, { name: 'Broken Box Supply' });
+    const { id: pid } = await inv.createProduct(manager, { name: 'Gel Top', sku: 'GT-6' });
+    await inv.addStock(manager, pid, { quantity: 1 });   // an older bottle already on the shelf is never touched
+    await inv.linkVendorProduct(manager, vendorId, { productId: pid, purchaseUnit: 'case', unitsPerPurchaseUnit: 6 });
+    const po: any = await inv.createPurchaseOrder(manager, { vendorId, lines: [{ productId: pid, quantityOrdered: 2, unitCostCents: 600 }] });
+    await inv.approvePurchaseOrder(manager, po.id);
+    const got: any = await inv.getPurchaseOrder(manager, po.id);
+    const line = (got.lines ?? got.purchaseOrder?.lines)[0];
+    await expect(inv.receivePurchaseOrder(manager, po.id, { lines: [{ lineId: line.id, quantity: 1, damaged: 7 }] })).rejects.toThrow(/More damaged/);
+    expect((await q(`select count(*)::int n from inventory_units where product_id = $1`, [pid]))[0].n).toBe(1);
+    await inv.receivePurchaseOrder(manager, po.id, { lines: [{ lineId: line.id, quantity: 1, damaged: 2 }] });
+    const rows = await q(`select status, count(*)::int n from inventory_units where product_id = $1 group by status order by status`, [pid]);
+    expect(rows).toEqual([{ status: 'damaged', n: 2 }, { status: 'unopened', n: 5 }]);
+    const [{ quantity_on_hand }] = await q(`select quantity_on_hand from inventory_location_stock where product_id = $1`, [pid]);
+    expect(Number(quantity_on_hand)).toBe(5);
+    const [mv] = await q(`select quantity_change, reason, related_id from inventory_stock_movements where product_id = $1 and movement_type = 'damaged'`, [pid]);
+    expect(mv).toMatchObject({ quantity_change: -2, reason: 'arrived damaged', related_id: po.id });
+    const after: any = await inv.getPurchaseOrder(manager, po.id);
+    expect(Number((after.lines ?? after.purchaseOrder?.lines)[0].quantity_damaged_units)).toBe(2);
+  });
 });
