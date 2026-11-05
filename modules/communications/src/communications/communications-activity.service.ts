@@ -78,10 +78,15 @@ export class CommunicationsActivityService {
     try { const r = await text.execute(this.db); return ((r as any).rows || []) as T[]; } catch { return null; }
   }
 
-  async activity(tenantId: string, windowDays = 30): Promise<CommsActivity> {
+  /** `branchIds`: null = the whole salon; else only these locations (C2 audit, Nov 4 2026 — the tiles counted the whole salon
+   *  under a location filter). A source with no location (campaign delivery roll-ups) is then unavailable, never salon-wide. */
+  async activity(tenantId: string, windowDays = 30, branchIds: string[] | null = null): Promise<CommsActivity & { branchIds: string[] | null }> {
     const days = Math.min(365, Math.max(1, Math.round(windowDays)));
     const since = new Date(Date.now() - days * 86400000).toISOString();
     const unavailableDb = 'The source table could not be read';
+    const br = branchIds && branchIds.length ? branchIds : null;
+    const inBr = (col: ReturnType<typeof sql.ref>) => br ? sql`${col} = ANY(${br}::uuid[])` : sql`true`;
+    const thr = br ? sql`AND EXISTS (SELECT 1 FROM communication_threads t WHERE t.tenant_id = m.tenant_id AND t.id = m.thread_id AND t.branch_id = ANY(${br}::uuid[]))` : sql``;
 
     // Communications guide §7/§11 (Oct 30 2026): "today" is the SALON's calendar day (its first branch's time zone), not
     // UTC — a 9 pm New York text no longer counts toward tomorrow. Only messages that actually left (or were reserved to
@@ -90,36 +95,38 @@ export class CommunicationsActivityService {
     const tz = typeof tzRows?.[0]?.timezone === 'string' && tzRows[0].timezone ? String(tzRows[0].timezone) : 'America/New_York';
     const sent = await this.rows<any>(sql`
       SELECT count(*)::int AS n FROM communication_messages m
-      WHERE m.tenant_id = ${tenantId} AND m.direction = 'outbound' AND m.status NOT IN ('failed', 'blocked')
+      WHERE m.tenant_id = ${tenantId} AND m.direction = 'outbound' AND m.status NOT IN ('failed', 'blocked') ${thr}
         AND m.created_at >= ((now() AT TIME ZONE ${tz})::date)::timestamp AT TIME ZONE ${tz}`);
-    const roll = await this.rows<any>(sql`
+    const roll = br ? null : await this.rows<any>(sql`
       SELECT COALESCE(SUM(attempted),0)::int AS attempted, COALESCE(SUM(delivered),0)::int AS delivered
       FROM campaign_delivery_rollups WHERE tenant_id = ${tenantId} AND subject_type = 'tenant_campaign'`);
     const calls = await this.rows<any>(sql`
       SELECT count(*)::int AS n FROM voice_call_outcomes
-      WHERE tenant_id = ${tenantId} AND COALESCE(started_at, created_at) >= ${since}`);
+      WHERE tenant_id = ${tenantId} AND ${inBr(sql.ref('branch_id'))} AND COALESCE(started_at, created_at) >= ${since}`);
     const reviews = await this.rows<any>(sql`
       SELECT count(*)::int AS n FROM review_requests
-      WHERE tenant_id = ${tenantId} AND status IN ('sent','delivered','converted') AND created_at >= ${since}`);
+      WHERE tenant_id = ${tenantId} AND ${inBr(sql.ref('branch_id'))} AND status IN ('sent','delivered','converted') AND created_at >= ${since}`);
     // Avg response = customer message → first STAFF reply that actually left (AI / automated replies and refused sends excluded)
     const msgs = await this.rows<any>(sql`
       SELECT m.thread_id, m.direction, m.created_at FROM communication_messages m
-      WHERE m.tenant_id = ${tenantId} AND m.created_at >= ${since}
+      WHERE m.tenant_id = ${tenantId} AND m.created_at >= ${since} ${thr}
         AND (m.direction = 'inbound' OR (COALESCE(m.author_kind, 'staff') = 'staff' AND m.status NOT IN ('failed', 'blocked', 'pending')))
       ORDER BY m.thread_id, m.created_at LIMIT 5000`);
 
     const rebook = await this.rows<any>(sql`
       WITH obs AS (SELECT coalesce((SELECT observation_window_days FROM tenant_retention_settings WHERE tenant_id = ${tenantId}), 30) AS d),
       texted AS (SELECT r.customer_id, min(r.sent_at) AS first_sent FROM retention_sms_recipients r
-        WHERE r.tenant_id = ${tenantId} AND r.status = 'sent' AND r.sent_at >= ${since} GROUP BY r.customer_id)
+        WHERE r.tenant_id = ${tenantId} AND r.status = 'sent' AND r.sent_at >= ${since}
+          ${br ? sql`AND EXISTS (SELECT 1 FROM retention_sms_campaigns c WHERE c.tenant_id = r.tenant_id AND c.id = r.campaign_id AND c.branch_id = ANY(${br}::uuid[]))` : sql``}
+        GROUP BY r.customer_id)
       SELECT count(*)::int AS texted,
         count(*) FILTER (WHERE EXISTS (SELECT 1 FROM pos_tech_appointments a, obs WHERE a.tenant_id = ${tenantId} AND a.customer_id = x.customer_id
           AND a.created_at > x.first_sent AND a.created_at < x.first_sent + make_interval(days => obs.d)))::int AS booked
       FROM texted x`);
     return {
-      windowDays: days,
+      windowDays: days, branchIds: br,
       messagesSentToday: sent ? OK(Number(sent[0]?.n ?? 0)) : NA(unavailableDb),
-      campaignDeliveryRatePct: roll ? deliveryRatePct(Number(roll[0]?.attempted ?? 0), Number(roll[0]?.delivered ?? 0)) : NA(unavailableDb),
+      campaignDeliveryRatePct: br ? NA('Campaign delivery is recorded for the whole salon, not per location') : roll ? deliveryRatePct(Number(roll[0]?.attempted ?? 0), Number(roll[0]?.delivered ?? 0)) : NA(unavailableDb),
       aiCallsHandled: calls ? OK(Number(calls[0]?.n ?? 0)) : NA(unavailableDb),
       reviewRequestsSent: reviews ? OK(Number(reviews[0]?.n ?? 0)) : NA(unavailableDb),
       avgResponseMinutes: msgs

@@ -17,8 +17,10 @@ const YMD = /^\d{4}-\d{2}-\d{2}$/;
 export interface InboxUrlState {
   sort: typeof SORTS[number]; channel: string; status: string; assignee: string; preset: typeof PRESETS[number];
   from: string; to: string; basis: typeof BASES[number]; page: number; size: number; thread: string | null; awaiting: boolean;
+  /** C2 audit (Nov 4 2026): a location filter ('' = every location the user may see) */
+  branch: string;
 }
-export const DEFAULT_STATE: InboxUrlState = { sort: 'newest', channel: '', status: '', assignee: '', preset: 'all', from: '', to: '', basis: 'last_activity', page: 1, size: 20, thread: null, awaiting: false };
+export const DEFAULT_STATE: InboxUrlState = { sort: 'newest', channel: '', status: '', assignee: '', preset: 'all', from: '', to: '', basis: 'last_activity', page: 1, size: 20, thread: null, awaiting: false, branch: '' };
 const oneOf = <T extends string>(v: string | null, list: readonly T[], d: T): T => (v && (list as readonly string[]).includes(v) ? (v as T) : d);
 
 export function readUrlState(sp: URLSearchParams): InboxUrlState {
@@ -33,6 +35,7 @@ export function readUrlState(sp: URLSearchParams): InboxUrlState {
     assignee: a === 'me' || a === 'unassigned' || UUID.test(a) ? a : '', preset: customOk ? preset : 'all', from: customOk && preset === 'custom' ? from : '', to: customOk && preset === 'custom' ? to : '',
     basis: oneOf(sp.get('basis'), BASES, 'last_activity'), page: Math.max(1, Math.min(10_000, Math.floor(Number(sp.get('page')) || 1))),
     size: (SIZES as readonly number[]).includes(size) ? size : 20, thread: UUID.test(sp.get('thread') ?? '') ? sp.get('thread') : null, awaiting: sp.get('awaiting') === '1',
+    branch: UUID.test(sp.get('branch') ?? '') ? String(sp.get('branch')) : '',
   };
 }
 export function writeUrlState(s: InboxUrlState): URLSearchParams {
@@ -48,11 +51,12 @@ export function writeUrlState(s: InboxUrlState): URLSearchParams {
   if (s.page > 1) out.set('page', String(s.page));
   if (s.size !== 20) out.set('size', String(s.size));
   if (s.thread) out.set('thread', s.thread);
+  if (s.branch) out.set('branch', s.branch);
   return out;
 }
 /** any filter change → page 1 (the open thread stays) */
 export function withFilter(s: InboxUrlState, patch: Partial<InboxUrlState>): InboxUrlState {
-  const filterKeys: (keyof InboxUrlState)[] = ['sort', 'channel', 'status', 'assignee', 'preset', 'from', 'to', 'basis', 'size', 'awaiting'];
+  const filterKeys: (keyof InboxUrlState)[] = ['sort', 'channel', 'status', 'assignee', 'preset', 'from', 'to', 'basis', 'size', 'awaiting', 'branch'];
   const changed = filterKeys.some((k) => k in patch && patch[k] !== s[k]);
   return { ...s, ...patch, page: changed ? 1 : (patch.page ?? s.page) };
 }
@@ -63,6 +67,7 @@ export function listQuery(s: InboxUrlState, q: string): Record<string, string> {
   if (s.status) o.status = s.status;
   if (s.assignee) o.assignee = s.assignee;
   if (s.awaiting) o.awaitingOnly = 'true';
+  if (s.branch) o.branch = s.branch;
   if (s.preset === 'custom') { o.from = s.from; o.to = s.to; }
   const t = q.trim(); if (t) o.q = t.slice(0, 100);
   return o;

@@ -11,6 +11,12 @@ describe('URL state', () => {
     expect(readUrlState(new URLSearchParams(qs))).toEqual(s);
     expect(writeUrlState(DEFAULT_STATE).toString()).toBe('');
   });
+  it('C2 audit: the location filter round-trips, reaches the list query and resets the page', () => {
+    const B = 'c0330000-0000-4000-8000-0000000000b2';
+    const s = withFilter({ ...DEFAULT_STATE, page: 4 }, { branch: B });
+    expect(s.page).toBe(1); expect(readUrlState(writeUrlState(s)).branch).toBe(B); expect(listQuery(s, '').branch).toBe(B);
+    expect(readUrlState(new URLSearchParams('branch=not-a-uuid')).branch).toBe('');
+  });
   it('drops anything invalid: bad sort / size / thread id / reversed custom range; there is no search key at all', () => {
     const r = readUrlState(new URLSearchParams('sort=x&size=37&thread=../etc&preset=custom&from=2026-12-31&to=2026-12-01&q=8565551200'));
     expect(r).toMatchObject({ sort: 'newest', size: 20, thread: null, preset: 'all', from: '', to: '' });

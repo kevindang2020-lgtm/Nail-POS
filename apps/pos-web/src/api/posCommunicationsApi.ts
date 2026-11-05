@@ -44,11 +44,11 @@ export const newRequestKey = (): string => globalThis.crypto?.randomUUID?.() || 
 export const posCommunicationsApi = {
   getState: (q?: Record<string, unknown>) => api.get<any>('/pos/communications/state', q),
   // Activity/volume metrics — each value carries `available`; a false one means the SOURCE is absent, not a zero.
-  getActivity: (days = 30) => api.get<{
+  getActivity: (days = 30, branch?: string | null) => api.get<{
     windowDays: number;
     messagesSentToday: ActivityMetric; campaignDeliveryRatePct: ActivityMetric; aiCallsHandled: ActivityMetric;
     reviewRequestsSent: ActivityMetric; avgResponseMinutes: ActivityMetric; rebookingConversionPct: ActivityMetric;
-  }>('/pos/communications/activity', { days }),
+  }>('/pos/communications/activity', branch ? { days, branch } : { days }),
   reply: (id: string, body: string) => api.post<any>(`/pos/communications/threads/${id}/reply`, { body }, { 'Idempotency-Key': newRequestKey() }),
   setStatus: (id: string, status: string) => api.post<any>(`/pos/communications/threads/${id}/status`, { status }),
   create: (body: Record<string, unknown>) => api.post<any>('/pos/communications/threads', body),

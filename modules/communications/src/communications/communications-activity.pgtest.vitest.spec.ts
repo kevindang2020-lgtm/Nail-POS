@@ -37,7 +37,9 @@ beforeAll(async () => {
   await pg.exec(`CREATE TABLE voice_call_outcomes (id uuid primary key default gen_random_uuid(), tenant_id uuid not null,
     branch_id uuid, provider text default 'retell', provider_call_id text, started_at timestamptz, created_at timestamptz not null default now())`);
   // C2 audit (Nov 4 2026): rebooking conversion reads the win-back recipients and the bookings made after the text
-  await pg.exec(`CREATE TABLE retention_sms_recipients (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, customer_id uuid not null, status text not null, sent_at timestamptz)`);
+  await pg.exec(`CREATE TABLE retention_sms_recipients (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, campaign_id uuid, customer_id uuid not null, status text not null, sent_at timestamptz)`);
+  await pg.exec(`CREATE TABLE retention_sms_campaigns (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid)`);
+  await pg.exec(`CREATE TABLE communication_threads (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid)`);
   await pg.exec(`CREATE TABLE pos_tech_appointments (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, customer_id uuid, created_at timestamptz not null default now())`);
   await pg.exec(`CREATE TABLE tenant_retention_settings (tenant_id uuid primary key, observation_window_days integer not null default 30)`);
   await pg.query(`INSERT INTO retention_sms_recipients (tenant_id, customer_id, status, sent_at) VALUES
@@ -49,7 +51,7 @@ beforeAll(async () => {
     ($1, 'cb000000-0000-0000-0000-0000000000c1', now() - interval '7 days'),
     ($1, 'cb000000-0000-0000-0000-0000000000c2', now() - interval '40 days'),
     ($2, 'cb000000-0000-0000-0000-0000000000c9', now() - interval '1 days')`, [T, OTHER]);
-  await pg.exec(`CREATE TABLE review_requests (id uuid primary key default gen_random_uuid(), tenant_id uuid not null,
+  await pg.exec(`CREATE TABLE review_requests (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid,
     channel text not null default 'sms', status text not null default 'scheduled', idempotency_key text, created_at timestamptz not null default now())`);
 
   // Messages: TH1 answered in 10 min, TH2 answered in 20 min (avg 15). Two outbound TODAY. Other tenant is noisy.
@@ -113,6 +115,17 @@ describe('communications activity on real tables', () => {
 
   it('a narrower window excludes older calls', async () => {
     expect((await svc.activity(T, 3)).aiCallsHandled.value).toBe(1);
+  });
+
+  it('C2 audit: a location filter counts only that location; salon-wide-only sources are unavailable, not salon-wide', async () => {
+    const BR = 'cb000000-0000-0000-0000-0000000000b1';
+    const a = await svc.activity(T, 30, [BR]);
+    expect(a.branchIds).toEqual([BR]);
+    expect(a.campaignDeliveryRatePct.available).toBe(false);
+    expect(a.aiCallsHandled.value).toBe(0);           // every seeded call is salon-wide (no location)
+    expect(a.messagesSentToday.value).toBe(0);        // no thread of that location
+    expect(a.reviewRequestsSent).toEqual({ value: 0, available: true });
+    expect((await svc.activity(T, 30)).aiCallsHandled.value).toBeGreaterThan(0);
   });
 
   it('rebooking conversion = win-back texted customers who booked after the text (within the observation window)', async () => {

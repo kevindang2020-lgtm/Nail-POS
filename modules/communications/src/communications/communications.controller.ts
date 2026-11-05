@@ -2,6 +2,7 @@
 //  • Tenant   /pos/communications/*        — TenantAuthGuard + RolePermissionGuard, tenant-scoped inbox + conversations.
 //  • Platform /super-admin/communications  — SuperAdminGuard, cross-tenant inbox for S12.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, SuperAdminGuard, RequireFeature, ValidatedBody, RequireStepUp } from '@aipowersalon/permissions/guards';
+import { ListQuery } from '@aipowersalon/database';
 import { Controller, Get, Post, Patch, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject, Optional } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { INBOX_SERVICE, inboxCtxFrom, runInbox } from '../inbox/inbox.controller';
@@ -40,9 +41,14 @@ export class CommunicationsController {
 
   @Get('state') @RequirePermission('pos.communications.view') state(@Req() r: any, @Query() q: any) { return run(() => this.svc.getInbox(ctxFrom(r), filtersFrom(q))); }
   // Activity/volume metrics (mockup 19's KPI strip) — each from a real source, each carrying an availability flag.
-  @Get('activity') @RequirePermission('pos.communications.view') activity(@Req() r: any, @Query('days') days?: string) {
+  @Get('activity') @RequirePermission('pos.communications.view') @ListQuery({ filters: { branch: { type: 'text', maxLength: 40 } }, search: false, dateRange: { maxDays: 365 }, params: ['days'] }) activity(@Req() r: any, @Query('days') days?: string, @Query('branch') branch?: string) {
     const ctx = ctxFrom(r);
-    return run(() => this.activitySvc.activity(ctx.tenantId, days ? Number(days) : 30));
+    // C2 audit (Nov 4 2026): a location filter; a location-confined user sees only their locations (another one is refused)
+    const own: string[] | null = Array.isArray(r?.ctx?.authz?.branchIds) ? r.ctx.authz.branchIds.filter((b: unknown) => typeof b === 'string') : null;
+    const want = typeof branch === 'string' && branch.trim() && branch !== 'all' ? branch.trim() : null;
+    if (want && !/^[0-9a-f-]{36}$/i.test(want)) throw new HttpException({ code: 'VALIDATION_FAILED', message: 'Choose a location from the list.' }, 400);
+    if (want && own && !own.includes(want)) throw new HttpException({ code: 'BRANCH_NOT_AUTHORIZED', message: 'You do not have access to that location.' }, 403);
+    return run(() => this.activitySvc.activity(ctx.tenantId, days ? Number(days) : 30, want ? [want] : own));
   }
   // GET threads/:id and POST threads/:id/read were retired with the SMS Inbox (Oct 30 2026): the POS reads and marks a
   // conversation through pos/communications/inbox/threads/:id(/read), which are branch-scoped, versioned and audited.

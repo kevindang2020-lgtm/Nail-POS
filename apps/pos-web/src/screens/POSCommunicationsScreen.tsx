@@ -30,6 +30,7 @@ import { RangeCalendar } from '../components/FinanceKit';
 import { useDebounced, useEscapeToClose } from '../components/FitKit';
 import { readUrlState, writeUrlState, withFilter, listQuery, waitedFor, waitTone, deliveryTone, segmentsOf, DraftBook, atBottom, SORTS, CHANNELS, STATUSES, PRESETS, BASES, SIZES, type InboxUrlState } from './commsInboxCore';
 import { deviceToday } from '../lib/deviceToday';
+import { authApi } from '../api/authApi';
 
 const when = (iso: string | null | undefined) => { if (!iso) return ''; try { return fmtInZone(iso, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const waitText = (iso: string | null | undefined) => { const w = waitedFor(iso); if (!w) return ''; return w.d ? tx('ci.wait.dh', { d: String(w.d), h: String(w.h) }) : w.h ? tx('ci.wait.hm', { h: String(w.h), m: String(w.m) }) : tx('ci.wait.m', { m: String(w.m) }); };
@@ -92,9 +93,12 @@ export function POSCommunicationsScreen() {
   const [sum, setSum] = useState<InboxSummary | null | undefined>(undefined);
   const [act, setAct] = useState<Awaited<ReturnType<typeof posCommunicationsApi.getActivity>> | null | undefined>(undefined);
   useEffect(() => {
-    posCommunicationsApi.inbox.summary().then(setSum, () => setSum(null));
-    posCommunicationsApi.getActivity(30).then(setAct, () => setAct(null));
-  }, [live.tick]);
+    posCommunicationsApi.inbox.summary(st.branch || null).then(setSum, () => setSum(null));
+    posCommunicationsApi.getActivity(30, st.branch || null).then(setAct, () => setAct(null));
+  }, [live.tick, st.branch]);
+  // C2 audit (Nov 4 2026): the location filter (the server refuses a location the user may not see)
+  const [branches, setBranches] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => { authApi.branches().then((r) => setBranches((r.branches ?? []).map((b) => ({ id: String(b.id), name: String(b.name ?? '') })))).catch(() => setBranches([])); }, []);
 
   // ── the open conversation ──
   const [detail, setDetail] = useState<InboxDetail | null>(null); const [detailErr, setDetailErr] = useState<string | null>(null);
@@ -224,6 +228,8 @@ export function POSCommunicationsScreen() {
       {/* search + filters (server-side; page 1 on every change; the search text never goes in the URL) */}
       <section className="ci-tools" aria-label={tx('ci.filters')}>
         <input className="ci-search" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('ci.searchPh')} aria-label={tx('ci.searchPh')} data-testid="ci-search" />
+        {branches.length > 1 ? <select className="ci-sel" value={st.branch} onChange={(e) => setFilter({ branch: e.target.value })} aria-label={tx('ci.f.branch')} data-testid="ci-branch">
+          <option value="">{tx('ci.f.allBranches')}</option>{branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
         <select className="ci-sel" value={st.channel} onChange={(e) => setFilter({ channel: e.target.value })} aria-label={tx('pos.channel_filter')} data-testid="ci-channel">
           <option value="">{tx('pos.all_channels')}</option>{CHANNELS.map((c) => <option key={c} value={c}>{tx('ci.ch.' + c)}</option>)}
         </select>
