@@ -229,3 +229,7 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   service-completion date, export needs reports.export (6534233); Tips free-form adjustment route + POS "Add or remove tip"
   (db161c8). Still open in D9: variants, in-transit transfers, PO line discounts. D15 Cash Drawer rebuild extras (search,
   presets, pages, activity overlay, denominations, manager approval, version check) not built yet.
+- Nov 5 (cont.) — D15 Cash Drawer gaps BUILT (809, cb65dc0): bill / coin breakdown on a count (must add up), version check (the
+  expected cash the counter saw — a sale or refund since refuses the count), a difference over $20 waits for a manager's
+  sign-off (once, with a note; a re-count clears it), drawer history (date range, register, status incl. "needs sign-off",
+  search, server pages). Not built from the Cash Drawer guide: the activity overlay and moving the Money Protection banner.
