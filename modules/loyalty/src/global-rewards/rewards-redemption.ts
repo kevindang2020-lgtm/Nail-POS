@@ -16,7 +16,7 @@
 import { sql, type Transaction, type Kysely } from 'kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
-import { GlobalRewardsError, redeemableBlocks, tenthsLabel, dollarsLabel, centsPerPointTenth, isOwed } from './global-rewards-core';
+import { GlobalRewardsError, computeEarn, redeemableBlocks, tenthsLabel, dollarsLabel, centsPerPointTenth, isOwed } from './global-rewards-core';
 import { GlobalRewardsRepository, postJournal } from './global-rewards.repository';
 import { flagState } from './global-rewards-flags';
 import { REWARD_REDEMPTION, MERCHANT_REIMBURSEMENT } from './global-rewards-lifecycles';
@@ -55,6 +55,21 @@ export async function redemptionQuote(x: Exec, repo: GlobalRewardsRepository, a:
   const acct = (await sql<Row>`SELECT ga.available_tenths, ga.reserved_tenths FROM global_rewards_accounts ga WHERE ga.identity_id = ${id.identityId}::uuid`.execute(x)).rows[0];
   const max = redeemableBlocks(n(acct?.available_tenths), a.dueCents, program);
   return { available: true as const, availableTenths: n(acct?.available_tenths), heldTenths: n(acct?.reserved_tenths), maxBlocks: max.blocks, maxPointTenths: max.pointTenths, maxValueCents: max.valueCents, ...base };
+}
+
+/** C1 audit (Nov 4 2026) — guide §4.3: what this sale is expected to EARN, shown at Checkout before payment. An estimate from
+ *  the rule in force now and the eligible amount so far (services and retail after discounts; tax, tips, gift cards bought and
+ *  reward tenders never earn); the real earning is decided when the ticket is paid. Never writes. */
+export async function earnEstimate(x: Exec, repo: GlobalRewardsRepository, a: { tenantId: string; customerId: string | null; eligibleCents: number }) {
+  const no = (reason: string) => ({ available: false as const, reason });
+  if (!a.customerId) return no('no_customer');
+  const id = await rewardsIdentityFor(x, a.tenantId, a.customerId);
+  if (!id.ok) return no(id.code === 'REWARDS_NOT_OPTED_IN' ? 'not_opted_in' : 'identity_not_verified');
+  const resolved = await repo.resolveEarningRule(x, a.tenantId, new Date());
+  if (!resolved.ok) return no(resolved.reason);
+  const calc = computeEarn(Math.max(0, Math.floor(a.eligibleCents)), resolved.rule, resolved.program);
+  return { available: true as const, eligibleCents: Math.max(0, Math.floor(a.eligibleCents)), pointTenths: calc.pointTenths, belowMinimum: calc.belowMinimum,
+    ruleSource: resolved.rule.source, spendIncrementCents: resolved.rule.spendIncrementCents, pointTenthsPerIncrement: resolved.rule.pointTenthsPerIncrement, estimate: true as const };
 }
 
 /**

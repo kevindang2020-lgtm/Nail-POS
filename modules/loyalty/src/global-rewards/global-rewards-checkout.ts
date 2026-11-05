@@ -8,7 +8,7 @@ import { DATABASE, runAsSingleOwner, type AppDatabase } from '@aipowersalon/data
 import { logException, runTick } from '@aipowersalon/observability';
 import { runsBackgroundJob } from '@aipowersalon/config';
 import { GlobalRewardsRepository } from './global-rewards.repository';
-import { holdForTicket, releaseHold, redemptionQuote, finalizeForPaidTicket } from './rewards-redemption';
+import { holdForTicket, releaseHold, redemptionQuote, finalizeForPaidTicket, earnEstimate } from './rewards-redemption';
 import { dailyBooksCheck } from './rewards-books-check';
 
 type Row = Record<string, any>;
@@ -18,8 +18,12 @@ export const GLOBAL_REWARDS_CHECKOUT_TOKEN = 'GLOBAL_REWARDS_CHECKOUT';
 export class GlobalRewardsCheckoutAdapter {
   private readonly repo: GlobalRewardsRepository;
   constructor(private readonly db: Kysely<any>) { this.repo = new GlobalRewardsRepository(db); }
-  quote(ctx: { tenantId: string }, a: { ticketId: string; customerId: string | null; dueCents: number }) {
-    return redemptionQuote(this.db, this.repo, { tenantId: ctx.tenantId, customerId: a.customerId, dueCents: a.dueCents }) as Promise<Record<string, unknown> & { available: boolean }>;
+  async quote(ctx: { tenantId: string }, a: { ticketId: string; customerId: string | null; dueCents: number; eligibleCents?: number }) {
+    const q = await redemptionQuote(this.db, this.repo, { tenantId: ctx.tenantId, customerId: a.customerId, dueCents: a.dueCents }) as Record<string, unknown> & { available: boolean };
+    // C1 audit: what this sale is expected to earn (shown before payment) — an estimate, never a write
+    const earn = a.eligibleCents == null ? null : await earnEstimate(this.db, this.repo, { tenantId: ctx.tenantId, customerId: a.customerId, eligibleCents: a.eligibleCents })
+      .catch((e: unknown) => { logException(e, { where: 'global-rewards.earn-estimate', tenantId: ctx.tenantId }); return { available: false as const, reason: 'unavailable' }; });
+    return { ...q, earn };
   }
   async current(ctx: { tenantId: string }, ticketId: string) {
     const r = (await sql<Row>`SELECT r.id, r.payment_id, r.point_tenths, r.value_cents, r.status, r.expires_at FROM reward_redemptions r

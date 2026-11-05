@@ -80,7 +80,7 @@ const GIFT_CARD_REFUND_REFUSALS = {
 /** Global Loyalty (Final Completion guide §04): the slice of the rewards network checkout needs. Bound by the API under the
  *  string token 'GLOBAL_REWARDS_CHECKOUT' (modules/loyalty owns the rows; checkout never imports loyalty). */
 export interface GlobalRewardsCheckoutPort {
-  quote(ctx: { tenantId: string; branchId?: string | null; userId?: string | null }, a: { ticketId: string; customerId: string | null; dueCents: number }): Promise<Record<string, unknown> & { available: boolean }>;
+  quote(ctx: { tenantId: string; branchId?: string | null; userId?: string | null }, a: { ticketId: string; customerId: string | null; dueCents: number; eligibleCents?: number }): Promise<Record<string, unknown> & { available: boolean }>;
   current(ctx: { tenantId: string }, ticketId: string): Promise<{ redemptionId: string; paymentId: string | null; pointTenths: number; valueCents: number; status: string; expiresAt: string | null } | null>;
   hold(exec: unknown, ctx: { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null }, a: { ticketId: string; customerId: string; blocks: number; dueCents: number; paymentId: string; idempotencyKey: string }): Promise<{ redemptionId: string; pointTenths: number; valueCents: number; expiresAt: string; replay: boolean }>;
   release(exec: unknown, ctx: { tenantId: string; userId?: string | null }, a: { redemptionId: string; reason: string }): Promise<boolean>;
@@ -171,7 +171,11 @@ export class CheckoutService {
     if (!this.rewards) return { available: false, code: 'LOYALTY_DISABLED', reason: 'not_wired' };
     const totals = await this.repo.totalsFor(ctx, id, 'cash');   // the base total — never the card surcharge
     const due = Math.max(0, (totals?.totalDueCents ?? 0) - await this.repo.paidTotalCents(ctx, id));
-    const [quote, current] = await Promise.all([this.rewards.quote({ tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId }, { ticketId: id, customerId: t.customerId || null, dueCents: due }), this.rewards.current(ctx, id)]);
+    const current = await this.rewards.current(ctx, id);
+    // C1 audit: the earning estimate's base — services / retail after discounts (tax, tip, gift cards bought and a reward tender never earn)
+    const rewardApplied = current && ['HELD', 'CONFIRMED_REDEEMED'].includes(String(current.status)) ? current.valueCents : 0;
+    const eligibleCents = Math.max(0, (totals?.subtotalCents ?? 0) - rewardApplied);
+    const quote = await this.rewards.quote({ tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId }, { ticketId: id, customerId: t.customerId || null, dueCents: due, eligibleCents });
     return { ...quote, dueCents: due, current };
   }
   /** Apply `blocks` reward blocks as one tender: the tender row and the point hold commit together. Finalized (points spent,

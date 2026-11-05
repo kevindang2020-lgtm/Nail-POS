@@ -7,7 +7,7 @@ import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { GlobalRewardsRepository, type GrCtx } from './global-rewards.repository';
 import { earnForTicket } from './rewards-earn';
-import { holdForTicket, releaseHold, finalizeForPaidTicket, reverseRedemptionForRefund, redemptionQuote, requestPayout, applyPayoutSettlement, markPayoutEligible, type PayoutProvider } from './rewards-redemption';
+import { earnEstimate, holdForTicket, releaseHold, finalizeForPaidTicket, reverseRedemptionForRefund, redemptionQuote, requestPayout, applyPayoutSettlement, markPayoutEligible, type PayoutProvider } from './rewards-redemption';
 import { expireHolds } from './global-rewards-checkout';
 import { GlobalRewardsError } from './global-rewards-core';
 import { GR_FLAGS } from './global-rewards-flags';
@@ -329,5 +329,18 @@ describe('Super Admin suspends a rewards account', () => {
     expect(((await redemptionQuote(db, repo, { tenantId: TB, customerId: custOf[TB], dueCents: 4000 })) as any).available).toBe(true);
     const acts = (await q(`select action_type from audit_logs where entity_id::text = $1 order by created_at`, [IDV])).map((r: any) => String(r.action_type));
     expect(acts.some((a: string) => a.endsWith('account_suspended'))).toBe(true); expect(acts.some((a: string) => a.endsWith('account_reactivated'))).toBe(true);
+  });
+});
+
+// C1 audit (Nov 4 2026) §4.3: the expected earning shown at Checkout before payment (never a write)
+describe('earning estimate at checkout', () => {
+  it('a verified, opted-in customer sees what the sale would earn; no customer / not joined → unavailable', async () => {
+    const before = Number((await q(`select count(*)::int n from reward_earn_transactions`))[0].n);
+    const e: any = await earnEstimate(db, repo, { tenantId: TB, customerId: custOf[TB], eligibleCents: 10000 });
+    const r: any = (await repo.resolveEarningRule(db, TB, new Date()) as any).rule;
+    expect(e).toMatchObject({ available: true, estimate: true, eligibleCents: 10000, pointTenths: Math.floor(10000 / r.spendIncrementCents) * r.pointTenthsPerIncrement });
+    expect(await earnEstimate(db, repo, { tenantId: TB, customerId: null, eligibleCents: 10000 })).toEqual({ available: false, reason: 'no_customer' });
+    expect(await earnEstimate(db, repo, { tenantId: TB, customerId: custN, eligibleCents: 10000 })).toEqual({ available: false, reason: 'not_opted_in' });
+    expect(Number((await q(`select count(*)::int n from reward_earn_transactions`))[0].n)).toBe(before);
   });
 });

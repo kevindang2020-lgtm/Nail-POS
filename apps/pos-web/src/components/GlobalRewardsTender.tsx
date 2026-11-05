@@ -11,7 +11,9 @@ import { fmtMoney, fmtNumber } from '../i18n/format';
 import { requestId } from './FitKit';
 
 type Quote = { available: boolean; code?: string; availableTenths?: number; heldTenths?: number; maxBlocks?: number; pointsPerRedeemBlock?: number; redeemBlockValueCents?: number; dueCents?: number;
-  current?: { redemptionId: string; pointTenths: number; valueCents: number; status: string; expiresAt: string | null } | null };
+  current?: { redemptionId: string; pointTenths: number; valueCents: number; status: string; expiresAt: string | null } | null;
+  /** C1 audit (Nov 4 2026): the expected earning of this sale (an estimate; decided when the ticket is paid) */
+  earn?: { available: boolean; pointTenths?: number; belowMinimum?: boolean; reason?: string } | null };
 const pts = (tenths: number) => fmtNumber((tenths || 0) / 10, 1);
 const REASON: Record<string, string> = { REWARDS_NOT_OPTED_IN: 'rn.co.notJoined', REWARDS_IDENTITY_NOT_VERIFIED: 'rn.co.notVerified', LOYALTY_DISABLED: 'rn.co.off', MERCHANT_NOT_ENROLLED: 'rn.co.notEnrolled' };
 
@@ -61,6 +63,8 @@ export function GlobalRewardsTender({ ticketId, isPaid, onChanged }: { ticketId:
           <button disabled={busy || isPaid} onClick={() => void use()} className="border border-[var(--line)] bg-white rounded-lg px-3 py-1.5 text-xs font-bold cursor-pointer" data-testid="co-global-rewards-use">{tx('rn.co.use')}</button>
         </>
       )}
+      {q.earn?.available && !isPaid ? <span className="text-xs text-[var(--muted)]" data-testid="co-global-rewards-earn">
+        {(q.earn.pointTenths ?? 0) > 0 ? tx('rn.co.earns', { points: pts(q.earn.pointTenths ?? 0) }) : tx(q.earn.belowMinimum ? 'rn.co.earnsBelowMin' : 'rn.co.earnsNone')}</span> : null}
       {err ? <span role="alert" className="text-xs text-[#B4472A]">{err}</span> : null}
     </div>
   );
