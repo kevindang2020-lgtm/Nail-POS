@@ -2,6 +2,7 @@
 // Behind TenantAuthGuard (POS roles only; Super Admin & customers rejected) + RolePermissionGuard.
 // Guard requires `settings.view`; per-category EDIT permission + read-only rules are enforced in the service.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
+import type { PosTerminalLocationAssigned } from '@aipowersalon/api-contracts/tenant';   // wire contract (typing ratchet)
 import { Controller, Get, Patch, Post, Body, Param, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { safeInet } from '@aipowersalon/database';
 import { PosSettingsService, ForbiddenError, ValidationError } from './settings.service';
@@ -123,7 +124,7 @@ export class PosSettingsController {
   @Post('payments-checkout/terminals/:id/register') @RequirePermission('settings.view')
   termRegister(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(TERMINAL_REGISTER_BODY)) b: any) { return this.act(() => this.svc.setTerminalRegister(ctxFrom(r), id, b?.stationId ?? null)); }
   @Post('payments-checkout/terminals/:id/assign-location') @RequirePermission('settings.view')
-  termAssignLocation(@Req() r: any, @Param('id') id: string) { return this.act(() => this.svc.assignTerminalLocation(ctxFrom(r), id)); }
+  termAssignLocation(@Req() r: any, @Param('id') id: string): Promise<PosTerminalLocationAssigned> { return this.act(() => this.svc.assignTerminalLocation(ctxFrom(r), id)) as Promise<PosTerminalLocationAssigned>; }
   @Post('payments-checkout/terminals/:id/unpair') @RequirePermission('settings.view')
   termUnpair(@Req() r: any, @Param('id') id: string) { return this.act(() => this.svc.unpairTerminal(ctxFrom(r), id)); }
   @Get('payments-checkout/terminals/:id/test') @RequirePermission('settings.view')

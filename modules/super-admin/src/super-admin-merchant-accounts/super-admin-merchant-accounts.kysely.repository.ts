@@ -260,6 +260,20 @@ export class SuperAdminMerchantAccountsRepository {
     return { updated: Number(r.numAffectedRows ?? 0) };
   }
 
+  /** §9.2 surcharge enrollment on the merchant that charges this branch (its own row) or the tenant default. Returns the
+   *  previous values for the audit; null when that merchant row does not exist. Non-swallowing. */
+  async setSurchargeEnrollment(tenantId: string, branchId: string | null, v: { enrolled: boolean; rateBps: number | null; reference: string | null }, updatedBy: string | null)
+    : Promise<{ previous: { enrolled: boolean; rateBps: number | null; reference: string | null } } | null> {
+    const table = branchId ? sql`payment_merchant_accounts` : sql`tenant_payment_config`;
+    const where = branchId ? sql`tenant_id = ${tenantId} and branch_id = ${branchId}` : sql`tenant_id = ${tenantId}`;
+    const actor = branchId ? sql`updated_by = ${updatedBy}` : sql`updated_by_user_id = ${updatedBy}`;
+    const prev = (await sql`select surcharge_enrolled, surcharge_rate_bps, surcharge_reference from ${table} where ${where} limit 1`.execute(this.db as any)).rows[0] as any;
+    if (!prev) return null;
+    await sql`update ${table} set surcharge_enrolled = ${v.enrolled}, surcharge_rate_bps = ${v.rateBps}, surcharge_reference = ${v.reference},
+      config_version = config_version + 1, updated_at = now(), ${actor} where ${where}`.execute(this.db as any);
+    return { previous: { enrolled: !!prev.surcharge_enrolled, rateBps: prev.surcharge_rate_bps == null ? null : Number(prev.surcharge_rate_bps), reference: prev.surcharge_reference ?? null } };
+  }
+
   /** Update a merchant account's processing status (lifecycle transition — never a delete). Non-swallowing. */
   async updateProcessingStatus(tenantId: string, status: string, updatedBy: string | null): Promise<{ updated: number }> {
     const r = await sql`update tenant_payment_config set status = ${status}, config_version = config_version + 1, updated_at = now(), updated_by_user_id = ${updatedBy}

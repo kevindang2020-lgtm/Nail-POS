@@ -64,10 +64,10 @@ export async function writeDailySummaries(db: Kysely<any>, opts: SummaryWriteOpt
     insert into tenant_daily_sales_summary (tenant_id, branch_id, summary_date, revenue_cents, refunds_cents, created_at, updated_at)
     select t.tenant_id, t.branch_id, t.day,
            coalesce((select sum(p.amount_cents) from payments p
-                      where p.tenant_id = t.tenant_id and p.branch_id = t.branch_id and p.status = any(${revenue}::text[])
+                      where p.tenant_id = t.tenant_id and p.branch_id = t.branch_id and p.status = any(${revenue}::text[]) and not p.is_test
                         and p.created_at >= t.day_start and p.created_at < t.day_end), 0),
            coalesce((select sum(r.amount_cents) from payment_refunds r left join payments p on p.id = r.payment_id and p.tenant_id = r.tenant_id
-                      where r.tenant_id = t.tenant_id and coalesce(r.branch_id, p.branch_id) = t.branch_id and r.status = 'refunded'
+                      where r.tenant_id = t.tenant_id and coalesce(r.branch_id, p.branch_id) = t.branch_id and r.status = 'refunded' and not coalesce(p.is_test, false)
                         and r.created_at >= t.day_start and r.created_at < t.day_end), 0),
            t.day_start, now()
       from targets t

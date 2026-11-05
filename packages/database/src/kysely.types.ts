@@ -17,6 +17,7 @@ export interface PaymentsTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   stranded_at: TsNull;   // migration 549 (Phase 11): the stranded-attempt sweep could not verify this card charge
   payment_surface: string | null; device_id: string | null; card_brand: string | null; card_last4: string | null;   // migration 660 (Tap to Pay: surface dimension + safe card metadata)
+  is_test: Generated<boolean>;   // (migration 704) a UAT/sandbox card charge — excluded from platform money totals
 }
 
 export interface PaymentSignaturesTable {

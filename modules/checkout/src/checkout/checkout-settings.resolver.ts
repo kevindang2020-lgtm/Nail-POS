@@ -33,9 +33,15 @@ export async function resolveCheckoutSettings(db: Kysely<DB>, tenantId: string, 
       ? tips.defaultTipPercents.filter((x: unknown) => Number.isFinite(Number(x)) && Number(x) >= 0).map((x: unknown) => Number(x))
       : [];
 
+    // §9.2: surcharging needs the salon's own switch AND Fiserv's enrollment of the merchant that charges this branch,
+    // at Fiserv's per-MID rate. Not enrolled (or unknown) → no surcharge, whatever the salon's settings say.
+    const enr = await resolveSurchargeEnrollment(db, tenantId, branchId);
+    const salonWants = bool(pc.creditCardSurchargeEnabled, d.creditCardSurchargeEnabled);
     return {
-      creditCardSurchargeEnabled: bool(pc.creditCardSurchargeEnabled, d.creditCardSurchargeEnabled),
-      creditCardSurchargePercent: num(pc.creditCardSurchargePercent, d.creditCardSurchargePercent),
+      creditCardSurchargeEnabled: salonWants && enr.enrolled,
+      creditCardSurchargePercent: enr.enrolled && enr.rateBps ? Math.min(enr.rateBps / 100, 3) : 0,
+      surchargeEnrolled: enr.enrolled,
+      surchargeRateBps: enr.enrolled ? enr.rateBps : null,
       surchargeLabel: str(pc.surchargeLabel, d.surchargeLabel),
       taxRatePercent: taxEnabled ? num(tax.taxRatePercent, d.taxRatePercent) : 0,
       cashDiscountEnabled: bool(pc.cashDiscountEnabled, d.cashDiscountEnabled),
@@ -47,6 +53,28 @@ export async function resolveCheckoutSettings(db: Kysely<DB>, tenantId: string, 
     };
   } catch {
     return { ...d };
+  }
+}
+
+/** Fiserv master build §9.2 — the Merchant Surcharge Program enrollment of the merchant that charges this branch: the
+ *  branch's OWN merchant account if it has one (same precedence as PaymentGatewayResolver.resolve), else the tenant
+ *  default. Enrolled only with a rate of 100–300 bps; any read failure → not enrolled (fail closed). */
+export async function resolveSurchargeEnrollment(db: Kysely<DB>, tenantId: string, branchId?: string | null): Promise<{ enrolled: boolean; rateBps: number | null; scope: 'branch' | 'tenant' | 'none' }> {
+  const read = (r: any, scope: 'branch' | 'tenant') => {
+    const bps = r?.surcharge_rate_bps == null ? null : Number(r.surcharge_rate_bps);
+    const ok = r?.surcharge_enrolled === true && bps != null && Number.isInteger(bps) && bps >= 100 && bps <= 300;
+    return { enrolled: ok, rateBps: ok ? bps : null, scope };
+  };
+  try {
+    if (branchId) {
+      const br = await db.selectFrom('payment_merchant_accounts').select(['surcharge_enrolled', 'surcharge_rate_bps'])
+        .where('tenant_id', '=', tenantId).where('branch_id', '=', branchId).executeTakeFirst();
+      if (br) return read(br, 'branch');
+    }
+    const t = await db.selectFrom('tenant_payment_config').select(['surcharge_enrolled', 'surcharge_rate_bps']).where('tenant_id', '=', tenantId).executeTakeFirst();
+    return t ? read(t, 'tenant') : { enrolled: false, rateBps: null, scope: 'none' };
+  } catch {
+    return { enrolled: false, rateBps: null, scope: 'none' };
   }
 }
 

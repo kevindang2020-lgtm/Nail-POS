@@ -44,6 +44,12 @@ export interface CheckoutSettings {
   customerDisplayCaptureMode: 'front_desk' | 'terminal';
   maxTipPercent: number;                 // tip above this needs manager approval
   checkoutCompleteTimeoutSeconds: number; // display-side: seconds the 'Payment Complete' screen shows before returning to Go Check-In
+  /** §9.2: Fiserv has enrolled the merchant that charges this branch in the Merchant Surcharge Program (Super Admin
+   *  records it with Fiserv's reference). creditCardSurchargeEnabled is true only when this AND the salon's switch are on. */
+  surchargeEnrolled?: boolean;
+  /** §9.2: Fiserv's per-MID enrolled rate (basis points, 100–300). When enrolled, creditCardSurchargePercent = this / 100 —
+   *  the salon cannot type its own percent. null when not enrolled. */
+  surchargeRateBps?: number | null;
 }
 export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
   // Fiserv master build §9 (Nov 4 2026): OFF by default. A surcharge exists only for a MID Fiserv has enrolled in the

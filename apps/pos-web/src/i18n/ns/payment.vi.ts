@@ -120,4 +120,5 @@ export const PAYMENT_VI: Record<keyof typeof PAYMENT_EN, string> = {
   'payment.terminal.unassignedWarning': 'Chưa có chi nhánh — máy này không nhận thanh toán thẻ cho đến khi được gán.',
   'payment.terminal.assignHere': 'Gán cho chi nhánh này',
   'payment.terminal.assigned': '{label} đã được gán cho chi nhánh này.',
+  'payment.surcharge.disclosure': 'Chỉ áp dụng cho thẻ tín dụng: đơn vị xử lý thẻ có thể cộng thêm phụ phí {rate}%. Thẻ ghi nợ và thẻ trả trước không bao giờ bị tính phụ phí. Biên lai ghi rõ số tiền thực tế đã thu.',
 };

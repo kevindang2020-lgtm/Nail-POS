@@ -55,6 +55,16 @@ export class SkipLineCheckoutRepository {
     return t ? this.buildBill(ctx, t) : null;
   }
 
+  /** Fiserv §9.4 (Customer App lane): the conditional surcharge disclosure for this ticket — the salon's switch AND the
+   *  enrolled rate of the merchant that charges the ticket's branch. Any failure → nothing applies (fail closed). */
+  async cardSurchargeDisclosure(tenantId: string, ticketId: string): Promise<{ applies: boolean; ratePercent: number }> {
+    try {
+      const t: any = await this.db.selectFrom('tickets').select(['branch_id']).where('tenant_id', '=', tenantId).where('id', '=', ticketId).executeTakeFirst();
+      const s = await resolveCheckoutSettings(this.db, tenantId, t?.branch_id ?? null);
+      return s.creditCardSurchargeEnabled && s.creditCardSurchargePercent > 0 ? { applies: true, ratePercent: s.creditCardSurchargePercent } : { applies: false, ratePercent: 0 };
+    } catch { return { applies: false, ratePercent: 0 }; }
+  }
+
   // ---- settings ----
   /** 425: the tenant's tip cap for customer-added tips — same source the POS/display use (checkout settings). */
   async maxTipPercent(tenantId: string, branchId: string | null): Promise<number> {

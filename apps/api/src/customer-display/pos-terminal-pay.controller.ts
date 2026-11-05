@@ -8,6 +8,7 @@
 // .captureForPos — the same locks, lease, merchant routing, Bolt call and reconciliation as the customer display.
 // The answer always says one of: approved / declined / unknown (verify) / unavailable / in progress — never a fake paid.
 import { Body, Controller, ForbiddenException, Get, HttpException, Inject, Optional, Param, Post, Req, UseGuards } from '@nestjs/common';
+import type { PosTerminalOption, PosTerminalPayResult, PosTerminalCancelResult } from '@aipowersalon/api-contracts/tenant';   // wire contracts (typing ratchet)
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { S, type BodySchema } from '@aipowersalon/permissions';
 import type { TerminalCaptureService } from './terminal-capture.service';
@@ -15,16 +16,7 @@ import type { TerminalCaptureService } from './terminal-capture.service';
 const str = (max: number): BodySchema => ({ type: ['string', 'null'], maxLength: max });
 export const PAY_TERMINAL_BODY: BodySchema = S.object({ attemptKey: str(80), terminalId: str(64), stationId: str(64) });
 
-export type PosTerminalStatus = 'approved' | 'declined' | 'unknown' | 'unavailable' | 'in_progress';
-export interface PosTerminalPayResult {
-  status: PosTerminalStatus;
-  paymentId?: string;
-  retref?: string;
-  amountCents?: number;
-  message?: string;
-  /** what the POS should offer next */
-  next: 'done' | 'retry' | 'verify' | 'wait';
-}
+export type { PosTerminalStatus, PosTerminalPayResult } from '@aipowersalon/api-contracts/tenant';
 
 /** Map the capture outcome to the five front-desk states (§7.2): UNKNOWN is never shown as a decline. */
 export function posTerminalResult(o: any): PosTerminalPayResult {
@@ -53,7 +45,7 @@ export class PosTerminalPayController {
   }
 
   @Get('terminals') @RequirePermission('pos.checkout.take_payment')
-  terminals(@Req() r: any) { const s = scopeFrom(r); return this.svc().terminalsForPos(s); }
+  terminals(@Req() r: any): Promise<PosTerminalOption[]> { const s = scopeFrom(r); return this.svc().terminalsForPos(s); }
 
   @Post('tickets/:ticketId/pay/terminal') @RequirePermission('pos.checkout.take_payment')
   async pay(@Req() r: any, @Param('ticketId') ticketId: string, @Body(ValidatedBody(PAY_TERMINAL_BODY)) b: any): Promise<PosTerminalPayResult> {
@@ -64,5 +56,5 @@ export class PosTerminalPayController {
   }
 
   @Post('tickets/:ticketId/pay/terminal/cancel') @RequirePermission('pos.checkout.take_payment')
-  cancel(@Req() r: any, @Param('ticketId') ticketId: string) { const s = scopeFrom(r); return this.svc().cancelForPos(s, ticketId); }
+  cancel(@Req() r: any, @Param('ticketId') ticketId: string): Promise<PosTerminalCancelResult> { const s = scopeFrom(r); return this.svc().cancelForPos(s, ticketId); }
 }

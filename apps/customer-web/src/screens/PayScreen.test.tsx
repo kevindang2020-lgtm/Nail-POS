@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, act } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 vi.mock('../api/skipLineApi', () => ({ skipLineApi: { activeBill: vi.fn(), payCashToTech: vi.fn(), startPayment: vi.fn(), confirmPayment: vi.fn(), paymentStatus: vi.fn() } }));
 const ORIGIN = 'https://isv-uat.cardconnect.com';
@@ -19,6 +20,20 @@ const renderPay = () => render(<MemoryRouter><PayScreen /></MemoryRouter>);
 
 describe('PayScreen (Skip-the-Line Checkout)', () => {
   beforeEach(() => { vi.clearAllMocks(); });
+
+  it('Fiserv §9.4: the conditional credit-card surcharge is disclosed on the bill before paying — and only when it applies', async () => {
+    (skipLineApi.activeBill as any).mockResolvedValue({ ...resp, surcharge: { applies: true, ratePercent: 2.5 } });
+    renderPay();
+    const note = await screen.findByTestId('surcharge-disclosure');
+    expect(note.textContent).toMatch(/Credit cards only: a 2\.5% surcharge may be added/);
+    expect(note.textContent).toMatch(/Debit and prepaid cards are never surcharged/);
+    expect(screen.getByText('$51.50')).toBeTruthy();   // the total is NOT grossed up locally
+    cleanup();
+    (skipLineApi.activeBill as any).mockResolvedValue({ ...resp, surcharge: { applies: false, ratePercent: 0 } });
+    renderPay();
+    await screen.findByText('#000124');
+    expect(screen.queryByTestId('surcharge-disclosure')).toBeNull();
+  });
 
   it('shows the server-computed bill', async () => {
     (skipLineApi.activeBill as any).mockResolvedValue(resp);

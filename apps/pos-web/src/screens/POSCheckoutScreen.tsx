@@ -716,6 +716,13 @@ export function POSCheckoutScreen() {
                             <span className="text-xs text-[var(--muted)]">{tx('payment.terminal.amountOnDevice', { amount: money(t?.totalDueCents || 0) })}</span>
                           </div>
                         )}
+                        {ps?.cardSurchargeEnabled && ps.cardSurchargePercent > 0 ? (
+                          // Fiserv §9.4 / N.J.S.A. 56:8-156.2: disclosed BEFORE the card is presented. Conditional — the processor
+                          // decides per card (credit only), so no exact fee is shown as already assessed.
+                          <div role="note" data-testid="surcharge-disclosure" className="text-xs font-bold" style={{ color: 'var(--warn, #8a5a00)' }}>
+                            {tx('payment.surcharge.disclosure', { rate: String(ps.cardSurchargePercent) })}
+                          </div>
+                        ) : null}
                         {busy === 'pay' && terminalWaiting ? (
                           <div className="flex items-center gap-2 flex-wrap" role="status">
                             <span className="text-xs font-bold">{tx('payment.terminal.waiting', { terminal: terminalWaiting })}</span>

@@ -519,7 +519,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
     // Today's processed volume — intraday, from approved payments since the start of the (server-local) day. Settlements
     // batch/lag so they read ~0 intraday; approved payments are the live "what did this salon process today" signal, and
     // match how platform reports compute volume. Distinct basis from the settled MTD figure, labelled as such in the UI.
-    const todayAgg: any[] = await db.selectFrom('payments')
+    const todayAgg: any[] = await db.selectFrom('payments').where('is_test', '=', false)
       .select(['tenant_id', sql`coalesce(sum(amount_cents),0)`.as('vol'), sql`count(*)`.as('cnt')])
       .where('status', '=', 'approved').where('created_at', '>=', sql`date_trunc('day', now())`)
       .groupBy('tenant_id').execute().catch(() => []);
@@ -2178,11 +2178,11 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
     const total = Number((await base().select(sql`count(*)`.as('n')).executeTakeFirst().catch(() => ({ n: 0 })))?.n ?? 0);
     const page = Math.max(1, q.page || 1); const ps = Math.min(100, q.pageSize || 50);
     const rows: any[] = await base().clearSelect().select([
-      'pm.id', 'pm.method', 'pm.amount_cents', 'pm.tip_cents', 'pm.surcharge_cents', 'pm.status', 'pm.processor',
+      'pm.id', 'pm.method', 'pm.amount_cents', 'pm.tip_cents', 'pm.surcharge_cents', 'pm.status', 'pm.processor', 'pm.is_test',
       'pm.processor_transaction_id', 'pm.approved_at', 'pm.failed_at', 'pm.created_at', 'pm.tenant_id', 't.display_name as tenant_name',
     ]).orderBy('pm.created_at', 'desc').limit(ps).offset((page - 1) * ps).execute().catch(() => []);
     // platform-wide rollups (approved_at is the robust "successful capture" signal)
-    const totalsRow: any = await (this.db as any).selectFrom('payments').$if(!!q.tenantId, (qb: any) => qb.where('tenant_id', '=', q.tenantId)).select([
+    const totalsRow: any = await (this.db as any).selectFrom('payments').where('is_test', '=', false).$if(!!q.tenantId, (qb: any) => qb.where('tenant_id', '=', q.tenantId)).select([
       sql`count(*)`.as('total'),
       sql`count(*) filter (where approved_at is not null)`.as('successful'),
       sql`count(*) filter (where failed_at is not null)`.as('failed'),
@@ -2191,19 +2191,19 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
       sql`coalesce(sum(amount_cents) filter (where approved_at is not null and created_at::date = current_date),0)`.as('today_volume'),
       sql`coalesce(sum(tip_cents) filter (where approved_at is not null),0)`.as('tips'),
     ]).executeTakeFirst().catch(() => ({}));
-    const methodAgg: any[] = await (this.db as any).selectFrom('payments').where('approved_at', 'is not', null)
+    const methodAgg: any[] = await (this.db as any).selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null)
       .select(['method', sql`count(*)`.as('n'), sql`coalesce(sum(amount_cents),0)`.as('cents')]).groupBy('method').orderBy('cents', 'desc').execute().catch(() => []);
-    const procAgg: any[] = await (this.db as any).selectFrom('payments').where('approved_at', 'is not', null)
+    const procAgg: any[] = await (this.db as any).selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null)
       .select(['processor', sql`count(*)`.as('n'), sql`coalesce(sum(amount_cents),0)`.as('cents')]).groupBy('processor').orderBy('cents', 'desc').execute().catch(() => []);
-    const statusAgg: any[] = await (this.db as any).selectFrom('payments').select(['status', sql`count(*)`.as('n')]).groupBy('status').orderBy('n', 'desc').execute().catch(() => []);
+    const statusAgg: any[] = await (this.db as any).selectFrom('payments').where('is_test', '=', false).select(['status', sql`count(*)`.as('n')]).groupBy('status').orderBy('n', 'desc').execute().catch(() => []);
     const refundRow: any = await (this.db as any).selectFrom('payment_refunds').$if(!!q.tenantId, (qb: any) => qb.where('tenant_id', '=', q.tenantId))
       .select([sql`count(*)`.as('n'), sql`coalesce(sum(amount_cents),0)`.as('cents'), sql`count(*) filter (where created_at >= date_trunc('month', current_date))`.as('month_n'), sql`coalesce(sum(amount_cents) filter (where created_at >= date_trunc('month', current_date)),0)`.as('month_cents'), sql`coalesce(sum(amount_cents) filter (where created_at::date = current_date),0)`.as('today_cents')]).executeTakeFirst().catch(() => ({}));
     // branch payment performance (real; payments ⋈ branches)
-    const branchAgg: any[] = await (this.db as any).selectFrom('payments as p').leftJoin('branches as b', 'b.id', 'p.branch_id')
+    const branchAgg: any[] = await (this.db as any).selectFrom('payments as p').leftJoin('branches as b', 'b.id', 'p.branch_id').where('p.is_test', '=', false)
       .select(['b.name as branch', sql`count(*)`.as('txns'), sql`coalesce(sum(p.amount_cents) filter (where p.approved_at is not null),0)`.as('volume'), sql`count(*) filter (where p.approved_at is not null)`.as('ok')])
       .groupBy('b.name').orderBy('volume', 'desc').limit(12).execute().catch(() => []);
     // payment by hour-of-day (real)
-    const hourAgg: any[] = await (this.db as any).selectFrom('payments').where('approved_at', 'is not', null)
+    const hourAgg: any[] = await (this.db as any).selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null)
       .select([sql`extract(hour from created_at)`.as('hour'), sql`count(*)`.as('n'), sql`coalesce(sum(amount_cents),0)`.as('cents')]).groupBy(sql`extract(hour from created_at)`).execute().catch(() => []);
     // terminal / device payment health (real; pos_payment_terminals.branch_id is TEXT, so resolve branch via JS map — never SQL-join uuid=text)
     const termBranches: any[] = await (this.db as any).selectFrom('branches').select(['id', 'name']).execute().catch(() => []);
@@ -2214,7 +2214,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
     const payRecentAgg: any[] = await (this.db as any).selectFrom('payments as p3').leftJoin('tenants as t3', 't3.id', 'p3.tenant_id')
       .select(['p3.method', 'p3.amount_cents', 'p3.status', 'p3.created_at', 'p3.approved_at', 'p3.failed_at', 't3.display_name as tenant_name']).orderBy('p3.created_at', 'desc').limit(6).execute().catch(() => []);
     // monthly processed volume last 6 months (real)
-    const monthlyAgg: any[] = await (this.db as any).selectFrom('payments').where('approved_at', 'is not', null).where('created_at', '>=', sql`date_trunc('month', current_date) - interval '5 months'`)
+    const monthlyAgg: any[] = await (this.db as any).selectFrom('payments').where('is_test', '=', false).where('approved_at', 'is not', null).where('created_at', '>=', sql`date_trunc('month', current_date) - interval '5 months'`)
       .select([sql`to_char(date_trunc('month', created_at), 'Mon')`.as('month'), sql`count(*)`.as('n'), sql`coalesce(sum(amount_cents),0)`.as('cents')]).groupBy(sql`date_trunc('month', created_at)`).orderBy(sql`date_trunc('month', created_at)`).execute().catch(() => []);
     const grand = Number(totalsRow?.total ?? 0); const successful = Number(totalsRow?.successful ?? 0); const volume = Number(totalsRow?.volume ?? 0);
     const todayVol = Number(totalsRow?.today_volume ?? 0); const todayRef = Number(refundRow?.today_cents ?? 0);
@@ -2223,6 +2223,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
     return {
       rows: rows.map((r) => ({
         id: r.id, method: r.method, amountCents: r.amount_cents || 0, tipCents: r.tip_cents || 0, surchargeCents: r.surcharge_cents || 0,
+        isTest: r.is_test === true,   // migration 704: a UAT/sandbox card charge — listed, labelled, never in totals
         status: r.status, processor: r.processor || null, reference: r.processor_transaction_id || null,
         approved: !!r.approved_at, failed: !!r.failed_at, createdAt: r.created_at, tenantId: r.tenant_id, tenantName: r.tenant_name || null,
       })),
@@ -3137,7 +3138,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
       .select([month().as('month'), sql`count(*)`.as('n')])
       .where('created_at', '>=', sql`now() - interval '12 months'`)
       .groupBy(sql`1`).orderBy(sql`1`).execute().catch(() => []);
-    const volume: any[] = await d.selectFrom('payments')
+    const volume: any[] = await d.selectFrom('payments').where('is_test', '=', false)
       .select([month().as('month'), sql`coalesce(sum(amount_cents),0)`.as('cents')])
       .where('status', '=', 'approved').where('created_at', '>=', sql`now() - interval '12 months'`)
       .groupBy(sql`1`).orderBy(sql`1`).execute().catch(() => []);
@@ -3149,7 +3150,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
       .select(['state', sql`count(distinct tenant_id)`.as('n')])
       .where('state', 'is not', null).groupBy('state').orderBy(sql`2`, 'desc').execute().catch(() => []);
     const top: any[] = await d.selectFrom('payments')
-      .innerJoin('tenants as t', 't.id', 'payments.tenant_id')
+      .innerJoin('tenants as t', 't.id', 'payments.tenant_id').where('payments.is_test', '=', false)
       .select(['t.id as tenant_id', 't.display_name', sql`coalesce(sum(amount_cents),0)`.as('cents')])
       .where('payments.status', '=', 'approved')
       .groupBy(['t.id', 't.display_name']).orderBy(sql`3`, 'desc').limit(5).execute().catch(() => []);
@@ -3161,7 +3162,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
     const activeTenants = await totalsRow(d.selectFrom('tenants').select(sql`count(*)`.as('n')).where('status', '=', 'active'));
     const gatewayErrorTenants = await totalsRow(d.selectFrom('tenant_payment_config').select(sql`count(*)`.as('n')).where('status', '=', 'error'));
     const supportSessions30d = await totalsRow(d.selectFrom('support_access_sessions').select(sql`count(*)`.as('n')).where('started_at', '>=', sql`now() - interval '30 days'`));
-    const vol: any = await d.selectFrom('payments').select(sql`coalesce(sum(amount_cents),0)`.as('cents')).where('status', '=', 'approved').executeTakeFirst().catch(() => ({ cents: 0 }));
+    const vol: any = await d.selectFrom('payments').where('is_test', '=', false).select(sql`coalesce(sum(amount_cents),0)`.as('cents')).where('status', '=', 'approved').executeTakeFirst().catch(() => ({ cents: 0 }));
     const ai: any = await d.selectFrom('tenant_usage_limits').select(sql`coalesce(sum(used_value),0)`.as('n')).where('metric', '=', 'ai_calls').executeTakeFirst().catch(() => ({ n: 0 }));
     // Tenant Performance: per-tenant current vs prior calendar month approved card volume + growth + txn metrics.
     const tenantPerformance = await this.perfRows(100);
@@ -3195,7 +3196,7 @@ export class KyselySuperAdminPlatformRepo implements SuperAdminPlatformRepo {
         coalesce(sum(p.amount_cents) filter (where p.created_at >= date_trunc('month', now()) - interval '1 month' and p.created_at < date_trunc('month', now())), 0) as prior_cents,
         count(p.id) filter (where p.created_at >= date_trunc('month', now())) as txn_count
       from tenants t
-      left join payments p on p.tenant_id = t.id and p.status = 'approved' and p.created_at >= date_trunc('month', now()) - interval '1 month'
+      left join payments p on p.tenant_id = t.id and p.status = 'approved' and p.is_test = false and p.created_at >= date_trunc('month', now()) - interval '1 month'
       group by t.id, t.display_name, t.status
       order by cur_cents desc
       limit ${cap}

@@ -48,3 +48,4 @@ export * from './authorization';
 export * from './approvals';   // BUILD_PLAN Phase 9 (agent D): approval policy detail + create / pending results
 export * from './branch-health';   // BUILD_PLAN Phase 14 B: Constitution 11 §345 branch health (owner card + Super Admin list)
 export * from './finance';   // Receipt/Expense/OCR/Accounting mandate (Oct 21 2026): /owner/finance/*
+export * from './pos-terminal-pay';   // Fiserv master build §7 (Nov 2026): POS Card → Clover Compact

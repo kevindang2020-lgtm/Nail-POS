@@ -63,7 +63,7 @@ export class SkipLineCheckoutService {
   }
 
   // ================= CUSTOMER =================
-  async customerActiveBill(ctx: SLCtx): Promise<{ bill: Bill | null; enabledMethods: string[]; settings: SkipLineSettings }> {
+  async customerActiveBill(ctx: SLCtx): Promise<{ bill: Bill | null; enabledMethods: string[]; settings: SkipLineSettings; surcharge: { applies: boolean; ratePercent: number } }> {
     const customerId = await this.repo.resolveCustomerId(ctx);
     if (!customerId) throw new SkipLineError('not_a_customer', 'Not a customer account.', 403);
     const settings = await this.repo.getSettings(ctx.tenantId);
@@ -74,7 +74,9 @@ export class SkipLineCheckoutService {
     // Cash-to-technician is the ONLY way a customer settles without the front desk (card payments are started
     // by the front desk via sendAppPayment). So "require front desk approval" means exactly: do not offer it.
     if (settings.allowCashToTechnician && !settings.requireFrontDeskApproval) enabledMethods.push('cash_to_technician');
-    return { bill, enabledMethods, settings };
+    // Fiserv §9.4 / N.J.S.A. 56:8-156.2: the app must show the conditional credit-card surcharge BEFORE payment
+    const surcharge = bill && this.repo.cardSurchargeDisclosure ? await this.repo.cardSurchargeDisclosure(ctx.tenantId, bill.ticketId) : { applies: false, ratePercent: 0 };
+    return { bill, enabledMethods, settings, surcharge };
   }
 
   /** Customer chooses to pay cash to their technician. Creates the intent + a pending cash-confirmation for the tech. */

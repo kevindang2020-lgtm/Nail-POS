@@ -10,7 +10,7 @@ export interface ActiveBill {
   ticketStatus: string; paid: boolean;
 }
 export interface SkipLineSettings { allowCashToTechnician: boolean; featureEnabled: boolean; [k: string]: unknown; }
-export interface ActiveBillResponse { bill: ActiveBill | null; enabledMethods: string[]; settings: SkipLineSettings; }
+export interface ActiveBillResponse { bill: ActiveBill | null; enabledMethods: string[]; settings: SkipLineSettings; /** Fiserv §9.4: conditional credit-card surcharge to disclose before payment */ surcharge?: { applies: boolean; ratePercent: number } | null; }
 export interface CashToTechResult { intentId: string; confirmationId: string; technicianId: string | null; technicianName: string; amountCents: number; status: string; }
 export interface StartResult { intentId: string; ticketId: string; method: string; amountCents: number; gateway: string | null; configured: boolean; status: string; }
 export interface ConfirmResult { paid?: boolean; status: string; paymentId?: string; amountCents?: number; processorTransactionId?: string | null; intentId?: string; configured?: boolean; disabledReason?: string; declineReason?: string; }

@@ -2,6 +2,7 @@
 // /pay/card with no terminal and no token, so it never reached the terminal.
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { cleanup } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import '../i18n';   // the English catalog (keys render raw without it)
 import { POSCheckoutScreen } from './POSCheckoutScreen';
@@ -80,5 +81,27 @@ describe('POS Card → Clover Compact', () => {
     expect((await screen.findAllByText(/No terminal is paired at this location/)).length).toBeGreaterThan(0);
     fireEvent.click(screen.getByText(COMPLETE).closest('button')!);
     expect(r.calls.some((c) => c.url.includes('/pay/terminal'))).toBe(false);
+  });
+
+  it('surcharge disclosure (Fiserv §9.4): shown before the card only when the enrolled rate applies; conditional, never an assessed fee', async () => {
+    const r = router({ status: 'approved', next: 'done' });
+    globalThis.fetch = r.fetch as any;
+    render(<MemoryRouter><POSCheckoutScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByText('Jessica Miller'))[0]);
+    await screen.findByTestId('terminal-pay');
+    expect(screen.queryByTestId('surcharge-disclosure')).toBeNull();   // not enrolled → nothing to disclose
+
+    const enrolled = { ...state, paymentSettings: { ...paymentSettings, cardSurchargeEnabled: true, cardSurchargePercent: 2.5 } };
+    globalThis.fetch = vi.fn(async (url: string, init?: any) => {
+      const u = String(url);
+      const json = /state/.test(u) && !/tickets\/t1/.test(u) ? enrolled : await (await r.fetch(url, init)).json();
+      return { ok: true, status: 200, json: async () => json, text: async () => JSON.stringify(json), headers: { get: () => null } } as any;
+    }) as any;
+    cleanup();
+    render(<MemoryRouter><POSCheckoutScreen /></MemoryRouter>);
+    fireEvent.click((await screen.findAllByText('Jessica Miller'))[0]);
+    const note = await screen.findByTestId('surcharge-disclosure');
+    expect(note.textContent).toMatch(/Credit cards only: a 2\.5% surcharge may be added/);
+    expect(note.textContent).toMatch(/Debit and prepaid cards are never surcharged/);
   });
 });

@@ -52,7 +52,7 @@ export const SOURCE_DOMAINS = {
   // modules/communications
   'communications:campaigns': 'MARKETING', 'communications:communications': 'COMMUNICATIONS', 'communications:end-of-day-followups': 'MARKETING',
   'communications:messaging-inbound': 'COMMUNICATIONS', 'communications:messaging-readiness': 'COMMUNICATIONS',
-  'communications:notifications': 'COMMUNICATIONS', 'communications:push': 'COMMUNICATIONS', 'communications:reminders': 'COMMUNICATIONS',
+  'communications:notifications': 'COMMUNICATIONS', 'communications:platform-announcements': 'COMMUNICATIONS', 'communications:push': 'COMMUNICATIONS', 'communications:reminders': 'COMMUNICATIONS',
   'communications:sms-packages': 'COMMUNICATIONS', 'communications:tenant-a2p': 'COMMUNICATIONS', 'communications:tenant-messaging': 'COMMUNICATIONS',
   // modules/customers, loyalty, memberships, deals, marketing
   'customers:customer-salons': 'CUSTOMERS', 'customers:customers': 'CUSTOMERS', 'customers:pos-referrals': 'LOYALTY',

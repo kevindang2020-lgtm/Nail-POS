@@ -82,6 +82,13 @@ export function PayScreen() {
 
   const bill = data?.bill || null;
   const totalWithTip = (bill?.totalDueCents ?? 0) + tipToCharge;
+  // Fiserv §9.4 / N.J.S.A. 56:8-156.2: conditional credit-card surcharge, disclosed BEFORE payment. The processor
+  // decides per card (credit only) and the receipt shows what was actually charged — no fee is shown as already assessed.
+  const surchargeNote = data?.surcharge?.applies && data.surcharge.ratePercent > 0
+    ? <div role="note" data-testid="surcharge-disclosure" className="cust-sub" style={{ fontSize: 12, fontWeight: 700 }}>
+        Credit cards only: a {data.surcharge.ratePercent}% surcharge may be added by the card processor. Debit and prepaid cards are never surcharged. Your receipt shows the exact amount charged.
+      </div>
+    : null;
   const methods = (data?.enabledMethods || []).filter((m) => APP_METHODS.includes(m));
 
   const handleConfirm = (r: ConfirmResult, m: string) => {
@@ -241,6 +248,7 @@ export function PayScreen() {
           </>
         )}
       </div>
+      {surchargeNote}
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
       <button onClick={payCard} disabled={busy || (showNewCard && !newCard)} className="cust-btn" style={{ height: 52 }}>{busy ? 'Processing…' : `Pay ${money2(totalWithTip)}`}</button>
       <SecureNote />
@@ -304,6 +312,7 @@ export function PayScreen() {
         {Number.isInteger(chosenTipCents) && chosenTipCents > 0 ? <Row label="Your tip" value={money2(chosenTipCents)} /> : null}
         <Row label="Total" value={money2(totalWithTip)} strong />
       </div>
+      {surchargeNote}
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
       <button onClick={() => { if (!tipValid) { setMsg('Enter a valid tip amount, or choose a preset.'); return; } setMsg(null); setStep('method'); }} className="cust-btn" style={{ height: 52 }}>Pay Now</button>
       {methods.includes('cash_to_technician') ? <button onClick={() => setStep('cashConfirm')} className="cust-btn cust-btn-ghost" style={{ height: 50 }}>Pay Cash to Technician</button> : null}

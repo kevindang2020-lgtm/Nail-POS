@@ -61,16 +61,24 @@ These steps are done in the Apple Developer account:
 
 ## 3. Run order after the answers arrive
 
+The runner follows Fiserv's validation form (§13 of the master build). It writes the evidence in the PDF's
+certification columns to `uat-evidence.json` and `uat-evidence.csv`. Statuses: PASS_WITH_RETREF / EXPECTED_DECLINE / FAIL /
+SKIPPED / NOT_RUN. Re-check the form's amounts on the day you submit.
+
 | # | Step | Who | Command / place |
 |---|------|-----|-----------------|
-| 1 | Rotate UAT keys, then put them in a private Postman environment and the shell env only | Kevin | Fiserv portal |
-| 2 | Gateway scenarios S1–S9, which save a sanitized evidence file | Kevin | `npm run uat:cardpointe -w apps/api -- --evidence uat-evidence.json` |
-| 3 | Decline scenario, using an amount from Fiserv's RPCT table | Kevin | add `--decline-amount 1500.00` |
-| 4 | Compact online check (S10) | Kevin | add the `BOLT_BASE_URL` and `BOLT_AUTH_KEY` env vars |
-| 5 | Compact sale (S11): someone taps a UAT card | Kevin + device | add `--terminal-sale <HSN> --terminal-amount 1.00` |
-| 6 | In the app: assign each Compact to a location (Devices), then take a POS **Card** payment | Front desk | POS → Checkout → Card → choose terminal |
-| 7 | iPhone build with Tap to Pay, after Apple approval | Kevin | §2 |
-| 8 | Attach `uat-evidence.json` to the validation form | Kevin | Fiserv Jotform |
+| 1 | Rotate the UAT keys, then put them in a private Postman environment and the shell env only | Kevin | Fiserv portal |
+| 2 | Make a hosted-iFrame token for a Visa and an Amex UAT test card (Customer App → Add card, UAT) | Kevin | Customer App on UAT |
+| 3 | Card not present, surcharge (ZIP 19406 / 06856), tip $125.56 + $10, void | Kevin | `npm run uat:cardpointe -w apps/api -- --evidence uat-evidence --visa-token … --amex-token … --reviewer Rahul` |
+| 4 | Assign the Compact to its location in Devices, then take a POS **Card** payment and screenshot it | Front desk | POS → Checkout → Card |
+| 5 | Card present on the Compact: $1,000.12 approve, $1,100.25 decline, surcharge $9.00 (someone taps a UAT card) | Kevin + device | add `--lanes cp --terminal <HSN> [--bolt-version v4]` and `BOLT_BASE_URL` / `BOLT_AUTH_KEY` |
+| 6 | Refund of a settled sale (the next day) | Kevin | `--lanes refund --refund-retref <retref from step 3>` |
+| 7 | Rahul checks every retref in CardPointe UAT Reporting and against the app's ledger | Rahul | UAT portal |
+| 8 | iPhone build with Tap to Pay, after Apple approval | Kevin | §2 |
+| 9 | Submit only PASS_WITH_RETREF / EXPECTED_DECLINE rows, with screenshots | Kevin | Fiserv Jotform |
 
-The evidence file contains outcomes only: response codes, masked retrefs, amounts and fee fields. Production stays off
+Before step 3, Super Admin records the surcharge enrollment (Merchant Accounts → surcharge enrollment, with Ryan's
+written reference and Fiserv's rate). Until then the surcharge rows FAIL with "MID not enrolled", which is correct.
+
+The evidence contains outcomes, amounts and retrefs only; the MID and HSN are masked. Production stays off
 (`PAYMENTS_LIVE_MODE` unset, no `payment_platform_validations` row) until Fiserv certifies.

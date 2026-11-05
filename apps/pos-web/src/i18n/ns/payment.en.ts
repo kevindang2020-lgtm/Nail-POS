@@ -120,4 +120,5 @@ export const PAYMENT_EN = {
   'payment.terminal.unassignedWarning': 'No location — this terminal takes no card payments until it is assigned.',
   'payment.terminal.assignHere': 'Assign to this location',
   'payment.terminal.assigned': '{label} now belongs to this location.',
+  'payment.surcharge.disclosure': 'Credit cards only: a {rate}% surcharge may be added by the card processor. Debit and prepaid cards are never surcharged. The receipt shows the exact amount charged.',
 };
