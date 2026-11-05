@@ -18,7 +18,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { useInlineConfirm, useEventCallback } from '@aipowersalon/ui';
 import { parseDollarsToCents } from '@aipowersalon/ui';
-import { inventoryApi, type InvProduct, type PurchaseOrderLine, type InvVendor, type TransferBranch, type CountDetail, type ServiceRecipe } from '../api/inventoryApi';
+import { inventoryApi, type InvProduct, type PurchaseOrderLine, type InvVendor, type TransferBranch, type CountDetail, type ServiceRecipe, type TransferDetail } from '../api/inventoryApi';
 import { posInventoryScreenApi } from '../api/posInventoryScreenApi';
 import { posInventoryAlertsApi } from '../api/posInventoryAlertsApi';
 import { colorContrastWarning, readableTextColor } from '../lib/contrast';
@@ -351,6 +351,8 @@ function TransfersTab({ s, q, patch, setExtra, tick, can, onChanged }: TabProps 
   const scope = { search: q || undefined, direction: s.extra.direction || undefined, ...periodQuery(s.period) };
   const d = useLoad(() => posInventoryScreenApi.transfers({ ...scope, page: s.page, pageSize: SIZES.transfers }), [JSON.stringify(scope), s.page, tick]);
   const [creating, setCreating] = useState(false); const pick = usePickProducts(creating);
+  const [receiving, setReceiving] = useState<string | null>(null); const [cancelFor, setCancelFor] = useState<string | null>(null); const [cancelWhy, setCancelWhy] = useState(''); const [tErr, setTErr] = useState<string | null>(null);
+  const doCancel = async () => { if (!cancelFor) return; setTErr(null); try { await inventoryApi.cancelTransfer(cancelFor, cancelWhy.trim()); setCancelFor(null); setCancelWhy(''); d.reload(); onChanged(); } catch (e) { setTErr(errMsg(e)); } };
   const rows: any[] = d.data?.rows ?? [];
   return <>
     <Toolbar s={s} patch={patch} placeholder={tx('inv.searchTransfers')} period server={d.data?.period}>
@@ -361,11 +363,20 @@ function TransfersTab({ s, q, patch, setExtra, tick, can, onChanged }: TabProps 
       footer={<Pager info={pageInfo(d.data)} onPage={(p) => patch({ page: p }, true)} label={tx('inv.tab.transfers')} />}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading_transfers')}</div>
         : rows.length === 0 ? <Empty title={tx('pos.no_transfers_yet_move_stock_to_rh20')} />
-        : <table className="fk-table fn-table" data-testid="transfers-table"><thead><tr><th>{tx('pos.transfer')}</th><th>{tx('pos.route')}</th><th className="num">{tx('pos.moved')}</th><th>{tx('pos.status')}</th><th>{tx('pos.date')}</th><th className="t-opt">{tx('inv.col.by')}</th></tr></thead>
+        : <table className="fk-table fn-table" data-testid="transfers-table"><thead><tr><th>{tx('pos.transfer')}</th><th>{tx('pos.route')}</th><th className="num">{tx('pos.moved')}</th><th>{tx('pos.status')}</th><th>{tx('pos.date')}</th><th className="t-opt">{tx('inv.col.by')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
           <tbody>{rows.map((t) => <tr key={t.id} data-testid="transfer-row"><td><b>{t.number ?? '—'}</b><span className="fk-li-s">{t.outbound ? tx('pos.outbound') : tx('pos.inbound')}</span></td><td>{t.from ?? '—'} → {t.to ?? '—'}</td>
             <td className="num">{t.units} {tx('pos.unit_2')}{enPlural(t.units === 1 ? '' : 's')}<span className="fk-li-s">{t.items} {tx('pos.item')}{enPlural(t.items === 1 ? '' : 's')}</span></td>
-            <td><span className={'fk-chip ' + (t.status === 'completed' ? 'ok' : t.status === 'cancelled' ? 'bad' : 'warn')}>{codeLabel('admin.inventory.transfer', t.status, ['appointment', 'refund'])}</span></td><td>{when(t.createdAt)}</td><td className="t-opt">{t.createdBy ?? '—'}</td></tr>)}</tbody></table>}
+            <td><span className={'fk-chip ' + (t.status === 'completed' ? 'ok' : t.status === 'cancelled' ? 'bad' : 'warn')}>{t.status === 'in_transit' ? tx('inv.tr.inTransit') : codeLabel('admin.inventory.transfer', t.status, ['appointment', 'refund'])}</span></td><td>{when(t.createdAt)}{t.receivedAt ? <span className="fk-li-s">{tx('inv.tr.receivedAt', { t: when(t.receivedAt) })}</span> : null}</td><td className="t-opt">{t.createdBy ?? '—'}</td>
+            <td className="fn-acts">{t.status === 'in_transit' && can('inventory.transfer') ? (t.outbound
+              ? <button type="button" className="fk-btn ghost sm" onClick={() => { setCancelFor(t.id); setCancelWhy(''); setTErr(null); }} data-testid="transfer-cancel">{tx('inv.tr.cancel')}</button>
+              : <button type="button" className="fk-btn primary sm" onClick={() => setReceiving(t.id)} data-testid="transfer-receive">{tx('pos.receive')}</button>) : null}</td></tr>)}</tbody></table>}
+      {cancelFor ? <div className="fk-void" data-testid="transfer-cancel-form"><label className="fk-field"><span>{tx('inv.tr.cancelWhy')} *</span><input value={cancelWhy} onChange={(e) => setCancelWhy(e.target.value)} maxLength={500} data-testid="transfer-cancel-why" /></label>
+        <button type="button" className="fk-btn" onClick={() => setCancelFor(null)}>{tx('pos.close')}</button>
+        <button type="button" className="fk-btn primary" disabled={cancelWhy.trim().length < 3} onClick={doCancel} data-testid="transfer-cancel-save">{tx('inv.tr.cancel')}</button>
+        <div className="fk-hint">{tx('inv.tr.cancelNote')}</div></div> : null}
+      {tErr ? <div className="fk-error" role="alert">{tErr}</div> : null}
     </FitPanel>
+    {receiving ? <ReceiveTransferModal id={receiving} onClose={() => setReceiving(null)} onSaved={() => { setReceiving(null); d.reload(); onChanged(); }} /> : null}
     {creating ? (pick ? <CreateTransferModal products={pick} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); patch({ page: 1 }); d.reload(); onChanged(); }} /> : <FitDialog title={tx('pos.new_branch_transfer')} onClose={() => setCreating(false)}><div className="fk-loading">{tx('pos.loading')}</div></FitDialog>) : null}
   </>;
 }
@@ -618,11 +629,33 @@ function ReceivePOModal({ poId, onClose, onSaved }: { poId: string; onClose: () 
   );
 }
 
+/** D9 gaps (Nov 5 2026): receive a shipped transfer — how many of each product arrived (the rest is recorded missing here) */
+function ReceiveTransferModal({ id, onClose, onSaved }: { id: string; onClose: () => void; onSaved: () => void }) {
+  const [data, setData] = useState<TransferDetail | null>(null); const [got, setGot] = useState<Record<string, string>>({}); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  useEffect(() => { inventoryApi.transfer(id).then((r) => { setData(r); setGot(Object.fromEntries(r.lines.map((l) => [l.product_id, String(l.quantity_moved)]))); }).catch((e) => setErr(errMsg(e))); }, [id]);
+  const save = async () => {
+    if (!data) return; setBusy(true); setErr(null);
+    try { await inventoryApi.receiveTransfer(id, { lines: data.lines.map((l) => ({ productId: l.product_id, received: Math.min(l.quantity_moved, Math.max(0, parseInt(got[l.product_id] ?? '0', 10) || 0)) })) }); onSaved(); }
+    catch (e) { setErr(errMsg(e)); } finally { setBusy(false); }
+  };
+  const short = !!data && data.lines.some((l) => (parseInt(got[l.product_id] ?? '0', 10) || 0) < l.quantity_moved);
+  return <FitDialog title={tx('inv.tr.receiveTitle', { n: data?.transfer?.transfer_number ?? '' })} onClose={onClose} testId="transfer-receive-dialog"
+    footer={<><button type="button" className="fk-btn" onClick={onClose}>{tx('pos.cancel')}</button><button type="button" className="fk-btn primary" disabled={busy || !data} onClick={save} data-testid="transfer-receive-save">{tx('pos.receive')}</button></>}>
+    {err ? <div className="fk-error" role="alert">{err}</div> : null}
+    {!data ? <div className="fk-loading">{tx('pos.loading')}</div> : <>
+      {data.lines.map((l) => <label key={l.id} className="fk-field"><span>{l.product_name}{l.color_number ? ` #${l.color_number}` : ''} · {tx('inv.tr.shippedN', { n: fmtNumber(l.quantity_moved) })}</span>
+        <input inputMode="numeric" value={got[l.product_id] ?? ''} onChange={(e) => setGot({ ...got, [l.product_id]: e.target.value.replace(/\D/g, '') })} data-testid={'recv-tr-' + l.product_id} /></label>)}
+      {short ? <div className="fk-hint tp-warn" data-testid="transfer-short">{tx('inv.tr.shortNote')}</div> : null}
+    </>}
+  </FitDialog>;
+}
+
 type TLine = { productId: string; quantity: string };
 function CreateTransferModal({ products, onClose, onSaved }: { products: InvProduct[]; onClose: () => void; onSaved: () => void }) {
   const [branches, setBranches] = useState<TransferBranch[]>([]);
   const [toBranchId, setToBranchId] = useState('');
   const [notes, setNotes] = useState('');
+  const [ship, setShip] = useState(false);   // D9 gaps: shipped — on hand nowhere until the other location receives it
   const [lines, setLines] = useState<TLine[]>([{ productId: '', quantity: '1' }]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -637,7 +670,7 @@ function CreateTransferModal({ products, onClose, onSaved }: { products: InvProd
     if (clean.length === 0) { setError(tx('pos.add_at_least_one_product_line_rsup')); return; }
     setSaving(true); setError(null);
     try {
-      const r = await inventoryApi.createTransfer({ toBranchId, notes: notes || null, lines: clean.map((l) => ({ productId: l.productId, quantity: parseInt(l.quantity, 10) || 0 })) });
+      const r = await inventoryApi.createTransfer({ toBranchId, notes: notes || null, ...(ship ? { ship: true } : {}), lines: clean.map((l) => ({ productId: l.productId, quantity: parseInt(l.quantity, 10) || 0 })) });
       const moved = r.transfer?.unit_count ?? r.lines.reduce((s, x) => s + x.quantity_moved, 0);
       setResult({ moved, lines: r.lines.map((x) => ({ name: x.product_name + (x.color_number ? ` #${x.color_number}` : ''), moved: x.quantity_moved, requested: x.quantity_requested })) });
     } catch (e: any) { setError(e?.message || tx('pos.could_not_complete_the_transfer')); } finally { setSaving(false); }
@@ -647,7 +680,7 @@ function CreateTransferModal({ products, onClose, onSaved }: { products: InvProd
     return (
       <div className="inv-ov" onMouseDown={(e) => { if (e.target === e.currentTarget) onSaved(); }}>
         <div className="inv-modal">
-          <div className="im-h">{tx('pos.transfer_complete')}</div>
+          <div className="im-h">{ship ? tx('inv.tr.shipped') : tx('pos.transfer_complete')}</div>
           <div className="im-b">
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 8 }}>{result.moved} {tx('pos.unit_2')}{enPlural(result.moved === 1 ? '' : 's')} {tx('pos.moved_2')}</div>
             <div className="bottle-list">
@@ -678,6 +711,8 @@ function CreateTransferModal({ products, onClose, onSaved }: { products: InvProd
             </select>
           </label>
           {branches.length === 0 && <div className="inv-empty">{tx('pos.no_other_branches_available_to_transfer_1f9c')}</div>}
+          <label className="if" style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}><input type="checkbox" checked={ship} onChange={(e) => setShip(e.target.checked)} data-testid="transfer-ship" /><span>{tx('inv.tr.ship')}</span></label>
+          {ship ? <div className="fk-hint">{tx('inv.tr.shipNote')}</div> : null}
           <div style={{ fontWeight: 700, fontSize: 12.5, margin: '6px 0 4px', color: 'var(--muted,#8A7A66)' }}>{tx('pos.products_to_move')}</div>
           {lines.map((l, i) => (
             <div key={i} className="if-row" style={{ alignItems: 'end' }}>

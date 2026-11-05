@@ -5,7 +5,8 @@
 
 export type BottleStatus =
   | 'unopened' | 'opened' | 'low' | 'empty' | 'damaged' | 'expired' | 'missing' | 'returned' | 'disposed'
-  | 'sold';   // sold to a guest at retail — leaves the salon, so it is NOT on-hand (see countsFromUnits)
+  | 'sold'   // sold to a guest at retail — leaves the salon, so it is NOT on-hand (see countsFromUnits)
+  | 'in_transit';   // D9 gaps (Nov 5 2026): shipped to another location, not yet received — on hand at neither end
 export type StockStatus = 'in_stock' | 'low' | 'critical' | 'out_of_stock' | 'overstock';
 export type MovementType =
   | 'opening_balance' | 'purchase_received' | 'manual_add' | 'service_usage' | 'retail_sale'
@@ -60,9 +61,11 @@ export function reorderSuggestion(onHand: number, reorderLevel: number, reorderQ
 
 // ---- bottle lifecycle guards ----
 const BOTTLE_TRANSITIONS: Record<BottleStatus, BottleStatus[]> = {
-  unopened: ['opened', 'damaged', 'expired', 'missing', 'returned', 'sold'],   // a sealed unit is what gets sold at retail
-  opened: ['low', 'empty', 'damaged', 'expired', 'missing'],
-  low: ['empty', 'damaged', 'expired', 'missing', 'opened'],
+  unopened: ['opened', 'damaged', 'expired', 'missing', 'returned', 'sold', 'in_transit'],   // a sealed unit is what gets sold at retail
+  opened: ['low', 'empty', 'damaged', 'expired', 'missing', 'in_transit'],
+  low: ['empty', 'damaged', 'expired', 'missing', 'opened', 'in_transit'],
+  // D9 gaps (Nov 5 2026): received (back to its earlier status), cancelled (same), or not received (missing)
+  in_transit: ['unopened', 'opened', 'low', 'missing'],
   empty: ['disposed'],
   damaged: ['disposed', 'returned'],
   expired: ['disposed'],

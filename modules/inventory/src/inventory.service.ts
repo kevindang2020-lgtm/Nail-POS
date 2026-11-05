@@ -6,7 +6,7 @@ import type { ServiceRecipe } from '@aipowersalon/api-contracts/tenant';
 import { utcDate } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
 import { transitionStatus, canMoveToSql, type DB } from '@aipowersalon/database';
-import { PURCHASE_ORDER, INVENTORY_COUNT, INVENTORY_TECH_REPORT, PRODUCT_USAGE_EVENT } from './inventory-lifecycles';
+import { PURCHASE_ORDER, INVENTORY_COUNT, INVENTORY_TECH_REPORT, PRODUCT_USAGE_EVENT, INVENTORY_TRANSFER } from './inventory-lifecycles';
 import { onOrderSql } from './stock-alert-state';
 import {
   countsFromUnits, stockStatus, reorderSuggestion, canTransitionBottle, validateTechReport,
@@ -1192,7 +1192,7 @@ export class InventoryService {
   async listTransfers(ctx: InvCtx) {
     const branchId = await this.resolveBranchId(ctx);
     const r = await sql<any>`
-      SELECT t.id, t.transfer_number, t.status, t.from_branch_id, t.to_branch_id, t.item_count, t.unit_count, t.notes, t.created_at,
+      SELECT t.id, t.transfer_number, t.status, t.from_branch_id, t.to_branch_id, t.item_count, t.unit_count, t.notes, t.created_at, t.dispatched_at, t.received_at, t.cancelled_at, t.cancel_reason,
              fb.name AS from_branch_name, tb.name AS to_branch_name, (t.from_branch_id = ${branchId}) AS outbound
       FROM inventory_transfers t
       LEFT JOIN branches fb ON fb.id = t.from_branch_id
@@ -1207,7 +1207,7 @@ export class InventoryService {
       FROM inventory_transfers t LEFT JOIN branches fb ON fb.id = t.from_branch_id LEFT JOIN branches tb ON tb.id = t.to_branch_id
       WHERE t.id = ${id} AND t.tenant_id = ${ctx.tenantId} AND (t.from_branch_id = ${ctx.branchId} OR t.to_branch_id = ${ctx.branchId})`.execute(this.need());
     if (!h.rows[0]) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
-    const lines = await sql<any>`SELECT l.id, l.product_id, l.quantity_requested, l.quantity_moved, p.name AS product_name, p.color_number
+    const lines = await sql<any>`SELECT l.id, l.product_id, l.quantity_requested, l.quantity_moved, l.quantity_received, p.name AS product_name, p.color_number
       FROM inventory_transfer_lines l JOIN inventory_products p ON p.id = l.product_id
       WHERE l.transfer_id = ${id} AND l.tenant_id = ${ctx.tenantId} ORDER BY p.name`.execute(this.need());
     return { transfer: h.rows[0], lines: lines.rows };
@@ -1237,6 +1237,9 @@ export class InventoryService {
 
     const destCtx: InvCtx = { ...ctx, branchId: toBranchId };
     const transferNumber = 'TR-' + Date.now().toString(36).toUpperCase();
+    // D9 gaps (Nov 5 2026): `ship` = the bottles go IN TRANSIT (off the source's stock, on hand nowhere) until the
+    // destination receives them; without it the transfer moves them at once, as before
+    const ship = b?.ship === true;
     // audit D9 (Nov 4 2026): the header, every line, the bottle moves, both ledgers and the audit are ONE transaction under
     // the stock lock of both locations (taken in branch order, so two opposite transfers cannot deadlock) — a failure part
     // way used to leave bottles moved with no ledger, or a transfer with half its lines
@@ -1245,7 +1248,8 @@ export class InventoryService {
       for (const c of [ctx, destCtx].sort((a, z) => String(a.branchId).localeCompare(String(z.branchId)))) await this.lockStock(c, pids, trx);
       const th = await sql<{ id: string }>`INSERT INTO inventory_transfers
         (tenant_id, from_branch_id, to_branch_id, transfer_number, status, notes, created_by_user_id)
-        VALUES (${ctx.tenantId}, ${ctx.branchId}, ${toBranchId}, ${transferNumber}, 'completed', ${b?.notes ?? null}, ${ctx.userId}) RETURNING id`.execute(trx);
+        VALUES (${ctx.tenantId}, ${ctx.branchId}, ${toBranchId}, ${transferNumber}, ${ship ? 'in_transit' : 'completed'}, ${b?.notes ?? null}, ${ctx.userId}) RETURNING id`.execute(trx);
+      if (ship) await sql`UPDATE inventory_transfers SET dispatched_at = now() WHERE id = ${th.rows[0].id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
       const transferId = th.rows[0].id;
       let itemCount = 0, unitCount = 0;
       for (const { pid, want } of lines) {
@@ -1261,7 +1265,9 @@ export class InventoryService {
             LIMIT ${want}
             FOR UPDATE SKIP LOCKED
           )
-          UPDATE inventory_units u SET branch_id = ${toBranchId}, storage_location = NULL, updated_at = now()
+          UPDATE inventory_units u SET ${ship
+              ? sql`status = 'in_transit', transit_from_status = u.status, in_transfer_id = ${transferId}`
+              : sql`branch_id = ${toBranchId}, storage_location = NULL`}, updated_at = now()
           FROM picked WHERE u.id = picked.id RETURNING u.id`.execute(trx);
         const movedCount = moved.rows.length;
         const srcAfter = (await this.recompute(ctx, pid, trx)).onHand;
@@ -1270,17 +1276,92 @@ export class InventoryService {
           VALUES (${ctx.tenantId}, ${transferId}, ${pid}, ${want}, ${movedCount})`.execute(trx);
         if (movedCount > 0) {
           await this.move(ctx, pid, null, 'transfer_out', srcBefore, -movedCount, srcAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId }, trx);
-          await this.move(destCtx, pid, null, 'transfer_in', destBefore, movedCount, destAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId }, trx);
+          if (!ship) await this.move(destCtx, pid, null, 'transfer_in', destBefore, movedCount, destAfter, 'Transfer ' + transferNumber, { type: 'transfer', id: transferId }, trx);
           itemCount += 1; unitCount += movedCount;
         }
       }
       // nothing was available — the transaction rolls back, so no empty transfer is left behind
       if (unitCount === 0) throw withCode(new InventoryError(409, 'No stock was available to transfer for the selected products'), 'NO_STOCK_TO_TRANSFER');
       await sql`UPDATE inventory_transfers SET item_count = ${itemCount}, unit_count = ${unitCount}, updated_at = now() WHERE id = ${transferId} AND tenant_id = ${ctx.tenantId}`.execute(trx);
-      await this.audit(ctx, 'inventory_transfer_created', null, null, { id: transferId, transferNumber, toBranchId, items: itemCount, units: unitCount }, trx);
+      await this.audit(ctx, ship ? 'inventory_transfer_shipped' : 'inventory_transfer_created', null, null, { id: transferId, transferNumber, toBranchId, items: itemCount, units: unitCount }, trx);
       return transferId;
     });
     return this.getTransfer(ctx, out);
+  }
+
+  /** D9 gaps (Nov 5 2026): the DESTINATION receives a shipped transfer — all of it, or per product how many arrived. Arrived
+   *  bottles join the destination's stock with the status they left with (one transfer_in per product); bottles that did
+   *  not arrive are recorded missing AT THE DESTINATION (they had already left the source). One transaction under both
+   *  locations' stock locks; the transfer moves in_transit → completed once (a second receive is refused). */
+  async receiveTransfer(ctx: InvCtx, id: string, b: any) {
+    const t = (await sql<any>`SELECT * FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
+    if (!t || (t.to_branch_id !== ctx.branchId && t.from_branch_id !== ctx.branchId)) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
+    if (t.to_branch_id !== ctx.branchId) throw withCode(new InventoryError(403, 'Only the receiving location can receive this transfer'), 'TRANSFER_RECEIVE_DESTINATION_ONLY');
+    if (t.status !== 'in_transit') throw withCode(new InventoryError(409, 'This transfer is not in transit'), 'TRANSFER_NOT_IN_TRANSIT');
+    const srcCtx: InvCtx = { ...ctx, branchId: String(t.from_branch_id) };
+    const want = new Map<string, number>();
+    for (const l of Array.isArray(b?.lines) ? b.lines : []) {
+      const n = parseInt(l?.received, 10);
+      if (!l?.productId || !Number.isInteger(n) || n < 0) throw withCode(new InventoryError(400, 'Each line needs a product and a received count of 0 or more'), 'LINE_QUANTITY_INVALID');
+      want.set(String(l.productId), n);
+    }
+    await this.need().transaction().execute(async (trx0) => {
+      const trx = trx0 as unknown as Kysely<DB>;
+      const lines = (await sql<any>`SELECT id, product_id, quantity_moved FROM inventory_transfer_lines WHERE transfer_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx)).rows;
+      const pids = lines.map((l: any) => String(l.product_id));
+      for (const c of [srcCtx, ctx].sort((a, z) => String(a.branchId).localeCompare(String(z.branchId)))) await this.lockStock(c, pids, trx);
+      const moved = await transitionStatus(trx, INVENTORY_TRANSFER, { where: { id, tenant_id: ctx.tenantId }, from: ['in_transit'], to: 'completed',
+        set: { received_at: sql`now()`, received_by_user_id: ACTOR_UUID.test(ctx.userId) ? ctx.userId : null, updated_at: sql`now()` } });
+      if (!moved) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
+      let arrivedTotal = 0, missingTotal = 0;
+      for (const l of lines) {
+        const pid = String(l.product_id);
+        const units = (await sql<{ id: string }>`SELECT id FROM inventory_units WHERE tenant_id = ${ctx.tenantId} AND in_transfer_id = ${id} AND product_id = ${pid} AND status = 'in_transit' ORDER BY id FOR UPDATE`.execute(trx)).rows.map((r) => r.id);
+        const arrive = Math.min(units.length, want.has(pid) ? (want.get(pid) as number) : units.length);
+        const ok = units.slice(0, arrive), lost = units.slice(arrive);
+        const before = (await this.recompute(ctx, pid, trx)).onHand;
+        if (ok.length) await sql`UPDATE inventory_units SET branch_id = ${ctx.branchId}, status = coalesce(transit_from_status, 'unopened'), transit_from_status = NULL, in_transfer_id = NULL, storage_location = NULL, updated_at = now()
+          WHERE tenant_id = ${ctx.tenantId} AND id = ANY(${ok}::uuid[])`.execute(trx);
+        if (lost.length) await sql`UPDATE inventory_units SET branch_id = ${ctx.branchId}, status = 'missing', transit_from_status = NULL, in_transfer_id = NULL, updated_at = now()
+          WHERE tenant_id = ${ctx.tenantId} AND id = ANY(${lost}::uuid[])`.execute(trx);
+        const after = (await this.recompute(ctx, pid, trx)).onHand;
+        if (ok.length) await this.move(ctx, pid, null, 'transfer_in', before, after - before, after, 'Transfer ' + (t.transfer_number ?? id) + ' received', { type: 'transfer', id }, trx);
+        if (lost.length) await this.move(ctx, pid, null, 'missing', after, 0, after, `Transfer ${t.transfer_number ?? id}: ${lost.length} did not arrive`, { type: 'transfer', id }, trx);
+        await sql`UPDATE inventory_transfer_lines SET quantity_received = ${ok.length} WHERE id = ${l.id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+        arrivedTotal += ok.length; missingTotal += lost.length;
+      }
+      if (b?.notes) await sql`UPDATE inventory_transfers SET notes = trim(coalesce(notes, '') || E'\n' || ${'Received: ' + String(b.notes).slice(0, 1000)}) WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+      await this.audit(ctx, 'inventory_transfer_received', null, null, { id, arrived: arrivedTotal, missing: missingTotal }, trx);
+    });
+    return this.getTransfer(ctx, id);
+  }
+
+  /** D9 gaps (Nov 5 2026): the SOURCE cancels a shipped transfer that has not been received — its bottles come back to the
+   *  source with the status they left with (one correction per product); in_transit → cancelled once, with a reason. */
+  async cancelTransfer(ctx: InvCtx, id: string, b: any) {
+    const reason = String(b?.reason ?? '').trim().slice(0, 500);
+    if (reason.length < 3) throw withCode(new InventoryError(400, 'Give a reason for cancelling the transfer'), 'TRANSFER_CANCEL_REASON_REQUIRED');
+    const t = (await sql<any>`SELECT * FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
+    if (!t || (t.to_branch_id !== ctx.branchId && t.from_branch_id !== ctx.branchId)) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
+    if (t.from_branch_id !== ctx.branchId) throw withCode(new InventoryError(403, 'Only the sending location can cancel this transfer'), 'TRANSFER_CANCEL_SOURCE_ONLY');
+    if (t.status !== 'in_transit') throw withCode(new InventoryError(409, 'This transfer is not in transit'), 'TRANSFER_NOT_IN_TRANSIT');
+    await this.need().transaction().execute(async (trx0) => {
+      const trx = trx0 as unknown as Kysely<DB>;
+      const pids = (await sql<{ product_id: string }>`SELECT DISTINCT product_id FROM inventory_transfer_lines WHERE transfer_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx)).rows.map((r) => String(r.product_id));
+      await this.lockStock(ctx, pids, trx);
+      const moved = await transitionStatus(trx, INVENTORY_TRANSFER, { where: { id, tenant_id: ctx.tenantId }, from: ['in_transit'], to: 'cancelled',
+        set: { cancelled_at: sql`now()`, cancelled_by_user_id: ACTOR_UUID.test(ctx.userId) ? ctx.userId : null, cancel_reason: reason, updated_at: sql`now()` } });
+      if (!moved) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
+      for (const pid of pids) {
+        const before = (await this.recompute(ctx, pid, trx)).onHand;
+        const back = await sql`UPDATE inventory_units SET status = coalesce(transit_from_status, 'unopened'), transit_from_status = NULL, in_transfer_id = NULL, updated_at = now()
+          WHERE tenant_id = ${ctx.tenantId} AND in_transfer_id = ${id} AND product_id = ${pid} AND status = 'in_transit'`.execute(trx);
+        const after = (await this.recompute(ctx, pid, trx)).onHand;
+        if (Number(back.numAffectedRows ?? 0)) await this.move(ctx, pid, null, 'correction', before, after - before, after, 'Transfer ' + (t.transfer_number ?? id) + ' cancelled: ' + reason, { type: 'transfer', id }, trx);
+      }
+      await this.audit(ctx, 'inventory_transfer_cancelled', null, null, { id, reason }, trx);
+    });
+    return this.getTransfer(ctx, id);
   }
 
   // ---- physical inventory counts (§20) — snapshot, enter, reconcile to system of record ----

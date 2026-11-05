@@ -344,11 +344,12 @@ export class InventoryScreenRepository extends StockAlertsRepository {
           OR EXISTS (SELECT 1 FROM inventory_transfer_lines tl JOIN inventory_products p ON p.id = tl.product_id AND p.tenant_id = tl.tenant_id WHERE tl.transfer_id = t.id AND tl.tenant_id = t.tenant_id AND (lower(p.name) LIKE ${l} OR lower(coalesce(p.sku, '')) LIKE ${l})))`;
     const total = N((await sql<{ n: number }>`SELECT count(*)::int AS n ${base}`.execute(this.db)).rows[0]?.n);
     const pp = pages(total, pg);
-    const rows = (await sql<any>`SELECT t.id, t.transfer_number, t.status, t.item_count, t.unit_count, t.notes, t.created_at, fb.name AS from_name, tb.name AS to_name, (t.from_branch_id = ${b}) AS outbound, ${nameOf('cu')} AS created_by
+    const rows = (await sql<any>`SELECT t.id, t.transfer_number, t.status, t.item_count, t.unit_count, t.notes, t.created_at, t.dispatched_at, t.received_at, fb.name AS from_name, tb.name AS to_name, (t.from_branch_id = ${b}) AS outbound, ${nameOf('cu')} AS created_by
       ${base} ORDER BY t.created_at DESC, t.id DESC LIMIT ${pg.pageSize} OFFSET ${(pp.page - 1) * pg.pageSize}`.execute(this.db)).rows;
     return { total, page: pp.page, pageSize: pg.pageSize, pages: pp.pages, period, rows: rows.map((r: any) => ({
       id: String(r.id), number: r.transfer_number ?? null, status: r.status, items: N(r.item_count), units: N(r.unit_count), notes: r.notes ?? null, createdAt: isoOf(r.created_at),
       from: r.from_name ?? null, to: r.to_name ?? null, outbound: !!r.outbound, createdBy: r.created_by ?? null,
+      dispatchedAt: isoOf(r.dispatched_at), receivedAt: isoOf(r.received_at),   // D9 gaps: a shipped transfer's dates
     })) };
   }
 

@@ -40,3 +40,12 @@ export const PRODUCT_USAGE_EVENT = defineStateMachine({
   transitions: { confirmed: ['reversed'] },
   initial: ['confirmed'],
 });
+
+/** inventory_transfers.status — D9 gaps (Nov 5 2026): an immediate transfer is written 'completed'; a shipped one starts
+ *  'in_transit' and is received (completed) by the destination or cancelled by the source — once. */
+export const INVENTORY_TRANSFER = defineStateMachine({
+  name: 'inventory_transfer', table: 'inventory_transfers', column: 'status',
+  states: ['in_transit', 'completed', 'cancelled'],
+  transitions: { in_transit: ['completed', 'cancelled'] },
+  initial: ['in_transit', 'completed'],
+});

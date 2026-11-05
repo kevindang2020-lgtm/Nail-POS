@@ -1100,6 +1100,10 @@ export const ERROR_REGISTRY = {
   PO_ALREADY_RECEIVED:            { status: 409, message: 'Those lines are already fully received.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   RECEIVE_DAMAGED_INVALID:        { status: 400, message: 'More damaged bottles than were received on this line.', domain: 'inventory', retryable: false, severity: 'warning', action: 'NONE' },
   TRANSFER_NOT_FOUND:             { status: 404, message: 'That transfer could not be found.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
+  TRANSFER_RECEIVE_DESTINATION_ONLY: { status: 403, message: 'Only the receiving location can receive this transfer.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
+  TRANSFER_CANCEL_SOURCE_ONLY:    { status: 403, message: 'Only the sending location can cancel this transfer.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
+  TRANSFER_NOT_IN_TRANSIT:        { status: 409, message: 'This transfer is not in transit.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
+  TRANSFER_CANCEL_REASON_REQUIRED: { status: 400, message: 'Give a reason for cancelling the transfer.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   VENDOR_NAME_REQUIRED:           { status: 400, message: 'Enter a vendor name.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   // V-5 all modules (Oct 27 2026) — queue: free-text refusals as codes (route statuses unchanged; withCode)
   TECHNICIAN_REQUIRED_FOR_TECH_QUEUE:{ status: 400, message: 'Assign a technician before moving the guest to the Tech Queue.', domain: 'queue', retryable: false, severity: 'info', action: 'NONE' },

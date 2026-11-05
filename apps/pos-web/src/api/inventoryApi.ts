@@ -37,7 +37,7 @@ export interface TransferSummary {
   from_branch_name?: string | null; to_branch_name?: string | null; item_count: number; unit_count: number;
   notes?: string | null; created_at: string; outbound: boolean;
 }
-export interface TransferLine { id: string; product_id: string; product_name: string; color_number?: string | null; quantity_requested: number; quantity_moved: number }
+export interface TransferLine { id: string; product_id: string; product_name: string; color_number?: string | null; quantity_requested: number; quantity_moved: number; quantity_received?: number | null }
 export interface TransferDetail { transfer: any; lines: TransferLine[] }
 
 export type CountSummary = { id: string; count_number: string; status: 'in_progress' | 'submitted' | 'reconciled' | 'cancelled'; scope_type: 'all' | 'category' | 'brand'; scope_id: string | null; scope_label: string; notes: string | null; line_count: number; counted_count: number; variance_units: number; created_at: string; reconciled_at: string | null };
@@ -91,6 +91,9 @@ export const inventoryApi = {
   transfers: () => api.get<{ transfers: TransferSummary[] }>('/tenant/inventory/transfers'),
   transfer: (id: string) => api.get<TransferDetail>(`/tenant/inventory/transfers/${id}`),
   createTransfer: (b: any) => api.post<TransferDetail>('/tenant/inventory/transfers', b),
+  // D9 gaps (Nov 5 2026): receive a shipped transfer (all, or per product how many arrived) / cancel it while in transit
+  receiveTransfer: (id: string, b: { lines?: { productId: string; received: number }[]; notes?: string }) => api.post<TransferDetail>(`/tenant/inventory/transfers/${id}/receive`, b as Record<string, unknown>),
+  cancelTransfer: (id: string, reason: string) => api.post<TransferDetail>(`/tenant/inventory/transfers/${id}/cancel`, { reason }),
   counts: (status?: string) => api.get<{ counts: CountSummary[] }>('/tenant/inventory/counts', status ? { status } : undefined),
   count: (id: string) => api.get<CountDetail>(`/tenant/inventory/counts/${id}`),
   createCount: (b: any) => api.post<{ id: string; countNumber: string }>('/tenant/inventory/counts', b),

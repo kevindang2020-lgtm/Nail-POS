@@ -1237,7 +1237,8 @@
   ],
   "inventory_transfers.status": [
    "cancelled",
-   "completed"
+   "completed",
+   "in_transit"
   ],
   "invoice_deliveries.status": [
    "blocked",

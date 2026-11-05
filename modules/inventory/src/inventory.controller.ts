@@ -2,7 +2,7 @@
 // Tenant + branch come from the session (req.ctx); never from the client.
 import { Idempotent } from '@aipowersalon/database/nest';   // D10: a double tap creates / receives once
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PO_UPDATE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_VENDOR_BODY } from './request-schemas';
+import { INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PO_UPDATE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_TRANSFER_RECEIVE_BODY, INV_TRANSFER_CANCEL_BODY, INV_VENDOR_BODY } from './request-schemas';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService, InventoryError } from './inventory.service';
@@ -70,6 +70,9 @@ export class InventoryController {
   @Get('transfers') @RequirePermission('inventory.transfer') listTransfers(@Req() r: any) { return run(() => this.svc.listTransfers(ctx(r))); }
   @Get('transfers/branches') @RequirePermission('inventory.transfer') transferBranches(@Req() r: any) { return run(() => this.svc.listTransferBranches(ctx(r))); }
   @Get('transfers/:id') @RequirePermission('inventory.transfer') getTransfer(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.getTransfer(ctx(r), id)); }
+  // D9 gaps (Nov 5 2026): the destination receives a shipped transfer (all or part); the source cancels it while in transit
+  @Idempotent() @Post('transfers/:id/receive') @RequirePermission('inventory.transfer') receiveTransfer(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_TRANSFER_RECEIVE_BODY, { strict: true })) b: any) { return run(() => this.svc.receiveTransfer(ctx(r), id, b)); }
+  @Idempotent() @Post('transfers/:id/cancel') @RequirePermission('inventory.transfer') cancelTransfer(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_TRANSFER_CANCEL_BODY, { strict: true })) b: any) { return run(() => this.svc.cancelTransfer(ctx(r), id, b)); }
   @Post('transfers') @RequirePermission('inventory.transfer') createTransfer(@Req() r: any, @Body(ValidatedBody(INV_TRANSFER_BODY, { strict: true })) b: any) { return run(() => this.svc.createTransfer(ctx(r), b)); }
 
   // ---- physical inventory counts (§20) ----

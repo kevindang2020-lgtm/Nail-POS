@@ -56,7 +56,10 @@ export const INV_PO_UPDATE_BODY: BodySchema = obj({
   lines: lines(S.object({ productId: id, quantityOrdered: num, unitCostCents: num })),
 });
 export const INV_PO_RECEIVE_BODY: BodySchema = obj({ lines: lines(S.object({ lineId: id, quantity: num, damaged: num, lotNumber: str(64), expirationDate: str(32) })) });
-export const INV_TRANSFER_BODY: BodySchema = obj({ toBranchId: id, notes: str(2000), lines: lines(S.object({ productId: id, quantity: num })) });
+export const INV_TRANSFER_BODY: BodySchema = obj({ toBranchId: id, notes: str(2000), ship: S.nullable(S.boolean()), lines: lines(S.object({ productId: id, quantity: num })) });
+// D9 gaps (Nov 5 2026): receive a shipped transfer (all, or per product how many arrived) / cancel it while in transit
+export const INV_TRANSFER_RECEIVE_BODY: BodySchema = obj({ notes: str(2000), lines: lines(S.object({ productId: id, received: num })) });
+export const INV_TRANSFER_CANCEL_BODY: BodySchema = obj({ reason: S.text(500, { minLength: 3 }) });
 export const INV_COUNT_CREATE_BODY: BodySchema = obj({ scopeType: str(32), scopeId: id, notes: str(2000) });
 export const INV_COUNT_LINES_BODY: BodySchema = obj({ lineId: id, countedQty: num, lines: lines(S.object({ lineId: id, countedQty: num }), 5000) });
 export const INV_RECIPE_BODY: BodySchema = S.object({ lines: lines(S.object({ productId: id, quantity: num }), 100) });

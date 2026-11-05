@@ -3685,6 +3685,8 @@
   "POST /tenant/inventory/technician-reports/{id}/approve": "AADDDRRRRRRRRRRRR",
   "POST /tenant/inventory/technician-reports/{id}/reject": "AADDDRRRRRRRRRRRR",
   "POST /tenant/inventory/transfers": "AADDDRRRRRRRRRRRR",
+  "POST /tenant/inventory/transfers/{id}/cancel": "AADDDRRRRRRRRRRRR",
+  "POST /tenant/inventory/transfers/{id}/receive": "AADDDRRRRRRRRRRRR",
   "POST /tenant/inventory/units/{unitId}/dispose": "AADDDRRRRRRRRRRRR",
   "POST /tenant/inventory/units/{unitId}/found": "AADDDRRRRRRRRRRRR",
   "POST /tenant/inventory/units/{unitId}/mark-damaged": "AADDDRRRRRRRRRRRR",
