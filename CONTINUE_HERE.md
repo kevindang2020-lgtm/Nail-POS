@@ -903,3 +903,5 @@ question for Kevin: Customer Notifications / Email Center read `notifications` s
   new INVOICE_DELIVERY machine; gift card take-back / adjust go through GIFT_CARD.
 - Still open (in order): D9 recipe unit conversion + gaps list; B9–B18, D1 gaps, A-row not-built items (A2–A5, A8–A20),
   batch C; the 774-route wire-type backlog.
+- Later Nov 4 night: D9 recipe decimals (802); batch C (C1–C5) audited and its 16 bugs fixed (803 branch numbers); C5 Cancel
+  Campaign. Open items per guide: docs/GUIDE_QUEUE_2026-11-03.md last bullet.

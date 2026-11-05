@@ -30,7 +30,7 @@ Every guide Kevin uploaded on Nov 3 2026, in the order received. Status: QUEUED 
 B1 Customer Segments · B2 Coupons & Promotions · B3 Deals & Offers · B4 Promotions · B5 Campaign Center · B6 Global Loyalty Final Completion · B7 Marketing & Growth · B8 Message Templates · B9 Notifications · B10 Phone Number Management · B11 Booking Phone Verification · B12 Text Messaging Setup · B13 End-of-Day Follow-Ups · B14 Follow-Up Queue · B15 Appointment Reminders · B16 Email · B17 LoyaltyTokens · B18 LoyaltyRules — all AUDITED (B5–B8 audit pending).
 
 ## Batch C (10:37) — 13 guides (LoyaltyTokens is an exact repeat of B17)
-C1 Loyalty Complete · C2 Communications (updated) · C3 Four Modules · C4 Phone & Messaging combined · C5 Customer Retention (complete) · C6 Team Management · C7 Five Unfinished Features · C8 Technicians · C9 Tech Appointments · C10 Live Technician Schedule · C11 Tech Queue · C12 Commission Report — QUEUED (audits running).
+C1 Loyalty Complete · C2 Communications (updated) · C3 Four Modules · C4 Phone & Messaging combined · C5 Customer Retention (complete) · C6 Team Management · C7 Five Unfinished Features · C8 Technicians · C9 Tech Appointments · C10 Live Technician Schedule · C11 Tech Queue · C12 Commission Report — C1–C5 AUDITED Nov 4 night (findings in GUIDE_AUDIT_FINDINGS, "Batch C audits"); all 16 bugs fixed (4baf21a); C5 Cancel Campaign + branch sender built (53c4637). C6–C12: see below.
 
 ## Batch D (10:40) — 20 guides (Commission Report is an exact repeat of C12)
 D1 Team Performance · D2 Services & Products · D3 Service Categories · D4 Service Pricing · D5 Add-Ons · D6 Membership · D7 Discounts · D8 Products · D9 Inventory · D10 Suppliers · D11 Stock Alerts · D12 Stock Alerts – Technician Usage · D13 Payments & Money · D14 Transactions · D15 Cash Drawer · D16 End-of-Day Cash · D17 Refunds & Voids · D18 Split Payments · D19 Tips — QUEUED.
@@ -204,4 +204,10 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
 - POS suite (Nov 4): every file passes run alone; the 3 files that hung (Serving, Queue, language switch — a stale window.event
   in jsdom) now finish. API gates: silent-catch, raw-sql, audit-writers, error-text, as-any green (f4ab1c1); api-contract still
   fails on the 774-route wire-type backlog.
-
+- Nov 4 night — D9 recipe amounts with decimals (802, 458ff97); batch C audits + 16 bugs (4baf21a); C5 Cancel Campaign, branch
+  sender (53c4637). Still open from batch C: C1 earning preview at checkout, per-salon low-balance levels, Super Admin suspend
+  a rewards account, dual control on global rule publish (and the open question: custom-earning flag off vs active custom
+  rates — Kevin to decide); C2/C4 Rebooking Conversion, inbox branch selector, booking linked back to the conversation,
+  campaign filter / priority sort, message-text retention, live reminder / campaign events, SPF/DKIM/DMARC, notifications
+  export; C3/C5 per-branch retention history, Add Note, template choice, First Visit Invitation. Book Appointment from
+  Retention keeps the signed-in location (the booking screen books at the session location by design — not changed).
