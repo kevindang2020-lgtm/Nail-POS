@@ -179,15 +179,16 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
         <>
           <div className="pay-card">
             <div className="pay-custrow">
-              <span className="av">{initials(detail.customer?.name)}</span>
+              <span className="av">{detail.customer?.initials || initials(detail.customer?.fullName)}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div className="nm">{detail.customer?.name || 'Walk-in'}{detail.customer?.isVip && <span className="pay-vip">VIP</span>}</div>
+                <div className="nm">{detail.customer?.fullName || 'Walk-in'}{detail.customer?.isVip && <span className="pay-vip">VIP</span>}</div>
                 <div className="sub">
-                  {detail.customer?.phoneLast4 ? `•••• ${detail.customer.phoneLast4}` : '—'}
+                  {detail.customer?.phoneMasked || '—'}
                   {typeof detail.customer?.loyaltyPoints === 'number' ? ` · ${detail.customer.loyaltyPoints} pts` : ''}
                 </div>
               </div>
-              <span className={`pay-badge ${detail.status === 'ready' ? 'ready' : 'neutral'}`}>{titleCase(detail.status)}</span>
+              {/* The wire has no status: a ticket here is either still owing or fully paid. */}
+              <span className={`pay-badge ${(detail.balanceDueCents ?? detail.totals.totalDueCents) > 0 ? 'ready' : 'neutral'}`}>{(detail.balanceDueCents ?? detail.totals.totalDueCents) > 0 ? 'Ready' : 'Paid'}</span>
             </div>
           </div>
 

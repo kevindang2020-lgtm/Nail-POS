@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { techFollowUpApi, type FollowUpTaskView, type FollowUpTemplate } from '../api/techFollowUpApi';
+import { techFollowUpApi, type FollowUpTaskView, type FollowUpTemplateOption } from '../api/techFollowUpApi';
 import { TechFollowUpTemplateSelector } from './TechFollowUpTemplateSelector';
 
 // Bottom-sheet modal to review/edit and send a follow-up. Loads quick templates; picking one renders it server-side for
@@ -12,7 +12,7 @@ export function TechFollowUpMessageModal({ task, canEdit, onClose, onSent }: {
 }) {
   useEscapeKey(true, onClose);
   const [message, setMessage] = useState(task.suggestedMessage);
-  const [templates, setTemplates] = useState<FollowUpTemplate[]>([]);
+  const [templates, setTemplates] = useState<FollowUpTemplateOption[]>([]);
   const [activeTpl, setActiveTpl] = useState<string | null>(task.templateKey);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);

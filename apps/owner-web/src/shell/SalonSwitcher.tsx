@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { useOwnerSalon, type PortfolioSalon } from './OwnerSalonContext';
+import { useOwnerSalon } from './OwnerSalonContext';
+import type { OwnerPortfolioSalonView } from '@aipowersalon/api-contracts/tenant';
 
 // SalonSwitcher — the control that makes one owner account work across many salons.
 //
@@ -15,7 +16,7 @@ const LINE = 'var(--line, #E4DACA)';
 const TEXT = 'var(--text, #2A2118)';
 const MUTED = '#8A7A66';
 
-const LEVEL_LABEL: Record<PortfolioSalon['accessLevel'], string> = {
+const LEVEL_LABEL: Record<OwnerPortfolioSalonView['accessLevel'], string> = {
   owner: 'Owner',
   manager: 'Manager',
   viewer: 'Viewer',
@@ -32,7 +33,7 @@ export function SalonSwitcher() {
   const filtered = useMemo(() => {
     const needle = q.trim().toLowerCase();
     // Pinned salons first — that is the whole point of pinning one.
-    const byFavorite = (a: PortfolioSalon, b: PortfolioSalon) =>
+    const byFavorite = (a: OwnerPortfolioSalonView, b: OwnerPortfolioSalonView) =>
       Number(favorites.includes(b.salonId)) - Number(favorites.includes(a.salonId));
 
     if (!needle) return [...salons].sort(byFavorite);

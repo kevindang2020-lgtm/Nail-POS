@@ -2,27 +2,19 @@
 // derives the technician from the session (no ids sent from the client). Reads return server-truth; payment/earnings
 // values are whatever the backend computes (no fabrication).
 import { api } from './client';
+import type { SkillChangeRequest, SkillChangeStatus, TechClockView, TechDashboardState, TechEarningsDetail, TechEarningsSnapshot, TechMoreState, TechPayrollPeriod, TechQueueState, TechScheduleItem, TechSkillsView, TechTicketListItem, TechTicketServiceLine, TechWorkingHoursDay } from '@aipowersalon/api-contracts/tenant';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { RequestableService, SkillChangeRequest, SkillChangeStatus, SkillChangeType, TechAvailableActions, TechClockView, TechCurrentService, TechDashboardState, TechEarningsDetail, TechEarningsLine, TechEarningsSnapshot, TechMe, TechMoreState, TechNextAppointment, TechPayrollPeriod, TechQueueCustomer, TechQueueEntry, TechQueueState, TechScheduleItem, TechSkillService, TechSkillsView, TechTicketListItem, TechTicketServiceLine, TechTodayOverview, TechWorkingHoursDay } from '@aipowersalon/api-contracts/tenant';
 
-export interface TechMe { technicianId: string; fullName: string; initials: string; roleLabel: string; avatarUrl?: string; status: string }
-export interface TechTodayOverview { bookings: number; completed: number; inService: number; totalSalesCents: number; totalSalesTrendPercent: number }
-export interface TechCurrentService { ticketId: string; queueItemId: string; serviceLineId: string; customerId: string; customerInitials: string; customerName: string; serviceName: string; startedAt: string; elapsedSeconds: number; estimatedFinishTime?: string; status: 'accepted' | 'serving' | 'nearly_finished' }
-export interface TechNextAppointment { appointmentId: string; customerInitials: string; customerName: string; serviceName: string; startTime: string; status: string }
-export interface TechScheduleItem { appointmentId: string; customerInitials: string; customerName: string; serviceName: string; startTime: string; status: string; durationMinutes: number; vip: boolean; inspirationPhotoUrl?: string | null }
-export interface TechEarningsSnapshot { todaySalesCents: number; tipsCents: number; estimatedCommissionCents: number }
-export interface TechEarningsLine { serviceName: string; lineTotalCents: number; commissionCents: number; completedAt: string }
-export interface TechEarningsDetail { snapshot: TechEarningsSnapshot; lines: TechEarningsLine[]; period?: 'day' | 'week' | 'month'; dateFrom?: string; dateTo?: string }
 export interface TechCanonicalEarnings {
   serviceCommissionCents: number; cardTipCents: number; cashTipCents: number; tipsCents: number;
   retailCommissionCents: number; bonusCents: number | null; guaranteeTopUpCents: number | null; adjustmentsCents: number | null;
   estimatedEarningsCents: number; status: string; tickets: number; dateFrom: string; dateTo: string;
 }
-export interface TechAvailableActions { canAcceptTicket: boolean; canStartService: boolean; canMarkServiceDone: boolean; canToggleBreak: boolean }
-export interface TechDashboardState { technician: TechMe; overview: TechTodayOverview; currentService?: TechCurrentService; nextAppointment?: TechNextAppointment; earnings: TechEarningsSnapshot; notificationsCount: number; availableActions: TechAvailableActions; assignedTicketId?: string | null }
 export interface TechHelpRequest { id: string; ticketId: string; serviceLineId: string; serviceId: string | null; primaryTechnicianId: string; helperTechnicianId: string; reason: string; note: string | null; status: 'pending' | 'accepted' | 'declined' | 'cancelled'; respondedAt: string | null; declineReason: string | null; createdAt: string }
 export interface TechQualifiedHelper { technicianId: string; displayName: string; workingStatus: string; shiftStatus: string; status: string }
 
 // Ticket detail (Module 3) — server-truth; money in integer cents.
-export interface TechTicketServiceLine { id: string; name: string; priceCents: number; durationMinutes: number; status: string }
 export interface TechTicketDetail {
   ticketId: string; technicianId: string | null; status: string; ticketNumber?: string;
   customerName?: string | null; customerPhoneMasked?: string | null;
@@ -32,7 +24,6 @@ export interface TechTicketDetail {
   vip?: boolean; loyaltyTier?: string | null; allergies?: string[] | null; safetyNotes?: string | null;
   assignmentReason?: string | null; requestedTechnician?: string | null; inspoUrl?: string | null;
 }
-export interface TechTicketListItem { ticketId: string; ticketNumber?: string; customerName: string | null; serviceSummary: string; status: string; startedAt?: string | null; totalCents: number; acceptanceDeadline?: string | null; version?: number; scheduledStart?: string | null; vip?: boolean }
 // Live-edit options for a ticket (serving.techEditOptions). Typed so the Edit-Ticket modal's reads are compiler-checked.
 export interface TechEditService { serviceId: string; name: string; categoryName: string; priceCents: number; durationMinutes: number; isAddOn: boolean }
 export interface TechPendingChangeRequest { id: string; requestType: string; oldValue?: { serviceName?: string | null } | null; newValue?: { serviceName?: string | null } | null; status?: string }
@@ -45,18 +36,6 @@ export interface TechEditOptions {
 // Owner's own public-page preview (myPublicPreview) — buildPublicProfilePayload + a live flag. Screen reads portfolio/reviewCount/live.
 export interface TechPreviewPhoto { photoId: string; imageUrl: string; thumbnailUrl: string | null; caption: string | null; tags: string[]; serviceCategory: string | null; isFeatured: boolean }
 export interface TechPublicPreview { portfolio: TechPreviewPhoto[]; reviewCount: number; isLivePublicly: boolean }
-export interface TechQueueCustomer { name: string | null; serviceSummary: string; scheduledTime?: string | null; status: string }
-export interface TechQueueEntry { ticketId: string; ticketNumber: string; name: string | null; serviceSummary: string; scheduledTime?: string | null; status: string; vip: boolean; mine: boolean }
-export interface TechQueueState { turnPosition: number | null; status: string; upNext?: TechQueueCustomer; following?: TechQueueCustomer; onBreak: boolean; myQueue?: TechQueueEntry[]; branchQueue?: TechQueueEntry[] }
-export interface TechMoreState { technician: TechMe; workingHoursLabel: string | null; skillsLabel: string | null }
-export interface TechSkillService { serviceId: string; serviceName: string; isPrimary: boolean }
-export interface RequestableService { serviceId: string; serviceName: string; category: string | null }
-export type SkillChangeType = 'add' | 'remove'
-export type SkillChangeStatus = 'draft' | 'submitted' | 'pending' | 'under_review' | 'more_information_required' | 'approved' | 'rejected'
-export interface SkillChangeRequest { id: string; serviceId: string; serviceName: string; requestType: SkillChangeType; note: string | null; status: SkillChangeStatus; createdAt: string; decidedAt: string | null; proficiencyLevel?: string | null; experienceYears?: number | null; supportingPhotos?: string[]; certificateEvidence?: string | null; reviewNotes?: string | null; submittedAt?: string | null }
-export interface TechSkills { specialties: string[]; services: TechSkillService[]; requestableServices: RequestableService[]; requests: SkillChangeRequest[] }
-export interface TechWorkingHoursDay { dayOfWeek: number; startTime: string | null; endTime: string | null; lunchStartTime: string | null; lunchEndTime: string | null; isWorking: boolean }
-
 const id = (s: string) => encodeURIComponent(s);
 
 export interface TechMemberBenefit { benefitId: string; label: string; benefitType: string; serviceId: string | null; serviceCreditsAvailable: number; dollarCreditsAvailableCents: number }
@@ -70,11 +49,6 @@ export interface TechCashPendingItem { confirmationId: string; ticketId: string;
 export interface TechCashHandoffLine { ticketId: string; ticketNumber: string; customerName: string; amountCents: number; confirmedAt: string | null; }
 export interface TechCashHandoff { technicianId: string; technicianName: string; businessDate: string; expectedCents: number; paymentCount: number; countedCents: number | null; varianceCents: number | null; status: 'open' | 'submitted' | 'reconciled' | 'discrepancy' | 'cancelled'; submittedAt: string | null; reconciledAt: string | null; notes: string | null; lines: TechCashHandoffLine[]; }
 
-export interface TechPayrollPeriod {
-  periodId: string; label: string | null; periodStart: string; periodEnd: string;
-  status: 'draft' | 'finalized' | 'paid'; paidAt: string | null;
-  servicesCount: number; grossCents: number; commissionCents: number; tipsCents: number; adjustmentCents: number; payableCents: number;
-}
 export interface TechPayroll { paidCents: number; unpaidCents: number; totalCents: number; periods: TechPayrollPeriod[] }
 
 export const techApi = {
@@ -165,7 +139,7 @@ export const techApi = {
   requestCancel: (tid: string, reason: string) => api.post<{ ok: true }>(`/tech/tickets/${id(tid)}/request-cancel`, { reason }),
   queue: () => api.get<TechQueueState>('/tech/queue/state'),
   more: () => api.get<TechMoreState>('/tech/more/state'),
-  skills: () => api.get<TechSkills>('/tech/skills'),
+  skills: () => api.get<TechSkillsView>('/tech/skills'),   // the wire: skills + requestable services + change requests
   workingHours: () => api.get<TechWorkingHoursDay[]>('/tech/working-hours'),
   uploadSkillDocument: (file: File) => { const f = new FormData(); f.append('file', file); return api.upload<{ url: string; key: string }>('/tech/skills/upload-document', f); },
   requestSkillChange: (body: { serviceId: string, note?: string, proficiencyLevel?: string, experienceYears?: number, supportingPhotos?: string[], certificateEvidence?: string, status?: SkillChangeStatus }) => api.post<SkillChangeRequest>('/tech/skills/change-request', { ...body, requestType: 'add' }),
@@ -179,14 +153,6 @@ export const techApi = {
   endBreak: () => api.post<{ status: string }>('/tech/status/end-break', {}),
   toggleBreak: (managerOverride?: boolean) => api.post<{ status: string }>('/tech/status/break', managerOverride ? { managerOverride: true } : {}),
 };
-
-export interface TechClockView {
-  state: 'clocked_in' | 'clocked_out';
-  clockedInAt: string | null;
-  lastClockOutAt: string | null;
-  hoursToday: number;
-  serverTime: string;
-}
 
 export interface TechProfile {
   profileId: string; publicSlug: string; displayName: string; title: string | null; avatarUrl: string | null;

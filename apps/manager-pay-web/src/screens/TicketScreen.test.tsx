@@ -23,7 +23,7 @@ import { mobileCheckoutApi } from '../api/mobileCheckoutApi';
 
 const DETAIL = {
   ticketId: 'tk1', ticketNumber: '204', status: 'ready',
-  customer: { name: 'Jordan Lee', phoneLast4: '1234', isVip: true, loyaltyPoints: 120 },
+  customer: { fullName: 'Jordan Lee', initials: 'JL', phoneMasked: '•••• 1234', isVip: true, loyaltyPoints: 120 },
   services: [{ serviceLineId: 'sl_gel_manicure', serviceName: 'Gel Manicure', technicianName: 'Mia', priceCents: 3000 }],
   totals: { subtotalCents: 3000, discountCents: 0, tipCents: 0, taxCents: 233, surchargeCents: 0, totalDueCents: 3233 },
 };

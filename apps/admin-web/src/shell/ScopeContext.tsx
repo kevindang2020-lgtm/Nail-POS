@@ -3,8 +3,8 @@
 // reads it and re-fetches the aggregate scoped to one salon. Governance KPIs remain platform-wide server-side.
 import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 
-export type Scope = { tenantId: string | null; tenantName: string | null };
-type ScopeContextValue = Scope & {
+export type TenantScope = { tenantId: string | null; tenantName: string | null };
+type ScopeContextValue = TenantScope & {
   setScope: (tenantId: string, tenantName: string) => void;
   clear: () => void;
 };
@@ -17,7 +17,7 @@ const ScopeContext = createContext<ScopeContextValue>({
 });
 
 export function ScopeProvider({ children }: { children: ReactNode }) {
-  const [scope, setScopeState] = useState<Scope>({ tenantId: null, tenantName: null });
+  const [scope, setScopeState] = useState<TenantScope>({ tenantId: null, tenantName: null });
   const value = useMemo<ScopeContextValue>(
     () => ({
       tenantId: scope.tenantId,

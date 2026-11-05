@@ -1,10 +1,12 @@
 // customerFollowApi.ts — Customer app client for the follow graph (/customer/social/follow + follow lists +
 // following-feed). Session-scoped; the server enforces privacy (cannot follow a private profile, etc.).
 import { api } from './client';
+import type { FollowingFeedItem } from '@aipowersalon/api-contracts/customer';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { FollowingFeedItem } from '@aipowersalon/api-contracts/customer';
 
 export interface FollowEdge { customerId: string; displayName: string; avatarUrl: string | null; isPublic: boolean; isFollowing: boolean }
 export interface FollowList { entries: FollowEdge[]; total: number }
-export interface FollowingFeedItem { postId: string; customerId: string; displayName: string; avatarUrl: string | null; thumbnailUrl: string | null; caption: string; likeCount: number; commentCount: number; createdAt: string }
 export interface BlockedAccount { customerId: string; displayName: string; avatarUrl: string | null }
 
 export const customerFollowApi = {

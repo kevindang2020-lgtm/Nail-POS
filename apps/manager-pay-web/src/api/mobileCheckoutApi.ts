@@ -2,20 +2,11 @@
 // Every call goes through the shared `api` client, which sends the session cookie and refuses to send tenant/branch ids
 // (the server derives them). Types mirror the backend DTOs so screens stay honest about what the API actually returns.
 import { api } from './client';
+import type { AttemptReport, BalanceSummary, CaptureOutcome, LockResult, LockStatus, MobileQueueResult, MobileTicketDetail, ProceedResult, ReadinessReport, SplitSegmentPlan, TipPreset } from '@aipowersalon/api-contracts/tenant';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { AttemptReport, BalanceSummary, CaptureOutcome, LockResult, LockStatus, MobileQueueResult, MobileTicketDetail, MobileTicketService, OverallStatus, ProceedResult, ReadinessCheck, ReadinessReport, SplitSegmentPlan, TipPreset } from '@aipowersalon/api-contracts/tenant';
 
 // ── Readiness (GET /mobile-checkout/readiness) ──────────────────────────────────────────────────────────────────────
-export type OverallStatus =
-  | 'ready' | 'backend_unavailable' | 'update_required' | 'processor_unavailable'
-  | 'device_unsupported' | 'tap_to_pay_setup_required' | 'not_ready';
-export interface ReadinessCheck { key: string; ok: boolean; label: string; detail?: string; critical: boolean }
-export interface ReadinessReport {
-  overall: OverallStatus;
-  canTakePayment: boolean;
-  checks: ReadinessCheck[];
-  processor?: string;
-  tapToPayConfigured?: boolean;
-}
-
 // ── Queue (GET /mobile-checkout/queue) ──────────────────────────────────────────────────────────────────────────────
 export interface MobileQueueItem {
   ticketId: string;
@@ -27,46 +18,18 @@ export interface MobileQueueItem {
   status: string;
   technicianName?: string;
 }
-export interface MobileQueueResult { items: MobileQueueItem[]; count: number }
 export type QueueFilter = 'all' | 'ready' | 'in_service' | 'unpaid';
 export type QueueSort = 'newest' | 'oldest' | 'amount';
 
 // ── Ticket detail (GET /mobile-checkout/tickets/:id) ────────────────────────────────────────────────────────────────
 // Shape matches the WIRE (mobile-checkout-ticket.ts mapper) — fixtures must mirror it. serviceLineId powers the
 // partial-refund line picker; `name` never existed on the wire (a fixture-vs-wire drift bug fixed Jul 29).
-export interface MobileTicketService { serviceLineId: string; serviceName: string; category?: string; qty?: number; technicianName?: string; priceCents: number }
-export interface MobileTicketDetail {
-  ticketId: string;
-  ticketNumber?: string;
-  customer?: { name?: string; phoneLast4?: string; emailMasked?: string; isVip?: boolean; loyaltyPoints?: number };
-  services: MobileTicketService[];
-  totals: { subtotalCents: number; discountCents: number; tipCents: number; taxCents: number; surchargeCents: number; totalDueCents: number };
-  status: string;
-  receiptDeliveryOptions: { sms: boolean; email: boolean; app: boolean; print: boolean };
-}
-
 export interface ReceiptResult { channel: string; configured: boolean; disabledReason?: string; delivery?: string; providerRef?: string; receiptNumber?: string }
 
-export type CaptureOutcome = 'approved' | 'declined' | 'timeout' | 'unknown';
 export interface AttemptAdvance { idempotencyKey: string; from: string; to: string; outcome?: CaptureOutcome; resolution?: string }
 
 // ── Lock (POST/GET /mobile-checkout/tickets/:id/lock*) ──────────────────────────────────────────────────────────────
-export interface LockResult { acquired: boolean; action: 'acquired' | 'refreshed' | 'taken_over'; expiresAt: string }
-export interface LockStatus { locked: boolean; ownedByCaller: boolean; heldBy?: { source: string; message: string; expiresAt: string } | null }
-
 // ── Proceed + attempts ──────────────────────────────────────────────────────────────────────────────────────────────
-export type TipPreset = 'none' | 'p15' | 'p20' | 'p25' | { customCents: number };
-export interface SplitSegmentPlan { amountCents: number; method: string }
-export interface ProceedResult {
-  canProceed: boolean;
-  reason?: string;
-  message?: string;
-  balanceCents: number;
-  idempotencyKey?: string;
-  attemptState?: string;
-  plannedTipCents?: number;
-  plannedSplit?: { totalCents: number; segments: SplitSegmentPlan[] };
-}
 export interface PaymentAttempt {
   id: string;
   ticketId: string;
@@ -76,23 +39,6 @@ export interface PaymentAttempt {
   idempotencyKey: string;
   createdAt: string;
   updatedAt: string;
-}
-
-export interface AttemptReport {
-  period: string;
-  totalAttempts: number;
-  byStatus: Record<string, number>;
-  attemptedTotalCents: number;
-  settledTotalCents: number;
-  daily: { date: string; count: number; attemptedCents: number }[];
-}
-
-export interface BalanceSummary {
-  totalDueCents: number;
-  confirmedCents: number;
-  inFlightCents: number;
-  remainingCents: number;
-  isFullyPaid: boolean;
 }
 
 export interface TicketPayment { paymentId: string; method: string; amountCents: number; tipCents: number; status: string; createdAt: string }

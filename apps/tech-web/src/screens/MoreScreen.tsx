@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { techApi, type TechMoreState, type TechSkills } from '../api/techApi';
+import { techApi, type TechMoreState, type TechSkillsView } from '../api/techApi';
 import { useAuth } from '../auth/AuthContext';
 import { useTechNav } from '../shell/nav';
 import { statusLabel, statusKind } from '../lib/tech';
@@ -17,7 +17,7 @@ export function MoreScreen() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
-  const [skills, setSkills] = useState<TechSkills | null>(null);
+  const [skills, setSkills] = useState<TechSkillsView | null>(null);
   useEscapeKey(confirm || !!skills, () => { setConfirm(false); setSkills(null); });
   const [skillSel, setSkillSel] = useState('');
   const [skillProficiency, setSkillProficiency] = useState('intermediate');

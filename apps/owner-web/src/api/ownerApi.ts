@@ -2,40 +2,10 @@
 // tenant + branch authorization from the session; only an optional selected branchId is ever sent (a real branch the
 // session is allowed to view), never tenant context.
 import { api } from './client';
+import type { BonusMetric, BonusPreview, BonusRuleRow, ClassificationRow, CompliancePreview, DailyCashSummary, OwnerAlert, OwnerAlertSummary, OwnerAppointmentListItem, OwnerApprovalItem, OwnerAuditEntry, OwnerBookingOverview, OwnerBranchPerformanceState, OwnerContextResponse, OwnerCustomerKpis, OwnerDashboardState, OwnerDrawerSummary, OwnerExpense, OwnerExpenseInput, OwnerExpenseSummary, OwnerFinanceSummary, OwnerInventoryCategory, OwnerInventoryReorderItem, OwnerInventoryStatusCounts, OwnerLiveQueueRow, OwnerLiveTechRow, OwnerLoyaltyOverview, OwnerMarketingCampaign, OwnerMarketingChannel, OwnerMarketingKpis, OwnerPaymentMix, OwnerPaymentRefund, OwnerPaymentTxn, OwnerPaymentsSummary, OwnerPayrollKpis, OwnerPayrollLine, OwnerPayrollPeriodSummary, OwnerPeriod, OwnerProfileCard, OwnerReportExport, OwnerReportInfo, OwnerSalonOverview, OwnerSettingsSnapshot, OwnerStaffAttendance, OwnerStaffPerformanceState, OwnerTechnicianDetail, OwnerTicketDetail, OwnerTicketLine, OwnerTicketRevision, OwnerTicketRow, OwnerTopSpender, PeriodBonusReview, PeriodComplianceRow, RetailPolicy, TierBand, WageConfig, WorkerClassification } from '@aipowersalon/api-contracts/tenant';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { BonusMetric, BonusPreview, BonusRuleRow, CashPoolSummary, ClassificationRow, ComplianceFlag, CompliancePreview, DailyCashSummary, EarnedBonus, OwnerAlert, OwnerAlertSeverity, OwnerAlertStatus, OwnerAlertSummary, OwnerAllowedBranch, OwnerAppointmentListItem, OwnerApprovalItem, OwnerAuditEntry, OwnerBookingOverview, OwnerBranchPerformanceState, OwnerContextResponse, OwnerCustomerKpis, OwnerDashboardState, OwnerDrawerRow, OwnerDrawerSummary, OwnerExpense, OwnerExpenseInput, OwnerExpenseSummary, OwnerFinanceSummary, OwnerInventoryCategory, OwnerInventoryReorderItem, OwnerInventoryStatusCounts, OwnerLiveQueueRow, OwnerLiveTechRow, OwnerLoyaltyOverview, OwnerLoyaltyTier, OwnerMarketingCampaign, OwnerMarketingChannel, OwnerMarketingKpis, OwnerPaymentMethod, OwnerPaymentMethodSlice, OwnerPaymentMix, OwnerPaymentRefund, OwnerPaymentTxn, OwnerPaymentsSummary, OwnerPayrollKpis, OwnerPayrollLine, OwnerPayrollPeriodStatus, OwnerPayrollPeriodSummary, OwnerPeriod, OwnerProfileCard, OwnerReportExport, OwnerReportInfo, OwnerSalonOverview, OwnerSettingsSnapshot, OwnerStaffAttendance, OwnerStaffPerformanceState, OwnerTechnicianDetail, OwnerTicketDetail, OwnerTicketLine, OwnerTicketRevision, OwnerTicketRow, OwnerTopSpender, OwnerTopTechnician, PeriodBonusReview, PeriodBonusTech, PeriodComplianceRow, RetailMethod, RetailPolicy, TierBand, WageConfig, WorkerClassification } from '@aipowersalon/api-contracts/tenant';
 
-export interface OwnerDashboardState {
-  owner: { userId: string; fullName: string; firstName: string; avatarUrl?: string; email?: string };
-  context: { tenantId: string; selectedBranchId?: string; timezone: string; currency: string; permissions: string[] };
-  date: string;
-  todayRevenueCents: number; todayRevenueTrendPercent: number;
-  weeklyRevenueCents: number; weeklyRevenueTrendPercent: number;
-  totalBookings: number; totalBookingsTrendPercent: number;
-  activeTechnicians: number; scheduledTechnicians: number;
-  averageTicketCents: number; averageTicketTrendPercent: number;
-  tipsTodayCents: number; tipsTrendPercent: number;
-  newClients: number; newClientsTrendPercent: number;
-  servicesToday: number;
-  checkInsToday: number;
-  waitingNow: number;
-  servingNow: number;
-  readyToCheckout: number;
-  revenueTrend: { date: string; revenueCents: number }[];
-  unreadNotificationCount: number;
-}
-
-export interface OwnerAllowedBranch {
-  branchId: string; tenantId: string; salonName: string; branchName: string;
-  address?: string; city?: string; state?: string; timezone: string;
-  accessLevel: 'owner' | 'manager' | 'viewer' | 'report_only'; isPrimaryOwner: boolean; hasSwitchPin: boolean;
-}
-export interface OwnerContextResponse {
-  ownerUserId: string; tenantId: string; allowedBranches: OwnerAllowedBranch[];
-  canViewAllAssignedBranches: boolean; defaultBranchId?: string;
-}
-export interface OwnerSalonOverview {
-  branchId: string; salonName: string; city?: string; state?: string; status: string;
-  todayRevenueCents: number; todayBookings: number; activeTechs: number; waitingGuests: number;
-}
 export const ownerSalonsApi = {
   overview: () => api.get<OwnerSalonOverview[]>('/owner/salons/overview'),
 
@@ -59,57 +29,18 @@ export const ownerDashboardApi = {
 };
 
 // ---- Module 2: Branch Performance ----
-export interface OwnerBranchPerformanceState {
-  period: { from: string; to: string; comparisonFrom?: string; comparisonTo?: string };
-  totalRevenueCents: number; totalRevenueTrendPercent: number;
-  topBranch?: { branchId: string; branchName: string; trendPercent: number };
-  totalBranches: number; activeBranches: number;
-  branches: { rank: number; branchId: string; branchName: string; revenueCents: number; trendPercent: number; bookingCount: number; averageTicketCents: number }[];
-  quickComparison: {
-    bestGrowth?: { branchId: string; branchName: string; valuePercent: number };
-    highestAverageTicket?: { branchId: string; branchName: string; valueCents: number };
-    topBookings?: { branchId: string; branchName: string; value: number };
-  };
-}
-export type OwnerPeriod = 'today' | 'week' | 'month' | 'quarter' | 'year';
 export const ownerBranchesApi = {
   performance: (period: OwnerPeriod) => api.get<OwnerBranchPerformanceState>('/owner/branches/performance', { period }),
   comparison: (period: OwnerPeriod) => api.get<OwnerBranchPerformanceState>('/owner/branches/comparison', { period }),
 };
 
 // ---- Module 3: Booking Overview ----
-export interface OwnerBookingOverview {
-  dateFrom: string; dateTo: string; totalBookings: number;
-  completed: { count: number; percentage: number };
-  cancelled: { count: number; percentage: number };
-  noShow: { count: number; percentage: number };
-  trend: { date: string; bookingCount: number }[];
-  completionRate: number; completionRateTrendPercent: number;
-  cancellationRate: number; cancellationRateTrendPercent: number;
-  noShowRate: number; noShowRateTrendPercent: number;
-  bookingSources: { label: string; count: number; percentage: number }[];
-}
-export interface OwnerAppointmentListItem {
-  appointmentId: string; customerName: string; branchId: string | null; technicianId: string;
-  apptDate: string; startTime: string; endTime: string; status: string; source: string;
-}
 export const ownerBookingsApi = {
   overview: (period: 'today' | 'week', branchId?: string) => api.get<OwnerBookingOverview>('/owner/bookings/overview', { period, ...(branchId ? { branchId } : {}) }),
   drillDown: (opts: { period?: 'today' | 'week'; status?: string; branchId?: string; limit?: number }) => api.get<OwnerAppointmentListItem[]>('/owner/bookings/drill-down', opts as Record<string, unknown>),
 };
 
 // ---- Ticket Oversight (read-only) — server scopes to the session's tenant + this owner's branches ----
-export interface OwnerTicketRow {
-  ticketId: string; ticketNumber: string | null; branchId: string | null; status: string;
-  customerName: string | null; technicianName: string | null; totalCents: number; version: number;
-  serviceDoneLocked: boolean; createdAt: string; paidAt: string | null; removedAt: string | null;
-}
-export interface OwnerTicketDetail extends OwnerTicketRow {
-  subtotalCents: number; taxCents: number; discountCents: number; tipCents: number;
-  servingStartedAt: string | null; serviceDoneAt: string | null;
-}
-export interface OwnerTicketLine { serviceName: string; priceCents: number; lineTotalCents: number; technicianName: string | null; status: string; isAddOn: boolean; }
-export interface OwnerTicketRevision { version: number; action: string; actorRole: string | null; summary: string | null; createdAt: string; }
 export interface OwnerTicketListResp { tickets: OwnerTicketRow[]; total: number; page: number; pageSize: number; }
 export interface OwnerTicketHistoryResp { ticket: OwnerTicketDetail; lines: OwnerTicketLine[]; revisions: OwnerTicketRevision[]; }
 
@@ -119,21 +50,6 @@ export const ownerTicketsApi = {
 };
 
 // ---- Module 4: Staff / Technician Performance ----
-export interface OwnerTopTechnician { technicianId: string; fullName: string; avatarUrl?: string; roleLabel: string; servicesCompleted: number; salesCents: number; utilizationPercent: number; rating: number }
-export interface OwnerStaffPerformanceState {
-  period: { from: string; to: string };
-  topTechnicians: OwnerTopTechnician[];
-  totalStaff: number; onDutyCount: number;
-  utilizationPercent: number; utilizationTrendPercent: number; totalCommissionCents: number;
-}
-export interface OwnerStaffAttendance { scheduled: number; clockedIn: number; late: number; onBreak: number; absent: number; offShift: number; overtime: number }
-export interface OwnerTechnicianDetail {
-  technicianId: string; fullName: string; roleLabel: string; status: string;
-  period: { from: string; to: string };
-  servicesCompleted: number; salesCents: number; tipsCents: number; commissionCents: number;
-  averageTicketCents: number; rating: number; reviewCount: number; bookingCount: number;
-  busyMinutes: number; scheduledMinutes: number; utilizationPercent: number; payrollEstimateCents: number;
-}
 export const ownerStaffApi = {
   performance: (period: OwnerPeriod, branchId?: string) => api.get<OwnerStaffPerformanceState>('/owner/staff/performance', { period, ...(branchId ? { branchId } : {}) }),
   attendance: (branchId?: string) => api.get<OwnerStaffAttendance>('/owner/staff/attendance', branchId ? { branchId } : undefined),
@@ -141,19 +57,6 @@ export const ownerStaffApi = {
 };
 
 // ---- Module 5: Finance & Reports ----
-export interface OwnerFinanceSummary {
-  period: { from: string; to: string };
-  totalRevenueCents: number; revenueTrendPercent: number;
-  totalExpensesCents: number; totalCommissionCents: number;
-  netProfitCents: number; profitTrendPercent: number;
-  averageTicketCents: number; totalTransactions: number;
-  taxCollectedCents: number; tipsCents: number; discountsCents: number;
-  topServices: { name: string; revenueCents: number }[];
-}
-export interface OwnerPaymentMethod { method: string; amountCents: number; count: number; percentage: number }
-export interface OwnerPaymentMix { period: { from: string; to: string }; methods: OwnerPaymentMethod[]; totalCents: number }
-export interface OwnerReportInfo { id: string; title: string; description: string; formats: string[] }
-export interface OwnerReportExport { reportId: string; filename: string; contentType: string; content: string }
 export interface OwnerDateFilter { startDate?: string; endDate?: string }
 export const ownerFinanceApi = {
   summary: (period: OwnerPeriod, branchId?: string, dates?: OwnerDateFilter) =>
@@ -181,20 +84,7 @@ export const ownerFinanceApi = {
 };
 
 // ---- Module 6: Alerts / More / Settings ----
-export type OwnerAlertSeverity = 'info' | 'warning' | 'high' | 'critical';
-export type OwnerAlertStatus = 'new' | 'acknowledged' | 'in_progress' | 'resolved' | 'dismissed';
-export interface OwnerAlert {
-  id: string; branchId: string | null; category: string; severity: OwnerAlertSeverity; status: OwnerAlertStatus;
-  title: string; body: string | null; createdAt: string; resolvedAt: string | null;
-}
-export interface OwnerAlertSummary { total: number; unread: number; bySeverity: Record<OwnerAlertSeverity, number>; byStatus: Record<OwnerAlertStatus, number> }
-export interface OwnerProfileCard { userId: string; fullName: string; email: string | null; phone: string | null; role: string; tenantId: string; businessName: string; timezone: string; currency: string; branchCount: number; avatarUrl?: string | null }
-export interface OwnerSettingsSnapshot { businessName: string; timezone: string; currency: string; branchCount: number; activeBranchCount: number }
-export interface OwnerAuditEntry { id: string; userId: string | null; role: string | null; action: string; entityType: string | null; entityId: string | null; metadata: unknown; createdAt: string }
 export const EXPENSE_CATEGORIES = ['rent', 'supplies', 'utilities', 'payroll', 'marketing', 'equipment', 'maintenance', 'insurance', 'software', 'other'] as const;
-export interface OwnerExpense { id: string; branchId: string | null; category: string; amountCents: number; description: string | null; vendor: string | null; incurredOn: string; createdAt: string }
-export interface OwnerExpenseInput { category: string; amountCents: number; description?: string | null; vendor?: string | null; incurredOn: string; branchId?: string | null }
-export interface OwnerExpenseSummary { period: { from: string; to: string }; totalCents: number; count: number; byCategory: { category: string; amountCents: number; count: number }[] }
 export const ownerExpensesApi = {
   list: (period: OwnerPeriod, branchId?: string, dateParams?: { startDate: string; endDate: string }) =>
     api.get<OwnerExpense[]>('/owner/expenses', { period, ...(branchId ? { branchId } : {}), ...(dateParams || {}) }),
@@ -270,15 +160,11 @@ export const ownerAccountApi = {
 
 // Front-desk cash drawer — read-only owner oversight (per-branch register reconciliation, salon-wide).
 export type OwnerDrawerStatus = 'open' | 'reconciled' | 'discrepancy' | 'cancelled';
-export interface OwnerDrawerRow { branchId: string; branchName: string; businessDate: string; openingFloatCents: number; expectedSalesCents: number; refundsCents: number; paidInCents: number; paidOutCents: number; expectedCashCents: number; countedCents: number | null; varianceCents: number | null; cashPaymentCount: number; status: OwnerDrawerStatus; openedAt: string | null; reconciledAt: string | null; notes: string | null }
-export interface OwnerDrawerSummary { businessDate: string; branches: OwnerDrawerRow[] }
 export const ownerCashDrawerApi = {
   state: (date?: string) => api.get<OwnerDrawerSummary>('/owner/cash-drawer', date ? { date } : undefined),
 };
 
 // Daily cash close-out — combined register drawer + technician hand-offs (read-only owner position).
-export interface CashPoolSummary { expectedCents: number; countedCents: number; varianceCents: number; unitCount: number; reconciledCount: number; discrepancyCount: number; awaitingCount: number }
-export interface DailyCashSummary { businessDate: string; register: CashPoolSummary; techCash: CashPoolSummary; total: { expectedCents: number; countedCents: number; varianceCents: number } }
 export const ownerCashSummaryApi = {
   state: (date?: string) => api.get<DailyCashSummary>('/owner/cash-summary', date ? { date } : undefined),
 };
@@ -298,8 +184,6 @@ export const ownerAiApi = {
 };
 
 // ── Live Operations (owner monitoring of the live floor) ──
-export interface OwnerLiveTechRow { technicianId: string; technicianName: string; serviceLabel: string | null; customerName: string | null; elapsedMinutes: number; paused: boolean; }
-export interface OwnerLiveQueueRow { queueItemId: string; customerName: string; isVip: boolean; serviceLabel: string | null; requestedTechnicianName: string | null; waitMinutes: number; status: string; }
 export interface OwnerLiveOperationsResp {
   branchId: string | null;
   counts: { waiting: number; serving: number; completedToday: number };
@@ -314,20 +198,7 @@ export const ownerLiveApi = {
 };
 
 // ── Commission & Payroll (owner read surface over the canonical compensation/payroll engine) ──
-export type OwnerPayrollPeriodStatus = 'draft' | 'finalized' | 'paid';
-export interface OwnerPayrollPeriodSummary {
-  periodId: string; branchId: string | null; label: string | null; periodStart: string; periodEnd: string;
-  status: OwnerPayrollPeriodStatus; finalizedAt: string | null; paidAt: string | null;
-  totalPayableCents: number; totalCommissionCents: number; totalTipsCents: number;
-}
-export interface OwnerPayrollKpis { totalPeriods: number; openPeriods: number; unpaidPayableCents: number; latestPeriodPayableCents: number; lifetimeCommissionCents: number; lifetimeTipsCents: number }
 export interface OwnerPayrollListResp { periods: OwnerPayrollPeriodSummary[]; kpis: OwnerPayrollKpis }
-export interface OwnerPayrollLine {
-  technicianId: string; technicianName: string | null; servicesCount: number; grossSalesCents: number;
-  commissionType: string; commissionValue: number; commissionCents: number; retailCommissionCents: number;
-  cardTipCents: number; cashTipCents: number; tipsCents: number; guaranteeTopupCents: number;
-  adjustmentCents: number; payableCents: number;
-}
 export interface OwnerPayrollPeriodDetailResp {
   period: OwnerPayrollPeriodSummary;
   totals: { grossSalesCents: number; commissionCents: number; retailCommissionCents: number; cardTipCents: number; cashTipCents: number; tipsCents: number; guaranteeTopupCents: number; adjustmentCents: number; payableCents: number; technicianCount: number };
@@ -349,24 +220,9 @@ export interface CompRuleVersionPayload {
   effectiveEnd?: string | null; supplyMethod?: string; supplyValue?: number; discountFunding?: string;
 }
 export interface CreateCompRuleBody { scope?: Partial<CompRuleScope>; label?: string | null; version: CompRuleVersionPayload }
-export interface TierBand { uptoCents: number | null; ratePercent: number }
 export interface TierPlan { id: string; technicianId: string; branchId: string | null; mode: 'entire' | 'marginal'; bands: TierBand[]; status: string; effectiveStart: string; createdAt: string }
 export interface TierCalcResult { commissionCents: number; effectiveRatePercent: number }
 export interface TierPreview { productionCents: number; entire: TierCalcResult; marginal: TierCalcResult }
-export type RetailMethod = 'none' | 'percent' | 'fixed';
-export interface RetailPolicy { method: RetailMethod; value: number }
-export type BonusMetric = 'service_production' | 'retail_sales' | 'rebooking_count' | 'membership_count' | 'attendance_days' | 'rating_avg' | 'team_goal';
-export interface BonusRule { id: string; technicianId: string | null; branchId: string | null; metric: BonusMetric; target: number; amountCents: number; label: string | null; status: string; effectiveStart: string; createdAt: string }
-export interface EarnedBonus { label: string; metric: BonusMetric; qualified: boolean; earnedCents: number; metricValue: number; target: number }
-export interface BonusPreview { technicianId: string; facts: Record<string, number>; bonuses: EarnedBonus[]; totalEarnedCents: number }
-export interface PeriodBonusTech { technicianId: string; bonuses: EarnedBonus[]; totalEarnedCents: number }
-export interface PeriodBonusReview { periodId: string; technicians: PeriodBonusTech[]; grandTotalCents: number }
-export type WorkerClassification = 'employee' | 'contractor' | 'booth_renter';
-export interface ClassificationRow { technicianId: string; classification: WorkerClassification; updatedAt: string }
-export interface WageConfig { minHourlyWageCents: number; overtimeThresholdHours: number }
-export interface ComplianceFlag { code: string; message: string; effectiveHourlyCents?: number; shortfallCents?: number; overtimeHours?: number }
-export interface CompliancePreview { technicianId: string; classification: WorkerClassification; classificationSet: boolean; wageConfig: WageConfig; flags: ComplianceFlag[] }
-export interface PeriodComplianceRow { technicianId: string; technicianName: string | null; classification: WorkerClassification; payableCents: number; hoursWorked: number; flags: ComplianceFlag[] }
 export interface Agreement { id: string; technicianId: string; title: string; terms: Record<string, unknown>; status: string; version: number; effectiveStart: string; createdAt: string; acknowledgedAt: string | null; acknowledgedBy: string | null }
 export const ownerCompensationApi = {
   tipPolicy: () => api.get<TipPolicyResp>('/owner/compensation/tip-policy'),
@@ -384,8 +240,8 @@ export const ownerCompensationApi = {
   previewTierPlan: (body: { productionCents: number; bands: TierBand[] }) => api.post<TierPreview>('/owner/compensation/tier-plans/preview', body as unknown as Record<string, unknown>),
   retailPolicy: () => api.get<RetailPolicy>('/owner/compensation/retail-policy'),
   setRetailPolicy: (body: RetailPolicy) => api.put<RetailPolicy>('/owner/compensation/retail-policy', body as unknown as Record<string, unknown>),
-  bonusRules: () => api.get<BonusRule[]>('/owner/compensation/bonus-rules'),
-  createBonusRule: (body: { metric: BonusMetric; target: number; amountCents: number; label?: string; technicianId?: string }) => api.post<BonusRule>('/owner/compensation/bonus-rules', body as unknown as Record<string, unknown>),
+  bonusRules: () => api.get<BonusRuleRow[]>('/owner/compensation/bonus-rules'),
+  createBonusRule: (body: { metric: BonusMetric; target: number; amountCents: number; label?: string; technicianId?: string }) => api.post<BonusRuleRow>('/owner/compensation/bonus-rules', body as unknown as Record<string, unknown>),
   archiveBonusRule: (id: string) => api.post<{ ok: boolean }>(`/owner/compensation/bonus-rules/${encodeURIComponent(id)}/archive`, {}),
   previewBonuses: (body: { technicianId: string; fromIso: string; toIso: string }) => api.post<BonusPreview>('/owner/compensation/bonus-rules/preview', body as unknown as Record<string, unknown>),
   bonusPeriodReview: (periodId: string) => api.post<PeriodBonusReview>('/owner/compensation/bonus-rules/period-review', { periodId } as unknown as Record<string, unknown>),
@@ -408,16 +264,6 @@ export const ownerPayrollApi = {
 };
 
 // ── Customers & Loyalty (owner read surface) ──
-export interface OwnerCustomerKpis {
-  totalCustomers: number; newCustomers: number;
-  retentionRatePercent: number; repeatRatePercent: number;
-  vipCustomers: number; loyaltyMembers: number;
-  giftCardOutstandingCents: number; giftCardCount: number;
-  reviewAverage: number; reviewCount: number;
-}
-export interface OwnerLoyaltyTier { tier: string; customers: number }
-export interface OwnerLoyaltyOverview { pointsIssued: number; pointsRedeemed: number; pointsOutstanding: number; rewardRedemptionCount: number; tiers: OwnerLoyaltyTier[] }
-export interface OwnerTopSpender { customerId: string; name: string; lifetimeSpendCents: number; visits: number }
 export interface OwnerCustomersOverviewResp {
   range: { from: string; to: string };
   kpis: OwnerCustomerKpis;
@@ -437,9 +283,6 @@ export const ownerCustomersApi = {
 };
 
 // ── Inventory & Products (owner read surface) ──
-export interface OwnerInventoryStatusCounts { inStock: number; low: number; critical: number; outOfStock: number; overstock: number }
-export interface OwnerInventoryReorderItem { productId: string; name: string; branchId: string | null; branchName: string; onHand: number; reorderLevel: number; status: string; suggestedQty: number }
-export interface OwnerInventoryCategory { category: string; products: number; stockValueCents: number | null }
 export interface OwnerInventoryOverviewResp {
   totalProducts: number; stockPositions: number;
   statusCounts: OwnerInventoryStatusCounts; needsReorderCount: number;
@@ -453,30 +296,12 @@ export const ownerInventoryApi = {
 };
 
 // ── Marketing & Growth (owner read surface) ──
-export interface OwnerMarketingKpis {
-  activeCampaigns: number; totalCampaigns: number; totalSent: number;
-  openRatePercent: number; clickRatePercent: number; conversionRatePercent: number;
-  campaignRevenueCents: number; campaignCostCents: number; roi: number; referrals: number;
-}
-export interface OwnerMarketingChannel { channel: string; campaigns: number; sent: number; revenueCents: number }
-export interface OwnerMarketingCampaign {
-  id: string; name: string; channel: string; status: string; audienceLabel: string | null;
-  sent: number; openRate: number; clickRate: number; bookingRate: number;
-  revenueCents: number; costCents: number; roi: number; scheduledAt: string | null;
-}
 export interface OwnerMarketingOverviewResp { kpis: OwnerMarketingKpis; channels: OwnerMarketingChannel[]; topCampaigns: OwnerMarketingCampaign[]; generatedAt: string }
 export const ownerMarketingApi = {
   overview: (branchId?: string) => api.get<OwnerMarketingOverviewResp>('/owner/marketing', branchId ? { branchId } : {}),
 };
 
 // ── Payments & Money (owner read surface) ──
-export interface OwnerPaymentMethodSlice { method: string; amountCents: number; count: number }
-export interface OwnerPaymentsSummary {
-  grossCents: number; tipsCents: number; refundsCents: number; netCents: number;
-  transactionCount: number; refundCount: number; byMethod: OwnerPaymentMethodSlice[];
-}
-export interface OwnerPaymentTxn { id: string; amountCents: number; tipCents: number; method: string; status: string; ticketRef: string | null; processorRef: string | null; at: string }
-export interface OwnerPaymentRefund { id: string; amountCents: number; reason: string | null; status: string; paymentRef: string | null; at: string }
 export interface OwnerPaymentsOverviewResp {
   range: { from: string; to: string };
   summary: OwnerPaymentsSummary;
@@ -508,10 +333,6 @@ export const ownerAiCenterApi = {
 };
 
 // ── Approval Center (owner; aggregated pending actions) ──
-export interface OwnerApprovalItem {
-  kind: 'payroll'; action: 'approve' | 'lock'; periodId: string;
-  label: string; detail: string; status: string; amountCents: number; branchId: string | null;
-}
 export interface OwnerApprovalsResp {
   items: OwnerApprovalItem[];
   counts: { payrollToApprove: number; payrollToLock: number; openAlerts: number };

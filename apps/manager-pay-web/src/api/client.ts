@@ -4,10 +4,6 @@
 import { createTransport, configureMobileSdk } from '@aipowersalon/mobile-sdk';
 import { clearNativeToken } from '../auth/native-auth';
 
-// Resolution order: build-time VITE_API_BASE (set when the API is hosted on a separate origin), then a runtime
-// window.APS_API_BASE override, then "" (same-origin — the default when each dist/ is served behind the API).
-const BASE = ((import.meta as any).env?.VITE_API_BASE as string) || (typeof window !== "undefined" && (window as any).APS_API_BASE) || "";
-
 const isNativeCheck = () => typeof window !== "undefined" && (
   Boolean((window as any).Capacitor?.isNativePlatform?.()) ||
   window.location.protocol === 'capacitor:' ||

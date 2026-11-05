@@ -2,14 +2,9 @@
 // reactions, comments, reports, verified-from-ticket, and the real multipart photo upload). Same-origin, session cookie;
 // the server derives the customer from the session. Reads are server-truth — screens render empty states, never mocks.
 import { api } from './client';
-
-export type NSVisibility = 'public_platform' | 'salon_only' | 'private';
-export type NSPostType = 'verified_service' | 'manual_upload';
-export type NSPostStatus = 'draft' | 'pending_review' | 'published' | 'hidden' | 'removed' | 'reported';
-export type NSCommentStatus = 'published' | 'hidden' | 'removed' | 'reported';
-export type NSReactionType = 'like' | 'dislike';
-export type NSFeedSort = 'newest' | 'most_liked' | 'most_commented' | 'trending';
-export type NSFeedScope = 'for_you' | 'salon' | 'public' | 'mine';
+import type { NSCommentStatus, NSEligibility, NSFeedResult, NSFeedScope, NSFeedSort, NSPostStatus, NSPostType, NSReactionType, NSVisibility } from '@aipowersalon/api-contracts/customer';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { NSCommentStatus, NSEligibility, NSFeedResult, NSFeedScope, NSFeedSort, NSPostStatus, NSPostType, NSReactionType, NSVisibility } from '@aipowersalon/api-contracts/customer';
 
 export interface NSPhoto { id: string; imageUrl: string; thumbnailUrl: string | null; sortOrder: number; caption: string | null }
 export interface NSPost {
@@ -20,10 +15,7 @@ export interface NSPost {
   likeCount: number; dislikeCount: number; commentCount: number; reportCount: number;
   myReaction: NSReactionType | null; isMine: boolean; photos: NSPhoto[]; createdAt: string;
 }
-export interface NSFeedResult { posts: NSPost[]; nextCursor: string | null }
 export interface NSComment { id: string; postId: string; displayName: string; commentText: string; status: NSCommentStatus; isMine: boolean; createdAt: string }
-export interface NSEligibility { eligible: boolean; reason?: string; ticketId?: string; appointmentId?: string | null; technicianId?: string | null; serviceId?: string | null; alreadyPosted?: boolean }
-
 export interface NSFeedParams {
   scope?: NSFeedScope; salonId?: string; branchId?: string; serviceId?: string; technicianId?: string;
   tag?: string; sort?: NSFeedSort; cursor?: string; limit?: number;

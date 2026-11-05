@@ -1,8 +1,10 @@
 // GENERATED FROM apps/api by tooling/contracts/move-contracts.py, then OWNED HERE (Constitution 13 §13).
 // Realm: tenant. Declaration file: types only, never emitted (see packages/api-contracts/README.md).
 
-export type FollowUpStatus =
-  | 'pending' | 'pending_manager_approval' | 'sent' | 'skipped' | 'dismissed' | 'failed' | 'customer_not_available' | 'customer_replied' | 'rebooked' | 'expired';
+// FollowUpStatus is shared with the customer realm (a customer sees their own follow-up's status), so it lives at the
+// package root (follow-up-status.ts) and is re-exported here for the tenant apps.
+import type { FollowUpStatus } from '../follow-up-status';
+export type { FollowUpStatus } from '../follow-up-status';
 
 export interface FollowUpTaskView {
   id: string;

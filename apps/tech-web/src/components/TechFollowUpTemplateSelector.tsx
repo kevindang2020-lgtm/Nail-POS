@@ -1,8 +1,8 @@
-import type { FollowUpTemplate } from '../api/techFollowUpApi';
+import type { FollowUpTemplateOption } from '../api/techFollowUpApi';
 
 // Quick-template chooser used inside the send modal. Tapping a template asks the backend to render it for this task
 // (server-side, with the customer/service/tech/salon filled in) and replaces the editable message.
-export function TechFollowUpTemplateSelector({ templates, active, onPick }: { templates: FollowUpTemplate[]; active: string | null; onPick: (key: string) => void }) {
+export function TechFollowUpTemplateSelector({ templates, active, onPick }: { templates: FollowUpTemplateOption[]; active: string | null; onPick: (key: string) => void }) {
   if (templates.length === 0) return null;
   return (
     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }} aria-label="Message templates">

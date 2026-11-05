@@ -8,7 +8,7 @@ import { mobileCheckoutApi } from '../api/mobileCheckoutApi';
 
 const detail = {
   ticketId: 'tk1', status: 'ready',
-  customer: { name: 'Jordan Lee', phoneLast4: '1234', emailMasked: 'j•••@mail.com' },
+  customer: { fullName: 'Jordan Lee', initials: 'JL', isVip: false, phoneMasked: '•••• 1234', emailMasked: 'j•••@mail.com' },
   services: [], totals: { subtotalCents: 3000, discountCents: 0, tipCents: 0, taxCents: 233, surchargeCents: 0, totalDueCents: 3233 },
   receiptDeliveryOptions: { sms: true, email: true, app: true, print: true },
 };

@@ -53,7 +53,7 @@ export interface WebPushOptions {
 }
 
 export function useWebPush(o: WebPushOptions): void {
-  const { tenantId, userType, userId } = o;
+  const { tenantId, userType, userId, app: appId } = o;
   const tap = useRef(o.onTap); tap.current = o.onTap;
   const http = useRef(o.http); http.current = o.http;
   useEffect(() => {
@@ -64,12 +64,11 @@ export function useWebPush(o: WebPushOptions): void {
 
     const currentSessionKey = `${userType}:${userId}:${Capacitor.isNativePlatform() ? 'native' : 'web'}`;
     if (registeredSessionKey === currentSessionKey) {
-      console.log('[Push] Already initialized for session:', currentSessionKey);
       return;
     }
     registeredSessionKey = currentSessionKey;
 
-    const normalizedRole = o.app ?? (userType.toLowerCase() === 'technician' ? 'tech' : userType.toLowerCase());
+    const normalizedRole = appId ?? (userType.toLowerCase() === 'technician' ? 'tech' : userType.toLowerCase());
     
 
     if (Capacitor.isNativePlatform()) {
@@ -78,7 +77,6 @@ export function useWebPush(o: WebPushOptions): void {
       // -------------------------------------------------------------
       const registerNativePush = async () => {
         try {
-          console.log('[Push][Native] Checking permissions...');
           let pushPerm = await PushNotifications.checkPermissions();
           if (pushPerm.receive !== 'granted') {
             pushPerm = await PushNotifications.requestPermissions();
@@ -108,7 +106,6 @@ export function useWebPush(o: WebPushOptions): void {
               };
               await PushNotifications.createChannel(channelConfig);
               await LocalNotifications.createChannel(channelConfig);
-              console.log('[Push][Native] Notification channel high_priority_v2 configured.');
             } catch (chanErr) {
               console.warn('[Push][Native] Channel creation notice:', chanErr);
             }
@@ -126,12 +123,11 @@ export function useWebPush(o: WebPushOptions): void {
               
               const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
               try {
-                const res = await http.current.post('/push/register', {
+                await http.current.post('/push/register', {
                   platform,
                   token: t.value,
                   app: normalizedRole
                 });
-                console.log('[Push][Native] Push token saved to backend successfully! Response:', res);
               } catch (regErr) {
                 console.error('[Push][Native] Failed to save push token to backend:', regErr);
               }
@@ -142,7 +138,6 @@ export function useWebPush(o: WebPushOptions): void {
           // Capacitor native PushNotificationsPlugin with presentationOptions: ["badge", "sound", "alert"]
           // already displays the native status bar / heads-up notification for messages with title/body.
           PushNotifications.addListener('pushNotificationReceived', async (notification: any) => {
-            console.log('[Push][Native] Foreground push notification received:', notification);
 
             const title = (notification.title || notification.data?.title || 'New Notification').trim();
             const body = (notification.body || notification.data?.body || '').trim();
@@ -150,7 +145,6 @@ export function useWebPush(o: WebPushOptions): void {
             const notifId = ref ? `${ref}:::${title}` : `${title}:::${body}`;
 
             if (isDuplicate(notifId, 10000)) {
-              console.log('[Push][Native] Suppressed duplicate notification in foreground:', title);
               return;
             }
 
@@ -183,7 +177,6 @@ export function useWebPush(o: WebPushOptions): void {
                     }
                   ]
                 });
-                console.log('[Push][Native] Local notification scheduled on high_priority_v2:', title);
               } catch (schedErr) {
                 console.error('[Push][Native] Failed to schedule local notification:', schedErr);
               }
@@ -199,7 +192,6 @@ export function useWebPush(o: WebPushOptions): void {
             tap.current?.((action?.notification?.extra ?? null) as Record<string, unknown> | null);
           });
 
-          console.log('[Push][Native] Calling PushNotifications.register()...');
           await PushNotifications.register();
         } catch (err) {
           console.error('[Push][Native] Native push setup error:', err);
@@ -216,7 +208,6 @@ export function useWebPush(o: WebPushOptions): void {
         return;
       }
 
-      console.log('[Push][Web] Current Notification.permission:', Notification.permission);
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
       const messaging = getMessaging(app);
 
@@ -224,9 +215,7 @@ export function useWebPush(o: WebPushOptions): void {
         try {
           let permission = Notification.permission;
           if (permission !== 'granted') {
-            console.log('[Push][Web] Requesting Notification.requestPermission()...');
             permission = await Notification.requestPermission();
-            console.log('[Push][Web] User response:', permission);
           }
 
           if (permission !== 'granted') {
@@ -234,11 +223,8 @@ export function useWebPush(o: WebPushOptions): void {
             return;
           }
 
-          console.log('[Push][Web] Registering /firebase-messaging-sw.js...');
           const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-          console.log('[Push][Web] Service worker ready at scope:', swReg.scope);
 
-          console.log('[Push][Web] Fetching FCM token with VAPID key...');
           const currentToken = await getToken(messaging, {
             vapidKey: VAPID_KEY,
             serviceWorkerRegistration: swReg
@@ -246,13 +232,11 @@ export function useWebPush(o: WebPushOptions): void {
 
           if (currentToken) {
             
-            console.log(`[Push][Web] Calling POST /push/register platform=web, app=${normalizedRole}...`);
-            const res = await http.current.post('/push/register', {
+            await http.current.post('/push/register', {
               platform: 'web',
               token: currentToken,
               app: normalizedRole
             });
-            console.log('[Push][Web] Backend token registration response:', res);
           } else {
             console.warn('[Push][Web] No FCM token returned from Firebase.');
           }
@@ -264,7 +248,6 @@ export function useWebPush(o: WebPushOptions): void {
       requestPermissionAndGetToken();
 
       const unsubscribe = onMessage(messaging, (payload) => {
-        console.log('[Push][Web] Foreground message received from Firebase:', payload);
         const title = (payload.notification?.title || payload.data?.title || 'New Notification').trim();
         const body = (payload.notification?.body || payload.data?.body || '').trim();
         const ref = payload.data?.reference || payload.data?.appointmentId || payload.data?.ticketId || payload.data?.queueItemId || payload.messageId;
@@ -283,5 +266,5 @@ export function useWebPush(o: WebPushOptions): void {
         unsubscribe();
       };
     }
-  }, [tenantId, userType, userId]);
+  }, [tenantId, userType, userId, appId]);
 }

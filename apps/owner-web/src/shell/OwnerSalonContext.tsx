@@ -20,31 +20,15 @@ import { api } from '../api/client';
 // looks right. A stale appointment list from Salon A under Salon B's header is a data-leak-shaped bug. So the
 // switch bumps an epoch that every screen keys its data on, and in-flight requests from the old salon are aborted.
 
-export interface PortfolioBranch {
-  branchId: string;
-  name: string;
-  city: string | null;
-  state: string | null;
-  isActive: boolean;
-}
-
-export interface PortfolioSalon {
-  salonId: string;
-  salonName: string;
-  storeCode: string;
-  status: string;
-  selectable: boolean;
-  accessLevel: 'owner' | 'manager' | 'viewer' | 'report_only';
-  isPrimaryOwner: boolean;
-  branches: PortfolioBranch[];
-}
+// The wire shapes of GET /owner/portfolio live in @aipowersalon/api-contracts (§15), not here.
+import type { OwnerPortfolioSalonView } from '@aipowersalon/api-contracts/tenant';
 
 interface OwnerSalonValue {
   loading: boolean;
   error: string | null;
-  salons: PortfolioSalon[];
+  salons: OwnerPortfolioSalonView[];
   activeSalonId: string | null;
-  activeSalon: PortfolioSalon | null;
+  activeSalon: OwnerPortfolioSalonView | null;
   /** 'all' = the All-Salons portfolio view; otherwise a single salon is active. */
   viewingAllSalons: boolean;
   /** Bumped on every switch. Screens key their data on it so nothing from the previous salon survives. */
@@ -59,11 +43,11 @@ interface OwnerSalonValue {
   favorites: string[];
   toggleFavorite: (salonId: string) => void;
   /** Most recently opened, newest first. Only ever salons still in the portfolio. */
-  recentSalons: PortfolioSalon[];
+  recentSalons: OwnerPortfolioSalonView[];
   reload: () => Promise<void>;
 }
 
-const CAPS: Record<PortfolioSalon['accessLevel'], string[]> = {
+const CAPS: Record<OwnerPortfolioSalonView['accessLevel'], string[]> = {
   owner: ['view', 'reports', 'operate', 'manage_staff', 'manage_settings', 'manage_payments', 'payroll'],
   manager: ['view', 'reports', 'operate', 'manage_staff'],
   viewer: ['view', 'reports'],
@@ -90,7 +74,7 @@ function writeIds(key: string, ids: string[]): void {
 export function OwnerSalonProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [salons, setSalons] = useState<PortfolioSalon[]>([]);
+  const [salons, setSalons] = useState<OwnerPortfolioSalonView[]>([]);
   const [activeSalonId, setActiveSalonId] = useState<string | null>(null);
   const [viewingAllSalons, setViewingAllSalons] = useState(true);   // until the server tells us otherwise
   const [epoch, setEpoch] = useState(0);
@@ -103,7 +87,7 @@ export function OwnerSalonProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const [p, c] = await Promise.all([
-        api.get<{ salons: PortfolioSalon[] }>('/owner/portfolio'),
+        api.get<{ salons: OwnerPortfolioSalonView[] }>('/owner/portfolio'),
         api.get<{ activeSalonId: string | null }>('/owner/context'),
       ]);
       const loaded = p.salons || [];
@@ -185,7 +169,7 @@ export function OwnerSalonProvider({ children }: { children: ReactNode }) {
   // Only salons STILL IN THE PORTFOLIO. A remembered id whose membership was revoked must not reappear here —
   // the server list is the authority, and localStorage can only ever filter it.
   const recentSalons = useMemo(
-    () => recentIds.map((id) => salons.find((s) => s.salonId === id)).filter((s): s is PortfolioSalon => !!s),
+    () => recentIds.map((id) => salons.find((s) => s.salonId === id)).filter((s): s is OwnerPortfolioSalonView => !!s),
     [recentIds, salons],
   );
 

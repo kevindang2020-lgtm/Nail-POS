@@ -39,7 +39,8 @@ export function SuccessScreen({ ticketId, amountCents }: { ticketId: string; amo
   }, [ticketId]);
 
   const opts = detail?.receiptDeliveryOptions;
-  const phone = detail?.customer?.phoneLast4 ? `•••• ${detail.customer.phoneLast4}` : 'No phone on file — tap to enter';
+  // The wire sends a masked phone (phoneMasked); phoneLast4 never existed, so this always read "No phone on file".
+  const phone = detail?.customer?.phoneMasked || 'No phone on file — tap to enter';
   const email = detail?.customer?.emailMasked || 'No email on file — tap to enter';
 
   const handleSmsClick = () => {
@@ -137,7 +138,7 @@ export function SuccessScreen({ ticketId, amountCents }: { ticketId: string; amo
 
           <button className="pay-rcptbtn" disabled={!opts?.app || sending !== null} onClick={() => send('app')}>
             <span className="ic" aria-hidden>📱</span>
-            <span className="grow">Save to customer profile<div className="sub">{detail?.customer?.name || 'Walk-in'}</div></span>
+            <span className="grow">Save to customer profile<div className="sub">{detail?.customer?.fullName || 'Walk-in'}</div></span>
             {sending === 'app' && <span className="sub">Saving…</span>}
           </button>
         </div>

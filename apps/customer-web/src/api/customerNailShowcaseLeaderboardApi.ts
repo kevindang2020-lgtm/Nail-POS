@@ -1,9 +1,10 @@
 // customerNailShowcaseLeaderboardApi.ts — Customer app client for NailShowcase Rankings
 // (/customer/nail-showcase/leaderboard + /me/rank). Private profiles never appear in results.
 import { api } from './client';
+import type { LeaderboardPeriod, LeaderboardResult, LeaderboardScope } from '@aipowersalon/api-contracts/customer';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { LeaderboardPeriod, LeaderboardResult, LeaderboardScope } from '@aipowersalon/api-contracts/customer';
 
-export type LeaderboardScope = 'platform' | 'salon' | 'branch' | 'nearby';
-export type LeaderboardPeriod = 'all_time' | 'weekly' | 'monthly';
 export const LEADERBOARD_LIMITS = [10, 20, 30, 50, 100, 500] as const;
 
 export interface LeaderboardEntry {
@@ -11,7 +12,6 @@ export interface LeaderboardEntry {
   score: number; likesCount: number; commentsCount: number; dislikesCount: number; postsCount: number;
   followerCount: number; isFollowing?: boolean; isMe?: boolean;
 }
-export interface LeaderboardResult { scope: LeaderboardScope; period: LeaderboardPeriod; limit: number; entries: LeaderboardEntry[] }
 export interface MyRank {
   ranked: boolean; rank: number | null; score: number;
   likesCount: number; commentsCount: number; dislikesCount: number; postsCount: number;

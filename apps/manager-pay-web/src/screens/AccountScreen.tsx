@@ -118,6 +118,8 @@ export function AccountScreen() {
   }, []);
 
   const rd = readinessDisplay(readiness);
+  const procCheck = readiness?.checks?.find((c) => c.key === 'processor');
+  const ttpCheck = readiness?.checks?.find((c) => c.key === 'tap_to_pay');
 
   return (
     <>
@@ -184,8 +186,10 @@ export function AccountScreen() {
 
           <div className="pay-infocard">
             <div className="pay-inforow"><span className="k">Payment readiness</span><span className="v"><span className={`pay-dot ${rd.dot}`} />{rd.label}</span></div>
-            {readiness?.processor && <div className="pay-inforow"><span className="k">Processor</span><span className="v">{titleCase(readiness.processor)}</span></div>}
-            <div className="pay-inforow"><span className="k">Tap to Pay</span><span className="v">{readiness?.tapToPayConfigured ? 'Configured' : 'Not set up'}</span></div>
+            {/* The readiness report carries these as checks (the server never sent top-level processor / tapToPayConfigured,
+                so this card always said "Not set up"). */}
+            {procCheck && <div className="pay-inforow"><span className="k">Processor</span><span className="v">{procCheck.state === 'ok' ? 'Connected' : titleCase(procCheck.state.replace(/_/g, ' '))}</span></div>}
+            <div className="pay-inforow"><span className="k">Tap to Pay</span><span className="v">{ttpCheck?.state === 'ok' ? 'Configured' : 'Not set up'}</span></div>
           </div>
 
           <div className="pay-infocard">

@@ -2,8 +2,9 @@
 // server derives the customer from the session; reads are server-truth. Avatar upload uses fetch+FormData directly
 // because the shared `api` helper is JSON-only.
 import { api } from './client';
-
-export type ProfileVisibility = 'public' | 'private';
+import type { ProfilePostCard, ProfileVisibility } from '@aipowersalon/api-contracts/customer';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { ProfilePostCard, ProfileVisibility } from '@aipowersalon/api-contracts/customer';
 
 export interface MySocialProfile {
   customerId: string; publicDisplayName: string | null; avatarUrl: string | null; bio: string | null;
@@ -22,8 +23,6 @@ export interface UpdateSocialProfileBody {
   publicDisplayName?: string; bio?: string; profileVisibility?: ProfileVisibility;
   showRankOnProfile?: boolean; showPostsOnProfile?: boolean; allowFollowers?: boolean;
 }
-export interface ProfilePostCard { postId: string; thumbnailUrl: string | null; caption: string; likeCount: number; commentCount: number; createdAt: string }
-
 // Exact privacy copy shown before a customer makes their profile public (kept in sync with the backend dto).
 export const NS_PUBLIC_PROFILE_WARNING =
   'If your profile is public, other customers can see your avatar, display name, NailShowcase posts, follower count, and your current NailShowcase rank. Your phone number, email, payment information, private appointments, receipts, and personal account details will never be shown.';

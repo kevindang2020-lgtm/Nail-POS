@@ -2,35 +2,15 @@
 // server derives the customer from the session. Reads are server-truth (no fabrication); they return empty until the
 // customer↔user identity decision is made and the customer Kysely adapter is wired (see runbook).
 import { api } from './client';
+import type { AvailabilityResult, BookingOptions, BookingResult, CustomerActiveService, CustomerAddress, CustomerAppointmentItem, CustomerDeal, CustomerGiftCard, CustomerHome, CustomerLoyaltySummary, CustomerNotificationsResult, CustomerPaymentMethod, CustomerProfile, CustomerQueueState, CustomerReceiptItem, CustomerReferral, CustomerSalonInfo, NearbyDealCard, PhoneVerifyResult, RedeemResult, RewardsView, SalonResult, TopUpResult } from '@aipowersalon/api-contracts/customer';
+// API contract types (§15): one definition in @aipowersalon/api-contracts, re-exported here so screens keep their imports.
+export type { AvailabilityResult, AvailabilitySlot, BookableService, BookableTechnician, BookingOptions, BookingResult, CustomerActiveService, CustomerAddress, CustomerAppointmentItem, CustomerDeal, CustomerGiftCard, CustomerHome, CustomerLoyaltySummary, CustomerNextAppointment, CustomerNotification, CustomerNotificationsResult, CustomerPaymentMethod, CustomerProfile, CustomerQueueState, CustomerReceiptItem, CustomerReferral, CustomerReward, CustomerSalonInfo, NearbyDealCard, PhoneVerifyResult, RedeemResult, RewardsView, SalonResult, TopUpResult } from '@aipowersalon/api-contracts/customer';
 
 // ---- Find Salons Near Me (build doc §14–§18) — PUBLIC directory routes ----
-export interface SalonResult {
-  salon_id: string; source: 'aipowersalon' | 'google'; name: string;
-  address: string | null; city: string | null; state: string | null; zip: string | null; phone: string | null;
-  latitude: number | null; longitude: number | null; distance_miles: number | null;
-  rating: number | null; review_count: number | null; photos: string[];
-  is_aipowersalon_partner: boolean; is_bookable_in_app: boolean;
-  open_now: boolean | null; hours: unknown | null; services_preview: string[]; price_level: number | null;
-  booking_url_or_route: string | null; google_place_id: string | null;
-}
 export interface NearbyResponse { results: SalonResult[]; radiusMiles: number; googleEnabled: boolean; googleMessage: string | null; attribution: string | null }
 
-export interface CustomerLoyaltySummary { points: number; tier: string; nextTier: string | null; pointsToNextTier: number; progressPercent: number }
-export interface CustomerActiveService { ticketId: string; serviceName: string; status: string; startedAt: string; elapsedSeconds: number; progressPercent: number; estimatedFinishTime: string | null }
-export interface CustomerNextAppointment { appointmentId: string; serviceName: string; startTime: string; technicianName?: string; status: string }
 export interface AccountDeletionResult { requestId: string; status: string; requestType: 'delete' | 'deactivate'; submittedAt: string; willRemove: string[]; willRetain: string[]; contactEmail: string | null; message: string }
-export interface CustomerHome { customerName: string; avatarUrl?: string | null; loyalty: CustomerLoyaltySummary; nextAppointment?: CustomerNextAppointment; activeService?: CustomerActiveService; recentVisitsCount: number }
-export interface PhoneVerifyResult { ok: boolean; verified?: boolean; message?: string }
-export interface CustomerReward { id: string; title: string; description: string; pointsCost: number; affordable: boolean }
-export interface RewardsView { points: number; rewards: CustomerReward[] }
-export interface RedeemResult { ok: boolean; code?: string; pointsBalance?: number; message?: string }
-export interface CustomerAppointmentItem { appointmentId: string; serviceName: string; startTime: string; status: string; technicianName?: string; branchName?: string; serviceId?: string; technicianId?: string; durationMinutes?: number }
-export interface CustomerReceiptItem { receiptId: string; date: string; totalCents: number; channel?: string }
 export interface UpdateProfileBody { phone?: string; email?: string; marketingOptIn?: boolean; smsOptIn?: boolean; emailOptIn?: boolean; firstName?: string; lastName?: string; birthday?: string }
-export interface BookableService { id: string; name: string; durationMinutes: number; priceCents: number; category?: string | null }
-export interface BookableTechnician { id: string; fullName: string }
-export interface BookingOptions { services: BookableService[]; technicians: BookableTechnician[] }
-export interface BookingResult { appointmentId: string; date: string; startTime: string; endTime: string; serviceName: string; technicianName: string; status: string }
 // Public tech "card" — the shape the backend `publicCard` builder returns (tech-profile.service.ts). Shared by the salon
 // technician list and (extended) the nearby/marketplace results so those screens' reads are compiler-checked, not `any`.
 export interface NSNextAvailable { date: string; startTime: string }
@@ -74,35 +54,15 @@ export interface BookingServiceTech {
   averageRating: number | null; reviewCount: number | null; publicSlug: string | null;
   isPrimary: boolean; isFeatured: boolean; isBookable: boolean;
 }
-export interface AvailabilitySlot { startTime: string; available: boolean; technicianIds: string[] }
 // Customer's own rating for a tech on a ticket (customerMyTechRating) — drives the 7-day edit-window UI.
 export type MyTechRating = { exists: false } | { exists: true; ratingId: string; rating: number; reviewText: string | null; tags: string[]; isPublic: boolean; editable: boolean; editableUntil: string };
-export interface AvailabilityResult { date: string; serviceId: string; durationMinutes: number; window: { open: string; close: string; stepMinutes: number }; slots: AvailabilitySlot[] }
-export interface CustomerQueueState { inQueue: boolean; queueItemId?: string; position?: number; totalWaiting?: number; estimatedWaitMinMinutes?: number; estimatedWaitMaxMinutes?: number; status?: string }
-export interface CustomerNotification { id: string; type: string; title: string; body: string | null; reference: string | null; readAt: string | null; createdAt: string }
-export interface CustomerNotificationsResult { unreadCount: number; items: CustomerNotification[] }
-export interface CustomerAddress { id: string; label: string | null; line1: string; line2: string | null; city: string | null; state: string | null; zip: string | null; isDefault: boolean }
 export interface CreateAddressBody { label?: string; line1: string; line2?: string; city?: string; state?: string; zip?: string; isDefault?: boolean }
-export interface CustomerDeal { id: string; title: string; description: string | null; code: string | null; startsAt: string | null; endsAt: string | null }
-export interface NearbyDealCard {
-  id: string; title: string; shortDescription: string | null; imageUrl: string | null;
-  ownerType: 'salon' | 'technician'; technicianName: string | null; salonName: string | null; branchName: string | null; address: string | null;
-  discountType: 'percent' | 'fixed'; discountPercent: number | null; discountCents: number | null;
-  originalPriceCents: number | null; finalPriceCents: number | null; savingsCents: number | null;
-  distanceMiles: number | null; endsAt: string | null;
-}
-export interface CustomerReferral { code: string; shareMessage: string }
-export interface CustomerProfile { fullName: string | null; firstName: string | null; lastName: string | null; email: string | null; phone: string | null; birthday: string | null; smsOptIn: boolean; emailOptIn: boolean; marketingOptIn: boolean; phoneVerified: boolean; avatarUrl?: string | null }
-export interface CustomerPaymentMethod { id: string; brand: string | null; last4: string | null; expMonth: number | null; expYear: number | null; isDefault: boolean; cardholderName?: string | null; zipCode?: string | null; cardType?: string | null }
 export interface AddPaymentMethodBody { token: string; brand?: string; last4?: string; expMonth?: number; expYear?: number; isDefault?: boolean; cardholderName?: string; zipCode?: string; cardType?: string; consent: boolean; consentVersion: string }
 /** The salon's Fiserv hosted card tokenizer (CardSecure iFrame). available:false → card saving is unavailable. */
 export interface CardTokenizerConfig { available: boolean; url?: string; origin?: string; reason?: string; consentVersion?: string }
-export interface TopUpResult { ok: boolean; declined?: boolean; balanceCents?: number; message?: string }
-export interface CustomerSalonInfo { id: string; name: string; address: string | null; phone: string | null }
 export interface CustomerWalletTxn { id: string; amountCents: number; type: string; reference: string | null; createdAt: string }
 export interface CustomerWalletState { balanceCents: number; currency: string; transactions: CustomerWalletTxn[] }
 
-export interface CustomerGiftCard { id: string; reference: string; cardNumberMasked: string | null; balanceCents: number; purchasedCents: number; promoCents: number; status: string; createdAt: string; expiresAt: string | null }
 export interface CustomerGiftCardsState { cards: CustomerGiftCard[]; totalBalanceCents: number }
 
 export const customerApi = {

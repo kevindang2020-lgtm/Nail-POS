@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ownerCompensationApi, type BonusRule, type BonusMetric, type BonusPreview, type EarnedBonus, type PeriodBonusReview } from '../api/ownerApi';
+import { ownerCompensationApi, type BonusRuleRow, type BonusMetric, type BonusPreview, type EarnedBonus, type PeriodBonusReview } from '../api/ownerApi';
 
 const METRICS: { value: BonusMetric; label: string; money: boolean }[] = [
   { value: 'service_production', label: 'Service production ($)', money: true },
@@ -20,7 +20,7 @@ const fmt = (m: BonusMetric, v: number) => (isMoney(m) ? money(v) : String(v));
  * review, not an automatic payout. Rendered inside the (reachable) Commission & Payroll screen.
  */
 export function BonusRulesPanel() {
-  const [rules, setRules] = useState<BonusRule[] | null>(null);
+  const [rules, setRules] = useState<BonusRuleRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [label, setLabel] = useState('');
