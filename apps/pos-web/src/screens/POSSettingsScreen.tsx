@@ -23,7 +23,7 @@ type SettingsState = {
   context: { role: string; permissions: string[] };
   businessBranch: { salonName: string; legalName: string; businessType: string; website?: string; branchName: string; address?: string; city?: string; state?: string; zip?: string; currency: string; timezone: string; multiBranchEnabled: boolean; defaultLanguage?: 'en' | 'vi' };
   paymentsCheckout: { methods: { card: boolean; cash: boolean; giftCard: boolean; split: boolean }; creditCardSurchargeEnabled: boolean; creditCardSurchargePercent: number; cashDiscountEnabled: boolean; customerDisplayMode: string; managerApprovalOverCents: number };
-  tips: { defaultTipPercents: number[]; allowCustomTip: boolean; allowNoTip: boolean; maxTipPercent: number; tipBase: string };
+  tips: { defaultTipPercents: number[]; allowCustomTip: boolean; allowNoTip: boolean; maxTipPercent: number; tipBase: string; perTechnicianTips?: boolean };
   tax: { enabled: boolean; taxRatePercent: number; taxLabel: string; mode: string; appliesToServices: boolean; appliesToProducts: boolean };
   notifications: { smsConfirmation: boolean; emailConfirmation: boolean; pushConfirmation: boolean; reminderHours: number[]; receiptDelivery: string[]; senderBrand: string; a2pStatus: string };
   onlineGoogleAiBooking: { onlineBookingEnabled: boolean; tenantSlug: string; googleBookingLink?: string; aiPhoneEnabled: boolean; aiActions: { findAvailability: boolean; create: boolean; reschedule: boolean; cancel: boolean; sendReminder: boolean } };
@@ -104,7 +104,7 @@ export function POSSettingsScreen() {
   const [txEnabled, setTxEnabled] = useState(false); const [txRate, setTxRate] = useState(''); const [txLabel, setTxLabel] = useState(''); const [txMode, setTxMode] = useState('exclusive'); const [txSvc, setTxSvc] = useState(true); const [txProd, setTxProd] = useState(true);
   // payments + tips fields
   const [pCard, setPCard] = useState(true); const [pCash, setPCash] = useState(true); const [pGift, setPGift] = useState(false); const [pSplit, setPSplit] = useState(false);
-  const [pSurOn, setPSurOn] = useState(false); const [pSurPct, setPSurPct] = useState(''); const [tipPcts, setTipPcts] = useState(''); const [tipMax, setTipMax] = useState(''); const [tipCustom, setTipCustom] = useState(true); const [tipNo, setTipNo] = useState(true);
+  const [pSurOn, setPSurOn] = useState(false); const [pSurPct, setPSurPct] = useState(''); const [tipPcts, setTipPcts] = useState(''); const [tipMax, setTipMax] = useState(''); const [tipCustom, setTipCustom] = useState(true); const [tipNo, setTipNo] = useState(true); const [tipPerTech, setTipPerTech] = useState(false);   // G4 Split Tips
   // queue & workflow fields
   // BUILD_PLAN Phase 6: the "auto-assign" and "assign by" toggles are RETIRED — they were two of three auto-assign
   // switches nothing read (audit "parallel implementations" 3). Auto-assignment and turn rotation live in AI Queue
@@ -145,7 +145,7 @@ export function POSSettingsScreen() {
     const p = s!.paymentsCheckout; const tp = s!.tips; setEdit('pay'); setNote(null);
     setPCard(p.methods.card); setPCash(p.methods.cash); setPGift(p.methods.giftCard); setPSplit(p.methods.split);
     setPSurOn(p.creditCardSurchargeEnabled); setPSurPct(String(p.creditCardSurchargePercent));
-    setTipPcts(tp.defaultTipPercents.join(',')); setTipMax(String(tp.maxTipPercent)); setTipCustom(tp.allowCustomTip); setTipNo(tp.allowNoTip);
+    setTipPcts(tp.defaultTipPercents.join(',')); setTipMax(String(tp.maxTipPercent)); setTipCustom(tp.allowCustomTip); setTipNo(tp.allowNoTip); setTipPerTech(!!tp.perTechnicianTips);
   };
 
   const saveTax = async () => {
@@ -162,7 +162,7 @@ export function POSSettingsScreen() {
     setNote(null); setBusy('pay');
     try {
       await stepUp.run(() => posSettingsApi.updateCategory('payments-checkout', { methods: { card: pCard, cash: pCash, giftCard: pGift, split: pSplit }, creditCardSurchargeEnabled: pSurOn, creditCardSurchargePercent: sur }));
-      await posSettingsApi.updateCategory('tips', { defaultTipPercents: pcts, maxTipPercent: max, allowCustomTip: tipCustom, allowNoTip: tipNo });
+      await posSettingsApi.updateCategory('tips', { defaultTipPercents: pcts, maxTipPercent: max, allowCustomTip: tipCustom, allowNoTip: tipNo, perTechnicianTips: tipPerTech });
       setEdit(null); await load();
     } catch (e: any) { if (!isStepUpCancelled(e)) setNote(e?.message || i18nText('pos.save_failed')); }
     finally { setBusy(null); }
@@ -399,7 +399,7 @@ export function POSSettingsScreen() {
               <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{ckbx(pCard, setPCard, 'card')}{ckbx(pCash, setPCash, 'cash')}{ckbx(pGift, setPGift, 'gift')}{ckbx(pSplit, setPSplit, 'split')}</div>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>{ckbx(pSurOn, setPSurOn, i18nText('admin.settings.cardSurcharge'))}<input placeholder={i18nText('pos.surcharge_max_3')} value={pSurPct} onChange={(e) => setPSurPct(e.target.value)} inputMode="decimal" style={{ ...inputStyle, width: 110 }} /></div>
               <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}><span className="s">{i18nText('pos.tip_presets')}</span><input placeholder={i18nText('admin.form.example', { value: '15,18,20' })} value={tipPcts} onChange={(e) => setTipPcts(e.target.value)} style={{ ...inputStyle, width: 130 }} /><span className="s">{i18nText('pos.max')}</span><input value={tipMax} onChange={(e) => setTipMax(e.target.value)} inputMode="decimal" style={{ ...inputStyle, width: 70 }} /></div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{ckbx(tipCustom, setTipCustom, i18nText('pos.allow_custom_tip'))}{ckbx(tipNo, setTipNo, i18nText('pos.allow_no_tip'))}</div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>{ckbx(tipCustom, setTipCustom, i18nText('pos.allow_custom_tip'))}{ckbx(tipNo, setTipNo, i18nText('pos.allow_no_tip'))}{ckbx(tipPerTech, setTipPerTech, i18nText('pos.per_technician_tips'))}</div>
               <button className="btn" disabled={busy === 'pay'} onClick={savePay}>{busy === 'pay' ? i18nText('pos.saving_2') : i18nText('pos.save_payments_tips')}</button>
             </div>
           ) : (

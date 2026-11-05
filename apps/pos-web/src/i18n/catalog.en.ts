@@ -580,6 +580,7 @@ export const POS_EN = {
   'pos.allow_managers_to_confirm_a_number_1p0t': 'Allow managers to confirm a number WITHOUT SMS verification',
   'pos.allow_multiple_gift_cards_per_checkout': 'Allow multiple gift cards per checkout',
   'pos.allow_no_tip': 'allow no-tip',
+  'pos.per_technician_tips': 'Customer tips each technician separately on the display (pilot — off by default)',
   'pos.allow_or_block': 'Allow or block',
   'pos.allow_or_block_one_permission_for_1vwq': 'Allow or block one permission for this person only. A block always wins over their role. A temporary grant ends by itself.',
   'pos.allow_partial_redemption': 'Allow partial redemption',

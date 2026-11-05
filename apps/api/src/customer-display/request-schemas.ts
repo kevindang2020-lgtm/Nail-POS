@@ -9,7 +9,9 @@ import { S, type BodySchema } from '@aipowersalon/permissions';
 const str = (max = 200): BodySchema => S.nullable(S.text(max));
 const MONEY: BodySchema['x-forbidden'] = ['status', 'state', 'paymentStatus', 'capturedCents', 'refundedCents', 'tipCents', 'totalCents'];
 
-export const DISPLAY_TIP_BODY: BodySchema = S.object({ tipType: str(16), percent: S.nullable(S.number({ minimum: 0, maximum: 100 })), amountCents: S.nullable(S.integer({ minimum: 0 })) }, [], { 'x-forbidden': MONEY });
+const TECH_TIP: BodySchema = S.object({ technicianId: S.text(64), tipType: S.text(16), percent: S.nullable(S.number({ minimum: 0, maximum: 100 })), amountCents: S.nullable(S.integer({ minimum: 0, maximum: 1000000 })) }, ['technicianId', 'tipType']);
+export const DISPLAY_TIP_BODY: BodySchema = S.object({ tipType: str(16), percent: S.nullable(S.number({ minimum: 0, maximum: 100 })), amountCents: S.nullable(S.integer({ minimum: 0 })),
+  technicians: S.nullable(S.array(TECH_TIP, { maxItems: 30 })), expectedVersion: S.nullable(S.integer({ minimum: 0 })), confirm: S.nullable(S.boolean()) }, [], { 'x-forbidden': MONEY });
 export const DISPLAY_METHOD_BODY: BodySchema = S.object({ method: str(16) }, [], { 'x-forbidden': MONEY });
 export const DISPLAY_RATING_BODY: BodySchema = S.object({ rating: { type: ['number', 'string', 'null'], maxLength: 4 } });
 export const DISPLAY_RECEIPT_BODY: BodySchema = S.object({ choice: str(16) });

@@ -21,6 +21,8 @@ export { TicketHistoryLine, TicketHistoryRevision } from './ticket-history/ticke
 // joined by --into (skip-line-checkout, ai-checkout-upsell):
 export { AiCheckoutUpsellModule } from './ai-checkout-upsell/ai-checkout-upsell.module';
 export { SkipLineCheckoutModule } from './skip-line-checkout/skip-line-checkout.module';
+export * from './checkout/technician-tips';
+export * from './checkout/technician-tips-supersede';   // G4 (Nov 5 2026): individual technician tipping — pure cents math
 export * from './ai-checkout-upsell/ai-checkout-upsell.dto';
 export * from './skip-line-checkout/skip-line-checkout.dto';
 export { CashDrawerRepository } from './cash-drawer/cash-drawer.repository';   // used by the API's cash-drawer producer pgtest
@@ -31,7 +33,7 @@ export { CheckoutLockService, LockHeldElsewhereError } from './checkout-lock/che
 export { KyselyCheckoutLockRepository, InMemoryCheckoutLockRepository } from './checkout-lock/checkout-lock.repository';   // Functional Decision 34 — shared terminal, one transaction at a time
 export { strandedMinutes, decideSplitAttempt, type Resolution as PaymentAttemptResolution } from './checkout/payment-attempt-sweep';   // BUILD_PLAN Phase 11: System Operations shows the stranded-attempt threshold
 export { PAYMENT_ATTEMPT } from './checkout/payment-attempt-machine';   // BUILD_PLAN Phase 12 (#27): this module's lifecycle state machines
-export { LOYALTY_REDEMPTION, CASH_DRAWER_SESSION } from './checkout/checkout-lifecycles';   // BUILD_PLAN Phase 12 (#27): this module's lifecycle state machines
+export { LOYALTY_REDEMPTION, CASH_DRAWER_SESSION, CHECKOUT_TIP_SELECTION } from './checkout/checkout-lifecycles';   // BUILD_PLAN Phase 12 (#27): this module's lifecycle state machines
 // Owner & Manager Payment App mandate (Oct 13 2026, wave 3 / TTP): production-config refusal of a mock provider (§211–§213),
 // the recovery worker for unresolved Tap to Pay attempts (§74–§78) and the termination hook (§140) — used by the API.
 export { tapToPayProductionProblems, FISERV_COMMERCEHUB_TTP_CAPABILITIES, type PaymentProviderCapabilities } from './mobile-checkout/ttp-config';

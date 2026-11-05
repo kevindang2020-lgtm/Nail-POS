@@ -135,7 +135,7 @@ function DisplayApp({ creds: credsIn, onRevoked }: { creds: Creds; onRevoked: ()
 
   const onTip = (o: TipOption) =>
     chooseTip(o.tipType === 'percent' ? { tipType: 'percent', percent: o.percent } : o.tipType === 'custom' ? { tipType: 'custom', amountCents: o.amountCents } : { tipType: 'none' });
-  const a: CheckoutActions = { submitting, actionError, rated, onTip, onMethod: chooseMethod, onPay: pay, onRate: rate, onReceipt: (c) => { void chooseReceipt(c); }, onClearError: clearActionError };
+  const a: CheckoutActions = { submitting, actionError, rated, onTip, onTechTips: (b) => chooseTip(b), onMethod: chooseMethod, onPay: pay, onRate: rate, onReceipt: (c) => { void chooseReceipt(c); }, onClearError: clearActionError };
 
   if (phase === 'forbidden') return wrap(<Expired salon="" />);
   if (!data || !mode) {

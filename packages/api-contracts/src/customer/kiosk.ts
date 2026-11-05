@@ -192,6 +192,26 @@ export interface CustomerDisplayState {
   /** Phase 3 (customer phone management): staff asked this customer to type their phone-change code HERE rather than
    *  read it aloud at the counter. Masked number only. */
   phoneVerification?: { maskedPhone: string };
+  /** G4 Split Tips (Nov 5 2026): when the salon turned on per-technician tips — one card per technician who PERFORMED a
+   *  service on this ticket, with the service basis a percent applies to and the customer's current choice. Absent: the
+   *  single ticket tip. */
+  technicianTips?: DisplayTechnicianTips;
+}
+export interface DisplayTechnicianTip {
+  technicianId: string; name: string; avatarUrl?: string | null; services: string[]; basisCents: number;
+  /** null = not chosen yet; tipType 'none' = an explicit No Tip */
+  choice: { tipType: 'none' | 'percent' | 'custom'; percent: number | null; tipCents: number } | null;
+}
+export interface DisplayTechnicianTips {
+  recipients: DisplayTechnicianTip[]; version: number; state: 'NEW' | 'DRAFT' | 'CONFIRMED' | 'LOCKED' | 'SUPERSEDED';
+  /** the performers or their services changed since the customer chose — the tips must be chosen / confirmed again */
+  stale: boolean; totalTipCents: number; presetCents: number[]; percents: number[];
 }
 /** POST /customer-display/.../tip — what the guest picked. */
-export interface TipSubmission { tipType?: 'none' | 'percent' | 'custom'; percent?: number; amountCents?: number }
+export interface TipSubmission {
+  tipType?: 'none' | 'percent' | 'custom'; percent?: number; amountCents?: number;
+  /** G4 Split Tips: one choice per performing technician (replaces the single tip); expectedVersion guards a stale screen;
+   *  confirm = the customer reviewed and confirmed (Confirm & Continue to Payment) */
+  technicians?: { technicianId: string; tipType: 'none' | 'percent' | 'custom'; percent?: number | null; amountCents?: number | null }[];
+  expectedVersion?: number | null; confirm?: boolean | null;
+}

@@ -13,6 +13,7 @@
 //    totals, method, state, and expiry. A device's stationCode is its register (pos_station_id → pos_stations, migration
 //    511): a display DEDICATED to a register, or '' when SHARED by the branch. Which display a checkout goes to is
 //    decided by display-send-core.ts from the POS's own register — never from the ticket's free-text station label.
+import { supersedeCustomerTipsIfChanged } from './technician-tips-supersede';
 import { unsettledTendersForTicket, unsettledTendersForBranch, uncertainRefundsForBranch, type UnsettledTender, type BranchUnsettledTender, type UncertainRefund } from './unsettled-tenders';
 import { boardSignals, type ReceiptOutcome } from './checkout-board-signals';
 import { taxCents } from '@aipowersalon/money';
@@ -406,7 +407,14 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     };
   }
 
-  async setTip(ctx: CheckoutContext, id: string, tipCents: Money, meta?: { tipType: 'none' | 'percent' | 'custom'; tipPercent: number | null }) { const patch: any = { tip_cents: tipCents, locked_total_cents: null, updated_at: sql`now()` }; if (meta) { patch.tip_type = meta.tipType; patch.tip_percent = meta.tipPercent; } const res = await this.scoped(this.db.updateTable('tickets'), ctx).set(patch).where('id', '=', id).executeTakeFirst().catch(() => undefined); return Number((res as any)?.numUpdatedRows ?? 0) > 0; }
+  async setTip(ctx: CheckoutContext, id: string, tipCents: Money, meta?: { tipType: 'none' | 'percent' | 'custom'; tipPercent: number | null }) {
+    const patch: any = { tip_cents: tipCents, locked_total_cents: null, updated_at: sql`now()` }; if (meta) { patch.tip_type = meta.tipType; patch.tip_percent = meta.tipPercent; }
+    const res = await this.scoped(this.db.updateTable('tickets'), ctx).set(patch).where('id', '=', id).executeTakeFirst().catch(() => undefined);
+    const ok = Number((res as any)?.numUpdatedRows ?? 0) > 0;
+    // G4 Split Tips: a front-desk total that no longer matches the customer's per-technician choice supersedes it (never a silent re-split)
+    if (ok) await supersedeCustomerTipsIfChanged(this.db as never, ctx.tenantId, id, tipCents);
+    return ok;
+  }
   /** BUILD_PLAN Phase 5, bug 13: the checkout audit trail, persisted (append-only audit_logs; the tenant Audit Log reads it). */
   async persistAudit(e: { tenantId: string; branchId?: string; userId: string; role: string; actionType: string; entityType: string; entityId?: string; before?: unknown; after?: unknown; metadata?: unknown }): Promise<void> {
     const uuid = (v?: string | null) => (v && /^[0-9a-f-]{36}$/i.test(v) ? v : null);

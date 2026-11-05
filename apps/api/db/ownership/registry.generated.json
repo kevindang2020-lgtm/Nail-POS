@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 944,
+  "tables": 946,
   "ownership": {
-   "tenant_owned": 632,
+   "tenant_owned": 634,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 90,
    "platform_global": 153,
@@ -31,7 +31,7 @@
    "CUSTOMERS": 57,
    "CATALOG": 21,
    "COMMUNICATIONS": 41,
-   "CHECKOUT": 12,
+   "CHECKOUT": 14,
    "DEALS": 18,
    "LOYALTY": 36,
    "MEMBERSHIPS": 11,
@@ -44,11 +44,11 @@
    "HIGHLY_SENSITIVE": 142,
    "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 516,
+   "INTERNAL": 518,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 50,
+  "append_only": 51,
   "platform_rows": 99
  },
  "tables": {
@@ -2096,6 +2096,30 @@
    "class": "C",
    "domain": "CHECKOUT",
    "sensitivity": "PAYMENT_RESTRICTED",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "checkout_tip_selection_events": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CHECKOUT",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "checkout_tip_selections": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CHECKOUT",
+   "sensitivity": "INTERNAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": true,

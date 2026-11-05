@@ -1,6 +1,7 @@
 // customer-display.module.ts — wires the customer display: the device-facing API (public, the display's own credential),
 // the POS side of its devices and registers (/pos/customer-displays), and the pairing that joins them. Kysely-backed when
 // a DB handle exists, else in-memory.
+import { TechnicianTipStore } from './technician-tips.store';
 import { CustomerPhoneModule, CustomerPhoneUpdateService } from '@aipowersalon/booking';
 import { CardPointeBoltClient, PaymentGatewayResolver, type BoltConfig, type FetchLike } from '@aipowersalon/payments';
 import { PAYMENT_SECRETS, type PaymentSecrets } from '@aipowersalon/security';
@@ -49,9 +50,10 @@ import { decryptSecret } from '../common/mfa-enc';
     },
     {
       provide: CustomerDisplayService,
-      useFactory: (repo: DisplayDataPort, rt: RealtimeEmitter, tc: TerminalCapturePort | undefined, goCheckIn: GoCheckInService, ads: DisplayAdsPlaylistService, checkout: CheckoutService, devices: DisplayDevicesService, phone?: CustomerPhoneUpdateService) =>
-        new CustomerDisplayService(repo, rt, tc, goCheckIn, ads, checkout, devices, phone ?? undefined),
-      inject: ['DisplayDataPort', REALTIME, 'TerminalCapturePort', GoCheckInService, DisplayAdsPlaylistService, CheckoutService, DisplayDevicesService, { token: CustomerPhoneUpdateService, optional: true }],
+      useFactory: (repo: DisplayDataPort, rt: RealtimeEmitter, tc: TerminalCapturePort | undefined, goCheckIn: GoCheckInService, ads: DisplayAdsPlaylistService, checkout: CheckoutService, devices: DisplayDevicesService, db: AppDatabase, phone?: CustomerPhoneUpdateService) =>
+        // G4 Split Tips (Nov 5 2026): per-technician tips need the database (no in-memory money store)
+        new CustomerDisplayService(repo, rt, tc, goCheckIn, ads, checkout, devices, phone ?? undefined, db ? new TechnicianTipStore(db as never) : undefined),
+      inject: ['DisplayDataPort', REALTIME, 'TerminalCapturePort', GoCheckInService, DisplayAdsPlaylistService, CheckoutService, DisplayDevicesService, DATABASE, { token: CustomerPhoneUpdateService, optional: true }],
     },
   ],
 })

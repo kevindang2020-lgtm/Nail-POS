@@ -124,3 +124,18 @@ export const TICKET_CHECKOUT = defineStateMachine({
   },
   initial: ['ready_for_payment'],
 });
+
+/** G4 Split Tips (Nov 5 2026, migration 817): the customer's per-technician tip selection. A save always writes the
+ *  draft / confirmed state (re-entry allowed until payment starts); payment LOCKS it; a decline unlocks to CONFIRMED;
+ *  a front-desk total change or a performer change SUPERSEDES it (a new save starts again). */
+export const CHECKOUT_TIP_SELECTION = defineStateMachine({
+  name: 'checkout_tip_selection', table: 'checkout_tip_selections', column: 'state',
+  states: ['DRAFT', 'CONFIRMED', 'LOCKED', 'SUPERSEDED'],
+  transitions: {
+    DRAFT: ['DRAFT', 'CONFIRMED', 'SUPERSEDED'],
+    CONFIRMED: ['DRAFT', 'CONFIRMED', 'LOCKED', 'SUPERSEDED'],
+    LOCKED: ['LOCKED', 'CONFIRMED', 'SUPERSEDED'],
+    SUPERSEDED: ['DRAFT', 'CONFIRMED'],
+  },
+  initial: ['DRAFT', 'CONFIRMED'],
+});

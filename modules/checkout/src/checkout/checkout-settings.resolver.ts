@@ -44,6 +44,9 @@ export async function resolveCheckoutSettings(db: Kysely<DB>, tenantId: string, 
       customerDisplayCaptureMode: pc.customerDisplayCaptureMode === 'terminal' ? 'terminal' : d.customerDisplayCaptureMode,
       maxTipPercent: num(tips.maxTipPercent, d.maxTipPercent),
       checkoutCompleteTimeoutSeconds: num(pc.checkoutCompleteTimeoutSeconds, d.checkoutCompleteTimeoutSeconds),
+      perTechnicianTips: bool(tips.perTechnicianTips, d.perTechnicianTips ?? false),
+      tipPresetCents: Array.isArray(tips.tipPresetCents) && tips.tipPresetCents.every((x: unknown) => Number.isInteger(Number(x)) && Number(x) > 0 && Number(x) <= 50000)
+        ? tips.tipPresetCents.slice(0, 4).map((x: unknown) => Number(x)) : d.tipPresetCents,
     };
   } catch {
     return { ...d };

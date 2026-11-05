@@ -40,11 +40,16 @@ export interface CheckoutSettings {
   customerDisplayCaptureMode: 'front_desk' | 'terminal';
   maxTipPercent: number;                 // tip above this needs manager approval
   checkoutCompleteTimeoutSeconds: number; // display-side: seconds the 'Payment Complete' screen shows before returning to Go Check-In
+  /** G4 Split Tips (Nov 5 2026): the customer tips each performing technician separately on the display (default OFF —
+   *  the guide's default-off rollout; tips.perTechnicianTips) and the dollar presets shown beside the percents */
+  perTechnicianTips?: boolean;
+  tipPresetCents?: number[];
 }
 export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
   creditCardSurchargeEnabled: true, creditCardSurchargePercent: 3.0, surchargeLabel: "Card Surcharge",
   taxRatePercent: 7.75, cashDiscountEnabled: false, defaultTipPercents: [15, 18, 20],
   customerDisplayPayButtonEnabled: false, customerDisplayCaptureMode: 'front_desk', maxTipPercent: 100, checkoutCompleteTimeoutSeconds: 5,
+  perTechnicianTips: false, tipPresetCents: [300, 500, 1000],
 };
 
 // Gift-card SALE rules enforced server-side at issuance (from the 'gift-card-settings' block). Defaults mirror the

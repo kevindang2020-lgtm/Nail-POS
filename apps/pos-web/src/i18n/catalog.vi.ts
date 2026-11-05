@@ -581,6 +581,7 @@ export const POS_VI: Record<keyof typeof POS_EN, string> = {
   'pos.allow_managers_to_confirm_a_number_1p0t': 'Cho phép quản lý xác nhận số điện thoại KHÔNG cần xác minh SMS',
   'pos.allow_multiple_gift_cards_per_checkout': 'Cho phép nhiều thẻ quà tặng trong một lần thanh toán',
   'pos.allow_no_tip': 'cho phép không tip',
+  'pos.per_technician_tips': 'Khách tip riêng cho từng Thợ trên màn hình khách (thử nghiệm — mặc định tắt)',
   'pos.allow_or_block': 'Cho phép hoặc chặn',
   'pos.allow_or_block_one_permission_for_1vwq': 'Cho phép hoặc chặn một quyền chỉ cho người này. Chặn luôn thắng vai trò của họ. Quyền tạm thời tự hết hạn.',
   'pos.allow_partial_redemption': 'Cho phép dùng một phần',

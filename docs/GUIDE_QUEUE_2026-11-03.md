@@ -364,7 +364,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G1 | Customer Profile & Global Loyalty Protection (owner-approved bonus points) | BUILT — see the G1 section below |
 | G2 | Refer a Friend / Referral Rewards build | BUILT (two-sided salon vouchers + hard budget) — see the G2 section below |
 | G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | BUILT (P1 branch names, P2 weekly days off, P3 Skills Catalog) — see the G3 section below |
-| G4 | Individual Technician Tipping at Checkout (per-tech tips on the customer display) | NOT AUDITED yet |
+| G4 | Split Tips — individual technician tipping at checkout | BUILT behind a default-off flag — see `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md` (PRODUCTION: blocked on Fiserv device checks) |
 | G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
 | G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
 | G7 | Global Advertising + Tenant Control + Half-Screen Image Rotation | NOT AUDITED yet |
@@ -512,4 +512,16 @@ repeating weekly days off with effective dates, and a reusable Skills Catalog.
     day off who is not clocked in is already not offered, but the queue does not name the rule as the reason.
   - Pre-existing, not from this change: `customer-booking-reschedule.vitest.spec` "a time that already passed" fails at this
     hour of the day on the base commit too.
+
+### G4 Split Tips — built behind a default-off flag (Nov 5 2026)
+
+Full write-up, audit table and the 36-scenario status matrix: `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md`. Summary: the
+customer display shows one card per technician who performed a service; each technician's tip is chosen separately
+(No Tip / $ presets / % of that technician's own services / Custom), reviewed and confirmed before payment; the server
+re-validates, versions and writes the customer-directed split into the one tip store (`ticket_tip_allocations`, migration
+817 `checkout_tip_selections` + append-only events), locks it at Pay, unlocks on a decline, marks it stale when the
+performers change, and supersedes it when the front desk changes the total. One combined card amount is unchanged.
+Tests: `technician-tips.vitest` (12), `technician-tips.pgtest` (9), `TechnicianTips.test` (4); checkout (1,021),
+customer-display (205) and common (1,522) suites green. Not done: the front desk Pay path does not yet require the
+customer's confirmation; POS live per-technician view; Fiserv device / UAT checks (BLOCKED_EXTERNAL).
 

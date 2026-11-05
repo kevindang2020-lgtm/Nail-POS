@@ -10,7 +10,7 @@
 // the same ticket, the same tip choices and the same words. Nothing here computes money (§35): every amount is the
 // server's — the tip buttons carry the server's own amounts, and a choice is sent back as a choice.
 import { useState } from 'react';
-import type { CustomerDisplayReceipt, CustomerDisplayState, DisplayReceiptChannel, TipOption } from '@aipowersalon/api-contracts/customer';
+import type { CustomerDisplayReceipt, CustomerDisplayState, DisplayReceiptChannel, TipOption, TipSubmission, DisplayTechnicianTips } from '@aipowersalon/api-contracts/customer';
 import { parseDollarsToCents, keypadPress } from '@aipowersalon/ui';
 import { usd } from './types';
 import { CheckoutTicket } from './CheckoutTicket';
@@ -36,6 +36,8 @@ export interface CheckoutActions {
   onRate: (n: number) => void; onClearError: () => void;
   /** §97: the customer's receipt choice */
   onReceipt?: (choice: DisplayReceiptChannel) => void;
+  /** G4 Split Tips: the per-technician choices (a draft, or confirm = Confirm & Continue) */
+  onTechTips?: (body: TipSubmission) => void;
 }
 
 // ── the ticket (§30–§33): the full customer-safe projection; the old service-list form only for a legacy session ──────
@@ -94,9 +96,83 @@ function CustomTip({ onConfirm, onCancel, disabled }: { onConfirm: (cents: numbe
   );
 }
 
+// ── G4 Split Tips: one card per technician who performed a service; tap → that technician's own tip menu; review; confirm.
+// The amounts are the server's (each card's tip comes back from the server); a percent shows its basis — THAT technician's
+// services — and the preview amount on the button is only a label (the server computes the tip).
+type Choice = NonNullable<DisplayTechnicianTips['recipients'][number]['choice']>;
+type TipPick = { tipType: Choice['tipType']; percent?: number | null; amountCents?: number | null };
+export function TechnicianTipsPanel({ tt, s, a }: { tt: DisplayTechnicianTips; s: CustomerDisplayState; a: CheckoutActions }) {
+  const t = useT();
+  const [open, setOpen] = useState<string | null>(null);
+  const [custom, setCustom] = useState(false);
+  const [review, setReview] = useState(false);
+  const chosen = (id: string): TipPick | null => { const c = tt.recipients.find((r) => r.technicianId === id)?.choice; return c ? { tipType: c.tipType, percent: c.percent, amountCents: c.tipType === 'custom' ? c.tipCents : null } : null; };
+  const send = (id: string | null, p: TipPick | null, confirm = false) => {
+    const technicians = tt.recipients.map((r) => ({ id: r.technicianId, p: r.technicianId === id ? p : chosen(r.technicianId) })).filter((x) => x.p)
+      .map((x) => ({ technicianId: x.id, tipType: x.p!.tipType, percent: x.p!.percent ?? null, amountCents: x.p!.amountCents ?? null }));
+    a.onTechTips?.({ technicians, expectedVersion: tt.version, confirm });
+  };
+  const allChosen = tt.recipients.every((r) => r.choice);
+  const tech = open ? tt.recipients.find((r) => r.technicianId === open) : null;
+  if (tech && custom) return (
+    <section className="kiosk-tip" data-testid="ttip-custom">
+      <div className="kiosk-tip-title serif">{t('ttip.tipFor', { name: tech.name })}</div>
+      <CustomTip disabled={a.submitting} onCancel={() => setCustom(false)} onConfirm={(c) => { send(tech.technicianId, { tipType: 'custom', amountCents: c }); setCustom(false); setOpen(null); }} />
+    </section>);
+  if (tech) return (
+    <section className="kiosk-tip" data-testid="ttip-menu">
+      <div className="kiosk-tip-title serif">{t('ttip.tipFor', { name: tech.name })}</div>
+      <div className="kiosk-tip-sub">{t('ttip.basis', { amount: usd(tech.basisCents), name: tech.name })}</div>
+      <div className="kiosk-tip-grid">
+        {tt.presetCents.map((c) => <button key={'d' + c} className={`kiosk-tip-opt${tech.choice?.tipType === 'custom' && tech.choice.tipCents === c ? ' on' : ''}`} disabled={a.submitting} data-testid={`ttip-preset-${c}`}
+          onClick={() => { send(tech.technicianId, { tipType: 'custom', amountCents: c }); setOpen(null); }}><span className="pct">{usd(c)}</span></button>)}
+        {tt.percents.map((p) => <button key={'p' + p} className={`kiosk-tip-opt${tech.choice?.tipType === 'percent' && tech.choice.percent === p ? ' on' : ''}`} disabled={a.submitting} data-testid={`ttip-pct-${p}`}
+          onClick={() => { send(tech.technicianId, { tipType: 'percent', percent: p }); setOpen(null); }}><span className="pct">{p}%</span><span className="amt">{usd(Math.round(tech.basisCents * p / 100))}</span></button>)}
+      </div>
+      <div className="kiosk-tip-row">
+        <button className="kiosk-btn ghost" disabled={a.submitting} onClick={() => setCustom(true)} data-testid="ttip-custom-open">{t('ttip.custom')}</button>
+        <button className={`kiosk-btn ghost${tech.choice?.tipType === 'none' ? ' on' : ''}`} disabled={a.submitting} data-testid="ttip-none" onClick={() => { send(tech.technicianId, { tipType: 'none' }); setOpen(null); }}>{t('ttip.noTip')}</button>
+        <button className="kiosk-btn ghost" onClick={() => setOpen(null)}>{t('ttip.back')}</button>
+      </div>
+    </section>);
+  if (tt.state === 'CONFIRMED' || tt.state === 'LOCKED') return (
+    <section className={`kiosk-tip${s.payButtonEnabled ? ' with-pay' : ''}`} data-testid="ttip-confirmed">
+      <div className="kiosk-tip-title serif">{t('ttip.title')}</div>
+      {tt.recipients.map((r) => <div key={r.technicianId} className="kiosk-row"><span>{r.name}</span><span>{r.choice && r.choice.tipCents > 0 ? usd(r.choice.tipCents) : t('ttip.noTip')}</span></div>)}
+      <div className="kiosk-row total"><span>{t('ttip.total')}</span><span>{usd(tt.totalTipCents)}</span></div>
+      {tt.state === 'CONFIRMED' ? <button className="kiosk-btn ghost" disabled={a.submitting} onClick={() => send(null, null, false)} data-testid="ttip-edit">{t('ttip.edit')}</button> : null}
+      {s.payButtonEnabled ? <button className="kiosk-pay" disabled={a.submitting} onClick={a.onPay}>{a.submitting ? t('pay.starting') : t('pay.pay', { amount: usd(s.totals.totalDueCents) })}</button>
+        : <div className="kiosk-confirm"><div className="kiosk-confirm-line">{t('ttip.confirmed', { amount: usd(tt.totalTipCents), total: usd(s.totals.totalDueCents) })}</div><div className="kiosk-confirm-sub">{t('tip.frontDeskCompletes')}</div></div>}
+      {a.actionError && <div className="kiosk-err" onClick={a.onClearError}>{a.actionError}</div>}
+    </section>);
+  return (
+    <section className="kiosk-tip" data-testid="ttip-cards">
+      <div className="kiosk-tip-title serif">{t('ttip.title')}</div>
+      <div className="kiosk-tip-sub">{tt.stale ? t('ttip.stale') : t('ttip.sub')}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxHeight: '50vh', overflowY: 'auto' }}>
+        {tt.recipients.map((r) => (
+          <button key={r.technicianId} className="kiosk-method" style={{ display: 'flex', alignItems: 'center', gap: 12, textAlign: 'left', minHeight: 72 }} disabled={a.submitting}
+            onClick={() => setOpen(r.technicianId)} data-testid={`ttip-card-${r.technicianId}`}>
+            {r.avatarUrl ? <img src={r.avatarUrl} alt="" style={{ width: 48, height: 48, borderRadius: 24, objectFit: 'cover' }} /> : <span aria-hidden style={{ width: 48, height: 48, borderRadius: 24, display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.08)', fontWeight: 800 }}>{r.name.slice(0, 1)}</span>}
+            <span style={{ flex: 1 }}><span className="m-name">{r.name}</span><span className="m-hint" style={{ display: 'block' }}>{r.services.join(', ')}</span></span>
+            <span className="m-name">{r.choice ? (r.choice.tipCents > 0 ? usd(r.choice.tipCents) : t('ttip.noTip')) : t('ttip.choose')}</span>
+          </button>))}
+      </div>
+      {review || allChosen ? (
+        <div className="kiosk-confirm" data-testid="ttip-review">
+          <div className="kiosk-row total"><span>{t('ttip.total')}</span><span>{usd(tt.recipients.reduce((x, r) => x + (r.choice?.tipCents ?? 0), 0))}</span></div>
+          <button className="kiosk-pay" disabled={a.submitting || !allChosen} onClick={() => send(null, null, true)} data-testid="ttip-confirm">{t('ttip.confirm')}</button>
+          {!allChosen ? <div className="kiosk-method-note">{t('ttip.needAll')}</div> : null}
+        </div>) : <button className="kiosk-btn ghost" onClick={() => setReview(true)}>{t('ttip.review')}</button>}
+      {a.actionError && <div className="kiosk-err" onClick={a.onClearError}>{a.actionError}</div>}
+    </section>
+  );
+}
+
 export function TipAndPay({ s, a }: { s: CustomerDisplayState; a: CheckoutActions }) {
   const t = useT();
   const [customOpen, setCustomOpen] = useState(false);
+  if (s.technicianTips && a.onTechTips) return <TechnicianTipsPanel tt={s.technicianTips} s={s} a={a} />;
   const tipped = s.selectedTipCents > 0 || s.state === 'tip_selected';
   if (customOpen) {
     return (

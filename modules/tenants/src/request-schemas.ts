@@ -47,7 +47,7 @@ export const SETTINGS_GIFT_CARD_BODY = section({
   redeemNetworkGiftCards: bool, termsVersion: text(32),
 });
 export const SETTINGS_TIPS_BODY = section({
-  defaultTipPercents: nums(10), allowCustomTip: bool, allowNoTip: bool, maxTipPercent: num, tipBase: text(32), assignToPrimaryTech: bool,
+  defaultTipPercents: nums(10), allowCustomTip: bool, allowNoTip: bool, maxTipPercent: num, tipBase: text(32), assignToPrimaryTech: bool, perTechnicianTips: bool,
 });
 export const SETTINGS_TAX_BODY = section({
   enabled: bool, taxRatePercent: num, taxLabel: text(80), mode: text(16), appliesToServices: bool, appliesToProducts: bool,

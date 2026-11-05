@@ -537,6 +537,12 @@
    "withdrawn",
    "won"
   ],
+  "checkout_tip_selections.state": [
+   "CONFIRMED",
+   "DRAFT",
+   "LOCKED",
+   "SUPERSEDED"
+  ],
   "churn_watch_reviews.status": [
    "deferred",
    "reviewed"

@@ -9,8 +9,10 @@ import type { DisplayDataPort, DisplaySessionRow } from './customer-display.repo
 import { buildDisplayBranding } from './customer-display-branding';
 import type { TerminalCapturePort } from './terminal-capture.service';
 import type { CustomerDisplayCheckout, CheckoutTotals } from '@aipowersalon/api-contracts/customer';
+import { TechnicianTipStore, TipSelectionLocked, TipSelectionStale } from './technician-tips.store';
+import type { DisplayTechnicianTips } from '@aipowersalon/api-contracts/customer';
 import {
-  computeTotals, tipOptions, tipForPercent, validateCustomTip,
+  computeTotals, tipOptions, tipForPercent, validateCustomTip, tipRecipients, recipientsKey, technicianTips, TechTipError, type TipRecipient,
   type CustomerDisplayState, type DisplayState, type PaymentMethod,
 } from '@aipowersalon/checkout';
 
@@ -22,7 +24,7 @@ export class DisplayError extends Error {
 
 export type { TipSubmission } from '@aipowersalon/api-contracts/customer';   // the wire contract (Constitution 13 §15)
 import type { TipSubmission, CustomerDisplayAdPlaylist, CustomerDisplayReceipt, DisplayHeartbeatAck, DisplayReceiptChannel, DisplayReceiptOption, DisplayCheckInSession } from '@aipowersalon/api-contracts/customer';
-import { DISPLAY_RECEIPT_DECIDE_SECONDS, maskEmail, maskPhone } from '@aipowersalon/api-contracts';
+import { DISPLAY_RECEIPT_DECIDE_SECONDS, maskEmail, maskPhone, withCode } from '@aipowersalon/api-contracts';
 
 /** Phase 3: what the display needs from the canonical phone service — structural, so the display module keeps its shape. */
 export interface DisplayPhonePort {
@@ -116,7 +118,60 @@ export class CustomerDisplayService {
     private readonly receipts?: DisplayReceiptPort, private readonly devicesHub?: DeviceHeartbeatPort,
     /** Phase 3: the customer's phone-change code, typed on this display (CustomerPhoneUpdateService). */
     private readonly phone?: DisplayPhonePort,
+    /** G4 Split Tips (Nov 5 2026): per-technician tips (absent without a database — the single tip stays) */
+    private readonly tips?: TechnicianTipStore,
   ) {}
+
+  /** G4: the ticket's performing technicians + the customer's current per-technician choice; null when the salon has not
+   *  turned per-technician tips on, there is no database, or no technician performed a service on the ticket */
+  private async technicianTipsFor(row: DisplaySessionRow, settings: { perTechnicianTips?: boolean; tipPresetCents?: number[]; defaultTipPercents: number[] }): Promise<{ view: DisplayTechnicianTips; recipients: TipRecipient[] } | null> {
+    if (!settings.perTechnicianTips || !this.tips || !row.ticketId) return null;
+    const l = await this.tips.lines(row.tenantId, row.ticketId);
+    const recipients = tipRecipients(l.lines, l.discountCents);
+    if (!recipients.length) return null;
+    const sel = await this.tips.selection(row.tenantId, row.ticketId);
+    const key = recipientsKey(recipients);
+    const stale = !!sel && sel.state !== 'SUPERSEDED' && sel.recipientsKey !== key;
+    const live = sel && !stale && sel.state !== 'SUPERSEDED' ? sel : null;
+    const pick = new Map((live?.selections ?? []).map((x) => [x.technicianId, x]));
+    return { recipients, view: {
+      recipients: recipients.map((r) => { const c = pick.get(r.technicianId); return { technicianId: r.technicianId, name: r.name, avatarUrl: l.avatars[r.technicianId] ?? null, services: r.services, basisCents: r.basisCents,
+        choice: c ? { tipType: c.tipType, percent: c.percent, tipCents: c.tipCents } : null }; }),
+      version: sel?.version ?? 0, state: sel ? (stale ? 'SUPERSEDED' : sel.state) : 'NEW', stale, totalTipCents: live?.totalTipCents ?? 0,
+      presetCents: settings.tipPresetCents ?? [300, 500, 1000], percents: settings.defaultTipPercents } };
+  }
+
+  /** G4: the customer's per-technician choices — validated against the ticket's REAL performers and their basis (a
+   *  technician who did not perform a service is refused), versioned, written as the ticket's customer-directed split */
+  private async applyTechnicianTips(row: DisplaySessionRow, input: TipSubmission): Promise<CustomerDisplayState> {
+    const settings = await this.repo.resolveSettings(row.tenantId, row.branchId);
+    const tt = await this.technicianTipsFor(row, settings);
+    if (!tt) throw withCode(new DisplayError('invalid', 'Tipping each technician is not available for this checkout.'), 'TECH_TIPS_UNAVAILABLE');
+    const confirm = input.confirm === true;
+    let res: ReturnType<typeof technicianTips>;
+    try { res = technicianTips(tt.recipients, input.technicians ?? [], settings.maxTipPercent); }
+    catch (e) { if (e instanceof TechTipError) throw new DisplayError('invalid', e.message); throw e; }
+    if (confirm && res.items.length !== tt.recipients.length) throw withCode(new DisplayError('invalid', 'Choose a tip (or No Tip) for each technician before confirming.'), 'TECH_TIPS_INCOMPLETE');
+    const percents = new Set(res.items.map((i) => (i.tipType === 'percent' ? i.percent : -1)));
+    const meta = { tipType: (res.totalCents === 0 ? 'none' : res.items.every((i) => i.tipType === 'percent') && percents.size === 1 ? 'percent' : 'custom') as 'none' | 'percent' | 'custom',
+      tipPercent: res.items.length && res.items.every((i) => i.tipType === 'percent') && percents.size === 1 ? Math.round(Number(res.items[0].percent)) : null };
+    // a declined / failed charge released the money: the customer may change the tips before trying again (§7.1)
+    if (row.lastPaymentStatus === 'declined' || row.lastPaymentStatus === 'failed') await this.tips!.unlock(row.tenantId, row.ticketId!);
+    try {
+      await this.tips!.save({ tenantId: row.tenantId, branchId: row.branchId, ticketId: row.ticketId!, sessionId: row.id, expectedVersion: input.expectedVersion ?? null,
+        recipientsKey: recipientsKey(tt.recipients), items: res.items, totalCents: res.totalCents, confirm, tipMeta: meta });
+    } catch (e) {
+      if (e instanceof TipSelectionStale || e instanceof TipSelectionLocked) throw new DisplayError('invalid', e.message);
+      throw e;
+    }
+    const checkout = await this.projection(row);
+    if (checkout) {
+      const totals = computeTotals(CustomerDisplayService.effective(checkout), res.totalCents, settings, checkout.paymentMethod as PaymentMethod, checkout.giftCardSaleCents);
+      await this.repo.applyTip(row.id, res.totalCents, totals.subtotalCents, totals.taxCents, totals.surchargeCents, totals.totalDueCents, meta);
+    }
+    this.emit(row, EVENTS.customerDisplayTipSelected, { sessionId: row.id, tipCents: res.totalCents, perTechnician: true, confirmed: confirm });
+    return this.build((await this.repo.getSession(row.id)) ?? { ...row, state: 'tip_selected' });
+  }
 
   // 23-inch spec §30–§39: the customer-safe checkout for this session's ticket, from the checkout module — the same
   // ticket, totals and payments the POS reads. Null when the session has no ticket (or it is gone).
@@ -176,7 +231,10 @@ export class CustomerDisplayService {
   private async applyTipToRow(row: DisplaySessionRow, input: TipSubmission): Promise<CustomerDisplayState> {
     const st = this.mapState(row);
     if (st !== 'ticket_review' && st !== 'tip_selected') throw new DisplayError('invalid', 'The tip can no longer be changed.');
+    if (Array.isArray(input?.technicians)) return this.applyTechnicianTips(row, input);
     const settings = await this.repo.resolveSettings(row.tenantId, row.branchId);
+    // G4: with per-technician tips on, one undirected ticket tip would leave the split to a fallback — refused
+    if (await this.technicianTipsFor(row, settings)) throw withCode(new DisplayError('invalid', 'Choose a tip for each technician.'), 'TECH_TIPS_REQUIRED');
     const checkout = await this.projection(row);
     if (!checkout || !row.ticketId) throw new DisplayError('invalid', 'This checkout is no longer available.', 'DISPLAY_SESSION_EXPIRED');
     // the POS's own rule (checkout.service applyTip): a tip percent is of the effective subtotal, after discounts
@@ -235,6 +293,12 @@ export class CustomerDisplayService {
     if (st !== 'ticket_review' && st !== 'tip_selected') throw new DisplayError('invalid', 'Payment can no longer be started.');
     const checkout = await this.projection(row);
     if (!checkout) throw new DisplayError('invalid', 'This checkout is no longer available.', 'DISPLAY_SESSION_EXPIRED');
+    // G4 Split Tips: the customer must have confirmed a current per-technician selection; it is frozen before the charge
+    const tt = await this.technicianTipsFor(row, settings);
+    if (tt) {
+      if (tt.view.stale || tt.view.state !== 'CONFIRMED') throw withCode(new DisplayError('invalid', tt.view.stale ? 'The technicians on this ticket changed. Please choose the tips again.' : 'Please review and confirm the tips first.'), tt.view.stale ? 'TECH_TIPS_STALE' : 'TECH_TIPS_NOT_CONFIRMED');
+      if (!(await this.tips!.lock(row.tenantId, row.ticketId!, row.id))) throw withCode(new DisplayError('invalid', 'Please review and confirm the tips first.'), 'TECH_TIPS_NOT_CONFIRMED');
+    }
     await this.repo.markPaymentRequested(row.id);
     const method = checkout.paymentMethod as PaymentMethod;
     this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, totalDueCents: checkout.balanceDueCents, tipCents: checkout.tipCents });
@@ -567,6 +631,7 @@ export class CustomerDisplayService {
     // §97–§98: the receipt choice comes right after the payment (the signature, if any, was taken on the card terminal),
     // before the 3-second screen
     const receipt = state === 'payment_success' ? await this.receiptFor(row) : null;
+    const tt = checkout && (state === 'ticket_review' || state === 'tip_selected' || state === 'payment_processing' || state === 'payment_failed') ? await this.technicianTipsFor(row, settings) : null;
     return {
       state, salonName, sessionId: row.id, version: row.changedAtMs ?? 0,
       customer: firstName ? { firstName } : undefined,
@@ -577,6 +642,7 @@ export class CustomerDisplayService {
       checkoutCompleteTimeoutSeconds: settings.checkoutCompleteTimeoutSeconds,
       ...(receipt ? { receipt } : {}),
       ...(branding ? { branding } : {}),
+      ...(tt ? { technicianTips: tt.view } : {}),
     };
   }
 
