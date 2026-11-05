@@ -59,7 +59,7 @@ export class LoyaltyProgramError extends Error {
   constructor(message: string, readonly code: 'CUSTOMER_NOT_FOUND' | 'LOYALTY_ALREADY_ENROLLED' | 'LOYALTY_NOT_ENROLLED' | 'REWARD_NOT_FOUND' | 'REWARD_NOT_AVAILABLE'
     | 'LOYALTY_INSUFFICIENT_POINTS' | 'REDEMPTION_NOT_FOUND' | 'REDEMPTION_NOT_VOIDABLE' | 'IDEMPOTENCY_KEY_REQUIRED' | 'LOYALTY_INVALID_ENTRY'
     | 'REWARD_NOT_STARTED' | 'REWARD_EXPIRED' | 'REWARD_OUT_OF_STOCK' | 'REWARD_MEMBER_LIMIT' | 'REWARD_TIER_NOT_ELIGIBLE'
-    | 'LOYALTY_TIER_INVALID' | 'LOYALTY_TIER_EXISTS' | 'LOYALTY_TIER_IN_USE' | 'LOYALTY_TIER_NOT_FOUND', readonly status: 400 | 404 | 409 = 400) {
+    | 'LOYALTY_TIER_INVALID' | 'LOYALTY_TIER_EXISTS' | 'LOYALTY_TIER_IN_USE' | 'LOYALTY_TIER_NOT_FOUND' | 'LOYALTY_DIRECT_EDIT_REFUSED', readonly status: 400 | 404 | 409 = 400) {
     super(message); this.name = 'LoyaltyProgramError';
   }
 }
@@ -353,36 +353,12 @@ export class LoyaltyProgramRepository {
     }).then(async (id) => { await this.flush(ctx, audits); return id; }).then(async (id) => (await this.members(ctx, { page: 1, pageSize: MAX_PAGE_SIZE })).items.find((m) => m.customerId === id) ?? (() => { throw new LoyaltyProgramError('Enrolment not found after commit.', 'LOYALTY_INVALID_ENTRY'); })());
   }
 
-  /** Add / deduct points: one `adjust` ledger entry, reason required, applied ONCE per idempotency key (a double tap or
-   *  a retry returns the first result). A deduction past the balance is refused (no negative balances). */
-  async adjust(ctx: LoyaltyProgramContext, b: { customerId: string; delta: number; reason: string; idempotencyKey: string }): Promise<{ balanceAfter: number; duplicate: boolean; ledgerId: string | null }> {
-    if (!isUuid(b.idempotencyKey)) throw new LoyaltyProgramError('A request id is required.', 'IDEMPOTENCY_KEY_REQUIRED');
-    const delta = Number(b.delta);
-    if (!Number.isInteger(delta) || delta === 0 || Math.abs(delta) > 1_000_000) throw new LoyaltyProgramError('Points must be a whole number, not zero.', 'LOYALTY_INVALID_ENTRY');
-    const reason = String(b.reason ?? '').trim();
-    if (reason.length < 3) throw new LoyaltyProgramError('Give a reason for the adjustment.', 'LOYALTY_INVALID_ENTRY');
-    const audits: AuditItem[] = [];
-    const res = await this.db.transaction().execute(async (trx) => {
-      const c = await this.liveCustomer(trx, ctx, b.customerId);
-      if (!c) throw new LoyaltyProgramError('That customer is not in this salon.', 'CUSTOMER_NOT_FOUND', 404);
-      await lockLoyaltyCustomer(trx, ctx.tenantId, b.customerId);
-      const prof = (await sql<any>`select points_balance, loyalty_tier from customer_loyalty_profiles where tenant_id = ${ctx.tenantId} and customer_id = ${b.customerId}`.execute(trx)).rows[0];
-      if (!prof) throw new LoyaltyProgramError('Enrol the customer before adjusting points.', 'LOYALTY_NOT_ENROLLED', 409);
-      const prior = (await sql<any>`select balance_after, id from loyalty_ledger where tenant_id = ${ctx.tenantId} and source_table = 'pos_loyalty_adjustments' and source_id = ${b.idempotencyKey} and entry_type = 'adjust'`.execute(trx)).rows[0];
-      if (prior) return { balanceAfter: N(prior.balance_after), duplicate: true, ledgerId: String(prior.id) };
-      if (delta < 0 && N(prof.points_balance) + delta < 0) throw new LoyaltyProgramError('That would take the balance below zero.', 'LOYALTY_INSUFFICIENT_POINTS', 409);
-      try {
-        const r = await applyLoyaltyEntry(trx, { tenantId: ctx.tenantId, branchId: isUuid(ctx.branchId) ? ctx.branchId : c.branch_id, customerId: b.customerId, entryType: 'adjust', delta, reason,
-          sourceTable: 'pos_loyalty_adjustments', sourceId: b.idempotencyKey, actorUserId: isUuid(ctx.userId) ? ctx.userId : null, legacyType: 'manual_adjustment', legacySource: 'pos' });
-        audits.push({ action: 'loyalty.points_adjusted', resourceType: 'customer', resourceId: b.customerId, metadata: { delta, reason, ledgerId: r.ledgerId } });
-        return { balanceAfter: r.balanceAfter, duplicate: r.duplicate, ledgerId: r.ledgerId };
-      } catch (e) {
-        if (e instanceof LoyaltyLedgerError && e.code === 'LOYALTY_INSUFFICIENT_POINTS') throw new LoyaltyProgramError('That would take the balance below zero.', 'LOYALTY_INSUFFICIENT_POINTS', 409);
-        throw e;
-      }
-    });
-    await this.flush(ctx, audits);
-    return res;
+  /** Retired Nov 5 2026 — see below. */
+  async adjust(_ctx: LoyaltyProgramContext, _b: { customerId: string; delta: number; reason: string; idempotencyKey: string }): Promise<{ balanceAfter: number; duplicate: boolean; ledgerId: string | null }> {
+    // Customer Profile & Global Loyalty Protection (Nov 4 2026): salon staff never set, add to or lower points directly — a
+    // bonus is asked for (POST /pos/loyalty/bonus-requests) and the owner approves it; a redemption goes through /redeem.
+    // The route stays (old POS builds get this answer instead of a 404) and refuses every change.
+    throw new LoyaltyProgramError("A customer's points can't be changed by hand. Ask for bonus points instead — the owner approves them.", 'LOYALTY_DIRECT_EDIT_REFUSED');
   }
 
   /** Redeem a reward at the front desk: the same rules as the customer app (active, worth something, enough points),

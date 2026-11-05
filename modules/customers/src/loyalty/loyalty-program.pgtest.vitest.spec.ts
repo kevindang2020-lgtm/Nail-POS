@@ -6,6 +6,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { LoyaltyProgramRepository, LoyaltyProgramError } from './loyalty-program.repository';
+import { applyLoyaltyEntry } from './loyalty-ledger.service';
 
 const P = 'c5e81000-0000-4000-8000-0000000';
 const id = (n: string) => P + n.padStart(5, '0');
@@ -19,6 +20,10 @@ let repo: LoyaltyProgramRepository; let pg: any;
 const q = (s: string, p: unknown[] = []) => pg.query(s, p);
 const audited: { tenantId: string; action: string; resourceId: string | null | undefined }[] = [];
 const auditor = { record: async (c: any, i: any) => { audited.push({ tenantId: c.tenantId, action: i.action, resourceId: i.resourceId }); } };
+// Nov 5 2026 (Customer Profile & Global Loyalty Protection): staff can no longer adjust points; seed balances the way an
+// owner-approved bonus lands — one 'adjust' ledger entry per approval request (key = the request id)
+const grant = (c: typeof ctx, customerId: string, delta: number, k: string) => kyselyFor(pg).transaction().execute((trx: any) =>
+  applyLoyaltyEntry(trx, { tenantId: c.tenantId, branchId: c.branchId, customerId, entryType: 'adjust', delta, reason: 'Owner-approved bonus (seed)', sourceTable: 'tenant_approval_requests', sourceId: k, legacyType: 'bonus_approved' }));
 async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e) { return e instanceof LoyaltyProgramError ? e.code : String((e as Error).message); } }
 
 beforeAll(async () => {
@@ -39,7 +44,7 @@ beforeAll(async () => {
   await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents) values ($1,$2,'Other salon reward',10,true,'amount_off',100)`, [RX, T2]);
   repo = new LoyaltyProgramRepository(kyselyFor(pg) as never, auditor);
   // the other salon's member gets points through the same ledger (it must never leak into this salon's numbers)
-  await repo.adjust(ctx2, { customerId: CX, delta: 999, reason: 'other salon seed', idempotencyKey: key(900) });
+  await grant(ctx2, CX, 999, key(900));
 }, 180_000);
 
 describe('Loyalty & Rewards — real tenant data', () => {
@@ -64,16 +69,17 @@ describe('Loyalty & Rewards — real tenant data', () => {
     expect(await code(repo.enroll(ctx, CX))).toBe('CUSTOMER_NOT_FOUND');
   });
 
-  it('adjust: a reason is required, the same key applies once, the balance never goes negative', async () => {
-    expect(await code(repo.adjust(ctx, { customerId: C1, delta: 50, reason: '', idempotencyKey: key(1) }))).toBe('LOYALTY_INVALID_ENTRY');
-    expect(await code(repo.adjust(ctx, { customerId: C1, delta: 50, reason: 'ok', idempotencyKey: 'not-a-uuid' }))).toBe('IDEMPOTENCY_KEY_REQUIRED');
-    const a = await repo.adjust(ctx, { customerId: C1, delta: 600, reason: 'Service recovery', idempotencyKey: key(1) });
-    const again = await repo.adjust(ctx, { customerId: C1, delta: 600, reason: 'Service recovery', idempotencyKey: key(1) });
+  it('adjust (Nov 5 2026): staff cannot add, set or lower points by hand — every call is refused and nothing moves', async () => {
+    for (const b of [{ delta: 50, reason: '' }, { delta: 600, reason: 'Service recovery' }, { delta: -601, reason: 'too much' }]) {
+      expect(await code(repo.adjust(ctx, { customerId: C1, ...b, idempotencyKey: key(1) }))).toBe('LOYALTY_DIRECT_EDIT_REFUSED');
+    }
+    expect(await code(repo.adjust(ctx, { customerId: CX, delta: 5, reason: 'cross salon', idempotencyKey: key(3) }))).toBe('LOYALTY_DIRECT_EDIT_REFUSED');
+    expect((await q(`select count(*)::int n from loyalty_ledger where tenant_id = $1 and customer_id = $2`, [T, C1])).rows[0].n).toBe(0);
+    // what an owner-approved +600 bonus writes: one ledger entry per approval, applied once
+    const a = await grant(ctx, C1, 600, key(1));
+    const again = await grant(ctx, C1, 600, key(1));
     expect(a.balanceAfter).toBe(600); expect(again.duplicate).toBe(true); expect(again.balanceAfter).toBe(600);
-    const n = (await q(`select count(*)::int n from loyalty_ledger where tenant_id = $1 and source_id = $2`, [T, key(1)])).rows[0].n;
-    expect(n).toBe(1);
-    expect(await code(repo.adjust(ctx, { customerId: C1, delta: -601, reason: 'too much', idempotencyKey: key(2) }))).toBe('LOYALTY_INSUFFICIENT_POINTS');
-    expect(await code(repo.adjust(ctx, { customerId: CX, delta: 5, reason: 'cross salon', idempotencyKey: key(3) }))).toBe('CUSTOMER_NOT_FOUND');
+    expect((await q(`select count(*)::int n from loyalty_ledger where tenant_id = $1 and source_id = $2`, [T, key(1)])).rows[0].n).toBe(1);
   });
 
   it('redeem: exactly once per key, checked against balance and reward state', async () => {
@@ -113,7 +119,8 @@ describe('Loyalty & Rewards — real tenant data', () => {
     expect(await repo.redemptionDetail(ctx2, key(13))).toBeNull();
     // every committed mutation is audited once (the replays and refusals are not)
     const mine = audited.filter((a) => a.tenantId === T).map((a) => a.action);
-    expect(mine).toEqual(['member_enrolled', 'points_adjusted', 'reward_redeemed', 'redemption_voided']);
+    // (points now arrive through the owner-approved bonus — audited by the approvals engine, not here; the refused adjusts are not audited)
+    expect(mine).toEqual(['member_enrolled', 'reward_redeemed', 'redemption_voided']);
   });
 
   it('rewards and the ledger are newest first; a page past the end is clamped; the other salon never appears', async () => {
@@ -136,8 +143,8 @@ describe('Loyalty & Rewards — real tenant data', () => {
 describe('Loyalty & Rewards — reward availability rules', () => {
   const RR = id('fa1');
   it('upcoming / expired refuse; stock and the per-member limit stop at the cap; an ineligible tier is refused; the catalog says why', async () => {
-    await repo.adjust(ctx, { customerId: C1, delta: 5000, reason: 'rules seed', idempotencyKey: key(950) });   // Ann (Gold)
-    await repo.adjust(ctx, { customerId: C2, delta: 5000, reason: 'rules seed', idempotencyKey: key(951) });   // Bea (Regular)
+    await grant(ctx, C1, 5000, key(950));   // Ann (Gold)
+    await grant(ctx, C2, 5000, key(951));   // Bea (Regular)
     await q(`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, starts_on) values ($1,$2,'Ruled reward',10,true,'amount_off',100, current_date + 30)`, [RR, T]);
     expect(await code(repo.redeem(ctx, { customerId: C1, rewardId: RR, idempotencyKey: key(960) }))).toBe('REWARD_NOT_STARTED');
     await q(`update loyalty_rewards set starts_on = null, ends_on = current_date - 30 where id = $1`, [RR]);

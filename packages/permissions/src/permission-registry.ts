@@ -93,6 +93,7 @@ export const EXPLICIT_PERMISSION_METADATA: Readonly<Record<string, Explicit>> = 
   'ai_money_protection.manage_rules': e('high', true, TENANT_ONLY, 'Change what the money-protection AI treats as suspicious.'),
   'ai_money_protection.manage_settings': e('high', true, TENANT_ONLY, 'Turn money-protection monitoring on or off and set its thresholds.'),
   'inventory.purchase_order.approve': e('high', false, ALL_BRANCH, 'Approve a purchase order — commits the salon to paying the vendor.'),
+  'loyalty.bonus.approve': e('high', false, TENANT_ONLY, 'Approve bonus loyalty points a manager asked for — spends the salon\'s prepaid reward tokens. Salon owner only.'),
   'inventory.cost.view': e('medium', false, ALL_BRANCH, 'See what the salon pays for products (unit cost).'),
   'inventory.value.view': e('medium', false, ALL_BRANCH, 'See the money value of stock on hand.'),
   'inventory.stock.adjust': e('medium', false, ALL_BRANCH, 'Correct stock counts by hand (shrinkage, damage, recount).'),

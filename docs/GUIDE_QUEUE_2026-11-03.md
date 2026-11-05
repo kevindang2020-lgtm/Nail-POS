@@ -351,3 +351,78 @@ Not verifiable here:
 
 - The 100 %-zoom fit on the 27-inch ASUS (§03): the screen now scrolls vertically by the later rebuild's choice, never sideways.
 - A live card renewal (no processor credentials).
+
+## Batch G — 15 guides uploaded Nov 5 2026 10:08 ("build exactly on it")
+
+Duplicates by content (byte-identical to an earlier upload): AI Usage Limits = `c44ee836`, Customer Timeline = `037d88cc`,
+Review & Reputation Settings = `4a3fee5e`, Weekly Paycheck = `3f78a066`. The six master mandates (Weekly Paycheck, Security
+Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Announcement) have status matrices in
+`docs/mandates/status/` from Oct 24–27; they are re-checked here, not rebuilt.
+
+| # | Guide | Status (Nov 5) |
+|---|---|---|
+| G1 | Customer Profile & Global Loyalty Protection (owner-approved bonus points) | BUILT — see the G1 section below |
+| G2 | Refer a Friend / Referral Rewards build | NOT AUDITED yet — A18 Referral Program fixes exist |
+| G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | NOT AUDITED yet |
+| G4 | Individual Technician Tipping at Checkout (per-tech tips on the customer display) | NOT AUDITED yet |
+| G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
+| G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
+| G7 | Global Advertising + Tenant Control + Half-Screen Image Rotation | NOT AUDITED yet |
+| G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-check — `docs/ai/REVIEW_REPUTATION_SETTINGS.md` exists |
+| G9 | Enterprise Backup & Disaster Recovery | NOT AUDITED yet (hosted backups / PITR are BLOCKED_EXTERNAL in F5 §210) |
+| G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
+| G11 | Full Security Deep Scan | matrix `SECURITY_DEEP_SCAN_STATUS.md` — re-check |
+| G12 | Secure Tap to Pay / Device Authentication | matrix `SECURE_TAP_STATUS.md` — re-check (Apple TTP is BLOCKED_EXTERNAL) |
+| G13 | Remaining Production Work / Payment Recovery | matrix `REMAINING_PRODUCTION_STATUS.md` — re-check |
+| G14 | 200 Technician Large Salon | matrix `200_TECHNICIAN_STATUS.md` — re-check |
+| G15 | Super Admin POS Top-Bar Announcement | matrix `PLATFORM_ANNOUNCEMENT_STATUS.md` — re-check |
+
+### G1 Customer Profile & Global Loyalty Protection — built (Nov 5 2026)
+
+- **§01 / §06 No manual point reduction:** every salon edit path refuses with `LOYALTY_DIRECT_EDIT_REFUSED`.
+  - Paths covered: `PATCH /pos/customers/:id/loyalty` (points can no longer change; a tier-only change still saves), `POST /pos/customers/:id/loyalty-adjust`, and `POST /pos/loyalty/adjust`.
+  - Each route stays in place, so an old POS build gets this answer instead of a 404.
+  - Redemption is unchanged.
+- **§03 / §08 Request Bonus Points** (`components/LoyaltyBonusRequest.tsx`) replaces three things:
+  - the drawer's "New balance" form;
+  - the Customer Profile screen's "use negative to deduct" modal;
+  - the Loyalty screen's add / deduct dialog.
+- **How the request form works:**
+  - Current points are read-only; only a positive whole number (1–5,000) can be entered.
+  - The reason is a preset or "Other".
+  - Before sending, the form shows the server's preview: balance after approval, plus the token cost and a wallet shortfall warning.
+  - Sending creates a pending request only. One request per customer can wait at a time.
+  - The form also shows the customer's request history with statuses.
+  - A failed history load is shown as an error, never as "none".
+- **§04 Owner approval** runs on the salon's one approvals engine as a new kind, `loyalty_bonus`:
+  - Approver key: `loyalty.bonus.approve`, held by the OWNER only.
+  - The person who asked can never approve it, and the owner cannot switch that rule off.
+  - Requests expire after 7 days.
+  - The approval is persistent in the Owner App → Approvals, with live updates.
+  - The Owner App shows current points → after, the token cost against the wallet, and an explanation when funding fails.
+  - An owner alert is the supplemental nudge, with no customer name or reason in it.
+- **§05 Funded credit** (`modules/loyalty/src/global-rewards/rewards-bonus.ts`): the executor runs once and recomputes everything at approval.
+  - Customer in the global network: the salon's token wallet is debited by the central program's cost (10 points = 1.00 token) and the customer's global points are credited. A balanced `bonus_award` journal entry is written in the same transaction. A replay moves nothing.
+  - Customer not in the network: one entry is added to the salon's own points ledger, with no tokens.
+  - Not enough tokens: nothing moves, the request ends as not completed with `LOYALTY_BONUS_NEEDS_FUNDING`, and the POS and Owner App say "buy tokens, then ask again".
+- **§11 Check Customer & Loyalty System:** `GET /pos/loyalty/bonus-requests/health`, read-only.
+  - Each approved bonus is posted exactly once.
+  - Nothing is credited without an executed owner approval.
+  - No manual reduction since Nov 5.
+  - Failed approvals are listed.
+  - Requests past their deadline are listed.
+- **Migration 814:** two CHECK lists widened (the approval kind and the journal entry type), plus an index.
+- **Tests:**
+  - `loyalty-bonus.pgtest` — 10 tests: global and salon paths, replay, funding shortfall, cross-salon, refusals, health check.
+  - `LoyaltyBonusRequest.test` — 4 tests.
+  - `OwnerApprovalRequestsCard.test` — the bonus case.
+  - Rewritten to the new rule: `loyalty-program.pgtest` (staff adjust refused; seeding uses what an approval writes) and `customers-core.spec`.
+- **Not built (PARTIAL):**
+  - §09 month-view From / To calendars on the bonus history (the history is newest-first with a status filter on the API).
+  - §08 extras:
+    - sticky drawer header;
+    - optimistic concurrency on Notes;
+    - separately permissioned safety warnings;
+    - Visits "empty vs disconnected".
+  - A push notification beyond the owner alert.
+  - Owner re-authentication for high-value awards.

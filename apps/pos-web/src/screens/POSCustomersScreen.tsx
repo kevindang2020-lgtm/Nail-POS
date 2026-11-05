@@ -12,6 +12,7 @@ import { SYNC_POLICY } from '@aipowersalon/realtime-client';
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCan } from '../components/usePermissions';
 import { posCommunicationsApi, newRequestKey } from '../api/posCommunicationsApi';
+import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 import { posDuplicateReviewApi } from '../api/posDuplicateReviewApi';
 import { CompareOverlay } from './POSAICustomerDuplicateReviewScreen';
 import { FitDialog } from '../components/FitKit';
@@ -717,15 +718,13 @@ function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail:
   const [eTags, setETags] = useState<string[]>(row.tags || []);
   const [newTag, setNewTag] = useState('');
   const [adjOpen, setAdjOpen] = useState(false);
-  const [adjPts, setAdjPts] = useState(0);
-  const [adjReason, setAdjReason] = useState('');
+  const can = useCan();
   const [saving, setSaving] = useState<string | null>(null);
   const [saved, setSaved] = useState<string | null>(null);
   useEffect(() => { if (d?.notes) setENotes({ ...d.notes }); }, [d]);
   const flash = (kk: string) => { setSaved(kk); setTimeout(() => setSaved((s) => (s === kk ? null : s)), 1800); };
   const saveNotes = async () => { if (!eNotes) return; setSaving('notes'); try { await posCustomersApi.setNotes(row.customerId, eNotes); flash('notes'); } catch { /* surfaced via no flash */ } finally { setSaving(null); } };
   const saveTags = async (next: string[]) => { setETags(next); setSaving('tags'); try { await posCustomersApi.setTags(row.customerId, next); flash('tags'); } catch { /* */ } finally { setSaving(null); } };
-  const saveLoyalty = async () => { setSaving('loyalty'); try { await posCustomersApi.setLoyalty(row.customerId, { ...(d?.loyalty || {}), points: adjPts, tier: d?.loyalty?.tier || row.loyaltyTier || 'Regular', reason: adjReason }); flash('loyalty'); setAdjOpen(false); setAdjReason(''); } catch { /* */ } finally { setSaving(null); } };
   const st = row.status;
   const loy = d?.loyalty as { points: number; earned: number; redeemed: number; tier: string; tierThresholdPoints: number } | undefined;
   const mem = d?.membership as { plan: string; status: string; renewalDate?: string; benefits: string[]; billingStatus: string } | undefined;
@@ -804,25 +803,11 @@ function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail:
 
           {tab === 'loyalty' ? (<>
             <div style={{ display: 'flex', alignItems: 'center' }}><H t={tx('pos.loyalty_2')} />
-              <button style={{ marginLeft: 'auto', background: '#F8F6F3', border: '1px solid #EFEAE1', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#2C2A29', cursor: 'pointer' }} onClick={() => { setAdjPts(loy?.points ?? row.loyaltyPoints); setAdjOpen((v) => !v); }}>{tx('pos.adjust_points_2')}</button>
+              <button style={{ marginLeft: 'auto', background: '#F8F6F3', border: '1px solid #EFEAE1', borderRadius: 20, padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#2C2A29', cursor: 'pointer' }} data-testid="lb-open" onClick={() => setAdjOpen((v) => !v)}>{tx('lb.title')}</button>
             </div>
-            {adjOpen ? (
-              <div style={{ border: '1px solid #EADBB6', borderRadius: 16, padding: 16, marginBottom: 16, background: '#FAFAF9' }}>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
-                  <label style={{ width: 100, fontSize: 13, color: '#8A7A6D', fontWeight: 600 }}>{tx('pos.new_balance')}</label>
-                  <input type="number" min={0} value={adjPts} onChange={(e) => setAdjPts(Math.max(0, Number(e.target.value) || 0))} style={{ flex: 1, border: '1px solid #EFEAE1', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' }} />
-                </div>
-                <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 16 }}>
-                  <label style={{ width: 100, fontSize: 13, color: '#8A7A6D', fontWeight: 600 }}>{tx('pos.reason_2')}</label>
-                  <input value={adjReason} onChange={(e) => setAdjReason(e.target.value)} placeholder={tx('pos.e_g_service_recovery')} style={{ flex: 1, border: '1px solid #EFEAE1', borderRadius: 8, padding: '8px 12px', fontSize: 14, outline: 'none' }} />
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button style={{ background: '#2C2A29', color: '#FFFFFF', border: 'none', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer' }} disabled={saving === 'loyalty' || !adjReason.trim()} onClick={saveLoyalty}>{saving === 'loyalty' ? tx('pos.saving_2') : tx('pos.save_adjustment_2')}</button>
-                  <button style={{ background: '#F8F6F3', color: '#2C2A29', border: '1px solid #EFEAE1', padding: '8px 16px', borderRadius: 20, fontSize: 13, fontWeight: 600, cursor: 'pointer' }} onClick={() => setAdjOpen(false)}>{tx('pos.cancel')}</button>
-                  {saved === 'loyalty' ? <span style={{ color: '#2E7D32', alignSelf: 'center', fontSize: 13, fontWeight: 600, marginLeft: 8 }}>{tx('pos.saved_3')}</span> : null}
-                </div>
-              </div>
-            ) : null}
+            {/* Customer Profile & Global Loyalty Protection (Nov 4 2026): the "New balance" form is gone — points are only ever ADDED,
+                by a bonus the owner approves in the Owner App; the balance below stays read-only */}
+            {adjOpen ? <LoyaltyBonusRequest customerId={row.customerId} currentPoints={loy?.points ?? row.loyaltyPoints ?? null} canRequest={can('pos.customers.loyalty.edit')} /> : null}
             <Row3 k={tx('pos.tier')} v={loy?.tier || row.loyaltyTier || '—'} />
             <Row3 k={tx('pos.points_balance')} v={nf(loy?.points ?? row.loyaltyPoints)} />
             {loy ? <Row3 k={tx('pos.lifetime_earned_2')} v={nf(loy.earned)} /> : null}

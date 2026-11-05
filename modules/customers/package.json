@@ -25,6 +25,7 @@
     "@aipowersalon/auth": "*",
     "@aipowersalon/config": "*",
     "@aipowersalon/database": "*",
+    "@aipowersalon/loyalty": "*",
     "@aipowersalon/date-time": "*",
     "@aipowersalon/events": "*",
     "@aipowersalon/money": "*",

@@ -23,6 +23,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { codeLabel } from '../components/peopleLabels';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced, type PageInfo } from '../components/FitKit';
 import { RewardsNetworkPanel } from './loyalty/RewardsNetworkPanel';
+import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 
 type Overview = { period: { label: string; start: string; timeZone: string }; kpis: { loyaltyMembers: number; newMembersThisMonth: number; pointsOutstanding: number; ledgerBalance: number; balanceReconciled: boolean;
   activeRewards: number; totalRewards: number; redemptionsThisMonth: number; redemptionsPendingThisMonth: number; redemptionsUsedThisMonth: number; redemptionsVoidedThisMonth: number; pointsRedeemedThisMonth: number };
@@ -357,31 +358,14 @@ function RewardDialog({ reward, tiers, onClose, onDone }: { reward?: Reward; tie
   );
 }
 
-function AdjustDialog({ member, onClose, onDone }: { member: Member; onClose: () => void; onDone: (msg: string) => void }) {
-  const [dir, setDir] = useState<'add' | 'deduct'>('add'); const [pts, setPts] = useState(''); const [reason, setReason] = useState('');
-  const [confirm, setConfirm] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
-  const key = useRef(requestId());   // one key per adjustment: a double tap / retry posts the same entry once
-  const n = Math.trunc(Number(pts) || 0); const delta = dir === 'add' ? n : -n;
-  const after = member.pointsBalance + delta;
-  const valid = n > 0 && reason.trim().length >= 3 && after >= 0;
-  const save = async () => {
-    if (!valid || busy) return; setBusy(true); setErr(null);
-    try { const r = await posLoyaltyApi.adjust({ customerId: member.customerId, delta, reason: reason.trim(), idempotencyKey: key.current }); onDone(tx('people.loyalty.adjustedNote', { name: member.customerName, balance: nf(r.balanceAfter) })); }
-    catch (e) { setErr(errText(e, tx('pos.could_not_save'))); key.current = requestId(); setConfirm(false); } finally { setBusy(false); }
-  };
+/** Customer Profile & Global Loyalty Protection (Nov 4 2026): "Adjust points" (add / deduct) is replaced by Request Bonus
+ *  Points — positive only, approved by the owner in the Owner App; points are never lowered by hand. */
+function AdjustDialog({ member, onClose }: { member: Member; onClose: () => void; onDone: (msg: string) => void }) {
+  const can = useCan();
   return (
-    <FitDialog title={tx('people.loyalty.adjust')} subtitle={`${member.customerName} · ${tx('people.loyalty.balanceNow', { n: nf(member.pointsBalance) })}`} onClose={onClose} busy={busy} testId="dlg-adjust"
-      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
-        {!confirm ? <button type="button" className="fk-btn primary" disabled={!valid} onClick={() => setConfirm(true)}>{tx('people.loyalty.review')}</button>
-          : <button type="button" className="fk-btn primary" disabled={busy} onClick={save} data-testid="adjust-confirm">{busy ? tx('pos.saving_2') : tx('people.loyalty.confirmAdjust', { delta: (delta > 0 ? '+' : '') + nf(delta) })}</button>}</>}>
-      <div className="fk-seg" role="radiogroup" aria-label={tx('people.loyalty.direction')}><button type="button" className={dir === 'add' ? 'on' : ''} aria-pressed={dir === 'add'} onClick={() => { setDir('add'); setConfirm(false); }}>{tx('people.loyalty.addPoints')}</button><button type="button" className={dir === 'deduct' ? 'on' : ''} aria-pressed={dir === 'deduct'} onClick={() => { setDir('deduct'); setConfirm(false); }}>{tx('people.loyalty.deductPoints')}</button></div>
-      <div className="fk-grid2">
-        <label className="fk-field"><span>{tx('people.loyalty.points')}</span><input data-autofocus inputMode="numeric" value={pts} onChange={(e) => { setPts(e.target.value.replace(/[^\d]/g, '')); setConfirm(false); }} /></label>
-        <label className="fk-field"><span>{tx('pos.reason_2')}</span><input value={reason} maxLength={300} onChange={(e) => { setReason(e.target.value); setConfirm(false); }} placeholder={tx('pos.e_g_service_recovery')} /></label>
-      </div>
-      <div className={'fk-preview' + (after < 0 ? ' bad' : '')}>{tx('people.loyalty.afterAdjust', { before: nf(member.pointsBalance), after: nf(Math.max(0, after)) })}{after < 0 ? ` — ${tx('people.loyalty.belowZero')}` : ''}</div>
-      {confirm ? <div className="fk-hint">{tx('people.loyalty.adjustAudit')}</div> : null}
-      {err ? <div className="fk-err" role="alert">{err}</div> : null}
+    <FitDialog title={tx('lb.title')} subtitle={`${member.customerName} · ${tx('people.loyalty.balanceNow', { n: nf(member.pointsBalance) })}`} onClose={onClose} busy={false} testId="dlg-adjust"
+      footer={<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.done')}</button>}>
+      <LoyaltyBonusRequest customerId={member.customerId} currentPoints={member.pointsBalance} canRequest={can('pos.customers.loyalty.edit')} />
     </FitDialog>
   );
 }

@@ -9,7 +9,7 @@ import type { ApprovalCreateRequest, ApprovalPolicyView, TenantApprovalKind, Ten
 import { hasPermission, requesterNotApprover as requesterNotApproverPolicy, amountWithinLimit as amountWithinLimitPolicy } from '@aipowersalon/permissions';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
-export const APPROVAL_KINDS: readonly TenantApprovalKind[] = ['refund', 'void', 'discount_override', 'deal_publish', 'purchase_order', 'price_override', 'payout_adjustment', 'other'];
+export const APPROVAL_KINDS: readonly TenantApprovalKind[] = ['refund', 'void', 'discount_override', 'deal_publish', 'purchase_order', 'price_override', 'payout_adjustment', 'loyalty_bonus', 'other'];
 export const APPROVAL_STATUSES: readonly TenantApprovalStatus[] = ['pending', 'approved', 'rejected', 'cancelled', 'expired', 'executed', 'execution_failed'];
 /** A request is LIVE (blocks a second one for the same subject) while pending or approved-but-not-yet-executed. */
 export const LIVE_STATUSES: readonly TenantApprovalStatus[] = ['pending', 'approved'];
@@ -33,7 +33,7 @@ export interface ApprovalPolicy extends ApprovalPolicyView {
 
 const KIND_LABEL: Record<TenantApprovalKind, string> = {
   refund: 'Refund over the limit', void: 'Void', discount_override: 'Discount override', deal_publish: 'Deal for customers',
-  purchase_order: 'Purchase order', price_override: 'Price override', payout_adjustment: 'Payout adjustment', other: 'Other request',
+  purchase_order: 'Purchase order', price_override: 'Price override', payout_adjustment: 'Payout adjustment', loyalty_bonus: 'Bonus loyalty points', other: 'Other request',
 };
 /** What an approver must hold, per kind — FIXED (not a salon setting): the same key the action itself needs today. */
 export const APPROVER_PERMISSION: Record<TenantApprovalKind, string> = {
@@ -44,6 +44,8 @@ export const APPROVER_PERMISSION: Record<TenantApprovalKind, string> = {
   deal_publish: 'marketing.manage',
   purchase_order: 'inventory.purchase_order.approve',
   payout_adjustment: 'payroll.manage',
+  // Customer Profile & Global Loyalty Protection (Nov 4 2026): only the salon owner approves bonus points (owner-only key)
+  loyalty_bonus: 'loyalty.bonus.approve',
   other: 'approvals.decide',
 };
 
@@ -61,6 +63,8 @@ export function defaultPolicy(kind: TenantApprovalKind, env: NodeJS.ProcessEnv =
     approverPermission: APPROVER_PERMISSION[kind], requireDifferentApprover: true, expiresAfterHours: 24, version: 0, label: KIND_LABEL[kind] };
   if (kind === 'refund') { const t = envRefundThresholds(env); return { ...base, thresholdCents: t.anyCents, cashThresholdCents: t.cashCents }; }
   if (kind === 'deal_publish' || kind === 'purchase_order') return { ...base, requireDifferentApprover: false, expiresAfterHours: 72 };
+  // a manager asks, the owner decides (never the asker); a week to decide (§04 "expiration")
+  if (kind === 'loyalty_bonus') return { ...base, requireDifferentApprover: true, expiresAfterHours: 168 };
   return base;
 }
 
@@ -164,6 +168,8 @@ export function cleanPolicyChange(b: any): CleanPolicyChange {
   const l = cents('approverLimitCents'); if (l !== undefined) out.approverLimitCents = l;
   if (b.kind === 'refund' && out.thresholdCents === null) throw bad('thresholdCents', 'A refund policy needs a limit.');
   if ('requireDifferentApprover' in b) { if (typeof b.requireDifferentApprover !== 'boolean') throw bad('requireDifferentApprover', 'requireDifferentApprover must be true or false.'); out.requireDifferentApprover = b.requireDifferentApprover; }
+  // Customer Profile & Global Loyalty Protection (Nov 4 2026): bonus points always need the owner, never the asker
+  if (b.kind === 'loyalty_bonus' && (out.enabled === false || out.requireDifferentApprover === false)) throw withCode(new ApprovalError('policy_required', 400, 'Bonus loyalty points always need the owner\'s approval, never the person who asked.', { field: out.enabled === false ? 'enabled' : 'requireDifferentApprover' }), 'LOYALTY_BONUS_APPROVAL_ALWAYS');
   if ('expiresAfterHours' in b) { const h = Number(b.expiresAfterHours); if (!Number.isInteger(h) || h < 1 || h > 720) throw bad('expiresAfterHours', 'expiresAfterHours must be between 1 and 720.'); out.expiresAfterHours = h; }
   return out;
 }

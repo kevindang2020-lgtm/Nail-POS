@@ -33,6 +33,9 @@
       "@aipowersalon/audit": [
         "../../modules/audit/dist/index.d.ts"
       ],
+      "@aipowersalon/loyalty": [
+        "../../modules/loyalty/dist/index.d.ts"
+      ],
       "@aipowersalon/customers": [
         "../../modules/customers/dist/index.d.ts"
       ],

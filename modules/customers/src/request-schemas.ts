@@ -63,6 +63,8 @@ export const REFERRAL_REWARD_BODY: BodySchema = S.object({ rewardCents: { type: 
 export const LOYALTY_ENROLL_BODY: BodySchema = S.object({ customerId: S.uuid() }, ['customerId']);
 /** POST /pos/loyalty/adjust — { customerId, delta, reason, idempotencyKey } (one ledger entry per key) */
 export const LOYALTY_PROGRAM_ADJUST_BODY: BodySchema = S.object({ customerId: S.uuid(), delta: S.integer(), reason: S.text(300), idempotencyKey: S.uuid() }, ['customerId', 'delta', 'reason', 'idempotencyKey']);
+/** POST /pos/loyalty/bonus-requests — Customer Profile & Global Loyalty Protection (Nov 4 2026): a POSITIVE bonus for the owner to approve */
+export const LOYALTY_BONUS_REQUEST_BODY: BodySchema = S.object({ customerId: S.uuid(), points: S.integer({ minimum: 1, maximum: 5000 }), reason: S.text(300) }, ['customerId', 'points', 'reason']);
 /** POST /pos/loyalty/redeem — { customerId, rewardId, idempotencyKey } (the key becomes the redemption id) */
 export const LOYALTY_REDEEM_BODY: BodySchema = S.object({ customerId: S.uuid(), rewardId: S.uuid(), idempotencyKey: S.uuid() }, ['customerId', 'rewardId', 'idempotencyKey']);
 /** POST /pos/loyalty/redemptions/:id/void — { reason } */

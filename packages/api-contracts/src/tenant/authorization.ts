@@ -72,7 +72,7 @@ export interface DormantAccountsReport { generatedAt: string; thresholdDays: num
 export interface PermissionDenialMetrics { from: string; to: string; total: number; byKey: { key: string; count: number }[]; byReason: { reason: AuthzReason; count: number }[]; byUser: { userId: string; name: string; count: number }[] }
 
 // ── the salon's one approvals engine ───────────────────────────────────────────────────────────────────────────────
-export type TenantApprovalKind = 'refund' | 'void' | 'discount_override' | 'deal_publish' | 'purchase_order' | 'price_override' | 'payout_adjustment' | 'other';
+export type TenantApprovalKind = 'refund' | 'void' | 'discount_override' | 'deal_publish' | 'purchase_order' | 'price_override' | 'payout_adjustment' | 'loyalty_bonus' | 'other';
 export type TenantApprovalStatus = 'pending' | 'approved' | 'rejected' | 'cancelled' | 'expired' | 'executed' | 'execution_failed';
 export interface ApprovalRequestView {
   id: string; kind: TenantApprovalKind; status: TenantApprovalStatus; branchId: string | null; branchName: string | null;

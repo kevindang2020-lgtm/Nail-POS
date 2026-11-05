@@ -22,7 +22,6 @@ export const posCustomersApi = {
   setTags: (customerId: string, tags: string[]) => api.patch(`/pos/customers/${enc(customerId)}/tags`, { tags }),
   setLoyalty: (customerId: string, loyalty: Record<string, unknown>) => api.patch(`/pos/customers/${enc(customerId)}/loyalty`, loyalty),
   getLoyaltyLedger: (customerId: string) => api.get<any[]>(`/pos/customers/${enc(customerId)}/loyalty-ledger`),
-  adjustLoyaltyPoints: (customerId: string, body: Record<string, unknown>) => api.post(`/pos/customers/${enc(customerId)}/loyalty-adjust`, body),
   update: (id: string, body: Record<string, unknown>) => api.patch(`/pos/customers/${enc(id)}`, body),
 
   // ── phone changes go through the CANONICAL flow, never the generic update ──

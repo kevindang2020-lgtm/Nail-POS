@@ -103,6 +103,8 @@ export const PERMISSIONS = [
   'inventory.view','inventory.view_limited','inventory.create','inventory.update','inventory.archive',
   'inventory.stock.add','inventory.stock.adjust','inventory.stock.count','inventory.transfer',
   'inventory.purchase_order.view','inventory.purchase_order.create','inventory.purchase_order.approve','inventory.purchase_order.receive',
+  // Customer Profile & Global Loyalty Protection (Nov 4 2026): approve a bonus-points request — OWNER only (no other role lists it)
+  'loyalty.bonus.approve',
   'inventory.vendor.manage','inventory.category.manage','inventory.brand.manage','inventory.color.manage',
   'inventory.reports.view','inventory.cost.view','inventory.value.view',
   'inventory.technician_report.submit','inventory.technician_report.approve','inventory.product_usage.submit','inventory.bottle.open','inventory.barcode.manage',

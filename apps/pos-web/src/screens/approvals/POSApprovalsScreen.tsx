@@ -27,7 +27,7 @@ export const KIND_LABEL: Record<TenantApprovalKind, string> = {
   get refund() { return tx('glossary.term.refund'); }, get void() { return tx('glossary.term.void'); },
   get discount_override() { return tx('admin.approvals.kind.discountOverride'); }, get deal_publish() { return tx('status.source.deal'); },
   get purchase_order() { return tx('admin.approvals.kind.purchaseOrder'); }, get price_override() { return tx('admin.approvals.kind.priceOverride'); },
-  get payout_adjustment() { return tx('admin.approvals.kind.payoutAdjustment'); }, get other() { return tx('pos.other'); },
+  get payout_adjustment() { return tx('admin.approvals.kind.payoutAdjustment'); }, get loyalty_bonus() { return tx('lb.kind'); }, get other() { return tx('pos.other'); },
 };
 export const STATUS_LABEL: Record<string, string> = {
   get pending() { return tx('glossary.queue.waiting'); }, get approved() { return tx('pos.approved'); }, get rejected() { return tx('pos.rejected_2'); },

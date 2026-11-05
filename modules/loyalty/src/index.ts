@@ -10,3 +10,5 @@ export { GR_FLAGS } from './global-rewards/global-rewards-flags';
 // Final Completion guide §04–§05: cross-salon redemption at Checkout + reimbursement payables / payouts
 export { holdForTicket, releaseHold, finalizeForPaidTicket, reverseRedemptionForRefund, redemptionQuote, rewardsIdentityFor, requestPayout, applyPayoutSettlement, markPayoutEligible, holdPayable, payoutProviderFromEnv, PAYOUT_PROVIDER, type PayoutProvider } from './global-rewards/rewards-redemption';
 export { GlobalRewardsCheckoutModule, GlobalRewardsCheckoutAdapter, GLOBAL_REWARDS_CHECKOUT_TOKEN, expireHolds } from './global-rewards/global-rewards-checkout';
+// Customer Profile & Global Loyalty Protection guide (Nov 4 2026): owner-approved, token-funded bonus points
+export { postFundedBonus, bonusGlobalTarget, bonusCentsPerTenth, BONUS_SOURCE_TABLE, type BonusPostResult } from './global-rewards/rewards-bonus';

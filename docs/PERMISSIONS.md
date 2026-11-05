@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-439 catalog keys — critical 19, high 69, medium 117, low 234; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
+440 catalog keys — critical 19, high 70, medium 117, low 234; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -253,6 +253,12 @@ owner's high-risk report and in every access review.
 | `inventory.purchase_order.create` | Create inventory purchase order | medium | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Create inventory purchase order. |  |
 | `inventory.purchase_order.approve` | Approve inventory purchase order | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Approve a purchase order — commits the salon to paying the vendor. |  |
 | `inventory.purchase_order.receive` | Receive inventory purchase order | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Receive inventory purchase order. |  |
+
+### loyalty.bonus
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `loyalty.bonus.approve` | Approve loyalty bonus | high | TENANT |  | OWNER | Approve bonus loyalty points a manager asked for — spends the salon's prepaid reward tokens. Salon owner only. |  |
 
 ### inventory.vendor
 

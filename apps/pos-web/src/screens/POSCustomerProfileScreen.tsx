@@ -6,6 +6,8 @@ import { displayLocale } from '../i18n/format';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CustomerReminderHistory } from './POSRemindersScreen';
+import { useCan } from '../components/usePermissions';
+import { LoyaltyBonusRequest } from '../components/LoyaltyBonusRequest';
 import { posCustomersApi } from '../api/posCustomersApi';
 import type { CustomerPhoneStatus } from '@aipowersalon/api-contracts';
 import { POSCustomerPhoneEditor } from './POSCustomerPhoneEditor';
@@ -71,10 +73,7 @@ export function POSCustomerProfileScreen() {
   const [historyPage, setHistoryPage] = useState(1);
   const [ledger, setLedger] = useState<any[] | null>(null);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
-  const [adjustAmount, setAdjustAmount] = useState('');
-  const [adjustReason, setAdjustReason] = useState('');
-  const [adjusting, setAdjusting] = useState(false);
-  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const can = useCan();
   const timer = useRef<any>(null);
 
   const runSearch = useCallback(async (q: string) => {
@@ -109,28 +108,7 @@ export function POSCustomerProfileScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [linkedId]);
   useEffect(() => { if (detail && linkedId === selectedId && !query) setQuery(detail.displayName ?? ''); }, [detail, linkedId, selectedId, query]);
-  const reset = () => { setSelectedId(null); setDetail(null); setQuery(''); setResults([]); setError(null); runSearch(''); setLedger(null); setShowAdjustModal(false); setAdjustError(null); };
-
-  const handleAdjustSubmit = async (e: any) => {
-    e.preventDefault();
-    setAdjustError(null);
-    if (!selectedId) return;
-    const amount = Number(adjustAmount);
-    if (isNaN(amount) || amount === 0) return setAdjustError(i18nText('people.loyalty.invalidAmount'));
-    setAdjusting(true);
-    try {
-      await posCustomersApi.adjustLoyaltyPoints(selectedId, { amount, reason: adjustReason });
-      setDetail((await posCustomersApi.getDetail(selectedId)) as Detail);
-      setLedger((await posCustomersApi.getLoyaltyLedger(selectedId)) as any[]);
-      setShowAdjustModal(false);
-      setAdjustAmount('');
-      setAdjustReason('');
-    } catch (err: any) {
-      setAdjustError(reportError(err, 'adjusting loyalty'));
-    } finally {
-      setAdjusting(false);
-    }
-  };
+  const reset = () => { setSelectedId(null); setDetail(null); setQuery(''); setResults([]); setError(null); runSearch(''); setLedger(null); setShowAdjustModal(false); };
 
   const historyLimit = 10; // Trigger HMR to ensure pagination applies
   const historyTotalPages = detail?.recentVisits?.length ? Math.ceil(detail.recentVisits.length / historyLimit) : 1;
@@ -330,7 +308,7 @@ export function POSCustomerProfileScreen() {
             <section style={{ background: '#FFFFFF', padding: 32, borderRadius: 24, border: '1px solid #F1ECE4', boxShadow: '0 8px 24px rgba(0,0,0,0.02)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                 <div style={{ fontFamily: '"Playfair Display", serif', fontSize: 24, color: '#2C2A29' }}>{i18nText('pos.loyalty_rewards')}</div>
-                <button onClick={() => setShowAdjustModal(true)} style={{ background: '#F1F5FA', border: 'none', padding: '8px 16px', borderRadius: 8, color: '#2D6CBF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}>{i18nText('pos.adjust_points')}</button>
+                <button onClick={() => setShowAdjustModal(true)} style={{ background: '#F1F5FA', border: 'none', padding: '8px 16px', borderRadius: 8, color: '#2D6CBF', fontWeight: 600, fontSize: 13, cursor: 'pointer' }} data-testid="lb-open">{i18nText('lb.title')}</button>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 24 }}>
                 <div style={{ background: '#F8FAFD', padding: '16px 12px', borderRadius: 16, border: '1px solid #D6E4F4', textAlign: 'center' }}>
@@ -512,25 +490,15 @@ export function POSCustomerProfileScreen() {
         </div>
       ) : null}
 
-      {showAdjustModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-          <div style={{ background: '#FFF', width: 400, borderRadius: 16, padding: 24, boxShadow: '0 16px 48px rgba(0,0,0,0.2)' }}>
-            <div style={{ fontSize: 20, fontWeight: 700, color: '#2C2A29', marginBottom: 16, fontFamily: '"Playfair Display", serif' }}>{i18nText('pos.adjust_points')}</div>
-            {adjustError && <div style={{ background: '#FEE2E2', color: '#B91C1C', padding: '12px 20px', borderRadius: 8, marginBottom: 16, fontSize: 14, fontWeight: 500, border: '1px solid #FCA5A5' }}>{adjustError}</div>}
-            <form onSubmit={handleAdjustSubmit}>
-              <div style={{ marginBottom: 16 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#5A514A', marginBottom: 6 }}>{i18nText('pos.amount_use_negative_to_deduct')}</label>
-                <input type="number" autoFocus required value={adjustAmount} onChange={e => setAdjustAmount(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #EFEAE1', boxSizing: 'border-box' }} placeholder={i18nText('pos.e_g_50_or_50')} />
-              </div>
-              <div style={{ marginBottom: 24 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#5A514A', marginBottom: 6 }}>{i18nText('pos.reason_2')}</label>
-                <input type="text" required value={adjustReason} onChange={e => setAdjustReason(e.target.value)} style={{ width: '100%', padding: '10px 12px', borderRadius: 8, border: '1px solid #EFEAE1', boxSizing: 'border-box' }} placeholder={i18nText('pos.e_g_customer_service_appeasement')} />
-              </div>
-              <div style={{ display: 'flex', gap: 12, justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setShowAdjustModal(false)} style={{ padding: '10px 16px', background: '#F1ECE4', border: 'none', borderRadius: 8, color: '#5A514A', fontWeight: 600, cursor: 'pointer' }}>{i18nText('pos.cancel')}</button>
-                <button type="submit" disabled={adjusting} style={{ padding: '10px 16px', background: '#2C2A29', border: 'none', borderRadius: 8, color: '#FFF', fontWeight: 600, cursor: 'pointer' }}>{adjusting ? i18nText('pos.saving_3') : i18nText('pos.save_adjustment')}</button>
-              </div>
-            </form>
+      {/* Customer Profile & Global Loyalty Protection (Nov 4 2026): "Adjust points (use negative to deduct)" is gone — a
+          POSITIVE bonus is requested and the owner approves it; points are never lowered by hand */}
+      {showAdjustModal && selectedId && (
+        <div role="dialog" aria-modal="true" aria-label={i18nText('lb.title')} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div style={{ background: '#FFF', width: 520, maxWidth: '94vw', maxHeight: '90vh', overflowY: 'auto', borderRadius: 16, padding: 24, boxShadow: '0 16px 48px rgba(0,0,0,0.2)' }}>
+            <LoyaltyBonusRequest customerId={selectedId} currentPoints={detail?.loyalty?.points ?? detail?.loyaltyPoints ?? null} canRequest={can('pos.customers.loyalty.edit')} />
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setShowAdjustModal(false)} style={{ padding: '10px 16px', background: '#F1ECE4', border: 'none', borderRadius: 8, color: '#5A514A', fontWeight: 600, minHeight: 40 }}>{i18nText('pos.close')}</button>
+            </div>
           </div>
         </div>
       )}

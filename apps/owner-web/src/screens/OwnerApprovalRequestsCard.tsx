@@ -11,7 +11,7 @@ import { useOwnerStream } from '../api/useOwnerStream';
 import { formatCurrency } from '@aipowersalon/money';   // BUILD_PLAN Phase 13 E (C6 §99–100): shared money / branch-zone date display
 
 const money = (c: number | null | undefined) => (c == null ? '' : formatCurrency(c));
-const KIND: Record<string, string> = { refund: 'Refund', void: 'Void', discount_override: 'Discount override', deal_publish: 'Deal', purchase_order: 'Purchase order', price_override: 'Price override', payout_adjustment: 'Payout adjustment', other: 'Request' };
+const KIND: Record<string, string> = { refund: 'Refund', void: 'Void', discount_override: 'Discount override', deal_publish: 'Deal', purchase_order: 'Purchase order', price_override: 'Price override', payout_adjustment: 'Payout adjustment', loyalty_bonus: 'Bonus loyalty points', other: 'Request' };
 const WHY: Record<string, string> = {
   requester_cannot_approve: 'You asked for this — someone else has to approve it.',
   missing_permission: 'Your account cannot approve this kind of request.',
@@ -34,7 +34,12 @@ export function ruleLine(p: ApprovalPolicyDetail): string {
 /** What happened, in words (an approved request whose action failed says so). */
 export function decidedText(r: ApprovalRequestView, decision: 'approve' | 'reject', out: ApprovalRequestView): string {
   if (decision === 'reject') return `Rejected “${r.title}”.`;
-  return out.status === 'execution_failed' ? `Approved “${r.title}”, but it did not complete.` : `Approved “${r.title}”.`;
+  if (out.status === 'execution_failed') {
+    const code = (out.payload?.executionResult as { code?: string } | undefined)?.code;
+    if (code === 'LOYALTY_BONUS_NEEDS_FUNDING') return `Approved “${r.title}”, but the salon does not have enough reward tokens — no points were added. Buy tokens, then ask for it again.`;
+    return `Approved “${r.title}”, but it did not complete.`;
+  }
+  return `Approved “${r.title}”.`;
 }
 
 export function OwnerApprovalRequestsCard() {
@@ -95,6 +100,7 @@ export function OwnerApprovalRequestsCard() {
               <div className="nm">{r.title}</div>
               <div className="mt">{KIND[r.kind] ?? r.kind}{r.amountCents != null ? ` · ${money(r.amountCents)}` : ''} · asked by {r.requestedByName ?? 'a team member'}{r.branchName ? ` · ${r.branchName}` : ''}</div>
               <div style={{ fontSize: 13, margin: '6px 0' }}>{r.reason}</div>
+              {r.kind === 'loyalty_bonus' ? <BonusFacts p={r.payload} /> : null}
               {r.canDecide ? (
                 <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
                   <button className="owner-btn" disabled={busy === r.id} aria-label={`Approve: ${r.title}`} onClick={() => decide(r, 'approve', null)}>Approve</button>
@@ -123,5 +129,20 @@ export function OwnerApprovalRequestsCard() {
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Customer Profile & Global Loyalty Protection (Nov 4 2026) §04: what the owner sees before approving bonus points —
+ *  the customer's current points, the bonus, the balance after, and for a global bonus the token cost against the wallet.
+ *  These are the server's figures at request time; approving recomputes them. */
+export function BonusFacts({ p }: { p: Record<string, unknown> }) {
+  const num = (v: unknown) => (typeof v === 'number' ? v : null);
+  const cost = num(p.tokenCostCents); const wallet = num(p.walletAvailableCents);
+  return (
+    <div data-testid="owner-bonus-facts" className="owner-text-muted" style={{ fontSize: 12.5, display: 'grid', gap: 2, margin: '4px 0' }}>
+      <div>{String(p.customerName ?? 'Customer')}: {num(p.currentPoints) ?? '—'} points now → <b>{num(p.pointsAfter) ?? '—'}</b> after +{num(p.points) ?? '—'}</div>
+      {cost != null ? <div>Salon reward tokens: {(cost / 100).toFixed(2)} of {wallet == null ? '—' : (wallet / 100).toFixed(2)} available{wallet != null && wallet < cost ? ' — not enough; buy tokens first' : ''}</div>
+        : <div>Added to this salon&apos;s own points program (no tokens).</div>}
+    </div>
   );
 }

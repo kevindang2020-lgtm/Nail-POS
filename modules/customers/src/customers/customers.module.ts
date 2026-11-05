@@ -16,6 +16,8 @@ import { AuditService } from '@aipowersalon/audit';
 import { LoyaltyReconcileScheduler } from '../loyalty/loyalty-reconcile.scheduler';
 import { LoyaltyProgramController, LOYALTY_PROGRAM_REPOSITORY } from '../loyalty/loyalty-program.controller';
 import { LoyaltyProgramRepository } from '../loyalty/loyalty-program.repository';
+import { LoyaltyBonusController } from '../loyalty/loyalty-bonus.controller';
+import { LoyaltyBonusService, type LoyaltyBonusApprovalsPort } from '../loyalty/loyalty-bonus';
 import { RetentionController, RETENTION_REPOSITORY, RETENTION_SMS_SERVICE } from '../retention/retention.controller';
 import { SegmentsController } from '../segments/segments.controller';
 import { RetentionRepository } from '../retention/retention.repository';
@@ -26,11 +28,13 @@ import { TENANT_MESSENGER, type TenantMessenger } from '@aipowersalon/notificati
 
 @Module({
   imports: [EventsCoreModule, SuperAdminPlansModule, CustomerIdentityModule],
-  controllers: [CustomersController, LoyaltyProgramController, RetentionController, SegmentsController],   // + Loyalty & Rewards, Customer Retention (Oct 29 2026), Customer Segments (Oct 30 2026)
+  controllers: [CustomersController, LoyaltyProgramController, LoyaltyBonusController, RetentionController, SegmentsController],   // + Loyalty & Rewards, Customer Retention (Oct 29 2026), Customer Segments (Oct 30 2026)
   providers: [
     { provide: 'CustomersRepositoryPort', useFactory: (db: AppDatabase, outbox: OutboxWriter): CustomersRepositoryPort => (db ? new KyselyCustomersRepository(db, outbox) : new InMemoryCustomersRepository()), inject: [DATABASE, OutboxWriter] },
     // Loyalty & Rewards mandate (Oct 29 2026): the POS loyalty program reads / writes (null without a database → 503)
     { provide: LOYALTY_PROGRAM_REPOSITORY, useFactory: (db: AppDatabase, audit: AuditService) => (db ? new LoyaltyProgramRepository(db, audit) : null), inject: [DATABASE, AuditService] },
+    // Customer Profile & Global Loyalty Protection (Nov 4 2026): bonus points only through the owner's approval (engine kind 'loyalty_bonus')
+    { provide: LoyaltyBonusService, useFactory: (db: AppDatabase, approvals?: LoyaltyBonusApprovalsPort | null) => new LoyaltyBonusService(db ? (db as unknown as ConstructorParameters<typeof LoyaltyBonusService>[0]) : null).useApprovals(approvals ?? null), inject: [DATABASE, { token: 'TENANT_APPROVALS', optional: true }] },
     // Customer Retention mandate (Oct 29 2026): cohorts + consent-checked win-back SMS (one job per recipient)
     { provide: RETENTION_REPOSITORY, useFactory: (db: AppDatabase) => (db ? new RetentionRepository(db) : null), inject: [DATABASE] },
     { provide: RETENTION_SMS_SERVICE, useFactory: (db: AppDatabase, repo: RetentionRepository | null, audit: AuditService) => (db && repo ? new RetentionSmsService(db, repo, audit) : null), inject: [DATABASE, RETENTION_REPOSITORY, AuditService] },

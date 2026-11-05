@@ -21,6 +21,20 @@ beforeEach(() => {
 });
 
 describe('OwnerApprovalRequestsCard', () => {
+  it('Loyalty guide (Nov 4 2026): a bonus request shows current → after, the token cost against the wallet; a funding failure is explained', async () => {
+    const bonus = req({ id: 'lb1', kind: 'loyalty_bonus', title: '+10 bonus points for Ava Kim', amountCents: 100, reason: 'Service recovery', version: 1,
+      payload: { customerName: 'Ava Kim', currentPoints: 0, points: 10, pointsAfter: 10, target: 'global', tokenCostCents: 100, walletAvailableCents: 50 } });
+    api.pending.mockResolvedValue([bonus]);
+    api.decide.mockResolvedValue({ ...bonus, status: 'execution_failed', version: 3, payload: { ...bonus.payload, executionResult: { code: 'LOYALTY_BONUS_NEEDS_FUNDING', error: 'Not enough salon reward tokens' } } });
+    render(<OwnerApprovalRequestsCard />);
+    const row = await screen.findByTestId('owner-approval-request');
+    expect(within(row).getByText(/Bonus loyalty points · \$1\.00 · asked by Fran/)).toBeInTheDocument();
+    const facts = within(row).getByTestId('owner-bonus-facts');
+    expect(facts).toHaveTextContent('Ava Kim: 0 points now → 10 after +10');
+    expect(facts).toHaveTextContent('Salon reward tokens: 1.00 of 0.50 available — not enough; buy tokens first');
+    fireEvent.click(within(row).getByRole('button', { name: /^Approve:/ }));
+    expect(await screen.findByTestId('owner-approval-notice')).toHaveTextContent('not have enough reward tokens — no points were added');
+  });
   it('lists waiting requests; why-not replaces the buttons; the rules summary shows the three engine flows', async () => {
     render(<OwnerApprovalRequestsCard />);
     const rows = await screen.findAllByTestId('owner-approval-request');

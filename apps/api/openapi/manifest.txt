@@ -768,6 +768,9 @@ GET /pos/live-schedule-screen/kpis  realm=staff  auth=session  domain=workforce 
 GET /pos/live-schedule-screen/search  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/live-schedule-screen/shift-impact  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/logs  realm=staff  auth=session  domain=operations  perm=pos.logs.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/bonus-requests  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/bonus-requests/health  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/loyalty/bonus-requests/preview  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/ledger  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/members  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/loyalty/network/earning/history  realm=staff  auth=session  domain=loyalty  perm=pos.customers.view  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
@@ -2827,6 +2830,7 @@ POST /pos/invoices/{id}/send  realm=staff  auth=session  domain=finance  perm=po
 POST /pos/invoices/{id}/status  realm=staff  auth=session  domain=finance  perm=pos.checkout.process_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/invoices/{id}/void  realm=staff  auth=session  domain=finance  perm=pos.checkout.void  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/adjust  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/bonus-requests  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/enroll  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/members/{customerId}/tier  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/earning/activate  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  step-up  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard

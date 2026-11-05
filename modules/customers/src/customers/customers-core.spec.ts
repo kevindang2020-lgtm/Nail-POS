@@ -101,7 +101,15 @@ const owner = (over: Partial<CustomersContext> = {}): CustomersContext => ({ ten
   const s7 = svc();
   // Phase 10 (bug 3): a balance change is a ledger 'adjust' entry, and an adjustment needs a reason
   await throwsAsync('loyalty set without a reason is refused', () => s7.setLoyalty(owner(), 'cust_grace', { points: 700, earned: 700, redeemed: 0, tier: 'VIP Gold', tierThresholdPoints: 500, birthdayReward: true, referralReward: true }), ValidationError);
-  ok('loyalty set', (await s7.setLoyalty(owner(), 'cust_grace', { points: 700, earned: 700, redeemed: 0, tier: 'VIP Gold', tierThresholdPoints: 500, birthdayReward: true, referralReward: true, reason: 'Gold status migrated from the old punch card' } as any)).points === 700);
+  // Nov 5 2026 (Customer Profile & Global Loyalty Protection): the salon can no longer set a customer's points — raising or
+  // lowering them through setLoyalty is refused; a tier-only change still saves (the balance stays what it was)
+  await throwsAsync('loyalty set cannot change the points', () => s7.setLoyalty(owner(), 'cust_grace', { points: 700, earned: 700, redeemed: 0, tier: 'VIP Gold', tierThresholdPoints: 500, birthdayReward: true, referralReward: true, reason: 'Gold status migrated from the old punch card' } as any), ValidationError);
+  {
+    const cur = await s7.getLoyalty(owner(), 'cust_grace');
+    const t = await s7.setLoyalty(owner(), 'cust_grace', { ...cur, tier: 'VIP Gold', reason: 'Tier corrected' } as any);
+    ok('loyalty tier-only change saves, points unchanged', t.tier === 'VIP Gold' && t.points === cur.points);
+  }
+  await throwsAsync('manual point adjustment is refused', () => s7.adjustLoyaltyPoints(owner(), 'cust_grace', { amount: -50, reason: 'oops' }), ValidationError);
   await throwsAsync('membership needs membership.edit', () => svc().setMembership(owner({ permissions: ['pos.customers.view'] }), 'cust_grace', { plan: 'Gold', status: 'active', benefits: [], billingStatus: 'ok' }), ForbiddenError);
   ok('membership set', (await s7.setMembership(owner(), 'cust_grace', { plan: 'Gold', status: 'active', benefits: ['10% off'], billingStatus: 'ok' })).status === 'active');
   ok('gift cards load', Array.isArray(await s7.giftCards(owner(), 'cust_grace')));

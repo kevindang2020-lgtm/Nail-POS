@@ -204,6 +204,10 @@
     "modules/customers/src/duplicate-review/duplicate-review-center.controller.ts#DuplicateReviewCenterController.summary": {
       "kind": "not-a-list",
       "reason": "Duplicate Review (Nov 2 2026): ONE KPI card set + the scan freshness; ?branch picks the scope, never a filter of rows"
+    },
+    "modules/customers/src/loyalty/loyalty-bonus.controller.ts#LoyaltyBonusController.preview": {
+      "kind": "not-a-list",
+      "reason": "Customer Profile & Global Loyalty Protection (Nov 4 2026): ONE preview of a bonus (current points, after, token cost) for ?customerId & ?points — never a list or a filter of rows"
     }
   }
 }

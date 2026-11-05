@@ -37,7 +37,7 @@ beforeEach(() => { ran = []; rejected = []; });
 describe('policies', () => {
   it('defaults = today\'s env limits (refund cash $50 / any $200), every kind listed, version 0', async () => {
     const ps = await svc().policies(owner);
-    expect(ps.map((p) => p.kind)).toEqual(['refund', 'void', 'discount_override', 'deal_publish', 'purchase_order', 'price_override', 'payout_adjustment', 'other']);
+    expect(ps.map((p) => p.kind)).toEqual(['refund', 'void', 'discount_override', 'deal_publish', 'purchase_order', 'price_override', 'payout_adjustment', 'loyalty_bonus', 'other']);
     expect(ps[0]).toMatchObject({ kind: 'refund', enabled: true, thresholdCents: 20_000, cashThresholdCents: 5_000, approverPermission: 'checkout.approve_refund', requireDifferentApprover: true, version: 0 });
     expect(ps.find((p) => p.kind === 'deal_publish')).toMatchObject({ requireDifferentApprover: false, approverPermission: 'marketing.manage' });
   });
