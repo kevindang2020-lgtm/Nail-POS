@@ -54,6 +54,8 @@ export interface Terminal {
   operationalStatus?: TerminalOperationalStatus; operationalLabel?: string;
   lastSeenAt?: string | null; lastTransactionAt?: string | null; lastPingAt?: string | null; lastPingOk?: boolean | null;
   disabledAt?: string | null; disabledReason?: string | null;
+  /** Fiserv master build §5.2 (Nov 4 2026): paired with no location — never used for any charge until assigned. */
+  unassigned?: boolean;
 }
 /** wave 3 PAYI §52 / §166: edit a terminal's registry fields; disable / enable; a REAL readiness probe (no charge). */
 export interface TerminalRegistryEdit { label?: string; terminalType?: string | null; serialNumber?: string | null; connectionType?: string | null }
@@ -80,6 +82,8 @@ export interface TerminalPairingRepositoryPort {
   setDisabled?(ctx: SettingsContext, id: string, disabled: boolean, reason: string | null): Promise<Terminal>;
   recordProbe?(ctx: SettingsContext, id: string, ok: boolean): Promise<void>;
   get?(ctx: SettingsContext, id: string): Promise<Terminal | null>;
+  /** Fiserv §5.2: give an UNASSIGNED terminal of this tenant to the caller's location (never moves an assigned one). */
+  assignToLocation?(ctx: SettingsContext, id: string): Promise<Terminal>;
 }
 
 export class TerminalPairingService implements TerminalPairingRepositoryPort {

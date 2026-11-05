@@ -19,7 +19,7 @@ function terminalNotFound(): Error {
 }
 
 /** Exactly the columns the terminal view needs (check:response-exposure — never a whole row). */
-const TERMINAL_VIEW_COLUMNS = ['id', 'label', 'station_id', 'status', 'paired_at', 'hsn', 'provider', 'terminal_type', 'serial_number', 'connection_type',
+const TERMINAL_VIEW_COLUMNS = ['id', 'label', 'branch_id', 'station_id', 'status', 'paired_at', 'hsn', 'provider', 'terminal_type', 'serial_number', 'connection_type',
   'merchant_account_id', 'last_seen_at', 'last_transaction_at', 'last_ping_at', 'last_ping_ok', 'disabled_at', 'disabled_reason'] as const;
 
 export class KyselyTerminalPairingRepository implements TerminalPairingRepositoryPort {
@@ -27,7 +27,9 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
 
   async list(ctx: SettingsContext): Promise<Terminal[]> {
     let q = this.db.selectFrom('pos_payment_terminals').select(TERMINAL_VIEW_COLUMNS).where('tenant_id', '=', ctx.tenantId);
-    if (ctx.branchId) q = q.where('branch_id', '=', ctx.branchId);
+    // Fiserv §5.2: a location also sees this tenant's UNASSIGNED terminals (flagged) so the owner can assign them —
+    // they charge nothing anywhere until they have a location.
+    if (ctx.branchId) q = q.where((eb: any) => eb.or([eb('branch_id', '=', ctx.branchId), eb('branch_id', 'is', null)]));
     const rows = await q.orderBy('paired_at', 'asc').execute().catch(() => [] as any[]);
     const names = await this.registerNames(ctx);
     const leases = await this.liveLeases(ctx);
@@ -46,6 +48,7 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
       lastSeenAt: r.last_seen_at ? iso(r.last_seen_at) : null, lastTransactionAt: r.last_transaction_at ? iso(r.last_transaction_at) : null,
       lastPingAt: r.last_ping_at ? iso(r.last_ping_at) : null, lastPingOk: r.last_ping_ok ?? null,
       disabledAt: r.disabled_at ? iso(r.disabled_at) : null, disabledReason: r.disabled_reason ?? null,
+      ...(r.branch_id ? {} : { unassigned: true }),
     };
   }
   /** terminal id → holder, for the leases that are live right now (migration 485). */
@@ -61,6 +64,16 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
     return this.view(r, await this.registerNames(ctx), await this.liveLeases(ctx));
   }
   async get(ctx: SettingsContext, id: string): Promise<Terminal | null> { return this.one(ctx, id); }
+
+  async assignToLocation(ctx: SettingsContext, id: string): Promise<Terminal> {
+    if (!ctx.branchId) throw Object.assign(new Error('Choose a location first.'), { expose: true, status: 400, code: 'LOCATION_REQUIRED' });
+    const r: any = await this.db.updateTable('pos_payment_terminals').set({ branch_id: ctx.branchId, station_id: null, updated_at: sql`now()` } as any)
+      .where('tenant_id', '=', ctx.tenantId).where('id', '=', id).where('branch_id', 'is', null).executeTakeFirst();
+    if (Number(r?.numUpdatedRows ?? 0) === 0) throw terminalNotFound();
+    const t = await this.one(ctx, id);
+    if (!t) throw terminalNotFound();
+    return t;
+  }
 
   /** wave 3 PAYI §52: rename + registry fields (type / serial / connection). Scoped by tenant (+ branch) like every write. */
   async update(ctx: SettingsContext, id: string, edit: TerminalRegistryEdit): Promise<Terminal> {
@@ -93,6 +106,9 @@ export class KyselyTerminalPairingRepository implements TerminalPairingRepositor
 
   async pair(ctx: SettingsContext, pairingCode: string, label: string, stationId?: string, hsn?: string): Promise<Terminal> {
     if (!/^\d{6}$/.test(pairingCode)) throw new Error('pairing code must be 6 digits');
+    // Fiserv §5.2: a terminal is always paired AT a location — an unassigned one used to be created from a session with
+    // no location selected, and then matched every branch's charges.
+    if (!ctx.branchId) throw Object.assign(new Error('Choose a location before pairing a terminal.'), { expose: true, status: 400, code: 'LOCATION_REQUIRED' });
     const id = 'term_' + pairingCode;
     await this.db.insertInto('pos_payment_terminals')
       .values({ id, tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, label, station_id: stationId || null, status: 'paired', paired_at: sql`now()`, hsn: hsn || null } as any)

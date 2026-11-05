@@ -78,6 +78,8 @@ export interface TerminalDevicePort {
   ping(hsn: string): Promise<boolean>;
   authCard(input: TerminalAuthInput): Promise<TerminalAuthResult>;
   display(hsn: string, text: string): Promise<void>;
+  /** Stop an in-flight prompt (optional — a simulator may not have one). */
+  cancel?(hsn: string): Promise<void>;
 }
 
 function toDollars(cents: number): string { return (cents / 100).toFixed(2); }

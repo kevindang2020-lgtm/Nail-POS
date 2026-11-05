@@ -2,7 +2,7 @@
 // "Not tested yet" for a terminal that never answered, and the audited actions through the real routes.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
-const { m } = vi.hoisted(() => ({ m: { terminals: vi.fn(), testTerminal: vi.fn(), renameTerminal: vi.fn(), disableTerminal: vi.fn(), enableTerminal: vi.fn(), unpairTerminal: vi.fn() } }));
+const { m } = vi.hoisted(() => ({ m: { terminals: vi.fn(), testTerminal: vi.fn(), renameTerminal: vi.fn(), disableTerminal: vi.fn(), enableTerminal: vi.fn(), unpairTerminal: vi.fn(), assignTerminalLocation: vi.fn() } }));
 vi.mock('../api/posDevicesApi', () => ({ posDevicesApi: m }));
 const { stepUp } = vi.hoisted(() => ({ stepUp: vi.fn() }));
 vi.mock('../api/posStepUpApi', () => ({ posStepUpApi: { stepUp } }));
@@ -14,6 +14,16 @@ const row = (over: any = {}) => ({ id: 'term_1', label: 'Front Desk Clover', sta
 beforeEach(() => { for (const f of Object.values(m)) (f as any).mockReset(); stepUp.mockReset(); });
 
 describe('POSPaymentTerminalsScreen', () => {
+  it('a paired terminal with no location is flagged, and "Assign to this location" assigns it and reloads', async () => {
+    m.terminals.mockResolvedValueOnce([row({ unassigned: true })]).mockResolvedValueOnce([row()]);
+    m.assignTerminalLocation.mockResolvedValue(row());
+    render(<POSPaymentTerminalsScreen />);
+    expect(await screen.findByText(/takes no card payments until it is assigned/)).toBeInTheDocument();
+    fireEvent.click(screen.getByText('Assign to this location'));
+    await waitFor(() => expect(m.assignTerminalLocation).toHaveBeenCalledWith('term_1'));
+    expect(await screen.findByText(/now belongs to this location/)).toBeInTheDocument();
+    expect(screen.queryByText(/takes no card payments until it is assigned/)).toBeNull();
+  });
   it('renders the registry with the normalized status — a paired terminal that never answered is "Not tested yet", not Online', async () => {
     m.terminals.mockResolvedValue([row(), row({ id: 'term_2', label: 'Back Clover', operationalStatus: 'ONLINE', operationalLabel: 'Online', lastSeenAt: '2026-10-13T12:00:00Z' })]);
     render(<POSPaymentTerminalsScreen />);

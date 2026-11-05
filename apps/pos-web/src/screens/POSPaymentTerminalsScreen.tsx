@@ -90,6 +90,9 @@ export function POSPaymentTerminalsScreen() {
     } catch (e: any) { if (!isStepUpCancelled(e)) setMsg({ tone: 'err', text: e?.message || tx('pos.pair_failed') }); }
     finally { setBusy(null); }
   };
+  // Fiserv master build §5.2: a terminal paired before a location was chosen takes NO card payments anywhere until it is
+  // assigned — the owner gives it to the location they are signed in to.
+  const assignHere = (t: TerminalRegistryRow) => run('assign:' + t.id, t.label, () => posDevicesApi.assignTerminalLocation(t.id), tx('payment.terminal.assigned', { label: String(t.label) }));
   const unpair = (t: TerminalRegistryRow) => askConfirm(`Unpair ${t.label}? It must be paired again before it can take payments.`, () => { void run('unpair:' + t.id, t.label, () => posDevicesApi.unpairTerminal(t.id), `${t.label} unpaired.`); }, { confirmLabel: tx('pos.unpair_terminal') });
 
   if (loading) return <div className="work"><div className="state">{tx('pos.loading_terminals')}</div></div>;
@@ -165,6 +168,13 @@ export function POSPaymentTerminalsScreen() {
             <table className="tbl w-full min-w-max">
               <thead><tr><th>{tx('pos.terminal')}</th><th>{tx('pos.type')}</th><th>{tx('pos.register')}</th><th>{tx('pos.status')}</th><th>{tx('pos.last_seen')}</th><th>{tx('pos.last_transaction')}</th>{canEdit ? <th>{tx('pos.actions')}</th> : null}</tr></thead>
               <tbody>{terminals.map((t) => (
+                t.unassigned ? (
+                <tr key={t.id} data-testid={'unassigned-' + t.id} style={{ background: '#FFF7E6' }}>
+                  <td><div style={{ fontWeight: 600 }}>{t.label || '—'}</div><div className="s muted">{t.hsn ? tx('pos.hsn_hsn', { hsn: String(t.hsn) }) : tx('pos.no_hsn')}</div></td>
+                  <td colSpan={canEdit ? 5 : 5} style={{ color: 'var(--warn, #B7791F)', fontWeight: 700 }}>{tx('payment.terminal.unassignedWarning')}</td>
+                  {canEdit ? <td><button className="btn primary" style={{ padding: '2px 8px', fontSize: 11 }} disabled={!!busy} onClick={() => { void assignHere(t); }}>{tx('payment.terminal.assignHere')}</button></td> : <td />}
+                </tr>
+                ) : (
                 <tr key={t.id}>
                   <td><div style={{ fontWeight: 600 }}>{t.label || '—'}</div><div className="s muted">{t.hsn ? tx('pos.hsn_hsn', { hsn: String(t.hsn) }) : tx('pos.no_hsn')}{t.serialNumber ? ` · S/N ${t.serialNumber}` : ''}{t.status !== 'paired' ? tx('pos.unpaired') : ''}</div></td>
                   <td>{canEdit ? (
@@ -192,6 +202,7 @@ export function POSPaymentTerminalsScreen() {
                     </td>
                   ) : null}
                 </tr>
+                )
               ))}</tbody>
             </table>
           </div>

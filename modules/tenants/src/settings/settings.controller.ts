@@ -122,6 +122,8 @@ export class PosSettingsController {
   // Oct 6 2026: the register a terminal serves (body { stationId: one of this location's registers | null })
   @Post('payments-checkout/terminals/:id/register') @RequirePermission('settings.view')
   termRegister(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(TERMINAL_REGISTER_BODY)) b: any) { return this.act(() => this.svc.setTerminalRegister(ctxFrom(r), id, b?.stationId ?? null)); }
+  @Post('payments-checkout/terminals/:id/assign-location') @RequirePermission('settings.view')
+  termAssignLocation(@Req() r: any, @Param('id') id: string) { return this.act(() => this.svc.assignTerminalLocation(ctxFrom(r), id)); }
   @Post('payments-checkout/terminals/:id/unpair') @RequirePermission('settings.view')
   termUnpair(@Req() r: any, @Param('id') id: string) { return this.act(() => this.svc.unpairTerminal(ctxFrom(r), id)); }
   @Get('payments-checkout/terminals/:id/test') @RequirePermission('settings.view')

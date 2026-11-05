@@ -10,7 +10,9 @@ import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useRealtime } from '../realtime/useRealtime';
 import { REALTIME_STATUS, realtimeStatus } from '../realtime/realtime-client';
 import type { RealtimeStatus } from '../realtime/realtime-core';
-import { posCheckoutApi, type PaymentMethod } from '../api/posCheckoutApi';
+import { posCheckoutApi, type PaymentMethod, type PosTerminalOption } from '../api/posCheckoutApi';
+import { getThisRegister } from '../api/posCustomerDisplaysApi';
+import { useAuth } from '../auth/AuthContext';
 import { CheckoutDealsPanel, type DiscountItem } from '../components/CheckoutDealsPanel';
 import { CustomerDisplayCard, useCustomerDisplays } from './CustomerDisplayCard';
 import { MobilePaymentsCard } from '../components/MobilePaymentsCard';   // TTP mandate §45/§149–§151: phone claim + Mobile Payments + Send to phone
@@ -64,6 +66,11 @@ import { TipKeypad, parseDollarsToCents, useEventCallback } from '@aipowersalon/
 // The ONE shared exact parser (no float money math). Invalid input keeps the old lenient behavior: 0.
 const dollarsToCents = (s: string) => parseDollarsToCents(s) ?? 0;
 
+/** A fresh, unguessable attempt key for one terminal tender (Fiserv §7.3: stable per attempt, not per button tap). */
+function newAttemptKey(): string {
+  try { return (globalThis.crypto as any).randomUUID().replace(/-/g, ''); } catch { return 'k' + Date.now().toString(36) + Math.random().toString(36).slice(2, 12); }
+}
+
 export function POSCheckoutScreen() {
   const nav = useNavigate();
   const [s, setS] = useState<CheckoutState | null>(null);
@@ -74,6 +81,12 @@ export function POSCheckoutScreen() {
   const [note, setNote] = useState<Msg | null>(null);
   // Functional Decision 22: a card charge whose answer was lost — offer to ask the processor, never to charge again.
   const [verifyFor, setVerifyFor] = useState<string | null>(null);
+  // Fiserv master build §8B: the front-desk card button charges on the Clover Compact (Bolt) — never an empty token.
+  const auth = useAuth() as any;
+  const [terminals, setTerminals] = useState<PosTerminalOption[] | null>(null);
+  const [terminalId, setTerminalId] = useState<string | null>(null);
+  const [terminalWaiting, setTerminalWaiting] = useState<string | null>(null);   // label of the terminal prompting now
+  const terminalAttempt = useRef<{ ticketId: string; key: string } | null>(null);
   const [search, setSearch] = useState('');
   const [customTipOpen, setCustomTipOpen] = useState(false);
   const [selId, setSelId] = useState<string | null>(null);
@@ -175,6 +188,23 @@ export function POSCheckoutScreen() {
   });
   useEffect(() => { autoSelect(); }, [s, selId, autoSelect]);
 
+  useEffect(() => {
+    if (method !== 'card' || !selId) return;
+    let live = true;
+    posCheckoutApi.terminals().then((list) => {
+      if (!live) return;
+      const all = list || []; const usable = all.filter((x) => !x.disabled);
+      setTerminals(all);
+      // keep the cashier's pick while it is still usable; one usable terminal is simply selected
+      setTerminalId((cur) => (cur && usable.some((x) => x.id === cur) ? cur : usable.length === 1 ? usable[0].id : null));
+    }).catch(() => { if (live) setTerminals([]); });
+    return () => { live = false; };
+  }, [method, selId]);
+  const cancelOnTerminal = () => {
+    if (!selId) return;
+    void posCheckoutApi.cancelTerminal(selId).then((r) => setNote(r?.cancelled ? msg('payment.terminal.cancelSent') : msg('payment.terminal.cancelFailed', { reason: String(r?.reason || '') }))).catch((e: any) => setNote(msg('payment.terminal.cancelFailed', { reason: String(e?.message || '') })));
+  };
+
   const run = async (key: string, fn: () => Promise<any>, after?: (r: any) => void) => {
     setNote(null); setBusy(key);
     try { const r = await fn(); if (after) after(r); }
@@ -235,16 +265,28 @@ export function POSCheckoutScreen() {
         await refreshAll();
       });
     } else {
+      // Card = the Clover Compact at this location (Fiserv §7 / §8B). One attempt key per tender: a retry after a lost
+      // answer re-sends the SAME key and gets the recorded outcome; a definitive answer starts a fresh key next time.
       const tid = selId;
-      run('pay', () => posCheckoutApi.payCard(tid, {}).catch((e: any) => {
-        // The charge left the POS but no answer came back (network / terminal / gateway timeout). Its outcome is UNKNOWN:
-        // do not offer "pay again" — offer to verify with the processor.
-        if (!e?.status || e.status >= 500) { setVerifyFor(tid); return { status: 'unknown' }; }
+      const live = (terminals || []).filter((x) => !x.disabled);
+      if (!live.length) { setNote(msg('payment.terminal.none')); return; }
+      const chosen = live.find((x) => x.id === terminalId) || null;
+      const register = auth?.principal?.branchId ? getThisRegister(String(auth.principal.branchId)) : null;
+      if (!terminalAttempt.current || terminalAttempt.current.ticketId !== tid) terminalAttempt.current = { ticketId: tid, key: newAttemptKey() };
+      const attemptKey = terminalAttempt.current.key;
+      setTerminalWaiting((chosen || live.find((x) => x.stationId && x.stationId === register) || live[0]).label);
+      run('pay', () => posCheckoutApi.payTerminal(tid, { attemptKey, terminalId: chosen?.id ?? null, stationId: register }).catch((e: any) => {
+        // The request left the POS but no answer came back: the card may have been charged — verify, never pay again.
+        if (!e?.status || e.status >= 500) { setVerifyFor(tid); return { status: 'unknown', next: 'verify', message: e?.message || '' }; }
         throw e;
-      }), async (r) => {
-        if (r && r.configured === false) setNote(r.disabledReason || msg('pos.card_processing_is_not_configured_yet'));
-        else if (r?.status === 'processing' || r?.status === 'unknown') { setVerifyFor(tid); setNote(msg('pos.payment_status_unknown_the_card_may_1gy2')); }
-        else { setVerifyFor(null); setNote(msg('payment.result.cardStatus', { status: st('payment', String(r?.status || r?.payment?.status || 'submitted')) })); }
+      }), async (r: any) => {
+        setTerminalWaiting(null);
+        const reason = String(r?.message || '');
+        if (r?.status === 'approved') { terminalAttempt.current = null; setVerifyFor(null); setNote(msg('payment.terminal.approved', { amount: String(money(r?.amountCents || 0)) })); }
+        else if (r?.status === 'declined') { terminalAttempt.current = null; setNote(msg('payment.terminal.declined', { reason })); }
+        else if (r?.status === 'unknown') { setVerifyFor(tid); setNote(msg('payment.terminal.unknown', { reason })); }   // keep the key: a retry must not charge again
+        else if (r?.status === 'in_progress') { terminalAttempt.current = null; setNote(msg('payment.terminal.inProgress', { reason })); }
+        else { terminalAttempt.current = null; setNote(msg('payment.terminal.unavailable', { reason })); }
         await refreshAll();
       });
     }
@@ -658,6 +700,30 @@ export function POSCheckoutScreen() {
                         );
                       })}
                     </div>
+
+                    {method === 'card' ? (
+                      <div className="mt-2.5 flex flex-col gap-1.5" data-testid="terminal-pay">
+                        {terminals && terminals.length === 0 ? (
+                          <div className="text-xs text-[var(--muted)] font-bold">{tx('payment.terminal.none')}</div>
+                        ) : (
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <label className="text-xs text-[var(--muted)] font-bold" htmlFor="pos-terminal-pick">{tx('payment.terminal.label')}</label>
+                            <select id="pos-terminal-pick" aria-label={tx('payment.terminal.label')} value={terminalId ?? ''} onChange={(e) => setTerminalId(e.target.value || null)} disabled={busy === 'pay'}
+                              className="border border-[var(--line)] rounded-lg p-1.5 text-xs">
+                              <option value="">—</option>
+                              {(terminals || []).map((x) => <option key={x.id} value={x.id} disabled={x.disabled}>{x.label}{x.disabled ? ' ' + tx('payment.terminal.disabled') : ''}</option>)}
+                            </select>
+                            <span className="text-xs text-[var(--muted)]">{tx('payment.terminal.amountOnDevice', { amount: money(t?.totalDueCents || 0) })}</span>
+                          </div>
+                        )}
+                        {busy === 'pay' && terminalWaiting ? (
+                          <div className="flex items-center gap-2 flex-wrap" role="status">
+                            <span className="text-xs font-bold">{tx('payment.terminal.waiting', { terminal: terminalWaiting })}</span>
+                            <button type="button" className="btn" style={{ minHeight: 36 }} onClick={cancelOnTerminal}>{tx('payment.terminal.cancel')}</button>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
 
                     {method === 'cash' ? (
                       <div className="mt-2.5 flex items-center gap-2 flex-wrap">
