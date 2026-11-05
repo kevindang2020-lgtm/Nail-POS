@@ -103,6 +103,13 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
   const cents = centsFromText(price); const m = Number(dur);
   const changed = (cents != null && cents !== service.priceCents) || (Number.isInteger(m) && m !== service.durationMinutes);
   const valid = cents != null && cents >= 0 && Number.isInteger(m) && m > 0 && m <= 1440;
+  // D4 gaps (Nov 5 2026): who is booked for this service — their quoted price stays; this shows who a change touches
+  const [impact, setImpact] = useState<any | null>(null);
+  useEffect(() => {
+    if (!valid || !changed) { setImpact(null); return; }
+    let live = true; const tm = setTimeout(() => { posCatalogApi.pricingImpact(service.serviceId, { priceCents: String(cents), durationMinutes: String(m) }).then((r) => { if (live) setImpact(r); }).catch(() => { if (live) setImpact(null); }); }, 300);
+    return () => { live = false; clearTimeout(tm); };
+  }, [service.serviceId, cents, m, valid, changed]);
   const save = async () => {
     if (!valid) { setErr(tx('cg.pricing.invalid')); return; }
     if (!reason.trim()) { setErr(tx('cg.reasonRequired')); return; }
@@ -121,6 +128,10 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
         <label className="fk-field wide">{tx('cg.f.reason')}<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} placeholder={tx('cg.f.reasonPh')} data-testid="pricing-reason" /></label>
       </div>
       <p className="fk-hint">{tx('cg.pricing.rule')}</p>
+      {impact ? <div className="fk-note info" data-testid="pricing-impact"><span>{impact.upcoming
+        ? tx('cg.impact.some', { n: nf(impact.upcoming), q: fmtMoney(impact.quotedTotalCents), d: nf(impact.quotedDifferently), l: nf(impact.wouldRunLonger) })
+        : tx('cg.impact.none')}</span>
+        {impact.items?.length ? <ul className="fn-notes" data-testid="pricing-impact-list">{impact.items.slice(0, 5).map((a: any) => <li key={a.appointmentId}>{a.day} {a.time} · {a.customer ?? tx('cg.impact.customerHidden')} · {fmtMoney(a.quotedCents)} · {mins(a.bookedMinutes)}</li>)}</ul> : null}</div> : null}
       {err ? <div className="fk-note bad" role="alert" data-testid="pricing-error"><span>{err}</span></div> : null}
     </FitDialog>
   );
@@ -186,17 +197,18 @@ export function ServiceDialog({ service, categories, onClose, onSaved }: { servi
 }
 
 /** a service's / category's / add-on's change history (catalog_change_log, append-only, newest first) */
-export function ChangeHistoryTable({ rows, showItem = true }: { rows: any[]; showItem?: boolean }) {
+export function ChangeHistoryTable({ rows, showItem = true, onRevert }: { rows: any[]; showItem?: boolean; onRevert?: (row: any) => void }) {
   return (
     <table className="fk-table fn-table cg-table" data-testid="change-history-table">
-      <thead><tr><th>{tx('cg.col.when')}</th>{showItem ? <th>{tx('cg.col.item')}</th> : null}<th>{tx('cg.col.field')}</th><th>{tx('cg.col.change')}</th><th>{tx('cg.col.reason')}</th><th className="t-opt">{tx('cg.col.by')}</th></tr></thead>
+      <thead><tr><th>{tx('cg.col.when')}</th>{showItem ? <th>{tx('cg.col.item')}</th> : null}<th>{tx('cg.col.field')}</th><th>{tx('cg.col.change')}</th><th>{tx('cg.col.reason')}</th><th className="t-opt">{tx('cg.col.by')}</th>{onRevert ? <th aria-label={tx('finance.actions')} /> : null}</tr></thead>
       <tbody>{rows.map((h: any) => <tr key={h.id} data-testid="change-row">
         <td>{whenTime(h.changedAt)}</td>
-        {showItem ? <td>{h.serviceName ?? h.categoryName ?? h.entityId}<span className="fk-li-s">{tx('cg.src.' + (['pos', 'import', 'pricing_editor', 'reassignment', 'add_ons'].includes(h.source) ? h.source : 'pos'))}</span></td> : null}
+        {showItem ? <td>{h.serviceName ?? h.categoryName ?? h.entityId}<span className="fk-li-s">{tx('cg.src.' + (['pos', 'import', 'pricing_editor', 'pricing_revert', 'reassignment', 'add_ons'].includes(h.source) ? h.source : 'pos'))}</span></td> : null}
         <td>{fieldText(h.field)}</td>
         <td>{changeValue(h.field, h.oldValue)} → <b>{changeValue(h.field, h.newValue)}</b></td>
         <td className="cg-reason">{h.reason ?? <span className="fk-muted">{tx('cg.noReason')}</span>}</td>
         <td className="t-opt">{h.actor ?? '—'}</td>
+        {onRevert ? <td>{['price_cents', 'duration_minutes'].includes(h.field) ? <button type="button" className="fk-btn ghost sm" onClick={() => onRevert(h)} data-testid="change-revert">{tx('cg.revert')}</button> : null}</td> : null}
       </tr>)}</tbody>
     </table>
   );

@@ -181,6 +181,33 @@ describe('Service Categories', () => {
   });
 });
 
+describe('Service Pricing — D4 gaps (Nov 5 2026): booking impact preview and revert', () => {
+  it('the preview lists upcoming bookings of the service with their quoted price (never repriced); revert is a new revision', async () => {
+    const A1 = id('ab1'), A2 = id('ab2'), A3 = id('ab3');
+    const svcJson = JSON.stringify([{ serviceId: PEDI, serviceName: 'Classic Pedicure', durationMinutes: 45, priceCents: 5500 }]);
+    await q(`insert into pos_tech_appointments (id, tenant_id, branch_id, technician_id, customer_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status) values
+      ($1,$4,$5,$7,$6,'Mai Le',$8::jsonb, current_date + 2, '10:00','10:45',45,'confirmed'),
+      ($2,$4,$5,$7,$6,'Mai Le',$8::jsonb, current_date + 3, '10:00','10:45',45,'cancelled'),
+      ($3,$4,$5,$7,$6,'Mai Le',$8::jsonb, current_date - 3, '10:00','10:45',45,'booked')`, [A1, A2, A3, T, B, id('aa1'), id('f1'), svcJson]);
+    const imp: any = await repo.pricingImpact({ ...ctx, permissions: ['pos.services.view', 'customers.view'] }, PEDI, { priceCents: '5200', durationMinutes: '60' });
+    expect(imp).toMatchObject({ upcoming: 1, quotedTotalCents: 5500, atNewPriceTotalCents: 5200, quotedDifferently: 1, wouldRunLonger: 1, policy: 'booked_quotes_kept' });
+    expect(imp.items[0]).toMatchObject({ appointmentId: A1, quotedCents: 5500, customer: 'Mai Le' });
+    expect((await repo.pricingImpact(ctx, PEDI, {})).items[0].customer).toBeNull();   // no customers.view: no names
+    // change the price, then revert that change: a NEW revision back to the old value; both history rows stay
+    const cur: any = await repo.serviceDetail(ctx, PEDI);
+    await repo.updatePricing(ctx, PEDI, { priceCents: 5200, reason: 'Promo month', expectedUpdatedAt: cur.updatedAt ?? cur.service?.updatedAt });
+    const h: any = await repo.history(ctx, { serviceId: PEDI, field: 'price', preset: 'all' });
+    const change = h.items.find((x: any) => x.newValue === '5200');
+    await expect(repo.revertPricing(ctx, PEDI, { historyId: change.id })).rejects.toThrow(/why/);
+    await repo.revertPricing(ctx, PEDI, { historyId: change.id, reason: 'Promo over' });
+    expect(Number((await q(`select price_cents from services where id = $1`, [PEDI])).rows[0].price_cents)).toBe(4800);
+    const h2: any = await repo.history(ctx, { serviceId: PEDI, field: 'price', preset: 'all' });
+    expect(h2.items[0]).toMatchObject({ oldValue: '5200', newValue: '4800', source: 'pricing_revert' });
+    expect(h2.items.some((x: any) => x.id === change.id)).toBe(true);
+    expect((await q(`select services from pos_tech_appointments where id = $1`, [A1])).rows[0].services[0].priceCents).toBe(5500);   // the booked quote is never repriced
+  });
+});
+
 describe('Add-Ons', () => {
   it('KPIs state their unit (4 offerings of 1 add-on on 4 services, $10 average); hair-service offerings are flagged, not changed', async () => {
     expect(await repo.addOnSummary(ctx)).toMatchObject({ offerings: 4, activeOfferings: 4, definitions: 1, servicesOffering: 4, averagePriceCents: 1000, categoryAddOnServices: 0 });

@@ -476,6 +476,7 @@ export const ERRORS_EN = {
   'errors.PRODUCT_SKU_TAKEN': 'Another product already uses that SKU.',
   'errors.PRODUCT_BARCODE_TAKEN': 'Another product already uses that barcode.',
   'errors.CATALOG_EDIT_CONFLICT': 'Someone else changed this service since you opened it. Reload it and try again.',
+  'errors.CATALOG_CHANGE_NOT_FOUND': 'That change was not found.',
   'errors.CHANGE_REASON_REQUIRED': 'Say why the price or duration is changing.',
   'errors.CATEGORY_REASSIGN_EMPTY': 'Choose at least one service to move.',
   'errors.CATEGORY_REASSIGN_TARGET_INVALID': 'Choose a different, current category to move the services into.',

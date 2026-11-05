@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
-  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
+  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), revertPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
     addOnSummary: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
   bundles: { state: vi.fn(), create: vi.fn() }, insights: { get: vi.fn() }, alerts: { summary: vi.fn(), active: vi.fn() }, invScreen: { products: vi.fn(), product: vi.fn() },
@@ -99,6 +99,15 @@ describe('Service Pricing', () => {
     fireEvent.change(screen.getByTestId('pricing-reason'), { target: { value: 'supplier price' } });
     fireEvent.click(screen.getByTestId('pricing-save'));
     await waitFor(() => expect(cat.updatePricing).toHaveBeenCalledWith('s1', { priceCents: 5800, durationMinutes: 45, reason: 'supplier price', expectedUpdatedAt: '2026-10-01T12:00:00Z' }));
+  });
+  it('D4 gaps: Edit Pricing shows the upcoming bookings it touches (their quoted price is kept)', async () => {
+    cat.pricingImpact.mockResolvedValue({ upcoming: 2, quotedTotalCents: 11000, quotedDifferently: 2, wouldRunLonger: 0, items: [{ appointmentId: 'a1', day: '2026-11-10', time: '10:00', customer: 'Mai Le', quotedCents: 5500, bookedMinutes: 45 }] });
+    mount(<POSServicePricingScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit-pricing'))[0]);
+    fireEvent.change(screen.getByTestId('pricing-price'), { target: { value: '58.00' } });
+    expect(await screen.findByTestId('pricing-impact', {}, { timeout: 2000 })).toHaveTextContent(/2 upcoming bookings/);
+    expect(screen.getByTestId('pricing-impact-list')).toHaveTextContent('Mai Le');
+    expect(cat.pricingImpact).toHaveBeenLastCalledWith('s1', { priceCents: '5800', durationMinutes: '45' });
   });
   it('403 is a permission state', async () => {
     cat.services.mockRejectedValue({ status: 403 });

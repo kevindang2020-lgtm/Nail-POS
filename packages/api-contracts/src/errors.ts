@@ -1310,6 +1310,7 @@ export const ERROR_REGISTRY = {
   PRODUCT_SKU_TAKEN:              { status: 409, message: 'Another product already uses that SKU.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   PRODUCT_BARCODE_TAKEN:          { status: 409, message: 'Another product already uses that barcode.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   CATALOG_EDIT_CONFLICT:          { status: 409, message: 'Someone else changed this service since you opened it. Reload it and try again.', domain: 'catalog', retryable: false, severity: 'info', action: 'REFRESH' },
+  CATALOG_CHANGE_NOT_FOUND:       { status: 404, message: 'That change was not found.', domain: 'catalog', retryable: false, severity: 'info', action: 'REFRESH' },
   CHANGE_REASON_REQUIRED:         { status: 400, message: 'Say why the price or duration is changing.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CATEGORY_REASSIGN_EMPTY:        { status: 400, message: 'Choose at least one service to move.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },
   CATEGORY_REASSIGN_TARGET_INVALID: { status: 400, message: 'Choose a different, current category to move the services into.', domain: 'catalog', retryable: false, severity: 'info', action: 'NONE' },

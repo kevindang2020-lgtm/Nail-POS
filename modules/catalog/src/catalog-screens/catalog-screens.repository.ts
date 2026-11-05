@@ -292,7 +292,7 @@ export class CatalogScreensRepository {
 
   /** Edit Pricing: price and / or duration with a reason, refused when someone else saved the service since it was opened
    *  (expectedUpdatedAt). Immediate only — scheduled (future-effective) prices are not modelled, so none is accepted. */
-  async updatePricing(ctx: CatCtx, serviceId: string, b: { priceCents?: unknown; durationMinutes?: unknown; reason?: unknown; expectedUpdatedAt?: unknown }) {
+  async updatePricing(ctx: CatCtx, serviceId: string, b: { priceCents?: unknown; durationMinutes?: unknown; reason?: unknown; expectedUpdatedAt?: unknown }, source = 'pricing_editor') {
     const T = ctx.tenantId; if (!UUID.test(String(serviceId))) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
     const reason = typeof b.reason === 'string' ? b.reason.trim() : '';
     if (!reason) throw err(400, 'CHANGE_REASON_REQUIRED', 'Say why the price or duration is changing.');
@@ -305,13 +305,57 @@ export class CatalogScreensRepository {
       if (!cur) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
       if (b.expectedUpdatedAt && iso(cur.updated_at) !== String(b.expectedUpdatedAt)) throw err(409, 'CATALOG_EDIT_CONFLICT', 'Someone else changed this service since you opened it. Reload it and try again.', { currentUpdatedAt: iso(cur.updated_at) });
       const changes: CatalogChange[] = diffFields('service', serviceId, { price_cents: N(cur.price_cents), duration_minutes: N(cur.duration_minutes) },
-        { price_cents: price ?? undefined, duration_minutes: dur ?? undefined }, { serviceId, reason, source: 'pricing_editor' });
+        { price_cents: price ?? undefined, duration_minutes: dur ?? undefined }, { serviceId, reason, source });
       if (!changes.length) return { changed: 0, updatedAt: iso(cur.updated_at) };
       const upd = (await sql<any>`update services set price_cents = coalesce(${price}::int, price_cents), duration_minutes = coalesce(${dur}::int, duration_minutes), updated_at = now(),
           updated_by = ${UUID.test(ctx.userId) ? ctx.userId : null} where tenant_id = ${T} and id = ${serviceId} returning updated_at`.execute(trx)).rows[0];
       await recordCatalogChanges(trx, ctx, changes);
       return { changed: changes.length, updatedAt: iso(upd?.updated_at) };
     });
+  }
+
+  /** D4 gaps (Nov 5 2026): before a price / duration change, the upcoming bookings of this service and what they were quoted.
+   *  Read only — a change never reprices a booked appointment (its quoted snapshot stays); this shows who is affected. */
+  async pricingImpact(ctx: CatCtx, serviceId: string, q: { priceCents?: unknown; durationMinutes?: unknown }) {
+    const T = ctx.tenantId; if (!UUID.test(String(serviceId))) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    const svc = (await sql<any>`select s.id, s.price_cents, s.duration_minutes from services s where s.tenant_id = ${T} and s.id = ${serviceId} and ${this.branch(ctx, 's')}`.execute(this.db)).rows[0];
+    if (!svc) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    const newPrice = q.priceCents === undefined || q.priceCents === '' ? N(svc.price_cents) : Number(q.priceCents);
+    const newDur = q.durationMinutes === undefined || q.durationMinutes === '' ? N(svc.duration_minutes) : Number(q.durationMinutes);
+    if (!Number.isInteger(newPrice) || newPrice < 0) throw err(400, 'PRICE_INVALID', 'Price must be 0 or greater');
+    if (!Number.isInteger(newDur) || newDur <= 0) throw err(400, 'DURATION_INVALID', 'Duration must be greater than 0');
+    const b = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
+    // appointments live in pos_tech_appointments (the only appointment store); each booked service is an element of its
+    // `services` JSON with the price and minutes quoted at booking. Upcoming = from the salon's today, not finished.
+    const tz = await tenantTimeZone(this.db, T);
+    const w = sql`a.tenant_id = ${T} and e->>'serviceId' = ${serviceId} and a.appt_date >= (now() at time zone ${tz})::date
+      and a.status not in ('cancelled', 'no_show', 'completed') and (${b}::uuid is null or a.branch_id = ${b} or a.branch_id is null)`;
+    const from = sql`from pos_tech_appointments a cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e`;
+    const qp = sql`coalesce(nullif(e->>'priceCents', '')::int, 0)`, qm = sql`coalesce(nullif(e->>'durationMinutes', '')::int, 0)`;
+    const agg = (await sql<any>`select count(*)::int as n, coalesce(sum(${qp}), 0)::bigint as quoted, count(*) filter (where ${qp} <> ${newPrice})::int as differs,
+        count(*) filter (where ${newDur} > ${qm})::int as longer ${from} where ${w}`.execute(this.db)).rows[0] ?? {};
+    const showCust = (ctx.permissions ?? []).some((p) => p === '*' || p === 'customers.view');
+    const rows = (await sql<any>`select a.id, to_char(a.appt_date, 'YYYY-MM-DD') as day, a.start_time, a.status, a.customer_name, ${qp} as quoted, ${qm} as minutes ${from} where ${w} order by a.appt_date, a.start_time, a.id limit 20`.execute(this.db)).rows;
+    return { serviceId, currentPriceCents: N(svc.price_cents), currentDurationMinutes: N(svc.duration_minutes), newPriceCents: newPrice, newDurationMinutes: newDur,
+      upcoming: N(agg.n), quotedTotalCents: N(agg.quoted), atNewPriceTotalCents: N(agg.n) * newPrice, quotedDifferently: N(agg.differs), wouldRunLonger: N(agg.longer),
+      policy: 'booked_quotes_kept',
+      items: rows.map((r: any) => ({ appointmentId: String(r.id), day: String(r.day), time: String(r.start_time), status: String(r.status), customer: showCust ? r.customer_name ?? null : null,
+        quotedCents: N(r.quoted), bookedMinutes: N(r.minutes) })) };
+  }
+
+  /** D4 gaps (Nov 5 2026): revert a price / duration change — a NEW revision back to that change's old value (the history
+   *  rows are never deleted), with a reason, refused when the service changed since it was opened (expectedUpdatedAt). */
+  async revertPricing(ctx: CatCtx, serviceId: string, b: { historyId?: unknown; reason?: unknown; expectedUpdatedAt?: unknown }) {
+    const T = ctx.tenantId; const hid = String(b.historyId ?? '');
+    if (!UUID.test(String(serviceId)) || !/^[0-9a-f-]{36}$|^\d+$/i.test(hid)) throw err(404, 'CATALOG_CHANGE_NOT_FOUND', 'That change was not found');
+    const h = (await sql<any>`select field, old_value, changed_at from catalog_change_log where tenant_id = ${T} and id::text = ${hid} and service_id = ${serviceId}
+        and field in ('price_cents', 'duration_minutes')`.execute(this.db)).rows[0];
+    if (!h) throw err(404, 'CATALOG_CHANGE_NOT_FOUND', 'That change was not found');
+    const reason = typeof b.reason === 'string' ? b.reason.trim() : '';
+    if (!reason) throw err(400, 'CHANGE_REASON_REQUIRED', 'Say why the price or duration is changing.');
+    const old = Number(h.old_value);
+    const label = `Revert of the ${String(iso(h.changed_at) ?? '').slice(0, 10)} change: ${reason}`.slice(0, 500);
+    return this.updatePricing(ctx, serviceId, { ...(h.field === 'price_cents' ? { priceCents: old } : { durationMinutes: old }), reason: label, expectedUpdatedAt: b.expectedUpdatedAt }, 'pricing_revert');
   }
 
   // ── customer service history (phone / name / ticket → what was actually charged) ───────────────────────────────────

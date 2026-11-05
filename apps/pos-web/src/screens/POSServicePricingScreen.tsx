@@ -158,6 +158,13 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
   const [t, setT] = useState<'overview' | 'history' | 'branches'>('overview'); const [hp, setHp] = useState(1);
   const d = useLoad(() => posCatalogApi.service(serviceId), [serviceId]);
   const h = useLoad(() => (t === 'history' ? posCatalogApi.history({ serviceId, field: 'all', page: hp, pageSize: 8 }) : Promise.resolve(null)), [serviceId, t, hp]);
+  // D4 gaps (Nov 5 2026): revert a price / duration change — a NEW revision with a reason (the history row stays)
+  const [revertRow, setRevertRow] = useState<any | null>(null); const [revertWhy, setRevertWhy] = useState(''); const [revertErr, setRevertErr] = useState<string | null>(null);
+  const doRevert = async () => {
+    if (!revertRow || !d.data) return; setRevertErr(null);
+    try { await posCatalogApi.revertPricing(serviceId, { historyId: revertRow.id, reason: revertWhy.trim(), expectedUpdatedAt: d.data.updatedAt }); setRevertRow(null); setRevertWhy(''); d.reload(); h.reload(); }
+    catch (e) { setRevertErr(errorTextOf(e, tx('pos.save_failed'))); }
+  };
   const x = d.data;
   return (
     <FitDialog wide title={x ? x.name : tx('pos.details')} subtitle={x ? <><span className={'fk-chip ' + (STATUS_TONE[x.status] ?? 'mut')}>{statusText(x.status)}</span> {fmtMoney(x.priceCents)} · {mins(x.durationMinutes)}</> : undefined} onClose={onClose} testId="dlg-price-details"
@@ -177,7 +184,12 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
           <dt>{tx('cg.f.updated')}</dt><dd>{day(x.updatedAt)}</dd>
         </dl> : null}
         {t === 'history' ? (h.error ? <StateBlock error={h.error} onRetry={h.reload} /> : !h.data ? <div className="fk-loading">{tx('pos.loading')}</div>
-          : h.data.items.length === 0 ? <Empty title={tx('cg.noHistory')} /> : <><ChangeHistoryTable rows={h.data.items} showItem={false} /><Pager info={pageOf(h.data)} onPage={setHp} /></>) : null}
+          : h.data.items.length === 0 ? <Empty title={tx('cg.noHistory')} /> : <><ChangeHistoryTable rows={h.data.items} showItem={false} onRevert={canEdit && x.status !== 'archived' ? (row) => { setRevertRow(row); setRevertWhy(''); setRevertErr(null); } : undefined} /><Pager info={pageOf(h.data)} onPage={setHp} />
+            {revertRow ? <div className="fk-void" data-testid="revert-form"><div>{tx('cg.revertTo', { v: revertRow.field === 'price_cents' ? fmtMoney(Number(revertRow.oldValue)) : mins(Number(revertRow.oldValue)) })}</div>
+              <label className="fk-field">{tx('cg.f.reason')}<input value={revertWhy} maxLength={500} onChange={(e) => setRevertWhy(e.target.value)} data-testid="revert-reason" /></label>
+              <button type="button" className="fk-btn" onClick={() => setRevertRow(null)}>{tx('pos.cancel')}</button>
+              <button type="button" className="fk-btn primary" disabled={!revertWhy.trim()} onClick={doRevert} data-testid="revert-save">{tx('cg.revert')}</button>
+              {revertErr ? <div className="fk-note bad" role="alert"><span>{revertErr}</span></div> : null}</div> : null}</>) : null}
         {t === 'branches' ? <table className="fk-table fn-table cg-table" data-testid="pd-branches"><thead><tr><th>{tx('cg.col.branch')}</th><th className="num">{tx('pos.price')}</th><th className="num">{tx('pos.duration')}</th><th>{tx('pos.status')}</th></tr></thead>
           <tbody>{x.branches.map((b: any) => <tr key={b.branchId}><td>{b.name}<span className="fk-li-s">{b.current ? tx('cg.thisBranch') : b.differsFromThis ? tx('cg.differs') : b.offered ? tx('cg.same') : tx('cg.notOffered')}</span></td>
             <td className="num">{b.offered ? fmtMoney(b.priceCents) : '—'}</td><td className="num">{b.offered ? mins(b.durationMinutes) : '—'}</td><td>{b.offered ? statusText(b.status) : tx('cg.notOffered')}</td></tr>)}</tbody></table> : null}

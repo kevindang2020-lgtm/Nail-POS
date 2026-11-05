@@ -8,7 +8,7 @@
 import { ListQuery } from '@aipowersalon/database';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, HttpStatus, Inject, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
-import { CATALOG_ADD_ON_CREATE_BODY, CATALOG_ADD_ON_STATE_BODY, CATALOG_ADD_ON_UPDATE_BODY, CATALOG_PRICING_BODY, CATALOG_REASSIGN_BODY } from '../request-schemas';
+import { CATALOG_ADD_ON_CREATE_BODY, CATALOG_ADD_ON_STATE_BODY, CATALOG_ADD_ON_UPDATE_BODY, CATALOG_PRICING_BODY, CATALOG_PRICING_REVERT_BODY, CATALOG_REASSIGN_BODY } from '../request-schemas';
 import { CatalogScreensRepository, SERVICE_STATUSES, SERVICE_SORTS, CATEGORY_SORTS, ADD_ON_SORTS, HISTORY_FIELDS, type CatCtx } from './catalog-screens.repository';
 
 export const CATALOG_SCREENS = 'CatalogScreensRepository';
@@ -53,6 +53,13 @@ export class CatalogScreensController {
 
   @Patch('services/:serviceId/pricing') @RequirePermission('pos.services.pricing.edit')
   pricing(@Req() req: any, @Param('serviceId') id: string, @Body(ValidatedBody(CATALOG_PRICING_BODY, { strict: true })) b: any) { return this.r().updatePricing(ctxFrom(req), id, b || {}); }
+
+  // D4 gaps (Nov 5 2026): the upcoming bookings a price / duration change would touch (read only), and revert of a change
+  @Get('services/:serviceId/pricing-impact') @RequirePermission('pos.services.view') @ListQuery({ filters: { priceCents: { type: 'text', maxLength: 10 }, durationMinutes: { type: 'text', maxLength: 5 } } })
+  pricingImpact(@Req() req: any, @Param('serviceId') id: string, @Query() q: any) { return this.r().pricingImpact(ctxFrom(req), id, { priceCents: s(q?.priceCents), durationMinutes: s(q?.durationMinutes) }); }
+
+  @Post('services/:serviceId/pricing/revert') @RequirePermission('pos.services.pricing.edit')
+  revertPricing(@Req() req: any, @Param('serviceId') id: string, @Body(ValidatedBody(CATALOG_PRICING_REVERT_BODY, { strict: true })) b: any) { return this.r().revertPricing(ctxFrom(req), id, b || {}); }
 
   @Get('history') @RequirePermission('pos.services.view') @ListQuery(HISTORY_LIST)
   history(@Req() req: any, @Query() q: any) { return this.r().history(ctxFrom(req), { serviceId: s(q?.serviceId), categoryId: s(q?.categoryId), addOnKey: s(q?.addOnKey), field: s(q?.field), q: s(q?.q), ...per(q), page: q?.page, pageSize: q?.pageSize }); }

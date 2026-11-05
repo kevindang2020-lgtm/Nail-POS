@@ -476,6 +476,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.PRODUCT_SKU_TAKEN': 'SKU này đã được dùng cho sản phẩm khác.',
   'errors.PRODUCT_BARCODE_TAKEN': 'Mã vạch này đã được dùng cho sản phẩm khác.',
   'errors.CATALOG_EDIT_CONFLICT': 'Có người khác đã sửa dịch vụ này sau khi bạn mở. Hãy tải lại và thử lại.',
+  'errors.CATALOG_CHANGE_NOT_FOUND': 'Không tìm thấy thay đổi này.',
   'errors.CHANGE_REASON_REQUIRED': 'Hãy ghi lý do thay đổi giá hoặc thời lượng.',
   'errors.CATEGORY_REASSIGN_EMPTY': 'Hãy chọn ít nhất một dịch vụ để chuyển.',
   'errors.CATEGORY_REASSIGN_TARGET_INVALID': 'Hãy chọn một danh mục khác đang dùng để chuyển dịch vụ vào.',

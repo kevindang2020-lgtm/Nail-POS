@@ -12,6 +12,9 @@ export const posCatalogApi = {
   services: (q: Q) => api.get<any>(`${C}/services`, clean(q)),
   service: (id: string) => api.get<any>(`${C}/services/${enc(id)}`),
   updatePricing: (id: string, b: Q) => api.patch<any>(`${C}/services/${enc(id)}/pricing`, b),
+  // D4 gaps (Nov 5 2026): the upcoming bookings a price / duration change would touch, and revert of one change
+  pricingImpact: (id: string, q: Q) => api.get<any>(`${C}/services/${enc(id)}/pricing-impact`, clean(q)),
+  revertPricing: (id: string, b: Q) => api.post<any>(`${C}/services/${enc(id)}/pricing/revert`, b),
   history: (q: Q) => api.get<any>(`${C}/history`, clean(q)),
   customerHistory: (q: Q) => api.get<any>(`${C}/customer-history`, clean(q)),
   categorySummary: () => api.get<any>(`${C}/categories/summary`),
