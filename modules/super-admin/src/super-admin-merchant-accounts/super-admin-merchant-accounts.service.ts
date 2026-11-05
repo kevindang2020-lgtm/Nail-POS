@@ -308,7 +308,7 @@ export class SuperAdminMerchantAccountsService {
     await this.repo.writeAudit(ctx, enrolled ? 'surcharge_enrollment_recorded' : 'surcharge_enrollment_withdrawn', parseScope(tenantId),
       enrolled ? `Surcharge enrollment recorded at ${(rateBps! / 100).toFixed(2)}%` : 'Surcharge enrollment withdrawn',
       { previous: r.previous, enrolled, rateBps, reference: enrolled ? reference : null, branchId, reason });
-    return { ok: true, enrolled, rateBps, branchId };
+    return { ok: true as const, enrolled, rateBps, branchId: branchId as string | null };
   }
 
   private validUuid(id?: string | null): string | null {
