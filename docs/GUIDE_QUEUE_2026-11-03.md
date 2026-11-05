@@ -261,8 +261,8 @@ New documents, each a queue row:
 | Row | Document | Status at Nov 5 |
 |---|---|---|
 | F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | IN PROGRESS — see the F1 section below |
-| F2 | Customer Retention — Claude Full Build Spec (different file from the C3/C5 retention guides) | NOT AUDITED yet |
-| F3 | Membership Overview — Claude Build Spec | NOT AUDITED yet (D6 Membership is a different guide) |
+| F2 | Customer Retention — Claude Full Build Spec (Oct 29) | BUILT — audited Nov 5: this is the Oct 29 mandate `retention.repository.ts` was built from; the Oct 30 Complete Build Guide (C5) extended it. See the F2 section below |
+| F3 | Membership Overview — Claude Build Spec (Oct 29) | BUILT — audited Nov 5: the "Membership Overview mandate" the screen and `memberships.kysely.repository.ts` cite (9 references); see the F3 section below |
 | F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |
 | F5 | Full Platform Architecture & Code Audit — Completion Mandate | Oct 27 matrix: 218 DONE / 41 PARTIAL / 3 BLOCKED of 262 |
 | F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | SKIPPED by Kevin's decision Oct 27; re-uploaded — re-opened |
@@ -301,3 +301,53 @@ Remaining F1 work:
 - §58 / §62: the server still reads every customer in scope and filters in memory (linear; ~3–4 s projected at 100k on PGlite) — move search / filters / counts / paging into SQL.
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
 - §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).
+
+### F2 Customer Retention Full Build Spec (Oct 29) — audit (Nov 5 2026)
+
+The spec is the "Customer Retention mandate (Oct 29 2026)" named in `modules/customers/src/retention/retention.repository.ts`.
+Its sections are implemented and covered by `src/retention/*.spec.ts` (52 tests pass):
+
+- §05 definitions: Never Visited is its own segment, never At Risk.
+- §06 KPIs reconcile with the segments; Lapsed Value is net of refunds.
+- §07 segments: 60+ / 90+ / 180+, Never Visited, Recently Returned, Contactable, plus search and filters.
+- §08 longest absence first, ties broken on customer id, numbered pages clamp.
+- §09 select page / select all matching (server-side).
+- §10 preview with exclusions and segment count.
+- §11 one job per recipient, idempotent confirm, send-time recheck, "unknown" never re-sent, quiet hours, Cancel.
+- §12 per-salon Twilio, consent, STOP.
+- §13 campaign history (this salon only).
+- §17 another salon is never listed.
+
+One difference, decided by the newer guide: §08 asks for the At Risk list to default to oldest visit first. The Oct 30 Complete Build Guide (C5, built later) made Smart Priority the At Risk default. "Oldest visit" stays one tap away in the sort menu, and the list states its sort. Kept as C5 has it.
+
+Not verifiable here:
+
+- §16 / §20 the 100 %-zoom fit on the 27-inch ASUS — no browser at that size in this environment.
+- A live Twilio send — no credentials, and test traffic only, by the spec.
+
+### F3 Membership Overview Build Spec (Oct 29) — audit (Nov 5 2026)
+
+The spec is the "Membership Overview mandate" that `POSMembershipsScreen.tsx` and `modules/memberships` were rebuilt from.
+The later "full-screen rebuild, member search, calendar filters, pagination" pass is on top of it. Built:
+
+- §06 five KPIs:
+  - Total and Active (snapshot) and Expiring Soon (7-day window, cancel-at-period-end included).
+  - Revenue = succeeded payments settled this month. Refunded / voided payments are excluded, with the delta vs last month.
+  - Canceled This Month.
+  - Each card opens its list.
+- §07–09 Membership Plans / Active Members / Activity panels: internal scroll, Manage, View All.
+- §10 analytics:
+  - Status: one population, every lifecycle status, mutually exclusive.
+  - Plan Distribution: current memberships, explicit denominator.
+  - Top Services: this month's redemptions.
+  - Revenue trend.
+- §11 all ten Quick Actions open real flows (create plan, enroll, reminder, discounts, report, three exports, performance, settings).
+- §12 dialogs.
+- §13 rules: lifecycle vs payment status, expiry vs next billing.
+- §14 tenant scope.
+- modules/memberships: 175 tests pass. POS screen tests pass.
+
+Not verifiable here:
+
+- The 100 %-zoom fit on the 27-inch ASUS (§03): the screen now scrolls vertically by the later rebuild's choice, never sideways.
+- A live card renewal (no processor credentials).
