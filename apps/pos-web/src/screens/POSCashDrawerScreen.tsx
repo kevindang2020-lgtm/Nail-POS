@@ -1,7 +1,8 @@
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createIntentKeys } from '@aipowersalon/api-client';
-import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister } from '../api/posCashDrawerApi';
+import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister, type DrawerHistory } from '../api/posCashDrawerApi';
+import { useCan } from '../components/usePermissions';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { msg, renderMsg, type Msg } from '../i18n/notice';
@@ -19,7 +20,12 @@ const STATUS: Record<DrawerStatus, { label: string; color: string; bg: string }>
   cancelled: { get label() { return t('pos.cancelled'); }, color: 'var(--ink-soft, #6b5d49)', bg: 'rgba(0,0,0,.05)' },
 };
 
+// D15 gaps (Nov 5 2026): bills and coins, in cents (the server checks the same list)
+const DENOMS = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5, 1];
+const denomLabel = (c: number) => (c >= 100 ? '$' + c / 100 : c + '¢');
+
 export function POSCashDrawerScreen() {
+  const can = useCan();
   const [date, setDate] = useState('');
   const [d, setD] = useState<DrawerState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -27,6 +33,9 @@ export function POSCashDrawerScreen() {
   const [floatStr, setFloatStr] = useState('');
   const [countStr, setCountStr] = useState('');
   const [reconNotes, setReconNotes] = useState('');
+  const [byDenom, setByDenom] = useState(false); const [denoms, setDenoms] = useState<Record<string, string>>({});
+  const denomTotal = DENOMS.reduce((a, c) => a + c * (parseInt(denoms[String(c)] || '0', 10) || 0), 0);
+  const [signNote, setSignNote] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [moves, setMoves] = useState<CashMovement[]>([]);
   const [moveAmt, setMoveAmt] = useState('');
@@ -56,18 +65,36 @@ export function POSCashDrawerScreen() {
     finally { setBusy(null); }
   };
   const reconcile = async () => {
-    const dollars = Number(countStr);
+    const dollars = byDenom ? denomTotal / 100 : Number(countStr);
     if (!Number.isFinite(dollars) || dollars < 0) { setError(t('pos.enter_the_counted_cash_amount')); return; }
     setBusy('reconcile'); setError(null); setNote(null);
     try {
-      const body = { cents: Math.round(dollars * 100), notes: reconNotes.trim() || undefined, date, registerId };
-      const s = await posCashDrawerApi.reconcile(body.cents, body.notes, date || undefined, keys.current.keyFor('reconcile', body), registerId); keys.current.done('reconcile');
+      const denominations = byDenom ? Object.fromEntries(DENOMS.map((c) => [String(c), parseInt(denoms[String(c)] || '0', 10) || 0]).filter(([, n]) => (n as number) > 0)) : undefined;
+      const body = { cents: byDenom ? denomTotal : Math.round(dollars * 100), notes: reconNotes.trim() || undefined, date, registerId, denominations, expectedCashCents: d ? (d.liveExpectedCashCents ?? d.expectedCashCents) : undefined };
+      const s = await posCashDrawerApi.reconcile(body.cents, body.notes, date || undefined, keys.current.keyFor('reconcile', body), registerId, { expectedCashCents: body.expectedCashCents, denominations }); keys.current.done('reconcile');
+      setHistTick((n) => n + 1);
       const v = s.varianceCents ?? 0;
       setNote(s.status === 'reconciled' ? msg('pos.drawer_reconciled_matched_countedcents', { countedCents: String(money(s.countedCents)) }) : msg('pos.drawer_v0_by_v', { v0: msg(v > 0 ? 'payment.cash.over' : 'payment.cash.short'), v: String(money(Math.abs(v))) }));
       setD(s);
     } catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_reconcile')); }
     finally { setBusy(null); }
   };
+  const signOff = async () => {
+    setBusy('sign'); setError(null);
+    try { const body = { note: signNote.trim(), date, registerId }; const s = await posCashDrawerApi.approve(body.note, date || undefined, keys.current.keyFor('sign', body), registerId); keys.current.done('sign'); setD(s); setSignNote(''); setHistTick((n) => n + 1); }
+    catch (e) { setError((e as { message?: string })?.message || t('pos.could_not_reconcile')); }
+    finally { setBusy(null); }
+  };
+  // D15 gaps (Nov 5 2026): drawer history — date range, status, search, server pages
+  const [hFrom, setHFrom] = useState(''); const [hTo, setHTo] = useState(''); const [hStatus, setHStatus] = useState(''); const [hQ, setHQ] = useState(''); const [hPage, setHPage] = useState(1); const [histTick, setHistTick] = useState(0);
+  const [hist, setHist] = useState<DrawerHistory | null>(null); const [histErr, setHistErr] = useState<string | null>(null);
+  useEffect(() => { setHPage(1); }, [hFrom, hTo, hStatus, hQ, registerId]);
+  useEffect(() => {
+    let live = true;
+    const tm = setTimeout(() => { posCashDrawerApi.history({ from: hFrom || undefined, to: hTo || undefined, status: hStatus || undefined, q: hQ.trim() || undefined, registerId, page: hPage, pageSize: 10 })
+      .then((h) => { if (live) { setHist(h); setHistErr(null); } }).catch((e: { message?: string }) => { if (live) setHistErr(e?.message || t('cdr.histFailed')); }); }, 250);
+    return () => { live = false; clearTimeout(tm); };
+  }, [hFrom, hTo, hStatus, hQ, hPage, registerId, histTick]);
   const addMovement = async () => {
     const dollars = Number(moveAmt);
     if (!Number.isFinite(dollars) || dollars <= 0) { setError(t('pos.enter_an_amount_greater_than_zero')); return; }
@@ -174,15 +201,45 @@ export function POSCashDrawerScreen() {
         <div className="muted" style={{ fontSize: 12.5, marginBottom: 8 }}>{t('pos.expected_in_drawer_2')}{' '}<strong>{d ? money(d.expectedCashCents) : '—'}</strong> {d ? t('pos.float_openingfloatcents_sales_expectedsalescents_refunds_refundscents_lvsv', { openingFloatCents: String(money(d.openingFloatCents)), expectedSalesCents: String(money(d.expectedSalesCents)), refundsCents: String(money(d.refundsCents)), v3: String(d.paidInCents ? t('pos.in_paidincents', { paidInCents: String(money(d.paidInCents)) }) : ''), v4: String(d.paidOutCents ? t('pos.out_paidoutcents', { paidOutCents: String(money(d.paidOutCents)) }) : '') }) : ''}</div>
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <label className="s w-full sm:w-auto">{t('pos.counted_cash')}
-            <input type="number" min="0" step="0.01" value={countStr} onChange={(e) => setCountStr(e.target.value)} className="w-full sm:w-[150px]" style={{ display: 'block', marginTop: 4, height: 34, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', background: '#fff' }} />
+            <input type="number" min="0" step="0.01" value={byDenom ? (denomTotal / 100).toFixed(2) : countStr} readOnly={byDenom} data-testid="count-input" onChange={(e) => setCountStr(e.target.value)} className="w-full sm:w-[150px]" style={{ display: 'block', marginTop: 4, height: 34, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', background: '#fff' }} />
           </label>
           <label className="s w-full sm:flex-1" style={{ minWidth: 180 }}>{t('pos.note_optional')}
             <input value={reconNotes} onChange={(e) => setReconNotes(e.target.value)} placeholder={t('pos.e_g_register_short_on_count')} className="w-full" style={{ display: 'block', marginTop: 4, height: 34, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', fontFamily: 'inherit', background: '#fff' }} />
           </label>
           <button className="btn w-full sm:w-auto" style={{ padding: '7px 14px' }} disabled={busy === 'reconcile'} onClick={reconcile}>{busy === 'reconcile' ? t('pos.saving_2') : t('pos.reconcile')}</button>
         </div>
+        <label className="s" style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 8 }}><input type="checkbox" checked={byDenom} onChange={(e) => setByDenom(e.target.checked)} data-testid="by-denom" />{t('cdr.byDenom')}</label>
+        {byDenom ? <div data-testid="denoms" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 8, marginTop: 6 }}>
+          {DENOMS.map((c) => <label key={c} className="s">{denomLabel(c)}<input inputMode="numeric" value={denoms[String(c)] ?? ''} onChange={(e) => setDenoms({ ...denoms, [String(c)]: e.target.value.replace(/\D/g, '') })} data-testid={'denom-' + c} style={{ display: 'block', marginTop: 4, height: 32, width: '100%', border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px', background: '#fff' }} /></label>)}
+        </div> : null}
         {d && d.countedCents != null ? <div className="muted" style={{ fontSize: 12.5, marginTop: 10 }}>{t('pos.counted')}{' '}{money(d.countedCents)} · {d.status === 'reconciled' ? t('pos.matched_exactly') : t((d.varianceCents || 0) > 0 ? 'cdr.over' : 'cdr.short', { amount: money(Math.abs(d.varianceCents || 0)) })}{d.notes ? ` · ${d.notes}` : ''}</div> : null}
+        {d?.approvalRequired && !d.approvedAt ? <div role="status" data-testid="needs-review" style={{ fontSize: 12.5, marginTop: 8, color: '#A33' }}>{t('cdr.needsReview')}
+          {can('checkout.manage_overrides') ? <span style={{ display: 'flex', gap: 8, marginTop: 6, flexWrap: 'wrap' }}><input value={signNote} onChange={(e) => setSignNote(e.target.value)} placeholder={t('cdr.signNotePh')} data-testid="sign-note" style={{ height: 32, flex: 1, minWidth: 200, border: '1px solid var(--line)', borderRadius: 8, padding: '0 10px', background: '#fff' }} />
+            <button className="btn" disabled={busy === 'sign' || signNote.trim().length < 3} onClick={signOff} data-testid="sign-off">{t('cdr.signOff')}</button></span> : null}</div> : null}
+        {d?.approvedAt ? <div className="muted" data-testid="signed-off" style={{ fontSize: 12.5, marginTop: 8 }}>{t('cdr.signedOff', { name: d.approvedBy ?? '—' })}{d.approvalNote ? ` · ${d.approvalNote}` : ''}</div> : null}
+        {d?.denominations && Object.keys(d.denominations).length ? <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>{t('cdr.breakdown')} {DENOMS.filter((c) => d.denominations?.[String(c)]).map((c) => `${denomLabel(c)} × ${d.denominations![String(c)]}`).join(' · ')}</div> : null}
         {d?.changedSinceCount && d.liveExpectedCashCents != null ? <div className="muted" role="status" style={{ fontSize: 12.5, marginTop: 6, color: '#A33' }}>{t('cdr.changedSinceCount', { amount: money(d.liveExpectedCashCents) })}</div> : null}
+            </section>
+
+      <section className="panel" data-testid="drawer-history">
+        <h2 style={{ fontSize: 14, margin: '0 0 8px' }}>{t('cdr.history')}</h2>
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 8 }}>
+          <label className="s">{t('cdr.from')}<input type="date" value={hFrom} onChange={(e) => setHFrom(e.target.value)} data-testid="hist-from" style={{ display: 'block', height: 32 }} /></label>
+          <label className="s">{t('cdr.to')}<input type="date" value={hTo} onChange={(e) => setHTo(e.target.value)} data-testid="hist-to" style={{ display: 'block', height: 32 }} /></label>
+          <label className="s">{t('pos.status')}<select value={hStatus} onChange={(e) => setHStatus(e.target.value)} data-testid="hist-status" style={{ display: 'block', height: 32 }}>
+            <option value="">{t('cdr.allStatuses')}</option>{['open', 'reconciled', 'discrepancy', 'needs_review'].map((x) => <option key={x} value={x}>{t('cdr.st.' + x)}</option>)}</select></label>
+          <label className="s" style={{ flex: 1, minWidth: 180 }}>{t('cdr.search')}<input type="search" value={hQ} onChange={(e) => setHQ(e.target.value)} placeholder={t('cdr.searchPh')} data-testid="hist-search" style={{ display: 'block', height: 32, width: '100%' }} /></label>
+        </div>
+        {histErr ? <div role="alert" style={{ color: '#A33', fontSize: 12.5 }}>{histErr}</div> : !hist ? <div className="muted">{t('pos.loading')}</div> : hist.items.length === 0 ? <div className="muted" data-testid="hist-empty">{t('cdr.histEmpty')}</div> : <>
+          <table className="fk-table" style={{ width: '100%', fontSize: 12.5 }} data-testid="hist-table"><thead><tr><th>{t('cdr.day')}</th><th>{t('cdr.register')}</th><th>{t('pos.status')}</th><th style={{ textAlign: 'right' }}>{t('cdr.expected')}</th><th style={{ textAlign: 'right' }}>{t('pos.counted')}</th><th style={{ textAlign: 'right' }}>{t('cdr.difference')}</th><th>{t('cdr.countedBy')}</th></tr></thead>
+            <tbody>{hist.items.map((r) => <tr key={r.businessDate + r.registerId} data-testid="hist-row"><td>{r.businessDate}</td><td>{r.register ?? (registers.find((x) => x.registerId === r.registerId)?.name ?? t('cdr.mainRegister'))}</td>
+              <td>{STATUS[r.status as DrawerStatus]?.label ?? r.status}{r.approvalRequired ? <span style={{ marginLeft: 6, fontSize: 11 }}>{r.approvedAt ? t('cdr.signedOffShort') : t('cdr.st.needs_review')}</span> : null}</td>
+              <td style={{ textAlign: 'right' }}>{r.expectedCashCents == null ? '—' : money(r.expectedCashCents)}</td><td style={{ textAlign: 'right' }}>{r.countedCents == null ? '—' : money(r.countedCents)}</td>
+              <td style={{ textAlign: 'right', color: (r.varianceCents ?? 0) < 0 ? '#b3261e' : undefined }}>{r.varianceCents == null ? '—' : (r.varianceCents > 0 ? '+' : r.varianceCents < 0 ? '−' : '') + money(Math.abs(r.varianceCents))}</td>
+              <td>{r.countedBy ?? '—'}{r.notes ? <span className="muted" style={{ display: 'block' }}>{r.notes}</span> : null}</td></tr>)}</tbody></table>
+          <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }} data-testid="hist-pager">
+            {Array.from({ length: hist.pages }, (_, i) => i + 1).slice(0, 20).map((n) => <button key={n} className={'btn' + (n === hist.page ? '' : ' ghost')} style={{ minWidth: 36 }} onClick={() => setHPage(n)} aria-current={n === hist.page ? 'page' : undefined}>{n}</button>)}
+          </div></>}
       </section>
     </div>
   );

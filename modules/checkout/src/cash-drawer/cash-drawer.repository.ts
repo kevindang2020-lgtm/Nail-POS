@@ -103,7 +103,50 @@ export class CashDrawerRepository {
       openedAt: row?.opened_at ? new Date(row.opened_at).toISOString() : null,
       reconciledAt: row?.reconciled_at ? new Date(row.reconciled_at).toISOString() : null,
       notes: row?.notes ?? null,
+      // D15 gaps (Nov 5 2026): the count's bill / coin breakdown and the manager review of a large difference
+      denominations: (row?.denominations_json ?? null) as Record<string, number> | null,
+      approvalRequired: !!row?.approval_required, approvedAt: row?.approved_at ? new Date(row.approved_at).toISOString() : null,
+      approvedBy: row?.approved_by_user_id ? await this.userName(ctx, String(row.approved_by_user_id)) : null, approvalNote: row?.approval_note ?? null,
     };
+  }
+
+  private async userName(ctx: DrawerCtx, id: string): Promise<string | null> {
+    const r = await sql<{ n: string | null }>`select coalesce(full_name, email) as n from users where tenant_id = ${ctx.tenantId} and id = ${id}`.execute(this.db);
+    return r.rows[0]?.n ?? null;
+  }
+
+  /** D15 gaps (Nov 5 2026): a manager signs off a counted drawer marked for review — once; the counted figures never change */
+  async approve(ctx: DrawerCtx, branchId: string, registerId: string, date: string, note: string): Promise<boolean> {
+    return this.db.transaction().execute(async (trx) => {
+      const r = await sql`update cash_drawer_sessions set approved_by_user_id = ${isUuid(ctx.userId) ? ctx.userId : null}, approved_at = now(), approval_note = ${note}, updated_at = now()
+        where tenant_id = ${ctx.tenantId} and branch_id = ${branchId} and register_id = ${registerId} and business_date = ${date}
+          and approval_required and approved_at is null and status in ('reconciled', 'discrepancy')`.execute(trx);
+      return Number(r.numAffectedRows ?? 0) > 0;
+    });
+  }
+
+  /** D15 gaps (Nov 5 2026): the drawer history of this location — one row per register per business day, newest first,
+   *  filtered by date range, register, status (open / reconciled / discrepancy / needs_review) and a search over the notes
+   *  and the counter's name; paged on the server. */
+  async history(ctx: DrawerCtx, branchId: string, f: { from: string | null; to: string | null; registerId?: string; status?: string; q?: string; page: number; pageSize: number }) {
+    const T = ctx.tenantId; const q = (f.q ?? '').trim().toLowerCase().slice(0, 100);
+    const like = '%' + q.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
+    const st = f.status === 'needs_review' ? sql`s.approval_required and s.approved_at is null` : f.status && ['open', 'reconciled', 'discrepancy', 'cancelled'].includes(f.status) ? sql`s.status = ${f.status}` : sql`true`;
+    const w = sql`s.tenant_id = ${T} and s.branch_id = ${branchId} and (${f.from}::date is null or s.business_date >= ${f.from}::date) and (${f.to}::date is null or s.business_date <= ${f.to}::date)
+      and (${f.registerId ?? null}::text is null or s.register_id = ${f.registerId ?? null}) and ${st}
+      and (${q} = '' or lower(coalesce(s.notes, '')) like ${like} or lower(coalesce(u.full_name, u.email, '')) like ${like})`;
+    const from = sql`from cash_drawer_sessions s left join users u on u.id = s.reconciled_by_user_id and u.tenant_id = s.tenant_id
+      left join users a on a.id = s.approved_by_user_id and a.tenant_id = s.tenant_id left join pos_stations ps on ps.tenant_id = s.tenant_id and ps.id::text = s.register_id`;
+    const total = num((await sql<{ n: number }>`select count(*)::int as n ${from} where ${w}`.execute(this.db)).rows[0]?.n);
+    const pages = Math.max(1, Math.ceil(total / f.pageSize)); const page = Math.min(Math.max(1, f.page), pages);
+    const rows = (await sql<any>`select to_char(s.business_date, 'YYYY-MM-DD') as business_date, s.register_id, ps.name as register_name, s.status, s.opening_float_cents, s.expected_cash_cents, s.counted_cents, s.variance_cents,
+        s.reconciled_at, coalesce(u.full_name, u.email) as counted_by, s.notes, s.approval_required, s.approved_at, coalesce(a.full_name, a.email) as approved_by, s.approval_note, s.denominations_json
+      ${from} where ${w} order by s.business_date desc, s.register_id limit ${f.pageSize} offset ${(page - 1) * f.pageSize}`.execute(this.db)).rows;
+    return { items: rows.map((r: any) => ({ businessDate: String(r.business_date), registerId: String(r.register_id), register: r.register_id === 'main' ? null : r.register_name ?? null, status: String(r.status),
+        openingFloatCents: num(r.opening_float_cents), expectedCashCents: r.expected_cash_cents == null ? null : num(r.expected_cash_cents), countedCents: r.counted_cents == null ? null : num(r.counted_cents),
+        varianceCents: r.variance_cents == null ? null : num(r.variance_cents), countedAt: r.reconciled_at ? new Date(r.reconciled_at).toISOString() : null, countedBy: r.counted_by ?? null, notes: r.notes ?? null,
+        approvalRequired: !!r.approval_required, approvedAt: r.approved_at ? new Date(r.approved_at).toISOString() : null, approvedBy: r.approved_by ?? null, approvalNote: r.approval_note ?? null, denominations: r.denominations_json ?? null })),
+      total, page, pageSize: f.pageSize, pages };
   }
 
   /** Set/adjust the opening float. Doesn't downgrade an already-reconciled drawer's status. */
@@ -125,14 +168,23 @@ export class CashDrawerRepository {
   }
 
   /** Count the drawer and reconcile. reconciled if exact, else discrepancy. */
-  async reconcile(ctx: DrawerCtx, branchId: string, registerId: string, date: string, countedCents: number, notes: string | null): Promise<{ applied: boolean; status: DrawerStatus; varianceCents: number; expectedCashCents: number; salesCents: number; refundsCents: number; openingFloatCents: number }> {
+  async reconcile(ctx: DrawerCtx, branchId: string, registerId: string, date: string, countedCents: number, notes: string | null,
+    extra: { seenExpectedCents?: number | null; denominations?: Record<string, number> | null; reviewLimitCents?: number } = {}): Promise<{ applied: boolean; changed?: boolean; status: DrawerStatus; varianceCents: number; expectedCashCents: number; salesCents: number; refundsCents: number; openingFloatCents: number; approvalRequired?: boolean }> {
     const c = await this.computeRegisterCash(ctx, branchId, date, registerId);
     const mv = await this.computeMovements(ctx, branchId, registerId, date);
     const row = await this.getRow(ctx, branchId, registerId, date);
     const openingFloatCents = row ? num(row.opening_float_cents) : 0;
     const expectedCashCents = openingFloatCents + c.salesCents - c.refundsCents + mv.paidInCents - mv.paidOutCents;
+    // D15 gaps (Nov 5 2026): the counter counted against the expected cash they were SHOWN; a sale, refund or cash in/out
+    // since then moved it — refuse instead of reconciling against a figure nobody saw (nothing is written)
+    if (extra.seenExpectedCents != null && extra.seenExpectedCents !== expectedCashCents) {
+      return { applied: false, changed: true, status: (row?.status as DrawerStatus) ?? 'open', varianceCents: 0, expectedCashCents, salesCents: c.salesCents, refundsCents: c.refundsCents, openingFloatCents };
+    }
     const variance = countedCents - expectedCashCents;
     const status: DrawerStatus = variance === 0 ? 'reconciled' : 'discrepancy';
+    // a count off by more than the review limit is marked for a manager's sign-off (a re-count clears an earlier sign-off)
+    const approvalRequired = Math.abs(variance) > (extra.reviewLimitCents ?? 2000);
+    const denom = extra.denominations ? JSON.stringify(extra.denominations) : null;
     let applied = false;
     await this.db.transaction().execute(async (trx) => {
     const res = await trx.insertInto('cash_drawer_sessions').values({
@@ -141,17 +193,19 @@ export class CashDrawerRepository {
       expected_sales_cents: c.salesCents, refunds_cents: c.refundsCents, expected_cash_cents: expectedCashCents,
       counted_cents: countedCents, variance_cents: variance, cash_payment_count: c.paymentCount, status,
       reconciled_by_user_id: isUuid(ctx.userId) ? ctx.userId : null, reconciled_at: sql`now()`, notes,
+      denominations_json: denom, approval_required: approvalRequired,
     }).onConflict((oc: any) => oc.columns(['tenant_id', 'branch_id', 'register_id', 'business_date']).doUpdateSet({
       expected_sales_cents: c.salesCents, refunds_cents: c.refundsCents, expected_cash_cents: expectedCashCents,
       counted_cents: countedCents, variance_cents: variance, cash_payment_count: c.paymentCount, status,
       reconciled_by_user_id: isUuid(ctx.userId) ? ctx.userId : null, reconciled_at: sql`now()`, notes, updated_at: sql`now()`,
+      denominations_json: denom, approval_required: approvalRequired, approved_by_user_id: null, approved_at: null, approval_note: null,
     }).where(canMoveToSql(CASH_DRAWER_SESSION, status, 'cash_drawer_sessions'))).executeTakeFirst();
     applied = Number(res?.numInsertedOrUpdatedRows ?? 0) > 0;
     if (applied) await this.fact(trx, ctx, DOMAIN_EVENTS.CASH_DRAWER_RECONCILED, `${branchId}:${date}`, { branchId, businessDate: date, status, expectedCashCents, countedCents, varianceCents: variance });
     });
     // the state machine refused the move (e.g. a cancelled drawer): report what IS stored, never the status we computed
     if (!applied) { const now = await this.getRow(ctx, branchId, registerId, date); return { applied, status: (now?.status as DrawerStatus) ?? 'open', varianceCents: num(now?.variance_cents), expectedCashCents: num(now?.expected_cash_cents), salesCents: num(now?.expected_sales_cents), refundsCents: num(now?.refunds_cents), openingFloatCents: num(now?.opening_float_cents) }; }
-    return { applied, status, varianceCents: variance, expectedCashCents, salesCents: c.salesCents, refundsCents: c.refundsCents, openingFloatCents };
+    return { applied, status, varianceCents: variance, expectedCashCents, salesCents: c.salesCents, refundsCents: c.refundsCents, openingFloatCents, approvalRequired };
   }
 
   /** Owner read-only: per-branch register drawer state across the tenant for a date (salon-wide oversight). */

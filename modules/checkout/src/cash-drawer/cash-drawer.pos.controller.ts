@@ -7,7 +7,7 @@ import { drawerCtx, drawerRun } from './cash-drawer.http';
 import { ListQueries } from '@aipowersalon/database';
 import { CashDrawerPosControllerListQueries } from './cash-drawer.pos.list-queries';
 
-import { DRAWER_MOVEMENT_BODY, DRAWER_OPEN_BODY, DRAWER_RECONCILE_BODY, DRAWER_VOID_MOVEMENT_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
+import { DRAWER_APPROVE_BODY, DRAWER_MOVEMENT_BODY, DRAWER_OPEN_BODY, DRAWER_RECONCILE_BODY, DRAWER_VOID_MOVEMENT_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 // POS / front desk: register cash drawer — set the opening float, see expected cash, count and reconcile.
 // Constitution 5 Step 8 audit (Oct 4 2026): the salon-wide READS here had no check (the writes check
 // pos.checkout.take_payment in the service), so a technician could read the register and every technician's cash
@@ -25,4 +25,7 @@ export class CashDrawerPosController {
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/registers') registers(@Req() r: any): Promise<DrawerRegisterList> { return drawerRun(() => this.svc.registers(drawerCtx(r))); }
   @RequirePermission('pos.checkout.view') @Get('cash-drawer/movements') movements(@Req() r: any, @Query('date') date?: string, @Query('registerId') registerId?: string) { return drawerRun(() => this.svc.listMovements(drawerCtx(r), date, registerId)); }
   @Idempotent() @RequirePermission('checkout.process_payment') @Post('cash-drawer/movement/void') voidMovement(@Req() r: any, @Body(ValidatedBody(DRAWER_VOID_MOVEMENT_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.voidMovement(drawerCtx(r), b || {})); }
+  // D15 gaps (Nov 5 2026): the drawer history (dates, register, status, search, pages) and a manager's sign-off of a large difference
+  @RequirePermission('pos.checkout.view') @Get('cash-drawer/history') history(@Req() r: any, @Query() q: any) { return drawerRun(() => this.svc.history(drawerCtx(r), q)); }
+  @Idempotent() @RequirePermission('checkout.manage_overrides') @Post('cash-drawer/approve') approve(@Req() r: any, @Body(ValidatedBody(DRAWER_APPROVE_BODY, { strict: true })) b: any) { return drawerRun(() => this.svc.approveCount(drawerCtx(r), b || {})); }
 }

@@ -831,6 +831,9 @@ export interface CashDrawerSessionsTable {
   status: Generated<string>; opened_by_user_id: string | null; opened_at: Date | null;
   reconciled_by_user_id: string | null; reconciled_at: Date | null; notes: string | null; created_at: Ts; updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  // migration 809 (D15 gaps): the count's bill / coin breakdown and the manager sign-off of a large difference
+  denominations_json: ColumnType<Record<string, number> | null, string | null, string | null>; approval_required: Generated<boolean>;
+  approved_by_user_id: string | null; approved_at: Date | null; approval_note: string | null;
 }
 export interface AccountDeletionRequestsTable {
   id: Generated<string>; tenant_id: string | null; user_id: string; role: string;

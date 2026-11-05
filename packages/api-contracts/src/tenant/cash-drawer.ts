@@ -21,6 +21,8 @@ export interface DrawerState {
   /** Once counted, expected / variance above are the figures AT THE COUNT (they no longer move). This is today's live
    *  expected cash; `changedSinceCount` says a later payment, refund or float edit moved it (audit Nov 3 2026). */
   liveExpectedCashCents?: number; changedSinceCount?: boolean;
+  /** D15 gaps (Nov 5 2026): the count's bill / coin breakdown (cents value → count) and the manager review of a large difference */
+  denominations?: Record<string, number> | null; approvalRequired?: boolean; approvedAt?: string | null; approvedBy?: string | null; approvalNote?: string | null;
 }
 
 // cash-drawer.dto.ts — types, events, helpers for front-desk cash drawer reconciliation.

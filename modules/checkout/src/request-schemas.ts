@@ -62,7 +62,11 @@ export const DISPLAY_SESSION_UPDATE_BODY: BodySchema = S.object({ state: str(32)
 const amount: BodySchema = { type: ['integer', 'string', 'null'], maxLength: 16 };
 const drawer = (props: Record<string, BodySchema>): BodySchema => S.object({ ...props, date: str(10), registerId: str(64) }, [], { 'x-forbidden': MONEY });
 export const DRAWER_OPEN_BODY: BodySchema = drawer({ openingFloatCents: amount });
-export const DRAWER_RECONCILE_BODY: BodySchema = drawer({ countedCents: amount, notes: str(2000) });
+// D15 gaps (Nov 5 2026): the bill / coin breakdown (cents value → count), and the expected cash the counter was shown (a
+// version check: a sale or refund since then refuses the count instead of reconciling against a figure nobody saw)
+export const DRAWER_RECONCILE_BODY: BodySchema = drawer({ countedCents: amount, notes: str(2000), expectedCashCents: amount,
+  denominations: S.nullable(S.object({}, [], { additionalProperties: S.integer({ minimum: 0, maximum: 100000 }) })) });
+export const DRAWER_APPROVE_BODY: BodySchema = drawer({ note: S.text(500, { minLength: 3 }) });
 export const DRAWER_MOVEMENT_BODY: BodySchema = drawer({ direction: str(8), amountCents: amount, reason: str(500), note: str(2000) });
 export const DRAWER_VOID_MOVEMENT_BODY: BodySchema = drawer({ movementId: scalar(64) });
 

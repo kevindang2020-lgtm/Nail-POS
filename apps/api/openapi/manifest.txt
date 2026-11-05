@@ -531,6 +531,7 @@ GET /pos/campaigns  realm=staff  auth=session  domain=marketing  perm=pos.market
 GET /pos/campaigns/state  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/campaigns/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/cash-drawer  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
+GET /pos/cash-drawer/history  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-drawer/movements  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-drawer/registers  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
 GET /pos/cash-handoffs  realm=staff  auth=session  domain=payments  perm=pos.checkout.view
@@ -2624,6 +2625,7 @@ POST /pos/campaigns/{id}/activate  realm=staff  auth=session  domain=marketing  
 POST /pos/campaigns/{id}/cancel  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/campaigns/{id}/complete  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/campaigns/{id}/schedule  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/cash-drawer/approve  realm=staff  auth=session  domain=payments  perm=checkout.manage_overrides  idempotency=optional
 POST /pos/cash-drawer/movement  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-drawer/movement/void  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional
 POST /pos/cash-drawer/open  realm=staff  auth=session  domain=payments  perm=checkout.process_payment  idempotency=optional

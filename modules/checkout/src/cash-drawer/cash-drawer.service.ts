@@ -6,6 +6,24 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { DrawerState, DRAWER_EVENTS, OwnerDrawerSummary, MovementList, CashDrawerError, normDate, isUuid } from './cash-drawer.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
+/** D15 gaps (Nov 5 2026): a count off by more than this (either way) is marked for a manager's review */
+export const DRAWER_REVIEW_LIMIT_CENTS = 2000;
+/** US bills and coins, in cents */
+export const DRAWER_DENOMINATIONS = [10000, 5000, 2000, 1000, 500, 200, 100, 50, 25, 10, 5, 1] as const;
+/** the breakdown a counter entered: known values only, whole counts, and its total must be the counted cash */
+export function cleanDenominations(raw: unknown, countedCents: number): Record<string, number> | null {
+  if (raw == null) return null;
+  if (typeof raw !== 'object' || Array.isArray(raw)) throw withCode(new CashDrawerError('bad_denominations', 'The bill and coin breakdown is not valid.', 400), 'DRAWER_DENOMINATIONS_MISMATCH');
+  const out: Record<string, number> = {}; let total = 0;
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const value = Number(k), n = Number(v);
+    if (!(DRAWER_DENOMINATIONS as readonly number[]).includes(value) || !Number.isInteger(n) || n < 0) throw withCode(new CashDrawerError('bad_denominations', 'The bill and coin breakdown is not valid.', 400), 'DRAWER_DENOMINATIONS_MISMATCH');
+    if (n > 0) { out[String(value)] = n; total += value * n; }
+  }
+  if (total !== countedCents) throw withCode(new CashDrawerError('bad_denominations', 'The bills and coins do not add up to the counted cash.', 400), 'DRAWER_DENOMINATIONS_MISMATCH');
+  return out;
+}
+
 export class CashDrawerService {
   constructor(private readonly repo: CashDrawerRepository, private readonly realtime?: RealtimeEmitter) {}
 
@@ -119,8 +137,11 @@ export class CashDrawerService {
     const d = normDate(body?.date, await this.today(ctx));
     const counted = this.amount(body, 'countedCents');
     const notes = typeof body?.notes === 'string' ? body.notes.slice(0, 500) : null;
-    const r = await this.repo.reconcile(ctx, branchId, registerId, d, counted, notes);
-    await this.repo.audit(ctx, 'cash_drawer_reconciled', branchId, { businessDate: d, registerId, expectedCashCents: r.expectedCashCents, countedCents: counted, varianceCents: r.varianceCents, status: r.status });
+    const denominations = cleanDenominations(body?.denominations, counted);
+    const seen = body?.expectedCashCents == null || body.expectedCashCents === '' ? null : Math.round(Number(body.expectedCashCents));
+    const r = await this.repo.reconcile(ctx, branchId, registerId, d, counted, notes, { seenExpectedCents: Number.isFinite(seen as number) ? seen : null, denominations, reviewLimitCents: DRAWER_REVIEW_LIMIT_CENTS });
+    if (r.changed) throw withCode(new CashDrawerError('changed', 'The expected cash changed since you started counting (a sale, refund or cash in/out). Check the new figure and count again.', 409), 'DRAWER_CHANGED_SINCE_SHOWN');
+    await this.repo.audit(ctx, 'cash_drawer_reconciled', branchId, { businessDate: d, registerId, expectedCashCents: r.expectedCashCents, countedCents: counted, varianceCents: r.varianceCents, status: r.status, denominations: denominations ?? null, approvalRequired: !!r.approvalRequired });
     // §343: the repository recorded this in the drawer's transaction; the projection delivers it when the publisher is on
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, r.status === 'discrepancy' ? DRAWER_EVENTS.discrepancy : DRAWER_EVENTS.reconciled, { branchId, registerId, businessDate: d, expectedCashCents: r.expectedCashCents, countedCents: counted, varianceCents: r.varianceCents, status: r.status });
     if (!r.applied) throw withCode(new CashDrawerError('not_allowed', 'This drawer cannot be counted in its current state.', 409), 'DRAWER_COUNT_NOT_ALLOWED');
@@ -132,5 +153,28 @@ export class CashDrawerService {
     this.ownerAlert(ctx, 'Cash drawer discrepancy');
     }
     return this.repo.state(ctx, branchId, registerId, d);
+  }
+
+  /** D15 gaps (Nov 5 2026): a manager signs off a counted drawer that is off by more than the review limit */
+  async approveCount(ctx: DrawerCtx, body: any): Promise<DrawerState> {
+    if (!this.has(ctx, 'checkout.manage_overrides')) throw withCode(new CashDrawerError('forbidden', 'A manager signs off a drawer count.', 403), 'DRAWER_PERMISSION_DENIED');
+    const branchId = this.branchOf(ctx);
+    const registerId = await this.registerOf(ctx, branchId, body?.registerId);
+    const d = normDate(body?.date, await this.today(ctx));
+    const note = String(body?.note ?? '').trim().slice(0, 500);
+    if (note.length < 3) throw withCode(new CashDrawerError('bad_request', 'Add a note for the sign-off.', 400), 'DRAWER_APPROVAL_NOTE_REQUIRED');
+    if (!(await this.repo.approve(ctx, branchId, registerId, d, note))) throw withCode(new CashDrawerError('not_needed', 'This drawer count has nothing waiting for sign-off.', 409), 'DRAWER_APPROVAL_NOT_NEEDED');
+    await this.repo.audit(ctx, 'cash_drawer_count_approved', branchId, { businessDate: d, registerId, note });
+    return this.repo.state(ctx, branchId, registerId, d);
+  }
+
+  /** D15 gaps (Nov 5 2026): the drawer history of this location (server-paged, filtered, searched) */
+  async history(ctx: DrawerCtx, q: any) {
+    if (!this.canView(ctx)) throw withCode(new CashDrawerError('forbidden', 'Not allowed.', 403), 'PERMISSION_DENIED');
+    const branchId = this.branchOf(ctx);
+    const ymd = (v: unknown) => (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null);
+    const registerId = typeof q?.registerId === 'string' && q.registerId ? await this.registerOf(ctx, branchId, q.registerId) : undefined;
+    const pageSize = [10, 20, 50].includes(Number(q?.pageSize)) ? Number(q.pageSize) : 10;
+    return this.repo.history(ctx, branchId, { from: ymd(q?.from), to: ymd(q?.to), registerId, status: typeof q?.status === 'string' ? q.status : undefined, q: typeof q?.q === 'string' ? q.q : undefined, page: Math.max(1, parseInt(q?.page, 10) || 1), pageSize });
   }
 }

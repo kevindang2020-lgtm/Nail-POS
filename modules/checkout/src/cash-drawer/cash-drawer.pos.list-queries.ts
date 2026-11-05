@@ -7,4 +7,5 @@ import type { ListQuerySpec } from '@aipowersalon/database';
 export const CashDrawerPosControllerListQueries = {
   get: { filters: { date: { type: 'date' }, registerId: { type: 'id' } }, search: false },
   movements: { filters: { date: { type: 'date' }, registerId: { type: 'id' } }, search: false },
+  history: { filters: { registerId: { type: 'id' }, status: { type: 'enum', values: ['open', 'reconciled', 'discrepancy', 'cancelled', 'needs_review'] } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 400 }, params: ['page'] },
 } satisfies Record<string, ListQuerySpec>;

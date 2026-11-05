@@ -802,6 +802,10 @@ export const ERROR_REGISTRY = {
   BC_EVENT_NOT_ACKNOWLEDGEABLE: { status: 409, message: 'Only a triggered alert that has not been acknowledged can be acknowledged.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   // Cash drawer (audit Nov 3 2026)
   DRAWER_ALREADY_COUNTED: { status: 409, message: 'This drawer was already counted for the day. Reopen it to record cash in or out.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
+  DRAWER_CHANGED_SINCE_SHOWN:     { status: 409, message: 'The expected cash changed since you started counting. Check the new figure and count again.', domain: 'checkout', retryable: false, severity: 'info', action: 'REFRESH' },
+  DRAWER_DENOMINATIONS_MISMATCH:  { status: 400, message: 'The bills and coins do not add up to the counted cash.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
+  DRAWER_APPROVAL_NOTE_REQUIRED:  { status: 400, message: 'Add a note for the sign-off.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
+  DRAWER_APPROVAL_NOT_NEEDED:     { status: 409, message: 'This drawer count has nothing waiting for sign-off.', domain: 'checkout', retryable: false, severity: 'info', action: 'REFRESH' },
   DRAWER_COUNT_NOT_ALLOWED: { status: 409, message: 'This drawer cannot be counted in its current state.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   VT_SETTINGS_UNAVAILABLE: { status: 503, message: 'The transcription settings could not be read.', domain: 'ai', retryable: true, severity: 'warning', action: 'RETRY' },
   FOLLOWUP_ASSIGNEE_INVALID: { status: 400, message: 'Choose an active staff member who can work follow-ups in this branch.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
