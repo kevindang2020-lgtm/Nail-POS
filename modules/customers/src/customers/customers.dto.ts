@@ -244,7 +244,7 @@ export interface POSCustomersKpisFull {
   totalCustomers: number; newCustomersToday: number; returningCustomersToday: number; vipCustomers: number;
   birthdayThisMonth: number; inactiveCustomers: number; duplicateProfiles: number; loyaltyMembers: number; averageSpendCents: number;
   // F1 §11-12 — see docs/customer-directory-metrics.md
-  newThisMonth?: number; returningThisMonth?: number; atRiskCustomers?: number; riskDays?: number;
+  newThisMonth?: number; returningThisMonth?: number; atRiskCustomers?: number; riskDays?: number; archivedCustomers?: number;
 }
 export interface CustomersFilterFacets {
   segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[];

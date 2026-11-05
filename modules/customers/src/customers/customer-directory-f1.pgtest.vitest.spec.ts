@@ -123,3 +123,19 @@ describe('F1 Customer Directory — recent activity is the whole salon, not the 
     expect([...times].sort((a, b) => b - a)).toEqual(times);
   });
 });
+
+describe('F1 Customer Directory — Archived is a lifecycle status (§29)', () => {
+  it('an archived profile leaves All Customers, the tabs and the KPIs, and is listed under the Archived status', async () => {
+    const before = await repo.query(ctx, {});
+    await q(`update customers set status = 'archived' where id = $1`, [id('c2')]);
+    try {
+      const st = await repo.query(ctx, {});
+      expect(st.kpisFull.totalCustomers).toBe(before.kpisFull.totalCustomers - 1);
+      expect(st.kpisFull.archivedCustomers).toBe(1);
+      expect(st.segmentCounts!.all).toBe(before.segmentCounts!.all - 1);
+      expect(st.segmentCounts!.at_risk).toBe(before.segmentCounts!.at_risk - 1);
+      expect((await repo.query(ctx, { pageSize: 50 })).rows.items.some((r) => r.customerId === id('c2'))).toBe(false);
+      expect((await repo.query(ctx, { status: 'archived' })).rows.items.map((r) => r.customerId)).toEqual([id('c2')]);
+    } finally { await q(`update customers set status = 'active' where id = $1`, [id('c2')]); }
+  });
+});

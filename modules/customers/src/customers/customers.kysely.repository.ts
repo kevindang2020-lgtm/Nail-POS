@@ -113,7 +113,8 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   private filtered(all: Cust[], f: CustomerFilters, dup: Map<string, DuplicateRisk>, riskDays = INACTIVE_DAYS): Cust[] {
     let r = all.slice();
     if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ const digits = f.search.replace(/\D/g, ''); const byPhone = digits.length >= 3 && /^[\d\s()+.\-]+$/.test(f.search.trim());   /* F1 §14: "(555) 123-4567", "555.123.4567" and "5551234567" all find the same customer; stored values untouched */ r = r.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q)) || (byPhone && [c.phone, c.normalizedPhone].some((x) => (x ?? '').replace(/\D/g, '').includes(digits)))); }   /* the whole name too: "nguyen thi huong" */
-    if (f.status) r = r.filter((c) => c.status === f.status);
+    // F1 §29: Archived is a lifecycle status — hidden from All Customers and every tab unless the Archived status is chosen
+    if (f.status) r = r.filter((c) => c.status === f.status); else r = r.filter((c) => c.status !== 'archived');
     if (f.loyaltyTier) r = r.filter((c) => c.loyaltyTier === f.loyaltyTier);
     if (f.source) r = r.filter((c) => c.source === f.source);
     if (f.tag) r = r.filter((c) => c.tags.includes(f.tag!));
@@ -172,12 +173,14 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
   }
 
   async query(ctx: CustomersContext, f: CustomerFilters): Promise<POSCustomersFullState> {
-    const all = await this.load(ctx); const dup = this.dupSet(all);
+    const everyone = await this.load(ctx); const dup = this.dupSet(everyone);
+    // F1 §29: KPI numerators and denominators count non-archived profiles; the list reaches archived ones via the status filter
+    const all = everyone.filter((c) => c.status !== 'archived');
     const riskDays = await this.riskDays(ctx);
-    const matched = this.filtered(all, f, dup, riskDays);
+    const matched = this.filtered(everyone, f, dup, riskDays);
     // F1 §12/§15: tab counts use the same filter code as the list (the other active filters applied), so a tab's number is
     // exactly what the tab shows
-    const segmentCounts = Object.fromEntries((['', 'never', 'new', 'returning', 'vip', 'at_risk'] as const).map((seg) => [seg || 'all', this.filtered(all, { ...f, segment: seg || undefined }, dup, riskDays).length])) as Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
+    const segmentCounts = Object.fromEntries((['', 'never', 'new', 'returning', 'vip', 'at_risk'] as const).map((seg) => [seg || 'all', this.filtered(everyone, { ...f, segment: seg || undefined }, dup, riskDays).length])) as Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
     const tz = await this.salonTimeZone(ctx);
     const monthKey = (d: string | null | undefined) => { if (!d) return ''; try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit' }).format(new Date(d)); } catch { return new Date(d).toISOString().slice(0, 7); } };
     const curMonth = monthKey(new Date().toISOString());
@@ -250,14 +253,14 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       newThisMonth: all.filter((c) => monthKey(c.createdAt) === curMonth).length,
       returningThisMonth: all.filter((c) => c.visitCount >= RETURNING_MIN_VISITS && monthKey(c.lastVisitAt) === curMonth).length,
       atRiskCustomers: all.filter((c) => c.visitCount >= 1 && this.daysSince(c.lastVisitAt) >= riskDays).length,
-      riskDays,
+      riskDays, archivedCustomers: everyone.length - all.length,
     };
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
       kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts,
       filterFacets: {
-        segments: ['never', 'new', 'returning', 'vip'], statuses: ['active', 'inactive', 'archived'],
+        segments: ['never', 'new', 'returning', 'vip', 'at_risk'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: [...new Set(all.map((c) => c.loyaltyTier))], visitRanges: ['0', '1-3', '4-9', '10+'],
         spendRanges: ['0-5000', '5001-20000', '20001+'], sources: [...new Set(all.map((c) => c.source))], tags: [...new Set(all.flatMap((c) => c.tags))],
       },

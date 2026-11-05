@@ -75,7 +75,10 @@ const owner = (over: Partial<CustomersContext> = {}): CustomersContext => ({ ten
   // archive history-safe + reactivate
   const s4 = svc();
   ok('archive sets archived', (await s4.archive(owner(), 'cust_nora')).status === 'archived');
-  ok('archived stays in roster (history)', (await s4.getState(owner())).kpisFull.totalCustomers === st.kpisFull.totalCustomers);
+  // F1 §29 (Nov 5 2026): archived is a lifecycle status — the profile and its history are kept and listed under the
+  // Archived status, but it leaves the KPI total and All Customers
+  ok('archived leaves the KPI total', (await s4.getState(owner())).kpisFull.totalCustomers === st.kpisFull.totalCustomers - 1);
+  ok('archived stays reachable (history) under the Archived status', (await s4.getState(owner(), { status: 'archived' })).rows.items.some((r) => r.customerId === 'cust_nora'));
   ok('reactivate sets active', (await s4.reactivate(owner(), 'cust_nora')).status === 'active');
   ok('audit: archive + reactivate', s4.auditLog().some((l) => l.actionType === 'pos_customer_archived') && s4.auditLog().some((l) => l.actionType === 'pos_customer_reactivated'));
 

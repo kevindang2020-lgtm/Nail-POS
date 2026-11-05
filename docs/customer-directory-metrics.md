@@ -12,7 +12,7 @@ substitutes a client-side estimate. The salon is the tenant; when the signed-in 
 
 | KPI | Numerator | Denominator / period | Notes |
 |---|---|---|---|
-| Total Customers | customer profiles in scope | — | includes Archived (lifecycle) profiles |
+| Total Customers | non-archived customer profiles in scope | — | Archived is a lifecycle status (§29): archived profiles keep their history, are listed under the Archived status filter, and are left out of every KPI, tab and All Customers (`kpisFull.archivedCustomers` counts them) |
 | New Customers | profiles created today | today | "today" counter; the month figure is below |
 | Returning Customers | 2+ visits **and** last visit today | today | 2+ = `RETURNING_MIN_VISITS` |
 | VIP Customers | profiles flagged VIP | — | VIP is a classification, not a status |

@@ -123,7 +123,7 @@ export class InMemoryCustomersRepository implements CustomersRepositoryPort {
   private filtered(ctx: CustomersContext, f: CustomerFilters, dup: Map<string, DuplicateRisk>): Cust[] {
     let rows = this.L(ctx).slice();
     if (f.search) { const q = foldVi(f.search);   /* WP-E §41: accent-insensitive ("nguyen" finds "Nguyễn") */ rows = rows.filter((c) => [`${c.firstName ?? ''} ${c.lastName ?? ''}`, c.firstName, c.lastName, c.preferredName, c.phone, c.email, ...c.tags].some((x) => foldVi(x).includes(q))); }   /* the whole name too: "nguyen thi huong" */
-    if (f.status) rows = rows.filter((c) => c.status === f.status);
+    if (f.status) rows = rows.filter((c) => c.status === f.status); else rows = rows.filter((c) => c.status !== 'archived');   // F1 §29
     if (f.loyaltyTier) rows = rows.filter((c) => c.loyaltyTier === f.loyaltyTier);
     if (f.source) rows = rows.filter((c) => c.source === f.source);
     if (f.tag) rows = rows.filter((c) => c.tags.includes(f.tag!));
@@ -140,7 +140,7 @@ export class InMemoryCustomersRepository implements CustomersRepositoryPort {
   }
 
   async query(ctx: CustomersContext, f: CustomerFilters) {
-    const all = this.L(ctx);
+    const all = this.L(ctx).filter((c) => c.status !== 'archived');   // F1 §29: KPIs count non-archived profiles
     const dup = await this.dupSet(ctx);
     const matched = this.filtered(ctx, f, dup);
     const page = clampPage(f.page), pageSize = clampPageSize(f.pageSize, 20);
