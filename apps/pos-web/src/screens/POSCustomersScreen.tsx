@@ -10,6 +10,10 @@ import { api } from '../api/client';
 import { useRealtime } from '../realtime/useRealtime';
 import { SYNC_POLICY } from '@aipowersalon/realtime-client';
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
+import { useCan } from '../components/usePermissions';
+import { posDuplicateReviewApi } from '../api/posDuplicateReviewApi';
+import { CompareOverlay } from './POSAICustomerDuplicateReviewScreen';
+import { FitDialog } from '../components/FitKit';
 import { MembershipChip, useMemberStatusMap } from './MembershipChip';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
@@ -43,8 +47,6 @@ type CustomersState = {
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
 };
-type DupMember = { customerId: string; displayName: string; phone?: string; email?: string; status?: string; visitCount?: number; totalSpendCents?: number; loyaltyPoints?: number; loyaltyTier?: string; createdAt?: string; tags?: string[] };
-type DupGroup = { duplicateGroupId: string; reason: string; members: DupMember[] };
 type ImpSampleRow = { rowNumber: number; firstName: string; lastName: string; phone?: string; email?: string; birthday?: string; action: 'create' | 'update' | 'duplicate' | 'error'; reason?: string };
 type ImpPreview = { totalRows: number; toCreate: number; toUpdate: number; duplicates: number; errors: number; invalidEmailsDropped: number; detectedColumns: Record<string, string | undefined>; sample: ImpSampleRow[] };
 type ImpResult = { created: number; updated: number; duplicatesSkipped: number; errors: number; invalidEmailsDropped: number; totalRows: number; errorSamples: { rowNumber: number; reason: string }[] };
@@ -96,6 +98,7 @@ const sel: React.CSSProperties = { ...ipt, minWidth: 118 };
 const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, padding: '11px 13px' };
 
 export function POSCustomersScreen() {
+  const can = useCan();
   const nav = useNavigate();
   const [s, setS] = useState<CustomersState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -140,9 +143,6 @@ export function POSCustomersScreen() {
   const [addOpen, setAddOpen] = useState(false);
   const [aFirst, setAFirst] = useState(''); const [aLast, setALast] = useState(''); const [aPhone, setAPhone] = useState(''); const [aEmail, setAEmail] = useState(''); const [aSms, setASms] = useState(true); const [aEmailOpt, setAEmailOpt] = useState(false); const [aMkt, setAMkt] = useState(false);
   // duplicates + csv import
-  const [dups, setDups] = useState<DupGroup[]>([]);
-  const [dupSel, setDupSel] = useState<Record<string, string>>({});
-  const [dupBusy, setDupBusy] = useState<string | null>(null);
   const [importCsv, setImportCsv] = useState('');
   const [impPreview, setImpPreview] = useState<ImpPreview | null>(null);
   const [impResult, setImpResult] = useState<ImpResult | null>(null);
@@ -161,7 +161,8 @@ export function POSCustomersScreen() {
      
   }, [load, search, status, segment, source, tag, loyaltyTier, spendBand, page, buildQ]);
 
-  const loadDups = useCallback(() => (posCustomersApi.duplicates() as Promise<DupGroup[]>).then(setDups).catch(() => setDups([])), []);
+  const [dupOpenCount, setDupOpenCount] = useState(0); const [dupOverlay, setDupOverlay] = useState(false);
+  const loadDups = useCallback(() => posDuplicateReviewApi.summary().then((r: any) => setDupOpenCount(Number(r?.kpis?.open ?? 0))).catch(() => setDupOpenCount(0)), []);
   useEffect(() => { loadDups(); }, [loadDups]);
 
   // when any filter changes, return to page 1
@@ -224,7 +225,6 @@ export function POSCustomersScreen() {
   const doImportPreview = async () => { if (!importCsv.trim()) { setNote(tx('pos.paste_csv_or_load_a_csv_6rl1')); return; } setNote(null); setImpResult(null); setBusy('imp-preview'); try { setImpPreview(await posCustomersApi.importPreview(importCsv, updateExisting) as ImpPreview); } catch (e: any) { setNote(e?.message || tx('pos.preview_failed')); } finally { setBusy(null); } };
   const doImportCommit = async () => { if (!importCsv.trim()) { setNote(tx('pos.nothing_to_import')); return; } setNote(null); setBusy('imp-commit'); try { const r = await posCustomersApi.importCommit(importCsv, updateExisting) as ImpResult; setImpResult(r); setImpPreview(null); setImportCsv(''); await Promise.all([refetch(), loadDups()]); } catch (e: any) { setNote(e?.message || tx('pos.import_failed')); } finally { setBusy(null); } };
   const { confirm: askConfirm, confirmUi } = useInlineConfirm();
-  const doMerge = async (groupId: string) => { const primary = dupSel[groupId]; if (!primary) { setNote(tx('pos.choose_which_profile_to_keep_as_1fma')); return; } setNote(null); setDupBusy(groupId); try { await posCustomersApi.merge(groupId, primary); await Promise.all([refetch(), loadDups()]); } catch (e: any) { setNote(e?.message || tx('pos.merge_failed')); } finally { setDupBusy(null); } };
 
   // One batch member-status request for the whole roster page; non-members are absent from the map. Called before the
   // early returns (optional-chained off `s`) so the hook order stays stable while customers are still loading.
@@ -295,7 +295,6 @@ export function POSCustomersScreen() {
         <div className="sub">{tx('pos.manage_and_grow_your_customer_relationships')}</div>
       </div>
       {confirmUi}
-      <AiAssistantPanel packageCode="ai_customer_profile_assistant" cta={tx('pos.summarize_customer')} action="profile" buildPrompt={() => "Summarize this nail-salon customer's preferences and flag VIP or churn risk. Be brief."} />
 
       {/* 8 KPI cards */}
       <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
@@ -425,64 +424,16 @@ export function POSCustomersScreen() {
         </section>
       ) : null}
 
-      {dups.length > 0 ? (
-        <section className="panel" style={{ marginBottom: 12, borderColor: 'var(--gline)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
-            <h2 style={{ margin: 0 }}>{tx('pos.duplicate_profiles')}{' '}{dups.length} {tx('pos.group')}{enPlural(dups.length > 1 ? 's' : '')}</h2>
-            <span className="s muted" style={{ marginLeft: 'auto' }}>{tx('pos.review_each_match_pick_the_record_oozy')}</span>
-          </div>
-          <div className="overflow-x-auto w-full">
-            <div className='grid gap-3 min-w-[700px]'>
-              {dups.map((g) => {
-                const primary = dupSel[g.duplicateGroupId];
-                const diff = (key: keyof DupMember) => new Set(g.members.map((m) => String(m[key] ?? ''))).size > 1;
-                const fields: { key: keyof DupMember; label: string; fmt: (m: DupMember) => string }[] = [
-                  { key: 'phone', label: tx('pos.phone'), fmt: (m) => m.phone || '—' },
-                  { key: 'email', label: tx('pos.email'), fmt: (m) => m.email || '—' },
-                  { key: 'status', label: tx('pos.status'), fmt: (m) => m.status || '—' },
-                  { key: 'visitCount', label: tx('pos.visits'), fmt: (m) => String(m.visitCount ?? '—') },
-                  { key: 'totalSpendCents', label: tx('pos.total_spent'), fmt: (m) => (m.totalSpendCents != null ? money(m.totalSpendCents) : '—') },
-                  { key: 'loyaltyPoints', label: tx('pos.loyalty'), fmt: (m) => (m.loyaltyPoints != null ? tx('pos.loyaltypoints_pts_v1', { loyaltyPoints: String(nf(m.loyaltyPoints)), v1: String(m.loyaltyTier ? ` · ${m.loyaltyTier}` : '') }) : '—') },
-                  { key: 'createdAt', label: tx('pos.created'), fmt: (m) => fmtDate(m.createdAt) },
-                ];
-                const conflictCount = fields.filter((f) => diff(f.key)).length;
-                const others = g.members.filter((m) => m.customerId !== primary);
-                return (
-                  <div key={g.duplicateGroupId} style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 12, background: 'var(--page)' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontWeight: 700, fontSize: 13 }}>{tx('pos.matched_by')}{' '}{g.reason}</span>
-                      <span className="pill warn" style={{ marginLeft: 8 }}>{conflictCount} {tx('pos.conflicting_field')}{enPlural(conflictCount === 1 ? '' : 's')}</span>
-                    </div>
-                    <div style={{ display: 'grid', gridTemplateColumns: `140px repeat(${g.members.length},1fr)`, gap: 0, fontSize: 12, border: '1px solid var(--line)', borderRadius: 8, overflow: 'hidden', background: 'var(--card)' }}>
-                      <div style={{ padding: '7px 9px', fontWeight: 700, color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{tx('pos.keep_as_primary')}</div>
-                      {g.members.map((m) => (
-                        <label key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, background: primary === m.customerId ? '#FCEFD8' : 'transparent' }}>
-                          <input type="radio" name={'dup_' + g.duplicateGroupId} checked={primary === m.customerId} onChange={() => setDupSel((p) => ({ ...p, [g.duplicateGroupId]: m.customerId }))} />
-                          <span style={{ fontWeight: 800 }}>{m.displayName}</span>
-                        </label>
-                      ))}
-                      <div style={{ padding: '7px 9px', color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{tx('pos.customer_id')}</div>
-                      {g.members.map((m) => (<div key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', background: primary === m.customerId ? '#FFFCF6' : 'transparent' }}>#{m.customerId}</div>))}
-                      {fields.map((f) => (
-                        <Fragment key={String(f.key)}>
-                          <div style={{ padding: '7px 9px', color: 'var(--muted)', borderBottom: '1px solid var(--line)' }}>{f.label}{diff(f.key) ? <span title={tx('pos.differs')} style={{ color: '#C0392B', marginLeft: 4 }}>●</span> : null}</div>
-                          {g.members.map((m) => (<div key={m.customerId} style={{ padding: '7px 9px', borderLeft: '1px solid var(--line)', borderBottom: '1px solid var(--line)', fontWeight: diff(f.key) ? 700 : 400, background: primary === m.customerId ? '#FFFCF6' : 'transparent' }}>{f.fmt(m)}</div>))}
-                        </Fragment>
-                      ))}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 8 }}>
-                      <span className="s muted" style={{ fontSize: 11 }}>
-                        {primary ? <>{tx('pos.visits_appointments_reviews_spend_from')}{' '}{others.length} {tx('pos.other_record')}{enPlural(others.length === 1 ? '' : 's')} {tx('pos.transfer_to_the_primary_the_duplicate')}{others.length === 1 ? ' is' : tx('pos.s_are')} {tx('pos.archived_never_deleted')}</> : tx('pos.select_which_record_survives')}
-                      </span>
-                      <button className="btn" disabled={dupBusy === g.duplicateGroupId || !primary} style={{ marginLeft: 'auto', padding: '5px 12px', fontSize: 12.5, background: primary ? 'var(--aps-orange)' : undefined, borderColor: primary ? 'var(--aps-orange)' : undefined, color: primary ? '#fff' : undefined }} onClick={() => { if (!primary) return; askConfirm(tx('people.customers.mergeConfirm', { count: String(others.length + 1), name: String(g.members.find((m) => m.customerId === primary)?.displayName ?? '') }), () => { void doMerge(g.duplicateGroupId); }, { confirmLabel: tx('pos.merge_profiles') }); }}>{dupBusy === g.duplicateGroupId ? tx('pos.merging') : tx('pos.merge_into_primary')}</button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </section>
+      {/* F1 Customer Directory §17-18 (Nov 5 2026): a compact, conditional duplicate alert — the full comparison lives in the
+          safe review overlay (the Duplicate Review centre's own compare / keep-separate / preview / merge), never inline */}
+      {dupOpenCount > 0 ? (
+        <div className="panel cd-dup-alert" role="status" data-testid="dup-alert" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', marginBottom: 10, borderColor: 'var(--gline)' }}>
+          <strong>{tx('cd.dup.title')}</strong>
+          <span className="s muted">{tx('cd.dup.count', { n: nf(dupOpenCount) })}</span>
+          <button className="btn" style={{ marginLeft: 'auto' }} onClick={() => setDupOverlay(true)} data-testid="dup-review-open">{tx('cd.dup.review')}</button>
+        </div>
       ) : null}
+      {dupOverlay ? <DuplicateQueueOverlay canEdit={can('pos.customers.edit')} canMerge={can('pos.customers.merge')} onClose={() => setDupOverlay(false)} onChanged={() => { loadDups(); refetch(); }} /> : null}
 
       {/* 6 summary cards */}
       <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6  gap-2">
@@ -670,6 +621,10 @@ export function POSCustomersScreen() {
             </div>
           )) : <div className="muted">{tx('pos.no_customers_to_segment_yet')}</div>}
         </section>
+      </div>
+      {/* F1 §35/§39-41 (Nov 5 2026): last row — Recent Customer Activity (≈72%) beside a compact AI Customer Profile Assistant
+          card (≈28%); the large top AI banner is gone */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,28%)] gap-3 items-start" style={{ marginTop: 12 }} data-testid="cd-bottom-row">
         <section className="panel" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/overview')}>{tx('pos.view_all_4')}</button></div>
           {recentActivity.length === 0 ? <div className="muted">{tx('pos.no_recent_visits_on_this_page')}</div> : recentActivity.map((r) => (
@@ -679,6 +634,9 @@ export function POSCustomersScreen() {
               <span className="s muted" style={{ marginLeft: 'auto' }}>{fmtDate(r.lastVisitAt)}</span>
             </div>
           ))}
+        </section>
+        <section className="panel cd-ai-card" style={{ margin: 0 }} data-testid="cd-ai-card">
+          <AiAssistantPanel packageCode="ai_customer_profile_assistant" cta={tx('pos.summarize_customer')} action="profile" buildPrompt={() => "Summarize this nail-salon customer's preferences and flag VIP or churn risk. Be brief."} />
         </section>
       </div>
       {profileRow ? <CustomerDrawer row={profileRow} detail={profile} busy={profileBusy} onClose={() => setProfileRow(null)} nav={nav} /> : null}
@@ -861,4 +819,26 @@ function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail:
       </aside>
     </>
   );
+}
+
+/** F1 §18 (Nov 5 2026): the open duplicate groups in a viewport-bounded overlay; a group opens the Duplicate Review centre's
+ *  own compare overlay (select primary · keep separate · preview merge · confirm merge — nothing merges from this list) */
+function DuplicateQueueOverlay({ canEdit, canMerge, onClose, onChanged }: { canEdit: boolean; canMerge: boolean; onClose: () => void; onChanged: () => void }) {
+  const [list, setList] = useState<any | null>(null); const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState<string | null>(null); const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
+  useEffect(() => { let live = true; posDuplicateReviewApi.groups({ status: 'open', sort: 'confidence', page, pageSize: 10 } as any).then((r) => { if (live) setList(r); }).catch((e: any) => { if (live) setErr(e?.message || tx('cd.dup.loadFailed')); }); return () => { live = false; }; }, [page, tick]);
+  if (open) return <CompareOverlay groupId={open} canEdit={canEdit} canMerge={canMerge} onClose={() => setOpen(null)} onChanged={() => { setTick((n) => n + 1); onChanged(); }} />;
+  return <FitDialog wide title={tx('cd.dup.title')} subtitle={list ? tx('cd.dup.count', { n: nf(list.total ?? 0) }) : undefined} onClose={onClose} testId="dup-queue">
+    {err ? <div className="fk-err" role="alert">{err}</div> : !list ? <div className="muted">{tx('pos.loading')}</div>
+      : list.items.length === 0 ? <div className="muted" data-testid="dup-queue-empty">{tx('cd.dup.none')}</div>
+      : <table className="tbl w-full" data-testid="dup-queue-table"><thead><tr><th>{tx('pos.customer')}</th><th>{tx('cd.dup.why')}</th><th /></tr></thead>
+        <tbody>{list.items.map((g: any) => <tr key={g.id} data-testid="dup-queue-row">
+          <td>{g.members.map((m: any) => m.name || '—').join(' · ')}</td>
+          <td>{tx('dup.conf.' + g.confidence)} · {g.reasons.map((r: string) => tx('dup.reasonChip.' + r)).join(', ')}</td>
+          <td style={{ textAlign: 'right' }}><button className="btn ghost sm" onClick={() => setOpen(g.id)} data-testid="dup-queue-compare">{tx('dup.compare')}</button></td></tr>)}</tbody></table>}
+    {list && list.totalPages > 1 ? <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', marginTop: 8 }}>
+      <button className="btn ghost sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>{tx('pos.prev')}</button>
+      <button className="btn ghost sm" disabled={page >= list.totalPages} onClick={() => setPage(page + 1)}>{tx('pos.next')}</button></div> : null}
+    <p className="s muted" style={{ marginTop: 8 }}>{tx('dup.noAutoMerge')}</p>
+  </FitDialog>;
 }

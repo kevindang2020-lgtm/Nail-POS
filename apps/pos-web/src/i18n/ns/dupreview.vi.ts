@@ -93,7 +93,7 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "dup.rows": "Số dòng",
   "dup.contactFull": "Hiển thị đầy đủ số điện thoại và email",
   "dup.contactMasked": "Số điện thoại và email được che theo vai trò của bạn",
-  "dup.noAutoMerge": "Không bao giờ tự động gộp.",
+  "dup.noAutoMerge": "Không bao giờ tự động gộp.", 'cd.dup.title': 'Hồ sơ có thể trùng', 'cd.dup.count': '{n} nhóm cần xem xét', 'cd.dup.review': 'Xem hồ sơ trùng', 'cd.dup.none': 'Hiện không có gì cần xem xét.', 'cd.dup.why': 'Lý do trùng', 'cd.dup.loadFailed': 'Không tải được các nhóm trùng.',
   "dup.ov.title": "So sánh {n} hồ sơ",
   "dup.keepThis": "Giữ hồ sơ này",
   "dup.mergesIn": "Gộp vào hồ sơ được giữ",

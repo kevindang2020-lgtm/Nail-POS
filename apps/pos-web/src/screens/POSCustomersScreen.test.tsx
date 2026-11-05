@@ -98,24 +98,19 @@ describe('POSCustomersScreen', () => {
     expect(String(tagsCall?.[1]?.method || '')).toMatch(/PATCH/i);
   });
 
-  it('renders the duplicate merge preview with field-by-field conflict comparison', async () => {
-    const emptyKpis = { totalCustomers: 0, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0 };
+  it('F1 §17 (Nov 5 2026): duplicates show as a compact alert (no inline comparison); with none pending the row collapses', async () => {
+    const emptyKpis = { totalCustomers: 0, newCustomersToday: 0, returningCustomersToday: 0, vipCustomers: 0, birthdayThisMonth: 0, inactiveCustomers: 0, duplicateProfiles: 0, loyaltyMembers: 0, averageSpendCents: 0, retentionRatePercent: 0 };
     const baseState = { kpisFull: emptyKpis, rows: { items: [], pagination: pagination(0) }, filterFacets: { segments: [], statuses: [], loyaltyTiers: [], visitRanges: [], spendRanges: [], sources: [], tags: [] } };
-    const dupGroups = [{ duplicateGroupId: 'g1', reason: 'phone', members: [
-      { customerId: 'CUST-1001', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'olivia@email.com', status: 'active', visitCount: 24, totalSpendCents: 124800, loyaltyPoints: 2450, loyaltyTier: 'Gold', createdAt: '2024-03-01' },
-      { customerId: 'CUST-1099', displayName: 'Olivia Brown', phone: '(555) 123-4567', email: 'o.brown@gmail.com', status: 'active', visitCount: 3, totalSpendCents: 15000, loyaltyPoints: 100, loyaltyTier: 'Bronze', createdAt: '2026-01-10' },
-    ] }];
-    globalThis.fetch = vi.fn(async (url: any) => ({ ok: true, status: 200, json: async () => (String(url).includes('/duplicates') ? dupGroups : baseState), headers: { get: () => null } } as any)) as any;
+    let open = 3;
+    globalThis.fetch = vi.fn(async (url: any) => ({ ok: true, status: 200, json: async () => (String(url).includes('/duplicate-review/summary') ? { kpis: { open } } : baseState), headers: { get: () => null } } as any)) as any;
+    const { unmount } = render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('dup-alert')).toHaveTextContent('3 groups need review');
+    expect(screen.queryByRole('radio')).toBeNull();          // the field-by-field comparison is not inline any more
+    unmount(); open = 0;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
-    expect(await screen.findByText(/Duplicate Profiles/)).toBeInTheDocument();
-    // conflict comparison present (email + visits + spend + loyalty + created differ → 5 conflicts)
-    expect(screen.getByText(/5 conflicting fields/)).toBeInTheDocument();
-    expect(screen.getByText('#CUST-1099')).toBeInTheDocument();
-    // merge button disabled until a primary is chosen
-    const mergeBtn = screen.getByText('Merge into primary') as HTMLButtonElement;
-    expect(mergeBtn).toBeDisabled();
-    fireEvent.click(screen.getAllByRole('radio')[0]);
-    expect(mergeBtn).not.toBeDisabled();
+    await screen.findByText('Customers');
+    await new Promise((r) => setTimeout(r, 30));
+    expect(screen.queryByTestId('dup-alert')).toBeNull();
   });
 
   it('renders the CSV import preview (detected columns + per-row actions) after loading a file', async () => {
@@ -184,20 +179,35 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/customers/state') && c.url.includes('search=Jessica'))).toBe(true));
   });
 
-  it('merging a duplicate group posts primaryCustomerId to the real merge endpoint', async () => {
-    const dupGroup = { duplicateGroupId: 'g1', reason: 'same phone', members: [
-      { customerId: 'c1', displayName: 'Jessica Miller', phone: '415-555-1212', email: 'j@e.com', totalVisits: 5, lifetimeSpendCents: 12000 },
-      { customerId: 'c2', displayName: 'Jess Miller', phone: '415-555-1212', email: 'jess@e.com', totalVisits: 2, lifetimeSpendCents: 3000 },
-    ] };
-    const f = recCustomers({ dups: [dupGroup] }); globalThis.fetch = f as any;
-    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+  it('F1 §40-41: the AI Customer Profile Assistant is a compact card in the last row beside Recent Activity, not a top banner', async () => {
+    globalThis.fetch = recCustomers() as any;
+    const { container } = render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
     await screen.findByText('Customers');
-    // pick a primary (radio) then merge
-    const primaryPick = document.querySelector('input[type="radio"]') as HTMLInputElement | null;
-    if (primaryPick) fireEvent.click(primaryPick);
-    fireEvent.click(await screen.findByText(/Merge into primary/i));
-    fireEvent.click(await screen.findByRole('button', { name: 'Merge profiles' }));   // inline confirm dialog
-    await waitFor(() => expect((f as any).calls.some((c: any) => /\/customers\/duplicates\/g1\/merge$/.test(c.url) && c.method === 'POST')).toBe(true));
+    const row = await screen.findByTestId('cd-bottom-row');
+    expect(row.querySelector('[data-testid="cd-ai-card"]')).not.toBeNull();
+    expect(row.textContent).toMatch(/Recent Customer Activity/);
+    const work = container.querySelector('.work')!;
+    const kids = Array.from(work.children);
+    expect(kids.indexOf(row)).toBeGreaterThan(kids.findIndex((k) => /Customers/.test(k.textContent ?? '')));
+  });
+
+  it('F1 §18: Review Duplicates opens the safe queue overlay; a group opens the compare overlay (nothing merges from the list)', async () => {
+    const calls: string[] = [];
+    globalThis.fetch = vi.fn(async (url: any, init?: any) => {
+      const u = String(url); calls.push((init?.method || 'GET') + ' ' + u);
+      const ok = (j: any) => ({ ok: true, status: 200, json: async () => j, headers: { get: () => null } } as any);
+      if (u.includes('/duplicate-review/summary')) return ok({ kpis: { open: 1 } });
+      if (u.includes('/duplicate-review/groups?') || u.endsWith('/duplicate-review/groups')) return ok({ items: [{ id: 'g1', confidence: 'strong', reasons: ['phone'], members: [{ customerId: 'c1', name: 'Jessica Miller' }, { customerId: 'c2', name: 'Jess Miller' }] }], total: 1, page: 1, pageSize: 10, totalPages: 1 });
+      if (u.includes('/duplicate-review/groups/g1')) return ok({ id: 'g1', status: 'pending', version: 1, members: [], confidence: 'strong', reasons: ['phone'], why: [] });
+      if (u.includes('/pos/customers/state')) return ok(richState);
+      return ok({});
+    }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('dup-review-open'));
+    expect(await screen.findByTestId('dup-queue-row')).toHaveTextContent('Jessica Miller · Jess Miller');
+    fireEvent.click(screen.getByTestId('dup-queue-compare'));
+    await waitFor(() => expect(calls.some((c) => c === 'GET ' + c.split(' ')[1] && /\/duplicate-review\/groups\/g1$/.test(c.split(' ')[1]))).toBe(true));
+    expect(calls.some((c) => c.startsWith('POST') && /merge/.test(c))).toBe(false);
   });
 
   it('Smooth Refresh spec §14/§49: the edit form sends the version it was opened on; a VERSION_CONFLICT keeps the form open and reloads', async () => {

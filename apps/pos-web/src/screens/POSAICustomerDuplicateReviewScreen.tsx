@@ -249,7 +249,7 @@ const ROWS: { key: string; labelKey: string; v: (m: any) => React.ReactNode }[] 
   { key: 'tags', labelKey: 'dup.c.tags', v: (m) => (m.tags.length ? m.tags.join(', ') : '—') },
 ];
 
-function CompareOverlay({ groupId, initialSurvivor, canEdit, canMerge, onClose, onChanged }: { groupId: string; initialSurvivor?: string; canEdit: boolean; canMerge: boolean; onClose: () => void; onChanged: (msg?: string) => void }) {
+export function CompareOverlay({ groupId, initialSurvivor, canEdit, canMerge, onClose, onChanged }: { groupId: string; initialSurvivor?: string; canEdit: boolean; canMerge: boolean; onClose: () => void; onChanged: (msg?: string) => void }) {
   const [d, setD] = useState<any>(null);
   const [err, setErr] = useState<string | null>(null);
   const [survivor, setSurvivor] = useState<string | undefined>(initialSurvivor);

@@ -95,7 +95,7 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "dup.rows": "Rows",
   "dup.contactFull": "Full phone and email shown",
   "dup.contactMasked": "Phone and email are masked for your role",
-  "dup.noAutoMerge": "Nothing is ever merged automatically.",
+  "dup.noAutoMerge": "Nothing is ever merged automatically.", 'cd.dup.title': 'Potential duplicates', 'cd.dup.count': '{n} groups need review', 'cd.dup.review': 'Review Duplicates', 'cd.dup.none': 'Nothing to review right now.', 'cd.dup.why': 'Why they match', 'cd.dup.loadFailed': 'Could not load the duplicate groups.',
   "dup.ov.title": "Compare {n} profiles",
   "dup.keepThis": "Keep this profile",
   "dup.mergesIn": "Merges into the kept profile",
