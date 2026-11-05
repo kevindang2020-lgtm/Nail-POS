@@ -92,4 +92,10 @@ export const RETENTION3_VI = {
   'rt5.cancelReason': 'Vì sao hủy chiến dịch này?',
   'rt5.cancelConfirm': 'Dừng các tin chưa gửi',
   'rt5.cancelFailed': 'Không hủy được chiến dịch.',
+  'rt5.addNote': 'Thêm ghi chú',
+  'rt5.notePh': 'Ghi chú cho tiệm (khách không thấy)',
+  'rt5.noteSource': 'Giữ chân khách',
+  'rt5.noteSaved': 'Đã thêm ghi chú vào hồ sơ khách.',
+  'rt5.noteFailed': 'Không lưu được ghi chú.',
+  'rt5.noteSave': 'Lưu ghi chú',
 };

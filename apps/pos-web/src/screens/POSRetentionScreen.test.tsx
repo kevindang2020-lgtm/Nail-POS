@@ -10,6 +10,8 @@ const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), customers: vi.fn(),
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posRetentionApi', () => ({ posRetentionApi: api }));
+const { notesApi } = vi.hoisted(() => ({ notesApi: { getNotes: vi.fn(), setNotes: vi.fn() } }));
+vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: notesApi }));
 import { POSRetentionScreen } from './POSRetentionScreen';
 
 const period = { preset: 'month', from: '2026-10-01', to: '2026-10-31', today: '2026-10-30', timeZone: 'America/New_York', riskDays: 60, approachingDays: 45, observationWindowDays: 30, settingsVersion: 0, segmentationVersion: 'retention-v2', priorityFormulaVersion: 'winback-v1' };
@@ -134,5 +136,20 @@ describe('POSRetentionScreen', () => {
     fireEvent.click(screen.getAllByTestId('rt-row-book')[0]!);
     expect(navigate).toHaveBeenCalledWith('/booking/new?customerId=c1&from=retention');
     expect(String(navigate.mock.calls.slice(-1)[0]?.[0])).not.toMatch(/Ana|0101|customerName|customerPhone/);
+  });
+  it('C5 §14 Add Note: a dated line is appended to the salon notes, keeping the other note fields', async () => {
+    api.customer.mockResolvedValue({ ...AT_RISK[0], asOf: '2026-10-30', thresholds: { riskDays: 60, approachingDays: 45 }, segmentReason: { code: 'inactive', days: 302 }, visits: 12, outreach: [], upcomingBookings: [], visitEvidence: [], communications: [], refunds: { count: 0, cents: 0 }, lastBooking: null, marketingSmsConsent: true, marketingEmailConsent: false, maskedEmail: null, consentUpdatedAt: null });
+    notesApi.getNotes.mockResolvedValue({ salonNotes: 'Likes almond shape', allergyNotes: 'latex' });
+    notesApi.setNotes.mockResolvedValue({});
+    render(<POSRetentionScreen />);
+    await screen.findByText('Ana Rivera');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Ana Rivera' })[0]!);
+    fireEvent.click(await screen.findByTestId('rt-add-note'));
+    fireEvent.change(screen.getByTestId('rt-note-text'), { target: { value: 'Called — will book next week' } });
+    fireEvent.click(screen.getByTestId('rt-note-save'));
+    await waitFor(() => expect(notesApi.setNotes).toHaveBeenCalled());
+    const [cid, body] = notesApi.setNotes.mock.calls[0]!;
+    expect(cid).toBe('c1'); expect(body.allergyNotes).toBe('latex');
+    expect(body.salonNotes).toMatch(/^Likes almond shape\n\d{4}-\d{2}-\d{2} · Retention: Called — will book next week$/);
   });
 });

@@ -29,6 +29,7 @@ import { useNavigate } from 'react-router-dom';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posRetentionApi, type RetentionSelection } from '../api/posRetentionApi';
+import { posCustomersApi } from '../api/posCustomersApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
@@ -347,7 +348,7 @@ export function POSRetentionScreen() {
       {dlg?.kind === 'compose' ? <ComposeDialog ready={ready} sel={dlg.single ? { mode: 'ids', ids: new Map([[dlg.single.customerId, dlg.single]]) } : sel} onClose={() => setDlg(null)}
         onQueued={(r) => { setDlg(canViewCampaigns ? { kind: 'campaign', id: r.campaignId } : null); if (!dlg.single) setSel(EMPTY_SEL); setNote({ tone: 'ok', text: r.duplicate ? tx('people.retention.alreadyQueued') : tx('people.retention.queuedNote', { n: nf(r.queued) }) }); setReload((n) => n + 1); }} /> : null}
       {dlg?.kind === 'customer' ? <CustomerDialog id={dlg.id} onClose={() => setDlg(null)} openProfile={(id, name) => nav(`/customers?customerId=${encodeURIComponent(id)}&q=${encodeURIComponent(name)}`)}
-        book={book} canText={!smsBlocked} onText={(r) => setDlg({ kind: 'compose', single: r })}
+        book={book} canText={!smsBlocked} canNote={can('pos.customers.notes.edit')} onText={(r) => setDlg({ kind: 'compose', single: r })}
         openCampaign={canViewCampaigns ? (id) => setDlg({ kind: 'campaign', id }) : undefined} /> : null}
       {dlg?.kind === 'campaigns' ? <CampaignsDialog onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'campaign', id })} /> : null}
       {dlg?.kind === 'campaign' ? <CampaignDialog id={dlg.id} canCancel={can('marketing.manage')} onClose={() => setDlg(null)} onBack={() => setDlg({ kind: 'campaigns' })} /> : null}
@@ -436,9 +437,21 @@ function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | n
 }
 
 // ── one customer's retention snapshot (guide §14): why the segment · visit evidence · upcoming bookings · consent · outreach
-function CustomerDialog({ id, onClose, openProfile, book, canText, onText, openCampaign }: { id: string; onClose: () => void; openProfile: (id: string, name: string) => void; book: (id: string) => void;
-  canText: boolean; onText: (r: Row) => void; openCampaign?: (id: string) => void }) {
+function CustomerDialog({ id, onClose, openProfile, book, canText, canNote = false, onText, openCampaign }: { id: string; onClose: () => void; openProfile: (id: string, name: string) => void; book: (id: string) => void;
+  canText: boolean; canNote?: boolean; onText: (r: Row) => void; openCampaign?: (id: string) => void }) {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
+  // C5 audit (Nov 4 2026) §14 Add Note: a dated line appended to the customer's salon notes (the same notes the profile shows)
+  const [noteOpen, setNoteOpen] = useState(false); const [noteText, setNoteText] = useState(''); const [noteBusy, setNoteBusy] = useState(false); const [noteMsg, setNoteMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const saveNote = async () => {
+    const text = noteText.trim(); if (!text || !d) return;
+    setNoteBusy(true); setNoteMsg(null);
+    try {
+      const cur = (await posCustomersApi.getNotes(d.customerId)) || {};
+      const line = `${new Date().toISOString().slice(0, 10)} · ${tx('rt5.noteSource')}: ${text}`;
+      await posCustomersApi.setNotes(d.customerId, { ...cur, salonNotes: cur.salonNotes ? `${String(cur.salonNotes).trimEnd()}\n${line}` : line });
+      setNoteText(''); setNoteOpen(false); setNoteMsg({ ok: true, text: tx('rt5.noteSaved') });
+    } catch (e) { setNoteMsg({ ok: false, text: errText(e, tx('rt5.noteFailed')) }); } finally { setNoteBusy(false); }
+  };
   useEffect(() => { posRetentionApi.customer(id).then(setD).catch((e) => setErr(errText(e, tx('people.retention.loadFailed')))); }, [id]);
   const p = d ? { riskDays: d.thresholds?.riskDays ?? 60, approachingDays: d.thresholds?.approachingDays ?? 45 } as Period : null;
   const textable = d && d.smsStatus === 'eligible' && d.segment === 'at_risk';
@@ -447,8 +460,12 @@ function CustomerDialog({ id, onClose, openProfile, book, canText, onText, openC
       footer={<>{d ? <>
         <button type="button" className="fk-btn ghost" onClick={() => openProfile(d.customerId, d.customerName)}>{tx('pos.open_profile')}</button>
         <button type="button" className="fk-btn ghost" onClick={() => book(d.customerId)} data-testid="rt-book">{tx('rt2.book')}</button>
+        {canNote ? <button type="button" className="fk-btn ghost" onClick={() => setNoteOpen((v) => !v)} data-testid="rt-add-note">{tx('rt5.addNote')}</button> : null}
         <button type="button" className="fk-btn ghost" disabled={!textable || !canText} title={!textable ? (d.segment !== 'at_risk' ? tx('rt2.onlyAtRiskSelectable') : smsLabel(d.smsStatus)) : undefined} onClick={() => onText(d as Row)} data-testid="rt-text-one">{tx('people.retention.textOne')}</button>
       </> : null}<button type="button" className="fk-btn primary" onClick={onClose} data-testid="rt-customer-close">{tx('pos.close')}</button></>}>
+      {noteOpen ? <div className="fk-row" data-testid="rt-note-form"><textarea className="fk-in" rows={2} maxLength={1000} value={noteText} onChange={(e) => setNoteText(e.target.value)} aria-label={tx('rt5.addNote')} placeholder={tx('rt5.notePh')} data-testid="rt-note-text" />
+        <button type="button" className="fk-btn primary sm" disabled={noteBusy || !noteText.trim()} onClick={() => void saveNote()} data-testid="rt-note-save">{tx('rt5.noteSave')}</button></div> : null}
+      {noteMsg ? <div className={noteMsg.ok ? 'fk-ok' : 'fk-err'} role="status">{noteMsg.text}</div> : null}
       {err ? <div className="fk-err">{err}</div> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : <div className="rt-cust">
         <section>
           <div className={'rt-why ' + (SEG_TONE[d.segment] ?? '')} data-testid="rt-segment-reason"><b>{segLabel(d.segment, p)}</b> — {tx('rt2.reason.' + d.segmentReason.code, { d: nf(d.daysAway ?? 0), r: String(d.thresholds.riskDays), a: String(d.thresholds.approachingDays) })}</div>

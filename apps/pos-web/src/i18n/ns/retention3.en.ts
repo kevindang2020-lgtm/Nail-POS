@@ -92,4 +92,10 @@ export const RETENTION3_EN = {
   'rt5.cancelReason': 'Why is this campaign canceled?',
   'rt5.cancelConfirm': 'Stop unsent texts',
   'rt5.cancelFailed': 'The campaign could not be canceled.',
+  'rt5.addNote': 'Add note',
+  'rt5.notePh': 'A note for the salon (the customer never sees it)',
+  'rt5.noteSource': 'Retention',
+  'rt5.noteSaved': 'Note added to the customer profile.',
+  'rt5.noteFailed': 'The note could not be saved.',
+  'rt5.noteSave': 'Save note',
 };
