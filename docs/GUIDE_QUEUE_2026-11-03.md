@@ -238,3 +238,7 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   upcoming-booking impact preview in Edit Pricing (booked quotes are never repriced) and Revert as a new revision (ebc5b90).
   Still open in D4: scheduled (future-effective) prices — not built; the editor stays immediate-only and says so.
   D9 "PO line discounts" dropped from the open list: the Inventory guide does not ask for them.
+- Nov 5 (night) — D4 scheduled (future-effective) prices with a one-minute job and apply-on-read (811, 92c76be); D15 history
+  day overlay + Money Protection moved to the bottom (2598530); TM-01 archived staff in customer-linked search, opt-in (016444e);
+  C2 inbox source-campaign filter, 14-day attribution window (52035a0). D9 "variants": already modelled — each colour / finish is
+  its own product row (product line, colour name / number, finish) with SKU / barcode uniqueness; nothing to build.

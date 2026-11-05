@@ -42,7 +42,7 @@ PostgreSQL stops when the container restarts. Start it again with `pg_ctlcluster
 
 ## Current state
 
-- Nov 5: latest unit ebc5b90 (D4 pricing impact + revert). Open gap lists are at the end of `docs/GUIDE_QUEUE_2026-11-03.md`.
+- Nov 5: latest unit 52035a0 (C2 source-campaign filter). Open gap lists are at the end of `docs/GUIDE_QUEUE_2026-11-03.md`.
 
 
 | Area | State |
