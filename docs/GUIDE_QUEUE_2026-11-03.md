@@ -242,3 +242,8 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   day overlay + Money Protection moved to the bottom (2598530); TM-01 archived staff in customer-linked search, opt-in (016444e);
   C2 inbox source-campaign filter, 14-day attribution window (52035a0). D9 "variants": already modelled — each colour / finish is
   its own product row (product line, colour name / number, finish) with SKU / barcode uniqueness; nothing to build.
+- Nov 5 (early) — C2 live delivery updates: new realtime event message_delivery_updated refreshes communications /
+  notifications / campaigns / reminders / retention on a signed delivery report (f7221ba); C3/C5 per-location retention history,
+  last-visit location per snapshot row, older days say "not recorded", confined roles stay in their location (812, ab9c60e);
+  C5 First Visit Invitation audience for never-visited customers, consent checked, win-back wording refused (813, ca75e5b).
+  Batch C open list is now empty except Kevin's 3 decisions.
