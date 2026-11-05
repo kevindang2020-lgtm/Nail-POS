@@ -35,7 +35,7 @@ describe('AppointmentDetailsScreen', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Cancel Appointment' }));
     const dialog = screen.getByRole('dialog');
     expect(customerApi.cancelAppointment).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole('button', { name: 'Cancel it' }));
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Yes, Cancel' }));
     await waitFor(() => expect(customerApi.cancelAppointment).toHaveBeenCalledWith('a3'));
   });
 });

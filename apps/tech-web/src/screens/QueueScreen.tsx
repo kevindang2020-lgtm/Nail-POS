@@ -70,8 +70,9 @@ export function QueueScreen() {
           </div>
         </div>
         <div className="tech-seg" style={{ marginBottom: 12 }}>
-          <button className="sel">My Queue</button>
-          <button>All</button>
+          {/* the same tab switch as the loaded screen — the choice carries over when the queue arrives */}
+          <button className={tab === 'My Queue' ? 'sel' : ''} onClick={() => setTab('My Queue')}>My Queue</button>
+          <button className={tab === 'All' ? 'sel' : ''} onClick={() => setTab('All')}>All</button>
         </div>
         <div className="tech-card" style={{ padding: '16px 16px', display: 'flex', flexDirection: 'column', gap: 16 }}>
           {[1, 2, 3].map(i => (

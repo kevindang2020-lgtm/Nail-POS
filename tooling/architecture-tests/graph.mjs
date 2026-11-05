@@ -96,7 +96,7 @@ const SDKS = ['openai', '@anthropic-ai/sdk', '@google/generative-ai', 'twilio', 
 /** wave 3 PAYI §154 / §15 / §62: a FRONTEND (any app but the API, the kiosks, the shared UI packages) that talks to a
  *  payment processor, a payment terminal or Twilio directly — a provider endpoint in its source. Absolute: the only
  *  allowed provider callers are the server-side adapters (modules/payments, packages/notifications and friends). */
-const FRONTEND_PROVIDER = /api\.twilio\.com|messaging\.twilio\.com|verify\.twilio\.com|sendgrid\.com\/v3|cardconnect\.com|cardpointe\.com|bolt[-.]?(uat|prod)?\.cardpointe|scl\.clover\.com|api\.clover\.com|sandbox\.dev\.clover\.com|commercehub|fiserv\.com/i;
+const FRONTEND_PROVIDER = /api\.twilio\.com|messaging\.twilio\.com|verify\.twilio\.com|sendgrid\.com\/v3|cardconnect\.com|cardpointe\.com|bolt[-.]?(uat|prod)?\.cardpointe|scl\.clover\.com|api\.clover\.com|sandbox\.dev\.clover\.com|commercehub[a-z0-9.-]*\.(?:com|net)|[a-z0-9-]+\.commercehub|fiserv\.com|fiservapis\.com/i;   // CommerceHub as a HOST (a call), not the product name in a label
 /** A file counts when a provider host appears in CODE — not in a comment, a placeholder hint or help text. */
 const providerCallIn = (text) => text.split('\n').some((l) => FRONTEND_PROVIDER.test(l) && !/^\s*(\/\/|\*|\/\*)/.test(l) && !/placeholder\s*=/.test(l) && !/^\s*(title|aria-label|children)\s*=/.test(l));
 export function frontendProviderCalls() {
@@ -201,6 +201,7 @@ export const PROCESS_LOCAL_SCHEDULERS = {
   'realtime/platform-live-ops.ts': 'realtime presence held in THIS process',
   'super-admin-database/slow-query-flush.scheduler.ts': 'flushes THIS process\'s in-memory slow-query samples (BUILD_PLAN Phase 10)',
   'observability/process-heartbeat.ts': 'reports THIS process\'s build, memory / CPU and registry digest (BUILD_PLAN Phase 14 B)',
+  'customer-display/terminal-capture.service.ts': 'polls ITS OWN in-flight terminal charge for a Cancel recorded by another server (migration 703); lives only while that one request waits for the customer, cleared when the charge ends',
   'observability/security-signals.ts': 'reads THIS process\'s webhook-rejection counters and ITS view of MAINTENANCE_BREAK_GLASS; the incident write is deduplicated fleet-wide (BUILD_PLAN Phase 14 C)',
 };
 export function ungatedSchedulers() {

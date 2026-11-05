@@ -26,10 +26,11 @@ const fill = () => {
 };
 
 describe('the screen matches the reference', () => {
-  it('renders the logo, brand, tagline, title and subtitle', () => {
+  it('renders the logo, app badge, title and subtitle', () => {
     render(<LoginScreen />);
     expect(screen.getByAltText('AI PowerSalon')).toBeInTheDocument();
-    expect(screen.getByText(/SMARTER SALON\. STRONGER BUSINESS\./i)).toBeInTheDocument();
+    // The tagline now lives in the logo artwork; the text badge names the app.
+    expect(screen.getByText('CUSTOMER APP')).toBeInTheDocument();
     expect(screen.getByText('Welcome Back')).toBeInTheDocument();
     expect(screen.getByText(/Sign in to book appointments/i)).toBeInTheDocument();
   });

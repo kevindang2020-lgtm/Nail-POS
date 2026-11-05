@@ -197,6 +197,7 @@ export function OwnerProfileScreen() {
   const { back, openAudit } = useOwnerNav();
   const { logout } = useAuth();
   const [profile, setProfile] = useState<OwnerProfileCard | null>(null);
+  const [avatarErr, setAvatarErr] = useState<string | null>(null);   // shown inline (no browser alert)
   const [ctx, setCtx] = useState<OwnerContextResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -314,15 +315,17 @@ export function OwnerProfileScreen() {
                   <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                      const f = e.target.files?.[0];
                     if (f) {
+                       setAvatarErr(null);
                        try {
                          const res = await ownerMoreApi.uploadAvatar(f);
                          setProfile(p => p ? { ...p, avatarUrl: res.url } : p);
                          window.dispatchEvent(new CustomEvent('owner-avatar-updated', { detail: res.url }));
                        } catch(err: any) {
-                         alert(err.message || 'Failed to upload image');
+                         setAvatarErr(err?.message || 'Failed to upload image');
                        }
                     }
                   }} />
+                  {avatarErr ? <div role="alert" style={{ fontSize: 11, color: '#b42318', fontWeight: 700, marginTop: 4 }}>{avatarErr}</div> : null}
                 </label>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div

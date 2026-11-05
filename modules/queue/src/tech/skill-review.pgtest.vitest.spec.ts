@@ -33,7 +33,7 @@ const row = async (id: string) => (await pg.query<any>(`select status, review_no
 beforeAll(async () => {
   pg = await PGlite.create();
   await pg.exec(`CREATE TABLE services (id uuid primary key, tenant_id uuid not null, branch_id uuid, name text not null, status text not null default 'active', category_id uuid)`);
-  await pg.exec(`CREATE TABLE technicians (id uuid primary key, tenant_id uuid not null, branch_id uuid, full_name text, service_eligibility_mode text not null default 'exact')   -- 631`);
+  await pg.exec(`CREATE TABLE technicians (id uuid primary key, tenant_id uuid not null, branch_id uuid, user_id uuid, full_name text, service_eligibility_mode text not null default 'exact')   -- 631; user_id: the self-approval guard reads it`);
   // Re-pinned Oct 12 2026 (merge): the mini schema now carries migration 583's columns — the unique eligibility index the ONE
   // writer relies on (INSERT … ON CONFLICT), proficiency / evidence on technician_services, and the review bookkeeping.
   await pg.exec(`CREATE TABLE technician_services (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, branch_id uuid, technician_id uuid not null, service_id uuid not null, is_primary boolean not null default false,

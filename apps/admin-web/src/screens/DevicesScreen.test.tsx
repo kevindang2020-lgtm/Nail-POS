@@ -5,6 +5,7 @@ const deviceMgmtOverview = vi.fn();
 const deviceMgmtDevice = vi.fn();
 vi.mock('../api/superAdminApi', () => ({ superAdminApi: { deviceMgmtOverview: (...a: any[]) => deviceMgmtOverview(...a), deviceMgmtDevices: vi.fn(), deviceMgmtDevice: (...a: any[]) => deviceMgmtDevice(...a) } }));
 
+import { MemoryRouter } from 'react-router-dom';
 import { DevicesScreen } from './DevicesScreen';
 
 const kpi = (key: string, label: string, value: string | null, extra: any = {}) => ({ key, label, value, available: value !== null, ...extra });
@@ -40,8 +41,8 @@ describe('DevicesScreen', () => {
   beforeEach(() => { deviceMgmtOverview.mockReset(); deviceMgmtOverview.mockResolvedValue(overview()); deviceMgmtDevice.mockReset(); deviceMgmtDevice.mockResolvedValue({ ok: true, device: { id: '1', name: 'iMac Reception POS', type: 'Reception POS', tenant: 'AI PowerSalon', branch: 'Downtown Branch', serial: 'IMAC-RECP-001', os: 'macOS 14.4', appVersion: '3.7.2', lastConnection: '1 min ago', status: 'Online', assignedUser: 'Jessica Miller', merchantTerminalId: 'MT-8821-0091', securityStatus: 'Compliant', updateStatus: 'Up To Date', ownershipType: 'Tenant owned', manufacturer: '—', model: '—', osVersion: 'macOS 14.4', minRequiredVersion: '—', configVersion: '—', connectionStatus: 'Online', lastHeartbeat: '1 min ago', ipMasked: '•••.•••.•••.•••', networkType: '—', sessionStatus: 'Active', lockStatus: 'Unlocked', certificateStatus: '—', maintenanceStatus: 'None', note: 'Device credentials never displayed.' } }); });
 
   it('renders the title, 10 KPIs, and managed devices table', async () => {
-    render(<DevicesScreen />);
-    expect(await screen.findByText('Device Management', { selector: 'h1' })).toBeInTheDocument();
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    expect(await screen.findByText(/^Device Management/, { selector: 'h1' })).toBeInTheDocument();
     expect(screen.getByText('Total Managed Devices')).toBeInTheDocument();
     expect(screen.getByText('Caller-ID Devices Online')).toBeInTheDocument();
     expect(screen.getAllByText('iMac Reception POS').length).toBeGreaterThanOrEqual(1); // table + connection log
@@ -49,8 +50,8 @@ describe('DevicesScreen', () => {
   });
 
   it('renders 11 device controls, three donuts, and the 8-card catalog', async () => {
-    render(<DevicesScreen />);
-    await screen.findByText('Device Management', { selector: 'h1' });
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    await screen.findByText(/^Device Management/, { selector: 'h1' });
     expect(screen.getByText('Register Devices')).toBeInTheDocument();
     expect(screen.getByText('Maintenance Mode')).toBeInTheDocument();
     expect(screen.getByText('Devices by Type')).toBeInTheDocument();
@@ -61,16 +62,16 @@ describe('DevicesScreen', () => {
   });
 
   it('shows offline status and marks the 7-day trend NotConnected', async () => {
-    render(<DevicesScreen />);
-    await screen.findByText('Device Management', { selector: 'h1' });
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    await screen.findByText(/^Device Management/, { selector: 'h1' });
     expect(screen.getAllByText('Offline').length).toBeGreaterThanOrEqual(1); // status pill + donut legend
     expect(screen.getByText('Connection Status & Health')).toBeInTheDocument();
     expect(screen.getByText('Merchant Terminal Connectivity')).toBeInTheDocument();
   });
 
   it('filters the device table by status', async () => {
-    render(<DevicesScreen />);
-    await screen.findByText('Device Management', { selector: 'h1' });
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    await screen.findByText(/^Device Management/, { selector: 'h1' });
     expect(screen.getAllByText('iMac Reception POS').length).toBe(2); // table row + connection log
     fireEvent.change(screen.getByLabelText('Status'), { target: { value: 'Offline' } });
     expect(screen.getByText('Customer-Facing Display')).toBeInTheDocument();
@@ -78,16 +79,16 @@ describe('DevicesScreen', () => {
   });
 
   it('opens the device detail drawer when a device name is clicked', async () => {
-    render(<DevicesScreen />);
-    await screen.findByText('Device Management', { selector: 'h1' });
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    await screen.findByText(/^Device Management/, { selector: 'h1' });
     fireEvent.click(screen.getAllByText('iMac Reception POS')[0]);
     await waitFor(() => expect(deviceMgmtDevice).toHaveBeenCalledWith('1'));
     expect(await screen.findByText('Device Details')).toBeInTheDocument();
   });
 
   it('renders security alerts, tenant usage, and shipments', async () => {
-    render(<DevicesScreen />);
-    await screen.findByText('Device Management', { selector: 'h1' });
+    render(<MemoryRouter><DevicesScreen /></MemoryRouter>);
+    await screen.findByText(/^Device Management/, { selector: 'h1' });
     expect(screen.getByText('Rooted Device Detected')).toBeInTheDocument();
     expect(screen.getByText('Tenant Device Usage Overview')).toBeInTheDocument();
     expect(screen.getByText('SHIP-2026-0152')).toBeInTheDocument();

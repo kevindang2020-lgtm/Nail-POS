@@ -10,10 +10,9 @@ import { LoginScreen, outcomeToState } from './LoginScreen';
 beforeEach(() => { login.mockReset(); });
 
 describe('POS LoginScreen', () => {
-  it('renders the official logo, brand name and tagline', () => {
+  it('renders the official logo (the tagline is part of the logo artwork)', () => {
     render(<LoginScreen />);
     expect(screen.getAllByAltText('AI PowerSalon').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/SMARTER SALON\. STRONGER BUSINESS\./i).length).toBeGreaterThan(0);
     expect(screen.getByText('Welcome Back')).toBeInTheDocument();
     expect(screen.getByText('Sign in to your POS system')).toBeInTheDocument();
   });
@@ -196,30 +195,6 @@ describe('POS LoginScreen', () => {
     expect(outcomeToState('SOMETHING_NEW', 'leaky internal detail').message).not.toContain('leaky');
   });
 
-  it('falls back to the CSS marble scene when no licensed salon photo is present', () => {
-    render(<LoginScreen />);
-    const photo = screen.getByTestId('salon-photo') as HTMLImageElement;
-    // no /brand/salon-interior.jpg ships in the repo → the probe is transparent and the CSS scene shows through
-    expect(photo.style.opacity).toBe('0');
-    fireEvent.error(photo);
-    expect(photo.style.opacity).toBe('0');
-  });
-
-  it('uses the licensed salon photo automatically once one is dropped in', () => {
-    render(<LoginScreen />);
-    const photo = screen.getByTestId('salon-photo') as HTMLImageElement;
-    expect(photo.getAttribute('src')).toBe('/brand/salon-interior.jpg');
-    fireEvent.load(photo);                       // simulates the asset existing
-    expect(photo.style.opacity).toBe('1');
-  });
-
-  it('the decorative scene is hidden from screen readers', () => {
-    const { container } = render(<LoginScreen />);
-    const scene = container.querySelector('[aria-hidden]');
-    expect(scene).toBeTruthy();
-    expect(screen.getByTestId('salon-photo').getAttribute('alt')).toBe('');
-  });
-
   it('an inactive branch shows the account-access state with a support path (not a wrong-password error)', async () => {
     login.mockResolvedValue({ outcome: 'BRANCH_INACTIVE', message: 'This salon location is not currently active. Please contact your salon owner or manager.' });
     render(<LoginScreen />);
@@ -248,36 +223,12 @@ describe('POS LoginScreen', () => {
     expect(screen.getByLabelText('Password')).toHaveAttribute('autocomplete', 'current-password');
   });
 
-  it('the salon photo is DECORATIVE — empty alt, and never announced to a screen reader', () => {
-    render(<LoginScreen />);
-    const img = screen.getByTestId('salon-photo');
-    expect(img).toHaveAttribute('alt', '');            // decorative: it carries no information
-    expect(img.closest('[aria-hidden="true"]')).toBeTruthy();
-    // it has NO accessible name, so assistive tech skips it entirely. (Note the LOGO legitimately does have
-    // one — "AI PowerSalon" — which is why this asserts the element's own properties rather than searching by
-    // name.)
-    expect(img.getAttribute('aria-label')).toBeNull();
-    expect(img.getAttribute('title')).toBeNull();
-  });
-
-  it('serves responsive WebP with a JPEG fallback — a laptop never pulls the 2x asset', () => {
-    render(<LoginScreen />);
-    const img = screen.getByTestId('salon-photo');
-    const picture = img.closest('picture')!;
-    const webp = picture.querySelector('source[type="image/webp"]')!;
-
-    expect(webp.getAttribute('srcset')).toMatch(/salon-interior-700\.webp 700w/);
-    expect(webp.getAttribute('srcset')).toMatch(/salon-interior-1400\.webp 1400w/);
-    expect(img.getAttribute('srcset')).toMatch(/salon-interior-1000\.jpg 1000w/);
-    // the photo is the backdrop of the whole sign-in page (developer redesign, Oct 2026)
-    expect(webp.getAttribute('sizes')).toBe('100vw');
-    expect(img).toHaveAttribute('src');                 // and a plain src for anything without srcset support
-  });
-
-  it('a MISSING photo leaves no broken image — the marble/gold scene simply stands', () => {
-    render(<LoginScreen />);
-    const img = screen.getByTestId('salon-photo') as HTMLImageElement;
-    fireEvent.error(img);
-    expect(img.style.opacity).toBe('0');                // invisible, not a broken-image icon
+  it('the background photo is decorative CSS, not an announced image', () => {
+    const { container } = render(<LoginScreen />);
+    const root = container.querySelector('.aps-login') as HTMLElement;
+    expect(root).toBeTruthy();
+    expect(root.querySelector('[data-testid="salon-photo"]')).toBeNull(); // no <img> layer: the photo is the page background
+    // the only images are the two logos, both with a real alt
+    for (const img of Array.from(container.querySelectorAll('img'))) expect(img.getAttribute('alt')).toBe('AI PowerSalon');
   });
 });

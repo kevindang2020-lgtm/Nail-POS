@@ -97,7 +97,7 @@ export const ERROR_REGISTRY = {
   // shows these sentences; the provider's own code (Twilio 30007, a CardPointe respstat) stays in the server log + ledger.
   PAYMENT_PROVIDER_NOT_CONFIGURED:{ status: 409, message: 'Card payments are not set up for this location yet. Take cash or contact the salon owner.', domain: 'payments', retryable: false, severity: 'info', action: 'CONTACT_MANAGER' },
   // Fiserv master build §5.3 (Nov 2026): a gateway / Bolt / tokenizer host that is not on the approved list for its environment
-  PROVIDER_HOST_NOT_ALLOWED:      { status: 400, message: 'That provider address is not approved for this environment.', domain: 'payments', retryable: false, severity: 'warning', action: 'CONTACT_SUPPORT' },
+  PROVIDER_HOST_NOT_ALLOWED:      { status: 400, message: 'That provider address is not approved for this environment.', domain: 'payments', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   // Nov 2026: a paired terminal can only be given the location the signed-in user is working at
   LOCATION_REQUIRED:              { status: 400, message: 'Choose a location first.', domain: 'payments', retryable: false, severity: 'info', action: 'NONE' },
   MERCHANT_NOT_CONFIGURED:        { status: 409, message: 'This location has no merchant account yet. Card payments are unavailable here.', domain: 'payments', retryable: false, severity: 'info', action: 'CONTACT_MANAGER' },

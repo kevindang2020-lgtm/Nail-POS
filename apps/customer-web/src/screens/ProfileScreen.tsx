@@ -96,6 +96,7 @@ export function ProfileScreen() {
 
   const name = guest ? 'Guest User' : (principal?.fullName || 'My account');
   const [profile, setProfile] = useState<CustomerProfile | null>(null);
+  const [avatarErr, setAvatarErr] = useState<string | null>(null);   // shown inline (no browser alert)
   const [imgErr, setImgErr] = useState(false);
 
   useEffect(() => {
@@ -173,16 +174,18 @@ export function ProfileScreen() {
               <input type="file" accept="image/*" style={{ display: 'none' }} onChange={async (e) => {
                 const f = e.target.files?.[0];
                 if (f) {
+                  setAvatarErr(null);
                   try {
                     const res = await customerApi.uploadAvatar(f);
                     setImgErr(false);
                     const cleanUrl = res.url ? `${res.url}${res.url.includes('?') ? '&' : '?'}t=${Date.now()}` : res.url;
                     setProfile(p => p ? { ...p, avatarUrl: cleanUrl } : p);
                   } catch (err: any) {
-                    alert(err.message || 'Failed to upload image');
+                    setAvatarErr(err?.message || 'Failed to upload image');
                   }
                 }
               }} />
+              {avatarErr ? <div role="alert" style={{ fontSize: 11, color: '#b42318', fontWeight: 700, marginTop: 4 }}>{avatarErr}</div> : null}
             </>
           )}
         </label>

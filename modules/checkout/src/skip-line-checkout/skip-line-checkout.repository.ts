@@ -55,7 +55,7 @@ export class SkipLineCheckoutRepository {
     return t ? this.buildBill(ctx, t) : null;
   }
 
-  /** Fiserv §9.4 (Customer App lane): the conditional surcharge disclosure for this ticket — the salon's switch AND the
+  /** Payment master build §9.4 (Customer App lane): the conditional surcharge disclosure for this ticket — the salon's switch AND the
    *  enrolled rate of the merchant that charges the ticket's branch. Any failure → nothing applies (fail closed). */
   async cardSurchargeDisclosure(tenantId: string, ticketId: string): Promise<{ applies: boolean; ratePercent: number }> {
     try {
@@ -209,7 +209,7 @@ export class SkipLineCheckoutRepository {
 
   /** A saved, tokenized card for app charges (never raw PAN). Returns null if absent — caller falls back to a client token. */
   async savedCardToken(ctx: SLCtx, customerId: string, methodId: string, merchantAccountId: string | null = null): Promise<{ token: string; expiry?: string } | null> {
-    // Fiserv §8D: only a provider-verified hosted-iFrame card, with consent, not revoked, bound to THIS merchant account.
+    // Payment master build §8D: only a provider-verified hosted-iFrame card, with consent, not revoked, bound to THIS merchant account.
     let q: any = this.db.selectFrom('customer_payment_methods').select(['token', 'exp_month', 'exp_year'] as any)
       .where('tenant_id', '=', ctx.tenantId).where('customer_id', '=', customerId).where('id', '=', methodId)
       .where('token_source' as any, '=', 'hosted_iframe').where('verified_at' as any, 'is not', null)

@@ -66,12 +66,15 @@ describe('OwnerSettingScreen', () => {
   it('toggles Face ID switch and updates language dropdown', async () => {
     render(<OwnerSettingScreen />);
     expect(await screen.findByText('Lotus Nails')).toBeInTheDocument();
+    // Face ID is real platform enrollment now. jsdom has no biometric authenticator, so the switch stays off
+    // and disabled, and tapping the row must not flip it.
     const faceIdRow = screen.getByText('Face ID / Biometric Login');
-    const checkbox = screen.getByRole('checkbox') as HTMLInputElement;
-
+    const checkbox = screen.getByRole('checkbox', { name: 'Face ID / Biometric Login' }) as HTMLInputElement;
     expect(checkbox.checked).toBe(false);
+    expect(checkbox).toBeDisabled();
     fireEvent.click(faceIdRow);
-    expect(checkbox.checked).toBe(true);
+    expect(checkbox.checked).toBe(false);
+    expect(screen.getByRole('checkbox', { name: 'Prompt for Face ID on app open' })).toBeDisabled();
 
     const langSelect = screen.getByRole('combobox') as HTMLSelectElement;
     expect(langSelect.value).toBe('English (US)');

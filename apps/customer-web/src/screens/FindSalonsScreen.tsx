@@ -337,29 +337,31 @@ export function FindSalonsScreen() {
           <span>Directions</span>
         </a>
 
+        {r.is_bookable_in_app && (
         <button
-          type="button"
-          onClick={() => nav('/book', { state: { preSalon: r } })}
-          style={{
-            height: 42,
-            borderRadius: 12,
-            border: 'none',
-            background: 'linear-gradient(135deg, #C9971B 0%, #A96F22 100%)',
-            color: '#FFFFFF',
-            fontWeight: 700,
-            fontSize: 13,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: 6,
-            cursor: 'pointer',
-            boxShadow: '0 3px 10px rgba(169, 111, 34, 0.25)',
-            transition: 'all 0.15s ease',
-          }}
-        >
-          <span style={{ fontSize: 14 }}>📅</span>
-          <span>Book Now</span>
-        </button>
+            type="button"
+            onClick={() => nav('/book', { state: { preSalon: r } })}
+            style={{
+              height: 42,
+              borderRadius: 12,
+              border: 'none',
+              background: 'linear-gradient(135deg, #C9971B 0%, #A96F22 100%)',
+              color: '#FFFFFF',
+              fontWeight: 700,
+              fontSize: 13,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 6,
+              cursor: 'pointer',
+              boxShadow: '0 3px 10px rgba(169, 111, 34, 0.25)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span style={{ fontSize: 14 }}>📅</span>
+            <span>Book Now</span>
+          </button>
+        )}
       </div>
     </div>
   );
@@ -522,6 +524,7 @@ export function FindSalonsScreen() {
             <div className="cust-label" style={{ fontSize: 13, color: 'var(--customer-text-secondary)' }}>
               SALONS ({data.results.length})
             </div>
+            {data.googleMessage ? <div className="cust-sub" role="status" style={{ fontSize: 12.5 }}>{data.googleMessage}</div> : null}
             {data.results.length === 0 ? (
               <div className="cust-card" style={{ padding: 20, textAlign: 'center' }}>
                 <div className="cust-sub">No salons found — try another search.</div>
@@ -529,6 +532,9 @@ export function FindSalonsScreen() {
             ) : (
               data.results.map(card)
             )}
+            {data.attribution && data.results.some((r) => r.source === 'google') ? (
+              <div className="cust-sub" style={{ fontSize: 11, textAlign: 'right' }}>{data.attribution}</div>
+            ) : null}
           </div>
         </div>
       ) : busy ? (
@@ -788,31 +794,33 @@ export function FindSalonsScreen() {
                 <span>Directions</span>
               </a>
 
+              {sheet.is_bookable_in_app && (
               <button
-                type="button"
-                style={{
-                  height: 46,
-                  borderRadius: 12,
-                  border: 'none',
-                  background: 'linear-gradient(135deg, #C9971B 0%, #A96F22 100%)',
-                  color: '#FFFFFF',
-                  fontWeight: 700,
-                  fontSize: 13.5,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  cursor: 'pointer',
-                  boxShadow: '0 3px 10px rgba(169, 111, 34, 0.25)',
-                }}
-                onClick={() => {
-                  setSheet(null);
-                  nav('/book', { state: { preSalon: sheet } });
-                }}
-              >
-                <span style={{ fontSize: 14 }}>📅</span>
-                <span>Book Now</span>
-              </button>
+                  type="button"
+                  style={{
+                    height: 46,
+                    borderRadius: 12,
+                    border: 'none',
+                    background: 'linear-gradient(135deg, #C9971B 0%, #A96F22 100%)',
+                    color: '#FFFFFF',
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: 6,
+                    cursor: 'pointer',
+                    boxShadow: '0 3px 10px rgba(169, 111, 34, 0.25)',
+                  }}
+                  onClick={() => {
+                    setSheet(null);
+                    nav('/book', { state: { preSalon: sheet } });
+                  }}
+                >
+                  <span style={{ fontSize: 14 }}>📅</span>
+                  <span>Book Now</span>
+                </button>
+              )}
             </div>
           </div>
         </div>

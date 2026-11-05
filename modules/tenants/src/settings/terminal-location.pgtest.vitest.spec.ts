@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { MIGRATIONS_DIR } from '@aipowersalon/database';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { KyselyTerminalPairingRepository } from './settings.terminals.kysely.repository';
 
@@ -11,7 +12,7 @@ const ONE = 'e1111111-1111-4111-8111-111111111111', MULTI = 'e2222222-2222-4222-
 const ONE_BR = 'e1a11111-1111-4111-8111-111111111111', M_BR1 = 'e2b11111-1111-4111-8111-111111111111', M_BR2 = 'e2b22222-1111-4111-8111-111111111111';
 let pg: any; let repo: KyselyTerminalPairingRepository;
 const q = (s: string, p: any[] = []) => pg.query(s, p).then((r: any) => r.rows as any[]);
-const MIGRATION = readFileSync(join(__dirname, '..', '..', '..', '..', 'apps', 'api', 'db', 'migrations', '702_assign_unassigned_terminals_single_location.sql'), 'utf8');
+const MIGRATION = readFileSync(join(MIGRATIONS_DIR, '702_assign_unassigned_terminals_single_location.sql'), 'utf8');
 
 beforeAll(async () => {
   pg = await migratedPglite(); repo = new KyselyTerminalPairingRepository(kyselyFor(pg) as any);

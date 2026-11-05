@@ -66,14 +66,14 @@ describe('QuickCheckInPanel — tabs and validation', () => {
     fireEvent.click(screen.getByText('New Customer'));
     expect(screen.getByPlaceholderText('First name *')).toBeInTheDocument();   // §25: first / last name (Oct 28 2026)
     expect(screen.getByPlaceholderText('Last name')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Walk-In' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Walk-In' }));
     expect(screen.getByPlaceholderText('Guest name')).toBeInTheDocument();
   });
 
   it('requires a service before completing', () => {
     globalThis.fetch = recordFetch() as any;
     render(<QuickCheckInPanel services={services} technicians={technicians} onComplete={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Walk-In' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Walk-In' }));
     fireEvent.change(screen.getByPlaceholderText('Guest name'), { target: { value: 'Walk Guest' } });
     fireEvent.click(screen.getByText('✓ Complete Check-In'));
     expect(screen.getByText('Select at least one service.')).toBeInTheDocument();
@@ -82,7 +82,7 @@ describe('QuickCheckInPanel — tabs and validation', () => {
   it('requires a guest name on the walk-in tab', () => {
     globalThis.fetch = recordFetch() as any;
     render(<QuickCheckInPanel services={services} technicians={technicians} onComplete={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Walk-In' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Walk-In' }));
     fireEvent.click(screen.getByText('Service 1'));
     fireEvent.click(screen.getByText('✓ Complete Check-In'));
     expect(screen.getByText('Guest name is required.')).toBeInTheDocument();
@@ -127,7 +127,7 @@ describe('QuickCheckInPanel — real submission', () => {
   it('surfaces a server error instead of pretending the check-in worked', async () => {
     globalThis.fetch = recordFetch({ fail: true }) as any;
     render(<QuickCheckInPanel services={services} technicians={technicians} onComplete={() => {}} />);
-    fireEvent.click(screen.getByRole('button', { name: 'Walk-In' }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Walk-In' }));
     fireEvent.change(screen.getByPlaceholderText('Guest name'), { target: { value: 'Walk Guest' } });
     fireEvent.click(screen.getByText('Service 1'));
     fireEvent.click(screen.getByText('✓ Complete Check-In'));

@@ -50,8 +50,7 @@ export async function registerPushToken(): Promise<void> {
     PushNotifications.addListener('registrationError', () => { registered = false; });
 
     PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
-      console.log('Push received in foreground:', notification);
-      alert(notification.title + '\n' + notification.body);
+      showForegroundBanner(String(notification?.title ?? ''), String(notification?.body ?? ''));   // non-blocking (no browser alert)
     });
 
     const perm = await PushNotifications.requestPermissions();
@@ -95,4 +94,19 @@ export async function unregisterPushToken(): Promise<void> {
     const mod: any = await import(/* @vite-ignore */ pkg).catch(() => null);
     await mod?.PushNotifications?.removeAllListeners?.();
   } catch { /* the server-side revoke is what matters; the listeners are housekeeping */ }
+}
+
+/** A notification that arrives while the app is open: a small banner at the top that goes away by itself (or on tap).
+ *  Text only (textContent), never HTML from the push payload. */
+function showForegroundBanner(title: string, body: string): void {
+  if (typeof document === 'undefined' || (!title && !body)) return;
+  const el = document.createElement('div');
+  el.setAttribute('role', 'status');
+  el.style.cssText = 'position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:12px;right:12px;z-index:9999;background:#2b2218;color:#fff;border-radius:12px;padding:10px 14px;font:600 13px/1.35 system-ui,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.25)';
+  const t = document.createElement('div'); t.textContent = title; t.style.fontWeight = '800';
+  const b = document.createElement('div'); b.textContent = body;
+  el.append(t, b);
+  el.addEventListener('click', () => el.remove());
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 6000);
 }

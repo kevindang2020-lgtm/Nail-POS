@@ -103,7 +103,8 @@ export async function signInWithNativeFaceId(loginWithCreds: (creds: any) => Pro
     if (/not enrolled|no credential|item not found/i.test(m)) {
       throw new FaceIdError('not_enrolled', 'Sign in with your password first to enable Biometrics.');
     }
-    throw new FaceIdError('failed', m || 'Biometric authentication failed.');
+    // Anything else from the prompt is a failed match (or lockout): retryable, and the enrolment is kept.
+    throw new FaceIdError('mismatch', m || 'Biometric authentication failed.');
   }
 
   if (!unlocked) throw new FaceIdError('cancelled', 'Biometrics was cancelled.');

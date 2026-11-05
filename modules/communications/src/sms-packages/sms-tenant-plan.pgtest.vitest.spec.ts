@@ -64,7 +64,7 @@ describe('SMS tenant plan — §65 assignment + §29 credit on the real schema',
     const plan = await svc.tenantPlan(T);
     expect(plan.assignment?.packageCode).toBe('sms_starter');
     expect(plan.balance.hasPackage).toBe(true);
-    expect(plan.recentChanges[0]).toMatchObject({ reason: 'pilot onboarding', to: 'Package 1 — Starter', from: null });
+    expect(plan.recentChanges[0]).toMatchObject({ reason: 'pilot onboarding', to: 'SMS Essential', from: null });
     const a: any = await sql`select count(*)::int as n from audit_logs where action_type = 'super_admin.sms_tenant_package_assigned' and entity_id = ${T}`.execute(db);
     expect(a.rows[0].n).toBe(1);
   });
@@ -84,7 +84,7 @@ describe('SMS tenant plan — §65 assignment + §29 credit on the real schema',
     expect(out.effective).toBe('next_cycle');
     const plan = await svc.tenantPlan(T);
     expect(plan.assignment?.packageCode).toBe('sms_growth');                       // still Growth today
-    expect(plan.assignment?.pending?.packageName).toBe('Package 1 — Starter');     // Starter queued
+    expect(plan.assignment?.pending?.packageName).toBe('SMS Essential');     // Starter queued
     expect(plan.balance.packageCode).toBe('sms_growth');                           // cycle snapshot untouched (§26)
   });
 

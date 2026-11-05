@@ -30,14 +30,13 @@ describe('the WEB build gains nothing', () => {
     expect(initNative()).toEqual({ native: false, secureStorage: false, biometrics: false });
   });
 
-  it('a native shell WITHOUT the plugins reports the capabilities honestly — it does not pretend', () => {
+  it('a native shell reports the capabilities of the plugins it actually ships', () => {
     (globalThis as any).Capacitor = { isNativePlatform: () => true };
     // a native build must have an absolute API base (see below); give it one so we test the plugin path, not that
     (window as any).APS_API_BASE = 'https://api.aipowersalon.com';
-    // secure storage IS installed (a real dependency); the biometric plugin is not wired here.
+    // Both plugins are real dependencies now (secure storage + @capgo/capacitor-native-biometric).
     const caps = initNative();
-    expect(caps.native).toBe(true);
-    expect(caps.biometrics).toBe(false);   // no biometric plugin → Face ID simply unavailable, honestly reported
+    expect(caps).toEqual({ native: true, secureStorage: true, biometrics: true });
     // → the token lives in memory for the session; it is NEVER put in localStorage instead.
     delete (window as any).APS_API_BASE;
   });
@@ -98,12 +97,12 @@ describe('biometrics adapter — nothing fails open', () => {
   });
 
   it('a CANCELLED prompt returns null — not a failure, and the enrolment survives', async () => {
-    const api = bioApi({ verifyIdentity: async () => { throw { code: '10' }; } });
+    const api = bioApi({ verifyIdentity: async () => { throw { code: '16' }; } });   // USER_CANCEL
     expect(await new CapacitorBiometrics(api).unlock()).toBeNull();
   });
 
   it('a biometric MISMATCH throws — the caller offers a retry or the password', async () => {
-    const api = bioApi({ verifyIdentity: async () => { throw { code: '15', message: 'no match' }; } });
+    const api = bioApi({ verifyIdentity: async () => { throw { code: '10', message: 'no match' }; } });
     await expect(new CapacitorBiometrics(api).unlock()).rejects.toBeTruthy();
   });
 
@@ -131,10 +130,19 @@ describe('biometry kind mapping', () => {
 // every request resolves to a path that does not exist. It surfaces as a generic network error on a customer's
 // phone, with nothing in the build having warned you. Fail loudly, at start-up, on the developer's machine.
 describe('a native build must have an absolute https API base', () => {
-  it('THROWS on native when VITE_API_BASE is not set (an empty base = same-origin = capacitor://localhost)', () => {
+  it('THROWS on native when the API base is relative (it would resolve against capacitor://localhost)', () => {
     (globalThis as any).Capacitor = { isNativePlatform: () => true };
-    // VITE_API_BASE is unset in the test env, so the resolved base is ""
-    expect(() => initNative()).toThrow(/VITE_API_BASE must be an absolute https/i);
+    (window as any).APS_API_BASE = '/api';
+    try {
+      expect(() => initNative()).toThrow(/VITE_API_BASE must be an absolute http\(s\)/i);
+    } finally {
+      delete (window as any).APS_API_BASE;
+    }
+  });
+
+  it('with no VITE_API_BASE a native build falls back to the absolute production default (no throw)', () => {
+    (globalThis as any).Capacitor = { isNativePlatform: () => true };
+    expect(() => initNative()).not.toThrow();
   });
 
   it('the WEB is unaffected — an empty base means same-origin, which is correct there', () => {

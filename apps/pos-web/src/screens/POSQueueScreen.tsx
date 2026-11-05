@@ -1,7 +1,7 @@
 import { MembershipChip, useMemberStatusMap } from './MembershipChip';
 import { ProfileAvatarWithPreview, useEventCallback } from '@aipowersalon/ui';
 import { ImeSafeInput } from '../components/ImeSafeInput';
-import { useCallback, useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { posQueueApi, type QueueFilters } from '../api/posQueueApi';
 import { posCheckInApi } from '../api/posCheckInApi';
@@ -197,10 +197,19 @@ export function POSQueueScreen() {
   useRealtime('queue', () => (autoRefresh ? refetch() : undefined));
   const [selId, setSelId] = useState<string | null>(saved0.selId || null);
   const [detail, setDetail] = useState<QDetail | null>(null);
-  const loadDetail = useCallback(async (qid: string) => { try { setDetail(await posQueueApi.item(qid) as QDetail); } catch { /* keep */ } }, []);
+  // detailFor: the guest whose detail was last requested — a late answer for another guest is dropped, and the
+  // auto-select effect below never re-requests the same guest in a loop.
+  const detailFor = useRef<string | null>(null);
+  const loadDetail = useCallback(async (qid: string) => { detailFor.current = qid; try { const d = await posQueueApi.item(qid) as QDetail; if (detailFor.current === qid) setDetail(d); } catch { /* keep */ } }, []);
   const selectItem = useEventCallback((qid: string) => { setSelId(qid); loadDetail(qid); });
   // the first queued guest fills the preview on load (a guest restored from §45 context is kept)
-  useEffect(() => { if (!selId && s?.queue?.items?.length) selectItem(s.queue.items[0].queueItemId); else if (selId && !detail) void loadDetail(selId); }, [s, selId, selectItem, detail, loadDetail]);
+  useEffect(() => {
+    if (!selId && s?.queue?.items?.length) {
+      const first = s.queue.items[0].queueItemId;
+      setSelId((cur) => cur ?? first);
+      if (detailFor.current !== first) void loadDetail(first);
+    } else if (selId && !detail && detailFor.current !== selId) void loadDetail(selId);
+  }, [s, selId, detail, loadDetail]);
   const [changeReqId, setChangeReqId] = useState<string | null>(null);
 
   // technician roster (ids) for the assign picker — queue facets only carry names

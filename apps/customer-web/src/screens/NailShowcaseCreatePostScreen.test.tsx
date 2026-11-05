@@ -26,22 +26,22 @@ describe('NailShowcaseCreatePostScreen', () => {
   it('requires at least one photo', () => {
     render(<NailShowcaseCreatePostScreen />);
     fireEvent.click(screen.getByText('Share Post'));
-    expect(screen.getByText('Add at least one photo of your nails.')).toBeInTheDocument();
+    expect(screen.getByText('Add at least one photo or video of your nails.')).toBeInTheDocument();
     expect(customerNailShowcaseApi.createPost).not.toHaveBeenCalled();
   });
 
   it('rejects an unsupported file type', () => {
     const { container } = render(<NailShowcaseCreatePostScreen />);
     fireEvent.change(fileInput(container), { target: { files: [new File(['x'], 'doc.pdf', { type: 'application/pdf' })] } });
-    expect(screen.getByText('doc.pdf: use JPG, PNG, or WEBP.')).toBeInTheDocument();
+    expect(screen.getByText('doc.pdf: use JPG, PNG, WEBP, MP4, or MOV.')).toBeInTheDocument();
   });
 
   it('rejects a file over the size limit', () => {
     const { container } = render(<NailShowcaseCreatePostScreen />);
     const big = jpg('big.jpg');
-    Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 });
+    Object.defineProperty(big, 'size', { value: 51 * 1024 * 1024 }); // server limit NS_MAX_PHOTO_BYTES = 50MB (photos + videos)
     fireEvent.change(fileInput(container), { target: { files: [big] } });
-    expect(screen.getByText('big.jpg: exceeds 10MB.')).toBeInTheDocument();
+    expect(screen.getByText('big.jpg: exceeds 50MB.')).toBeInTheDocument();
   });
 
   it('creates the post then uploads photos and navigates using the returned id', async () => {

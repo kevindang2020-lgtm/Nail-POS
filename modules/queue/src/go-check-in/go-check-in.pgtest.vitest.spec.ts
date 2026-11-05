@@ -171,8 +171,10 @@ describe('Kevin\'s decision (Oct 6 2026): the technician a guest chooses is the 
     const ci = new KyselyCheckInRepository(db);
     const ctx = { tenantId: T, branchId: B2, userId: 'display:x', role: 'KIOSK', permissions: [] } as any;
     const row: any = await ci.createRecord(ctx, { checkInId: '', customerName: 'Chose Lisa', isVip: false, appointmentId: null, source: 'walk_in', services: [{ serviceId: GEL2, serviceName: 'Gel Manicure', durationMinutes: 45, priceCents: 5000 }], technicianId: LISA, technicianName: 'Lisa', checkedInAtMs: Date.now(), status: 'waiting' } as any);
-    const [r] = await q(`select assigned_technician_id, requested_technician_id from pos_queue_items where id = $1`, [row.checkInId]);
-    expect(r).toEqual({ assigned_technician_id: LISA, requested_technician_id: null });
+    const [r] = await q(`select status, assigned_technician_id, requested_technician_id from pos_queue_items where id = $1`, [row.checkInId]);
+    // ASSIGNED straight away (status 'assigned', no front-desk confirmation step). The guest's choice is ALSO kept as the
+    // request — informational ("Requested: Lisa" on the POS) and so the turn engine treats it as a requested turn.
+    expect(r).toEqual({ status: 'assigned', assigned_technician_id: LISA, requested_technician_id: LISA });
   });
 });
 

@@ -63,7 +63,8 @@ export function TechDashboardScreen() {
     ? Math.min(100, Math.max(0, ((now - csStart) / (csEnd - csStart)) * 100)) : null;
 
   return (
-    <div >
+    <div aria-busy={!d}>
+      {!d && <span role="status" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Loading today…</span>}
       {/* Greeting — matches the reference header: time-of-day greeting, first name with a wave, new-assignment count. */}
       <div className="tech-tab-header" style={{ marginBottom: 32 }}>
         <div className="tech-tab-header__inner" style={{ paddingTop: 24, paddingBottom: 20 }}>

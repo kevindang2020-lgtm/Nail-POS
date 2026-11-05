@@ -52,6 +52,8 @@ export function RegisterScreen({ onBack, onRegistered }: { onBack: () => void; o
       .catch(() => {});
   }, []);
 
+  const manualCode = useManualCode || salons.length === 0;
+
   const submit = async () => {
     setErr(null);
     setBusy(true);
@@ -65,7 +67,8 @@ export function RegisterScreen({ onBack, onRegistered }: { onBack: () => void; o
         referralCode: referralCode.trim() ? referralCode.trim().toUpperCase() : undefined,
       };
 
-      if (useManualCode) {
+      // The code field is shown when the customer chose it OR there is no salon list to pick from.
+      if (manualCode) {
         if (!salonCode.trim()) {
           setErr('Please enter your salon code.');
           setBusy(false);
@@ -91,7 +94,7 @@ export function RegisterScreen({ onBack, onRegistered }: { onBack: () => void; o
     }
   };
 
-  const hasSalonChosen = useManualCode ? !!salonCode.trim() : !!selectedSalonId;
+  const hasSalonChosen = manualCode ? !!salonCode.trim() : !!selectedSalonId;
 
   return (
     <div style={{ height: '100vh', display: 'grid', placeItems: 'center', background: 'var(--page)' }}>
@@ -143,6 +146,7 @@ export function RegisterScreen({ onBack, onRegistered }: { onBack: () => void; o
               </div>
               <input
                 style={field}
+                aria-label="Salon code"
                 placeholder="e.g. NOVA01 or PILOT01"
                 value={salonCode}
                 onChange={(e) => setSalonCode(e.target.value)}

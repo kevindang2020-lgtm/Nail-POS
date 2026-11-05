@@ -58,6 +58,8 @@ export const ERRORS_EN = {
   'errors.PAYMENT_ALREADY_CAPTURED': 'This payment was already completed.',
   'errors.PAYMENT_IN_PROGRESS': 'A payment for this ticket is in progress. Wait for it to finish.',
   'errors.TERMINAL_NOT_FOUND': 'That payment terminal could not be found.',
+  'errors.PROVIDER_HOST_NOT_ALLOWED': 'That provider address is not approved for this environment.',
+  'errors.LOCATION_REQUIRED': 'Choose a location first.',
   'errors.REFUND_EXCEEDS_AVAILABLE_AMOUNT': 'The refund is more than the amount that can be refunded.',
   'errors.PAYMENT_PROVIDER_NOT_CONFIGURED': 'Card payments are not set up for this location yet. Take cash or contact the salon owner.',
   'errors.MERCHANT_NOT_CONFIGURED': 'This location has no merchant account yet. Card payments are unavailable here.',

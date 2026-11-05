@@ -14,7 +14,7 @@ describe('SettingsScreen', () => {
 
     // service (transactional) notifications
     const sms = await screen.findByRole('checkbox', { name: 'Appointment & service texts' });
-    expect(sms).toBeChecked();                                   // loaded from real record
+    await waitFor(() => expect(sms).toBeChecked());              // loaded from real record (async)
     const email = screen.getByRole('checkbox', { name: 'Email updates' });
     expect(email).not.toBeChecked();
     fireEvent.click(email);

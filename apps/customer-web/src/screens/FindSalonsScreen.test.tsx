@@ -23,89 +23,100 @@ const googleOnly = {
   booking_url_or_route: null, rating: 4.4, review_count: 88, open_now: true, services_preview: [], google_place_id: 'abc', distance_miles: 1.2,
 };
 
-describe('FindSalonsScreen (build doc §15–§18)', () => {
-  beforeEach(() => { vi.clearAllMocks(); (customerApi.favoriteSalons as any).mockResolvedValue({ salonIds: [], salons: [] }); });
+const empty = { results: [], radiusMiles: 30, googleEnabled: false, googleMessage: null, attribution: null };
+const search = async (q: string) => {
+  await screen.findByRole('button', { name: 'Search' });
+  fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: q } });
+  fireEvent.click(await screen.findByRole('button', { name: 'Search' })); // label is '…' while the initial load runs
+};
+const lastQuery = () => { const c = (customerApi.salonsNearby as any).mock.calls; return c[c.length - 1][0]; };
 
-  it('shows the VERBATIM §15 location copy with both buttons; denial path falls back to manual search', async () => {
-    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    expect(screen.getByText('Allow location access to find nail salons near you.')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Allow Location' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    expect(screen.getByLabelText('Search city or ZIP')).toBeInTheDocument(); // app did not break
+// The redesigned Find Salons screen opens with the search box and nearby partner salons (30 mi) already loaded,
+// instead of a location-permission prompt. "Near Me" asks for location on demand.
+describe('FindSalonsScreen (build doc §15–§18)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    (customerApi.favoriteSalons as any).mockResolvedValue({ salonIds: [], salons: [] });
+    (customerApi.salonsNearby as any).mockResolvedValue(empty);
   });
 
-  it('manual search renders partner-first results: gold badge, distance, Book Now only when bookable, google attribution + card actions', async () => {
+  it('opens with the search box and loads nearby partner salons; Near Me is offered', async () => {
+    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
+    expect(screen.getByLabelText('Search city or ZIP')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Near Me/ })).toBeInTheDocument();
+    await waitFor(() => expect(customerApi.salonsNearby).toHaveBeenCalledWith({ radiusMiles: 30 }));
+  });
+
+  it('manual search renders results: partner badge, distance, Book Now only when bookable, Google attribution', async () => {
+    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
     (customerApi.salonsNearby as any).mockResolvedValue({
       results: [partner, googleOnly], radiusMiles: 10, googleEnabled: true, googleMessage: null, attribution: 'Powered by Google',
     });
-    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: 'Cherry Hill' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await search('Cherry Hill');
     expect(await screen.findByText('Luxe Nails — Cherry Hill')).toBeInTheDocument();
-    expect((customerApi.salonsNearby as any).mock.calls[0][0]).toEqual({ searchText: 'Cherry Hill' });
-    expect(screen.getByText('AIPowerSalon Partner')).toBeInTheDocument();
+    expect(lastQuery()).toEqual({ searchText: 'Cherry Hill' });
+    expect(screen.getByText('Partner')).toBeInTheDocument();
     expect(screen.getByText(/0\.4 mi/)).toBeInTheDocument();
-    expect(screen.getAllByText('Book Now')).toHaveLength(1); // partner only — google salon is NEVER bookable
+    expect(screen.getAllByText('Book Now')).toHaveLength(1); // partner only — a Google listing is NEVER bookable in-app
     expect(screen.getByText('Polish Spot')).toBeInTheDocument();
     expect(screen.getByText(/★ 4\.4 \(88\)/)).toBeInTheDocument();
     expect(screen.getByText('Powered by Google')).toBeInTheDocument();
-    expect(screen.getAllByText('Call').length).toBeGreaterThanOrEqual(2);
     expect(screen.getAllByText('Directions').length).toBeGreaterThanOrEqual(2);
   });
 
   it('a 5-digit query searches by ZIP and the verbatim Google not-configured message renders', async () => {
+    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
     (customerApi.salonsNearby as any).mockResolvedValue({
       results: [partner], radiusMiles: 10, googleEnabled: false,
       googleMessage: 'Nearby Google salon search is not configured yet.', attribution: null,
     });
-    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: '08002' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await search('08002');
     expect(await screen.findByText('Nearby Google salon search is not configured yet.')).toBeInTheDocument();
-    expect((customerApi.salonsNearby as any).mock.calls[0][0]).toEqual({ zip: '08002' });
+    expect(lastQuery()).toEqual({ zip: '08002' });
   });
 
-  it('§18 bottom sheet: partner shows live services with prices; cross-salon booking gives the honest note instead of a Book button', async () => {
-    (customerApi.salonsNearby as any).mockResolvedValue({ results: [partner], radiusMiles: 10, googleEnabled: false, googleMessage: null, attribution: null });
+  it('§18 bottom sheet: a partner shows live services with prices and can be booked', async () => {
     (customerApi.salonServices as any).mockResolvedValue([{ serviceId: 's1', name: 'Gel Manicure', priceCents: 4500, durationMinutes: 45 }]);
     render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: 'Cherry Hill' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    (customerApi.salonsNearby as any).mockResolvedValue({ results: [partner], radiusMiles: 10, googleEnabled: false, googleMessage: null, attribution: null });
+    await search('Cherry Hill');
     fireEvent.click(await screen.findByText('Luxe Nails — Cherry Hill'));
     expect(await screen.findByText('$45.00')).toBeInTheDocument();
     expect((customerApi.salonServices as any).mock.calls[0][0]).toBe('branch-a');
-    // signed in to branch-mine ≠ branch-a → honest cross-salon note, no in-sheet Book button
-    expect(screen.getByText(/signed in with a different salon/)).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Book Appointment' })).not.toBeInTheDocument();
+    expect(screen.getAllByText('Book Now').length).toBe(2); // card + sheet
+  });
+
+  it('§18 bottom sheet: a Google-only listing has no Book button', async () => {
+    render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
+    (customerApi.salonsNearby as any).mockResolvedValue({ results: [googleOnly], radiusMiles: 10, googleEnabled: true, googleMessage: null, attribution: 'Powered by Google' });
+    await search('Cherry Hill');
+    fireEvent.click(await screen.findByText('Polish Spot'));
+    expect(screen.queryByText('Book Now')).not.toBeInTheDocument();
+    expect(customerApi.salonServices).not.toHaveBeenCalled();
   });
 });
 
 describe('FindSalonsScreen favorites (§17/§21)', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => { vi.clearAllMocks(); (customerApi.salonsNearby as any).mockResolvedValue(empty); });
 
   it('partner cards carry a heart; tapping it posts the favorite and refreshes', async () => {
     (customerApi.favoriteSalons as any).mockResolvedValueOnce({ salonIds: [], salons: [] })
-      .mockResolvedValueOnce({ salonIds: ['branch-a'], salons: [partner] });
-    (customerApi.salonsNearby as any).mockResolvedValue({ results: [partner, googleOnly], radiusMiles: 10, googleEnabled: false, googleMessage: null, attribution: null });
+      .mockResolvedValue({ salonIds: ['branch-a'], salons: [partner] });
     (customerApi.addFavoriteSalon as any).mockResolvedValue({ ok: true });
     render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: 'Cherry Hill' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    (customerApi.salonsNearby as any).mockResolvedValue({ results: [partner, googleOnly], radiusMiles: 10, googleEnabled: false, googleMessage: null, attribution: null });
+    await search('Cherry Hill');
     const heart = await screen.findByRole('button', { name: 'Favorite Luxe Nails — Cherry Hill' });
     expect(screen.queryByRole('button', { name: /Favorite Polish Spot/ })).not.toBeInTheDocument(); // no heart on google cards
     fireEvent.click(heart);
     await waitFor(() => expect(customerApi.addFavoriteSalon).toHaveBeenCalledWith('branch-a'));
-    expect(await screen.findByRole('button', { name: 'Unfavorite Luxe Nails — Cherry Hill' })).toBeInTheDocument();
+    expect((await screen.findAllByRole('button', { name: 'Unfavorite Luxe Nails — Cherry Hill' })).length).toBeGreaterThan(0);
   });
 
   it('shows the favorites strip before any search', async () => {
     (customerApi.favoriteSalons as any).mockResolvedValue({ salonIds: ['branch-a'], salons: [partner] });
     render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    expect(await screen.findByText('Your favorite salons')).toBeInTheDocument();
+    expect(await screen.findByText(/your favorite salons/i)).toBeInTheDocument();
     expect(screen.getByText('Luxe Nails — Cherry Hill')).toBeInTheDocument();
   });
 });
@@ -113,19 +124,17 @@ describe('FindSalonsScreen favorites (§17/§21)', () => {
 describe('FindSalonsScreen map view (§17)', () => {
   beforeEach(() => { vi.clearAllMocks(); (customerApi.favoriteSalons as any).mockResolvedValue({ salonIds: [], salons: [] }); });
 
-  it('List/Map toggle renders; Map mode mounts Leaflet with one pin per located salon', async () => {
+  it('List/Map toggle; Map mode mounts Leaflet with one pin per located salon', async () => {
     (customerApi.salonsNearby as any).mockResolvedValue({ results: [partner, googleOnly], radiusMiles: 10, googleEnabled: false, googleMessage: null, attribution: null });
     render(<MemoryRouter><FindSalonsScreen /></MemoryRouter>);
-    fireEvent.click(screen.getByRole('button', { name: 'Search by City or ZIP' }));
-    fireEvent.change(screen.getByLabelText('Search city or ZIP'), { target: { value: 'Cherry Hill' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
     await screen.findByText('Luxe Nails — Cherry Hill');
-    fireEvent.click(screen.getByRole('tab', { name: 'Map' }));
-    expect(screen.getByTestId('salon-map')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Map' }));
+    expect(screen.getByTestId('salon-map')).toBeVisible();
     await waitFor(() => expect(leafletMock.map).toHaveBeenCalledTimes(1));
     expect(leafletMock.tileLayer).toHaveBeenCalledWith(expect.stringContaining('openstreetmap.org'), expect.anything());
-    expect(leafletMock.marker).toHaveBeenCalledTimes(2); // partner + google, each with coordinates
-    fireEvent.click(screen.getByRole('tab', { name: 'List' }));
-    expect(await screen.findByText('Luxe Nails — Cherry Hill')).toBeInTheDocument();
+    // One pin per located salon (partner + google); the layer is rebuilt when the view changes.
+    expect(new Set((leafletMock.marker as any).mock.calls.map((c: any[]) => c[1].title))).toEqual(new Set(['Luxe Nails — Cherry Hill', 'Polish Spot']));
+    fireEvent.click(screen.getByRole('button', { name: 'List' }));
+    expect(screen.getByText('Luxe Nails — Cherry Hill')).toBeVisible();
   });
 });

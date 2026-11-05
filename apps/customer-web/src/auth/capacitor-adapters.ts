@@ -30,6 +30,9 @@ import { Capacitor } from '@capacitor/core';
 
 /** Are we actually inside a native shell? */
 export function isNativePlatform(): boolean {
+  // The live bridge object (window.Capacitor) wins; @capacitor/core's export is a snapshot taken at import time.
+  const live = (globalThis as any).Capacitor;
+  if (live && typeof live.isNativePlatform === 'function') return !!live.isNativePlatform();
   return Capacitor.isNativePlatform();
 }
 
@@ -75,7 +78,9 @@ export function makeSecureStore(): SecureStore | null {
 export function toBiometryKind(t: unknown): BiometryKind {
   const v = String(t ?? '').toLowerCase();
   if (v.includes('face') || v === '2') return 'face';
-  if (v.includes('touch') || v.includes('finger') || v === '1') return 'fingerprint';
+  // Numeric values follow the plugin's BiometryType: 1 TOUCH_ID, 2 FACE_ID, 3 FINGERPRINT, 4 FACE_AUTHENTICATION.
+  if (v === '4') return 'face';
+  if (v.includes('touch') || v.includes('finger') || v === '1' || v === '3') return 'fingerprint';
   return 'none';
 }
 
@@ -123,9 +128,10 @@ export class CapacitorBiometrics implements BiometricStore {
         useFallback: true,
       });
     } catch (e: any) {
-      // Capacitor's native-biometric reports a user cancellation distinctly from a failed match.
-      const code = String(e?.code ?? e?.message ?? '');
-      if (/10|11|15|16|cancel|user.?cancel/i.test(code)) return null;
+      // @capgo/capacitor-native-biometric BiometricAuthError: 10 AUTHENTICATION_FAILED (a mismatch — NOT a cancel),
+      // 11 APP_CANCEL, 15 SYSTEM_CANCEL, 16 USER_CANCEL, 17 USER_FALLBACK (chose the password instead).
+      const code = String(e?.code ?? '');
+      if (['11', '15', '16', '17'].includes(code) || /cancel/i.test(String(e?.message ?? ''))) return null;
       throw e;   // mismatch / lockout → the caller surfaces "didn't match, try again or use your password"
     }
 

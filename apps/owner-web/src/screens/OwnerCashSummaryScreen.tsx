@@ -82,9 +82,10 @@ export function OwnerCashSummaryScreen() {
           <button className="owner-chip" style={{ padding: '6px 12px' }} onClick={load}>Refresh</button>
         </div>
 
-        {err ? <div className="owner-chartcard" style={{ margin: '8px 0', padding: 12, color: '#c0392b' }}>{err}</div> : null}
+        {err ? <div className="owner-chartcard" role="alert" style={{ margin: '8px 0', padding: 12, color: '#c0392b' }}>{err}</div> : null}
 
-        <>
+        {/* Failed load with nothing to show: render only the error, not an empty dashboard that dereferences null. */}
+        {err && !data ? null : <>
           <div className="owner-chartcard" style={{ margin: '8px 0', padding: 18, textAlign: 'center' }}>
             <div className="muted" style={{ fontSize: 12.5, letterSpacing: 0.4 }}>TOTAL CASH POSITION</div>
             <div className="owner-serif" style={{ fontSize: 30, fontWeight: 700, margin: '4px 0', display: 'flex', justifyContent: 'center', alignItems: 'baseline', gap: 6 }}>
@@ -93,9 +94,9 @@ export function OwnerCashSummaryScreen() {
                   <div className="owner-skel" style={{ width: 80, height: 36 }} />
                   <span style={{ fontSize: 15, opacity: 0.55 }}> / <div className="owner-skel" style={{ width: 60, height: 18, display: 'inline-block' }} /></span>
                 </>
-              ) : (
-                <>{money(data!.total.countedCents)}<span style={{ fontSize: 15, opacity: 0.55 }}> / {money(data!.total.expectedCents)}</span></>
-              )}
+              ) : data ? (
+                <>{money(data.total.countedCents)}<span style={{ fontSize: 15, opacity: 0.55 }}> / {money(data.total.expectedCents)}</span></>
+              ) : <span aria-hidden>—</span>}
             </div>
             <div style={{ fontSize: 14, fontWeight: 700, color: tv === 0 ? '#2e7d32' : '#c0392b' }}>
               {loading && !data ? <div className="owner-skel" style={{ width: 200, height: 18, margin: '0 auto' }} /> : (tv === 0 ? 'Balanced — counted matches expected' : `${tv > 0 ? 'Over' : 'Short'} ${money(Math.abs(tv))}`)}
@@ -107,7 +108,7 @@ export function OwnerCashSummaryScreen() {
             <Pool title="Technician cash" p={data?.techCash as CashPoolSummary} hint={data ? (data.techCash.unitCount === 1 ? 'technician' : 'technicians') : ''} loading={loading && !data} />
           </div>
           <div className="muted" style={{ fontSize: 11.5, padding: '0 2px' }}>Register drawer = float + cash sales − refunds + cash in − cash out. Technician cash = Skip-the-Line cash collected by techs. Reconcile each in the POS (Cash Drawer and End-of-Day Cash).</div>
-        </>
+        </>}
       </div>
     </>
   );

@@ -64,10 +64,14 @@ describe('TechEarningsScreen', () => {
   it('re-queries the canonical endpoint when the period changes', async () => {
     renderScreen();
     await screen.findByText('$568.00');
-    fireEvent.click(screen.getByRole('button', { name: 'Day' }));
-    await waitFor(() => expect(techApi.earningsCanonical).toHaveBeenCalledWith('day'));
-    fireEvent.click(screen.getByRole('button', { name: 'Month' }));
-    await waitFor(() => expect(techApi.earningsCanonical).toHaveBeenCalledWith('month'));
+    // Period is picked from the date-range sheet (Today / This Week / This Month ...), not inline Day/Month tabs.
+    const periods = () => (techApi.earningsCanonical as any).mock.calls.map((c: unknown[]) => c[0]);
+    fireEvent.click(screen.getByRole('button', { name: 'Select date range' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Today' }));
+    await waitFor(() => expect(periods()).toContain('day'));
+    fireEvent.click(screen.getByRole('button', { name: 'Select date range' }));
+    fireEvent.click(screen.getByRole('button', { name: 'This Month' }));
+    await waitFor(() => expect(periods()).toContain('month'));
   });
 
   it('shows an empty breakdown message', async () => {

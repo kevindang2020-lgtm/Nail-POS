@@ -230,7 +230,8 @@ export function PortfolioOverviewScreen() {
     : { value: '', sub: '', tone: 'none' as const };
 
   return (
-    <div style={{ padding: '14px 16px max(20px, env(safe-area-inset-bottom))' }}>
+    <div style={{ padding: '14px 16px max(20px, env(safe-area-inset-bottom))' }} aria-busy={loading}>
+      {loading && <span role="status" style={{ position: 'absolute', width: 1, height: 1, overflow: 'hidden', clip: 'rect(0 0 0 0)', whiteSpace: 'nowrap' }}>Loading portfolio…</span>}
       <h1 style={{ fontSize: 20, color: TEXT, margin: '0 0 2px', fontWeight: 700 }}>All Salons</h1>
       <p style={{ fontSize: 12.5, color: MUTED, margin: '0 0 14px' }}>Portfolio overview · today</p>
 

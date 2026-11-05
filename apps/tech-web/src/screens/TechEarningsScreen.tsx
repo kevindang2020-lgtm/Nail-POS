@@ -112,7 +112,7 @@ export function TechEarningsScreen() {
       <div className="tech-tab-header" style={{ marginBottom: 32 }}>
         <div className="tech-tab-header__inner">
           <div className="t-title">Earnings</div>
-          <button className="tech-iconbtn" style={{ marginLeft: 'auto' }} aria-label="Refresh" onClick={() => setModalOpen(true)}><Cal /></button>
+          <button className="tech-iconbtn" style={{ marginLeft: 'auto' }} aria-label="Select date range" onClick={() => setModalOpen(true)}><Cal /></button>
         </div>
       </div>
 <div className="tech-main-2">
@@ -251,7 +251,7 @@ export function TechEarningsScreen() {
           <div style={{ background: 'var(--tech-background)', width: 'calc(100% - 32px)', maxWidth: 400, borderRadius: 24, padding: '24px 20px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 8px 32px rgba(0,0,0,0.15)', boxSizing: 'border-box' }} onClick={(e) => e.stopPropagation()}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
               <div className="tech-h-serif" style={{ fontSize: 24, fontWeight: 700 }}>Select Date</div>
-              <button className="tech-iconbtn" onClick={() => setModalOpen(false)} style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
+              <button className="tech-iconbtn" aria-label="Close" onClick={() => setModalOpen(false)} style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>

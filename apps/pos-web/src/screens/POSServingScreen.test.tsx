@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor as waitForLoad } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSServingScreen } from './POSServingScreen';
 
@@ -15,12 +15,17 @@ const mockByUrl = (map: Record<string, unknown>) => vi.fn(async (url: any) => {
   return { ok: true, status: 200, json: async () => ({}), headers: { get: () => null } } as any;
 });
 beforeEach(() => { vi.restoreAllMocks(); });
+// The header renders before the data; wait until the first load has finished.
+const loaded = async () => {
+  await screen.findByText('Serving');
+  await waitForLoad(() => expect(screen.queryByText('Loading serving…')).toBeNull());
+};
 
 describe('POSServingScreen', () => {
   it('mounts and renders the serving board + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/serving': servingState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    expect(await screen.findByText('Serving')).toBeInTheDocument();
+    await loaded();
     expect(screen.getByText('No active services.')).toBeInTheDocument();
   });
 
@@ -35,7 +40,7 @@ describe('POSServingScreen', () => {
     };
     globalThis.fetch = mockByUrl({ '/pos/serving': withTickets, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    expect(await screen.findByText('Serving')).toBeInTheDocument();
+    await loaded();
     expect(screen.getByText('Service Progress Board')).toBeInTheDocument();
     expect(screen.getByText('AI Service Insights')).toBeInTheDocument();
     expect(screen.getByText('Live Service Floor')).toBeInTheDocument();
@@ -62,7 +67,8 @@ describe('POSServingScreen', () => {
       tickets: { items: [{ ticketId: 't1', ticketNumber: 'A1', customerName: 'Jessica Miller', isVip: true, serviceNames: ['Gel X'], primaryTechnicianName: 'Mia', elapsedMinutes: 10, estimatedDurationMinutes: 45, subtotalCents: 6000, status: 'in_progress' }], pagination: { totalItems: 1 } },
       filters: { statuses: [], technicians: [], serviceCategories: [], stations: [], delayStatuses: [] },
     };
-    const detail = { ticketId: 't1', customer: { fullName: 'Jessica Miller', phone: '555-0100', isVip: true }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'in_service' }], subtotalCents: 6000, estimatedEndAt: null };
+    // allowedActions come from the server (status ∩ settings ∩ permissions); the screen never infers them.
+    const detail = { allowedActions: ['send_to_service_done'], ticketId: 't1', customer: { fullName: 'Jessica Miller', phone: '555-0100', isVip: true }, services: [{ serviceLineId: 'l1', serviceName: 'Gel X', priceCents: 6000, status: 'in_service' }], subtotalCents: 6000, estimatedEndAt: null };
     const revData = { ticketId: 't1', currentVersion: 2, revisions: [
       { version: 1, action: 'service_added', summary: 'Added Gel X', actorRole: 'TECH', createdAt: '2026-06-01T00:30:00.000Z' },
       { version: 2, action: 'technician_assigned', summary: 'Assigned Mia', actorRole: 'MANAGER', createdAt: '2026-06-01T00:35:00.000Z' },
@@ -118,7 +124,7 @@ describe('POSServingScreen — header filters (were dead/missing)', () => {
   it('service filter populates from facets and refetches with serviceCategory=', async () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    await screen.findByText('Serving');
+    await loaded();
     const sel = screen.getByLabelText('Service filter') as HTMLSelectElement;
     expect(within(sel).getByText('Pedicure')).toBeInTheDocument();
     fireEvent.change(sel, { target: { value: 'Pedicure' } });
@@ -128,7 +134,7 @@ describe('POSServingScreen — header filters (were dead/missing)', () => {
   it('search box refetches with search=', async () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    await screen.findByText('Serving');
+    await loaded();
     fireEvent.change(screen.getByLabelText('Search serving'), { target: { value: 'Mia' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/serving/state') && c.url.includes('search=Mia'))).toBe(true));
   });
@@ -136,7 +142,7 @@ describe('POSServingScreen — header filters (were dead/missing)', () => {
   it('delay filter refetches with delayStatus=', async () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    await screen.findByText('Serving');
+    await loaded();
     fireEvent.change(screen.getByLabelText('Delay filter'), { target: { value: 'delayed' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/serving/state') && c.url.includes('delayStatus=delayed'))).toBe(true));
   });
@@ -146,7 +152,7 @@ describe('POSServingScreen — per-ticket Manage drawer (was orphaned)', () => {
   it('opens the drawer; Report Delay requires a reason then hits the real endpoint', async () => {
     const f = recServing(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    await screen.findByText('Serving');
+    await loaded();
     fireEvent.click(await screen.findByText('Manage'));
     const drawerRow = screen.getByText('Report Delay').closest('tr') as HTMLElement;
     expect(within(drawerRow).getByText('Clear Delay')).toBeInTheDocument();
@@ -170,7 +176,7 @@ describe('POSServingScreen — Requested-Technician Change Approvals (was unrend
     const f = recServing({ changeReqs: [{ requestId: 'cr1', customerName: 'Ann Lee', currentTechnicianName: 'Mia', requestedTechnicianName: 'Leo', reason: 'prefers Leo' }] });
     globalThis.fetch = f as any;
     render(<MemoryRouter><POSServingScreen /></MemoryRouter>);
-    await screen.findByText('Serving');
+    await loaded();
     expect(await screen.findByText('Requested-Technician Change Approvals')).toBeInTheDocument();
     expect(screen.getByText('Ann Lee')).toBeInTheDocument();
     fireEvent.click(screen.getByText('Approve'));

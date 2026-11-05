@@ -3,6 +3,7 @@ import { afterEach } from 'vitest';
 import { cleanup } from '@testing-library/react';
 // Register the EN/VI catalogues once (as main.tsx does) so screens render English text, not raw i18n keys.
 import '../i18n';
+import '../components/uiText';   // as main.tsx: translated text for the shared @aipowersalon/ui components
 
 afterEach(() => cleanup());
 

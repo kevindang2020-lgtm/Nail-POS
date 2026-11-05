@@ -600,7 +600,7 @@ export function TechProfileScreen() {
             <input ref={avatarRef} type="file" accept="image/jpeg,image/png,image/webp" style={{ display: 'none' }} aria-label="Avatar file" onChange={(e) => onAvatar(e.target.files?.[0])} />
             <div style={{ minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 800, fontSize: 16 }}>{p.displayName}</div>
-              <div className="tech-muted" style={{ fontSize: 12 }}>{stars(p.overallRating)} · {p.ratingCount} reviews · {photos.length} photos</div>
+              <div className="tech-muted" style={{ fontSize: 12 }}>{stars(p.overallRating)} · {p.ratingCount} reviews · {Math.max(p.portfolioPhotoCount ?? 0, photos.length)} photos</div>
               <div style={{ marginTop: 6, height: 6, borderRadius: 99, background: '#EFE6D6', overflow: 'hidden' }} aria-label={`Profile ${p.completionPercent}% complete`}>
                 <div style={{ width: `${p.completionPercent}%`, height: '100%', background: 'linear-gradient(90deg,#C9962E,#A96F22)' }} />
               </div>

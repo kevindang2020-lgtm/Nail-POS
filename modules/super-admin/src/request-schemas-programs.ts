@@ -61,8 +61,8 @@ export const MA_REASON_BODY: BodySchema = obj({ reason: str(2000) });
 export const MA_FUNDING_BODY: BodySchema = money({ stepUpConfirmed: flag, accountNumber: str(34), routingNumber: str(20), bankName: str(200), accountType: str(20), fundingSchedule: str(20), reason: str(2000) });
 export const MA_MID_BODY: BodySchema = obj({ merchantId: str(64), branchId: id, reason: str(2000) });
 export const MA_TERMINAL_BODY: BodySchema = obj({ terminalId: str(64), branchId: id, reason: str(2000) });
-/** Fiserv master build §9.2: record (or withdraw) a merchant's Fiserv Merchant Surcharge Program enrollment — the rate is
- *  Fiserv's per-MID rate in basis points (100–300), the reference is Fiserv's written enrollment confirmation */
+/** Payment master build §9.2: record (or withdraw) a merchant's processor Merchant Surcharge Program enrollment — the rate is
+ *  the processor's per-MID rate in basis points (100–300), the reference is the processor's written enrollment confirmation */
 export const MA_SURCHARGE_BODY: BodySchema = obj({ enrolled: flag, rateBps: numish, reference: str(200), branchId: id, reason: str(2000) });
 
 // ── owner portfolios ───────────────────────────────────────────────────────────────────────────────────────────────

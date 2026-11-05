@@ -60,6 +60,7 @@ export function TechHelpScreen() {
   const [message, setMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [sentSuccess, setSentSuccess] = useState(false);
+  const [sendErr, setSendErr] = useState<string | null>(null);   // shown inline (no browser alert)
 
   useEffect(() => {
     let alive = true;
@@ -80,12 +81,13 @@ export function TechHelpScreen() {
     e.preventDefault();
     if (!message.trim() || sending) return;
     setSending(true);
+    setSendErr(null);
     try {
       await techApi.sendMessageToManager(topic, message.trim());
       setSentSuccess(true);
       setMessage('');
     } catch (err: any) {
-      alert(err?.message || 'Could not send message to manager.');
+      setSendErr(err?.message || 'Could not send message to manager.');
     } finally {
       setSending(false);
     }
@@ -367,6 +369,7 @@ export function TechHelpScreen() {
         <div style={{ fontWeight: 800, fontSize: 15, color: 'var(--tech-text, #2b2218)' }}>
           Send Message to Manager
         </div>
+        {sendErr ? <div role="alert" style={{ fontSize: 13, color: '#b42318', fontWeight: 700 }}>{sendErr}</div> : null}
 
         {sentSuccess ? (
           <div

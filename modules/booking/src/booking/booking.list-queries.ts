@@ -10,4 +10,7 @@ export const BookingControllerListQueries = {
   availability: { filters: { date: { type: 'date' }, serviceIds: { type: 'id', multi: true }, technicianId: { type: 'id' }, branchId: { type: 'id' } }, search: false },
   changes: { filters: { since: { type: 'date' } }, search: false },
   dayGrid: { filters: { date: { type: 'date' } }, search: false },
+  // GET /pos/booking/technicians — the paged technician column picker. The service clamps the page size itself
+  // (BOOKING_TECH_PAGE_SIZE_MAX); declared here so unknown filters / an over-long search are refused at the edge.
+  technicianPage: { filters: { date: { type: 'date' }, serviceIds: { type: 'id', multi: true }, working: { type: 'text' }, status: { type: 'text' }, skill: { type: 'text' }, locate: { type: 'id' } }, limitParams: ['pageSize'], params: ['page'], search: { params: ['search'], maxLength: 80 } },
 } satisfies Record<string, ListQuerySpec>;

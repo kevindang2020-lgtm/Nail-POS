@@ -74,7 +74,7 @@ export class SkipLineCheckoutService {
     // Cash-to-technician is the ONLY way a customer settles without the front desk (card payments are started
     // by the front desk via sendAppPayment). So "require front desk approval" means exactly: do not offer it.
     if (settings.allowCashToTechnician && !settings.requireFrontDeskApproval) enabledMethods.push('cash_to_technician');
-    // Fiserv §9.4 / N.J.S.A. 56:8-156.2: the app must show the conditional credit-card surcharge BEFORE payment
+    // Payment master build §9.4 / N.J.S.A. 56:8-156.2: the app must show the conditional credit-card surcharge BEFORE payment
     const surcharge = bill && this.repo.cardSurchargeDisclosure ? await this.repo.cardSurchargeDisclosure(ctx.tenantId, bill.ticketId) : { applies: false, ratePercent: 0 };
     return { bill, enabledMethods, settings, surcharge };
   }
@@ -273,7 +273,7 @@ export class SkipLineCheckoutService {
     if (!processor) return { configured: false, disabledReason: 'Card processor is not configured yet.', intentId, status: 'requires_action' };
     // resolve a tokenized card: client-tokenized (hosted fields / wallet) or a saved method
     let token = body?.token || body?.account; let expiry = body?.expiry; let savedCard = false;
-    // Fiserv §8D: a saved card is chargeable only where it was provider-verified (same merchant account), with recorded
+    // Payment master build §8D: a saved card is chargeable only where it was provider-verified (same merchant account), with recorded
     // consent and not revoked — the repository refuses anything else (legacy / synthetic rows included).
     if (!token && body?.paymentMethodId) { const saved = await this.repo.savedCardToken(ctx, customerId, String(body.paymentMethodId), merchantAccountId ?? null); if (saved) { savedCard = true; token = saved.token; expiry = expiry || saved.expiry; } }
     if (!token) throw new SkipLineError('card_token_required', 'A tokenized card is required (hosted fields or a saved method).', 400);
@@ -285,7 +285,7 @@ export class SkipLineCheckoutService {
     // and — for a SAVED card — the Stored Credential framework fields: cardholder-initiated, unscheduled.
     const auth = await processor.authorizeAndCapture({ account: String(token), expiry, amountCents: amount, orderId: ticketId, idempotencyKey: idem,
       ecomind: 'E', name: bill.customerName || undefined, ...(savedCard ? { cof: 'C' as const, cofscheduled: 'N' as const } : {}) });
-    // Fiserv §7.3 / §8D: a non-answer is not a decline. respstat 'B' (retry) or anything that is neither approved nor
+    // Payment master build §7.3 / §8D: a non-answer is not a decline. respstat 'B' (retry) or anything that is neither approved nor
     // declined leaves the intent 'processing' for provider inquiry — the customer is NOT told "declined" and invited to
     // pay again, and nothing is recorded as paid.
     const providerFee = Math.max(0, auth.surchargeCents ?? 0);

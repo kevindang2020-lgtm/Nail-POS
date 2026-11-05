@@ -1,46 +1,59 @@
+// The notification inbox is server-backed (GET /owner/notifications, POST /owner/notifications/read).
+// The earlier test targeted a static mock with category chips and preference sections that no longer exist.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 const back = vi.hoisted(() => vi.fn());
-vi.mock('../shell/nav', () => ({
-  useOwnerNav: () => ({ back }),
-}));
+vi.mock('../shell/nav', () => ({ useOwnerNav: () => ({ back }) }));
+vi.mock('../api/ownerApi', () => ({ ownerNotificationsApi: { get: vi.fn(), markRead: vi.fn() } }));
 
+import { ownerNotificationsApi } from '../api/ownerApi';
 import { OwnerNotificationScreen } from './OwnerNotificationScreen';
+
+const now = new Date().toISOString();
+const inbox = () => ({
+  unreadCount: 1,
+  items: [
+    { id: 'n1', type: 'payment', title: 'Payroll Approval Required', body: 'Week 44 is ready', reference: null, readAt: null, createdAt: now },
+    { id: 'n2', type: 'appointment', title: 'Booking confirmed', body: null, reference: null, readAt: now, createdAt: now },
+  ],
+});
 
 describe('OwnerNotificationScreen', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    (ownerNotificationsApi.get as any).mockResolvedValue(inbox());
+    (ownerNotificationsApi.markRead as any).mockResolvedValue({ ok: true });
   });
 
-  it('renders header, back button, and notification sections', () => {
+  it('shows a loading state, then the server notifications and unread count', async () => {
     render(<OwnerNotificationScreen />);
-    expect(screen.getByText('Notifications')).toBeInTheDocument();
-    expect(screen.getByText('Push Notifications')).toBeInTheDocument();
-    expect(screen.getByText('Email Summaries')).toBeInTheDocument();
-    expect(screen.getByText('In-App Sound Alerts')).toBeInTheDocument();
+    expect(screen.getByText('Loading...')).toBeInTheDocument();
+    expect(await screen.findByText('Payroll Approval Required')).toBeInTheDocument();
+    expect(screen.getByText('Week 44 is ready')).toBeInTheDocument();
+    expect(screen.getByText('Booking confirmed')).toBeInTheDocument();
+    expect(screen.getByText('1')).toBeInTheDocument();
   });
 
   it('triggers back navigation on back button click', () => {
     render(<OwnerNotificationScreen />);
-    const backBtn = screen.getByLabelText('Back');
-    fireEvent.click(backBtn);
+    fireEvent.click(screen.getByLabelText('Back'));
     expect(back).toHaveBeenCalledTimes(1);
   });
 
-  it('filters notifications when category chips are clicked', () => {
+  it('shows the empty state when there are no notifications', async () => {
+    (ownerNotificationsApi.get as any).mockResolvedValue({ unreadCount: 0, items: [] });
     render(<OwnerNotificationScreen />);
-    expect(screen.getByText('Payroll Approval Required')).toBeInTheDocument();
-
-    const payrollChip = screen.getByText('payroll');
-    fireEvent.click(payrollChip);
-    expect(screen.getByText('Payroll Approval Required')).toBeInTheDocument();
+    expect(await screen.findByText("You're all caught up")).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Mark all read/ })).toBeDisabled();
   });
 
-  it('marks all notifications as read when Mark all read is clicked', () => {
+  it('marks all notifications as read on the server', async () => {
     render(<OwnerNotificationScreen />);
-    const markReadBtn = screen.getByText(/Mark all read/);
-    fireEvent.click(markReadBtn);
-    expect(screen.queryByText('New')).not.toBeInTheDocument();
+    await screen.findByText('Payroll Approval Required');
+    fireEvent.click(screen.getByRole('button', { name: /Mark all read/ }));
+    await waitFor(() => expect(ownerNotificationsApi.markRead).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(screen.queryByText('1')).not.toBeInTheDocument());
+    expect(screen.getByRole('button', { name: /Mark all read/ })).toBeDisabled();
   });
 });

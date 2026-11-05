@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { waitFor as waitForQ } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { POSQueueScreen } from './POSQueueScreen';
 
@@ -16,12 +17,17 @@ const mockByUrl = (map: Record<string, unknown>) => vi.fn(async (url: any) => {
 });
 
 beforeEach(() => { vi.restoreAllMocks(); });
+// The page chrome renders before the data (aria-busy skeleton); wait for the first load to land.
+const loadedQ = async () => {
+  await screen.findByText('Customer Queue');
+  await waitForQ(() => expect(screen.getByTestId('queue-page').getAttribute('aria-busy')).not.toBe('true'));
+};
 
 describe('POSQueueScreen', () => {
   it('mounts past loading and renders the queue + empty state', async () => {
     globalThis.fetch = mockByUrl({ '/pos/queue/state': queueState, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    expect(await screen.findByText('Customer Queue')).toBeInTheDocument();
+    await loadedQ();
     expect(screen.getByText('No customers waiting.')).toBeInTheDocument();
     // T06 added modules
     expect(screen.getByText('Customer Profile Preview')).toBeInTheDocument();
@@ -42,7 +48,7 @@ describe('POSQueueScreen', () => {
     };
     globalThis.fetch = mockByUrl({ '/pos/queue/state': withItems, '/pos/technicians/state': { rows: { items: [] } } }) as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    expect(await screen.findByText('Customer Queue')).toBeInTheDocument();
+    await loadedQ();
     expect(screen.getByText('Queue Flow Board')).toBeInTheDocument();
     expect(screen.getByText('AI Queue Insights')).toBeInTheDocument();
     expect(screen.getByText(/Live Customer Queue/)).toBeInTheDocument();
@@ -104,7 +110,7 @@ describe('POSQueueScreen — header filters drive real refetches (were dead/miss
   it('the service filter populates from facets and refetches with serviceCategory=', async () => {
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText('Customer Queue');
+    await loadedQ();
     const sel = screen.getByLabelText('Service filter') as HTMLSelectElement;
     expect(within(sel).getByText('Pedicure')).toBeInTheDocument();
     fireEvent.change(sel, { target: { value: 'Pedicure' } });
@@ -114,7 +120,7 @@ describe('POSQueueScreen — header filters drive real refetches (were dead/miss
   it('the source filter refetches with source=', async () => {
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText('Customer Queue');
+    await loadedQ();
     fireEvent.change(screen.getByLabelText('Source filter'), { target: { value: 'appointment' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/queue/state') && c.url.includes('source=appointment'))).toBe(true));
   });
@@ -122,7 +128,7 @@ describe('POSQueueScreen — header filters drive real refetches (were dead/miss
   it('the search box refetches with search=', async () => {
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText('Customer Queue');
+    await loadedQ();
     fireEvent.change(screen.getByLabelText('Search queue'), { target: { value: 'Jessica' } });
     await waitFor(() => expect((f as any).calls.some((c: any) => c.url.includes('/pos/queue/state') && c.url.includes('search=Jessica'))).toBe(true));
   });
@@ -132,7 +138,7 @@ describe('POSQueueScreen — per-item Manage drawer (was orphaned)', () => {
   it('opens the drawer and cancel requires a reason before hitting the real endpoint', async () => {
     const f = recQueue(); globalThis.fetch = f as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText('Customer Queue');
+    await loadedQ();
     fireEvent.click(await screen.findByText('Manage'));
     // drawer actions present (the drawer row also holds the unique "Cancel from Queue" button)
     const drawerRow = screen.getByText('Cancel from Queue').closest('[role="dialog"]') as HTMLElement;   // Customer Queue mandate §19: Manage is an overlay
@@ -154,7 +160,7 @@ describe('POSQueueScreen — per-item Manage drawer (was orphaned)', () => {
   it('assign requires a technician selection', async () => {
     globalThis.fetch = recQueue() as any;
     render(<MemoryRouter><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText('Customer Queue');
+    await loadedQ();
     fireEvent.click(await screen.findByText('Manage'));
     const drawerRow = screen.getByText('Cancel from Queue').closest('[role="dialog"]') as HTMLElement;   // Customer Queue mandate §19: Manage is an overlay
     fireEvent.click(within(drawerRow).getByText('Assign'));
@@ -170,7 +176,7 @@ describe('Overview "Assign Tech" deep-link', () => {
   });
   it('does NOT open the assign sheet on a normal visit', async () => {
     render(<MemoryRouter initialEntries={['/queue']}><POSQueueScreen /></MemoryRouter>);
-    await screen.findByText(/Queue|Waiting/i);
+    await loadedQ();
     expect(screen.queryByText('Add to Queue / Assign')).not.toBeInTheDocument();
   });
 });

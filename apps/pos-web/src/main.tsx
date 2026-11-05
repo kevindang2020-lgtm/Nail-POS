@@ -1,4 +1,5 @@
 import './i18n';
+import './components/uiText';   // registers the translated text for the shared @aipowersalon/ui components
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

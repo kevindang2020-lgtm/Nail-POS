@@ -26,7 +26,8 @@ const GUEST_ALLOWED: RegExp[] = [
   /^\/customer\/techs\/[^/]+$/,
   /^\/customer\/nail-showcase\/feed(\?|$)/,
   /^\/customer\/nail-showcase\/[^/]+$/,
-  /^\/customer\/deals(\?|$)/,
+  // Deals: the server's guest routes are nearby, public/:id and public/:id/estimate. The bare list is private.
+  /^\/customer\/deals\/public\/[^/]+(\/estimate)?(\?|$)/,
   /^\/customer\/deals\/nearby(\?|$)/,
   /^\/customer\/booking\/options(\?|$)/,
   /^\/customer\/booking\/service-technicians(\?|$)/,

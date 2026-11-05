@@ -1,9 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- BUILD_PLAN Phase 13 D (Constitution 6 §137, audit bug 10): the DEBUG configuration's Info.plist (INFOPLIST_FILE of the
-     Debug build only). Identical to Info.plist except NSAllowsLocalNetworking, so a debug build can reach a LAN / localhost dev
-     API and the live-reload server. Release builds use Info.plist: no ATS exception at all. Keep the two in step —
-     tooling/mobile/check-native-config.mjs fails if they differ in anything else. -->
 <plist version="1.0">
 <dict>
 	<key>CAPACITOR_DEBUG</key>
@@ -28,13 +24,13 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>NSFaceIDUsageDescription</key>
-	<string>We use Face ID to securely and quickly sign you in.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSAllowsArbitraryLoads</key>
+		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>We use Face ID to securely and quickly sign you in.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>This app requires camera access for taking salon style photos and profile pictures.</string>
 	<key>NSPhotoLibraryUsageDescription</key>

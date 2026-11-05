@@ -46,16 +46,15 @@ beforeAll(async () => {
 }, 240_000);
 
 describe('SMS verification packages — P1 schema + CRUD', () => {
-  it('seeds exactly the three packages, unpriced and not self-service until Super Admin configures them', async () => {
+  it('seeds exactly the three packages, priced by the Oct 15 2026 SMS pricing guide (migration 664)', async () => {
+    // Re-pinned Nov 5 2026: migration 664 replaced the unpriced placeholders with the guide's three tiers. Nothing else
+    // in this file changed meaning — Super Admin still edits every number below.
     const { packages } = await svc.listPackages();
     expect(packages.map((p) => p.code)).toEqual(['sms_starter', 'sms_growth', 'sms_pro']);
-    for (const p of packages) {
-      expect(p.monthlyPriceCents).toBe(0);
-      expect(p.includedVerificationCount).toBe(0);
-      expect(p.selfServiceAvailable).toBe(false);          // honest: nothing is offered before pricing exists
-      expect(p.description).toMatch(/not yet set by Super Admin/);
-      expect(p.tenantCount).toBe(0);
-    }
+    expect(packages.map((p) => [p.name, p.monthlyPriceCents, p.includedVerificationCount, p.selfServiceAvailable])).toEqual([
+      ['SMS Essential', 7900, 100, true], ['SMS Growth', 13900, 200, true], ['SMS Unlimited Team', 23900, 400, true],
+    ]);
+    for (const p of packages) expect(p.tenantCount).toBe(0);
   });
 
   it('Super Admin edits every configurable number; the change persists and is audited with before/after', async () => {
@@ -75,7 +74,7 @@ describe('SMS verification packages — P1 schema + CRUD', () => {
       order by created_at desc limit 1`.execute(db);
     expect(audit.rows[0].action_type).toBe('super_admin.sms_package_updated');
     const meta = audit.rows[0].metadata_json;
-    expect(meta.before.monthlyPriceCents).toBe(0);
+    expect(meta.before.monthlyPriceCents).toBe(13900);   // the guide's SMS Growth price (migration 664)
     expect(meta.after.monthlyPriceCents).toBe(4900);
   });
 

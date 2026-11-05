@@ -703,6 +703,7 @@ export function OwnerSettingScreen() {
                 >
                   <input
                     type="checkbox"
+                    aria-label="Face ID / Biometric Login"
                     checked={isFaceIdEnabled}
                     disabled={!faceIdSupported || enrolling}
                     onChange={handleFaceIdToggle}
@@ -776,6 +777,7 @@ export function OwnerSettingScreen() {
                 >
                   <input
                     type="checkbox"
+                    aria-label="Prompt for Face ID on app open"
                     checked={isAutoStartupEnabled}
                     disabled={!isFaceIdEnabled}
                     onChange={() => {

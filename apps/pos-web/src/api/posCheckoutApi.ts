@@ -1,4 +1,6 @@
 // posCheckoutApi.ts — RECONCILED to the real backend controllers (checkout.controller.ts):
+import type { PosTerminalOption, PosTerminalPayResult, PosTerminalCancelResult } from '@aipowersalon/api-contracts/tenant';   // Card → Compact wire types
+export type { PosTerminalOption, PosTerminalPayResult, PosTerminalCancelResult };
 import type { ApplyDiscountRequest, CardPaymentRequest, CashPaymentRequest, CheckoutFilters, GiftCardPaymentRequest, PaymentMethod, ReopenServiceRequest, SendReceiptRequest, SetTipRequest, SplitPaymentRequest } from '@aipowersalon/api-contracts/tenant';
 export type { ApplyDiscountRequest, CardPaymentRequest, CashPaymentRequest, CheckoutFilters, GiftCardPaymentRequest, PaymentMethod, ReopenServiceRequest, SendReceiptRequest, SetTipRequest, SplitPaymentRequest };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import type { OfferReason, OfferSummary, TicketOffers, UnsettledTender } from '@aipowersalon/api-contracts/tenant';
@@ -52,12 +54,11 @@ export const posCheckoutApi = {
   recalculate: (tid: string, paymentMethod?: PaymentMethod) => tPost(tid, 'recalculate', { paymentMethod }),
   reopenService: (tid: string, body: ReopenServiceRequest) => tPost(tid, 'reopen-service', body),
   payCash: (tid: string, body: CashPaymentRequest, idempotencyKey?: string) => tPostKeyed(tid, 'pay/cash', body, idempotencyKey),
-  /** Fiserv §8B: the paired terminals of this location, for the "Pay on Clover Compact" picker. */
   terminals: () => http<PosTerminalOption[]>(`${CO}/terminals`),
   /** Fiserv §8B: charge this ticket on the Clover Compact. attemptKey is generated once per tender (retry = same key). */
-  payTerminal: (tid: string, body: { attemptKey: string; terminalId?: string | null; stationId?: string | null }) => tPost(tid, 'pay/terminal', body) as Promise<PosTerminalPayResult>,
+  payTerminal: (tid: string, body: { attemptKey: string; terminalId?: string | null; stationId?: string | null }) => http<any>(`${CO}/tickets/${id(tid)}/pay/terminal`, { method: 'POST', body: JSON.stringify(body) }) as Promise<PosTerminalPayResult>,
   /** Stop the prompt on the terminal (the outcome still comes from the terminal / Verify). */
-  cancelTerminal: (tid: string) => tPost(tid, 'pay/terminal/cancel', {}) as Promise<{ cancelled: boolean; reason?: string }>,
+  cancelTerminal: (tid: string) => http<PosTerminalCancelResult>(`${CO}/tickets/${id(tid)}/pay/terminal/cancel`, { method: 'POST', body: '{}' }),
   /** Functional Decision 22: ask the processor about a charge whose answer was lost (approved / declined / failed / pending / unknown). */
   verifyCard: (tid: string) => tPost(tid, 'pay/card/verify', {}),
   /** B-81 (Oct 23 2026): every card charge still mid-air on the ticket (a POS card answer, a split / Tap to Pay attempt, a guest's app charge) */
@@ -110,6 +111,3 @@ export interface TicketRefundResult {
 // BUILD_PLAN Phase 5 — the deals panel's shapes (the server's DealsCheckoutService.panel)
 export type { OfferReason, OfferSummary, TicketOffers };   // the API's own contract — never re-declared here
 
-export interface PosTerminalOption { id: string; label: string; stationId: string | null; disabled: boolean; lastSeenAt: string | null; hsnConfigured: boolean }
-/** The five front-desk states (§7.2) — UNKNOWN is never shown as a decline. */
-export interface PosTerminalPayResult { status: 'approved' | 'declined' | 'unknown' | 'unavailable' | 'in_progress'; paymentId?: string; retref?: string; amountCents?: number; message?: string; next: 'done' | 'retry' | 'verify' | 'wait' }
