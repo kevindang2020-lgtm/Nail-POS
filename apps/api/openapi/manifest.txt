@@ -2826,6 +2826,7 @@ POST /pos/loyalty/network/earning/preview  realm=staff  auth=session  domain=loy
 POST /pos/loyalty/network/earning/use-global  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/earning/versions/{id}/cancel  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/network/purchases  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  step-up  idempotency=required  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/loyalty/network/wallet/levels  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/redeem  realm=staff  auth=session  domain=loyalty  perm=pos.customers.loyalty.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/redemptions/{redemptionId}/void  realm=staff  auth=session  domain=loyalty  perm=pos.checkout.void  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/loyalty/rewards  realm=staff  auth=session  domain=loyalty  perm=pos.settings.edit  feature=loyalty  guards=RolePermissionGuard,TenantAuthGuard

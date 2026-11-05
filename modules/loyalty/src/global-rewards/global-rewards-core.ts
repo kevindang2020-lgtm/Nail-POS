@@ -207,6 +207,13 @@ export function redeemableBlocks(availableTenths: number, dueCents: number, prog
 
 // ── wallet alerts (guide §5.6) ───────────────────────────────────────────────────────────────────────────────────
 export type AlertLevel = 'ok' | 'low' | 'critical' | 'empty';
+/** C1 audit (Nov 4 2026) §5.6: the salon's own warning levels (tenant_token_wallets overrides) over the platform defaults. */
+export function walletLevels(program: Pick<ProgramPolicy, 'lowBalanceCents' | 'criticalBalanceCents'>, w?: { low_balance_cents_override?: unknown; critical_balance_cents_override?: unknown } | null): Pick<ProgramPolicy, 'lowBalanceCents' | 'criticalBalanceCents'> {
+  const num = (v: unknown) => (v == null || v === '' ? null : Number(v));
+  const low = num(w?.low_balance_cents_override), crit = num(w?.critical_balance_cents_override);
+  const lowBalanceCents = low ?? program.lowBalanceCents;
+  return { lowBalanceCents, criticalBalanceCents: Math.min(crit ?? program.criticalBalanceCents, lowBalanceCents) };
+}
 export function alertLevel(availableCents: number, program: Pick<ProgramPolicy, 'lowBalanceCents' | 'criticalBalanceCents'>): AlertLevel {
   if (availableCents <= 0) return 'empty';
   if (availableCents <= program.criticalBalanceCents) return 'critical';

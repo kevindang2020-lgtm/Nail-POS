@@ -2729,6 +2729,7 @@
   "POST /pos/loyalty/network/earning/use-global": "ADDDDRRRRRRRRRRRR",
   "POST /pos/loyalty/network/earning/versions/{id}/cancel": "ADDDDRRRRRRRRRRRR",
   "POST /pos/loyalty/network/purchases": "ADDDDRRRRRRRRRRRR",
+  "POST /pos/loyalty/network/wallet/levels": "ADDDDRRRRRRRRRRRR",
   "POST /pos/loyalty/redeem": "AAAADRRRRRRRRRRRR",
   "POST /pos/loyalty/redemptions/{redemptionId}/void": "AADDDRRRRRRRRRRRR",
   "POST /pos/loyalty/rewards": "ADDDDRRRRRRRRRRRR",

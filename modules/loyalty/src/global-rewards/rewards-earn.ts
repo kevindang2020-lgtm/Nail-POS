@@ -13,7 +13,7 @@ import { randomUUID } from 'node:crypto';
 import { sql, type Transaction } from 'kysely';
 import { canMoveToSql } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
-import { computeEarn, eligibleCentsOf, refundedEligibleCentsOf, tenthsLabel, tokensLabel, alertLevel, GlobalRewardsError, type EffectiveEarningRule } from './global-rewards-core';
+import { computeEarn, eligibleCentsOf, refundedEligibleCentsOf, tenthsLabel, tokensLabel, alertLevel, walletLevels, GlobalRewardsError, type EffectiveEarningRule } from './global-rewards-core';
 import { GlobalRewardsRepository, postJournal } from './global-rewards.repository';
 import { flagState } from './global-rewards-flags';
 import { REWARD_EARN_TRANSACTION } from './global-rewards-lifecycles';
@@ -88,7 +88,7 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   }
   const tenths = calc!.pointTenths, backing = calc!.backingCents;
   // the earning salon's OWN wallet, locked; a short wallet blocks — it never falls back to a cheaper rule or overdraws
-  const before = (await sql<Row>`SELECT w.available_cents FROM tenant_token_wallets w WHERE w.tenant_id = ${T}::uuid`.execute(trx)).rows[0];
+  const before = (await sql<Row>`SELECT w.available_cents, w.low_balance_cents_override, w.critical_balance_cents_override FROM tenant_token_wallets w WHERE w.tenant_id = ${T}::uuid`.execute(trx)).rows[0];
   const debit = await repo.debitWallet(trx, { tenantId: T, branchId, cents: backing, sourceTable: 'reward_earn_transactions', sourceId: earnId, reason: `${tenthsLabel(tenths)} points on ticket` });
   if (!debit.ok && debit.walletStatus !== 'active' && debit.walletStatus !== 'none') {
     // a suspended / locked wallet is a policy block, not a shortage — never tell the owner to "Buy Tokens" for it
@@ -121,7 +121,8 @@ export async function earnForTicket(trx: Transaction<any>, repo: GlobalRewardsRe
   await postJournal(trx, { entryType: 'earn_allocation', tenantId: T, sourceTable: 'reward_earn_transactions', sourceId: earnId, memo: `Funded ${tenthsLabel(tenths)} points`,
     lines: [{ account: 'merchant_prepaid_liability', tenantId: T, debit: backing }, { account: 'rewards_liability', tenantId: null, credit: backing }] });   // points are global (earned here, spendable at any salon): the liability is the platform's, like on redeem
   // one owner alert per threshold CROSSING (not every sale below it — guide §5.6 "avoid alert spam")
-  const lvlBefore = alertLevel(n(before?.available_cents), program), lvlAfter = alertLevel(debit.balanceAfterCents, program);
+  const levels = walletLevels(program, before);   // the salon's own warning levels when set (§5.6)
+  const lvlBefore = alertLevel(n(before?.available_cents), levels), lvlAfter = alertLevel(debit.balanceAfterCents, levels);
   let alertRaised: string | null = null;
   if (lvlAfter !== lvlBefore && (lvlAfter === 'low' || lvlAfter === 'critical' || lvlAfter === 'empty')) {
     alertRaised = lvlAfter;

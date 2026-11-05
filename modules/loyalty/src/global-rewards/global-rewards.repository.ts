@@ -14,7 +14,7 @@ import { canMoveToSql, isValidTimeZone } from '@aipowersalon/database';
 import { monthStartMs } from '@aipowersalon/date-time';
 import { logException } from '@aipowersalon/observability';
 import {
-  GlobalRewardsError, alertLevel, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
+  GlobalRewardsError, alertLevel, walletLevels, clampRateToPolicy, computeEarn, previewRows, validateCustomRate, validateGlobalRate, policyDisplay, policyVersionAt, versionDisplayState,
   purchaseQuantity, isPending, rateLabel, tokensLabel,
   type EarningRate, type EffectiveEarningRule, type PolicyVersion, type ProgramPolicy, type PurchaseStatus,
 } from './global-rewards-core';
@@ -331,7 +331,7 @@ export class GlobalRewardsRepository {
   // ── wallet ──────────────────────────────────────────────────────────────────────────────────────────────────────
   async walletSummary(tenantId: string, x: Exec = this.db) {
     const program = await this.program(x);
-    const w = (await sql<Row>`SELECT w.available_cents, w.lifetime_funded_cents, w.lifetime_allocated_cents, w.deficit_cents, w.status, w.alert_level, w.updated_at
+    const w = (await sql<Row>`SELECT w.available_cents, w.lifetime_funded_cents, w.lifetime_allocated_cents, w.deficit_cents, w.status, w.alert_level, w.updated_at, w.low_balance_cents_override, w.critical_balance_cents_override
       FROM tenant_token_wallets w WHERE w.tenant_id = ${tenantId}::uuid`.execute(x)).rows[0];
     const pend = (await sql<Row>`SELECT coalesce(sum(i.token_cents), 0) AS pending, count(*) AS n FROM token_purchase_intents i
       WHERE i.tenant_id = ${tenantId}::uuid AND i.status IN ('REQUESTED', 'PROCESSING', 'UNKNOWN', 'PAYMENT_CONFIRMED', 'SETTLEMENT_PENDING')`.execute(x)).rows[0];
@@ -347,15 +347,43 @@ export class GlobalRewardsRepository {
       exists: !!w, availableCents: available, available: tokensLabel(available, program.tokenValueCents), availableValueCents: available,
       pendingCents: n(pend?.pending), pendingPurchases: n(pend?.n), usedThisMonthCents: n(month?.used),
       lifetimeFundedCents: n(w?.lifetime_funded_cents), lifetimeAllocatedCents: n(w?.lifetime_allocated_cents), deficitCents: n(w?.deficit_cents),
-      status: (w?.status as string) ?? 'active', alertLevel: alertLevel(available, program), tokenValueCents: program.tokenValueCents, updatedAt: iso(w?.updated_at),
+      status: (w?.status as string) ?? 'active', alertLevel: alertLevel(available, walletLevels(program, w)), tokenValueCents: program.tokenValueCents, updatedAt: iso(w?.updated_at),
+      // C1 audit §5.6: the warning levels in force (the salon's own when set) and the platform defaults
+      lowBalanceCents: walletLevels(program, w).lowBalanceCents, criticalBalanceCents: walletLevels(program, w).criticalBalanceCents, levelsOwn: w?.low_balance_cents_override != null || w?.critical_balance_cents_override != null,
+      platformLowBalanceCents: program.lowBalanceCents, platformCriticalBalanceCents: program.criticalBalanceCents,
     };
+  }
+
+  /** C1 audit (Nov 4 2026) LoyaltyTokens §5.6: the salon's own low / critical warning levels (null = the platform default).
+   *  Owner (settings.edit) only; critical never above low; audited with before / after. The alert level is recomputed. */
+  async setWalletLevels(ctx: GrCtx, input: { lowBalanceCents?: unknown; criticalBalanceCents?: unknown }) {
+    if (!canEditSettings(ctx)) throw new GlobalRewardsError('Only the owner can change the warning levels.', 'PERMISSION_DENIED', 403);
+    const val = (v: unknown, field: string): number | null => {
+      if (v == null || v === '') return null;
+      const x = typeof v === 'number' ? v : Number(v);
+      if (!Number.isInteger(x) || x < 0 || x > 1_000_000) throw new GlobalRewardsError(`${field} must be a whole number of cents from 0 to 1,000,000.`, 'VALIDATION_FAILED', 400, { field });
+      return x;
+    };
+    const low = val(input.lowBalanceCents, 'lowBalanceCents'), crit = val(input.criticalBalanceCents, 'criticalBalanceCents');
+    const program = await this.program();
+    if ((crit ?? program.criticalBalanceCents) > (low ?? program.lowBalanceCents)) throw new GlobalRewardsError('The critical level must be at or below the low level.', 'VALIDATION_FAILED', 400, { field: 'criticalBalanceCents' });
+    return this.db.transaction().execute(async (trx) => {
+      await sql`INSERT INTO tenant_token_wallets (tenant_id) VALUES (${ctx.tenantId}::uuid) ON CONFLICT (tenant_id) DO NOTHING`.execute(trx);
+      const before = (await sql<Row>`SELECT w.available_cents, w.low_balance_cents_override, w.critical_balance_cents_override FROM tenant_token_wallets w WHERE w.tenant_id = ${ctx.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
+      const next = { low_balance_cents_override: low, critical_balance_cents_override: crit };
+      await sql`UPDATE tenant_token_wallets w SET low_balance_cents_override = ${low}, critical_balance_cents_override = ${crit},
+          alert_level = ${alertLevel(n(before?.available_cents), walletLevels(program, next))}, version = w.version + 1, updated_at = now() WHERE w.tenant_id = ${ctx.tenantId}::uuid`.execute(trx);
+      await this.auditTenant(trx, ctx, 'loyalty.wallet.alert_levels_set', `Token balance warnings: low ${low ?? 'platform default'}, critical ${crit ?? 'platform default'} (cents)`,
+        { resourceType: 'tenant_token_wallet', resourceId: ctx.tenantId, before: { lowBalanceCents: before?.low_balance_cents_override ?? null, criticalBalanceCents: before?.critical_balance_cents_override ?? null }, after: { lowBalanceCents: low, criticalBalanceCents: crit } });
+      return { lowBalanceCents: low, criticalBalanceCents: crit, effective: walletLevels(program, next) };
+    });
   }
 
   /** Credit the wallet (FUNDS_VERIFIED purchase, an earn reversal). Row lock + ledger + journal in the caller's transaction. */
   async creditWallet(trx: Transaction<any>, a: { tenantId: string; branchId?: string | null; cents: number; entryType: 'purchase_funded' | 'earn_reversal'; sourceTable: string; sourceId: string; actorUserId?: string | null; reason?: string | null; journal: { entryType: string; lines: JournalLine[]; memo?: string } }): Promise<{ duplicate: boolean; balanceAfterCents: number }> {
     if (!(a.cents > 0) || !Number.isInteger(a.cents)) throw new GlobalRewardsError('A wallet credit must be a positive whole number of cents.', 'VALIDATION_FAILED', 500);
     await sql`INSERT INTO tenant_token_wallets (tenant_id) VALUES (${a.tenantId}::uuid) ON CONFLICT (tenant_id) DO NOTHING`.execute(trx);
-    const w = (await sql<Row>`SELECT w.available_cents FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
+    const w = (await sql<Row>`SELECT w.available_cents, w.low_balance_cents_override, w.critical_balance_cents_override FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
     const after = n(w.available_cents) + a.cents;
     const led = (await sql<Row>`INSERT INTO token_wallet_ledger (tenant_id, branch_id, entry_type, delta_cents, balance_after_cents, source_table, source_id, actor_user_id, reason)
       VALUES (${a.tenantId}::uuid, ${a.branchId ?? null}, ${a.entryType}, ${a.cents}, ${after}, ${a.sourceTable}, ${a.sourceId}, ${actor(a.actorUserId)}, ${a.reason ?? null})
@@ -363,7 +391,7 @@ export class GlobalRewardsRepository {
     if (!led) return { duplicate: true, balanceAfterCents: n(w.available_cents) };
     const program = await this.program(trx);
     await sql`UPDATE tenant_token_wallets w SET available_cents = ${after}, lifetime_funded_cents = w.lifetime_funded_cents + ${a.entryType === 'purchase_funded' ? a.cents : 0},
-        lifetime_allocated_cents = w.lifetime_allocated_cents - ${a.entryType === 'earn_reversal' ? a.cents : 0}, alert_level = ${alertLevel(after, program)}, version = w.version + 1, updated_at = now()
+        lifetime_allocated_cents = w.lifetime_allocated_cents - ${a.entryType === 'earn_reversal' ? a.cents : 0}, alert_level = ${alertLevel(after, walletLevels(program, w))}, version = w.version + 1, updated_at = now()
       WHERE w.tenant_id = ${a.tenantId}::uuid`.execute(trx);
     await postJournal(trx, { entryType: a.journal.entryType, tenantId: a.tenantId, sourceTable: a.sourceTable, sourceId: a.sourceId, memo: a.journal.memo ?? null, lines: a.journal.lines });
     return { duplicate: false, balanceAfterCents: after };
@@ -371,7 +399,7 @@ export class GlobalRewardsRepository {
 
   /** Debit the wallet for funded points (earn). Refuses — never overdraws — when the balance is short. */
   async debitWallet(trx: Transaction<any>, a: { tenantId: string; branchId?: string | null; cents: number; sourceTable: string; sourceId: string; reason?: string | null }): Promise<{ ok: true; balanceAfterCents: number; duplicate: boolean } | { ok: false; availableCents: number; walletStatus: string }> {
-    const w = (await sql<Row>`SELECT w.available_cents, w.status FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
+    const w = (await sql<Row>`SELECT w.available_cents, w.status, w.low_balance_cents_override, w.critical_balance_cents_override FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
     const avail = n(w?.available_cents);
     if (!w || w.status !== 'active' || avail < a.cents) return { ok: false, availableCents: avail, walletStatus: String(w?.status ?? 'none') };
     const after = avail - a.cents;
@@ -380,7 +408,7 @@ export class GlobalRewardsRepository {
       ON CONFLICT (tenant_id, source_table, source_id, entry_type) DO NOTHING RETURNING id`.execute(trx)).rows[0];
     if (!led) return { ok: true, balanceAfterCents: avail, duplicate: true };
     const program = await this.program(trx);
-    await sql`UPDATE tenant_token_wallets w SET available_cents = ${after}, lifetime_allocated_cents = w.lifetime_allocated_cents + ${a.cents}, alert_level = ${alertLevel(after, program)},
+    await sql`UPDATE tenant_token_wallets w SET available_cents = ${after}, lifetime_allocated_cents = w.lifetime_allocated_cents + ${a.cents}, alert_level = ${alertLevel(after, walletLevels(program, w))},
         version = w.version + 1, updated_at = now() WHERE w.tenant_id = ${a.tenantId}::uuid AND w.available_cents >= ${a.cents}`.execute(trx);
     return { ok: true, balanceAfterCents: after, duplicate: false };
   }
@@ -480,7 +508,7 @@ export class GlobalRewardsRepository {
     const funded = (await sql<Row>`SELECT 1 AS x FROM token_wallet_ledger l WHERE l.tenant_id = ${a.tenantId}::uuid AND l.source_table = 'token_purchase_intents'
       AND l.source_id = ${a.intentId} AND l.entry_type = 'purchase_funded'`.execute(trx)).rows[0];
     if (!funded) return; // never credited: nothing to take back
-    const w = (await sql<Row>`SELECT w.available_cents FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
+    const w = (await sql<Row>`SELECT w.available_cents, w.low_balance_cents_override, w.critical_balance_cents_override FROM tenant_token_wallets w WHERE w.tenant_id = ${a.tenantId}::uuid FOR UPDATE`.execute(trx)).rows[0];
     const avail = n(w?.available_cents);
     const clawed = Math.min(avail, a.tokenCents);
     const shortfall = a.tokenCents - clawed;
@@ -492,7 +520,7 @@ export class GlobalRewardsRepository {
     }
     const program = await this.program(trx);
     await sql`UPDATE tenant_token_wallets w SET available_cents = w.available_cents - ${clawed}, lifetime_funded_cents = greatest(0, w.lifetime_funded_cents - ${a.tokenCents}),
-        alert_level = ${alertLevel(avail - clawed, program)}, version = w.version + 1, updated_at = now()
+        alert_level = ${alertLevel(avail - clawed, walletLevels(program, w))}, version = w.version + 1, updated_at = now()
       WHERE w.tenant_id = ${a.tenantId}::uuid`.execute(trx);
     if (shortfall > 0) await sql`UPDATE tenant_token_wallets w SET status = 'locked', updated_at = now()
       WHERE w.tenant_id = ${a.tenantId}::uuid AND ${canMoveToSql(TENANT_TOKEN_WALLET, 'locked', 'w')}`.execute(trx);
@@ -636,14 +664,14 @@ export class GlobalRewardsRepository {
     const s = String(q.search ?? '').trim().slice(0, 100);
     const where = s ? sql`(t.display_name ILIKE ${'%' + s.replace(/[\\%_]/g, (m) => '\\' + m) + '%'} OR t.tenant_code ILIKE ${s + '%'} OR t.id::text = ${s})` : sql`true`;
     const total = n((await sql<Row>`SELECT count(*) AS c FROM tenants t WHERE ${where}`.execute(this.db)).rows[0]?.c);
-    const r = await sql<Row>`SELECT t.id, t.display_name, t.tenant_code, e.status, e.earning_suspended, e.purchasing_suspended, e.enrolled_at, w.available_cents, w.alert_level, w.deficit_cents,
+    const r = await sql<Row>`SELECT t.id, t.display_name, t.tenant_code, e.status, e.earning_suspended, e.purchasing_suspended, e.enrolled_at, w.available_cents, w.alert_level, w.deficit_cents, w.low_balance_cents_override, w.critical_balance_cents_override,
         (SELECT v.mode FROM tenant_earning_policy_versions v WHERE v.tenant_id = t.id AND v.status = 'ACTIVATED' AND v.effective_from <= ${now.toISOString()}::timestamptz
           ORDER BY v.effective_from DESC, v.version_no DESC LIMIT 1) AS mode
       FROM tenants t LEFT JOIN global_rewards_enrollments e ON e.tenant_id = t.id LEFT JOIN tenant_token_wallets w ON w.tenant_id = t.id
       WHERE ${where} ORDER BY (e.tenant_id IS NULL), t.display_name, t.id LIMIT ${size} OFFSET ${(p - 1) * size}`.execute(this.db);
     return { total, page: p, pageSize: size, pageCount: Math.max(1, Math.ceil(total / size)), totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), items: r.rows.map((x) => ({ tenantId: String(x.id), name: x.display_name ?? null, code: x.tenant_code ?? null,
       enrollment: x.status ?? 'not_enrolled', earningSuspended: !!x.earning_suspended, purchasingSuspended: !!x.purchasing_suspended, enrolledAt: iso(x.enrolled_at),
-      mode: x.mode === 'CUSTOM' ? 'CUSTOM' : 'GLOBAL', availableCents: n(x.available_cents), alertLevel: alertLevel(n(x.available_cents), program), deficitCents: n(x.deficit_cents) })) };
+      mode: x.mode === 'CUSTOM' ? 'CUSTOM' : 'GLOBAL', availableCents: n(x.available_cents), alertLevel: alertLevel(n(x.available_cents), walletLevels(program, x)), deficitCents: n(x.deficit_cents) })) };
   }
 
 }

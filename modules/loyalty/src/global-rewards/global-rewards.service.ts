@@ -45,6 +45,7 @@ export class GlobalRewardsService {
   async cancelScheduled(ctx: GrCtx, id: string) { const r = await this.repo.cancelScheduled(ctx, id); await this.emit(ctx.tenantId, 'earning_rule'); return r; }
 
   wallet(ctx: GrCtx) { return this.repo.walletSummary(ctx.tenantId); }
+  async setWalletLevels(ctx: GrCtx, body: Record<string, unknown>) { const r = await this.repo.setWalletLevels(ctx, body); await this.emit(ctx.tenantId, 'wallet'); return r; }
   ledger(ctx: GrCtx, page: number, pageSize: number) { return this.repo.walletLedger(ctx.tenantId, page, pageSize); }
   purchases(ctx: GrCtx, page: number, pageSize: number) { return this.repo.purchases(ctx.tenantId, page, pageSize); }
   purchase(ctx: GrCtx, id: string) { return this.repo.purchase(ctx.tenantId, id); }

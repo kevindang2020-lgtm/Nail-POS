@@ -26,7 +26,7 @@ import { GlobalRewardsService } from './global-rewards.service';
 import { GlobalRewardsError, type PurchaseStatus } from './global-rewards-core';
 import type { GrCtx } from './global-rewards.repository';
 import { GR_PREVIEW_BODY, GR_DRAFT_BODY, GR_ACTIVATE_BODY, GR_USE_GLOBAL_BODY, GR_BUY_TOKENS_BODY, GR_EMPTY_BODY, GR_GLOBAL_RULE_BODY, GR_PROGRAM_BODY,
-  GR_ENROLLMENT_BODY, GR_SANDBOX_ADVANCE_BODY, GR_REVIEW_BODY, GR_PAYABLE_HOLD_BODY, GR_ACCOUNT_STATUS_BODY } from '../request-schemas';
+  GR_ENROLLMENT_BODY, GR_SANDBOX_ADVANCE_BODY, GR_REVIEW_BODY, GR_PAYABLE_HOLD_BODY, GR_ACCOUNT_STATUS_BODY, GR_WALLET_LEVELS_BODY } from '../request-schemas';
 
 export const GLOBAL_REWARDS_SERVICE = 'GlobalRewardsService';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -76,6 +76,9 @@ export class GlobalRewardsController {
 
   @Get('wallet') @RequirePermission('pos.customers.view')
   wallet(@Req() r: any) { return runGr(() => this.s().wallet(grCtx(r))); }
+  // C1 audit (Nov 4 2026) §5.6: the salon's own low / critical token-balance warnings (owner)
+  @Post('wallet/levels') @RequirePermission('pos.settings.edit')
+  walletLevels(@Req() r: any, @Body(ValidatedBody(GR_WALLET_LEVELS_BODY, { strict: true })) b: any) { return runGr(() => this.s().setWalletLevels(grCtx(r), b ?? {})); }
   @Get('wallet/ledger') @RequirePermission('pos.customers.view') @ListQuery(PAGE)
   ledger(@Req() r: any, @Query() q: any) { const p = pg(q); return runGr(() => this.s().ledger(grCtx(r), p.page, p.size)); }
   @Get('purchases') @RequirePermission('pos.customers.view') @ListQuery(PAGE)

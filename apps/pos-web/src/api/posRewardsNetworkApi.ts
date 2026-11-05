@@ -10,6 +10,8 @@ export interface VersionLite { id: string; versionNo: number; mode: 'GLOBAL' | '
 export interface WalletSummary {
   exists: boolean; availableCents: number; pendingCents: number; pendingPurchases: number; usedThisMonthCents: number;
   lifetimeFundedCents: number; lifetimeAllocatedCents: number; deficitCents: number; status: string; alertLevel: 'ok' | 'low' | 'critical' | 'empty' | string; tokenValueCents: number; updatedAt: string | null;
+  /** C1 audit (Nov 4 2026) §5.6: the warning levels in force (the salon's own when set) and the platform defaults */
+  lowBalanceCents?: number; criticalBalanceCents?: number; levelsOwn?: boolean; platformLowBalanceCents?: number; platformCriticalBalanceCents?: number;
 }
 export interface NetworkState {
   generatedAt: string; mode: 'GLOBAL' | 'CUSTOM';
@@ -47,6 +49,7 @@ export const posRewardsNetworkApi = {
   useGlobal: (b: { effectiveFrom?: string | null; reason?: string | null }) => api.post<{ effectiveFrom: string; scheduled: boolean }>(`${B}/earning/use-global`, { ...b, confirm: true }),
   cancelScheduled: (id: string) => api.post<unknown>(`${B}/earning/versions/${enc(id)}/cancel`, {}),
   wallet: () => api.get<WalletSummary>(`${B}/wallet`),
+  setWalletLevels: (b: { lowBalanceCents: number | null; criticalBalanceCents: number | null }) => api.post<unknown>(`${B}/wallet/levels`, b),
   ledger: (q: { page: number; pageSize: number }) => api.get<Paged<LedgerRow>>(`${B}/wallet/ledger`, q),
   purchases: (q: { page: number; pageSize: number }) => api.get<Paged<Purchase>>(`${B}/purchases`, q),
   purchase: (id: string) => api.get<Purchase & { events?: PurchaseEvent[] }>(`${B}/purchases/${enc(id)}`),

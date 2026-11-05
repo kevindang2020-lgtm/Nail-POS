@@ -49,7 +49,7 @@ const ALERT_TONE: Record<string, 'ok' | 'warn' | 'bad' | 'gold'> = { ok: 'gold',
 /** a <input type="datetime-local"> value (the device's clock, which at the desk is the salon's) → ISO */
 const localToIso = (v: string): string | null => { if (!v) return null; const d = new Date(v); return Number.isNaN(d.getTime()) ? null : d.toISOString(); };
 
-type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string };
+type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' };
 
 /** a server-paged list whose page size is however many rows fit right now */
 function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<Paged<T>>, pageSize: number) {
@@ -197,7 +197,7 @@ export function RewardsNetworkPanel() {
         </FitPanel>
 
         <FitPanel testId="rn-wallet" title={tx('rn.wallet.title')} bodyRef={purFit.ref}
-          actions={<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button>}
+          actions={<>{canEdit ? <button type="button" className="fk-btn ghost" data-testid="rn-levels" onClick={() => setDlg({ kind: 'levels' })}>{tx('rn.levels.btn')}</button> : null}<button type="button" className="fk-btn primary" data-testid="rn-buy" disabled={!st || !!buyBlockedReason} title={buyBlockedReason ?? undefined} onClick={() => setDlg({ kind: 'buy' })}>{tx('rn.buy')}</button></>}
           footer={<Pager compact info={purchases.data} onPage={purchases.setPage} />}>
           {buyBlockedReason && st ? <div className="rn-banner" role="note" data-testid="rn-buy-blocked">{buyBlockedReason}</div> : null}
           {purchases.err ? <ErrorRetry message={purchases.err} onRetry={purchases.refresh} /> : !purchases.data ? <div className="fk-loading">{tx('pos.loading')}</div> : purchases.data.items.length === 0 ? (
@@ -253,6 +253,7 @@ export function RewardsNetworkPanel() {
 
       {dlg?.kind === 'custom' && st ? <CustomRuleDialog st={st} draft={dlg.draft} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'global' && st ? <UseGlobalDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
+      {dlg?.kind === 'levels' && st ? <LevelsDialog st={st} onClose={() => setDlg(null)} onDone={done} /> : null}
       {dlg?.kind === 'buy' && st ? <BuyTokensDialog st={st} stepUpRun={stepUp.run} onClose={() => setDlg(null)} onDone={(msg, id) => { done(msg); if (id) setDlg({ kind: 'purchase', id }); }} /> : null}
       {dlg?.kind === 'purchase' ? <PurchaseDialog id={dlg.id} tokenValueCents={tv} onClose={() => setDlg(null)} /> : null}
       {/* the password prompt opens OVER the editor / Buy Tokens dialog (fk-backdrop is z 80) */}
@@ -383,6 +384,36 @@ function PreviewTable({ preview, tokenValueCents }: { preview: Preview | null; t
 }
 
 // ── return to the AI PowerSalon global rules (explicit confirmation) ───────────────────────────────────────────────────
+/** C1 audit (Nov 4 2026) LoyaltyTokens §5.6: the salon's own low / critical token-balance warnings (blank = platform default). */
+function LevelsDialog({ st, onClose, onDone }: { st: NetworkState; onClose: () => void; onDone: (msg: string) => void }) {
+  const w = st.wallet;
+  const txt = (c: number | null | undefined) => (c == null ? '' : (c / 100).toFixed(2));
+  const [low, setLow] = useState(w.levelsOwn ? txt(w.lowBalanceCents) : '');
+  const [crit, setCrit] = useState(w.levelsOwn ? txt(w.criticalBalanceCents) : '');
+  const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  const cents = (v: string): number | null | 'bad' => { if (!v.trim()) return null; const c = parseDollarsToCents(v); return c == null || c < 0 ? 'bad' : c; };
+  const lowC = cents(low), critC = cents(crit);
+  const bad = lowC === 'bad' || critC === 'bad';
+  const go = async () => {
+    if (bad) return;
+    setBusy(true); setErr(null);
+    try { await netApi.setWalletLevels({ lowBalanceCents: lowC as number | null, criticalBalanceCents: critC as number | null }); onDone(tx('rn.levels.saved')); }
+    catch (e) { setErr(errText(e, tx('rn.levels.failed'))); setBusy(false); }
+  };
+  return (
+    <FitDialog testId="rn-levels-dialog" title={tx('rn.levels.title')} onClose={onClose} busy={busy}
+      footer={<><button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
+        <button type="button" className="fk-btn primary" data-testid="rn-levels-save" disabled={busy || bad} onClick={() => void go()}>{busy ? tx('pos.saving_2') : tx('rn.levels.save')}</button></>}>
+      <p className="rn-p">{tx('rn.levels.body', { low: fmtMoney(w.platformLowBalanceCents ?? 0), critical: fmtMoney(w.platformCriticalBalanceCents ?? 0) })}</p>
+      <div className="fk-grid2">
+        <label className="fk-field"><span>{tx('rn.levels.low')}</span><input inputMode="decimal" value={low} placeholder={txt(w.platformLowBalanceCents)} onChange={(e) => setLow(e.target.value)} data-testid="rn-levels-low" /></label>
+        <label className="fk-field"><span>{tx('rn.levels.critical')}</span><input inputMode="decimal" value={crit} placeholder={txt(w.platformCriticalBalanceCents)} onChange={(e) => setCrit(e.target.value)} data-testid="rn-levels-critical" /></label>
+      </div>
+      {err ? <div className="fk-err" role="alert">{err}</div> : null}
+    </FitDialog>
+  );
+}
+
 function UseGlobalDialog({ st, onClose, onDone }: { st: NetworkState; onClose: () => void; onDone: (msg: string) => void }) {
   const [when, setWhen] = useState<'now' | 'later'>('now');
   const [at, setAt] = useState('');

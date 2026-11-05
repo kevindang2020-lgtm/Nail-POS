@@ -128,6 +128,17 @@ describe('rule resolution — addendum T01, T02, T19, T03/T04, T05, T06, T07, T2
     try { expect((await repo.resolveEarningRule(db, TB, new Date()) as any).rule).toMatchObject({ source: 'TENANT_OVERRIDE', pointTenthsPerIncrement: 15 }); }
     finally { await pg.query(`update global_rewards_program set custom_max_point_tenths_per_increment = $1`, [prev]); }
   });
+  it('C1 audit §5.6: a salon sets its own token-balance warnings; critical above low refused; null = platform default', async () => {
+    expect(await code(repo.setWalletLevels(owner(TC, BC, ['pos.customers.view']), { lowBalanceCents: 5000 }))).toBe('PERMISSION_DENIED');
+    expect(await code(repo.setWalletLevels(owner(TC, BC), { lowBalanceCents: 1000, criticalBalanceCents: 3000 }))).toBe('VALIDATION_FAILED');
+    const r = await repo.setWalletLevels(owner(TC, BC), { lowBalanceCents: 5000, criticalBalanceCents: 1500 });
+    expect(r.effective).toEqual({ lowBalanceCents: 5000, criticalBalanceCents: 1500 });
+    const w: any = await repo.walletSummary(TC);
+    expect(w).toMatchObject({ lowBalanceCents: 5000, criticalBalanceCents: 1500, levelsOwn: true });
+    await repo.setWalletLevels(owner(TC, BC), { lowBalanceCents: null, criticalBalanceCents: null });
+    const p: any = await repo.walletSummary(TC);
+    expect(p.levelsOwn).toBe(false); expect(p.lowBalanceCents).toBe(p.platformLowBalanceCents);
+  });
   it('no backdating; out-of-policy rates refused', async () => {
     expect(await code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000, pointTenthsPerIncrement: 10, effectiveFrom: '2026-01-01T00:00:00Z' }))).toBe('EARNING_RULE_INVALID');
     expect(await code(repo.activateCustom(owner(TC, BC), { spendIncrementCents: 1000, pointTenthsPerIncrement: 500 }))).toBe('EARNING_RULE_OUT_OF_POLICY');
