@@ -233,3 +233,8 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   expected cash the counter saw — a sale or refund since refuses the count), a difference over $20 waits for a manager's
   sign-off (once, with a note; a re-count clears it), drawer history (date range, register, status incl. "needs sign-off",
   search, server pages). Not built from the Cash Drawer guide: the activity overlay and moving the Money Protection banner.
+- Nov 5 (late) — D9 shipped (in-transit) transfers: Ship option, receive all or part at the destination (the rest recorded
+  missing there), cancel with a reason at the source; on hand nowhere while in transit (810, bcaf9f0). D4 Service Pricing:
+  upcoming-booking impact preview in Edit Pricing (booked quotes are never repriced) and Revert as a new revision (ebc5b90).
+  Still open in D4: scheduled (future-effective) prices — not built; the editor stays immediate-only and says so.
+  D9 "PO line discounts" dropped from the open list: the Inventory guide does not ask for them.
