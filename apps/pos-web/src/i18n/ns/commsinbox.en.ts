@@ -4,7 +4,7 @@ export const COMMSINBOX_EN = {
   'ci.refresh': 'Refresh', 'ci.retry': 'Try again', 'ci.loading': 'Loading…', 'ci.save': 'Save', 'ci.cancel': 'Cancel', 'ci.closeDialog': 'Close',
   'ci.kpis': 'Communication metrics', 'ci.filters': 'Search and filters',
   'ci.kpi.today': 'Today (salon time)', 'ci.kpi.sentSplit': 'Today · {d} delivered · {f} not sent', 'ci.kpi.allTime': 'All campaigns', 'ci.kpi.days30': 'Last 30 days',
-  'ci.kpi.staffMean30': 'Staff replies, 30-day average', 'ci.kpi.notTracked': 'Not tracked yet', 'ci.kpi.now': 'Right now', 'ci.kpi.unreadMsgs': '{n} unread messages',
+  'ci.kpi.staffMean30': 'Staff replies, 30-day average', 'ci.kpi.rebookSub': 'Win-back texts → booked, 30 days', 'ci.kpi.rebookDef': 'Customers texted by a win-back campaign who booked within the observation window after the text', 'ci.kpi.notTracked': 'Not tracked yet', 'ci.kpi.now': 'Right now', 'ci.kpi.unreadMsgs': '{n} unread messages',
   'ci.kpi.missedCalls': 'Missed calls', 'ci.kpi.conversations': 'Conversations', 'ci.kpi.waiting': '{n} waiting for a reply', 'ci.kpi.allChannels': 'All channels, counted once',
   'ci.def.sentToday': 'Staff replies sent from this inbox today (salon time). Delivered = confirmed by the carrier; not sent = refused or failed before leaving.',
   'ci.def.campaign': 'Delivered ÷ attempted across this salon’s campaigns.', 'ci.def.aiCalls': 'AI Receptionist calls in the last 30 days.',

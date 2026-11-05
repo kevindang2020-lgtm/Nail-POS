@@ -84,9 +84,9 @@ describe('activity service without a database (dev/offline)', () => {
     }
   });
 
-  it('rebooking conversion is unavailable BY DESIGN and says why', async () => {
+  it('without a database rebooking conversion is unavailable and says why (never 0 %)', async () => {
     const a = await new CommunicationsActivityService(null).activity('t1');
-    expect(a.rebookingConversionPct.reason).toMatch(/attribution/i);
+    expect(a.rebookingConversionPct).toMatchObject({ available: false, value: null }); expect(a.rebookingConversionPct.reason).toMatch(/could not be read/);
   });
 
   it('clamps the window to a sane range', async () => {

@@ -36,6 +36,19 @@ beforeAll(async () => {
     opted_out integer not null default 0)`);
   await pg.exec(`CREATE TABLE voice_call_outcomes (id uuid primary key default gen_random_uuid(), tenant_id uuid not null,
     branch_id uuid, provider text default 'retell', provider_call_id text, started_at timestamptz, created_at timestamptz not null default now())`);
+  // C2 audit (Nov 4 2026): rebooking conversion reads the win-back recipients and the bookings made after the text
+  await pg.exec(`CREATE TABLE retention_sms_recipients (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, customer_id uuid not null, status text not null, sent_at timestamptz)`);
+  await pg.exec(`CREATE TABLE pos_tech_appointments (id uuid primary key default gen_random_uuid(), tenant_id uuid not null, customer_id uuid, created_at timestamptz not null default now())`);
+  await pg.exec(`CREATE TABLE tenant_retention_settings (tenant_id uuid primary key, observation_window_days integer not null default 30)`);
+  await pg.query(`INSERT INTO retention_sms_recipients (tenant_id, customer_id, status, sent_at) VALUES
+    ($1, 'cb000000-0000-0000-0000-0000000000c1', 'sent', now() - interval '10 days'),
+    ($1, 'cb000000-0000-0000-0000-0000000000c2', 'sent', now() - interval '10 days'),
+    ($1, 'cb000000-0000-0000-0000-0000000000c3', 'blocked', null),
+    ($2, 'cb000000-0000-0000-0000-0000000000c9', 'sent', now() - interval '2 days')`, [T, OTHER]);
+  await pg.query(`INSERT INTO pos_tech_appointments (tenant_id, customer_id, created_at) VALUES
+    ($1, 'cb000000-0000-0000-0000-0000000000c1', now() - interval '7 days'),
+    ($1, 'cb000000-0000-0000-0000-0000000000c2', now() - interval '40 days'),
+    ($2, 'cb000000-0000-0000-0000-0000000000c9', now() - interval '1 days')`, [T, OTHER]);
   await pg.exec(`CREATE TABLE review_requests (id uuid primary key default gen_random_uuid(), tenant_id uuid not null,
     channel text not null default 'sms', status text not null default 'scheduled', idempotency_key text, created_at timestamptz not null default now())`);
 
@@ -102,7 +115,9 @@ describe('communications activity on real tables', () => {
     expect((await svc.activity(T, 3)).aiCallsHandled.value).toBe(1);
   });
 
-  it('rebooking conversion stays unavailable even with a full database', async () => {
-    expect((await svc.activity(T, 30)).rebookingConversionPct.available).toBe(false);
+  it('rebooking conversion = win-back texted customers who booked after the text (within the observation window)', async () => {
+    expect((await svc.activity(T, 30)).rebookingConversionPct).toEqual({ value: 50, available: true });   // c1 booked after; c2 booked BEFORE the text; c3 never left
+    const quiet = (await svc.activity(QUIET, 30)).rebookingConversionPct;
+    expect(quiet.available).toBe(false); expect(quiet.reason).toMatch(/No win-back texts/);
   });
 });

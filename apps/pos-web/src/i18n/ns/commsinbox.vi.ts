@@ -5,7 +5,7 @@ export const COMMSINBOX_VI = {
   'ci.refresh': 'Làm mới', 'ci.retry': 'Thử lại', 'ci.loading': 'Đang tải…', 'ci.save': 'Lưu', 'ci.cancel': 'Hủy', 'ci.closeDialog': 'Đóng',
   'ci.kpis': 'Chỉ số liên lạc', 'ci.filters': 'Tìm kiếm và bộ lọc',
   'ci.kpi.today': 'Hôm nay (giờ tiệm)', 'ci.kpi.sentSplit': 'Hôm nay · {d} đã nhận · {f} chưa gửi được', 'ci.kpi.allTime': 'Tất cả chiến dịch', 'ci.kpi.days30': '30 ngày qua',
-  'ci.kpi.staffMean30': 'Nhân viên trả lời, trung bình 30 ngày', 'ci.kpi.notTracked': 'Chưa theo dõi', 'ci.kpi.now': 'Hiện tại', 'ci.kpi.unreadMsgs': '{n} tin chưa đọc',
+  'ci.kpi.staffMean30': 'Nhân viên trả lời, trung bình 30 ngày', 'ci.kpi.rebookSub': 'Tin nhắn mời quay lại → đã đặt lịch, 30 ngày', 'ci.kpi.rebookDef': 'Khách nhận tin mời quay lại đã đặt lịch trong khoảng theo dõi sau tin nhắn', 'ci.kpi.notTracked': 'Chưa theo dõi', 'ci.kpi.now': 'Hiện tại', 'ci.kpi.unreadMsgs': '{n} tin chưa đọc',
   'ci.kpi.missedCalls': 'Cuộc gọi nhỡ', 'ci.kpi.conversations': 'Cuộc trò chuyện', 'ci.kpi.waiting': '{n} đang chờ trả lời', 'ci.kpi.allChannels': 'Mọi kênh, mỗi cuộc tính một lần',
   'ci.def.sentToday': 'Tin nhân viên gửi từ hộp thư này hôm nay (giờ tiệm). Đã nhận = nhà mạng xác nhận; chưa gửi được = bị chặn hoặc lỗi trước khi gửi đi.',
   'ci.def.campaign': 'Số đã nhận ÷ số đã gửi trong các chiến dịch của tiệm.', 'ci.def.aiCalls': 'Cuộc gọi của Lễ tân AI trong 30 ngày qua.',

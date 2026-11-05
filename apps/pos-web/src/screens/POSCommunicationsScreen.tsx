@@ -208,7 +208,7 @@ export function POSCommunicationsScreen() {
         <Metric label={tx('pos.ai_calls_handled')} value={metricText(act === null ? null : act?.aiCallsHandled)} sub={tx('ci.kpi.days30')} title={act?.aiCallsHandled?.reason ?? tx('ci.def.aiCalls')} />
         <Metric label={tx('pos.review_requests_sent')} value={metricText(act === null ? null : act?.reviewRequestsSent)} sub={tx('ci.kpi.days30')} title={act?.reviewRequestsSent?.reason ?? tx('ci.def.reviews')} />
         <Metric label={tx('pos.avg_response')} value={metricText(act === null ? null : act?.avgResponseMinutes, ' m')} sub={tx('ci.kpi.staffMean30')} tone="var(--aps-gold)" title={act?.avgResponseMinutes?.reason ?? tx('ci.def.avgResponse')} />
-        <Metric label={tx('pos.rebooking_conv')} value={metricText(act === null ? null : act?.rebookingConversionPct, '%')} sub={tx('ci.kpi.notTracked')} title={act?.rebookingConversionPct?.reason ?? ''} />
+        <Metric label={tx('pos.rebooking_conv')} value={metricText(act === null ? null : act?.rebookingConversionPct, '%')} sub={act?.rebookingConversionPct?.available ? tx('ci.kpi.rebookSub') : tx('ci.kpi.notTracked')} title={act?.rebookingConversionPct?.reason ?? tx('ci.kpi.rebookDef')} />
         </div>
         <div className="ci-kpi-row seven">
         <Metric testId="kpi-open" label={tx('pos.open_conversations')} value={n(k?.open)} sub={tx('ci.kpi.now')} tone="var(--aps-info)" title={sum?.definitions.openConversations} />

@@ -11,8 +11,8 @@
  *
  * HONESTY (invariant §10): every metric carries `available`. A metric whose source has no rows reports
  * available:false with a REASON rather than a fabricated 0 or 100% — "0 messages sent" and "we don't have delivery
- * receipts" are different facts, and the second must not read as the first. Rebooking-campaign conversion is
- * reported unavailable BY DESIGN: no source links a rebooking to the campaign that caused it (ai_revenue_attributions
+ * receipts" are different facts, and the second must not read as the first. Rebooking conversion (C2 audit, Nov 4 2026) is read
+ * from the win-back campaigns' recipients (texted → booked within the observation window); before that it was reported unavailable: no source links a rebooking to the campaign that caused it (ai_revenue_attributions
  * covers AI-influenced revenue only), so it would have to be invented. Fail-soft throughout: a metric whose query
  * fails degrades to unavailable and never breaks the screen.
  */
@@ -108,6 +108,14 @@ export class CommunicationsActivityService {
         AND (m.direction = 'inbound' OR (COALESCE(m.author_kind, 'staff') = 'staff' AND m.status NOT IN ('failed', 'blocked', 'pending')))
       ORDER BY m.thread_id, m.created_at LIMIT 5000`);
 
+    const rebook = await this.rows<any>(sql`
+      WITH obs AS (SELECT coalesce((SELECT observation_window_days FROM tenant_retention_settings WHERE tenant_id = ${tenantId}), 30) AS d),
+      texted AS (SELECT r.customer_id, min(r.sent_at) AS first_sent FROM retention_sms_recipients r
+        WHERE r.tenant_id = ${tenantId} AND r.status = 'sent' AND r.sent_at >= ${since} GROUP BY r.customer_id)
+      SELECT count(*)::int AS texted,
+        count(*) FILTER (WHERE EXISTS (SELECT 1 FROM pos_tech_appointments a, obs WHERE a.tenant_id = ${tenantId} AND a.customer_id = x.customer_id
+          AND a.created_at > x.first_sent AND a.created_at < x.first_sent + make_interval(days => obs.d)))::int AS booked
+      FROM texted x`);
     return {
       windowDays: days,
       messagesSentToday: sent ? OK(Number(sent[0]?.n ?? 0)) : NA(unavailableDb),
@@ -117,8 +125,10 @@ export class CommunicationsActivityService {
       avgResponseMinutes: msgs
         ? avgFirstResponseMinutes(msgs.map((m: any) => ({ threadId: String(m.thread_id), direction: String(m.direction), createdAt: m.created_at })))
         : NA(unavailableDb),
-      // Deliberate, permanent-until-modelled: nothing links a rebooking to the campaign that caused it.
-      rebookingConversionPct: NA('Rebooking conversion needs campaign→booking attribution, which nothing records yet'),
+      // C2 audit (Nov 4 2026): the win-back campaigns are the outreach that records who was texted and when — conversion =
+      // customers texted by a win-back campaign in this window who booked within the salon's observation window after the text
+      rebookingConversionPct: rebook ? (Number(rebook[0]?.texted ?? 0) === 0 ? NA('No win-back texts were sent in this window')
+        : OK(Math.round((Number(rebook[0]?.booked ?? 0) / Number(rebook[0]?.texted)) * 1000) / 10)) : NA(unavailableDb),
     };
   }
 }
