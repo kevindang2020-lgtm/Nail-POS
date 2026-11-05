@@ -19,6 +19,7 @@ export const ERROR_REGISTRY = {
   SESSION_LOCKED:                 { status: 423, message: 'This device is locked. Enter your PIN.', domain: 'auth', retryable: false, severity: 'info', action: 'REAUTHENTICATE' },
   SESSION_LOCK_EXPIRED:           { status: 401, message: 'This device was locked too long. Sign in again.', domain: 'auth', retryable: false, severity: 'info', action: 'REAUTHENTICATE' },
   PERMISSION_DENIED:              { status: 403, message: 'You do not have permission to do that.', domain: 'auth', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
+  EXPORT_NOT_ALLOWED:             { status: 403, message: 'You do not have permission to export this report.', domain: 'auth', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   TENANT_ACCESS_DENIED:           { status: 403, message: 'You do not have access to this salon.', domain: 'auth', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   BRANCH_ACCESS_DENIED:           { status: 403, message: 'You do not have access to this location.', domain: 'auth', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },
   STEP_UP_REQUIRED:               { status: 403, message: 'Confirm your password to continue.', domain: 'auth', retryable: true, severity: 'info', action: 'REAUTHENTICATE' },

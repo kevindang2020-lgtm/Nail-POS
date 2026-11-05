@@ -8,6 +8,7 @@ export const ERRORS_EN = {
   'errors.SESSION_LOCKED': 'This device is locked. Enter your PIN.',
   'errors.SESSION_LOCK_EXPIRED': 'This device was locked too long. Sign in again.',
   'errors.PERMISSION_DENIED': 'You do not have permission to do that.',
+  'errors.EXPORT_NOT_ALLOWED': 'You do not have permission to export this report.',
   'errors.TENANT_ACCESS_DENIED': 'You do not have access to this salon.',
   'errors.BRANCH_ACCESS_DENIED': 'You do not have access to this location.',
   'errors.STEP_UP_REQUIRED': 'Confirm your password to continue.',

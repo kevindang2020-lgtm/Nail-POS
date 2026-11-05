@@ -128,28 +128,44 @@ export class TeamPerformanceScreenRepository {
       prev = { from: pf, to: pt, services: N(pr?.services), reviews: N(pr?.reviews), rating: N(pr?.reviews) ? round1(Number(pr.avg)) : null };
     }
     const n = N(me?.reviews); const avg = n ? round1(Number(me.avg)) : null;
+    // D1 gaps (Nov 5 2026): helper contribution — paid tickets in the period where she was the HELPER (another technician's
+    // service). Shown on its own; it never adds to her completed services, her score or her pay.
+    const b = branchOf(ctx);
+    const helped = N((await sql<any>`select count(distinct t.id)::int as n from tickets t where t.tenant_id = ${T} and t.helper_technician_id = ${id}
+        and t.paid_at is not null and t.removed_at is null and coalesce(t.payment_status, '') <> 'voided' and ${inPeriod(sql`t.paid_at`, per)}
+        and (${b}::uuid is null or t.branch_id = ${b} or t.branch_id is null)`.execute(this.db)).rows[0]?.n);
     const t = (await sql<any>`select te.id, te.full_name, te.avatar_url, te.status, te.role_label, b.name as branch from technicians te left join branches b on b.id = te.branch_id and b.tenant_id = te.tenant_id where te.tenant_id = ${T} and te.id = ${id}`.execute(this.db)).rows[0];
     return { period: per, minSample: MIN_SAMPLE, technicianId: id, name: t?.full_name ?? null, avatarUrl: t?.avatar_url ?? null, role: t?.role_label ?? null, branch: t?.branch ?? null, active: t?.status === 'active',
       qualifiedServices: svcNames.map((s: any) => String(s.name)),
       score: { rating: avg, reviews: n, tier: tierOf(avg), lowSample: n > 0 && n < MIN_SAMPLE, source: 'verified_reviews', scale: 5, allTimeRating: N(allTime?.n) ? round1(Number(allTime.avg)) : null, allTimeReviews: N(allTime?.n) },
-      rank: n ? { position: N(me?.pos), of: N(me?.rated) } : null, services: N(me?.services), lastServiceAt: iso(me?.last_service), lastReviewAt: iso(me?.last_review),
+      rank: n ? { position: N(me?.pos), of: N(me?.rated) } : null, services: N(me?.services), helpedTickets: helped, lastServiceAt: iso(me?.last_service), lastReviewAt: iso(me?.last_review),
       previous: prev, comparable: !!prev && n >= MIN_SAMPLE && prev.reviews >= MIN_SAMPLE };
   }
 
   /** her completed services in the period, newest first (ticket, service, length, who else worked the ticket) */
-  async services(ctx: TeamCtx, id: string, f: { q?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
+  /** her completed service lines in the period. D1 gaps (Nov 5 2026): `basis` = which date the period and the date column use —
+   *  'paid' (the ticket's payment day, the same day the KPIs count by; default) or 'completed' (the service-completion time,
+   *  the payment day when a line has none); `role` = 'own' (her services) or 'helped' (other technicians' services on tickets
+   *  where she was the helper). Each row names the ticket's helper. */
+  async services(ctx: TeamCtx, id: string, f: { q?: string; basis?: string; role?: string; preset?: unknown; from?: unknown; to?: unknown; page?: unknown; pageSize?: unknown }) {
     await this.mustTech(ctx, id); const T = ctx.tenantId; const per = await this.period(ctx, f); const { page, pageSize } = paging(f.page, f.pageSize, 8);
     const raw = String(f.q ?? '').trim().slice(0, 100); const l = like(raw);
-    const from = sql`from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id left join customers c on c.id = t.customer_id and c.tenant_id = l.tenant_id`;
-    const w = sql`l.tenant_id = ${T} and l.technician_id = ${id} and ${this.paidLine()} and ${inPeriod(sql`t.paid_at`, per)} and (${raw} = '' or coalesce(l.service_name_snapshot, '') ilike ${l} or coalesce(t.ticket_number, '') ilike ${l} or coalesce(c.full_name, '') ilike ${l})`;
+    const basis = f.basis === 'completed' ? 'completed' : 'paid'; const role = f.role === 'helped' ? 'helped' : 'own';
+    const dateCol = basis === 'completed' ? sql`coalesce(l.completed_at, t.paid_at)` : sql`t.paid_at`;
+    const who = role === 'helped' ? sql`t.helper_technician_id = ${id} and l.technician_id is distinct from ${id}` : sql`l.technician_id = ${id}`;
+    const from = sql`from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id left join customers c on c.id = t.customer_id and c.tenant_id = l.tenant_id
+      left join technicians ht on ht.id = t.helper_technician_id and ht.tenant_id = l.tenant_id left join technicians lt on lt.id = l.technician_id and lt.tenant_id = l.tenant_id`;
+    const w = sql`l.tenant_id = ${T} and ${who} and ${this.paidLine()} and ${inPeriod(dateCol, per)} and (${raw} = '' or coalesce(l.service_name_snapshot, '') ilike ${l} or coalesce(t.ticket_number, '') ilike ${l} or coalesce(c.full_name, '') ilike ${l})`;
     const total = N((await sql<any>`select count(*)::int as n ${from} where ${w}`.execute(this.db)).rows[0]?.n); const sp = served(page, pageSize, total);
     const rows = (await sql<any>`select l.id, l.service_name_snapshot, l.duration_minutes_snapshot, l.completed_at, t.paid_at, t.id as ticket_id, t.ticket_number, c.full_name as customer,
+        ${dateCol} as basis_at, t.helper_technician_id, ht.full_name as helper_name, lt.full_name as line_tech_name,
         (select count(distinct l2.technician_id) from ticket_service_lines l2 where l2.tenant_id = ${T} and l2.ticket_id = t.id and l2.technician_id is not null and l2.removed_at is null)::int as techs,
         (select r.rating from reviews r where r.tenant_id = ${T} and r.technician_id = ${id} and (r.ticket_service_line_id = l.id or r.ticket_id = t.id) and ${this.verified()} order by r.created_at desc limit 1) as rating
-      ${from} where ${w} order by t.paid_at desc, l.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
+      ${from} where ${w} order by ${dateCol} desc, l.id desc limit ${pageSize} offset ${sp.offset}`.execute(this.db)).rows;
     const showCust = can(ctx, 'customers.view');
-    return { period: per, items: rows.map((r: any) => ({ id: String(r.id), at: iso(r.completed_at ?? r.paid_at), service: r.service_name_snapshot ?? null, minutes: r.duration_minutes_snapshot == null ? null : N(r.duration_minutes_snapshot),
-      ticketId: String(r.ticket_id), ticketNumber: r.ticket_number ?? null, customer: showCust ? r.customer ?? null : null, techsOnTicket: N(r.techs), rating: r.rating == null ? null : Number(r.rating) })),
+    return { period: per, basis, role, items: rows.map((r: any) => ({ id: String(r.id), at: iso(r.basis_at), completedAt: iso(r.completed_at), paidAt: iso(r.paid_at), service: r.service_name_snapshot ?? null, minutes: r.duration_minutes_snapshot == null ? null : N(r.duration_minutes_snapshot),
+      ticketId: String(r.ticket_id), ticketNumber: r.ticket_number ?? null, customer: showCust ? r.customer ?? null : null, techsOnTicket: N(r.techs), rating: r.rating == null ? null : Number(r.rating),
+      helper: r.helper_technician_id ? { id: String(r.helper_technician_id), name: r.helper_name ?? null } : null, technician: role === 'helped' ? r.line_tech_name ?? null : null })),
       page: sp.page, pageSize, totalItems: total, totalPages: sp.totalPages };
   }
 

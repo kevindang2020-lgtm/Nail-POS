@@ -8,6 +8,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.SESSION_LOCKED': 'Thiết bị này đang khóa. Nhập mã PIN của bạn.',
   'errors.SESSION_LOCK_EXPIRED': 'Thiết bị này đã khóa quá lâu. Hãy đăng nhập lại.',
   'errors.PERMISSION_DENIED': 'Bạn không có quyền thực hiện việc này.',
+  'errors.EXPORT_NOT_ALLOWED': 'Bạn không có quyền xuất báo cáo này.',
   'errors.TENANT_ACCESS_DENIED': 'Bạn không có quyền truy cập tiệm này.',
   'errors.BRANCH_ACCESS_DENIED': 'Bạn không có quyền truy cập chi nhánh này.',
   'errors.STEP_UP_REQUIRED': 'Xác nhận mật khẩu để tiếp tục.',

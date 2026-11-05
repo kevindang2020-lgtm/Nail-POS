@@ -28,6 +28,7 @@ import { CompositeComparison, CompositeDetails } from './compositeScore';
 import { PeriodBar, periodQuery, periodText, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { pageOf, whenTime } from './technicianScreenParts';
 import { nf } from './teamShared';
+import { useCan } from '../components/usePermissions';
 
 const TIERS = ['excellent', 'very_good', 'good', 'needs', 'unrated'] as const;
 const TIER_TONE: Record<string, string> = { excellent: 'ok', very_good: 'ok', good: 'warn', needs: 'bad', unrated: 'mut' };
@@ -36,7 +37,7 @@ const reviewsN = (n: number) => (n === 1 ? tx('tp.review1') : tx('tp.reviewsN', 
 const of5 = (v: number | null | undefined) => (v == null ? tx('tp.notRated') : tx('tp.of5', { v: v.toFixed(1) }));
 
 export function POSTeamPerformanceScreen() {
-  const nav = useNavigate();
+  const nav = useNavigate(); const can = useCan();
   const [period, setPeriod] = useState<PeriodState>({ preset: 'month' });
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [tier, setTier] = useState('all'); const [sort, setSort] = useState('score'); const [page, setPage] = useState(1);
@@ -69,7 +70,8 @@ export function POSTeamPerformanceScreen() {
         <div className="fk-head-actions">
           <button type="button" className="fk-btn" onClick={() => setTick((n) => n + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           <button type="button" className="fk-btn ghost" onClick={() => nav('/tenant/reports/technicians')} data-testid="reports">{tx('tp.reports')}</button>
-          <button type="button" className="fk-btn ghost" disabled={!dir.data || exporting} onClick={doExport} data-testid="export">{exporting ? tx('cm.exporting') : tx('cm.export')}</button>
+          {/* D1 gaps (Nov 5 2026): the export is role-checked — reports.export, the same key the server requires */}
+          {can('reports.export') ? <button type="button" className="fk-btn ghost" disabled={!dir.data || exporting} onClick={doExport} data-testid="export">{exporting ? tx('cm.exporting') : tx('cm.export')}</button> : null}
         </div>
       </header>
       {exportErr ? <div className="fk-note bad" role="alert" data-testid="export-error"><span>{exportErr}</span></div> : null}
@@ -135,12 +137,14 @@ export function POSTeamPerformanceScreen() {
 function PerformanceDetails({ id, pq, periodLabel, onClose, onComposite }: { id: string; pq: Record<string, unknown>; periodLabel: string; onClose: () => void; onComposite: () => void }) {
   const nav = useNavigate();
   const [tab, setTab] = useState<'services' | 'reviews'>('services'); const [pg, setPg] = useState(1); const [sq, setSq] = useState(''); const sqq = useDebounced(sq.trim(), 300);
+  // D1 gaps (Nov 5 2026): which date the services list uses, and her own services vs the ones she helped on
+  const [basis, setBasis] = useState<'paid' | 'completed'>('paid'); const [role, setRole] = useState<'own' | 'helped'>('own');
   useEffect(() => { const k = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); }; window.addEventListener('keydown', k); return () => window.removeEventListener('keydown', k); }, [onClose]);
-  useEffect(() => setPg(1), [tab, sqq]);
+  useEffect(() => setPg(1), [tab, sqq, basis, role]);
   const d = useLoad(() => posTeamPerformanceScreenApi.technician(id, pq), [id, JSON.stringify(pq)]);
   // each answer carries the tab it was read for: right after a tab switch the previous tab's rows are never drawn in the new
   // tab's layout (a services row shown as a review read "No comment")
-  const list0 = useLoad(() => (tab === 'services' ? posTeamPerformanceScreenApi.services(id, { ...pq, q: sqq || undefined, page: pg, pageSize: 8 }) : posTeamPerformanceScreenApi.reviews(id, { ...pq, page: pg, pageSize: 6 })).then((d: any) => (d ? { ...d, forTab: tab } : d)), [id, tab, pg, sqq, JSON.stringify(pq)]);
+  const list0 = useLoad(() => (tab === 'services' ? posTeamPerformanceScreenApi.services(id, { ...pq, q: sqq || undefined, basis, role, page: pg, pageSize: 8 }) : posTeamPerformanceScreenApi.reviews(id, { ...pq, page: pg, pageSize: 6 })).then((d: any) => (d ? { ...d, forTab: tab } : d)), [id, tab, pg, sqq, basis, role, JSON.stringify(pq)]);
   const list = { ...list0, data: list0.data && (list0.data as any).forTab === tab ? list0.data : null };
   const x: any = d.data;
   return (
@@ -156,6 +160,7 @@ function PerformanceDetails({ id, pq, periodLabel, onClose, onComposite }: { id:
           <dt>{tx('tp.allTime')}</dt><dd>{of5(x.score.allTimeRating)} · {reviewsN(x.score.allTimeReviews)}</dd>
           <dt>{tx('tp.rank')}</dt><dd>{x.rank ? tx('tp.rankV', { p: nf(x.rank.position), n: nf(x.rank.of) }) : tx('tp.notRanked')}</dd>
           <dt>{tx('tp.col.services')}</dt><dd>{nf(x.services)}{x.lastServiceAt ? ` · ${tx('tp.last', { t: whenTime(x.lastServiceAt) })}` : ''}</dd>
+          <dt>{tx('tp.helped')}</dt><dd data-testid="helped-tickets">{x.helpedTickets ? tx('tp.helpedV', { n: nf(x.helpedTickets) }) : tx('tp.helpedNone')}</dd>
           <dt>{tx('tp.source')}</dt><dd>{tx('tp.sourceV')}</dd>
           <dt>{tx('tq.qualified')}</dt><dd>{x.qualifiedServices.length ? x.qualifiedServices.join(', ') : tx('tq.noQualified')}</dd>
         </dl>
@@ -163,10 +168,12 @@ function PerformanceDetails({ id, pq, periodLabel, onClose, onComposite }: { id:
           ? tx('tp.compare', { r: of5(x.score.rating), pr: of5(x.previous.rating), s: nf(x.services), ps: nf(x.previous.services) })
           : tx('tp.noCompare', { n: String(x.minSample), s: nf(x.services), ps: nf(x.previous.services) })}</span></div> : null}
         <div className="fk-tabs" role="tablist" aria-label={tx('tp.details')}>{(['services', 'reviews'] as const).map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'ptab-' + t}>{tx('tp.tab.' + t)}</button>)}</div>
-        {tab === 'services' ? <div className="mos-tools"><div className="fn-search mos-search"><input className="fk-search" type="search" value={sq} onChange={(e) => setSq(e.target.value)} placeholder={tx('cm.linePh')} aria-label={tx('cm.linePh')} data-testid="service-search" /></div></div> : null}
+        {tab === 'services' ? <div className="mos-tools"><div className="fn-search mos-search"><input className="fk-search" type="search" value={sq} onChange={(e) => setSq(e.target.value)} placeholder={tx('cm.linePh')} aria-label={tx('cm.linePh')} data-testid="service-search" /></div>
+          <select className="fk-select" value={role} onChange={(e) => setRole(e.target.value as 'own' | 'helped')} aria-label={tx('tp.roleL')} data-testid="service-role"><option value="own">{tx('tp.role.own')}</option><option value="helped">{tx('tp.role.helped')}</option></select>
+          <select className="fk-select" value={basis} onChange={(e) => setBasis(e.target.value as 'paid' | 'completed')} aria-label={tx('tp.basisL')} data-testid="service-basis"><option value="paid">{tx('tp.basis.paid')}</option><option value="completed">{tx('tp.basis.completed')}</option></select></div> : null}
         {list.error ? <StateBlock error={list.error} onRetry={list.reload} /> : !list.data ? <div className="fk-loading">{tx('pos.loading')}</div> : !list.data.items?.length ? <Empty title={tab === 'services' ? tx('tp.noServices') : tx('tp.noReviews')} />
-          : tab === 'services' ? <table className="fk-table fn-table cg-table" data-testid="services-table"><thead><tr><th>{tx('tm.col.when')}</th><th>{tx('cm.l.service')}</th><th>{tx('cm.l.ticket')}</th><th className="num">{tx('tm.minutes')}</th><th className="num">{tx('tp.col.rating')}</th></tr></thead>
-            <tbody>{list.data.items.map((s: any) => <tr key={s.id} data-testid="service-row"><td>{whenTime(s.at)}</td><td>{s.service ?? '—'}{s.techsOnTicket > 1 ? <span className="fk-li-s">{tx('cm.shared', { n: nf(s.techsOnTicket) })}</span> : null}</td>
+          : tab === 'services' ? <table className="fk-table fn-table cg-table" data-testid="services-table"><thead><tr><th data-testid="services-date-h">{tx('tp.basis.' + ((list.data as { basis?: string }).basis ?? 'paid'))}</th><th>{tx('cm.l.service')}</th><th>{tx('cm.l.ticket')}</th><th className="num">{tx('tm.minutes')}</th><th className="num">{tx('tp.col.rating')}</th></tr></thead>
+            <tbody>{list.data.items.map((s: any) => <tr key={s.id} data-testid="service-row"><td>{whenTime(s.at)}</td><td>{s.service ?? '—'}{s.techsOnTicket > 1 ? <span className="fk-li-s">{tx('cm.shared', { n: nf(s.techsOnTicket) })}</span> : null}{s.technician ? <span className="fk-li-s">{tx('tp.byTech', { n: s.technician })}</span> : null}{s.helper && s.helper.id !== id ? <span className="fk-li-s" data-testid="service-helper">{tx('tp.helper', { n: s.helper.name ?? '—' })}</span> : null}</td>
               <td>{s.ticketNumber ?? '—'}{s.customer ? <span className="fk-li-s">{s.customer}</span> : null}</td><td className="num">{s.minutes ?? '—'}</td><td className="num">{s.rating != null ? of5(s.rating) : '—'}</td></tr>)}</tbody></table>
           : <ul className="fk-list tpf-reviews" data-testid="reviews-list">{list.data.items.map((r: any) => <li key={r.id} className="fk-li" data-testid="review-row"><span className="tpf-stars" aria-label={of5(r.rating)}>{'★'.repeat(Math.round(r.rating))}<span className="fk-muted">{'★'.repeat(5 - Math.round(r.rating))}</span></span>
             <span className="fk-li-t">{r.comment || <span className="fk-muted">{tx('tp.noComment')}</span>}<span className="fk-li-s">{whenTime(r.at)}</span></span></li>)}</ul>}

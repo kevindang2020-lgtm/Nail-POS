@@ -8,12 +8,14 @@ import { requestIdOf } from './audit-rows';
 import { SCORE_SNAPSHOT_BODY } from '../request-schemas';
 import { TeamPerformanceScreenRepository, PERF_SORTS, PERF_TIERS } from './team-performance-screen.repository';
 import { teamCtx, per, PRESET } from './technicians-screen.controller';
+import { canAny } from './screen-kit';
 
 export const TEAM_PERFORMANCE_SCREEN = 'TeamPerformanceScreenRepository';
 const s = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined);
 const RANGE = { dateRange: { maxDays: 3700 } } as const;
 const DIR = { filters: { preset: PRESET, tier: { type: 'enum', values: PERF_TIERS }, sort: { type: 'enum', values: PERF_SORTS } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 10, ...RANGE, params: ['page'] } as const;
 const EXPORT = { filters: { preset: PRESET, tier: { type: 'enum', values: PERF_TIERS }, sort: { type: 'enum', values: PERF_SORTS }, lang: { type: 'enum', values: ['en', 'vi'] }, requestId: { type: 'text', maxLength: 100 } }, search: { maxLength: 100 }, maxLimit: 1, defaultLimit: 1, ...RANGE } as const;
+const SVC = { filters: { preset: PRESET, basis: { type: 'enum', values: ['paid', 'completed'] }, role: { type: 'enum', values: ['own', 'helped'] } }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 8, ...RANGE, params: ['page'] } as const;
 const SUB = { filters: { preset: PRESET }, search: { maxLength: 100 }, maxLimit: 100, defaultLimit: 8, ...RANGE, params: ['page'] } as const;
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
@@ -31,8 +33,8 @@ export class TeamPerformanceScreenController {
   @Get('technicians/:id') @RequirePermission('pos.technicians.view')
   technician(@Req() req: any, @Param('id') id: string, @Query() q: any) { return this.r().technician(teamCtx(req), id, per(q)); }
 
-  @Get('technicians/:id/services') @RequirePermission('pos.technicians.view') @ListQuery(SUB)
-  services(@Req() req: any, @Param('id') id: string, @Query() q: any) { return this.r().services(teamCtx(req), id, { q: s(q?.q), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
+  @Get('technicians/:id/services') @RequirePermission('pos.technicians.view') @ListQuery(SVC)
+  services(@Req() req: any, @Param('id') id: string, @Query() q: any) { return this.r().services(teamCtx(req), id, { q: s(q?.q), basis: s(q?.basis), role: s(q?.role), ...per(q), page: q?.page, pageSize: q?.pageSize }); }
 
   @Get('technicians/:id/reviews') @RequirePermission('pos.technicians.view') @ListQuery(SUB)
   reviews(@Req() req: any, @Param('id') id: string, @Query() q: any) { return this.r().reviews(teamCtx(req), id, { ...per(q), page: q?.page, pageSize: q?.pageSize }); }
@@ -41,6 +43,8 @@ export class TeamPerformanceScreenController {
   @AsyncExport({ kind: 'pos.team-performance-screen.export' }) @Get('export') @RequirePermission('pos.technicians.view') @ListQuery(EXPORT)
   @Header('Content-Type', 'text/csv; charset=utf-8') @Header('Cache-Control', 'no-store')
   exportCsv(@Req() req: any, @Query() q: any) {
+    // D1 gaps (Nov 5 2026): the export is role-checked — viewing the screen is not enough, it needs reports.export
+    if (!canAny(teamCtx(req), 'reports.export')) throw new HttpException({ code: 'EXPORT_NOT_ALLOWED', message: 'You do not have permission to export this report.' }, HttpStatus.FORBIDDEN);
     return this.r().exportCsv(teamCtx(req), { q: s(q?.q), tier: s(q?.tier), sort: s(q?.sort), lang: s(q?.lang), ...per(q) }, requestIdOf(req, q?.requestId)).then((out) => {
       req?.res?.setHeader?.('Content-Disposition', `attachment; filename="${out.filename}"`); req?.res?.setHeader?.('X-Export-Request-Id', out.requestId);
       return out.csv;

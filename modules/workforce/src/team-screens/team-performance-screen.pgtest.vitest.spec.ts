@@ -97,4 +97,22 @@ describe('Team Performance', () => {
     expect(row.rating).toBe(4.5); expect(row.tier).toBe('excellent');
     expect((await repo.directory(ctx, { preset: 'month', tier: 'excellent' })).items.map((x) => x.name)).toContain('Bao Tran');
   });
+  it('D1 gaps — helper contribution is shown apart (never in her services); the service list can use the completion date', async () => {
+    // Kevin helped on Anna's ticket; Anna's line was completed 3 days ago, paid today
+    const [{ id: tk }] = (await q(`select t.id from tickets t join ticket_service_lines l on l.ticket_id = t.id where l.technician_id = $1 limit 1`, [ANNA])).rows;
+    await q(`update tickets set helper_technician_id = $1 where id = $2`, [KEVIN, tk]);
+    await q(`update ticket_service_lines set completed_at = now() - interval '3 days' where ticket_id = $1`, [tk]);
+    try {
+      const k = await repo.technician(ctx, KEVIN, { preset: 'month' });
+      expect(k.helpedTickets).toBe(1);
+      expect(k.services).toBe(2);   // helping never adds to her own completed services
+      const helped = await repo.services(ctx, KEVIN, { preset: 'month', role: 'helped' });
+      expect(helped.items.map((r: any) => r.technician)).toEqual(['Anna Lee']);
+      const anna = await repo.services(ctx, ANNA, { preset: 'today' });
+      expect(anna.items[0].helper).toMatchObject({ id: KEVIN, name: 'Kevin Dang' });
+      expect(anna.basis).toBe('paid');
+      // by completion date the line is 3 days old: not in "today"
+      expect((await repo.services(ctx, ANNA, { preset: 'today', basis: 'completed' })).totalItems).toBe(0);
+    } finally { await q(`update tickets set helper_technician_id = null where id = $1`, [tk]); await q(`update ticket_service_lines set completed_at = null where ticket_id = $1`, [tk]); }
+  });
 });
