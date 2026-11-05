@@ -987,6 +987,7 @@ export const ERRORS_EN = {
   'errors.TRANSFER_SAME_BRANCH': 'The source and destination locations must be different.',
   'errors.BOTTLE_REPORT_PENDING': 'This bottle already has a pending report of that type.',
   'errors.PO_NOT_PENDING': 'This purchase order is not waiting for approval.',
+  'errors.PO_APPROVAL_PENDING': 'This purchase order is waiting for approval and cannot be changed.',
   'errors.PO_ALREADY_RECEIVED': 'Those lines are already fully received.',
   'errors.RECEIVE_DAMAGED_INVALID': 'More damaged bottles than were received on this line.',
   'errors.TRANSFER_NOT_FOUND': 'That transfer could not be found.',

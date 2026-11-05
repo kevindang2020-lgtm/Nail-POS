@@ -82,6 +82,7 @@ export const inventoryApi = {
   createVendor: (b: any) => api.post<{ id: string }>('/tenant/inventory/vendors', b),
   purchaseOrders: (status?: string) => api.get<{ purchaseOrders: PurchaseOrderSummary[] }>('/tenant/inventory/purchase-orders', status ? { status } : undefined),
   purchaseOrder: (id: string) => api.get<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}`),
+  updatePurchaseOrder: (id: string, b: any) => api.patch<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}`, b),   // D9 gaps: change a draft
   createPurchaseOrder: (b: any, idempotencyKey?: string) => api.post<{ id: string; poNumber: string }>('/tenant/inventory/purchase-orders', b, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),
   approvePurchaseOrder: (id: string) => api.post<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}/approve`, {}),
   receivePurchaseOrder: (id: string, b: any, idempotencyKey?: string) => api.post<PurchaseOrderDetail>(`/tenant/inventory/purchase-orders/${id}/receive`, b, idempotencyKey ? { 'Idempotency-Key': idempotencyKey } : undefined),

@@ -987,6 +987,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.TRANSFER_SAME_BRANCH': 'Chi nhánh gửi và chi nhánh nhận phải khác nhau.',
   'errors.BOTTLE_REPORT_PENDING': 'Chai này đã có một báo cáo cùng loại đang chờ.',
   'errors.PO_NOT_PENDING': 'Đơn đặt hàng này không ở trạng thái chờ duyệt.',
+  'errors.PO_APPROVAL_PENDING': 'Đơn đặt hàng này đang chờ duyệt và không thể sửa.',
   'errors.PO_ALREADY_RECEIVED': 'Các dòng này đã nhận đủ.',
   'errors.RECEIVE_DAMAGED_INVALID': 'Số chai hư nhiều hơn số đã nhận trên dòng này.',
   'errors.TRANSFER_NOT_FOUND': 'Không tìm thấy phiếu chuyển kho này.',

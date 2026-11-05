@@ -263,9 +263,18 @@ function PurchaseOrdersTab({ s, q, patch, tick, can, onChanged }: TabProps & { o
   const key = JSON.stringify(scope);
   const d = useLoad(() => posInventoryScreenApi.purchaseOrders({ ...scope, page: s.page, pageSize: SIZES.purchaseOrders }), [key, s.page, tick]);
   const [creating, setCreating] = useState(false); const [receiveFor, setReceiveFor] = useState<string | null>(null); const [view, setView] = useState<string | null>(null);
+  const [editing, setEditing] = useState<PoEdit | null>(null);
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
-  const pick = usePickProducts(creating);
+  const pick = usePickProducts(creating || !!editing);
   const { confirm, confirmUi } = useInlineConfirm();
+  const openEdit = async (id: string) => {
+    setBusy(id); setErr(null);
+    try {
+      const r = await inventoryApi.purchaseOrder(id); const po = r.purchaseOrder ?? {};
+      setEditing({ id, poNumber: po.po_number ?? '', vendorId: po.vendor_id ?? '', expectedDate: po.expected_date ? String(po.expected_date).slice(0, 10) : '', shippingCents: Number(po.shipping_cents ?? 0),
+        lines: r.lines.map((l) => ({ productId: l.product_id, quantity: String(l.quantity_ordered), costDollars: centsToDollars(Number(l.unit_cost_cents ?? 0)) })) });
+    } catch (e) { setErr(errMsg(e)); } finally { setBusy(null); }
+  };
   const act = async (id: string, fn: () => Promise<unknown>) => { setBusy(id); setErr(null); try { await fn(); d.reload(); onChanged(); } catch (e) { setErr(errMsg(e)); } finally { setBusy(null); } };
   const rows: any[] = d.data?.rows ?? [];
   return <>
@@ -279,17 +288,18 @@ function PurchaseOrdersTab({ s, q, patch, tick, can, onChanged }: TabProps & { o
       footer={<Pager info={pageInfo(d.data)} onPage={(p) => patch({ page: p }, true)} label={tx('inv.tab.purchaseOrders')} />}>
       {d.error ? <StateBlock error={d.error} onRetry={d.reload} /> : !d.data ? <div className="fk-loading">{tx('pos.loading_purchase_orders')}</div>
         : rows.length === 0 ? <Empty title={tx('pos.no_purchase_orders_yet_create_one_y12v')}>{can('inventory.purchase_order.create') ? <button type="button" className="fk-btn" onClick={() => setCreating(true)}>{tx('pos.new_purchase_order_2')}</button> : null}</Empty>
-        : <PoTable rows={rows} busy={busy} can={can} onView={setView} onReceive={setReceiveFor}
+        : <PoTable rows={rows} busy={busy} can={can} onView={setView} onReceive={setReceiveFor} onEdit={(id) => void openEdit(id)}
             onApprove={(id) => act(id, () => inventoryApi.approvePurchaseOrder(id))} onCancel={(id) => confirm(tx('inv.confirmCancelPo'), () => { void act(id, () => inventoryApi.cancelPurchaseOrder(id)); }, { confirmLabel: tx('inv.cancelPo') })} />}
     </FitPanel>
     {creating ? (pick ? <CreatePOModal products={pick} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); patch({ page: 1, status: '', search: '', period: { preset: 'all' } }); d.reload(); onChanged(); }} /> : <FitDialog title={tx('pos.new_purchase_order_3')} onClose={() => setCreating(false)}><div className="fk-loading">{tx('pos.loading')}</div></FitDialog>) : null}
+    {editing && pick ? <CreatePOModal products={pick} edit={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); d.reload(); onChanged(); }} /> : null}
     {receiveFor ? <ReceivePOModal poId={receiveFor} onClose={() => setReceiveFor(null)} onSaved={() => { setReceiveFor(null); d.reload(); onChanged(); }} /> : null}
     {view ? <PoDialog poId={view} onClose={() => setView(null)} /> : null}
   </>;
 }
 
 /** The shared purchase-order table (Inventory → Purchase Orders and Suppliers): readable expected date, progress, remaining. */
-export function PoTable({ rows, busy, can, onView, onReceive, onApprove, onCancel, compact }: { rows: any[]; busy?: string | null; can: (k: string) => boolean; onView: (id: string) => void; onReceive?: (id: string) => void; onApprove?: (id: string) => void; onCancel?: (id: string) => void; compact?: boolean }) {
+export function PoTable({ rows, busy, can, onView, onReceive, onApprove, onCancel, onEdit, compact }: { rows: any[]; busy?: string | null; can: (k: string) => boolean; onView: (id: string) => void; onReceive?: (id: string) => void; onApprove?: (id: string) => void; onCancel?: (id: string) => void; onEdit?: (id: string) => void; compact?: boolean }) {
   return <table className="fk-table fn-table inv2-table" data-testid="po-table">
     <thead><tr><th>{tx('inv.col.po')}</th>{compact ? null : <th>{tx('inv.col.supplier')}</th>}<th>{tx('inv.col.expected')}</th><th className="num">{tx('inv.col.ordered')}</th><th className="num">{tx('inv.col.receivedProgress')}</th><th className="num t-opt">{tx('inv.col.remaining')}</th><th>{tx('inv.col.status')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
     <tbody>{rows.map((po) => <tr key={po.id} data-testid="po-row">
@@ -301,6 +311,7 @@ export function PoTable({ rows, busy, can, onView, onReceive, onApprove, onCance
       <td className="num t-opt">{fmtNumber(po.remaining)}<span className="fk-li-s">{money(po.remainingCents)}</span></td>
       <td><span className={'fk-chip ' + (PO_TONE[po.status] ?? 'mut')} data-testid="po-status-chip">{tx('inv.pos.' + po.status)}</span></td>
       <td className="fn-acts">
+        {po.status === 'draft' && onEdit && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn ghost sm" disabled={busy === po.id} onClick={() => onEdit(po.id)} data-testid="po-edit">{tx('inv.editPo')}</button> : null}
         {po.status === 'draft' && onApprove && can('inventory.purchase_order.approve') ? <button type="button" className="fk-btn primary sm" disabled={busy === po.id} onClick={() => onApprove(po.id)} data-testid="po-approve">{tx('pos.approve')}</button> : null}
         {['approved', 'ordered', 'partial'].includes(po.status) && onReceive && can('inventory.purchase_order.receive') ? <button type="button" className="fk-btn primary sm" disabled={busy === po.id} onClick={() => onReceive(po.id)} data-testid="po-receive">{tx('pos.receive')}</button> : null}
         {['draft', 'approved', 'ordered', 'partial'].includes(po.status) && onCancel && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn ghost sm" disabled={busy === po.id} onClick={() => onCancel(po.id)} data-testid="po-cancel">{tx('inv.cancelPo')}</button> : null}
@@ -471,12 +482,15 @@ function AlertsTab({ s, q, patch, tick, can, onDetail, onChanged, nav }: TabProp
 // ===== the existing create / receive / count / catalog / recipe / receipt modals, unchanged in behaviour =====
 
 type DraftLine = { productId: string; quantity: string; costDollars: string };
-function CreatePOModal({ products, onClose, onSaved }: { products: InvProduct[]; onClose: () => void; onSaved: () => void }) {
+/** D9 gaps (Nov 5 2026): `edit` opens the same form on a DRAFT order — the supplier stays, lines / date / shipping change */
+type PoEdit = { id: string; poNumber: string; vendorId: string; expectedDate: string; shippingCents: number; lines: DraftLine[] };
+const centsToDollars = (c: number) => (c ? (c / 100).toFixed(2) : '');
+function CreatePOModal({ products, onClose, onSaved, edit }: { products: InvProduct[]; onClose: () => void; onSaved: () => void; edit?: PoEdit }) {
   const [vendors, setVendors] = useState<InvVendor[]>([]);
-  const [vendorId, setVendorId] = useState('');
-  const [expectedDate, setExpectedDate] = useState('');
-  const [shipping, setShipping] = useState('');
-  const [lines, setLines] = useState<DraftLine[]>([{ productId: '', quantity: '12', costDollars: '' }]);
+  const [vendorId, setVendorId] = useState(edit?.vendorId ?? '');
+  const [expectedDate, setExpectedDate] = useState(edit?.expectedDate ?? '');
+  const [shipping, setShipping] = useState(edit ? centsToDollars(edit.shippingCents) : '');
+  const [lines, setLines] = useState<DraftLine[]>(edit?.lines.length ? edit.lines : [{ productId: '', quantity: '12', costDollars: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => { inventoryApi.vendors().then((r) => setVendors(r?.vendors ?? [])).catch(() => setVendors([])); }, []);
@@ -495,21 +509,25 @@ function CreatePOModal({ products, onClose, onSaved }: { products: InvProduct[];
         vendorId: vendorId || null, expectedDate: expectedDate || null, shippingCents: (parseDollarsToCents(shipping) ?? 0),
         lines: clean.map((l) => ({ productId: l.productId, quantityOrdered: parseInt(l.quantity, 10) || 0, unitCostCents: (parseDollarsToCents(l.costDollars) ?? 0) })),
       };
-      // one key per draft until it is created: a double tap or a retry creates ONE purchase order (D10)
-      await inventoryApi.createPurchaseOrder(body, poKeys.current.keyFor('create', body));
-      poKeys.current.done('create');
+      if (edit) { const { vendorId: _v, ...change } = body; await inventoryApi.updatePurchaseOrder(edit.id, change); }
+      else {
+        // one key per draft until it is created: a double tap or a retry creates ONE purchase order (D10)
+        await inventoryApi.createPurchaseOrder(body, poKeys.current.keyFor('create', body));
+        poKeys.current.done('create');
+      }
       onSaved();
     } catch (e: any) { setError(e?.message || tx('pos.could_not_create_purchase_order')); } finally { setSaving(false); }
   };
   return (
     <div className="inv-ov" onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="inv-modal wide">
-        <div className="im-h">{tx('pos.new_purchase_order_3')}</div>
+        <div className="im-h">{edit ? tx('inv.editPoTitle', { n: edit.poNumber }) : tx('pos.new_purchase_order_3')}</div>
         <div className="im-b">
           {error && <div className="inv-err">{error}</div>}
+          {edit ? <div className="fk-hint" data-testid="po-edit-note">{tx('inv.editPoNote')}</div> : null}
           <div className="if-row">
             <label className="if"><span>{tx('pos.vendor')}</span>
-              <select value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+              <select value={vendorId} onChange={(e) => setVendorId(e.target.value)} disabled={!!edit}>
                 <option value="">{tx('pos.none_3')}</option>
                 {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
               </select>
@@ -534,7 +552,7 @@ function CreatePOModal({ products, onClose, onSaved }: { products: InvProduct[];
           <button className="btn sm ghost" onClick={addLine} style={{ marginTop: 4 }}>{tx('pos.add_line')}</button>
           <div style={{ textAlign: 'right', marginTop: 12, fontWeight: 700 }}>{tx('pos.subtotal_2')}{' '}{money(subtotal)} {tx('pos.total_4')}{' '}{money(total)}</div>
         </div>
-        <div className="im-f"><button className="btn ghost" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn primary" onClick={save} disabled={saving}>{saving ? tx('pos.creating') : tx('pos.create_purchase_order')}</button></div>
+        <div className="im-f"><button className="btn ghost" onClick={onClose}>{tx('pos.cancel')}</button><button className="btn primary" onClick={save} disabled={saving}>{saving ? (edit ? tx('inv.savingPo') : tx('pos.creating')) : edit ? tx('inv.savePo') : tx('pos.create_purchase_order')}</button></div>
       </div>
     </div>
   );

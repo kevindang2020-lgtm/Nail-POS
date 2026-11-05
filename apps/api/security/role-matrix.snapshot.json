@@ -2107,6 +2107,7 @@
   "PATCH /tenant/inventory/categories/{id}": "AADDDRRRRRRRRRRRR",
   "PATCH /tenant/inventory/products/{id}": "AADDDRRRRRRRRRRRR",
   "PATCH /tenant/inventory/products/{id}/stock-overrides": "AADDDRRRRRRRRRRRR",
+  "PATCH /tenant/inventory/purchase-orders/{id}": "AADDDRRRRRRRRRRRR",
   "PATCH /tenant/inventory/suppliers/{vendorId}/contacts/{contactId}": "AADDDRRRRRRRRRRRR",
   "PATCH /tenant/inventory/vendors/{id}": "AADDDRRRRRRRRRRRR",
   "PATCH /tenant/locations/{id}": "AADDDRRRRRRRRRRRR",

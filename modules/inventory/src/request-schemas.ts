@@ -50,6 +50,11 @@ export const INV_PO_CREATE_BODY: BodySchema = obj({
   vendorId: id, expectedDate: str(32), notes: str(2000), shippingCents: num, taxCents: num,
   lines: lines(S.object({ productId: id, quantityOrdered: num, quantity: num, unitCostCents: num })),
 });
+// D9 gaps (Nov 5 2026): change a draft PO — the supplier stays (pack sizes come from it)
+export const INV_PO_UPDATE_BODY: BodySchema = obj({
+  expectedDate: str(32), notes: str(2000), shippingCents: num, taxCents: num,
+  lines: lines(S.object({ productId: id, quantityOrdered: num, unitCostCents: num })),
+});
 export const INV_PO_RECEIVE_BODY: BodySchema = obj({ lines: lines(S.object({ lineId: id, quantity: num, damaged: num, lotNumber: str(64), expirationDate: str(32) })) });
 export const INV_TRANSFER_BODY: BodySchema = obj({ toBranchId: id, notes: str(2000), lines: lines(S.object({ productId: id, quantity: num })) });
 export const INV_COUNT_CREATE_BODY: BodySchema = obj({ scopeType: str(32), scopeId: id, notes: str(2000) });

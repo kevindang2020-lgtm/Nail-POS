@@ -2126,6 +2126,7 @@ PATCH /tenant/inventory/brands/{id}  realm=staff  auth=session  domain=inventory
 PATCH /tenant/inventory/categories/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.category.manage  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /tenant/inventory/products/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /tenant/inventory/products/{id}/stock-overrides  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
+PATCH /tenant/inventory/purchase-orders/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.purchase_order.create  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /tenant/inventory/suppliers/{vendorId}/contacts/{contactId}  realm=staff  auth=session  domain=inventory  perm=inventory.vendor.manage  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /tenant/inventory/vendors/{id}  realm=staff  auth=session  domain=inventory  perm=inventory.vendor.manage  guards=RolePermissionGuard,TenantAuthGuard
 PATCH /tenant/locations/{id}  realm=staff  auth=session  domain=tenants  perm=locations.update  guards=RolePermissionGuard,TenantAuthGuard

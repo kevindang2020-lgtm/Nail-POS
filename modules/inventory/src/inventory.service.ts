@@ -84,6 +84,8 @@ export interface PurchaseOrderApprovalsPort {
   request(actor: ApprovalActorLike, body: unknown): Promise<{ request: { id: string }; created: boolean }>;
   liveFor(actor: ApprovalActorLike, kind: 'purchase_order', subjectType: string, subjectId: string): Promise<{ id: string; version: number; status: string } | null>;
   decide(actor: ApprovalActorLike, id: string, body: unknown): Promise<{ status: string; payload?: Record<string, unknown> }>;
+  /** withdraw a pending request (only its requester) — used when a draft PO is changed after it was sent for approval */
+  cancel?(actor: ApprovalActorLike, id: string, body: { reason: string }): Promise<unknown>;
 }
 const PO_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const poActor = (ctx: InvCtx): ApprovalActorLike => ({ tenantId: ctx.tenantId, branchId: ctx.branchId && PO_UUID.test(ctx.branchId) ? ctx.branchId : null, userId: ctx.userId, role: ctx.role, permissions: ctx.permissions ?? [] });
@@ -975,7 +977,8 @@ export class InventoryService {
     return { purchaseOrder: po, lines: lines.rows };
   }
 
-  async createPurchaseOrder(ctx: InvCtx, b: any) {
+  /** the lines of a new or changed purchase order: every product this salon's, quantity 1..100000, cost ≥ 0 */
+  private async cleanPoLines(ctx: InvCtx, b: any) {
     const raw = Array.isArray(b?.lines) ? b.lines : [];
     if (raw.length === 0) throw withCode(new InventoryError(400, 'A purchase order needs at least one line item'), 'PO_LINES_REQUIRED');
     const clean: { productId: string; quantityOrdered: number; unitCostCents: number }[] = [];
@@ -988,6 +991,11 @@ export class InventoryService {
       if (qty > 100000) throw withCode(new InventoryError(400, 'Line quantity is too large'), 'QUANTITY_TOO_LARGE');
       clean.push({ productId: pid, quantityOrdered: qty, unitCostCents: Math.max(0, parseInt(l?.unitCostCents, 10) || 0) });
     }
+    return clean;
+  }
+
+  async createPurchaseOrder(ctx: InvCtx, b: any) {
+    const clean = await this.cleanPoLines(ctx, b);
     const shipping = Math.max(0, parseInt(b?.shippingCents, 10) || 0);
     const tax = Math.max(0, parseInt(b?.taxCents, 10) || 0);
     const totals = poTotals(clean, shipping, tax);
@@ -1019,6 +1027,48 @@ export class InventoryService {
       catch { /* the PO stays a draft; the approve route decides it directly */ }
     }
     return { id: poId, poNumber: poNum, approvalId };
+  }
+
+  /** D9 gaps (Nov 5 2026): change a DRAFT purchase order — its lines, shipping, tax, expected date and notes (the supplier
+   *  stays: the pack sizes come from it). One transaction, only while still a draft. If it was already sent for approval,
+   *  the person who sent it withdraws that request and a new one is filed for the new total (an approver never approves
+   *  an amount that changed under them); anyone else is refused while the request is open. */
+  async updatePurchaseOrder(ctx: InvCtx, id: string, b: any) {
+    const po = await this.po(ctx, id);
+    if (po.status !== 'draft') throw withCode(new InventoryError(409, 'Only a draft purchase order can be changed'), 'PO_STATE_INVALID');
+    const clean = await this.cleanPoLines(ctx, b);
+    const shipping = b?.shippingCents !== undefined ? Math.max(0, parseInt(b.shippingCents, 10) || 0) : Number(po.shipping_cents ?? 0);
+    const tax = b?.taxCents !== undefined ? Math.max(0, parseInt(b.taxCents, 10) || 0) : Number(po.tax_cents ?? 0);
+    const totals = poTotals(clean, shipping, tax);
+    // asked BEFORE anything changes: an approvals engine that cannot answer refuses the edit (never "no approval needed")
+    const needsApproval = this.approvals ? await this.approvals.needsApproval(ctx.tenantId, 'purchase_order', totals.totalCents) : false;
+    const live = this.approvals && PO_UUID.test(id) ? await this.approvals.liveFor(poActor(ctx), 'purchase_order', 'purchase_order', id) : null;
+    if (live && live.status === 'pending') {
+      if (!this.approvals?.cancel) throw withCode(new InventoryError(409, 'This purchase order is waiting for approval and cannot be changed'), 'PO_APPROVAL_PENDING');
+      try { await this.approvals.cancel(poActor(ctx), live.id, { reason: 'Purchase order changed before approval' }); }
+      catch (e) { throw withCode(new InventoryError(409, `This purchase order is waiting for approval and cannot be changed (${(e as Error)?.message ?? 'withdraw refused'})`), 'PO_APPROVAL_PENDING'); }
+    }
+    const packs = new Map<string, number>();
+    if (po.vendor_id) for (const r of (await sql<any>`SELECT product_id, units_per_purchase_unit FROM inventory_vendor_products WHERE tenant_id = ${ctx.tenantId} AND vendor_id = ${po.vendor_id}`.execute(this.need())).rows) packs.set(String(r.product_id), Math.max(1, Number(r.units_per_purchase_unit) || 1));
+    await this.need().transaction().execute(async (trx0) => {
+      const trx = trx0 as unknown as Kysely<DB>;
+      const upd = await sql`UPDATE purchase_orders SET subtotal_cents = ${totals.subtotalCents}, shipping_cents = ${shipping}, tax_cents = ${tax}, total_cents = ${totals.totalCents},
+          expected_date = ${b?.expectedDate !== undefined ? (b.expectedDate || null) : po.expected_date ?? null}, notes = ${b?.notes !== undefined ? (b.notes || null) : po.notes ?? null}, updated_at = now()
+        WHERE id = ${id} AND tenant_id = ${ctx.tenantId} AND status = 'draft'`.execute(trx);
+      if (!Number(upd.numAffectedRows ?? 0)) throw withCode(new InventoryError(409, 'Only a draft purchase order can be changed'), 'PO_STATE_INVALID');
+      await sql`DELETE FROM purchase_order_lines WHERE purchase_order_id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(trx);
+      for (const l of clean) {
+        await sql`INSERT INTO purchase_order_lines (tenant_id, purchase_order_id, product_id, quantity_ordered, unit_cost_cents, units_per_purchase_unit)
+          VALUES (${ctx.tenantId}, ${id}, ${l.productId}, ${l.quantityOrdered}, ${l.unitCostCents}, ${packs.get(l.productId) ?? 1})`.execute(trx);
+      }
+      await this.audit(ctx, 'inventory_po_updated', null, null, { id, lines: clean.length, totalBefore: Number(po.total_cents ?? 0), totalCents: totals.totalCents, approvalWithdrawn: live?.status === 'pending' ? live.id : null }, trx);
+    });
+    let approvalId: string | null = null;
+    if (this.approvals && needsApproval) {
+      try { approvalId = (await this.approvals.request(poActor(ctx), { kind: 'purchase_order', subjectType: 'purchase_order', subjectId: id, amountCents: totals.totalCents, reason: String(b?.notes ?? po.notes ?? '').trim().slice(0, 200) || 'Changed purchase order' })).request.id; }
+      catch (e) { console.warn('[inventory] approval request for the changed purchase order not filed — it stays a draft', (e as Error)?.message); }
+    }
+    return { ...(await this.getPurchaseOrder(ctx, id)), approvalId };
   }
 
   async approvePurchaseOrder(ctx: InvCtx, id: string) {

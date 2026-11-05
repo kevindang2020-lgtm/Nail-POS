@@ -1090,6 +1090,7 @@ export const ERROR_REGISTRY = {
   TRANSFER_SAME_BRANCH:           { status: 400, message: 'The source and destination locations must be different.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },
   BOTTLE_REPORT_PENDING:          { status: 409, message: 'This bottle already has a pending report of that type.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   PO_NOT_PENDING:                 { status: 409, message: 'This purchase order is not waiting for approval.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
+  PO_APPROVAL_PENDING:            { status: 409, message: 'This purchase order is waiting for approval and cannot be changed.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   PO_ALREADY_RECEIVED:            { status: 409, message: 'Those lines are already fully received.', domain: 'inventory', retryable: false, severity: 'info', action: 'REFRESH' },
   RECEIVE_DAMAGED_INVALID:        { status: 400, message: 'More damaged bottles than were received on this line.', domain: 'inventory', retryable: false, severity: 'warning', action: 'NONE' },
   TRANSFER_NOT_FOUND:             { status: 404, message: 'That transfer could not be found.', domain: 'inventory', retryable: false, severity: 'info', action: 'NONE' },

@@ -2,7 +2,7 @@
 // Tenant + branch come from the session (req.ctx); never from the client.
 import { Idempotent } from '@aipowersalon/database/nest';   // D10: a double tap creates / receives once
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
-import { INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_VENDOR_BODY } from './request-schemas';
+import { INV_ADD_STOCK_BODY, INV_BRAND_BODY, INV_CATEGORY_BODY, INV_CONSUME_BODY, INV_COUNT_CREATE_BODY, INV_COUNT_LINES_BODY, INV_NOTE_BODY, INV_PO_CREATE_BODY, INV_PO_RECEIVE_BODY, INV_PO_UPDATE_BODY, INV_PRODUCT_CREATE_BODY, INV_PRODUCT_UPDATE_BODY, INV_RECEIPT_EXPENSE_BODY, INV_RECIPE_BODY, INV_STOCK_OVERRIDES_BODY, INV_TRANSFER_BODY, INV_VENDOR_BODY } from './request-schemas';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { InventoryService, InventoryError } from './inventory.service';
@@ -61,6 +61,7 @@ export class InventoryController {
   @Get('purchase-orders') @RequirePermission('inventory.purchase_order.view') listPOs(@Req() r: any, @Query() q: any) { return run(() => this.svc.listPurchaseOrders(ctx(r), q?.status)); }
   @Get('purchase-orders/:id') @RequirePermission('inventory.purchase_order.view') getPO(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.getPurchaseOrder(ctx(r), id)); }
   @Idempotent() @Post('purchase-orders') @RequirePermission('inventory.purchase_order.create') createPO(@Req() r: any, @Body(ValidatedBody(INV_PO_CREATE_BODY, { strict: true })) b: any) { return run(() => this.svc.createPurchaseOrder(ctx(r), b)); }
+  @Patch('purchase-orders/:id') @RequirePermission('inventory.purchase_order.create') updatePO(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_PO_UPDATE_BODY, { strict: true })) b: any) { return run(() => this.svc.updatePurchaseOrder(ctx(r), id, b)); }   // D9 gaps: change a draft
   @Post('purchase-orders/:id/approve') @RequirePermission('inventory.purchase_order.approve') approvePO(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.approvePurchaseOrder(ctx(r), id)); }
   @Idempotent() @Post('purchase-orders/:id/receive') @RequirePermission('inventory.purchase_order.receive') receivePO(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_PO_RECEIVE_BODY, { strict: true })) b: any) { return run(() => this.svc.receivePurchaseOrder(ctx(r), id, b)); }
   @Post('purchase-orders/:id/cancel') @RequirePermission('inventory.purchase_order.create') cancelPO(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INV_NOTE_BODY, { strict: true })) b: any) { return run(() => this.svc.cancelPurchaseOrder(ctx(r), id, b?.note)); }
