@@ -291,6 +291,6 @@ Remaining F1 work:
 
 - §39: check-ins and profile edits as their own feed events — PARTIAL (visits, new profiles, bookings and loyalty adjustments are in).
 - §31: keep scroll position on return.
-- §33 / §36 / §38: Demographics, CLV and RFM definitions written up in the metrics doc (formulas exist; not yet documented).
+- §36 / §38: spend does not subtract refunds; RFM does not use Monetary — both PARTIAL, written up in the metrics doc.
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
 - §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).

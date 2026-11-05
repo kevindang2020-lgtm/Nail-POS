@@ -64,3 +64,33 @@ Whole salon (not the visible page), newest first, at most 8: each customer's lat
 profile drawer. If the bookings / loyalty read fails, the card says it is unavailable (`unavailable: ['recentActivity']`).
 
 Not yet in the feed: check-ins and profile edits as separate events — PARTIAL.
+
+## Spend, Customer Lifetime Value, Demographics and RFM (§33, §36, §38)
+
+**Customer spend** (`load()` in the repository) = the sum of `tickets.total_cents` over the customer's settled tickets
+(`closed` / `paid`) in scope. `total_cents` is the ticket total as charged, so it includes tax and tip and is in integer
+cents. Refunds are **not** subtracted yet — PARTIAL against §11/§36, which ask for a stated refund/tax/tip policy.
+Merging two profiles moves the duplicate's tickets to the surviving profile, so a merged history is counted once.
+
+**Customer Lifetime Value** (`buildCustomersAnalytics`, customers.dto.ts): total spend of all customers in scope ÷
+number of customers in scope (all time). "Repeat rate" = 2+-visit customers ÷ all customers. Money fields are 0 for a
+role without financial access.
+
+**Demographics**: age groups only, from a birthday whose **year** the customer gave (`birthday_year_known`). No age,
+gender or other attribute is inferred from names or photos. Customers without a birth year are not placed in any group,
+and the card shows "No birthdays on file yet" when nobody has one.
+
+**RFM** — inputs: Recency = days since the last settled visit; Frequency = settled visits (all time). Monetary is not
+used in the segment rule today (PARTIAL against §38). Segments, first match wins:
+
+| Segment | Rule |
+|---|---|
+| Champions | 8+ visits and last visit ≤ 30 days |
+| Loyal Customers | 4+ visits and last visit ≤ 90 days |
+| Potential Loyalists | ≤ 3 visits and last visit ≤ 30 days |
+| At Risk (RFM) | 4+ visits and last visit 61–120 days |
+| Cannot Lose Them | 6+ visits and last visit > 120 days |
+| Hibernating | everything else (including never visited) |
+
+The RFM "At Risk" segment is a different rule from the directory's At Risk tab (salon threshold, any visit count); the
+tab uses the Customer Retention definition so it matches that screen.
