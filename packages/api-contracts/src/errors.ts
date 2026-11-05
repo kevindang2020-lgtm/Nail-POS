@@ -218,6 +218,7 @@ export const ERROR_REGISTRY = {
   PAY_PLAN_CONFLICT:              { status: 409, message: 'This technician already has a pay plan for those dates. End it first.', domain: 'payroll', retryable: false, severity: 'info', action: 'NONE' },
   TIP_ALLOCATION_INVALID:         { status: 400, message: 'The tip split does not add up to the ticket tip.', domain: 'payroll', retryable: false, severity: 'info', action: 'NONE' },
   TIP_ALLOCATION_LOCKED:          { status: 409, message: 'This ticket is paid, so its tip is locked. Give a reason to record a tip adjustment.', domain: 'payroll', retryable: false, severity: 'info', action: 'NONE' },
+  TIP_ADJUSTMENT_INVALID:         { status: 400, message: 'This tip adjustment cannot be recorded.', domain: 'payroll', retryable: false, severity: 'info', action: 'NONE' },
   // Weekly Technician Paycheck mandate (Oct 21 2026): statements, payout plans, check / cash payouts (modules/workforce PayrollError)
   PAYROLL_PAY_THROUGH_PAYOUTS:   { status: 409, message: 'This week is paid through its pay statements and their check / cash payouts.', domain: 'payroll', retryable: false, severity: 'info', action: 'REFRESH' },
   PAYOUT_PLAN_INVALID:           { status: 422, message: 'The payout split must add up exactly to the amount payable, using methods this salon allows.', domain: 'payroll', retryable: false, severity: 'info', action: 'NONE' },

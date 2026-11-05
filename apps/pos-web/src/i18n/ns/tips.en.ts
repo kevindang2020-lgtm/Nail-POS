@@ -49,4 +49,11 @@ export const TIPS_EN = {
   'tp.adjust': 'Adjust allocation', 'tp.reason': 'Reason', 'tp.saveAdjustment': 'Record adjustment', 'tp.sumCheck': 'Allocations total {s} · tip collected {t}', 'tp.adjusted': 'Tip allocation on #{n} recorded.',
   'tp.adjustNote': 'The split must equal the collected tip. On a paid ticket this records signed correction entries; the frozen payroll snapshot and the card charge are never changed. Refund the card from Refunds & Voids.',
   'tp.audit.ticket.tip_allocation_set': 'Tip allocation set', 'tp.audit.tips_exported': 'Tips exported',
+  'tp.freeAdjust': 'Add or remove tip',
+  'tp.freeDir': 'Change',
+  'tp.freeAdd': 'Add to tip',
+  'tp.freeRemove': 'Remove from tip',
+  'tp.freeConfirm': 'This records {a} for {n} on this ticket.',
+  'tp.freeNote': 'Recorded as a tip adjustment with your name and reason. The collected tip and the card charge do not change; a card refund goes through Refunds. If the pay period is already approved or paid, it goes to the next open period.',
+  'tp.audit.ticket.tip_adjusted': 'Tip adjusted',
 } as const;

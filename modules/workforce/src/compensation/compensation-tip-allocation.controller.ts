@@ -4,7 +4,8 @@
 import { RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { Body, Controller, Get, HttpException, HttpStatus, Param, Post, Req } from '@nestjs/common';
 import { TipAllocationService, TipAllocationError, type TipAllocationCtx } from './compensation-tip-allocation.service';
-import { COMP_TIP_ALLOCATION_BODY } from '../request-schemas';
+import { COMP_TIP_ALLOCATION_BODY, COMP_TIP_ADJUSTMENT_BODY } from '../request-schemas';
+import { Idempotent } from '@aipowersalon/database/nest';
 import type { TipAllocationRequest, TipAllocationResult, TicketTipAllocationView } from '@aipowersalon/api-contracts/tenant';
 
 function ctxFrom(req: any): TipAllocationCtx {
@@ -26,6 +27,17 @@ export class TipAllocationController {
   @RequirePermission('tips.adjust') @Post(':id/tip-allocation')
   async allocate(@Req() req: any, @Param('id') id: string, @Body(ValidatedBody(COMP_TIP_ALLOCATION_BODY, { strict: true })) body: TipAllocationRequest): Promise<TipAllocationResult> {
     try { return await this.svc.allocate(ctxFrom(req), id, { allocations: body?.allocations, reason: body?.reason ?? undefined }); }
+    catch (e: any) {
+      if (e instanceof TipAllocationError) throw new HttpException({ ok: false, ...(e.code ? { code: e.code } : {}), message: e.message }, e.status || HttpStatus.BAD_REQUEST);
+      throw e;
+    }
+  }
+
+  /** D15/D19 gaps (Nov 5 2026): a free-form tip adjustment on a paid ticket (one technician, signed amount, reason) — a
+   *  compensating ledger entry, never an edit of the collected tip; once per Idempotency-Key */
+  @Idempotent({ required: true }) @RequirePermission('tips.adjust') @Post(':id/tip-adjustments')
+  async adjust(@Req() req: any, @Param('id') id: string, @Body(ValidatedBody(COMP_TIP_ADJUSTMENT_BODY, { strict: true })) body: { technicianId: string; amountCents: number; reason: string }) {
+    try { return await this.svc.adjust(ctxFrom(req), id, body); }
     catch (e: any) {
       if (e instanceof TipAllocationError) throw new HttpException({ ok: false, ...(e.code ? { code: e.code } : {}), message: e.message }, e.status || HttpStatus.BAD_REQUEST);
       throw e;

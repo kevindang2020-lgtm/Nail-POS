@@ -154,6 +154,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.PAY_PLAN_CONFLICT': 'Thợ này đã có kế hoạch lương cho những ngày đó. Hãy kết thúc kế hoạch đó trước.',
   'errors.TIP_ALLOCATION_INVALID': 'Phần chia tiền tip không khớp với tiền tip của hóa đơn.',
   'errors.TIP_ALLOCATION_LOCKED': 'Hóa đơn này đã thanh toán nên tiền tip đã khóa. Nhập lý do để ghi điều chỉnh tiền tip.',
+  'errors.TIP_ADJUSTMENT_INVALID': 'Không thể ghi điều chỉnh tiền tip này.',
   'errors.PAYROLL_PAY_THROUGH_PAYOUTS': 'Tuần này được trả qua phiếu lương và các khoản chi bằng séc / tiền mặt.',
   'errors.PAYOUT_PLAN_INVALID': 'Phần chia khoản chi phải cộng đúng bằng số tiền phải trả, theo cách trả tiệm cho phép.',
   'errors.PAYROLL_SUBMIT_BLOCKED': 'Bảng lương còn lỗi cần sửa trước khi gửi cho chủ tiệm.',

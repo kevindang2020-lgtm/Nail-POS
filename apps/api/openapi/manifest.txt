@@ -3097,6 +3097,7 @@ POST /pos/technicians/{technicianId}/start-break  realm=staff  auth=session  dom
 POST /pos/technicians/{technicianId}/suspend  realm=staff  auth=session  domain=workforce  perm=pos.technicians.status_change  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/technicians/{technicianId}/time-off  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/technicians/{technicianId}/time-off/{id}/decision  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/tickets/{id}/tip-adjustments  realm=staff  auth=session  domain=finance  perm=tips.adjust  idempotency=required
 POST /pos/tickets/{id}/tip-allocation  realm=staff  auth=session  domain=finance  perm=tips.adjust
 POST /pos/tickets/{ticketId}/cancel-app-payment  realm=staff  auth=session  domain=checkout  perm=checkout.process_payment
 POST /pos/tickets/{ticketId}/move-to-front-desk-checkout  realm=staff  auth=session  domain=checkout  perm=checkout.process_payment

@@ -6,7 +6,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
 const api = vi.hoisted(() => ({ summary: vi.fn(), transactions: vi.fn(), distribution: vi.fn(), technicians: vi.fn(), adjustments: vi.fn(), detail: vi.fn(), exportCsv: vi.fn() }));
-const payroll = vi.hoisted(() => ({ ticketTip: vi.fn(), setTicketTip: vi.fn() }));
+const payroll = vi.hoisted(() => ({ ticketTip: vi.fn(), setTicketTip: vi.fn(), adjustTicketTip: vi.fn() }));
 vi.mock('../api/posTipsScreenApi', () => ({ posTipsScreenApi: api }));
 vi.mock('../api/posPayrollApi', () => ({ posPayrollApi: payroll }));
 vi.mock('./access/accessUi', () => ({ useStepUp: () => ({ run: (fn: () => Promise<unknown>) => fn(), prompt: null }), isStepUpCancelled: () => false }));
@@ -66,6 +66,22 @@ describe('POSTipsScreen', () => {
     fireEvent.change(screen.getByTestId('alloc-a'), { target: { value: '4.60' } });
     fireEvent.click(screen.getByTestId('adjust-save'));
     await waitFor(() => expect(payroll.setTicketTip).toHaveBeenCalledWith('t1', { allocations: [{ technicianId: 'v', tipCents: 500 }, { technicianId: 'a', tipCents: 460 }], reason: 'Anna did the art' }));
+  });
+  it('D15/D19 gaps — Add or remove tip: one technician, a direction, an amount and a reason, sent once with an Idempotency-Key', async () => {
+    api.detail.mockResolvedValue({ tip: row(), payments: [], allocations: [], splitRule: 'single', unallocatedCents: 0, adjustments: [], audit: [], permissions: { adjust: true, customer: true } });
+    payroll.ticketTip.mockResolvedValue({ ticketId: 't1', tipCents: 960, status: 'paid', locked: true, allocations: [{ technicianId: 'v', name: 'Vishal verma', tipCents: 960 }, { technicianId: 'a', name: 'Anna Lee', tipCents: 0 }] });
+    payroll.adjustTicketTip.mockResolvedValue({ ok: true, amountCents: -200, earnedCents: 760, routedToNextPeriod: false });
+    mount(); await screen.findByTestId('tech-bars');
+    fireEvent.click(screen.getByTestId('tab-transactions'));
+    fireEvent.click((await screen.findAllByRole('button', { name: 'View' }))[0]);
+    fireEvent.click(await screen.findByTestId('free-adjust'));
+    await screen.findByTestId('free-adjust-form');
+    fireEvent.change(screen.getByTestId('free-dir'), { target: { value: 'remove' } });
+    fireEvent.change(screen.getByTestId('free-amount'), { target: { value: '2.00' } });
+    expect(screen.getByTestId('free-save')).toBeDisabled();   // no reason yet
+    fireEvent.change(screen.getByTestId('free-reason'), { target: { value: 'Entered twice' } });
+    fireEvent.click(screen.getByTestId('free-save'));
+    await waitFor(() => expect(payroll.adjustTicketTip).toHaveBeenCalledWith('t1', { technicianId: 'v', amountCents: -200, reason: 'Entered twice' }, expect.any(String)));
   });
   it('shows a permission state on 403 and no export button without the permission', async () => {
     api.summary.mockRejectedValue({ status: 403 }); api.transactions.mockRejectedValue({ status: 403 }); api.distribution.mockRejectedValue({ status: 403 });

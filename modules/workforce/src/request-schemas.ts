@@ -99,6 +99,10 @@ export const COMP_RULE_ACTIVATE_BODY: BodySchema = S.object({ adminAuthCode: str
 export const COMP_TIP_ALLOCATION_BODY: BodySchema = S.object({
   allocations: S.array(S.object({ technicianId: S.text(64), tipCents: S.cents() }, ['technicianId', 'tipCents']), { maxItems: 50 }), reason: str(500),
 }, ['allocations']);
+/** D15/D19 gaps (Nov 5 2026): a free-form tip adjustment — one technician, a signed amount, a reason (never the card charge) */
+export const COMP_TIP_ADJUSTMENT_BODY: BodySchema = S.object({
+  technicianId: S.uuid(), amountCents: S.integer({ minimum: -100000, maximum: 100000 }), reason: S.text(500, { minLength: 3 }),
+}, ['technicianId', 'amountCents', 'reason']);
 /** pure-compute previews: the engine input (service lines + tip are engine objects the calculator validates) */
 export const COMP_PREVIEW_BODY: BodySchema = S.object({
   ticketId: str(64), branchId: str(64), serviceLines: S.nullable(S.array(S.freeObject(), { maxItems: 200 })), tip: free,

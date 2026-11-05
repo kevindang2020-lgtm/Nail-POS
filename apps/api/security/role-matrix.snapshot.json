@@ -3000,6 +3000,7 @@
   "POST /pos/technicians/import": "AADDDRRRRRRRRRRRR",
   "POST /pos/technicians/live-schedule/open-slots/{slotId}/book": "AAAAARRRRRRRRRRRR",
   "POST /pos/technicians/lookup": "AADDDRRRRRRRRRRRR",
+  "POST /pos/tickets/{id}/tip-adjustments": "AADDDRRRRRRRRRRRR",
   "POST /pos/tickets/{id}/tip-allocation": "AADDDRRRRRRRRRRRR",
   "POST /pos/tickets/{ticketId}/cancel-app-payment": "AAAADRRRRRRRRRRRR",
   "POST /pos/tickets/{ticketId}/move-to-front-desk-checkout": "AAAADRRRRRRRRRRRR",

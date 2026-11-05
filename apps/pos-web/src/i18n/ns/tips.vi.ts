@@ -42,4 +42,11 @@ export const TIPS_VI: Record<string, string> = {
   'tp.adjust': 'Điều chỉnh phân bổ', 'tp.reason': 'Lý do', 'tp.saveAdjustment': 'Ghi điều chỉnh', 'tp.sumCheck': 'Tổng phân bổ {s} · tip đã thu {t}', 'tp.adjusted': 'Đã ghi phân bổ tip trên #{n}.',
   'tp.adjustNote': 'Tổng chia phải bằng tip đã thu. Với phiếu đã trả, hệ thống ghi các bút toán điều chỉnh có dấu; bản chốt lương và giao dịch thẻ không bao giờ bị sửa. Hoàn tiền thẻ ở mục Hoàn tiền & Hủy.',
   'tp.audit.ticket.tip_allocation_set': 'Đã đặt phân bổ tip', 'tp.audit.tips_exported': 'Đã xuất tiền tip',
+  'tp.freeAdjust': 'Thêm hoặc bớt tiền tip',
+  'tp.freeDir': 'Thay đổi',
+  'tp.freeAdd': 'Thêm vào tiền tip',
+  'tp.freeRemove': 'Bớt khỏi tiền tip',
+  'tp.freeConfirm': 'Sẽ ghi {a} cho {n} trên hóa đơn này.',
+  'tp.freeNote': 'Được ghi là điều chỉnh tiền tip kèm tên và lý do của bạn. Tiền tip đã thu và khoản thu thẻ không đổi; hoàn tiền thẻ làm ở mục Hoàn tiền. Nếu kỳ lương đã duyệt hoặc đã trả, khoản này chuyển sang kỳ đang mở tiếp theo.',
+  'tp.audit.ticket.tip_adjusted': 'Đã điều chỉnh tiền tip',
 };

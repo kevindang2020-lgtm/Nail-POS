@@ -44,6 +44,8 @@ export const posPayrollApi = {
   saveDeductionType: (body: { key: string; label: string; enabled?: boolean; maxCentsPerPeriod?: number | null }) => api.post<any>('/pos/payroll/deduction-types', body as Record<string, unknown>),
   // §28 manual tip split on a ticket (tips.adjust): the current split + who worked it, and the save (a paid ticket needs a reason)
   ticketTip: (ticketId: string) => api.get<{ ticketId: string; tipCents: number; status: string; locked: boolean; allocations: { technicianId: string; name: string | null; tipCents: number }[] }>(`/pos/tickets/${ticketId}/tip-allocation`),
+  /** D15/D19 gaps (Nov 5 2026): a free-form tip adjustment on a paid ticket (one technician, signed amount, reason) — once per key */
+  adjustTicketTip: (ticketId: string, body: { technicianId: string; amountCents: number; reason: string }, idempotencyKey: string) => api.post<{ ok: true; amountCents: number; earnedCents: number; routedToNextPeriod: boolean }>(`/pos/tickets/${ticketId}/tip-adjustments`, body as unknown as Record<string, unknown>, { 'Idempotency-Key': idempotencyKey }),
   setTicketTip: (ticketId: string, body: { allocations: { technicianId: string; tipCents: number }[]; reason?: string }) => api.post<any>(`/pos/tickets/${ticketId}/tip-allocation`, body as unknown as Record<string, unknown>),
   // ── Weekly Paycheck (Oct 21 2026): the week → statements → payout split → submit → owner → checks + cash ──────────
   paySchedule: () => api.get<PayrollScheduleView>('/pos/payroll/paychecks/schedule'),

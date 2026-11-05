@@ -15,7 +15,7 @@ import type { AuditService } from '@aipowersalon/audit';
 import { KyselyCompensationPorts } from './compensation.kysely.ports';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
-export class TipAllocationError extends Error { constructor(msg: string, public status = 400, public code: 'TIP_ALLOCATION_INVALID' | 'TIP_ALLOCATION_LOCKED' | null = null) { super(msg); this.name = 'TipAllocationError'; } }
+export class TipAllocationError extends Error { constructor(msg: string, public status = 400, public code: 'TIP_ALLOCATION_INVALID' | 'TIP_ALLOCATION_LOCKED' | 'TIP_ADJUSTMENT_INVALID' | null = null) { super(msg); this.name = 'TipAllocationError'; } }
 
 export interface TipAllocationCtx { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
 export interface TipAllocationInput { allocations: { technicianId: string; tipCents: number }[]; reason?: string }
@@ -140,5 +140,52 @@ export class TipAllocationService {
         metadata: { tipCents: tip, before: [...prev].map(([technicianId, tipCents]) => ({ technicianId, tipCents })), after: input.allocations, reason: input.reason ?? null, paid, corrections } },
     );
     return { ok: true, ticketId, tipCents: tip, allocations: input.allocations, corrections };
+  }
+
+  /** D15/D19 gaps (Nov 5 2026): a FREE-FORM tip adjustment on a PAID ticket — one technician, a signed amount, a reason. It is a
+   *  compensating posted `tip_correction` ledger entry (the collected tip and the card charge never change; a real card refund
+   *  goes through the processor). The technician must have worked the ticket; a negative amount can never take her earned tip
+   *  on this ticket below zero; a pay period already approved / paid routes it to the next open one. One transaction, the
+   *  ticket row locked so two adjustments cannot both pass the floor check; the route needs an Idempotency-Key. */
+  async adjust(ctx: TipAllocationCtx, ticketId: string, input: { technicianId: string; amountCents: number; reason: string }): Promise<{ ok: true; ticketId: string; technicianId: string; amountCents: number; earnedCents: number; adjustmentId: string; routedToNextPeriod: boolean }> {
+    if (!this.db) throw withCode(new TipAllocationError('Tip allocation is unavailable (no database).', 503), 'SERVICE_UNAVAILABLE');
+    const amount = Number(input?.amountCents);
+    const reason = String(input?.reason ?? '').trim();
+    if (!Number.isInteger(amount) || amount === 0 || Math.abs(amount) > 100000) throw new TipAllocationError('Enter an adjustment between -$1,000 and $1,000, not zero.', 400, 'TIP_ADJUSTMENT_INVALID');
+    if (reason.length < 3) throw new TipAllocationError('Give a reason for the tip adjustment.', 400, 'TIP_ADJUSTMENT_INVALID');
+    const db = this.db;
+    let tq = db.selectFrom('tickets').select(['id', 'status', 'branch_id']).where('tenant_id', '=', ctx.tenantId).where('id', '=', ticketId);
+    if (ctx.branchId) tq = tq.where('branch_id', '=', ctx.branchId);
+    const t0: any = await tq.executeTakeFirst();
+    if (!t0) throw withCode(new TipAllocationError('Ticket not found', 404), 'TICKET_NOT_FOUND');
+    if (t0.status !== 'paid') throw new TipAllocationError('A tip adjustment is for a paid ticket. Before payment, change the tip split instead.', 409, 'TIP_ADJUSTMENT_INVALID');
+    const routing = await new KyselyCompensationPorts(db).lockedPeriodRouting({ tenantId: ctx.tenantId, branchId: t0.branch_id ?? ctx.branchId }, ticketId);
+    const out = await db.transaction().execute(async (trx: any) => {
+      await trx.selectFrom('tickets').select('id').where('tenant_id', '=', ctx.tenantId).where('id', '=', ticketId).forUpdate().executeTakeFirst();
+      const worked = await trx.selectFrom('ticket_service_lines').select('technician_id').where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId)
+        .where('removed_at', 'is', null).where('technician_id', '=', input.technicianId).executeTakeFirst();
+      const helped = worked ? null : await trx.selectFrom('ticket_tip_allocations').select('technician_id').where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId).where('technician_id', '=', input.technicianId).executeTakeFirst();
+      if (!worked && !helped) throw new TipAllocationError('That technician did not work this ticket.', 400, 'TIP_ADJUSTMENT_INVALID');
+      const snap: any[] = await trx.selectFrom('ticket_compensation_snapshots').select(['card_tip_cents', 'cash_tip_cents']).where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId).where('technician_id', '=', input.technicianId).execute();
+      const alloc: any = snap.length ? null : await trx.selectFrom('ticket_tip_allocations').select('tip_cents').where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId).where('technician_id', '=', input.technicianId).executeTakeFirst();
+      const base = snap.length ? snap.reduce((a, r) => a + Number(r.card_tip_cents || 0) + Number(r.cash_tip_cents || 0), 0) : Number(alloc?.tip_cents || 0);
+      const prior: any[] = await trx.selectFrom('compensation_adjustments').select('amount_cents').where('tenant_id', '=', ctx.tenantId).where('ticket_id', '=', ticketId)
+        .where('technician_id', '=', input.technicianId).where('category', '=', 'tip_correction').where('status', 'in', ['posted', 'approved', 'applied']).execute();
+      const earned = base + prior.reduce((a, r) => a + Number(r.amount_cents || 0), 0);
+      if (earned + amount < 0) throw new TipAllocationError(`That would take this technician's tip on the ticket below zero (now ${earned} cents).`, 409, 'TIP_ADJUSTMENT_INVALID');
+      const row: any = await trx.insertInto('compensation_adjustments').values({
+        tenant_id: ctx.tenantId, branch_id: t0.branch_id ?? ctx.branchId, technician_id: input.technicianId, ticket_id: ticketId, service_line_id: null, period_id: null,
+        category: 'tip_correction', amount_cents: amount, reason: reason.slice(0, 500), status: 'posted', source: 'manual',
+        targets_future_period: !!routing?.locked, requested_by: ctx.userId, approved_by: ctx.userId,
+        ...(routing?.locked ? { period_id: routing.targetPeriodId, original_period_id: routing.originalPeriodId } : {}), reason_code: 'tip_adjustment_manual',
+      }).returning('id').executeTakeFirst();
+      return { id: String(row.id), earned: earned + amount };
+    });
+    await this.audit?.record(
+      { tenantId: ctx.tenantId, branchId: ctx.branchId, userId: ctx.userId, role: ctx.role },
+      { module: 'compensation', action: 'ticket.tip_adjusted', resourceType: 'ticket', resourceId: ticketId, severity: 'medium',
+        metadata: { technicianId: input.technicianId, amountCents: amount, reason, adjustmentId: out.id, earnedCents: out.earned, routedToNextPeriod: !!routing?.locked } },
+    );
+    return { ok: true, ticketId, technicianId: input.technicianId, amountCents: amount, earnedCents: out.earned, adjustmentId: out.id, routedToNextPeriod: !!routing?.locked };
   }
 }

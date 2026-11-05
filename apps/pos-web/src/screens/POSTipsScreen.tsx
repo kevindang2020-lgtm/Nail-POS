@@ -8,7 +8,8 @@
 // disagrees with its collected tip instead of showing either number as the truth. Collected, allocated, unallocated,
 // reversed and paid out are shown as the distinct things they are. A correction is a reasoned, audited re-allocation on the
 // existing tips.adjust route — never an amount edit; a card refund stays on the processor workflow.
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createIntentKeys } from '@aipowersalon/api-client';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posTipsScreenApi as api } from '../api/posTipsScreenApi';
@@ -234,7 +235,25 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
   const stepUp = useStepUp(tx('tp.stepup'));
   const [editing, setEditing] = useState(false); const [amounts, setAmounts] = useState<Record<string, string>>({}); const [reason, setReason] = useState(''); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [eligible, setEligible] = useState<{ technicianId: string; name: string | null }[]>([]);
+  // D15/D19 gaps (Nov 5 2026): free-form adjustment — add or remove an amount for one technician, with a reason
+  const [free, setFree] = useState(false); const [fTech, setFTech] = useState(''); const [fDir, setFDir] = useState<'add' | 'remove'>('add'); const [fAmt, setFAmt] = useState(''); const [fReason, setFReason] = useState('');
+  const freeKeys = useRef(createIntentKeys());
   const t: Row | undefined = d.data?.tip; const allocs: any[] = d.data?.allocations ?? [];
+  const startFree = async () => {
+    setErr(null);
+    try { const cur = await posPayrollApi.ticketTip(id); setEligible(cur.allocations); setFTech(cur.allocations[0]?.technicianId ?? ''); setFree(true); setEditing(false); }
+    catch (e) { setErr(errMsg(e)); }
+  };
+  const fCents = centsFromText(fAmt) ?? 0;
+  const saveFree = async () => {
+    if (!t || !fTech || fCents <= 0) return; setBusy(true); setErr(null);
+    const body = { technicianId: fTech, amountCents: fDir === 'remove' ? -fCents : fCents, reason: fReason.trim() };
+    try {
+      await stepUp.run(() => posPayrollApi.adjustTicketTip(id, body, freeKeys.current.keyFor('adjust', { id, ...body })));
+      freeKeys.current.done('adjust');
+      setFree(false); setFAmt(''); setFReason(''); d.reload(); onChanged(tx('tp.adjusted', { n: t.ticketNumber ?? '' }));
+    } catch (e) { if (!isStepUpCancelled(e)) setErr(errMsg(e)); } finally { setBusy(false); }
+  };
   const sum = useMemo(() => Object.values(amounts).reduce((a, v) => a + (centsFromText(v) ?? 0), 0), [amounts]);
   const startEdit = async () => {
     setErr(null);
@@ -253,6 +272,7 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
     <FitDialog wide title={t ? tx('tp.detailTitle', { n: t.ticketNumber ?? '—' }) : tx('tp.detailTitleBare')} subtitle={t ? `${when(t.collectedAt)} · ${t.customer?.name ?? tx('sp.walkIn')}${t.branch ? ' · ' + t.branch : ''}` : undefined} onClose={onClose} busy={busy} testId="tip-detail"
       footer={t ? <>
         {d.data.permissions.adjust && t.amountCents > 0 && !editing ? <button type="button" className="fk-btn" onClick={startEdit} data-testid="adjust">{tx('tp.adjust')}</button> : null}
+        {d.data.permissions.adjust && !editing && !free ? <button type="button" className="fk-btn" onClick={startFree} data-testid="free-adjust">{tx('tp.freeAdjust')}</button> : null}
         {t.ticketNumber ? <button type="button" className="fk-btn" onClick={() => onTicket(t.ticketNumber!)}>{tx('sp.openTransactions')}</button> : null}
         {t.customer?.id && d.data.permissions.customer ? <button type="button" className="fk-btn" onClick={() => onCustomer(t.customer!.id)}>{tx('finance.openCustomer')}</button> : null}
         <button type="button" className="fk-btn primary" onClick={onClose}>{tx('pos.close')}</button></> : undefined}>
@@ -289,6 +309,18 @@ function DetailDialog({ id, onClose, onChanged, onCustomer, onTicket, onTech }: 
           <button type="button" className="fk-btn" onClick={() => setEditing(false)} disabled={busy}>{tx('pos.cancel')}</button>
           <button type="button" className="fk-btn primary" onClick={save} disabled={busy || sum !== t.amountCents || reason.trim().length < 3} data-testid="adjust-save">{busy ? tx('pos.saving') : tx('tp.saveAdjustment')}</button>
           <div className="fk-hint">{tx('tp.adjustNote')}</div>
+        </div> : null}
+        {free ? <div className="fk-void tp-edit" data-testid="free-adjust-form">
+          <div className="tp-edit-rows">
+            <label className="fk-field"><span>{tx('pos.technician')}</span><select className="fk-select" value={fTech} onChange={(e) => setFTech(e.target.value)} data-testid="free-tech">{eligible.map((e) => <option key={e.technicianId} value={e.technicianId}>{e.name ?? e.technicianId}</option>)}</select></label>
+            <label className="fk-field"><span>{tx('tp.freeDir')}</span><select className="fk-select" value={fDir} onChange={(e) => setFDir(e.target.value as 'add' | 'remove')} data-testid="free-dir"><option value="add">{tx('tp.freeAdd')}</option><option value="remove">{tx('tp.freeRemove')}</option></select></label>
+            <label className="fk-field"><span>{tx('tp.col.amount')}</span><input inputMode="decimal" value={fAmt} onChange={(e) => setFAmt(e.target.value)} placeholder="0.00" data-testid="free-amount" /></label>
+          </div>
+          <label className="fk-field"><span>{tx('tp.reason')} *</span><input value={fReason} onChange={(e) => setFReason(e.target.value)} maxLength={500} data-testid="free-reason" /></label>
+          <div className="fk-hint">{tx('tp.freeConfirm', { a: (fDir === 'remove' ? '−' : '+') + fmtMoney(fCents), n: eligible.find((e) => e.technicianId === fTech)?.name ?? '—' })}</div>
+          <button type="button" className="fk-btn" onClick={() => setFree(false)} disabled={busy}>{tx('pos.cancel')}</button>
+          <button type="button" className="fk-btn primary" onClick={saveFree} disabled={busy || !fTech || fCents <= 0 || fReason.trim().length < 3} data-testid="free-save">{busy ? tx('pos.saving') : tx('tp.saveAdjustment')}</button>
+          <div className="fk-hint">{tx('tp.freeNote')}</div>
         </div> : null}
         {err ? <div className="fk-err" role="alert">{err}</div> : null}
         {d.data.adjustments.length ? <><h3 className="fk-h3">{tx('tp.adjustmentsTitle')}</h3><ul className="fn-notes">{d.data.adjustments.map((j: any) => <li key={j.id}><span className="fk-li-s">{when(j.at)} · {j.actor ?? '—'} · {tx('tp.kind.' + j.kind)} · {codeLabel('tp.astatus.' + j.status, j.status)}</span><div>{j.technician ?? '—'} {j.amountCents > 0 ? '+' : ''}{fmtMoney(j.amountCents)}{j.reason ? ` — ${j.reason}` : ''}</div></li>)}</ul></> : null}

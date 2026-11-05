@@ -154,6 +154,7 @@ export const ERRORS_EN = {
   'errors.PAY_PLAN_CONFLICT': 'This technician already has a pay plan for those dates. End it first.',
   'errors.TIP_ALLOCATION_INVALID': 'The tip split does not add up to the ticket tip.',
   'errors.TIP_ALLOCATION_LOCKED': 'This ticket is paid, so its tip is locked. Give a reason to record a tip adjustment.',
+  'errors.TIP_ADJUSTMENT_INVALID': 'This tip adjustment cannot be recorded.',
   'errors.PAYROLL_PAY_THROUGH_PAYOUTS': 'This week is paid through its pay statements and their check / cash payouts.',
   'errors.PAYOUT_PLAN_INVALID': 'The payout split must add up exactly to the amount payable, using methods this salon allows.',
   'errors.PAYROLL_SUBMIT_BLOCKED': 'Payroll still has problems that must be fixed before it can go to the owner.',
