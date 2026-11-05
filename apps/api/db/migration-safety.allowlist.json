@@ -72,6 +72,12 @@
         "D4": 1
       },
       "reason": "Oct 31 2026 (Referral Program guide): referral_redemptions.state is ADDED in this same file, every existing row is backfilled from the legacy status in the UPDATE just above (pending → PENDING_QUALIFICATION, void → CANCELLED, rewarded → UNDER_REVIEW), and the column gets a DEFAULT before SET NOT NULL — no row can be NULL. Legacy status / reward_cents are kept untouched."
+    },
+    "802_recipe_fractional_quantity.sql": {
+      "rules": {
+        "D5": 1
+      },
+      "reason": "Nov 4 2026 (D9 Inventory audit): service_product_recipes.quantity integer → NUMERIC(10,2). A widening cast — every existing whole-number value is kept exactly (USING quantity::numeric); the table is a small per-salon recipe list (one row per service × product), so the rewrite lock is brief. No data is dropped."
     }
   }
 }

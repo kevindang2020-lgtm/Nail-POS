@@ -338,7 +338,7 @@ export class KyselyServicesRepository implements ServicesRepositoryPort {
     if (!s) return null;
     const branchId = await this.resolveBranchId(ctx);
     await this.db.transaction().execute(async (trx) => {
-      const existing: any[] = await trx.selectFrom('service_add_ons').selectAll().where('tenant_id', '=', ctx.tenantId).where('service_id', '=', serviceId).execute();
+      const existing: any[] = await trx.selectFrom('service_add_ons').select(['id', 'add_on_key', 'name', 'price_cents', 'duration_delta_minutes', 'is_taxable', 'is_active', 'sort_order']).where('tenant_id', '=', ctx.tenantId).where('service_id', '=', serviceId).execute();
       const byKey = new Map(existing.map((r) => [String(r.add_on_key), r]));
       const sent = new Set<string>();
       const changes: any[] = [];

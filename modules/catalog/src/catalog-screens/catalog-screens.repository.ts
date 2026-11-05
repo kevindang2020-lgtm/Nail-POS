@@ -411,7 +411,7 @@ export class CatalogScreensRepository {
     const tz = await tenantTimeZone(this.db, T);
     const w = sql`a.tenant_id = ${T} and e->>'serviceId' = ${serviceId} and a.appt_date >= (now() at time zone ${tz})::date
       and a.status not in ('cancelled', 'no_show', 'completed') and (${b}::uuid is null or a.branch_id = ${b} or a.branch_id is null)`;
-    const from = sql`from pos_tech_appointments a cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e`;
+    const from = sql`from (select id, tenant_id, branch_id, appt_date, start_time, status, customer_name, services from pos_tech_appointments where tenant_id = ${T}) a cross join lateral jsonb_array_elements(case when jsonb_typeof(a.services) = 'array' then a.services else '[]'::jsonb end) e`;
     const qp = sql`coalesce(nullif(e->>'priceCents', '')::int, 0)`, qm = sql`coalesce(nullif(e->>'durationMinutes', '')::int, 0)`;
     const agg = (await sql<any>`select count(*)::int as n, coalesce(sum(${qp}), 0)::bigint as quoted, count(*) filter (where ${qp} <> ${newPrice})::int as differs,
         count(*) filter (where ${newDur} > ${qm})::int as longer ${from} where ${w}`.execute(this.db)).rows[0] ?? {};

@@ -1294,7 +1294,7 @@ export class InventoryService {
    *  not arrive are recorded missing AT THE DESTINATION (they had already left the source). One transaction under both
    *  locations' stock locks; the transfer moves in_transit → completed once (a second receive is refused). */
   async receiveTransfer(ctx: InvCtx, id: string, b: any) {
-    const t = (await sql<any>`SELECT * FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
+    const t = (await sql<any>`SELECT id, status, from_branch_id, to_branch_id, transfer_number FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
     if (!t || (t.to_branch_id !== ctx.branchId && t.from_branch_id !== ctx.branchId)) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
     if (t.to_branch_id !== ctx.branchId) throw withCode(new InventoryError(403, 'Only the receiving location can receive this transfer'), 'TRANSFER_RECEIVE_DESTINATION_ONLY');
     if (t.status !== 'in_transit') throw withCode(new InventoryError(409, 'This transfer is not in transit'), 'TRANSFER_NOT_IN_TRANSIT');
@@ -1341,7 +1341,7 @@ export class InventoryService {
   async cancelTransfer(ctx: InvCtx, id: string, b: any) {
     const reason = String(b?.reason ?? '').trim().slice(0, 500);
     if (reason.length < 3) throw withCode(new InventoryError(400, 'Give a reason for cancelling the transfer'), 'TRANSFER_CANCEL_REASON_REQUIRED');
-    const t = (await sql<any>`SELECT * FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
+    const t = (await sql<any>`SELECT id, status, from_branch_id, to_branch_id, transfer_number FROM inventory_transfers WHERE id = ${id} AND tenant_id = ${ctx.tenantId}`.execute(this.need())).rows[0];
     if (!t || (t.to_branch_id !== ctx.branchId && t.from_branch_id !== ctx.branchId)) throw withCode(new InventoryError(404, 'Transfer not found'), 'TRANSFER_NOT_FOUND');
     if (t.from_branch_id !== ctx.branchId) throw withCode(new InventoryError(403, 'Only the sending location can cancel this transfer'), 'TRANSFER_CANCEL_SOURCE_ONLY');
     if (t.status !== 'in_transit') throw withCode(new InventoryError(409, 'This transfer is not in transit'), 'TRANSFER_NOT_IN_TRANSIT');

@@ -79,7 +79,7 @@ export class AiBookingCenter {
   private requests(ctx: BkCtx) {
     const branch = ctx.branchId ? sql`and e.branch_id = ${ctx.branchId}` : sql``;
     return sql`(
-      with ev as (select coalesce(e.correlation_id, e.id::text) cid, e.* from ai_booking_conversion_events e where e.tenant_id = ${ctx.tenantId} ${branch}),
+      with ev as (select coalesce(e.correlation_id, e.id::text) cid, e.created_at, e.source, e.branch_id, e.stage, e.outcome, e.appointment_id, e.failure_reason from ai_booking_conversion_events e where e.tenant_id = ${ctx.tenantId} ${branch}),
       rq as (select cid, min(created_at) created_at, max(created_at) updated_at, (array_agg(source order by created_at))[1] source, (array_agg(branch_id order by created_at desc))[1] branch_id,
           bool_or(stage = 'BOOKING_SUCCEEDED') ok, bool_or(stage = 'BOOKING_FAILED' or outcome = 'failed') failed, bool_or(stage = 'CANCEL_SUCCEEDED') cancelled,
           bool_or(stage = 'CONFIRMATION_REQUESTED') conf_req, bool_or(stage = 'CUSTOMER_VERIFIED') verified, bool_or(stage in ('OPTIONS_PRESENTED','OPTION_SELECTED')) prepared,
