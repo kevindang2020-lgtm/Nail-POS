@@ -257,7 +257,15 @@ export const NAV_GROUPS: SANavGroup[] = [
           { to: "/communications/platform-announcements", label: "Platform Announcements" },
         ],
       },
-      { to: "/membership-programs", label: "Membership Programs", isNew: true },
+      {
+        to: "/membership-programs",
+        label: "Membership Programs",
+        isNew: true,
+        children: [
+          { to: "/membership-programs", label: "Overview" },
+          { to: "/membership-programs/members-and-plans", label: "Members & Plans" },
+        ],
+      },
       { to: "/nail-showcase", label: "NailShowcase" },
       { to: "/tech-profiles", label: "Tech Profiles" },
     ],

@@ -6,6 +6,7 @@ import { PlatformDashboardScreen } from './screens/PlatformDashboardScreen';
 import { LiveOperationsScreen } from './screens/LiveOperationsScreen';
 import { AnalyticsScreen } from './screens/AnalyticsScreen';
 import MembershipProgramsScreen from './screens/MembershipProgramsScreen';
+import { MembershipsOverviewScreen } from './screens/MembershipsOverviewScreen';
 import GiftCardProgramsScreen from './screens/GiftCardProgramsScreen';
 import GiftCardSettlementScreen from './screens/GiftCardSettlementScreen';
 import StaffOverviewScreen from './screens/StaffOverviewScreen';
@@ -213,6 +214,8 @@ function Gate() {
         <Route path="appointment-oversight" element={<AppointmentOversightScreen />} />
         <Route path="ticket-oversight" element={<TicketOversightScreen />} />
         <Route path="membership-programs" element={<MembershipProgramsScreen />} />
+        {/* Platform-wide plans and members with per-plan and per-member detail (GET /super-admin/memberships/*) */}
+        <Route path="membership-programs/members-and-plans" element={<MembershipsOverviewScreen />} />
         <Route path="memberships" element={<Navigate to="/membership-programs" replace />} />
         <Route path="appointments" element={<Navigate to="/appointment-oversight" replace />} />
         <Route path="customer-data-oversight" element={<CustomerDataOversightScreen />} />

@@ -91,6 +91,7 @@ The biggest pieces are the Fiserv payment rules from the Master Build PDF, the P
 | Tech | Date-range button labelled "Refresh"; profile showed loaded photos, not the total | Correct label; server total |
 | API | Announcements used event names that did not exist (no POS refresh) | Events added and projected |
 | Build | `communications` module never finished building (20+ min) | Missing tables added to the DB type; builds in about 10 s |
+| Admin | Memberships overview screen (plan and member detail) existed but no page linked to it | Now at Membership Programs › Members & Plans (`/membership-programs/members-and-plans`) |
 
 ### Other
 
