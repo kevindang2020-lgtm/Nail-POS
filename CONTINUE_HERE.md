@@ -42,6 +42,9 @@ PostgreSQL stops when the container restarts. Start it again with `pg_ctlcluster
 
 ## Current state
 
+- Nov 5: latest unit 2b11499 (D9 bottle actions). Open gap lists are at the end of `docs/GUIDE_QUEUE_2026-11-03.md`.
+
+
 | Area | State |
 |---|---|
 | **M4 · 200-technician scale** | DONE: server-paged board, indexes (691), rate limit, feed paging, queue state about 0.26 s, outbox lanes. **Oct 26:** lane review fixes, per-aggregate order across failures and instances (`044a1878`), and M4-1 (PIN-cost scrypt, about 3× less API CPU per burst). **Open:** realtime lag p95 < 2 s under a 3,500-event burst (needs a realtime-first lane plus production hardware), and the clock-in p95 read-back on the pilot host. |

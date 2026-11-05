@@ -221,3 +221,6 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   b37e14b); C5 template choice in the win-back composer, placeholders refused (7bdb575); C3 Setup Health "customers can book"
   per location (699f89b); A2 background evaluator for AI Business alerts (be799be).
 
+- Nov 5 — A2 date presets last 7 / last 30 / last month (4c01ed6); A7 the dialed number is kept and shown on calls (807,
+  339a320); D9 bottle actions Expired / Missing / Found / Throw away (2b11499 — one transaction each, Missing and Found need
+  stock-adjust, a thrown-away bottle cannot come back).
