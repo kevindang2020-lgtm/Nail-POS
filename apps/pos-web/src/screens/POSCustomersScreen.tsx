@@ -826,7 +826,7 @@ function CustomerDrawer({ row, detail, busy, onClose, nav }: { row: Row; detail:
 function DuplicateQueueOverlay({ canEdit, canMerge, onClose, onChanged }: { canEdit: boolean; canMerge: boolean; onClose: () => void; onChanged: () => void }) {
   const [list, setList] = useState<any | null>(null); const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState<string | null>(null); const [page, setPage] = useState(1); const [tick, setTick] = useState(0);
-  useEffect(() => { let live = true; posDuplicateReviewApi.groups({ status: 'open', sort: 'confidence', page, pageSize: 10 } as any).then((r) => { if (live) setList(r); }).catch((e: any) => { if (live) setErr(e?.message || tx('cd.dup.loadFailed')); }); return () => { live = false; }; }, [page, tick]);
+  useEffect(() => { let live = true; posDuplicateReviewApi.groups({ status: 'open', sort: 'confidence', page, pageSize: 10 }).then((r) => { if (live) setList(r); }).catch((e: any) => { if (live) setErr(e?.message || tx('cd.dup.loadFailed')); }); return () => { live = false; }; }, [page, tick]);
   if (open) return <CompareOverlay groupId={open} canEdit={canEdit} canMerge={canMerge} onClose={() => setOpen(null)} onChanged={() => { setTick((n) => n + 1); onChanged(); }} />;
   return <FitDialog wide title={tx('cd.dup.title')} subtitle={list ? tx('cd.dup.count', { n: nf(list.total ?? 0) }) : undefined} onClose={onClose} testId="dup-queue">
     {err ? <div className="fk-err" role="alert">{err}</div> : !list ? <div className="muted">{tx('pos.loading')}</div>
