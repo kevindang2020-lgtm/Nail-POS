@@ -47,6 +47,11 @@ export class InventoryController {
   @Post('units/:unitId/mark-low') @RequirePermission('inventory.update') low(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markLow(ctx(r), id)); }
   @Post('units/:unitId/mark-empty') @RequirePermission('inventory.update') empty(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markEmpty(ctx(r), id)); }
   @Post('units/:unitId/mark-damaged') @RequirePermission('inventory.update') damaged(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markDamaged(ctx(r), id)); }
+  // D9 gaps (Nov 5 2026): expired / missing / found again / thrown away (empty, damaged or expired bottles)
+  @Post('units/:unitId/mark-expired') @RequirePermission('inventory.update') expired(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markExpired(ctx(r), id)); }
+  @Post('units/:unitId/mark-missing') @RequirePermission('inventory.stock.adjust') missing(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markMissing(ctx(r), id)); }
+  @Post('units/:unitId/found') @RequirePermission('inventory.stock.adjust') found(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.markFound(ctx(r), id)); }
+  @Post('units/:unitId/dispose') @RequirePermission('inventory.update') dispose(@Req() r: any, @Param('unitId') id: string) { return run(() => this.svc.dispose(ctx(r), id)); }
 
   @Get('technician-reports') @RequirePermission('inventory.technician_report.approve') reports(@Req() r: any, @Query() q: any) { return run(() => this.svc.listReports(ctx(r), q?.status)); }
   @Post('technician-reports/:id/approve') @RequirePermission('inventory.technician_report.approve') approve(@Req() r: any, @Param('id') id: string) { return run(() => this.svc.approveReport(ctx(r), id)); }

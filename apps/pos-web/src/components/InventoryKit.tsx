@@ -112,12 +112,17 @@ function Pricing({ p }: { p: any }) {
   </dl>;
 }
 
-const BOTTLE_ACTIONS: Record<string, Array<'open' | 'empty' | 'low' | 'damaged'>> = { unopened: ['open', 'damaged'], opened: ['low', 'empty', 'damaged'], low: ['empty', 'damaged'] };
+type BottleAct = 'open' | 'empty' | 'low' | 'damaged' | 'expired' | 'missing' | 'found' | 'dispose';
+// D9 gaps (Nov 5 2026): expired / missing / found / throw away follow the server's bottle rules
+const BOTTLE_ACTIONS: Record<string, BottleAct[]> = { unopened: ['open', 'damaged', 'expired', 'missing'], opened: ['low', 'empty', 'damaged', 'expired', 'missing'], low: ['empty', 'damaged', 'expired', 'missing'], empty: ['dispose'], damaged: ['dispose'], expired: ['dispose'], missing: ['found'] };
+// Missing / found change the count, so they need the stock-adjust permission
+const ACT_PERM: Partial<Record<BottleAct, string>> = { missing: 'inventory.stock.adjust', found: 'inventory.stock.adjust' };
+const BOTTLE_CALL: Record<BottleAct, (id: string) => Promise<unknown>> = { open: (id) => inventoryApi.openUnit(id), empty: (id) => inventoryApi.markEmpty(id), low: (id) => inventoryApi.markLow(id), damaged: (id) => inventoryApi.markDamaged(id), expired: (id) => inventoryApi.markExpired(id), missing: (id) => inventoryApi.markMissing(id), found: (id) => inventoryApi.markFound(id), dispose: (id) => inventoryApi.dispose(id) };
 function Bottles({ d, can, onChanged }: { d: any; can: (k: string) => boolean; onChanged: () => void }) {
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
-  const run = async (id: string, a: string) => {
+  const run = async (id: string, a: BottleAct) => {
     setBusy(id); setErr(null);
-    try { await (a === 'open' ? inventoryApi.openUnit(id) : a === 'empty' ? inventoryApi.markEmpty(id) : a === 'low' ? inventoryApi.markLow(id) : inventoryApi.markDamaged(id)); onChanged(); }
+    try { await BOTTLE_CALL[a](id); onChanged(); }
     catch (e) { setErr(errMsg(e)); } finally { setBusy(null); }
   };
   if (!d.bottles.length) return <Empty title={tx('inv.noBottles')} />;
@@ -137,7 +142,7 @@ function Bottles({ d, can, onChanged }: { d: any; can: (k: string) => boolean; o
         <td>{u.lot ?? '—'}{u.barcode && ids.length === 1 ? <span className="fk-li-s">{u.barcode}</span> : null}</td>
         <td>{u.expirationDate ? ymd(u.expirationDate) : '—'}{u.expired ? <span className="fk-chip bad">{tx('inv.expired')}</span> : null}</td>
         <td>{day(u.receivedAt)}</td><td className="t-opt">{u.openedAt ? day(u.openedAt) : '—'}{u.openedBy ? <span className="fk-li-s">{u.openedBy}</span> : null}</td>
-        <td className="fn-acts">{can('inventory.update') ? (BOTTLE_ACTIONS[u.status] ?? []).map((a) => <button key={a} type="button" className="fk-btn ghost sm" disabled={busy === ids[0]} onClick={() => run(ids[0], a)} data-testid={'bottle-' + a} title={ids.length > 1 ? tx('inv.oneOfGroup') : undefined}>{tx('inv.bottleAct.' + a)}</button>) : null}</td>
+        <td className="fn-acts">{can('inventory.update') ? (BOTTLE_ACTIONS[u.status] ?? []).filter((a) => !ACT_PERM[a] || can(ACT_PERM[a]!)).map((a) => <button key={a} type="button" className="fk-btn ghost sm" disabled={busy === ids[0]} onClick={() => run(ids[0], a)} data-testid={'bottle-' + a} title={ids.length > 1 ? tx('inv.oneOfGroup') : undefined}>{tx('inv.bottleAct.' + a)}</button>) : null}</td>
       </tr>)}</tbody></table>
     <div className="fk-hint">{tx('inv.bottleNote')}</div>
   </>;

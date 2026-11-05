@@ -804,6 +804,11 @@ export class InventoryService {
   markLow(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'low', 'inventory_bottle_marked_low', 'technician_report'); }
   markEmpty(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'empty', 'inventory_bottle_marked_empty', 'bottle_empty', 'emptied'); }
   markDamaged(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'damaged', 'inventory_bottle_damaged', 'damaged'); }
+  // D9 gaps (Nov 5 2026): expire / missing / found / dispose — each the same one-transaction, conditional bottle change
+  markExpired(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'expired', 'inventory_bottle_expired', 'expired'); }
+  markMissing(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'missing', 'inventory_bottle_missing', 'missing'); }
+  async markFound(ctx: InvCtx, unitId: string) { const u = await this.unit(ctx, unitId); return this.transition(ctx, unitId, u.opened_at ? 'opened' : 'unopened', 'inventory_bottle_found', 'correction'); }
+  dispose(ctx: InvCtx, unitId: string) { return this.transition(ctx, unitId, 'disposed', 'inventory_bottle_disposed', 'waste'); }
 
   private async reorderAlert(ctx: InvCtx, productId: string): Promise<{ needed: boolean; suggested: number } | null> {
     // the location's overrides win (the alert list's rule) and what is already on order is not suggested again

@@ -3787,9 +3787,13 @@ POST /tenant/inventory/suppliers/{vendorId}/restore  realm=staff  auth=session  
 POST /tenant/inventory/technician-reports/{id}/approve  realm=staff  auth=session  domain=inventory  perm=inventory.technician_report.approve  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/technician-reports/{id}/reject  realm=staff  auth=session  domain=inventory  perm=inventory.technician_report.approve  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/transfers  realm=staff  auth=session  domain=inventory  perm=inventory.transfer  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/units/{unitId}/dispose  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/units/{unitId}/found  realm=staff  auth=session  domain=inventory  perm=inventory.stock.adjust  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/units/{unitId}/mark-damaged  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/units/{unitId}/mark-empty  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/units/{unitId}/mark-expired  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/units/{unitId}/mark-low  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
+POST /tenant/inventory/units/{unitId}/mark-missing  realm=staff  auth=session  domain=inventory  perm=inventory.stock.adjust  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/units/{unitId}/open  realm=staff  auth=session  domain=inventory  perm=inventory.update  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/vendors  realm=staff  auth=session  domain=inventory  perm=inventory.vendor.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /tenant/inventory/vendors/{id}/archive  realm=staff  auth=session  domain=inventory  perm=inventory.vendor.manage  guards=RolePermissionGuard,TenantAuthGuard
