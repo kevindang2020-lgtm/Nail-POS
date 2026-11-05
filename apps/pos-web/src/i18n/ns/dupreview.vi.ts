@@ -276,5 +276,8 @@ export const DUPREVIEW_VI: Record<string, string> = {
   "cd.act.visit": "Đã ghé tiệm",
   "cd.act.added": "Hồ sơ mới được thêm",
   "cd.msg.noPerm": "Bạn cần quyền gửi tin nhắn.",
-  "cd.msg.failed": "Không mở được cuộc trò chuyện với khách này."
+  "cd.msg.failed": "Không mở được cuộc trò chuyện với khách này.",
+  "cd.act.booked": "Đã đặt lịch hẹn",
+  "cd.act.loyalty": "Đã điều chỉnh điểm thưởng",
+  "cd.unavailable": "Chưa tải được mục này. Danh sách khách hàng không bị ảnh hưởng — sẽ thử lại ở lần làm mới tiếp theo."
 };

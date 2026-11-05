@@ -134,6 +134,23 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return r;
   }
 
+  private warn(what: string, e: unknown) { console.warn(`[customers] directory ${what} unavailable: ${e instanceof Error ? e.message : String(e)}`); }
+  /** F1 §39: bookings made and loyalty adjustments in the last 30 days, for customers in scope (no notes, no amounts) */
+  private async activityEvents(ctx: CustomersContext, inScope: Cust[]): Promise<{ customerId: string; displayName: string; avatarUrl?: string; kind: 'booked' | 'loyalty'; at: string }[]> {
+    const byId = new Map(inScope.map((c) => [c.customerId, c] as const));
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    const iso = (v: unknown) => (v instanceof Date ? v.toISOString() : String(v));
+    const booked: any[] = await this.scoped(this.db.selectFrom('pos_tech_appointments'), ctx).select(['customer_id', 'created_at'])
+      .where('customer_id', 'is not', null).where('created_at', '>=', since).orderBy('created_at', 'desc').limit(20).execute();
+    const loyalty: any[] = await this.scoped(this.db.selectFrom('loyalty_ledger'), ctx).select(['customer_id', 'created_at'])
+      .where('entry_type', '=', 'adjust').where('created_at', '>=', since).orderBy('created_at', 'desc').limit(20).execute();
+    const out: { customerId: string; displayName: string; avatarUrl?: string; kind: 'booked' | 'loyalty'; at: string }[] = [];
+    for (const [rows, kind] of [[booked, 'booked'], [loyalty, 'loyalty']] as const) for (const r of rows) {
+      const c = byId.get(String(r.customer_id)); if (!c) continue;
+      out.push({ customerId: c.customerId, displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind, at: iso(r.created_at) });
+    }
+    return out;
+  }
   /** the salon's At Risk threshold (Customer Retention settings; 60 days when never set) */
   private async riskDays(ctx: CustomersContext): Promise<number> {
     const r = await this.db.selectFrom('tenant_retention_settings').select('risk_days').where('tenant_id', '=', ctx.tenantId).executeTakeFirst().catch(() => undefined);
@@ -222,11 +239,14 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     // F1 §37: month-by-month retention from the nightly retention snapshots (the last completed day of each of the last 6
     // months). Retention = Active ÷ customers who have visited. A month with no completed snapshot — or, for a location view,
     // one computed before locations were recorded — is a gap (null), never an estimate.
-    const retentionSeries = await this.retentionSeries(ctx).catch(() => [] as { month: string; date: string | null; ratePercent: number | null; reason: string | null }[]);
+    // F1 §16: an analytics read that fails leaves the list working and says which card is unavailable (never an empty "no data")
+    const unavailable: string[] = [];
+    const retentionSeries = await this.retentionSeries(ctx).catch((e: unknown) => { unavailable.push('retentionSeries'); this.warn('retentionSeries', e); return []; });
     // F1 §39: Recent Customer Activity from the whole salon (latest visits and newly added profiles), not the visible page
     const recentActivity = [
       ...all.filter((c) => c.lastVisitAt).map((c) => ({ customerId: c.customerId, displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind: 'visit' as const, at: c.lastVisitAt as string })),
       ...all.filter((c) => c.createdAt && this.daysSince(c.createdAt) <= 30).map((c) => ({ customerId: c.customerId, displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind: 'added' as const, at: c.createdAt as string })),
+      ...(await this.activityEvents(ctx, all).catch((e: unknown) => { unavailable.push('recentActivity'); this.warn('recentActivity', e); return []; })),
     ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime() || a.customerId.localeCompare(b.customerId)).slice(0, 8);
     // full-base right-rail aggregations (across all customers, not the current page)
     const tally = (arr: (string | undefined)[]) => { const m = new Map<string, number>(); for (const x of arr) { const key = (x || '').trim(); if (key) m.set(key, (m.get(key) || 0) + 1); } return [...m.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count); };
@@ -258,7 +278,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return {
       kpis, customers: { items: listItems, pagination } as CustomerListResponse,
       filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
-      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts,
+      kpisFull, analytics: buildCustomersAnalytics(all.map((c) => ({ totalSpendCents: c.totalSpendCents, visitCount: c.visitCount, recencyDays: this.daysSince(c.lastVisitAt), ageYears: c.birthdayYear ? new Date().getFullYear() - c.birthdayYear : undefined }))), rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts, ...(unavailable.length ? { unavailable } : {}),
       filterFacets: {
         segments: ['never', 'new', 'returning', 'vip', 'at_risk'], statuses: ['active', 'inactive', 'archived'],
         loyaltyTiers: [...new Set(all.map((c) => c.loyaltyTier))], visitRanges: ['0', '1-3', '4-9', '10+'],

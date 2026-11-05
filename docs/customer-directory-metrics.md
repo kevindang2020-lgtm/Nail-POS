@@ -58,8 +58,9 @@ the trend appears once the nightly snapshots have run.
 
 ## Recent Customer Activity (§39)
 
-Whole salon (not the visible page), newest first, at most 8: each customer's latest visit, plus profiles added in
-the last 30 days. No notes or money are included. Opening a row opens the customer's profile drawer.
+Whole salon (not the visible page), newest first, at most 8: each customer's latest visit, profiles added in the last
+30 days, bookings made in the last 30 days (`pos_tech_appointments.created_at`) and loyalty adjustments
+(`loyalty_ledger` entry_type `adjust`). No notes, reasons or amounts are included. Opening a row opens the customer's
+profile drawer. If the bookings / loyalty read fails, the card says it is unavailable (`unavailable: ['recentActivity']`).
 
-Not yet in the feed: bookings, check-ins, loyalty adjustments and profile edits as separate events (the guide lists
-them as examples) — PARTIAL.
+Not yet in the feed: check-ins and profile edits as separate events — PARTIAL.

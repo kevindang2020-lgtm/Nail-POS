@@ -296,9 +296,11 @@ export interface POSCustomersFullState extends POSCustomersState {
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
   // F1 §37: last 6 months of retention from the nightly snapshots (null rate = no reliable snapshot for that month; reason says why)
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
-  // F1 §39: the salon's latest customer activity (visits + profiles added in the last 30 days), newest first, max 8
+  // F1 §39: the salon's latest customer activity (visits, profiles added, bookings made, loyalty adjustments; 30 days), newest first, max 8
+  // F1 §16: analytics parts that could not be read this time ('retentionSeries' | 'recentActivity'); the list is unaffected
+  unavailable?: string[];
   segmentCounts?: Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
-  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty'; at: string }[];
 }
 
 // duplicate detection (§16): group by exact phone, exact email, or similar first+last name

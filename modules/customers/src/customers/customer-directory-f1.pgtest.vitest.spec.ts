@@ -139,3 +139,18 @@ describe('F1 Customer Directory — Archived is a lifecycle status (§29)', () =
     } finally { await q(`update customers set status = 'active' where id = $1`, [id('c2')]); }
   });
 });
+
+describe('F1 Customer Directory — recent activity carries bookings and loyalty adjustments (§39)', () => {
+  it('a booking made today and a loyalty adjustment today lead the feed; another salon\'s booking never shows', async () => {
+    await q(`insert into technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status, is_active) values ($1,$2,$3,'Vy','Tran','Vy Tran','active',true), ($4,$5,$6,'Oz','O','Oz O','active',true)`, [id('f1'), T, B, id('f2'), T2, BX]);
+    await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, services, appt_date, start_time, end_time, duration_minutes, status, created_at) values
+      ($1,$2,$3,$4,'Cust5','[]'::jsonb, current_date + 2, '10:00','10:45',45,'confirmed', now() - interval '1 minute'),
+      ($5,$6,$7,$8,'Stranger','[]'::jsonb, current_date + 2, '10:00','10:45',45,'confirmed', now())`, [T, B, id('f1'), id('c5'), T2, BX, id('f2'), id('c99')]);
+    await q(`insert into loyalty_ledger (tenant_id, branch_id, customer_id, entry_type, delta, balance_after, reason, created_at) values ($1,$2,$3,'adjust',5,5,'goodwill', now() - interval '2 minutes')`, [T, B, id('c6')]);
+    const act = (await repo.query(ctx, {})).recentActivity!;
+    expect(act[0]).toMatchObject({ customerId: id('c5'), kind: 'booked' });
+    expect(act[1]).toMatchObject({ customerId: id('c6'), kind: 'loyalty' });
+    expect(act.some((a) => a.customerId === id('c99'))).toBe(false);
+    expect(JSON.stringify(act)).not.toMatch(/goodwill/);
+  });
+});

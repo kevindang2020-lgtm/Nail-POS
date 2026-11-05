@@ -283,11 +283,12 @@ Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
 - §30: the row Message action opens or starts the customer's conversation. It used to open a blank send page.
 - §37: Retention Trend from the nightly retention snapshots (6 months; gaps shown as "—"; location rule as on the Retention screen). It was placeholder text before.
 - §29: Archived is a lifecycle status: out of All Customers, the tabs and the KPIs; listed under the Archived status.
-- §39: Recent Customer Activity is a whole-salon server feed (latest visits + profiles added). It was built from the visible page before.
+- §39: Recent Customer Activity is a whole-salon server feed (latest visits, profiles added, bookings made, loyalty adjustments; no notes or amounts).
+- §16: an analytics read that fails marks that card "unavailable" (with retry on the next refresh) and the list keeps working. It was built from the visible page before.
 
 Remaining F1 work:
 
-- §39: bookings, check-ins and loyalty adjustments as their own feed events — PARTIAL.
+- §39: check-ins and profile edits as their own feed events — PARTIAL (visits, new profiles, bookings and loyalty adjustments are in).
 - §31: keep scroll position on return.
 - §32-36 / §38: right-rail and lower-card view links and definitions (CLV and RFM docs).
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.

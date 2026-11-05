@@ -278,5 +278,8 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.act.visit": "Visited",
   "cd.act.added": "New profile added",
   "cd.msg.noPerm": "You need permission to send messages.",
-  "cd.msg.failed": "Could not open this customer's conversation."
+  "cd.msg.failed": "Could not open this customer's conversation.",
+  "cd.act.booked": "Booked an appointment",
+  "cd.act.loyalty": "Loyalty points adjusted",
+  "cd.unavailable": "Couldn't load this right now. The customer list is not affected — it will retry on the next refresh."
 };

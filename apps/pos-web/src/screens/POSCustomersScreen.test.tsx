@@ -250,6 +250,16 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(post.key).toBeTruthy();
   });
 
+  it('F1 §16: an analytics part the server could not read says "unavailable" (not "no data") and the list still shows', async () => {
+    globalThis.fetch = mockFetch({ ...richState, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 },
+      retentionSeries: [], recentActivity: [], unavailable: ['retentionSeries', 'recentActivity'] }) as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('cd-act-unavailable')).toHaveTextContent(/Couldn't load/);
+    expect(screen.getByTestId('cd-ret-empty')).toHaveTextContent(/Couldn't load/);
+    expect(screen.queryByText('No matching customers.')).toBeNull();
+    expect(screen.getByTestId('cd-row-message')).toBeInTheDocument();
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);

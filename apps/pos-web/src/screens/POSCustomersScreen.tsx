@@ -47,9 +47,10 @@ type CustomersState = {
   filterFacets: { segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[] };
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  unavailable?: string[];
   segmentCounts?: Partial<Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>>;
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
-  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added'; at: string }[];
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty'; at: string }[];
 };
 type ImpSampleRow = { rowNumber: number; firstName: string; lastName: string; phone?: string; email?: string; birthday?: string; action: 'create' | 'update' | 'duplicate' | 'error'; reason?: string };
 type ImpPreview = { totalRows: number; toCreate: number; toUpdate: number; duplicates: number; errors: number; invalidEmailsDropped: number; detectedColumns: Record<string, string | undefined>; sample: ImpSampleRow[] };
@@ -644,7 +645,7 @@ export function POSCustomersScreen() {
                     </div>
                   ))}
                 </div>
-              ) : <div className="s muted" style={{ marginTop: 10 }} data-testid="cd-ret-empty">{tx('cd.ret.empty')}</div>}
+              ) : <div className="s muted" style={{ marginTop: 10 }} data-testid="cd-ret-empty">{tx(s.unavailable?.includes('retentionSeries') ? 'cd.unavailable' : 'cd.ret.empty')}</div>}
             </div>
           ) : <div className="muted">{tx('pos.loading')}</div>}
         </section>
@@ -663,10 +664,10 @@ export function POSCustomersScreen() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,28%)] gap-3 items-start" style={{ marginTop: 12 }} data-testid="cd-bottom-row">
         <section className="panel" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/overview')}>{tx('pos.view_all_4')}</button></div>
-          {recentActivity.length === 0 ? <div className="muted">{tx('cd.act.empty')}</div> : recentActivity.map((r) => (
+          {s.unavailable?.includes('recentActivity') && recentActivity.length === 0 ? <div className="muted" data-testid="cd-act-unavailable">{tx('cd.unavailable')}</div> : recentActivity.length === 0 ? <div className="muted">{tx('cd.act.empty')}</div> : recentActivity.map((r) => (
             <div key={r.kind + r.customerId} data-testid="cd-activity-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }} onClick={() => openProfile(rows.find((x) => x.customerId === r.customerId) ?? ({ customerId: r.customerId, displayName: r.displayName, avatarUrl: r.avatarUrl, tags: [] } as unknown as Row))}>
               <ProfileAvatarWithPreview name={r.displayName} url={r.avatarUrl} size={28} type="customer" />
-              <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 12 }}>{r.displayName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx(r.kind === 'visit' ? 'cd.act.visit' : 'cd.act.added')}</div></div>
+              <div style={{ minWidth: 0 }}><div style={{ fontWeight: 700, fontSize: 12 }}>{r.displayName}</div><div style={{ fontSize: 10.5, color: 'var(--muted)' }}>{tx('cd.act.' + r.kind)}</div></div>
               <span className="s muted" style={{ marginLeft: 'auto' }}>{fmtDate(r.at)}</span>
             </div>
           ))}
