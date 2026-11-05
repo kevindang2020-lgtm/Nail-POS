@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { ActivateAccountScreen } from './ActivateAccountScreen';
-import { signInWithFaceId, faceIdMode, setPendingBioCreds } from '../auth/faceid';
+import { signInWithFaceId, faceIdMode } from '../auth/faceid';
 import { authApi } from '../api/authApi';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
 import { useAuth } from '../auth/AuthContext';
@@ -177,12 +177,6 @@ export function LoginScreen({ onGuest, notice }: { onGuest?: () => void; notice?
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JavaScript.
       await saveNativeToken(tokenFromResponse(r));
       if ((r as any).outcome === 'SUCCESS' && (r as any).principal) {
-        setPendingBioCreds({
-          portal: 'customer',
-          identifier: identifier.trim(),
-          password,
-          rememberMe: remember
-        });
         setPrincipal((r as any).principal); return;
       }
       setErr((r as any).message || 'The login information is incorrect. Please try again.');
@@ -204,12 +198,6 @@ export function LoginScreen({ onGuest, notice }: { onGuest?: () => void; notice?
       // WebAuthn signature server-side. A biometric success is never treated as authentication on its own.
       const principal = await signInWithFaceId(
         async () => await authApi.me(),
-        async (creds: any) => {
-          const r = await authApi.login(creds);
-          await saveNativeToken(tokenFromResponse(r));
-          if ((r as any).outcome === 'SUCCESS' && (r as any).principal) return (r as any).principal;
-          throw new Error('Login failed with stored credentials.');
-        },
         identifier.trim() || undefined
       );
       setPrincipal(principal && (principal as any).role ? principal : null);

@@ -10,9 +10,12 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aipowersalon/mobile-sdk": "*",
+    "@aipowersalon/realtime-client": "*",
     "@aipowersalon/ui": "*",
     "@capacitor-firebase/messaging": "^8.5.2",
     "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",

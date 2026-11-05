@@ -23,7 +23,7 @@ export function LiveQueueScreen() {
     return () => { mounted.current = false; clearInterval(t); };
   }, [load]);
   // Realtime: refetch the moment the salon's queue/service state changes (event name only — no other customer's data).
-  useCustomerStream((ev) => { if (['queue_updated', 'customer_checked_in', 'ticket_assigned', 'service_started', 'service_done'].includes(ev)) load(false); });
+  useCustomerStream((ev) => { if (['reconcile', 'queue_updated', 'customer_checked_in', 'ticket_assigned', 'service_started', 'service_done'].includes(ev)) load(false); });
 
   const Header = (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>

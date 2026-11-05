@@ -178,22 +178,9 @@ export const customerApi = {
   referral: () => api.get<CustomerReferral | null>('/customer/referral'),
   getProfile: () => api.get<CustomerProfile | null>('/customer/profile'),
   uploadAvatar: async (file: File) => {
-    const { apiBase } = await import('./client');
-    const { authHeader } = await import('../auth/native-auth');
     const fd = new FormData();
     fd.append('file', file);
-    const bearer = await authHeader();
-    const res = await fetch(`${apiBase()}/customer/profile/avatar`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { ...bearer },
-      body: fd,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: 'Failed to upload avatar' }));
-      throw new Error(err.message || 'Failed to upload avatar');
-    }
-    return res.json() as Promise<{ url: string }>;
+    return api.upload<{ url: string }>('/customer/profile/avatar', fd);   // the app transport: bearer on native, UPLOAD timeout
   },
   paymentMethods: () => api.get<CustomerPaymentMethod[]>('/customer/payment-methods'),
   cardTokenizer: () => api.get<CardTokenizerConfig>('/customer/payment-methods/tokenizer'),

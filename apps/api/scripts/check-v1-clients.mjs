@@ -117,7 +117,8 @@ export function scanSource(rel, text, segs, unversioned = []) {
     if (tmpl.test(l) || plus.test(l)) out.push({ rule: 'R3', at, rel, line: l.trim() });
     if (/(^|[^A-Za-z])buildUrl\(/.test(l) && rel.startsWith('apps/')) out.push({ rule: 'R4', at, rel, line: l.trim() });
   });
-  if (CLIENTS.includes(rel) && !/\bbuildApiUrl\(/.test(code)) out.push({ rule: 'R4', at: rel, rel, line: 'the app client does not build with buildApiUrl' });
+  // A mobile app client built on createTransport (@aipowersalon/mobile-sdk) builds every URL with buildApiUrl inside it.
+  if (CLIENTS.includes(rel) && !/\bbuildApiUrl\(|\bcreateTransport\(/.test(code)) out.push({ rule: 'R4', at: rel, rel, line: 'the app client does not build with buildApiUrl' });
   return out;
 }
 

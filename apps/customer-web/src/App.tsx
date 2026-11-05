@@ -1,5 +1,6 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { useAppRoutes } from './lib/mobile-shell';
 import { useState, useEffect } from 'react';
 import { LoginScreen } from './screens/LoginScreen';
 import { enterGuestMode, exitGuestMode, isGuest } from './auth/guest';
@@ -54,6 +55,23 @@ import { CustomerFollowersScreen } from './screens/CustomerFollowersScreen';
 import { CustomerFollowingScreen } from './screens/CustomerFollowingScreen';
 import { NailShowcaseFollowingFeedScreen } from './screens/NailShowcaseFollowingFeedScreen';
 
+// Deep links and push taps (signed-in only): each route name opens its screen; anything else is ignored.
+function CustomerRoutes() {
+  const navigate = useNavigate();
+  useAppRoutes({
+    appointments: () => navigate('/appointments'),
+    appointment: (r) => navigate(r.params.appointmentId ? `/appointments/${r.params.appointmentId}` : '/appointments'),
+    queue: () => navigate('/queue'),
+    deals: () => navigate('/deals'),
+    loyalty: () => navigate('/rewards'),
+    showcase: () => navigate('/nail-showcase'),
+    'community-post': () => navigate('/nail-showcase'),
+    receipts: () => navigate('/receipts'),
+    security: () => navigate('/profile/security'),
+  });
+  return null;
+}
+
 function Gate() {
   const { principal, loading } = useAuth();
   const [, setGuestRev] = useState(0);
@@ -85,6 +103,7 @@ function Gate() {
   if (principal && isGuest()) exitGuestMode();
   return (
     <CustomerLayout>
+      {principal ? <CustomerRoutes /> : null}
       <Routes>
         <Route path="/" element={<HomeScreen />} />
         <Route path="/visit" element={<VisitScreen />} />

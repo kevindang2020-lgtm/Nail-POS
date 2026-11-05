@@ -1,5 +1,4 @@
-import { apiBase } from './client';
-import { authHeader } from '../auth/native-auth';
+import { transport } from './client';
 
 export interface Principal {
   userId: string; tenantId: string | null; branchId: string | null; role: string;
@@ -8,22 +7,19 @@ export interface Principal {
 export interface LoginResultBody { ok: boolean; outcome: string; message?: string; principal?: Principal; token?: string; accessToken?: string }
 export interface BranchOption { id: string; name?: string; isActive: boolean; city?: string | null }
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const base = apiBase().replace(/\/+$/, '');
-  const url = base + (path.startsWith('/') ? path : '/' + path);
-  const bearer = await authHeader();
-  const res = await fetch(url, {
-    credentials: 'include',
-    headers: {
-      Accept: 'application/json',
-      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
-      ...bearer,
-    },
-    ...init,
-  });
-  let json: any = null; try { json = await res.json(); } catch { /* empty */ }
-  if (!res.ok) { const m = (json && json.message) || (res.status === 401 ? 'Please sign in again.' : res.status === 403 ? 'Not permitted.' : 'Request failed.'); throw Object.assign(new Error(m), { status: res.status }); }
-  return json as T;
+// Sign-in calls go through the same transport as every other call (/api/v1, client identity headers, the native bearer).
+// A 401 here is an answer ("wrong password", "no session"), not a dead session — so it never announces aps:unauthorized.
+async function http<T>(path: string, init?: { method?: string; body?: string }): Promise<T> {
+  try {
+    return await transport.request<T>(init?.method ?? 'GET', path, {
+      body: init?.body !== undefined ? JSON.parse(init.body) : undefined,
+      notifyUnauthorized: false,
+    });
+  } catch (e: any) {
+    const status = Number(e?.status ?? 0);
+    const m = e?.serverMessage || e?.message || (status === 401 ? 'Please sign in again.' : status === 403 ? 'Not permitted.' : 'Request failed.');
+    throw Object.assign(new Error(m), { status, code: e?.code });
+  }
 }
 
 export const authApi = {

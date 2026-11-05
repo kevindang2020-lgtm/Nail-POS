@@ -6,7 +6,7 @@ import { techApi } from '../api/techApi';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useTechNav } from '../shell/nav';
-import { enrollFaceId, faceIdMode, getPendingBioCreds, disableFaceId } from '../auth/faceid';
+import { enrollFaceId, faceIdMode, disableFaceId } from '../auth/faceid';
 
 const APP_VERSION = '0.1.0';
 const CAP_LABELS: [string, string][] = [
@@ -127,10 +127,7 @@ export function SettingsScreen() {
                         setBioOk('Biometric login has been disabled.');
                       } catch (e: any) { setBioErr(e?.message || 'Could not disable biometric login.'); }
                     } else {
-                      if (!getPendingBioCreds()) {
-                        setBioErr('To set up Biometrics, please sign out and sign back in with your password first.');
-                        return;
-                      }
+                      // The server decides (it needs a recent password sign-in); its answer is shown if it says no.
                       enableFaceId();
                     }
                   }}

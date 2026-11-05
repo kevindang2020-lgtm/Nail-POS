@@ -208,22 +208,9 @@ export const ownerExpensesApi = {
 export const ownerMoreApi = {
   profile: () => api.get<OwnerProfileCard>('/owner/profile'),
   uploadAvatar: async (file: File) => {
-    const { apiBase } = await import('./client');
-    const { authHeader } = await import('../auth/native-auth');
     const fd = new FormData();
     fd.append('file', file);
-    const bearer = await authHeader();
-    const res = await fetch(`${apiBase()}/owner/profile/avatar`, {
-      method: 'POST',
-      credentials: 'include',
-      headers: { ...bearer },
-      body: fd,
-    });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: 'Failed to upload avatar' }));
-      throw new Error(err.message || 'Failed to upload avatar');
-    }
-    return res.json() as Promise<{ url: string }>;
+    return api.upload<{ url: string }>('/owner/profile/avatar', fd);   // the app transport: bearer on native, UPLOAD timeout
   },
   settings: () => api.get<OwnerSettingsSnapshot>('/owner/settings'),
   alerts: (opts?: { status?: string; severity?: string }) => api.get<OwnerAlert[]>('/owner/alerts', opts as Record<string, unknown> | undefined),

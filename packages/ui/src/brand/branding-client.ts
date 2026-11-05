@@ -5,10 +5,12 @@
 //
 // The LOGO is never changed here — logo assets are locked and served statically from /brand/*.
 
+import { buildApiUrl } from '@aipowersalon/api-client';
+
 function apiBase(): string {
   const env = (import.meta as any)?.env?.VITE_API_BASE as string | undefined;
   const win = typeof window !== 'undefined' ? (window as any).APS_API_BASE : undefined;
-  return (env || win || '').replace(/\/+$/, '');
+  return env || win || '';
 }
 
 const MAP: Record<string, string> = {
@@ -22,7 +24,8 @@ const MAP: Record<string, string> = {
 export async function applyPlatformBranding(): Promise<void> {
   if (typeof document === 'undefined') return;
   try {
-    const res = await fetch(`${apiBase()}/platform/branding`, { credentials: 'include' });
+    // buildApiUrl keeps /platform/branding un-versioned (/api/v1/platform/* is the Super Admin alias).
+    const res = await fetch(buildApiUrl(apiBase(), '/platform/branding'), { credentials: 'include' });
     if (!res.ok) return;
     const b = await res.json();
     const root = document.documentElement;

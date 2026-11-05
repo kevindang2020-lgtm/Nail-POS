@@ -12,6 +12,7 @@
 // Everything is wrapped so a push failure can NEVER break login or the app — push is best-effort.
 import { Capacitor } from '@capacitor/core';
 import { pushApi } from '../api/pushApi';
+import { openPushRoute } from './mobile-shell';
 
 let registered = false; // register once per session (the OS token is stable; re-POSTing on every render is wasteful)
 
@@ -45,6 +46,8 @@ export async function registerPushToken(): Promise<void> {
       remember(t.value);   // so sign-out can hand it back
       pushApi.registerPush(platform, t.value).catch(() => { /* best-effort */ });
     });
+    // A tap names a destination (the typed route in the payload); the route gate opens it after the session check.
+    PushNotifications.addListener('pushNotificationActionPerformed', (a: any) => { openPushRoute(a?.notification?.data ?? null); });
     // Surfacing registration errors is non-fatal; we just don't get pushes.
     PushNotifications.addListener('registrationError', () => { registered = false; });
 

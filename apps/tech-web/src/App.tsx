@@ -3,6 +3,7 @@ import { LoginScreen } from './screens/LoginScreen';
 import { AcceptInviteScreen } from './screens/AcceptInviteScreen';
 import { TechLayout } from './shell/TechLayout';
 import { TechNavProvider, useTechNav } from './shell/nav';
+import { useAppRoutes } from './lib/mobile-shell';
 import { TechDashboardScreen } from './screens/TechDashboardScreen';
 import { TechScheduleScreen } from './screens/TechScheduleScreen';
 import { TicketsListScreen } from './screens/TicketsListScreen';
@@ -26,6 +27,23 @@ import { TechWorkplacesScreen } from './screens/TechWorkplacesScreen';
 import { TechPayrollScreen } from './screens/TechPayrollScreen';
 import { MyDealsScreen } from './screens/MyDealsScreen';
 import { TechHelpScreen } from './screens/TechHelpScreen';
+
+// Deep links and push taps (signed-in only): each route name opens its screen; anything else is ignored.
+function TechRoutes() {
+  const nav = useTechNav();
+  useAppRoutes({
+    queue: () => nav.openQueue(),
+    'queue-ticket': () => nav.openQueue(),
+    schedule: () => nav.go('schedule'),
+    appointments: () => nav.go('schedule'),
+    appointment: () => nav.go('schedule'),
+    payroll: () => nav.openPayroll(),
+    alerts: () => nav.openNotifications(),
+    deals: () => nav.openMyDeals(),
+    security: () => nav.openSettings(),
+  });
+  return null;
+}
 
 function Router() {
   const { tab, pushed } = useTechNav();
@@ -61,7 +79,7 @@ function Gate() {
   if (typeof window !== 'undefined' && window.location.pathname === '/accept-invite') return <AcceptInviteScreen />;
   if (loading) return null;
   if (!principal) return <LoginScreen />;
-  return <TechNavProvider><Router /></TechNavProvider>;
+  return <TechNavProvider><TechRoutes /><Router /></TechNavProvider>;
 }
 
 import { AnimatedSplash } from './components/AnimatedSplash';

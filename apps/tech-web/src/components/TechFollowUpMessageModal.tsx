@@ -5,7 +5,7 @@ import { TechFollowUpTemplateSelector } from './TechFollowUpTemplateSelector';
 // Bottom-sheet modal to review/edit and send a follow-up. Loads quick templates; picking one renders it server-side for
 // this task. The tech can edit freely (if the branch allows it) before sending. Sending creates the Customer App
 // message via the backend; if the customer has no app account the backend reports "no app" and we surface it honestly.
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '@aipowersalon/ui';
 
 export function TechFollowUpMessageModal({ task, canEdit, onClose, onSent }: {
   task: FollowUpTaskView; canEdit: boolean; onClose: () => void; onSent: (t: FollowUpTaskView) => void;

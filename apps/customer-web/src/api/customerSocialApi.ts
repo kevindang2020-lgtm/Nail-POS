@@ -39,18 +39,8 @@ export const customerSocialApi = {
   profilePosts: (customerId: string) => api.get<{ posts: ProfilePostCard[] }>(`/customer/social/profile/${customerId}/posts`),
   report: (customerId: string, reason: string, details?: string) => api.post<{ ok: true }>(`/customer/social/profile/${customerId}/report`, { reason, details }),
   async uploadAvatar(file: File): Promise<{ avatarUrl: string }> {
-    const { apiBase } = await import('./client');
-    const { authHeader } = await import('../auth/native-auth');
     const fd = new FormData();
     fd.append('file', file);
-    const bearer = await authHeader();
-    const res = await fetch(`${apiBase()}/customer/social/me/avatar`, {
-      method: 'POST',
-      body: fd,
-      credentials: 'include',
-      headers: { ...bearer },
-    });
-    if (!res.ok) throw new Error((await res.json().catch(() => ({})))?.message || 'Could not upload avatar.');
-    return res.json();
+    return api.upload<{ avatarUrl: string }>('/customer/social/me/avatar', fd);   // the app transport: bearer on native
   },
 };

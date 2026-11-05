@@ -1,5 +1,5 @@
 import { useEffect, useState, type CSSProperties } from 'react';
-import { useInlineConfirm } from '../components/InlineConfirm';
+import { useInlineConfirm } from '@aipowersalon/ui';
 import { customerApi, type CustomerGiftCardsState } from '../api/customerApi';
 import { money2 } from '../lib/appt';
 

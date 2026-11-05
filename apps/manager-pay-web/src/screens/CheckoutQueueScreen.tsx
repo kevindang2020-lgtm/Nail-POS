@@ -3,6 +3,7 @@ import { mobileCheckoutApi, type MobileQueueItem, type ReadinessReport, type Que
 import { formatCents, maskedPhone, titleCase } from '../util/format';
 import { usePayNav } from '../shell/nav';
 import { DEVICE_ID } from '../util/session';
+import { useCheckoutStream } from '../lib/useCheckoutStream';
 
 const FILTERS: { key: QueueFilter; label: string }[] = [
   { key: 'all', label: 'All' },
@@ -54,6 +55,8 @@ export function CheckoutQueueScreen() {
 
   useEffect(() => { mobileCheckoutApi.readiness(DEVICE_ID).then(setReadiness).catch(() => setReadiness(null)); }, []);
   useEffect(() => { setItems(null); const id = setTimeout(load, 150); return () => clearTimeout(id); }, [load]);
+  // A ticket sent to checkout, paid or claimed on another phone updates this list live (no pull-to-refresh needed).
+  useCheckoutStream(() => { void load(); });
 
   return (
     <>

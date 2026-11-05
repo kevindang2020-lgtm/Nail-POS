@@ -11,7 +11,7 @@ import logoImage from '../../public/brand/AI_PowerSalon_Owner_App.png';
 // WebAuthn in a browser), talking to the SAME backend verifier. The rule is enforced by the server, not here:
 // a biometric success is not authentication — the unlocked token is revalidated against /auth/me, so an owner who
 // was suspended or whose session was revoked gets nothing, face or no face.
-import { faceIdMode, signInWithFaceId, setPendingBioCreds, type FaceIdMode } from '../auth/faceid';
+import { faceIdMode, signInWithFaceId, type FaceIdMode } from '../auth/faceid';
 
 /*
  * Owner sign in — the 'owner' portal. Backend resolves the owner GLOBALLY by email/phone (owners have several
@@ -114,19 +114,6 @@ export function LoginScreen() {
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JS.
       await saveNativeToken(tokenFromResponse(r));
       if (r.principal) {
-        // Fix: Save pending credentials so Settings screen can enroll Biometrics
-        try {
-          if (typeof setPendingBioCreds === 'function') {
-            setPendingBioCreds({
-              portal: 'owner',
-              identifier: identifier.trim(),
-              password,
-              ownerAccessCode: accessCode.trim() || undefined,
-              rememberMe: remember
-            });
-          }
-        } catch { /* ignore */ }
-        
         // Prompt for push permission asynchronously without blocking transition
         void requestPushPermission();
         
@@ -150,17 +137,6 @@ export function LoginScreen() {
       if (cleanAccessCode) localStorage.setItem('aps_last_owner_accesscode', cleanAccessCode);
       const principal: any = await signInWithFaceId(
         async () => await authApi.me(),
-        async (creds: any) => {
-          if (typeof creds === 'string') return await authApi.me(); // Legacy fallback token
-          const loginPayload = {
-            ...creds,
-            ownerAccessCode: cleanAccessCode || creds.ownerAccessCode,
-          };
-          const r = await authApi.login(loginPayload);
-          await saveNativeToken(tokenFromResponse(r));
-          if (r.principal) return r.principal;
-          throw new Error('Login failed with stored credentials.');
-        },
         identifier.trim() || undefined
       );
       if (principal) { 

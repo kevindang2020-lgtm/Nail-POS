@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { parseDollarsToCents } from '../lib/money-input';
+import { parseDollarsToCents } from '@aipowersalon/ui';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { ownerExpensesApi, EXPENSE_CATEGORIES, type OwnerExpense, type OwnerExpenseSummary, type OwnerPeriod } from '../api/ownerApi';
 import { PeriodSelector } from '../components/PeriodSelector';

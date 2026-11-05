@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { clearNativeToken } from './native-auth';
+import { signalSignedOut } from '@aipowersalon/mobile-sdk';
 import { registerPushToken, unregisterPushToken } from '../lib/push';
 import { authApi, type Principal } from '../api/authApi';
 import { exitGuestMode } from './guest';
@@ -12,13 +13,15 @@ import { exitGuestMode } from './guest';
 interface AuthShape { principal: Principal | null; loading: boolean; setPrincipal: (p: Principal | null) => void; logout: () => Promise<void>; }
 const AuthCtx = createContext<AuthShape>({ principal: null, loading: true, setPrincipal: () => {}, logout: async () => {} });
 
-import { useWebPush } from '../hooks/useWebPush';
+import { useWebPush } from '@aipowersalon/mobile-sdk/web-push';
+import { api } from '../api/client';
+import { openPushRoute } from '../lib/mobile-shell';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [principal, setPrincipal] = useState<Principal | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useWebPush(principal?.tenantId || 'SYSTEM', 'customer', principal?.userId);
+  useWebPush({ http: api, tenantId: principal?.tenantId || 'SYSTEM', userType: 'customer', userId: principal?.userId, app: 'customer', onTap: openPushRoute });
 
   useEffect(() => {
     let alive = true;
@@ -60,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await unregisterPushToken().catch(() => {});
     try { await authApi.logout(); } catch { /* ignore */ }
     await clearNativeToken();
+    signalSignedOut();   // closes the live stream: a signed-out phone keeps no channel to the salon
     setPrincipal(null);
   };
 

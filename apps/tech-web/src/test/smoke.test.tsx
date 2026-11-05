@@ -8,7 +8,8 @@ import { TechNavProvider } from '../shell/nav';
 
 vi.mock('../api/client', () => {
   const pending = () => new Promise(() => {}); // never resolves → screens stay in their initial state
-  return { api: { get: pending, post: pending, patch: pending, del: pending, upload: pending } };
+  const t = { get: pending, post: pending, put: pending, patch: pending, del: pending, upload: pending, request: pending, apiUrl: (p: string) => p, apiBase: () => '' };
+  return { api: t, transport: t, apiBase: () => '' };
 });
 
 import { LoginScreen } from '../screens/LoginScreen';

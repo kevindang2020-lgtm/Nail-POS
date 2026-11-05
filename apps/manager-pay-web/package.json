@@ -10,12 +10,15 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@capacitor/push-notifications": "^8.1.3",
+    "@aipowersalon/mobile-sdk": "*",
+    "@aipowersalon/realtime-client": "*",
     "@aipowersalon/ui": "*",
     "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.4.0",
     "@capacitor/core": "^8.4.0",
     "@capacitor/ios": "^8.4.0",
+    "@capacitor/push-notifications": "^8.1.3",
     "@capacitor/splash-screen": "^8.0.2",
     "@capgo/capacitor-native-biometric": "^8.9.1",
     "capacitor-secure-storage-plugin": "^0.13.0",

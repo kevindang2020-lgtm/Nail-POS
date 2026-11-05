@@ -17,7 +17,7 @@ export function CustomerFollowUpsScreen() {
   }, []);
   useEffect(() => { load(); }, [load]);
   // Live updates: the inbox refetches the moment a technician sends a new follow-up to this customer.
-  useCustomerStream((ev) => { if (ev === 'customer_follow_up_received' || ev === 'follow_up_task_updated') load(); });
+  useCustomerStream((ev) => { if (ev === 'reconcile' || ev === 'customer_follow_up_received' || ev === 'follow_up_task_updated') load(); });
 
   return (
     <div style={{ padding: 18 }}>

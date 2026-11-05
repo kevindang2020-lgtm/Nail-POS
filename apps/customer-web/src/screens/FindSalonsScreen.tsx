@@ -3,7 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useNavigate } from 'react-router-dom';
 import { customerApi, NearbyResponse, SalonResult } from '../api/customerApi';
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '@aipowersalon/ui';
 
 export function FindSalonsScreen() {
   const nav = useNavigate();

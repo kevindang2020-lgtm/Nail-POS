@@ -5,7 +5,7 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './styles.css';
-import { applyPlatformBranding } from './brand/branding-client';
+import { applyPlatformBranding } from '@aipowersalon/ui';
 import { AppErrorBoundary, initErrorReporting } from '@aipowersalon/ui';
 
 // Apply any Super-Admin colour overrides at boot (best-effort; locked defaults already loaded).

@@ -11,7 +11,7 @@ const Back = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" 
 const Phone = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.9v3a2 2 0 01-2.2 2 19.8 19.8 0 01-8.6-3 19.5 19.5 0 01-6-6 19.8 19.8 0 01-3-8.6A2 2 0 014.1 2h3a2 2 0 012 1.7c.1.9.3 1.8.6 2.6a2 2 0 01-.5 2.1L8 9.5a16 16 0 006 6l1.1-1.1a2 2 0 012.1-.5c.8.3 1.7.5 2.6.6a2 2 0 011.7 2z" /></svg>);
 const Msg = () => (<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.4 8.4 0 01-9 8.4 8.5 8.5 0 01-3.9-.9L3 20l1-3.1A8.4 8.4 0 1121 11.5z" /></svg>);
 
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '@aipowersalon/ui';
 import { RequestHelpModal } from '../components/RequestHelpModal';
 
 export function TicketDetailScreen({ ticketId }: { ticketId: string }) {

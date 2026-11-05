@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { PayNavProvider, usePayNav } from './shell/nav';
+import { useAppRoutes } from './lib/mobile-shell';
 import { PayLayout } from './shell/PayLayout';
 import { LoginScreen } from './screens/LoginScreen';
 import { authApi, type Principal } from './api/authApi';
@@ -14,6 +15,18 @@ import { SuccessScreen } from './screens/SuccessScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { AccountScreen } from './screens/AccountScreen';
 import { ReportsScreen } from './screens/ReportsScreen';
+
+// Deep links and push taps (signed-in only): each route name opens its tab; anything else is ignored.
+function PayRoutes() {
+  const nav = usePayNav();
+  useAppRoutes({
+    checkout: () => nav.go('checkout'),
+    queue: () => nav.go('checkout'),
+    receipts: () => nav.go('history'),
+    security: () => nav.go('account'),
+  });
+  return null;
+}
 
 function CurrentScreen() {
   const nav = usePayNav();
@@ -38,6 +51,7 @@ function Gate({ principal, setPrincipal }: { principal: Principal | null | undef
 
   return (
     <PayNavProvider>
+      <PayRoutes />
       <PayLayout>
         <CurrentScreen />
       </PayLayout>

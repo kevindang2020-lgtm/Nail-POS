@@ -57,74 +57,11 @@ export const customerNailShowcaseApi = {
   eligibility: (ticketId: string) => api.get<NSEligibility>(`/customer/tickets/${ticketId}/nail-showcase-eligibility`),
   createVerifiedPost: (ticketId: string, body: NSCreatePostBody) => api.post<NSPost>(`/customer/tickets/${ticketId}/nail-showcase-post`, clean(body as Record<string, unknown>)),
 
-  // Real multipart photo upload (FormData; the shared JSON client can't carry files). Field name 'files'.
-  // uploadPhotos: async (postId: string, files: File[], caption?: string): Promise<{ photos?: NSPhoto[] } | NSPhoto[]> => {
-  //   const { apiBase } = await import('./client');
-  //   const { authHeader } = await import('../auth/native-auth');
-  //   const form = new FormData();
-  //   for (const f of files) form.append('files', f, f.name);
-  //   if (caption) form.append('caption', caption);
-  //   const bearer = await authHeader();
-  //   const res = await fetch(`${apiBase()}/customer/nail-showcase/posts/${postId}/photos`, {
-  //     method: 'POST',
-  //     credentials: 'include',
-  //     headers: { ...bearer },
-  //     body: form,
-  //   });
-  //   let json: unknown = null; try { json = await res.json(); } catch { /* empty */ }
-  //   if (!res.ok) { const m = (json as { message?: string })?.message || 'Upload failed.'; throw Object.assign(new Error(m), { status: res.status }); }
-  //   return json as { photos?: NSPhoto[] } | NSPhoto[];
-  // },
-  uploadPhotos: async (
-  postId: string,
-  files: File[],
-  caption?: string
-): Promise<{ photos?: NSPhoto[]; videos?: NSPhoto[] } | NSPhoto[]> => {
-  const { apiBase } = await import('./client');
-  const { authHeader } = await import('../auth/native-auth');
-
-  const form = new FormData();
-
-  for (const f of files) {
-    form.append('files', f, f.name);
-  }
-
-  if (caption) {
-    form.append('caption', caption);
-  }
-
-  const bearer = await authHeader();
-
-  const res = await fetch(
-    `${apiBase()}/customer/nail-showcase/posts/${postId}/photos`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      headers: { ...bearer },
-      body: form,
-    }
-  );
-
-  let json: unknown = null;
-
-  try {
-    json = await res.json();
-  } catch {
-    // empty response
-  }
-
-  if (!res.ok) {
-    const m =
-      (json as { message?: string })?.message ||
-      'Upload failed.';
-
-    throw Object.assign(new Error(m), {
-      status: res.status,
-    });
-  }
-
-  return json as
-    | { photos?: NSPhoto[]; videos?: NSPhoto[] }
-    | NSPhoto[];
-},
+  // Multipart photo/video upload (field name 'files') through the app transport: bearer on native, UPLOAD timeout, never retried.
+  uploadPhotos: async (postId: string, files: File[], caption?: string): Promise<{ photos?: NSPhoto[]; videos?: NSPhoto[] } | NSPhoto[]> => {
+    const form = new FormData();
+    for (const f of files) form.append('files', f, f.name);
+    if (caption) form.append('caption', caption);
+    return api.upload<{ photos?: NSPhoto[]; videos?: NSPhoto[] } | NSPhoto[]>(`/customer/nail-showcase/posts/${postId}/photos`, form);
+  },
 };

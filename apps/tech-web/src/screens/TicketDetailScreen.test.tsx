@@ -8,7 +8,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 
 vi.mock('../shell/nav', () => ({ useTechNav: () => ({ back: vi.fn() }) }));
 vi.mock('../lib/useTechStream', () => ({ useTechStream: () => {} }));
-vi.mock('../hooks/useEscapeKey', () => ({ useEscapeKey: () => {} }));
+vi.mock('@aipowersalon/ui', async (orig) => ({ ...(await orig<object>()), useEscapeKey: () => {} }));
 vi.mock('../lib/tech', () => ({
   money2: (c: number) => `$${((c || 0) / 100).toFixed(2)}`,
   clock: () => '10:00 AM',

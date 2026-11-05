@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { authApi, type Principal } from '../api/authApi';
 import { clearNativeToken } from '../auth/native-auth';
+import { signalSignedOut } from '@aipowersalon/mobile-sdk';
 import { unregisterPushToken } from '../lib/push';
 import { mobileCheckoutApi, type ReadinessReport } from '../api/mobileCheckoutApi';
 import { faceIdMode, enrollFaceId, disableFaceId, isFaceIdEnrolled } from '../auth/faceid';
@@ -110,6 +111,7 @@ export function AccountScreen() {
     await unregisterPushToken();
     try { await authApi.logout(); } catch { /* best-effort */ }
     await clearNativeToken();
+    signalSignedOut();   // closes the live checkout stream
     setPrincipal(null);
     window.dispatchEvent(new CustomEvent('aps:unauthorized'));
     setSigningOut(false);

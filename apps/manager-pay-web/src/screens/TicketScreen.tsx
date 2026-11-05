@@ -4,8 +4,8 @@ import { mobileCheckoutApi, type MobileTicketDetail, type TipPreset, type Procee
 import { formatCents, titleCase, computeTipCents } from '../util/format';
 import { SESSION_ID, DEVICE_ID } from '../util/session';
 import { usePayNav } from '../shell/nav';
-import { useInlineAsk } from '../components/InlineAsk';
-import { useInlineConfirm } from '../components/InlineConfirm';
+import { useInlineAsk } from '@aipowersalon/ui';
+import { useInlineConfirm } from '@aipowersalon/ui';
 
 type LockState = 'acquiring' | 'owned' | 'elsewhere' | 'error';
 type TipChoice = 'none' | 'p15' | 'p20' | 'p25' | 'custom';

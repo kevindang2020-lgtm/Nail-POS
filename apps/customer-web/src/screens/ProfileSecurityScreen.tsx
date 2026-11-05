@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { enrollFaceId, faceIdMode, getPendingBioCreds, disableFaceId } from '../auth/faceid';
+import { enrollFaceId, faceIdMode, canEnrollFaceId, disableFaceId } from '../auth/faceid';
 
 // ProfileSecurityScreen — Profile → Security for the Customer App.
 //
@@ -58,10 +58,13 @@ export function ProfileSecurityScreen() {
     } catch { setSessions([]); }
   };
   useEffect(() => { load(); }, []);
+  // Can Face ID be turned on now (supported, enabled by the server, signed in)? The server still checks for a recent password.
+  const [canEnroll, setCanEnroll] = useState(false);
+  useEffect(() => { void canEnrollFaceId().then(setCanEnroll).catch(() => setCanEnroll(false)); }, []);
   useEffect(() => { 
     faceIdMode().then(m => {
       setFaceIdSupported(m !== 'none');
-      import('../auth/native-faceid').then(mod => mod.faceIdState()).then(s => {
+      import('@aipowersalon/mobile-sdk').then(mod => mod.faceIdState()).then(s => {
         setFaceIdDebug(`mode=${m}, state=${JSON.stringify(s)}`);
       });
       const bioSuccess = typeof sessionStorage !== 'undefined' && sessionStorage ? sessionStorage.getItem('aps_bio_login_success') === 'true' : false;
@@ -271,7 +274,7 @@ export function ProfileSecurityScreen() {
                   Remove
                 </button>
               </div>
-            ) : getPendingBioCreds() ? (
+            ) : canEnroll ? (
               <button type="button" onClick={enableFaceId} disabled={enrolling}
                 style={{ width: '100%', height: 46, borderRadius: 11, border: `1px solid ${GOLD}`, background: '#fff', color: GOLD_DEEP, fontSize: 14, fontWeight: 500, cursor: enrolling ? 'default' : 'pointer', marginBottom: 12 }}>
                 {enrolling ? 'Setting up…' : 'Enable Face ID'}

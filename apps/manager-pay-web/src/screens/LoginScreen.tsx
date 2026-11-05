@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { authApi, type Principal } from '../api/authApi';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
-import { faceIdMode, signInWithFaceId, setPendingBioCreds, getPendingBioCreds, isFaceIdEnrolled, enrollFaceId, type FaceIdMode } from '../auth/faceid';
+import { faceIdMode, signInWithFaceId, isFaceIdEnrolled, enrollFaceId, type FaceIdMode } from '../auth/faceid';
 import { isTapToPayAvailable } from '../native/tapToPay';
 import logoImage from '../../public/brand/taptopay.png';
 
@@ -85,19 +85,8 @@ export function LoginScreen({ onAuthed }: { onAuthed: (p: Principal) => void }) 
         await saveNativeToken(tokenFromResponse(sRes) || lastToken);
         persistSalon(codeToSend);
         try { localStorage.setItem('aps_last_branch_id', branchId); } catch { /* ignore */ }
-        const prev = getPendingBioCreds() || {};
-        const savedPass = password || prev.password;
-        if (savedPass) {
-          setPendingBioCreds({
-            portal: 'tenant',
-            salonCode: codeToSend || prev.salonCode,
-            identifier: identifier.trim() || prev.identifier,
-            password: savedPass,
-            branchId,
-            rememberMe: remember ?? prev.rememberMe ?? true,
-          });
-          void enrollFaceId().catch(() => {});
-        }
+        // A password sign-in on the payment phone turns Face ID on (the server allows it right after a password check).
+        if (password) void enrollFaceId(sRes.principal.userId).catch(() => {});
         onAuthed(sRes.principal);
         return;
       }
@@ -121,14 +110,7 @@ export function LoginScreen({ onAuthed }: { onAuthed: (p: Principal) => void }) 
       await saveNativeToken(tokenFromResponse(r)); // native only; web keeps the httpOnly cookie
       if (r.outcome === 'SUCCESS' && r.principal) {
         persistSalon(codeToSend);
-        setPendingBioCreds({
-          portal: 'tenant',
-          salonCode: codeToSend,
-          identifier: identifier.trim(),
-          password,
-          rememberMe: remember,
-        });
-        void enrollFaceId().catch(() => {});
+        void enrollFaceId(r.principal.userId).catch(() => {});
         onAuthed(r.principal); return;
       }
       if (r.outcome === 'BRANCH_SELECTION_REQUIRED') {
@@ -140,15 +122,7 @@ export function LoginScreen({ onAuthed }: { onAuthed: (p: Principal) => void }) 
             await saveNativeToken(tokenFromResponse(sRes) || tokenFromResponse(r));
             persistSalon(codeToSend);
             try { localStorage.setItem('aps_last_branch_id', list[0].id); } catch { /* ignore */ }
-            setPendingBioCreds({
-              portal: 'tenant',
-              salonCode: codeToSend,
-              identifier: identifier.trim(),
-              password,
-              branchId: list[0].id,
-              rememberMe: remember,
-            });
-            void enrollFaceId().catch(() => {});
+            void enrollFaceId(sRes.principal.userId).catch(() => {});
             onAuthed(sRes.principal);
             return;
           }
@@ -178,52 +152,17 @@ export function LoginScreen({ onAuthed }: { onAuthed: (p: Principal) => void }) 
         return;
       }
 
-      let branchSelectionTriggered = false;
-      const codeToSend = salonCode.trim();
+      // The server opens the session from the biometric device credential (no password is stored on the phone).
       const p: any = await signInWithFaceId(
         async () => await authApi.me(),
-        async (creds: any) => {
-          if (typeof creds === 'string') return await authApi.me();
-          const r = await authApi.login({
-            ...creds,
-            salonCode: codeToSend || creds.salonCode,
-          });
-          await saveNativeToken(tokenFromResponse(r));
-          if (r.outcome === 'SUCCESS' && r.principal) {
-            persistSalon(creds.salonCode || codeToSend);
-            return r.principal;
-          }
-          if (r.outcome === 'BRANCH_SELECTION_REQUIRED') {
-            const bRes = await authApi.branches().catch(() => null);
-            const list = (bRes?.branches || []).filter((b: any) => b.isActive);
-            if (list.length === 1) {
-              const sRes = await authApi.selectBranch(list[0].id);
-              if (sRes.principal) {
-                await saveNativeToken(tokenFromResponse(sRes) || tokenFromResponse(r));
-                persistSalon(codeToSend || creds.salonCode);
-                try { localStorage.setItem('aps_last_branch_id', list[0].id); } catch { /* ignore */ }
-                return sRes.principal;
-              }
-            } else if (list.length > 1) {
-              branchSelectionTriggered = true;
-              setBranches(list);
-              setLastToken(tokenFromResponse(r));
-              setMode('branch');
-              setPendingBioCreds({
-                portal: 'tenant',
-                salonCode: codeToSend || creds.salonCode,
-                identifier: creds.identifier || identifier.trim(),
-                password: creds.password || password,
-                rememberMe: true,
-              });
-              return { branchSelectionRequired: true };
-            }
-          }
-          throw new Error(r.message || 'Unable to sign in with stored credentials.');
-        },
         identifier.trim() || undefined,
       );
-      if (p?.branchSelectionRequired || branchSelectionTriggered) return;
+      if (p?.needsBranchSelection) {
+        const bRes = await authApi.branches().catch(() => null);
+        const list = (bRes?.branches || []).filter((b: any) => b.isActive);
+        if (list.length === 1) { await chooseBranch(list[0].id); return; }
+        if (list.length > 1) { setBranches(list); setMode('branch'); return; }
+      }
       if (p) { onAuthed(p); return; }
       setErr('Biometric sign-in was unsuccessful. Please use your password.');
     } catch (e: any) {

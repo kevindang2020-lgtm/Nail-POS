@@ -78,7 +78,7 @@ export function AppointmentDetailsScreen() {
     return () => { live = false; mounted.current = false; };
   }, [appointmentId, passed]);
   // Realtime: refresh the live status as soon as the service/queue/ticket changes for this salon.
-  useCustomerStream((ev) => { if (['service_started', 'service_done', 'ticket_ready_checkout', 'ticket_paid', 'queue_updated', 'appointment_updated'].includes(ev)) refreshLive(); });
+  useCustomerStream((ev) => { if (['reconcile', 'service_started', 'service_done', 'ticket_ready_checkout', 'ticket_paid', 'queue_updated', 'appointment_updated'].includes(ev)) refreshLive(); });
 
   // Tech card enrichment: rating + reviews + specialties + avatar photo for the booked technician.
   const loadTech = useCallback(async () => {

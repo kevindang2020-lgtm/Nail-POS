@@ -13,7 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { skipLineApi, type ActiveBillResponse, type ConfirmResult } from '../api/skipLineApi';
 import { customerApi, type CustomerPaymentMethod } from '../api/customerApi';
 import { money2 } from '../lib/appt';
-import { parseDollarsToCents } from '../lib/money-input';
+import { parseDollarsToCents } from '@aipowersalon/ui';
 
 type Step = 'loading' | 'empty' | 'bill' | 'method' | 'card' | 'processing' | 'success' | 'cashConfirm' | 'cashWaiting' | 'error';
 const METHOD_LABEL: Record<string, string> = { card: 'Credit / Debit Card', apple_pay: 'Apple Pay', google_pay: 'Google Pay', cash_to_technician: 'Cash to Technician' };

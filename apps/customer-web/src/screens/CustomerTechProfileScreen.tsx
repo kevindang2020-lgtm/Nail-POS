@@ -6,7 +6,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { customerApi, type PublicTechProfile, type TechProfilePhoto, type NSNextAvailable } from '../api/customerApi';
 import { useAuth } from '../auth/AuthContext';
 
-import { useEscapeKey } from '../hooks/useEscapeKey';
+import { useEscapeKey } from '@aipowersalon/ui';
 
 export function CustomerTechProfileScreen() {
   const { slug } = useParams();

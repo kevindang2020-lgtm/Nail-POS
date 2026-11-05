@@ -477,7 +477,6 @@ import {
 import {
   enrollFaceId,
   faceIdMode,
-  getPendingBioCreds,
   disableFaceId,
 } from '../auth/faceid';
 export function OwnerSettingScreen() {
@@ -578,13 +577,7 @@ export function OwnerSettingScreen() {
     return;
   }
 
-  if (!getPendingBioCreds()) {
-    setBioErr(
-      'To set up Biometrics, please sign out and sign back in with your password first.'
-    );
-    return;
-  }
-
+  // The server decides (it needs a recent password sign-in); its answer is shown if it says no.
   await enableBiometrics();
 };
   useEffect(() => {

@@ -2,7 +2,7 @@
 // whether creation is allowed; when it's OFF this shows an honest disabled state (no create form). All pricing is
 // computed by the backend; a technician only ever sees their own deals.
 import { useCallback, useEffect, useState } from 'react';
-import { parseDollarsToCents } from '../lib/money-input';
+import { parseDollarsToCents } from '@aipowersalon/ui';
 import { techDealsApi, type TechDeal, type TechDealSettings, type TechDealStatus } from '../api/techDealsApi';
 import { useTechNav } from '../shell/nav';
 

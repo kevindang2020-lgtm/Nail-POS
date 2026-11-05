@@ -28,7 +28,7 @@ export default defineConfig(({ mode }) => {
         '@aipowersalon/realtime-client': fileURLToPath(new URL('../../packages/realtime-client/src', import.meta.url)),
       },
     },
-    server: { port: 5173, proxy: { '^/api([/?#]|$)': proxyOpts, '^/pos([/?#]|$)': proxyOpts, '^/push([/?#]|$)': proxyOpts, '^/tenant([/?#]|$)': proxyOpts, '^/ai([/?#]|$)': proxyOpts, '^/auth([/?#]|$)': proxyOpts, '^/public([/?#]|$)': proxyOpts, '^/owner([/?#]|$)': proxyOpts, '^/tech([/?#]|$)': proxyOpts, '^/customer([/?#]|$)': proxyOpts, '^/super-admin([/?#]|$)': proxyOpts, '^/realtime([/?#]|$)': proxyOpts, '^/mobile-checkout([/?#]|$)': proxyOpts } },
+    server: { port: 5173, proxy: { '^/api/v1([/?#]|$)': proxyOpts, '^/api([/?#]|$)': proxyOpts, '^/pos([/?#]|$)': proxyOpts, '^/push([/?#]|$)': proxyOpts, '^/tenant([/?#]|$)': proxyOpts, '^/ai([/?#]|$)': proxyOpts, '^/auth([/?#]|$)': proxyOpts, '^/public([/?#]|$)': proxyOpts, '^/owner([/?#]|$)': proxyOpts, '^/tech([/?#]|$)': proxyOpts, '^/customer([/?#]|$)': proxyOpts, '^/super-admin([/?#]|$)': proxyOpts, '^/realtime([/?#]|$)': proxyOpts, '^/mobile-checkout([/?#]|$)': proxyOpts } },
     build: { outDir: 'dist', sourcemap: false },
   };
 });

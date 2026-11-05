@@ -1,10 +1,14 @@
-import { useEffect } from 'react';
+// web-push.ts — the Firebase / Capacitor push registration hook shared by the Customer, Owner and Technician apps
+// (was three byte-for-byte copies). Native: FCM/APNs via @capacitor/push-notifications, a foreground local copy, and taps
+// routed to the app's gate (onTap). Web: Firebase Messaging with the service worker. The token is registered with
+// POST /push/register through the app's own transport. Imported from '@aipowersalon/mobile-sdk/web-push' so apps that do
+// not use push never bundle Firebase.
+import { useEffect, useRef } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
-import { api } from '../api/client';
 
 const firebaseConfig = {
   apiKey: "AIzaSyBfBQJ7Tlrv2aNc5MEtbvwE6uLFO3dbt9c",
@@ -36,10 +40,25 @@ function isDuplicate(key: string, ttlMs = 10000): boolean {
 
 let registeredSessionKey: string | null = null;
 
-export function useWebPush(tenantId?: string, userType?: string, userId?: string) {
+export interface WebPushOptions {
+  /** The app's authenticated POST (the transport): registers the device token with POST /push/register. */
+  http: { post(path: string, body?: Record<string, unknown>): Promise<unknown> };
+  tenantId?: string;
+  userType?: string;
+  userId?: string;
+  /** The push `app` id. Default: from userType ('technician' → 'tech'). */
+  app?: string;
+  /** A tapped notification (native push or the foreground local copy): its data, for the app's route gate. */
+  onTap?: (data: Record<string, unknown> | null) => void;
+}
+
+export function useWebPush(o: WebPushOptions): void {
+  const { tenantId, userType, userId } = o;
+  const tap = useRef(o.onTap); tap.current = o.onTap;
+  const http = useRef(o.http); http.current = o.http;
   useEffect(() => {
     if (!tenantId || !userType || !userId) {
-      console.log('[Push] useWebPush waiting for credentials:', { tenantId, userType, userId });
+      
       return;
     }
 
@@ -50,8 +69,8 @@ export function useWebPush(tenantId?: string, userType?: string, userId?: string
     }
     registeredSessionKey = currentSessionKey;
 
-    const normalizedRole = userType.toLowerCase() === 'technician' ? 'tech' : userType.toLowerCase();
-    console.log(`[Push] Starting push setup for role=${normalizedRole}, userId=${userId}, isNative=${Capacitor.isNativePlatform()}`);
+    const normalizedRole = o.app ?? (userType.toLowerCase() === 'technician' ? 'tech' : userType.toLowerCase());
+    
 
     if (Capacitor.isNativePlatform()) {
       // -------------------------------------------------------------
@@ -104,10 +123,10 @@ export function useWebPush(tenantId?: string, userType?: string, userId?: string
 
           PushNotifications.addListener('registration', async (t: { value: string }) => {
             if (t?.value) {
-              console.log('[Push][Native] FCM Token successfully received:', t.value.slice(0, 15) + '...');
+              
               const platform = Capacitor.getPlatform() === 'ios' ? 'ios' : 'android';
               try {
-                const res = await api.post('/push/register', {
+                const res = await http.current.post('/push/register', {
                   platform,
                   token: t.value,
                   app: normalizedRole
@@ -171,12 +190,13 @@ export function useWebPush(tenantId?: string, userType?: string, userId?: string
             }
           });
 
+          // A tap names a destination (the typed route in the payload); the app's route gate opens it after its session check.
           PushNotifications.addListener('pushNotificationActionPerformed', (action: any) => {
-            console.log('[Push][Native] User tapped on push notification:', action);
+            tap.current?.((action?.notification?.data ?? null) as Record<string, unknown> | null);
           });
 
           LocalNotifications.addListener('localNotificationActionPerformed', (action: any) => {
-            console.log('[Push][Native] User tapped on local notification:', action);
+            tap.current?.((action?.notification?.extra ?? null) as Record<string, unknown> | null);
           });
 
           console.log('[Push][Native] Calling PushNotifications.register()...');
@@ -225,9 +245,9 @@ export function useWebPush(tenantId?: string, userType?: string, userId?: string
           });
 
           if (currentToken) {
-            console.log('[Push][Web] Web FCM Token retrieved:', currentToken.slice(0, 15) + '... (len: ' + currentToken.length + ')');
+            
             console.log(`[Push][Web] Calling POST /push/register platform=web, app=${normalizedRole}...`);
-            const res = await api.post('/push/register', {
+            const res = await http.current.post('/push/register', {
               platform: 'web',
               token: currentToken,
               app: normalizedRole

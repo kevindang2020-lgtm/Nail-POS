@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { parseDollarsToCents } from '../lib/money-input';
+import { parseDollarsToCents } from '@aipowersalon/ui';
 import { useNavigate } from 'react-router-dom';
 import { customerApi, type CustomerWalletState, type CustomerLoyaltySummary, type CustomerPaymentMethod } from '../api/customerApi';
 import { money2 } from '../lib/appt';

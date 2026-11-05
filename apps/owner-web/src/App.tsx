@@ -3,6 +3,7 @@ import { PortfolioOverviewScreen } from './screens/PortfolioOverviewScreen';
 import { useOwnerSalon } from './shell/OwnerSalonContext';
 import { OwnerSalonProvider } from './shell/OwnerSalonContext';
 import { OwnerNavProvider, useOwnerNav } from './shell/nav';
+import { useAppRoutes } from './lib/mobile-shell';
 import { OwnerBranchProvider } from './shell/OwnerBranchContext';
 import { OwnerLayout } from './shell/OwnerLayout';
 import { OwnerHomeScreen } from './screens/OwnerHomeScreen';
@@ -39,6 +40,22 @@ import { OwnerSettingScreen } from './screens/OwnerSettingScreen';
 import { OwnerNotificationScreen } from './screens/OwnerNotificationScreen';
 import { LoginScreen } from './screens/LoginScreen';
 import { AcceptInviteScreen } from './screens/AcceptInviteScreen';
+
+// Deep links and push taps (signed-in only): each route name opens its screen; anything else is ignored.
+function OwnerRoutes() {
+  const nav = useOwnerNav();
+  useAppRoutes({
+    alerts: () => nav.openAlerts(),
+    approvals: () => nav.go('approvals'),
+    appointments: () => nav.openBookings(),
+    appointment: () => nav.openBookings(),
+    queue: () => nav.go('live'),
+    payroll: () => nav.openPayroll(),
+    receipts: () => nav.openPayments(),
+    security: () => nav.openSettings(),
+  });
+  return null;
+}
 
 function Router() {
   const { tab, pushed } = useOwnerNav();
@@ -90,6 +107,7 @@ function Gate() {
   // re-issues the session server-side, and the branch context re-reads from it.
   return (
     <OwnerNavProvider>
+      <OwnerRoutes />
       <OwnerSalonProvider>
         <OwnerBranchProvider><Router /></OwnerBranchProvider>
       </OwnerSalonProvider>

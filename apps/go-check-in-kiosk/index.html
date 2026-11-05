@@ -96,7 +96,7 @@
 const qs = new URLSearchParams(location.search);
 const SLUG = qs.get('slug') || (location.pathname.match(/go-check-in\/([^\/]+)/)?.[1]) || '';
 const API = (qs.get('api') || (window.APS_API_BASE || '') || '').replace(/\/+$/,''); // '' => same origin (set window.APS_API_BASE for a packaged/native build)
-const url = (p) => `${API}/go-check-in${p}`;
+const url = (p) => `${API}/api/v1/go-check-in${p}`;   // the versioned API path (the server aliases /api/v1/* to the same routes)
 let SESSION = null, TOKEN = null, CONFIG = null, STATE = {};
 
 const el = document.getElementById('screen');

@@ -14,7 +14,7 @@ import logoImage from '../brand/techlogo.png';
 //
 // Building a second biometric system here would have meant a second set of those rules, and the weaker one would
 // have been the one an attacker used.
-import { faceIdMode, signInWithFaceId, setPendingBioCreds, type FaceIdMode } from '../auth/faceid';
+import { faceIdMode, signInWithFaceId, type FaceIdMode } from '../auth/faceid';
 
 /*
  * Technician sign in — tenant portal.
@@ -110,25 +110,12 @@ export function LoginScreen() {
       }
       const principal: any = await signInWithFaceId(
         async () => await authApi.me(),
-        async (creds: any) => {
-          if (typeof creds === 'string') return await authApi.me(); // Legacy fallback token
-          const loginPayload = {
-            ...creds,
-            salonCode: cleanSalonCode || creds.salonCode,
-          };
-          const r = await authApi.login(loginPayload);
-          await saveNativeToken(tokenFromResponse(r));
-          if (r.outcome === 'SUCCESS' && r.principal) return r.principal;
-          if (r.outcome === 'MFA_REQUIRED') return { __outcome: 'MFA_REQUIRED' };
-          if (r.outcome === 'BRANCH_SELECTION_REQUIRED') return { __outcome: 'BRANCH_SELECTION_REQUIRED' };
-          throw new Error('Login failed with stored credentials.');
-        },
         cleanSalonCode
       );
       if (principal && principal.__outcome === 'MFA_REQUIRED') {
         setMfaNeeded(true); setErr('Enter your 6-digit verification code to continue.'); return;
       }
-      if (principal && principal.__outcome === 'BRANCH_SELECTION_REQUIRED') {
+      if (principal && (principal.__outcome === 'BRANCH_SELECTION_REQUIRED' || principal.needsBranchSelection)) {
         await loadBranches(); return;
       }
       if (principal) { setPrincipal(principal); return; }
@@ -222,14 +209,6 @@ export function LoginScreen() {
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JS.
       await saveNativeToken(tokenFromResponse(r));
       if (r.outcome === 'SUCCESS' && r.principal) {
-        // Fix: Save pending credentials so Settings screen can enroll Biometrics
-        setPendingBioCreds({
-          portal: 'tenant',
-          salonCode: salonCode.trim(),
-          identifier: identifier.trim(),
-          password,
-          rememberMe: remember
-        });
         setPrincipal(r.principal);
         return;
       }
@@ -248,14 +227,6 @@ export function LoginScreen() {
       // (previously only the branchless login token was saved).
       await saveNativeToken(tokenFromResponse(r));
       if (r.principal) {
-        // Fix: Save pending credentials so Settings screen can enroll Biometrics
-        setPendingBioCreds({
-          portal: 'tenant',
-          salonCode: salonCode.trim(),
-          identifier: identifier.trim(),
-          password,
-          rememberMe: remember
-        });
         setPrincipal(r.principal);
         return;
       }

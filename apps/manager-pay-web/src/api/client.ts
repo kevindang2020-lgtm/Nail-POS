@@ -1,8 +1,8 @@
-// client.ts — One typed fetch client all API modules use. Sends the session cookie; never a tenantId.
-// Base is root-relative ("") so calls are /pos-direct — matching the backend (setGlobalPrefix("")) and the Front-Desk
-// domain clients. Override via window.APS_API_BASE only if the API is ever served from a separate origin.
-import { buildUrl, assertNoClientTenant, normalizeError, NormalizedError } from "./http-core";
-import { authHeader, clearNativeToken } from '../auth/native-auth';
+// client.ts — the Manager Tap to Pay API client, built on the ONE mobile transport (@aipowersalon/mobile-sdk createTransport):
+// /api/v1 URLs, the session cookie on the web and the Keychain bearer on native, client identity headers, timeouts, GET-only
+// retry, normalised errors and `aps:unauthorized` on a 401. The exported names are unchanged, so no screen changed.
+import { createTransport, configureMobileSdk } from '@aipowersalon/mobile-sdk';
+import { clearNativeToken } from '../auth/native-auth';
 
 // Resolution order: build-time VITE_API_BASE (set when the API is hosted on a separate origin), then a runtime
 // window.APS_API_BASE override, then "" (same-origin — the default when each dist/ is served behind the API).
@@ -34,36 +34,22 @@ export function apiBase(): string {
   return runtimeBase || "";
 }
 
-async function request<T>(method: string, path: string, opts?: { query?: Record<string, unknown>; body?: Record<string, unknown> }): Promise<T> {
-  if (opts?.body) assertNoClientTenant(opts.body, path);
-  // NATIVE: send the bearer token from the Keychain/Keystore. On the WEB this is always empty — the browser sends
-  // the httpOnly cookie itself and there is no token in JavaScript to send, which is the protection we keep.
-  const bearer = await authHeader();
+/** The transport every API module of this app goes through (also used by authApi and the realtime stream). */
+export const transport = createTransport({
+  app: 'manager-pay',
+  apiBase,
+  appVersion: () => (import.meta as any).env?.VITE_APP_VERSION as string | undefined,
+  // The session is gone (expired, or revoked server-side): the stored bearer is dead — wipe it so it is not resent forever.
+  // (This app holds its principal in a screen rather than an AuthContext, so the clear happens at the source of the 401.)
+  onUnauthorized: () => { void clearNativeToken(); },
+});
 
-  const res = await fetch(buildUrl(apiBase(), path, opts?.query), {
-    method, credentials: "include",
-    headers: { ...(opts?.body ? { "Content-Type": "application/json" } : {}), ...bearer },
-    body: opts?.body ? JSON.stringify(opts.body) : undefined,
-  });
-  let json: unknown = null; try { json = await res.json(); } catch { /* empty */ }
-  if (!res.ok) {
-    // A 401 means the session is gone — expired, or REVOKED server-side ("sign out other devices", or an admin
-    // killing a compromised session). Announce it so the app can return the user to sign-in rather than keep
-    // rendering a shell where every screen errors.
-    if (res.status === 401 && typeof window !== 'undefined') {
-      // NATIVE: the session is gone (expired, or revoked server-side). The stored bearer token is dead — leaving
-      // it in the Keychain means it is resent on every request forever. Wipe it. (This app holds its principal in
-      // a screen rather than an AuthContext, so the clear happens here, at the source of the 401.)
-      void clearNativeToken();
-      window.dispatchEvent(new CustomEvent('aps:unauthorized'));
-    }
-    const e: NormalizedError = normalizeError(res.status, json); throw Object.assign(new Error(e.message), e);
-  }
-  return json as T;
-}
 export const api = {
-  get: <T>(p: string, query?: Record<string, unknown>) => request<T>("GET", p, { query }),
-  post: <T>(p: string, body?: Record<string, unknown>) => request<T>("POST", p, { body }),
-  patch: <T>(p: string, body?: Record<string, unknown>) => request<T>("PATCH", p, { body }),
-  del: <T>(p: string) => request<T>("DELETE", p),
+  get: <T>(p: string, query?: Record<string, unknown>) => transport.get<T>(p, { query }),
+  post: <T>(p: string, body?: Record<string, unknown>) => transport.post<T>(p, body),
+  patch: <T>(p: string, body?: Record<string, unknown>) => transport.patch<T>(p, body),
+  del: <T>(p: string) => transport.del<T>(p),
 };
+
+// The SDK's auth helpers (WebAuthn, Face ID, the native bootstrap) call the API through this app's client.
+configureMobileSdk({ http: api, apiBase });
