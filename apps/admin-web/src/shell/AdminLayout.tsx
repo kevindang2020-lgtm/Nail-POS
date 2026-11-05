@@ -283,6 +283,7 @@ export const NAV_GROUPS: SANavGroup[] = [
       { to: "/ai-booking-analytics", label: "AI Booking Analytics" },
       { to: "/ai-customer-profile", label: "AI Customer Profile" },
       { to: "/ai-checkout-upsell", label: "AI Checkout Upsell" },
+      { to: "/advertising", label: "Advertising & Customer Display" },
       { to: "/ai-review-reputation", label: "AI Review Reputation" },
       { to: "/ai-scheduling-optimizer", label: "AI Scheduling Optimizer" },
       { to: "/ai-ocr-receipt", label: "AI OCR Receipt" },

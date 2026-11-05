@@ -11,3 +11,11 @@ export const DISPLAY_AD_LIFECYCLE = defineStateMachine({
   transitions: { draft: ['published', 'archived'], published: ['paused', 'archived'], paused: ['published', 'archived'], archived: ['draft'] },
   initial: ['draft'],
 });
+
+/** G7 Global Advertising (Nov 5 2026, migration 818): AI PowerSalon's own campaigns — the same lifecycle as a salon's. */
+export const PLATFORM_DISPLAY_AD_LIFECYCLE = defineStateMachine({
+  name: 'platform_display_ad', table: 'platform_display_ads', column: 'status',
+  states: ['draft', 'published', 'paused', 'archived'],
+  transitions: { draft: ['published', 'archived'], published: ['paused', 'archived'], paused: ['published', 'archived'], archived: ['draft'] },
+  initial: ['draft'],
+});

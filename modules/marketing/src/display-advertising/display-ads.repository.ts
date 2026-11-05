@@ -40,7 +40,7 @@ const AD_COLS = sql`id, tenant_id, name, media_id, fullscreen_media_id, headline
   daily_start_time, daily_end_time, display_duration_seconds, priority, all_branches, status, published_at, paused_at, archived_at,
   version, created_by, updated_by, created_at, updated_at`;
 
-function toAd(r: any, branchIds: string[]): AdRecord {
+export function toAd(r: any, branchIds: string[]): AdRecord {
   return {
     id: r.id, tenantId: r.tenant_id, version: num(r.version, 1), status: r.status as StoredStatus,
     name: r.name, mediaId: r.media_id ?? null, fullscreenMediaId: r.fullscreen_media_id ?? null,
@@ -54,7 +54,7 @@ function toAd(r: any, branchIds: string[]): AdRecord {
     createdAt: iso(r.created_at)!, updatedAt: iso(r.updated_at)!, createdBy: r.created_by ?? null, updatedBy: r.updated_by ?? null,
   };
 }
-function toMedia(r: any): MediaRow {
+export function toMedia(r: any): MediaRow {
   const v = typeof r.variants === 'string' ? JSON.parse(r.variants) : r.variants;
   return {
     id: r.id, tenantId: r.tenant_id, mimeType: r.mime_type, width: num(r.width), height: num(r.height), bytes: num(r.byte_size),

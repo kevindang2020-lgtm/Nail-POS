@@ -27,6 +27,7 @@ const DOMAIN_RULES = [
   ['IDENTITY', /^tenant_(custom_roles|role_permissions|user_permission_overrides)/],
   ['SUPPORT', /^(tenant_(private_incidents|warnings)|community_)/],
   ['MARKETING', /^daily_follow_up/],
+  ['MARKETING', /^advertising_/],   // G7 Global Advertising (migration 818): the master switch + its history
   ['AUDIT', /^(audit_|authorization_audit|owner_audit|technician_audit|revenue_audit|appointment_change_log|pos_queue_audit|export_snapshots|ticket_revisions|status_history)|_audit(_logs?)?$|_change_log$|_history$/],
   ['SECURITY', /^(security_|access_review|authorization_denials|dormant_account|money_protection|ip_block|emergency_lockdown|privileged_access|ephemeral_grants|secret_fingerprints|login_attempts|device_security|data_retention|customer_legal_holds|customer_blocks|rate_limit|community_risk|ticket_deletion_codes|api_keys?|webhook_signing)/],
   ['IDENTITY', /^(users|user_|sessions|refresh_tokens|oauth_|mfa_|webauthn|password_|auth_|super_admin_login|roles|role_permissions|permissions|account_deletion|access_requests|security_not_me|legal_document_acceptances|customer_identit|global_customers|customer_global_links|customer_phone_verif|phone_verif|staff_invit|invitations)/],

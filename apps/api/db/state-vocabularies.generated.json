@@ -1766,6 +1766,12 @@
    "pending",
    "rejected"
   ],
+  "platform_display_ads.status": [
+   "archived",
+   "draft",
+   "paused",
+   "published"
+  ],
   "platform_features.status": [
    "AVAILABLE",
    "BETA",

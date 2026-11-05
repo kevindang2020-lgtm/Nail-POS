@@ -16,10 +16,11 @@ import { addDays, businessDate, isYmd, localDateTimeToEpochMs, minutesSinceMidni
 // ── errors (registered codes only — packages/api-contracts/src/errors.ts) ─────────────────────────────────────────
 export type DisplayAdErrorCode =
   | 'VALIDATION_FAILED' | 'RESOURCE_NOT_FOUND' | 'VERSION_CONFLICT' | 'CONFLICT' | 'BRANCH_ACCESS_DENIED'
-  | 'PERMISSION_DENIED' | 'PLAN_LIMIT_REACHED' | 'PAYLOAD_TOO_LARGE' | 'FEATURE_UNAVAILABLE';
+  | 'PERMISSION_DENIED' | 'PLAN_LIMIT_REACHED' | 'PAYLOAD_TOO_LARGE' | 'FEATURE_UNAVAILABLE' | 'ADVERTISING_MANAGED_BY_PLATFORM';
 export const DISPLAY_AD_ERROR_STATUS: Readonly<Record<DisplayAdErrorCode, number>> = {
   VALIDATION_FAILED: 400, RESOURCE_NOT_FOUND: 404, VERSION_CONFLICT: 409, CONFLICT: 409, BRANCH_ACCESS_DENIED: 403,
   PERMISSION_DENIED: 403, PLAN_LIMIT_REACHED: 402, PAYLOAD_TOO_LARGE: 413, FEATURE_UNAVAILABLE: 403,
+  ADVERTISING_MANAGED_BY_PLATFORM: 409,   // G7 (Nov 5 2026): Super Admin turned salon advertising off — saved ads kept, not editable
 };
 export class DisplayAdError extends Error {
   constructor(readonly code: DisplayAdErrorCode, message: string, readonly details: Record<string, unknown> = {}) {

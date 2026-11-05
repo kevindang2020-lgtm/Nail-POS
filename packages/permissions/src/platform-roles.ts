@@ -90,6 +90,7 @@ export const PLATFORM_PATH_DOMAIN: Readonly<Record<string, PlatformDomain>> = {
   'messaging': 'communications', 'voice': 'communications', 'voice-transcription': 'communications', 'platform/reminders': 'communications',
   // marketing, promotions, loyalty, memberships
   'promotions': 'marketing', 'deals': 'marketing', 'loyalty': 'marketing',
+  'advertising': 'marketing',   // G7 Global Advertising (Nov 5 2026): the master switch, platform campaigns, display fleet status
   // D7 (Oct 22 2026): gift-card PROGRAMS are marketing; gift-card SETTLEMENT moves money between salons and the platform
   // and is finance work — classified payments (the FINANCE role holds super_admin.payments.*). Two-segment key, like platform/*.
   'gift-cards/programs': 'marketing', 'gift-cards/settlement': 'payments',

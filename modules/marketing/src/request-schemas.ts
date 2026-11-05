@@ -41,3 +41,10 @@ export const DISPLAY_ADS_SETTINGS_BODY: BodySchema = S.object({
 export const DISPLAY_ADS_DEVICE_BODY: BodySchema = S.object({ adsEnabled: S.boolean() });
 /** POST …/media — the multipart text fields (every multipart field arrives as a string; the files are separate). */
 export const DISPLAY_AD_MEDIA_BODY: BodySchema = S.object({ focalX: { type: ['string', 'number', 'null'], maxLength: 16 }, focalY: { type: ['string', 'number', 'null'], maxLength: 16 } });
+
+// G7 Global Advertising (Nov 5 2026): Super Admin → the master switch and platform campaigns. Branch targeting and
+// tenant / ownership fields are not accepted on platform campaigns (a forged scope field is refused, §77).
+export const PLATFORM_AD_POLICY_BODY: BodySchema = S.object({ allowTenantAdvertising: S.boolean(), reason: S.text(500), expectedVersion: S.number(), acceptNeutralFallback: S.nullable(S.boolean()) }, ['allowTenantAdvertising', 'reason', 'expectedVersion']);
+const { allBranches: _ab, branchIds: _bi, fullscreenMediaId: _fm, ...PLATFORM_AD_FIELDS } = AD_FIELDS as Record<string, BodySchema>;
+export const PLATFORM_AD_BODY: BodySchema = S.object({ ...PLATFORM_AD_FIELDS, expectedVersion: S.nullable(S.number()) }, [], { 'x-forbidden': [...AD_FORBIDDEN, 'allBranches', 'branchIds', 'tenantId', 'ownership'] });
+export const PLATFORM_AD_ACTION_BODY: BodySchema = DISPLAY_AD_ACTION_BODY;

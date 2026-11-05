@@ -5,3 +5,4 @@ export { DisplayAdvertisingModule } from './display-advertising/display-ads.modu
 // the customer-display device routes (apps/api) resolve the device, then ask for its playlist / record its displays
 export { DisplayAdsPlaylistService, type DisplayIdentity } from './display-advertising/display-ads-playlist.service';
 export { DisplayAdError } from './display-advertising/display-ads-core';
+export { AdvertisingPolicyStore, PlatformAdvertisingService, assertTenantAdvertisingAllowed, type AdvertisingPolicy, type AdvertisingMode } from './display-advertising/platform-advertising';

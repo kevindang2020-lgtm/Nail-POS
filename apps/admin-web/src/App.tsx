@@ -1,3 +1,4 @@
+import { AdvertisingScreen } from './screens/advertising/AdvertisingScreen';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from './shell/AdminLayout';
 import { landingPath } from './shell/navPermissions';
@@ -175,6 +176,7 @@ function Gate() {
         <Route path="ai-booking-analytics" element={<AiBookingAnalyticsScreen />} />
         <Route path="ai-customer-profile" element={<AiCustomerProfileOversightScreen />} />
         <Route path="ai-checkout-upsell" element={<AiCheckoutUpsellOversightScreen />} />
+        <Route path="advertising" element={<AdvertisingScreen />} />   {/* G7 Global Advertising (Nov 5 2026) */}
         <Route path="ai-review-reputation" element={<AiReviewReputationOversightScreen />} />
         <Route path="ai-scheduling-optimizer" element={<AiSchedulingOversightScreen />} />{/* BUILD_PLAN Phase 7: AI scheduling optimizer oversight */}
         <Route path="ai-ocr-receipt" element={<AiOcrReceiptOversightScreen />} />

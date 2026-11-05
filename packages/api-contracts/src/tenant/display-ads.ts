@@ -79,6 +79,9 @@ export interface DisplayAdsBranch { id: string; name: string; timeZone: string }
 export interface DisplayAdsState {
   /** The salon's own name — the preview's check-in header and the branded fallback panel (§13, §114). */
   salonName: string;
+  /** G7 Global Advertising: PLATFORM_ONLY = AI PowerSalon manages advertising (the salon's ads are kept, read-only, not
+   *  played); TENANT_ONLY = the salon's own ads. Absent on servers before G7. */
+  advertisingPolicy?: { mode: 'PLATFORM_ONLY' | 'TENANT_ONLY'; version: number; managedByPlatform: boolean };
   availability: DisplayAdsAvailability;
   limits: DisplayAdsLimits;
   usage: { adCount: number; storageBytes: number };

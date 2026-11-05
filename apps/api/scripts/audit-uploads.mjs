@@ -41,6 +41,7 @@ export const NOT_STORED_UPLOAD_ROUTES = {
 export const DELEGATES = {
   'modules/workforce/src/tech-profile/tech-profile.controller.ts': 'modules/workforce/src/tech-profile/tech-profile.service.ts',
   'modules/marketing/src/display-advertising/display-ads.controller.ts': 'modules/marketing/src/display-advertising/display-ads.service.ts',
+  'modules/marketing/src/display-advertising/platform-advertising.controller.ts': 'modules/marketing/src/display-advertising/platform-advertising.ts',   // G7 platform campaign images
 };
 const KEY_HELPERS = /\b(uploadObjectKey|salonLogoKey|attachmentStorageKey|storageKeyFor|evidenceStorageKey|adMediaKeys)\s*\(/;
 const RUNS_POLICY = /\b(acceptUpload|checkDeclaredUpload)\s*\(\s*(\{\s*\.\.\.\s*)?UPLOAD_POLICIES\.\w+|\b(acceptUpload|checkDeclaredUpload)\s*\(\s*policy\b/;

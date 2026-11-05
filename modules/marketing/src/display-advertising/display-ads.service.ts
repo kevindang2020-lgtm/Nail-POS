@@ -19,6 +19,7 @@ import { adMediaKeys, checkAdImageUpload, focalOr, VARIANTS, type UploadedPart, 
 import { AD_SETTINGS_CATEGORY, type AuditEntry, type DisplayAdsRepository, type MediaRow, type VariantRef, type WriteActor } from './display-ads.repository';
 import type { AvailabilityPort, DisplayAdsNotifier, PlatformLimitsSource } from './display-ads-sources';
 import type { DisplayAdsPlaylistService } from './display-ads-playlist.service';
+import { assertTenantAdvertisingAllowed, type AdvertisingPolicyPort } from './platform-advertising';
 import { hasTenantWideScope } from '@aipowersalon/permissions';
 
 export interface AdsCtx { tenantId: string; branchId: string; userId: string; role: string; permissions: readonly string[] }
@@ -54,7 +55,10 @@ export class DisplayAdsService {
     private readonly notifier: Pick<DisplayAdsNotifier, 'playlistChanged' | 'deviceChanged' | 'realtime'>,
     private readonly playlists: Pick<DisplayAdsPlaylistService, 'build'>,
     private readonly clock: () => Date = () => new Date(),
+    /** G7: the Super Admin master switch — checked at execution time on every salon advertising write (§11, §42) */
+    private readonly policy: AdvertisingPolicyPort | null = null,
   ) {}
+  private tenantAllowed(): Promise<void> { return assertTenantAdvertisingAllowed(this.policy); }
 
   private async requireAvailable(tenantId: string): Promise<void> {
     const a = await this.availability.resolve(tenantId);
@@ -106,8 +110,10 @@ export class DisplayAdsService {
     const authorized = authorizedBranchIds(actor, branches.map((b) => b.id));
     const overrides: DisplayAdsState['settings']['branches'] = {};
     for (const b of authorized) overrides[b] = parseBranchOverride(settings.branches.get(b));
+    const pol = this.policy ? await this.policy.current() : null;
     return {
       salonName, availability, limits, usage,
+      ...(pol ? { advertisingPolicy: { mode: pol.mode, version: pol.version, managedByPlatform: pol.mode === 'PLATFORM_ONLY' } } : {}),
       canManageAllBranches: isOwner(actor), authorizedBranchIds: authorized,
       branches,
       settings: { tenant, branches: overrides, canEditTenant: isOwner(actor) },
@@ -150,6 +156,7 @@ export class DisplayAdsService {
 
   /** §49–§53: + ADD ADVERTISEMENT. Always a draft; a branch manager's ad targets their own branch unless they said so. */
   async create(ctx: AdsCtx, input: unknown): Promise<DisplayAdView> {
+    await this.tenantAllowed();
     await this.requireAvailable(ctx.tenantId);
     const actor = actorOf(ctx);
     const fields = applyAdInput(BLANK_AD_FIELDS, input, { requireName: true });
@@ -166,6 +173,7 @@ export class DisplayAdsService {
 
   /** §73: edit — version-checked. A live ad's change reaches its displays at once (old and new branches alike). */
   async update(ctx: AdsCtx, id: string, input: unknown): Promise<DisplayAdView> {
+    await this.tenantAllowed();
     await this.requireAvailable(ctx.tenantId);
     const expected = this.expectedVersion(input);
     const cur = await this.manageableAd(ctx, id);
@@ -192,7 +200,8 @@ export class DisplayAdsService {
   /** §64: publish / pause / archive / restore. Pause and archive stay possible when the feature is switched off (an
    *  owner must always be able to take an ad down); publish and restore need it. */
   async act(ctx: AdsCtx, id: string, action: DisplayAdAction, input: unknown): Promise<DisplayAdView> {
-    if (action === 'publish' || action === 'restore') await this.requireAvailable(ctx.tenantId);
+    // G7 §42: taking an ad down (pause / archive) stays possible; publishing or restoring one is refused while AI PowerSalon manages advertising
+    if (action === 'publish' || action === 'restore') { await this.tenantAllowed(); await this.requireAvailable(ctx.tenantId); }
     const expected = this.expectedVersion(input);
     const cur = await this.manageableAd(ctx, id);
     const to = transition(cur.status, action);
@@ -234,6 +243,7 @@ export class DisplayAdsService {
 
   /** §68–§71: one image and its three derivatives → object storage + a media row (limit-checked under the salon lock). */
   async uploadMedia(ctx: AdsCtx, files: Partial<Record<'original' | Variant, UploadedPart[]>> | undefined, body: unknown): Promise<DisplayAdMediaView> {
+    await this.tenantAllowed();
     await this.requireAvailable(ctx.tenantId);
     const limits = await this.limits.get();
     const pick = (k: 'original' | Variant) => files?.[k]?.[0];

@@ -43,6 +43,11 @@ export interface CustomerDisplayAdPlaylist {
    * server keeps playing its saved list until then; after it, it shows the salon's branded panel instead.
    */
   validUntil: string | null;
+  /** G7 Global Advertising (Nov 5 2026): whose ads these are — PLATFORM_ONLY (AI PowerSalon) or TENANT_ONLY (the salon) —
+   *  and the policy version. The display reports both back in its heartbeat once it APPLIED this playlist (the Super
+   *  Admin fleet status counts only that acknowledgment). Absent on servers before G7. */
+  mode?: 'PLATFORM_ONLY' | 'TENANT_ONLY';
+  policyVersion?: number;
 }
 
 /** §108: what the display reports — that an ad was ON SCREEN, for how long. Batched; batchId makes a resend a no-op. */

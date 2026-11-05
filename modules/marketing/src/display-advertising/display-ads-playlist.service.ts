@@ -13,6 +13,9 @@ import {
 } from './display-ads-core';
 import type { DisplayAdsRepository, DisplayRollup, MediaRow } from './display-ads.repository';
 import type { AvailabilityPort, PlatformLimitsSource } from './display-ads-sources';
+import type { AdvertisingPolicyPort } from './platform-advertising';
+/** G7: the platform campaigns' playlist (PlatformAdvertisingService) — structural, so this file does not import it */
+export interface PlatformPlaylistPort { playlist(tz: string, now?: Date): Promise<CustomerDisplayAdPlaylist> }
 
 export interface DisplayIdentity { deviceId: string; tenantId: string; branchId: string | null }
 const HOUR = 3_600_000;
@@ -39,11 +42,26 @@ export class DisplayAdsPlaylistService {
     private readonly limits: Pick<PlatformLimitsSource, 'get'>,
     private readonly db: unknown,
     private readonly clock: () => Date = () => new Date(),
+    /** G7 Global Advertising: the master switch + the platform campaigns (absent: salon ads only, as before) */
+    private readonly policy: AdvertisingPolicyPort | null = null,
+    private readonly platform: PlatformPlaylistPort | null = null,
   ) {}
 
   /** The playlist for a branch of a salon; `deviceId` adds the device layer (null = the POS preview). */
   async build(tenantId: string, branchId: string | null, deviceId: string | null): Promise<CustomerDisplayAdPlaylist> {
     const now = this.clock();
+    // G7 §08–§10: ONE owner per moment — PLATFORM_ONLY plays AI PowerSalon's campaigns on every display (never mixed with
+    // the salon's); TENANT_ONLY is the salon engine below, unchanged. The mode + version ride along for the display's ACK.
+    const pol = this.policy ? await this.policy.current() : null;
+    if (pol && pol.mode === 'PLATFORM_ONLY' && this.platform) {
+      const pl = await this.platform.playlist(await branchTimeZone(this.db, tenantId, branchId), now);
+      return { ...pl, playlistVersion: `${pl.playlistVersion}.p${pol.version}`, mode: pol.mode, policyVersion: pol.version };
+    }
+    const own = await this.buildTenant(tenantId, branchId, deviceId, now);
+    return pol ? { ...own, playlistVersion: `${own.playlistVersion}.t${pol.version}`, mode: pol.mode, policyVersion: pol.version } : own;
+  }
+
+  private async buildTenant(tenantId: string, branchId: string | null, deviceId: string | null, now: Date): Promise<CustomerDisplayAdPlaylist> {
     const [availability, limits, settings, ads, tz, deviceAdsEnabled] = await Promise.all([
       this.availability.resolve(tenantId),
       this.limits.get(),

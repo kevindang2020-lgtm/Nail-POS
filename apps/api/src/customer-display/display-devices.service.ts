@@ -59,7 +59,10 @@ export function parseHeartbeat(body: unknown): HeartbeatFacts {
   if (!Number.isFinite(pr) || pr < 0.5 || pr > 8) throw new DisplayDeviceError('invalid', 'screen pixelRatio must be between 0.5 and 8.');
   const profile = b.profile as DisplayProfile;
   if (!DISPLAY_PROFILES.includes(profile)) throw new DisplayDeviceError('invalid', 'profile is not a display profile.');
-  return { mode, appVersion, width, height, pixelRatio: Math.round(pr * 100) / 100, profile };
+  // G7: the advertising policy the display APPLIED (its acknowledgment); anything malformed is simply not an ACK
+  const ap = b.adPolicy && typeof b.adPolicy === 'object' ? b.adPolicy as Record<string, unknown> : null;
+  const adPolicy = ap && Number.isInteger(ap.version) && Number(ap.version) >= 0 && (ap.mode === 'PLATFORM_ONLY' || ap.mode === 'TENANT_ONLY') ? { version: Number(ap.version), mode: ap.mode as 'PLATFORM_ONLY' | 'TENANT_ONLY' } : null;
+  return { mode, appVersion, width, height, pixelRatio: Math.round(pr * 100) / 100, profile, adPolicy };
 }
 
 export class DisplayDevicesService {

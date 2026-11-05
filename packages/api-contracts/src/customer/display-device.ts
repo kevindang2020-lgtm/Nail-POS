@@ -25,6 +25,8 @@ export interface DisplayHeartbeat {
   appVersion: string;
   screen: { width: number; height: number; pixelRatio: number };
   profile: DisplayProfile;
+  /** G7: the advertising policy this display APPLIED (from the playlist it is playing) — its acknowledgment */
+  adPolicy?: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null;
 }
 export interface DisplayHeartbeatAck { maintenance: boolean }
 

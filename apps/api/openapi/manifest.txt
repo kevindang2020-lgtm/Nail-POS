@@ -1207,6 +1207,10 @@ GET /public/alert-ack  realm=shared  auth=public  domain=operations
 GET /public/email/unsubscribe  realm=shared  auth=public  domain=communications
 GET /realtime/presence  realm=shared  auth=session  domain=operations  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 GET /realtime/stream  realm=shared  auth=session  domain=operations  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
+GET /super-admin/advertising/ads  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.view  guards=SuperAdminGuard
+GET /super-admin/advertising/fleet  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.view  guards=SuperAdminGuard
+GET /super-admin/advertising/policy  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.view  guards=SuperAdminGuard
+GET /super-admin/advertising/preview  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.view  guards=SuperAdminGuard
 GET /super-admin/ai-business/overview  realm=super_admin  auth=session  domain=analytics  derived=super_admin.ai.view  guards=SuperAdminGuard
 GET /super-admin/ai-checkout-upsell/overview  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  guards=SuperAdminGuard
 GET /super-admin/ai-checkout-upsell/tenants/{tenantId}  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.view  guards=SuperAdminGuard
@@ -3163,6 +3167,9 @@ POST /push/register  realm=shared  auth=session  domain=communications
 POST /push/unregister  realm=shared  auth=session  domain=communications
 POST /realtime/presence  realm=shared  auth=session  domain=operations  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 POST /realtime/stream-ticket  realm=shared  auth=session  domain=operations  guards=TenantAuthGuard
+POST /super-admin/advertising/ads  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  guards=SuperAdminGuard
+POST /super-admin/advertising/ads/{id}/{action}  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  guards=SuperAdminGuard
+POST /super-admin/advertising/media  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  guards=SuperAdminGuard
 POST /super-admin/ai-insights/bulk-assign  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard
 POST /super-admin/ai-insights/bulk-review  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard
 POST /super-admin/ai-insights/{id}/dismiss  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard
@@ -3889,6 +3896,8 @@ PUT /pos/shift-overrides  realm=staff  auth=session  domain=workforce  perm=pos.
 PUT /pos/team-birthdays/members/{memberId}  realm=staff  auth=session  domain=workforce  perm=pos.technicians.view  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=payroll.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/weekly-days-off  realm=staff  auth=session  domain=workforce  perm=pos.technicians.schedule.edit  guards=RolePermissionGuard,TenantAuthGuard
+PUT /super-admin/advertising/ads/{id}  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  guards=SuperAdminGuard
+PUT /super-admin/advertising/policy  realm=super_admin  auth=session  domain=marketing  derived=super_admin.marketing.manage  step-up  guards=SuperAdminGuard
 PUT /super-admin/ai-scheduling-optimizer/platform-switch  realm=super_admin  auth=session  domain=ai  perm=super_admin.ai.manage  step-up  guards=SuperAdminGuard
 PUT /super-admin/ai/packages/{code}/availability  realm=super_admin  auth=session  domain=ai  derived=super_admin.ai.manage  guards=SuperAdminGuard
 PUT /super-admin/community-moderation/settings  realm=super_admin  auth=session  domain=support  derived=super_admin.technicians.manage  step-up  guards=SuperAdminGuard

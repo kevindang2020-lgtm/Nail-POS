@@ -1410,6 +1410,7 @@ export const ERRORS_VI: Record<keyof typeof ERRORS_EN, string> = {
   'errors.BIRTHDAY_POLICY_INVALID': 'Hãy chọn 28/2 hoặc 1/3.',
   'errors.REFERRAL_POLICY_INVALID': 'Hãy kiểm tra lại giá trị chính sách thưởng giới thiệu.',
   'errors.REFERRAL_RANGE_INVALID': 'Hãy chọn ngày Từ và Đến hợp lệ.',
+  'errors.ADVERTISING_MANAGED_BY_PLATFORM': 'Quảng cáo hiện do AI PowerSalon quản lý. Các quảng cáo đã lưu của tiệm vẫn được giữ.',
   'errors.TECH_TIPS_UNAVAILABLE': 'Không thể tip riêng từng Thợ cho lần thanh toán này.',
   'errors.TECH_TIPS_INCOMPLETE': 'Hãy chọn tip (hoặc Không tip) cho từng Thợ trước khi xác nhận.',
   'errors.TECH_TIPS_REQUIRED': 'Hãy chọn tip cho từng Thợ.',

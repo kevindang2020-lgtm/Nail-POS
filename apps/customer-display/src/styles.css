@@ -270,6 +270,14 @@ img.salon-logo { object-fit: contain; width: auto; max-width: 200px; }
   background: radial-gradient(calc(var(--u) * 1400) calc(var(--u) * 900) at 30% -10%, #F7EEDC 0%, var(--bg) 60%);
   overflow: hidden; color: var(--text);
 }
+/* G7 Global Advertising (Nov 5 2026): while idle (advertising on the dynamic panel) the screen splits EXACTLY 50 / 50 —
+   Welcome / Check-In on the left (the salon's established orientation, kept), one advertisement at a time on the right.
+   A checkout takes the panel back to its ticket width. Portrait: advertising on top, Check-In below, 50 / 50. */
+.d23[data-panel="ads"] { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (orientation: portrait) {
+  .d23[data-panel="ads"] { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); }
+  .d23[data-panel="ads"] > .d23-right { order: -1; }
+}
 :where(.d23) button { font-family: inherit; touch-action: manipulation; }
 .d23-main { display: grid; grid-template-rows: calc(var(--u) * 104) minmax(0, 1fr) calc(var(--u) * 132); min-width: 0; min-height: 0; }
 

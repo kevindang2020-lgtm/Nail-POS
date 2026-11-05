@@ -103,7 +103,9 @@ export function POSDisplayAdsScreen() {
   if (error && !st) return <div className="work"><div className="state" style={{ color: '#B4453C' }}>{error}</div></div>;
   if (!st) return <div className="work"><div className="state">{tx('pos.loading_customer_display_advertising')}</div></div>;
 
-  const canCreate = st.availability.active;
+  // G7 Global Advertising: while AI PowerSalon manages advertising the salon's ads are kept, read-only and not played
+  const platformManaged = !!st.advertisingPolicy?.managedByPlatform;
+  const canCreate = st.availability.active && !platformManaged;
   return (
     <div className="work dads">
       {confirmUi}
@@ -116,6 +118,7 @@ export function POSDisplayAdsScreen() {
         <button className="btn primary" onClick={() => setEditing({ ad: null })} disabled={!canCreate}>{tx('pos.add_advertisement')}</button>
       </div>
 
+      {platformManaged ? <div className="dads-banner warn" role="status" data-testid="dads-platform-managed">{tx('pos.ads_managed_by_platform')}</div> : null}
       {!st.availability.active ? (
         <div className="dads-banner warn" role="status">{tx('pos.customer_display_advertising_is_not_available_1518')}{st.availability.detail ? ` — ${st.availability.detail}` : ''}{tx('pos.existing_ads_can_still_be_paused_enk1')}</div>
       ) : !st.settings.tenant.enabled ? (
@@ -181,7 +184,7 @@ function AdsTab({ st, busy, showArchived, setShowArchived, onAct }: { st: Displa
               <div className="dads-actions">
                 {actionsFor(a).map((x) => (
                   <button key={x.action} className={'btn ' + (x.action === 'publish' ? 'primary' : 'ghost')} style={x.danger ? { color: '#B4453C' } : undefined}
-                    disabled={!!busy || ((x.action === 'publish' || x.action === 'restore') && !st.availability.active)} onClick={() => onAct(a, x.action)}>
+                    disabled={!!busy || ((x.action === 'publish' || x.action === 'restore') && (!st.availability.active || !!st.advertisingPolicy?.managedByPlatform))} onClick={() => onAct(a, x.action)}>
                     {busy === a.id + x.action ? '…' : x.label}
                   </button>
                 ))}

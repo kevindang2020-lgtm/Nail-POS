@@ -12,7 +12,7 @@ const tt = (over: Partial<DisplayTechnicianTips> = {}): DisplayTechnicianTips =>
     { technicianId: 'b', name: 'Ben', services: ['Spa Pedicure'], basisCents: 6000, choice: null },
   ], version: 3, state: 'DRAFT', stale: false, totalTipCents: 500, presetCents: [300, 500, 1000], percents: [15, 18, 20], ...over });
 const state = (t: DisplayTechnicianTips): CustomerDisplayState => ({ state: 'tip_selected', salonName: 'S', tipOptions: [], selectedTipCents: t.totalTipCents,
-  totals: { subtotalCents: 10000, tipCents: t.totalTipCents, taxCents: 0, surchargeCents: 0, totalDueCents: 10000 + t.totalTipCents, paymentMethod: 'card' }, payButtonEnabled: false, technicianTips: t });
+  totals: { subtotalCents: 10000, tipCents: t.totalTipCents, taxCents: 0, surchargeCents: 0, giftCardChargeCents: 0, totalDueCents: 10000 + t.totalTipCents, paymentMethod: 'card' }, payButtonEnabled: false, technicianTips: t });
 const actions = (): CheckoutActions & { onTechTips: ReturnType<typeof vi.fn> } => ({ submitting: false, actionError: null, rated: null, onTip: vi.fn(), onMethod: vi.fn(), onPay: vi.fn(), onRate: vi.fn(), onClearError: vi.fn(), onTechTips: vi.fn() });
 
 describe('per-technician tips on the customer display', () => {

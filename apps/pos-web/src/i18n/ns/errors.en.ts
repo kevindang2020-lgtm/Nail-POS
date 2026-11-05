@@ -1410,6 +1410,7 @@ export const ERRORS_EN = {
   'errors.BIRTHDAY_POLICY_INVALID': 'Choose Feb 28 or Mar 1.',
   'errors.REFERRAL_POLICY_INVALID': 'Check the referral reward policy values.',
   'errors.REFERRAL_RANGE_INVALID': 'Choose a valid From and To date.',
+  'errors.ADVERTISING_MANAGED_BY_PLATFORM': 'Advertising is currently managed by AI PowerSalon. Your saved advertisements are kept.',
   'errors.TECH_TIPS_UNAVAILABLE': 'Tipping each technician is not available for this checkout.',
   'errors.TECH_TIPS_INCOMPLETE': 'Choose a tip (or No Tip) for each technician before confirming.',
   'errors.TECH_TIPS_REQUIRED': 'Choose a tip for each technician.',

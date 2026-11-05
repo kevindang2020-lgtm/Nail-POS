@@ -6,6 +6,7 @@
 export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   access_requests: 'ut',
   account_deletion_requests: 'ut',
+  advertising_global_policy: 'ut',
   ai_billing_invoice_links: 'ut',
   ai_budgets: 'ut',
   ai_checkout_upsell_settings: 'ut',
@@ -203,8 +204,10 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   payroll_statements: 'cut',
   payroll_sync_events: 'ut',
   plan_quota_defaults: 'ut',
+  platform_ad_media: 'cd',
   platform_announcements: 'c',
   platform_branding: 'ut',
+  platform_display_ads: 'cut',
   platform_flag_rollouts: 'ut',
   platform_notices: 'cut',
   pos_kpi_daily_snapshots: 'ut',

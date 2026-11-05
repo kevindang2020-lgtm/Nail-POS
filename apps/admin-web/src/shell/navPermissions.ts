@@ -32,7 +32,7 @@ export const NAV_DOMAIN_VIEW_KEY: Readonly<Record<string, string>> = {
   'a2p-registration': 'super_admin.communications.view', 'messaging-environment': 'super_admin.communications.view',
   // marketing, loyalty, memberships
   'marketing-campaigns': 'super_admin.marketing.view', 'promotions-offers': 'super_admin.marketing.view', 'loyalty-programs': 'super_admin.marketing.view',
-  'membership-programs': 'super_admin.marketing.view', 'gift-card-programs': 'super_admin.marketing.view',
+  'membership-programs': 'super_admin.marketing.view', 'gift-card-programs': 'super_admin.marketing.view', 'advertising': 'super_admin.marketing.view',
   // AI & automation
   'ai-insights': 'super_admin.ai.view', 'ai-reports': 'super_admin.ai.view', 'automation-rules': 'super_admin.ai.view', 'ai-usage-configuration': 'super_admin.ai.view',
   'ai-receptionist': 'super_admin.ai.view', 'reception-copilot': 'super_admin.ai.view', 'ai-booking-analytics': 'super_admin.ai.view',

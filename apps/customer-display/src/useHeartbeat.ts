@@ -20,9 +20,12 @@ export function currentScreen(): { width: number; height: number; pixelRatio: nu
   return { width: Math.min(10000, Math.max(100, w)), height: Math.min(10000, Math.max(100, h)), pixelRatio: Math.min(8, Math.max(0.5, Math.round(pr * 100) / 100)) };
 }
 
-export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | null, onAck: (ack: DisplayHeartbeatAck) => void): void {
+/** G7: `adPolicy` = the advertising policy of the playlist this display is actually playing (its acknowledgment) */
+export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | null, onAck: (ack: DisplayHeartbeatAck) => void, adPolicy: { version: number; mode: 'PLATFORM_ONLY' | 'TENANT_ONLY' } | null = null): void {
   const modeRef = useRef(mode);
   modeRef.current = mode;
+  const policyRef = useRef(adPolicy);
+  policyRef.current = adPolicy;
   const ackRef = useRef(onAck);
   ackRef.current = onAck;
   const beatRef = useRef<() => void>(() => undefined);
@@ -36,7 +39,7 @@ export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | nu
       if (!m) return;   // nothing on screen yet
       lastSent.current = m;
       const screen = currentScreen();
-      sendHeartbeat(creds, { mode: m, appVersion: DISPLAY_APP_VERSION, screen, profile: displayProfileFor(screen.width, screen.height) })
+      sendHeartbeat(creds, { mode: m, appVersion: DISPLAY_APP_VERSION, screen, profile: displayProfileFor(screen.width, screen.height), ...(policyRef.current ? { adPolicy: policyRef.current } : {}) })
         .then((a) => { if (live) ackRef.current(a); })
         .catch(() => { /* offline: the POS will show it as offline — nothing to do here */ });
     };
@@ -52,4 +55,7 @@ export function useHeartbeat(creds: Creds | null, mode: DisplayReportedMode | nu
 
   // a mode change is reported at once (the POS shows "Checkout" the moment a checkout takes the screen)
   useEffect(() => { if (mode && mode !== lastSent.current) beatRef.current(); }, [mode]);
+  // G7: a newly applied advertising policy is acknowledged at once (the Super Admin fleet status waits for it)
+  const ackKey = adPolicy ? `${adPolicy.mode}:${adPolicy.version}` : '';
+  useEffect(() => { if (ackKey) beatRef.current(); }, [ackKey]);
 }

@@ -367,7 +367,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G4 | Split Tips — individual technician tipping at checkout | BUILT behind a default-off flag — see `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md` (PRODUCTION: blocked on Fiserv device checks) |
 | G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
 | G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
-| G7 | Global Advertising + Tenant Control + Half-Screen Image Rotation | NOT AUDITED yet |
+| G7 | Global Advertising + Tenant Control (master switch, platform ads, 50/50, ACK fleet status) | BUILT — see `docs/advertising/GLOBAL_ADVERTISING.md` |
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-check — `docs/ai/REVIEW_REPUTATION_SETTINGS.md` exists |
 | G9 | Enterprise Backup & Disaster Recovery | NOT AUDITED yet (hosted backups / PITR are BLOCKED_EXTERNAL in F5 §210) |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
@@ -524,4 +524,13 @@ performers change, and supersedes it when the front desk changes the total. One 
 Tests: `technician-tips.vitest` (12), `technician-tips.pgtest` (9), `TechnicianTips.test` (4); checkout (1,021),
 customer-display (205) and common (1,522) suites green. Not done: the front desk Pay path does not yet require the
 customer's confirmation; POS live per-technician view; Fiserv device / UAT checks (BLOCKED_EXTERNAL).
+
+### G7 Global Advertising + Tenant Control — built (Nov 5 2026)
+
+Write-up, audit table and evidence: `docs/advertising/GLOBAL_ADVERTISING.md`. One Super Admin switch (starts ON = today's
+behaviour): OFF plays AI PowerSalon's campaigns on every idle display, ON each salon's own — never mixed; enforced on every
+playlist request and every salon advertising write (saved salon ads kept, pause / archive allowed). Platform campaigns reuse
+the salon engine (validation, lifecycle, image pipeline, playlist builder). Displays acknowledge the applied policy in their
+heartbeat; the fleet status counts only those acknowledgments. Idle layout exactly 50 / 50. Migration 818. Tests:
+`platform-advertising.pgtest` (6), `heartbeat-ad-policy` (2); display-ads (98), common (1,522), customer-display (205) green.
 

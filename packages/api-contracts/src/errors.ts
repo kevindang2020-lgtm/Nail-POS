@@ -258,6 +258,7 @@ export const ERROR_REGISTRY = {
   TECHNICIAN_NOT_AVAILABLE:       { status: 409, message: 'This technician is not available at that time.', domain: 'workforce', retryable: false, severity: 'info', action: 'REFRESH' },
   SKILL_REQUEST_ALREADY_EXISTS:   { status: 409, message: 'A request for this skill is already open.', domain: 'workforce', retryable: false, severity: 'info', action: 'REFRESH' },
   SCHEDULE_CONFLICT:              { status: 409, message: 'That time conflicts with something already on the schedule.', domain: 'workforce', retryable: false, severity: 'info', action: 'REFRESH' },
+  ADVERTISING_MANAGED_BY_PLATFORM: { status: 409, message: 'Advertising is currently managed by AI PowerSalon. Your saved advertisements are kept.', domain: 'marketing', retryable: false, severity: 'info', action: 'NONE' },
   TECH_TIPS_UNAVAILABLE:          { status: 409, message: 'Tipping each technician is not available for this checkout.', domain: 'checkout', retryable: false, severity: 'info', action: 'REFRESH' },
   TECH_TIPS_INCOMPLETE:           { status: 400, message: 'Choose a tip (or No Tip) for each technician before confirming.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },
   TECH_TIPS_REQUIRED:             { status: 400, message: 'Choose a tip for each technician.', domain: 'checkout', retryable: false, severity: 'info', action: 'NONE' },

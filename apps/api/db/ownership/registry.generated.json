@@ -8,24 +8,24 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 946,
+  "tables": 951,
   "ownership": {
    "tenant_owned": 634,
    "platform_identity_tenant_relationship": 44,
+   "platform_global": 158,
    "tenant_branch_owned": 90,
-   "platform_global": 153,
    "cross_tenant_platform_data": 25
   },
   "domain": {
    "IDENTITY": 41,
    "SECURITY": 31,
    "FINANCE": 83,
+   "MARKETING": 24,
    "AI": 141,
    "AUDIT": 29,
    "OPERATIONS": 73,
    "SUPPORT": 57,
    "BOOKING": 43,
-   "MARKETING": 22,
    "PAYMENTS": 59,
    "WORKFORCE": 76,
    "CUSTOMERS": 57,
@@ -37,18 +37,18 @@
    "MEMBERSHIPS": 11,
    "ANALYTICS": 18,
    "INVENTORY": 29,
-   "PLATFORM": 17,
+   "PLATFORM": 20,
    "TENANTS": 29
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 142,
    "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 518,
+   "INTERNAL": 523,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 51,
+  "append_only": 52,
   "platform_rows": 99
  },
  "tables": {
@@ -112,6 +112,30 @@
    "has_tenant_id": true,
    "has_branch_id": false,
    "append_only": false,
+   "source": "heuristic"
+  },
+  "advertising_global_policy": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "MARKETING",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "advertising_policy_events": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "MARKETING",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
    "source": "heuristic"
   },
   "ai_billing_events": {
@@ -6532,6 +6556,30 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "platform_ad_events": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_ad_media": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "platform_ai_package_settings": {
    "ownership": "platform_global",
    "class": "A",
@@ -6597,6 +6645,18 @@
    "class": "A",
    "domain": "PLATFORM",
    "sensitivity": "SECURITY_SECRET",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_display_ads": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
    "has_tenant_id": false,

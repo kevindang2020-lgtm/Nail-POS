@@ -120,7 +120,7 @@ function DisplayApp({ creds: credsIn, onRevoked }: { creds: Creds; onRevoked: ()
   const [checkInStep, setCheckInStep] = useState<DisplayCheckInStep>('none');
   const [padDone, setPadDone] = useState<string | null>(null);   // Phase 3: the phone-code pad the customer closed
   const mode = appMode(data, { checkInStep, online, padDone });
-  useHeartbeat(creds, reportedMode(mode, ads), onHeartbeatAck);
+  useHeartbeat(creds, reportedMode(mode, ads), onHeartbeatAck, ads.usable && ads.playlist?.mode && ads.playlist.policyVersion != null ? { version: ads.playlist.policyVersion, mode: ads.playlist.mode } : null);
 
   // §118–§119: the languages the salon turned on (the first is its default). A guest may switch for their own visit; the
   // screen goes back to the salon's default once nobody is using it (the next guest never inherits the last one's).
