@@ -285,12 +285,13 @@ Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
 - §29: Archived is a lifecycle status: out of All Customers, the tabs and the KPIs; listed under the Archived status.
 - §39: Recent Customer Activity is a whole-salon server feed (latest visits, profiles added, bookings made, loyalty adjustments; no notes or amounts).
 - §32: every rail / lower-card link goes somewhere real — Tags and Sources View All open a full list that filters the directory; Demographics / CLV / RFM → Customers report; Retention Trend → Customer Retention; Recent Activity → Appointment History (Tags View All reopened this same page before; Recent Activity went to Overview).
+- §11 / §36: customer spend (and so CLV and Avg. Spend) is net of completed refunds.
 - §16: an analytics read that fails marks that card "unavailable" (with retry on the next refresh) and the list keeps working. It was built from the visible page before.
 
 Remaining F1 work:
 
 - §39: check-ins and profile edits as their own feed events — PARTIAL (visits, new profiles, bookings and loyalty adjustments are in).
 - §31: keep scroll position on return.
-- §36 / §38: spend does not subtract refunds; RFM does not use Monetary — both PARTIAL, written up in the metrics doc.
+- §38: RFM does not use Monetary — PARTIAL, written up in the metrics doc.
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
 - §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).

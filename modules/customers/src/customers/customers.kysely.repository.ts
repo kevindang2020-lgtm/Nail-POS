@@ -71,6 +71,11 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     const agg = ids.length ? await this.scoped(this.db.selectFrom('tickets'), ctx).where('customer_id', 'in', ids).where('status', 'in', [...VISIT_TICKET_STATUSES])
       .groupBy('customer_id').select((eb: any) => ['customer_id', eb.fn.countAll().as('cnt'), eb.fn.sum('total_cents').as('spend'), eb.fn.max('created_at').as('last')]).execute().catch(() => []) : [];
     const aggBy: Record<string, any> = {}; for (const a of agg) aggBy[a.customer_id] = a;
+    // F1 §11/§36: spend is net of completed refunds (payment_refunds 'refunded') on the customer's settled tickets
+    const refunds: any[] = ids.length ? await this.scoped(this.db.selectFrom('payment_refunds as pr').innerJoin('payments as p', 'p.id', 'pr.payment_id').innerJoin('tickets as t', 't.id', 'p.ticket_id'), ctx, 't')
+      .where('pr.tenant_id', '=', ctx.tenantId).where('pr.status', '=', 'refunded').where('t.customer_id', 'in', ids).where('t.status', 'in', [...VISIT_TICKET_STATUSES])
+      .groupBy('t.customer_id').select((eb: any) => ['t.customer_id as customer_id', eb.fn.sum('pr.amount_cents').as('refunded')]).execute() : [];
+    const refundBy: Record<string, number> = {}; for (const x of refunds) refundBy[x.customer_id] = Number(x.refunded) || 0;
 
     return rows.map((r: any) => {
       const l = loyBy[r.id]; const a = aggBy[r.id];
@@ -79,7 +84,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
         customerId: r.id, firstName: r.first_name || '', lastName: r.last_name || '',
         phone: r.phone_display || r.normalized_phone || '', normalizedPhone: r.normalized_phone || null, email: r.email || '', status: r.status, avatarUrl: r.avatar_url || undefined,
         source: 'manual' as CustomerSource, visitCount: Number(a?.cnt || 0), lastVisitAt: a?.last ? iso(a.last) : null,
-        totalSpendCents: Number(a?.spend || 0), loyaltyPoints: Number(l?.points_balance || 0), loyaltyTier: tier,
+        totalSpendCents: Math.max(0, Number(a?.spend || 0) - (refundBy[r.id] || 0)), loyaltyPoints: Number(l?.points_balance || 0), loyaltyTier: tier,
         isVip: !!l?.vip_since || /vip/i.test(tier), tags: [], birthdayMonth: monthDayOf(r.birthday)?.month, birthdayYear: r.birthday && r.birthday_year_known !== false ? Number(storedDateString(r.birthday)!.slice(0, 4)) : undefined,
         // Birthday Campaigns §05 P0: a DATE comes back from node-postgres as a JS Date — String(Date).slice(0, 10) printed "Thu Oct 01".
         // The calendar date is read from its parts; a month/day-only birthday never shows its placeholder year.

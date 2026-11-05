@@ -69,7 +69,8 @@ Not yet in the feed: check-ins and profile edits as separate events — PARTIAL.
 
 **Customer spend** (`load()` in the repository) = the sum of `tickets.total_cents` over the customer's settled tickets
 (`closed` / `paid`) in scope. `total_cents` is the ticket total as charged, so it includes tax and tip and is in integer
-cents. Refunds are **not** subtracted yet — PARTIAL against §11/§36, which ask for a stated refund/tax/tip policy.
+cents, **less completed refunds** (`payment_refunds` with status `refunded`, joined through the ticket's payments; a
+pending or failed refund does not count). Floor 0.
 Merging two profiles moves the duplicate's tickets to the surviving profile, so a merged history is counted once.
 
 **Customer Lifetime Value** (`buildCustomersAnalytics`, customers.dto.ts): total spend of all customers in scope ÷

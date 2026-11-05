@@ -154,3 +154,14 @@ describe('F1 Customer Directory — recent activity carries bookings and loyalty
     expect(JSON.stringify(act)).not.toMatch(/goodwill/);
   });
 });
+
+describe('F1 Customer Directory — spend is net of refunds (§11/§36)', () => {
+  it('a completed refund lowers the customer\'s spend; a pending one does not', async () => {
+    const before = (await repo.query(ctx, { search: 'Cust7' })).rows.items[0];
+    expect(before.totalSpendCents).toBe(3000);
+    await q(`insert into payments (id, tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, tax_cents, discount_cents, change_due_cents, status, created_at, updated_at) values ($1,$2,$3,$4,'card',3000,0,0,0,0,'approved', now(), now())`, [id('fa7'), T, B, id('d7')]);
+    await q(`insert into payment_refunds (tenant_id, branch_id, payment_id, amount_cents, status, reason) values ($1,$2,$3,1200,'refunded','test'), ($1,$2,$3,500,'pending','test')`, [T, B, id('fa7')]);
+    const after = (await repo.query(ctx, { search: 'Cust7' })).rows.items[0];
+    expect(after.totalSpendCents).toBe(1800);
+  });
+});
