@@ -79,11 +79,13 @@ export class CustomersService {
   private validPhone(p?: string) { return !p || /^[+()\-\s\d]{7,}$/.test(p); }
 
   // ---- read ----
+  /** money on customer records (spend, CLV, visits' amounts) needs financial or report access */
+  private canSeeMoney(ctx: CustomersContext): boolean { const c = ctx as Parameters<typeof hasPermission>[0]; return hasPermission(c, 'pos.customers.financial.view') || hasPermission(c, 'pos.reports.view'); }
   async getState(ctx: CustomersContext, f: CustomerFilters = {}): Promise<POSCustomersFullState> { 
     this.need(ctx, 'pos.customers.view'); 
     const st = await this.repo.query(ctx, f); 
     this.log(ctx, 'pos_customers_viewed', 'pos_customer', undefined, undefined, undefined, { filters: f }); 
-    const canSeeFinancial = hasPermission(ctx as any, 'pos.customers.financial.view') || hasPermission(ctx as any, 'pos.reports.view');
+    const canSeeFinancial = this.canSeeMoney(ctx);
     if (!canSeeFinancial) {
       st.customers.items.forEach(c => c.totalSpendCents = 0);
       st.rows.items.forEach(r => { r.totalSpendCents = 0; r.averageSpendCents = 0; });
@@ -98,7 +100,7 @@ export class CustomersService {
   async list(ctx: CustomersContext, f: CustomerFilters = {}): Promise<CustomerListResponse> { 
     this.need(ctx, 'pos.customers.view'); 
     const res = (await this.repo.query(ctx, f)).customers; 
-    const canSeeFinancial = hasPermission(ctx as any, 'pos.customers.financial.view') || hasPermission(ctx as any, 'pos.reports.view');
+    const canSeeFinancial = this.canSeeMoney(ctx);
     if (!canSeeFinancial) res.items.forEach(c => c.totalSpendCents = 0);
     return res; 
   }
@@ -106,7 +108,7 @@ export class CustomersService {
   async detail(ctx: CustomersContext, id: string): Promise<POSCustomerDetail> { 
     this.need(ctx, 'pos.customers.view'); 
     const d = this.mustFind(await this.repo.detail(ctx, id)); 
-    const canSeeFinancial = hasPermission(ctx as any, 'pos.customers.financial.view') || hasPermission(ctx as any, 'pos.reports.view');
+    const canSeeFinancial = this.canSeeMoney(ctx);
     if (!canSeeFinancial) { d.totalSpendCents = 0; d.averageSpendCents = 0; d.recentVisits = []; d.giftCards = []; }
     const canSeeNotes = hasPermission(ctx as any, 'pos.customers.notes.view');
     if (!canSeeNotes) { d.notes = { salonNotes: '', allergyNotes: '', preferredStyle: '', preferredTechnician: '', servicePreferences: '', warnings: '', customerVisible: false }; }
@@ -230,7 +232,7 @@ export class CustomersService {
   async export(ctx: CustomersContext, f: CustomerFilters = {}): Promise<{ format: 'csv'; filename: string; csv: string }> {
     this.need(ctx, 'pos.customers.export'); const ex = await this.repo.exportRows(ctx, f);
     // F1 §55: spend leaves the building only with financial access — otherwise the column is omitted, not zero-filled
-    const canSeeFinancial = hasPermission(ctx as any, 'pos.customers.financial.view') || hasPermission(ctx as any, 'pos.reports.view');
+    const canSeeFinancial = this.canSeeMoney(ctx);
     const drop = canSeeFinancial ? -1 : ex.headers.indexOf('TotalSpend');
     const headers = drop < 0 ? ex.headers : ex.headers.filter((_, i) => i !== drop);
     const rows = drop < 0 ? ex.rows : ex.rows.map((r) => r.filter((_, i) => i !== drop));

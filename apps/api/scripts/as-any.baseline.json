@@ -189,7 +189,7 @@
  "modules/customers/src/customers/customers.kysely.repository.ts": 11,
  "modules/customers/src/customers/customers.module.ts": 2,
  "modules/customers/src/customers/customers.repository.ts": 2,
- "modules/customers/src/customers/customers.service.ts": 13,
+ "modules/customers/src/customers/customers.service.ts": 7,
  "modules/customers/src/loyalty/loyalty-ledger.service.ts": 1,
  "modules/customers/src/pos-referrals/pos-referrals.kysely.repository.ts": 1,
  "modules/customers/src/reviews/reviews.kysely.repository.ts": 1,
