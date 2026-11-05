@@ -316,7 +316,7 @@ export class PlatformNoticeService {
         .where('id', '=', id).where('version', '=', Number(n.version)).execute();
       if (audienceChanged) await this.writeTargets(trx, id, targets);
       const after = await this.revision(trx, ctx, id, 'edited');
-      if (n.lifecycle_status === 'published') await this.notify(trx, DOMAIN_EVENTS.PLATFORM_ANNOUNCEMENT_CHANGED, after, [{ audience: String(n.audience), targets: beforeTargets }, { audience: f.audience, targets }], 'edited');
+      if (n.lifecycle_status === 'published') await this.notify(trx, DOMAIN_EVENTS.ANNOUNCEMENT_CHANGED, after, [{ audience: String(n.audience), targets: beforeTargets }, { audience: f.audience, targets }], 'edited');
       return { before: this.snapshot(n, beforeTargets), after: this.snapshot(after, targets) };
     });
     await this.audit(ctx, 'edited', id, out);
@@ -352,7 +352,7 @@ export class PlatformNoticeService {
         published_at: sql`now()`, published_by: uuidOrNull(ctx.userId), paused_at: null, version: sql`version + 1`, updated_by: uuidOrNull(ctx.userId), updated_at: sql`now()` } as never)
         .where('id', '=', id).where('version', '=', Number(n.version)).execute();
       const after = await this.revision(trx, ctx, id, 'published');
-      await this.notify(trx, DOMAIN_EVENTS.PLATFORM_ANNOUNCEMENT_PUBLISHED, after, [{ audience: String(n.audience), targets: await this.targetsOf(trx, id) }], 'published');
+      await this.notify(trx, DOMAIN_EVENTS.ANNOUNCEMENT_PUBLISHED, after, [{ audience: String(n.audience), targets: await this.targetsOf(trx, id) }], 'published');
       return { replay: false, scheduled: startsAt != null && startsAt > nowMs };
     });
     if (!out.replay) await this.audit(ctx, out.scheduled ? 'scheduled' : 'published', id, {}, 'high');
@@ -378,7 +378,7 @@ export class PlatformNoticeService {
         .where('id', '=', id).where('version', '=', Number(n.version)).execute();
       const after = await this.revision(trx, ctx, id, action);
       // a draft archived never reached a POS — nothing to tell
-      if (n.lifecycle_status !== 'draft') await this.notify(trx, DOMAIN_EVENTS.PLATFORM_ANNOUNCEMENT_CHANGED, after, [{ audience: String(n.audience), targets: await this.targetsOf(trx, id) }], action);
+      if (n.lifecycle_status !== 'draft') await this.notify(trx, DOMAIN_EVENTS.ANNOUNCEMENT_CHANGED, after, [{ audience: String(n.audience), targets: await this.targetsOf(trx, id) }], action);
       return true;
     });
     if (changed) await this.audit(ctx, action, id, {}, action === 'archived' ? 'medium' : 'high');

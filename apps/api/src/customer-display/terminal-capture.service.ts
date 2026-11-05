@@ -191,13 +191,37 @@ export class TerminalCaptureService implements TerminalCapturePort {
 
   /** Cancel the prompt on the terminal that is charging this ticket (POS "Cancel"). Fiserv: a cancel cannot stop an
    *  authorization already sent to the Gateway — the attempt's outcome still comes from the terminal / Verify. */
-  async cancelForPos(scope: { tenantId: string; branchId: string }, ticketId: string): Promise<{ cancelled: boolean; reason?: string }> {
+  async cancelForPos(scope: { tenantId: string; branchId: string }, ticketId: string): Promise<{ cancelled: boolean; relayed?: boolean; reason?: string }> {
+    if (!scope.tenantId || !scope.branchId) return { cancelled: false, reason: 'no location' };
+    // 1. the charge runs in THIS process: cancel on its session now
     const live = this.inFlight.get(`${scope.tenantId}|${ticketId}`);
-    if (!live || live.branchId !== scope.branchId) return { cancelled: false, reason: 'no terminal prompt is running for this ticket on this server' };
-    if (!live.device.cancel) return { cancelled: false, reason: 'this terminal cannot be cancelled from the POS' };
-    try { await live.device.cancel(live.hsn); return { cancelled: true }; }
-    catch (e) { return { cancelled: false, reason: (e as Error).message.slice(0, 200) }; }
+    if (live && live.branchId === scope.branchId) {
+      if (!live.device.cancel) return { cancelled: false, reason: 'this terminal cannot be cancelled from the POS' };
+      try { await live.device.cancel(live.hsn); return { cancelled: true }; }
+      catch (e) { return { cancelled: false, reason: (e as Error).message.slice(0, 200) }; }
+    }
+    // 2. it runs on another API server: record the cancel on its lease (this branch's terminals only); that server sends it
+    if (!this.leases.requestCancel) return { cancelled: false, reason: 'no terminal prompt is running for this ticket' };
+    const mine = (await this.terminalsForPos(scope)).map((t) => t.id);
+    const at = await this.leases.requestCancel(scope.tenantId, ticketId, mine).catch(() => null);
+    return at ? { cancelled: true, relayed: true } : { cancelled: false, reason: 'no terminal prompt is running for this ticket' };
   }
+
+  /** Poll this charge's own lease for a cancel recorded by another server; send it once. Returns the stop function. */
+  private watchForCancel(tenantId: string, terminalId: string, holder: string, device: TerminalDevicePort, hsn: string): () => void {
+    if (!this.leases.cancelRequested || !device.cancel) return () => undefined;
+    let done = false; let busy = false;
+    const timer = setInterval(async () => {
+      if (done || busy) return; busy = true;
+      try {
+        if (await this.leases.cancelRequested!(tenantId, terminalId, holder)) { done = true; clearInterval(timer); await device.cancel!(hsn).catch(() => undefined); }
+      } catch { /* a failed poll just tries again */ } finally { busy = false; }
+    }, this.cancelPollMs);
+    (timer as any).unref?.();
+    return () => { done = true; clearInterval(timer); };
+  }
+  /** How often a running charge checks for a cross-server cancel (tests shorten it). */
+  cancelPollMs = 1500;
 
   /** Terminals the front desk may pick for this branch (never another branch's; disabled ones are listed as such). */
   async terminalsForPos(scope: { tenantId: string; branchId: string }): Promise<Array<{ id: string; label: string; stationId: string | null; disabled: boolean; lastSeenAt: string | null; hsnConfigured: boolean }>> {
@@ -274,7 +298,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
 
     // ---- Functional Decision 34: ONE transaction at a time on a shared terminal (database lease, migration 485) ----
     const holder = 'display:' + row.id;
-    if (!(await this.leases.acquire(row.tenantId, String(term.id), holder))) {
+    if (!(await this.leases.acquire(row.tenantId, String(term.id), holder, undefined, row.ticketId))) {
       this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, terminalBusy: true });
       recordPaymentEvent('terminal_busy');
       return { outcome: 'terminal_busy', terminalId: String(term.id), reason: 'TERMINAL_BUSY' };   // nothing charged, nothing recorded
@@ -286,10 +310,14 @@ export class TerminalCaptureService implements TerminalCapturePort {
     recordPaymentEvent('attempt');
     const flightKey = `${row.tenantId}|${row.ticketId}`;
     this.inFlight.set(flightKey, { device, hsn: String(term.hsn), branchId: row.branchId });
+    // A POS Cancel that reached ANOTHER API server is recorded on this lease (migration 703): watch for it while the
+    // customer is at the terminal and send it on OUR session — the only session Bolt accepts a cancel on.
+    const stopWatch = this.watchForCancel(row.tenantId, String(term.id), holder, device, String(term.hsn));
     try {
       auth = await device.authCard({ hsn: String(term.hsn), amountCents: totals.totalDueCents, orderId: row.ticketId });
       await this.stampTerminal(row.tenantId, String(term.id), true);
     } catch (e) {
+      stopWatch();
       this.inFlight.delete(flightKey);
       await this.stampTerminal(row.tenantId, String(term.id), false);
       recordPaymentEvent('terminal_offline'); recordPaymentEvent('unknown');   // the terminal did not answer: outcome unknown
@@ -302,6 +330,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
       this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, unknown: true });
       return { outcome: 'unknown', paymentId, reason: `the terminal did not answer (${(e as Error).message}) — verify with the processor before charging again` };
     }
+    stopWatch();
     this.inFlight.delete(flightKey);
     await this.leases.release(row.tenantId, String(term.id), holder).catch(() => undefined);   // the terminal is free for the next POS
 

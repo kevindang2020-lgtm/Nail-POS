@@ -232,6 +232,10 @@ export const DOMAIN_EVENTS = {
   SECURITY_TENANT_MISMATCH: 'security.tenant_mismatch',
   TENANT_SUSPENDED: 'platform.tenant_suspended',
   TENANT_ACTIVATED: 'platform.tenant_activated',
+  // Super Admin POS Top-Bar Announcements (Oct 22 2026, §64–§73): one event PER SALON the notice concerns (tenant-scoped,
+  // so NOT a platform.* name), payload = ids + version + the branch ids it targets; projected to platform_announcement_updated
+  ANNOUNCEMENT_PUBLISHED: 'announcement.published',
+  ANNOUNCEMENT_CHANGED: 'announcement.changed',
 } as const;
 
 export type DomainEventType = typeof DOMAIN_EVENTS[keyof typeof DOMAIN_EVENTS];

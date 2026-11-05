@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-432 catalog keys — critical 17, high 66, medium 116, low 233; 30 need a fresh step-up to grant or use; 175 legacy `pos.*` route keys folded in as aliases.
+439 catalog keys — critical 19, high 69, medium 117, low 234; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -63,9 +63,9 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `checkout.view` | View checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER, FRONT_DESK, RECEPTION | View checkout. | `pos.ai_checkout_upsell.view` `pos.checkout.view` |
-| `checkout.process_payment` | Process payment checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER, FRONT_DESK, RECEPTION | Take payments at checkout (card, cash, gift card, split) and close tickets. | `pos.checkout.add_tip` `pos.checkout.card_payment` `pos.checkout.cash_payment` `pos.checkout.gift_card_issue` `pos.checkout.gift_card_payment` `pos.checkout.override_inventory` `pos.checkout.process_payment` `pos.checkout.redeem_reward` `pos.checkout.split_payment` `pos.checkout.take_payment` `pos.customer_display.operate` `pos.receipts.send` |
+| `checkout.process_payment` | Process payment checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER, FRONT_DESK, RECEPTION | Take payments at checkout (card, cash, gift card, split) and close tickets. | `pos.checkout.add_tip` `pos.checkout.card_payment` `pos.checkout.cash_payment` `pos.checkout.gift_card_issue` `pos.checkout.gift_card_payment` `pos.checkout.process_payment` `pos.checkout.redeem_reward` `pos.checkout.split_payment` `pos.checkout.take_payment` `pos.customer_display.operate` `pos.receipts.send` |
 | `checkout.approve_refund` | Approve refund checkout | critical | BRANCH, SELECTED_BRANCHES, TENANT | yes | OWNER, MANAGER | Refund past the salon's approval threshold (cash or large refunds) and approve a refund someone else asked for. |  |
-| `checkout.manage_overrides` | Manage overrides checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Void tickets, override totals, apply manual discounts, refund and reopen finished services. | `pos.checkout.apply_discount` `pos.checkout.override_total` `pos.checkout.refund` `pos.checkout.reopen_service` `pos.checkout.void` |
+| `checkout.manage_overrides` | Manage overrides checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Void tickets, override totals, apply manual discounts, refund and reopen finished services. | `payments.refund` `payments.void` `pos.checkout.apply_discount` `pos.checkout.override_inventory` `pos.checkout.override_total` `pos.checkout.refund` `pos.checkout.reopen_service` `pos.checkout.void` |
 
 ### deals
 
@@ -117,7 +117,7 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `settings.view` | View settings | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View settings. | `pos.api_keys.view` `pos.deployments.view` `pos.devices.view` `pos.logs.view` `pos.webhooks.view` |
-| `settings.edit` | Edit settings | critical | TENANT | yes | OWNER | Change salon settings, including payment processors, devices, Twilio / SMS and receipt settings. | `pos.api_keys.manage` `pos.customer_display.manage` `pos.deployments.manage` `pos.devices.manage` `pos.settings.edit` `pos.webhooks.manage` |
+| `settings.edit` | Edit settings | critical | TENANT | yes | OWNER | Change salon settings, including payment processors, devices, Twilio / SMS and receipt settings. | `payment_devices.approve` `payment_devices.manage` `payment_devices.revoke` `pos.api_keys.manage` `pos.customer_display.manage` `pos.deployments.manage` `pos.devices.manage` `pos.settings.edit` `pos.webhooks.manage` |
 
 ### ai
 
@@ -193,6 +193,8 @@ owner's high-risk report and in every access review.
 | `payroll.approve` | Approve payroll | critical | TENANT | yes | OWNER | Approve and lock a pay period (and reopen an approved one with a reason) — the figures every technician is paid. |  |
 | `payroll.export` | Export payroll | high | TENANT |  | OWNER | Download a pay period as CSV / Excel for the accountant or a payroll provider (every export is audited). |  |
 | `payroll.adjust` | Adjust payroll | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Add bonuses, corrections and configured deductions to an open pay period (large ones wait for an owner's approval). |  |
+| `payroll.issue_check` | Issue check payroll | critical | TENANT | yes | OWNER, MANAGER | Issue, deliver, void and replace payroll checks for an approved pay week (check numbers are recorded). |  |
+| `payroll.cash_handoff` | Cash handoff payroll | critical | TENANT | yes | OWNER, MANAGER | Prepare payroll cash (from the register drawer, the safe or the bank), hand it to a technician and take their PIN confirmation. |  |
 
 ### audit
 
@@ -329,7 +331,7 @@ owner's high-risk report and in every access review.
 | `mobile_checkout.add_product` | Add product mobile checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Add product mobile checkout. |  |
 | `mobile_checkout.tip` | Tip mobile checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Tip mobile checkout. |  |
 | `mobile_checkout.split_payment` | Split payment mobile checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Split one ticket across several payments on the mobile checkout. |  |
-| `mobile_checkout.tap_to_pay` | Tap to pay mobile checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Take card payments on an approved phone with Tap to Pay. |  |
+| `mobile_checkout.tap_to_pay` | Tap to pay mobile checkout | high | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Take card payments on an approved phone with Tap to Pay. | `payment_branch.switch` `payment_devices.register` `payments.tap_to_pay` |
 | `mobile_checkout.send_receipt` | Send receipt mobile checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Send receipt mobile checkout. |  |
 | `mobile_checkout.view_history` | View history mobile checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View history mobile checkout. |  |
 | `mobile_checkout.view_reports` | View reports mobile checkout | low | BRANCH, SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View reports mobile checkout. |  |
@@ -688,7 +690,21 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `owner.expenses.view` | View owner expenses | low | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View owner expenses. |  |
-| `owner.expenses.manage` | Manage owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER | Record, edit and delete the salon's expenses. |  |
+| `owner.expenses.manage` | Manage owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Record receipts and expenses, edit drafts, record bill payments, archive — the salon's spending records. |  |
+| `owner.expenses.approve` | Approve owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Approve or reject receipts and expenses, void an approved one with a reason, decide suspected duplicates, correct an approved expense (audited). |  |
+| `owner.expenses.export` | Export owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Download expense records as CSV / Excel for the accountant or tax preparer (every export is audited). |  |
+
+### owner.expenses.categories
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `owner.expenses.categories.manage` | Manage owner expenses categories | medium | TENANT |  | OWNER | Add custom expense categories, map categories to accounting codes, set categorization rules and expense settings. |  |
+
+### owner.expenses.reimbursements
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `owner.expenses.reimbursements.manage` | Manage owner expenses reimbursements | high | TENANT |  | OWNER | Approve and mark paid the reimbursements owed to staff who paid for salon supplies themselves. |  |
 
 ### owner.tenant_branding
 
@@ -817,565 +833,571 @@ owner's high-risk report and in every access review.
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.tenants.view` | View tenants | low | — |  | platform roles | View tenants. |  |
-| `super_admin.tenants.create` | Create tenants | medium | — |  | platform roles | Create tenants. |  |
-| `super_admin.tenants.edit` | Edit tenants | medium | — |  | platform roles | Edit tenants. |  |
-| `super_admin.tenants.suspend` | Suspend tenants | low | — |  | platform roles | Suspend tenants. |  |
+| `super_admin.tenants.view` | View tenants | low | PLATFORM |  | platform roles | View tenants. |  |
+| `super_admin.tenants.create` | Create tenants | medium | PLATFORM |  | platform roles | Create tenants. |  |
+| `super_admin.tenants.edit` | Edit tenants | medium | PLATFORM |  | platform roles | Edit tenants. |  |
+| `super_admin.tenants.suspend` | Suspend tenants | low | PLATFORM |  | platform roles | Suspend tenants. |  |
 
 ### users
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.users.manage` | Manage users | medium | — |  | platform roles | Manage users. |  |
-| `super_admin.users.view` | View users | low | — |  | platform roles | View users. |  |
+| `super_admin.users.manage` | Manage users | medium | PLATFORM |  | platform roles | Manage users. |  |
+| `super_admin.users.view` | View users | low | PLATFORM |  | platform roles | View users. |  |
 
 ### subscriptions
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.subscriptions.manage` | Manage subscriptions | medium | — |  | platform roles | Manage subscriptions. |  |
+| `super_admin.subscriptions.manage` | Manage subscriptions | medium | PLATFORM |  | platform roles | Manage subscriptions. |  |
 
 ### billing
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.view` | View billing | low | — |  | platform roles | View billing. |  |
-| `super_admin.billing.pause` | Pause billing | low | — |  | platform roles | Pause billing. |  |
-| `super_admin.billing.cancel` | Cancel billing | low | — |  | platform roles | Cancel billing. |  |
-| `super_admin.billing.export` | Export billing | high | — |  | platform roles | Export billing. |  |
-| `super_admin.billing.manage` | Manage billing | medium | — |  | platform roles | Manage billing. |  |
+| `super_admin.billing.view` | View billing | low | PLATFORM |  | platform roles | View billing. |  |
+| `super_admin.billing.pause` | Pause billing | low | PLATFORM |  | platform roles | Pause billing. |  |
+| `super_admin.billing.cancel` | Cancel billing | low | PLATFORM |  | platform roles | Cancel billing. |  |
+| `super_admin.billing.export` | Export billing | high | PLATFORM |  | platform roles | Export billing. |  |
+| `super_admin.billing.manage` | Manage billing | medium | PLATFORM |  | platform roles | Manage billing. |  |
 
 ### billing.invoices
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.invoices.create` | Create billing invoices | medium | — |  | platform roles | Create billing invoices. |  |
-| `super_admin.billing.invoices.finalize` | Finalize billing invoices | low | — |  | platform roles | Finalize billing invoices. |  |
+| `super_admin.billing.invoices.create` | Create billing invoices | medium | PLATFORM |  | platform roles | Create billing invoices. |  |
+| `super_admin.billing.invoices.finalize` | Finalize billing invoices | low | PLATFORM |  | platform roles | Finalize billing invoices. |  |
 
 ### billing.credits
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.credits.apply` | Apply billing credits | low | — |  | platform roles | Apply billing credits. |  |
+| `super_admin.billing.credits.apply` | Apply billing credits | low | PLATFORM |  | platform roles | Apply billing credits. |  |
 
 ### billing.payments
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.payments.retry` | Retry billing payments | low | — |  | platform roles | Retry billing payments. |  |
+| `super_admin.billing.payments.retry` | Retry billing payments | low | PLATFORM |  | platform roles | Retry billing payments. |  |
 
 ### billing.plans
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.plans.change` | Change billing plans | low | — |  | platform roles | Change billing plans. |  |
+| `super_admin.billing.plans.change` | Change billing plans | low | PLATFORM |  | platform roles | Change billing plans. |  |
 
 ### billing.addons
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.addons.manage` | Manage billing addons | medium | — |  | platform roles | Manage billing addons. |  |
+| `super_admin.billing.addons.manage` | Manage billing addons | medium | PLATFORM |  | platform roles | Manage billing addons. |  |
 
 ### billing.trials
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.trials.extend` | Extend billing trials | low | — |  | platform roles | Extend billing trials. |  |
+| `super_admin.billing.trials.extend` | Extend billing trials | low | PLATFORM |  | platform roles | Extend billing trials. |  |
 
 ### billing.discounts
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.discounts.manage` | Manage billing discounts | medium | — |  | platform roles | Manage billing discounts. |  |
+| `super_admin.billing.discounts.manage` | Manage billing discounts | medium | PLATFORM |  | platform roles | Manage billing discounts. |  |
 
 ### billing.requests
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.billing.requests.review` | Review billing requests | low | — |  | platform roles | Review billing requests. |  |
+| `super_admin.billing.requests.review` | Review billing requests | low | PLATFORM |  | platform roles | Review billing requests. |  |
 
 ### ai_packages
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.ai_packages.manage` | Manage ai packages | medium | — |  | platform roles | Manage ai packages. |  |
+| `super_admin.ai_packages.manage` | Manage ai packages | medium | PLATFORM |  | platform roles | Manage ai packages. |  |
 
 ### catalog
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.catalog.manage` | Manage catalog | medium | — |  | platform roles | Manage catalog. |  |
-| `super_admin.catalog.view` | View catalog | low | — |  | platform roles | View catalog. |  |
+| `super_admin.catalog.manage` | Manage catalog | medium | PLATFORM |  | platform roles | Manage catalog. |  |
+| `super_admin.catalog.view` | View catalog | low | PLATFORM |  | platform roles | View catalog. |  |
 
 ### disputes
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.disputes.view` | View disputes | low | — |  | platform roles | View disputes. |  |
-| `super_admin.disputes.manage` | Manage disputes | medium | — |  | platform roles | Manage disputes. |  |
-| `super_admin.disputes.override` | Override disputes | high | — |  | platform roles | Override disputes. |  |
-| `super_admin.disputes.export` | Export disputes | high | — |  | platform roles | Export disputes. |  |
+| `super_admin.disputes.view` | View disputes | low | PLATFORM |  | platform roles | View disputes. |  |
+| `super_admin.disputes.manage` | Manage disputes | medium | PLATFORM |  | platform roles | Manage disputes. |  |
+| `super_admin.disputes.override` | Override disputes | high | PLATFORM |  | platform roles | Override disputes. |  |
+| `super_admin.disputes.export` | Export disputes | high | PLATFORM |  | platform roles | Export disputes. |  |
 
 ### disputes.evidence
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.disputes.evidence.submit` | Submit disputes evidence | low | — |  | platform roles | Submit disputes evidence. |  |
+| `super_admin.disputes.evidence.submit` | Submit disputes evidence | low | PLATFORM |  | platform roles | Submit disputes evidence. |  |
 
 ### disputes.outcome
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.disputes.outcome.record` | Record disputes outcome | low | — |  | platform roles | Record disputes outcome. |  |
+| `super_admin.disputes.outcome.record` | Record disputes outcome | low | PLATFORM |  | platform roles | Record disputes outcome. |  |
 
 ### disputes.risk
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.disputes.risk.flag` | Flag disputes risk | low | — |  | platform roles | Flag disputes risk. |  |
+| `super_admin.disputes.risk.flag` | Flag disputes risk | low | PLATFORM |  | platform roles | Flag disputes risk. |  |
 
 ### memberships
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.memberships.view` | View memberships | low | — |  | platform roles | View memberships. |  |
-| `super_admin.memberships.manage` | Manage memberships | medium | — |  | platform roles | Manage memberships. |  |
-| `super_admin.memberships.export` | Export memberships | high | — |  | platform roles | Export memberships. |  |
-| `super_admin.memberships.support_mode` | Support mode memberships | high | — |  | platform roles | Support mode memberships. |  |
-| `super_admin.memberships.correct` | Correct memberships | low | — |  | platform roles | Correct memberships. |  |
-| `super_admin.memberships.disable` | Disable memberships | low | — |  | platform roles | Disable memberships. |  |
+| `super_admin.memberships.view` | View memberships | low | PLATFORM |  | platform roles | View memberships. |  |
+| `super_admin.memberships.manage` | Manage memberships | medium | PLATFORM |  | platform roles | Manage memberships. |  |
+| `super_admin.memberships.export` | Export memberships | high | PLATFORM |  | platform roles | Export memberships. |  |
+| `super_admin.memberships.support_mode` | Support mode memberships | high | PLATFORM |  | platform roles | Support mode memberships. |  |
+| `super_admin.memberships.correct` | Correct memberships | low | PLATFORM |  | platform roles | Correct memberships. |  |
+| `super_admin.memberships.disable` | Disable memberships | low | PLATFORM |  | platform roles | Disable memberships. |  |
 
 ### audit_logs
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.audit_logs.view` | View audit logs | low | — |  | platform roles | View audit logs. |  |
+| `super_admin.audit_logs.view` | View audit logs | low | PLATFORM |  | platform roles | View audit logs. |  |
 
 ### customer_sync
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.customer_sync.view` | View customer sync | low | — |  | platform roles | View customer sync. |  |
-| `super_admin.customer_sync.run` | Run customer sync | low | — |  | platform roles | Run customer sync. |  |
-| `super_admin.customer_sync.review` | Review customer sync | low | — |  | platform roles | Review customer sync. |  |
-| `super_admin.customer_sync.merge` | Merge customer sync | low | — |  | platform roles | Merge customer sync. |  |
-| `super_admin.customer_sync.resolve_conflict` | Resolve conflict customer sync | low | — |  | platform roles | Resolve conflict customer sync. |  |
+| `super_admin.customer_sync.view` | View customer sync | low | PLATFORM |  | platform roles | View customer sync. |  |
+| `super_admin.customer_sync.run` | Run customer sync | low | PLATFORM |  | platform roles | Run customer sync. |  |
+| `super_admin.customer_sync.review` | Review customer sync | low | PLATFORM |  | platform roles | Review customer sync. |  |
+| `super_admin.customer_sync.merge` | Merge customer sync | low | PLATFORM |  | platform roles | Merge customer sync. |  |
+| `super_admin.customer_sync.resolve_conflict` | Resolve conflict customer sync | low | PLATFORM |  | platform roles | Resolve conflict customer sync. |  |
 
 ### applications
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.applications.view` | View applications | low | — |  | platform roles | View applications. |  |
-| `super_admin.applications.review` | Review applications | low | — |  | platform roles | Review applications. |  |
-| `super_admin.applications.assign` | Assign applications | medium | — |  | platform roles | Assign applications. |  |
-| `super_admin.applications.contact` | Contact applications | low | — |  | platform roles | Contact applications. |  |
-| `super_admin.applications.note` | Note applications | low | — |  | platform roles | Note applications. |  |
-| `super_admin.applications.update_status` | Update status applications | low | — |  | platform roles | Update status applications. |  |
-| `super_admin.applications.approve` | Approve applications | medium | — |  | platform roles | Approve applications. |  |
-| `super_admin.applications.reject` | Reject applications | low | — |  | platform roles | Reject applications. |  |
-| `super_admin.applications.convert` | Convert applications | low | — |  | platform roles | Convert applications. |  |
-| `super_admin.applications.view_sensitive` | View sensitive applications | low | — |  | platform roles | View sensitive applications. |  |
-| `super_admin.applications.export` | Export applications | high | — |  | platform roles | Export applications. |  |
-| `super_admin.applications.archive` | Archive applications | high | — |  | platform roles | Archive applications. |  |
+| `super_admin.applications.view` | View applications | low | PLATFORM |  | platform roles | View applications. |  |
+| `super_admin.applications.review` | Review applications | low | PLATFORM |  | platform roles | Review applications. |  |
+| `super_admin.applications.assign` | Assign applications | medium | PLATFORM |  | platform roles | Assign applications. |  |
+| `super_admin.applications.contact` | Contact applications | low | PLATFORM |  | platform roles | Contact applications. |  |
+| `super_admin.applications.note` | Note applications | low | PLATFORM |  | platform roles | Note applications. |  |
+| `super_admin.applications.update_status` | Update status applications | low | PLATFORM |  | platform roles | Update status applications. |  |
+| `super_admin.applications.approve` | Approve applications | medium | PLATFORM |  | platform roles | Approve applications. |  |
+| `super_admin.applications.reject` | Reject applications | low | PLATFORM |  | platform roles | Reject applications. |  |
+| `super_admin.applications.convert` | Convert applications | low | PLATFORM |  | platform roles | Convert applications. |  |
+| `super_admin.applications.view_sensitive` | View sensitive applications | low | PLATFORM |  | platform roles | View sensitive applications. |  |
+| `super_admin.applications.export` | Export applications | high | PLATFORM |  | platform roles | Export applications. |  |
+| `super_admin.applications.archive` | Archive applications | high | PLATFORM |  | platform roles | Archive applications. |  |
 
 ### onboarding
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.onboarding.view` | View onboarding | low | — |  | platform roles | View onboarding. |  |
-| `super_admin.onboarding.create` | Create onboarding | medium | — |  | platform roles | Create onboarding. |  |
-| `super_admin.onboarding.assign_specialist` | Assign specialist onboarding | low | — |  | platform roles | Assign specialist onboarding. |  |
-| `super_admin.onboarding.review` | Review onboarding | low | — |  | platform roles | Review onboarding. |  |
-| `super_admin.onboarding.approve` | Approve onboarding | medium | — |  | platform roles | Approve onboarding. |  |
-| `super_admin.onboarding.reject` | Reject onboarding | low | — |  | platform roles | Reject onboarding. |  |
-| `super_admin.onboarding.return_for_correction` | Return for correction onboarding | low | — |  | platform roles | Return for correction onboarding. |  |
-| `super_admin.onboarding.activate` | Activate onboarding | low | — |  | platform roles | Activate onboarding. |  |
-| `super_admin.onboarding.export` | Export onboarding | high | — |  | platform roles | Export onboarding. |  |
-| `super_admin.onboarding.manage` | Manage onboarding | medium | — |  | platform roles | Manage onboarding. |  |
+| `super_admin.onboarding.view` | View onboarding | low | PLATFORM |  | platform roles | View onboarding. |  |
+| `super_admin.onboarding.create` | Create onboarding | medium | PLATFORM |  | platform roles | Create onboarding. |  |
+| `super_admin.onboarding.assign_specialist` | Assign specialist onboarding | low | PLATFORM |  | platform roles | Assign specialist onboarding. |  |
+| `super_admin.onboarding.review` | Review onboarding | low | PLATFORM |  | platform roles | Review onboarding. |  |
+| `super_admin.onboarding.approve` | Approve onboarding | medium | PLATFORM |  | platform roles | Approve onboarding. |  |
+| `super_admin.onboarding.reject` | Reject onboarding | low | PLATFORM |  | platform roles | Reject onboarding. |  |
+| `super_admin.onboarding.return_for_correction` | Return for correction onboarding | low | PLATFORM |  | platform roles | Return for correction onboarding. |  |
+| `super_admin.onboarding.activate` | Activate onboarding | low | PLATFORM |  | platform roles | Activate onboarding. |  |
+| `super_admin.onboarding.export` | Export onboarding | high | PLATFORM |  | platform roles | Export onboarding. |  |
+| `super_admin.onboarding.manage` | Manage onboarding | medium | PLATFORM |  | platform roles | Manage onboarding. |  |
 
 ### onboarding.identity
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.onboarding.identity.override` | Override onboarding identity | high | — |  | platform roles | Override onboarding identity. |  |
+| `super_admin.onboarding.identity.override` | Override onboarding identity | high | PLATFORM |  | platform roles | Override onboarding identity. |  |
 
 ### onboarding.data_import
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.onboarding.data_import.approve` | Approve onboarding data import | medium | — |  | platform roles | Approve onboarding data import. |  |
+| `super_admin.onboarding.data_import.approve` | Approve onboarding data import | medium | PLATFORM |  | platform roles | Approve onboarding data import. |  |
 
 ### onboarding.notes
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.onboarding.notes.view` | View onboarding notes | low | — |  | platform roles | View onboarding notes. |  |
-| `super_admin.onboarding.notes.create` | Create onboarding notes | medium | — |  | platform roles | Create onboarding notes. |  |
+| `super_admin.onboarding.notes.view` | View onboarding notes | low | PLATFORM |  | platform roles | View onboarding notes. |  |
+| `super_admin.onboarding.notes.create` | Create onboarding notes | medium | PLATFORM |  | platform roles | Create onboarding notes. |  |
 
 ### onboarding.audit
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.onboarding.audit.view` | View onboarding audit | low | — |  | platform roles | View onboarding audit. |  |
+| `super_admin.onboarding.audit.view` | View onboarding audit | low | PLATFORM |  | platform roles | View onboarding audit. |  |
 
 ### integrations
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.view` | View integrations | low | — |  | platform roles | View integrations. |  |
-| `super_admin.integrations.search` | Search integrations | low | — |  | platform roles | Search integrations. |  |
-| `super_admin.integrations.create` | Create integrations | medium | — |  | platform roles | Create integrations. |  |
-| `super_admin.integrations.edit` | Edit integrations | medium | — |  | platform roles | Edit integrations. |  |
-| `super_admin.integrations.enable` | Enable integrations | low | — |  | platform roles | Enable integrations. |  |
-| `super_admin.integrations.disable` | Disable integrations | low | — |  | platform roles | Disable integrations. |  |
-| `super_admin.integrations.export` | Export integrations | high | — |  | platform roles | Export integrations. |  |
-| `super_admin.integrations.manage` | Manage integrations | medium | — |  | platform roles | Manage integrations. |  |
+| `super_admin.integrations.view` | View integrations | low | PLATFORM |  | platform roles | View integrations. |  |
+| `super_admin.integrations.search` | Search integrations | low | PLATFORM |  | platform roles | Search integrations. |  |
+| `super_admin.integrations.create` | Create integrations | medium | PLATFORM |  | platform roles | Create integrations. |  |
+| `super_admin.integrations.edit` | Edit integrations | medium | PLATFORM |  | platform roles | Edit integrations. |  |
+| `super_admin.integrations.enable` | Enable integrations | low | PLATFORM |  | platform roles | Enable integrations. |  |
+| `super_admin.integrations.disable` | Disable integrations | low | PLATFORM |  | platform roles | Disable integrations. |  |
+| `super_admin.integrations.export` | Export integrations | high | PLATFORM |  | platform roles | Export integrations. |  |
+| `super_admin.integrations.manage` | Manage integrations | medium | PLATFORM |  | platform roles | Manage integrations. |  |
 
 ### integrations.details
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.details.view` | View integrations details | low | — |  | platform roles | View integrations details. |  |
+| `super_admin.integrations.details.view` | View integrations details | low | PLATFORM |  | platform roles | View integrations details. |  |
 
 ### integrations.connection
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.connection.test` | Test integrations connection | low | — |  | platform roles | Test integrations connection. |  |
+| `super_admin.integrations.connection.test` | Test integrations connection | low | PLATFORM |  | platform roles | Test integrations connection. |  |
 
 ### integrations.authentication
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.authentication.refresh` | Refresh integrations authentication | low | — |  | platform roles | Refresh integrations authentication. |  |
+| `super_admin.integrations.authentication.refresh` | Refresh integrations authentication | low | PLATFORM |  | platform roles | Refresh integrations authentication. |  |
 
 ### integrations.sync
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.sync.view` | View integrations sync | low | — |  | platform roles | View integrations sync. |  |
-| `super_admin.integrations.sync.retry` | Retry integrations sync | low | — |  | platform roles | Retry integrations sync. |  |
+| `super_admin.integrations.sync.view` | View integrations sync | low | PLATFORM |  | platform roles | View integrations sync. |  |
+| `super_admin.integrations.sync.retry` | Retry integrations sync | low | PLATFORM |  | platform roles | Retry integrations sync. |  |
 
 ### integrations.webhooks
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.webhooks.view` | View integrations webhooks | low | — |  | platform roles | View integrations webhooks. |  |
+| `super_admin.integrations.webhooks.view` | View integrations webhooks | low | PLATFORM |  | platform roles | View integrations webhooks. |  |
 
 ### integrations.webhooks.details
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.webhooks.details.view` | View integrations webhooks details | low | — |  | platform roles | View integrations webhooks details. |  |
+| `super_admin.integrations.webhooks.details.view` | View integrations webhooks details | low | PLATFORM |  | platform roles | View integrations webhooks details. |  |
 
 ### integrations.errors
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.errors.view` | View integrations errors | low | — |  | platform roles | View integrations errors. |  |
+| `super_admin.integrations.errors.view` | View integrations errors | low | PLATFORM |  | platform roles | View integrations errors. |  |
 
 ### integrations.api_health
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.api_health.view` | View integrations api health | low | — |  | platform roles | View integrations api health. |  |
+| `super_admin.integrations.api_health.view` | View integrations api health | low | PLATFORM |  | platform roles | View integrations api health. |  |
 
 ### integrations.tenant_access
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.tenant_access.view` | View integrations tenant access | low | — |  | platform roles | View integrations tenant access. |  |
-| `super_admin.integrations.tenant_access.manage` | Manage integrations tenant access | medium | — |  | platform roles | Manage integrations tenant access. |  |
+| `super_admin.integrations.tenant_access.view` | View integrations tenant access | low | PLATFORM |  | platform roles | View integrations tenant access. |  |
+| `super_admin.integrations.tenant_access.manage` | Manage integrations tenant access | medium | PLATFORM |  | platform roles | Manage integrations tenant access. |  |
 
 ### integrations.marketplace
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.marketplace.view` | View integrations marketplace | low | — |  | platform roles | View integrations marketplace. |  |
+| `super_admin.integrations.marketplace.view` | View integrations marketplace | low | PLATFORM |  | platform roles | View integrations marketplace. |  |
 
 ### integrations.audit
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.audit.view` | View integrations audit | low | — |  | platform roles | View integrations audit. |  |
+| `super_admin.integrations.audit.view` | View integrations audit | low | PLATFORM |  | platform roles | View integrations audit. |  |
 
 ### integrations.compromised
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.compromised.disable` | Disable integrations compromised | low | — |  | platform roles | Disable integrations compromised. |  |
+| `super_admin.integrations.compromised.disable` | Disable integrations compromised | low | PLATFORM |  | platform roles | Disable integrations compromised. |  |
 
 ### integrations.cross_tenant
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.cross_tenant.view` | View integrations cross tenant | low | — |  | platform roles | View integrations cross tenant. |  |
-| `super_admin.integrations.cross_tenant.export` | Export integrations cross tenant | high | — |  | platform roles | Export integrations cross tenant. |  |
+| `super_admin.integrations.cross_tenant.view` | View integrations cross tenant | low | PLATFORM |  | platform roles | View integrations cross tenant. |  |
+| `super_admin.integrations.cross_tenant.export` | Export integrations cross tenant | high | PLATFORM |  | platform roles | Export integrations cross tenant. |  |
 
 ### integrations.credentials
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.credentials.view` | View integrations credentials | high | — |  | platform roles | View integrations credentials. |  |
-| `super_admin.integrations.credentials.manage` | Manage integrations credentials | high | — |  | platform roles | Manage integrations credentials. |  |
-| `super_admin.integrations.credentials.rotate` | Rotate integrations credentials | high | — |  | platform roles | Rotate integrations credentials. |  |
+| `super_admin.integrations.credentials.view` | View integrations credentials | high | PLATFORM |  | platform roles | View integrations credentials. |  |
+| `super_admin.integrations.credentials.manage` | Manage integrations credentials | high | PLATFORM |  | platform roles | Manage integrations credentials. |  |
+| `super_admin.integrations.credentials.rotate` | Rotate integrations credentials | high | PLATFORM |  | platform roles | Rotate integrations credentials. |  |
 
 ### integrations.raw_payload
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.raw_payload.view` | View integrations raw payload | low | — |  | platform roles | View integrations raw payload. |  |
+| `super_admin.integrations.raw_payload.view` | View integrations raw payload | low | PLATFORM |  | platform roles | View integrations raw payload. |  |
 
 ### integrations.shared_connection
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.shared_connection.manage` | Manage integrations shared connection | medium | — |  | platform roles | Manage integrations shared connection. |  |
+| `super_admin.integrations.shared_connection.manage` | Manage integrations shared connection | medium | PLATFORM |  | platform roles | Manage integrations shared connection. |  |
 
 ### integrations.production_webhook
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.integrations.production_webhook.manage` | Manage integrations production webhook | medium | — |  | platform roles | Manage integrations production webhook. |  |
+| `super_admin.integrations.production_webhook.manage` | Manage integrations production webhook | medium | PLATFORM |  | platform roles | Manage integrations production webhook. |  |
 
 ### branding
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.branding.view` | View branding | low | — |  | platform roles | View branding. |  |
-| `super_admin.branding.update` | Update branding | medium | — |  | platform roles | Update branding. |  |
+| `super_admin.branding.view` | View branding | low | PLATFORM |  | platform roles | View branding. |  |
+| `super_admin.branding.update` | Update branding | medium | PLATFORM |  | platform roles | Update branding. |  |
 
 ### branding.asset
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.branding.asset.upload` | Upload branding asset | low | — |  | platform roles | Upload branding asset. |  |
-| `super_admin.branding.asset.restore` | Restore branding asset | low | — |  | platform roles | Restore branding asset. |  |
+| `super_admin.branding.asset.upload` | Upload branding asset | low | PLATFORM |  | platform roles | Upload branding asset. |  |
+| `super_admin.branding.asset.restore` | Restore branding asset | low | PLATFORM |  | platform roles | Restore branding asset. |  |
 
 ### general_settings
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.general_settings.view` | View general settings | low | — |  | platform roles | View general settings. |  |
-| `super_admin.general_settings.edit` | Edit general settings | medium | — |  | platform roles | Edit general settings. |  |
-| `super_admin.general_settings.reset` | Reset general settings | low | — |  | platform roles | Reset general settings. |  |
+| `super_admin.general_settings.view` | View general settings | low | PLATFORM |  | platform roles | View general settings. |  |
+| `super_admin.general_settings.edit` | Edit general settings | medium | PLATFORM |  | platform roles | Edit general settings. |  |
+| `super_admin.general_settings.reset` | Reset general settings | low | PLATFORM |  | platform roles | Reset general settings. |  |
 
 ### system_operations
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.system_operations.view` | View system operations | low | — |  | platform roles | View system operations. |  |
+| `super_admin.system_operations.view` | View system operations | low | PLATFORM |  | platform roles | View system operations. |  |
 
 ### database
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.database.view` | View database | low | — |  | platform roles | View database. |  |
-| `super_admin.database.manage` | Manage database | medium | — |  | platform roles | Manage database. |  |
+| `super_admin.database.view` | View database | low | PLATFORM |  | platform roles | View database. |  |
+| `super_admin.database.manage` | Manage database | medium | PLATFORM |  | platform roles | Manage database. |  |
 
 ### mobile_versions
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.mobile_versions.view` | View mobile versions | low | — |  | platform roles | View mobile versions. |  |
-| `super_admin.mobile_versions.manage` | Manage mobile versions | medium | — |  | platform roles | Manage mobile versions. |  |
+| `super_admin.mobile_versions.view` | View mobile versions | low | PLATFORM |  | platform roles | View mobile versions. |  |
+| `super_admin.mobile_versions.manage` | Manage mobile versions | medium | PLATFORM |  | platform roles | Manage mobile versions. |  |
 
 ### telemetry
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.telemetry.view` | View telemetry | low | — |  | platform roles | View telemetry. |  |
+| `super_admin.telemetry.view` | View telemetry | low | PLATFORM |  | platform roles | View telemetry. |  |
 
 ### telemetry.sensitive
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.telemetry.sensitive.view` | View telemetry sensitive | low | — |  | platform roles | View telemetry sensitive. |  |
+| `super_admin.telemetry.sensitive.view` | View telemetry sensitive | low | PLATFORM |  | platform roles | View telemetry sensitive. |  |
 
 ### general_settings.legal_documents
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.general_settings.legal_documents.view` | View general settings legal documents | low | — |  | platform roles | View general settings legal documents. |  |
-| `super_admin.general_settings.legal_documents.manage` | Manage general settings legal documents | medium | — |  | platform roles | Manage general settings legal documents. |  |
-| `super_admin.general_settings.legal_documents.publish` | Publish general settings legal documents | medium | — |  | platform roles | Publish general settings legal documents. |  |
+| `super_admin.general_settings.legal_documents.view` | View general settings legal documents | low | PLATFORM |  | platform roles | View general settings legal documents. |  |
+| `super_admin.general_settings.legal_documents.manage` | Manage general settings legal documents | medium | PLATFORM |  | platform roles | Manage general settings legal documents. |  |
+| `super_admin.general_settings.legal_documents.publish` | Publish general settings legal documents | medium | PLATFORM |  | platform roles | Publish general settings legal documents. |  |
 
 ### general_settings.maintenance
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.general_settings.maintenance.view` | View general settings maintenance | low | — |  | platform roles | View general settings maintenance. |  |
-| `super_admin.general_settings.maintenance.manage` | Manage general settings maintenance | medium | — |  | platform roles | Manage general settings maintenance. |  |
+| `super_admin.general_settings.maintenance.view` | View general settings maintenance | low | PLATFORM |  | platform roles | View general settings maintenance. |  |
+| `super_admin.general_settings.maintenance.manage` | Manage general settings maintenance | medium | PLATFORM |  | platform roles | Manage general settings maintenance. |  |
 
 ### general_settings.business_categories
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.general_settings.business_categories.view` | View general settings business categories | low | — |  | platform roles | View general settings business categories. |  |
-| `super_admin.general_settings.business_categories.manage` | Manage general settings business categories | medium | — |  | platform roles | Manage general settings business categories. |  |
+| `super_admin.general_settings.business_categories.view` | View general settings business categories | low | PLATFORM |  | platform roles | View general settings business categories. |  |
+| `super_admin.general_settings.business_categories.manage` | Manage general settings business categories | medium | PLATFORM |  | platform roles | Manage general settings business categories. |  |
 
 ### general_settings.tenant_presets
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.general_settings.tenant_presets.view` | View general settings tenant presets | low | — |  | platform roles | View general settings tenant presets. |  |
-| `super_admin.general_settings.tenant_presets.manage` | Manage general settings tenant presets | medium | — |  | platform roles | Manage general settings tenant presets. |  |
+| `super_admin.general_settings.tenant_presets.view` | View general settings tenant presets | low | PLATFORM |  | platform roles | View general settings tenant presets. |  |
+| `super_admin.general_settings.tenant_presets.manage` | Manage general settings tenant presets | medium | PLATFORM |  | platform roles | Manage general settings tenant presets. |  |
 
 ### platform_locations
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.platform_locations.view` | View platform locations | low | — |  | platform roles | View platform locations. |  |
-| `super_admin.platform_locations.verify` | Verify platform locations | low | — |  | platform roles | Verify platform locations. |  |
-| `super_admin.platform_locations.reject` | Reject platform locations | low | — |  | platform roles | Reject platform locations. |  |
-| `super_admin.platform_locations.suspend` | Suspend platform locations | low | — |  | platform roles | Suspend platform locations. |  |
-| `super_admin.platform_locations.correct` | Correct platform locations | low | — |  | platform roles | Correct platform locations. |  |
+| `super_admin.platform_locations.view` | View platform locations | low | PLATFORM |  | platform roles | View platform locations. |  |
+| `super_admin.platform_locations.verify` | Verify platform locations | low | PLATFORM |  | platform roles | Verify platform locations. |  |
+| `super_admin.platform_locations.reject` | Reject platform locations | low | PLATFORM |  | platform roles | Reject platform locations. |  |
+| `super_admin.platform_locations.suspend` | Suspend platform locations | low | PLATFORM |  | platform roles | Suspend platform locations. |  |
+| `super_admin.platform_locations.correct` | Correct platform locations | low | PLATFORM |  | platform roles | Correct platform locations. |  |
 
 ### platform_locations.audit
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.platform_locations.audit.view` | View platform locations audit | low | — |  | platform roles | View platform locations audit. |  |
+| `super_admin.platform_locations.audit.view` | View platform locations audit | low | PLATFORM |  | platform roles | View platform locations audit. |  |
 
 ### sms_packages
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.sms_packages.view` | View sms packages | low | — |  | platform roles | View sms packages. |  |
-| `super_admin.sms_packages.manage` | Manage sms packages | medium | — |  | platform roles | Manage sms packages. |  |
+| `super_admin.sms_packages.view` | View sms packages | low | PLATFORM |  | platform roles | View sms packages. |  |
+| `super_admin.sms_packages.manage` | Manage sms packages | medium | PLATFORM |  | platform roles | Manage sms packages. |  |
 
 ### sms_tenant_plan
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.sms_tenant_plan.view` | View sms tenant plan | low | — |  | platform roles | View sms tenant plan. |  |
-| `super_admin.sms_tenant_plan.change` | Change sms tenant plan | low | — |  | platform roles | Change sms tenant plan. |  |
+| `super_admin.sms_tenant_plan.view` | View sms tenant plan | low | PLATFORM |  | platform roles | View sms tenant plan. |  |
+| `super_admin.sms_tenant_plan.change` | Change sms tenant plan | low | PLATFORM |  | platform roles | Change sms tenant plan. |  |
 
 ### sms_usage
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.sms_usage.view` | View sms usage | low | — |  | platform roles | View sms usage. |  |
-| `super_admin.sms_usage.adjust` | Adjust sms usage | medium | — |  | platform roles | Adjust sms usage. |  |
+| `super_admin.sms_usage.view` | View sms usage | low | PLATFORM |  | platform roles | View sms usage. |  |
+| `super_admin.sms_usage.adjust` | Adjust sms usage | medium | PLATFORM |  | platform roles | Adjust sms usage. |  |
 
 ### sms_billing
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.sms_billing.view` | View sms billing | low | — |  | platform roles | View sms billing. |  |
-| `super_admin.sms_billing.adjust` | Adjust sms billing | medium | — |  | platform roles | Adjust sms billing. |  |
+| `super_admin.sms_billing.view` | View sms billing | low | PLATFORM |  | platform roles | View sms billing. |  |
+| `super_admin.sms_billing.adjust` | Adjust sms billing | medium | PLATFORM |  | platform roles | Adjust sms billing. |  |
 
 ### sms_emergency
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.sms_emergency.disable` | Disable sms emergency | low | — |  | platform roles | Disable sms emergency. |  |
+| `super_admin.sms_emergency.disable` | Disable sms emergency | low | PLATFORM |  | platform roles | Disable sms emergency. |  |
 
 ### technicians
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.technicians.view` | View technicians | low | — |  | platform roles | View technicians. |  |
-| `super_admin.technicians.manage` | Manage technicians | medium | — |  | platform roles | Manage technicians. |  |
-| `super_admin.technicians.pause` | Pause technicians | low | — |  | platform roles | Pause technicians. |  |
-| `super_admin.technicians.reactivate` | Reactivate technicians | low | — |  | platform roles | Reactivate technicians. |  |
-| `super_admin.technicians.suspend` | Suspend technicians | low | — |  | platform roles | Suspend technicians. |  |
-| `super_admin.technicians.restore` | Restore technicians | low | — |  | platform roles | Restore technicians. |  |
-| `super_admin.technicians.transfer` | Transfer technicians | low | — |  | platform roles | Transfer technicians. |  |
-| `super_admin.technicians.memberships_manage` | Memberships manage technicians | low | — |  | platform roles | Memberships manage technicians. |  |
-| `super_admin.technicians.profile_moderate` | Profile moderate technicians | low | — |  | platform roles | Profile moderate technicians. |  |
-| `super_admin.technicians.support_mode` | Support mode technicians | high | — |  | platform roles | Support mode technicians. |  |
-| `super_admin.technicians.merge` | Merge technicians | low | — |  | platform roles | Merge technicians. |  |
-| `super_admin.technicians.delete_request` | Delete request technicians | low | — |  | platform roles | Delete request technicians. |  |
-| `super_admin.technicians.anonymize` | Anonymize technicians | high | — |  | platform roles | Anonymize technicians. |  |
-| `super_admin.technicians.hard_delete` | Hard delete technicians | high | — |  | platform roles | Hard delete technicians. |  |
-| `super_admin.technicians.security_manage` | Security manage technicians | low | — |  | platform roles | Security manage technicians. |  |
+| `super_admin.technicians.view` | View technicians | low | PLATFORM |  | platform roles | View technicians. |  |
+| `super_admin.technicians.manage` | Manage technicians | medium | PLATFORM |  | platform roles | Manage technicians. |  |
+| `super_admin.technicians.pause` | Pause technicians | low | PLATFORM |  | platform roles | Pause technicians. |  |
+| `super_admin.technicians.reactivate` | Reactivate technicians | low | PLATFORM |  | platform roles | Reactivate technicians. |  |
+| `super_admin.technicians.suspend` | Suspend technicians | low | PLATFORM |  | platform roles | Suspend technicians. |  |
+| `super_admin.technicians.restore` | Restore technicians | low | PLATFORM |  | platform roles | Restore technicians. |  |
+| `super_admin.technicians.transfer` | Transfer technicians | low | PLATFORM |  | platform roles | Transfer technicians. |  |
+| `super_admin.technicians.memberships_manage` | Memberships manage technicians | low | PLATFORM |  | platform roles | Memberships manage technicians. |  |
+| `super_admin.technicians.profile_moderate` | Profile moderate technicians | low | PLATFORM |  | platform roles | Profile moderate technicians. |  |
+| `super_admin.technicians.support_mode` | Support mode technicians | high | PLATFORM |  | platform roles | Support mode technicians. |  |
+| `super_admin.technicians.merge` | Merge technicians | low | PLATFORM |  | platform roles | Merge technicians. |  |
+| `super_admin.technicians.delete_request` | Delete request technicians | low | PLATFORM |  | platform roles | Delete request technicians. |  |
+| `super_admin.technicians.anonymize` | Anonymize technicians | high | PLATFORM |  | platform roles | Anonymize technicians. |  |
+| `super_admin.technicians.hard_delete` | Hard delete technicians | high | PLATFORM |  | platform roles | Hard delete technicians. |  |
+| `super_admin.technicians.security_manage` | Security manage technicians | low | PLATFORM |  | platform roles | Security manage technicians. |  |
 
 ### analytics
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.analytics.view` | View analytics | low | — |  | platform roles | View analytics. |  |
-| `super_admin.analytics.manage` | Manage analytics | medium | — |  | platform roles | Manage analytics. |  |
+| `super_admin.analytics.view` | View analytics | low | PLATFORM |  | platform roles | View analytics. |  |
+| `super_admin.analytics.manage` | Manage analytics | medium | PLATFORM |  | platform roles | Manage analytics. |  |
 
 ### plans
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.plans.view` | View plans | low | — |  | platform roles | View plans. |  |
-| `super_admin.plans.manage` | Manage plans | medium | — |  | platform roles | Manage plans. |  |
+| `super_admin.plans.view` | View plans | low | PLATFORM |  | platform roles | View plans. |  |
+| `super_admin.plans.manage` | Manage plans | medium | PLATFORM |  | platform roles | Manage plans. |  |
 
 ### payments
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.payments.view` | View payments | low | — |  | platform roles | View payments. |  |
-| `super_admin.payments.manage` | Manage payments | medium | — |  | platform roles | Manage payments. |  |
+| `super_admin.payments.view` | View payments | low | PLATFORM |  | platform roles | View payments. |  |
+| `super_admin.payments.manage` | Manage payments | medium | PLATFORM |  | platform roles | Manage payments. |  |
 
 ### communications
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.communications.view` | View communications | low | — |  | platform roles | View communications. |  |
-| `super_admin.communications.manage` | Manage communications | medium | — |  | platform roles | Manage communications. |  |
+| `super_admin.communications.view` | View communications | low | PLATFORM |  | platform roles | View communications. |  |
+| `super_admin.communications.manage` | Manage communications | medium | PLATFORM |  | platform roles | Manage communications. |  |
 
 ### marketing
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.marketing.view` | View marketing | low | — |  | platform roles | View marketing. |  |
-| `super_admin.marketing.manage` | Manage marketing | medium | — |  | platform roles | Manage marketing. |  |
+| `super_admin.marketing.view` | View marketing | low | PLATFORM |  | platform roles | View marketing. |  |
+| `super_admin.marketing.manage` | Manage marketing | medium | PLATFORM |  | platform roles | Manage marketing. |  |
 
 ### ai
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.ai.view` | View ai | low | — |  | platform roles | View ai. |  |
-| `super_admin.ai.manage` | Manage ai | high | — |  | platform roles | Manage ai. |  |
+| `super_admin.ai.view` | View ai | low | PLATFORM |  | platform roles | View ai. |  |
+| `super_admin.ai.manage` | Manage ai | high | PLATFORM |  | platform roles | Manage ai. |  |
 
 ### customers
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.customers.view` | View customers | low | — |  | platform roles | View customers. |  |
-| `super_admin.customers.manage` | Manage customers | medium | — |  | platform roles | Manage customers. |  |
+| `super_admin.customers.view` | View customers | low | PLATFORM |  | platform roles | View customers. |  |
+| `super_admin.customers.manage` | Manage customers | medium | PLATFORM |  | platform roles | Manage customers. |  |
 
 ### operations
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.operations.view` | View operations | low | — |  | platform roles | View operations. |  |
-| `super_admin.operations.manage` | Manage operations | medium | — |  | platform roles | Manage operations. |  |
+| `super_admin.operations.view` | View operations | low | PLATFORM |  | platform roles | View operations. |  |
+| `super_admin.operations.manage` | Manage operations | medium | PLATFORM |  | platform roles | Manage operations. |  |
 
 ### support
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.support.view` | View support | low | — |  | platform roles | View support. |  |
-| `super_admin.support.manage` | Manage support | medium | — |  | platform roles | Manage support. |  |
+| `super_admin.support.view` | View support | low | PLATFORM |  | platform roles | View support. |  |
+| `super_admin.support.manage` | Manage support | medium | PLATFORM |  | platform roles | Manage support. |  |
 
 ### system
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.system.manage` | Manage system | medium | — |  | platform roles | Manage system. |  |
+| `super_admin.system.manage` | Manage system | medium | PLATFORM |  | platform roles | Manage system. |  |
 
 ### security
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.security.view` | View security | low | — |  | platform roles | View security. |  |
-| `super_admin.security.manage` | Manage security | medium | — |  | platform roles | Manage security. |  |
+| `super_admin.security.view` | View security | low | PLATFORM |  | platform roles | View security. |  |
+| `super_admin.security.manage` | Manage security | medium | PLATFORM |  | platform roles | Manage security. |  |
 
 ### audit
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.audit.manage` | Manage audit | medium | — |  | platform roles | Manage audit. |  |
+| `super_admin.audit.manage` | Manage audit | medium | PLATFORM |  | platform roles | Manage audit. |  |
 
 ### platform_roles
 
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
-| `super_admin.platform_roles.manage` | Manage platform roles | critical | — | yes | platform roles | Manage platform roles. |  |
+| `super_admin.platform_roles.manage` | Manage platform roles | critical | PLATFORM | yes | platform roles | Manage platform roles. |  |
+
+### tickets
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `super_admin.tickets.remove` | Remove tickets | low | PLATFORM |  | platform roles | Remove tickets. |  |
 

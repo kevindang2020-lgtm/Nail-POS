@@ -137,6 +137,7 @@ export interface PosPaymentTerminalsTable {
   merchant_account_id: string | null; disabled_at: TsNull; disabled_by: string | null; disabled_reason: string | null;
   last_seen_at: TsNull; last_ping_at: TsNull; last_ping_ok: boolean | null; last_transaction_at: TsNull;
   updated_at: TsNull; updated_by: string | null;
+  provisioned_hsn: string | null; verified_at: TsNull;   // (migration 701) the HSN Bolt reported, and when it was last proved
 }
 export interface TenantSettingsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; category: string; settings_json: unknown;
@@ -6455,7 +6456,44 @@ export interface JobsTable {
   traceparent: string | null;   // migration 548 (Phase 11 tracing)
 }
 
+// 674_platform_pos_announcements (+ VI columns): Super Admin platform notices. Missing from DB until Nov 5 2026, which made
+// every builder call on these tables fall back to matching all ~750 table names (and their "x as y" forms) — the
+// communications module then took 20+ minutes to type-check.
+export interface PlatformNoticesTable {
+  id: Generated<string>; title: string | null; message: string; type: Generated<string>; priority: Generated<string>;
+  audience: Generated<string>; surfaces: Generated<string[]>; lifecycle_status: Generated<string>;
+  starts_at: TsNull; ends_at: TsNull; dismissible: Generated<boolean>; requires_ack: Generated<boolean>;
+  content_version: Generated<number>; version: Generated<number>; duplicated_from: string | null;
+  created_by: string | null; updated_by: string | null; published_by: string | null;
+  published_at: TsNull; paused_at: TsNull; archived_at: TsNull; created_at: Generated<Ts>; updated_at: Generated<Ts>;
+  title_vi: string | null; message_vi: string | null; vi_reviewed_by: string | null; vi_reviewed_at: TsNull;
+  english_only: Generated<boolean>;
+}
+export interface PlatformNoticeTargetsTable {
+  id: Generated<string>; notice_id: string; tenant_id: string; branch_id: string | null; target_type: string; created_at: Generated<Ts>;
+}
+export interface PlatformNoticeReceiptsTable {
+  id: Generated<string>; tenant_id: string; notice_id: string; user_id: string; branch_id: string | null;
+  kind: string; content_version: number; created_at: Generated<Ts>;
+}
+export interface PlatformNoticeRevisionsTable {
+  id: Generated<string>; notice_id: string; version: number; action: string; actor_id: string | null;
+  snapshot: unknown; created_at: Generated<Ts>;
+}
+
+// (migration 701) Fiserv written platform validation, append-only (production gate reads the latest approved row)
+export interface PaymentPlatformValidationsTable {
+  id: Generated<string>; provider: string; scope_version: string; environment: string; status: string;
+  fiserv_reference: string | null; evidence_ref: string | null; code_sha: string | null; validated_at: TsNull;
+  approved_by: string | null; recorded_by: string | null; created_at: Generated<Ts>;
+}
+
 export interface DB {
+  payment_platform_validations: PaymentPlatformValidationsTable;
+  platform_notices: PlatformNoticesTable;
+  platform_notice_targets: PlatformNoticeTargetsTable;
+  platform_notice_receipts: PlatformNoticeReceiptsTable;
+  platform_notice_revisions: PlatformNoticeRevisionsTable;
   ai_control_modes: AiControlModesTable;
   workflow_runs: WorkflowRunsTable;
   ai_revenue_attributions: AiRevenueAttributionsTable;
@@ -7276,6 +7314,9 @@ export interface CustomerPaymentMethodsTable {
   id: Generated<string>; tenant_id: string; customer_id: string; gateway: string; token: string; brand: string | null;
   last4: string | null; exp_month: number | null; exp_year: number | null; is_default: boolean; created_at: Ts;
   cardholder_name: string | null; zip_code: string | null; card_type: string | null;
+  // (migration 701) merchant binding + stored-credential consent (hosted iFrame cards only)
+  merchant_account_id: string | null; merchant_id_hash: string | null; provider_profile_id: string | null; provider_acct_id: string | null;
+  token_source: string | null; verified_at: TsNull; consent_version: string | null; consent_scope: string | null; consent_at: TsNull; revoked_at: TsNull;
 }
 export interface CustomerAddressesTable {
   id: Generated<string>; tenant_id: string; customer_id: string; label: string | null; line1: string; line2: string | null;
@@ -7530,6 +7571,9 @@ export interface TenantPaymentConfigTable {
   bolt_base_url: string | null; bolt_api_key_enc: string | null; onboarding_status: string;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   config_version: Generated<number>;   // migration 638 (wave 3 PAYI §168)
+  // migration 701 (Fiserv production gates)
+  fiserv_boarding_reference: string | null; credentials_verified_at: TsNull; production_enabled_at: TsNull; production_enabled_by: string | null;
+  surcharge_enrolled: Generated<boolean>; surcharge_rate_bps: number | null; surcharge_reference: string | null;
 }
 /** A branch's own merchant account (migration 638, wave 3 PAYI §7/§10) — the tenant default stays tenant_payment_config. */
 export interface PaymentMerchantAccountsTable {
@@ -7539,6 +7583,10 @@ export interface PaymentMerchantAccountsTable {
   bolt_base_url: string | null; bolt_api_key_enc: string | null; status: Generated<string>; config_version: Generated<number>;
   last_validated_at: TsNull; last_validation_error: string | null; created_by: string | null; updated_by: string | null;
   created_at: Generated<Date>; updated_at: Generated<Date>;
+  onboarding_status: Generated<string>;
+  // migration 701 (Fiserv production gates)
+  fiserv_boarding_reference: string | null; credentials_verified_at: TsNull; production_enabled_at: TsNull; production_enabled_by: string | null;
+  surcharge_enrolled: Generated<boolean>; surcharge_rate_bps: number | null; surcharge_reference: string | null;
 }
 export interface PaymentGatewayEventsTable {
   id: Generated<string>; tenant_id: string | null; branch_id: string | null; payment_gateway_id: string | null;
@@ -7593,6 +7641,8 @@ export interface PaymentTerminalLeasesTable {
   holder: string;
   acquired_at: Ts;
   expires_at: Ts;
+  ticket_id: string | null;           // (migration 703) the ticket being charged, so the POS can find it
+  cancel_requested_at: TsNull;        // (migration 703) POS Cancel recorded; the holding server sends it to the terminal
 }
 
 export interface PaymentSettlementsTable {

@@ -2,7 +2,7 @@
 // "Pay on Clover Compact" drives the SAME terminal path as the customer display, branch-scoped and idempotent per attempt.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { InMemoryTerminalLeases } from '@aipowersalon/checkout';
+import { InMemoryTerminalLeases, KyselyTerminalLeases } from '@aipowersalon/checkout';
 import { PaymentGatewayResolver } from '@aipowersalon/payments';
 import { TerminalCaptureService } from './terminal-capture.service';
 import { posTerminalResult } from './pos-terminal-pay.controller';
@@ -115,5 +115,25 @@ describe('POS → Clover Compact (captureForPos)', () => {
     expect((await svc(device(seen)).captureForPos(scope, tk, { attemptKey: 'x' })).outcome).toBe('skipped');
     expect((await svc(device(seen)).captureForPos({ ...scope, userId: null }, tk, { attemptKey: 'attempt-0010', terminalId: 'term_b' })).outcome).toBe('skipped');
     expect(seen).toHaveLength(0);
+  });
+
+  it('Cancel reaches the terminal even when it lands on ANOTHER API server (lease relay, migration 703)', async () => {
+    // two service instances = two API replicas, sharing only the database (real leases, not in-memory)
+    const tk = await ticket(); let release!: (v: any) => void; let cancelled = '';
+    const charging = new TerminalCaptureService(db, () => ({ name: 'fake', ping: async () => true, display: async () => {},
+      cancel: async (hsn: string) => { cancelled = hsn; release({ approved: false, declined: true, respstat: 'C', respText: 'Cancelled' }); },
+      authCard: () => new Promise((r) => { release = r; }) }) as any, (x: string) => x, undefined, new KyselyTerminalLeases(db), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, secrets));
+    charging.cancelPollMs = 50;
+    const other = new TerminalCaptureService(db, (() => ({})) as any, (x: string) => x, undefined, new KyselyTerminalLeases(db), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, secrets));
+    const run = charging.captureForPos(scope, tk, { attemptKey: 'attempt-relay1', terminalId: 'term_b' });
+    for (let i = 0; i < 100 && (await q(`select ticket_id from payment_terminal_leases where tenant_id = $1 and terminal_id = 'term_b'`, [T]))[0]?.ticket_id !== tk; i++) await new Promise((r) => setTimeout(r, 50));
+    expect((await q(`select ticket_id from payment_terminal_leases where tenant_id = $1 and terminal_id = 'term_b'`, [T]))[0]?.ticket_id).toBe(tk);
+    expect(await other.cancelForPos({ tenantId: T, branchId: BR2 }, tk)).toMatchObject({ cancelled: false });   // another branch cannot cancel it
+    expect(await other.cancelForPos({ tenantId: T, branchId: BR }, tk)).toEqual({ cancelled: true, relayed: true });
+    const o: any = await run;
+    expect(cancelled).toBe('HSN-B');                       // sent on the CHARGING server's session
+    expect(o.outcome).toBe('declined');
+    expect(await q(`select 1 from payment_terminal_leases where tenant_id = $1 and terminal_id = 'term_b'`, [T])).toHaveLength(0);   // lease released
+    expect(await other.cancelForPos({ tenantId: T, branchId: BR }, tk)).toMatchObject({ cancelled: false });   // nothing in flight any more
   });
 });

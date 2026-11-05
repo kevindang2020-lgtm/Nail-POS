@@ -300,7 +300,16 @@ const MAP: Partial<Record<string, (e: DomainEvent<any>) => Client | Client[]>> =
   [DOMAIN_EVENTS.CUSTOMER_PHONE_ACTIVATED]:      (e) => ({ event: EVENTS.customerProfileUpdated, payload: { customerId: e.aggregateId } }),
   [DOMAIN_EVENTS.CUSTOMER_PHONE_SYNC_FAILED]:    (e) => ({ event: EVENTS.customerProfileUpdated, payload: { customerId: e.aggregateId } }),
   [DOMAIN_EVENTS.CUSTOMER_PHONE_SYNC_COMPLETED]: (e) => ({ event: EVENTS.customerProfileUpdated, payload: { customerId: e.aggregateId } }),
+  // Platform Announcements: every user of THAT salon refetches its own snapshot (owner room, branch-less room, and each
+  // branch the notice targets) — ids + version only, never the message text
+  [DOMAIN_EVENTS.ANNOUNCEMENT_PUBLISHED]: (e) => announcementClients(e),
+  [DOMAIN_EVENTS.ANNOUNCEMENT_CHANGED]:   (e) => announcementClients(e),
 };
+
+function announcementClients(e: DomainEvent<any>): Client[] {
+  const p = e.payload ?? {};
+  return [communityClient(e, EVENTS.platformAnnouncementUpdated, { announcementId: p.announcementId ?? e.aggregateId, version: p.version ?? null, action: p.action ?? null })];
+}
 
 /** A follow-up task change goes to the branch board and to the technician who owns the task. */
 function taskFanOut(e: DomainEvent<any>): Client[] {

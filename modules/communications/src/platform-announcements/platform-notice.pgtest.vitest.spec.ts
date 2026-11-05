@@ -43,7 +43,7 @@ describe('Platform Announcements — targeting decided by the server', () => {
     await expect(svc.publish(admin(), n.id, { expectedVersion: n.version })).rejects.toMatchObject({ code: 'PLATFORM_ANNOUNCEMENT_CONFIRMATION_REQUIRED' });   // §120
     await svc.publish(admin(), n.id, { expectedVersion: n.version, confirm: true });
     for (const [t, b] of [[TA, A1], [TB, B1], [TC, C1]] as const) expect(await ids(t, b)).toContain(n.id);
-    expect(new Set(events.filter((e) => e.eventType === E.PLATFORM_ANNOUNCEMENT_PUBLISHED).map((e) => e.tenantId))).toEqual(new Set([TA, TB, TC]));
+    expect(new Set(events.filter((e) => e.eventType === E.ANNOUNCEMENT_PUBLISHED).map((e) => e.tenantId))).toEqual(new Set([TA, TB, TC]));
   });
   it('§141 / §164 a selected-tenant message: Tenant A receives it, Tenant B does not — not in its snapshot, not in its events', async () => {
     const n = await make({ audience: 'selected_tenants', tenantIds: [TA], message: 'Your payment setup needs one more step.' });
@@ -159,7 +159,7 @@ describe('Platform Announcements — security, versions, audit, history', () => 
   it('§162 repeated publish clicks make one publication (one event per salon, one revision)', async () => {
     const n = await make({ audience: 'selected_tenants', tenantIds: [TB] });
     for (let i = 0; i < 5; i++) await svc.publish(admin(), n.id, { expectedVersion: n.version });
-    expect(events.filter((e) => e.eventType === E.PLATFORM_ANNOUNCEMENT_PUBLISHED)).toHaveLength(1);
+    expect(events.filter((e) => e.eventType === E.ANNOUNCEMENT_PUBLISHED)).toHaveLength(1);
     expect((await q(`select count(*)::int c from platform_notice_revisions where notice_id = $1 and action = 'published'`, [n.id]))[0].c).toBe(1);
   });
   it('§93 / §59 schedule validation: end before start, an end already passed, maintenance with no end', async () => {
