@@ -228,7 +228,13 @@ export class CustomersService {
 
   // ---- import / export ----
   async export(ctx: CustomersContext, f: CustomerFilters = {}): Promise<{ format: 'csv'; filename: string; csv: string }> {
-    this.need(ctx, 'pos.customers.export'); const { headers, rows } = await this.repo.exportRows(ctx, f); const csv = customersToCsv(headers, rows);
+    this.need(ctx, 'pos.customers.export'); const ex = await this.repo.exportRows(ctx, f);
+    // F1 §55: spend leaves the building only with financial access — otherwise the column is omitted, not zero-filled
+    const canSeeFinancial = hasPermission(ctx as any, 'pos.customers.financial.view') || hasPermission(ctx as any, 'pos.reports.view');
+    const drop = canSeeFinancial ? -1 : ex.headers.indexOf('TotalSpend');
+    const headers = drop < 0 ? ex.headers : ex.headers.filter((_, i) => i !== drop);
+    const rows = drop < 0 ? ex.rows : ex.rows.map((r) => r.filter((_, i) => i !== drop));
+    const csv = customersToCsv(headers, rows);
     this.log(ctx, 'pos_customers_exported', 'pos_customers_export', undefined, undefined, undefined, { rows: rows.length, filters: f }); return { format: 'csv', filename: 'pos-customers.csv', csv };
   }
   // ===== Bulk customer import (CSV) — into the tenant customers table, which IS the main Postgres the tenant's AI

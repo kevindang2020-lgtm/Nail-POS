@@ -330,7 +330,7 @@ export function detectDuplicates(rows: DuplicateCandidate[]): DuplicateGroup[] {
 }
 
 export function customersToCsv(headers: string[], rows: (string | number)[][]): string {
-  const esc = (v: string | number) => { let s = String(v ?? ''); if (/^[=+\-@]/.test(s)) s = "'" + s; if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"'; return s; };
+  const esc = (v: string | number) => { let s = String(v ?? ''); if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;   /* F1 §55: OWASP CSV-injection leaders incl. tab / CR */ if (/[",\n]/.test(s)) s = '"' + s.replace(/"/g, '""') + '"'; return s; };
   return [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n');
 }
 

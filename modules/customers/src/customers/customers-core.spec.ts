@@ -130,6 +130,14 @@ const owner = (over: Partial<CustomersContext> = {}): CustomersContext => ({ ten
   ok('import commit creates a customer', imp.created === 1 && imp.duplicatesSkipped === 0);
   await throwsAsync('import with no CSV is rejected', () => svc().import(owner()), ValidationError);
   ok('csv formula safe', customersToCsv(['A'], [['=cmd'], ['ok']]).includes("'=cmd"));
+  // F1 §55 (Nov 5 2026): tab / CR leaders are neutralised too; spend is omitted from an export without financial access
+  ok('csv formula safe: tab and CR leaders', customersToCsv(['A'], [['\t=cmd'], ['\r=cmd']]).split('\n').slice(1).every((l) => l.replace(/^"/, '').startsWith("'")));
+  {
+    const noMoney = await svc().export(owner({ role: 'MANAGER', permissions: ['pos.customers.view', 'pos.customers.export'] }), {});
+    ok('export without financial access omits TotalSpend', !noMoney.csv.split('\n')[0].includes('TotalSpend'));
+    const withMoney = await svc().export(owner({ role: 'MANAGER', permissions: ['pos.customers.view', 'pos.customers.export', 'pos.customers.financial.view'] }), {});
+    ok('export with financial access keeps TotalSpend', withMoney.csv.split('\n')[0].includes('TotalSpend'));
+  }
 
   // audit base
   const sV = svc(); await sV.getState(owner());
