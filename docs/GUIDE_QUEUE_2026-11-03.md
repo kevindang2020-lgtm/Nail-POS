@@ -291,6 +291,8 @@ Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
 - §38: RFM uses Monetary (top-20 % spenders) and gives never-visited customers their own segment; names translated in VI.
 - §31 / §64: the profile drawer is an overlay (list, filters, page and scroll stay); focus returns to the opener on close.
 - §60: archive / restore commit customer.updated (changedFields [status], ids only) with the row — other screens refresh at once (they waited for the 45 s poll).
+- §53: Add Customer is idempotent (one key per submission; a retry replays, never a second profile).
+- Platform gates: three red common-suite gates from Nov 4–5 units (migration 802 review, pricing-impact tenant predicate, new whole-row reads) fixed — apps/api src/common 1,519 tests pass.
 - §16: an analytics read that fails marks that card "unavailable" (with retry on the next refresh) and the list keeps working. It was built from the visible page before.
 
 Remaining F1 work:
