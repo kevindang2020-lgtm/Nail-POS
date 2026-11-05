@@ -193,12 +193,34 @@ describe('AI Business — system checks', () => {
     expect((await bc.check(ctx(), 'reports') as any)).toMatchObject({ reused: true, id: h.id });
     expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(before);
   });
-  it('HL-02 alerts: no automatic evaluation and SMS / email rules without delivery are reported', async () => {
+  it('HL-02 alerts: automatic evaluation (A2, Nov 5) and SMS / email rules without delivery are reported', async () => {
     const h: any = await bc.check(ctx(), 'alerts');
     const by = Object.fromEntries(h.checks.map((x: any) => [x.key, x]));
-    expect(by.automatic_evaluation.state).toBe('UNAVAILABLE');
+    expect(['PASSED', 'WARNING']).toContain(by.automatic_evaluation.state);   // a real state now: overdue active rules → WARNING
+    expect(by.automatic_evaluation.detail).toHaveProperty('lastAutomaticAt');
     expect(by.delivery_channels).toMatchObject({ state: 'WARNING', count: 1 });
     expect(by.rules_evaluated.state).toBe('PASSED');
     expect(await code(bc.check(ctx({ permissions: [] }), 'alerts'))).toBe('PERMISSION_DENIED');
+  });
+});
+
+// A2 (Nov 5 2026): the background evaluator — due rules run as their creator, recorded 'scheduled', once per their period
+describe('scheduled evaluation', () => {
+  it('evaluates due rules as their creator (scheduled), skips rules checked within their period, records a departed owner as failed', async () => {
+    await q(`update ai_business_alerts set last_checked_at = now() where tenant_id = $1`, [T]);   // everything just checked
+    const r = await alertsSvc.create(ctx(), { title: 'Hourly sales', metricId: 'net_sales', operator: 'lt', threshold: 1000, preset: 'today', minSampleSize: 1, frequency: 'hourly' } as any);
+    const perms = (role: string) => (role === 'OWNER' ? PERMS : []);
+    const s1 = await bc.scheduledSweep(perms);
+    expect(s1).toEqual({ evaluated: 1, failed: 0 });
+    const ev = await q(`select source, state_change from ai_business_alert_events where alert_id = $1 order by evaluated_at desc limit 1`, [r.id]);
+    expect(ev[0].source).toBe('scheduled');
+    expect(await bc.scheduledSweep(perms)).toEqual({ evaluated: 0, failed: 0 });   // checked within the hour
+    await q(`update ai_business_alerts set last_checked_at = now() - interval '2 hours' where id = $1`, [r.id]);
+    await q(`update users set status = 'inactive' where id = $1`, [OWNER]);
+    try {
+      expect(await bc.scheduledSweep(perms)).toEqual({ evaluated: 0, failed: 1 });
+      const f = await q(`select source, state_change, reason from ai_business_alert_events where alert_id = $1 order by evaluated_at desc limit 1`, [r.id]);
+      expect(f[0]).toMatchObject({ source: 'scheduled', state_change: 'failed' }); expect(f[0].reason).toMatch(/no longer works here/);
+    } finally { await q(`update users set status = 'active' where id = $1`, [OWNER]); }
   });
 });

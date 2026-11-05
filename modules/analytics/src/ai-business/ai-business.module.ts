@@ -34,6 +34,7 @@ import { OwnerService } from '../owner/owner.service';
 import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/database';
 import { BusinessCenter } from './business-center';
 import { BusinessCenterController, BUSINESS_CENTER } from './business-center.controller';
+import { BusinessAlertsScheduleJob } from './business-alerts-schedule.job';
 
 @Module({
   imports: [ReportsModule, OwnerModule, AiModule],
@@ -112,6 +113,7 @@ import { BusinessCenterController, BUSINESS_CENTER } from './business-center.con
         (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales }) : null),
       inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService],
     },
+    BusinessAlertsScheduleJob,   // A2 (Nov 5 2026): the background evaluator
   ],
   exports: [AiBusinessService, AiBusinessRevenueService, AiBusinessBriefService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiBusinessAssistantService, AiBusinessSavedQuestionsService, AiBusinessAlertsService, AiBusinessReportsService],
 })

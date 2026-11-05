@@ -17,3 +17,4 @@ export { isPlatformPrincipal, isCustomerPrincipal, isDevicePrincipal, isStaffPri
 export { WORKER_GRANTS, workerPrincipal, isWorkerPrincipal, invalidWorkerGrant, type WorkerJob, type WorkerPrincipal } from './worker-principals';
 export * from './feature-entitlement';   // BUILD_PLAN Phase 12 (#13): the ONE entitlement decision + service
 export * from './request-schema';   // BUILD_PLAN Phase 12 (#17): the ONE request-body validation mechanism
+export { POS_ROUTE_KEY_ALIASES } from './permission-aliases.generated';   // Nov 5 2026: the scheduled AI Business evaluator builds a role's session keys

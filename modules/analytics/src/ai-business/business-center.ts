@@ -292,7 +292,7 @@ export class BusinessCenter {
   }
 
   /** Evaluate now — the existing evaluator (canonical metrics, minimum sample), recorded with the exact days and the state change */
-  async alertEvaluate(ctx: AiBusinessContext, id: string) {
+  async alertEvaluate(ctx: AiBusinessContext, id: string, source: 'manual' | 'scheduled' = 'manual') {
     this.need(ctx);
     if (!isUuid(id)) throw new BusinessCenterError('Alert not found.', 'BC_ALERT_NOT_FOUND', 404);
     const T = ctx.tenantId;
@@ -308,8 +308,10 @@ export class BusinessCenter {
       const reason = `Could not read the numbers: ${String((e as Error)?.message ?? e).slice(0, 300)}`;
       const row = (await sql<Row>`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, period_from, period_to, value, sample_size,
           min_sample_size, sample_ok, triggered, state_change, reason, actor_user_id)
-        values (${T}, ${a.branch_id ?? null}, ${id}::uuid, 'manual', ${a.metric_id}, ${a.operator}, ${a.threshold}, ${a.preset}, ${range.from}::date, ${range.to}::date, null, null,
+        values (${T}, ${a.branch_id ?? null}, ${id}::uuid, ${source}, ${a.metric_id}, ${a.operator}, ${a.threshold}, ${a.preset}, ${range.from}::date, ${range.to}::date, null, null,
           ${N(a.min_sample_size)}, false, false, 'failed', ${reason}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id, evaluated_at`.execute(this.db)).rows[0];
+      // a failed run still counts as a check (the schedule does not retry it every few minutes)
+      await sql`update ai_business_alerts set last_checked_at = now() where tenant_id = ${T} and id = ${id}::uuid`.execute(this.db);
       return { alertId: id, metricId: a.metric_id, operator: a.operator, threshold: N(a.threshold), preset: a.preset, value: null, sampleSize: null, sampleOk: false, triggered: false,
         reason, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: 'failed', period: { from: range.from, to: range.to, timeZone: tz } };
     }
@@ -320,11 +322,41 @@ export class BusinessCenter {
       const change = !ev.sampleOk ? 'not_evaluated' : ev.triggered && !prev?.triggered ? 'triggered' : !ev.triggered && prev?.triggered ? 'recovered' : 'unchanged';
       const row = (await sql<Row>`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, period_from, period_to, value, sample_size,
           min_sample_size, sample_ok, triggered, state_change, reason, actor_user_id)
-        values (${T}, ${a.branch_id ?? null}, ${id}::uuid, 'manual', ${ev.metricId}, ${ev.operator}, ${ev.threshold}, ${ev.preset}, ${range.from}::date, ${range.to}::date, ${ev.value},
+        values (${T}, ${a.branch_id ?? null}, ${id}::uuid, ${source}, ${ev.metricId}, ${ev.operator}, ${ev.threshold}, ${ev.preset}, ${range.from}::date, ${range.to}::date, ${ev.value},
           ${ev.sampleSize}, ${N(a.min_sample_size)}, ${ev.sampleOk}, ${ev.triggered}, ${change}, ${ev.reason}, ${isUuid(ctx.userId) ? ctx.userId : null})
         returning id, evaluated_at`.execute(trx)).rows[0];
       return { ...ev, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: change, period: { from: range.from, to: range.to, timeZone: tz } };
     });
+  }
+
+  /** A2 (Nov 5 2026) — the background evaluator: every active rule is evaluated on its own schedule (hourly / daily) as the
+   *  person who created it, with that person's role permissions (a rule whose owner can no longer use AI Business, or no
+   *  longer works here, is recorded as a failed evaluation and not retried until its next turn). Each run is the same
+   *  evaluation as "Evaluate now", recorded with source 'scheduled'. At most `limit` rules per sweep, oldest check first. */
+  async scheduledSweep(permissionsForRole: (role: string) => string[], limit = 50): Promise<{ evaluated: number; failed: number }> {
+    const due = (await sql<Row>`select a.id, a.tenant_id, a.branch_id, a.created_by_user_id, u.role, u.status as user_status, u.tenant_id as user_tenant
+      from ai_business_alerts a left join users u on u.id = a.created_by_user_id
+      where a.active and a.archived_at is null
+        and (a.last_checked_at is null or a.last_checked_at < now() - (case when a.frequency = 'hourly' then interval '1 hour' else interval '24 hours' end))
+      order by a.last_checked_at asc nulls first, a.id limit ${Math.max(1, Math.min(500, limit))}`.execute(this.db)).rows;
+    let evaluated = 0, failed = 0;
+    for (const a of due) {
+      const T = String(a.tenant_id);
+      const perms = a.role ? permissionsForRole(String(a.role)) : [];
+      const active = !!a.user_tenant && String(a.user_tenant) === T && String(a.user_status ?? 'active') === 'active';
+      const ctx: AiBusinessContext = { tenantId: T, branchId: a.branch_id ? String(a.branch_id) : '', userId: String(a.created_by_user_id), role: String(a.role ?? ''), permissions: perms };
+      if (!active || !has(ctx, 'pos.ai_business.view')) {
+        const reason = !active ? 'Not evaluated: the person who created this rule no longer works here — edit the rule to take it over.' : 'Not evaluated: the rule\'s owner can no longer use AI Business.';
+        await sql`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, value, sample_size, min_sample_size, sample_ok, triggered, state_change, reason)
+          select a.tenant_id, a.branch_id, a.id, 'scheduled', a.metric_id, a.operator, a.threshold, a.preset, null, null, a.min_sample_size, false, false, 'failed', ${reason}
+          from ai_business_alerts a where a.id = ${String(a.id)}::uuid`.execute(this.db);
+        await sql`update ai_business_alerts set last_checked_at = now() where id = ${String(a.id)}::uuid`.execute(this.db);
+        failed++; continue;
+      }
+      const r = await this.alertEvaluate(ctx, String(a.id), 'scheduled');
+      if (r.stateChange === 'failed') failed++; else evaluated++;
+    }
+    return { evaluated, failed };
   }
 
   async alertAcknowledge(ctx: AiBusinessContext, eventId: string, b: { note?: unknown }) {
@@ -428,7 +460,11 @@ export class BusinessCenter {
         from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`);
       checks.push({ key: 'rules_readable', component: 'rules', state: N(r.active) ? 'PASSED' : 'INSUFFICIENT_DATA', count: N(r.active) });
       checks.push({ key: 'rules_evaluated', component: 'evaluation', state: N(r.stale) ? 'WARNING' : 'PASSED', count: N(r.stale), detail: { never: N(r.never) } });
-      checks.push({ key: 'automatic_evaluation', component: 'evaluation', state: 'UNAVAILABLE' });
+      // A2 (Nov 5 2026): the background evaluator — an active rule overdue past twice its own period means it is not running
+      const auto = await one(sql<Row>`select count(*) filter (where a.active and (a.last_checked_at is null or a.last_checked_at < now() - (case when a.frequency = 'hourly' then interval '2 hours' else interval '48 hours' end)))::int as overdue,
+          (select max(e.evaluated_at) from ai_business_alert_events e where e.tenant_id = ${T} and e.source = 'scheduled') as last_auto
+        from ai_business_alerts a where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`);
+      checks.push({ key: 'automatic_evaluation', component: 'evaluation', state: process.env.AI_BUSINESS_ALERTS_SCHEDULE === 'off' ? 'UNAVAILABLE' : N(auto.overdue) ? 'WARNING' : 'PASSED', count: N(auto.overdue), detail: { lastAutomaticAt: iso(auto.last_auto) } });
       checks.push({ key: 'sample_guard', component: 'rules', state: N(r.no_sample) ? 'WARNING' : 'PASSED', count: N(r.no_sample) });
       checks.push({ key: 'delivery_channels', component: 'notifications', state: N(r.channel_rules) ? 'WARNING' : 'PASSED', count: N(r.channel_rules) });
     }
