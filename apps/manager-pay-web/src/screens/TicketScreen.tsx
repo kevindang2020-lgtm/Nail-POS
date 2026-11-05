@@ -301,7 +301,7 @@ export function TicketScreen({ ticketId }: { ticketId: string }) {
                       <div className="muted" style={{ marginBottom: 4 }}>Partial refund — which services does it cover? Technician commission on the selected services will be reversed for review.</div>
                       {(detail?.services ?? []).map((sv) => (
                         <label key={sv.serviceLineId} style={{ display: 'flex', gap: 8, alignItems: 'center', padding: '3px 0' }}>
-                          <input type="checkbox" checked={refundLines.has(sv.serviceLineId)} onChange={(e) => setRefundLines((prev) => { const n = new Set(prev); e.target.checked ? n.add(sv.serviceLineId) : n.delete(sv.serviceLineId); return n; })} />
+                          <input type="checkbox" checked={refundLines.has(sv.serviceLineId)} onChange={(e) => setRefundLines((prev) => { const n = new Set(prev); if (e.target.checked) n.add(sv.serviceLineId); else n.delete(sv.serviceLineId); return n; })} />
                           <span>{sv.serviceName} · {formatCents(sv.priceCents)}</span>
                         </label>
                       ))}

@@ -5,7 +5,6 @@ import { useOwnerStream } from '../api/useOwnerStream';
 import { useAuth } from '../auth/AuthContext';
 import { useOwnerNav } from '../shell/nav';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // OwnerHomeScreen — Module 1 (Home Dashboard). Renders ONLY real backend data from GET /owner/dashboard/state:
 // gold "Today's Revenue" hero + trend sparkline, 6 KPI cards, and a 7-day revenue line chart. No mock values; on

@@ -6,7 +6,6 @@
     "modules/checkout/src/checkout/checkout.kysely.repository.ts": "card_pin_hash is read to verify a gift-card PIN at redemption; resolveCrossTenantGiftCard's pinHash is consumed by redeemGift — CheckoutService.giftCardLookup maps the card to { reference, cardNumberMasked, balanceCents, status } only",
     "modules/checkout/src/skip-line-checkout/skip-line-checkout.repository.ts": "savedCardToken: the processor token is handed to the gateway charge in SkipLineCheckoutService.pay and never returned",
     "modules/memberships/src/membership-renewal-charge.ts": "defaultSavedCard: the processor token is passed to authorizeAndCapture for the renewal charge; the job result carries only the processor response",
-    "modules/payments/src/customer-payments/customer-payments.repository.ts": "getToken: the saved card's processor token is passed to the charge in CustomerPaymentsService.pay; list views select brand/last4/expiry only",
     "modules/payments/src/hardware-payment/hardware-payment.kysely.repository.ts": "getActivePaymentMethod / addPaymentMethod carry gateway_payment_method_token for the autopay charge; the service returns PaymentMethodView (no token) — Phase 12 fix, hardware-payment.service.vitest.spec.ts",
     "modules/super-admin/src/super-admin-staff/global-tech-admin.service.ts": "duplicates() groups on coalesce(phone_hash, email) as a key that is never returned (groups carry profile id / code / name / status only); detail() selects explicit columns (Phase 12); merge() (WF merge Oct 12 2026) reads the duplicate's phone_hash / email_normalized only to hand them to the surviving profile inside the transaction — never returned",
     "modules/identity/src/auth/biometric-credentials.ts": "BUILD_PLAN Phase 13 D: verifyAndRotate reads device_biometric_credentials.secret_hash / previous_secret_hash / device_key_hash only to compare them in-process (timing-safe) with the hash of what the device presented; VerifyResult carries the credential id, user, tenant, device and claims — never a hash — and the controller answers with the login body + the NEW secret, which exists only in that one response"
@@ -187,7 +186,6 @@
     "modules/identity/src/auth/super-admin-login-otp.kysely.ts": 2,
     "modules/identity/src/customer-security/customer-security.controller.ts": 1,
     "modules/memberships/src/membership-renewal-charge.ts": 1,
-    "modules/payments/src/customer-payments/customer-payments.repository.ts": 1,
     "modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.repository.ts": 1,
     "modules/payments/src/hardware-payment/hardware-payment.kysely.repository.ts": 2,
     "modules/payments/src/payments/payment-gateway.resolver.ts": 9,

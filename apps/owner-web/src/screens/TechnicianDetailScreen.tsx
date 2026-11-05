@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { ownerStaffApi, type OwnerTechnicianDetail, type OwnerPeriod } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { PeriodSelector } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // TechnicianDetailScreen — Module 4 drill-in. Real per-technician metrics from /owner/staff/:id/performance.
 const money = (c: number) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format((c || 0) / 100);

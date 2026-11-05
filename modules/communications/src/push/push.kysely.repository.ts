@@ -34,6 +34,7 @@ export class KyselyPushRepository implements PushRepositoryPort {
   async revokeToken(token: string): Promise<void> {
     await this.db.updateTable('device_push_tokens').set({ revoked_at: new Date() as any, updated_at: new Date() as any } as any).where('token', '=', token).execute();
   }
+  // tenant review (Nov 2026): one user's own device tokens (user_id is platform-unique); revoke paths are keyed to ctx.userId
   async activeTokensForUser(userId: string): Promise<PushTokenRow[]> {
     const rows = await this.db.selectFrom('device_push_tokens')
       .select(['id', 'platform', 'token', 'app', 'updated_at'])

@@ -3,7 +3,7 @@
 // (the openPayroll() wrapping), silently breaks a whole module. Verifies each row calls the correct nav fn, the Settings
 // panel expands and loads its snapshot, and Logout confirms before logging out.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 const nav = vi.hoisted(() => ({
   go: vi.fn(), openProfile: vi.fn(), openPayroll: vi.fn(), openCustomers: vi.fn(), openInventory: vi.fn(),

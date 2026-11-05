@@ -3,7 +3,7 @@ import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { ownerStaffApi, type OwnerStaffPerformanceState, type OwnerStaffAttendance, type OwnerPeriod } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { PeriodSelector } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // StaffPerformanceScreen — Module 4. Technicians tab = top-tech table (services/sales/rating) + Today's Snapshot
 // (total staff / utilization / total commission); Attendance tab = scheduled/clocked-in/break/off/absent tiles.

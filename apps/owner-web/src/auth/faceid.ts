@@ -9,7 +9,6 @@
 // WebAuthn's signature is verified server-side. Neither path can mint a session on the client.
 import { faceIdState, signInWithNativeFaceId, enrollNativeFaceId, clearNativeFaceId, disableNativeFaceId } from './native-faceid';
 import { signInWithFaceId as webSignIn, enrollFaceId as webEnroll, isFaceIdAvailable as webAvailable } from '../api/webauthn';
-import { loadNativeToken } from './native-auth';
 import { api } from '../api/client';
 
 export type FaceIdMode = 'native' | 'web' | 'none';

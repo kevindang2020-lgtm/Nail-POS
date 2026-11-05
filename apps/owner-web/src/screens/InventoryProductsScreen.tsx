@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerInventoryApi, type OwnerInventoryOverviewResp } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonCards } from '../components/OwnerSkeleton';
 
 // Inventory & Products — Module 8 (read surface). Stock health + valuation aggregated over the canonical inventory
 // tables, scoped to the owner's branches. Valuation shows "—" when the signed-in user lacks finance permission (the

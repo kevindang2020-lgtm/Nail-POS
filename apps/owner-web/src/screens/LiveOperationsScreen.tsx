@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerStream } from '../api/useOwnerStream';
 import { ownerLiveApi, type OwnerLiveOperationsResp } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // Live Operations — Module 2. Read-only owner view of the live floor for the selected branch (or all locations).
 // Every number comes from the SAME canonical POS records (pos_queue_items / tickets / pos_tech_appointments), scoped

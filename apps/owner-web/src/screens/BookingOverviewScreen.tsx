@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { ownerBookingsApi, type OwnerBookingOverview, type OwnerAppointmentListItem } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonBlocks } from '../components/OwnerSkeleton';
 
 // BookingOverviewScreen — Module 3. Real data from GET /owner/bookings/overview: status donut
 // (completed/cancelled/no-show + remaining), a Booking Insights donut (booking mix by source), 7-day bookings trend,

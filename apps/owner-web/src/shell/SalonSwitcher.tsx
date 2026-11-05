@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { useOwnerSalon, type PortfolioSalon } from './OwnerSalonContext';
 
 // SalonSwitcher — the control that makes one owner account work across many salons.

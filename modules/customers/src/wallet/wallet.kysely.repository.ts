@@ -14,19 +14,19 @@ export class KyselyWalletLedgerRepository implements WalletLedgerPort {
 
   async resolveCustomerId(tenantId: string, userId: string): Promise<string | null> {
     const row = await this.db.selectFrom('customers').select('id')
-      .where('user_id', '=', userId).where('archived_at', 'is', null).executeTakeFirst();
+      .where('tenant_id', '=', tenantId).where('user_id', '=', userId).where('archived_at', 'is', null).executeTakeFirst();
     return (row as any)?.id ?? null;
   }
 
   async balance(tenantId: string, customerId: string): Promise<number> {
     const row = await this.db.selectFrom('customer_wallet_ledger').select((eb) => eb.fn.sum<string>('amount_cents').as('s'))
-      .where('customer_id', '=', customerId).executeTakeFirst();
+      .where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).executeTakeFirst();
     return Number((row as any)?.s ?? 0);
   }
 
   async transactions(tenantId: string, customerId: string, limit: number): Promise<WalletEntry[]> {
     const rows = await this.db.selectFrom('customer_wallet_ledger').select(['id', 'amount_cents', 'entry_type', 'currency', 'reference', 'created_at'])
-      .where('customer_id', '=', customerId).orderBy('created_at', 'desc').limit(limit).execute();
+      .where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).orderBy('created_at', 'desc').limit(limit).execute();
     return (rows as any[]).map(toEntry);
   }
 

@@ -6,7 +6,6 @@
 import { useEffect, useState } from 'react';
 import { techApi } from '../api/techApi';
 import { useTechNav } from '../shell/nav';
-import { FiChevronDown } from 'react-icons/fi';
 type Item = { ticketId: string; serviceName: string; customerName: string; completedAt: string | null; rating: number | null; lineTotalCents: number };
 
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() || '·';

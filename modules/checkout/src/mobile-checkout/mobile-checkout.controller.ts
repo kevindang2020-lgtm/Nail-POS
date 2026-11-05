@@ -5,7 +5,7 @@ import { Idempotent } from '@aipowersalon/database/nest';   // Constitution 5 §
 import { type Ctx } from '@aipowersalon/permissions';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';
-import type { TapToPayCapabilityView, MobileHeartbeatResult, MobileDeviceStatusResult, MobileActiveClaim, MobilePaymentPhoneStatus, MobileSendToDeviceResult, LockResult as ContractLockResult, MobileCashTenderResult, MobileAttemptRecoveryView, MobileAttemptVerifyResult, MobilePaymentHistoryResult, MobilePaymentsReport } from '@aipowersalon/api-contracts/tenant';   // the wire contracts (typing ratchet)
+import type { TapToPayCapabilityView, MobileHeartbeatResult, MobileDeviceStatusResult, MobileActiveClaim, MobilePaymentPhoneStatus, MobileSendToDeviceResult, LockResult as ContractLockResult, MobileCashTenderResult, MobileAttemptRecoveryView, MobileAttemptVerifyResult, MobilePaymentHistoryResult, MobilePaymentsReport, MobilePaymentAttemptView } from '@aipowersalon/api-contracts/tenant';   // the wire contracts (typing ratchet)
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { MobileCheckoutService } from './mobile-checkout.service';
 import type { MobileQueueFilter, MobileQueueSort } from './mobile-checkout-queue';
@@ -373,7 +373,7 @@ export class MobileCheckoutController {
   /** Recent payment-attempt history across all tickets (History tab). */
   @Get('payment-attempts')
   @RequirePermission('mobile_checkout.view_history')
-  recentAttempts(@Req() req: any, @Query() q: any) {
+  recentAttempts(@Req() req: any, @Query() q: any): Promise<MobilePaymentAttemptView[]> {
     const limit = Number(q?.limit) > 0 ? Math.min(200, Number(q.limit)) : 50;
     const startDate = typeof q?.startDate === 'string' ? q.startDate : (typeof q?.from === 'string' ? q.from : undefined);
     const endDate = typeof q?.endDate === 'string' ? q.endDate : (typeof q?.to === 'string' ? q.to : undefined);

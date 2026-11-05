@@ -232,7 +232,7 @@ export function POSCustomersScreen() {
     const want = pendingProfileId.current; if (!want || !s) return;
     const row = (s.rows?.items ?? []).find((r) => r.customerId === want);
     if (row) { pendingProfileId.current = null; openProfile(row); }
-  }, [s]);   // eslint-disable-line react-hooks/exhaustive-deps -- once, when the guest's row first arrives
+  }, [s]);   // once, when the guest's row first arrives
   const memberStatus = useMemberStatusMap((s?.rows?.items ?? []).map((r) => r.customerId));
 
   if (error && !s) return <div className="work"><div className="err">{error}</div></div>;

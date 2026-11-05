@@ -3,7 +3,6 @@ import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerCustomersApi, type OwnerGiftCardReportResp, type OwnerPeriod } from '../api/ownerApi';
 import { PeriodSelector, periodLabel as periodLabelOf } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // Gift Cards (owner, read-only) — liability & activity. Outstanding is the current unredeemed balance across all cards
 // (the salon's liability); issued/redeemed are period value movements from the ledger. Scoped to the owner's branches.

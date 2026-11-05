@@ -1,5 +1,6 @@
 import { RequirePermission, AsyncExport, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { OWNER_ACCESS_CODE_BODY, OWNER_ACTIVITY_BODY, OWNER_CONTEXT_SELECT_BODY, OWNER_EXPENSE_CREATE_BODY, OWNER_EXPENSE_UPDATE_BODY, OWNER_PAYROLL_PIN_BODY, OWNER_PAYROLL_REOPEN_BODY } from '../request-schemas';
+import type { OwnerNotificationsView, OwnerNotificationsReadResult } from '@aipowersalon/api-contracts/tenant';   // wire contracts (typing ratchet)
 import { validateImageUpload } from '@aipowersalon/workforce';
 /* owner.controller.ts — Owner App HTTP surface (/owner/*). Thin: derives ctx (incl. optional ?branchId) from the
  * session, calls OwnerService, maps OwnerError → HTTP (forbidden → 403, not_found → 404, invalid → 400). */
@@ -207,7 +208,7 @@ export class OwnerController {
   @RequirePermission('owner.alerts.view') @Get('alerts') alerts(@Req() r: any, @Query('status') status?: string, @Query('severity') severity?: string, @Query('branchId') branchId?: string, @Query('limit') limit?: string) {
     return run(() => this.svc.getAlerts(ctxFrom(r), { status, severity, branchId, limit: limit ? Number(limit) : undefined }));
   }
-  @RequirePermission('owner.alerts.view') @Get('notifications') notifications(@Req() r: any) {
+  @RequirePermission('owner.alerts.view') @Get('notifications') notifications(@Req() r: any): Promise<OwnerNotificationsView> {
     return run(async () => {
       const alerts = await this.svc.getAlerts(ctxFrom(r), { status: 'open' });
       const items = (alerts || []).map((a) => ({
@@ -225,13 +226,13 @@ export class OwnerController {
       };
     });
   }
-  @RequirePermission('owner.alerts.resolve') @Post('notifications/read') markAllNotificationsRead(@Req() r: any) {
+  @RequirePermission('owner.alerts.resolve') @Post('notifications/read') markAllNotificationsRead(@Req() r: any): Promise<OwnerNotificationsReadResult> {
     return run(async () => {
       const alerts = await this.svc.getAlerts(ctxFrom(r), { status: 'new' });
       for (const a of alerts || []) {
         await this.svc.acknowledgeAlert(ctxFrom(r), a.id).catch(() => {});
       }
-      return { ok: true };
+      return { ok: true as const };
     });
   }
   @RequirePermission('owner.alerts.view') @Get('alerts/summary') alertSummary(@Req() r: any, @Query('branchId') branchId?: string) {

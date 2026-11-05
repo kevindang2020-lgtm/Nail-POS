@@ -464,7 +464,7 @@
 import { useEffect, useState } from 'react';
 import { ownerMoreApi, type OwnerSettingsSnapshot } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonCards } from '../components/OwnerSkeleton';
 import {
   FiGlobe,
   FiKey,

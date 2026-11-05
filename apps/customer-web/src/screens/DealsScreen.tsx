@@ -33,9 +33,9 @@ function NearbyDeals() {
 
   const toggleSave = async (id: string) => {
     const wasSaved = saved.has(id);
-    setSaved((prev) => { const n = new Set(prev); wasSaved ? n.delete(id) : n.add(id); return n; }); // optimistic
+    setSaved((prev) => { const n = new Set(prev); if (wasSaved) n.delete(id); else n.add(id); return n; }); // optimistic
     try { await (wasSaved ? customerApi.unsaveDeal(id) : customerApi.saveDeal(id)); }
-    catch { setSaved((prev) => { const n = new Set(prev); wasSaved ? n.add(id) : n.delete(id); return n; }); } // revert on failure
+    catch { setSaved((prev) => { const n = new Set(prev); if (wasSaved) n.add(id); else n.delete(id); return n; }); } // revert on failure
   };
 
   if (error) return null;

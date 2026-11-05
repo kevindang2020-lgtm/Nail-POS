@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ownerMoreApi, type OwnerAuditEntry } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // AuditScreen — owner Activity Log. Read-only append-only trail from /owner/audit: alert transitions, report exports,
 // expense edits, salon switches, payroll approvals/locks, and security events (rejected PINs, blocked access).

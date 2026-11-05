@@ -37,7 +37,8 @@ describe('Functional Decision 20 — a refund amount is split across the origina
     const r: any = await svc.refundTicket(ctx, TK, { amountCents: 5000, reason: 'Service redo' } as any);
     expect(r).toMatchObject({ refundedCents: 5000, complete: true });
     expect(r.tenders.map((t: any) => [t.method, t.amountCents, t.status])).toEqual([['card', 3000, 'refunded'], ['cash', 2000, 'refunded']]);
-    expect(gateway.refunds).toEqual([{ retref: 'RET-CARD', amountCents: 3000 }]);              // the card got ITS share, nothing more
+    // the card got ITS share, nothing more — with a stable idempotency key so a retried refund can never refund twice
+    expect(gateway.refunds).toEqual([{ retref: 'RET-CARD', amountCents: 3000, idempotencyKey: 'pay_card:refund:3000' }]);
     expect(await repo.refundedTotalCents(ctx, 'pay_card')).toBe(3000);
     expect(await repo.refundedTotalCents(ctx, 'pay_cash')).toBe(2000);
   });

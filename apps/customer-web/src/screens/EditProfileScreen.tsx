@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ChangePhoneScreen } from './ChangePhoneScreen';
 import { useNavigate } from 'react-router-dom';
 import { customerApi } from '../api/customerApi';
-import { FiUser, FiCalendar, FiPhone, FiMail, FiCheckCircle } from 'react-icons/fi';
+import { FiCheckCircle } from 'react-icons/fi';
 
 const fieldStyle: React.CSSProperties = {
   height: 46,

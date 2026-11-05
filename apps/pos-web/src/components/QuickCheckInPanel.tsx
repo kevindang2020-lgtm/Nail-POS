@@ -60,7 +60,7 @@ export function QuickCheckInPanel({ services, technicians = [], initialGuest, on
   const reset = () => { setPhone(''); setResults(null); setSelected(null); setNc({ first: '', last: '', phone: '', email: '', sms: false }); setWi({ name: '', notes: '' }); setSvc(new Set()); setTechId(''); setTechName(''); setSource('in_person'); attemptKey.current = null; };
   // §27: explicit state boundaries — switching Existing → New → Walk-In starts a clean form (nothing incompatible carries over)
   const switchTab = (t: Tab) => { if (t !== tab) reset(); setTab(t); setMsg(null); };
-  useEffect(() => { if (tabRequest) switchTab(tabRequest.tab); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [tabRequest?.n]);
+  useEffect(() => { if (tabRequest) switchTab(tabRequest.tab); }, [tabRequest?.n]);
 
   const search = async () => {
     if (!phone.trim()) return;

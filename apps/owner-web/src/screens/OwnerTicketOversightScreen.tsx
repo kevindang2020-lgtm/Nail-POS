@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerTicketsApi, type OwnerTicketListResp, type OwnerTicketHistoryResp } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // OwnerTicketOversightScreen — read-only ticket oversight for the owner. The server scopes every row to the session's
 // tenant AND this owner's branch access (a passed branchId outside that access is rejected); nothing here can mutate a

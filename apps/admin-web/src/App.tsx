@@ -5,7 +5,6 @@ import { DashboardScreen } from './screens/DashboardScreen';
 import { PlatformDashboardScreen } from './screens/PlatformDashboardScreen';
 import { LiveOperationsScreen } from './screens/LiveOperationsScreen';
 import { AnalyticsScreen } from './screens/AnalyticsScreen';
-import { MembershipsOverviewScreen } from './screens/MembershipsOverviewScreen';
 import MembershipProgramsScreen from './screens/MembershipProgramsScreen';
 import GiftCardProgramsScreen from './screens/GiftCardProgramsScreen';
 import GiftCardSettlementScreen from './screens/GiftCardSettlementScreen';

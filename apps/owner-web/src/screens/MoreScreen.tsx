@@ -1,33 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useInlineConfirm } from '../components/InlineConfirm';
-import { ownerMoreApi, type OwnerProfileCard, type OwnerSettingsSnapshot } from '../api/ownerApi';
+import { ownerMoreApi, type OwnerProfileCard } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { useAuth } from '../auth/AuthContext';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
-import {
-  FiUser,
-  FiBell,
-  FiTrendingUp,
-  FiUsers,
-  FiDollarSign,
-  FiGift,
-  FiAward,
-  FiBox,
-  FiTarget,
-  FiCreditCard,
-  FiCpu,
-  FiSettings,
-  FiPackage,
-  FiMonitor,
-  FiBriefcase,
-  FiRepeat,
-  FiLock,
-  FiFileText,
-  FiTrash2,
-  FiLogOut,
-  FiChevronRight,
-  FiActivity,
-} from 'react-icons/fi';
+import { FiUser, FiBell, FiTrendingUp, FiUsers, FiDollarSign, FiGift, FiAward, FiBox, FiTarget, FiCreditCard, FiCpu, FiSettings, FiPackage, FiMonitor, FiBriefcase, FiRepeat, FiLock, FiFileText, FiTrash2, FiLogOut, FiActivity } from 'react-icons/fi';
 // MoreScreen — Module 6. Owner profile card + menu: Business Alerts (with live unread badge), Settings (inline snapshot),
 // and Logout. Real data from /owner/profile, /owner/alerts/summary, /owner/settings. Every row is functional (no dead buttons).
 const initials = (name: string) => name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'O';

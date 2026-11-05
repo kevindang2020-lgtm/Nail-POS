@@ -52,7 +52,6 @@ export const posCheckoutApi = {
   recalculate: (tid: string, paymentMethod?: PaymentMethod) => tPost(tid, 'recalculate', { paymentMethod }),
   reopenService: (tid: string, body: ReopenServiceRequest) => tPost(tid, 'reopen-service', body),
   payCash: (tid: string, body: CashPaymentRequest, idempotencyKey?: string) => tPostKeyed(tid, 'pay/cash', body, idempotencyKey),
-  payCard: (tid: string, body: CardPaymentRequest = {}) => tPost(tid, 'pay/card', body),
   /** Fiserv §8B: the paired terminals of this location, for the "Pay on Clover Compact" picker. */
   terminals: () => http<PosTerminalOption[]>(`${CO}/terminals`),
   /** Fiserv §8B: charge this ticket on the Clover Compact. attemptKey is generated once per tender (retry = same key). */

@@ -336,3 +336,11 @@ export interface MobileAttemptVerifyResult {
   decision: { action: 'confirm' | 'decline' | 'release' | 'wait' | 'review'; reason?: string; detail?: string; processorRef?: string; capturedAmountCents?: number; cardBrand?: string; cardLast4?: string };
   paymentId?: string;
 }
+
+/** GET /mobile-checkout/payment-attempts — one Tap to Pay payment attempt in the History tab (safe card metadata only). */
+export interface MobilePaymentAttemptView {
+  id: string; ticketId: string; amountCents: number; method: string; status: string; idempotencyKey: string; createdAt: string; updatedAt: string;
+  provider?: string | null; paymentSurface?: string | null; deviceId?: string | null; merchantAccountId?: string | null; currency?: string | null;
+  checkoutVersion?: string | null; processorRef?: string | null; cardBrand?: string | null; cardLast4?: string | null; paymentId?: string | null;
+  lastErrorCode?: string | null; expiresAt?: string | null;
+}

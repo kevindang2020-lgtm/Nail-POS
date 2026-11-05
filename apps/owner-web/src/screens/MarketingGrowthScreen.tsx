@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerMarketingApi, type OwnerMarketingOverviewResp } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonCards } from '../components/OwnerSkeleton';
 
 // Marketing & Growth — Module 9 (read surface). Campaign performance + channel mix + referrals, aggregated over the
 // canonical campaigns (reusing the campaigns module's KPI math), scoped to the owner's branches plus tenant-wide

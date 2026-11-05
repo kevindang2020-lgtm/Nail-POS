@@ -174,6 +174,7 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   platform_announcements: 'c',
   platform_branding: 'ut',
   platform_flag_rollouts: 'ut',
+  platform_notices: 'cut',
   pos_kpi_daily_snapshots: 'ut',
   pos_payment_terminals: 'ut',
   pos_queue_items: 'cut',

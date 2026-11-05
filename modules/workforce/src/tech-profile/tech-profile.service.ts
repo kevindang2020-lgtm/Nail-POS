@@ -1417,6 +1417,7 @@ export class TechProfileService {
     const db = this.need() as any;
     const profileId = await this.myProfileId(ctx);
     const row = await this.ownPhoto(profileId, photoId);
+    // tenant review (Nov 2026): photoId was just proven to be THIS technician's photo by ownPhoto() above
     await db.deleteFrom('nail_photo_consent').where('photo_id', '=', photoId).execute().catch(() => {});
     await db.deleteFrom('tech_portfolio_photos').where('id', '=', photoId).execute();
     const key = String(row.image_url || '').replace(/^\/media\//, '');

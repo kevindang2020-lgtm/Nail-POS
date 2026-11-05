@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ownerBranchesApi, type OwnerBranchPerformanceState, type OwnerPeriod } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { PeriodSelector, periodLabel } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // BranchPerformanceScreen — Module 2. Real data from GET /owner/branches/performance (+ /comparison). Overview shows
 // the 3 KPI cards + ranked Revenue-by-Branch; Comparison shows the quick-comparison cards + the same ranked list.

@@ -4,11 +4,16 @@ import { BrowserRouter } from 'react-router-dom';
 import { App } from './App';
 import './styles.css';
 import { applyPlatformBranding } from './brand/branding-client';
+import { AppErrorBoundary, initErrorReporting } from '@aipowersalon/ui';
 
 // Apply any Super-Admin colour overrides at boot (best-effort; locked defaults already loaded).
 applyPlatformBranding();
 
+// Constitution 11 §199: uncaught errors, unhandled rejections and failed-request references are reported from here on,
+// and a crash in any screen shows the recovery card instead of a blank page.
+initErrorReporting('admin');
 ReactDOM.createRoot(document.getElementById('root')!).render(
+  <AppErrorBoundary>
   <React.StrictMode>
       {/* react-router v7 future flags (opted in Jul 27, 2026). v7_startTransition wraps router state updates in
           React.startTransition; v7_relativeSplatPath changes relative-path resolution inside splat routes — inert
@@ -18,5 +23,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <App />
     </BrowserRouter>
-  </React.StrictMode>,
+  </React.StrictMode>
+  </AppErrorBoundary>
 );

@@ -179,6 +179,7 @@ GET /mobile-checkout/capability  realm=shared  auth=session  domain=checkout  pe
 GET /mobile-checkout/claims  realm=shared  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /mobile-checkout/devices  realm=shared  auth=session  domain=checkout  perm=mobile_checkout.login  guards=RolePermissionGuard,TenantAuthGuard
 GET /mobile-checkout/devices/status  realm=shared  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /mobile-checkout/payment-attempts  realm=shared  auth=session  domain=checkout  perm=mobile_checkout.view_history  guards=RolePermissionGuard,TenantAuthGuard
 GET /mobile-checkout/payment-attempts/{idempotencyKey}  realm=shared  auth=session  domain=checkout  perm=mobile_checkout.tap_to_pay  guards=RolePermissionGuard,TenantAuthGuard
 GET /mobile-checkout/payments  realm=shared  auth=session  domain=checkout  perm=mobile_checkout.view_history  guards=RolePermissionGuard,TenantAuthGuard
 GET /mobile-checkout/queue  realm=shared  auth=session  domain=checkout  perm=mobile_checkout.view_queue  guards=RolePermissionGuard,TenantAuthGuard
@@ -247,6 +248,7 @@ GET /owner/marketing  realm=staff  auth=session  domain=analytics  perm=owner.da
 GET /owner/me/locale  realm=staff  auth=session  domain=identity  perm=self.profile.view
 GET /owner/me/privacy-export  realm=staff  auth=session  domain=identity  perm=self.profile.view  async=owner.privacy-export
 GET /owner/memberships/overview  realm=staff  auth=session  domain=analytics  perm=owner.dashboard.view
+GET /owner/notifications  realm=staff  auth=session  domain=analytics  perm=owner.alerts.view
 GET /owner/operations  realm=staff  auth=session  domain=operations  perm=self.operations.view  guards=TenantAuthGuard
 GET /owner/operations/{id}  realm=staff  auth=session  domain=operations  perm=self.operations.view  guards=TenantAuthGuard
 GET /owner/operations/{id}/download  realm=staff  auth=session  domain=operations  perm=self.operations.view  guards=TenantAuthGuard
@@ -400,6 +402,7 @@ GET /pos/booking/integration-status  realm=staff  auth=session  domain=booking  
 GET /pos/booking/kpis  realm=staff  auth=session  domain=booking  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/permissions  realm=staff  auth=session  domain=booking  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/state  realm=staff  auth=session  domain=booking  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/booking/technicians  realm=staff  auth=session  domain=booking  perm=pos.booking.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/booking/verification-override/pending  realm=staff  auth=session  domain=booking  perm=pos.booking.verification_pending  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/bundles  realm=staff  auth=session  domain=deals  perm=pos.bundles.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/bundles/kpis  realm=staff  auth=session  domain=deals  perm=pos.bundles.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -426,6 +429,7 @@ GET /pos/checkout/kpis  realm=staff  auth=session  domain=checkout  perm=pos.che
 GET /pos/checkout/settings  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/skip-line/state  realm=staff  auth=session  domain=checkout  perm=checkout.view
 GET /pos/checkout/state  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/checkout/terminals  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/offers  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -564,6 +568,7 @@ GET /pos/payroll/periods/{id}/technicians/{techId}  realm=staff  auth=session  d
 GET /pos/payroll/periods/{id}/validation  realm=staff  auth=session  domain=finance  perm=pos.payroll.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payroll/provider  realm=staff  auth=session  domain=finance  perm=pos.payroll.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/payroll/state  realm=staff  auth=session  domain=finance  perm=pos.payroll.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/platform-announcements/active  realm=staff  auth=session  domain=communications  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/project-status  realm=staff  auth=session  domain=support  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/project-status/module/{moduleKey}  realm=staff  auth=session  domain=support  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/project-status/modules  realm=staff  auth=session  domain=support  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -848,6 +853,10 @@ GET /super-admin/commission-oversight  realm=super_admin  auth=session  domain=t
 GET /super-admin/communications/announcements  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/communications/announcements/eligible-roles  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/communications/overview  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
+GET /super-admin/communications/platform-announcements  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.view  guards=SuperAdminGuard
+GET /super-admin/communications/platform-announcements/audience/tenants  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.view  guards=SuperAdminGuard
+GET /super-admin/communications/platform-announcements/audience/tenants/{tenantId}/branches  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.view  guards=SuperAdminGuard
+GET /super-admin/communications/platform-announcements/{id}  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/communications/providers  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/communications/providers/{id}  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/communications/state  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.view  guards=SuperAdminGuard
@@ -919,8 +928,8 @@ GET /super-admin/features/rollouts  realm=super_admin  auth=session  domain=plat
 GET /super-admin/features/{key}/resolve  realm=super_admin  auth=session  domain=finance  perm=super_admin.plans.view  guards=SuperAdminGuard
 GET /super-admin/features/{key}/rollout  realm=super_admin  auth=session  domain=platform  perm=super_admin.plans.view  guards=SuperAdminGuard
 GET /super-admin/gift-cards/programs  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.view  guards=SuperAdminGuard
-GET /super-admin/gift-cards/settlement  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.view  guards=SuperAdminGuard
-GET /super-admin/gift-cards/settlement/batches/{id}  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.view  guards=SuperAdminGuard
+GET /super-admin/gift-cards/settlement  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.view  guards=SuperAdminGuard
+GET /super-admin/gift-cards/settlement/batches/{id}  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.view  guards=SuperAdminGuard
 GET /super-admin/hardware-packages  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.view  guards=SuperAdminGuard
 GET /super-admin/hardware-packages/activity/recent  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.view  guards=SuperAdminGuard
 GET /super-admin/hardware-packages/events  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.view  guards=SuperAdminGuard
@@ -1268,8 +1277,8 @@ GET /super-admin/tenants/{tenantId}/messaging-credentials  realm=super_admin  au
 GET /super-admin/tenants/{tenantId}/number  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.view  guards=SuperAdminGuard
 GET /super-admin/tenants/{tenantId}/number/search  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.view  guards=SuperAdminGuard
 GET /super-admin/tenants/{tenantId}/skip-line-checkout  realm=super_admin  auth=session  domain=checkout  derived=super_admin.tenants.view  guards=SuperAdminGuard
-GET /super-admin/tickets  realm=super_admin  auth=session  domain=checkout  derived=super_admin.support.view  guards=SuperAdminGuard
-GET /super-admin/tickets/{ticketId}/history  realm=super_admin  auth=session  domain=checkout  derived=super_admin.support.view  guards=SuperAdminGuard
+GET /super-admin/tickets  realm=super_admin  auth=session  domain=checkout  derived=super_admin.operations.view  guards=SuperAdminGuard
+GET /super-admin/tickets/{ticketId}/history  realm=super_admin  auth=session  domain=checkout  derived=super_admin.operations.view  guards=SuperAdminGuard
 GET /super-admin/voice-transcription/overview  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/voice/analytics  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.view  guards=SuperAdminGuard
 GET /super-admin/voice/calls  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.view  guards=SuperAdminGuard
@@ -1522,13 +1531,14 @@ PATCH /super-admin/booking-verification/tenants/{tenantId}  realm=super_admin  a
 PATCH /super-admin/catalog/categories/{code}  realm=super_admin  auth=session  domain=catalog  derived=super_admin.catalog.manage  guards=SuperAdminGuard
 PATCH /super-admin/catalog/deployments/{deploymentId}/customizable  realm=super_admin  auth=session  domain=catalog  derived=super_admin.catalog.manage  guards=SuperAdminGuard
 PATCH /super-admin/catalog/service-templates/{id}  realm=super_admin  auth=session  domain=catalog  derived=super_admin.catalog.manage  guards=SuperAdminGuard
+PATCH /super-admin/communications/platform-announcements/{id}  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  guards=SuperAdminGuard
 PATCH /super-admin/communications/providers/{id}  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.manage  guards=SuperAdminGuard
 PATCH /super-admin/community-moderation/cases/{id}  realm=super_admin  auth=session  domain=support  derived=super_admin.technicians.manage  step-up  guards=SuperAdminGuard
 PATCH /super-admin/deals/tenants/{tenantId}  realm=super_admin  auth=session  domain=deals  derived=super_admin.marketing.manage  step-up  guards=SuperAdminGuard
 PATCH /super-admin/features/{key}  realm=super_admin  auth=session  domain=finance  perm=super_admin.plans.manage  step-up  guards=SuperAdminGuard
 PATCH /super-admin/gift-cards/programs/{id}  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
 PATCH /super-admin/gift-cards/programs/{id}/members/{tenantId}  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
-PATCH /super-admin/gift-cards/settlement/batches/{id}  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
+PATCH /super-admin/gift-cards/settlement/batches/{id}  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 PATCH /super-admin/hardware-packages/{packageId}  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
 PATCH /super-admin/hardware-packages/{packageId}/payment-status  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
 PATCH /super-admin/hardware-packages/{packageId}/status  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
@@ -1853,6 +1863,7 @@ POST /owner/expenses  realm=staff  auth=session  domain=analytics  perm=owner.ex
 POST /owner/hardware-payment/autopay-consent  realm=staff  auth=session  domain=payments  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/hardware-payment/payment-method  realm=staff  auth=session  domain=payments  perm=settings.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /owner/me/delete-account-request  realm=staff  auth=session  domain=identity  perm=self.profile.edit
+POST /owner/notifications/read  realm=staff  auth=session  domain=analytics  perm=owner.alerts.resolve
 POST /owner/payroll/periods/{id}/approve  realm=staff  auth=session  domain=analytics  perm=payroll.manage
 POST /owner/payroll/periods/{id}/lock  realm=staff  auth=session  domain=analytics  perm=payroll.manage
 POST /owner/payroll/periods/{id}/reopen  realm=staff  auth=session  domain=analytics  perm=payroll.manage
@@ -2012,6 +2023,8 @@ POST /pos/checkout/tickets/{ticketId}/pay/card/verify  realm=staff  auth=session
 POST /pos/checkout/tickets/{ticketId}/pay/cash  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/pay/gift-card  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/pay/split  realm=staff  auth=session  domain=checkout  perm=pos.checkout.take_payment  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/checkout/tickets/{ticketId}/pay/terminal  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/checkout/tickets/{ticketId}/pay/terminal/cancel  realm=staff  auth=session  domain=operations  perm=pos.checkout.take_payment  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/rating  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/recalculate  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/checkout/tickets/{ticketId}/receipt/app  realm=staff  auth=session  domain=checkout  perm=pos.receipts.send  guards=RolePermissionGuard,TenantAuthGuard
@@ -2136,6 +2149,9 @@ POST /pos/payroll/periods/{id}/prepare  realm=staff  auth=session  domain=financ
 POST /pos/payroll/periods/{id}/reopen  realm=staff  auth=session  domain=finance  perm=payroll.approve  step-up  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/payroll/periods/{id}/send-back  realm=staff  auth=session  domain=finance  perm=pos.payroll.manage  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/payroll/periods/{id}/technicians/{techId}/carry-forward  realm=staff  auth=session  domain=finance  perm=payroll.adjust  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/platform-announcements/{id}/acknowledge  realm=staff  auth=session  domain=communications  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/platform-announcements/{id}/delivered  realm=staff  auth=session  domain=communications  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/platform-announcements/{id}/dismiss  realm=staff  auth=session  domain=communications  perm=pos.login  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/queue/auto-balance/apply  realm=staff  auth=session  domain=booking  perm=pos.queue.assign_technician  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/queue/auto-balance/preview  realm=staff  auth=session  domain=booking  perm=pos.queue.assign_technician  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/queue/groups  realm=staff  auth=session  domain=booking  perm=pos.queue.edit  guards=RolePermissionGuard,TenantAuthGuard
@@ -2208,6 +2224,7 @@ POST /pos/settings/online-google-ai-booking/ai  realm=staff  auth=session  domai
 POST /pos/settings/online-google-ai-booking/connect-google  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/online-google-ai-booking/disconnect-google  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/pair  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/settings/payments-checkout/terminals/{id}/assign-location  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/disable  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/enable  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/settings/payments-checkout/terminals/{id}/register  realm=staff  auth=session  domain=tenants  perm=settings.view  guards=RolePermissionGuard,TenantAuthGuard
@@ -2392,6 +2409,12 @@ POST /super-admin/catalog/service-templates/{id}/publish  realm=super_admin  aut
 POST /super-admin/catalog/service-templates/{id}/retire  realm=super_admin  auth=session  domain=catalog  derived=super_admin.catalog.manage  guards=SuperAdminGuard
 POST /super-admin/commission-auth-code/generate  realm=super_admin  auth=session  domain=tenants  perm=super_admin.tenants.edit  step-up  guards=SuperAdminGuard
 POST /super-admin/communications/announcements  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.manage  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements/{id}/archive  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  step-up  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements/{id}/duplicate  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements/{id}/pause  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  step-up  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements/{id}/publish  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  step-up  guards=SuperAdminGuard
+POST /super-admin/communications/platform-announcements/{id}/resume  realm=super_admin  auth=session  domain=communications  perm=super_admin.communications.manage  step-up  guards=SuperAdminGuard
 POST /super-admin/communications/providers  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.manage  guards=SuperAdminGuard
 POST /super-admin/communications/providers/{id}/rotate-credential  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.manage  guards=SuperAdminGuard
 POST /super-admin/communications/providers/{id}/test  realm=super_admin  auth=session  domain=communications  derived=super_admin.communications.manage  guards=SuperAdminGuard
@@ -2443,7 +2466,7 @@ POST /super-admin/events/replay  realm=super_admin  auth=session  domain=operati
 POST /super-admin/events/replay/preview  realm=super_admin  auth=session  domain=operations  derived=super_admin.system.manage  scope=EP.replay  guards=EventPermissionGuard,SuperAdminGuard
 POST /super-admin/gift-cards/programs  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
 POST /super-admin/gift-cards/programs/{id}/members  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
-POST /super-admin/gift-cards/settlement/batches  realm=super_admin  auth=session  domain=payments  derived=super_admin.marketing.manage  guards=SuperAdminGuard
+POST /super-admin/gift-cards/settlement/batches  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/hardware-packages  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
 POST /super-admin/hardware-packages/{packageId}/cancel  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
 POST /super-admin/hardware-packages/{packageId}/devices  realm=super_admin  auth=session  domain=operations  derived=super_admin.billing.manage  guards=SuperAdminGuard
@@ -2492,6 +2515,7 @@ POST /super-admin/merchant-accounts/{tenantId}/deactivation  realm=super_admin  
 POST /super-admin/merchant-accounts/{tenantId}/funding-update  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/mid-assignment  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/rates  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
+POST /super-admin/merchant-accounts/{tenantId}/surcharge-enrollment  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/suspension  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/merchant-accounts/{tenantId}/terminals  realm=super_admin  auth=session  domain=payments  derived=super_admin.payments.manage  guards=SuperAdminGuard
 POST /super-admin/onboarding/applications  realm=super_admin  auth=session  domain=support  derived=super_admin.onboarding.manage  guards=SuperAdminGuard
@@ -2771,9 +2795,9 @@ POST /super-admin/tenants/{tenantId}/messaging-credentials/test  realm=super_adm
 POST /super-admin/tenants/{tenantId}/messaging-credentials/test-verify  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.edit  guards=SuperAdminGuard
 POST /super-admin/tenants/{tenantId}/number/buy  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.edit  guards=SuperAdminGuard
 POST /super-admin/tenants/{tenantId}/number/register  realm=super_admin  auth=session  domain=communications  derived=super_admin.tenants.edit  guards=SuperAdminGuard
-POST /super-admin/tickets/{ticketId}/deletion-code  realm=super_admin  auth=session  domain=checkout  derived=super_admin.support.manage  guards=SuperAdminGuard
-POST /super-admin/tickets/{ticketId}/deletion-code/reveal  realm=super_admin  auth=session  domain=checkout  derived=super_admin.support.manage  guards=SuperAdminGuard
-POST /super-admin/tickets/{ticketId}/remove  realm=super_admin  auth=session  domain=checkout  derived=super_admin.support.manage  guards=SuperAdminGuard
+POST /super-admin/tickets/{ticketId}/deletion-code  realm=super_admin  auth=session  domain=checkout  derived=super_admin.operations.manage  guards=SuperAdminGuard
+POST /super-admin/tickets/{ticketId}/deletion-code/reveal  realm=super_admin  auth=session  domain=checkout  derived=super_admin.operations.manage  guards=SuperAdminGuard
+POST /super-admin/tickets/{ticketId}/remove  realm=super_admin  auth=session  domain=checkout  derived=super_admin.operations.manage  guards=SuperAdminGuard
 POST /super-admin/voice-transcription/retention-sweep  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.manage  guards=SuperAdminGuard
 POST /super-admin/voice/keys  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.manage  guards=SuperAdminGuard
 POST /super-admin/voice/prompts/rollback  realm=super_admin  auth=session  domain=ai  derived=super_admin.communications.manage  guards=SuperAdminGuard

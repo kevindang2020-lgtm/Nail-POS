@@ -51,8 +51,9 @@ export class KyselyCustomerRegistrationRepository implements CustomerRegistratio
       if (input.referralCode?.trim()) {
         const refCode = input.referralCode.trim().toUpperCase();
         try {
+          // a referral code only counts at the salon that issued it — another salon's code must not credit its customer here
           const owner: any = await (trx as any).selectFrom('customer_referrals').select(['customer_id'])
-            .where('code', '=', refCode).executeTakeFirst();
+            .where('tenant_id', '=', tenantId).where('code', '=', refCode).executeTakeFirst();
           if (owner && String(owner.customer_id) !== String((c as any).id)) {
             // 1. Record referral redemption for tracking & rewarding the referrer
             await (trx as any).insertInto('referral_redemptions').values({

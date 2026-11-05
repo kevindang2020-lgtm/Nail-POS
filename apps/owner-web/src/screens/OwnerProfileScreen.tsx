@@ -22,8 +22,7 @@ import {
   FiCheck,
   FiCamera,
 } from 'react-icons/fi';
-import { enrollFaceId, faceIdMode, getPendingBioCreds, disableFaceId } from '../auth/faceid';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 const initials = (name: string): string =>
   name

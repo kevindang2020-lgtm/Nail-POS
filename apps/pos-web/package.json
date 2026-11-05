@@ -10,6 +10,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@aipowersalon/ui": "*",
     "@tailwindcss/vite": "^4.3.3",
     "firebase": "^12.19.0",
     "leaflet": "^1.9.4",

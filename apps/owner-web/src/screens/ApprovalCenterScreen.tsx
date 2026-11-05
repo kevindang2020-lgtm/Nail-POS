@@ -3,7 +3,7 @@ import { useOwnerNav } from '../shell/nav';
 import { useOwnerStream } from '../api/useOwnerStream';
 import { ownerApprovalsApi, type OwnerApprovalsResp } from '../api/ownerApi';
 import { FiBell } from 'react-icons/fi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // Approval Center — the Approvals tab. One queue of pending owner actions: payroll periods awaiting approval or lock
 // (each deep-links into the Commission & Payroll screen, pre-selected to that period, where the fresh-auth approve/lock

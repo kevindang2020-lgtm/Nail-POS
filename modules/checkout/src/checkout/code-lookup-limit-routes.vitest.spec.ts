@@ -19,7 +19,8 @@ const TK = 'tk_2042';
 const UNKNOWN = '9999888877776666';
 
 const CODE_ROUTES: Record<string, string> = {
-  giftLookup: 'gift_card', giftBalance: 'gift_card', reloadGift: 'gift_card', voidGift: 'gift_card', giftReplace: 'gift_card',
+  // (the old direct POST gift-cards/:code/reload is gone: it added balance with no payment — a reload is sold on a ticket, giftReload)
+  giftLookup: 'gift_card', giftBalance: 'gift_card', voidGift: 'gift_card', giftReplace: 'gift_card',
   payGift: 'gift_card', paySplit: 'gift_card', giftReload: 'gift_card', applyRewardCode: 'reward_code', applyPromotion: 'coupon', applyOffer: 'coupon',
 };
 
@@ -35,6 +36,9 @@ describe('every lookup-by-code POS route is limited', () => {
     expect(Reflect.getMetadata(CODE_LOOKUP_KIND, (CheckoutController.prototype as any).giftSale)).toBeUndefined();
     expect(Reflect.getMetadata(CODE_LOOKUP_KIND, (CheckoutController.prototype as any).payCash)).toBeUndefined();
   });
+  it('there is no unpaid direct reload route (a gift card is reloaded only by selling the reload on a ticket)', () => {
+    expect((CheckoutController.prototype as any).reloadGift).toBeUndefined();
+  });
 });
 
 describe('an unknown code is a MISS on every route (real controller + service)', () => {
@@ -44,7 +48,6 @@ describe('an unknown code is a MISS on every route (real controller + service)',
   const cases: [string, () => Promise<unknown>][] = [
     ['giftLookup', () => c.giftLookup(req(), { input: UNKNOWN })],
     ['giftBalance', () => c.giftBalance(req(), UNKNOWN)],
-    ['reloadGift', () => c.reloadGift(req(), UNKNOWN, { amountCents: 500 })],
     ['voidGift', () => c.voidGift(req(), UNKNOWN)],
     ['giftReplace', () => c.giftReplace(req(), { input: UNKNOWN })],
     ['payGift', () => c.payGift(req(), TK, { giftCardCode: UNKNOWN })],

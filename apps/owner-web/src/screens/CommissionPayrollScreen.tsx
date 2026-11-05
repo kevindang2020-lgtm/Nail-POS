@@ -7,7 +7,7 @@ import { BonusRulesPanel } from './BonusRulesPanel';
 import { CompliancePanel } from './CompliancePanel';
 import { AgreementsPanel } from './AgreementsPanel';
 import { ownerPayrollApi, ownerCompensationApi, type OwnerPayrollListResp, type OwnerPayrollPeriodDetailResp, type OwnerPayrollPeriodSummary, type TipSplitMethod } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // Commission & Payroll — Module 13 (read surface). Surfaces the canonical compensation/payroll engine's stored periods
 // + per-technician payout lines (already computed; never recalculated here), scoped to the owner's allowed branches.

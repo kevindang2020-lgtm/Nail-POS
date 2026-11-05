@@ -2,7 +2,7 @@
 // (tiles). Verifies the technician table + money/rating rendering + snapshot, tapping a technician through to detail, the
 // attendance tab tiles, the empty state, and a friendly 403. Data is typed from /owner/staff/{performance,attendance}.
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 
 const nav = vi.hoisted(() => ({ openTechDetail: vi.fn() }));
 vi.mock('../shell/nav', () => ({ useOwnerNav: () => nav }));

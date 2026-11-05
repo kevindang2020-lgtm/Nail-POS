@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerAiCenterApi, type OwnerAiCenterResp, type AiMetric } from '../api/ownerApi';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // AI Center — Module 11 (read surface). Delegates to the canonical AI Center overview, which honestly flags every metric
 // as tracked or not-yet-tracked. Untracked metrics render "—" with a quiet note rather than a fabricated number, and the

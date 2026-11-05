@@ -8,12 +8,12 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 749,
+  "tables": 754,
   "ownership": {
-   "tenant_owned": 461,
+   "tenant_owned": 463,
    "platform_identity_tenant_relationship": 43,
    "tenant_branch_owned": 78,
-   "platform_global": 145,
+   "platform_global": 148,
    "cross_tenant_platform_data": 22
   },
   "domain": {
@@ -26,7 +26,7 @@
    "BOOKING": 41,
    "AUDIT": 24,
    "MARKETING": 17,
-   "PAYMENTS": 53,
+   "PAYMENTS": 54,
    "WORKFORCE": 59,
    "CATALOG": 20,
    "COMMUNICATIONS": 26,
@@ -37,18 +37,18 @@
    "MEMBERSHIPS": 11,
    "ANALYTICS": 18,
    "INVENTORY": 25,
-   "PLATFORM": 11,
+   "PLATFORM": 15,
    "TENANTS": 22
   },
   "sensitivity": {
    "HIGHLY_SENSITIVE": 104,
    "CONFIDENTIAL": 133,
    "SECURITY_SECRET": 35,
-   "INTERNAL": 410,
+   "INTERNAL": 415,
    "PAYMENT_RESTRICTED": 61,
    "PUBLIC": 6
   },
-  "append_only": 10,
+  "append_only": 11,
   "platform_rows": 94
  },
  "tables": {
@@ -5049,6 +5049,18 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "payment_platform_validations": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PAYMENTS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
   "payment_refunds": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -5302,6 +5314,54 @@
    "source": "heuristic"
   },
   "platform_flag_rollouts": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_notice_receipts": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_notice_revisions": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_notice_targets": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "PLATFORM",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "platform_notices": {
    "ownership": "platform_global",
    "class": "A",
    "domain": "PLATFORM",

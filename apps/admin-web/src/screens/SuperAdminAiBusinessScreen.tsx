@@ -5,16 +5,7 @@
 // Cream/gold; honest — an empty platform renders zeros, never fabricated numbers.
 import { useCallback, useEffect, useState } from 'react';
 import { superAdminAiApi, type AdminAiBusinessOverview } from '../api/superAdminAiApi';
-import {
-  FiBell,
-  FiBookmark,
-  FiBarChart2,
-  FiCheckCircle,
-  FiMessageSquare,
-  FiSettings,
-  FiTarget,
-  FiUsers,
-} from "react-icons/fi";
+import { FiBell, FiBookmark, FiCheckCircle, FiSettings, FiTarget, FiUsers } from "react-icons/fi";
 
 const GOLD = 'var(--g7,#A96F22)';
 const LINE = 'var(--line,#E7DBC6)';

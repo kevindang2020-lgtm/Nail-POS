@@ -3,7 +3,7 @@ import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerCustomersApi, type OwnerCustomersOverviewResp, type OwnerPeriod } from '../api/ownerApi';
 import { PeriodSelector, periodLabel as periodLabelOf } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // Customers & Loyalty — Module 15 (read surface). Aggregate analytics over the canonical customer tables, scoped to the
 // owner's branches + selected period. Spend figures are lifetime paid totals (business analytics) — no payment-instrument

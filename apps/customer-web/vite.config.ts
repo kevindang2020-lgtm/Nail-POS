@@ -12,7 +12,9 @@ export default defineConfig(({ mode }) => {
   return {
     root: fileURLToPath(new URL('./', import.meta.url)),
     envDir,
-    plugins: [react()],
+    // shared UI (error boundary + reporting) and its money helpers, from source like the other apps
+  resolve: { alias: { '@aipowersalon/ui': fileURLToPath(new URL('../../packages/ui/src', import.meta.url)), '@aipowersalon/money': fileURLToPath(new URL('../../packages/money/src', import.meta.url)) } },
+  plugins: [react()],
   server: { port: 5176, proxy: { '/customer': { target: apiTarget, changeOrigin: true }, '/auth': { target: apiTarget, changeOrigin: true } } },
   build: { outDir: 'dist', sourcemap: false },
 

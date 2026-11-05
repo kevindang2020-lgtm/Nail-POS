@@ -7,19 +7,7 @@ import { useParams } from "react-router-dom";
 import { superAdminAiApi } from "../api/superAdminAiApi";
 import { superAdminApi } from "../api/superAdminApi";
 import { FiHome } from "react-icons/fi";
-import {
-  FiShield,
-  FiUser,
-  FiSave,
-  FiPlusCircle,
-  FiFileText,
-  FiSend,
-  FiRefreshCw,
-  FiPhone,
-  FiCheckCircle,
-  FiAlertCircle,
-  FiLock,
-} from "react-icons/fi";
+import { FiUser, FiSave, FiPlusCircle, FiFileText, FiSend, FiRefreshCw, FiPhone, FiCheckCircle, FiAlertCircle } from "react-icons/fi";
 const GOLD = "var(--g7,#A96F22)";
 const LINE = "var(--line,#E7DBC6)";
 const CARD: React.CSSProperties = {

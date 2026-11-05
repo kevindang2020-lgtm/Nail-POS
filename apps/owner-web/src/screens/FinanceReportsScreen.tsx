@@ -3,7 +3,7 @@ import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { ownerFinanceApi, ownerActivityApi, type OwnerFinanceSummary, type OwnerPaymentMix, type OwnerReportInfo, type OwnerPeriod } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { PeriodSelector } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonBlocks, OwnerSkeletonList } from '../components/OwnerSkeleton';
 import { SelectDateModal, type DateRangeResult } from '../components/SelectDateModal';
 
 // FinanceReportsScreen — Module 5. Summary tab: revenue hero + expenses/net-profit(est.)/avg-ticket/transactions/tax/tips

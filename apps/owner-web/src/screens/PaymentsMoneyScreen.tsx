@@ -3,7 +3,7 @@ import { useOwnerBranch } from '../shell/OwnerBranchContext';
 import { useOwnerNav } from '../shell/nav';
 import { ownerPaymentsApi, type OwnerPaymentsOverviewResp, type OwnerPeriod } from '../api/ownerApi';
 import { PeriodSelector } from '../components/PeriodSelector';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
+import { OwnerSkeletonCards } from '../components/OwnerSkeleton';
 
 // Payments & Money — Module 10 (read surface). Payment-level oversight: a summary (gross/net/refunds/tips + method mix)
 // plus browsable recent transactions and refunds, scoped to the owner's branches + period. Rows carry no card data —

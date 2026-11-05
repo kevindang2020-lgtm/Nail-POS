@@ -65,7 +65,7 @@ export function useWebPush(tenantId?: string, userType?: string, userId?: string
             pushPerm = await PushNotifications.requestPermissions();
           }
 
-          let localPerm = await LocalNotifications.checkPermissions();
+          const localPerm = await LocalNotifications.checkPermissions();
           if (localPerm.display !== 'granted') {
             await LocalNotifications.requestPermissions();
           }

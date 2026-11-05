@@ -326,3 +326,9 @@ export interface OwnerPortfolioSalonView {
   isPrimaryOwner: boolean;
   branches: OwnerPortfolioBranchView[];
 }
+
+/** GET /owner/notifications — the owner app's bell: open alerts as notifications (ids + fixed wording, no customer data). */
+export interface OwnerNotificationItem { id: string; title: string; body: string; category: string; severity: string; readAt: string | null; createdAt: string }
+export interface OwnerNotificationsView { unreadCount: number; items: OwnerNotificationItem[] }
+/** POST /owner/notifications/read — every new alert acknowledged. */
+export interface OwnerNotificationsReadResult { ok: true }

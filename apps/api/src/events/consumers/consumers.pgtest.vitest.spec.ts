@@ -43,13 +43,15 @@ const assigned = (id: string, technicianId = 'tech-with-app') => createDomainEve
 describe('Phase 14 — realtime projection (§112–113)', () => {
   it('maps domain events to the EXISTING client vocabulary, ids only', () => {
     const p = projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.APPOINTMENT_CANCELED, tenantId: T, aggregateType: 'appointment', aggregateId: 'a-1', payload: { appointmentId: 'a-1', customerName: 'leak?' } }));
-    expect(p).toEqual([{ event: EVENTS.appointmentCancelled, payload: { appointmentId: 'a-1' } }]);   // nothing but the id crosses
+    // to the whole salon (the owner app listens for cancellations too); the id plus fixed wording — never the customer's data
+    expect(p).toEqual([{ event: EVENTS.appointmentCancelled, payload: { appointmentId: 'a-1', title: 'Appointment Cancelled', body: 'An appointment was cancelled.' }, scope: 'salon', branchIds: [] }]);
+    expect(JSON.stringify(p)).not.toMatch(/leak/);
     expect(projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.SMS_SENT, tenantId: T, aggregateType: 'sms', aggregateId: 's', payload: {} }))).toEqual([]);   // no client screen cares → no projection
     // Smooth Refresh spec §3/§17: a check-in is a 0–1 s change — it reaches Check-In/Queue/Tech Queue (customer_checked_in)
     // AND the Booking board (appointment_updated). Before Sep 30 2026 a POS check-in emitted nothing.
     const ci = projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.CUSTOMER_CHECKED_IN, tenantId: T, aggregateType: 'appointment', aggregateId: 'a-2', payload: { appointmentId: 'a-2', customerId: 'c-9' } }));
     expect(ci.map((c) => c.event).sort()).toEqual(['appointment_updated', 'customer_checked_in']);
-    expect(ci.find((c) => c.event === 'customer_checked_in')!.payload).toEqual({ appointmentId: 'a-2', customerId: 'c-9' });
+    expect(ci.find((c) => c.event === 'customer_checked_in')!.payload).toEqual({ appointmentId: 'a-2', customerId: 'c-9', title: 'Customer Checked In', body: 'A customer has arrived for their appointment.' });   // ids + fixed wording only
     // §31 fan-out: one checkout.completed refreshes the ticket AND the reports screen — the two pushes checkout.service used to make by hand
     const paid = projectToClient(createDomainEvent({ eventType: DOMAIN_EVENTS.CHECKOUT_COMPLETED, tenantId: T, aggregateType: 'ticket', aggregateId: 'tk-1', payload: { ticketId: 'tk-1', status: 'paid' } }));
     expect(paid.map((x) => x.event)).toEqual([EVENTS.ticketPaid, EVENTS.reportsUpdated]);
@@ -241,8 +243,11 @@ describe('push consumer — appointment facts (customer + technician)', () => {
   it('appointment.canceled pushes the customer — once, and never the salon/time on the lock screen', async () => {
     const e = apptEvent(DOMAIN_EVENTS.APPOINTMENT_CANCELED, A1);
     await new OutboxWriter().write(db, e); await publisher.tick();
-    const mine = pushed.filter((p) => p.msg.data?.appointmentId === A1 && p.msg.data?.kind === 'appointment_cancelled');
-    expect(mine).toHaveLength(1);
+    const all = pushed.filter((p) => p.msg.data?.appointmentId === A1 && p.msg.data?.kind === 'appointment_cancelled');
+    const mine = all.filter((p) => p.userId === U);
+    expect(mine).toHaveLength(1);                                          // the customer: exactly once
+    expect(all.filter((p) => p.userId === 'tech-user-1')).toHaveLength(1); // and the appointment's technician, once
+    for (const p of all) expect(p.msg.body).not.toMatch(/Sophia|2:30|Oct/);
     expect(mine[0]).toMatchObject({ userId: U, msg: { title: 'Appointment cancelled', category: 'BOOKING_CHANGE', reference: `appointment_cancelled:${e.eventId}` } });
     expect(mine[0].msg.body).not.toMatch(/Sophia|2:30|Oct/);
     expect((await runner.run(registry.get('notifications.push')!, e)).status).toBe('duplicate');

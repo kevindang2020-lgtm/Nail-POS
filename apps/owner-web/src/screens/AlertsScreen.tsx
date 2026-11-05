@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { ownerMoreApi, type OwnerAlert, type OwnerAlertStatus } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
 import { useOwnerStream } from '../api/useOwnerStream';
-import { OwnerSkeletonBlocks, OwnerSkeletonCards, OwnerSkeletonList } from '../components/OwnerSkeleton';
 
 // AlertsScreen — Module 6. Lists owner_alerts with a status filter; each actionable alert exposes acknowledge / resolve /
 // dismiss, which POST to the API and update the row in place. Real data; honest loading/error/empty.

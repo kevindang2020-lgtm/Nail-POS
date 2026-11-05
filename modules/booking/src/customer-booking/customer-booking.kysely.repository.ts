@@ -36,6 +36,7 @@ export class KyselyCustomerBookingRepository implements CustomerBookingDataPort 
     if (!row) return null;
     let phone: string | null = (row as any).normalized_phone || (row as any).phone_display || null;
     if (!phone) {
+      // tenant review (Nov 2026): the signed-in user's own row by primary key — users.id is platform-unique
       const u = await this.db.selectFrom('users').select(['normalized_phone'] as any).where('id', '=', ctx.userId).executeTakeFirst();
       phone = (u as any)?.normalized_phone || null;
     }

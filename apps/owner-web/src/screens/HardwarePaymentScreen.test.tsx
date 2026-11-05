@@ -2,7 +2,7 @@
 // (save tokenized card -> record consent). Verifies the plan summary, the "card on file ending ••••" now shows the last4
 // (it lives in the response's savedPaymentMethod, not on plan — the fix), the authorize flow + validation, the owner-safe
 // invoice rendering, that id-less owner invoices render without a React key warning (the key fix), the no-plan state, and 403.
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 
 vi.mock('../shell/nav', () => ({ useOwnerNav: () => ({ back: vi.fn() }) }));
