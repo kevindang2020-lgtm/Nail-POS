@@ -65,15 +65,17 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
       .select(['id', 'first_name', 'last_name', 'full_name', 'normalized_phone', 'phone_display', 'email', 'birthday', 'birthday_year_known', 'status', 'avatar_url',
         'marketing_sms_opt_in', 'marketing_email_opt_in', 'notes', 'created_at', 'updated_at', 'record_version', 'preferred_name', 'preferred_language', 'preferred_branch_id']).execute().catch(() => []);
     const ids = rows.map((r: any) => r.id);
-    const loy = ids.length ? await this.scoped(this.db.selectFrom('customer_loyalty_profiles'), ctx).where('customer_id', 'in', ids)
+    // F1 §58: whole-scope reads grouped by customer (a 10,000-id IN list cost more than the rows); rows for customers
+    // outside the loaded set are simply not looked up
+    const loy = ids.length ? await this.scoped(this.db.selectFrom('customer_loyalty_profiles'), ctx)
       .select(['customer_id', 'loyalty_tier', 'points_balance', 'total_earned_points', 'total_redeemed_points', 'vip_since']).execute().catch(() => []) : [];
     const loyBy: Record<string, any> = {}; for (const l of loy) loyBy[l.customer_id] = l;
-    const agg = ids.length ? await this.scoped(this.db.selectFrom('tickets'), ctx).where('customer_id', 'in', ids).where('status', 'in', [...VISIT_TICKET_STATUSES])
+    const agg = ids.length ? await this.scoped(this.db.selectFrom('tickets'), ctx).where('customer_id', 'is not', null).where('status', 'in', [...VISIT_TICKET_STATUSES])
       .groupBy('customer_id').select((eb: any) => ['customer_id', eb.fn.countAll().as('cnt'), eb.fn.sum('total_cents').as('spend'), eb.fn.max('created_at').as('last')]).execute().catch(() => []) : [];
     const aggBy: Record<string, any> = {}; for (const a of agg) aggBy[a.customer_id] = a;
     // F1 §11/§36: spend is net of completed refunds (payment_refunds 'refunded') on the customer's settled tickets
     const refunds: any[] = ids.length ? await this.scoped(this.db.selectFrom('payment_refunds as pr').innerJoin('payments as p', 'p.id', 'pr.payment_id').innerJoin('tickets as t', 't.id', 'p.ticket_id'), ctx, 't')
-      .where('pr.tenant_id', '=', ctx.tenantId).where('pr.status', '=', 'refunded').where('t.customer_id', 'in', ids).where('t.status', 'in', [...VISIT_TICKET_STATUSES])
+      .where('pr.tenant_id', '=', ctx.tenantId).where('pr.status', '=', 'refunded').where('t.customer_id', 'is not', null).where('t.status', 'in', [...VISIT_TICKET_STATUSES])
       .groupBy('t.customer_id').select((eb: any) => ['t.customer_id as customer_id', eb.fn.sum('pr.amount_cents').as('refunded')]).execute() : [];
     const refundBy: Record<string, number> = {}; for (const x of refunds) refundBy[x.customer_id] = Number(x.refunded) || 0;
 
@@ -204,7 +206,9 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     // exactly what the tab shows
     const segmentCounts = Object.fromEntries((['', 'never', 'new', 'returning', 'vip', 'at_risk'] as const).map((seg) => [seg || 'all', this.filtered(everyone, { ...f, segment: seg || undefined }, dup, riskDays).length])) as Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
     const tz = await this.salonTimeZone(ctx);
-    const monthKey = (d: string | null | undefined) => { if (!d) return ''; try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit' }).format(new Date(d)); } catch { return new Date(d).toISOString().slice(0, 7); } };
+    // one formatter per request (constructing Intl.DateTimeFormat per customer cost ~0.9 s at 10,000 customers)
+    const monthFmt = (() => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit' }); } catch (e) { this.warn('timeZone ' + tz, e); return new Intl.DateTimeFormat('en-CA', { timeZone: 'UTC', year: 'numeric', month: '2-digit' }); } })();
+    const monthKey = (d: string | null | undefined) => (d ? monthFmt.format(new Date(d)) : '');
     const curMonth = monthKey(new Date().toISOString());
     const page = clampPage(f.page), pageSize = clampPageSize(f.pageSize, 20);
     const totalItems = matched.length, totalPages = Math.max(1, Math.ceil(totalItems / pageSize));

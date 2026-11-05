@@ -95,3 +95,22 @@ used in the segment rule today (PARTIAL against §38). Segments, first match win
 
 The RFM "At Risk" segment is a different rule from the directory's At Risk tab (salon threshold, any visit count); the
 tab uses the Customer Retention definition so it matches that screen.
+
+## Scale evidence (§58, §61, §62) — Nov 5 2026, PGlite (in-process Postgres), synthetic data
+
+`CUSTOMER_SCALE=1 npx vitest run src/customers/customer-directory-scale.pgtest.vitest.spec.ts` (modules/customers):
+
+| Customers | `GET /pos/customers/state` work (repository) | Payload to the browser | Rows sent |
+|---|---|---|---|
+| 1,000 | 79 ms | 26 KB | 25 (one page) |
+| 10,000 | 359 ms (was 1,292 ms before this pass) | 26 KB | 25 (one page) |
+
+The browser only ever receives one page plus fixed-size aggregates. Two fixes in this pass:
+
+- One month formatter per request, not one per customer (≈0.9 s at 10,000).
+- Whole-scope grouped reads instead of 10,000-id `IN` lists.
+
+**Still open (PARTIAL):** the server still reads every customer in scope and filters in memory. It grows linearly: about 3–4 s
+projected at 100,000 on this engine. Moving search, filters, counts and paging into SQL (keyset pages, a
+normalized-phone index, a folded-name column) is the remaining §58 / §62 work. EXPLAIN ANALYZE on production-size
+Postgres has not been run here.
