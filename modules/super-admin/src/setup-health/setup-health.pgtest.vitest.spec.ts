@@ -179,3 +179,21 @@ describe('retention snapshot freshness', () => {
     expect(await check()).toMatchObject({ status: 'ready', code: 'fresh' });
   });
 });
+
+// C3 audit (Nov 4 2026) §13: Setup Health checks a customer can actually book at each location
+describe('booking readiness per location', () => {
+  it('a location with no active service or no technician needs action; with both it is ready', async () => {
+    await unthrottle(); await repo.run(owner, 'manual');
+    const k0 = byKey(await repo.summary(owner, {}));
+    expect(k0[`booking.bookable:${B1}`]).toMatchObject({ status: 'action_required', code: 'no_active_services' });
+    const CAT = id('ca1');
+    await q(`insert into service_categories (id, tenant_id, branch_id, name) values ($1, $2, $3, 'Manicure')`, [CAT, T, B1]);
+    await q(`insert into services (tenant_id, branch_id, category_id, name, duration_minutes, price_cents, status) values ($1, $2, $3, 'Gel Mani', 30, 3000, 'active')`, [T, B1, CAT]);
+    await unthrottle(); await repo.run(owner, 'manual');
+    expect(byKey(await repo.summary(owner, {}))[`booking.bookable:${B1}`]).toMatchObject({ status: 'action_required', code: 'no_active_technicians' });
+    await q(`insert into technicians (tenant_id, branch_id, first_name, last_name, full_name) values ($1, $2, 'Tam', 'Nguyen', 'Tam Nguyen')`, [T, B1]);
+    await unthrottle(); await repo.run(owner, 'manual');
+    expect(byKey(await repo.summary(owner, {}))[`booking.bookable:${B1}`]).toMatchObject({ status: 'ready', code: 'bookable' });
+  });
+});
+

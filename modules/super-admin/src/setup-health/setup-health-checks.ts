@@ -126,10 +126,26 @@ async function smsTransport(db: Kysely<any>, c: CheckCtx): Promise<CheckResult[]
 async function booking(db: Kysely<any>, c: CheckCtx): Promise<CheckResult[]> {
   const s = (await sql<any>`select enabled from booking_verification_settings where tenant_id = ${c.tenantId} and branch_id is null limit 1`.execute(db)).rows[0];
   const chk = (await sql<any>`select verify_state, checked_at from tenant_messaging_health_checks where tenant_id = ${c.tenantId} and branch_id is null order by checked_at desc limit 1`.execute(db)).rows[0];
-  if (!s?.enabled) return [R('booking.verification', 'booking', 'disabled', 'info', 'booking_verification_settings', { detail: { code: 'verification_off' } })];
+  // C3 audit (Nov 4 2026) §13: can a customer actually book at each location? — at least one active service it offers and one
+  // active technician there (the booking flow and the availability answer need both); the verification check follows
+  const out: CheckResult[] = [];
+  const list = c.branchId ? [c.branchId] : c.branchIds;
+  if (list.length) {
+    const rows = (await sql<any>`select b.id,
+        (select count(*)::int from services sv where sv.tenant_id = b.tenant_id and (sv.branch_id is null or sv.branch_id = b.id) and sv.archived_at is null and sv.status = 'active') as services,
+        (select count(*)::int from technicians t where t.tenant_id = b.tenant_id and t.branch_id = b.id and t.archived_at is null and t.is_active is not false) as technicians
+      from branches b where b.tenant_id = ${c.tenantId} and b.id = any(${list}::uuid[])`.execute(db)).rows;
+    for (const r of rows) {
+      const ok = Number(r.services) > 0 && Number(r.technicians) > 0;
+      out.push(R('booking.bookable', 'booking', ok ? 'ready' : 'action_required', ok ? 'info' : 'high', 'services,technicians',
+        { branchId: String(r.id), verifiedAt: c.now.toISOString(), detail: { code: ok ? 'bookable' : Number(r.services) === 0 ? 'no_active_services' : 'no_active_technicians', services: Number(r.services), technicians: Number(r.technicians) },
+          action: ok ? null : { code: Number(r.services) === 0 ? 'open_services' : 'open_team', route: Number(r.services) === 0 ? '/services' : ROUTES.team } }));
+    }
+  }
+  if (!s?.enabled) return [...out, R('booking.verification', 'booking', 'disabled', 'info', 'booking_verification_settings', { detail: { code: 'verification_off' } })];
   const ok = chk?.verify_state === 'ok';   // messaging-health.ts: ok · failed · not_configured · unknown
   const fresh = chk && age(chk.checked_at, c.now) <= FRESHNESS.providerCheck;
-  return [R('booking.verification', 'booking', ok ? (fresh ? 'ready' : 'unknown') : chk ? 'action_required' : 'unknown', ok && fresh ? 'info' : 'high', 'tenant_messaging_health_checks',
+  return [...out, R('booking.verification', 'booking', ok ? (fresh ? 'ready' : 'unknown') : chk ? 'action_required' : 'unknown', ok && fresh ? 'info' : 'high', 'tenant_messaging_health_checks',
     { verifiedAt: iso(chk?.checked_at), detail: { code: chk ? String(chk.verify_state ?? 'unknown') : 'never_checked' }, action: ok && fresh ? null : { code: 'open_booking_verification', route: ROUTES.booking } })];
 }
 
