@@ -18,7 +18,8 @@
 import { sql, type Kysely, type RawBuilder } from 'kysely';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { withCode, isAddOnCategory, type ApiErrorCode } from '@aipowersalon/api-contracts';
-import { tenantTimeZone } from '@aipowersalon/database';
+import { tenantTimeZone, transitionStatus } from '@aipowersalon/database';
+import { SERVICE_PRICE_SCHEDULE } from '../catalog-lifecycles';
 import { recordCatalogChanges, diffFields, type CatalogChange } from './catalog-change-log';
 import * as crypto from 'crypto';
 
@@ -221,6 +222,7 @@ export class CatalogScreensRepository {
    *  (the real branch model), recent realized sales and the change history count. */
   async serviceDetail(ctx: CatCtx, serviceId: string) {
     const T = ctx.tenantId; if (!UUID.test(String(serviceId))) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    await this.applyDueSchedules(T, serviceId);   // D4 gaps: a schedule already due shows as the current price (the job may not have run yet)
     const r = (await sql<any>`select s.id, s.name, s.description, s.category_id, c.name as category_name, c.status as category_status, s.price_cents, s.duration_minutes, s.commission_type, s.commission_value,
         s.online_booking_enabled, s.ai_booking_enabled, s.status, s.branch_id, b.name as branch_name, s.created_at, s.updated_at, null::text as matched_via, 0 as add_ons, 0 as qualified, 0 as sold_30d
       from services s left join service_categories c on c.id = s.category_id and c.tenant_id = s.tenant_id left join branches b on b.id = s.branch_id and b.tenant_id = s.tenant_id
@@ -255,6 +257,7 @@ export class CatalogScreensRepository {
       branchMatch: 'service_name',
       sales90d: { lines: N(sales?.lines), cents: N(sales?.cents), lastAt: iso(sales?.last_at), lastChargedCents: sales?.last_charged == null ? null : N(sales.last_charged) },
       changeCount: changes,
+      ...(await this.scheduledFor(ctx, serviceId)),   // D4 gaps (Nov 5 2026): the scheduled (not yet current) change, if any
     };
   }
 
@@ -312,6 +315,84 @@ export class CatalogScreensRepository {
       await recordCatalogChanges(trx, ctx, changes);
       return { changed: changes.length, updatedAt: iso(upd?.updated_at) };
     });
+  }
+
+  /** D4 gaps (Nov 5 2026): schedule a price / duration change for a future time (at least 5 minutes ahead, at most a year).
+   *  One open schedule per service — cancel it to schedule another. Not the current price until it takes effect. */
+  async schedulePricing(ctx: CatCtx, serviceId: string, b: { priceCents?: unknown; durationMinutes?: unknown; effectiveAt?: unknown; reason?: unknown }) {
+    const T = ctx.tenantId; if (!UUID.test(String(serviceId))) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 500) : '';
+    if (!reason) throw err(400, 'CHANGE_REASON_REQUIRED', 'Say why the price or duration is changing.');
+    const price = b.priceCents === undefined || b.priceCents === null ? null : Number(b.priceCents);
+    const dur = b.durationMinutes === undefined || b.durationMinutes === null ? null : Number(b.durationMinutes);
+    if (price === null && dur === null) throw err(400, 'PRICE_INVALID', 'Price must be 0 or greater');
+    if (price !== null && (!Number.isInteger(price) || price < 0 || price > 10_000_000)) throw err(400, 'PRICE_INVALID', 'Price must be 0 or greater');
+    if (dur !== null && (!Number.isInteger(dur) || dur <= 0 || dur > 1440)) throw err(400, 'DURATION_INVALID', 'Duration must be greater than 0');
+    const at = typeof b.effectiveAt === 'string' ? Date.parse(b.effectiveAt) : NaN;
+    if (!Number.isFinite(at) || at < Date.now() + 5 * 60_000 || at > Date.now() + 366 * 86_400_000) throw err(400, 'PRICE_EFFECTIVE_DATE_INVALID', 'Choose a time from 5 minutes to one year ahead.');
+    const svc = (await sql<any>`select s.id, s.branch_id, s.status from services s where s.tenant_id = ${T} and s.id = ${serviceId} and ${this.branch(ctx, 's')}`.execute(this.db)).rows[0];
+    if (!svc || svc.status === 'archived') throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    try {
+      const r = (await sql<any>`insert into service_price_schedules (tenant_id, branch_id, service_id, price_cents, duration_minutes, effective_at, reason, created_by_user_id)
+        values (${T}, ${svc.branch_id ?? null}, ${serviceId}, ${price}, ${dur}, ${new Date(at).toISOString()}::timestamptz, ${reason}, ${UUID.test(ctx.userId) ? ctx.userId : null}) returning id`.execute(this.db)).rows[0];
+      return { scheduleId: String(r.id), ...(await this.scheduledFor(ctx, serviceId)) };
+    } catch (e) {
+      if (String((e as { code?: string })?.code) === '23505') throw err(409, 'PRICE_ALREADY_SCHEDULED', 'This service already has a scheduled change. Cancel it first.');
+      throw e;
+    }
+  }
+
+  /** the open schedule of a service (null when none) */
+  async scheduledFor(ctx: CatCtx, serviceId: string) {
+    const r = (await sql<any>`select p.id, p.price_cents, p.duration_minutes, p.effective_at, p.reason, p.created_at, coalesce(nullif(u.full_name, ''), u.email) as actor
+      from service_price_schedules p left join users u on u.id = p.created_by_user_id and u.tenant_id = p.tenant_id
+      where p.tenant_id = ${ctx.tenantId} and p.service_id = ${serviceId} and p.status = 'scheduled'`.execute(this.db)).rows[0];
+    return { scheduled: r ? { id: String(r.id), priceCents: r.price_cents == null ? null : N(r.price_cents), durationMinutes: r.duration_minutes == null ? null : N(r.duration_minutes),
+      effectiveAt: iso(r.effective_at), reason: r.reason ?? null, createdAt: iso(r.created_at), createdBy: r.actor ?? null } : null };
+  }
+
+  /** cancel a service's open schedule (with a reason) — once */
+  async cancelScheduledPricing(ctx: CatCtx, serviceId: string, b: { scheduleId?: unknown; reason?: unknown }) {
+    const T = ctx.tenantId; const sid = String(b.scheduleId ?? '');
+    if (!UUID.test(String(serviceId)) || !UUID.test(sid)) throw err(404, 'PRICE_SCHEDULE_NOT_FOUND', 'That scheduled change was not found');
+    const reason = typeof b.reason === 'string' ? b.reason.trim().slice(0, 500) : '';
+    if (!reason) throw err(400, 'CHANGE_REASON_REQUIRED', 'Say why the price or duration is changing.');
+    const svc = (await sql<any>`select s.id from services s where s.tenant_id = ${T} and s.id = ${serviceId} and ${this.branch(ctx, 's')}`.execute(this.db)).rows[0];
+    if (!svc) throw err(404, 'SERVICE_NOT_FOUND', 'Service not found');
+    const moved = await this.db.transaction().execute((trx) => transitionStatus(trx, SERVICE_PRICE_SCHEDULE, { where: { id: sid, tenant_id: T, service_id: serviceId }, from: ['scheduled'], to: 'cancelled',
+      set: { cancelled_at: sql`now()`, cancelled_by_user_id: UUID.test(ctx.userId) ? ctx.userId : null, cancel_reason: reason } }).catch((e: unknown) => {
+        if ((e as Error)?.name === 'InvalidStateTransitionError') throw err(409, 'PRICE_SCHEDULE_NOT_OPEN', 'That scheduled change already took effect or was cancelled.');
+        throw e;
+      }));
+    if (!moved) throw err(404, 'PRICE_SCHEDULE_NOT_FOUND', 'That scheduled change was not found');
+    return this.scheduledFor(ctx, serviceId);
+  }
+
+  /** the job (and a read of the service) applies every DUE schedule: scheduled → applied once (a conditional move, so two
+   *  processes never apply it twice), the service's price / duration set, the change log written with the scheduled time as
+   *  its effective time and the scheduler as the actor. A service archived meanwhile is 'superseded' (nothing changes). */
+  async applyDueSchedules(tenantId: string | null = null, serviceId: string | null = null, limit = 200): Promise<number> {
+    const due = (await sql<any>`select id, tenant_id, branch_id, service_id, price_cents, duration_minutes, effective_at, reason, created_by_user_id from service_price_schedules
+      where status = 'scheduled' and effective_at <= now() and (${tenantId}::uuid is null or tenant_id = ${tenantId}) and (${serviceId}::uuid is null or service_id = ${serviceId})
+      order by effective_at limit ${limit}`.execute(this.db)).rows;
+    let applied = 0;
+    for (const p of due) {
+      await this.db.transaction().execute(async (trx) => {
+        const cur = (await sql<any>`select id, price_cents, duration_minutes, status from services where tenant_id = ${p.tenant_id} and id = ${p.service_id} for update`.execute(trx)).rows[0];
+        const live = !!cur && cur.status !== 'archived';
+        const moved = await transitionStatus(trx, SERVICE_PRICE_SCHEDULE, { where: { id: p.id, tenant_id: p.tenant_id }, from: ['scheduled'], to: live ? 'applied' : 'superseded', set: { applied_at: sql`now()` } });
+        if (!moved || !live) return;
+        const changes = diffFields('service', String(p.service_id), { price_cents: N(cur.price_cents), duration_minutes: N(cur.duration_minutes) },
+          { price_cents: p.price_cents == null ? undefined : N(p.price_cents), duration_minutes: p.duration_minutes == null ? undefined : N(p.duration_minutes) },
+          { serviceId: String(p.service_id), reason: String(p.reason ?? ''), source: 'scheduled_price', effectiveAt: iso(p.effective_at) });
+        if (!changes.length) return;
+        await sql`update services set price_cents = coalesce(${p.price_cents}::int, price_cents), duration_minutes = coalesce(${p.duration_minutes}::int, duration_minutes), updated_at = now(),
+            updated_by = ${p.created_by_user_id ?? null} where tenant_id = ${p.tenant_id} and id = ${p.service_id}`.execute(trx);
+        await recordCatalogChanges(trx, { tenantId: String(p.tenant_id), branchId: p.branch_id ?? null, userId: p.created_by_user_id ?? null }, changes);
+        applied += 1;
+      });
+    }
+    return applied;
   }
 
   /** D4 gaps (Nov 5 2026): before a price / duration change, the upcoming bookings of this service and what they were quoted.

@@ -17,7 +17,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney } from '../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
-import { nf, money, mins, day, pageOf, STATUS_TONE, statusText, saveCsv, CustomerHistoryTable, EditPricingDialog, ChangeHistoryTable } from './catalogShared';
+import { nf, money, mins, day, whenTime, pageOf, STATUS_TONE, statusText, saveCsv, CustomerHistoryTable, EditPricingDialog, ChangeHistoryTable } from './catalogShared';
 
 type Tab = 'list' | 'history' | 'customers';
 const TABS: Tab[] = ['list', 'history', 'customers'];
@@ -159,6 +159,12 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
   const d = useLoad(() => posCatalogApi.service(serviceId), [serviceId]);
   const h = useLoad(() => (t === 'history' ? posCatalogApi.history({ serviceId, field: 'all', page: hp, pageSize: 8 }) : Promise.resolve(null)), [serviceId, t, hp]);
   // D4 gaps (Nov 5 2026): revert a price / duration change — a NEW revision with a reason (the history row stays)
+  const [cancelSched, setCancelSched] = useState(false); const [schedWhy, setSchedWhy] = useState('');
+  const doCancelSched = async () => {
+    if (!d.data?.scheduled) return;
+    try { await posCatalogApi.cancelScheduledPricing(serviceId, { scheduleId: d.data.scheduled.id, reason: schedWhy.trim() }); setCancelSched(false); setSchedWhy(''); d.reload(); }
+    catch (e) { setRevertErr(errorTextOf(e, tx('pos.save_failed'))); }
+  };
   const [revertRow, setRevertRow] = useState<any | null>(null); const [revertWhy, setRevertWhy] = useState(''); const [revertErr, setRevertErr] = useState<string | null>(null);
   const doRevert = async () => {
     if (!revertRow || !d.data) return; setRevertErr(null);
@@ -177,6 +183,11 @@ function ServicePriceDetails({ serviceId, canEdit, onClose, onEdit }: { serviceI
           <dt>{tx('pos.category')}</dt><dd>{x.categoryName ?? tx('cg.uncategorized')}</dd>
           <dt>{tx('pos.price')}</dt><dd><b>{fmtMoney(x.priceCents)}</b></dd>
           <dt>{tx('pos.duration')}</dt><dd>{mins(x.durationMinutes)}</dd>
+          {x.scheduled ? <><dt>{tx('cg.sched.title')}</dt><dd data-testid="pd-scheduled">{tx('cg.sched.summary', { p: x.scheduled.priceCents != null ? fmtMoney(x.scheduled.priceCents) : fmtMoney(x.priceCents), m: mins(x.scheduled.durationMinutes ?? x.durationMinutes), t: whenTime(x.scheduled.effectiveAt) })}
+            {x.scheduled.reason ? <span className="fk-li-s">{x.scheduled.reason}</span> : null}
+            {canEdit ? (cancelSched ? <span style={{ display: 'flex', gap: 6, marginTop: 4 }}><input value={schedWhy} onChange={(e) => setSchedWhy(e.target.value)} placeholder={tx('cg.f.reason')} data-testid="sched-cancel-why" />
+              <button type="button" className="fk-btn sm" disabled={!schedWhy.trim()} onClick={doCancelSched} data-testid="sched-cancel-save">{tx('cg.sched.cancel')}</button></span>
+              : <button type="button" className="fk-btn ghost sm" onClick={() => setCancelSched(true)} data-testid="sched-cancel">{tx('cg.sched.cancel')}</button>) : null}</dd></> : null}
           <dt>{tx('cg.channels')}</dt><dd>{x.onlineBookable ? tx('cg.onlineYes') : tx('cg.onlineNo')}</dd>
           <dt>{tx('cg.lastCharged')}</dt><dd>{x.sales90d.lastChargedCents == null ? tx('cg.noSales') : `${fmtMoney(x.sales90d.lastChargedCents)} · ${day(x.sales90d.lastAt)}`}</dd>
           <dt>{tx('cg.sold90')}</dt><dd>{x.sales90d.lines ? tx('cg.sold90v', { n: nf(x.sales90d.lines), v: fmtMoney(x.sales90d.cents), d: day(x.sales90d.lastAt) }) : tx('cg.noSales')}</dd>

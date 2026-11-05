@@ -2541,6 +2541,8 @@
   "POST /pos/catalog/add-ons/{key}/restore": "AADDDRRRRRRRRRRRR",
   "POST /pos/catalog/categories/{categoryId}/reassign": "AADDDRRRRRRRRRRRR",
   "POST /pos/catalog/services/{serviceId}/pricing/revert": "AADDDRRRRRRRRRRRR",
+  "POST /pos/catalog/services/{serviceId}/pricing/schedule": "AADDDRRRRRRRRRRRR",
+  "POST /pos/catalog/services/{serviceId}/pricing/schedule/cancel": "AADDDRRRRRRRRRRRR",
   "POST /pos/check-in/{checkInId}/assign-technician": "AAAAARRRRRRRRRRRR",
   "POST /pos/check-in/{checkInId}/cancel": "AAAAARRRRRRRRRRRR",
   "POST /pos/check-in/{checkInId}/move-to-queue": "AAAAARRRRRRRRRRRR",

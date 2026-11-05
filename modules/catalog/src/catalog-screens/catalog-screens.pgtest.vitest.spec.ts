@@ -208,6 +208,33 @@ describe('Service Pricing — D4 gaps (Nov 5 2026): booking impact preview and r
   });
 });
 
+describe('Service Pricing — D4 gaps (Nov 5 2026): scheduled prices', () => {
+  it('a scheduled change is not current until due; applies once with its effective time; one open schedule; cancel', async () => {
+    await expect(repo.schedulePricing(ctx, CUT, { priceCents: 5000, effectiveAt: new Date(Date.now() + 60_000).toISOString(), reason: 'too soon' })).rejects.toThrow(/5 minutes/);
+    const at = new Date(Date.now() + 2 * 86_400_000).toISOString();
+    const s1: any = await repo.schedulePricing(ctx, CUT, { priceCents: 5000, effectiveAt: at, reason: 'New year prices' });
+    expect(s1.scheduled).toMatchObject({ priceCents: 5000, reason: 'New year prices' });
+    await expect(repo.schedulePricing(ctx, CUT, { priceCents: 5200, effectiveAt: at, reason: 'again' })).rejects.toThrow(/already has a scheduled/);
+    expect(await repo.applyDueSchedules(T)).toBe(0);
+    expect(Number((await q(`select price_cents from services where id = $1`, [CUT])).rows[0].price_cents)).toBe(4500);
+    // it comes due
+    await q(`update service_price_schedules set effective_at = now() - interval '1 minute' where id = $1`, [s1.scheduleId]);
+    const d: any = await repo.serviceDetail(ctx, CUT);   // a read applies a due schedule
+    expect(d.priceCents).toBe(5000); expect(d.scheduled).toBeNull();
+    expect(await repo.applyDueSchedules(T)).toBe(0);   // never twice
+    const h: any = await repo.history(ctx, { serviceId: CUT, field: 'price', preset: 'all' });
+    expect(h.items[0]).toMatchObject({ oldValue: '4500', newValue: '5000', source: 'scheduled_price', reason: 'New year prices' });
+    // schedule again and cancel it
+    const s2: any = await repo.schedulePricing(ctx, CUT, { durationMinutes: 40, effectiveAt: at, reason: 'Longer slot' });
+    await expect(repo.cancelScheduledPricing(ctx, CUT, { scheduleId: s2.scheduleId })).rejects.toThrow(/why/);
+    expect((await repo.cancelScheduledPricing(ctx, CUT, { scheduleId: s2.scheduleId, reason: 'Changed our mind' })).scheduled).toBeNull();
+    await expect(repo.cancelScheduledPricing(ctx, CUT, { scheduleId: s2.scheduleId, reason: 'again' })).rejects.toThrow(/already took effect or was cancelled/);
+    await q(`update service_price_schedules set effective_at = now() - interval '1 minute' where id = $1`, [s2.scheduleId]);
+    expect(await repo.applyDueSchedules(T)).toBe(0);
+    expect(Number((await q(`select duration_minutes from services where id = $1`, [CUT])).rows[0].duration_minutes)).toBe(30);
+  });
+});
+
 describe('Add-Ons', () => {
   it('KPIs state their unit (4 offerings of 1 add-on on 4 services, $10 average); hair-service offerings are flagged, not changed', async () => {
     expect(await repo.addOnSummary(ctx)).toMatchObject({ offerings: 4, activeOfferings: 4, definitions: 1, servicesOffering: 4, averagePriceCents: 1000, categoryAddOnServices: 0 });

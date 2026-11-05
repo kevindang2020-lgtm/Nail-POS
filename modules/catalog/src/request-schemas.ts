@@ -37,6 +37,9 @@ export const ADD_ON_UPDATE_BODY: BodySchema = ADD_ON_CREATE_BODY;
 export const CATALOG_PRICING_BODY: BodySchema = S.object({ priceCents: cents, durationMinutes: minutes, reason: str(500), expectedUpdatedAt: str(40) });
 // D4 gaps (Nov 5 2026): revert a price / duration change — a new revision back to that change's old value
 export const CATALOG_PRICING_REVERT_BODY: BodySchema = S.object({ historyId: str(40), reason: str(500), expectedUpdatedAt: str(40) });
+// D4 gaps (Nov 5 2026): schedule a future price / duration change; cancel the open schedule
+export const CATALOG_PRICING_SCHEDULE_BODY: BodySchema = S.object({ priceCents: cents, durationMinutes: minutes, effectiveAt: str(40), reason: str(500) });
+export const CATALOG_PRICING_SCHEDULE_CANCEL_BODY: BodySchema = S.object({ scheduleId: str(40), reason: str(500) });
 export const CATALOG_REASSIGN_BODY: BodySchema = S.object({ serviceIds: ids, toCategoryId: id, reason: str(500), confirm: flag });
 export const CATALOG_ADD_ON_CREATE_BODY: BodySchema = S.object({ name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, serviceIds: ids, confirmDuplicate: flag });
 export const CATALOG_ADD_ON_UPDATE_BODY: BodySchema = S.object({ scope: str(16), serviceId: id, name: str(200), priceCents: cents, durationMinutes: minutes, taxable: flag, addServiceIds: ids, removeServiceIds: ids, reason: str(500) });

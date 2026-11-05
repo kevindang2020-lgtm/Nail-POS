@@ -99,6 +99,8 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
   const [price, setPrice] = useState(textFromCents(service.priceCents));
   const [dur, setDur] = useState(String(service.durationMinutes || ''));
   const [reason, setReason] = useState('');
+  // D4 gaps (Nov 5 2026): take effect now, or schedule it (the current price stays until then)
+  const [when, setWhen] = useState<'now' | 'later'>('now'); const [at, setAt] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const cents = centsFromText(price); const m = Number(dur);
   const changed = (cents != null && cents !== service.priceCents) || (Number.isInteger(m) && m !== service.durationMinutes);
@@ -113,8 +115,14 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
   const save = async () => {
     if (!valid) { setErr(tx('cg.pricing.invalid')); return; }
     if (!reason.trim()) { setErr(tx('cg.reasonRequired')); return; }
+    if (when === 'later' && (!at || Number.isNaN(Date.parse(at)))) { setErr(tx('cg.sched.pickTime')); return; }
     setBusy(true); setErr(null);
     try {
+      if (when === 'later') {
+        await posCatalogApi.schedulePricing(service.serviceId, { ...(cents !== service.priceCents ? { priceCents: cents } : {}), ...(m !== service.durationMinutes ? { durationMinutes: m } : {}), effectiveAt: new Date(at).toISOString(), reason: reason.trim() });
+        onSaved(tx('cg.sched.saved', { name: service.name }));
+        return;
+      }
       await posCatalogApi.updatePricing(service.serviceId, { priceCents: cents, durationMinutes: m, reason: reason.trim(), expectedUpdatedAt: service.updatedAt });
       onSaved(tx('cg.pricing.saved', { name: service.name }));
     } catch (e) { setErr(errorTextOf(e, tx('pos.save_failed'))); } finally { setBusy(false); }
@@ -126,6 +134,8 @@ export function EditPricingDialog({ service, onClose, onSaved }: { service: any;
         <label className="fk-field">{tx('cg.f.price')}<input inputMode="decimal" value={price} onChange={(e) => setPrice(e.target.value)} data-testid="pricing-price" /><span className="fk-hint">{tx('cg.f.was', { v: fmtMoney(service.priceCents) })}</span></label>
         <label className="fk-field">{tx('cg.f.duration')}<input inputMode="numeric" value={dur} onChange={(e) => setDur(e.target.value.replace(/\D/g, ''))} data-testid="pricing-duration" /><span className="fk-hint">{tx('cg.f.was', { v: mins(service.durationMinutes) })}</span></label>
         <label className="fk-field wide">{tx('cg.f.reason')}<input value={reason} maxLength={500} onChange={(e) => setReason(e.target.value)} placeholder={tx('cg.f.reasonPh')} data-testid="pricing-reason" /></label>
+        <label className="fk-field">{tx('cg.sched.when')}<select className="fk-select" value={when} onChange={(e) => setWhen(e.target.value as 'now' | 'later')} data-testid="pricing-when"><option value="now">{tx('cg.sched.now')}</option><option value="later">{tx('cg.sched.later')}</option></select></label>
+        {when === 'later' ? <label className="fk-field">{tx('cg.sched.at')}<input type="datetime-local" value={at} onChange={(e) => setAt(e.target.value)} data-testid="pricing-at" /><span className="fk-hint">{tx('cg.sched.note')}</span></label> : null}
       </div>
       <p className="fk-hint">{tx('cg.pricing.rule')}</p>
       {impact ? <div className="fk-note info" data-testid="pricing-impact"><span>{impact.upcoming
@@ -203,7 +213,7 @@ export function ChangeHistoryTable({ rows, showItem = true, onRevert }: { rows: 
       <thead><tr><th>{tx('cg.col.when')}</th>{showItem ? <th>{tx('cg.col.item')}</th> : null}<th>{tx('cg.col.field')}</th><th>{tx('cg.col.change')}</th><th>{tx('cg.col.reason')}</th><th className="t-opt">{tx('cg.col.by')}</th>{onRevert ? <th aria-label={tx('finance.actions')} /> : null}</tr></thead>
       <tbody>{rows.map((h: any) => <tr key={h.id} data-testid="change-row">
         <td>{whenTime(h.changedAt)}</td>
-        {showItem ? <td>{h.serviceName ?? h.categoryName ?? h.entityId}<span className="fk-li-s">{tx('cg.src.' + (['pos', 'import', 'pricing_editor', 'pricing_revert', 'reassignment', 'add_ons'].includes(h.source) ? h.source : 'pos'))}</span></td> : null}
+        {showItem ? <td>{h.serviceName ?? h.categoryName ?? h.entityId}<span className="fk-li-s">{tx('cg.src.' + (['pos', 'import', 'pricing_editor', 'pricing_revert', 'scheduled_price', 'reassignment', 'add_ons'].includes(h.source) ? h.source : 'pos'))}</span></td> : null}
         <td>{fieldText(h.field)}</td>
         <td>{changeValue(h.field, h.oldValue)} → <b>{changeValue(h.field, h.newValue)}</b></td>
         <td className="cg-reason">{h.reason ?? <span className="fk-muted">{tx('cg.noReason')}</span>}</td>

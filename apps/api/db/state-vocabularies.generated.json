@@ -2238,6 +2238,12 @@
    "sent",
    "skipped"
   ],
+  "service_price_schedules.status": [
+   "applied",
+   "cancelled",
+   "scheduled",
+   "superseded"
+  ],
   "service_recommendation_reviews.status": [
    "deferred",
    "not_applicable",

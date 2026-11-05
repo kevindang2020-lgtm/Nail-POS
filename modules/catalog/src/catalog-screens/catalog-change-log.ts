@@ -10,6 +10,8 @@ export interface CatalogChangeCtx { tenantId: string; branchId?: string | null; 
 export interface CatalogChange {
   entityType: 'service' | 'category' | 'add_on'; entityId: string; serviceId?: string | null; field: string;
   oldValue: unknown; newValue: unknown; reason?: string | null; source?: string;
+  /** D4 gaps (Nov 5 2026): when the change takes effect (a scheduled price applies at its time); default: now */
+  effectiveAt?: string | null;
 }
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const text = (v: unknown) => (v == null ? null : typeof v === 'string' ? v : String(v));
@@ -29,9 +31,9 @@ export async function recordCatalogChanges(db: Executor, ctx: CatalogChangeCtx, 
   const branch = ctx.branchId && UUID.test(ctx.branchId) ? ctx.branchId : null;
   const actor = ctx.userId && UUID.test(ctx.userId) ? ctx.userId : null;
   for (const c of changes) {
-    await sql`insert into catalog_change_log (tenant_id, branch_id, entity_type, entity_id, service_id, field, old_value, new_value, reason, source, actor_user_id)
+    await sql`insert into catalog_change_log (tenant_id, branch_id, entity_type, entity_id, service_id, field, old_value, new_value, reason, source, actor_user_id, effective_at)
       values (${ctx.tenantId}, ${branch}, ${c.entityType}, ${c.entityId}, ${c.serviceId && UUID.test(c.serviceId) ? c.serviceId : null}, ${c.field},
-        ${text(c.oldValue)}, ${text(c.newValue)}, ${c.reason ? String(c.reason).slice(0, 500) : null}, ${c.source ?? 'pos'}, ${actor})`.execute(db);
+        ${text(c.oldValue)}, ${text(c.newValue)}, ${c.reason ? String(c.reason).slice(0, 500) : null}, ${c.source ?? 'pos'}, ${actor}, coalesce(${c.effectiveAt ?? null}::timestamptz, now()))`.execute(db);
   }
   return changes.length;
 }

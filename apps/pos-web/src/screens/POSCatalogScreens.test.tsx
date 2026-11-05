@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { cat, svc, bundles, insights, alerts, invScreen } = vi.hoisted(() => ({
-  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), revertPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
+  cat: { dashboard: vi.fn(), charts: vi.fn(), services: vi.fn(), service: vi.fn(), updatePricing: vi.fn(), pricingImpact: vi.fn(), revertPricing: vi.fn(), schedulePricing: vi.fn(), cancelScheduledPricing: vi.fn(), history: vi.fn(), customerHistory: vi.fn(), categorySummary: vi.fn(), categories: vi.fn(), category: vi.fn(), reassign: vi.fn(),
     addOnSummary: vi.fn(), addOns: vi.fn(), addOn: vi.fn(), addOnUsage: vi.fn(), createAddOn: vi.fn(), updateAddOn: vi.fn(), archiveAddOn: vi.fn(), restoreAddOn: vi.fn() },
   svc: { exportCsv: vi.fn(), update: vi.fn(), create: vi.fn(), reactivate: vi.fn(), importPreview: vi.fn(), importCommit: vi.fn(), createCategory: vi.fn(), updateCategory: vi.fn(), archiveCategory: vi.fn() },
   bundles: { state: vi.fn(), create: vi.fn() }, insights: { get: vi.fn() }, alerts: { summary: vi.fn(), active: vi.fn() }, invScreen: { products: vi.fn(), product: vi.fn() },
@@ -86,7 +86,7 @@ describe('Service Pricing', () => {
     expect(screen.getByTestId('kpi-lowest')).toHaveTextContent('$45.00');
     expect(screen.getByTestId('kpi-highest')).toHaveTextContent('$150.00');
     expect(screen.getAllByText('50 min').length).toBeGreaterThan(0);
-    expect(screen.getByTestId('pricing-rule')).toHaveTextContent(/takes effect when it is saved/);
+    expect(screen.getByTestId('pricing-rule')).toHaveTextContent(/takes effect when it is saved, or on the date you schedule/);
   });
   it('Edit Pricing needs a reason and sends the version it opened', async () => {
     cat.updatePricing.mockResolvedValue({ changed: 1 });
@@ -108,6 +108,20 @@ describe('Service Pricing', () => {
     expect(await screen.findByTestId('pricing-impact', {}, { timeout: 2000 })).toHaveTextContent(/2 upcoming bookings/);
     expect(screen.getByTestId('pricing-impact-list')).toHaveTextContent('Mai Le');
     expect(cat.pricingImpact).toHaveBeenLastCalledWith('s1', { priceCents: '5800', durationMinutes: '45' });
+  });
+  it('D4 gaps: Edit Pricing can schedule the change for a date (sent with the time; current price untouched)', async () => {
+    cat.schedulePricing.mockResolvedValue({ scheduleId: 'x', scheduled: {} }); cat.pricingImpact.mockResolvedValue(null);
+    mount(<POSServicePricingScreen />);
+    fireEvent.click((await screen.findAllByTestId('row-edit-pricing'))[0]);
+    fireEvent.change(screen.getByTestId('pricing-price'), { target: { value: '60.00' } });
+    fireEvent.change(screen.getByTestId('pricing-reason'), { target: { value: 'New year' } });
+    fireEvent.change(screen.getByTestId('pricing-when'), { target: { value: 'later' } });
+    fireEvent.click(screen.getByTestId('pricing-save'));
+    expect(await screen.findByTestId('pricing-error')).toBeInTheDocument();   // no time yet
+    fireEvent.change(screen.getByTestId('pricing-at'), { target: { value: '2027-01-01T09:00' } });
+    fireEvent.click(screen.getByTestId('pricing-save'));
+    await waitFor(() => expect(cat.schedulePricing).toHaveBeenCalledWith('s1', { priceCents: 6000, effectiveAt: new Date('2027-01-01T09:00').toISOString(), reason: 'New year' }));
+    expect(cat.updatePricing).not.toHaveBeenCalled();
   });
   it('403 is a permission state', async () => {
     cat.services.mockRejectedValue({ status: 403 });

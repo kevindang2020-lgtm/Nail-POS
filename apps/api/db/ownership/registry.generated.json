@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 937,
+  "tables": 938,
   "ownership": {
-   "tenant_owned": 625,
+   "tenant_owned": 626,
    "platform_identity_tenant_relationship": 44,
    "tenant_branch_owned": 90,
    "platform_global": 153,
@@ -29,7 +29,7 @@
    "PAYMENTS": 59,
    "WORKFORCE": 73,
    "CUSTOMERS": 57,
-   "CATALOG": 20,
+   "CATALOG": 21,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 12,
    "DEALS": 18,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 142,
    "CONFIDENTIAL": 162,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 512,
+   "INTERNAL": 513,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -8548,6 +8548,18 @@
    "sensitivity": "HIGHLY_SENSITIVE",
    "retention_class": "customer_history",
    "delete_policy": "soft_delete",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "service_price_schedules": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CATALOG",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,

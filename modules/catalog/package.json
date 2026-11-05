@@ -22,6 +22,7 @@
   "dependencies": {
     "@aipowersalon/api-contracts": "*",
     "@aipowersalon/cache": "*",
+    "@aipowersalon/config": "*",
     "@aipowersalon/database": "*",
     "@aipowersalon/permissions": "*",
     "@nestjs/common": "^10.4.22",

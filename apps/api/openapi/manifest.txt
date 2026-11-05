@@ -2638,6 +2638,8 @@ POST /pos/catalog/add-ons/{key}/archive  realm=staff  auth=session  domain=catal
 POST /pos/catalog/add-ons/{key}/restore  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/catalog/categories/{categoryId}/reassign  realm=staff  auth=session  domain=catalog  perm=pos.services.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/catalog/services/{serviceId}/pricing/revert  realm=staff  auth=session  domain=catalog  perm=pos.services.pricing.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/services/{serviceId}/pricing/schedule  realm=staff  auth=session  domain=catalog  perm=pos.services.pricing.edit  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/catalog/services/{serviceId}/pricing/schedule/cancel  realm=staff  auth=session  domain=catalog  perm=pos.services.pricing.edit  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/appointment/{appointmentId}  realm=staff  auth=session  domain=booking  perm=pos.check_in.appointment  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/create-customer  realm=staff  auth=session  domain=booking  perm=pos.customers.create  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/check-in/walk-in  realm=staff  auth=session  domain=booking  perm=pos.check_in.walk_in  idempotency=optional  guards=RolePermissionGuard,TenantAuthGuard
