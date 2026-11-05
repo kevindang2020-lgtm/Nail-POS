@@ -418,6 +418,19 @@ export class InboxRepository {
     return { before, after };
   }
 
+  /** C2 audit (Nov 4 2026) §9.3: a booking made from this conversation is linked to it — the appointment must be this salon's
+   *  and, when the conversation has a customer, that customer's. Once per appointment (a retry changes nothing). */
+  async linkBooking(db: Db, ctx: InboxCtx, id: string, appointmentId: string): Promise<{ before: Row; after: Row }> {
+    const before = await this.mustThread(ctx, id, db, true);
+    const a: Row | undefined = (await sql<Row>`SELECT a.id, a.customer_id FROM pos_tech_appointments a WHERE a.tenant_id = ${ctx.tenantId} AND a.id = ${appointmentId}::uuid`.execute(db)).rows[0];
+    if (!a || (before.customer_id && a.customer_id && String(a.customer_id) !== String(before.customer_id))) throw new InboxError('That appointment could not be found for this conversation.', 'APPOINTMENT_NOT_FOUND', 404);
+    const dup = (await sql<Row>`SELECT 1 FROM communication_thread_events WHERE tenant_id = ${ctx.tenantId} AND thread_id = ${id}::uuid AND event_type = 'booking_created' AND new_value = ${appointmentId}`.execute(db)).rows.length;
+    if (dup) return { before, after: before };
+    const after = await this.bump(db, ctx, id, sql`last_message_at = t.last_message_at`, null);
+    await this.event(db, ctx, id, 'booking_created', null, appointmentId);
+    return { before, after };
+  }
+
   // ── outbound: reserve → provider → finalize (one staff Send = one message, whatever the retries) ─────────────────
   async reserveOutbound(ctx: InboxCtx, threadId: string, body: string, key: string, channel: string): Promise<{ id: string; existing: boolean }> {
     const ins = await sql<Row>`INSERT INTO communication_messages (tenant_id, thread_id, direction, channel, body, author_user_id, author_name, author_kind, status, idempotency_key)

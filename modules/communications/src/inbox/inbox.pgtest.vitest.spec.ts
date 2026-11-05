@@ -357,3 +357,17 @@ describe('C4 audit: a branch number', () => {
     expect(a.branchId).toBeNull(); expect(b.branchId).toBe(B2); expect(b.threadId).not.toBe(a.threadId);
   });
 });
+
+describe('C2 audit §9.3: a booking made from a conversation is linked back', () => {
+  it('links once per appointment; another customer\'s appointment is refused', async () => {
+    const tJane = (await svc.list(owner, { q: 'Jane' })).items[0]!.id;
+    const appt = (await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status) values ($1, $2, $3, $4, 'Jane Lotus', '2026-11-20', '10:00', '10:45', 'booked') returning id`, [T, B1, id('f1'), id('c1')])).rows[0].id;
+    const other = (await q(`insert into pos_tech_appointments (tenant_id, branch_id, technician_id, customer_id, customer_name, appt_date, start_time, end_time, status) values ($1, $2, $3, $4, 'Twin One', '2026-11-20', '11:00', '11:45', 'booked') returning id`, [T, B1, id('f1'), id('c2')])).rows[0].id;
+    const r1 = await svc.linkBooking(owner, tJane, { appointmentId: appt });
+    const r2 = await svc.linkBooking(owner, tJane, { appointmentId: appt });
+    expect(r1.changed).toBe(true); expect(r2.changed).toBe(false);
+    expect((await q(`select count(*)::int n from communication_thread_events where thread_id = $1 and event_type = 'booking_created' and new_value = $2`, [tJane, appt])).rows[0].n).toBe(1);
+    expect(await code(svc.linkBooking(owner, tJane, { appointmentId: other }))).toBe('APPOINTMENT_NOT_FOUND');
+    expect(await code(svc.linkBooking(otherOwner, tJane, { appointmentId: appt }))).toBe('CONVERSATION_NOT_FOUND');
+  });
+});

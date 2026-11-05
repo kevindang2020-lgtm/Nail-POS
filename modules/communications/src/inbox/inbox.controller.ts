@@ -18,7 +18,7 @@ import { Idempotent } from '@aipowersalon/database/nest';
 import { InboxService } from './inbox.service';
 import { InboxError } from './inbox-core';
 import type { InboxCtx } from './inbox.repository';
-import { INBOX_REPLY_BODY, INBOX_ASSIGN_BODY, INBOX_STATUS_BODY, INBOX_FOLLOW_UP_BODY, INBOX_LINK_BODY, INBOX_START_BODY, EMPTY_BODY } from '../request-schemas';
+import { INBOX_REPLY_BODY, INBOX_ASSIGN_BODY, INBOX_STATUS_BODY, INBOX_FOLLOW_UP_BODY, INBOX_LINK_BODY, INBOX_BOOKING_LINK_BODY, INBOX_START_BODY, EMPTY_BODY } from '../request-schemas';
 
 export const INBOX_SERVICE = 'InboxService';
 
@@ -91,6 +91,10 @@ export class InboxController {
   followUp(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INBOX_FOLLOW_UP_BODY, { strict: true })) b: any) { return runInbox(() => this.s().snooze(inboxCtxFrom(r), id, b ?? {})); }
   @Post('threads/:id/link-customer') @RequirePermission('pos.communications.manage')
   link(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INBOX_LINK_BODY, { strict: true })) b: any) { return runInbox(() => this.s().linkCustomer(inboxCtxFrom(r), id, b ?? {})); }
+
+  // C2 audit (Nov 4 2026) §9.3: the booking made from this conversation, linked back (once per appointment)
+  @Post('threads/:id/booking') @RequirePermission('pos.communications.view')
+  linkBooking(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(INBOX_BOOKING_LINK_BODY, { strict: true })) b: any) { return runInbox(() => this.s().linkBooking(inboxCtxFrom(r), id, b ?? {})); }
 
   @Post('conversations') @RequirePermission('pos.communications.send') @Idempotent()
   start(@Req() r: any, @Body(ValidatedBody(INBOX_START_BODY, { strict: true })) b: any) { return runInbox(() => this.s().startConversation(inboxCtxFrom(r), b ?? {})); }

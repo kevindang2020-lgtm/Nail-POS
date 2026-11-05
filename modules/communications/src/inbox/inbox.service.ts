@@ -25,7 +25,7 @@ import { InboxError, isUuid, parseInboxQuery, normalizePhone, MAX_BODY_CHARS, IN
 export interface InboxReadinessPort {
   readiness(tenantId: string, branchId: string | null, allowedBranches?: string[] | null): Promise<{ source: string; outbound: { state: string; reasonCode: string | null; blockers: string[]; warnings: string[]; deliveryTracking: boolean; fixLink?: string | null } }>;
 }
-export type ConversationEventKind = 'inbound' | 'outbound_submitted' | 'status_update' | 'read' | 'unread' | 'assigned' | 'status_changed' | 'snoozed' | 'customer_linked' | 'created';
+export type ConversationEventKind = 'inbound' | 'outbound_submitted' | 'status_update' | 'read' | 'unread' | 'assigned' | 'status_changed' | 'snoozed' | 'customer_linked' | 'created' | 'booking_created';
 
 const actorOf = (c: InboxCtx) => ({ tenantId: c.tenantId, branchId: isUuid(c.branchId) ? c.branchId : null, userId: c.userId, role: c.role });
 const versionOf = (v: unknown): number | null => { if (v === undefined || v === null || v === '') return null; const x = Number(v); return Number.isInteger(x) && x > 0 ? x : null; };
@@ -227,6 +227,13 @@ export class InboxService {
     if (!isUuid(b?.customerId)) throw new InboxError('Choose a customer of this salon.', 'CUSTOMER_NOT_FOUND', 404);
     return this.mutate(ctx, 'pos.communications.manage', id, 'inbox.customer_linked', 'customer_linked', (trx) => this.repo.linkCustomer(trx, ctx, id, String(b.customerId), versionOf(b?.expectedVersion)),
       (bf) => ({ previousCustomerId: bf.customer_id ?? null, customerId: String(b.customerId), previousMatch: bf.customer_match ?? null }));
+  }
+
+  /** C2 audit (Nov 4 2026) §9.3: the booking made from this conversation, linked back (evented + audited, once per appointment) */
+  linkBooking(ctx: InboxCtx, id: string, b: { appointmentId?: unknown }) {
+    if (!isUuid(b?.appointmentId)) throw new InboxError('That appointment could not be found for this conversation.', 'APPOINTMENT_NOT_FOUND', 404);
+    return this.mutate(ctx, 'pos.communications.view', id, 'inbox.booking_linked', 'booking_created', (trx) => this.repo.linkBooking(trx, ctx, id, String(b.appointmentId)),
+      () => ({ appointmentId: String(b.appointmentId) }));
   }
 
   /** A provider status callback moved a ledger row — tell the inbox showing that conversation (ids only). */

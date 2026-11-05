@@ -2696,6 +2696,7 @@ POST /pos/commission-discrepancies/{id}/reopen  realm=staff  auth=session  domai
 POST /pos/commission-discrepancies/{id}/resolve  realm=staff  auth=session  domain=workforce  perm=pos.reports.view  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/conversations  realm=staff  auth=session  domain=communications  perm=pos.communications.send  idempotency=optional  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/assign  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/communications/inbox/threads/{id}/booking  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/follow-up  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/link-customer  realm=staff  auth=session  domain=communications  perm=pos.communications.manage  feature=communications  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/communications/inbox/threads/{id}/read  realm=staff  auth=session  domain=communications  perm=pos.communications.view  feature=communications  guards=RolePermissionGuard,TenantAuthGuard

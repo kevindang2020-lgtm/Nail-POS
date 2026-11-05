@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { posCommunicationsApi } from '../api/posCommunicationsApi';
 import { FiArrowLeft, FiSearch, FiPlus, FiMinus, FiCalendar, FiChevronLeft, FiChevronRight, FiCheck, FiAlertCircle } from 'react-icons/fi';
 import { ServiceCard, AddonCard, BookingSummary, type ServiceCatalogItem, type AddonItem, type PriceOverride } from '../components/BookingSharedComponents';
 import { createIntentKeys } from '@aipowersalon/api-client';
@@ -393,11 +394,15 @@ export function POSNewBookingScreen() {
     if (!validateForm()) return;
     setIsSubmitting(true);
     try {
-      { const body = buildPayload(false); await posBookingApi.create(body, intentKeys.current.keyFor('booking-create', body)); intentKeys.current.done('booking-create'); }
+      let createdId: string | null = null;
+      { const body = buildPayload(false); const created: any = await posBookingApi.create(body, intentKeys.current.keyFor('booking-create', body)); intentKeys.current.done('booking-create'); createdId = created?.id ? String(created.id) : created?.appointment?.id ? String(created.appointment.id) : null; }
       if (resumedDraftId) { await posBookingApi.drafts.converted(resumedDraftId).catch(() => undefined); }   // B-22: the draft this booking came from leaves the list
       // Communications / SMS Inbox guide §9.3 (Oct 30 2026): a booking opened from a conversation returns to THAT conversation
       // (its timeline now shows the appointment); the id is the only thing carried — no phone, no name.
       const backTo = searchParams.get('from') === 'communications' ? searchParams.get('conversationId') : null;
+      // C2 audit (Nov 4 2026): the booking is linked back to the conversation it came from (its event log); a failed link
+      // never undoes the booking — the timeline still shows it through the customer
+      if (backTo && createdId && /^[0-9a-f-]{36}$/i.test(backTo)) await posCommunicationsApi.inbox.linkBooking(backTo, createdId).catch(() => undefined);
       navigate(backTo && /^[0-9a-f-]{36}$/i.test(backTo) ? `/tenant/communications/sms?thread=${encodeURIComponent(backTo)}` : '/booking');
     } catch (e: any) {
       console.error(e);

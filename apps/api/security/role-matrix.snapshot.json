@@ -2599,6 +2599,7 @@
   "POST /pos/commission-discrepancies/run-check": "AADDDRRRRRRRRRRRR",
   "POST /pos/communications/inbox/conversations": "AAAADRRRRRRRRRRRR",
   "POST /pos/communications/inbox/threads/{id}/assign": "AAAADRRRRRRRRRRRR",
+  "POST /pos/communications/inbox/threads/{id}/booking": "AAAADRRRRRRRRRRRR",
   "POST /pos/communications/inbox/threads/{id}/follow-up": "AAAADRRRRRRRRRRRR",
   "POST /pos/communications/inbox/threads/{id}/link-customer": "AAAADRRRRRRRRRRRR",
   "POST /pos/communications/inbox/threads/{id}/read": "AAAADRRRRRRRRRRRR",

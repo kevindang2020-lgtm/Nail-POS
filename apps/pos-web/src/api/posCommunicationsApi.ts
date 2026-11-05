@@ -55,6 +55,8 @@ export const posCommunicationsApi = {
 
   inbox: {
     list: (q: Record<string, unknown>) => api.get<InboxPage>(`${I}/threads`, q),
+    /** C2 audit: link the booking made from this conversation back to it */
+    linkBooking: (threadId: string, appointmentId: string) => api.post<unknown>(`${I}/threads/${encodeURIComponent(threadId)}/booking`, { appointmentId }),
     summary: (branch?: string | null) => api.get<InboxSummary>(`${I}/summary`, branch ? { branch } : undefined),
     detail: (id: string) => api.get<InboxDetail>(`${I}/threads/${enc(id)}`),
     older: (id: string, before: string) => api.get<{ items: InboxMessage[]; olderCursor: string | null }>(`${I}/threads/${enc(id)}/messages`, { before }),
