@@ -94,7 +94,9 @@ export interface NearbyDealCard {
 export interface CustomerReferral { code: string; shareMessage: string }
 export interface CustomerProfile { fullName: string | null; firstName: string | null; lastName: string | null; email: string | null; phone: string | null; birthday: string | null; smsOptIn: boolean; emailOptIn: boolean; marketingOptIn: boolean; phoneVerified: boolean; avatarUrl?: string | null }
 export interface CustomerPaymentMethod { id: string; brand: string | null; last4: string | null; expMonth: number | null; expYear: number | null; isDefault: boolean; cardholderName?: string | null; zipCode?: string | null; cardType?: string | null }
-export interface AddPaymentMethodBody { token: string; brand?: string; last4?: string; expMonth?: number; expYear?: number; isDefault?: boolean; cardholderName?: string; zipCode?: string; cardType?: string }
+export interface AddPaymentMethodBody { token: string; brand?: string; last4?: string; expMonth?: number; expYear?: number; isDefault?: boolean; cardholderName?: string; zipCode?: string; cardType?: string; consent: boolean; consentVersion: string }
+/** The salon's Fiserv hosted card tokenizer (CardSecure iFrame). available:false → card saving is unavailable. */
+export interface CardTokenizerConfig { available: boolean; url?: string; origin?: string; reason?: string; consentVersion?: string }
 export interface TopUpResult { ok: boolean; declined?: boolean; balanceCents?: number; message?: string }
 export interface CustomerSalonInfo { id: string; name: string; address: string | null; phone: string | null }
 export interface CustomerWalletTxn { id: string; amountCents: number; type: string; reference: string | null; createdAt: string }
@@ -194,6 +196,7 @@ export const customerApi = {
     return res.json() as Promise<{ url: string }>;
   },
   paymentMethods: () => api.get<CustomerPaymentMethod[]>('/customer/payment-methods'),
+  cardTokenizer: () => api.get<CardTokenizerConfig>('/customer/payment-methods/tokenizer'),
   addPaymentMethod: (b: AddPaymentMethodBody) => api.post<CustomerPaymentMethod>('/customer/payment-methods', b as unknown as Record<string, unknown>),
   deletePaymentMethod: (id: string) => api.del<{ ok: boolean }>(`/customer/payment-methods/${id}`),
   setDefaultPaymentMethod: (id: string) => api.post<{ ok: boolean }>(`/customer/payment-methods/${id}/default`, {}),

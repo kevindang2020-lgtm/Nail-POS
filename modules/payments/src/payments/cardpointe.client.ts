@@ -10,7 +10,7 @@
 // The HTTP transport is injected (FetchLike) so the request-building and response-parsing are fully unit-testable, and so
 // an end-to-end run can target a local CardPointe-shaped server. In production the factory injects global fetch.
 
-import { PaymentProcessor, AuthorizeInput, AuthorizeResult, RefundInput, VoidInput, ProcessorActionResult, ProcessorError, ConnectionTestResult, InquiryResult } from './payment-processor.port';
+import { PaymentProcessor, AuthorizeInput, AuthorizeResult, RefundInput, VoidInput, ProcessorActionResult, ProcessorError, ConnectionTestResult, InquiryResult, StoredProfileInput, StoredProfileResult } from './payment-processor.port';
 
 export interface FetchResponseLike { status: number; ok: boolean; json(): Promise<any>; text(): Promise<string>; headers?: { get(name: string): string | null }; }
 export type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body?: string }) => Promise<FetchResponseLike>;
@@ -26,6 +26,15 @@ export interface CardPointeConfig {
 
 function toDollars(cents: number): string { return (cents / 100).toFixed(2); }
 
+/** Strict major-unit decimal string ("3.00", "12", "0.5") → integer cents; anything else → undefined (never guessed). */
+export function decimalStringToCents(v: unknown): number | undefined {
+  if (v == null) return undefined;
+  const s = String(v).trim();
+  const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(s);
+  if (!m) return undefined;
+  return Number(m[1]) * 100 + Number((m[2] ?? '').padEnd(2, '0'));
+}
+
 export class CardPointeClient implements PaymentProcessor {
   readonly name = 'cardpointe';
   private readonly authHeader: string;
@@ -39,7 +48,7 @@ export class CardPointeClient implements PaymentProcessor {
   }
 
   private async put(path: string, payload: Record<string, unknown>): Promise<any> { return this.call('PUT', path, payload); }
-  private async call(method: 'PUT' | 'GET', path: string, payload?: Record<string, unknown>): Promise<any> {
+  private async call(method: 'PUT' | 'GET' | 'DELETE', path: string, payload?: Record<string, unknown>): Promise<any> {
     let res: FetchResponseLike;
     try {
       res = await this.fetchImpl(this.base + path, {
@@ -80,6 +89,11 @@ export class CardPointeClient implements PaymentProcessor {
     });
     const respstat = String(r.respstat ?? '');
     const amountCents = r.amount != null && r.amount !== '' ? Math.round(parseFloat(String(r.amount)) * 100) : undefined;
+    // Fiserv Merchant Surcharge Program: the provider-assessed fee (fee_amount "3.00", fee_type "SURCHRG" or
+    // "SURCHRG_WAIVED", fee_value "300"). Recorded as evidence, never recomputed from the ticket.
+    const feeType = r.fee_type != null && r.fee_type !== '' ? String(r.fee_type) : undefined;
+    const feeCents = decimalStringToCents(r.fee_amount);
+    const surchargeCents = feeType && /WAIVED/i.test(feeType) ? 0 : feeCents;
     return {
       approved: respstat === 'A',
       declined: respstat === 'C',
@@ -91,6 +105,9 @@ export class CardPointeClient implements PaymentProcessor {
       ...(r.profileid ? { profileId: String(r.profileid) } : {}),
       ...(r.avsresp ? { avsResp: String(r.avsresp) } : {}),
       ...(r.cvvresp ? { cvvResp: String(r.cvvresp) } : {}),
+      ...(surchargeCents != null ? { surchargeCents } : {}),
+      ...(feeType ? { feeType } : {}),
+      ...(r.fee_value != null && r.fee_value !== '' ? { feeValue: String(r.fee_value) } : {}),
     };
   }
 
@@ -127,6 +144,29 @@ export class CardPointeClient implements PaymentProcessor {
           respText: String(x.resptext ?? ''),
         })),
     };
+  }
+
+  /** PUT /cardconnect/rest/profile — store a CardSecure token (from the hosted iFrame) as a profile for this merchant.
+   *  Response: profileid, acctid, token, expiry, accttype, respstat ("A" stored). Never sends or returns a PAN. */
+  async createStoredProfile(input: StoredProfileInput): Promise<StoredProfileResult> {
+    const r = await this.put('/cardconnect/rest/profile', {
+      merchid: this.cfg.merchid, account: input.account, defaultacct: 'Y', profileupdate: 'N',
+      ...(input.expiry ? { expiry: input.expiry } : {}),
+      ...(input.postal ? { postal: input.postal.slice(0, 9) } : {}),
+      ...(input.name ? { name: input.name.slice(0, 30) } : {}),
+    });
+    const respstat = String(r?.respstat ?? '');
+    return {
+      ok: respstat === 'A' && !!r?.profileid, respstat, respText: String(r?.resptext ?? ''),
+      ...(r?.profileid ? { profileId: String(r.profileid) } : {}), ...(r?.acctid ? { acctId: String(r.acctid) } : {}),
+      ...(r?.token ? { token: String(r.token) } : {}), ...(r?.expiry ? { expiry: String(r.expiry) } : {}), ...(r?.accttype ? { accountType: String(r.accttype) } : {}),
+    };
+  }
+
+  /** DELETE /cardconnect/rest/profile/{profileid}/{acctid}/{merchid}. */
+  async deleteStoredProfile(input: { profileId: string; acctId?: string }): Promise<{ ok: boolean; respText: string }> {
+    const r = await this.call('DELETE', `/cardconnect/rest/profile/${encodeURIComponent(input.profileId)}/${encodeURIComponent(input.acctId ?? '')}/${encodeURIComponent(this.cfg.merchid)}`);
+    return { ok: String(r?.respstat ?? '') === 'A', respText: String(r?.resptext ?? '') };
   }
 
   async refund(input: RefundInput): Promise<ProcessorActionResult> {

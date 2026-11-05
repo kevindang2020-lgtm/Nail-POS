@@ -23,8 +23,13 @@ export function membershipAutobillEnabled(env: NodeJS.ProcessEnv = process.env):
 
 /** The member's default saved card (a gateway TOKEN, never a PAN) at this salon, or null. */
 export async function defaultSavedCard(db: Kysely<DB>, tenantId: string, customerId: string): Promise<{ token: string; expiry?: string } | null> {
+  // Fiserv master build §8D / §8E: a merchant-initiated (cof 'M') renewal may only use a provider-verified hosted-iFrame
+  // card whose holder gave SEPARATE consent for scheduled merchant-initiated charges, not revoked. The add-card flow
+  // records only customer-initiated consent today, so this returns null until an MIT consent flow is certified.
   const r: any = await db.selectFrom('customer_payment_methods').select(['token', 'exp_month', 'exp_year', 'is_default'] as any)
     .where('tenant_id', '=', tenantId).where('customer_id', '=', customerId)
+    .where('token_source' as any, '=', 'hosted_iframe').where('verified_at' as any, 'is not', null)
+    .where('consent_scope' as any, '=', 'mit_scheduled').where('revoked_at' as any, 'is', null)
     .orderBy('is_default', 'desc').orderBy('created_at', 'desc').limit(1).executeTakeFirst().catch(() => undefined);
   if (!r?.token) return null;
   const mm = r.exp_month, yy = r.exp_year;

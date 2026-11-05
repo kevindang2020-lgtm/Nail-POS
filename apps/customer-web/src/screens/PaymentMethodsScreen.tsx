@@ -1,19 +1,17 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { customerApi, type CustomerPaymentMethod } from '../api/customerApi';
+import { trustedTokenizerFrame, readTokenizerMessage, parseTokenizerExpiry, type TokenizerFrame } from '../payments/hostedTokenizer';
 
-// Payment Methods (Profile → Payment Methods) — real saved cards over /customer/payment-methods. The card number is
-// never stored or sent to our DB as a PAN: we send a token + display fields (brand/last4/expiry). In production the
-// token comes from the salon's hosted tokenizer (CardSecure); the entry form here produces a sandbox token.
-const brandOf = (num: string): string => {
-  const n = num.replace(/\D+/g, '');
-  if (/^4/.test(n)) return 'Visa';
-  if (/^5[1-5]/.test(n) || /^2[2-7]/.test(n)) return 'Mastercard';
-  if (/^3[47]/.test(n)) return 'Amex';
-  if (/^6/.test(n)) return 'Discover';
-  if (/^(?:2131|1800|35\d{3})/.test(n)) return 'JCB';
-  return 'Card';
-};
+// Payment Methods (Profile → Payment Methods) — saved cards over /customer/payment-methods.
+//
+// Fiserv master build §4 / §8D (P0, Nov 4 2026): this screen NO LONGER has card-number, expiry or CVV inputs. The former
+// version kept the PAN and CVV in React state and built a fake "token" by replacing the first digit with 9. Now:
+//   • the card is typed into the salon's Fiserv-hosted CardSecure iFrame; this app only ever receives a token;
+//   • the token message is accepted only from the tokenizer's exact origin AND our own iframe window;
+//   • saving needs a separate, unchecked-by-default consent box; the server then has the provider verify the token for
+//     the salon's merchant before anything is stored;
+//   • if the salon has no usable tokenizer, the screen says card saving is unavailable and collects nothing.
 
 const PAYMENT_OPTIONS = [
   {
@@ -50,57 +48,76 @@ export function PaymentMethodsScreen() {
   const [busy, setBusy] = useState(false);
   const [selectedMethod, setSelectedMethod] = useState<'debit' | 'credit'>('debit');
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [num, setNum] = useState('');
   const [cardholderName, setCardholderName] = useState('');
-  const [exp, setExp] = useState('');
-  const [cvv, setCvv] = useState('');
   const [zipCode, setZipCode] = useState('');
+  const [consent, setConsent] = useState(false);
+  const [frame, setFrame] = useState<TokenizerFrame | null>(null);
+  const [consentVersion, setConsentVersion] = useState<string>('');
+  const [tokenizerState, setTokenizerState] = useState<'idle' | 'loading' | 'ready' | 'unavailable'>('idle');
+  const [cardToken, setCardToken] = useState<{ token: string; expiry?: string } | null>(null);
+  const iframeRef = useRef<HTMLIFrameElement | null>(null);
 
   const load = () => customerApi.paymentMethods().then(setItems).catch((e: any) => setError(e?.message || 'Could not load cards.'));
   useEffect(() => { let live = true; customerApi.paymentMethods().then((d) => { if (live) setItems(d); }).catch((e: any) => live && setError(e?.message || 'Could not load cards.')); return () => { live = false; }; }, []);
 
-  const startAdd = () => {
+  // Token messages from the hosted iFrame — exact origin + our own iframe window only.
+  useEffect(() => {
+    if (!adding || !frame) return;
+    const onMessage = (ev: MessageEvent) => {
+      const m = readTokenizerMessage(ev, frame, iframeRef.current?.contentWindow ?? null);
+      if (m.kind === 'token') { setCardToken({ token: m.token, expiry: m.expiry }); setError(null); }
+      else if (m.kind === 'error') { setCardToken(null); setError(m.message); }
+    };
+    window.addEventListener('message', onMessage);
+    return () => window.removeEventListener('message', onMessage);
+  }, [adding, frame]);
+
+  const startAdd = async () => {
     setSelectedMethod('debit');
     setDropdownOpen(false);
-    setNum('');
     setCardholderName('');
-    setExp('');
-    setCvv('');
     setZipCode('');
+    setConsent(false);
+    setCardToken(null);
     setError(null);
     setAdding(true);
+    setTokenizerState('loading');
+    try {
+      const cfg = await customerApi.cardTokenizer();
+      const f = trustedTokenizerFrame(cfg);
+      setFrame(f);
+      setConsentVersion(cfg?.consentVersion || '');
+      setTokenizerState(f && cfg?.consentVersion ? 'ready' : 'unavailable');
+    } catch { setFrame(null); setTokenizerState('unavailable'); }
   };
 
   const cancelForm = () => {
     setAdding(false);
     setDropdownOpen(false);
+    setCardToken(null);
+    setFrame(null);
     setError(null);
   };
 
   const save = async () => {
-    const digits = num.replace(/\D+/g, '');
-    if (digits.length < 12) {
-      setError('Enter a valid card number.');
-      return;
-    }
-    // Tokenize into sandbox CardSecure token (starts with 9) to satisfy PCI raw-PAN check
-    const token = digits.startsWith('9') ? digits : ('9' + digits.slice(1));
-    const [mm, yy] = exp.split('/').map((x) => x.trim());
-
+    if (!cardToken) { setError('Enter your card in the secure card form first.'); return; }
+    if (!consent) { setError('Please agree to save this card for future payments.'); return; }
+    const { expMonth, expYear } = parseTokenizerExpiry(cardToken.expiry);
     setBusy(true); setError(null);
     try {
       await customerApi.addPaymentMethod({
-        token,
-        brand: brandOf(digits),
-        last4: digits.slice(-4),
-        expMonth: mm ? Number(mm) : undefined,
-        expYear: yy ? 2000 + Number(yy) : undefined,
+        token: cardToken.token,
+        last4: cardToken.token.slice(-4),
+        expMonth,
+        expYear,
         isDefault: !items || items.length === 0,
         cardholderName: cardholderName.trim() || undefined,
         zipCode: zipCode.trim() || undefined,
         cardType: selectedMethod || 'card',
+        consent: true,
+        consentVersion,
       });
-      setNum(''); setExp(''); setCvv(''); setCardholderName(''); setZipCode('');
+      setCardToken(null); setCardholderName(''); setZipCode(''); setConsent(false);
       setAdding(false);
       await load();
     } catch (e: any) { setError(e?.message || 'Could not save the card.'); }
@@ -108,32 +125,6 @@ export function PaymentMethodsScreen() {
   };
   const remove = async (id: string) => { setBusy(true); try { await customerApi.deletePaymentMethod(id); await load(); } catch (e: any) { setError(e?.message || 'Could not remove.'); } finally { setBusy(false); } };
   const makeDefault = async (id: string) => { setBusy(true); try { await customerApi.setDefaultPaymentMethod(id); await load(); } catch (e: any) { setError(e?.message || 'Could not update.'); } finally { setBusy(false); } };
-
-  const handleNumChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D+/g, '');
-    const isAmex = /^3[47]/.test(raw);
-    const maxDigits = isAmex ? 15 : 16;
-    const digits = raw.slice(0, maxDigits);
-
-    let formatted = digits;
-    if (isAmex) {
-      const part1 = digits.slice(0, 4);
-      const part2 = digits.slice(4, 10);
-      const part3 = digits.slice(10, 15);
-      formatted = [part1, part2, part3].filter(Boolean).join(' ');
-    } else {
-      formatted = digits.match(/.{1,4}/g)?.join(' ') || digits;
-    }
-    setNum(formatted);
-  };
-
-  const handleExpChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let val = e.target.value.replace(/[^\d/]/g, '').slice(0, 5);
-    if (val.length === 2 && !val.includes('/') && e.target.value.length > exp.length) {
-      val = val + '/';
-    }
-    setExp(val);
-  };
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -344,18 +335,27 @@ export function PaymentMethodsScreen() {
             )}
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-            <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)' }}>Card number:</label>
-            <input
-              value={num}
-              onChange={handleNumChange}
-              placeholder="•••• •••• •••• ••••"
-              aria-label="Card number"
-              inputMode="numeric"
-              maxLength={19}
-              style={inputStyle}
-            />
-          </div>
+          {tokenizerState === 'unavailable' ? (
+            <div role="status" className="cust-card" style={{ padding: 14, background: 'var(--customer-purple-50, #f8fafc)', border: 0, fontSize: 13.5 }}>
+              Card saving is not available at this salon yet. You can still pay at the front desk.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+              <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)' }}>Card details:</label>
+              {frame ? (
+                <iframe
+                  ref={iframeRef}
+                  title="Secure card entry"
+                  src={frame.url}
+                  // Fiserv CardSecure page: card number, expiry and CVV live here — this app never sees them.
+                  sandbox="allow-scripts allow-same-origin allow-forms"
+                  referrerPolicy="no-referrer"
+                  style={{ width: '100%', height: 160, border: '1px solid var(--customer-border)', borderRadius: 10, background: '#fff' }}
+                />
+              ) : <div className="cust-skel" style={{ width: '100%', height: 160, borderRadius: 10 }} aria-label="Loading secure card form" />}
+              {cardToken ? <div className="cust-sub" style={{ fontSize: 12 }}>Card ready •••• {cardToken.token.slice(-4)}</div> : null}
+            </div>
+          )}
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
             <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)' }}>Cardholder name:</label>
@@ -369,54 +369,23 @@ export function PaymentMethodsScreen() {
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: 10 }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)', whiteSpace: 'nowrap' }}>Expiry date:</label>
-              <input
-                value={exp}
-                onChange={handleExpChange}
-                placeholder="MM / YY"
-                aria-label="Expiry"
-                inputMode="numeric"
-                style={inputStyle}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)', display: 'flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-                <span>CVC/CVV:</span>
-                <span title="3 or 4 digit security code on back of card" style={{ display: 'inline-flex', alignItems: 'center', color: 'var(--customer-text-secondary)', cursor: 'pointer' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10" />
-                    <line x1="12" y1="16" x2="12" y2="12" />
-                    <line x1="12" y1="8" x2="12.01" y2="8" />
-                  </svg>
-                </span>
-              </label>
-              <input
-                value={cvv}
-                onChange={(e) => setCvv(e.target.value.replace(/\D+/g, '').slice(0, 4))}
-                placeholder="CVV"
-                aria-label="CVV"
-                inputMode="numeric"
-                maxLength={4}
-                style={inputStyle}
-              />
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
-              <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)', whiteSpace: 'nowrap' }}>Zip Code:</label>
-              <input
-                value={zipCode}
-                onChange={(e) => setZipCode(e.target.value)}
-                placeholder="Zip Code"
-                aria-label="Zip Code"
-                inputMode="numeric"
-                maxLength={10}
-                style={inputStyle}
-              />
-            </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 5 }}>
+            <label style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--customer-text)', whiteSpace: 'nowrap' }}>Billing Zip Code:</label>
+            <input
+              value={zipCode}
+              onChange={(e) => setZipCode(e.target.value.replace(/[^\d-]/g, '').slice(0, 10))}
+              placeholder="Zip Code"
+              aria-label="Zip Code"
+              inputMode="numeric"
+              maxLength={10}
+              style={inputStyle}
+            />
           </div>
+
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 13, lineHeight: 1.4, color: 'var(--customer-text)' }}>
+            <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} aria-label="Save this card for future payments" style={{ marginTop: 2 }} />
+            <span>Save this card with this salon's payment provider so I can choose it for future payments I make in the app. I can remove it at any time. The salon will not charge it unless I press Pay.</span>
+          </label>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 2 }}>
             <div style={{ width: 44, height: 26, background: '#1A1F71', borderRadius: 4, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(0,0,0,0.08)' }} title="Visa">
@@ -447,12 +416,12 @@ export function PaymentMethodsScreen() {
 
           <div style={{ display: 'flex', gap: 10, marginTop: 4 }}>
             <button type="button" onClick={cancelForm} className="cust-btn cust-btn-ghost" style={{ height: 46, borderRadius: 12 }}>Cancel</button>
-            <button type="button" onClick={save} disabled={busy} className="cust-btn" style={{ height: 46, borderRadius: 12 }}>
+            <button type="button" onClick={save} disabled={busy || tokenizerState !== 'ready' || !cardToken || !consent} className="cust-btn" style={{ height: 46, borderRadius: 12 }}>
               {busy ? 'Saving…' : 'Save card'}
             </button>
           </div>
         </div>
-      ) : <button onClick={startAdd} className="cust-btn cust-btn-ghost">+ Add card</button>}
+      ) : <button onClick={() => void startAdd()} className="cust-btn cust-btn-ghost">+ Add card</button>}
     </div>
   );
 }

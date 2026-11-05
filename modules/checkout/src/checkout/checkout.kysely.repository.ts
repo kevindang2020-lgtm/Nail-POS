@@ -1167,6 +1167,12 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     await this.scoped(this.db.updateTable('tickets'), ctx).set({ subtotal_cents: t.subtotalCents, tax_cents: t.taxCents, surcharge_cents: t.surchargeCents, total_cents: t.totalCents, updated_at: sql`now()` } as any)
       .where('id', '=', ticketId).execute();
   }
+  async recordProviderSurcharge(ctx: CheckoutContext, paymentId: string, feeCents: number): Promise<void> {
+    if (!(feeCents > 0)) return;
+    await this.scoped(this.db.updateTable('payments'), ctx)
+      .set({ surcharge_cents: feeCents, amount_cents: sql`amount_cents + ${feeCents}` } as any)
+      .where('id', '=', paymentId).where('surcharge_cents', '=', 0).executeTakeFirst();
+  }
   async paidBreakdown(ctx: CheckoutContext, ticketId: string): Promise<{ totalCents: number; surchargeCents: number }> {
     const r = await this.scoped(this.db.selectFrom('payments'), ctx).where('ticket_id', '=', ticketId).where('status', 'in', ['approved', 'partial'])
       .select((eb: any) => [eb.fn.sum('amount_cents').as('total'), eb.fn.sum('surcharge_cents').as('surcharge')]).executeTakeFirst();

@@ -66,9 +66,30 @@ describe('skip-line customer tip', () => {
   it('a declined charge records the combined tip too', async () => {
     const { svc, repo } = harness();
     const start = await svc.startAppPayment(ctx, 'tk1', { method: 'card', tipCents: 500 });
-    (svc as any).resolveProcessor = () => ({ processor: { name: 'sbx', authorizeAndCapture: async () => ({ approved: false, retref: 'r1' }) }, sandbox: true });
+    (svc as any).resolveProcessor = () => ({ processor: { name: 'sbx', authorizeAndCapture: async () => ({ approved: false, declined: true, respstat: 'C', retref: 'r1' }) }, sandbox: true });
     await svc.confirmAppPayment(ctx, 'tk1', { intentId: start.intentId, method: 'card', token: 'tok_1', expiry: '1230' }).catch(() => {});
     expect(repo.recordDeclinedPayment.mock.calls[0][4]).toBe(500);
+  });
+
+  // Fiserv master build §7.3: a provider non-answer (respstat 'B' / neither approved nor declined) is UNKNOWN — not a
+  // decline, not paid; the customer is told not to pay again.
+  it('a retry / unknown provider answer records neither a decline nor a payment', async () => {
+    const { svc, repo } = harness();
+    const start = await svc.startAppPayment(ctx, 'tk1', { method: 'card' });
+    (svc as any).resolveProcessor = () => ({ processor: { name: 'sbx', authorizeAndCapture: async () => ({ approved: false, declined: false, respstat: 'B', respText: 'Retry' }) }, sandbox: true });
+    const r = await svc.confirmAppPayment(ctx, 'tk1', { intentId: start.intentId, method: 'card', token: 'tok_1', expiry: '1230' });
+    expect(r).toMatchObject({ paid: false, status: 'unknown' });
+    expect(repo.recordDeclinedPayment).not.toHaveBeenCalled();
+    expect(repo.recordPaymentAndCloseTicket).not.toHaveBeenCalled();
+  });
+
+  it('an approval for a different amount is held, not recorded as paid', async () => {
+    const { svc, repo } = harness();
+    const start = await svc.startAppPayment(ctx, 'tk1', { method: 'card' });
+    (svc as any).resolveProcessor = () => ({ processor: { name: 'sbx', authorizeAndCapture: async () => ({ approved: true, declined: false, respstat: 'A', retref: 'R', amountCents: 1 }) }, sandbox: true });
+    const r = await svc.confirmAppPayment(ctx, 'tk1', { intentId: start.intentId, method: 'card', token: 'tok_1' });
+    expect(r).toMatchObject({ paid: false, status: 'unknown' });
+    expect(repo.recordPaymentAndCloseTicket).not.toHaveBeenCalled();
   });
 
   it('POS-set tip and customer tip COMBINE on the payment row', async () => {

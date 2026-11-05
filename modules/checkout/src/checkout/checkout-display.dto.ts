@@ -31,7 +31,7 @@ export interface CheckoutTicketDetail {
 }
 export interface QualitySummary { serviceCompleted: boolean; customerReady: boolean; qualityChecked: boolean; noOpenIssues: boolean; }
 
-// ===== Settings (§12 / §14) — surcharge is configurable; default 3% per Kevin =====
+// ===== Settings (§12 / §14) — surcharge disclosure settings; the fee itself is provider-assessed (Fiserv §9) =====
 export interface CheckoutSettings {
   creditCardSurchargeEnabled: boolean;
   creditCardSurchargePercent: number;   // DEFAULT 3.0 (picture showed 2.5 — tenant-configurable)
@@ -46,7 +46,9 @@ export interface CheckoutSettings {
   checkoutCompleteTimeoutSeconds: number; // display-side: seconds the 'Payment Complete' screen shows before returning to Go Check-In
 }
 export const DEFAULT_CHECKOUT_SETTINGS: CheckoutSettings = {
-  creditCardSurchargeEnabled: true, creditCardSurchargePercent: 3.0, surchargeLabel: "Card Surcharge",
+  // Fiserv master build §9 (Nov 4 2026): OFF by default. A surcharge exists only for a MID Fiserv has enrolled in the
+  // Merchant Surcharge Program, and the PROVIDER assesses it (fee_amount) — never a flat local 3%.
+  creditCardSurchargeEnabled: false, creditCardSurchargePercent: 3.0, surchargeLabel: "Card Surcharge",
   taxRatePercent: 7.75, cashDiscountEnabled: false, defaultTipPercents: [15, 18, 20],
   customerDisplayPayButtonEnabled: false, customerDisplayCaptureMode: 'front_desk', maxTipPercent: 100, checkoutCompleteTimeoutSeconds: 5,
 };
@@ -70,19 +72,14 @@ export function tipOptions(subtotalCents: Money, percents: number[], selectedCen
   opts.push({ label: "No Tip", tipType: "none", amountCents: 0, selected: selectedCents === 0 });
   return opts;
 }
-// THE checkout calculation. Surcharge applies to card only, on (subtotal + tip + tax); cash/gift = 0.
-//
-// SPLIT TENDERS — surcharge the CARD PORTION ("Option A", implemented). For a single-method "split" this helper
-// returns 0 (the breakdown isn't known here); the real per-segment card surcharge is computed by splitCardSurchargeCents
-// below from the actual card segments and is captured + disclosed at payment time (see CheckoutService.paySplit and the
-// POS split screen disclosure line). This closes the prior loophole where splitting a sale avoided the card surcharge:
-// the card dollars in a split now carry the same surcharge they would as a straight card payment.
+// THE checkout calculation. The amount the customer authorizes is subtotal + tip + tax (+ gift-card sale value).
+// Fiserv §9: no local surcharge is added for ANY method — card funding is unknown until the card is read, and an
+// enrolled merchant's surcharge is assessed by the provider on the authorization itself (recorded from fee_amount).
 export function computeTotals(subtotalCents: Money, tipCents: Money, settings: CheckoutSettings, method: PaymentMethod, giftCardChargeCents: Money = 0): CheckoutTotals {
   const taxCents = Math.round(subtotalCents * (settings.taxRatePercent / 100));
   const isCard = method === "card";
-  // One source of truth for the surcharge: the compliance-capped engine below (≤3% network cap; debit/prepaid
-  // exclusion applies at capture when the processor reports funding).
-  const surchargeCents = isCard ? splitCardSurchargeCents(subtotalCents + tipCents + taxCents, settings.creditCardSurchargeEnabled, settings.creditCardSurchargePercent) : 0;
+  // Funding is 'unknown' before the card is read → the estimate is 0; nothing local is ever added to the charge.
+  const surchargeCents = isCard ? splitCardSurchargeCents(subtotalCents + tipCents + taxCents, settings.creditCardSurchargeEnabled, settings.creditCardSurchargePercent, 'unknown') : 0;
   // Gift-card sale/reload value on this ticket: added to what the customer owes but NOT taxed (a card is taxed when it's
   // redeemed for services, not when sold) and NOT surcharged (face value passes at par). Defaults to 0, so every caller
   // that doesn't sell a gift card gets exactly the previous total.
@@ -90,28 +87,27 @@ export function computeTotals(subtotalCents: Money, tipCents: Money, settings: C
   return { subtotalCents: subtotalCents, tipCents: tipCents, taxCents: taxCents, surchargeCents: surchargeCents, giftCardChargeCents: gc, totalDueCents: subtotalCents + tipCents + taxCents + surchargeCents + gc, paymentMethod: method };
 }
 
-// Card-portion surcharge for a split tender ("Option A"). The segments of a split sum to the BASE due
-// (subtotal+tip+tax, surcharge-free); this returns the surcharge owed on the card dollars only, added on top of the
-// base and collected on the card segment. cardBaseCents = sum of the card segments' base amounts. Cash/gift dollars are
-// never surcharged. Returns 0 when surcharge is disabled or no dollars go on card — so a split that pays entirely by
-// cash/gift owes nothing, exactly as before. Disclosure of this amount before payment is legally required and is shown
-// on the split screen + returned in the split response. Takes primitives so it works from either settings shape
-// (checkout-display `creditCardSurcharge*` or checkout `cardSurcharge*`).
+// Card surcharge ESTIMATE — disclosure only (Fiserv master build §9, P0 fix Nov 4 2026).
 //
-// COMPLIANCE (card-network surcharge rules): (1) the applied rate is HARD-CAPPED at CARD_SURCHARGE_CAP_PCT (3%) —
-// enforced here at calculation, so a mis-set tenant percentage can never overcharge a customer; (2) debit and prepaid
-// cards may NEVER be surcharged — pass the card's funding type when the processor reports it and the surcharge is 0.
-// Funding is 'unknown' until a processor supplies it (BIN/capture data), in which case the configured credit-card
-// surcharge applies as before. Refund coupling is inherent: the surcharge is part of the card payment's amount, so
-// refunding the payment returns the surcharge with it.
+// The previous version defaulted funding to 'unknown' and still returned a 3% fee, which computeTotals added to the
+// card total and paySplitNow added to the authorization amount. Under the Fiserv Merchant Surcharge Program the
+// PROVIDER adds the fee to eligible credit cards itself, so that path could double-surcharge, and it surcharged cards
+// whose funding was never known (debit/prepaid must never be surcharged). Now:
+//   • unknown / debit / prepaid funding → 0. Funding is never presumed to be credit.
+//   • 'credit' → an ESTIMATE at min(configured %, 3%) for a pre-payment disclosure screen. It is never added to an
+//     authorization amount and never recorded in the ledger.
+//   • What the ledger records is the provider-assessed fee_amount from the authorization response
+//     (AuthorizeResult.surchargeCents), see CheckoutService.payCardNow / paySplitNow.
 export const CARD_SURCHARGE_CAP_PCT = 3;
 export type CardFunding = 'credit' | 'debit' | 'prepaid' | 'unknown';
 export function splitCardSurchargeCents(cardBaseCents: Money, surchargeEnabled: boolean, surchargePercent: number, cardFunding: CardFunding = 'unknown'): Money {
   if (!(cardBaseCents > 0) || !surchargeEnabled || !(surchargePercent > 0)) return 0;
-  if (cardFunding === 'debit' || cardFunding === 'prepaid') return 0; // never surcharge debit/prepaid
+  if (cardFunding !== 'credit') return 0;                            // unknown is NOT credit; debit/prepaid never
   const pct = Math.min(surchargePercent, CARD_SURCHARGE_CAP_PCT);     // network cap, enforced at calc time
   return Math.round(cardBaseCents * (pct / 100));
 }
+/** Disclosure estimate name for new callers — same rules as splitCardSurchargeCents. Never charged. */
+export const estimateCardSurchargeCents = splitCardSurchargeCents;
 // validate a custom tip: non-negative, integer cents, within max% of subtotal (else manager approval)
 export function validateCustomTip(tipCents: Money, subtotalCents: Money, maxPercent: number): { ok: boolean; reason?: string } {
   if (tipCents < 0) return { ok: false, reason: "TIP_NEGATIVE" };

@@ -1,5 +1,12 @@
 # Fiserv — the adapters that exist (CardPointe / CardConnect, Bolt, CommerceHub) and their status
 
+> **Fiserv master build — Nov 4 2026.** "Verified on UAT" statements below are developer history from Sep 2026, not
+> current certification evidence. Re-run and record the current tests (retrefs, timestamps, build SHA) per the master
+> build §13 evidence schema. The Postman starter for Gateway + Bolt UAT is in
+> [fiserv-uat/](fiserv-uat/AI_PowerSalon_CardPointe_UAT_Postman_Starter.postman_collection.json) (no secrets; use a private
+> Postman environment). Tap to Pay (CommerceHub) is a separate track and is NOT covered by CardPointe certification.
+
+
 Mandate §191-E: *"Document actual adapters found and their status. Do not claim an adapter exists if code does not contain it."*
 
 | Adapter | File | What it talks to | Status |

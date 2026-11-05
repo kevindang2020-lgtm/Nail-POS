@@ -1,5 +1,20 @@
 # Clover Compact — production onboarding procedure (§128)
 
+> **Fiserv master build — Nov 4 2026 correction (read first).**
+> * This page is the **production** procedure. It is **not** permission to run a real card on the current **UAT** MID
+>   (177000000238). In UAT use only Fiserv-approved **test cards** and the Jotform scenarios (CP $1,000.12 approve,
+>   $1,100.25 decline, surcharge $9.00, tip-adjust $125.56 + $10, void, refund). The "$1.00 real card" step below applies
+>   only to a salon's first **production pilot** after Fiserv's written certification and that salon's boarding.
+> * The Fiserv test device is a **Clover Compact** (not a Flex). Use the HSN that Bolt `listTerminals` returns, not the
+>   printed serial; the CardPointe portal "Equipment: 0" is a question for Ryan, not proof of failure.
+> * Code now: `connect` never forces (no session stealing), `authCard` sends Fiserv's implied-decimal amount ("100" =
+>   $1.00) to `/api/v3/authCard` (v4 opt-in), and "Paid" requires the approved amount + retref to reconcile.
+> * A terminal must be assigned to its branch (Devices). Terminals with no branch are no longer used for any branch.
+> * Production stays OFF until: `payment_platform_validations` has an `approved` production row with Fiserv's reference,
+>   `platform_settings.payments.production_enabled = true`, the merchant row is `onboarding_status = approved` with
+>   `credentials_verified_at` and `production_enabled_at`, and the deployment sets `PAYMENTS_LIVE_MODE=1`.
+
+
 The exact operational procedure for putting a Clover Compact (or Flex / Mini) into a salon on AIPowerSalon. No tribal
 knowledge: every step names the screen or command. Prerequisite reading: [clover.md](clover.md), [fiserv.md](fiserv.md).
 

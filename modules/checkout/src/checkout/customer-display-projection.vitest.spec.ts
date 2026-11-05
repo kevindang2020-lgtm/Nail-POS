@@ -103,12 +103,18 @@ describe('discounts', () => {
 
 describe('payments', () => {
   const card = computeTotals(11200, 2172, settings, 'card', 0);
-  it('card chosen: the surcharge is a labelled customer fee and part of the total', () => {
+  // Fiserv master build §9 (Nov 4 2026): before the card is read no fee exists — funding is unknown and an enrolled
+  // merchant's surcharge is assessed by the PROVIDER. The display shows the base total; after payment it shows the
+  // provider-assessed fee recorded on the payment.
+  it('card chosen, not yet paid: no local surcharge — the total is the base amount', () => {
     const c = buildCustomerDisplayCheckout(input({ totals: card }));
-    expect(c.customerFeeCents).toBe(card.surchargeCents);
-    expect(c.customerFeeCents).toBeGreaterThan(0);
-    expect(c.customerFeeLabel).toBe('Card Surcharge');
+    expect(card.surchargeCents).toBe(0);
+    expect(c.customerFeeCents).toBe(0);
     expect(c.totalCents).toBe(card.totalDueCents);
+  });
+  it('card paid: the provider-assessed surcharge recorded on the payment is shown as the customer fee', () => {
+    const c = buildCustomerDisplayCheckout(input({ totals: card, ticketStatus: 'paid', payments: [{ method: 'card', amountCents: card.totalDueCents + 300, surchargeCents: 300, status: 'approved' }] } as any));
+    expect(c.customerFeeCents).toBe(300);
   });
   it('a gift card covering part of it: partially paid, payment listed, balance due', () => {
     const c = buildCustomerDisplayCheckout(input({ payments: [{ method: 'gift_card', amountCents: 4000, status: 'approved' }] }));

@@ -22,6 +22,7 @@ import type { PaymentSecrets } from '@aipowersalon/security';
 import { maskSecretTail as maskSecret } from '@aipowersalon/security';
 import { missingGatewayCredentials, webhookHealth } from './payment-gateways-core';
 import { tokenizerForGatewayBase } from './card-data';
+import { hostMatchesEnvironment, processModeProblem, productionEligibility, type PlatformValidation } from './payment-eligibility';
 import { randomBytes, createHash } from 'node:crypto';
 // Wire types owned by @aipowersalon/api-contracts/tenant (Constitution 13 §15).
 export type { GatewayStatus, MaskedPaymentGateway } from '@aipowersalon/api-contracts/tenant';
@@ -44,6 +45,9 @@ export interface ResolvedGateway {
   merchantAccountId?: string | null;
   /** §168: the configuration version the processor was built from (part of the router cache key, §169). */
   configVersion?: number;
+  /** Fiserv master build §5: why an otherwise 'active' merchant was refused (host not allowlisted, UAT/production mix,
+   *  production not approved by Fiserv, …). Present only when configured=false for one of those reasons. */
+  blockedReason?: string;
 }
 
 /** The columns a merchant configuration row carries — the tenant default (tenant_payment_config) and a branch merchant
@@ -51,6 +55,8 @@ export interface ResolvedGateway {
 interface MerchantConfigRow {
   processor: string | null; merchant_id: string | null; status: string | null; environment: string | null; base_url: string | null;
   api_username_enc: string | null; api_password_enc: string | null; config_version?: number | null;
+  // migration 701 — the per-MID Fiserv facts a production charge requires
+  onboarding_status?: string | null; credentials_verified_at?: string | Date | null; production_enabled_at?: string | Date | null;
 }
 
 // What the frontend/Super Admin is allowed to see — never raw secrets (spec §8).
@@ -138,6 +144,11 @@ export class PaymentGatewayResolver {
     const base = { processorType: String(row.processor || 'none'), environment: env, merchantIdMasked: masked, ...route, configVersion };
     if (status !== 'active') return { ...base, processor: undefined, status, configured: false };
     const ptype = (row.processor || '').toLowerCase();
+    // Fiserv master build §5 — fail closed BEFORE any credential is decrypted or adapter built:
+    //   host allowlisted + matching the row's environment, this deployment allowed to use that environment, and (for a
+    //   production row) the platform validation + merchant boarding + credential verification + production enablement.
+    const blocked = await this.eligibilityProblem(ptype === 'clover' ? 'clover' : 'gateway', ptype === 'clover' ? (row.base_url || 'https://scl.clover.com') : row.base_url, row, ptype === 'clover' ? 'clover' : 'cardpointe');
+    if (blocked) return { ...base, processor: undefined, status: blocked.startsWith('HOST') || blocked.includes('_HOST_') ? 'error' : 'pending', configured: false, blockedReason: blocked };
     const key = this.cacheKey(tenantId, route.scope === 'branch' ? `branch:${route.branchId}` : 'tenant', row);
     let processor = this.built.get(key);
     if (!processor) {
@@ -180,6 +191,44 @@ export class PaymentGatewayResolver {
     return this.paused.get(integration)!.off;
   }
 
+  /** §5 — null when this row may be used by this process, else the refusal reason. */
+  private async eligibilityProblem(kind: 'gateway' | 'bolt' | 'clover', url: string | null | undefined, row: MerchantConfigRow, provider: 'cardpointe' | 'clover'): Promise<string | null> {
+    const host = hostMatchesEnvironment(kind, url, row.environment);
+    if (!host.ok) return host.reason ?? 'HOST_NOT_ALLOWLISTED';
+    const mode = processModeProblem(row.environment);
+    if (mode) return mode;
+    if (row.environment !== 'production') return null;
+    const p = await this.platformProduction(provider);
+    const e = productionEligibility(p.validation, p.enabled, {
+      environment: row.environment, onboardingStatus: row.onboarding_status ?? null,
+      credentialsVerifiedAt: row.credentials_verified_at ?? null, productionEnabledAt: row.production_enabled_at ?? null,
+    });
+    return e.ok ? null : (e.reason ?? 'PRODUCTION_NOT_APPROVED');
+  }
+
+  /** The platform's latest Fiserv validation for production + the platform-wide production switch (15 s cache; a failed
+   *  read is treated as NOT approved — fail closed). */
+  private platformCache = new Map<string, { at: number; validation: PlatformValidation | null; enabled: boolean }>();
+  private async platformProduction(provider: 'cardpointe' | 'clover', now = Date.now()): Promise<{ validation: PlatformValidation | null; enabled: boolean }> {
+    const hit = this.platformCache.get(provider);
+    if (hit && now - hit.at < 15_000) return hit;
+    let validation: PlatformValidation | null = null; let enabled = false;
+    if (this.db) {
+      try {
+        const v: any = await sql`select status, fiserv_reference, validated_at from payment_platform_validations
+          where provider = ${provider} and environment = 'production' order by created_at desc limit 1`.execute(this.db as any);
+        const r = v.rows[0];
+        validation = r ? { status: r.status, fiservReference: r.fiserv_reference, validatedAt: r.validated_at } : null;
+        const s2: any = await sql`select value from platform_settings where setting_key = 'payments.production_enabled' limit 1`.execute(this.db as any);
+        const val = s2.rows[0]?.value;
+        enabled = val === true || val === 'true';
+      } catch { validation = null; enabled = false; }
+    }
+    const out = { at: now, validation, enabled };
+    this.platformCache.set(provider, out);
+    return out;
+  }
+
   /** Resolve a tenant by its live merchant id (for inbound webhooks). The MID is looked up in BOTH the tenant defaults and
    *  the branch merchants (§10); exactly one match across both is required — unknown or ambiguous → null (never picks an
    *  arbitrary "first" row, never borrows another tenant's gateway). Decrypts THAT row's webhook secret for verification. */
@@ -219,23 +268,30 @@ export class PaymentGatewayResolver {
    */
   async resolveTerminalConfig(tenantId: string, branchId: string | null, merchantAccountId?: string | null): Promise<
     { config: { baseUrl: string; apiKey: string; merchantId: string }; scope: 'tenant' | 'branch'; merchantAccountId: string | null; configVersion: number; reason?: undefined }
-    | { config: null; scope: 'tenant' | 'branch'; merchantAccountId: string | null; configVersion: number; reason: 'MERCHANT_NOT_CONFIGURED' | 'MERCHANT_SUSPENDED' | 'TERMINAL_NOT_CONFIGURED' | 'SECRET_UNREADABLE' }> {
+    | { config: null; scope: 'tenant' | 'branch'; merchantAccountId: string | null; configVersion: number; reason: 'MERCHANT_NOT_CONFIGURED' | 'MERCHANT_SUSPENDED' | 'TERMINAL_NOT_CONFIGURED' | 'SECRET_UNREADABLE' | 'MERCHANT_BRANCH_MISMATCH' | 'HOST_NOT_ALLOWED' | 'PRODUCTION_NOT_APPROVED'; blockedReason?: string }> {
     if (!this.db) return { config: null, scope: 'tenant', merchantAccountId: null, configVersion: 1, reason: 'MERCHANT_NOT_CONFIGURED' };
-    const cols = ['id', 'tenant_id', 'status', 'merchant_id', 'bolt_base_url', 'bolt_api_key_enc', 'config_version'] as const;
+    const cols = ['id', 'tenant_id', 'branch_id', 'status', 'merchant_id', 'bolt_base_url', 'bolt_api_key_enc', 'config_version', 'environment', 'onboarding_status', 'credentials_verified_at', 'production_enabled_at'] as const;
     let row: any; let scope: 'tenant' | 'branch' = 'tenant'; let accountId: string | null = null;
     if (merchantAccountId) {
       row = await this.db.selectFrom('payment_merchant_accounts').select(cols as any).where('tenant_id', '=', tenantId).where('id', '=', merchantAccountId).executeTakeFirst().catch(() => undefined);
-      if (row) { scope = 'branch'; accountId = String(row.id); }
+      // Fiserv §5.2: a terminal bound to a merchant account may only charge from THAT account's branch. A branch-A
+      // terminal used from branch B is refused (it would settle branch A's MID for branch B's ticket).
+      if (row && branchId && String(row.branch_id) !== String(branchId)) return { config: null, scope: 'branch', merchantAccountId: String(row.id), configVersion: Number(row.config_version ?? 1), reason: 'MERCHANT_BRANCH_MISMATCH' };
+      if (!row) return { config: null, scope: 'branch', merchantAccountId: null, configVersion: 1, reason: 'MERCHANT_NOT_CONFIGURED' };   // a named account that is not this tenant's is never replaced by a default
+      scope = 'branch'; accountId = String(row.id);
     }
     if (!row && branchId) {
       row = await this.db.selectFrom('payment_merchant_accounts').select(cols as any).where('tenant_id', '=', tenantId).where('branch_id', '=', branchId).executeTakeFirst().catch(() => undefined);
       if (row) { scope = 'branch'; accountId = String(row.id); }
     }
-    if (!row) row = await this.db.selectFrom('tenant_payment_config').select(['status', 'merchant_id', 'bolt_base_url', 'bolt_api_key_enc', 'config_version'] as any).where('tenant_id', '=', tenantId).executeTakeFirst().catch(() => undefined);
+    if (!row) row = await this.db.selectFrom('tenant_payment_config').select(['status', 'merchant_id', 'bolt_base_url', 'bolt_api_key_enc', 'config_version', 'environment', 'onboarding_status', 'credentials_verified_at', 'production_enabled_at'] as any).where('tenant_id', '=', tenantId).executeTakeFirst().catch(() => undefined);
     const configVersion = Number(row?.config_version ?? 1);
     if (!row) return { config: null, scope, merchantAccountId: accountId, configVersion, reason: 'MERCHANT_NOT_CONFIGURED' };
     if (row.status !== 'active') return { config: null, scope, merchantAccountId: accountId, configVersion, reason: row.status === 'paused' || row.status === 'disabled' ? 'MERCHANT_SUSPENDED' : 'MERCHANT_NOT_CONFIGURED' };
     if (!row.bolt_base_url || !row.bolt_api_key_enc || !row.merchant_id) return { config: null, scope, merchantAccountId: accountId, configVersion, reason: 'TERMINAL_NOT_CONFIGURED' };
+    // Fiserv §5.1 / §5.3: Bolt host allowlisted + matching the row's environment, deployment mode, production approvals.
+    const blocked = await this.eligibilityProblem('bolt', String(row.bolt_base_url), row as MerchantConfigRow, 'cardpointe');
+    if (blocked) return { config: null, scope, merchantAccountId: accountId, configVersion, reason: blocked.includes('HOST') ? 'HOST_NOT_ALLOWED' : 'PRODUCTION_NOT_APPROVED', blockedReason: blocked } as any;
     let apiKey: string;
     try { apiKey = this.secrets.decrypt(String(row.bolt_api_key_enc)); } catch { return { config: null, scope, merchantAccountId: accountId, configVersion, reason: 'SECRET_UNREADABLE' }; }
     return { config: { baseUrl: String(row.bolt_base_url), apiKey, merchantId: String(row.merchant_id) }, scope, merchantAccountId: accountId, configVersion };
@@ -273,17 +329,38 @@ export class PaymentGatewayResolver {
   /** The salon's CardSecure hosted iFrame tokenizer (Fiserv "Hosted iFrame Tokenizer"): the card is typed into a page on
    *  the gateway's own host and only a TOKEN comes back to the browser — the card number never reaches the app or this
    *  backend (PCI SAQ A). Derived from the tenant's gateway host; no credential is involved. */
-  async tokenizerUrl(tenantId: string): Promise<{ available: boolean; url?: string; origin?: string; reason?: string }> {
+  async tokenizerUrl(tenantId: string, branchId?: string | null): Promise<{ available: boolean; url?: string; origin?: string; reason?: string }> {
     if (!this.db) return { available: false, reason: 'no_database' };
-    const row: any = await this.db.selectFrom('tenant_payment_config').select(['processor', 'base_url', 'status'] as any).where('tenant_id', '=', tenantId).executeTakeFirst().catch(() => undefined);
-    if (!row || !row.base_url || !['fiserv', 'cardpointe'].includes(String(row.processor))) return { available: false, reason: 'gateway_not_configured' };
+    // Fiserv §8: the tokenizer must belong to the SAME merchant that will charge the token — the branch's own merchant
+    // when it has one, else the tenant default — and that merchant must pass the same eligibility gates as a charge.
+    const g = await this.resolve(tenantId, branchId ?? null);
+    if (!g.configured) return { available: false, reason: g.blockedReason ? g.blockedReason.toLowerCase() : 'gateway_not_configured' };
+    if (!['fiserv', 'cardpointe'].includes(g.processorType)) return { available: false, reason: 'gateway_not_configured' };
+    const table = g.scope === 'branch' ? 'payment_merchant_accounts' : 'tenant_payment_config';
+    let q: any = this.db.selectFrom(table as any).select(['base_url'] as any).where('tenant_id', '=', tenantId);
+    if (g.scope === 'branch') q = q.where('id', '=', g.merchantAccountId);
+    const row: any = await q.executeTakeFirst().catch(() => undefined);
+    if (!row?.base_url) return { available: false, reason: 'gateway_not_configured' };
     return tokenizerForGatewayBase(String(row.base_url));
+  }
+
+  /** The merchant a saved card is bound to — resolved from the trusted session only. */
+  async effectiveMerchant(tenantId: string, branchId?: string | null): Promise<{ configured: boolean; scope: 'tenant' | 'branch'; merchantAccountId: string | null; merchantIdHash: string | null; processor?: PaymentProcessor; environment: 'sandbox' | 'production' }> {
+    const g = await this.resolve(tenantId, branchId ?? null);
+    if (!g.configured || !g.processor || !this.db) return { configured: false, scope: g.scope ?? 'tenant', merchantAccountId: g.merchantAccountId ?? null, merchantIdHash: null, environment: g.environment };
+    const table = g.scope === 'branch' ? 'payment_merchant_accounts' : 'tenant_payment_config';
+    let q: any = this.db.selectFrom(table as any).select(['merchant_id'] as any).where('tenant_id', '=', tenantId);
+    if (g.scope === 'branch') q = q.where('id', '=', g.merchantAccountId);
+    const row: any = await q.executeTakeFirst().catch(() => undefined);
+    const mid = row?.merchant_id ? String(row.merchant_id) : '';
+    return { configured: !!mid, scope: g.scope ?? 'tenant', merchantAccountId: g.merchantAccountId ?? null, merchantIdHash: mid ? createHash('sha256').update(mid).digest('hex') : null, processor: g.processor, environment: g.environment };
   }
 
   /** Provision/update a tenant's gateway. Secrets are encrypted before storage; only set fields are written. */
   async upsertConfig(tenantId: string, input: UpsertGatewayInput, updatedByUserId?: string): Promise<MaskedPaymentGateway> {
     if (!this.db) throw new Error('payment gateway persistence requires a database');
     const set: Record<string, unknown> = { updated_at: sql`now()`, updated_by_user_id: updatedByUserId ?? null };
+    assertProviderHostsForWrite(input);
     if (input.processorType !== undefined) set.processor = input.processorType;
     if (input.environment !== undefined) set.environment = input.environment;
     if (input.baseUrl !== undefined) set.base_url = input.baseUrl || null;
@@ -353,6 +430,7 @@ export class PaymentGatewayResolver {
     const branch: any = await this.db.selectFrom('branches').select(['id']).where('id', '=', branchId as any).where('tenant_id', '=', tenantId as any).executeTakeFirst().catch(() => undefined);
     if (!branch) throw Object.assign(new Error('That location does not belong to this salon.'), { expose: true, status: 404, code: 'BRANCH_NOT_FOUND' });
     const set: Record<string, unknown> = { updated_at: sql`now()`, updated_by: updatedByUserId ?? null };
+    assertProviderHostsForWrite(input);
     if (input.processorType !== undefined) set.processor = input.processorType === 'none' ? 'fiserv' : input.processorType;
     if (input.environment !== undefined) set.environment = input.environment;
     if (input.baseUrl !== undefined) set.base_url = input.baseUrl || null;
@@ -464,5 +542,22 @@ export class PaymentGatewayResolver {
       receivedAt: r.created_at ? new Date(r.created_at).toISOString() : null,
     }));
     return { events, health: webhookHealth(events.map((e) => ({ signatureValid: e.signatureValid, receivedAt: e.receivedAt }))) };
+  }
+}
+
+/** Fiserv §5.3: refuse a configuration write that names a non-allowlisted / insecure / wrong-environment host. The
+ *  resolver re-checks on every use; this stops the bad value being saved at all. Partial updates that do not name an
+ *  environment are checked against the host's own classification only. */
+function assertProviderHostsForWrite(input: UpsertGatewayInput): void {
+  const fail = (field: string, reason: string) => { throw Object.assign(new Error(`${field} is not an approved provider host for this environment (${reason}).`), { expose: true, status: 400, code: 'PROVIDER_HOST_NOT_ALLOWED' }); };
+  const env = input.environment;
+  if (input.baseUrl) {
+    const kind = input.processorType === 'clover' ? 'clover' : 'gateway';
+    const c = env ? hostMatchesEnvironment(kind, input.baseUrl, env) : hostMatchesEnvironment(kind, input.baseUrl, undefined);
+    if (!c.ok && !(env === undefined && c.reason === 'PRODUCTION_HOST_ON_SANDBOX_MERCHANT')) fail('baseUrl', c.reason ?? 'HOST_NOT_ALLOWLISTED');
+  }
+  if (input.boltBaseUrl) {
+    const c = env ? hostMatchesEnvironment('bolt', input.boltBaseUrl, env) : hostMatchesEnvironment('bolt', input.boltBaseUrl, undefined);
+    if (!c.ok && !(env === undefined && c.reason === 'PRODUCTION_HOST_ON_SANDBOX_MERCHANT')) fail('boltBaseUrl', c.reason ?? 'HOST_NOT_ALLOWLISTED');
   }
 }

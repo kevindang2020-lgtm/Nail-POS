@@ -157,9 +157,12 @@ export class TerminalCaptureService implements TerminalCapturePort {
     const totals = { totalDueCents: due, tipCents: ticketTotals.tipCents };
 
     // ---- resolve the physical terminal: station-paired first, else the branch's single paired terminal ----
+    // Fiserv master build §5.2: only a terminal EXPLICITLY assigned to this branch may charge this branch's ticket. A
+    // terminal with no branch (branch_id NULL) used to match every branch of the tenant — it now matches none; assign it
+    // to its location in Devices first.
     const terms: any[] = await this.db.selectFrom('pos_payment_terminals').selectAll()
       .where('tenant_id', '=', row.tenantId as any).where('status', '=', 'paired')
-      .where((eb: any) => eb.or([eb('branch_id', '=', row.branchId as any), eb('branch_id', 'is', null)]))
+      .where('branch_id', '=', row.branchId as any)
       .execute().catch(() => []);
     const sessRow: any = await this.db.selectFrom('customer_display_sessions').select(['pos_station_id'])
       .where('id', '=', row.id as any).executeTakeFirst().catch(() => undefined);
@@ -173,7 +176,7 @@ export class TerminalCaptureService implements TerminalCapturePort {
     let bolt: { baseUrl: string; apiKey: string; merchantId: string };
     if (this.terminalRoute) {
       const r = await this.terminalRoute.resolveTerminalConfig(row.tenantId, row.branchId, term.merchant_account_id ? String(term.merchant_account_id) : null);
-      if (!r.config) return this.fail(row, idem, totals.totalDueCents, r.reason === 'MERCHANT_SUSPENDED' ? 'card payments for this location are paused (MERCHANT_SUSPENDED)' : r.reason === 'SECRET_UNREADABLE' ? 'Bolt api key could not be decrypted' : 'Bolt terminal API is not configured for this location (TERMINAL_NOT_CONFIGURED)');
+      if (!r.config) return this.fail(row, idem, totals.totalDueCents, terminalRouteRefusal(r.reason));
       bolt = r.config;
     } else {
       // legacy path (no router injected — unit harnesses): the tenant default row, opened with the injected decrypt
@@ -217,6 +220,14 @@ export class TerminalCaptureService implements TerminalCapturePort {
     }
     await this.leases.release(row.tenantId, String(term.id), holder).catch(() => undefined);   // the terminal is free for the next POS
 
+    // Fiserv master build §7.2: "Paid" only when the provider approval, retref and amount reconcile. An approval with no
+    // retref or a different amount is contradictory — kept 'processing' for Verify with processor, never closed as paid.
+    if (auth.approved && (!auth.retref || (auth.amountCents != null && auth.amountCents !== totals.totalDueCents))) {
+      this.log.error(`terminal capture: approval does not reconcile (retref ${auth.retref ?? 'none'}, approved ${auth.amountCents ?? '?'} vs requested ${totals.totalDueCents} cents) — ticket ${row.ticketId} left 'processing'`);
+      const paymentId = await this.recordPayment(row, idem, totals.totalDueCents, totals.tipCents, 'processing', auth.retref).catch(() => undefined);
+      this.emit(row, EVENTS.customerDisplayPaymentRequested, { sessionId: row.id, unknown: true });
+      return { outcome: 'unknown', paymentId, reason: 'the terminal approval does not match the requested amount — verify with the processor before charging again' };
+    }
     if (auth.approved) {
       // Phase 15 round 2: the canonical POS paid path — the payment row (payment.captured), the ticket's paid state
       // (checkout.completed, visit.completed) in ONE transaction, once per display session. The card IS charged here: if
@@ -323,5 +334,17 @@ export class TerminalCaptureService implements TerminalCapturePort {
       ...(retref ? { processor_transaction_id: retref } : {}), idempotency_key: idem,
     } as any).returning('id' as any).executeTakeFirst();
     return String(r?.id ?? '');
+  }
+}
+
+/** Human-readable refusal for the terminal route (no secrets, no MID). */
+export function terminalRouteRefusal(reason?: string): string {
+  switch (reason) {
+    case 'MERCHANT_SUSPENDED': return 'card payments for this location are paused (MERCHANT_SUSPENDED)';
+    case 'SECRET_UNREADABLE': return 'Bolt api key could not be decrypted';
+    case 'MERCHANT_BRANCH_MISMATCH': return 'this terminal belongs to a different location\'s merchant account (MERCHANT_BRANCH_MISMATCH)';
+    case 'HOST_NOT_ALLOWED': return 'the terminal API address is not an approved Fiserv host for this environment (HOST_NOT_ALLOWED)';
+    case 'PRODUCTION_NOT_APPROVED': return 'live card payments are not approved for this merchant yet (PRODUCTION_NOT_APPROVED)';
+    default: return 'Bolt terminal API is not configured for this location (TERMINAL_NOT_CONFIGURED)';
   }
 }

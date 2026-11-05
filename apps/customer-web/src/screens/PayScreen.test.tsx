@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, act } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 vi.mock('../api/skipLineApi', () => ({ skipLineApi: { activeBill: vi.fn(), payCashToTech: vi.fn(), startPayment: vi.fn(), confirmPayment: vi.fn(), paymentStatus: vi.fn() } }));
+const ORIGIN = 'https://isv-uat.cardconnect.com';
+vi.mock('../api/customerApi', () => ({ customerApi: { paymentMethods: vi.fn().mockResolvedValue([]), cardTokenizer: vi.fn().mockResolvedValue({ available: true, url: 'https://isv-uat.cardconnect.com/itoke/ajax-tokenizer.html', origin: 'https://isv-uat.cardconnect.com', consentVersion: 'v' }) } }));
+// Fiserv §8D: the card is entered in the hosted iFrame — the test plays the iframe posting its token.
+async function enterCard(token = '9418594164541111') {
+  const iframe = (await screen.findByTitle('Secure card entry')) as HTMLIFrameElement;
+  act(() => { window.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ message: token, expiry: '1230', errorCode: '0' }), origin: ORIGIN, source: iframe.contentWindow as any })); });
+  await screen.findByText(/Card ready/);
+}
 import { skipLineApi } from '../api/skipLineApi';
 import { PayScreen } from './PayScreen';
 
@@ -27,12 +35,35 @@ describe('PayScreen (Skip-the-Line Checkout)', () => {
     renderPay();
     fireEvent.click(await screen.findByText('Pay Now'));
     fireEvent.click(await screen.findByText('Credit / Debit Card'));
-    fireEvent.change(screen.getByPlaceholderText('1234 5678 9012 3456'), { target: { value: '4111111111111111' } });
-    fireEvent.change(screen.getByPlaceholderText('MM/YY'), { target: { value: '12/30' } });
-    fireEvent.change(screen.getByPlaceholderText('123'), { target: { value: '123' } });
+    await enterCard();
     fireEvent.click(screen.getByText('Pay $51.50'));
     expect(await screen.findByText('Payment Successful!')).toBeTruthy();
-    expect(skipLineApi.confirmPayment).toHaveBeenCalled();
+    expect(skipLineApi.confirmPayment).toHaveBeenCalledWith('t1', { intentId: 'i1', method: 'card', token: '9418594164541111', expiry: '1230' });
+  });
+
+  it('never offers Apple Pay / Google Pay without a real wallet integration, and has no card-number or CVV field', async () => {
+    (skipLineApi.activeBill as any).mockResolvedValue(resp);
+    renderPay();
+    fireEvent.click(await screen.findByText('Pay Now'));
+    expect(screen.queryByText('Apple Pay')).toBeNull();
+    expect(screen.queryByText('Google Pay')).toBeNull();
+    fireEvent.click(await screen.findByText('Credit / Debit Card'));
+    await screen.findByTitle('Secure card entry');
+    expect(screen.queryByPlaceholderText('1234 5678 9012 3456')).toBeNull();
+    expect(document.querySelector('input[autocomplete="cc-number"], input[autocomplete="cc-csc"]')).toBeNull();
+  });
+
+  it('an unconfirmed (unknown) result is NOT shown as declined and tells the customer not to pay again', async () => {
+    (skipLineApi.activeBill as any).mockResolvedValue(resp);
+    (skipLineApi.startPayment as any).mockResolvedValue({ intentId: 'i1', ticketId: 't1', method: 'card', amountCents: 5150, configured: true, status: 'processing' });
+    (skipLineApi.confirmPayment as any).mockResolvedValue({ paid: false, status: 'unknown', message: 'We could not confirm this payment yet. Please do not pay again — the salon will verify it.' });
+    renderPay();
+    fireEvent.click(await screen.findByText('Pay Now'));
+    fireEvent.click(await screen.findByText('Credit / Debit Card'));
+    await enterCard();
+    fireEvent.click(screen.getByText('Pay $51.50'));
+    expect(await screen.findByText(/do not pay again/)).toBeTruthy();
+    expect(screen.queryByText(/Declined/)).toBeNull();
   });
 
   it('offers cash to technician and enters the waiting state', async () => {
@@ -54,9 +85,7 @@ describe('PayScreen (Skip-the-Line Checkout)', () => {
     renderPay();
     fireEvent.click(await screen.findByText('Pay Now'));
     fireEvent.click(await screen.findByText('Credit / Debit Card'));
-    fireEvent.change(screen.getByPlaceholderText('1234 5678 9012 3456'), { target: { value: '4111111111111111' } });
-    fireEvent.change(screen.getByPlaceholderText('MM/YY'), { target: { value: '12/30' } });
-    fireEvent.change(screen.getByPlaceholderText('123'), { target: { value: '123' } });
+    await enterCard();
     fireEvent.click(screen.getByText('Pay $51.50'));
     expect(await screen.findByText(/Declined/)).toBeTruthy();
   });
@@ -71,9 +100,7 @@ describe('PayScreen (Skip-the-Line Checkout)', () => {
     expect(await screen.findByText('$61.50')).toBeTruthy();               // total = bill + tip
     fireEvent.click(screen.getByText('Pay Now'));
     fireEvent.click(await screen.findByText('Credit / Debit Card'));
-    fireEvent.change(screen.getByPlaceholderText('1234 5678 9012 3456'), { target: { value: '4111111111111111' } });
-    fireEvent.change(screen.getByPlaceholderText('MM/YY'), { target: { value: '12/30' } });
-    fireEvent.change(screen.getByPlaceholderText('123'), { target: { value: '123' } });
+    await enterCard();
     fireEvent.click(screen.getByText('Pay $61.50'));
     expect(await screen.findByText('Payment Successful!')).toBeTruthy();
     expect(skipLineApi.startPayment).toHaveBeenCalledWith('t1', 'card', 1000);

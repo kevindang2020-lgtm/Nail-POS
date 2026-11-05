@@ -154,7 +154,7 @@ export class SkipLineCheckoutRepository {
   }
 
   // ---- record a payment into the shared payments table + close the ticket (same as POS checkout) ----
-  async recordPaymentAndCloseTicket(ctx: SLCtx, ticketId: string, method: string, amountCents: number, tipCents: number, opts?: { processorTxnId?: string | null; idempotencyKey?: string | null }): Promise<{ paymentId: string }> {
+  async recordPaymentAndCloseTicket(ctx: SLCtx, ticketId: string, method: string, amountCents: number, tipCents: number, opts?: { processorTxnId?: string | null; idempotencyKey?: string | null; surchargeCents?: number }): Promise<{ paymentId: string }> {
     return this.db.transaction().execute(async (trx) => {
       if (opts?.idempotencyKey) { // a retried charge with the same key must not insert a second payment row
         const dup = await trx.selectFrom('payments').select('id').where('tenant_id', '=', ctx.tenantId).where('idempotency_key', '=', opts.idempotencyKey).executeTakeFirst().catch(() => undefined);
@@ -162,7 +162,7 @@ export class SkipLineCheckoutRepository {
       }
       // Phase 15: the status BEFORE this payment decides visit.completed — only the transition into paid is a visit
       const before: any = await trx.selectFrom('tickets').select(['status', 'paid_at'] as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ticketId).forUpdate().executeTakeFirst();
-      const ins = await trx.insertInto('payments').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId ?? null, ticket_id: ticketId, method, amount_cents: amountCents, tip_cents: tipCents, tax_cents: 0, discount_cents: 0, status: 'approved', change_due_cents: 0, processor_transaction_id: opts?.processorTxnId ?? null, idempotency_key: opts?.idempotencyKey ?? null, created_by_user_id: ctx.userId ?? null } as any).returning(['id']).executeTakeFirstOrThrow();
+      const ins = await trx.insertInto('payments').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId ?? null, ticket_id: ticketId, method, amount_cents: amountCents, tip_cents: tipCents, surcharge_cents: Math.max(0, opts?.surchargeCents ?? 0), tax_cents: 0, discount_cents: 0, status: 'approved', change_due_cents: 0, processor_transaction_id: opts?.processorTxnId ?? null, idempotency_key: opts?.idempotencyKey ?? null, created_by_user_id: ctx.userId ?? null } as any).returning(['id']).executeTakeFirstOrThrow();
       await trx.updateTable('tickets').set({ status: 'paid', paid_at: sql`now()`, updated_at: sql`now()`, tip_cents: tipCents, total_cents: amountCents, chosen_payment_method: method } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', ticketId).execute();
       // §343 / Constitution 8: the SAME facts a POS checkout records — a skip-line payment used to record none, so the
       // analytics rollup and platform live-ops never counted it. Only a NEW payment row is a fact (a deduped retry
@@ -173,7 +173,7 @@ export class SkipLineCheckoutRepository {
         const customerId = cust?.customer_id ? String(cust.customer_id) : null;
         await this.outbox.write(trx, createDomainEvent({ eventType: DOMAIN_EVENTS.PAYMENT_CAPTURED, tenantId: ctx.tenantId, branchId: ctx.branchId ?? undefined,
           aggregateType: 'payment', aggregateId: paymentId, actorId: isUuid(ctx.userId) ? ctx.userId! : undefined, actorType: 'user', correlationId: `ticket:${ticketId}`,
-          payload: { paymentId, ticketId, customerId, method, amountCents, tipCents, surchargeCents: 0, status: 'approved', channel: 'skip_line' } }));
+          payload: { paymentId, ticketId, customerId, method, amountCents, tipCents, surchargeCents: Math.max(0, opts?.surchargeCents ?? 0), status: 'approved', channel: 'skip_line' } }));
         await this.outbox.write(trx, createDomainEvent({ eventType: DOMAIN_EVENTS.CHECKOUT_COMPLETED, tenantId: ctx.tenantId, branchId: ctx.branchId ?? undefined,
           aggregateType: 'ticket', aggregateId: ticketId, actorId: isUuid(ctx.userId) ? ctx.userId! : undefined, actorType: 'user', correlationId: `ticket:${ticketId}`,
           payload: { ticketId, status: 'paid', channel: 'skip_line' } }));
@@ -198,8 +198,14 @@ export class SkipLineCheckoutRepository {
   }
 
   /** A saved, tokenized card for app charges (never raw PAN). Returns null if absent — caller falls back to a client token. */
-  async savedCardToken(ctx: SLCtx, customerId: string, methodId: string): Promise<{ token: string; expiry?: string } | null> {
-    const r = await this.db.selectFrom('customer_payment_methods').select(['token', 'exp_month', 'exp_year'] as any).where('tenant_id', '=', ctx.tenantId).where('customer_id', '=', customerId).where('id', '=', methodId).executeTakeFirst().catch(() => undefined);
+  async savedCardToken(ctx: SLCtx, customerId: string, methodId: string, merchantAccountId: string | null = null): Promise<{ token: string; expiry?: string } | null> {
+    // Fiserv §8D: only a provider-verified hosted-iFrame card, with consent, not revoked, bound to THIS merchant account.
+    let q: any = this.db.selectFrom('customer_payment_methods').select(['token', 'exp_month', 'exp_year'] as any)
+      .where('tenant_id', '=', ctx.tenantId).where('customer_id', '=', customerId).where('id', '=', methodId)
+      .where('token_source' as any, '=', 'hosted_iframe').where('verified_at' as any, 'is not', null)
+      .where('consent_at' as any, 'is not', null).where('revoked_at' as any, 'is', null);
+    q = merchantAccountId ? q.where('merchant_account_id' as any, '=', merchantAccountId) : q.where('merchant_account_id' as any, 'is', null);
+    const r = await q.executeTakeFirst().catch(() => undefined);
     if (!r || !(r as any).token) return null;
     const mm = (r as any).exp_month, yy = (r as any).exp_year;
     const expiry = mm && yy ? String(mm).padStart(2, '0') + String(yy).slice(-2) : undefined;

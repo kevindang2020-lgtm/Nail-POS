@@ -23,11 +23,11 @@ export class SkipLineCheckoutService {
    * tenant's processor, else a clearly-labeled sandbox only when PAYMENTS_SANDBOX=1, else the server-wide processor only
    * when PAYMENTS_ALLOW_ENV_FALLBACK=1 (the resolver's own dev rule), else none (honest "not configured").
    */
-  private async resolveProcessor(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor; sandbox: boolean }> {
+  private async resolveProcessor(tenantId: string, branchId?: string | null): Promise<{ processor?: PaymentProcessor; sandbox: boolean; merchantAccountId?: string | null }> {
     const sandbox = process.env.PAYMENTS_SANDBOX === '1' || process.env.PAYMENTS_SANDBOX === 'true';
     if (this.gateway) {
       const g = await this.gateway.resolve(tenantId, branchId ?? null);   // wave 3 §13: tenant + branch → merchant account
-      if (g.processor) return { processor: g.processor, sandbox: false };
+      if (g.processor) return { processor: g.processor, sandbox: false, merchantAccountId: (g as any).merchantAccountId ?? null };
       if (sandbox) return { processor: new SandboxPaymentProcessor(), sandbox: true };
       if (process.env.PAYMENTS_ALLOW_ENV_FALLBACK === '1') { const env = processorFromEnv(); if (env) return { processor: env, sandbox: false }; }
       return { sandbox: false };
@@ -255,7 +255,7 @@ export class SkipLineCheckoutService {
     const method = this.cardMethods.has(String(body?.method)) ? String(body.method) : 'card';
     // wave 3 PAYI §29–§31 (P0 PCI): a raw card number is never accepted as a "token" — refused before anything is created
     if (looksLikeRawPan(String(body?.token ?? body?.account ?? ''))) throw new SkipLineError('raw_card_rejected', 'Card numbers are never accepted directly — enter the card in the secure card form.', 400);
-    const { processor } = await this.resolveProcessor(ctx.tenantId, ctx.branchId ?? null);
+    const { processor, merchantAccountId } = await this.resolveProcessor(ctx.tenantId, ctx.branchId ?? null);
     // locate the start() intent or create one. The customer tip comes from the INTENT (chosen at start) — the
     // confirm body cannot change it; only the no-intent path validates a body tip, exactly once.
     let intentId = '';
@@ -271,7 +271,9 @@ export class SkipLineCheckoutService {
     if (!processor) return { configured: false, disabledReason: 'Card processor is not configured yet.', intentId, status: 'requires_action' };
     // resolve a tokenized card: client-tokenized (hosted fields / wallet) or a saved method
     let token = body?.token || body?.account; let expiry = body?.expiry; let savedCard = false;
-    if (!token && body?.paymentMethodId) { const saved = await this.repo.savedCardToken(ctx, customerId, String(body.paymentMethodId)); if (saved) { savedCard = true; token = saved.token; expiry = expiry || saved.expiry; } }
+    // Fiserv §8D: a saved card is chargeable only where it was provider-verified (same merchant account), with recorded
+    // consent and not revoked — the repository refuses anything else (legacy / synthetic rows included).
+    if (!token && body?.paymentMethodId) { const saved = await this.repo.savedCardToken(ctx, customerId, String(body.paymentMethodId), merchantAccountId ?? null); if (saved) { savedCard = true; token = saved.token; expiry = expiry || saved.expiry; } }
     if (!token) throw new SkipLineError('card_token_required', 'A tokenized card is required (hosted fields or a saved method).', 400);
     await this.repo.setIntentStatus(ctx, intentId, 'processing');
     // §343 exempt: a momentary 'processing…' signal — the outcome is the fact (payment.captured / payment.failed)
@@ -281,6 +283,18 @@ export class SkipLineCheckoutService {
     // and — for a SAVED card — the Stored Credential framework fields: cardholder-initiated, unscheduled.
     const auth = await processor.authorizeAndCapture({ account: String(token), expiry, amountCents: amount, orderId: ticketId, idempotencyKey: idem,
       ecomind: 'E', name: bill.customerName || undefined, ...(savedCard ? { cof: 'C' as const, cofscheduled: 'N' as const } : {}) });
+    // Fiserv §7.3 / §8D: a non-answer is not a decline. respstat 'B' (retry) or anything that is neither approved nor
+    // declined leaves the intent 'processing' for provider inquiry — the customer is NOT told "declined" and invited to
+    // pay again, and nothing is recorded as paid.
+    const providerFee = Math.max(0, auth.surchargeCents ?? 0);
+    if (!auth.approved && !auth.declined) {
+      await this.repo.audit(ctx, 'skip_line_app_payment_unknown', ticketId, { intentId, respstat: auth.respstat, retref: auth.retref ?? null });
+      return { paid: false, status: 'unknown', intentId, message: 'We could not confirm this payment yet. Please do not pay again — the salon will verify it.' };
+    }
+    if (auth.approved && (!auth.retref || (auth.amountCents != null && auth.amountCents !== amount + providerFee))) {
+      await this.repo.audit(ctx, 'skip_line_app_payment_amount_mismatch', ticketId, { intentId, requestedCents: amount, providerFeeCents: providerFee, approvedCents: auth.amountCents ?? null, retref: auth.retref ?? null });
+      return { paid: false, status: 'unknown', intentId, message: 'We could not confirm this payment yet. Please do not pay again — the salon will verify it.' };
+    }
     if (!auth.approved) {
       await this.repo.recordDeclinedPayment(ctx, ticketId, method, amount, bill.tipCents + customerTip, auth.retref ?? null, idem, auth.respText, customerId);
       await this.repo.setIntentStatus(ctx, intentId, 'failed');
@@ -289,7 +303,7 @@ export class SkipLineCheckoutService {
       if (!this.repo.emitsDomainEvents?.()) this.toCustomer(customerId, SLC_EVENTS.paymentFailed, { ticketId, intentId, reason: auth.respText });   // §343: else the projection delivers payment.failed
       return { paid: false, status: 'failed', declineReason: auth.respText, intentId };
     }
-    const { paymentId } = await this.repo.recordPaymentAndCloseTicket(ctx, ticketId, method, amount, bill.tipCents + customerTip, { processorTxnId: auth.retref ?? null, idempotencyKey: idem });
+    const { paymentId } = await this.repo.recordPaymentAndCloseTicket(ctx, ticketId, method, amount + providerFee, bill.tipCents + customerTip, { processorTxnId: auth.retref ?? null, idempotencyKey: idem, surchargeCents: providerFee });
     await this.repo.setIntentStatus(ctx, intentId, 'succeeded');
     await this.repo.audit(ctx, 'skip_line_app_payment_succeeded', ticketId, { intentId, paymentId, amountCents: amount, method });
     if (!this.repo.emitsDomainEvents?.()) this.toTenant(ctx, SLC_EVENTS.paymentSucceeded, { ticketId, paymentId });   // §343: else the projection delivers payment.captured

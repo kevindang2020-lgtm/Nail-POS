@@ -47,6 +47,13 @@ export interface AuthorizeResult {
   /** AVS / CVV response codes as the gateway returns them (e.g. 'Y', 'N', 'P'). */
   avsResp?: string;
   cvvResp?: string;
+  /** Fiserv Merchant Surcharge Program — the fee the PROVIDER assessed on this authorization (fee_amount), in integer
+   *  cents. Absent/0 = no surcharge (merchant not enrolled, debit/prepaid, restricted ZIP, waived). This is the ONLY
+   *  surcharge figure the ledger may record; the app never adds its own fee to an authorization amount. */
+  surchargeCents?: number;
+  /** fee_type as returned ("SURCHRG" | "SURCHRG_WAIVED" | …) and fee_value (rate in basis points, e.g. "300" = 3%). */
+  feeType?: string;
+  feeValue?: string;
 }
 
 export interface ConnectionTestResult { ok: boolean; merchantEnabled?: boolean; cardProcessor?: string; avsSupported?: boolean; cvvSupported?: boolean; message: string; }
@@ -66,6 +73,18 @@ export interface PaymentProcessor {
    *  Throws when the processor cannot be reached — the caller must then treat the outcome as still unknown.
    *  Optional: a processor without an inquiry API leaves verification at "unknown" (never guessed). */
   inquireByOrderId?(orderId: string): Promise<InquiryResult>;
+  /** Fiserv master build §8D: store a hosted-iFrame token as a provider profile for THIS merchant (CardPointe
+   *  PUT /profile). The provider accepting it is the proof the token is genuine and usable by this MID; a format check
+   *  alone never is. Optional: a processor without it cannot save cards (the feature stays off). */
+  createStoredProfile?(input: StoredProfileInput): Promise<StoredProfileResult>;
+  /** Remove the provider profile when the customer deletes the card (best-effort; the row is revoked regardless). */
+  deleteStoredProfile?(input: { profileId: string; acctId?: string }): Promise<{ ok: boolean; respText: string }>;
+}
+
+export interface StoredProfileInput { account: string; expiry?: string; postal?: string; name?: string }
+export interface StoredProfileResult {
+  ok: boolean; respstat: string; respText: string;
+  profileId?: string; acctId?: string; token?: string; expiry?: string; accountType?: string;
 }
 
 export interface InquiryTransaction { retref?: string; approved: boolean; declined: boolean; amountCents?: number; authCode?: string; respText?: string }

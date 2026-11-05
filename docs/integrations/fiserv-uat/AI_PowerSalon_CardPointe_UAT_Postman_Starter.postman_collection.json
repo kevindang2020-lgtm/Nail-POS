@@ -1,0 +1,721 @@
+{
+  "info": {
+    "name": "AI PowerSalon — CardPointe UAT Starter (Gateway + Clover Compact Bolt)",
+    "_postman_id": "aip-fiserv-uat-starter-2026-11-04",
+    "description": "CUSTOM AI POWERSALON STARTER — NOT AN OFFICIAL FISERV EXPORT. Based on publicly documented CardPointe Gateway and Integrated Terminal API request formats. Contains UAT-only endpoints. Does NOT provide credentials, a production MID, certification, or a working terminal. For the exact publisher collection use the official Postman public workspace. SECRETS: Use a private local Postman environment; never export/sync passwords, API keys, session keys or real customer card data. Avoid running this entire collection at once: some endpoints create/void/refund transactions. Gateway requests use Basic Auth; terminal calls use authorization key and session key after connect. Terminal status: only Fiserv can confirm provisioning. Surcharge: Fiserv approved program, not a fixed amount added in software; exclude debit/prepaid. SOURCE Gateway: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api ; Terminal: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "1 — CardPointe Gateway API (CNP / inquiry / refund)",
+      "description": "Gateway API request templates, UAT only. Never send PAN/CVV directly from AI PowerSalon; only approved provider tokens.",
+      "item": [
+        {
+          "name": "01 — Validate Gateway credentials",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/",
+            "description": "Official Fiserv Gateway credential test. Expected text: CardConnect REST Servlet. No payment is created. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "02 — Validate UAT merchant ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/inquireMerchant/{{merchid}}",
+            "description": "Confirms the MID is recognized for the API user. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "03 — CNP authorize only (token, no capture)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/auth",
+            "description": "UAT only. account MUST be a provider-approved token; never type a customer PAN/CVV here. Requires authorized UAT test data. Verify response respstat and retref. ecomind E for online card-not-present. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\",\n  \"account\": \"{{card_token}}\",\n  \"amount\": \"{{gateway_amount}}\",\n  \"currency\": \"USD\",\n  \"capture\": \"n\",\n  \"ecomind\": \"E\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "04 — CNP authorize and capture (token)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/auth",
+            "description": "Creates a UAT authorization/capture attempt. Run only after verifying merchant, token and amount. This request must NOT be run against production. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\",\n  \"account\": \"{{card_token}}\",\n  \"amount\": \"{{gateway_amount}}\",\n  \"currency\": \"USD\",\n  \"capture\": \"y\",\n  \"ecomind\": \"E\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "05 — Inquire transaction by retref",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/inquire/{{retref}}/{{merchid}}",
+            "description": "Use retref returned by Gateway/terminal response to reconcile actual payment result, including uncertain terminal timeouts. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "06 — Inquire by order ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/inquireByOrderid/{{orderid}}/{{merchid}}",
+            "description": "Reconcile transaction by merchant order ID if configured. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "07 — Capture prior authorization",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/capture",
+            "description": "Capture an existing authorization. Verify transaction state before sending. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\",\n  \"retref\": \"{{retref}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "08 — Void prior authorization",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/void",
+            "description": "Void UAT transaction before settlement where eligible. Requires known retref. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\",\n  \"retref\": \"{{retref}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "09 — Refund referenced transaction",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/refund",
+            "description": "Full refund of settled UAT transaction where eligible. Confirm eligible settlement and approval. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchid\": \"{{merchid}}\",\n  \"retref\": \"{{retref}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "10 — Retrieve a saved-card profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{gateway_url}}/profile/{{profileid}}/{{acctid}}/{{merchid}}",
+            "description": "Use only test profile IDs. Creation/usage of real saved cards requires consent, hosted tokenization and stored-credential mandate compliance. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/yyabeju/cardpointe-gateway-api",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{gateway_username}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{gateway_password}}",
+                  "type": "string"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 — CardPointe Integrated Terminal API (Clover Compact)",
+      "description": "Bolt terminal flow. Run listTerminals > connect > ping > authCard, manually. Device must be Fiserv-provisioned and Customer Mode.",
+      "item": [
+        {
+          "name": "01 — listTerminals (find Clover Compact HSN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              }
+            ],
+            "url": "{{terminal_url}}/v2/listTerminals",
+            "description": "Call first. HSN must come from Fiserv result, NOT blindly from Clover device serial. If none, ask Ryan about provisioning. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "02 — connect to Clover Compact",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              }
+            ],
+            "url": "{{terminal_url}}/v2/connect",
+            "description": "Connect without forcing over an existing session. Save session key from response privately for later calls. Do not disconnect other clients during business hours. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\",\n  \"force\": \"false\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "03 — ping connected terminal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              },
+              {
+                "key": "x-cardconnect-sessionkey",
+                "value": "{{session_key}}",
+                "description": "Session key returned by v2/connect"
+              }
+            ],
+            "url": "{{terminal_url}}/v2/ping",
+            "description": "Must have session key. Clover must be online and provisioned. A successful ping is not yet proof of authorization. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "04 — authCard v4 (UAT approval test)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              },
+              {
+                "key": "x-cardconnect-sessionkey",
+                "value": "{{session_key}}",
+                "description": "Session key returned by v2/connect"
+              }
+            ],
+            "url": "{{terminal_url}}/v4/authCard",
+            "description": "IMPORTANT: Sends a real UAT payment request to the paired terminal. Use approved TEST card only. 100 minor units = $1.00. v4 is required for supported surcharge flow. Do not retry after timeouts until Gateway inquiry. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\",\n  \"amount\": \"{{terminal_amount_cents}}\",\n  \"includeSignature\": \"false\",\n  \"beep\": \"false\",\n  \"capture\": \"true\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "05 — cancel terminal interaction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              },
+              {
+                "key": "x-cardconnect-sessionkey",
+                "value": "{{session_key}}",
+                "description": "Session key returned by v2/connect"
+              }
+            ],
+            "url": "{{terminal_url}}/v2/cancel",
+            "description": "Cancellation can race with authorization; inspect authResponse and inquire before retrying. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "06 — request tip (supported UAT scenarios)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              },
+              {
+                "key": "x-cardconnect-sessionkey",
+                "value": "{{session_key}}",
+                "description": "Session key returned by v2/connect"
+              }
+            ],
+            "url": "{{terminal_url}}/v3/tip",
+            "description": "Only use if Ryan confirms this flow is in your certification scope; tip amount and subsequent capture rules must be verified with Fiserv. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\",\n  \"prompt\": \"Would you like to leave a tip?\",\n  \"amount\": \"{{terminal_tip_base_cents}}\",\n  \"tipPercentPresets\": [\n    10,\n    15,\n    20\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "07 — disconnect terminal session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "authorization",
+                "value": "{{terminal_auth_key}}",
+                "description": "Use only rotated Fiserv UAT key in a private Postman environment"
+              },
+              {
+                "key": "x-cardconnect-sessionkey",
+                "value": "{{session_key}}",
+                "description": "Session key returned by v2/connect"
+              }
+            ],
+            "url": "{{terminal_url}}/v2/disconnect",
+            "description": "Ends UAT terminal session for this POS connection. Ref: https://www.postman.com/cloverpos/cardpointe-integrated-payments/documentation/218pc88/cardpointe-integrated-terminal-api",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"merchantId\": \"{{merchid}}\",\n  \"hsn\": \"{{hsn}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "gateway_url",
+      "value": "https://isv-uat.cardconnect.com/cardconnect/rest",
+      "type": "string"
+    },
+    {
+      "key": "terminal_url",
+      "value": "https://bolt-uat.cardpointe.com/api",
+      "type": "string"
+    },
+    {
+      "key": "merchid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "hsn",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "session_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gateway_username",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gateway_password",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "terminal_auth_key",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "card_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "retref",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "orderid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "gateway_amount",
+      "value": "1.00",
+      "type": "string"
+    },
+    {
+      "key": "terminal_amount_cents",
+      "value": "100",
+      "type": "string"
+    },
+    {
+      "key": "terminal_tip_base_cents",
+      "value": "1000",
+      "type": "string"
+    },
+    {
+      "key": "profileid",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "acctid",
+      "value": "",
+      "type": "string"
+    }
+  ]
+}

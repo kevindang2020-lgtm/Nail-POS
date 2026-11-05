@@ -15,17 +15,23 @@ export interface AddPaymentMethodInput {
   cardholderName?: string | null;
   zipCode?: string | null;
   cardType?: string | null;
+  /** Set by the service ONLY after the provider accepted the token (never from a request body). */
+  binding?: SavedCardBinding;
 }
+export interface SavedCardBinding { merchantAccountId: string | null; merchantIdHash: string; profileId: string; acctId: string | null; consentVersion: string; consentScope: 'cit_unscheduled' }
 export interface PaymentMethodToken { token: string; expMonth: number | null; expYear: number | null }
+export interface RevokedMethod { profileId: string | null; acctId: string | null }
 
 export interface CustomerPaymentMethodsPort {
   resolveCustomerId(tenantId: string, userId: string): Promise<string | null>;
   list(tenantId: string, customerId: string): Promise<CustomerPaymentMethod[]>;
   add(tenantId: string, customerId: string, input: AddPaymentMethodInput): Promise<CustomerPaymentMethod>;
-  remove(tenantId: string, customerId: string, id: string): Promise<boolean>;
+  /** Revokes the card (soft — kept for audit, never chargeable again). Returns the provider reference, or null. */
+  remove(tenantId: string, customerId: string, id: string): Promise<RevokedMethod | null>;
   setDefault(tenantId: string, customerId: string, id: string): Promise<boolean>;
-  /** Internal: the funding token for a saved method, for charging. Never exposed over HTTP. */
-  getToken(tenantId: string, customerId: string, id: string): Promise<PaymentMethodToken | null>;
+  /** Internal: the funding token for a saved method, for charging — only a provider-verified, consented, unrevoked card
+   *  bound to the merchant identified by merchantIdHash. Never exposed over HTTP. */
+  getToken(tenantId: string, customerId: string, id: string, merchantIdHash: string): Promise<PaymentMethodToken | null>;
 }
 
 const display = (r: any): CustomerPaymentMethod => ({
@@ -56,7 +62,7 @@ export class InMemoryCustomerPaymentMethodsRepository implements CustomerPayment
       cardType: i.cardType ?? null,
     };
   }
-  async remove(): Promise<boolean> { return false; }
+  async remove(): Promise<RevokedMethod | null> { return null; }
   async setDefault(): Promise<boolean> { return false; }
   async getToken(): Promise<PaymentMethodToken | null> { return null; }
 }
@@ -64,60 +70,64 @@ export class InMemoryCustomerPaymentMethodsRepository implements CustomerPayment
 export class KyselyCustomerPaymentMethodsRepository implements CustomerPaymentMethodsPort {
   constructor(private readonly db: Kysely<DB>) {}
 
+  // Fiserv master build §8D (Nov 4 2026): EVERY statement is keyed by tenant_id. The former fallback that picked the
+  // user's customer row in ANY tenant (and the list that dropped the tenant filter for a malformed tenant id) are gone —
+  // one salon can never read, default, revoke or charge another salon's saved card.
   async resolveCustomerId(tenantId: string, userId: string): Promise<string | null> {
-    if (tenantId) {
-      const row = await this.db.selectFrom('customers').select('id')
-        .where('tenant_id', '=', tenantId).where('user_id', '=', userId).where('archived_at', 'is', null).executeTakeFirst();
-      if ((row as any)?.id) return (row as any).id;
-    }
-    const anyTenant = await this.db.selectFrom('customers').select('id')
-      .where('user_id', '=', userId).where('archived_at', 'is', null).executeTakeFirst();
-    return (anyTenant as any)?.id ?? null;
+    if (!tenantId || !userId) return null;
+    const row = await this.db.selectFrom('customers').select('id')
+      .where('tenant_id', '=', tenantId).where('user_id', '=', userId).where('archived_at', 'is', null).executeTakeFirst();
+    return (row as any)?.id ?? null;
+  }
+  private live(tenantId: string, customerId: string) {
+    return this.db.selectFrom('customer_payment_methods').where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).where('revoked_at' as any, 'is', null);
   }
   async list(tenantId: string, customerId: string): Promise<CustomerPaymentMethod[]> {
-    let query = this.db.selectFrom('customer_payment_methods')
+    if (!tenantId) return [];
+    const rows = await this.live(tenantId, customerId)
       .select(['id', 'brand', 'last4', 'exp_month', 'exp_year', 'is_default', 'cardholder_name', 'zip_code', 'card_type'] as any)
-      .where('customer_id', '=', customerId);
-    if (tenantId && tenantId.length === 36) {
-      query = query.where('tenant_id', '=', tenantId);
-    }
-    const rows = await query.orderBy('is_default', 'desc').orderBy('created_at', 'asc').execute();
+      .orderBy('is_default', 'desc').orderBy('created_at', 'asc').execute();
     return (rows as any[]).map(display);
   }
   async add(tenantId: string, customerId: string, input: AddPaymentMethodInput): Promise<CustomerPaymentMethod> {
+    const b = input.binding;
+    if (!tenantId || !b) throw new Error('A saved card must be provider-verified and merchant-bound before it is stored.');
     return this.db.transaction().execute(async (trx) => {
-      let effectiveTenantId = tenantId;
-      if (!effectiveTenantId || effectiveTenantId.length !== 36) {
-        const cRow = await trx.selectFrom('customers').select('tenant_id').where('id', '=', customerId).executeTakeFirst();
-        if ((cRow as any)?.tenant_id) effectiveTenantId = (cRow as any).tenant_id;
-      }
       if (input.isDefault) {
-        await trx.updateTable('customer_payment_methods').set({ is_default: false } as any).where('customer_id', '=', customerId).execute();
+        await trx.updateTable('customer_payment_methods').set({ is_default: false } as any).where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).execute();
       }
       const row = await trx.insertInto('customer_payment_methods').values({
-        tenant_id: effectiveTenantId, customer_id: customerId, gateway: 'cardpointe', token: input.token, brand: input.brand ?? null,
+        tenant_id: tenantId, customer_id: customerId, gateway: 'cardpointe', token: input.token, brand: input.brand ?? null,
         last4: input.last4 ?? null, exp_month: input.expMonth ?? null, exp_year: input.expYear ?? null, is_default: !!input.isDefault,
         cardholder_name: input.cardholderName ?? null, zip_code: input.zipCode ?? null, card_type: input.cardType ?? null,
+        merchant_account_id: b.merchantAccountId, merchant_id_hash: b.merchantIdHash, provider_profile_id: b.profileId, provider_acct_id: b.acctId,
+        token_source: 'hosted_iframe', verified_at: sql`now()`, consent_version: b.consentVersion, consent_scope: b.consentScope, consent_at: sql`now()`,
       } as any).returning(['id', 'brand', 'last4', 'exp_month', 'exp_year', 'is_default', 'cardholder_name', 'zip_code', 'card_type'] as any).executeTakeFirstOrThrow();
       return display(row);
     });
   }
-  async remove(tenantId: string, customerId: string, id: string): Promise<boolean> {
-    const res = await this.db.deleteFrom('customer_payment_methods').where('customer_id', '=', customerId).where('id', '=', id).executeTakeFirst();
-    return Number((res as any)?.numDeletedRows ?? 0) > 0;
+  async remove(tenantId: string, customerId: string, id: string): Promise<RevokedMethod | null> {
+    if (!tenantId) return null;
+    const row: any = await this.db.updateTable('customer_payment_methods').set({ revoked_at: sql`now()`, is_default: false } as any)
+      .where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).where('id', '=', id).where('revoked_at' as any, 'is', null)
+      .returning(['provider_profile_id', 'provider_acct_id'] as any).executeTakeFirst();
+    return row ? { profileId: row.provider_profile_id ?? null, acctId: row.provider_acct_id ?? null } : null;
   }
   async setDefault(tenantId: string, customerId: string, id: string): Promise<boolean> {
+    if (!tenantId) return false;
     return this.db.transaction().execute(async (trx) => {
-      const exists = await trx.selectFrom('customer_payment_methods').select('id').where('customer_id', '=', customerId).where('id', '=', id).executeTakeFirst();
+      const exists = await trx.selectFrom('customer_payment_methods').select('id').where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).where('id', '=', id).where('revoked_at' as any, 'is', null).executeTakeFirst();
       if (!exists) return false;
-      await trx.updateTable('customer_payment_methods').set({ is_default: false } as any).where('customer_id', '=', customerId).execute();
-      await trx.updateTable('customer_payment_methods').set({ is_default: true } as any).where('customer_id', '=', customerId).where('id', '=', id).execute();
+      await trx.updateTable('customer_payment_methods').set({ is_default: false } as any).where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).execute();
+      await trx.updateTable('customer_payment_methods').set({ is_default: true } as any).where('tenant_id', '=', tenantId).where('customer_id', '=', customerId).where('id', '=', id).execute();
       return true;
     });
   }
-  async getToken(tenantId: string, customerId: string, id: string): Promise<PaymentMethodToken | null> {
-    const row = await this.db.selectFrom('customer_payment_methods').select(['token', 'exp_month', 'exp_year'])
-      .where('customer_id', '=', customerId).where('id', '=', id).executeTakeFirst();
+  async getToken(tenantId: string, customerId: string, id: string, merchantIdHash: string): Promise<PaymentMethodToken | null> {
+    if (!tenantId || !merchantIdHash) return null;
+    const row = await this.live(tenantId, customerId).select(['token', 'exp_month', 'exp_year'] as any).where('id', '=', id)
+      .where('token_source' as any, '=', 'hosted_iframe').where('verified_at' as any, 'is not', null).where('consent_at' as any, 'is not', null)
+      .where('merchant_id_hash' as any, '=', merchantIdHash).executeTakeFirst();
     return row ? { token: (row as any).token, expMonth: (row as any).exp_month ?? null, expYear: (row as any).exp_year ?? null } : null;
   }
 }

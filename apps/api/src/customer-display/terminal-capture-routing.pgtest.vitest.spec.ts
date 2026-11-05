@@ -27,7 +27,7 @@ async function paying(branchId: string): Promise<any> {
   return { id: String(s.id), tenantId: T, branchId, state: 'payment_processing', ticketId: String(tk.id), ticketNumber: null, customerId: CUST, publicTokenHash: null, selectedTipCents: 0, subtotalCents: 5000, paymentMethod: 'card', expiresAt: null, closedAt: null, ticketStatus: 'open', lastPaymentStatus: null };
 }
 function terminal(seen: any[]) {
-  return (cfg: any) => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { seen.push({ cfg, hsn: i.hsn }); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'R' + seen.length, amountCents: 5000 }; } }) as any;
+  return (cfg: any) => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async (i: any) => { seen.push({ cfg, hsn: i.hsn }); return { approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'R' + seen.length, amountCents: i.amountCents }; } }) as any;
 }
 beforeAll(async () => {
   pg = await migratedPglite(); db = kyselyFor(pg);
@@ -38,8 +38,8 @@ beforeAll(async () => {
   await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents) values ($1,$2,$3,$4,'Gel Manicure',45,5000)`, [SVC, T, BR, cat]);
   await q(`insert into tenant_settings (tenant_id, branch_id, category, settings_json) values ($1, null, 'payments-checkout', $2::jsonb)`, [T, JSON.stringify({ customerDisplayCaptureMode: 'terminal' })]);
   await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn) values ('term_main',$1,$2,'Clover Main','paired','HSN-MAIN'), ('term_ch',$1,$3,'Clover Cherry Hill','paired','HSN-CH')`, [T, BR, BR2]);
-  await q(`insert into tenant_payment_config (tenant_id, processor, status, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'fiserv','active','MID-DEFAULT','https://bolt-default.test','v2p:default-key')`, [T]);
-  await q(`insert into payment_merchant_accounts (tenant_id, branch_id, processor, status, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,$2,'fiserv','active','MID-CH','https://bolt-ch.test','v2p:cherry-key')`, [T, BR2]);
+  await q(`insert into tenant_payment_config (tenant_id, processor, status, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,'fiserv','active','MID-DEFAULT','https://default-uat.bolt.cardpointe.com','v2p:default-key')`, [T]);
+  await q(`insert into payment_merchant_accounts (tenant_id, branch_id, processor, status, merchant_id, bolt_base_url, bolt_api_key_enc) values ($1,$2,'fiserv','active','MID-CH','https://ch-uat.bolt.cardpointe.com','v2p:cherry-key')`, [T, BR2]);
 }, 180000);
 
 describe('terminal capture → Bolt config through the provider router', () => {
@@ -52,7 +52,7 @@ describe('terminal capture → Bolt config through the provider router', () => {
     const routed = new TerminalCaptureService(db, terminal(seen), mfaDecrypt, undefined, new InMemoryTerminalLeases(), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, paymentSecrets));
     const out = await routed.capture(await paying(BR));
     expect(out.outcome).toBe('approved');
-    expect(seen[0].cfg).toEqual({ baseUrl: 'https://bolt-default.test', apiKey: 'default-key', merchantId: 'MID-DEFAULT' });
+    expect(seen[0].cfg).toEqual({ baseUrl: 'https://default-uat.bolt.cardpointe.com', apiKey: 'default-key', merchantId: 'MID-DEFAULT' });
     expect(seen[0].hsn).toBe('HSN-MAIN');
   });
   it('§7/§13: the Cherry Hill terminal charges through the Cherry Hill merchant account (its own Bolt key + MID)', async () => {
@@ -60,7 +60,7 @@ describe('terminal capture → Bolt config through the provider router', () => {
     const svc = new TerminalCaptureService(db, terminal(seen), mfaDecrypt, undefined, new InMemoryTerminalLeases(), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, paymentSecrets));
     const out = await svc.capture(await paying(BR2));
     expect(out.outcome).toBe('approved');
-    expect(seen[0].cfg).toEqual({ baseUrl: 'https://bolt-ch.test', apiKey: 'cherry-key', merchantId: 'MID-CH' });
+    expect(seen[0].cfg).toEqual({ baseUrl: 'https://ch-uat.bolt.cardpointe.com', apiKey: 'cherry-key', merchantId: 'MID-CH' });
     expect(seen[0].hsn).toBe('HSN-CH');
     const t = (await q(`select last_seen_at, last_transaction_at, last_ping_ok from pos_payment_terminals where id = 'term_ch'`))[0];
     expect(t.last_seen_at).toBeTruthy(); expect(t.last_transaction_at).toBeTruthy(); expect(t.last_ping_ok).toBe(true);   // §50 health stamps
@@ -82,5 +82,28 @@ describe('terminal capture → Bolt config through the provider router', () => {
     expect(out.outcome).toBe('failed'); expect(out.reason).toMatch(/TERMINAL_DISABLED/);
     expect(seen).toHaveLength(0);
     await q(`update pos_payment_terminals set disabled_at = null, disabled_reason = null where id = 'term_ch'`);
+  });
+
+  // Fiserv master build §5.2 / §7.2 (Nov 4 2026)
+  it('§5.2: a terminal with NO branch assigned is never used for a branch\'s ticket', async () => {
+    await q(`update pos_payment_terminals set disabled_at = now() where id in ('term_main', 'term_ch')`);
+    await q(`insert into pos_payment_terminals (id, tenant_id, branch_id, label, status, hsn) values ('term_nobranch',$1,null,'Clover Unassigned','paired','HSN-NB')`, [T]);
+    const seen: any[] = [];
+    const svc = new TerminalCaptureService(db, terminal(seen), mfaDecrypt, undefined, new InMemoryTerminalLeases(), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, paymentSecrets));
+    const out: any = await svc.capture(await paying(BR));
+    expect(out.outcome).toBe('failed'); expect(seen).toHaveLength(0);
+    await q(`delete from pos_payment_terminals where id = 'term_nobranch'`);
+    await q(`update pos_payment_terminals set disabled_at = null where id in ('term_main', 'term_ch')`);
+  });
+  it('§7.2: an approval for a different amount (or with no retref) is held "unknown", never recorded as paid', async () => {
+    const svcWith = (answer: any) => new TerminalCaptureService(db, () => ({ name: 'fake', ping: async () => true, display: async () => {}, authCard: async () => answer }) as any, mfaDecrypt, undefined, new InMemoryTerminalLeases(), undefined, undefined, undefined, undefined, new PaymentGatewayResolver(db, paymentSecrets));
+    const s1 = await paying(BR);
+    const o1: any = await svcWith({ approved: true, declined: false, respstat: 'A', respText: 'Approval', retref: 'RX', amountCents: 1 }).capture(s1);
+    expect(o1.outcome).toBe('unknown');
+    const st1 = (await q(`select status from payments where ticket_id = $1`, [s1.ticketId])).map((r: any) => r.status);
+    expect(st1).not.toContain('approved');
+    const s2 = await paying(BR);
+    const o2: any = await svcWith({ approved: true, declined: false, respstat: 'A', respText: 'Approval' }).capture(s2);
+    expect(o2.outcome).toBe('unknown');
   });
 });

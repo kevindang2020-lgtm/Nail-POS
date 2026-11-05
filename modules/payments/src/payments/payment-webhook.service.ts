@@ -66,6 +66,8 @@ export function settlementTxnIds(body: any, txnId: string | null | undefined): s
   return [...out].slice(0, 5000);
 }
 
+/** Payment statuses a verified webhook may move FROM (all are provider-approved states). */
+export const WEBHOOK_MOVABLE_FROM = ['approved', 'captured', 'completed', 'succeeded', 'partial', 'settled', 'partially_refunded'] as const;
 function mapStatus(eventType: string): string | null {
   const e = eventType.toLowerCase();
   if (e.includes('void')) return 'voided';
@@ -247,8 +249,13 @@ export class PaymentWebhookService {
     if (newStatus) {
       // Phase 12 (#27): through the PAYMENT machine — a late "settled" callback never overwrites a refunded / voided
       // payment (the event is still recorded above; statusApplied says whether the row moved)
+      // Fiserv master build §11 (Nov 4 2026): a webhook never settles a payment whose authorization we have not recorded.
+      // The signature scheme is still unconfirmed with Fiserv, so an event may only move a payment that is ALREADY
+      // provider-approved (approved / captured / … / settled); a 'processing' (unknown-outcome) row is resolved only by
+      // the authenticated provider inquiry (Verify with processor), never by a pushed event.
       const moved: any = await this.db.updateTable('payments').set({ status: newStatus, updated_at: sql`now()` } as any)
-        .where('tenant_id', '=', tenant.tenantId).where('processor_transaction_id', '=', txnId).where(canMoveToSql(PAYMENT, newStatus) as any).executeTakeFirst();
+        .where('tenant_id', '=', tenant.tenantId).where('processor_transaction_id', '=', txnId).where(canMoveToSql(PAYMENT, newStatus) as any)
+        .where('status', 'in', WEBHOOK_MOVABLE_FROM as any).executeTakeFirst();
       if (Number(moved?.numUpdatedRows ?? 0) > 0) statusApplied = newStatus;
     }
 

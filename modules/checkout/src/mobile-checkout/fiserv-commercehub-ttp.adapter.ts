@@ -42,15 +42,21 @@ export class FiservCommerceHubTtpAdapter implements TapToPaySessionPort {
   async finalizeTransaction(input: FinalizeInput): Promise<FinalizeResult> {
     if (!this.cfg) throw new TapToPayNotConfiguredError();
     const client = this.client === undefined ? this.buildClient() : this.client;
-    if (!client) {
-      if (input.processorRef.startsWith('sbx_tap_')) {
-        return { verified: true, processorRef: input.processorRef, capturedAmountCents: input.amountCents, respText: 'Approved (Sandbox)' };
-      }
-      throw new TapToPayNotImplementedError();
-    }
+    // Fiserv master build §8C (P0, Nov 4 2026): no client ⇒ nothing can be verified. The former branch that returned
+    // verified:true for a client-supplied `sbx_tap_*` reference is removed — a reference string from the device is
+    // never proof of payment. Test doubles belong in test DI, not here.
+    if (!client) throw new TapToPayNotImplementedError();
     // Charge the captured PaymentSession server-side (input.processorRef carries the sessionId the device SDK returned).
     const res = await client.authorizeAndCapture({ account: input.processorRef, amountCents: input.amountCents, idempotencyKey: input.idempotencyKey });
-    return { verified: res.approved, processorRef: res.retref ?? input.processorRef, capturedAmountCents: res.amountCents, respText: res.respText };
+    // Verified only when the PROVIDER approved AND confirmed the exact amount; an approval without a matching amount is
+    // not paid (it stays for provider inquiry / manual review).
+    const amountMatches = res.amountCents === input.amountCents;
+    return {
+      verified: res.approved && amountMatches,
+      processorRef: res.retref ?? input.processorRef,
+      capturedAmountCents: res.amountCents,
+      respText: res.approved && !amountMatches ? `Provider approved ${res.amountCents ?? 'an unconfirmed amount'} cents, expected ${input.amountCents}; held for review` : res.respText,
+    };
   }
 
   /**

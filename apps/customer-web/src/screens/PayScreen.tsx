@@ -1,7 +1,14 @@
 // PayScreen.tsx — Skip-the-Line Checkout for the customer app.
 // Flow: Review Bill → Choose Method → (Card | Apple/Google Pay | Cash to Technician) → Processing → Success.
 // All money is backend-authoritative; the screen only displays server totals and sends a tokenized payment (never a PAN).
-import { useEffect, useRef, useState } from 'react';
+//
+// Fiserv master build §8D (P0, Nov 4 2026): the new-card path used to keep the card number + CVV in React state and send
+// the raw digits as the "token"; Apple/Google Pay sent an invented `apple_pay_token_<time>`. Now a new card is entered in
+// the salon's Fiserv-hosted iFrame (one-time token, card-not-present), saving a card happens only on Payment Methods with
+// its own consent, the wallet buttons are hidden until a real Apple/Google Pay integration exists, and an unconfirmed
+// result is shown as "verifying — do not pay again", never as a decline.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { HostedCardFrame, type HostedCardToken } from '../payments/HostedCardFrame';
 import { useNavigate } from 'react-router-dom';
 import { skipLineApi, type ActiveBillResponse, type ConfirmResult } from '../api/skipLineApi';
 import { customerApi, type CustomerPaymentMethod } from '../api/customerApi';
@@ -11,7 +18,8 @@ import { parseDollarsToCents } from '../lib/money-input';
 type Step = 'loading' | 'empty' | 'bill' | 'method' | 'card' | 'processing' | 'success' | 'cashConfirm' | 'cashWaiting' | 'error';
 const METHOD_LABEL: Record<string, string> = { card: 'Credit / Debit Card', apple_pay: 'Apple Pay', google_pay: 'Google Pay', cash_to_technician: 'Cash to Technician' };
 const METHOD_ICON: Record<string, string> = { card: '💳', apple_pay: '', google_pay: 'G', cash_to_technician: '💵' };
-const APP_METHODS = ['card', 'apple_pay', 'google_pay', 'cash_to_technician'];
+// apple_pay / google_pay stay out until a real wallet SDK supplies a provider token (no invented tokens).
+const APP_METHODS = ['card', 'cash_to_technician'];
 
 function Header({ title, onBack }: { title: string; onBack?: () => void }) {
   return (
@@ -50,7 +58,8 @@ export function PayScreen() {
   const tipToCharge = Number.isInteger(chosenTipCents) && chosenTipCents > 0 ? chosenTipCents : 0;
   const [result, setResult] = useState<{ amountCents: number; method: string; ref?: string | null } | null>(null);
   const [cash, setCash] = useState<{ technicianName: string; amountCents: number; intentId: string } | null>(null);
-  const [card, setCard] = useState({ number: '', name: '', expiry: '', cvv: '', save: false });
+  const [newCard, setNewCard] = useState<HostedCardToken | null>(null);
+  const onHostedToken = useCallback((t: HostedCardToken | null) => setNewCard(t), []);
   const [savedCards, setSavedCards] = useState<CustomerPaymentMethod[]>([]);
   const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [showNewCard, setShowNewCard] = useState(false);
@@ -77,6 +86,7 @@ export function PayScreen() {
 
   const handleConfirm = (r: ConfirmResult, m: string) => {
     if (r.paid) { setResult({ amountCents: r.amountCents || bill!.totalDueCents, method: m, ref: r.processorTransactionId }); setStep('success'); }
+    else if ((r as any).status === 'unknown') { setMsg((r as any).message || 'We could not confirm this payment yet. Please do not pay again — the salon will verify it.'); setStep('error'); setErr((r as any).message || 'We could not confirm this payment yet. Please do not pay again — the salon will verify it.'); }
     else if (r.configured === false) { setMsg(r.disabledReason || 'Card payments aren’t enabled for this salon yet.'); setStep(m === 'card' ? 'card' : 'method'); }
     else { setMsg(r.declineReason ? `Declined — ${r.declineReason}` : 'Your payment was declined. Please try another method.'); setStep(m === 'card' ? 'card' : 'method'); }
   };
@@ -92,31 +102,12 @@ export function PayScreen() {
       if (!showNewCard && selectedCardId) {
         r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', paymentMethodId: selectedCardId });
       } else {
-        const digits = card.number.replace(/\D/g, '');
-        if (digits.length < 13) throw new Error('Enter a valid card number.');
-        if (!/^\d{2}\s*\/?\s*\d{2}$/.test(card.expiry.trim())) throw new Error('Expiry must be MM/YY.');
-        if (card.cvv.replace(/\D/g, '').length < 3) throw new Error('Enter the security code.');
-        
-        if (card.save) {
-           await customerApi.addPaymentMethod({ token: digits, expMonth: parseInt(card.expiry.split('/')[0]), expYear: parseInt(card.expiry.split('/')[1]) }).catch(() => {});
-        }
-        r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', token: digits, expiry: card.expiry.replace(/\D/g, '') });
+        // one-time hosted-iFrame token (card-not-present); the card number / CVV never reached this app
+        if (!newCard) throw new Error('Enter your card in the secure card form first.');
+        r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: 'card', token: newCard.token, ...(newCard.expiry ? { expiry: newCard.expiry } : {}) });
       }
       handleConfirm(r, 'card');
     } catch (e: any) { setMsg(e?.message || 'Payment failed. Please try again.'); setStep('card'); }
-    finally { setBusy(false); }
-  };
-
-  const payWallet = async (m: 'apple_pay' | 'google_pay') => {
-    if (!bill) return;
-    setMsg(null); setBusy(true); setStep('processing');
-    try {
-      const start = await skipLineApi.startPayment(bill.invoiceId, m, Number.isInteger(chosenTipCents) && chosenTipCents > 0 ? chosenTipCents : undefined);
-      if (!start.configured) { setMsg(`${METHOD_LABEL[m]} isn’t enabled for this salon yet.`); setStep('method'); return; }
-      // PRODUCTION: obtain the wallet payment token from the Apple/Google Pay sheet here, then pass it through.
-      const r = await skipLineApi.confirmPayment(bill.invoiceId, { intentId: start.intentId, method: m, token: `${m}_token_${Date.now()}` });
-      handleConfirm(r, m);
-    } catch (e: any) { setMsg(e?.message || 'Payment failed. Please try again.'); setStep('method'); }
     finally { setBusy(false); }
   };
 
@@ -245,32 +236,13 @@ export function PayScreen() {
 
         {showNewCard && (
           <>
-            <label className="cust-label">Card number
-              <input value={card.number} onChange={(e) => setCard({ ...card, number: e.target.value })} inputMode="numeric" autoComplete="cc-number" placeholder="1234 5678 9012 3456"
-                style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--customer-border)', padding: '0 12px', font: 'inherit', marginTop: 6, background: '#fff' }} />
-            </label>
-            <label className="cust-label">Name on card
-              <input value={card.name} onChange={(e) => setCard({ ...card, name: e.target.value })} autoComplete="cc-name" placeholder="Full name"
-                style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--customer-border)', padding: '0 12px', font: 'inherit', marginTop: 6, background: '#fff' }} />
-            </label>
-            <div style={{ display: 'flex', gap: 10 }}>
-              <label className="cust-label" style={{ flex: 1 }}>Expiry
-                <input value={card.expiry} onChange={(e) => setCard({ ...card, expiry: e.target.value })} inputMode="numeric" autoComplete="cc-exp" placeholder="MM/YY"
-                  style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--customer-border)', padding: '0 12px', font: 'inherit', marginTop: 6, background: '#fff' }} />
-              </label>
-              <label className="cust-label" style={{ flex: 1 }}>CVV
-                <input value={card.cvv} onChange={(e) => setCard({ ...card, cvv: e.target.value })} inputMode="numeric" autoComplete="cc-csc" placeholder="123"
-                  style={{ width: '100%', height: 46, borderRadius: 10, border: '1px solid var(--customer-border)', padding: '0 12px', font: 'inherit', marginTop: 6, background: '#fff' }} />
-              </label>
-            </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14 }}>
-              <input type="checkbox" checked={card.save} onChange={(e) => setCard({ ...card, save: e.target.checked })} /> Save card for faster checkout
-            </label>
+            <HostedCardFrame onToken={onHostedToken} />
+            <div className="cust-sub" style={{ fontSize: 12 }}>To save a card for next time, add it in Profile → Payment Methods.</div>
           </>
         )}
       </div>
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
-      <button onClick={payCard} disabled={busy} className="cust-btn" style={{ height: 52 }}>{busy ? 'Processing…' : `Pay ${money2(totalWithTip)}`}</button>
+      <button onClick={payCard} disabled={busy || (showNewCard && !newCard)} className="cust-btn" style={{ height: 52 }}>{busy ? 'Processing…' : `Pay ${money2(totalWithTip)}`}</button>
       <SecureNote />
     </>
   );
@@ -282,7 +254,7 @@ export function PayScreen() {
       {msg ? <div className="cust-sub" style={{ color: 'var(--customer-red)' }}>{msg}</div> : null}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {methods.map((m) => (
-          <button key={m} onClick={() => { setMsg(null); if (m === 'card') setStep('card'); else if (m === 'cash_to_technician') setStep('cashConfirm'); else payWallet(m as 'apple_pay' | 'google_pay'); }}
+          <button key={m} onClick={() => { setMsg(null); if (m === 'card') setStep('card'); else if (m === 'cash_to_technician') setStep('cashConfirm'); }}
             style={{ display: 'flex', alignItems: 'center', gap: 12, height: 56, padding: '0 16px', borderRadius: 14, cursor: 'pointer', textAlign: 'left', border: '1px solid var(--customer-border)', background: '#fff' }}>
             <span aria-hidden style={{ width: 28, textAlign: 'center', fontSize: 20, fontWeight: 800 }}>{METHOD_ICON[m] || '•'}</span>
             <span style={{ flex: 1, fontWeight: 700 }}>{METHOD_LABEL[m] || m}</span>
