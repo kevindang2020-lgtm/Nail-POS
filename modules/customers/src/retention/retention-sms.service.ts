@@ -35,6 +35,9 @@ export class RetentionSmsService {
   async preview(ctx: RetentionContext, input: PreviewInput) {
     const raw = String(input.body ?? '').trim();
     if (raw.length < 5) throw new RetentionError('Write the message (at least 5 characters).', 'SMS_BODY_INVALID');
+    // C5 audit (Nov 4 2026): a campaign sends the SAME text to everyone — a template placeholder ({first_name}, {{booking_link}})
+    // would go out literally, so it is refused until it is replaced with real words
+    if (/\{\{?\s*[a-z_][a-z0-9_.]*\s*\}?\}/i.test(raw)) throw new RetentionError('Replace the {placeholders} with real words — a campaign sends the same text to every customer.', 'SMS_BODY_INVALID');
     const body = composeRetentionSms(raw, await this.salonName(ctx));
     if (body.length > 640) throw new RetentionError('The message is too long (640 characters at most, including the salon name and STOP line).', 'SMS_BODY_INVALID');
     let ids: string[]; let audience: Record<string, unknown>;

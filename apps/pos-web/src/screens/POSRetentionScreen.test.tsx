@@ -12,6 +12,8 @@ vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNaviga
 vi.mock('../api/posRetentionApi', () => ({ posRetentionApi: api }));
 const { notesApi } = vi.hoisted(() => ({ notesApi: { getNotes: vi.fn(), setNotes: vi.fn() } }));
 vi.mock('../api/posCustomersApi', () => ({ posCustomersApi: notesApi }));
+const { mtApi } = vi.hoisted(() => ({ mtApi: { list: vi.fn(async () => ({ items: [{ id: 't1', name: 'We miss you', category: 'customer_follow_up' }, { id: 't2', name: 'Receipt', category: 'receipt' }] })), detail: vi.fn(async () => ({ template: { body: 'Hi {first_name}! {salon_name} misses you.' } })) } }));
+vi.mock('../api/posMessageTemplatesApi', () => ({ posMessageTemplatesApi: mtApi }));
 import { POSRetentionScreen } from './POSRetentionScreen';
 
 const period = { preset: 'month', from: '2026-10-01', to: '2026-10-31', today: '2026-10-30', timeZone: 'America/New_York', riskDays: 60, approachingDays: 45, observationWindowDays: 30, settingsVersion: 0, segmentationVersion: 'retention-v2', priorityFormulaVersion: 'winback-v1' };
@@ -151,5 +153,19 @@ describe('POSRetentionScreen', () => {
     const [cid, body] = notesApi.setNotes.mock.calls[0]!;
     expect(cid).toBe('c1'); expect(body.allergyNotes).toBe('latex');
     expect(body.salonNotes).toMatch(/^Likes almond shape\n\d{4}-\d{2}-\d{2} · Retention: Called — will book next week$/);
+  });
+  it('C5 §12.2: start from an active follow-up template; a {placeholder} blocks the preview until replaced', async () => {
+    render(<POSRetentionScreen />);
+    fireEvent.click(await screen.findByRole('checkbox', { name: /Ana Rivera/ }));
+    fireEvent.click(screen.getByTestId('send-sms'));
+    const pick = await screen.findByTestId('rt-template');
+    expect(screen.queryByRole('option', { name: 'Receipt' })).toBeNull();   // only follow-up / promotions / general
+    fireEvent.change(pick, { target: { value: 't1' } });
+    const box = await screen.findByRole('textbox', { name: /Message/ }) as HTMLTextAreaElement;
+    await waitFor(() => expect(box.value).toBe('Hi {first_name}!  misses you.'));
+    expect(screen.getByTestId('rt-placeholders')).toBeTruthy();
+    expect(screen.getByTestId('sms-preview')).toBeDisabled();
+    fireEvent.change(box, { target: { value: 'Hi! We miss you.' } });
+    expect(screen.queryByTestId('rt-placeholders')).toBeNull();
   });
 });

@@ -98,4 +98,7 @@ export const RETENTION3_VI = {
   'rt5.noteSaved': 'Đã thêm ghi chú vào hồ sơ khách.',
   'rt5.noteFailed': 'Không lưu được ghi chú.',
   'rt5.noteSave': 'Lưu ghi chú',
+  'rt5.template': 'Bắt đầu từ mẫu tin',
+  'rt5.templateNone': '— Tự viết —',
+  'rt5.placeholders': 'Hãy thay các {chỗ trống} bằng chữ thật — chiến dịch gửi cùng một nội dung cho mọi khách.',
 };

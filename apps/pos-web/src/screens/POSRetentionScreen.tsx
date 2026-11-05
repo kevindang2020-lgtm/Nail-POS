@@ -30,6 +30,7 @@ import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posRetentionApi, type RetentionSelection } from '../api/posRetentionApi';
 import { posCustomersApi } from '../api/posCustomersApi';
+import { posMessageTemplatesApi } from '../api/posMessageTemplatesApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
@@ -368,6 +369,13 @@ type Preview = { previewId: string; finalBody: string; segments: { segments: num
 
 function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | null; sel: Selection; onClose: () => void; onQueued: (r: { campaignId: string; queued: number; duplicate: boolean }) => void }) {
   const [body, setBody] = useState(''); const [label, setLabel] = useState('');
+  // C5 audit (Nov 4 2026) §12.2: start from one of the salon's active SMS templates (follow-up / promotions / general). A
+  // {placeholder} must be replaced before preview — a campaign sends the same words to everyone (the server refuses it).
+  const [tpls, setTpls] = useState<{ id: string; name: string }[] | null>(null);
+  useEffect(() => { posMessageTemplatesApi.list({ channel: 'sms', status: 'active', page: 1, pageSize: 50 })
+    .then((r) => setTpls((r.items ?? []).filter((x) => ['customer_follow_up', 'promotions', 'general'].includes(String(x.category))).map((x) => ({ id: x.id, name: x.name }))), () => setTpls([])); }, []);
+  const useTemplate = async (id: string) => { if (!id) return; try { const d = await posMessageTemplatesApi.detail(id); setBody(String(d.template.body ?? '').replace(/\{\{?\s*salon_?name\s*\}?\}/gi, '').trim()); } catch { /* the message stays as typed */ } };
+  const placeholders = /\{\{?\s*[a-z_][a-z0-9_.]*\s*\}?\}/i.test(body);
   const [pv, setPv] = useState<Preview | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [changed, setChanged] = useState<{ noLongerEligible: number; stillEligible: number; reasons: Record<string, number> } | null>(null);
   const [showRoster, setShowRoster] = useState(false);
@@ -401,14 +409,16 @@ function ComposeDialog({ ready, sel, onClose, onQueued }: { ready: Readiness | n
       footer={<>
         <span className="rt-steps" aria-hidden>{['select', 'preview', 'confirm', 'queue', 'results'].map((s, i) => <span key={s} className={i <= (pv ? 2 : 1) ? 'on' : ''}>{i + 1}. {tx(`people.retention.step.${s}`)}</span>)}</span>
         <button type="button" className="fk-btn ghost" onClick={onClose} disabled={busy}>{tx('pos.cancel')}</button>
-        {!pv ? <button type="button" className="fk-btn primary" disabled={busy || len < 5} onClick={doPreview} data-testid="sms-preview">{busy ? tx('pos.loading') : tx('people.retention.preview')}</button> : <>
+        {!pv ? <button type="button" className="fk-btn primary" disabled={busy || len < 5 || placeholders} onClick={doPreview} data-testid="sms-preview">{busy ? tx('pos.loading') : tx('people.retention.preview')}</button> : <>
           <button type="button" className="fk-btn ghost" disabled={busy} onClick={() => setPv(null)}>{tx('people.retention.editMessage')}</button>
           {changed ? <button type="button" className="fk-btn primary" disabled={busy || changed.stillEligible === 0} onClick={() => doConfirm(true)} data-testid="sms-confirm-changed">{tx('people.retention.confirmChanged', { n: nf(changed.stillEligible) })}</button>
             : <button type="button" className="fk-btn primary" disabled={busy || !pv.canSend} onClick={() => doConfirm(false)} data-testid="sms-confirm">{busy ? tx('pos.saving_2') : tx('people.retention.confirmSend', { n: nf(pv.eligible) })}</button>}
         </>}
       </>}>
       {!pv ? <>
+        {tpls && tpls.length ? <label className="fk-field"><span>{tx('rt5.template')}</span><select defaultValue="" onChange={(e) => void useTemplate(e.target.value)} data-testid="rt-template"><option value="">{tx('rt5.templateNone')}</option>{tpls.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label> : null}
         <label className="fk-field"><span>{tx('people.retention.message')}</span><textarea data-autofocus value={body} maxLength={560} onChange={(e) => setBody(e.target.value)} placeholder={tx('people.retention.messagePlaceholder')} /></label>
+        {placeholders ? <div className="fk-err" role="note" data-testid="rt-placeholders">{tx('rt5.placeholders')}</div> : null}
         <div className="fk-hint">{tx('people.retention.messageRules', { n: String(len) })}</div>
         <label className="fk-field"><span>{tx('people.retention.label')}</span><input value={label} maxLength={80} onChange={(e) => setLabel(e.target.value)} placeholder={tx('people.retention.labelPlaceholder')} /></label>
         <div className="fk-hint">{tx('people.retention.composeSafety')}</div>

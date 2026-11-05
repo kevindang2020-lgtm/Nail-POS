@@ -173,6 +173,11 @@ describe('Customer Retention — win-back SMS', () => {
     expect(d!.campaign.status).toBe('failed');
   });
 
+  it('C5 audit: a template placeholder is refused (a campaign sends the same text to everyone)', async () => {
+    expect(await code(svc.preview(ctx, { customerIds: [A], body: 'Hi {first_name}, we miss you!' }))).toBe('SMS_BODY_INVALID');
+    expect(await code(svc.preview(ctx, { customerIds: [A], body: 'Book here: {{booking_link}}' }))).toBe('SMS_BODY_INVALID');
+  });
+
   it('C5 audit: Cancel Campaign stops the unsent texts (audited); a finished campaign cannot be canceled', async () => {
     const r = (await q(`select r.id, r.campaign_id from retention_sms_recipients r where r.tenant_id = $1 and r.status = 'unknown' limit 1`, [T])).rows[0];
     await q(`update retention_sms_recipients set status = 'queued' where id = $1`, [r.id]);
