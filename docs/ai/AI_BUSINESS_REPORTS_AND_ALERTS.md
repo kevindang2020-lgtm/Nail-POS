@@ -48,7 +48,10 @@ Built (Nov 3 afternoon):
 
 Not built (each needs a decision or infrastructure that does not exist yet):
 - Incidents (acknowledge → investigate → resolve, assignee, notes, snooze) — today an event can only be acknowledged once.
-- A background evaluator (scheduled runs, worker lag, dead letters) — rules are evaluated by hand, and the page says so.
 - Notifications (in-app inbox, email, the salon's own Twilio SMS) with cooldown, quiet hours, escalation and a delivery log.
 - Severity / recipients / quiet hours fields, rule versions, Draft state, tabbed layout, SSE live refresh.
 - Anomaly detection beyond net sales and tickets for yesterday; an AI-written explanation (the explanation is the measured bridge).
+
+Built Nov 5 2026 (be799be): the background evaluator — every 5 minutes the active rules due on their own schedule (hourly / daily)
+are evaluated as their creator (role permissions), recorded with source 'scheduled'; a departed creator is a recorded failed
+evaluation. AI_BUSINESS_ALERTS_SCHEDULE=off stops it; the health check's Automatic evaluation reads the overdue rules.

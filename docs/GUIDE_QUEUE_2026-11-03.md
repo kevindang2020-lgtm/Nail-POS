@@ -217,4 +217,7 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   win-back recipients (deb6e7e). KEVIN TO DECIDE: (1) C1 dual control on global rule publish / program update — the guide asks
   for a second Super Admin approval; with one Super Admin it would block every change, so it is NOT built until you say so;
   (2) custom-earning flag off vs salons already on a custom rate; (3) how long inbox message text is kept (C2 retention).
+- Nov 5 — more built: C2 location filter on the inbox + activity tiles (cabb955), booking linked back to its conversation (806,
+  b37e14b); C5 template choice in the win-back composer, placeholders refused (7bdb575); C3 Setup Health "customers can book"
+  per location (699f89b); A2 background evaluator for AI Business alerts (be799be).
 
