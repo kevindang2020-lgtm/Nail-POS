@@ -211,3 +211,10 @@ Batch B: every guide audited; bugs fixed above; remaining NOT-built items are li
   campaign filter / priority sort, message-text retention, live reminder / campaign events, SPF/DKIM/DMARC, notifications
   export; C3/C5 per-branch retention history, Add Note, template choice, First Visit Invitation. Book Appointment from
   Retention keeps the signed-in location (the booking screen books at the session location by design — not changed).
+- Nov 5 early — batch C gaps BUILT: C5 Add Note (abd7aee); C1 Super Admin suspend / reactivate a rewards account from a fraud
+  alert (9a88a0b), earning estimate at checkout (5b5ac4d), per-salon token warning levels (804, 3287297); C2 Customer
+  Notifications export (a432edf), sender identity SPF / DKIM / DMARC from DNS (805, f851b0d), Rebooking Conversion from the
+  win-back recipients (deb6e7e). KEVIN TO DECIDE: (1) C1 dual control on global rule publish / program update — the guide asks
+  for a second Super Admin approval; with one Super Admin it would block every change, so it is NOT built until you say so;
+  (2) custom-earning flag off vs salons already on a custom rate; (3) how long inbox message text is kept (C2 retention).
+
