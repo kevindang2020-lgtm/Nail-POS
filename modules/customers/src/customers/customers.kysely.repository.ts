@@ -252,6 +252,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     const tally = (arr: (string | undefined)[]) => { const m = new Map<string, number>(); for (const x of arr) { const key = (x || '').trim(); if (key) m.set(key, (m.get(key) || 0) + 1); } return [...m.entries()].map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count); };
     const directory = {
       topTags: tally(all.flatMap((c) => c.tags)).slice(0, 6),
+      allTags: tally(all.flatMap((c) => c.tags)).slice(0, 200),   // F1 §32: the Tags card's View All
       sources: tally(all.map((c) => c.source)),
       topSpendersCount: Math.round(all.length * 0.05), // top 5% by spend
     };

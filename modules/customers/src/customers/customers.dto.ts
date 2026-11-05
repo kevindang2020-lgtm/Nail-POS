@@ -293,7 +293,7 @@ export interface POSCustomersFullState extends POSCustomersState {
   // monthly snapshot the system does not yet persist (inactive/retention/clv) — never fabricated.
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
   // Full-base aggregations for the right rail (computed across ALL customers, not just the current page).
-  directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  directory?: { topTags: { name: string; count: number }[]; allTags?: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
   // F1 §37: last 6 months of retention from the nightly snapshots (null rate = no reliable snapshot for that month; reason says why)
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
   // F1 §39: the salon's latest customer activity (visits, profiles added, bookings made, loyalty adjustments; 30 days), newest first, max 8

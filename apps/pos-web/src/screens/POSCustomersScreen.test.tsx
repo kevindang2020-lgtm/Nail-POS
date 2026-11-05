@@ -260,6 +260,18 @@ describe('POSCustomersScreen — filters and bulk flows', () => {
     expect(screen.getByTestId('cd-row-message')).toBeInTheDocument();
   });
 
+  it('F1 §32: the Tags card View All lists every tag; picking one filters the list (tag=)', async () => {
+    const f = mockFetch({ ...state, directory: { topTags: [{ name: 'VIP', count: 3 }], allTags: [{ name: 'VIP', count: 3 }, { name: 'Allergic to acetone', count: 1 }], sources: [{ name: 'walk_in', count: 4 }], topSpendersCount: 0 } });
+    globalThis.fetch = f as any;
+    render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('cd-tags-all'));
+    const items = await screen.findAllByTestId('cd-rail-item');
+    expect(items.map((i) => i.textContent)).toEqual([expect.stringMatching(/VIP/), expect.stringMatching(/Allergic to acetone/)]);
+    fireEvent.click(items[1]);
+    await waitFor(() => expect(f.mock.calls.some((c: any[]) => /tag=Allergic(\+|%20)to(\+|%20)acetone/.test(String(c[0])))).toBe(true));
+    expect(screen.queryByTestId('cd-rail-overlay')).toBeNull();
+  });
+
   it('F1 §37: with no snapshot months the trend says so instead of drawing invented bars', async () => {
     globalThis.fetch = mockFetch({ ...state, analytics: { ageGroups: [], lifetimeValue: { totalRevenueCents: 0, totalCustomers: 0, repeatRatePercent: 0, avgClvCents: 0 }, rfm: [], retentionRatePercent: 0 }, retentionSeries: [] }) as any;
     render(<MemoryRouter><POSCustomersScreen /></MemoryRouter>);

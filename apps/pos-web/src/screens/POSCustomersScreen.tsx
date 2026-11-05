@@ -46,7 +46,7 @@ type CustomersState = {
   rows: { items: Row[]; pagination: Pg };
   filterFacets: { segments: string[]; statuses: string[]; loyaltyTiers: string[]; visitRanges: string[]; spendRanges: string[]; sources: string[]; tags: string[] };
   trends?: { totalCustomers: number | null; newCustomers: number | null; avgSpend: number | null; inactive: number | null; retention: number | null; clv: number | null };
-  directory?: { topTags: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
+  directory?: { topTags: { name: string; count: number }[]; allTags?: { name: string; count: number }[]; sources: { name: string; count: number }[]; topSpendersCount: number };
   unavailable?: string[];
   segmentCounts?: Partial<Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>>;
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
@@ -130,6 +130,7 @@ export function POSCustomersScreen() {
   const [profileBusy, setProfileBusy] = useState(false);
   // F1 §30: the row's Message action opens this customer's conversation in the inbox (starting one if none exists) —
   // it used to open a blank send-a-message page with no customer
+  const [railOverlay, setRailOverlay] = useState<null | 'tags' | 'sources'>(null);   // F1 §32: View All on the rail cards
   const [msgBusy, setMsgBusy] = useState<string | null>(null); const [actionErr, setActionErr] = useState<string | null>(null);
   const msgKey = useRef<{ id: string; key: string } | null>(null);
   const messageCustomer = (customerId: string) => {
@@ -455,6 +456,20 @@ export function POSCustomersScreen() {
         </div>
       ) : null}
       {actionErr ? <div className="err" role="alert" data-testid="cd-action-err" style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>{actionErr}<button className="btn ghost" style={{ marginLeft: 'auto' }} onClick={() => setActionErr(null)}>{tx('pos.close')}</button></div> : null}
+      {railOverlay ? (
+        <div role="dialog" aria-modal="true" aria-label={tx(railOverlay === 'tags' ? 'pos.top_customer_tags' : 'pos.customer_sources')} data-testid="cd-rail-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.25)', zIndex: 60, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setRailOverlay(null)}>
+          <div className="panel" style={{ width: 420, maxWidth: '94vw', maxHeight: '80vh', overflowY: 'auto', margin: 0 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx(railOverlay === 'tags' ? 'pos.top_customer_tags' : 'pos.customer_sources')}</h2><button className="btn ghost" style={{ marginLeft: 'auto' }} onClick={() => setRailOverlay(null)}>{tx('pos.close')}</button></div>
+            <div className="s muted" style={{ marginBottom: 8 }}>{tx('cd.rail.pick')}</div>
+            {(railOverlay === 'tags' ? (s.directory?.allTags ?? s.directory?.topTags ?? []) : (s.directory?.sources ?? [])).map((x) => (
+              <button key={x.name} className="btn ghost" data-testid="cd-rail-item" style={{ display: 'flex', width: '100%', minHeight: 44, alignItems: 'center' }}
+                onClick={() => { if (railOverlay === 'tags') setFilter(setTag)(x.name); else setFilter(setSource)(x.name); setRailOverlay(null); }}>
+                <span>{railOverlay === 'tags' ? x.name : srcLabel(x.name)}</span><span className="muted" style={{ marginLeft: 'auto' }}>{nf(x.count)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : null}
       {dupOverlay ? <DuplicateQueueOverlay canEdit={can('pos.customers.edit')} canMerge={can('pos.customers.merge')} onClose={() => setDupOverlay(false)} onChanged={() => { loadDups(); refetch(); }} /> : null}
 
       {/* 6 summary cards */}
@@ -591,18 +606,18 @@ export function POSCustomersScreen() {
         {/* right analytics rail */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <section className="panel" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_demographics')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_demographics')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
             <div className="s muted" style={{ marginBottom: 8 }}>{tx('pos.age_groups')}</div>
             {an && an.ageGroups.length > 0 ? <Donut items={an.ageGroups} /> : <div className="muted">{tx('pos.no_birthdays_on_file_yet')}</div>}
           </section>
           <section className="panel" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.top_customer_tags')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/customers')}>{tx('pos.view_all_4')}</button></div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.top_customer_tags')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} data-testid="cd-tags-all" onClick={() => setRailOverlay('tags')}>{tx('pos.view_all_4')}</button></div>
             {tagCounts.length === 0 ? <div className="muted">{tx('pos.no_tags_on_this_page')}</div> : tagCounts.slice(0, 6).map(([t, n]) => (
               <div key={t} style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}><span className="pill" style={{ background: '#FCEFD8', color: '#8B5A18' }}>{t}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>{nf(n)} {tx('pos.customers_2')}</span></div>
             ))}
           </section>
           <section className="panel" style={{ margin: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_sources')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_sources')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} data-testid="cd-sources-all" onClick={() => setRailOverlay('sources')}>{tx('pos.view_report')}</button></div>
             {srcCounts.length === 0 ? <div className="muted">{tx('pos.no_source_data_on_this_page')}</div> : srcCounts.slice(0, 6).map(([src, n]) => (
               <div key={src} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', fontSize: 11.5, marginBottom: 3 }}><span>{srcLabel(src)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(n)} · {Math.round((n / srcTotal) * 1000) / 10}%</span></div>
@@ -616,7 +631,7 @@ export function POSCustomersScreen() {
       {/* bottom analytics: CLV · Retention Trend · RFM · Recent Activity */}
    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-14">
         <section className="panel" style={{ margin: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_lifetime_value')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_lifetime_value')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
           {!an ? <div className="muted">{tx('pos.loading')}</div> : (
             <div>
               <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 800, color: '#A96F22' }}>{money(an.lifetimeValue.avgClvCents)}</div>
@@ -630,7 +645,7 @@ export function POSCustomersScreen() {
           )}
         </section>
         <section className="panel" style={{ margin: 0 }}>
-          <h2 style={{ marginTop: 0 }}>{tx('pos.customer_retention_trend')}</h2>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_retention_trend')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/customers/retention')}>{tx('pos.view_report')}</button></div>
           {an ? (
             <div>
               <div style={{ fontFamily: '"Playfair Display",serif', fontSize: 24, fontWeight: 800 }}>{an.retentionRatePercent}%</div>
@@ -650,7 +665,7 @@ export function POSCustomersScreen() {
           ) : <div className="muted">{tx('pos.loading')}</div>}
         </section>
         <section className="panel" style={{ margin: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.rfm_analysis')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/reports')}>{tx('pos.view_report')}</button></div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.rfm_analysis')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
           {an && an.rfm.length > 0 ? an.rfm.map((x) => (
             <div key={x.segment} style={{ marginBottom: 7 }}>
               <div style={{ display: 'flex', fontSize: 11.5 }}><span>{serverText(x.segment)}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)' }}>{nf(x.count)} · {an.lifetimeValue.totalCustomers ? Math.round((x.count / an.lifetimeValue.totalCustomers) * 1000) / 10 : 0}%</span></div>
@@ -663,7 +678,7 @@ export function POSCustomersScreen() {
           card (≈28%); the large top AI banner is gone */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,28%)] gap-3 items-start" style={{ marginTop: 12 }} data-testid="cd-bottom-row">
         <section className="panel" style={{ margin: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/overview')}>{tx('pos.view_all_4')}</button></div>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/customers/appointment-history')}>{tx('pos.view_all_4')}</button></div>
           {s.unavailable?.includes('recentActivity') && recentActivity.length === 0 ? <div className="muted" data-testid="cd-act-unavailable">{tx('cd.unavailable')}</div> : recentActivity.length === 0 ? <div className="muted">{tx('cd.act.empty')}</div> : recentActivity.map((r) => (
             <div key={r.kind + r.customerId} data-testid="cd-activity-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }} onClick={() => openProfile(rows.find((x) => x.customerId === r.customerId) ?? ({ customerId: r.customerId, displayName: r.displayName, avatarUrl: r.avatarUrl, tags: [] } as unknown as Row))}>
               <ProfileAvatarWithPreview name={r.displayName} url={r.avatarUrl} size={28} type="customer" />
