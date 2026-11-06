@@ -2,11 +2,12 @@ import { useCallback, useEffect, useState } from 'react';
 import { posNailShowcaseApi, type PosNSPost, type PosNSReport, type PosNSStatus } from '../api/posNailShowcaseApi';
 import { t, enPlural } from '@aipowersalon/mobile-sdk/i18n';
 import { growthCode } from './growthLabels';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 // POS NailShowcase moderation — manager view of this salon's customer nail posts + the open report queue. Reads the real
 // /pos/nail-showcase/posts (status / reportedOnly filters) and /pos/nail-showcase/reports; Hide / Approve / Resolve call
 // the backend, which scopes every action to the manager's own tenant. No fabricated content — honest empty states.
-const fmt = (iso: string) => { try { return new Date(iso).toLocaleString(); } catch { return iso; } };
+const fmt = (iso: string) => { try { return fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 const STATUSES: { key: string; label: string }[] = [
   { key: '', get label() { return t('pos.all'); } }, { key: 'published', get label() { return t('pos.published_2'); } }, { key: 'pending_review', get label() { return t('pos.pending'); } }, { key: 'hidden', get label() { return t('pos.hidden_2'); } }, { key: 'reported', get label() { return t('pos.reported_2'); } },
 ];

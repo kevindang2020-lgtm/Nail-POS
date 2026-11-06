@@ -2,7 +2,7 @@
 // profile (contact, lifetime stats, loyalty, membership, gift cards, recent visits) from a single
 // /pos/customers/:id call (pos.customers.view). Read-only.
 import { useRealtime } from '../realtime/useRealtime';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone, fmtYmd } from '../i18n/format';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CustomerReminderHistory } from './POSRemindersScreen';
@@ -32,7 +32,9 @@ type Detail = {
   recentVisits: Visit[];
 };
 
-const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(displayLocale(), { month: 'short', day: '2-digit', year: 'numeric' }); } catch { return iso; } };
+// F1 §45 / §46 (Nov 6 2026): a calendar date ('YYYY-MM-DD' — a birthday, a visit date) is shown as that date (new Date() read it
+// as UTC midnight, so in New York a birthday showed one day early); a timestamp is shown on the location's clock
+const fmtDate = (iso?: string | null) => (!iso ? '—' : /^\d{4}-\d{2}-\d{2}$/.test(iso) ? fmtYmd(iso, { month: 'short', day: '2-digit', year: 'numeric' }) || iso : fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric' }) || '—');
 
 const SearchIcon = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 const UserIcon = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>;

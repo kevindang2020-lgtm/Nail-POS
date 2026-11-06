@@ -6,6 +6,7 @@ import { useCan } from '../components/usePermissions';
 import { useRealtime } from '../realtime/useRealtime';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { msg, renderMsg, type Msg } from '../i18n/notice';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 // Cash Drawer (front desk). Register cash for the chosen date = opening float + cash sales − cash refunds. Excludes the
 // Skip-the-Line cash-to-technician payments (those reconcile in End-of-Day Cash). Set the float, then count and reconcile.
@@ -249,7 +250,7 @@ export function POSCashDrawerScreen() {
           <div className="im-b" style={{ fontSize: 13 }}>
             <div>{t('pos.status')}: <b>{STATUS[openRow.status as DrawerStatus]?.label ?? openRow.status}</b></div>
             <div>{t('pos.opening_float')}: {money(openRow.openingFloatCents)} · {t('cdr.expected')}: {openRow.expectedCashCents == null ? '—' : money(openRow.expectedCashCents)} · {t('pos.counted')}: {openRow.countedCents == null ? '—' : money(openRow.countedCents)} · {t('cdr.difference')}: {openRow.varianceCents == null ? '—' : money(openRow.varianceCents)}</div>
-            <div>{t('cdr.countedBy')}: {openRow.countedBy ?? '—'}{openRow.countedAt ? ` · ${new Date(openRow.countedAt).toLocaleString()}` : ''}{openRow.notes ? ` · ${openRow.notes}` : ''}</div>
+            <div>{t('cdr.countedBy')}: {openRow.countedBy ?? '—'}{openRow.countedAt ? ` · ${fmtInZone(openRow.countedAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}` : ''}{openRow.notes ? ` · ${openRow.notes}` : ''}</div>
             {openRow.denominations && Object.keys(openRow.denominations).length ? <div>{t('cdr.breakdown')} {DENOMS.filter((c) => openRow.denominations?.[String(c)]).map((c) => `${denomLabel(c)} × ${openRow.denominations![String(c)]}`).join(' · ')}</div> : null}
             {openRow.approvalRequired ? <div>{openRow.approvedAt ? `${t('cdr.signedOff', { name: openRow.approvedBy ?? '—' })}${openRow.approvalNote ? ' · ' + openRow.approvalNote : ''}` : t('cdr.st.needs_review')}</div> : null}
             <h3 style={{ fontSize: 13, margin: '10px 0 4px' }}>{t('cdr.movements')}</h3>

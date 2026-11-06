@@ -18,7 +18,7 @@ import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
 import { codeLabel } from '../components/peopleLabels';
-import { fmtDateTime } from '../i18n/format';
+import { fmtDateTime, fmtInZone } from '../i18n/format';
 type Status = 'draft' | 'review' | 'finalized' | 'paid';
 type Dash = 'OPEN' | 'NEEDS_REVIEW' | 'READY_TO_APPROVE' | 'HAS_EXCEPTIONS' | 'LOCKED' | 'PAID';
 type Period = { id: string; label: string | null; periodStart: string; periodEnd: string; status: Status; version?: number; previewHash?: string | null; approvalHash?: string | null; dashboardStatus?: Dash;
@@ -244,7 +244,7 @@ function PeriodsTab({ state, reload, can, stepUp, techs, techName }: { state: St
                 ))}
               </div>
             ) : null}
-            {exportsList.length ? <div style={small}>{tx('pos.exports')}{' '}{exportsList.slice(0, 5).map((x) => `${x.format.toUpperCase()} v${x.periodVersion} ${new Date(x.createdAt).toLocaleString()}`).join(' · ')}</div> : null}
+            {exportsList.length ? <div style={small}>{tx('pos.exports')}{' '}{exportsList.slice(0, 5).map((x) => `${x.format.toUpperCase()} v${x.periodVersion} ${fmtInZone(x.createdAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`).join(' · ')}</div> : null}
           </div>
         )}
       </div>
@@ -364,7 +364,7 @@ function TechnicianDrawer({ periodId, periodStatus, technicianId, can, onChanged
       <div><b>{tx('pos.services_3')}{d.services.length})</b>
         {d.services.length === 0 ? <div style={small}>{tx('pos.no_paid_services_in_this_period')}</div> : d.services.slice(0, 200).map((x: any, i: number) => (
           <div key={x.ticketId + i} style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid var(--aps-line)', padding: '2px 0' }}>
-            <span>{new Date(x.completedAt).toLocaleDateString()} · {x.serviceName || tx('pos.service_3')} <span style={small}>{money(x.lineTotalCents)}{x.ruleSource ? ` · ${x.ruleSource}` : ''}</span></span><span>{money(x.commissionCents)}</span></div>))}
+            <span>{fmtInZone(x.completedAt, { month: 'short', day: 'numeric', year: 'numeric' })} · {x.serviceName || tx('pos.service_3')} <span style={small}>{money(x.lineTotalCents)}{x.ruleSource ? ` · ${x.ruleSource}` : ''}</span></span><span>{money(x.commissionCents)}</span></div>))}
       </div>
       <div><b>{tx('pos.tips_by_ticket')}</b>
         {d.tips.length === 0 ? <div style={small}>{tx('pos.no_tips')}</div> : d.tips.map((t: any, i: number) => (

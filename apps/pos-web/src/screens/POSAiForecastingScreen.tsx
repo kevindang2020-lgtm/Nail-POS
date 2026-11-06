@@ -10,6 +10,7 @@ import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 import { growthCode } from './growthLabels';
 import { ForecastHistory, ForecastCheckButton } from './ForecastHistory';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 type Tab = 'appointments' | 'revenue' | 'noshow';
 const TABS = (): [Tab, string][] => [['appointments', tx('growth.aiForecast.tab.appointments')], ['revenue', tx('growth.aiForecast.tab.revenue')], ['noshow', tx('growth.aiForecast.tab.noshow')]];
 const titleCase = (s: string) => growthCode(s, 'level');
@@ -106,7 +107,7 @@ function NoShowView({ data }: { data: any }) {
           <tbody>
             {data.items.map((i: any) => (
               <tr key={i.appointmentId}>
-                <td>{new Date(i.startTime).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
+                <td>{fmtInZone(i.startTime, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</td>
                 <td>{i.customerName || '—'}</td>
                 <td><span className="chip" style={{ color: LEVEL_COLOR[i.level], borderColor: LEVEL_COLOR[i.level] }}>{titleCase(i.level)}</span><div className="sub">{tx('pos.conf')}{' '}{titleCase(i.confidence)}</div></td>
                 <td><div className="sub">{i.reasons.map((r: any) => r.label).join('; ') || '—'}</div></td>

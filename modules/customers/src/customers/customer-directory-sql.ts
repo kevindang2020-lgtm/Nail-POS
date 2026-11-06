@@ -25,7 +25,7 @@ const SEGMENTS = ['never', 'new', 'returning', 'vip', 'at_risk'] as const;
 const inScope = (s: DirectoryScope, col: string) => (s.branchId ? sql`and (${sql.ref(col)} = ${s.branchId} or ${sql.ref(col)} is null)` : sql``);
 
 /** Every customer in scope with its derived columns. `now` is a bound parameter so every statement agrees on "today". */
-function base(s: DirectoryScope, nowIso: string): RawBuilder<unknown> {
+function base(s: DirectoryScope, nowIso: string, searching = false): RawBuilder<unknown> {
   return sql`
     with t as (
       select customer_id, count(*)::int as cnt, coalesce(sum(total_cents), 0)::bigint as spend, max(created_at) as last
@@ -55,6 +55,13 @@ function base(s: DirectoryScope, nowIso: string): RawBuilder<unknown> {
              lower(regexp_replace(coalesce(nullif(cu.phone_display, ''), nullif(cu.normalized_phone, ''), ''), '\\s', '', 'g')) as pkey,
              lower(regexp_replace(coalesce(cu.email, ''), '\\s', '', 'g')) as ekey,
              lower(regexp_replace(coalesce(cu.first_name, ''), '\\s', '', 'g')) || '|' || lower(regexp_replace(coalesce(cu.last_name, ''), '\\s', '', 'g')) as nkey
+             ${searching ? sql`,
+             -- F1 §79 (Nov 6 2026): the searchable text is folded once, when the row is written (customers.search_fold /
+             -- search_digits, migration 822 trigger). Folding it per search cost ~6 s at 100,000 customers; folding it per
+             -- column and per tab count cost 65–85 s. Only the tags (customer_tags, few rows) are folded here.
+             coalesce(cu.search_fold, customer_search_fold(cu.first_name, cu.last_name, cu.preferred_name, cu.phone_display, cu.normalized_phone, cu.email)) as fold_text,
+             case when tg.tags is null then null else vi_fold(array_to_string(tg.tags, chr(1))) end as tag_fold,
+             coalesce(cu.search_digits, customer_search_digits(cu.phone_display, cu.normalized_phone)) as phone_digits` : sql``}
         from customers cu
         left join t on t.customer_id = cu.id left join r on r.customer_id = cu.id left join l on l.customer_id = cu.id left join tg on tg.customer_id = cu.id
        where cu.tenant_id = ${s.tenantId} ${inScope(s, 'cu.branch_id')}),
@@ -75,11 +82,8 @@ function filterSql(f: CustomerFilters, o: DirectoryOpts): RawBuilder<unknown>[] 
   if (q) {
     const digits = q.replace(/\D/g, ''); const byPhone = digits.length >= 3 && /^[\d\s()+.\-]+$/.test(q);
     const pat = `%${escLike(q)}%`;
-    const name = sql`vi_fold(coalesce(b.first_name, '') || ' ' || coalesce(b.last_name, ''))`;
-    const text = sql`(${name} like vi_fold(${pat}) or vi_fold(b.first_name) like vi_fold(${pat}) or vi_fold(b.last_name) like vi_fold(${pat})
-      or vi_fold(b.preferred_name) like vi_fold(${pat}) or vi_fold(b.phone) like vi_fold(${pat}) or vi_fold(b.email) like vi_fold(${pat})
-      or exists (select 1 from unnest(b.tags) x where vi_fold(x) like vi_fold(${pat})))`;
-    w.push(byPhone ? sql`(${text} or regexp_replace(b.phone, '\\D', '', 'g') like ${'%' + digits + '%'} or regexp_replace(coalesce(b.normalized_phone, ''), '\\D', '', 'g') like ${'%' + digits + '%'})` : text);
+    const text = sql`(b.fold_text like vi_fold(${pat}) or b.tag_fold like vi_fold(${pat}))`;   // stored fold (822) + the tags
+    w.push(byPhone ? sql`(${text} or b.phone_digits like ${'%' + digits + '%'})` : text);
   }
   w.push(f.status ? sql`b.status = ${f.status}` : sql`b.status <> 'archived'`);
   if (f.loyaltyTier) w.push(sql`b.tier = ${f.loyaltyTier}`);
@@ -142,7 +146,7 @@ export async function directoryState(db: Kysely<any>, s: DirectoryScope, f: Cust
   const curMonth = sql`to_char(${nowIso}::timestamptz at time zone ${o.timeZone}, 'YYYY-MM')`;
   const live = sql`b.status <> 'archived'`;
   type Out = { page: unknown; counts: unknown; tags: unknown; tiers: unknown; groups: unknown; recent_visits: unknown; recent_added: unknown };
-  const r = (await sql<Out>`${base(s, nowIso)},
+  const r = (await sql<Out>`${base(s, nowIso, !!String(f.search ?? '').trim())},
     cut as (select (select spend from base where status <> 'archived' and visits > 0 order by spend desc
               offset greatest(0, ceil((select count(*) from base where status <> 'archived' and visits > 0) * 0.2)::int - 1) limit 1) as v),
     pg as (select b.* from base b where ${and([...where, seg])} order by b.created_at, b.id limit ${pageSize} offset ${(page - 1) * pageSize}),

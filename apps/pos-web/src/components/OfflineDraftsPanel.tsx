@@ -6,6 +6,7 @@ import { listDrafts, removeDraft, checkDraft, DRAFTS_CHANGED, type OfflineDraft,
 import { posCustomersApi } from '../api/posCustomersApi';
 import { authApi } from '../api/authApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const deps = {
   online: () => typeof navigator === 'undefined' || navigator.onLine !== false,
@@ -54,7 +55,7 @@ export function OfflineDraftsPanel({ online }: { online: boolean }) {
             const c = checks[d.id];
             return (
               <li key={d.id} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span><b>{d.label}</b> {t('pos.customer_notes_saved')}{' '}{new Date(d.savedAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}</span>
+                <span><b>{d.label}</b> {t('pos.customer_notes_saved')}{' '}{fmtInZone(d.savedAt, { hour: 'numeric', minute: '2-digit' })}</span>
                 {!c || c === 'checking' ? <span className="s muted">{t('pos.checking')}</span>
                   : c.status === 'ready' ? <><span className="s">{t('pos.unchanged_since_you_started_ready')}</span><button className="btn" disabled={busy === d.id} onClick={() => apply(d)}>{t('pos.apply_2')}</button><button className="btn ghost" onClick={() => discard(d)}>{t('pos.discard')}</button></>
                   : c.status === 'conflict' ? <><span className="s" style={{ color: '#A1520B' }}>{t('pos.these_notes_were_changed_on_another_x82e')}</span><button className="btn ghost" disabled={busy === d.id} onClick={() => apply(d)}>{t('pos.apply_anyway')}</button><button className="btn ghost" onClick={() => discard(d)}>{t('pos.discard')}</button></>

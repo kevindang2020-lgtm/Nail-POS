@@ -55,7 +55,7 @@ describe('dispatchToUser — the payload carries a typed route and no personal d
 describe('register — the app id is a known one', () => {
   it('refuses an unknown app id (the topic and the targeting depend on it)', async () => {
     const svc = new PushService(new InMemoryPushRepository(), new Recorder());
-    await expect(svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-xxxxxxxxxx', 'casino')).rejects.toThrow(/app/);
+    await expect(svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-xxxxxxxxxx', 'unknown_app')).rejects.toThrow(/app/);
     await expect(svc.register({ tenantId: 't1', userId: 'u1' }, 'ios', 'tok-xxxxxxxxxx', 'manager')).resolves.toEqual({ ok: true });
   });
 });

@@ -5,6 +5,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { posSmsPlanApi, type SmsMessagingUsage, type SmsBalance, type SmsSelfServicePackage } from '../api/posSmsPlanApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const usd = (c: number) => `$${(c / 100).toFixed(2)}`;
 
@@ -95,7 +96,7 @@ function UsageBlock({ b }: { b: Extract<SmsBalance, { hasPackage: true }> }) {
   return (
     <div className="usage-block">
       {banner && <div className={`inline-note ${banner.cls}`} role="alert">{banner.text}</div>}
-      <div className="usage-head"><strong>{b.packageName}</strong><span>{new Date(b.cycleStart).toLocaleDateString()} – {new Date(b.cycleEnd).toLocaleDateString()}</span></div>
+      <div className="usage-head"><strong>{b.packageName}</strong><span>{fmtInZone(b.cycleStart, { month: 'short', day: 'numeric', year: 'numeric' })} – {fmtInZone(b.cycleEnd, { month: 'short', day: 'numeric', year: 'numeric' })}</span></div>
       <div className="progress" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
         <div className="progress-fill" style={{ width: `${pct}%` }} />
       </div>
@@ -104,7 +105,7 @@ function UsageBlock({ b }: { b: Extract<SmsBalance, { hasPackage: true }> }) {
         <div className="usage-line overage">{t('pos.overage')}{' '}{b.overageCount.toLocaleString()} × {usd(b.overageUnitPriceCents)} = {usd(b.estimatedOverageCents)} {t('pos.estimated')}</div>
       )}
       {!over && b.hardLimitEnabled && <div className="cell-sub">{t('pos.hard_limit_sending_pauses_when_the_1huj')}</div>}
-      <div className="usage-line">{t('pos.next_reset')}{' '}{new Date(b.cycleEnd).toLocaleDateString()}</div>
+      <div className="usage-line">{t('pos.next_reset')}{' '}{fmtInZone(b.cycleEnd, { month: 'short', day: 'numeric', year: 'numeric' })}</div>
       <div className="usage-line">{t('pos.base')}{' '}{usd(b.monthlyPriceCents)}{t('pos.mo_2')}{b.estimatedOverageCents > 0 ? t('pos.estimatedoveragecents_overage', { estimatedOverageCents: String(usd(b.estimatedOverageCents)) }) : ''} {t('pos.estimated_total')}{' '}{usd(b.monthlyPriceCents + b.estimatedOverageCents)}</div>
     </div>
   );

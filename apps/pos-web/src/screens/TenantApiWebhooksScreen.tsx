@@ -4,6 +4,7 @@ import { posApiKeysApi, posWebhooksApi, type ApiKeyView, type WebhookView } from
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codeLabel } from '../components/codeLabel';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 // TenantApiWebhooksScreen.tsx — Devices & Integrations › APIs & Webhooks (spec §53), wired to /pos/api-keys and
 // /pos/webhooks. Raw secrets are shown exactly ONCE in a reveal banner after create/rotate (the server never returns
@@ -12,7 +13,7 @@ const fieldStyle: React.CSSProperties = { height: 32, border: '1px solid var(--l
 const head: React.CSSProperties = { fontWeight: 800, fontSize: 14, fontFamily: 'var(--aps-font-head, Playfair Display)' };
 const dash = '—';
 const splitCsv = (s: string) => s.split(',').map((x) => x.trim()).filter(Boolean);
-const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : dash);
+const fmtDate = (iso: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) : dash);
 
 export function TenantApiWebhooksScreen() {
   const [keys, setKeys] = useState<ApiKeyView[] | null>(null);

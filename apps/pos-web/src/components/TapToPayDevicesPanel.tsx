@@ -14,12 +14,13 @@ import { useStepUp, isStepUpCancelled } from '../screens/access/accessUi';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 // a status label from its catalogue key — a code the catalogue does not know yet shows its humanised words, never the raw key
 const keyed = (key: string, code: string) => { const v = tx(key); return v === key ? statusLabel('paymentAttempt', code) : v; };
 const STATUS_TONE: Record<string, string> = { active: 'var(--ok)', pending: 'var(--gold, #C9971B)', disabled: 'var(--muted)', revoked: 'var(--danger, #B42318)', compromised: 'var(--danger, #B42318)' };
 const field: React.CSSProperties = { height: 32, padding: '0 8px', borderRadius: 8, border: '1px solid var(--line)', background: '#FFFDF8' };
-const when = (s?: string | null) => (s ? new Date(s).toLocaleString() : '—');
+const when = (s?: string | null) => (s ? fmtInZone(s, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
 
 /** mm:ss until `iso` (0:00 once passed). */
 export function countdownLabel(iso: string, now: number): { left: number; text: string } {

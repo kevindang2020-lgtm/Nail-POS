@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone } from '../i18n/format';
 import { posTechniciansApi } from '../api/posTechniciansApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { useStepUp, isStepUpCancelled } from '../screens/access/accessUi';
@@ -216,7 +216,7 @@ export function TechnicianAccessPanel({ technicianId, displayName }: { technicia
               <tbody>
                 {history.map((h) => (
                   <tr key={h.id} style={{ borderBottom: '1px solid #F3F4F6' }}>
-                    <td style={{ padding: '6px' }}>{new Date(h.createdAt).toLocaleString(displayLocale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                    <td style={{ padding: '6px' }}>{fmtInZone(h.createdAt, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
                     <td style={{ padding: '6px', fontWeight: 600 }}>{h.oldCommissionPercent}% → {h.newCommissionPercent}%</td>
                     <td style={{ padding: '6px' }}>{h.requestedByName} <span style={{ color: '#9CA3AF', fontSize: 10.5 }}>({h.requestedByRole})</span></td>
                     <td style={{ padding: '6px', color: '#059669', fontWeight: 600 }}>{h.authorizedByName || t('pos.admin')}</td>

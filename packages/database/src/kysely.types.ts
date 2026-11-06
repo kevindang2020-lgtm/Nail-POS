@@ -494,6 +494,8 @@ export interface CustomersTable {
   record_version: Generated<number>;
   preferred_name: string | null; preferred_language: string | null; preferred_branch_id: string | null;   // migration 490 (Decision 1)
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  search_fold: string | null;   // types sync (Nov 5 2026)
+  search_digits: string | null;   // types sync (Nov 5 2026)
 }
 export interface OauthClientsTable { id: Generated<string>; client_id: string; name: string; redirect_uris: string[]; client_secret_hash: string | null; allowed_scopes: Generated<string[]>; disabled_at: TsNull; created_at: Generated<Ts>; }   // 501
 export interface OauthGrantsTable { id: Generated<string>; client_id: string; tenant_id: string; approved_by: string | null; scopes: string[]; created_at: Generated<Ts>; revoked_at: TsNull; }   // 501
@@ -3770,6 +3772,8 @@ export interface InventoryVendorsTable {
   minimum_order_cents: number | null;
   currency: Generated<string>;
   deactivated_at: TsNull;   // drift patch Oct 30 2026 (migrations 724–732)
+  normalized_name: string | null;   // types sync (Nov 5 2026)
+  vendor_type: string | null;   // types sync (Nov 5 2026)
 }
 export interface IpBlockRulesTable {
   id: Generated<string>;

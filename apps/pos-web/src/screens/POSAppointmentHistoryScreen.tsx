@@ -1,7 +1,7 @@
 // POSAppointmentHistoryScreen.tsx — Customers → Appointment History. Search a customer, then view their
 // appointment history. Reuses /pos/customers/search + /pos/customers/:id/appointments (pos.customers.view).
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone } from '../i18n/format';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -20,7 +20,8 @@ type Appt = {
 
 const SearchIcon = () => <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>;
 
-const fmtDateTime = (iso?: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleString(displayLocale(), { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
+// F1 §46 (Nov 6 2026): the location's time zone (the salon's day and hour), not the device's
+const fmtDateTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric', hour: 'numeric', minute: '2-digit' }) || '—' : '—');
 const statusChip = (status: string) => {
   const s = (status || '').toLowerCase();
   const map: Record<string, { bg: string; fg: string, border: string }> = { 

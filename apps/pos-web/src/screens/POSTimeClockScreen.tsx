@@ -2,7 +2,7 @@
 // pos.technicians.manage write). Today's roster with each technician's clock state, hours worked, and
 // clock-in / clock-out actions. Writes to the technician_shifts table.
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone } from '../i18n/format';
 import { posTimeClockApi, type BreakPolicyView } from '../api/posTimeClockApi';
 import type { TimeClockTechnicianRow, TimeClockRosterPage } from '@aipowersalon/api-contracts/tenant';
 import { ImeSafeInput } from '../components/ImeSafeInput';
@@ -21,7 +21,7 @@ type State = { kpis: { technicianCount: number; clockedInCount: number; totalHou
  *  technician of the salon; the KPIs still count everyone. */
 export const TIME_CLOCK_PAGE_SIZE = 25;
 
-const fmtTime = (iso?: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleTimeString(displayLocale(), { hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
+const fmtTime = (iso?: string | null) => { if (!iso) return '—'; try { return fmtInZone(iso, { hour: 'numeric', minute: '2-digit' }); } catch { return iso; } };
 // ISO → value for <input type="datetime-local"> (local YYYY-MM-DDTHH:mm).
 const toLocalInput = (iso: string | null) => {
   if (!iso) return '';

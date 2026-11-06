@@ -3,10 +3,10 @@
 **GENERATED FROM CODE — do not hand-edit.** Regenerate with:
 `cd apps/api && node scripts/generate-api-inventory.mjs > ../../API_INVENTORY.md`
 
-Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI manifest (`apps/api/scripts/audit-routes.js` + `openapi.mjs`), which reads every controller under `apps/api/src` and `modules/*/src`. The reviewed, gate-checked form of the same list is `apps/api/openapi/manifest.txt` (`check:openapi`).
+Generated 2026-11-06. Source of truth: the route extractor behind the OpenAPI manifest (`apps/api/scripts/audit-routes.js` + `openapi.mjs`), which reads every controller under `apps/api/src` and `modules/*/src`. The reviewed, gate-checked form of the same list is `apps/api/openapi/manifest.txt` (`check:openapi`).
 
-- **Controller files:** 345
-- **Routes:** 3085 (public: 120; signed-in routes with no permission key: 195 — /customer 144, /auth 27, /api 11, /ai 6, /me 4, /push 2, /realtime 1; customer and self-service routes scoped to the caller's own session, integration routes, and handlers that check a permission themselves (e.g. `/ai/dashboard/settings` requires `ai.settings.manage` in the handler). Staff routes without a key are frozen in `apps/api/openapi/api-contract.unkeyed.baseline.txt` by `check:api-contract`, which may only shrink)
+- **Controller files:** 437
+- **Routes:** 3934 (public: 126; signed-in routes with no permission key: 201 — /customer 150, /auth 28, /api 11, /ai 5, /me 4, /push 2, /realtime 1; customer and self-service routes scoped to the caller's own session, integration routes, and handlers that check a permission themselves (e.g. `/ai/dashboard/settings` requires `ai.settings.manage` in the handler). Staff routes without a key are frozen in `apps/api/openapi/api-contract.unkeyed.baseline.txt` by `check:api-contract`, which may only shrink)
 - **Authentication:** every non-public route passes the global session middleware (server-derived ctx); the enforcing guards are listed per route; `/super-admin` routes without a declared key get a key derived from their path domain (PlatformDomainGuard), shown as "(derived)".
 - **Tenant scope:** `tenant/*` and POS/app mounts derive tenantId/branchId SERVER-SIDE from the session — never from the client. Cross-tenant aggregation exists only in reviewed super-admin services (see the tenant-isolation gate's baseline in `apps/api/scripts/tenant-isolation-check.mjs`).
 - **Wiring status:** the `check:crosswire` gate proves every frontend call has a matching route and flags orphans; routes with no static frontend caller are catalogued in `UNUSED_ROUTE_INVENTORY.md` (wire-or-document, never delete).
@@ -15,26 +15,26 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 
 | Mount | Routes |
 | --- | ---: |
-| /super-admin | 1139 |
-| /pos | 1034 |
-| /tenant | 183 |
-| /owner | 161 |
-| /customer | 159 |
-| /tech | 140 |
-| /mobile-checkout | 45 |
-| /auth | 42 |
+| /pos | 1738 |
+| /super-admin | 1192 |
+| /tenant | 245 |
+| /owner | 169 |
+| /customer | 165 |
+| /tech | 141 |
+| /mobile-checkout | 51 |
+| /auth | 43 |
 | /community | 42 |
 | /api | 29 |
 | /customer-display | 22 |
 | /go-check-in | 18 |
-| /internal | 13 |
-| /public | 8 |
+| /internal | 15 |
+| /public | 11 |
 | /ai | 7 |
-| /webhooks | 5 |
+| /webhooks | 7 |
+| /technician | 5 |
 | /me | 4 |
 | /oauth | 4 |
 | /realtime | 4 |
-| /technician | 4 |
 | /health | 3 |
 | /promotions | 3 |
 | /.well-known | 2 |
@@ -56,7 +56,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | --- | --- | --- | --- | --- | --- | --- |
 | GET | `/.well-known/apple-app-site-association` | public | — | operations | — | mobile-links/mobile-links.controller.ts |
 | GET | `/.well-known/assetlinks.json` | public | — | operations | — | mobile-links/mobile-links.controller.ts |
-| POST | `/ai/{packageCode}` | session | — | ai | — | modules/ai/src/ai/ai-assistant.controller.ts |
+| POST | `/ai/{packageCode}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai/ai-assistant.controller.ts |
 | GET | `/ai/dashboard` | session | — | ai | — | modules/ai/src/ai/ai-control-plane.controller.ts |
 | GET | `/ai/dashboard/feedback` | session | — | ai | — | modules/ai/src/ai/ai-control-plane.controller.ts |
 | POST | `/ai/dashboard/feedback` | session | — | ai | — | modules/ai/src/ai/ai-control-plane.controller.ts |
@@ -95,7 +95,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/app-config` | public | — | operations | — | mobile-config/app-config.controller.ts |
 | GET | `/app-links/{path}` | public | — | operations | — | mobile-links/mobile-links.controller.ts |
 | GET | `/auth/activity` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-activity.controller.ts |
-| POST | `/auth/admin/reset-user-password` | public | — | identity | — | modules/identity/src/auth/system-reset.controller.ts |
+| POST | `/auth/admin/reset-user-password` | session | roles.manage | identity | — | modules/identity/src/auth/system-reset.controller.ts |
 | DELETE | `/auth/avatar` | session | — | workforce | StaffSessionGuard | modules/workforce/src/tech-profile/staff-avatar.controller.ts |
 | POST | `/auth/avatar` | session | — | workforce | StaffSessionGuard | modules/workforce/src/tech-profile/staff-avatar.controller.ts |
 | POST | `/auth/biometric/enroll` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/biometric.controller.ts |
@@ -106,6 +106,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/auth/change-password` | session | — | identity | — | modules/identity/src/auth/account.controller.ts |
 | POST | `/auth/change-temporary-password` | public | — | identity | — | modules/identity/src/auth/system-reset.controller.ts |
 | GET | `/auth/devices` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-devices.controller.ts |
+| POST | `/auth/devices/{id}/approve-platform` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-devices.controller.ts |
 | POST | `/auth/devices/{id}/block` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-devices.controller.ts |
 | POST | `/auth/devices/{id}/revoke` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-devices.controller.ts |
 | POST | `/auth/devices/{id}/trust` | session | — | identity | SignedInUserGuard | modules/identity/src/auth/auth-devices.controller.ts |
@@ -245,6 +246,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/customer/gift-cards/{id}/report-lost` | session | — | customers | — | customer/customer.controller.ts |
 | POST | `/customer/gift-cards/{id}/send` | session | — | customers | — | customer/customer.controller.ts |
 | POST | `/customer/gift-cards/claim` | session | — | customers | — | customer/customer.controller.ts |
+| GET | `/customer/global-rewards` | session | — | loyalty | — | modules/loyalty/src/global-rewards/rewards-apps.controller.ts |
+| POST | `/customer/global-rewards/opt-in` | session | — | loyalty | — | modules/loyalty/src/global-rewards/rewards-apps.controller.ts |
+| POST | `/customer/global-rewards/withdraw` | session | — | loyalty | — | modules/loyalty/src/global-rewards/rewards-apps.controller.ts |
 | GET | `/customer/home` | session | — | customers | — | customer/customer.controller.ts |
 | GET | `/customer/invoices` | session | — | finance | — | modules/payments/src/invoices/customer-invoices.controller.ts |
 | GET | `/customer/invoices/{id}` | session | — | finance | — | modules/payments/src/invoices/customer-invoices.controller.ts |
@@ -303,6 +307,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/customer/payments/{invoiceId}/pay-cash-to-tech` | session | — | checkout | — | modules/checkout/src/skip-line-checkout/customer-skip-line.controller.ts |
 | POST | `/customer/payments/{invoiceId}/start` | session | — | checkout | — | modules/checkout/src/skip-line-checkout/customer-skip-line.controller.ts |
 | GET | `/customer/payments/{paymentId}/status` | session | — | checkout | — | modules/checkout/src/skip-line-checkout/customer-skip-line.controller.ts |
+| POST | `/customer/payments/{paymentId}/verify` | session | — | checkout | — | modules/checkout/src/skip-line-checkout/customer-skip-line.controller.ts |
 | GET | `/customer/profile` | session | — | customers | — | customer/customer.controller.ts |
 | PATCH | `/customer/profile` | session | — | customers | — | customer/customer.controller.ts |
 | POST | `/customer/profile/avatar` | session | — | customers | — | customer/customer.controller.ts |
@@ -361,6 +366,8 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/customer/tickets/{ticketId}/technician-ratings/mine` | session | — | workforce | — | modules/workforce/src/tech-profile/customer-tech.controller.ts |
 | GET | `/customer/wallet` | session | — | payments | — | modules/customers/src/wallet/customer-wallet.controller.ts |
 | POST | `/customer/wallet/top-up` | session | — | payments | — | modules/payments/src/customer-payments/customer-payments.controller.ts |
+| GET | `/customer/wallet/top-ups` | session | — | payments | — | modules/payments/src/customer-payments/customer-payments.controller.ts |
+| POST | `/customer/wallet/top-ups/{id}/verify` | session | — | payments | — | modules/payments/src/customer-payments/customer-payments.controller.ts |
 | GET | `/go-check-in/{slug}/config` | public | — | booking | — | modules/queue/src/go-check-in/go-check-in.public.controller.ts |
 | POST | `/go-check-in/{slug}/start-session` | public | — | booking | — | modules/queue/src/go-check-in/go-check-in.public.controller.ts |
 | POST | `/go-check-in/session/{sessionId}/accept-alternate` | public | — | booking | — | modules/queue/src/go-check-in/go-check-in.public.controller.ts |
@@ -387,6 +394,8 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/internal/ai-billing/event` | public | — | ai | — | modules/ai/src/ai/ai-subscription-billing.service.ts |
 | POST | `/internal/ai-billing/sweep-trials` | public | — | ai | — | modules/ai/src/ai/ai-subscription-billing.service.ts |
 | POST | `/internal/ai-billing/webhook` | public | — | ai | — | modules/ai/src/ai/ai-subscription-billing.service.ts |
+| POST | `/internal/backups/recovery-points` | public | — | operations | — | backup-center/backup-center.controller.ts |
+| POST | `/internal/backups/recovery-points/{id}/verification` | public | — | operations | — | backup-center/backup-center.controller.ts |
 | POST | `/internal/backups/report` | public | — | operations | — | observability/backup-reports.ts |
 | POST | `/internal/hardware-payment/run-monthly` | public | — | payments | — | modules/payments/src/hardware-payment/hardware-payment.cron.controller.ts |
 | POST | `/internal/membership-billing/apply` | public | — | memberships | — | modules/memberships/src/membership-billing.controller.ts |
@@ -403,51 +412,57 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/me/privacy-export` | session | — | identity | — | account/account.controllers.ts |
 | GET | `/media/{path}` | public | — | workforce | — | modules/workforce/src/tech-profile/media.controller.ts |
 | GET | `/metrics` | public | — | operations | — | health/metrics.controller.ts |
-| GET | `/mobile-checkout/capability` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/claims` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/device/heartbeat` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/device/register` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/devices` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/devices/{deviceId}/approve` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/devices/{deviceId}/compromised` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/devices/{deviceId}/disable` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/devices/{deviceId}/reassign` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/devices/{deviceId}/revoke` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/devices/status` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/payment-attempts/{idempotencyKey}` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/cancel` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/capture-result` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/device-session` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/readiness` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/reconcile` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/verify` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/payments` | session | mobile_checkout.view_history | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payments/{paymentId}/refund` | session | pos.checkout.refund | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/payments/{paymentId}/void` | session | pos.checkout.void | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/queue` | session | mobile_checkout.view_queue | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/readiness` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/reports` | session | mobile_checkout.view_reports | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/reports/sales` | session | mobile_checkout.view_reports | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/retail-catalog` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tap-to-pay/onboarding` | session | mobile_checkout.login | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}/balance` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/cash-tender` | session | mobile_checkout.split_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/discount` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}/lock` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/lock` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/lock/refresh` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/lock/release` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/lock/takeover` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}/payment-attempts` | session | mobile_checkout.view_history | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/payment-attempts` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}/payments` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/proceed-to-payment` | session | mobile_checkout.tap_to_pay | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/receipt` | session | pos.receipts.send | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/refund` | session | pos.checkout.refund | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| GET | `/mobile-checkout/tickets/{ticketId}/refund-preview` | session | pos.checkout.refund | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/retail` | session | mobile_checkout.open_ticket | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
-| POST | `/mobile-checkout/tickets/{ticketId}/send-to-device` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/capability` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/claims` | session | pos.checkout.view | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/device/attest` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/device/heartbeat` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/device/register` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/devices` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/devices/{deviceId}/activity` | session | pos.devices.manage | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/approve` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/branches` | session | pos.devices.manage | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/compromised` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/disable` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/reassign` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/rename` | session | pos.devices.manage | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/{deviceId}/revoke` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/devices/pairings` | session | pos.devices.manage | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/devices/security-summary` | session | pos.devices.manage | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/devices/status` | session | pos.checkout.view | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/payment-attempts/{idempotencyKey}` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/cancel` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/capture-result` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/device-session` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/readiness` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/reconcile` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payment-attempts/{idempotencyKey}/verify` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/payments` | session | mobile_checkout.view_history | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payments/{paymentId}/refund` | session | pos.checkout.refund | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/payments/{paymentId}/void` | session | pos.checkout.void | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/queue` | session | mobile_checkout.view_queue | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/readiness` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/reports` | session | mobile_checkout.view_reports | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/reports/sales` | session | mobile_checkout.view_reports | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/retail-catalog` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tap-to-pay/onboarding` | session | mobile_checkout.login | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}/balance` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/cash-tender` | session | mobile_checkout.split_payment | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/discount` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}/lock` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/lock` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/lock/refresh` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/lock/release` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/lock/takeover` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}/payment-attempts` | session | mobile_checkout.view_history | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/payment-attempts` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}/payments` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/proceed-to-payment` | session | mobile_checkout.tap_to_pay | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/receipt` | session | pos.receipts.send | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/refund` | session | pos.checkout.refund | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| GET | `/mobile-checkout/tickets/{ticketId}/refund-preview` | session | pos.checkout.refund | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/retail` | session | mobile_checkout.open_ticket | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
+| POST | `/mobile-checkout/tickets/{ticketId}/send-to-device` | session | pos.checkout.take_payment | checkout | DeviceProofGuard + RolePermissionGuard + TenantAuthGuard | modules/checkout/src/mobile-checkout/mobile-checkout.controller.ts |
 | GET | `/oauth/authorize` | session | settings.edit | identity | — | oauth/oauth.controller.ts |
 | POST | `/oauth/authorize` | session | settings.edit | identity | — | oauth/oauth.controller.ts |
 | POST | `/oauth/revoke` | public | — | identity | — | oauth/oauth.controller.ts |
@@ -549,6 +564,8 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/owner/finance/expenses/{id}/bill-payments` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/{id}/documents` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/{id}/duplicate-decision` | session | owner.expenses.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
+| POST | `/owner/finance/expenses/{id}/payment-link` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
+| POST | `/owner/finance/expenses/{id}/payment-match` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/{id}/reimbursement` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/{id}/reject` | session | owner.expenses.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/{id}/restore` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
@@ -561,7 +578,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/owner/finance/expenses/export` | session | owner.expenses.export | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/import` | session | owner.expenses.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | POST | `/owner/finance/expenses/recommend-category` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
+| GET | `/owner/finance/expenses/summary` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | GET | `/owner/finance/payment-mix` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| GET | `/owner/finance/receipts/{documentId}/suggested-expense` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | GET | `/owner/finance/reports` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
 | GET | `/owner/finance/summary` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/finance/vendors/{vendorId}/spend` | session | owner.expenses.view | finance | RolePermissionGuard + TenantAuthGuard | modules/finance/src/expense.controller.ts |
@@ -574,12 +593,13 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/owner/hardware-payment/tokenizer` | session | settings.edit | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/hardware-payment/hardware-payment.owner.controller.ts |
 | GET | `/owner/inventory` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/live` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| GET | `/owner/loyalty/rewards` | session | owner.dashboard.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/rewards-apps.controller.ts |
 | GET | `/owner/marketing` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | POST | `/owner/me/delete-account-request` | session | self.profile.edit | identity | — | account/account.controllers.ts |
-| PUT | `/owner/me/language` | session | self.profile.edit | identity | — | account/language.controller.ts |
 | GET | `/owner/me/locale` | session | self.profile.view | identity | — | account/language.controller.ts |
 | GET | `/owner/me/privacy-export` | session | self.profile.view | identity | — | account/account.controllers.ts |
 | GET | `/owner/memberships/overview` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| POST | `/owner/notifications/read` | session | owner.alerts.resolve | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/operations` | session | self.operations.view | operations | TenantAuthGuard | common/async-export/operations.controller.ts |
 | GET | `/owner/operations/{id}` | session | self.operations.view | operations | TenantAuthGuard | common/async-export/operations.controller.ts |
 | GET | `/owner/operations/{id}/download` | session | self.operations.view | operations | TenantAuthGuard | common/async-export/operations.controller.ts |
@@ -589,7 +609,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/owner/payroll/paychecks/periods/{id}/approve` | session | payroll.approve | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | POST | `/owner/payroll/paychecks/periods/{id}/reject` | session | payroll.approve | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | POST | `/owner/payroll/paychecks/periods/{id}/return` | session | payroll.approve | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| GET | `/owner/payroll/paychecks/periods/{id}/technicians/{techId}/evidence` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | POST | `/owner/payroll/paychecks/statements/{statementId}/approve` | session | payroll.approve | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| GET | `/owner/payroll/paychecks/statements/{statementId}/pay-stub.pdf` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/payroll/paychecks/summary` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/payroll/periods/{id}` | session | owner.finance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | POST | `/owner/payroll/periods/{id}/approve` | session | payroll.manage | analytics | — | modules/analytics/src/owner/owner.controller.ts |
@@ -610,6 +632,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/owner/staff/{technicianId}/performance` | session | owner.staff.performance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/staff/attendance` | session | owner.staff.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/staff/performance` | session | owner.staff.performance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
+| GET | `/owner/staff/performance/technicians` | session | owner.staff.performance.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/stream` | session | owner.dashboard.view | operations | TenantAuthGuard | domain-streams/owner-realtime.controller.ts |
 | GET | `/owner/tickets` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
 | GET | `/owner/tickets/{ticketId}/history` | session | owner.dashboard.view | analytics | — | modules/analytics/src/owner/owner.controller.ts |
@@ -632,11 +655,25 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-analytics/accuracy` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/anomalies` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/busy-periods` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
+| POST | `/pos/ai-analytics/center/check` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/forecast-center.controller.ts |
+| GET | `/pos/ai-analytics/center/run` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/forecast-center.controller.ts |
+| GET | `/pos/ai-analytics/center/runs` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/forecast-center.controller.ts |
+| GET | `/pos/ai-analytics/center/summary` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/forecast-center.controller.ts |
 | GET | `/pos/ai-analytics/forecast/appointments` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/forecast/product/{productId}` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
+| GET | `/pos/ai-analytics/forecast/readiness` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/forecast/revenue` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/no-show-risk` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
 | GET | `/pos/ai-analytics/seasonal-trends` | session | pos.ai_analytics.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-analytics-forecasting/ai-analytics-forecasting.controller.ts |
+| GET | `/pos/ai-booking/activity` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| GET | `/pos/ai-booking/health` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| POST | `/pos/ai-booking/health/run` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| GET | `/pos/ai-booking/overview` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| GET | `/pos/ai-booking/recovery` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| GET | `/pos/ai-booking/recovery/{caseKey}/alternatives` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| POST | `/pos/ai-booking/recovery/{caseKey}/dismiss` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| POST | `/pos/ai-booking/recovery/{caseKey}/request-approval` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
+| GET | `/pos/ai-booking/requests/{requestId}` | session | ai_booking.view | ai | RolePermissionGuard + TenantAuthGuard | ai-booking/ai-booking-center.controller.ts |
 | GET | `/pos/ai-business/alerts` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | POST | `/pos/ai-business/alerts` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | DELETE | `/pos/ai-business/alerts/{id}` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
@@ -645,6 +682,21 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-business/appointments/metrics` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | POST | `/pos/ai-business/ask` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | GET | `/pos/ai-business/branches/compare` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
+| POST | `/pos/ai-business/center/alerts/{id}/evaluate` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/alerts/anomaly` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/alerts/check` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/alerts/events/{id}/acknowledge` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/alerts/events/{id}/explain` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/alerts/history` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/alerts/rules` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/alerts/summary` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/reports` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/reports/{id}` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/reports/{id}/regenerate` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/reports/{id}/verify` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/reports/check` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| POST | `/pos/ai-business/center/reports/generate` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
+| GET | `/pos/ai-business/center/reports/summary` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/business-center.controller.ts |
 | GET | `/pos/ai-business/customers/growth` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | GET | `/pos/ai-business/daily-brief` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | GET | `/pos/ai-business/metrics` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
@@ -660,6 +712,10 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | DELETE | `/pos/ai-business/saved-questions/{id}` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | POST | `/pos/ai-business/saved-questions/{id}/use` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
 | GET | `/pos/ai-business/technicians/performance` | session | pos.ai_business.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/ai-business/ai-business.controller.ts |
+| GET | `/pos/ai-checkout-upsell/center/activity` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/upsell-center.controller.ts |
+| POST | `/pos/ai-checkout-upsell/center/check` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/upsell-center.controller.ts |
+| GET | `/pos/ai-checkout-upsell/center/history` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/upsell-center.controller.ts |
+| GET | `/pos/ai-checkout-upsell/center/summary` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/upsell-center.controller.ts |
 | POST | `/pos/ai-checkout-upsell/checkout/{checkoutId}/addons/{addOnId}/add` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.controller.ts |
 | GET | `/pos/ai-checkout-upsell/checkout/{checkoutId}/context` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.controller.ts |
 | POST | `/pos/ai-checkout-upsell/checkout/{checkoutId}/dismiss` | session | pos.ai_checkout_upsell.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/ai-checkout-upsell/ai-checkout-upsell.controller.ts |
@@ -686,12 +742,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-customer-profile/customers/{id}/visit-summary` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
 | GET | `/pos/ai-customer-profile/duplicates` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
 | POST | `/pos/ai-customer-profile/duplicates/{groupId}/merge` | session | pos.customers.merge | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
-| GET | `/pos/ai-customer-profile/duplicates/{groupId}/preview` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
-| GET | `/pos/ai-customer-profile/settings` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
-| PUT | `/pos/ai-customer-profile/settings/{level}` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
-| GET | `/pos/ai-customer-profile/tenant-overview` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
-| POST | `/pos/ai-customer-profile/tenant-overview/refresh` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
 | GET | `/pos/ai-customer-profile/usage` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/ai-customer-profile.controller.ts |
+| GET | `/pos/ai-inventory/center/activity` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/inventory-center.controller.ts |
+| POST | `/pos/ai-inventory/center/check` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/inventory-center.controller.ts |
+| GET | `/pos/ai-inventory/center/products` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/inventory-center.controller.ts |
+| GET | `/pos/ai-inventory/center/summary` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/inventory-center.controller.ts |
 | GET | `/pos/ai-inventory/context` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/ai-inventory.controller.ts |
 | GET | `/pos/ai-inventory/low-stock` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/ai-inventory.controller.ts |
 | GET | `/pos/ai-inventory/positions` | session | pos.ai_inventory.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-inventory/ai-inventory.controller.ts |
@@ -708,6 +763,12 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/ai-marketing/campaigns/{id}/approve` | session | pos.marketing.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/ai-marketing.controller.ts |
 | POST | `/pos/ai-marketing/campaigns/{id}/cancel` | session | pos.marketing.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/ai-marketing.controller.ts |
 | GET | `/pos/ai-marketing/campaigns/{id}/results` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/ai-marketing.controller.ts |
+| POST | `/pos/ai-marketing/center/check` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
+| POST | `/pos/ai-marketing/center/eligibility` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
+| POST | `/pos/ai-marketing/center/estimate` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
+| GET | `/pos/ai-marketing/center/recommendations` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
+| POST | `/pos/ai-marketing/center/save-draft` | session | pos.marketing.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
+| GET | `/pos/ai-marketing/center/summary` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/marketing-center.controller.ts |
 | POST | `/pos/ai-marketing/content/draft` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/ai-marketing.controller.ts |
 | GET | `/pos/ai-marketing/state` | session | pos.marketing.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-marketing/ai-marketing.controller.ts |
 | GET | `/pos/ai-money-protection/alerts` | session | ai_money_protection.view_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/ai-money-protection.controller.ts |
@@ -724,15 +785,17 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-money-protection/settings` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/ai-money-protection.controller.ts |
 | POST | `/pos/ai-money-protection/settings/{ruleId}` | session | ai_money_protection.manage_settings | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/ai-money-protection.controller.ts |
 | GET | `/pos/ai-money-protection/state` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/ai-money-protection.controller.ts |
-| GET | `/pos/ai-ocr-receipt/documents` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | GET | `/pos/ai-ocr-receipt/documents/{id}` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/approve` | session | pos.ai_ocr_receipt.approve | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/correct-field` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/extract` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
+| POST | `/pos/ai-ocr-receipt/documents/{id}/pages` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/post` | session | pos.ai_ocr_receipt.post | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | GET | `/pos/ai-ocr-receipt/documents/{id}/preview-url` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/reject` | session | pos.ai_ocr_receipt.approve | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/rescan` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
+| POST | `/pos/ai-ocr-receipt/documents/{id}/retry-extract` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
+| POST | `/pos/ai-ocr-receipt/documents/{id}/retry-post` | session | pos.ai_ocr_receipt.post | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/return` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | POST | `/pos/ai-ocr-receipt/documents/{id}/start-review` | session | pos.ai_ocr_receipt.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
 | GET | `/pos/ai-ocr-receipt/settings` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/ai-ocr-receipt.controller.ts |
@@ -742,7 +805,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/ai-queue-assignment/alerts/{id}/acknowledge` | session | ai_queue_assignment.resolve_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | POST | `/pos/ai-queue-assignment/alerts/{id}/repair` | session | ai_queue_assignment.resolve_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | POST | `/pos/ai-queue-assignment/alerts/{id}/resolve` | session | ai_queue_assignment.resolve_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
-| POST | `/pos/ai-queue-assignment/alerts/scan` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
+| POST | `/pos/ai-queue-assignment/alerts/scan` | session | ai_queue_assignment.resolve_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | GET | `/pos/ai-queue-assignment/analytics` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | GET | `/pos/ai-queue-assignment/auto-config` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | PUT | `/pos/ai-queue-assignment/auto-config` | session | ai_queue_assignment.manage_auto | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
@@ -752,6 +815,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-queue-assignment/decisions` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | GET | `/pos/ai-queue-assignment/decisions/analytics` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | GET | `/pos/ai-queue-assignment/entries/{queueEntryId}/decisions` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
+| GET | `/pos/ai-queue-assignment/entries/{queueEntryId}/detail` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | GET | `/pos/ai-queue-assignment/entries/{queueEntryId}/panel` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | POST | `/pos/ai-queue-assignment/entries/{queueEntryId}/plan` | session | ai_queue_assignment.recommend | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | POST | `/pos/ai-queue-assignment/entries/{queueEntryId}/recommend` | session | ai_queue_assignment.recommend | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
@@ -759,6 +823,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-queue-assignment/export` | session | ai_queue_assignment.export | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | POST | `/pos/ai-queue-assignment/fair-turn/simulate` | session | turn_queue.read | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | POST | `/pos/ai-queue-assignment/groups/{groupId}/plan` | session | ai_queue_assignment.recommend | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
+| GET | `/pos/ai-queue-assignment/health` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
+| POST | `/pos/ai-queue-assignment/health/run` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
+| GET | `/pos/ai-queue-assignment/history` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | GET | `/pos/ai-queue-assignment/overview` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | POST | `/pos/ai-queue-assignment/plans/{recommendationId}/decision` | session | ai_queue_assignment.assign | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
 | GET | `/pos/ai-queue-assignment/recommendations/{id}` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment.controller.ts |
@@ -772,7 +839,6 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/ai-queue-assignment/usage` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | GET | `/pos/ai-queue-assignment/wait-thresholds` | session | ai_queue_assignment.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
 | PUT | `/pos/ai-queue-assignment/wait-thresholds` | session | ai_queue_assignment.manage_rules | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-queue-assignment/ai-queue-assignment-ops.controller.ts |
-| GET | `/pos/ai-review-reputation/{id}` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/{id}/approve` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/{id}/draft` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/{id}/notes` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
@@ -780,18 +846,15 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/ai-review-reputation/{id}/recovery` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/{id}/reject` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/{id}/request-approval` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/analytics` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/branch-comparison` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/escalations/{id}/acknowledge` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/escalations/{id}/assign` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/escalations/{id}/resolve` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/escalations/urgent` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/inbox` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/integration-status` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| GET | `/pos/ai-review-reputation/settings` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
-| PUT | `/pos/ai-review-reputation/settings` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | POST | `/pos/ai-review-reputation/sync` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/ai-review-reputation.controller.ts |
 | GET | `/pos/ai-scheduling-optimizer/calendar` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling.controller.ts |
+| POST | `/pos/ai-scheduling-optimizer/center/check` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/scheduling-center.controller.ts |
+| GET | `/pos/ai-scheduling-optimizer/center/history` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/scheduling-center.controller.ts |
+| GET | `/pos/ai-scheduling-optimizer/center/recommendations` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/scheduling-center.controller.ts |
+| GET | `/pos/ai-scheduling-optimizer/center/summary` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/scheduling-center.controller.ts |
 | GET | `/pos/ai-scheduling-optimizer/export` | session | ai_scheduling.export | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.controller.ts |
 | POST | `/pos/ai-scheduling-optimizer/holds/{holdId}/release` | session | ai_scheduling.generate | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling.controller.ts |
 | GET | `/pos/ai-scheduling-optimizer/insights` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.controller.ts |
@@ -827,7 +890,21 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/ai-scheduling-optimizer/time-off` | session | technicians.edit | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling.controller.ts |
 | DELETE | `/pos/ai-scheduling-optimizer/time-off/{id}` | session | technicians.edit | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling.controller.ts |
 | GET | `/pos/ai-scheduling-optimizer/usage` | session | ai_scheduling.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-scheduling-optimizer/ai-scheduling-ops.controller.ts |
+| GET | `/pos/ai-voice-transcription/calls` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-calls-center.controller.ts |
+| POST | `/pos/ai-voice-transcription/calls/check` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-calls-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/calls/detail` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-calls-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/calls/summary` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-calls-center.controller.ts |
+| POST | `/pos/ai-voice-transcription/center/check` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-settings-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/center/records` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-settings-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/center/summary` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-settings-center.controller.ts |
 | POST | `/pos/ai-voice-transcription/consent` | session | ai_voice_transcription.manage_settings | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
+| POST | `/pos/ai-voice-transcription/follow-ups/check` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/follow-ups/items` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| POST | `/pos/ai-voice-transcription/follow-ups/items/dismiss` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/follow-ups/items/history` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| POST | `/pos/ai-voice-transcription/follow-ups/items/reopen` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| POST | `/pos/ai-voice-transcription/follow-ups/items/task` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
+| GET | `/pos/ai-voice-transcription/follow-ups/summary` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/voice-followups-center.controller.ts |
 | POST | `/pos/ai-voice-transcription/ingest` | session | ai_voice_transcription.manage_rules | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
 | GET | `/pos/ai-voice-transcription/overview` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
 | GET | `/pos/ai-voice-transcription/settings` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
@@ -841,6 +918,86 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/ai-voice-transcription/transcripts/{id}/summary` | session | ai_voice_transcription.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
 | GET | `/pos/ai-voice-transcription/transcripts/search` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
 | GET | `/pos/ai-voice-transcription/unresolved` | session | ai_voice_transcription.view_transcripts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-voice-transcription/ai-voice-transcription.controller.ts |
+| GET | `/pos/ai/business-setup/assistant` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/faqs` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| POST | `/pos/ai/business-setup/faqs` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/faqs/{id}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| POST | `/pos/ai/business-setup/faqs/{id}/actions` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/history` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| POST | `/pos/ai/business-setup/preview` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/readiness` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/business-setup/search` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/business-setup-center.controller.ts |
+| GET | `/pos/ai/calendar-center/appointments` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calendar-center/appointments/{id}` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calendar-center/assistant` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calendar-center/day` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| POST | `/pos/ai/calendar-center/health` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calendar-center/range` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calendar-center/summary` | session | pos.booking.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-calendar-center.controller.ts |
+| GET | `/pos/ai/calls-center/assistant` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/calls` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/calls/{ref}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| POST | `/pos/ai/calls-center/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/health/last` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/kpis` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/reconciliation` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| GET | `/pos/ai/calls-center/search` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/ai-calls-center.controller.ts |
+| POST | `/pos/ai/copilot-center/actions/confirm` | session | reception_copilot.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| POST | `/pos/ai/copilot-center/actions/prepare` | session | reception_copilot.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| GET | `/pos/ai/copilot-center/activity` | session | reception_copilot.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| GET | `/pos/ai/copilot-center/customers/{id}` | session | reception_copilot.view_customer_context | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| POST | `/pos/ai/copilot-center/health` | session | reception_copilot.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| GET | `/pos/ai/copilot-center/overview` | session | reception_copilot.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| GET | `/pos/ai/copilot-center/priorities` | session | reception_copilot.view_recommendations | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| GET | `/pos/ai/copilot-center/search` | session | reception_copilot.view_customer_context | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/reception-copilot-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/follow-ups-center/kpis` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/follow-ups-center/priorities` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/priorities/decide` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/follow-ups-center/staff` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/follow-ups-center/tasks` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/follow-ups-center/tasks/{id}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/assign` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/attempts` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/edit` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/note` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/priority` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/status` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/text/confirm` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| POST | `/pos/ai/follow-ups-center/tasks/{id}/text/prepare` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-center/ai-follow-up-center.controller.ts |
+| GET | `/pos/ai/front-desk/agents` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/agents/{id}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| PATCH | `/pos/ai/front-desk/agents/{id}` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/activate` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/agents/{id}/activation/preview` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/archive` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/agents/{id}/calls` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/duplicate` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/pause` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/restore` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/resume` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/agents/{id}/rollback` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/agents/{id}/wizard` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/events` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/front-desk/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/monitor` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| GET | `/pos/ai/front-desk/summary` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/front-desk-center.controller.ts |
+| POST | `/pos/ai/receptionist-center/actions` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| POST | `/pos/ai/receptionist-center/actions/{id}/decision` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/calls` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/calls/{ref}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| POST | `/pos/ai/receptionist-center/control` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/control/history` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| POST | `/pos/ai/receptionist-center/health` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/health/last` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/kpis` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/priority` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/readiness` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
+| GET | `/pos/ai/receptionist-center/search` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/voice-booking/receptionist-center.controller.ts |
 | GET | `/pos/api-keys` | session | pos.api_keys.view | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
 | POST | `/pos/api-keys` | session | pos.api_keys.manage | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
 | POST | `/pos/api-keys/{id}/revoke` | session | pos.api_keys.manage | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
@@ -853,6 +1010,22 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/approvals/policies` | session | approvals.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/approvals/approvals.controller.ts |
 | PUT | `/pos/approvals/policies` | session | approvals.manage_policies | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/approvals/approvals.controller.ts |
 | GET | `/pos/audit/events` | session | audit.view | audit | RolePermissionGuard + TenantAuthGuard | modules/audit/src/audit.controller.ts |
+| POST | `/pos/birthdays/assistant/plan` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| POST | `/pos/birthdays/assistant/save` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/customers` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/customers/{id}` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| PUT | `/pos/birthdays/customers/{id}/birthday` | session | pos.customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/history` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/missing` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/settings` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| PUT | `/pos/birthdays/settings` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/birthdays/summary` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/reports/src/birthdays/birthday-center.controller.ts |
+| GET | `/pos/booking-verification-center/health` | session | settings.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
+| GET | `/pos/booking-verification-center/history` | session | settings.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
+| GET | `/pos/booking-verification-center/history/{id}` | session | settings.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
+| POST | `/pos/booking-verification-center/history/{id}/resend` | session | pos.booking.create | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
+| GET | `/pos/booking-verification-center/live` | session | settings.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
+| GET | `/pos/booking-verification-center/summary` | session | settings.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-center.controller.ts |
 | GET | `/pos/booking/appointments` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | POST | `/pos/booking/appointments` | session | pos.booking.create | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | GET | `/pos/booking/appointments/{appointmentId}` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
@@ -879,8 +1052,10 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/booking/drafts/{draftId}/converted` | session | pos.booking.create | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking-drafts.controller.ts |
 | GET | `/pos/booking/integration-status` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | GET | `/pos/booking/kpis` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
+| GET | `/pos/booking/openings` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | GET | `/pos/booking/permissions` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | GET | `/pos/booking/state` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
+| GET | `/pos/booking/technicians` | session | pos.booking.view | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/booking/booking.controller.ts |
 | POST | `/pos/booking/verification-override` | session | pos.booking.override_verification | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-override.controller.ts |
 | GET | `/pos/booking/verification-override/pending` | session | pos.booking.verification_pending | booking | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-booking/booking-verification-override.controller.ts |
 | GET | `/pos/bundles` | session | pos.bundles.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/bundles/bundles.controller.ts |
@@ -891,6 +1066,26 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/bundles/{bundleId}/reactivate` | session | pos.bundles.archive | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/bundles/bundles.controller.ts |
 | GET | `/pos/bundles/kpis` | session | pos.bundles.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/bundles/bundles.controller.ts |
 | GET | `/pos/bundles/state` | session | pos.bundles.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/bundles/bundles.controller.ts |
+| POST | `/pos/campaign-center/assistant/draft` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/assistant/suggest` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/audience-sources` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/campaigns` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/campaigns/{id}` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| PATCH | `/pos/campaign-center/campaigns/{id}` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/approve` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/audience` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/campaigns/{id}/audit` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/duplicate` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/campaigns/{id}/events` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/launch` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/preview` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/campaigns/{id}/recipients` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/submit` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/campaigns/{id}/unschedule` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| POST | `/pos/campaign-center/health-check` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/overview` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
+| GET | `/pos/campaign-center/recipients` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaign-center.controller.ts |
 | GET | `/pos/campaigns` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | POST | `/pos/campaigns` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | GET | `/pos/campaigns/{id}` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
@@ -898,18 +1093,44 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/campaigns/{id}/activate` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | POST | `/pos/campaigns/{id}/cancel` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | POST | `/pos/campaigns/{id}/complete` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
-| GET | `/pos/campaigns/{id}/cost-preview` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | POST | `/pos/campaigns/{id}/schedule` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | GET | `/pos/campaigns/state` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/campaigns/campaigns.controller.ts |
 | GET | `/pos/cash-drawer` | session | pos.checkout.view | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
+| POST | `/pos/cash-drawer/approve` | session | checkout.manage_overrides | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
+| GET | `/pos/cash-drawer/history` | session | pos.checkout.view | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | POST | `/pos/cash-drawer/movement` | session | checkout.process_payment | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | POST | `/pos/cash-drawer/movement/void` | session | checkout.process_payment | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | GET | `/pos/cash-drawer/movements` | session | pos.checkout.view | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | POST | `/pos/cash-drawer/open` | session | checkout.process_payment | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | POST | `/pos/cash-drawer/reconcile` | session | checkout.process_payment | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
+| GET | `/pos/cash-drawer/registers` | session | pos.checkout.view | payments | — | modules/checkout/src/cash-drawer/cash-drawer.pos.controller.ts |
 | GET | `/pos/cash-handoffs` | session | pos.checkout.view | payments | — | modules/workforce/src/tech-cash-handoff/tech-cash-handoff.pos.controller.ts |
 | GET | `/pos/cash-handoffs/{technicianId}` | session | pos.checkout.view | payments | — | modules/workforce/src/tech-cash-handoff/tech-cash-handoff.pos.controller.ts |
 | POST | `/pos/cash-handoffs/{technicianId}/reconcile` | session | checkout.process_payment | payments | — | modules/workforce/src/tech-cash-handoff/tech-cash-handoff.pos.controller.ts |
+| POST | `/pos/cash-handoffs/{technicianId}/resolve` | session | checkout.manage_overrides | payments | — | modules/workforce/src/tech-cash-handoff/tech-cash-handoff.pos.controller.ts |
+| GET | `/pos/catalog/add-ons` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/add-ons` | session | pos.services.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/add-ons/{key}` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| PATCH | `/pos/catalog/add-ons/{key}` | session | pos.services.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/add-ons/{key}/archive` | session | pos.services.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/add-ons/{key}/restore` | session | pos.services.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/add-ons/summary` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/add-ons/usage` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/categories` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/categories/{categoryId}` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/categories/{categoryId}/reassign` | session | pos.services.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/categories/summary` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/charts` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/customer-history` | session | customers.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/dashboard` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/history` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/services` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/services/{serviceId}` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| PATCH | `/pos/catalog/services/{serviceId}/pricing` | session | pos.services.pricing.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| GET | `/pos/catalog/services/{serviceId}/pricing-impact` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/services/{serviceId}/pricing/revert` | session | pos.services.pricing.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/services/{serviceId}/pricing/schedule` | session | pos.services.pricing.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
+| POST | `/pos/catalog/services/{serviceId}/pricing/schedule/cancel` | session | pos.services.pricing.edit | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/catalog-screens/catalog-screens.controller.ts |
 | GET | `/pos/check-in/{checkInId}` | session | pos.check_in.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/check-in/check-in.controller.ts |
 | POST | `/pos/check-in/{checkInId}/assign-technician` | session | pos.check_in.assign_technician | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/check-in/check-in.controller.ts |
 | POST | `/pos/check-in/{checkInId}/cancel` | session | pos.check_in.cancel | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/check-in/check-in.controller.ts |
@@ -929,8 +1150,12 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/check-in/wait-estimate` | session | pos.check_in.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/check-in/check-in.controller.ts |
 | POST | `/pos/check-in/walk-in` | session | pos.check_in.walk_in | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/check-in/check-in.controller.ts |
 | POST | `/pos/checkout/gift-cards` | session | pos.checkout.gift_card_issue | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/gift-cards/{cardId}/adjust` | session | pos.checkout.void | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/gift-cards/{cardId}/reload-ticket` | session | pos.checkout.gift_card_issue | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/gift-cards/{cardId}/void-card` | session | pos.checkout.void | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | GET | `/pos/checkout/gift-cards/{code}` | session | pos.checkout.gift_card_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/gift-cards/{code}/void` | session | pos.checkout.gift_card_issue | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/gift-cards/issue` | session | pos.checkout.gift_card_issue | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/gift-cards/lookup` | session | pos.checkout.gift_card_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/gift-cards/replace` | session | pos.checkout.gift_card_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | GET | `/pos/checkout/kpis` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
@@ -957,6 +1182,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/checkout/tickets/{ticketId}/pay/card/verify` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/pay/cash` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/pay/gift-card` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/tickets/{ticketId}/pay/rewards` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/pay/split` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/rating` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/recalculate` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
@@ -973,20 +1199,79 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/checkout/tickets/{ticketId}/review` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/reward-code` | session | pos.checkout.redeem_reward | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/reward-code/remove` | session | pos.checkout.redeem_reward | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| GET | `/pos/checkout/tickets/{ticketId}/rewards` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/checkout/tickets/{ticketId}/rewards/remove` | session | pos.checkout.take_payment | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/checkout/tickets/{ticketId}/send-to-customer-display` | session | pos.customer_display.operate | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | GET | `/pos/checkout/tickets/{ticketId}/signature` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | GET | `/pos/checkout/tickets/{ticketId}/technician-split` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| GET | `/pos/checkout/tickets/{ticketId}/tip-selection` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| GET | `/pos/checkout/tickets/{ticketId}/unsettled-tenders` | session | pos.checkout.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
+| POST | `/pos/churn-watch/check` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| GET | `/pos/churn-watch/customers` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| GET | `/pos/churn-watch/customers/{id}` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| POST | `/pos/churn-watch/customers/{id}/review` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| GET | `/pos/churn-watch/history` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| GET | `/pos/churn-watch/summary` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/churn-watch-center.controller.ts |
+| GET | `/pos/commission-discrepancies` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| GET | `/pos/commission-discrepancies/{id}` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/assign` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/dismiss` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/investigate` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/notes` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/reopen` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/{id}/resolve` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| GET | `/pos/commission-discrepancies/assignees` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| PUT | `/pos/commission-discrepancies/refund-policy` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
+| POST | `/pos/commission-discrepancies/run-check` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-review.controller.ts |
 | GET | `/pos/commission-report/state` | session | pos.reports.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/commission-report/commission-report.controller.ts |
+| GET | `/pos/commission-screen/export` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/export-history` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/payouts` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/summary` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/technicians` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/technicians/{id}/adjustments` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/technicians/{id}/lines` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
+| GET | `/pos/commission-screen/technicians/{id}/tips` | session | pos.reports.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/commission-screen.controller.ts |
 | GET | `/pos/communications/activity` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
+| POST | `/pos/communications/inbox/conversations` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/customers` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/source-campaigns` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/staff` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/summary` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/templates` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/threads` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/threads/{id}` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/assign` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/booking` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/follow-up` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/link-customer` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/threads/{id}/messages` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/read` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/reply` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/status` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| GET | `/pos/communications/inbox/threads/{id}/timeline` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
+| POST | `/pos/communications/inbox/threads/{id}/unread` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/inbox/inbox.controller.ts |
 | GET | `/pos/communications/state` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
 | POST | `/pos/communications/threads` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
-| GET | `/pos/communications/threads/{id}` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
 | POST | `/pos/communications/threads/{id}/assign` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
-| POST | `/pos/communications/threads/{id}/read` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
 | POST | `/pos/communications/threads/{id}/reply` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
 | POST | `/pos/communications/threads/{id}/status` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/communications/communications.controller.ts |
 | GET | `/pos/connected-apps` | session | settings.edit | identity | — | oauth/oauth.controller.ts |
 | POST | `/pos/connected-apps/{id}/revoke` | session | settings.edit | identity | — | oauth/oauth.controller.ts |
+| GET | `/pos/coupons/{dealId}/campaigns` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| POST | `/pos/coupons/{dealId}/check` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| POST | `/pos/coupons/assistant/draft` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| POST | `/pos/coupons/assistant/suggest` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| GET | `/pos/coupons/health` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| POST | `/pos/coupons/health/run` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| GET | `/pos/coupons/health/runs` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/coupon-center.ts |
+| POST | `/pos/customer-ai-settings/assistant` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| POST | `/pos/customer-ai-settings/check` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| GET | `/pos/customer-ai-settings/history` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| GET | `/pos/customer-ai-settings/history/{id}` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| POST | `/pos/customer-ai-settings/preview` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| GET | `/pos/customer-ai-settings/state` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
+| POST | `/pos/customer-ai-settings/thresholds` | session | pos.ai_customer_profile.churn | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-ai-settings-center.controller.ts |
 | GET | `/pos/customer-display/devices` | session | pos.customer_display.operate | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | POST | `/pos/customer-display/sessions` | session | pos.customer_display.operate | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
 | PATCH | `/pos/customer-display/sessions/{sessionId}` | session | pos.customer_display.operate | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/checkout.controller.ts |
@@ -1000,6 +1285,40 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/customer-displays/stations` | session | pos.customer_display.manage | operations | RolePermissionGuard + TenantAuthGuard | customer-display/display-devices.controller.ts |
 | DELETE | `/pos/customer-displays/stations/{stationId}` | session | pos.customer_display.manage | operations | RolePermissionGuard + TenantAuthGuard | customer-display/display-devices.controller.ts |
 | PATCH | `/pos/customer-displays/stations/{stationId}` | session | pos.customer_display.manage | operations | RolePermissionGuard + TenantAuthGuard | customer-display/display-devices.controller.ts |
+| POST | `/pos/customer-intelligence/check` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| GET | `/pos/customer-intelligence/customers` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| GET | `/pos/customer-intelligence/customers/{id}` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| POST | `/pos/customer-intelligence/scan` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| GET | `/pos/customer-intelligence/scans` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| GET | `/pos/customer-intelligence/summary` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/customer-intelligence-center.controller.ts |
+| GET | `/pos/customer-notifications/alert-settings` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| PUT | `/pos/customer-notifications/alert-settings` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/customers/{customerId}/timeline` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/failures` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/health` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| POST | `/pos/customer-notifications/health/check` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/incidents` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/opt-outs` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/records` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/records/{id}` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| POST | `/pos/customer-notifications/records/{id}/retry` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/records/export` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-notifications/summary` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/notifications/customer-notifications.controller.ts |
+| GET | `/pos/customer-phone-center/customers` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/health` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/pending` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/requests` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/requests/{id}` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/summary` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| GET | `/pos/customer-phone-center/sync` | session | pos.customers.view | identity | RolePermissionGuard + TenantAuthGuard | modules/booking/src/customer-phone/phone-center.controller.ts |
+| POST | `/pos/customer-search/check` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-search/customer-search-center.controller.ts |
+| GET | `/pos/customer-search/customers` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-search/customer-search-center.controller.ts |
+| GET | `/pos/customer-search/customers/{id}` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-search/customer-search-center.controller.ts |
+| GET | `/pos/customer-search/options` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-search/customer-search-center.controller.ts |
+| GET | `/pos/customer-search/summary` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-search/customer-search-center.controller.ts |
+| POST | `/pos/customer-timeline/check` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-timeline/customer-timeline-center.controller.ts |
+| GET | `/pos/customer-timeline/customers/{id}/events` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-timeline/customer-timeline-center.controller.ts |
+| GET | `/pos/customer-timeline/customers/{id}/events/{eventId}` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customer-timeline/customer-timeline-center.controller.ts |
 | GET | `/pos/customers` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | POST | `/pos/customers` | session | pos.customers.create | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | GET | `/pos/customers/{customerId}` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
@@ -1032,8 +1351,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | PATCH | `/pos/customers/{customerId}/tags` | session | pos.customers.edit | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | GET | `/pos/customers/{customerId}/tickets` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | GET | `/pos/customers/{customerId}/visits` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
+| GET | `/pos/customers/{customerId}/wallet/top-ups` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/customer-payments/pos-customer-payments.controller.ts |
+| POST | `/pos/customers/{customerId}/wallet/top-ups/{id}/verify` | session | pos.checkout.take_payment | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/customer-payments/pos-customer-payments.controller.ts |
 | GET | `/pos/customers/duplicates` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
-| POST | `/pos/customers/duplicates/{duplicateGroupId}/decision` | session | pos.customers.merge | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | POST | `/pos/customers/duplicates/{duplicateGroupId}/merge` | session | pos.customers.merge | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | GET | `/pos/customers/export` | session | pos.customers.export | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
 | POST | `/pos/customers/import` | session | pos.customers.import | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/customers/customers.controller.ts |
@@ -1058,6 +1378,17 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/dashboard/top-technicians` | session | pos.dashboard.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/dashboard/dashboard.controller.ts |
 | GET | `/pos/deals` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
+| GET | `/pos/deals-offers/{id}` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| POST | `/pos/deals-offers/{id}/check` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/approvals` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| POST | `/pos/deals-offers/assistant/draft` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| POST | `/pos/deals-offers/assistant/suggest` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/health` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| POST | `/pos/deals-offers/health/run` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/health/runs` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/kpis` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/library` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
+| GET | `/pos/deals-offers/redemptions` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals-center.ts |
 | GET | `/pos/deals/{id}` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | PATCH | `/pos/deals/{id}` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/approve` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
@@ -1066,9 +1397,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/deals/{id}/coupons` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/coupons/{codeId}/revoke` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/coupons/generate` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
+| POST | `/pos/deals/{id}/duplicate` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/pause` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/publish` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/reject` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
+| POST | `/pos/deals/{id}/request-changes` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/resume` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | POST | `/pos/deals/{id}/submit` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
 | GET | `/pos/deals/{id}/versions` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/deals/deals.controller.ts |
@@ -1082,20 +1415,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/deployments` | session | pos.deployments.manage | operations | RolePermissionGuard + TenantAuthGuard | deployments/deployments.controller.ts |
 | POST | `/pos/deployments/{id}/advance` | session | pos.deployments.manage | operations | RolePermissionGuard + TenantAuthGuard | deployments/deployments.controller.ts |
 | GET | `/pos/deposit-reconciliation/adjustments` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/bank-accounts` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| POST | `/pos/deposit-reconciliation/bank-accounts` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/deposits` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| POST | `/pos/deposit-reconciliation/deposits` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| POST | `/pos/deposit-reconciliation/deposits/{id}/link` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | GET | `/pos/deposit-reconciliation/duplicates` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/exceptions` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/exceptions` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| POST | `/pos/deposit-reconciliation/exceptions/{id}/assign` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/exceptions/{id}/reopen` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| POST | `/pos/deposit-reconciliation/exceptions/{id}/resolve` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/exceptions/{id}/transition` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/explain/settlement/{id}` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/fee-reconciliation` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | GET | `/pos/deposit-reconciliation/fee-schedules` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/fee-schedules` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | GET | `/pos/deposit-reconciliation/periods` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
@@ -1103,12 +1427,84 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/deposit-reconciliation/periods/{id}/check-close` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/periods/{id}/close` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/periods/{id}/reopen` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/reports/daily` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/reports/daily/export` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/reports/summary` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
 | POST | `/pos/deposit-reconciliation/rescan` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
-| GET | `/pos/deposit-reconciliation/state` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/deposit-reconciliation/deposit-reconciliation.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/allocations` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/allocations/{allocationId}/unmatch` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/bank-accounts` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/bank-accounts` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/bank-accounts/{bankAccountId}` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/deposits` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/deposits` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/deposits/{depositId}` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/deposits/{depositId}/suggestions` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/exceptions` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/exceptions` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/exceptions/{exceptionId}` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/assign` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/reopen` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/resolve` | session | reconciliation.approve | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/exceptions/{exceptionId}/review` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/fees` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/kpis` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| POST | `/pos/deposit-reconciliation/workspace/notes` | session | reconciliation.manage | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/reports/{reportType}` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/reports/{reportType}/export` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/reports/{reportType}/export-pdf` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/reviewers` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/search` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/settlements` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
+| GET | `/pos/deposit-reconciliation/workspace/settlements/{settlementId}` | session | reconciliation.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/recon-workspace.controller.ts |
 | GET | `/pos/devices/overview` | session | pos.devices.view | operations | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/devices/devices.controller.ts |
+| GET | `/pos/devices/payment-terminals/activity` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/audit` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/physical` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/physical/{terminalId}` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/routing` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/tap-to-pay` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/devices/payment-terminals/tap-to-pay/{deviceId}` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/terminals-screen.controller.ts |
+| GET | `/pos/discounts` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/{dealId}` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/export` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/export/redemptions` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/kpis` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/performance` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| GET | `/pos/discounts/redemptions` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/discounts-screen.ts |
+| POST | `/pos/duplicate-review/check` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| GET | `/pos/duplicate-review/groups` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| GET | `/pos/duplicate-review/groups/{id}` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/duplicate-review/groups/{id}/decision` | session | pos.customers.edit | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/duplicate-review/groups/{id}/merge` | session | pos.customers.merge | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/duplicate-review/groups/{id}/notes` | session | pos.customers.edit | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/duplicate-review/groups/{id}/preview` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| GET | `/pos/duplicate-review/history` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/duplicate-review/scan` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| GET | `/pos/duplicate-review/summary` | session | pos.customers.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/duplicate-review/duplicate-review-center.controller.ts |
+| POST | `/pos/email-center/compose` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/email-center/health` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| POST | `/pos/email-center/health/check` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/email-center/history` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/email-center/messages/{id}` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| POST | `/pos/email-center/messages/{id}/resend` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/email-center/settings` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/email-center/summary` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| POST | `/pos/email-center/test` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/email/email-center.controller.ts |
+| GET | `/pos/eod-follow-ups/health` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/eod-follow-ups/preview` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/eod-follow-ups/runs` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/eod-follow-ups/summary` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/eod-follow-ups/tasks` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/eod-follow-ups/tasks/{id}` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| POST | `/pos/eod-follow-ups/tasks/{id}/approve` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| POST | `/pos/eod-follow-ups/tasks/{id}/reject` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| POST | `/pos/eod-follow-ups/tasks/{id}/send` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/eod-center.controller.ts |
+| GET | `/pos/follow-up-queue/customers/{customerId}/history` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| POST | `/pos/follow-up-queue/generate` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| GET | `/pos/follow-up-queue/kpis` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| GET | `/pos/follow-up-queue/missed-calls` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| GET | `/pos/follow-up-queue/results` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| GET | `/pos/follow-up-queue/tasks` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
+| GET | `/pos/follow-up-queue/tasks/{id}/contact-check` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/followup-queue.controller.ts |
 | GET | `/pos/follow-ups` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
 | POST | `/pos/follow-ups/{id}/approve` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
 | POST | `/pos/follow-ups/{id}/send` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
@@ -1119,19 +1515,80 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/follow-ups/settings` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
 | PATCH | `/pos/follow-ups/settings` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
 | GET | `/pos/follow-ups/technicians/{technicianId}` | session | customers.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/communications/src/end-of-day-followups/end-of-day-followups.pos.controller.ts |
+| GET | `/pos/gift-cards/{cardId}/detail` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/gift-cards-screen.controller.ts |
+| GET | `/pos/gift-cards/{cardId}/ledger` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/gift-cards-screen.controller.ts |
+| GET | `/pos/gift-cards/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/gift-cards-screen.controller.ts |
 | GET | `/pos/gift-cards/liability` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/gift-cards/src/gift-cards/gift-cards.controller.ts |
+| GET | `/pos/gift-cards/list` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/gift-cards-screen.controller.ts |
 | GET | `/pos/gift-cards/state` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/gift-cards/src/gift-cards/gift-cards.controller.ts |
 | GET | `/pos/gift-cards/stock` | session | pos.checkout.gift_card_issue | payments | RolePermissionGuard + TenantAuthGuard | modules/gift-cards/src/gift-card-stock/gift-card-stock.controller.ts |
 | POST | `/pos/gift-cards/stock/{id}/void` | session | pos.checkout.gift_card_issue | payments | RolePermissionGuard + TenantAuthGuard | modules/gift-cards/src/gift-card-stock/gift-card-stock.controller.ts |
 | POST | `/pos/gift-cards/stock/register` | session | pos.checkout.gift_card_issue | payments | RolePermissionGuard + TenantAuthGuard | modules/gift-cards/src/gift-card-stock/gift-card-stock.controller.ts |
+| GET | `/pos/gift-cards/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/gift-cards-screen.controller.ts |
+| GET | `/pos/invoices` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
 | POST | `/pos/invoices` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
 | GET | `/pos/invoices/{id}` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/credit` | session | pos.checkout.void | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/deliver` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/{id}/detail` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/edit` | session | pos.checkout.void | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/link-customer` | session | pos.checkout.void | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/payments` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/{id}/pdf` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/send` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
 | POST | `/pos/invoices/{id}/status` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/{id}/void` | session | pos.checkout.void | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/catalog` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/customers/lookup` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/export` | session | pos.checkout.void | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| POST | `/pos/invoices/new` | session | pos.checkout.process_payment | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
 | GET | `/pos/invoices/state` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/invoices/summary` | session | pos.checkout.view | finance | RolePermissionGuard + TenantAuthGuard | modules/payments/src/invoices/invoices.controller.ts |
+| GET | `/pos/live-schedule-screen/activity` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/live-schedule-screen.controller.ts |
+| GET | `/pos/live-schedule-screen/kpis` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/live-schedule-screen.controller.ts |
+| GET | `/pos/live-schedule-screen/search` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/live-schedule-screen.controller.ts |
+| GET | `/pos/live-schedule-screen/shift-impact` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/live-schedule-screen.controller.ts |
 | GET | `/pos/logs` | session | pos.logs.view | operations | RolePermissionGuard + TenantAuthGuard | logs/logs.controller.ts |
+| POST | `/pos/loyalty/adjust` | session | pos.customers.loyalty.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/bonus-requests` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-bonus.controller.ts |
+| POST | `/pos/loyalty/bonus-requests` | session | pos.customers.loyalty.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-bonus.controller.ts |
+| GET | `/pos/loyalty/bonus-requests/health` | session | pos.customers.loyalty.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-bonus.controller.ts |
+| GET | `/pos/loyalty/bonus-requests/preview` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-bonus.controller.ts |
+| POST | `/pos/loyalty/enroll` | session | pos.customers.loyalty.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/ledger` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/members` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/members/{customerId}/tier` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/network/earning/activate` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/earning/drafts` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/earning/drafts/{id}/discard` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/earning/history` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/earning/preview` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/earning/use-global` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/earning/versions/{id}/cancel` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/purchases` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/purchases` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/purchases/{id}` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/state` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/wallet` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/network/wallet/ledger` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/pos/loyalty/network/wallet/levels` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/pos/loyalty/overview` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/redeem` | session | pos.customers.loyalty.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/redemptions` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/redemptions/{redemptionId}` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/redemptions/{redemptionId}/void` | session | pos.checkout.void | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/loyalty/rewards` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
 | POST | `/pos/loyalty/rewards` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/loyalty.controller.ts |
 | PATCH | `/pos/loyalty/rewards/{rewardId}` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/loyalty.controller.ts |
 | GET | `/pos/loyalty/state` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/loyalty/src/loyalty.controller.ts |
+| GET | `/pos/loyalty/tiers` | session | pos.customers.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/tiers` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| POST | `/pos/loyalty/tiers/{tierId}` | session | pos.settings.edit | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/loyalty/loyalty-program.controller.ts |
+| GET | `/pos/marketing-growth/activity` | session | pos.marketing.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-growth/marketing-growth.controller.ts |
+| GET | `/pos/marketing-growth/economics` | session | pos.marketing.manage | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-growth/marketing-growth.controller.ts |
+| GET | `/pos/marketing-growth/journey/{customerId}` | session | pos.marketing.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-growth/marketing-growth.controller.ts |
+| GET | `/pos/marketing-growth/reconciliation` | session | pos.marketing.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-growth/marketing-growth.controller.ts |
+| GET | `/pos/marketing-growth/search` | session | pos.marketing.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-growth/marketing-growth.controller.ts |
 | GET | `/pos/marketing-report/state` | session | pos.marketing.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/marketing-report/marketing-report.controller.ts |
 | POST | `/pos/marketing/display-ads` | session | pos.customer_display_ads.create | marketing | RolePermissionGuard + TenantAuthGuard | modules/marketing/src/display-advertising/display-ads.controller.ts |
 | DELETE | `/pos/marketing/display-ads/{id}` | session | pos.customer_display_ads.archive | marketing | RolePermissionGuard + TenantAuthGuard | modules/marketing/src/display-advertising/display-ads.controller.ts |
@@ -1149,6 +1606,16 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/marketing/display-ads/media` | session | pos.customer_display_ads.create | marketing | RolePermissionGuard + TenantAuthGuard | modules/marketing/src/display-advertising/display-ads.controller.ts |
 | PATCH | `/pos/marketing/display-ads/settings` | session | pos.customer_display_ads.update | marketing | RolePermissionGuard + TenantAuthGuard | modules/marketing/src/display-advertising/display-ads.controller.ts |
 | GET | `/pos/marketing/display-ads/state` | session | pos.customer_display_ads.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/marketing/src/display-advertising/display-ads.controller.ts |
+| POST | `/pos/marketing/segments/audience-drafts` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/audience-drafts/{id}` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| POST | `/pos/marketing/segments/audience-drafts/{id}/campaign` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| POST | `/pos/marketing/segments/audience-drafts/{id}/discard` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| POST | `/pos/marketing/segments/audience-drafts/{id}/recheck` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/customers/{id}` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/customers/{id}/qualification` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/members` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/snapshots/day` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
+| GET | `/pos/marketing/segments/summary` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/segments/segments.controller.ts |
 | DELETE | `/pos/me/avatar` | session | self.profile.edit | identity | TenantAuthGuard | profile/profile.controller.ts |
 | PATCH | `/pos/me/avatar` | session | self.profile.edit | identity | TenantAuthGuard | profile/profile.controller.ts |
 | GET | `/pos/me/backup` | session | settings.view | identity | TenantAuthGuard | profile/profile.controller.ts |
@@ -1166,30 +1633,68 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/me/sessions/revoke-all` | session | self.profile.edit | identity | TenantAuthGuard | profile/profile.controller.ts |
 | GET | `/pos/me/ui-prefs` | session | self.profile.view | identity | TenantAuthGuard | profile/profile.controller.ts |
 | PATCH | `/pos/me/ui-prefs` | session | self.profile.edit | identity | TenantAuthGuard | profile/profile.controller.ts |
+| GET | `/pos/memberships/activity` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | POST | `/pos/memberships/cancel` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | POST | `/pos/memberships/comms/members/{membershipId}/reminder` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-comms.controller.ts |
+| GET | `/pos/memberships/comms/reminders/preview` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-comms.controller.ts |
 | POST | `/pos/memberships/comms/reminders/run` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-comms.controller.ts |
 | POST | `/pos/memberships/compensation/book/{ticketId}` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-compensation.controller.ts |
 | GET | `/pos/memberships/coverage/{ticketId}` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | GET | `/pos/memberships/customers/{customerId}/memberships` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
+| GET | `/pos/memberships/discounts` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | POST | `/pos/memberships/enroll` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | GET | `/pos/memberships/export/members` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | GET | `/pos/memberships/export/payments` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | GET | `/pos/memberships/export/redemptions` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
+| GET | `/pos/memberships/members` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | GET | `/pos/memberships/members/{membershipId}/benefits` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
+| GET | `/pos/memberships/members/{membershipId}/detail` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
+| GET | `/pos/memberships/members/{membershipId}/first-payment` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-first-payment.controller.ts |
+| POST | `/pos/memberships/members/{membershipId}/first-payment` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-first-payment.controller.ts |
 | POST | `/pos/memberships/members/by-customers` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | GET | `/pos/memberships/overview` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | POST | `/pos/memberships/pause` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
+| GET | `/pos/memberships/payments` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
+| GET | `/pos/memberships/plan-performance` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | GET | `/pos/memberships/plans` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | POST | `/pos/memberships/plans` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
+| GET | `/pos/memberships/plans-list` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | GET | `/pos/memberships/plans/{planId}` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | POST | `/pos/memberships/plans/{planId}/versions` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/memberships.controller.ts |
 | POST | `/pos/memberships/redeem` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
+| GET | `/pos/memberships/redemptions` | session | pos.memberships.view | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-lists.ts |
 | POST | `/pos/memberships/release` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | POST | `/pos/memberships/reserve` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | POST | `/pos/memberships/resume` | session | pos.memberships.manage | memberships | RolePermissionGuard + TenantAuthGuard | modules/memberships/src/membership-enroll.controller.ts |
 | GET | `/pos/menu-insights` | session | pos.services.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/menu-insights/menu-insights.controller.ts |
 | GET | `/pos/menu-insights/state` | session | pos.services.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/menu-insights/menu-insights.controller.ts |
+| GET | `/pos/message-templates/connections` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/connections` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/connections/{id}/disconnect` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/health-check` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/preview` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/render-for-thread/{threadId}` | session | pos.communications.send | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| GET | `/pos/message-templates/summary` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| GET | `/pos/message-templates/templates` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/templates` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| GET | `/pos/message-templates/templates/{id}` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| PATCH | `/pos/message-templates/templates/{id}` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/templates/{id}/duplicate` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/templates/{id}/status` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| POST | `/pos/message-templates/templates/{id}/test` | session | pos.communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| GET | `/pos/message-templates/usage` | session | pos.communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/templates/message-templates.controller.ts |
+| GET | `/pos/money-protection-center/alerts` | session | ai_money_protection.view_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| POST | `/pos/money-protection-center/alerts/action` | session | ai_money_protection.view_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/alerts/detail` | session | ai_money_protection.view_alerts | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| POST | `/pos/money-protection-center/check` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| POST | `/pos/money-protection-center/detection/run` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/detection/runs` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/investigations` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/investigations/timeline` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/rules` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| POST | `/pos/money-protection-center/rules/save` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/settings/history` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
+| GET | `/pos/money-protection-center/summary` | session | ai_money_protection.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-money-protection/money-protection-center.controller.ts |
 | PATCH | `/pos/nail-showcase/comments/{commentId}/hide` | session | customers.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/nail-showcase/nail-showcase.pos.controller.ts |
 | GET | `/pos/nail-showcase/posts` | session | customers.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/nail-showcase/nail-showcase.pos.controller.ts |
 | PATCH | `/pos/nail-showcase/posts/{postId}/approve` | session | customers.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/nail-showcase/nail-showcase.pos.controller.ts |
@@ -1215,9 +1720,47 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/overview/top-services` | session | pos.overview.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/overview/overview.controller.ts |
 | GET | `/pos/overview/top-technicians` | session | pos.overview.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/analytics/src/overview/overview.controller.ts |
 | GET | `/pos/payment-gateway/status` | session | settings.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/checkout/src/checkout/pos-payment-gateway.controller.ts |
+| GET | `/pos/payments/cash-handoffs/{technicianId}/{businessDate}/detail` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/cash-handoffs-screen.controller.ts |
+| GET | `/pos/payments/cash-handoffs/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/cash-handoffs-screen.controller.ts |
+| GET | `/pos/payments/cash-handoffs/list` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/cash-handoffs-screen.controller.ts |
+| GET | `/pos/payments/cash-handoffs/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/cash-handoffs-screen.controller.ts |
+| GET | `/pos/payments/cash-handoffs/technicians` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/cash-handoffs-screen.controller.ts |
+| GET | `/pos/payments/money/overview` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/money-overview-screen.controller.ts |
+| GET | `/pos/payments/money/payouts` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/money-overview-screen.controller.ts |
+| GET | `/pos/payments/money/search` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/money-overview-screen.controller.ts |
+| GET | `/pos/payments/money/services` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/money-overview-screen.controller.ts |
 | GET | `/pos/payments/overview` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/payments/payment-reconciliation.controller.ts |
 | GET | `/pos/payments/reconciliation` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/payments/payment-reconciliation.controller.ts |
+| GET | `/pos/payments/refunds-voids/{kind}/{id}/detail` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/refunds-voids/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/refunds-voids/facets` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/refunds-voids/find` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/refunds-voids/list` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/refunds-voids/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/refunds-voids-screen.controller.ts |
+| GET | `/pos/payments/settlements` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/settlements/{settlementId}` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/settlements/{settlementId}/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/settlements/{settlementId}/transactions` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/settlements/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/settlements/summary` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/settlements-screen.controller.ts |
+| GET | `/pos/payments/split-payments/{ticketId}/detail` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/split-payments-screen.controller.ts |
+| GET | `/pos/payments/split-payments/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/split-payments-screen.controller.ts |
+| GET | `/pos/payments/split-payments/list` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/split-payments-screen.controller.ts |
+| GET | `/pos/payments/split-payments/registers` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/split-payments-screen.controller.ts |
 | GET | `/pos/payments/split-payments/state` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/split-payments/split-payments.controller.ts |
+| GET | `/pos/payments/split-payments/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/split-payments-screen.controller.ts |
+| GET | `/pos/payments/tips/{ticketId}/detail` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/adjustments` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/distribution` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/summary` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/technicians` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/tips/transactions` | session | pos.reports.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/tips-screen.controller.ts |
+| GET | `/pos/payments/transactions/{paymentId}` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/transactions-screen.controller.ts |
+| GET | `/pos/payments/transactions/export` | session | pos.reports.export | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/transactions-screen.controller.ts |
+| GET | `/pos/payments/transactions/list` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/transactions-screen.controller.ts |
+| GET | `/pos/payments/transactions/summary` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/transactions-screen.controller.ts |
+| GET | `/pos/payments/transactions/technicians` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/finance-screens/transactions-screen.controller.ts |
 | GET | `/pos/payroll/adjustments` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/adjustments/{adjId}/decide` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | GET | `/pos/payroll/deduction-types` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
@@ -1230,8 +1773,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/payroll/pay-plans` | session | compensation.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/pay-plans/{planId}/archive` | session | compensation.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/open-week` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/acknowledge-dual` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/acknowledge-pin` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/acknowledge-signature` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/handoff` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/handoff-token` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/prepare` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/payouts/{payoutId}/cash/resolve` | session | payroll.cash_handoff | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/payouts/{payoutId}/check/clear` | session | payroll.issue_check | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
@@ -1242,14 +1788,18 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/payroll/paychecks/periods/{id}/apply-default` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/periods/{id}/approve` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/periods/{id}/calculate` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| POST | `/pos/payroll/paychecks/periods/{id}/cancel` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| GET | `/pos/payroll/paychecks/periods/{id}/preparation` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/periods/{id}/reject` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/periods/{id}/return` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/periods/{id}/submit` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| GET | `/pos/payroll/paychecks/periods/{id}/technicians/{techId}/evidence` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | GET | `/pos/payroll/paychecks/reports` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | GET | `/pos/payroll/paychecks/schedule` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/schedule` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | GET | `/pos/payroll/paychecks/statements/{statementId}` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/statements/{statementId}/approve` | session | payroll.approve | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
+| GET | `/pos/payroll/paychecks/statements/{statementId}/pay-stub.pdf` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/statements/{statementId}/payout-plan` | session | pos.payroll.manage | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | POST | `/pos/payroll/paychecks/statements/{statementId}/payouts` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
 | GET | `/pos/payroll/paychecks/summary` | session | pos.payroll.view | finance | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/payroll/payroll.controller.ts |
@@ -1280,6 +1830,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/project-status/module/{moduleKey}` | session | pos.reports.view | support | RolePermissionGuard + TenantAuthGuard | pos-project-status/pos-project-status.controller.ts |
 | PATCH | `/pos/project-status/module/{moduleKey}/recheck` | session | pos.reports.view | support | RolePermissionGuard + TenantAuthGuard | pos-project-status/pos-project-status.controller.ts |
 | GET | `/pos/project-status/modules` | session | pos.reports.view | support | RolePermissionGuard + TenantAuthGuard | pos-project-status/pos-project-status.controller.ts |
+| GET | `/pos/promotions/{dealId}/activity` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/promotions-center.ts |
+| POST | `/pos/promotions/{dealId}/check` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/promotions-center.ts |
+| POST | `/pos/promotions/assistant/suggest` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/promotions-center.ts |
+| GET | `/pos/promotions/eligibility-checks` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/promotions-center.ts |
+| GET | `/pos/promotions/trends` | session | pos.marketing.view | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/promotions-center.ts |
 | POST | `/pos/queue/auto-balance/apply` | session | pos.queue.assign_technician | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
 | POST | `/pos/queue/auto-balance/preview` | session | pos.queue.assign_technician | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
 | GET | `/pos/queue/groups` | session | pos.queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
@@ -1311,10 +1866,42 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/queue/state` | session | pos.queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
 | GET | `/pos/queue/technicians/availability` | session | pos.queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
 | GET | `/pos/queue/wait-estimate` | session | pos.queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/queue/queue.controller.ts |
-| POST | `/pos/referrals/{id}/reward` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/pos-referrals.controller.ts |
-| POST | `/pos/referrals/record` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/pos-referrals.controller.ts |
+| POST | `/pos/rebooking/check` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| GET | `/pos/rebooking/customers` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| GET | `/pos/rebooking/customers/{id}` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| POST | `/pos/rebooking/customers/{id}/handoff` | session | pos.booking.create | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| POST | `/pos/rebooking/customers/{id}/review` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| GET | `/pos/rebooking/history` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| GET | `/pos/rebooking/summary` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/rebooking-center.controller.ts |
+| POST | `/pos/receipt-center/check` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/receipt-center.controller.ts |
+| GET | `/pos/receipt-center/documents` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/receipt-center.controller.ts |
+| GET | `/pos/receipt-center/documents/{id}` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/receipt-center.controller.ts |
+| GET | `/pos/receipt-center/summary` | session | pos.ai_ocr_receipt.view | ai | RolePermissionGuard + TenantAuthGuard | modules/safety/src/ai-ocr-receipt/receipt-center.controller.ts |
+| GET | `/pos/referral-program/approvals` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/assistant/plan` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/assistant/save` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/check` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/codes` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| PUT | `/pos/referral-program/codes/{id}/status` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/health` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/referrals` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/referrals` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/referrals/{id}` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/referrals/{id}/review` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/rewards/{id}/issue` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| POST | `/pos/referral-program/rewards/{id}/reverse` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/settings` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| PUT | `/pos/referral-program/settings` | session | pos.marketing.manage | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
+| GET | `/pos/referral-program/summary` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/referral-program.controller.ts |
 | GET | `/pos/referrals/state` | session | pos.marketing.view | loyalty | RolePermissionGuard + TenantAuthGuard | modules/customers/src/pos-referrals/pos-referrals.controller.ts |
 | GET | `/pos/refunds-voids/state` | session | pos.checkout.view | payments | RolePermissionGuard + TenantAuthGuard | modules/payments/src/refunds-voids/refunds-voids.controller.ts |
+| GET | `/pos/reminder-center/customers/{customerId}/reminders` | session | communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| GET | `/pos/reminder-center/health` | session | communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| GET | `/pos/reminder-center/kpis` | session | communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| GET | `/pos/reminder-center/reminders` | session | communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| GET | `/pos/reminder-center/reminders/{id}` | session | communications.view | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| POST | `/pos/reminder-center/reminders/{id}/cancel` | session | communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
+| POST | `/pos/reminder-center/reminders/{id}/retry` | session | communications.manage | communications | RolePermissionGuard + TenantAuthGuard | modules/communications/src/reminders/reminder-center.controller.ts |
 | GET | `/pos/reminders` | session | communications.view | communications | TenantAuthGuard | modules/communications/src/reminders/reminders.controller.ts |
 | PATCH | `/pos/reminders` | session | communications.manage | communications | TenantAuthGuard | modules/communications/src/reminders/reminders.controller.ts |
 | GET | `/pos/reports/booking` | session | pos.reports.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/reports/reports.controller.ts |
@@ -1334,8 +1921,52 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/reports/technicians` | session | pos.reports.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/reports/reports.controller.ts |
 | GET | `/pos/reports/tips` | session | pos.reports.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/reports/reports.controller.ts |
 | GET | `/pos/reports/transactions` | session | pos.reports.view | analytics | RolePermissionGuard + TenantAuthGuard | modules/reports/src/reports/reports.controller.ts |
-| POST | `/pos/reviews/{id}/visibility` | session | pos.marketing.manage | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews.controller.ts |
-| GET | `/pos/reviews/state` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews.controller.ts |
+| POST | `/pos/reputation-settings/check` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-settings-center.controller.ts |
+| GET | `/pos/reputation-settings/history` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-settings-center.controller.ts |
+| GET | `/pos/reputation-settings/history/{id}` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-settings-center.controller.ts |
+| POST | `/pos/reputation-settings/save` | session | pos.ai_review_reputation.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-settings-center.controller.ts |
+| GET | `/pos/reputation-settings/state` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-settings-center.controller.ts |
+| GET | `/pos/reputation/approvals` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/branches` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| POST | `/pos/reputation/check` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/complaints` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/integrations` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/requests` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/reviews` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/reviews/{id}` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/summary` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/reputation/trends` | session | pos.ai_review_reputation.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-review-reputation/reputation-center.controller.ts |
+| GET | `/pos/retention/customers` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/customers/{customerId}` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/customers/export` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/health` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/health-check` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/recovery` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/settings` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| PUT | `/pos/retention/settings` | session | pos.settings.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/sms/campaigns` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/sms/campaigns` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/sms/campaigns/{campaignId}` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/sms/campaigns/{campaignId}/cancel` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/sms/preview` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/sms/pricing` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| PUT | `/pos/retention/sms/pricing` | session | pos.settings.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/sms/readiness` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/snapshots/backfill` | session | pos.settings.edit | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/snapshots/compare` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/snapshots/day` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/snapshots/members` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/snapshots/runs` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/retention/summary` | session | pos.customers.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/winback/audience` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| POST | `/pos/retention/winback/plan` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/customers/src/retention/retention.controller.ts |
+| GET | `/pos/reviews-center/check` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| GET | `/pos/reviews-center/insights` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| GET | `/pos/reviews-center/options` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| GET | `/pos/reviews-center/reviews` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| GET | `/pos/reviews-center/reviews/{id}` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| POST | `/pos/reviews-center/reviews/{id}/moderate` | session | pos.marketing.manage | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
+| GET | `/pos/reviews-center/summary` | session | pos.marketing.view | customers | RolePermissionGuard + TenantAuthGuard | modules/customers/src/reviews/reviews-center.controller.ts |
 | POST | `/pos/salon-promotions` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/salon-promotions.controller.ts |
 | POST | `/pos/salon-promotions/{id}/status` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/salon-promotions.controller.ts |
 | POST | `/pos/salon-promotions/redeem` | session | pos.marketing.manage | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/salon-promotions/salon-promotions.controller.ts |
@@ -1368,6 +1999,15 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/service-done/tickets/{ticketId}/reopen-service` | session | pos.service_done.reopen | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/service-done/service-done.controller.ts |
 | POST | `/pos/service-done/tickets/{ticketId}/send-to-checkout` | session | pos.service_done.send_to_checkout | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/service-done/service-done.controller.ts |
 | POST | `/pos/service-done/tickets/{ticketId}/update-notes` | session | pos.service_done.update_notes | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/service-done/service-done.controller.ts |
+| POST | `/pos/service-recommendations/check` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| GET | `/pos/service-recommendations/history` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| GET | `/pos/service-recommendations/recommendations` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| GET | `/pos/service-recommendations/recommendations/{id}` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| POST | `/pos/service-recommendations/recommendations/{id}/handoff` | session | pos.booking.create | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| POST | `/pos/service-recommendations/recommendations/{id}/review` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| POST | `/pos/service-recommendations/scan` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| GET | `/pos/service-recommendations/scans` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
+| GET | `/pos/service-recommendations/summary` | session | pos.ai_customer_profile.view | ai | RolePermissionGuard + TenantAuthGuard | modules/ai/src/ai-customer-profile/service-recommendations-center.controller.ts |
 | GET | `/pos/services` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
 | POST | `/pos/services` | session | pos.services.create | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
 | GET | `/pos/services/{serviceId}` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
@@ -1395,11 +2035,13 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/services/kpis` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
 | GET | `/pos/services/search` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
 | GET | `/pos/services/state` | session | pos.services.view | catalog | RolePermissionGuard + TenantAuthGuard | modules/catalog/src/services/services.controller.ts |
+| GET | `/pos/serving/balance-suggestions` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/change-requests/{id}/decision` | session | pos.serving.edit_services | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/change-requests/pending` | session | pos.serving.edit_services | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/kpis` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/retail-catalog` | session | serving.manage | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/services` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
+| POST | `/pos/serving/staff-alert` | session | pos.serving.assign_technician | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/state` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/technicians` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | GET | `/pos/serving/tickets` | session | pos.serving.view | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
@@ -1410,6 +2052,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/serving/tickets/{ticketId}/assign-technician` | session | pos.serving.assign_technician | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/tickets/{ticketId}/clear-delay` | session | pos.serving.report_delay | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/tickets/{ticketId}/mark-service-done` | session | pos.serving.mark_done | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
+| POST | `/pos/serving/tickets/{ticketId}/notify-customer` | session | pos.communications.send | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/tickets/{ticketId}/pause` | session | pos.serving.pause_resume | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/tickets/{ticketId}/remove-service` | session | pos.serving.edit_services | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
 | POST | `/pos/serving/tickets/{ticketId}/reopen` | session | pos.serving.send_to_service_done | checkout | RolePermissionGuard + TenantAuthGuard | modules/queue/src/serving/serving.controller.ts |
@@ -1448,7 +2091,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/settings/notifications-reminders/a2p-register` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/notifications-reminders/a2p-status` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/notifications-reminders/templates` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
-| POST | `/pos/settings/notifications-reminders/templates` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
+| POST | `/pos/settings/notifications-reminders/templates` | session | pos.communications.manage | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/online-google-ai-booking` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | PATCH | `/pos/settings/online-google-ai-booking` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | POST | `/pos/settings/online-google-ai-booking/ai` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
@@ -1465,6 +2108,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/settings/payments-checkout/terminals/{id}/test` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | POST | `/pos/settings/payments-checkout/terminals/{id}/unpair` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | POST | `/pos/settings/payments-checkout/terminals/pair` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
+| GET | `/pos/settings/payments-checkout/terminals/processors` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/payments-checkout/test-connection` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/queue-workflow` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | PATCH | `/pos/settings/queue-workflow` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
@@ -1493,15 +2137,80 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | PATCH | `/pos/settings/technicians-staff` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | GET | `/pos/settings/tips` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
 | PATCH | `/pos/settings/tips` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/settings/settings.controller.ts |
+| GET | `/pos/shift-overrides` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/shift-override.controller.ts |
+| PUT | `/pos/shift-overrides` | session | pos.technicians.schedule.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/shift-override.controller.ts |
+| POST | `/pos/shift-overrides/preview` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/shift-override.controller.ts |
+| GET | `/pos/skills-catalog` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/skills-catalog` | session | pos.technicians.skills.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/skills-catalog/{id}/archive` | session | pos.technicians.skills.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/skills-catalog/assign` | session | pos.technicians.skills.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/skills-catalog/revoke` | session | pos.technicians.skills.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| GET | `/pos/skills-catalog/technician/{technicianId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| GET | `/pos/skills-catalog/technician/{technicianId}/removal-impact/{assignmentId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
 | POST | `/pos/social-posts` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/pos-social/pos-social.controller.ts |
 | POST | `/pos/social-posts/{id}/status` | session | pos.marketing.manage | marketing | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/pos-social/pos-social.controller.ts |
 | GET | `/pos/social-posts/state` | session | pos.marketing.view | marketing | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/pos-social/pos-social.controller.ts |
 | POST | `/pos/staff-roles` | session | roles.manage | identity | RolePermissionGuard + TenantAuthGuard | modules/identity/src/staff-roles/staff-roles.controller.ts |
 | POST | `/pos/staff-roles/{id}/archive` | session | roles.manage | identity | RolePermissionGuard + TenantAuthGuard | modules/identity/src/staff-roles/staff-roles.controller.ts |
 | GET | `/pos/team` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/pos-team/pos-team.controller.ts |
-| GET | `/pos/team/member/{userId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/pos-team/pos-team.controller.ts |
+| GET | `/pos/team-birthdays/members/{memberId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-birthdays.controller.ts |
+| PUT | `/pos/team-birthdays/members/{memberId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-birthdays.controller.ts |
+| GET | `/pos/team-birthdays/upcoming` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-birthdays.controller.ts |
+| GET | `/pos/team-data-alerts` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| GET | `/pos/team-data-alerts/{id}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/assign` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/dismiss` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/investigate` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/notes` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/reopen` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/{id}/resolve` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| GET | `/pos/team-data-alerts/assignees` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| POST | `/pos/team-data-alerts/run-check` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-data-alerts.controller.ts |
+| GET | `/pos/team-members-screen/customer-links` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-lookup.controller.ts |
+| GET | `/pos/team-members-screen/dashboard` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/directory` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/export` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/live` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/access` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/attendance` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/earnings` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/history` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/performance` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/schedule` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/skills` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/training` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/members/{memberId}/work` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-screen.controller.ts |
+| GET | `/pos/team-members-screen/preferred-check` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-members-lookup.controller.ts |
+| GET | `/pos/team-onboarding/options` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-onboarding.controller.ts |
+| POST | `/pos/team-onboarding/staff` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-onboarding.controller.ts |
+| GET | `/pos/team-performance-screen/composite/comparison` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| POST | `/pos/team-performance-screen/composite/snapshots` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/dashboard` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/directory` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/export` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/technicians/{id}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/technicians/{id}/composite` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/technicians/{id}/reviews` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| GET | `/pos/team-performance-screen/technicians/{id}/services` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/team-performance-screen.controller.ts |
+| POST | `/pos/team-training/assignments` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/assignments/{id}/cancel` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/assignments/{id}/complete` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/assignments/{id}/start` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/certifications` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/certifications/{id}/verify` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| GET | `/pos/team-training/courses` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/courses` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| POST | `/pos/team-training/courses/{id}/archive` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| GET | `/pos/team-training/members/{memberId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
+| GET | `/pos/team-training/summary` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-staff/team-training.controller.ts |
 | GET | `/pos/team/permissions/state` | session | pos.technicians.view | identity | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-permissions/team-permissions.controller.ts |
 | GET | `/pos/team/state` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/pos-team/pos-team.controller.ts |
+| GET | `/pos/tech-appointments-screen/appointments` | session | pos.tech_appointments.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-appointments-screen.controller.ts |
+| GET | `/pos/tech-appointments-screen/conflicts` | session | pos.tech_appointments.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-appointments-screen.controller.ts |
+| GET | `/pos/tech-appointments-screen/history` | session | pos.tech_appointments.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-appointments-screen.controller.ts |
+| GET | `/pos/tech-appointments-screen/kpis` | session | pos.tech_appointments.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-appointments-screen.controller.ts |
+| GET | `/pos/tech-appointments-screen/week` | session | pos.tech_appointments.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-appointments-screen.controller.ts |
 | GET | `/pos/tech-appointments/appointments` | session | pos.tech_appointments.view | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
 | POST | `/pos/tech-appointments/appointments` | session | pos.tech_appointments.create | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
 | GET | `/pos/tech-appointments/appointments/{appointmentId}` | session | pos.tech_appointments.view | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
@@ -1518,6 +2227,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/tech-appointments/kpis` | session | pos.tech_appointments.view | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
 | GET | `/pos/tech-appointments/state` | session | pos.tech_appointments.view | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
 | GET | `/pos/tech-appointments/technicians` | session | pos.tech_appointments.view | booking | RolePermissionGuard + TenantAuthGuard | modules/appointments/src/tech-appointments/tech-appointments.controller.ts |
+| GET | `/pos/tech-queue-screen/search` | session | pos.tech_queue.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-queue-screen.controller.ts |
+| GET | `/pos/tech-queue-screen/tab-counts` | session | pos.tech_queue.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-queue-screen.controller.ts |
+| GET | `/pos/tech-queue-screen/technicians/{id}` | session | pos.tech_queue.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-queue-screen.controller.ts |
+| GET | `/pos/tech-queue-screen/tickets` | session | pos.tech_queue.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-queue-screen.controller.ts |
+| GET | `/pos/tech-queue-screen/tickets/{id}` | session | pos.tech_queue.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/tech-queue-screen.controller.ts |
 | GET | `/pos/tech-queue/kpis` | session | pos.tech_queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/tech-queue/tech-queue.controller.ts |
 | GET | `/pos/tech-queue/state` | session | pos.tech_queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/tech-queue/tech-queue.controller.ts |
 | GET | `/pos/tech-queue/technician-lanes` | session | pos.tech_queue.view | booking | RolePermissionGuard + TenantAuthGuard | modules/queue/src/tech-queue/tech-queue.controller.ts |
@@ -1550,6 +2264,13 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | PATCH | `/pos/technician-profile-policy` | session | pos.technicians.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/tech-profile/pos-tech-profile.controller.ts |
 | GET | `/pos/technicians` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
 | POST | `/pos/technicians` | session | pos.technicians.create | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
+| GET | `/pos/technicians-screen/{technicianId}/appointments` | session | pos.booking.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/{technicianId}/mapping` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/{technicianId}/service-history` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/certifications` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/dashboard` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/directory` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
+| GET | `/pos/technicians-screen/history` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/technicians-screen.controller.ts |
 | GET | `/pos/technicians/{technicianId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
 | PATCH | `/pos/technicians/{technicianId}` | session | pos.technicians.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
 | POST | `/pos/technicians/{technicianId}/activate` | session | pos.technicians.status_change | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
@@ -1603,6 +2324,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/pos/technicians/search` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
 | GET | `/pos/technicians/state` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/technicians/technicians.controller.ts |
 | GET | `/pos/technicians/time-off/pending` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/time-off/technician-time-off.controller.ts |
+| POST | `/pos/tickets/{id}/tip-adjustments` | session | tips.adjust | finance | — | modules/workforce/src/compensation/compensation-tip-allocation.controller.ts |
 | GET | `/pos/tickets/{id}/tip-allocation` | session | tips.adjust | finance | — | modules/workforce/src/compensation/compensation-tip-allocation.controller.ts |
 | POST | `/pos/tickets/{id}/tip-allocation` | session | tips.adjust | finance | — | modules/workforce/src/compensation/compensation-tip-allocation.controller.ts |
 | POST | `/pos/tickets/{ticketId}/cancel-app-payment` | session | checkout.process_payment | checkout | — | modules/checkout/src/skip-line-checkout/pos-skip-line.controller.ts |
@@ -1610,6 +2332,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/tickets/{ticketId}/move-to-front-desk-checkout` | session | checkout.process_payment | checkout | — | modules/checkout/src/skip-line-checkout/pos-skip-line.controller.ts |
 | GET | `/pos/tickets/{ticketId}/payment-status` | session | checkout.view | checkout | — | modules/checkout/src/skip-line-checkout/pos-skip-line.controller.ts |
 | POST | `/pos/tickets/{ticketId}/send-app-payment` | session | checkout.process_payment | checkout | — | modules/checkout/src/skip-line-checkout/pos-skip-line.controller.ts |
+| POST | `/pos/tickets/{ticketId}/verify-app-payment` | session | checkout.process_payment | checkout | — | modules/checkout/src/skip-line-checkout/pos-skip-line.controller.ts |
 | POST | `/pos/time-clock/break-end` | session | pos.technicians.manage_status | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/time-clock/time-clock.controller.ts |
 | POST | `/pos/time-clock/break-interrupt` | session | pos.technicians.manage_status | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/time-clock/time-clock.controller.ts |
 | GET | `/pos/time-clock/break-policy` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/time-clock/time-clock.controller.ts |
@@ -1645,6 +2368,10 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/pos/webhooks/{id}/rotate-secret` | session | pos.webhooks.manage | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
 | POST | `/pos/webhooks/{id}/test` | session | pos.webhooks.manage | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
 | POST | `/pos/webhooks/process` | session | pos.webhooks.manage | operations | RolePermissionGuard + TenantAuthGuard | api-webhooks/api-webhooks.controller.ts |
+| GET | `/pos/weekly-days-off` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| PUT | `/pos/weekly-days-off` | session | pos.technicians.schedule.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/weekly-days-off/end` | session | pos.technicians.schedule.edit | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
+| POST | `/pos/weekly-days-off/preview` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/team-screens/weekly-off-skills.controller.ts |
 | GET | `/pos/workforce-status` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/workforce-status/workforce-status.controller.ts |
 | GET | `/pos/workforce-status/{technicianId}` | session | pos.technicians.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/workforce-status/workforce-status.controller.ts |
 | POST | `/pos/workforce-status/{technicianId}/unavailable` | session | pos.technicians.manage_status | workforce | RolePermissionGuard + TenantAuthGuard | modules/workforce/src/workforce-status/workforce-status.controller.ts |
@@ -1653,8 +2380,11 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/promotions/validate` | session | pos.checkout.apply_discount | deals | RolePermissionGuard + TenantAuthGuard | modules/deals/src/promotions/promotions.controller.ts |
 | GET | `/public/alert-ack` | public | — | operations | — | observability/oncall.ts |
 | POST | `/public/alert-ack` | public | — | operations | — | observability/oncall.ts |
+| GET | `/public/email/unsubscribe` | public | — | communications | — | modules/communications/src/email/email-public.controller.ts |
+| POST | `/public/email/unsubscribe` | public | — | communications | — | modules/communications/src/email/email-public.controller.ts |
 | POST | `/public/mfa-recovery/confirm` | public | — | identity | — | modules/identity/src/auth/mfa-recovery.controller.ts |
 | POST | `/public/mfa-recovery/start` | public | — | identity | — | modules/identity/src/auth/mfa-recovery.controller.ts |
+| POST | `/public/security/approve-device` | public | — | identity | — | modules/identity/src/auth/platform-device-approval.controller.ts |
 | POST | `/public/security/not-me` | public | — | identity | — | modules/identity/src/auth/security-not-me.controller.ts |
 | POST | `/public/website/applications` | public | — | support | — | modules/super-admin/src/super-admin-platform/public-website.controller.ts |
 | POST | `/public/website/invitations/accept` | public | — | marketing | — | modules/super-admin/src/super-admin-platform/public-website.controller.ts |
@@ -1665,6 +2395,15 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/realtime/presence` | session | pos.login | operations | RolePermissionGuard + TenantAuthGuard | realtime/presence.controller.ts |
 | GET | `/realtime/stream` | session | pos.login | operations | RolePermissionGuard + TenantAuthGuard | realtime/realtime.controller.ts |
 | POST | `/realtime/stream-ticket` | session | — | operations | TenantAuthGuard | realtime/stream-ticket.controller.ts |
+| GET | `/super-admin/advertising/ads` | session | super_admin.marketing.view (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| POST | `/super-admin/advertising/ads` | session | super_admin.marketing.manage (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| PUT | `/super-admin/advertising/ads/{id}` | session | super_admin.marketing.manage (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| POST | `/super-admin/advertising/ads/{id}/{action}` | session | super_admin.marketing.manage (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| GET | `/super-admin/advertising/fleet` | session | super_admin.marketing.view (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| POST | `/super-admin/advertising/media` | session | super_admin.marketing.manage (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| GET | `/super-admin/advertising/policy` | session | super_admin.marketing.view (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| PUT | `/super-admin/advertising/policy` | session | super_admin.marketing.manage (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
+| GET | `/super-admin/advertising/preview` | session | super_admin.marketing.view (derived) | marketing | SuperAdminGuard | modules/marketing/src/display-advertising/platform-advertising.controller.ts |
 | GET | `/super-admin/ai-business/overview` | session | super_admin.ai.view (derived) | analytics | SuperAdminGuard | modules/analytics/src/ai-business/ai-business-admin.controller.ts |
 | GET | `/super-admin/ai-checkout-upsell/overview` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai-checkout-upsell/super-admin-ai-checkout-upsell.controller.ts |
 | GET | `/super-admin/ai-checkout-upsell/tenants/{tenantId}` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai-checkout-upsell/super-admin-ai-checkout-upsell.controller.ts |
@@ -1732,7 +2471,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/super-admin/ai-usage/prompts` | session | super_admin.ai.manage (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai-usage/super-admin-ai-usage.module.ts |
 | POST | `/super-admin/ai-usage/providers` | session | super_admin.ai.manage (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai-usage/super-admin-ai-usage.module.ts |
 | POST | `/super-admin/ai-usage/providers/status` | session | super_admin.ai.manage (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai-usage/super-admin-ai-usage.module.ts |
+| GET | `/super-admin/ai/package-availability` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai/ai-admin.controller.ts |
 | GET | `/super-admin/ai/packages` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai/ai-admin.controller.ts |
+| PUT | `/super-admin/ai/packages/{code}/availability` | session | super_admin.ai.manage (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai/ai-admin.controller.ts |
 | GET | `/super-admin/ai/packages/{code}/tenants` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai/ai-admin.controller.ts |
 | GET | `/super-admin/ai/readiness` | session | super_admin.ai.view (derived) | ai | SuperAdminGuard | modules/ai/src/ai-readiness/ai-readiness.service.ts |
 | POST | `/super-admin/ai/tenants/{tenantId}/subscriptions` | session | super_admin.ai.manage (derived) | ai | SuperAdminGuard | modules/super-admin/src/super-admin-ai/ai-admin.controller.ts |
@@ -1799,6 +2540,16 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/super-admin/automation-rules/rules/{id}/status` | session | super_admin.ai.manage (derived) | platform | SuperAdminGuard | modules/platform/src/super-admin-automation/super-admin-automation.controller.ts |
 | POST | `/super-admin/automation-rules/rules/{id}/test` | session | super_admin.ai.manage (derived) | platform | SuperAdminGuard | modules/platform/src/super-admin-automation/super-admin-automation.controller.ts |
 | POST | `/super-admin/automation-rules/test` | session | super_admin.ai.manage (derived) | platform | SuperAdminGuard | modules/platform/src/super-admin-automation/super-admin-automation.controller.ts |
+| GET | `/super-admin/backups/overview` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| GET | `/super-admin/backups/recovery-points` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| GET | `/super-admin/backups/recovery-points/{id}` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| GET | `/super-admin/backups/restore-plans` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| POST | `/super-admin/backups/restore-plans` | session | super_admin.backups.plan | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| GET | `/super-admin/backups/restore-plans/{id}` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| POST | `/super-admin/backups/restore-plans/{id}/approve` | session | super_admin.backups.approve | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| POST | `/super-admin/backups/restore-plans/{id}/cancel` | session | super_admin.backups.plan | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| POST | `/super-admin/backups/restore-plans/{id}/execute` | session | super_admin.backups.execute | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
+| GET | `/super-admin/backups/tenants` | session | super_admin.backups.view | operations | SuperAdminGuard | backup-center/backup-center.controller.ts |
 | GET | `/super-admin/billing` | session | super_admin.billing.view (derived) | finance | SuperAdminGuard | modules/super-admin/src/super-admin-billing/billing.controller.ts |
 | PATCH | `/super-admin/billing/{tenantId}/subscription` | session | super_admin.billing.manage (derived) | finance | SuperAdminGuard | modules/super-admin/src/super-admin-billing/billing.controller.ts |
 | POST | `/super-admin/billing/change-requests/{changeId}/review` | session | super_admin.billing.manage (derived) | finance | SuperAdminGuard | modules/super-admin/src/super-admin-billing/billing.controller.ts |
@@ -2089,6 +2840,30 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/super-admin/jobs/stats` | session | super_admin.system_operations.view | operations | SuperAdminGuard | jobs/jobs.controller.ts |
 | GET | `/super-admin/kill-switches` | session | super_admin.system_operations.view | platform | SuperAdminGuard | modules/super-admin/src/super-admin-kill-switches/kill-switches.ts |
 | POST | `/super-admin/kill-switches/{key}` | session | super_admin.system.manage | platform | SuperAdminGuard | modules/super-admin/src/super-admin-kill-switches/kill-switches.ts |
+| GET | `/super-admin/loyalty-network/books-check/findings` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/books-check/findings.csv` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/books-check/findings/{id}/review` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/books-check/run` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/books-check/runs` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/enrollments` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/enrollments/{tenantId}` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/fraud-alerts` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/fraud-alerts/{id}/account-status` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/fraud-alerts/{id}/review` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/global-rules` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/global-rules/{id}/cancel` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/global-rules/preview` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/integrity` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/overview` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/payables` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/payables/{id}/eligible` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/payables/{id}/hold` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/payables/{id}/payout` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/program` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/purchases` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| POST | `/super-admin/loyalty-network/purchases/{id}/sandbox-advance` | session | super_admin.billing.manage | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/reconciliation` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
+| GET | `/super-admin/loyalty-network/redemptions/{id}/lineage` | session | super_admin.billing.view | loyalty | RolePermissionGuard + SuperAdminGuard | modules/loyalty/src/global-rewards/global-rewards.controller.ts |
 | GET | `/super-admin/loyalty/config` | session | super_admin.marketing.view (derived) | loyalty | SuperAdminGuard | modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.controller.ts |
 | PUT | `/super-admin/loyalty/config` | session | super_admin.marketing.manage (derived) | loyalty | SuperAdminGuard | modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.controller.ts |
 | GET | `/super-admin/loyalty/corrections` | session | super_admin.marketing.view (derived) | loyalty | SuperAdminGuard | modules/super-admin/src/super-admin-loyalty/super-admin-loyalty.controller.ts |
@@ -2397,6 +3172,8 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/super-admin/queue/support-session` | session | super_admin.operations.manage (derived) | booking | SuperAdminGuard | modules/super-admin/src/super-admin-queue/super-admin-queue.controller.ts |
 | GET | `/super-admin/realtime/presence` | session | super_admin.system_operations.view (derived) | operations | SuperAdminGuard | realtime/presence.controller.ts |
 | GET | `/super-admin/reconciliation/overview` | session | super_admin.payments.view (derived) | payments | SuperAdminGuard | modules/super-admin/src/super-admin-reconciliation/super-admin-reconciliation.controller.ts |
+| GET | `/super-admin/release-evidence` | session | super_admin.system_operations.view (derived) | operations | SuperAdminGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
+| POST | `/super-admin/release-evidence` | session | super_admin.system.manage (derived) | operations | SuperAdminGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
 | GET | `/super-admin/report-builder/catalog` | session | super_admin.analytics.view (derived) | analytics | SuperAdminGuard | modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.controller.ts |
 | GET | `/super-admin/report-builder/definitions` | session | super_admin.analytics.view (derived) | analytics | SuperAdminGuard | modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.controller.ts |
 | POST | `/super-admin/report-builder/definitions` | session | super_admin.analytics.manage (derived) | analytics | SuperAdminGuard | modules/super-admin/src/super-admin-report-builder/super-admin-report-builder.controller.ts |
@@ -2642,6 +3419,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/super-admin/system/load` | session | super_admin.system_operations.view | operations | SuperAdminGuard | observability/capacity-ops.ts |
 | GET | `/super-admin/system/mobile-telemetry` | session | super_admin.system_operations.view | operations | SuperAdminGuard | observability/client-events.controller.ts |
 | GET | `/super-admin/system/overview` | session | super_admin.system_operations.view | operations | SuperAdminGuard | observability/system-operations.ts |
+| GET | `/super-admin/system/payment-devices` | session | super_admin.system_operations.view | checkout | SuperAdminGuard | modules/checkout/src/mobile-checkout/payment-device-oversight.ts |
 | PUT | `/super-admin/system/quotas/plans/{planId}` | session | super_admin.system.manage | operations | SuperAdminGuard | observability/capacity-ops.ts |
 | GET | `/super-admin/system/quotas/tenants/{tenantId}` | session | super_admin.system_operations.view | operations | SuperAdminGuard | observability/capacity-ops.ts |
 | PUT | `/super-admin/system/quotas/tenants/{tenantId}` | session | super_admin.system.manage | operations | SuperAdminGuard | observability/capacity-ops.ts |
@@ -2708,6 +3486,8 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/super-admin/tenants/{id}/payment-gateway/verify-credentials` | session | super_admin.tenants.edit (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
 | GET | `/super-admin/tenants/{id}/payment-gateway/webhooks` | session | super_admin.tenants.view (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
 | POST | `/super-admin/tenants/{id}/payment-gateway/webhooks/rotate-secret` | session | super_admin.tenants.edit (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
+| GET | `/super-admin/tenants/{id}/pos-language` | session | super_admin.tenants.view | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
+| PUT | `/super-admin/tenants/{id}/pos-language` | session | super_admin.tenants.edit | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
 | POST | `/super-admin/tenants/{id}/reactivate` | session | super_admin.tenants.edit (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
 | POST | `/super-admin/tenants/{id}/reset-owner-password` | session | super_admin.tenants.edit (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
 | PATCH | `/super-admin/tenants/{id}/status` | session | super_admin.tenants.edit (derived) | tenants | SuperAdminGuard | modules/super-admin/src/super-admin-tenants/super-admin-tenants.controller.ts |
@@ -2751,12 +3531,14 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/super-admin/tenants/{tenantId}/health` | session | super_admin.system_operations.view | operations | SuperAdminGuard | observability/tenant-health.ts |
 | GET | `/super-admin/tenants/{tenantId}/messaging-credentials` | session | super_admin.tenants.view (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | PUT | `/super-admin/tenants/{tenantId}/messaging-credentials` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
+| POST | `/super-admin/tenants/{tenantId}/messaging-credentials/reveal-sid` | session | super_admin.integrations.manage | communications | RolePermissionGuard + SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/messaging-credentials/test` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/messaging-credentials/test-verify` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/messaging/platform-offboard` | session | super_admin.integrations.manage | communications | RolePermissionGuard + SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/messaging/platform-provision` | session | super_admin.integrations.manage | communications | RolePermissionGuard + SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | GET | `/super-admin/tenants/{tenantId}/number` | session | super_admin.tenants.view (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/number/buy` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
+| POST | `/super-admin/tenants/{tenantId}/number/quote` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | POST | `/super-admin/tenants/{tenantId}/number/register` | session | super_admin.tenants.edit (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | GET | `/super-admin/tenants/{tenantId}/number/search` | session | super_admin.tenants.view (derived) | communications | SuperAdminGuard | modules/communications/src/tenant-messaging/tenant-messaging.controller.ts |
 | GET | `/super-admin/tenants/{tenantId}/skip-line-checkout` | session | super_admin.tenants.view (derived) | checkout | SuperAdminGuard | modules/checkout/src/skip-line-checkout/skip-line-settings.controller.ts |
@@ -2861,6 +3643,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/tech/payroll/payouts` | session | tech.payroll.view | finance | — | modules/queue/src/tech/tech.controller.ts |
 | GET | `/tech/payroll/statements` | session | tech.payroll.view | finance | — | modules/queue/src/tech/tech.controller.ts |
 | GET | `/tech/payroll/statements/{statementId}` | session | tech.payroll.view | finance | — | modules/queue/src/tech/tech.controller.ts |
+| GET | `/tech/payroll/statements/{statementId}/pay-stub.pdf` | session | tech.payroll.view | finance | — | modules/queue/src/tech/tech.controller.ts |
 | GET | `/tech/performance` | session | tech.earnings.view | workforce | RolePermissionGuard + TenantAuthGuard | modules/queue/src/tech/tech-self-service.controller.ts |
 | GET | `/tech/profile` | session | tech.dashboard.view | workforce | — | modules/workforce/src/tech-profile/tech-profile.controller.ts |
 | PATCH | `/tech/profile` | session | tech.profile.edit | workforce | — | modules/workforce/src/tech-profile/tech-profile.controller.ts |
@@ -2949,13 +3732,13 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/technician/inventory/reports/mine` | session | inventory.technician_report.submit | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/technician-inventory.controller.ts |
 | GET | `/technician/inventory/search` | session | inventory.view_limited | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/technician-inventory.controller.ts |
 | POST | `/technician/inventory/units/{unitId}/open` | session | inventory.bottle.open | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/technician-inventory.controller.ts |
+| POST | `/technician/inventory/usage` | session | inventory.product_usage.submit | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/technician-inventory.controller.ts |
 | GET | `/tenant/account/invoices/state` | session | settings.view | finance | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-billing/tenant-billing.controller.ts |
 | GET | `/tenant/account/usage-limits/state` | session | settings.view | tenants | RolePermissionGuard + TenantAuthGuard | modules/tenants/src/tenant-entitlements/tenant-entitlements.controller.ts |
 | POST | `/tenant/ai/call-intelligence/events` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/call-intelligence/call-intelligence.controller.ts |
 | GET | `/tenant/ai/call-intelligence/recent` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/call-intelligence/call-intelligence.controller.ts |
 | GET | `/tenant/ai/call-intelligence/summary` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/call-intelligence/call-intelligence.controller.ts |
 | POST | `/tenant/ai/center/copilot` | session | reception_copilot.use | ai | TenantAuthGuard | modules/ai/src/ai-center/ai-center.controller.ts |
-| POST | `/tenant/ai/center/copilot/action` | session | reception_copilot.use | ai | TenantAuthGuard | modules/ai/src/ai-center/ai-center.controller.ts |
 | GET | `/tenant/ai/center/copilot/ai-phone-activity` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/ai-center/ai-center.controller.ts |
 | POST | `/tenant/ai/center/copilot/availability` | session | reception_copilot.view_recommendations | ai | TenantAuthGuard | modules/ai/src/ai-center/ai-center.controller.ts |
 | POST | `/tenant/ai/center/copilot/conflict` | session | reception_copilot.view_recommendations | ai | TenantAuthGuard | modules/ai/src/ai-center/ai-center.controller.ts |
@@ -2991,33 +3774,32 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/tenant/ai/plans` | session | ai.use | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
 | PATCH | `/tenant/ai/plans/{code}/cancel` | session | ai.manage | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
 | POST | `/tenant/ai/plans/{code}/trial` | session | ai.manage | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
-| GET | `/tenant/ai/receptionist/agents` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/agents` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| GET | `/tenant/ai/receptionist/agents/{id}` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| PATCH | `/tenant/ai/receptionist/agents/{id}` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | POST | `/tenant/ai/receptionist/agents/{id}/provision` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/agents/{id}/status` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | GET | `/tenant/ai/receptionist/calls` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | GET | `/tenant/ai/receptionist/calls/{providerCallId}` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| GET | `/tenant/ai/receptionist/faqs` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/faqs` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| DELETE | `/tenant/ai/receptionist/faqs/{id}` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| PATCH | `/tenant/ai/receptionist/faqs/{id}` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| GET | `/tenant/ai/receptionist/follow-ups` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/follow-ups` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/follow-ups/{id}/assign` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/follow-ups/{id}/note` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
-| POST | `/tenant/ai/receptionist/follow-ups/{id}/status` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | GET | `/tenant/ai/receptionist/overview` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | GET | `/tenant/ai/receptionist/provisioning/{jobId}` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | GET | `/tenant/ai/receptionist/settings` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | PATCH | `/tenant/ai/receptionist/settings` | session | ai.manage | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
+| GET | `/tenant/ai/receptionist/settings/history` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/voice-booking/tenant-receptionist.controller.ts |
 | POST | `/tenant/ai/revenue/attributions` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/ai-revenue/ai-revenue.controller.ts |
 | GET | `/tenant/ai/revenue/summary` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/ai-revenue/ai-revenue.controller.ts |
 | GET | `/tenant/ai/subscriptions` | session | ai.use | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
 | POST | `/tenant/ai/subscriptions` | session | ai.manage | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
 | PATCH | `/tenant/ai/subscriptions/{code}/cancel` | session | ai.manage | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
 | GET | `/tenant/ai/usage` | session | ai.use | ai | — | modules/super-admin/src/tenant-ai/tenant-ai.controller.ts |
+| POST | `/tenant/ai/usage-screen/alerts/{id}/acknowledge` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| POST | `/tenant/ai/usage-screen/billing/reconcile` | session | subscription.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| POST | `/tenant/ai/usage-screen/check` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/history` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/history/export` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/packages` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/packages/{code}` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| PUT | `/tenant/ai/usage-screen/packages/{code}/branches/{branchId}` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| POST | `/tenant/ai/usage-screen/packages/{code}/cancel` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| POST | `/tenant/ai/usage-screen/packages/{code}/trial` | session | ai.manage | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/reconcile` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
+| GET | `/tenant/ai/usage-screen/summary` | session | ai.use | ai | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/tenant-ai/ai-usage-screen.controller.ts |
 | POST | `/tenant/ai/workflows/runs` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/workflow-runs/workflow-runs.controller.ts |
 | GET | `/tenant/ai/workflows/runs/summary` | session | ai.use | ai | TenantAuthGuard | modules/ai/src/workflow-runs/workflow-runs.controller.ts |
 | GET | `/tenant/help/articles` | session | help.view | support | — | modules/support/src/help/help.controller.ts |
@@ -3078,6 +3860,7 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/tenant/inventory/purchase-orders` | session | inventory.purchase_order.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/purchase-orders` | session | inventory.purchase_order.create | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | GET | `/tenant/inventory/purchase-orders/{id}` | session | inventory.purchase_order.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| PATCH | `/tenant/inventory/purchase-orders/{id}` | session | inventory.purchase_order.create | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/purchase-orders/{id}/approve` | session | inventory.purchase_order.approve | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/purchase-orders/{id}/cancel` | session | inventory.purchase_order.create | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/purchase-orders/{id}/receive` | session | inventory.purchase_order.receive | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
@@ -3086,17 +3869,62 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | GET | `/tenant/inventory/recipes/{serviceId}` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | PUT | `/tenant/inventory/recipes/{serviceId}` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/recipes/{serviceId}/consume` | session | inventory.product_usage.submit | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| GET | `/tenant/inventory/screen/catalog` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/counts` | session | inventory.stock.count | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/metrics` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/movements` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/products` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/products/{productId}` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| POST | `/tenant/inventory/screen/products/{productId}/recount` | session | inventory.stock.adjust | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| POST | `/tenant/inventory/screen/products/{productId}/restore` | session | inventory.archive | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/products/export` | session | inventory.reports.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/purchase-orders` | session | inventory.purchase_order.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/purchase-orders/{poId}` | session | inventory.purchase_order.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/recipes` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/reports` | session | inventory.technician_report.approve | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/screen/transfers` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory-screen.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/active` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| POST | `/tenant/inventory/stock-alerts/active/{productId}/acknowledge` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/events/{eventId}` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/export` | session | inventory.reports.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/history` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/pickers` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/summary` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/technicians` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/usage` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| POST | `/tenant/inventory/stock-alerts/usage` | session | inventory.product_usage.submit | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| POST | `/tenant/inventory/stock-alerts/usage/{eventId}/adjustments` | session | inventory.stock.adjust | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
+| GET | `/tenant/inventory/stock-alerts/usage/products/{productId}` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/stock-alerts.controller.ts |
 | GET | `/tenant/inventory/summary` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| GET | `/tenant/inventory/suppliers/{vendorId}` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/{vendorId}/contacts` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| PATCH | `/tenant/inventory/suppliers/{vendorId}/contacts/{contactId}` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/{vendorId}/contacts/{contactId}/deactivate` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| GET | `/tenant/inventory/suppliers/{vendorId}/products` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/{vendorId}/products` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/{vendorId}/products/{productId}/unlink` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| GET | `/tenant/inventory/suppliers/{vendorId}/purchase-orders` | session | inventory.purchase_order.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| GET | `/tenant/inventory/suppliers/{vendorId}/receiving` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/{vendorId}/restore` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| GET | `/tenant/inventory/suppliers/directory` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| GET | `/tenant/inventory/suppliers/kpis` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
+| POST | `/tenant/inventory/suppliers/purchase-orders/{poId}/vendor` | session | inventory.purchase_order.create | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/suppliers-screen.controller.ts |
 | GET | `/tenant/inventory/technician-reports` | session | inventory.technician_report.approve | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/technician-reports/{id}/approve` | session | inventory.technician_report.approve | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/technician-reports/{id}/reject` | session | inventory.technician_report.approve | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | GET | `/tenant/inventory/transfers` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/transfers` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | GET | `/tenant/inventory/transfers/{id}` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/transfers/{id}/cancel` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/transfers/{id}/receive` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | GET | `/tenant/inventory/transfers/branches` | session | inventory.transfer | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/units/{unitId}/dispose` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/units/{unitId}/found` | session | inventory.stock.adjust | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/units/{unitId}/mark-damaged` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/units/{unitId}/mark-empty` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/units/{unitId}/mark-expired` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/units/{unitId}/mark-low` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
+| POST | `/tenant/inventory/units/{unitId}/mark-missing` | session | inventory.stock.adjust | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/units/{unitId}/open` | session | inventory.update | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | GET | `/tenant/inventory/vendors` | session | inventory.view | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
 | POST | `/tenant/inventory/vendors` | session | inventory.vendor.manage | inventory | RolePermissionGuard + TenantAuthGuard | modules/inventory/src/inventory.controller.ts |
@@ -3120,15 +3948,33 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | DELETE | `/tenant/messaging/credentials/branches/{branchId}` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | GET | `/tenant/messaging/credentials/branches/{branchId}` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | PUT | `/tenant/messaging/credentials/branches/{branchId}` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/credentials/branches/{branchId}/reveal-sid` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/credentials/branches/{branchId}/test` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | POST | `/tenant/messaging/credentials/branches/{branchId}/test-verify` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/credentials/reveal-sid` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | POST | `/tenant/messaging/credentials/test` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | POST | `/tenant/messaging/credentials/test-verify` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/health-check` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/health-check/branches/{branchId}` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | GET | `/tenant/messaging/number` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | POST | `/tenant/messaging/number/buy` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/number/quote` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | POST | `/tenant/messaging/number/register` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
 | GET | `/tenant/messaging/number/search` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| GET | `/tenant/messaging/readiness` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| GET | `/tenant/messaging/readiness/branches/{branchId}` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| POST | `/tenant/messaging/registration/refresh` | session | settings.edit | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/tenant-messaging.tenant.controller.ts |
+| GET | `/tenant/messaging/setup/activity` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/messaging-setup-center.controller.ts |
+| GET | `/tenant/messaging/setup/activity/{kind}/{id}` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/messaging-setup-center.controller.ts |
+| GET | `/tenant/messaging/setup/branches` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/messaging-setup-center.controller.ts |
+| GET | `/tenant/messaging/setup/overview` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/messaging-setup-center.controller.ts |
+| GET | `/tenant/messaging/setup/overview/branches/{branchId}` | session | settings.view | communications | TenantAuthGuard | modules/communications/src/tenant-messaging/messaging-setup-center.controller.ts |
 | GET | `/tenant/navigation` | session | dashboard.view | tenants | — | modules/tenants/src/tenant-navigation/tenant-navigation.controller.ts |
 | GET | `/tenant/navigation/badges` | session | dashboard.view | tenants | — | modules/tenants/src/tenant-navigation/tenant-navigation.controller.ts |
+| POST | `/tenant/setup-health/alerts/{id}/acknowledge` | session | settings.edit | operations | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
+| POST | `/tenant/setup-health/run` | session | settings.edit | operations | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
+| GET | `/tenant/setup-health/runs` | session | settings.view | operations | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
+| GET | `/tenant/setup-health/summary` | session | settings.view | operations | RolePermissionGuard + TenantAuthGuard | modules/super-admin/src/setup-health/setup-health.controller.ts |
 | GET | `/tenant/sms-plan` | session | settings.view | communications | — | modules/communications/src/sms-packages/tenant-sms-plan.controller.ts |
 | POST | `/tenant/sms-plan/upgrade` | session | settings.edit | communications | — | modules/communications/src/sms-packages/tenant-sms-plan.controller.ts |
 | GET | `/tenant/system-status` | session | dashboard.view | tenants | — | modules/tenants/src/tenant-navigation/tenant-navigation.controller.ts |
@@ -3136,7 +3982,9 @@ Generated 2026-10-22. Source of truth: the route extractor behind the OpenAPI ma
 | POST | `/voice/calls/{callId}/outcome` | api_key | — | ai | VoiceAuthGuard + VoiceKeyRateLimitGuard | modules/ai/src/voice-booking/voice-booking.controller.ts |
 | POST | `/voice/tool` | api_key | — | ai | VoiceAuthGuard + VoiceKeyRateLimitGuard | modules/ai/src/voice-booking/voice-booking.controller.ts |
 | POST | `/webhooks/bank/{token}` | public | — | payments | — | modules/payments/src/deposit-reconciliation/deposit-reconciliation.webhook.controller.ts |
+| POST | `/webhooks/email/sendgrid` | public | — | communications | — | modules/communications/src/email/email-public.controller.ts |
 | POST | `/webhooks/payments/{processor}` | public | — | payments | — | modules/payments/src/payments/payment-webhook.controller.ts |
 | POST | `/webhooks/twilio/booking-verification/status` | public | — | booking | — | modules/booking/src/customer-booking/booking-verification-webhook.controller.ts |
 | POST | `/webhooks/twilio/sms/inbound` | public | — | communications | — | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts |
 | POST | `/webhooks/twilio/sms/status` | public | — | communications | — | modules/communications/src/messaging-inbound/twilio-inbound.controller.ts |
+| POST | `/webhooks/voice/retell` | public | — | ai | — | modules/ai/src/voice-booking/ai-calls-public.controller.ts |

@@ -10,6 +10,7 @@ import { posServicesApi } from '../api/posServicesApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
 import { useCopilotAction, PreparedCard, ActionOutcome, CopilotOpsBar, PriorityAssistant, CopilotWorkspace } from './receptionCopilotCenter';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const cardBox: React.CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line)', borderRadius: 14, padding: 14 };
 const GOLD = '#A96F22';
@@ -40,7 +41,7 @@ function AiPhoneActivityPanel() {
         <div key={c.callId} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: '1px solid var(--line)' }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 12.5, color: '#3A342E', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.summary || (c.intents || []).join(', ') || tx('pos.call_handled')}</div>
-            <div style={{ fontSize: 11, color: '#9B8B78' }}>{c.startedAt ? new Date(c.startedAt).toLocaleString() : '—'}{c.bookingOutcome ? ` · ${c.bookingOutcome}` : ''}</div>
+            <div style={{ fontSize: 11, color: '#9B8B78' }}>{c.startedAt ? fmtInZone(c.startedAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}{c.bookingOutcome ? ` · ${c.bookingOutcome}` : ''}</div>
           </div>
           {c.handedOffToHuman && <span aria-label={tx('pos.handed_off_to_a_human')} title={tx('pos.this_call_was_handed_off_to_5zxg')} style={{ fontSize: 11, fontWeight: 700, color: '#9B3B3B', background: '#F7E4E4', borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap' }}>{tx('pos.handed_off')}</span>}
           {c.followUpRequired && <span aria-label={tx('pos.follow_up_required')} style={{ fontSize: 11, fontWeight: 700, color: '#8A6A22', background: '#F3ECDD', borderRadius: 999, padding: '1px 8px', whiteSpace: 'nowrap' }}>{tx('pos.follow_up')}</span>}

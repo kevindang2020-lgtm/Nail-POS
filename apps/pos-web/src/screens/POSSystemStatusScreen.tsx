@@ -8,6 +8,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { posHelpCenterApi, type HelpSystemStatus } from '../api/posHelpCenterApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const card: React.CSSProperties = { background: 'var(--aps-card)', border: '1px solid var(--aps-line)', borderRadius: 12, padding: 14 };
 const head: React.CSSProperties = { fontSize: 13.5, fontWeight: 700, marginBottom: 8 };
@@ -71,7 +72,7 @@ export function POSSystemStatusScreen() {
                   <td style={{ padding: '7px 4px' }}>{c.name}</td>
                   <td style={{ padding: '7px 4px' }}><StatusPill status={c.status} /></td>
                   {/* Real column: status_components.updated_at. Response time and uptime have no source — see the note below. */}
-                  <td style={{ padding: '7px 4px' }} className="muted">{c.lastCheckedAt ? new Date(c.lastCheckedAt).toLocaleTimeString() : '—'}</td>
+                  <td style={{ padding: '7px 4px' }} className="muted">{c.lastCheckedAt ? fmtInZone(c.lastCheckedAt, { hour: 'numeric', minute: '2-digit' }) : '—'}</td>
                 </tr>
               ))}
             </tbody>
@@ -97,7 +98,7 @@ export function POSSystemStatusScreen() {
                   {pastIncidents.slice(0, 6).map((i) => (
                     <div key={i.id} style={{ fontSize: 12.5 }}>
                       <span style={{ fontWeight: 600 }}>{i.title}</span>
-                      <span className="muted" style={{ marginLeft: 6 }}>{i.resolvedAt ? t('pos.resolved_v0', { v0: String(new Date(i.resolvedAt).toLocaleDateString()) }) : i.status}</span>
+                      <span className="muted" style={{ marginLeft: 6 }}>{i.resolvedAt ? t('pos.resolved_v0', { v0: String(fmtInZone(i.resolvedAt, { month: 'short', day: 'numeric', year: 'numeric' })) }) : i.status}</span>
                     </div>
                   ))}
                 </div>)}

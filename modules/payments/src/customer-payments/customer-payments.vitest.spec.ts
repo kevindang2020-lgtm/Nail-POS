@@ -28,6 +28,9 @@ describe('CustomerPaymentMethodsService', () => {
     const m = await svc.add(ctx, { token: '9418594164541111', brand: 'Visa', expMonth: 12, expYear: 2030, isDefault: true });
     expect(m.last4).toBe('1111');
     expect((await svc.list(ctx))).toHaveLength(1);
+    // F1 §50 (Nov 6 2026): neither the add answer nor the list ever carries the provider token
+    expect(JSON.stringify(m)).not.toContain('9418594164541111');
+    expect(JSON.stringify(await svc.list(ctx))).not.toContain('9418594164541111');
     expect(repo.rows[0].token).toBe('9418594164541111'); // token kept internally
     expect((await svc.setDefault(ctx, m.id)).ok).toBe(true);
     expect((await svc.remove(ctx, m.id)).ok).toBe(true);

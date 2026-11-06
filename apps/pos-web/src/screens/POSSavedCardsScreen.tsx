@@ -7,6 +7,7 @@ import { posSavedCardsApi, type WalletTopUp } from '../api/posSavedCardsApi';
 import { reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { ImeSafeInput } from '../components/ImeSafeInput';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 type CustomerItem = { customerId: string; fullName: string; phone: string; visitsCount: number };
 type Card = { id: string; brand: string | null; last4: string | null; expMonth: number | null; expYear: number | null; isDefault: boolean };
@@ -199,7 +200,7 @@ export function POSSavedCardsScreen() {
                   {topUpNote ? <div role="status" style={{ fontSize: 13, color: '#9A6700', marginBottom: 8 }}>{topUpNote}</div> : null}
                   {topUps.map((x) => (
                     <div key={x.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', border: '1px solid #EFEAE1', borderRadius: 12, marginBottom: 8 }}>
-                      <span style={{ flex: 1, fontSize: 14 }}>{`$${(x.amountCents / 100).toFixed(2)}`} · {new Date(x.createdAt).toLocaleString()}</span>
+                      <span style={{ flex: 1, fontSize: 14 }}>{`$${(x.amountCents / 100).toFixed(2)}`} · {fmtInZone(x.createdAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                       <button className="btn" disabled={verifying === x.id} onClick={() => verifyTopUp(x.id)}>{t('pos.verify_payment')}</button>
                     </div>
                   ))}

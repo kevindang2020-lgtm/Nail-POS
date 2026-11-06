@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { posAiCenterApi } from '../api/posAiCenterApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 type Metric = { tracked: boolean; value: number | null; unit?: string; source: string; estimated?: boolean; route?: string };
 type Overview = {
@@ -111,7 +112,7 @@ export function POSAiAnalyticsScreen() {
       </section>
 
       <div className="sub" style={{ fontSize: 12, marginTop: 10 }}>
-        {trackedCount} {t('pos.of')}{' '}{Object.keys(o.kpis).length} {t('pos.metrics_are_actively_tracked_untracked_metrics_vp30')}{' '}{new Date(o.generatedAt).toLocaleString('en-US')}.
+        {trackedCount} {t('pos.of')}{' '}{Object.keys(o.kpis).length} {t('pos.metrics_are_actively_tracked_untracked_metrics_vp30')}{' '}{fmtInZone(o.generatedAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}.
       </div>
     </div>
   );

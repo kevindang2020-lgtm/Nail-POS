@@ -45,6 +45,10 @@ describe('per-role pool settings', () => {
   });
   it('still overridable as before (and 0 turns one off)', () => {
     expect(poolOptions('p', 1, { PROCESS_ROLE: 'api', PG_STATEMENT_TIMEOUT_MS: '5000' })).toMatchObject({ statement_timeout: 5000 });
+    // F1 §79: JIT compile time dominated the 100k-customer directory query — off by default, PG_JIT=on turns it back on
+    expect(poolOptions('p', 1, {}).options).toBe('-c jit=off');
+    expect(poolOptions('p', 1, { PROCESS_ROLE: 'worker' }, 'worker').options).toBe('-c jit=off');
+    expect(poolOptions('p', 1, { PG_JIT: 'on' })).not.toHaveProperty('options');
     expect(poolOptions('p', 1, { PROCESS_ROLE: 'api', PG_IDLE_IN_TRANSACTION_TIMEOUT_MS: '0' })).not.toHaveProperty('idle_in_transaction_session_timeout');
   });
   it("the worker pool ignores the API's override (PG_STATEMENT_TIMEOUT_MS) and reads PG_WORKER_* instead", () => {

@@ -23,6 +23,7 @@ import { formatCentsOrDash } from '@aipowersalon/money';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { WeeklyDaysOffPanel, TechnicianSkillsPanel } from '../components/TechnicianDaysOffSkills';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const money = (c: number | null | undefined) => formatCentsOrDash(c == null ? null : Number(c));
 const tm = (iso?: string | null) => { if (!iso) return '—'; const d = new Date(iso); return isNaN(d.getTime()) ? '—' : d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
@@ -121,7 +122,7 @@ export function POSTechnicianProfileScreen() {
           <div><div className="muted">{t('pos.email')}</div><b>{d.email || '—'}</b></div>
           <div><div className="muted">{t('pos.tech_app')}</div><b>{d.techAppEnabled ? t('pos.enabled') : t('pos.off')}</b></div>
           <div><div className="muted">{t('pos.membership_2')}</div><b>{profile?.membershipHereStatus || d.membershipStatus || '—'}</b></div>
-          <div><div className="muted">{t('pos.added')}</div><b>{d.createdAt ? new Date(d.createdAt).toLocaleDateString() : '—'}</b></div>
+          <div><div className="muted">{t('pos.added')}</div><b>{d.createdAt ? fmtInZone(d.createdAt, { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}</b></div>
         </div>
         <div className="muted" style={{ fontSize: 11.5, marginBottom: 6 }}>{t('pos.lifecycle_actions_suspend_deactivate_archive_reactivate_1yqe')}</div>
         <div style={{ fontWeight: 800, fontSize: 12, margin: '8px 0 4px' }}>{t('pos.employment_history_this_salon')}</div>
@@ -214,7 +215,7 @@ export function POSTechnicianProfileScreen() {
       <SectionShell open={open.audit} onToggle={() => toggle('audit')} title={t('pos.audit')} gate={true}>
         {d.auditSummary?.length ? (
           <table className="tbl" style={{ fontSize: 12 }}><thead><tr><th>{t('pos.when')}</th><th>{t('pos.action')}</th><th>{t('pos.by_2')}</th></tr></thead>
-            <tbody>{d.auditSummary.map((a: any, i: number) => <tr key={i}><td>{a.lastAt ? new Date(a.lastAt).toLocaleString() : '—'}</td><td>{a.lastAction}</td><td>{a.lastActorRole}</td></tr>)}</tbody></table>
+            <tbody>{d.auditSummary.map((a: any, i: number) => <tr key={i}><td>{a.lastAt ? fmtInZone(a.lastAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'}</td><td>{a.lastAction}</td><td>{a.lastActorRole}</td></tr>)}</tbody></table>
         ) : <div className="muted" style={{ fontSize: 12 }}>{t('pos.no_audited_actions_yet')}</div>}
       </SectionShell>
 

@@ -339,7 +339,7 @@ export const CUSTOMER_FIXTURES = [
   [/^\/customer\/(salons|techs|deals\/public)\//, X('public salon / technician / deal pages — the same for every visitor by design')],
   [/^\/customer\/deals\/\{id\}/, X('a published deal is offered to every customer; save / estimate act on the caller\'s own list')],
   [/^\/customer\/social\//, X('public social profiles (follow / block / report act on the caller\'s own relations)')],
-  [/^\/customer\/nail-showcase\//, X('the public showcase; edit / delete check the author (nail-showcase owner checks + its own pgtests)')],
+  [/^\/customer\/nail-showcase\//, X('the public showcase; edit / delete check the author — proven by modules/workforce/src/nail-showcase/nail-showcase-ownership.vitest.spec.ts')],
   [/^\/customer\/me\/favorite-salons\//, X('a public salon id; the favourite list is the caller\'s own')],
   [/^\/customer\/tech-favorites\//, X('a public technician slug; the favourite list is the caller\'s own')],
   [/^\/customer\/rewards\/\{id\}/, X('a reward from the platform catalog; redemption spends the caller\'s own points')],

@@ -42,6 +42,7 @@ import { isForbidden } from '../components/FinanceKit';
 import { Pill, CapsLine, TestRows, CheckRows, RegRow, reasonText, outcomeText, when, splitLink } from './phoneMessagingParts';
 import { SmsReadinessPanel, SetupWizard, BranchSenders, SetupActivity } from './messagingSetupCenter';
 import { posMessagingSetupApi, type SetupOverview } from '../api/posMessagingSetupApi';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const E164 = /^\+[1-9][0-9]{6,15}$/;
 /** a registration refresh run's outcome in words (literal keys — read at render) */
@@ -375,7 +376,7 @@ export function POSMessagingSetupScreen() {
             <div className="fk-panel-body pmc-form">
               {configured && creds?.verifyServiceSid && own ? (
                 <div data-testid="verify-status" className={'pmc-status ' + (creds.lastValidatedAt ? 'ok' : 'bad')}>
-                  {creds.lastValidatedAt ? t('pos.verify_tested_ok_v0', { v0: String(new Date(creds.lastValidatedAt).toLocaleString()) }) : creds.lastValidationError ? t('pos.verify_test_failed_lastvalidationerror', { lastValidationError: outcomeText(creds.lastValidationError) }) : t('pos.verify_not_tested_yet_booking_verification_ydpe')}
+                  {creds.lastValidatedAt ? t('pos.verify_tested_ok_v0', { v0: String(fmtInZone(creds.lastValidatedAt, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })) }) : creds.lastValidationError ? t('pos.verify_test_failed_lastvalidationerror', { lastValidationError: outcomeText(creds.lastValidationError) }) : t('pos.verify_not_tested_yet_booking_verification_ydpe')}
                 </div>
               ) : null}
               <label className="fk-field">{t('pos.verify_service_sid_for_booking_verification_10hi')}

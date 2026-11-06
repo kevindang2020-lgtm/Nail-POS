@@ -15,6 +15,7 @@ import { posWeeklyDaysOffApi, posSkillsCatalogApi } from '../api/posTeamSchedule
 import { posServicesApi } from '../api/posServicesApi';
 import { errorTextOf } from '../i18n/error-text';
 import { FitDialog } from './FitKit';
+import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const WD = [1, 2, 3, 4, 5, 6, 0];   // Monday first on the chips (values are 0 = Sunday … 6 = Saturday)
 const dayList = (days: number[]) => days.map((d) => tx(`tpx.wd.${d}`)).join(' + ');
@@ -104,7 +105,7 @@ export function WeeklyDaysOffPanel({ technicianId, canEdit }: { technicianId: st
           style={{ textAlign: 'center', fontSize: 11, padding: '3px 0', fontWeight: c.date === d.today ? 800 : 500 }}>{Number(c.date.slice(8))}</div>)}
       </div>
       {d.history?.length ? <details style={{ marginTop: 8 }}><summary className="muted">{tx('tpx.wo.history')}</summary>
-        <ul style={{ margin: '4px 0 0 16px' }}>{d.history.slice(0, 10).map((h: any) => <li key={h.id}>{h.at ? new Date(h.at).toLocaleString() : ''} · {tx(`tpx.wo.act.${h.action}`)}{h.after?.weekdays ? ` · ${dayList(h.after.weekdays)}` : ''}{h.actor ? ` · ${h.actor}` : ''}{h.reason ? ` · ${h.reason}` : ''}</li>)}</ul></details> : null}
+        <ul style={{ margin: '4px 0 0 16px' }}>{d.history.slice(0, 10).map((h: any) => <li key={h.id}>{h.at ? fmtInZone(h.at, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : ''} · {tx(`tpx.wo.act.${h.action}`)}{h.after?.weekdays ? ` · ${dayList(h.after.weekdays)}` : ''}{h.actor ? ` · ${h.actor}` : ''}{h.reason ? ` · ${h.reason}` : ''}</li>)}</ul></details> : null}
     </div>
   );
 }

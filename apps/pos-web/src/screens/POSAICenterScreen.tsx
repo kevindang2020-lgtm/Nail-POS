@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { posAiApi, type PosAiPackage, type AiCenterOverview, type CallIntelSummary, type AiAssistantControl, type AiRevenueSummary, type WorkflowStat } from '../api/posAiApi';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabelOrNull, humanizeCode } from '../i18n/status-label';
-import { fmtMoney, displayLocale } from '../i18n/format';
+import { fmtMoney, displayLocale, fmtInZone } from '../i18n/format';
 import { growthCode } from './growthLabels';
 import { posAiUsageScreenApi } from '../api/posAiUsageApi';
 import { stateLabel, DetailDialog, HistoryDialog } from './POSAiUsageScreen';
@@ -224,7 +224,7 @@ export function POSAICenterScreen() {
               <div style={{ fontWeight: 700, color: '#8A7A66' }}>{t('pos.time')}</div><div style={{ fontWeight: 700, color: '#8A7A66' }}>{t('pos.assistant')}</div><div style={{ fontWeight: 700, color: '#8A7A66' }}>{t('pos.action')}</div><div style={{ fontWeight: 700, color: '#8A7A66' }}>{t('pos.status')}</div>
               {ov.activity.map((a, i) => (
                 <Fragment key={i}>
-                  <div>{new Date(a.at).toLocaleTimeString(displayLocale(), { hour: 'numeric', minute: '2-digit' })}</div>
+                  <div>{fmtInZone(a.at, { hour: 'numeric', minute: '2-digit' })}</div>
                   <div style={{ fontWeight: 600 }}>{a.assistant}</div>
                   <div>{growthCode(a.action, 'aiAction')}</div>
                   <div><span className={'pill ' + (a.status === 'success' ? 'ok' : a.status.startsWith('blocked') ? 'warn' : '')}>{growthCode(a.status)}</span></div>
@@ -249,7 +249,7 @@ export function POSAICenterScreen() {
             {ci && ci.missedQueue.length > 0 ? ci.missedQueue.map((m, i) => (
               <div key={i} style={{ display: 'flex', fontSize: 12, padding: '3px 0', borderBottom: '1px solid var(--line)' }}>
                 <span>{m.callerPhone || t('pos.unknown_caller')}</span>
-                <span style={{ color: '#8A7A66' }}>{new Date(m.at).toLocaleTimeString(displayLocale(), { hour: 'numeric', minute: '2-digit' })}</span>
+                <span style={{ color: '#8A7A66' }}>{fmtInZone(m.at, { hour: 'numeric', minute: '2-digit' })}</span>
               </div>
             )) : <div style={{ fontSize: 12, color: '#8A7A66' }}>{ci ? t('pos.no_missed_calls_today') : t('pos.loading')}</div>}
           </div>
@@ -258,7 +258,7 @@ export function POSAICenterScreen() {
             {ci && ci.recovered.length > 0 ? ci.recovered.map((r, i) => (
               <div key={i} style={{ display: 'flex', fontSize: 12, padding: '3px 0', borderBottom: '1px solid var(--line)' }}>
                 <span>{r.appointmentId ? t('growth.aiCenter.apptRef', { id: r.appointmentId.slice(0, 8) }) : t('pos.recovered_2')}</span>
-                <span style={{ color: '#8A7A66' }}>{new Date(r.at).toLocaleTimeString(displayLocale(), { hour: 'numeric', minute: '2-digit' })}</span>
+                <span style={{ color: '#8A7A66' }}>{fmtInZone(r.at, { hour: 'numeric', minute: '2-digit' })}</span>
               </div>
             )) : <div style={{ fontSize: 12, color: '#8A7A66' }}>{ci ? t('pos.no_recovered_bookings_today') : t('pos.loading')}</div>}
           </div>

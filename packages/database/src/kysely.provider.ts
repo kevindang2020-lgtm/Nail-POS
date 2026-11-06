@@ -73,6 +73,10 @@ export function poolOptions(connectionString: string, poolMax: number, env: Node
       : (env.PG_APPLICATION_NAME || `aipowersalon-${env.PROCESS_ROLE || 'all'}`),
     ...(statement > 0 ? { statement_timeout: statement } : {}),
     ...(idleInTx > 0 ? { idle_in_transaction_session_timeout: idleInTx } : {}),
+    // JIT off unless PG_JIT=on (F1 §79, Nov 6 2026): at 100,000 customers the directory query spent 2.6 s of 3.5 s
+    // compiling itself with LLVM before running. Our queries are short and run once per request, so compiling them is
+    // pure cost. Sent as a startup setting, exactly like statement_timeout above (same PgBouncer caveat).
+    ...(String(env.PG_JIT ?? '').toLowerCase() === 'on' ? {} : { options: '-c jit=off' }),
   };
 }
 

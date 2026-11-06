@@ -12,7 +12,7 @@ import { posPayrollApi } from '../api/posPayrollApi';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
-import { displayLocale } from '../i18n/format';
+import { displayLocale, fmtInZone } from '../i18n/format';
 type StepUp = <T>(action: () => Promise<T>) => Promise<T>;
 type PeriodRow = { id: string; label: string | null; periodStart: string; periodEnd: string; status: string };
 const money = (c: number | null | undefined) => { const n = Math.trunc(Number(c) || 0); const a = Math.abs(n); return `${n < 0 ? '−' : ''}$${Math.floor(a / 100).toLocaleString()}.${String(a % 100).padStart(2, '0')}`; };
@@ -372,7 +372,7 @@ function PayoutCard({ x, can, stepUp, busy, act }: { x: PaycheckPayout; can: (p:
         </div>
         {token && qr ? <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
           <svg viewBox={`0 0 ${qr.size} ${qr.size}`} role="img" aria-label={tx('people.paycheck.ack.qr')} style={{ width: 140, height: 140, background: '#fff', borderRadius: 8 }} shapeRendering="crispEdges"><path d={qr.d} fill="#1b1410" /></svg>
-          <div style={small}>{tx('people.paycheck.ack.qrHint', { token: token.handoffCode, until: new Date(token.expiresAt).toLocaleTimeString(displayLocale(), { hour: '2-digit', minute: '2-digit' }) })}</div>
+          <div style={small}>{tx('people.paycheck.ack.qrHint', { token: token.handoffCode, until: fmtInZone(token.expiresAt, { hour: '2-digit', minute: '2-digit' }) })}</div>
         </div> : null}
         {signing ? <SignaturePad value={signature} onChange={setSignature} onConfirm={() => act(() => posPayrollApi.cashAckSignature(x.id, { pin, signature }).then(() => { setPin(''); setSignature(''); setSigning(false); }))} busy={busy || pin.length < 4} /> : null}
       </div> : null}

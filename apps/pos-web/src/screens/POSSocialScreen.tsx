@@ -3,7 +3,7 @@
 // It is a PLANNING/TRACKING tool — it does not publish to Instagram/Facebook/etc. Marking a post "posted" is
 // something you do after you publish it yourself. All data is real; empty until you add posts.
 import { useCallback, useEffect, useState } from 'react';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone } from '../i18n/format';
 import { posSocialApi } from '../api/posSocialApi';
 import { reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -24,7 +24,7 @@ const nextActions = (s: string): { to: string; label: string }[] => {
   if (s === 'posted') return [{ to: 'archived', label: t('pos.archive') }];
   return [];
 };
-const fmt = (iso: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(displayLocale(), { month: 'short', day: '2-digit' }); } catch { return iso; } };
+const fmt = (iso: string | null) => { if (!iso) return '—'; try { return fmtInZone(iso, { month: 'short', day: '2-digit' }); } catch { return iso; } };
 
 export function POSSocialScreen() {
   const [kpis, setKpis] = useState<Kpis | null>(null);

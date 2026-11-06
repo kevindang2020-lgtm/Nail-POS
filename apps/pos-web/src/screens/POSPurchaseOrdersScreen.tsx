@@ -3,7 +3,7 @@
 // approve / receive-in-full / cancel, plus an expandable line detail.
 import { Fragment, useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { displayLocale } from '../i18n/format';
+import { fmtInZone } from '../i18n/format';
 import { parseDollarsToCents } from '@aipowersalon/ui';
 import { posPurchaseOrdersApi } from '../api/posPurchaseOrdersApi';
 import { money, reportError } from './reportsCommon';
@@ -16,7 +16,7 @@ type Product = { id: string; name: string; color_number: string | null };
 type LineDraft = { productId: string; quantity: string; unitCost: string };
 
 const STATUSES = ['all', 'draft', 'approved', 'received', 'cancelled'];
-const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return new Date(iso).toLocaleDateString(displayLocale(), { month: 'short', day: '2-digit', year: 'numeric' }); } catch { return iso; } };
+const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return fmtInZone(iso, { month: 'short', day: '2-digit', year: 'numeric' }); } catch { return iso; } };
 const statusChip = (status: string) => {
   const m: Record<string, { bg: string; fg: string }> = {
     draft: { bg: '#F0F0F0', fg: '#777' }, approved: { bg: '#EAF2FB', fg: '#2D6CBF' },

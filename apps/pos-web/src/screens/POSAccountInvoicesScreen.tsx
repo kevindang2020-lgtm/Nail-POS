@@ -2,7 +2,7 @@
 // (subscription/software billing), reusing GET /tenant/account/invoices/state (settings.view). Read-only.
 // This is distinct from Payments → Invoices (invoices the salon issues to its customers).
 import { useCallback, useEffect, useState } from 'react';
-import { displayLocale } from '../i18n/format';
+import { fmtYmd } from '../i18n/format';
 import { posAccountInvoicesApi } from '../api/posAccountInvoicesApi';
 import { money, reportError } from './reportsCommon';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
@@ -12,7 +12,7 @@ type Invoice = { invoiceNumber: string; totalCents: number; amountDueCents: numb
 type Credit = { amountCents: number; remainingCents: number; reason: string | null; status: string };
 type State = { tenantId: string; currency: string; plan: string | null; planStatus: string | null; outstandingCents: number; invoices: Invoice[]; credits: Credit[] };
 
-const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return new Date(iso + 'T00:00:00').toLocaleDateString(displayLocale(), { month: 'short', day: '2-digit', year: 'numeric' }); } catch { return iso; } };
+const fmtDate = (iso?: string | null) => { if (!iso) return '—'; try { return fmtYmd(iso, { month: 'short', day: '2-digit', year: 'numeric' }); } catch { return iso; } };
 const statusChip = (status: string) => {
   const m: Record<string, { bg: string; fg: string }> = {
     paid: { bg: '#E9F6EC', fg: '#2E9E54' }, open: { bg: '#EAF2FB', fg: '#2D6CBF' },
