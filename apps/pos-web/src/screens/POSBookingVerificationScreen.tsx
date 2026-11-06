@@ -531,7 +531,7 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
           )}
         <div className="bv-pagerow">
           <Pager info={hist} onPage={(p) => setView({ page: p > 1 ? p : null }, true)} />
-          <select className="fk-select" value={f.pageSize} onChange={(e) => setView({ size: Number(e.target.value) === 10 ? null : e.target.value })} aria-label="rows" data-testid="bv-size">
+          <select className="fk-select" value={f.pageSize} onChange={(e) => setView({ size: Number(e.target.value) === 10 ? null : e.target.value })} aria-label={t('pos.rows_per_page')} data-testid="bv-size">
             {[10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}
           </select>
         </div>
@@ -573,7 +573,7 @@ function VerificationDetail({ id, when, onClose, onOpenCustomer, onOpenBooking, 
             <div><div className="sub">{t('bv.d.services')}</div>{d.services.length ? d.services.join(', ') : '—'}</div>
             <div><div className="sub">{t('bv.col.hold')}</div>{t('bv.hold.' + (d.hold?.status ?? 'none'))}{d.hold?.expiresAt ? ` · ${when(d.hold.expiresAt)}` : ''}</div>
             <div><div className="sub">{t('bv.d.attempts')}</div>{d.attempts} / {d.resends}</div>
-            <div><div className="sub">{t('bv.d.provider')}</div>{d.provider.kind}{d.provider.reference ? ` · ${d.provider.reference}` : ''}</div>
+            <div><div className="sub">{t('bv.d.provider')}</div>{statusLabel('provider', d.provider.kind)}{d.provider.reference ? ` · ${d.provider.reference}` : ''}</div>
           </div>
           <div className="p-h" style={{ marginTop: 12 }}>{t('bv.d.why')}</div>
           <div data-testid="bv-why">{d.policy.why || t('bv.d.whyNone')}</div>

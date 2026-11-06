@@ -65,7 +65,22 @@ export interface RvListFilters {
 }
 export interface ModerateBody { action?: unknown; reasonCode?: unknown; reasonText?: unknown; evidence?: unknown; expectedVersion?: unknown; idempotencyKey?: unknown }
 export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>;
-export interface Check { key: string; state: 'READY' | 'WARNING' | 'FAILED' | 'UNKNOWN'; title: string; evidence: string; active: boolean; action: string | null; checkedAt: string }
+/** Check Review System: each "next step" sentence has a code — the POS shows its own EN / VI text by code (Nov 6 2026). */
+const RV_ACTION_CODES: Readonly<Record<string, string>> = {
+  'Run the check again; if it keeps failing, ask support.': 'retry',
+  'Open the listed reviews with support; the records are not changed by this check.': 'records_problems',
+  'Review the possible duplicates; they are not merged or removed automatically.': 'records_duplicates',
+  'The dashboard and the direct query disagree — report this to support; no number was changed.': 'aggregation_mismatch',
+  'Check those reviews\' visits; links are never rewritten automatically.': 'relationships_check',
+  'The stored public rating refreshes on the next hide / unhide or new rating for that technician; nothing was changed by this check.': 'cross_module_stale',
+  'Hidden reviews without a trail predate the history; record a reason by unhiding and hiding them again if appropriate.': 'moderation_no_trail',
+  'Confirm each hidden 1–2★ review was hidden for a policy reason (open it → Moderation history).': 'moderation_hidden_low',
+  'Answer the low ratings (sort: Needs attention).': 'moderation_attention',
+  'Turn on review requests in the AI Review Assistant settings if the salon wants them.': 'delivery_off',
+  'Check that the review-request job is running.': 'delivery_stale',
+  'Open Notifications to see why the requests failed.': 'delivery_failed',
+};
+export interface Check { key: string; state: 'READY' | 'WARNING' | 'FAILED' | 'UNKNOWN'; title: string; evidence: string; active: boolean; action: string | null; actionCode: string | null; checkedAt: string }
 
 export class ReviewsCenter {
   readonly ret: RetentionRepository;
@@ -366,7 +381,7 @@ export class ReviewsCenter {
     const T = ctx.tenantId; const at = new Date().toISOString();
     const B = this.branchW(ctx);
     const out: Check[] = [];
-    const add = (key: string, state: Check['state'], title: string, evidence: string, action: string | null) => out.push({ key, state, title, evidence, active: state !== 'READY', action, checkedAt: at });
+    const add = (key: string, state: Check['state'], title: string, evidence: string, action: string | null) => out.push({ key, state, title, evidence, active: state !== 'READY', action, actionCode: action ? RV_ACTION_CODES[action] ?? null : null, checkedAt: at });
     const safe = async (key: string, title: string, fn: () => Promise<void>) => { try { await fn(); } catch (e: any) { add(key, 'UNKNOWN', title, `The check could not run: ${String(e?.code ?? e?.message ?? e).slice(0, 120)}`, 'Run the check again; if it keeps failing, ask support.'); } };
 
     await safe('records', 'Record integrity', async () => {

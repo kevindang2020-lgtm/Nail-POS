@@ -329,7 +329,7 @@ function ReminderDetails({ id: openedId, tz, onClose, onChanged, nav }: { id: st
           <dl className="rmc-dl">
             <dt>{t('rmc.c.state')}</dt><dd><span className={'rmc-pill ' + (tone(it.state) ?? '')} data-testid="rmc-d-state">{stText(it.state)}</span>{it.superseded ? ` · ${t('rmc.superseded')}` : ''}</dd>
             {it.reasonText || it.reason ? <><dt>{t('rmc.why')}</dt><dd data-testid="rmc-d-reason">{it.reason ? t(`rmc.r.${it.reason}`) : t(`rmc.r.${it.state}`)}</dd></> : it.kind === 'upcoming' && it.state !== 'scheduled' ? <><dt>{t('rmc.why')}</dt><dd data-testid="rmc-d-reason">{t(`rmc.r.${it.state}`)}</dd></> : null}
-            <dt>{t('rmc.c.channel')}</dt><dd>{it.channel === 'email' ? `${t('pos.email')} · ${it.emailMasked ?? t('rmc.noEmail')}` : `SMS · ${it.phoneLast4 ? `••• ${it.phoneLast4}` : t('rmc.noPhone')}`}</dd>
+            <dt>{t('rmc.c.channel')}</dt><dd>{it.channel === 'email' ? `${t('pos.email')} · ${it.emailMasked ?? t('rmc.noEmail')}` : t('px.ch.smsTo', { to: it.phoneLast4 ? `••• ${it.phoneLast4}` : t('rmc.noPhone') })}</dd>
             <dt>{t('rmc.c.booking')}</dt><dd>{it.technicianName ?? '—'} · {it.branchName ?? '—'} · {at(it.appointmentStartAt, tz)}{tz ? ` (${tz})` : ''}</dd>
             <dt>{t('rmc.c.due')}</dt><dd>{at(it.intendedSendAt, tz)}{it.sentAt ? ` · ${t('rmc.sentAt', { at: at(it.sentAt, tz) })}` : ''}{it.deliveredAt ? ` · ${t('rmc.deliveredAt', { at: at(it.deliveredAt, tz) })}` : ''}</dd>
             <dt>{t('rmc.rule')}</dt><dd>{t('rmc.ruleText', { lead: hoursFromMin(it.leadMinutes || d.rule.leadMinutes), win: d.rule.windowMinutes, ch: d.rule.channel === 'email' ? t('pos.email') : 'SMS' })}</dd>

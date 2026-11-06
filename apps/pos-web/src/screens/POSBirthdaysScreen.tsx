@@ -22,6 +22,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId }
 import { RangeCalendar } from '../components/FinanceKit';
 import { monthLong } from '../components/codeLabel';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const PRESETS = ['today', 'next7', 'month', 'next_month', 'year'] as const;
 const SCOPES = ['period', 'all', 'missing'] as const;
@@ -33,7 +34,7 @@ const nf = (n: number | null | undefined) => (n == null ? '—' : fmtNumber(n));
 const md = (v: string | null | undefined) => (v ? fmtYmd(`2000-${v}`, { month: 'long', day: 'numeric' }, '—') : null);   // month/day only, never a year
 const ymd = (v: string | null | undefined) => (v ? fmtYmd(v, { month: 'short', day: 'numeric', year: 'numeric' }, '—') : '—');
 const when = (v: string | null | undefined) => (v ? fmtInZone(v, { month: 'short', day: 'numeric', year: 'numeric' }) : null);
-const st = (s: string) => tx('bd.st.' + s) !== 'bd.st.' + s ? tx('bd.st.' + s) : s.replace(/_/g, ' ');
+const st = (s: string) => tx('bd.st.' + s) !== 'bd.st.' + s ? tx('bd.st.' + s) : statusLabel('state', s);
 
 type Dlg = { kind: 'customer'; id: string } | { kind: 'missing' } | { kind: 'history' } | { kind: 'settings' } | { kind: 'assistant' } | null;
 
@@ -170,7 +171,7 @@ export function POSBirthdaysScreen() {
                   <td>{r.daysUntil === 0 ? <span className="fk-chip gold">{tx('bd.today')}</span> : r.daysUntil === 1 ? tx('bd.tomorrow') : r.daysUntil != null ? tx('bd.inDays', { n: String(r.daysUntil) }) : '—'}</td>
                   <td>{when(r.lastVisitAt) ?? <span className="fk-muted">{tx('bd.never')}</span>}</td>
                   <td>{r.loyaltyTier || '—'}</td>
-                  <td><span className="sg-tags"><span className={'fk-chip ' + (r.sms === 'eligible' ? 'ok' : 'mut')}>SMS {st(r.sms)}</span><span className={'fk-chip ' + (r.email === 'eligible' ? 'ok' : 'mut')}>Email {st(r.email)}</span></span></td>
+                  <td><span className="sg-tags"><span className={'fk-chip ' + (r.sms === 'eligible' ? 'ok' : 'mut')}>{tx('px.ch.sms')} {st(r.sms)}</span><span className={'fk-chip ' + (r.email === 'eligible' ? 'ok' : 'mut')}>{tx('pos.email')} {st(r.email)}</span></span></td>
                   <td>{r.birthdayMessage ? tx('bd.msg.' + r.birthdayMessage) : '—'}</td>
                   <td><button type="button" className="fk-btn ghost sg-why" onClick={() => setDlg({ kind: 'customer', id: r.customerId })}>{tx('bd.details')}</button></td>
                 </tr>))}</tbody>
@@ -222,7 +223,7 @@ function CustomerDialog({ id, canEdit, onClose, onSaved, onBook, onProfile }: { 
             {b.nextOccurrence ? <div className="fk-muted">{tx('bd.ov.next')}: {ymd(b.nextOccurrence.date)} ({b.nextOccurrence.daysUntil === 0 ? tx('bd.today') : tx('bd.inDays', { n: String(b.nextOccurrence.daysUntil) })})</div> : null}
             <div className="fk-muted">{tx('bd.ov.source')}: {tx('bd.ov.source.' + (b.source ?? 'none'))}{b.updatedAt ? ` · ${when(b.updatedAt)}` : ''}</div>
             {canEdit ? <div className="sg-form bd-edit">
-              <label>{tx('bd.ov.edit')}<input className="fk-input" value={val} onChange={(e) => setVal(e.target.value)} placeholder="YYYY-MM-DD / MM-DD" inputMode="numeric" data-testid="bd-edit-input" /></label>
+              <label>{tx('bd.ov.edit')}<input className="fk-input" value={val} onChange={(e) => setVal(e.target.value)} placeholder={tx('px.bd.datePh')} inputMode="numeric" data-testid="bd-edit-input" /></label>
               <button type="button" className="fk-btn" onClick={save} disabled={busy} data-testid="bd-edit-save">{tx('bd.ov.save')}</button>
               <span className="fk-muted">{tx('bd.ov.editHint')}</span>
               {ok ? <span className="fk-ok" role="status">{tx('bd.ov.saved')}</span> : null}
@@ -236,14 +237,14 @@ function CustomerDialog({ id, canEdit, onClose, onSaved, onBook, onProfile }: { 
           <section className="fk-panel bd-sec"><h3>{tx('bd.ov.messages')}</h3>
             {o.noHistory ? <div className="fk-muted" data-testid="bd-ov-nohistory">{tx('bd.ov.noHistory')}</div> : <ul className="sg-list">{o.birthdayMessages.map((m: any, i: number) => <li key={i}>{m.occasionYear} · {m.channel.toUpperCase()} · {tx('bd.hist.status.' + m.status)} · {m.campaignName ?? '—'}</li>)}</ul>}
             <h3>{tx('bd.ov.offers')}</h3>
-            {o.birthdayOffers.length ? <ul className="sg-list">{o.birthdayOffers.map((x: any) => <li key={x.redemptionId}>{x.title} · {x.status}{x.redeemedAt ? ` · ${when(x.redeemedAt)}` : ''}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
+            {o.birthdayOffers.length ? <ul className="sg-list">{o.birthdayOffers.map((x: any) => <li key={x.redemptionId}>{x.title} · {statusLabel(['deal', 'state'], x.status)}{x.redeemedAt ? ` · ${when(x.redeemedAt)}` : ''}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
           </section>
           <section className="fk-panel bd-sec"><h3>{tx('bd.ov.visits')}</h3>
             {o.visits?.length ? <ul className="sg-list">{o.visits.slice(0, 8).map((v: any, i: number) => <li key={i}>{when(v.at ?? v.paidAt ?? v.date) ?? '—'}{v.totalCents != null ? ` · ${fmtMoney(v.totalCents)}` : ''}</li>)}</ul> : <div className="fk-muted">{tx('bd.never')}</div>}
             <h3>{tx('bd.ov.appointments')}</h3>
-            {o.appointments?.length ? <ul className="sg-list">{o.appointments.slice(0, 6).map((a: any) => <li key={a.appointmentId}>{ymd(a.date)} {a.startTime ?? ''} · {a.status}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
+            {o.appointments?.length ? <ul className="sg-list">{o.appointments.slice(0, 6).map((a: any) => <li key={a.appointmentId}>{ymd(a.date)} {a.startTime ?? ''} · {statusLabel(['appointment', 'state'], a.status)}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
             <h3>{tx('bd.ov.refunds')}</h3>
-            {o.refunds?.length ? <ul className="sg-list">{o.refunds.map((r: any) => <li key={r.refundId}>{fmtMoney(r.amountCents)} · {r.status} · {when(r.at)}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
+            {o.refunds?.length ? <ul className="sg-list">{o.refunds.map((r: any) => <li key={r.refundId}>{fmtMoney(r.amountCents)} · {statusLabel('refund', r.status)} · {when(r.at)}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
           </section>
         </div>)}
     </FitDialog>
@@ -282,7 +283,7 @@ function HistoryDialog({ onClose }: { onClose: () => void }) {
   return (
     <FitDialog wide title={tx('bd.hist.title')} onClose={onClose} testId="bd-hist" footer={<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('bd.ov.close')}</button>}>
       {err ? <div className="err">{err}</div> : !h ? <div className="fk-loading">{tx('pos.loading')}</div> : !h.items.length ? <Empty title={tx('bd.hist.empty')} /> : (
-        <><table className="fk-table rt-table"><thead><tr><th>{tx('pos.customer')}</th><th>{tx('bd.hist.year')}</th><th>SMS / Email</th><th>{tx('bd.col.message')}</th><th>{tx('bd.hist.campaign')}</th><th>{tx('bd.col.created')}</th></tr></thead>
+        <><table className="fk-table rt-table"><thead><tr><th>{tx('pos.customer')}</th><th>{tx('bd.hist.year')}</th><th>{tx('px.ch.smsEmail')}</th><th>{tx('bd.col.message')}</th><th>{tx('bd.hist.campaign')}</th><th>{tx('bd.col.created')}</th></tr></thead>
           <tbody>{h.items.map((x: any) => <tr key={x.id}><td>{x.customerName}</td><td>{x.occasionYear}</td><td>{x.channel.toUpperCase()}</td><td>{tx('bd.hist.status.' + x.status)}</td><td>{x.campaignName ?? '—'}</td><td>{when(x.claimedAt)}</td></tr>)}</tbody></table>
           <Pager info={h} onPage={setPage} /></>)}
     </FitDialog>
@@ -337,7 +338,7 @@ function AssistantDialog({ canManage, initial, onClose, onOpenCampaigns }: { can
         <label>{tx('bd.ai.objective')}<select className="fk-select" value={objective} onChange={(e) => { const v = OBJECTIVES.find((o) => o === e.target.value); if (v) setObjective(v); setPlan(null); }} data-testid="bd-ai-objective">
           {OBJECTIVES.map((o) => <option key={o} value={o}>{tx('bd.ai.obj.' + o)}</option>)}</select></label>
         <label>{tx('bd.ai.channel')}<select className="fk-select" value={channel} onChange={(e) => { setChannel(e.target.value === 'email' ? 'email' : 'sms'); setPlan(null); }} data-testid="bd-ai-channel">
-          <option value="sms">SMS</option><option value="email">Email</option></select></label>
+          <option value="sms">{tx('px.ch.sms')}</option><option value="email">{tx('pos.email')}</option></select></label>
         <label>{tx('bd.ai.offer')}<select className="fk-select" value={dealId} onChange={(e) => { setDealId(e.target.value); setPlan(null); }} data-testid="bd-ai-offer">
           <option value="">{tx('bd.ai.noOffer')}</option>{deals.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}</select></label>
         {p ? <label>{tx('bd.ai.template')}<select className="fk-select" value={templateId} onChange={(e) => { setTemplateId(e.target.value); setPlan(null); }} data-testid="bd-ai-template">

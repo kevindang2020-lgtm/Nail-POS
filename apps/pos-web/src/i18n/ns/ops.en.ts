@@ -560,4 +560,8 @@ export const OPS_EN = {
   'ops.overview.insight.high_revenue_service': 'High revenue service',
   'ops.overview.insight.booking_opportunity': 'Booking opportunity',
   'ops.overview.insightV.booking_opportunity': 'No more appointments today — open slots for walk-ins and online booking',
+  // moved from the frozen catalog.en.ts (Nov 6 2026) — keys unchanged
+  'pos.copilot_conflict_check_failed': 'The conflict check could not run right now — nothing was decided. Try again.',
+  'pos.copilot_phone_unavailable': "AI phone activity can't be shown: the AI receptionist isn't set up here, or its calls could not be read.",
+  'pos.copilot_choose_branch_for_service': 'Choose a branch first — services and prices are set per branch.',
 };

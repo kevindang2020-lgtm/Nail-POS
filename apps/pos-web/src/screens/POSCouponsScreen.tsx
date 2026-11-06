@@ -28,6 +28,7 @@ import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodSt
 import { DiscountDetailsDialog, RedemptionsTable, TONE, life, pageOf, discountLabel, usageLabel, whenTime } from './POSDiscountsScreen';
 import { DealWizard } from './deals/DealWizard';
 import { DealCouponsPanel } from './deals/DealCouponsPanel';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 type Tab = 'library' | 'redemptions' | 'health';
 const TABS: Tab[] = ['library', 'redemptions', 'health'];
@@ -256,7 +257,7 @@ export function Campaigns({ dealId }: { dealId: string }) {
   const c = useLoad(() => posCouponsApi.campaigns(dealId), [dealId]);
   if (c.error) return <StateBlock error={c.error} onRetry={c.reload} />;
   if (!c.data) return <div className="fk-loading">{tx('pos.loading')}</div>;
-  return <>{c.data.items.length === 0 ? <Empty title={tx('cp.noCampaigns')} /> : <ul className="fk-list dense">{c.data.items.map((r: any) => <li key={r.campaignId} className="fk-li"><span className="fk-li-t">{r.name}</span><span className="fk-li-s">{r.channel.toUpperCase()} · {r.status} · {tx('cp.codesLinked', { n: nf(r.codes) })}</span></li>)}</ul>}
+  return <>{c.data.items.length === 0 ? <Empty title={tx('cp.noCampaigns')} /> : <ul className="fk-list dense">{c.data.items.map((r: any) => <li key={r.campaignId} className="fk-li"><span className="fk-li-t">{r.name}</span><span className="fk-li-s">{r.channel.toUpperCase()} · {statusLabel(['deal', 'state'], r.status)} · {tx('cp.codesLinked', { n: nf(r.codes) })}</span></li>)}</ul>}
     <div className="fk-hint">{tx('cp.campaignNote')}</div></>;
 }
 

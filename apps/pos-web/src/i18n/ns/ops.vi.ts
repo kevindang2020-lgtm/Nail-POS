@@ -559,4 +559,8 @@ export const OPS_VI: Record<keyof typeof OPS_EN, string> = {
   'ops.overview.insight.high_revenue_service': 'Dịch vụ doanh thu cao',
   'ops.overview.insight.booking_opportunity': 'Cơ hội nhận lịch hẹn',
   'ops.overview.insightV.booking_opportunity': 'Hôm nay không còn lịch hẹn — còn chỗ cho khách vãng lai và đặt lịch trực tuyến',
+  // moved from the frozen catalog.vi.ts (Nov 6 2026) — keys unchanged
+  'pos.copilot_conflict_check_failed': 'Chưa kiểm tra trùng lịch được — chưa có gì được quyết định. Hãy thử lại.',
+  'pos.copilot_phone_unavailable': 'Không hiển thị được cuộc gọi AI: lễ tân AI chưa được thiết lập ở đây hoặc không đọc được cuộc gọi.',
+  'pos.copilot_choose_branch_for_service': 'Hãy chọn chi nhánh trước — dịch vụ và giá được đặt theo từng chi nhánh.',
 };

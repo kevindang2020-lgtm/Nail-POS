@@ -169,7 +169,7 @@ export function POSDealsScreen() {
           <option value="">{tx('cp.allLocations')}</option>{(branches.data ?? []).map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
         {filtered ? <button type="button" className="fk-link" onClick={clearAll} data-testid="clear-all">{tx('finance.clearFilters')}</button> : null}
       </div> : null}
-      {tab === 'approvals' ? <div data-testid="apr-period"><PeriodBar compact allowAll value={aprPeriod} onChange={setAprPeriod} server={apr.data?.period} basis="requested" onBasis={() => undefined} basisOptions={[{ value: 'requested', label: tx('do.aprRequested') }]} /></div> : null}
+      {tab === 'approvals' ? <div data-testid="apr-period"><PeriodBar compact allowAll value={aprPeriod} onChange={setAprPeriod} server={apr.data?.period} basis="requested" basisOptions={[{ value: 'requested', label: tx('do.aprRequested') }]} /></div> : null}
       {tab === 'library' || tab === 'redemptions' ? <PeriodBar compact allowAll value={periods[pKey]} onChange={(p) => setPeriods((x) => ({ ...x, [pKey]: p }))} server={server}
         basis={tab === 'library' ? basis : redBasis} onBasis={tab === 'library' ? setBasis : setRedBasis}
         basisOptions={tab === 'library' ? BASES.map((b) => ({ value: b, label: tx('do.basis.' + b) })) : ['redeemed', 'applied', 'finalized'].map((b) => ({ value: b, label: tx(b === 'redeemed' ? 'dsc.df.redeemed' : 'cp.redBasis.' + b) }))} /> : null}

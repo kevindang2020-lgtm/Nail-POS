@@ -19,6 +19,7 @@ import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { useInlineConfirm } from '@aipowersalon/ui';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const TABS = ['all', 'draft', 'paused', 'archived', 'setup_required', 'ready', 'active', 'degraded'] as const;
 const PERIODS = ['', 'today', 'week', 'month', 'year', 'custom'] as const;
@@ -267,7 +268,7 @@ function Wizard({ id, isOwner, onClose, onActivate }: { id: string; isOwner: boo
               <label>{t('aifd.f.greeting')}<textarea rows={2} maxLength={600} value={form.greeting ?? ''} onChange={(e) => setForm({ ...form, greeting: e.target.value })} /></label>
               <label>{t('aifd.f.behavior')}<textarea rows={4} maxLength={4000} value={form.behavior ?? ''} onChange={(e) => setForm({ ...form, behavior: e.target.value })} /></label>
               <label>{t('aifd.f.after_hours')}<input maxLength={500} value={form.afterHoursMessage ?? ''} onChange={(e) => setForm({ ...form, afterHoursMessage: e.target.value })} /></label>
-              <label>{t('aifd.f.handoff')}<input maxLength={40} value={form.handoffDestination ?? ''} placeholder="+16095550100 · voicemail · front_desk" onChange={(e) => setForm({ ...form, handoffDestination: e.target.value })} data-testid="fd-wz-handoff" /></label>
+              <label>{t('aifd.f.handoff')}<input maxLength={40} value={form.handoffDestination ?? ''} placeholder={t('px.aifd.handoffPh')} onChange={(e) => setForm({ ...form, handoffDestination: e.target.value })} data-testid="fd-wz-handoff" /></label>
               <div className="fd-muted">{t('aifd.wz.english_only')}</div></div> : null}
             {step === 4 ? <div className="fd-form">
               {(['handoff_only', 'eligible'] as const).map((m) => <label key={m} className="fd-radio"><input type="radio" name="bm" checked={form.bookingMode === m} onChange={() => setForm({ ...form, bookingMode: m })} data-testid={'fd-wz-mode-' + m} /> {t('aifd.mode.' + m)} — <span className="fd-muted">{t('aifd.mode_hint.' + m)}</span></label>)}
@@ -341,7 +342,7 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
               <dt>{t('aifd.col.branch')}</dt><dd>{o.branchName ?? t('aifd.all_branches')}</dd><dt>{t('aifd.ov.creator')}</dt><dd>{d.overview.creatorName ?? '—'}</dd>
               <dt>{t('aifd.ov.created')}</dt><dd>{when(o.createdAt)}</dd><dt>{t('aifd.col.updated')}</dt><dd>{when(o.updatedAt)}</dd>
               <dt>{t('aifd.ov.verified')}</dt><dd>{when(o.lastVerifiedAt)}</dd><dt>{t('aifd.ov.version')}</dt><dd>{o.configVersion}</dd></dl> : null}
-            {tab === 'business' ? <div>{(d.business.core ?? []).map((b: any) => <div key={b.key} className="fd-hrow"><b>{bizLabel(b.key)}</b> <span className="fd-muted">{b.status}</span><div className="fd-detail">{b.detail}</div></div>)}<div className="fd-muted">{t('aifd.versions', { n: d.business.versions })}</div></div> : null}
+            {tab === 'business' ? <div>{(d.business.core ?? []).map((b: any) => <div key={b.key} className="fd-hrow"><b>{bizLabel(b.key)}</b> <span className="fd-muted">{statusLabel('state', b.status)}</span><div className="fd-detail">{b.detail}</div></div>)}<div className="fd-muted">{t('aifd.versions', { n: d.business.versions })}</div></div> : null}
             {tab === 'voice' ? <dl className="fd-dl"><dt>{t('aifd.f.greeting')}</dt><dd>{d.voice.greeting ?? '—'}</dd><dt>{t('aifd.f.behavior')}</dt><dd className="fd-pre-wrap">{d.voice.behavior ?? '—'}</dd>
               <dt>{t('aifd.f.after_hours')}</dt><dd>{d.voice.afterHoursMessage ?? '—'}</dd><dt>{t('aifd.col.provider')}</dt><dd>{d.voice.providerRef ?? t('aifd.not_linked')}{d.voice.sharedWithOtherSalon ? <span className="fd-warn-t"> {t('aifd.shared')}</span> : null}</dd>
               <dt>{t('aifd.ov.language')}</dt><dd>{t('aifd.english_only')}</dd></dl> : null}

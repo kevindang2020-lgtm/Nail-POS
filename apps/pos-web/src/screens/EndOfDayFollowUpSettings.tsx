@@ -13,6 +13,7 @@ import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../c
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const TIME_OPTS = ['18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00'];
 const EXPIRE_OPTS = [0, 12, 24, 48, 72];
@@ -212,7 +213,7 @@ export function EndOfDayFollowUpSettings() {
           <div className="eod-table-wrap"><table className="tbl">
             <thead><tr><th>{tx('eod.run.col.date')}</th><th>{tx('eod.run.col.status')}</th><th>{tx('eod.run.col.counts')}</th><th>{tx('eod.run.col.trigger')}</th></tr></thead>
             <tbody>{runs.items.map((r) => (
-              <tr key={r.id} data-testid="eod-run-row"><td>{r.businessDate}</td><td>{r.status}{r.error ? <div className="s">{r.error}</div> : null}</td>
+              <tr key={r.id} data-testid="eod-run-row"><td>{r.businessDate}</td><td>{statusLabel('state', r.status)}{r.error ? <div className="s">{r.error}</div> : null}</td>
                 <td>{r.candidates} · {r.created} · {r.excluded}{r.excluded ? <div className="s">{Object.entries(r.exclusions).filter(([, n]) => n).map(([why, n]) => `${tx(`eod.why.${why}`)} ${n}`).join(' · ')}</div> : null}</td>
                 <td>{tx(`eod.run.trigger.${r.trigger}`)}</td></tr>))}</tbody>
           </table></div>
@@ -312,7 +313,7 @@ function DetailDialog({ id, tz, onClose, onChanged, openCustomer, book }: { id: 
             </div>
           ) : null}
           <h4>{tx('eod.d.timeline')}</h4>
-          <ul className="eod-timeline" data-testid="eod-d-timeline">{d.timeline.map((e, i) => <li key={i}><span className="s">{when(e.at, tz)}</span> {e.action.replace(/_/g, ' ')}{e.role ? ` · ${e.role}` : ''}</li>)}</ul>
+          <ul className="eod-timeline" data-testid="eod-d-timeline">{d.timeline.map((e, i) => <li key={i}><span className="s">{when(e.at, tz)}</span> {statusLabel(['eodAction', 'state'], e.action)}{e.role ? ` · ${e.role}` : ''}</li>)}</ul>
         </div>
       )}
     </FitDialog>

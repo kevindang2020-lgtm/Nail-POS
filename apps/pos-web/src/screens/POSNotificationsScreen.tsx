@@ -19,6 +19,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInTz } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, downloadText } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const SIZES = [10, 20, 50] as const;
 const TABS = ['all', 'sms', 'email', 'failed', 'blocked', 'pending', 'unknown', 'optouts'] as const;
@@ -132,7 +133,7 @@ export function POSNotificationsScreen() {
             <select className="fk-select" aria-label={tx('cn.col.type')} value={type} onChange={(e) => setView({ type: e.target.value || null })} data-testid="cn-type">
               <option value="">{tx('cn.allTypes')}</option>{TYPES.map((x) => <option key={x} value={x}>{typeLabel(x)}</option>)}
             </select>
-            <select className="fk-select" aria-label="sort" value={sort} onChange={(e) => setView({ sort: e.target.value === 'newest' ? null : e.target.value })} data-testid="cn-sort">
+            <select className="fk-select" aria-label={tx('pos.sort_by')} value={sort} onChange={(e) => setView({ sort: e.target.value === 'newest' ? null : e.target.value })} data-testid="cn-sort">
               <option value="newest">↓ {tx('cn.col.when')}</option><option value="oldest">↑ {tx('cn.col.when')}</option>
             </select>
             {anyFilter ? <button type="button" className="fk-link" onClick={() => { setSearch(''); setView({ type: null, preset: null, from: null, to: null, basis: null, sort: null, tab: null }); }} data-testid="cn-clear">{tx('cn.clearAll')}</button> : null}
@@ -208,7 +209,7 @@ function Incidents({ items, canResolve, tz, onChanged, onNote }: { items: CnInci
       <div className="fk-panel-head"><h2>{tx('cn.i.title')}</h2>{!canResolve ? <span className="fk-muted">{tx('cn.i.ownerOnly')}</span> : null}</div>
       <ul className="fk-list">{items.map((i) => (
         <li key={i.id} className="fk-li" data-testid="cn-incident">
-          <div className="fk-li-main"><div className="fk-li-t"><span className={'fk-chip ' + (i.severity === 'critical' || i.severity === 'high' ? 'bad' : 'warn')}>{i.severity}</span> {i.title}</div>
+          <div className="fk-li-main"><div className="fk-li-t"><span className={'fk-chip ' + (i.severity === 'critical' || i.severity === 'high' ? 'bad' : 'warn')}>{statusLabel('level', i.severity)}</span> {i.title}</div>
             <div className="fk-li-s">{i.body} · {tx('cn.i.count', { n: nf(i.detections), c: nf(i.count) })} · {when(i.lastEventAt ?? i.updatedAt, tz)} · {tx('cn.i.status.' + i.status)}</div></div>
           {canResolve ? <div className="fk-li-acts">
             {i.status === 'new' ? <button type="button" className="fk-btn ghost sm" disabled={busy === i.id} onClick={() => act(i.id, 'ack')} data-testid="cn-incident-ack">{tx('cn.i.ack')}</button> : null}
@@ -371,7 +372,7 @@ function TimelineDialog({ customerId, tz, onClose, onGo }: { customerId: string;
         <ul className="fk-list cn-tl" data-testid="cn-t-list">{d.items.map((it: CnTimelineItem) => (
           <li key={it.kind + it.id} className={'fk-li cn-tl-' + it.direction + (it.failed ? ' failed' : '')} data-testid={'cn-t-' + it.kind}>
             <div className="fk-li-main">
-              <div className="fk-li-t">{tx('cn.t.kind.' + it.kind)} · {tx('cn.ch.' + (['sms', 'email', 'booking', 'follow_up', 'receipt'].includes(it.channel) ? it.channel : 'sms'))} · <span className="fk-muted">{tx(it.direction === 'inbound' ? 'cn.t.inbound' : it.direction === 'internal' ? 'cn.t.internal' : 'cn.t.outbound')}</span> {['delivered', 'sent', 'pending', 'unknown', 'failed', 'blocked', 'simulated', 'received'].includes(it.status) ? <Chip s={it.status} /> : <span className="fk-chip mut">{it.status}</span>}{it.unresolved ? <span className="fk-chip warn">{tx('cn.t.unresolved')}</span> : null}</div>
+              <div className="fk-li-t">{tx('cn.t.kind.' + it.kind)} · {tx('cn.ch.' + (['sms', 'email', 'booking', 'follow_up', 'receipt'].includes(it.channel) ? it.channel : 'sms'))} · <span className="fk-muted">{tx(it.direction === 'inbound' ? 'cn.t.inbound' : it.direction === 'internal' ? 'cn.t.internal' : 'cn.t.outbound')}</span> {['delivered', 'sent', 'pending', 'unknown', 'failed', 'blocked', 'simulated', 'received'].includes(it.status) ? <Chip s={statusLabel('state', it.status)} /> : <span className="fk-chip mut">{statusLabel('state', it.status)}</span>}{it.unresolved ? <span className="fk-chip warn">{tx('cn.t.unresolved')}</span> : null}</div>
               <div className="fk-li-s">{when(it.at, tz)}{it.counterpart ? ` · ${it.counterpart}` : ''}{it.summary ? ` · ${it.summary}` : ''}</div>
             </div>
             {it.link ? <div className="fk-li-acts"><button type="button" className="fk-btn ghost sm" onClick={() => onGo(it.link!)}>{tx('cn.t.open')}</button></div> : null}

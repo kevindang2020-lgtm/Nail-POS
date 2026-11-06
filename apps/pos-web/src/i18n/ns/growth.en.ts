@@ -1003,4 +1003,6 @@ export const GROWTH_EN = {
   'growth.aiBooking.hold.released': 'Released',
   'growth.aiBooking.hold.converted': 'Booked',
   'growth.aiBooking.hold.expired': 'Expired',
+  // moved from the frozen catalog.en.ts (Nov 6 2026) — keys unchanged
+  'pos.ads_managed_by_platform': 'Advertising is currently managed by AI PowerSalon. Your advertisements are saved and will play again when salon advertising is turned back on. You can still pause or archive them.',
 };

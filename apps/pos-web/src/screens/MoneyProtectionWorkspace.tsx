@@ -20,6 +20,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 import { money } from './reportsCommon';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const when = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
@@ -272,7 +273,7 @@ function AlertDialog({ id, onClose, onChanged }: { id: string; onClose: () => vo
           {Array.isArray(d.evidence?.alternativeExplanations) && d.evidence.alternativeExplanations.length ? <><b>{tx('pos.possible_benign_explanations')}</b><ul>{d.evidence.alternativeExplanations.map((r: string, i: number) => <li key={i}>{codedText(mpTextCoded(r), r)}</li>)}</ul></> : null}</section>
         <section style={{ marginTop: 10 }} data-testid="mpx-d-sources"><div className="p-h">{t('mpx.d.sources')}</div>
           {d.sources.tickets.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.tickets')}: <b>{x.number ?? x.id.slice(0, 8)}</b> · {x.totalCents == null ? '' : money(x.totalCents)} · {when(x.at)}{x.customer ? ` · ${x.customer}` : ''}</div>)}
-          {d.sources.payments.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.payments')}: {money(x.amountCents)} · {x.method} · {x.status} · {when(x.at)}</div>)}
+          {d.sources.payments.map((x: any) => <div key={x.id} className="rvw-ev">{t('mpx.d.payments')}: {money(x.amountCents)} · {statusLabel('paymentMethod', x.method)} · {statusLabel(['payment', 'state'], x.status)} · {when(x.at)}</div>)}
           {d.sources.staff.length ? <div className="rvw-ev">{t('mpx.d.staff')}: {d.sources.staff.map((x: any) => x.name).filter(Boolean).join(', ')}</div> : null}
           {d.sources.missing.tickets + d.sources.missing.payments ? <div className="sub">{t('mpx.d.missing', { n: fmtNumber(d.sources.missing.tickets + d.sources.missing.payments) })}</div> : null}
         </section>

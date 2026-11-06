@@ -98,7 +98,7 @@ export function AssistantDialog({ onClose, canManage }: { onClose: () => void; c
         <label>{tx('wb.ai.goal')}<select className="fk-select" value={goal} onChange={(e) => { setGoal(e.target.value as (typeof GOALS)[number]); reset(); }} data-testid="ai-goal">
           {GOALS.map((g) => <option key={g} value={g}>{tx('wb.ai.goal.' + g)}</option>)}</select></label>
         <label>{tx('wb.ai.channel')}<select className="fk-select" value={channel} onChange={(e) => { setChannel(e.target.value === 'email' ? 'email' : 'sms'); reset(); }} data-testid="ai-channel">
-          <option value="sms">SMS</option><option value="email">Email</option></select></label>
+          <option value="sms">{tx('px.ch.sms')}</option><option value="email">{tx('pos.email')}</option></select></label>
         {goal === 'promote_service' ? <label>{tx('wb.ai.service')}<input className="fk-input" value={service} maxLength={60} placeholder={tx('wb.ai.servicePh')} onChange={(e) => { setService(e.target.value); reset(); }} data-testid="ai-service" /></label> : null}
         <button type="button" className="fk-btn" onClick={suggest} disabled={!!busy || (goal === 'promote_service' && service.trim().length < 3)} data-testid="ai-plan">{busy === 'plan' ? tx('wb.ai.planning') : tx('wb.ai.plan')}</button>
       </div>

@@ -200,7 +200,7 @@ export function SkillsCatalogDialog({ onClose }: { onClose: () => void }) {
     <FitDialog title={tx('tpx.cat.title')} onClose={onClose} wide testId="skills-catalog" footer={<button className="btn ghost" onClick={onClose}>{tx('tpx.close')}</button>}>
       <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
         <input className="fk-input" style={{ flex: 1 }} placeholder={tx('tpx.sk.search')} value={q} onChange={(e) => setQ(e.target.value)} aria-label={tx('tpx.sk.search')} />
-        <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label="status">{['active', 'archived', 'all'].map((s) => <option key={s} value={s}>{tx(`tpx.cat.status.${s}`)}</option>)}</select>
+        <select value={status} onChange={(e) => setStatus(e.target.value)} aria-label={tx('pos.status')}>{['active', 'archived', 'all'].map((s) => <option key={s} value={s}>{tx(`tpx.cat.status.${s}`)}</option>)}</select>
         {d?.canEdit ? <button className="btn" onClick={() => setEdit({ name: '', category: '', description: '', requiredCertification: '', serviceIds: [] })} data-testid="cat-new">{tx('tpx.cat.new')}</button> : null}
       </div>
       {edit ? <div className="panel" style={{ padding: 10, marginBottom: 8 }} data-testid="cat-form">

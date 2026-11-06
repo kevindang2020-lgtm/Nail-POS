@@ -100,5 +100,5 @@ export const RETENTION3_EN = {
   'rt5.noteSave': 'Save note',
   'rt5.template': 'Start from a template',
   'rt5.templateNone': '— Write my own —',
-  'rt5.placeholders': 'Replace the {placeholders} with real words — a campaign sends the same text to every customer.',
+  'rt5.placeholders': 'Replace the placeholders in curly braces with real words — a campaign sends the same text to every customer.',
 };

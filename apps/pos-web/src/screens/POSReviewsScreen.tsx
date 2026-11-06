@@ -307,7 +307,7 @@ function HealthDialog({ data, onClose }: { data: any; onClose: () => void }) {
           <div key={c.key} className="rvw-check" data-testid={`chk-${c.key}`}>
             <div><span className={'chip ' + (STATE_TONE[c.state] ?? '')} data-testid={`chk-${c.key}-state`}>{t('rvw.health.' + c.state)}</span> <b>{t('rvw.health.k.' + c.key)}</b></div>
             <div className="sub">{c.evidence}</div>
-            {c.action ? <div><b>{t('rvw.health.next')}</b> {c.action}</div> : null}
+            {c.actionCode ? <div><b>{t('rvw.health.next')}</b> {t('rvw.health.a.' + c.actionCode)}</div> : null}
           </div>
         ))}
       </>}

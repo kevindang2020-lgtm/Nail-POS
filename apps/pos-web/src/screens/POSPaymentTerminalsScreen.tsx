@@ -23,6 +23,7 @@ import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, r
 import { PeriodBar, periodQuery, useLoad, StateBlock, isForbidden, type PeriodState } from '../components/FinanceKit';
 import { PairingQr, DeviceActivityView } from '../components/TapToPayDevicesPanel';
 import { useStepUp, isStepUpCancelled } from './access/accessUi';
+import { humanizeCode } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 type Tab = 'physical' | 'phones' | 'activity' | 'audit' | 'routing';
 type Status = 'ONLINE' | 'OFFLINE' | 'BUSY' | 'PROCESSING' | 'DEGRADED' | 'DISABLED' | 'UNKNOWN';
@@ -255,7 +256,7 @@ function AuditTab({ q, tick, device, clearDevice, clearSearch, onOpen }: { q: st
             <tr key={r.id} data-testid="audit-row">
               <td>{when(r.at)}</td>
               <td><button type="button" className="fk-li-t link" onClick={() => onOpen(r)}>{r.deviceLabel}</button><span className="fk-li-s">{tx('pt.kind.' + r.kind)}</span></td>
-              <td>{lbl('pt.audit.action.' + r.action, r.action.replace(/^pos_settings_terminal_|^mobile_pay_device_/, '').replace(/_/g, ' '))}</td>
+              <td>{lbl('pt.audit.action.' + r.action, humanizeCode(r.action.replace(/^pos_settings_terminal_|^mobile_pay_device_/, '')))}</td>
               <td>{r.actor ?? '—'}{r.role ? <span className="fk-li-s">{lbl('pos.role.' + r.role, r.role)}</span> : null}</td>
               <td className="t-opt fn-wrap">{detailText(r) || '—'}</td>
             </tr>))}</tbody>

@@ -184,7 +184,9 @@ export function PeriodBar({ value, onChange, server, basis, basisOptions, onBasi
           {tx('finance.period.custom')} ▾
         </button>
       </div>
-      {basisOptions && onBasis ? (
+      {basisOptions?.length === 1 && !onBasis ? (   // one date basis: said, not offered as a choice (a select that changes nothing is an inert control)
+        <span className="fn-basis" data-testid="date-basis-fixed"><span>{tx('finance.period.dateField')}</span> {basisOptions[0].label}</span>
+      ) : basisOptions && onBasis ? (
         <label className="fn-basis"><span>{tx('finance.period.dateField')}</span>
           <select className="fk-select" value={basis} onChange={(e) => onBasis(e.target.value)} data-testid="date-basis">
             {basisOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}

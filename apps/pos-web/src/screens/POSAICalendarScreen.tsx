@@ -16,6 +16,7 @@ import { FitDialog, Pager, Empty, ErrorRetry, useDebounced } from '../components
 import { RangeCalendar } from '../components/FinanceKit';
 import { useRealtime } from '../realtime/useRealtime';
 import { useCopilotAction, PreparedCard, ActionOutcome } from './receptionCopilotCenter';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 const shift = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
@@ -291,12 +292,12 @@ function AppointmentOverlay({ id, onClose, nav }: { id: string; onClose: () => v
             {tab === 'services' ? <ul>{d.services.map((s: any, i: number) => <li key={i}>{s.name ?? '—'}{s.minutes ? ` · ${t('aical.minutes', { n: s.minutes })}` : ''}</li>)}<li>{t('aical.f.technician')}: {d.technician?.name ?? t('aical.unassigned')}</li></ul> : null}
             {tab === 'history' ? (d.bookingHistory.length ? <ul>{d.bookingHistory.map((h: any) => <li key={h.id}>{day(h.date)} {h.start} · {t(`aical.status.${h.status}`)} · {t(`aical.source.${h.source}`)}</li>)}</ul> : <div className="aic-muted">{t('aical.none')}</div>) : null}
             {tab === 'ai' ? (d.aiActivity.toolResults.length || d.aiActivity.copilotActions.length ? <ul>
-              {d.aiActivity.toolResults.map((x: any, i: number) => <li key={`t${i}`}>{x.tool} · {x.status}{x.callRef ? ` · ${t('aical.callRef', { ref: x.callRef })}` : ''} · {when(x.at)}</li>)}
-              {d.aiActivity.copilotActions.map((x: any, i: number) => <li key={`c${i}`}>{x.summary ?? x.type} · {x.state} · {when(x.at)}</li>)}</ul> : <div className="aic-muted">{t('aical.noAi')}</div>) : null}
-            {tab === 'holds' ? (d.verificationAndHolds.length ? <ul>{d.verificationAndHolds.map((h: any) => <li key={h.id}>{h.status} · {h.channel ?? '—'}{h.codeWasRequired ? ` · ${t('aical.codeRequired')}` : ''}{h.releasedAt ? ` · ${t('aical.released', { when: when(h.releasedAt) })}` : ''}</li>)}</ul> : <div className="aic-muted">{t('aical.noHolds')}</div>) : null}
+              {d.aiActivity.toolResults.map((x: any, i: number) => <li key={`t${i}`}>{x.tool} · {statusLabel('state', x.status)}{x.callRef ? ` · ${t('aical.callRef', { ref: x.callRef })}` : ''} · {when(x.at)}</li>)}
+              {d.aiActivity.copilotActions.map((x: any, i: number) => <li key={`c${i}`}>{x.summary ?? x.type} · {statusLabel('state', x.state)} · {when(x.at)}</li>)}</ul> : <div className="aic-muted">{t('aical.noAi')}</div>) : null}
+            {tab === 'holds' ? (d.verificationAndHolds.length ? <ul>{d.verificationAndHolds.map((h: any) => <li key={h.id}>{statusLabel('state', h.status)} · {h.channel ?? '—'}{h.codeWasRequired ? ` · ${t('aical.codeRequired')}` : ''}{h.releasedAt ? ` · ${t('aical.released', { when: when(h.releasedAt) })}` : ''}</li>)}</ul> : <div className="aic-muted">{t('aical.noHolds')}</div>) : null}
             {tab === 'comms' ? (d.communications.reminders.length || d.communications.messages.length ? <ul>
-              {d.communications.reminders.map((r: any, i: number) => <li key={`r${i}`}>{t('aical.reminder')} · {r.channel} · {r.state} · {when(r.intendedAt)}</li>)}
-              {d.communications.messages.map((m: any, i: number) => <li key={`m${i}`}>{m.channel} · {m.purpose ?? '—'} · {t(`aical.msg.${m.state}`)} · {when(m.at)}</li>)}</ul> : <div className="aic-muted">{t('aical.none')}</div>) : null}
+              {d.communications.reminders.map((r: any, i: number) => <li key={`r${i}`}>{t('aical.reminder')} · {statusLabel('channel', r.channel)} · {statusLabel('state', r.state)} · {when(r.intendedAt)}</li>)}
+              {d.communications.messages.map((m: any, i: number) => <li key={`m${i}`}>{statusLabel('channel', m.channel)} · {m.purpose ?? '—'} · {t(`aical.msg.${m.state}`)} · {when(m.at)}</li>)}</ul> : <div className="aic-muted">{t('aical.none')}</div>) : null}
             {tab === 'audit' ? (d.auditTrail.length ? <ul>{d.auditTrail.map((a: any, i: number) => <li key={i}>{when(a.at)} · {a.summary ?? a.action}</li>)}</ul> : <div className="aic-muted">{t('aical.none')}</div>) : null}
           </div>
         </>
@@ -320,7 +321,7 @@ function HealthDialog({ r, onClose }: { r: any; onClose: () => void }) {
           {r.checks.map((c: any) => (
             <div key={c.id} className="aic-check-row" data-testid="aic-check" data-state={c.state}>
               <div className="aic-row aic-between"><b>{c.group} · {c.label}</b><span className={`aic-state aic-${STATE_TONE[c.state] ?? 'muted'}`}>{t(`aical.state.${c.state}`)}</span></div>
-              <div>{c.detail}</div><div className="aic-muted">{t('aical.evidence')}: {c.evidence} · {t('aical.sourceLbl')}: {c.source}</div>
+              <div>{c.detail}</div><div className="aic-muted">{t('aical.evidence')}: {c.evidence} · {t('aical.sourceLbl')}: {statusLabel(['source', 'state'], c.source)}</div>
               {c.remedy ? <div className="aic-note">{t('aical.nextStep')}: {c.remedy}</div> : null}
             </div>
           ))}

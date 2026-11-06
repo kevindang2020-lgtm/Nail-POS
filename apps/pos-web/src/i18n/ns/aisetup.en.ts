@@ -193,4 +193,9 @@ export const AISETUP_EN: Record<string, string> = {
   "aiset.preset.week": "This week",
   "aiset.preset.month": "This month",
   "aiset.preset.year": "This year",
+  "aiset.sample.openSunday": "What time are you open Sunday?",
+  "aiset.sample.pedicurePrice": "How much is a pedicure?",
+  "aiset.sample.nailArt": "Who can perform nail art?",
+  "aiset.sample.bookTomorrow": "Can I book tomorrow at 3 PM?",
+  "aiset.sample.cancellation": "What is your cancellation policy?",
 };

@@ -21,6 +21,7 @@ import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
@@ -202,7 +203,7 @@ export function POSAICallsScreen() {
                 <td><button className="btn ghost" onClick={() => nav(`/booking/new?customerId=${encodeURIComponent(c.id)}&from=ai-calls`)}>{t('aic.openBooking')}</button></td></tr>)}</tbody></table>
           ) : scope === 'appointments' ? (
             <table className="tbl aic-tbl"><thead><tr><th>{t('aic.col.customer')}</th><th>{t('aic.col.when')}</th><th>{t('aic.col.status')}</th><th>{t('aic.col.verification')}</th></tr></thead>
-              <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{a.customerName ?? '—'}</td><td>{a.date} {a.startTime}</td><td>{a.status}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table>
+              <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{a.customerName ?? '—'}</td><td>{a.date} {a.startTime}</td><td>{statusLabel(['appointment', 'state'], a.status)}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table>
           ) : (
             <table className="tbl aic-tbl"><thead><tr><th>{t('aic.col.when')}</th><th>{t('aic.col.item')}</th><th>{t('aic.col.detail')}</th></tr></thead>
               <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{when(a.at)}</td><td>{t(`aic.activity.${a.kind}`)}</td><td>{a.detail}</td></tr>)}</tbody></table>
@@ -311,7 +312,7 @@ function CallOverlay({ callRef, canManage, onClose, nav }: { callRef: string; ca
               <div>{d.caller.masked ?? '—'} · {t(`aic.identity.${d.caller.identity}`)}</div><div className="aic-muted">{d.caller.explanation}</div>
               {d.customer ? <div className="aic-block"><b>{d.customer.name}</b> · {d.customer.phoneMasked ?? '—'}
                 {d.customerPermissions ? <div className="aic-muted">{t('aic.perm', { sms: d.customerPermissions.smsMarketing ? t('aic.yes') : t('aic.no'), email: d.customerPermissions.emailMarketing ? t('aic.yes') : t('aic.no') })}</div> : null}</div> : null}
-              {d.appointments.length ? <table className="tbl aic-tbl"><tbody>{d.appointments.map((a: any) => <tr key={a.id}><td>{a.date} {a.startTime}</td><td>{a.status}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table> : null}
+              {d.appointments.length ? <table className="tbl aic-tbl"><tbody>{d.appointments.map((a: any) => <tr key={a.id}><td>{a.date} {a.startTime}</td><td>{statusLabel(['appointment', 'state'], a.status)}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table> : null}
             </div> : null}
             {tab === 'summary' ? <div>
               {c.summary ? <><div className="aic-muted">{t('aic.generated')}</div><p>{c.summary.text}</p></> : <div className="aic-muted">{t('aic.noSummary')}</div>}
@@ -328,17 +329,17 @@ function CallOverlay({ callRef, canManage, onClose, nav }: { callRef: string; ca
             {tab === 'booking' ? <div>
               <div>{t('aic.aiReportedLabel')}: <b>{d.booking.aiReported ?? '—'}</b></div>
               {d.booking.note ? <div className="aic-warn-t" data-testid="aic-booking-note">{d.booking.note}</div> : null}
-              {d.booking.verified.length ? <table className="tbl aic-tbl"><tbody>{d.booking.verified.map((a: any) => <tr key={a.id}><td>{a.date} {a.startTime}</td><td>{a.status}</td>
+              {d.booking.verified.length ? <table className="tbl aic-tbl"><tbody>{d.booking.verified.map((a: any) => <tr key={a.id}><td>{a.date} {a.startTime}</td><td>{statusLabel(['appointment', 'state'], a.status)}</td>
                 <td><Badge tone={a.confirmed ? 'ok' : 'warn'} label={a.confirmed ? t('aic.confirmed') : t('aic.notConfirmed')} /></td></tr>)}</tbody></table> : null}
             </div> : null}
             {tab === 'handoff' ? <div>
               {d.handoffs.length === 0 && d.followUps.length === 0 ? <div className="aic-muted">{t('aic.noHandoff')}</div> : null}
               {d.handoffs.map((h: any) => <div key={h.id} className="aic-block"><Badge tone={h.state === 'completed' ? 'ok' : h.state === 'failed' ? 'bad' : 'warn'} label={t(`aic.hstate.${h.state}`)} /> {h.reason ?? ''} · {when(h.requestedAt)}{h.failureReason ? <div className="aic-muted">{h.failureReason}</div> : null}</div>)}
-              {d.followUps.map((x: any) => <div key={x.id} className="aic-block">{t('aic.followUp')}: {x.status} · {x.reason ?? ''} · {when(x.createdAt)}</div>)}
+              {d.followUps.map((x: any) => <div key={x.id} className="aic-block">{t('aic.followUp')}: {statusLabel('state', x.status)} · {x.reason ?? ''} · {when(x.createdAt)}</div>)}
             </div> : null}
             {tab === 'audit' ? <div>
               <table className="tbl aic-tbl" data-testid="aic-events"><thead><tr><th>{t('aic.col.event')}</th><th>{t('aic.col.when')}</th><th>{t('aic.col.auth')}</th><th>{t('aic.col.result')}</th></tr></thead>
-                <tbody>{d.events.map((e: any, i: number) => <tr key={i}><td>{e.type}</td><td>{when(e.occurredAt ?? e.receivedAt)}</td><td>{t(`aic.auth.${e.auth}`)}</td>
+                <tbody>{d.events.map((e: any, i: number) => <tr key={i}><td>{statusLabel(['callEvent', 'state'], e.type)}</td><td>{when(e.occurredAt ?? e.receivedAt)}</td><td>{t(`aic.auth.${e.auth}`)}</td>
                   <td>{e.disposition}{e.deliveries > 1 ? ` · ${t('aic.deliveries', { n: e.deliveries })}` : ''}{e.failureReason ? ` · ${e.failureReason}` : ''}</td></tr>)}</tbody></table>
               {d.actions.length ? <div className="aic-muted">{t('aic.actionsCount', { n: d.actions.length })}</div> : null}
             </div> : null}

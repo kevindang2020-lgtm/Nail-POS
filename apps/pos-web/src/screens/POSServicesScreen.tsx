@@ -101,7 +101,7 @@ export function POSServicesScreen() {
       const rows: any[] = []; let page = 1, pages = 1;
       do { const r: any = await posCatalogApi.services({ ...svcScope, page, pageSize: 100 }); rows.push(...(r?.items ?? [])); pages = Number(r?.totalPages) || 1; page++; } while (page <= pages && page <= 200);
       const esc = (v: unknown) => { const t = v == null ? '' : String(v); return /[",\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; };
-      const csv = [['Id', 'Name', 'Category', 'Price', 'Duration (min)', 'Status', 'Online booking', 'Location', 'Sold (30 days)', 'Created'].join(','),
+      const csv = [(['id', 'name', 'category', 'price', 'duration', 'status', 'online', 'location', 'sold30', 'created'] as const).map((k) => esc(tx('cg.csv.' + k))).join(','),
         ...rows.map((x) => [x.serviceId, x.name, x.categoryName ?? '', (Number(x.priceCents) / 100).toFixed(2), x.durationMinutes, x.status, x.onlineBookable ? 'yes' : 'no', x.branchName ?? '', x.sold30d, x.createdAt ?? ''].map(esc).join(','))].join('\n');
       saveCsv('services.csv', csv);
       setNote({ tone: 'ok', text: tx('finance.exported') });

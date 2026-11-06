@@ -193,4 +193,9 @@ export const AISETUP_VI: Record<string, string> = {
   "aiset.preset.week": "Tuần này",
   "aiset.preset.month": "Tháng này",
   "aiset.preset.year": "Năm nay",
+  "aiset.sample.openSunday": "Chủ nhật tiệm mở cửa lúc mấy giờ?",
+  "aiset.sample.pedicurePrice": "Làm chân (pedicure) giá bao nhiêu?",
+  "aiset.sample.nailArt": "Thợ nào vẽ móng nghệ thuật được?",
+  "aiset.sample.bookTomorrow": "Tôi đặt lịch 3 giờ chiều mai được không?",
+  "aiset.sample.cancellation": "Chính sách hủy lịch của tiệm thế nào?",
 };

@@ -23,6 +23,7 @@ import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', NOT_CONFIGURED: 'warn', DISABLED: 'muted', UNKNOWN: 'bad', BLOCKED_EXTERNAL: 'muted' };
@@ -259,7 +260,7 @@ export function POSAIReceptionistScreen() {
                 <td><button className="btn ghost" onClick={() => nav(`/booking/new?customerId=${encodeURIComponent(c.id)}&from=ai-receptionist`)}>{t('rcpt.openBooking')}</button></td></tr>)}</tbody></table>
           ) : scope === 'appointments' ? (
             <table className="tbl rcp-tbl"><thead><tr><th>{t('rcpt.col.customer')}</th><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.status')}</th><th>{t('rcpt.col.verification')}</th></tr></thead>
-              <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{a.customerName ?? '—'}</td><td>{a.date} {a.startTime}</td><td>{a.status}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table>
+              <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{a.customerName ?? '—'}</td><td>{a.date} {a.startTime}</td><td>{statusLabel(['appointment', 'state'], a.status)}</td><td>{a.verification ?? '—'}</td></tr>)}</tbody></table>
           ) : (
             <table className="tbl rcp-tbl"><thead><tr><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.item')}</th><th>{t('rcpt.col.detail')}</th></tr></thead>
               <tbody>{list.items.map((a: any) => <tr key={a.id}><td>{when(a.at)}</td><td>{t(`rcpt.activity.${a.kind}`)}</td><td>{a.detail}</td></tr>)}</tbody></table>
@@ -360,9 +361,9 @@ function CallOverlay({ callRef, canManage, onClose, nav, onVerifyTest }: { callR
               <dt>{t('rcpt.ov.transcript')}</dt><dd data-testid="rcp-ov-transcript">{!d.transcript ? t('rcpt.tr.none') : d.transcript.restricted ? t('rcpt.tr.restricted') : <button className="btn ghost" onClick={() => nav(d.transcript.route)}>{t('rcpt.tr.open')}</button>}</dd>
             </dl>
           </section>
-          <section><h3>{t('rcpt.ov.appointments')}</h3>{d.appointments.length ? <ul>{d.appointments.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {a.status}{a.verification ? ` · ${a.verification}` : ''}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}</section>
+          <section><h3>{t('rcpt.ov.appointments')}</h3>{d.appointments.length ? <ul>{d.appointments.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {statusLabel(['appointment', 'state'], a.status)}{a.verification ? ` · ${a.verification}` : ''}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}</section>
           <section><h3>{t('rcpt.ov.handoffs')}</h3>{d.handoffs.length ? <ul>{d.handoffs.map((h: any) => <li key={h.id}>{t(`rcpt.ho.${h.state}`)} · {when(h.requestedAt)}{h.failureReason ? ` · ${h.failureReason}` : ''}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}</section>
-          <section><h3>{t('rcpt.ov.followUps')}</h3>{d.followUps.length ? <ul>{d.followUps.map((x: any) => <li key={x.id}>{x.reason} · {x.status} · {when(x.createdAt)}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}</section>
+          <section><h3>{t('rcpt.ov.followUps')}</h3>{d.followUps.length ? <ul>{d.followUps.map((x: any) => <li key={x.id}>{x.reason} · {statusLabel('state', x.status)} · {when(x.createdAt)}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}</section>
           <section><h3>{t('rcpt.ov.actions')}</h3>{d.actions.length ? <ul>{d.actions.map((a: any) => <li key={a.id}>{t(`rcpt.action.${a.status}`)} · {when(a.createdAt)}</li>)}</ul> : <div className="rcp-muted">{t('rcpt.none')}</div>}
             {c.toolCalls?.length ? <div className="rcp-muted">{t('rcpt.tools', { list: c.toolCalls.map((x: any) => `${x.name}${x.ok ? '' : ' ✗'}`).join(', ') })}</div> : null}</section>
           <section><h3>{t('rcpt.ov.messages')}</h3><div className="rcp-muted">{t('rcpt.messagesNote')}</div></section>

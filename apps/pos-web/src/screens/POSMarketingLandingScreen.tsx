@@ -27,6 +27,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 type Section<T> = { data: T | null; failed: boolean };
 const pending = <T,>(): Section<T> => ({ data: null, failed: false });
@@ -318,7 +319,7 @@ function CheckDetail({ s }: { s: any }) {
       {s.defects.length ? (
         <table className="tbl mg-dtbl"><thead><tr><th>{tx('mg.checks.details')}</th><th>{tx('mg.checks.amount')}</th><th>{tx('mg.checks.source')}</th><th>{tx('mg.checks.owner')}</th><th>{tx('mg.checks.remediation')}</th></tr></thead>
           <tbody>{s.defects.map((d: any) => (
-            <tr key={d.code} data-testid={'mg-defect-' + d.code}><td>{d.detail}</td><td>{d.amount == null ? '—' : d.unit === 'cents' ? fmtMoney(d.amount) : `${fmtNumber(d.amount)} ${d.unit}`}</td><td className="fk-muted">{d.source}</td><td>{d.owner}</td><td>{d.remediation}</td></tr>
+            <tr key={d.code} data-testid={'mg-defect-' + d.code}><td>{d.detail}</td><td>{d.amount == null ? '—' : d.unit === 'cents' ? fmtMoney(d.amount) : `${fmtNumber(d.amount)} ${d.unit}`}</td><td className="fk-muted">{statusLabel(['source', 'state'], d.source)}</td><td>{d.owner}</td><td>{d.remediation}</td></tr>
           ))}</tbody></table>
       ) : null}
     </div>
@@ -416,7 +417,7 @@ function JourneyDialog({ id, onClose, nav }: { id: string; onClose: () => void; 
           <ul className="mg-tl-list" data-testid="mg-j-timeline">{d.timeline.items.map((r: any) => (
             <li key={r.id}><span className="fk-muted">{when(r.at)}</span> <b>{tx('mg.act.type.' + r.type)}</b> {r.title} <span className="fk-muted">{r.detail ?? ''}</span>
               {r.amountCents != null ? <span> · {fmtMoney(r.amountCents)}</span> : r.points != null ? <span> · {tx('mg.act.points', { n: fmtNumber(r.points) })}</span> : null}
-              <span className="fk-muted mg-src"> · {r.source}</span></li>
+              <span className="fk-muted mg-src"> · {statusLabel(['source', 'state'], r.source)}</span></li>
           ))}</ul>
         )}
         <Pager compact info={d.timeline.pagination} onPage={setPage} />

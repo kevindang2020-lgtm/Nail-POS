@@ -25,6 +25,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 type Seg = 'new' | 'returning' | 'vip' | 'never' | 'inactive' | 'all';
 const TABS: Seg[] = ['new', 'returning', 'vip', 'never', 'inactive', 'all'];
@@ -292,16 +293,16 @@ function CustomerDialog({ id, onClose, book, openProfile, openComms }: { id: str
             <p className="fk-hint">{tx('sg.ov.masked')}</p>
           </>) : null}
           {tab === 'visits' ? (d.visits.length ? <ul className="sg-list">{d.visits.map((v: any) => <li key={v.ticketId}>{whenTime(v.at)} · #{v.ticketNumber ?? '—'} · {fmtMoney(v.totalCents)} · {v.services || '—'}</li>)}</ul> : none) : null}
-          {tab === 'appointments' ? (d.appointments.length ? <ul className="sg-list">{d.appointments.map((a: any) => <li key={a.appointmentId}>{a.date ?? '—'} {a.startTime ?? ''} · {a.status}</li>)}</ul> : none) : null}
+          {tab === 'appointments' ? (d.appointments.length ? <ul className="sg-list">{d.appointments.map((a: any) => <li key={a.appointmentId}>{a.date ?? '—'} {a.startTime ?? ''} · {statusLabel(['appointment', 'state'], a.status)}</li>)}</ul> : none) : null}
           {tab === 'spending' ? (<>
             <p className="rt-p">{fmtMoney(d.facts.lifetimeSpendCents)} — {tx('sg.spendDef')}</p>
-            {d.refunds.length ? <ul className="sg-list">{d.refunds.map((r: any) => <li key={r.refundId}>{whenTime(r.at)} · #{r.ticketNumber ?? '—'} · −{fmtMoney(r.amountCents)} · {r.status}</li>)}</ul> : none}
+            {d.refunds.length ? <ul className="sg-list">{d.refunds.map((r: any) => <li key={r.refundId}>{whenTime(r.at)} · #{r.ticketNumber ?? '—'} · −{fmtMoney(r.amountCents)} · {statusLabel('refund', r.status)}</li>)}</ul> : none}
           </>) : null}
-          {tab === 'loyalty' ? <p className="rt-p">{tx('sg.ov.points', { n: nf(d.loyalty.pointsBalance), tier: d.loyalty.tier })}{d.vipSince ? ` · VIP ${when(d.vipSince)}` : ''}</p> : null}
+          {tab === 'loyalty' ? <p className="rt-p">{tx('sg.ov.points', { n: nf(d.loyalty.pointsBalance), tier: d.loyalty.tier })}{d.vipSince ? ' · ' + tx('px.vipSince', { when: when(d.vipSince) }) : ''}</p> : null}
           {tab === 'qualification' ? <Qualification d={d} /> : null}
           {tab === 'marketing' ? (d.marketingHistory.retentionOutreach.length || d.marketingHistory.audienceDrafts.length ? <ul className="sg-list">
-            {d.marketingHistory.retentionOutreach.map((o: any, i: number) => <li key={'o' + i}>{whenTime(o.at)} · {o.label ?? tx('pos.customer_retention')} · {o.status}</li>)}
-            {d.marketingHistory.audienceDrafts.map((a: any) => <li key={a.draftId}>{whenTime(a.at)} · {a.channel.toUpperCase()} · {segLabel(a.segment)} · {reasonLabel(a.eligibility)} · {a.status}</li>)}
+            {d.marketingHistory.retentionOutreach.map((o: any, i: number) => <li key={'o' + i}>{whenTime(o.at)} · {o.label ?? tx('pos.customer_retention')} · {statusLabel('state', o.status)}</li>)}
+            {d.marketingHistory.audienceDrafts.map((a: any) => <li key={a.draftId}>{whenTime(a.at)} · {a.channel.toUpperCase()} · {segLabel(a.segment)} · {reasonLabel(a.eligibility)} · {statusLabel('state', a.status)}</li>)}
           </ul> : none) : null}
           {tab === 'contact' ? (<ul className="sg-list">
             <li>{tx('sg.ov.smsConsent')}: {d.preferences.smsMarketingConsent ? tx('sg.ov.yes') : tx('sg.ov.no')}{d.preferences.smsOptedOut ? ` · ${tx('sg.ov.optedOut')}` : ''}</li>
@@ -355,7 +356,7 @@ function AudienceDialog({ onClose, query, seg, pageRows, selected, total, canCam
       {err ? <div className="err">{err}</div> : null}
       {!draft ? (
         <div className="sg-form">
-          <label>{tx('sg.aud.channel')} <select className="fk-select" value={channel} onChange={(e) => setChannel(e.target.value as 'sms' | 'email')} data-testid="sg-aud-channel"><option value="sms">SMS</option><option value="email">Email</option></select></label>
+          <label>{tx('sg.aud.channel')} <select className="fk-select" value={channel} onChange={(e) => setChannel(e.target.value as 'sms' | 'email')} data-testid="sg-aud-channel"><option value="sms">{tx('px.ch.sms')}</option><option value="email">{tx('pos.email')}</option></select></label>
           <label>{tx('sg.aud.purpose')} <select className="fk-select" value={purpose} onChange={(e) => setPurpose(e.target.value as 'general' | 'win_back')}><option value="general">{tx('sg.aud.general')}</option><option value="win_back">{tx('sg.aud.winback')}</option></select></label>
           <fieldset className="sg-scope"><legend>{tx('sg.aud.scope')}</legend>
             <label><input type="radio" name="sg-mode" checked={mode === 'page'} onChange={() => setMode('page')} /> {tx('sg.aud.page', { n: nf(pageRows.length) })}</label>
@@ -366,7 +367,7 @@ function AudienceDialog({ onClose, query, seg, pageRows, selected, total, canCam
         </div>
       ) : (
         <div data-testid="sg-aud-result">
-          <p className="rt-p"><b>{tx('sg.aud.result', { e: nf(draft.eligible), s: nf(draft.selected), x: nf(draft.excluded) })}</b> · {draft.channel.toUpperCase()} · {draft.status}</p>
+          <p className="rt-p"><b>{tx('sg.aud.result', { e: nf(draft.eligible), s: nf(draft.selected), x: nf(draft.excluded) })}</b> · {draft.channel.toUpperCase()} · {statusLabel('state', draft.status)}</p>
           {Object.keys(draft.excludedReasons || {}).length ? <ul className="sg-list">{Object.entries(draft.excludedReasons).map(([k, v]) => <li key={k}>{reasonLabel(k)}: {nf(Number(v))}</li>)}</ul> : null}
           {draft.channel === 'sms' && draft.messagePreview ? <p className="fk-hint">{draft.estimatedCostCents == null ? tx('sg.aud.costUnknown') : tx('sg.aud.cost', { c: fmtMoney(draft.estimatedCostCents) })}</p> : null}
           {draft.campaignId ? <p className="fk-note ok">{tx('sg.aud.linked')}</p> : null}

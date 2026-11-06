@@ -331,4 +331,7 @@ export const FINANCE_EN = {
   "finance.st.invKind.duplicate": "Looks like a duplicate",
   "finance.st.invKind.integration_error": "Processor data problem",
   "finance.st.source.stale": "The processor feed has sent nothing for over 3 days — the figures below may be out of date. Check the payment gateway connection.",
+  // moved from the frozen catalog.en.ts (Nov 6 2026) — keys unchanged
+  'pos.cash_drawer_register': 'Register',
+  'pos.cash_drawer_unassigned': 'Cash with no register',
 };

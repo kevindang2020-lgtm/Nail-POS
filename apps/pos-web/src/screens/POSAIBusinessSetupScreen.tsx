@@ -22,7 +22,8 @@ const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Paramet
 const STATUS_TONE: Record<string, string> = { READY: 'ok', NEEDS_SETUP: 'warn', STALE: 'warn', FAILED: 'bad', DISABLED: 'muted', UNKNOWN: 'bad' };
 const FAQ_STATUS = ['draft', 'pending_review', 'approved', 'needs_review', 'archived'] as const;
 const SCOPES = ['faqs', 'services', 'technicians', 'tests', 'history'] as const;
-const SAMPLES = ['What time are you open Sunday?', 'How much is a pedicure?', 'Who can perform nail art?', 'Can I book tomorrow at 3 PM?', 'What is your cancellation policy?'];
+// the sample test questions, read at render in the POS language (the AI answers in the language it is asked)
+const SAMPLE_KEYS = ['openSunday', 'pedicurePrice', 'nailArt', 'bookTomorrow', 'cancellation'] as const;
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; };   // the device's day, not UTC
 
 function StatusBadge({ s }: { s: string }) { return <span className={`ais-badge ais-${STATUS_TONE[s] ?? 'muted'}`} data-testid={`ais-status-${s}`}>{t(`aiset.status.${s}`)}</span>; }
@@ -292,7 +293,7 @@ function PreviewDialog({ onClose }: { onClose: () => void }) {
   const ask = async (question: string) => { setBusy(true); setErr(null); setQ(question); try { setR(await posAiBusinessSetupApi.preview(question)); } catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); } };
   return (
     <FitDialog title={t('aiset.preview')} subtitle={t('aiset.previewSub')} onClose={onClose} wide busy={busy} testId="ais-preview-dialog" footer={<button className="btn ghost" onClick={onClose}>{t('aiset.close')}</button>}>
-      <div className="ais-samples">{SAMPLES.map((s) => <button key={s} className="btn ghost" onClick={() => ask(s)}>{s}</button>)}</div>
+      <div className="ais-samples">{SAMPLE_KEYS.map((k) => { const s = t('aiset.sample.' + k); return <button key={k} className="btn ghost" onClick={() => ask(s)}>{s}</button>; })}</div>
       <div className="ais-ask"><input value={q} maxLength={300} placeholder={t('aiset.previewPh')} onChange={(e) => setQ(e.target.value)} data-testid="ais-preview-q" /><button className="btn" disabled={busy || !q.trim()} onClick={() => ask(q)} data-testid="ais-preview-ask">{t('aiset.ask')}</button></div>
       {err ? <div className="err" role="alert">{err}</div> : null}
       {r ? (

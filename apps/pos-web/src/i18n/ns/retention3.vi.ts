@@ -100,5 +100,5 @@ export const RETENTION3_VI = {
   'rt5.noteSave': 'Lưu ghi chú',
   'rt5.template': 'Bắt đầu từ mẫu tin',
   'rt5.templateNone': '— Tự viết —',
-  'rt5.placeholders': 'Hãy thay các {chỗ trống} bằng chữ thật — chiến dịch gửi cùng một nội dung cho mọi khách.',
+  'rt5.placeholders': 'Hãy thay các chỗ trống trong dấu ngoặc nhọn bằng chữ thật — chiến dịch gửi cùng một nội dung cho mọi khách.',
 };

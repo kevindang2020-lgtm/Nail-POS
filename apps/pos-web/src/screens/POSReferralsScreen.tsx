@@ -16,6 +16,7 @@ import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const TABS = ['all', 'pending', 'qualified', 'review', 'approved', 'issued', 'rejected', 'reversed'] as const;
 const PRESETS = ['today', 'week', 'month', 'year'] as const;
@@ -25,7 +26,7 @@ const SIZES = [10, 20, 50];
 const GOALS = ['first_time_customers', 'existing_refer_friends', 'low_demand_weekdays', 'review_performance'] as const;
 const nf = (n: number | null | undefined) => (n == null ? '—' : fmtNumber(n));
 const when = (v: string | null | undefined) => (v ? fmtInZone(v, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : null);
-const stLabel = (s: string | null | undefined) => (s ? (tx('rfp.state.' + s) !== 'rfp.state.' + s ? tx('rfp.state.' + s) : s.replace(/_/g, ' ').toLowerCase()) : '—');
+const stLabel = (s: string | null | undefined) => (s ? (tx('rfp.state.' + s) !== 'rfp.state.' + s ? tx('rfp.state.' + s) : statusLabel('state', s)) : '—');
 const tone = (s: string) => (['REWARD_ISSUED', 'ISSUED', 'APPROVED', 'QUALIFIED'].includes(s) ? 'ok' : ['UNDER_REVIEW', 'REWARD_PENDING_APPROVAL', 'PENDING_APPROVAL', 'BLOCKED_EXTERNAL', 'FAILED'].includes(s) ? 'warn' : ['REJECTED', 'REVERSED', 'EXPIRED', 'CANCELLED'].includes(s) ? 'mut' : '');
 const rewardText = (r: any) => (!r ? '—' : r.type === 'loyalty_points' ? tx('rfp.reward.points', { n: nf(r.points) }) : tx('rfp.reward.cash', { amount: fmtMoney(r.amountCents) }));
 
@@ -304,11 +305,11 @@ function ReferralDialog({ id, canManage, onClose, onChanged, onBook, onProfile }
             <dt>{tx('rfp.f.customerId')}</dt><dd><code>{d.referrerProfile.customerId}</code></dd><dt>{tx('rfp.f.prior')}</dt><dd>{tx('rfp.f.priorValue', { n: nf(d.referrerProfile.priorReferrals), r: nf(d.referrerProfile.priorRewarded) })}</dd></dl> : null}
           {tab === 'referred' ? (d.referredProfile ? <dl className="rfp-dl"><dt>{tx('rfp.f.name')}</dt><dd>{d.referredProfile.name}</dd><dt>{tx('rfp.f.phone')}</dt><dd>{d.referredProfile.phone ?? '—'}</dd><dt>{tx('rfp.f.email')}</dt><dd>{d.referredProfile.email ?? '—'}</dd>
             <dt>{tx('rfp.f.visits')}</dt><dd>{nf(d.referredProfile.completedVisits)}{d.referredProfile.firstVisitAt ? ' · ' + when(d.referredProfile.firstVisitAt) : ''}</dd>
-            <dt>{tx('rfp.f.consent')}</dt><dd>SMS {d.referredProfile.consent.sms ? '✓' : '✕'} · Email {d.referredProfile.consent.email ? '✓' : '✕'}</dd>
-            <dt>{tx('rfp.f.bookings')}</dt><dd>{d.referredProfile.appointments.length ? d.referredProfile.appointments.map((a: any) => <div key={a.id}>{a.date} {a.startTime} · {a.status}</div>) : '—'}</dd></dl> : <Empty title="—" />) : null}
+            <dt>{tx('rfp.f.consent')}</dt><dd>{tx('px.ch.consent', { sms: d.referredProfile.consent.sms ? '✓' : '✕', email: d.referredProfile.consent.email ? '✓' : '✕' })}</dd>
+            <dt>{tx('rfp.f.bookings')}</dt><dd>{d.referredProfile.appointments.length ? d.referredProfile.appointments.map((a: any) => <div key={a.id}>{a.date} {a.startTime} · {statusLabel(['appointment', 'state'], a.status)}</div>) : '—'}</dd></dl> : <Empty title="—" />) : null}
           {tab === 'visit' ? (d.visit ? <dl className="rfp-dl" data-testid="rfp-visit"><dt>{tx('rfp.f.ticket')}</dt><dd>{d.visit.number ? '#' + d.visit.number : d.visit.ticketId}</dd><dt>{tx('rfp.f.paid')}</dt><dd>{fmtMoney(d.visit.totalCents)} · {when(d.visit.paidAt)}</dd>
-            <dt>{tx('rfp.f.payments')}</dt><dd>{d.visit.payments.map((p: any, i: number) => <div key={i}>{p.method} {fmtMoney(p.amountCents)} · {p.status}{p.cardLast4 ? ' · ••' + p.cardLast4 : ''}</div>)}</dd>
-            <dt>{tx('rfp.f.refunds')}</dt><dd>{d.visit.refunds.length ? d.visit.refunds.map((r: any, i: number) => <div key={i}>{fmtMoney(r.amountCents)} · {r.status}</div>) : '—'}</dd></dl> : <Empty title={tx('rfp.noVisitLong')} />) : null}
+            <dt>{tx('rfp.f.payments')}</dt><dd>{d.visit.payments.map((p: any, i: number) => <div key={i}>{statusLabel('paymentMethod', p.method)} {fmtMoney(p.amountCents)} · {statusLabel(['payment', 'state'], p.status)}{p.cardLast4 ? ' · ••' + p.cardLast4 : ''}</div>)}</dd>
+            <dt>{tx('rfp.f.refunds')}</dt><dd>{d.visit.refunds.length ? d.visit.refunds.map((r: any, i: number) => <div key={i}>{fmtMoney(r.amountCents)} · {statusLabel('refund', r.status)}</div>) : '—'}</dd></dl> : <Empty title={tx('rfp.noVisitLong')} />) : null}
           {tab === 'reward' ? (w ? <dl className="rfp-dl" data-testid="rfp-reward"><dt>{tx('rfp.f.reward')}</dt><dd>{rewardText(w)}</dd><dt>{tx('rfp.f.disposition')}</dt><dd><span className={'fk-chip ' + tone(w.state)}>{tx('rfp.disp.' + w.disposition)}</span></dd>
             <dt>{tx('rfp.f.requested')}</dt><dd>{when(w.requestedAt)}</dd><dt>{tx('rfp.f.decided')}</dt><dd>{when(w.decidedAt) ?? '—'}{w.decisionReason ? ' · ' + w.decisionReason : ''}</dd>
             <dt>{tx('rfp.f.issued')}</dt><dd>{when(w.issuedAt) ?? '—'}</dd><dt>{tx('rfp.f.ledger')}</dt><dd>{w.ledger ? tx('rfp.f.ledgerValue', { delta: nf(w.ledger.delta), bal: nf(w.ledger.balanceAfter) }) : '—'}</dd>
@@ -438,14 +439,14 @@ function AssistantDialog({ onClose, onOpenCampaigns }: { onClose: () => void; on
       <div className="fk-hint">{tx('rfp.asst.guard')}</div>
       <div className="rfp-asst-form">
         <label className="fk-field"><span>{tx('rfp.asst.goal')}</span><select className="fk-select" value={goal} onChange={(e) => { setGoal(e.target.value); setPlan(null); }} data-testid="rfp-asst-goal">{GOALS.map((g) => <option key={g} value={g}>{tx('rfp.goal.' + g)}</option>)}</select></label>
-        <label className="fk-field"><span>{tx('rfp.asst.channel')}</span><select className="fk-select" value={channel} onChange={(e) => { setChannel(e.target.value === 'email' ? 'email' : 'sms'); setPlan(null); }}><option value="sms">SMS</option><option value="email">Email</option></select></label>
+        <label className="fk-field"><span>{tx('rfp.asst.channel')}</span><select className="fk-select" value={channel} onChange={(e) => { setChannel(e.target.value === 'email' ? 'email' : 'sms'); setPlan(null); }}><option value="sms">{tx('px.ch.sms')}</option><option value="email">{tx('pos.email')}</option></select></label>
       </div>
       {plan ? <div className="rfp-asst-plan" data-testid="rfp-asst-plan">
         <dl className="rfp-dl"><dt>{tx('rfp.perf.recorded')}</dt><dd>{nf(plan.metrics.referralsRecorded)}</dd><dt>{tx('rfp.perf.qualified')}</dt><dd>{nf(plan.metrics.qualifiedVisits)}</dd>
           <dt>{tx('rfp.perf.issued')}</dt><dd>{nf(plan.metrics.rewardsIssued)}</dd><dt>{tx('rfp.perf.revenue')}</dt><dd>{fmtMoney(plan.metrics.associatedRevenueCents)}</dd>
           <dt>{tx('rfp.asst.invites')}</dt><dd>{plan.metrics.invitationsSent ?? tx('rfp.asst.notMeasured')}</dd></dl>
         {plan.audience ? <div data-testid="rfp-asst-audience">{tx('rfp.asst.audience', { sel: nf(plan.audience.selected), elig: nf(plan.audience.eligible), exc: nf(plan.audience.excluded) })}
-          {Object.keys(plan.audience.excludedReasons).length ? <div className="fk-muted">{Object.entries(plan.audience.excludedReasons).map(([k2, v]) => `${k2.replace(/_/g, ' ')}: ${v}`).join(' · ')}</div> : null}</div> : null}
+          {Object.keys(plan.audience.excludedReasons).length ? <div className="fk-muted">{Object.entries(plan.audience.excludedReasons).map(([k2, v]) => `${statusLabel('state', k2)}: ${v}`).join(' · ')}</div> : null}</div> : null}
         {plan.proposal ? <><div className="rfp-asst-msg"><b>{tx('rfp.asst.message')}</b><p>{plan.proposal.message}</p></div><div className="fk-muted">{plan.liability?.note}</div><div className="fk-muted">{plan.estimate?.note}</div></> : null}
         <div className="fk-hint">{plan.guard}</div>
       </div> : null}

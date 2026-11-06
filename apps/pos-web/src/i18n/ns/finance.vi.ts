@@ -328,4 +328,7 @@ export const FINANCE_VI: Record<string, string> = {
   "finance.st.invKind.duplicate": "Có vẻ bị trùng",
   "finance.st.invKind.integration_error": "Lỗi dữ liệu từ bộ xử lý",
   "finance.st.source.stale": "Bộ xử lý thanh toán không gửi dữ liệu hơn 3 ngày — các số liệu bên dưới có thể đã cũ. Hãy kiểm tra kết nối cổng thanh toán.",
+  // moved from the frozen catalog.vi.ts (Nov 6 2026) — keys unchanged
+  'pos.cash_drawer_register': 'Quầy',
+  'pos.cash_drawer_unassigned': 'Tiền mặt chưa gán quầy',
 };

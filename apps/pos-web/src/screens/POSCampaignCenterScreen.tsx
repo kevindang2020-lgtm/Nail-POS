@@ -21,6 +21,8 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
+// the message-template variables the server fills (code tokens, the same in every language)
+const CC_TOKENS = ['salon_name', 'offer'].map((n) => `{${n}}`);
 
 const SIZES = [10, 20, 50] as const;
 const STATUSES = ['draft', 'awaiting_approval', 'approved', 'scheduled', 'sending', 'completed', 'cancelled'] as const;
@@ -380,7 +382,7 @@ function WizardDialog({ id: initialId, defaultChannel, onClose }: { id?: string;
       {step === 'content' ? <div className="cc-form">
         {f.channel === 'email' ? <label>{tx('cc.subject')}<input className="fk-input" value={f.emailSubject} onChange={(e) => setF({ ...f, emailSubject: e.target.value })} data-testid="cc-w-subject" /></label> : null}
         <label>{tx('cc.w.message')}<textarea className="fk-input" rows={4} maxLength={1600} value={f.messageBody} onChange={(e) => setF({ ...f, messageBody: e.target.value })} data-testid="cc-w-message" /></label>
-        <div className="cc-vars">{tx('cc.w.variables')} {['{salon_name}', '{offer}'].map((v) => <button type="button" key={v} className="fk-chip" onClick={() => setF({ ...f, messageBody: (f.messageBody + ' ' + v).trim() })}>{v}</button>)}</div>
+        <div className="cc-vars">{tx('cc.w.variables')} {CC_TOKENS.map((v) => <button type="button" key={v} className="fk-chip" onClick={() => setF({ ...f, messageBody: (f.messageBody + ' ' + v).trim() })}>{v}</button>)}</div>
         {pv ? <div className="fk-hint">{tx('cc.w.previewHint')} <b data-testid="cc-w-preview">{pv.asSent}</b></div> : null}
         {pv?.unknownVariables?.length ? <div className="fk-note warn">{tx('cc.w.unknownVars', { v: pv.unknownVariables.join(', ') })}</div> : null}
       </div> : null}

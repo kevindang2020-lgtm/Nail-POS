@@ -15,6 +15,7 @@ import { posEmailCenterApi, type EmSettings, type EmSummary, type EmHealth, type
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
 import { reportError } from './reportsCommon';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const SIZES = [10, 20, 50] as const;
 const STATUSES: EmStatus[] = ['accepted', 'delivered', 'failed', 'bounced', 'blocked', 'suppressed', 'simulated'];
@@ -203,7 +204,7 @@ export function POSEmailScreen() {
           </dl>
           {detail.body != null ? <><h4>{t('emc.d.body')}</h4><pre className="emc-body" data-testid="emc-d-body">{detail.body}</pre></> : null}
           <h4>{t('emc.d.events')}</h4>
-          {detail.events.length ? <ul className="emc-events" data-testid="emc-d-events">{detail.events.map((e, i) => <li key={i}>{at(e.at, tz)} · {e.status}{e.verified ? ` · ${t('emc.d.verified')}` : ''}{e.applied ? ` · ${t('emc.d.applied')}` : ''}</li>)}</ul>
+          {detail.events.length ? <ul className="emc-events" data-testid="emc-d-events">{detail.events.map((e, i) => <li key={i}>{at(e.at, tz)} · {statusLabel('state', e.status)}{e.verified ? ` · ${t('emc.d.verified')}` : ''}{e.applied ? ` · ${t('emc.d.applied')}` : ''}</li>)}</ul>
             : <div className="sub" data-testid="emc-d-noevents">{t('emc.d.noEvents')}</div>}
           <h4>{t('emc.d.attempts')}</h4>
           <ol className="emc-events" data-testid="emc-d-attempts">{detail.attempts.map((a) => <li key={a.id} className={a.isThis ? 'emc-strong' : ''}>{at(a.at, tz)} · {t('emc.st.' + a.status)}{a.reason ? ` — ${a.reason}` : ''}</li>)}</ol>

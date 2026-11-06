@@ -636,3 +636,18 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
 - **Gate run now:** 74 pass; 5 red — `check:api-contract` (known wire-type ratchet, 845 routes), and POS i18n (`i18n`,
   `pos-i18n`, `inert controls`): 17 English strings not behind `t()`, 20 screens with untranslated label maps, 20 keys
   added to the frozen catalogue, one EN/VI placeholder mismatch, one no-op handler on the Deals screen. Next unit.
+
+### POS Vietnamese gate repair (Nov 6 2026, night)
+
+- `pos-i18n`, `i18n`, `inert controls` → green. 17 English strings put behind `t()` (channel names, consent line, example
+  values, a service line, aria labels); 20 keys of mine moved out of the frozen catalogue into their namespaces (keys
+  unchanged); the retention placeholder text no longer uses braces; 44 raw status / channel / source codes on 18 screens
+  now show `statusLabel(domain, code)` — new shared domains `status.state.*` (75 lifecycle states), `status.channel.*`,
+  `status.provider.*`, `status.callEvent.*`; the Review System check's "next step" now carries a code from the server and
+  the POS shows its own EN / VI text; AI setup sample questions and the services CSV headers are in the POS language.
+  Deals: a date-basis select with one option and a no-op handler is now shown as plain text.
+- **For Kevin's review (new Vietnamese):** `ns/posfix.vi.ts`, the `status.state.*` / `status.channel.*` /
+  `status.provider.*` / `status.callEvent.*` block at the end of `ns/status.vi.ts`, `rvw.health.a.*` in `ns/reviews.vi.ts`,
+  `aiset.sample.*` in `ns/aisetup.vi.ts`, `cg.csv.*` in `ns/catalogscreens.vi.ts`.
+- Not covered: the review check's evidence lines are still English sentences from the server (numbers inside); codes a
+  screen meets that no domain lists fall back to the humanised English code.

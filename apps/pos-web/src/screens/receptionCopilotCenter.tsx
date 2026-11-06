@@ -14,6 +14,7 @@ import { errorTextOf } from '../i18n/error-text';
 import { fmtDateTime } from '../i18n/format';
 import { FitDialog, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
+import { statusLabel } from '../i18n/status-label';   // the code stays the truth; only its label is translated
 
 const when = (v?: string | null) => (v ? fmtDateTime(v) : '—');
 // the device's day (Nov 3 audit: the UTC date marked tomorrow every US evening)
@@ -26,7 +27,7 @@ function KV({ obj }: { obj: Record<string, unknown> | null }) {
   const rows = Object.entries(obj).filter(([, v]) => v !== null && v !== undefined && v !== '' && !(Array.isArray(v) && !v.length));
   return (
     <dl className="rcc-kv">{rows.map(([k, v]) => (
-      <div key={k}><dt>{t(`rcc.f.${k}`)}</dt><dd>{Array.isArray(v) ? v.map((x: any) => (typeof x === 'object' ? `${x.name} (${x.minutes} min, $${(Number(x.priceCents) / 100).toFixed(2)})` : String(x))).join(', ')
+      <div key={k}><dt>{t(`rcc.f.${k}`)}</dt><dd>{Array.isArray(v) ? v.map((x: any) => (typeof x === 'object' ? t('px.svcLine', { name: x.name, minutes: x.minutes, price: '$' + (Number(x.priceCents) / 100).toFixed(2) }) : String(x))).join(', ')
         : k.toLowerCase().includes('cents') ? `$${(Number(v) / 100).toFixed(2)}` : typeof v === 'boolean' ? (v ? t('rcc.yes') : t('rcc.no')) : String(v)}</dd></div>
     ))}</dl>
   );
@@ -213,7 +214,7 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
           <tr key={x.id}>
             {scope === 'customers' ? <><td><b>{x.name}</b>{x.sharedPhoneProfiles ? <div className="rcc-warn">{t('rcc.sharedPhone', { n: x.sharedPhoneProfiles })}</div> : null}</td><td>{x.phone ?? '—'}</td><td>{x.email ?? '—'}</td>
               <td><button className="btn ghost" onClick={() => onOpen(x.id)} data-testid="rcc-open-customer">{t('rcc.openActivity')}</button></td></>
-            : scope === 'appointments' ? <><td><b>{x.customer}</b><div className="rcc-muted"><code>{x.id}</code></div></td><td>{x.date} {x.startTime}</td><td>{x.technician ?? '—'}</td><td>{x.status}</td></>
+            : scope === 'appointments' ? <><td><b>{x.customer}</b><div className="rcc-muted"><code>{x.id}</code></div></td><td>{x.date} {x.startTime}</td><td>{x.technician ?? '—'}</td><td>{statusLabel(['appointment', 'state'], x.status)}</td></>
             : scope === 'technicians' ? <><td><b>{x.name}</b></td><td><code>{x.id}</code></td><td>{x.active ? t('rcc.active') : t('rcc.inactive')}</td></>
             : scope === 'calls' ? <><td><code>{x.providerRef ?? x.id}</code></td><td>{when(x.at)}</td><td>{x.booking ?? '—'}</td><td>{x.followUp ? t('rcc.followUp') : ''}</td></>
             : <><td>{when(x.at)}</td><td>{x.summary}</td><td><Badge s={x.state} /></td></>}
@@ -282,9 +283,9 @@ export function CustomerActivityOverlay({ customerId, onClose, nav }: { customer
           <div className="rcc-tabs" role="tablist">{OV_TABS.map((k) => <button key={k} role="tab" aria-selected={tab === k} className={tab === k ? 'on' : ''} onClick={() => setTab(k)} data-testid={`rcc-ov-tab-${k}`}>{t(`rcc.ov.${k}`)}</button>)}</div>
           {tab === 'overview' ? <><KV obj={{ phone: d.overview.phone, phoneVerified: d.overview.phoneVerified, email: d.overview.email, customerSince: when(d.overview.customerSince) }} />
             {d.overview.sharedPhoneProfiles ? <div className="rcc-warn">{t('rcc.sharedPhone', { n: d.overview.sharedPhoneProfiles })}</div> : null}</> : null}
-          {tab === 'appointments' ? <><div className="rcc-sub">{t('rcc.upcomingAppts')}</div>{d.appointments.upcoming.length ? <ul className="rcc-list">{d.appointments.upcoming.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {a.status}</li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}
-            <div className="rcc-sub">{t('rcc.pastAppts')}</div>{d.appointments.past.length ? <ul className="rcc-list">{d.appointments.past.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {a.status}</li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}</> : null}
-          {tab === 'messages' ? <>{d.messages.length ? <ul className="rcc-list">{d.messages.map((m: any) => <li key={m.id}>{when(m.at)} · {m.channel} <Badge s={m.state} /></li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}<div className="rcc-note">{d.calls.note}</div></> : null}
+          {tab === 'appointments' ? <><div className="rcc-sub">{t('rcc.upcomingAppts')}</div>{d.appointments.upcoming.length ? <ul className="rcc-list">{d.appointments.upcoming.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {statusLabel(['appointment', 'state'], a.status)}</li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}
+            <div className="rcc-sub">{t('rcc.pastAppts')}</div>{d.appointments.past.length ? <ul className="rcc-list">{d.appointments.past.map((a: any) => <li key={a.id}>{a.date} {a.startTime} · {statusLabel(['appointment', 'state'], a.status)}</li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}</> : null}
+          {tab === 'messages' ? <>{d.messages.length ? <ul className="rcc-list">{d.messages.map((m: any) => <li key={m.id}>{when(m.at)} · {statusLabel('channel', m.channel)} <Badge s={m.state} /></li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>}<div className="rcc-note">{d.calls.note}</div></> : null}
           {tab === 'actions' ? (d.copilotActions.length ? <ul className="rcc-list">{d.copilotActions.map((a: any) => <li key={a.id}>{when(a.at)} · {a.summary} <Badge s={a.state} /></li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>) : null}
           {tab === 'consent' ? <KV obj={{ marketingSms: d.consent.marketingSms, marketingEmail: d.consent.marketingEmail, smsOptOut: d.consent.smsOptOut ? when(d.consent.smsOptOut.at) : t('rcc.no') }} /> : null}
           {tab === 'audit' ? (d.audit.length ? <ul className="rcc-list">{d.audit.map((a: any, i: number) => <li key={i}>{when(a.at)} · {a.summary}</li>)}</ul> : <div className="rcc-muted">{t('rcc.none')}</div>) : null}

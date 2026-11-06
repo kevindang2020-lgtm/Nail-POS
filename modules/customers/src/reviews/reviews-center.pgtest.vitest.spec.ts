@@ -205,6 +205,9 @@ describe('assistant, requests, health (REV-19, REV-22, Check Review System)', ()
     const c2 = await rc.check(ctx());
     expect(c2.checks.find((c) => c.key === 'moderation')!.state).toBe('FAILED');
     expect(c2.overall).toBe('FAILED');
+    // Nov 6 2026: every "next step" carries its code — the POS shows its own EN / VI text by code, never this English
+    expect(c2.checks.find((c) => c.key === 'moderation')!.actionCode).toBe('moderation_no_trail');
+    for (const c of [...c1.checks, ...c2.checks]) if (c.action) expect(c.actionCode, c.action).toBeTruthy();
     const after = (await q(sql`select count(*)::int as n, coalesce(sum(moderation_version), 0)::int as v from reviews where tenant_id = ${T}`))[0];
     expect(after.v).toBe(before.v);
   });

@@ -17,6 +17,7 @@ import { FitDialog, Pager } from '../../components/FitKit';
 import { RangeCalendar } from '../../components/FinanceKit';
 import { deviceToday } from '../../lib/deviceToday';
 import { card, cardHead, input, btnGold, btnGhost, muted, errText, pill, when, errMsg, DECISION_LABEL, mins, pretty } from './aiQueueUi';
+import { statusLabel } from '../../i18n/status-label';   // the code stays the truth; only its label is translated
 
 type Roster = { technicianId: string; name: string }[];
 
@@ -234,7 +235,7 @@ export function AIQueueEntryOverlay({ queueEntryId, techName, onClose, onAssign,
           ))}</ul>) : <div style={muted}>{tx('growth.aiQueue.ov.noAppointments')}</div>) : null}
         {tab === 'audit' ? (detail.events.length ? (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>{detail.events.map((e, i) => (
-            <li key={i} style={{ padding: '6px 0', borderBottom: '1px solid #F1EAE0' }}>{when(e.occurredAt)} · <code style={{ fontSize: 12 }}>{e.eventType}</code> · {tx('growth.aiQueue.ov.delivery.' + e.deliveryStatus) !== 'growth.aiQueue.ov.delivery.' + e.deliveryStatus ? tx('growth.aiQueue.ov.delivery.' + e.deliveryStatus) : e.deliveryStatus}{e.attempts > 1 ? <span style={muted}> · {tx('growth.aiQueue.ov.attempts', { n: String(e.attempts) })}</span> : null}</li>
+            <li key={i} style={{ padding: '6px 0', borderBottom: '1px solid #F1EAE0' }}>{when(e.occurredAt)} · <code style={{ fontSize: 12 }}>{statusLabel(['queueAction', 'state'], e.eventType)}</code> · {tx('growth.aiQueue.ov.delivery.' + e.deliveryStatus) !== 'growth.aiQueue.ov.delivery.' + e.deliveryStatus ? tx('growth.aiQueue.ov.delivery.' + e.deliveryStatus) : e.deliveryStatus}{e.attempts > 1 ? <span style={muted}> · {tx('growth.aiQueue.ov.attempts', { n: String(e.attempts) })}</span> : null}</li>
           ))}</ul>) : <div style={muted}>{tx('growth.aiQueue.ov.noEvents')}</div>) : null}
       </div> : null}
     </FitDialog>

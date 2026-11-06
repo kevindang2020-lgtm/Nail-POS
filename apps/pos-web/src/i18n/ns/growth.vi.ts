@@ -1004,4 +1004,6 @@ export const GROWTH_VI: Record<keyof typeof GROWTH_EN, string> = {
   'growth.aiBooking.hold.released': 'Đã nhả',
   'growth.aiBooking.hold.converted': 'Đã đặt',
   'growth.aiBooking.hold.expired': 'Hết hạn',
+  // moved from the frozen catalog.vi.ts (Nov 6 2026) — keys unchanged
+  'pos.ads_managed_by_platform': 'Quảng cáo hiện do AI PowerSalon quản lý. Quảng cáo của tiệm vẫn được lưu và sẽ phát lại khi quảng cáo của tiệm được bật lại. Bạn vẫn có thể tạm dừng hoặc lưu trữ chúng.',
 };
