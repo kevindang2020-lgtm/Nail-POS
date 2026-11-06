@@ -263,9 +263,9 @@ New documents, each a queue row:
 | F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | Nov 6: §1–80 DONE (0160556); §72 touch / §74 multi-terminal external; §81–89 handoff package — screenshots BLOCKED (no browser at 27-inch) |
 | F2 | Customer Retention — Claude Full Build Spec (Oct 29) | BUILT — audited Nov 5: this is the Oct 29 mandate `retention.repository.ts` was built from; the Oct 30 Complete Build Guide (C5) extended it. See the F2 section below |
 | F3 | Membership Overview — Claude Build Spec (Oct 29) | BUILT — audited Nov 5: the "Membership Overview mandate" the screen and `memberships.kysely.repository.ts` cite (9 references); see the F3 section below |
-| F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |
+| F4 | Full System Test (23 pages, 20 parts) | Nov 6: full run of every lane + repairs — pilot day 236 / 236, harnesses 26/26, race lane green, e2e-html green, one-screen 18/18 busy + light. Open: `check:api-contract` 845-route wire-type backlog, sweep fixture gaps, 27-inch touch / screenshots (external). Record: `docs/pilot-runs/2026-11-06-full/FINDINGS.md` |
 | F5 | Full Platform Architecture & Code Audit — Completion Mandate | Nov 5: 219 DONE / 40 PARTIAL / 3 BLOCKED of 262 (§68 re-verified DONE; §192 egress gate built — still PARTIAL for CSP unsafe-inline) |
-| F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | SKIPPED by Kevin's decision Oct 27; re-uploaded — re-opened |
+| F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | Nov 6: run + repair done (commits 3e875ea, 0016ac6, 53bfdc9, 835b58e) — 9 product defects fixed (Tech Queue crash, Check-In tables, AI centres refusing owners, Tech App 500, reschedule clock, one-screen layout, …). Same record as F4 |
 | F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Nov 5: 195 DONE / 15 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 (§87, §94, §102 built; §98 PDF summary waits on Kevin vs the no-print rule) |
 | F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | Oct 27 matrix: 160 DONE / 1 PARTIAL (17.5 pay-stub PDF) of 161 |
 

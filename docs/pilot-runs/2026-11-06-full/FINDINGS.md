@@ -52,6 +52,34 @@ then repairs. `final-run-summary.txt` is that run's own log; `pilot-rerun-1.log`
 - The pilot read the Customer Queue while it still said "Đang tải…" (it checked only the first 300 characters; the API
   answered in ~0.1 s at 200 technicians — measured).
 
+## Second round (commits 0016ac6, 53bfdc9, 835b58e)
+
+More product defects found and fixed:
+
+6. **Tech Queue crashed** into "Something went wrong on this screen" when a finished ticket had no primary technician
+   (its service-mix column had a null name; `null.split`). The server groups the mix by the line's technician (else the
+   ticket's) and leaves out lines with neither; the screen guards the name. Test in `POSTechQueueScreen.test`.
+7. **Check-In tables broken**: a global `.ci-row{display:flex}` (Customer Communications) turned the Live Check-In Queue and
+   Waiting Lounge rows into flex rows — every cell squeezed to one letter. Scoped to `div.ci-row`.
+8. **AI Analytics, AI Business and AI Marketing refused every owner and manager** ("Your role cannot …"): the services
+   checked `permissions.includes(key)`, and those keys are alias-granted; the route guard (the platform rule) had let them
+   in. Seven AI centres now use `hasPermission()`. Test with real catalog sessions.
+9. **One screen at 1920 × 945 (§66–§79)**: 2 / 18 module × language checks passed on the busy floor; now 18 / 18 (busy, on
+   the pilot's own 200-technician data) and 18 / 18 (light). Row actions ran past their cards (Checkout, Tech Queue,
+   Service Done, Customer Queue, Check-In); compact controls had no 44 px hit area where the button clipped its own label
+   (`overflow: clip` + clip margin now, honoured by `hitSlop`), where the cell clipped it, near a card's rounded corner, or
+   behind a toggle's knob; older transparent hit extenders now obey the measuring switch.
+
+Pilot / sweep corrections:
+- The pilot gave browser pages a session's cookies; a page that refreshed the session rotated its refresh token, and the
+  proof's next refresh replayed the used one — the platform rightly revoked the Super Admin (REFRESH_REUSE_DETECTED). Pages
+  now hand their cookies back on close.
+- The Customer Queue Manage view is a modal (it covers the topbar); §107's switch is delivered to the control directly.
+- Route sweep: owner 403s on the AI centres are gone (41 → 30 listed); the rest are fixture gaps (a made-up id → 404, a
+  missing required parameter → 400) and two retired routes (410 ENDPOINT_RETIRED — now on the by-design list).
+
+## Final pilot day (835b58e): 236 / 236 PASS, 0 FAIL — `pilot-final.log`
+
 ## Still open after the re-run
 
 - **One screen, busy, 200 technicians (§66–§78)**: 7 of 9 modules fail the layout rules at 1920×945 (clipped button text,
