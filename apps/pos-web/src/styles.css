@@ -226,8 +226,10 @@ a { color: inherit; text-decoration: none; }
 .t-act{text-align:right}.ov-tbl td.t-act{overflow:visible}   /* §78: the row action's hit area reaches past the cell */
 .mini{font-size:11px;border:1px solid #D7AE5C;background:#FBF3E4;color:#8a6d1c;border-radius:7px;padding:3px 9px;cursor:pointer;font-weight:700}
 .mini.ghost{border-color:#E2D6C2;background:#FFFDF8;color:#8A7A66}
-.ov-datesel{display:inline-flex;align-items:center;gap:6px}
-.ov-datesel .dnav{font-size:13px;line-height:1;border:1px solid #E2D6C2;background:#FFFDF8;color:#8A7A66;border-radius:7px;padding:2px 9px;cursor:pointer;font-weight:800}
+/* margin-right (Nov 6 2026): the › arrow's §78 hit area reached into the card's rounded top-right corner, which clips it */
+.ov-datesel{display:inline-flex;align-items:center;gap:6px;margin-right:10px}
+/* position + z-index (Nov 6 2026): the day arrows' §78 hit area reaches down over the card body, which painted on top of it */
+.ov-datesel .dnav{position:relative;z-index:1;font-size:13px;line-height:1;border:1px solid #E2D6C2;background:#FFFDF8;color:#8A7A66;border-radius:7px;padding:2px 9px;cursor:pointer;font-weight:800}
 .ov-datesel .dlabel{font-size:12px;color:var(--muted,#8a7d6d);min-width:96px;text-align:center;font-weight:700}
 .pill{font-size:10.5px;font-weight:800;border-radius:8px;padding:2px 8px;white-space:nowrap}
 .pill.ok{color:#2E7D32;background:#E7F2E7}.pill.info{color:#2C5B93;background:#E6EEF6}.pill.warn{color:#9a6a12;background:#FBEFD9}
@@ -1050,6 +1052,9 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .co-tbl{width:100%;border-collapse:collapse;font-size:11px}
 .co-tbl th{position:sticky;top:0;background:var(--card);z-index:1;text-align:left;color:var(--muted);font-weight:600;font-size:10px;padding:3px 5px;border-bottom:1px solid var(--line)}
 .co-tbl td{padding:4px 5px;border-bottom:1px solid var(--line);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px}
+/* a cell that holds only controls (Nov 6 2026): the controls ellipsize their own labels, so the cell does not clip — its
+   overflow: hidden capped every row button's §78 hit area at the row's 40 px */
+.co-tbl td:has(> button, > .co-actions){overflow:visible}
 .co-tbl tr.co-row{height:40px;cursor:pointer}
 @media (min-width:700px){.co-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.co-qa{grid-template-columns:repeat(5,minmax(0,1fr))}.co-ana{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:1000px){.co-main{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr)}.co-main>.co-ws{grid-row:span 2}.co-main>.co-q,.co-main>.co-att,.co-main>.co-right,.co-main>.co-staff{max-height:420px}}
@@ -1081,7 +1086,9 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
   .checkout-page,.service-done-page,.serving-page,.customer-queue-page{--co-gap:10px;--co-title:52px;--co-kpi:84px;--co-ana:170px;--co-qa:62px;--co-chart:104px;--co-pad:12px 18px}
   .co-title h1{font-size:26px}.co-kpi-v{font-size:22px}.co-kpi-l{font-size:11px}.co-tbl{font-size:12.5px}.co-tbl tr.co-row{height:46px}
 }
-.co-actions>button{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-left:6px!important;padding-right:6px!important}
+/* overflow: clip + clip margin (Nov 6 2026): the label still ends in an ellipsis at the edge, and the §78 hit area may reach
+   8 px past the box — overflow: hidden clipped it, so these were the only compact controls with no 44 px hit area */
+.co-actions>button{min-width:0;overflow:clip;overflow-clip-margin:8px;text-overflow:ellipsis;white-space:nowrap;padding-left:6px!important;padding-right:6px!important}
 @media (min-width:1280px) and (max-height:660px){.co-actions>button{min-height:40px!important;padding-top:0!important;padding-bottom:0!important}.co-ws-foot{padding-top:4px;margin-top:4px}}
 
 /* ===== Service Done one-screen (Service Done mandate §9–§24, §44, §79, §85–§89, §117, Oct 28 2026) =====
@@ -1263,7 +1270,9 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 }
 /* §24: compact row actions keep a ~40 px finger target — the hit area reaches past the 28 px chip (no extra row height) */
 :is(.overview-page,.check-in-page,.live-ops-page) .mini{position:relative}
-:is(.overview-page,.check-in-page,.live-ops-page) .mini::after{content:'';position:absolute;inset:-6px -4px}
+/* a transparent hit-area extender like the §78 ones, so it obeys the same measuring switch (data-hitslop="off"): the one-screen
+   check measures boxes without hit areas, and this one was read as text spilling 4 × 6 px out of every .mini (Nov 6 2026) */
+:root:not([data-hitslop="off"]) :is(.overview-page,.check-in-page,.live-ops-page) .mini::after{content:'';position:absolute;inset:-6px -4px}
 :is(.overview-page,.check-in-page,.live-ops-page) .ov-tbl td.t-act,:is(.overview-page,.check-in-page,.live-ops-page) .flow-sub-row{overflow:visible}
 :is(.overview-page,.check-in-page,.live-ops-page) .rank .rk-v .rk-sub{display:inline;margin-left:5px;font-size:10px}
 /* ===== Check-In one-screen front desk (Check-In 27-inch mandate §7–§13, §45, §51–§54, §77–§80, Oct 28 2026) =====
@@ -1273,7 +1282,9 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .check-in-page .ci-tbl thead th{font-size:10px;font-weight:700;color:#6E5E48;text-align:left;padding:0 5px;height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:sticky;top:0;background:var(--card,#fff);z-index:1}
 .check-in-page .ci-tbl td.t-name{max-width:0;white-space:nowrap}
 .check-in-page .ci-tbl td,.check-in-page .ci-tbl th{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.check-in-page .ci-tbl .t-pill{width:84px}
+/* 104 px (Nov 6 2026): the longest Vietnamese status ("Có thể phục vụ") was cut 11 px by the card at 84 px; the name
+   column (max-width:0) gives up the width */
+.check-in-page .ci-tbl .t-pill{width:104px}
 .check-in-page .ci-tbl .t-act{width:66px;overflow:visible}
 .check-in-page .ci-tbl .t-act2{width:118px;overflow:visible}
 .check-in-page .ci-acts{display:flex;gap:4px;justify-content:flex-end}
@@ -1378,7 +1389,7 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-btn:disabled{opacity:.5;cursor:not-allowed}
 .fk-btn:focus-visible,.fk-ibtn:focus-visible,.fk-kpi:focus-visible,.fk-pbtn:focus-visible,.fk-link:focus-visible,.ly-tier:focus-visible{outline:2px solid var(--g7);outline-offset:2px}
 .fk-link{border:none;background:none;color:var(--g8);font:inherit;font-size:12px;font-weight:800;cursor:pointer;padding:0 6px;min-height:32px;position:relative;white-space:nowrap}
-.fk-link::after{content:'';position:absolute;inset:-6px -2px}   /* 44 px hit area without a taller row */
+:root:not([data-hitslop="off"]) .fk-link::after{content:'';position:absolute;inset:-6px -2px}   /* 44 px hit area without a taller row */
 .fk-link:hover{text-decoration:underline}
 .fk-note{display:flex;align-items:center;gap:10px;justify-content:space-between;border-radius:10px;padding:6px 10px;font-size:12.5px;border:1px solid}
 .fk-note.ok{background:#EEF6EC;border-color:#BCD8B5;color:#2F5A2A}.fk-note.bad{background:#FBEDEA;border-color:#E6B9AE;color:#8A2E1E}
@@ -1417,13 +1428,13 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-li-main{display:flex;flex-direction:column;min-width:0;flex:1 1 auto}
 .fk-li-t{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .fk-li-t.link{border:none;background:none;padding:0;text-align:left;font:inherit;font-size:13px;font-weight:700;cursor:pointer;max-width:100%;position:relative}
-.fk-li-t.link::after{content:'';position:absolute;inset:-12px -4px}
+:root:not([data-hitslop="off"]) .fk-li-t.link::after{content:'';position:absolute;inset:-12px -4px}
 .fk-li-t.link:hover{color:var(--g8);text-decoration:underline}
 .fk-li-s{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fk-li-num{font-size:12.5px;font-weight:800;white-space:nowrap;flex:none;font-variant-numeric:tabular-nums}
 .fk-li-acts{display:flex;gap:4px;flex:none}
 .fk-ibtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:#FFFDF8;cursor:pointer;font-size:15px;color:var(--g8);display:grid;place-items:center;position:relative}
-.fk-ibtn::after{content:'';position:absolute;inset:-2px}
+:root:not([data-hitslop="off"]) .fk-ibtn::after{content:'';position:absolute;inset:-2px}
 .fk-ibtn:hover:not(:disabled){border-color:var(--gline);background:#FFF6E6}
 .fk-ibtn:disabled{opacity:.4;cursor:not-allowed}
 .fk-chip{font-size:10.5px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line);white-space:nowrap;flex:none;display:inline-flex;align-items:center;gap:4px}
@@ -1440,7 +1451,7 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-pager-range{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .fk-pager-btns{display:flex;align-items:center;gap:3px;flex:none}
 .fk-pbtn{min-width:36px;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--line);background:#FFFDF8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--text);position:relative}
-.fk-pbtn::after{content:'';position:absolute;inset:-5px -4px}
+:root:not([data-hitslop="off"]) .fk-pbtn::after{content:'';position:absolute;inset:-5px -4px}
 .fk-pbtn.on{background:var(--g7);border-color:var(--g7);color:#fff}
 .fk-pbtn:disabled{opacity:.4;cursor:not-allowed}
 .fk-pager.compact .fk-pbtn-l{display:none}
@@ -1535,7 +1546,7 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .rt-filters{display:flex;align-items:center;gap:8px;min-width:0}
 .rt-chips{display:flex;gap:6px;flex:1 1 auto;min-width:0;overflow-x:auto;scrollbar-width:none}
 .rt-chip{min-height:40px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:#FFFDF8;font:inherit;font-size:12.5px;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:6px;flex:none;position:relative}
-.rt-chip::after{content:'';position:absolute;inset:-2px 0}
+:root:not([data-hitslop="off"]) .rt-chip::after{content:'';position:absolute;inset:-2px 0}
 .rt-chip.on{background:var(--g7);border-color:var(--g7);color:#fff}
 .rt-chip-n{font-size:11px;font-weight:800;opacity:.85;font-variant-numeric:tabular-nums}
 .rt-sortnote{font-size:11.5px;font-weight:600;color:var(--muted)}
@@ -1677,9 +1688,13 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-kpis.six{grid-template-columns:repeat(6,minmax(0,1fr))}
 .fk-btn.ghost{background:transparent}
 .fk-btn.sm{min-height:36px;padding:0 10px;font-size:12px;border-radius:9px;position:relative}
-.fk-btn.sm::after{content:'';position:absolute;inset:-4px -2px}
+/* gated like the §78 hit areas (Nov 6 2026): the one-screen check measures without hit areas, and this transparent
+   extender read as label text spilling 2 × 4 px out of every small FitKit button */
+:root:not([data-hitslop="off"]) .fk-btn.sm::after{content:'';position:absolute;inset:-4px -2px}
 a.fk-btn{display:inline-flex;align-items:center;text-decoration:none}
 .fk-search.wide{width:100%;max-width:none}.fk-search.sm{width:120px}.fk-search.xs,.fk-search.xs{width:70px}
+/* Tech Queue tables' small actions (Nov 6 2026): 8 px sides — "Phân công" / "Nhắn tin" ran 2–3 px past their panel at 10 */
+.tq-table .fn-acts .fk-btn.sm{padding:0 8px}
 .fn-toolbar{display:flex;align-items:center;gap:6px;flex-wrap:wrap;min-width:0}
 .fn-toolbar>.fk-select{max-width:170px}
 .fn-search{position:relative;display:flex;align-items:center;flex:1 1 220px;min-width:180px;max-width:420px}
@@ -2768,7 +2783,8 @@ span.tq-who{cursor:default}
 .ci-ev.call{border-left:3px solid #3B64B8}.ci-ev.automated{border-left:3px solid #6A4FB8}.ci-ev.appointment{border-left:3px solid #2E7D4F}.ci-ev.review_request{border-left:3px solid #C98A2B}
 .ci-empty{display:flex;flex-direction:column;gap:6px;padding:20px 16px;font-size:13.5px;color:var(--aps-muted)}.ci-empty b{color:var(--aps-text);font-size:14.5px}
 .ci-empty.center{align-items:center;justify-content:center;text-align:center;height:100%}.ci-empty.bad{color:#8E3B2F}
-.ci-row{display:flex;gap:8px;align-items:center}.ci-row.wrap{flex-wrap:wrap}
+/* div only (Nov 6 2026): Check-In's table rows are tr.ci-row — a bare .ci-row made them flex rows and squeezed every cell to a letter */
+div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wrap}
 .ci-mods{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
 .ci-card{background:var(--aps-card,#FFFCF6);border:1px solid var(--aps-line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;min-width:0}
 .ci-card-t{font-family:var(--aps-font-head);font-weight:800;font-size:15px}

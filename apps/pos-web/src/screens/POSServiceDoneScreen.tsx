@@ -278,7 +278,7 @@ export function POSServiceDoneScreen() {
   // narrower screens (the board shows the stage and the row's action names the next step).
   const queueTable = (rows: Ticket[], inOverlay = false) => (
     <table className="co-tbl sd-qtbl" style={{ tableLayout: 'fixed' }}>
-      <colgroup><col /><col style={{ width: '27%' }} /><col style={{ width: 66 }} /><col className="sd-q-status" style={{ width: 74 }} /><col style={{ width: 116 }} /></colgroup>
+      <colgroup><col /><col style={{ width: '24%' }} /><col style={{ width: 66 }} /><col className="sd-q-status" style={{ width: 74 }} /><col style={{ width: 128 }} /></colgroup>{/* actions 128 px (Nov 6 2026): the two Vietnamese labels ran 7–10 px past the card at 116 */}
       <thead><tr>{[tx('pos.guest'), tx('pos.service_3'), tx('pos.total'), tx('pos.status'), ''].map((hh, i) => <th key={i} className={i === 3 ? 'sd-q-status' : undefined} style={{ textAlign: i === 2 ? 'right' : 'left' }}>{hh}</th>)}</tr></thead>
       <tbody>
         {rows.map((t) => { const isSel = t.ticketId === selId; const tn = qStatus(t); return (
@@ -289,7 +289,7 @@ export function POSServiceDoneScreen() {
             <td style={{ color: 'var(--soft)', maxWidth: 'none', lineHeight: 1.2 }} title={[t.serviceNames.join(', '), t.addOnsLabel].filter(Boolean).join(' + ')}><div style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.serviceNames.join(', ') || '—'}</div>{t.addOnsLabel ? <div style={{ fontSize: 10, color: 'var(--muted)', overflow: 'hidden', textOverflow: 'ellipsis' }}>+ {t.addOnsLabel}</div> : null}</td>
             <td style={{ textAlign: 'right', lineHeight: 1.2 }}><div style={{ fontWeight: 700 }}>{money2(t.subtotalCents)}</div>{t.tipCents ? <div style={{ fontSize: 10, color: '#1F7A3F' }}>+{money2(t.tipCents)}</div> : null}</td>
             <td className="sd-q-status">{chip(tn.label, tn)}</td>
-            <td style={{ maxWidth: 'none', paddingRight: 0 }}><div style={{ display: 'flex', gap: 3, justifyContent: 'flex-end' }}>
+            <td style={{ maxWidth: 'none', paddingRight: 0 }}><div className="co-actions" style={{ display: 'flex', gap: 3, justifyContent: 'flex-end' }}>
               {/* two actions per row (§18 compact): the stage's next step, then Manage. Just Finished / Review → Ready (gated by
                   the salon's quality rule, with the reason) · Ready → Send · Sent → Open */}
               {stageOf(t) === 'just' || stageOf(t) === 'review'

@@ -19,6 +19,14 @@ describe('POSTechQueueScreen', () => {
     expect(screen.getByText('No technicians clocked in.')).toBeInTheDocument();
   });
 
+  it('Nov 6 2026: a service-mix column with no technician name renders "—" — it crashed the whole screen', async () => {
+    globalThis.fetch = mockFetch({ ...state, analytics: { serviceMixByTechnician: [{ technicianId: 'x', technicianName: null, cells: [{ category: 'Nails', count: 1, revenueCents: 4500, percent: 100 }] }], serviceCategories: ['Nails'] } }) as any;
+    render(<MemoryRouter><POSTechQueueScreen /></MemoryRouter>);
+    expect(await screen.findByText('Tech Queue')).toBeInTheDocument();
+    expect(await screen.findByText(/Service Mix by Technician/)).toBeInTheDocument();
+    expect(document.querySelector('.tq-mix-c .fk-li-s')?.textContent).toBe('—');
+  });
+
   it('renders AI Assignment Insights + Available Technicians from lanes', async () => {
     const withLanes = {
       kpis: { assignedTickets: 2, waitingForAcceptance: 1, acceptedTickets: 1, readyToStart: 0, delayedTickets: 1, activeTechnicians: 1, availableTechnicians: 1, averageAssignedWaitMinutes: 12, laborRevenueTodayCents: 84050, utilizationTodayPercent: 72, upsellCapturePercent: 40 },

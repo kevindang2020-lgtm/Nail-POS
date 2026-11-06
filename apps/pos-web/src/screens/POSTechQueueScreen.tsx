@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import { FaExpand } from 'react-icons/fa';
 import { useRealtime } from '../realtime/useRealtime';
 import { useNavigate } from 'react-router-dom';
 import { posTechQueueApi } from '../api/posTechQueueApi';
@@ -570,15 +571,16 @@ export function POSTechQueueScreen() {
 
       <div className={'mos-row cg-row ' + (live ? 'three' : 'one')}>
         {live ? <FitPanel testId="waiting-guests" title={tx('pos.d1_waiting_guests_by_skill_match')} footer={<button type="button" className="fk-link" onClick={() => nav('/queue')}>{tx('pos.view_all_waiting_guests')}</button>}>
-          <div className="tq-scroll"><table className="fk-table fn-table cg-table tq-table"><thead><tr><th>#</th><th>{tx('pos.guest')}</th><th>{tx('pos.service_3')}</th><th className="t-opt">{tx('pos.pref_tech')}</th><th className="num">{tx('pos.wait')}</th><th>{tx('pos.best_match_3')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
+          <div className="tq-scroll"><table className="fk-table fn-table cg-table tq-table"><thead><tr><th>#</th><th>{tx('pos.guest')}</th><th className="t-opt">{tx('pos.pref_tech')}</th><th className="num">{tx('pos.wait')}</th><th>{tx('pos.best_match_3')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
             <tbody>{waiting.slice(0, 5).map((g, i) => <tr key={g.queueItemId ?? i} data-testid="waiting-row">
               <td className="fk-muted" title={tx('tq.positionTitle')}>{i + 1}</td>
-              <td><b>{g.customerName}</b>{g.priority !== 'normal' ? <> {chip(prioLabel(g.priority), PRIO[g.priority] ?? 'mut')}</> : null}</td>
-              <td>{g.serviceName}</td><td className="t-opt">{g.preferredTechName || tx('pos.any')}</td><td className="num">{g.waitMinutes} {tx('pos.min')}</td>
+              {/* §79 one-screen (Nov 6 2026): the service sits under the guest — a column of its own pushed the actions 33–86 px past the panel */}
+              <td><b>{g.customerName}</b>{g.priority !== 'normal' ? <> {chip(prioLabel(g.priority), PRIO[g.priority] ?? 'mut')}</> : null}<span className="fk-li-s" title={g.serviceName}>{g.serviceName}</span></td>
+              <td className="t-opt">{g.preferredTechName || tx('pos.any')}</td><td className="num">{g.waitMinutes} {tx('pos.min')}</td>
               <td>{g.bestMatchMode === 'split' && g.bestMatchTechnicianNames?.length ? g.bestMatchTechnicianNames.join(' + ') : g.bestMatchTechnicianName || '—'}</td>
-              <td className="fn-acts">{g.queueItemId ? <button type="button" className="fk-btn ghost sm" title={tx('pos.open_full_ipad_view')} onClick={() => openIPad(queueItemRequest({ queueItemId: g.queueItemId!, customerName: g.customerName, requestedServices: [{ serviceId: '', serviceName: g.serviceName }], priority: g.priority, actualWaitMinutes: g.waitMinutes, requestedTechnicianName: g.preferredTechName, bestMatchTechnicianName: g.bestMatchTechnicianName }))}>{tx('pos.full_view')}</button> : null}
+              <td className="fn-acts">{g.queueItemId ? <button type="button" className="fk-btn ghost sm" style={{ width: 36, padding: 0 }} title={tx('pos.open_full_ipad_view')} aria-label={tx('pos.full_view')} onClick={() => openIPad(queueItemRequest({ queueItemId: g.queueItemId!, customerName: g.customerName, requestedServices: [{ serviceId: '', serviceName: g.serviceName }], priority: g.priority, actualWaitMinutes: g.waitMinutes, requestedTechnicianName: g.preferredTechName, bestMatchTechnicianName: g.bestMatchTechnicianName }))}><FaExpand aria-hidden="true" /></button> : null}
                 <button type="button" className="fk-btn sm" disabled={!!g.queueItemId && pendingAssign === g.queueItemId} onClick={() => assignToBestMatch(g)}>{g.queueItemId && pendingAssign === g.queueItemId ? tx('pos.assigning') : tx('pos.assign')}</button></td></tr>)}
-              {waiting.length === 0 ? <tr><td colSpan={7} className="fk-empty-cell">{tx('pos.no_customers_waiting')}</td></tr> : null}</tbody></table></div>
+              {waiting.length === 0 ? <tr><td colSpan={6} className="fk-empty-cell">{tx('pos.no_customers_waiting')}</td></tr> : null}</tbody></table></div>
           <p className="fk-hint">{tx('tq.fairRule')}</p>
         </FitPanel> : null}
         <FitPanel testId="tech-performance" title={tx('pos.d2_tech_performance_today')} footer={<button type="button" className="fk-link" onClick={() => nav('/tenant/team/performance')}>{tx('tq.teamPerformance')}</button>}>
@@ -607,7 +609,7 @@ export function POSTechQueueScreen() {
         </FitPanel>
         <FitPanel testId="e2" title={tx('pos.e2_service_mix_by_technician')}>
           {(() => { const cols = a?.serviceMixByTechnician || []; const cats = a?.serviceCategories || []; if (!cols.length) return <Empty title={tx('pos.mix_builds_from_completed_services')} />; return <>
-            <div className="tq-mix">{cols.slice(0, 6).map((col) => <div key={col.technicianId} className="tq-mix-c" title={col.technicianName}><div className="tq-mix-bar">{col.cells.map((c) => <span key={c.category} title={`${c.category} ${c.percent}% (${c.count})`} style={{ height: `${c.percent}%`, background: COLORS[cats.indexOf(c.category) % COLORS.length] }} />)}</div><span className="fk-li-s">{col.technicianName.split(' ')[0]}</span></div>)}</div>
+            <div className="tq-mix">{cols.slice(0, 6).map((col) => <div key={col.technicianId} className="tq-mix-c" title={col.technicianName ?? undefined}><div className="tq-mix-bar">{col.cells.map((c) => <span key={c.category} title={`${c.category} ${c.percent}% (${c.count})`} style={{ height: `${c.percent}%`, background: COLORS[cats.indexOf(c.category) % COLORS.length] }} />)}</div><span className="fk-li-s">{(col.technicianName ?? '').split(' ')[0] || '—'}</span></div>)}</div>
             <div className="tq-legend">{cats.slice(0, 6).map((c, i) => <span key={c}><i style={{ background: COLORS[i % COLORS.length] }} />{c}</span>)}</div></>; })()}
         </FitPanel>
         <FitPanel testId="e3" title={tx('pos.e3_assignment_source')}>

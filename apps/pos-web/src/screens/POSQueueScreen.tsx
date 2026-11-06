@@ -550,7 +550,7 @@ export function POSQueueScreen() {
               <div style={{ fontSize: 10, color: 'var(--soft)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{svcNames(it.requestedServices) || '—'}<span className="cq-narrow"> · {visitType(it.source)} · {reqTech(it)}</span></div>
             </td>
             <td className="cq-col-type" style={{ color: 'var(--soft)' }}>{visitType(it.source)}</td>
-            <td className="cq-col-req" style={{ color: 'var(--soft)' }}><button title={tx('pos.change_requested_technician')} style={{ background: 'none', border: 'none', color: 'var(--soft)', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline dotted', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minHeight: 30 }} onClick={(e) => { e.stopPropagation(); selectItem(it.queueItemId); setChangeReqId(it.queueItemId); }}>{reqTech(it)}</button></td>
+            <td className="cq-col-req" style={{ color: 'var(--soft)' }}><button title={tx('pos.change_requested_technician')} style={{ background: 'none', border: 'none', color: 'var(--soft)', cursor: 'pointer', padding: 0, font: 'inherit', textDecoration: 'underline dotted', maxWidth: '100%', overflow: 'clip', overflowClipMargin: 8, textOverflow: 'ellipsis', whiteSpace: 'nowrap', minHeight: 30 }}   /* clip + margin: the name still ellipsizes, and the §78 hit area is not cut off */ onClick={(e) => { e.stopPropagation(); selectItem(it.queueItemId); setChangeReqId(it.queueItemId); }}>{reqTech(it)}</button></td>
             <td style={{ color: late ? '#A8321F' : 'var(--soft)', fontWeight: late ? 700 : 400 }} title={late ? tx('ops.queue.waitDelayed') : hhmm(it.checkedInAt)}>{late ? '⚠ ' : ''}{waitOf(it)} {tx('pos.min')}</td>
             <td>{it.priority === 'normal' ? <span style={{ color: 'var(--soft)' }}>{tx('pos.normal')}</span> : chip(prioLabel(it.priority), PRIO_TONE[it.priority] || PRIO_TONE.normal)}</td>
             <td className="cq-col-st">{chip(statusLabel('queueChip', chipCode(it)), STATUS_TONE[chipCode(it)] || STATUS_TONE.waiting)}</td>
@@ -648,7 +648,7 @@ export function POSQueueScreen() {
           <div className="co-head"><h2 style={h2}>{tx('pos.waiting_guests_by_priority')}</h2>{pc ? <span data-testid="cq-priority-counts" style={{ fontSize: 10, color: 'var(--muted)', marginLeft: 'auto', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{tx('ops.queue.priorityCounts', { urgent: String(pc.urgent ?? 0), vip: String(pc.vip ?? 0), high: String(pc.high ?? 0), normal: String(pc.normal ?? 0) })}</span> : null}</div>
           <div className="co-scroll">
             <table className="co-tbl cq-q" style={{ tableLayout: 'fixed' }}>
-              <colgroup><col /><col style={{ width: 54 }} /><col style={{ width: 64 }} /><col className="cq-col-req" style={{ width: '24%' }} /><col style={{ width: 92 }} /></colgroup>
+              <colgroup><col /><col style={{ width: 54 }} /><col style={{ width: 64 }} /><col className="cq-col-req" style={{ width: '21%' }} /><col style={{ width: 106 }} /></colgroup>{/* action 106 px (Nov 6 2026): "Chuyển cho thợ" ran 12 px past the card at 92 */}
               <thead><tr>{[tx('pos.guest'), tx('pos.wait'), tx('pos.priority'), tx('pos.best_match_3'), ''].map((hh, i) => <th key={i} className={i === 3 ? 'cq-col-req' : undefined}>{hh}</th>)}</tr></thead>
               <tbody>
                 {byPriority.map((it) => (

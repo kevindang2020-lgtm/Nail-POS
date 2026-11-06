@@ -35,7 +35,14 @@ export function computeSlop(boxes: Box[], grow: boolean[], bounds: (Box | null)[
     const dx = Math.max(0, (min - (b.right - b.left)) / 2), dy = Math.max(0, (min - (b.bottom - b.top)) / 2);
     let t = dy, bo = dy, l = dx, r = dx;
     const B = bounds[i];
-    if (B) { t = Math.min(t, Math.max(0, b.top - B.top)); bo = Math.min(bo, Math.max(0, B.bottom - b.bottom)); l = Math.min(l, Math.max(0, b.left - B.left)); r = Math.min(r, Math.max(0, B.right - b.right)); }
+    if (B) {
+      const roomT = Math.max(0, b.top - B.top), roomB = Math.max(0, B.bottom - b.bottom), roomL = Math.max(0, b.left - B.left), roomR = Math.max(0, B.right - b.right);
+      t = Math.min(t, roomT); bo = Math.min(bo, roomB); l = Math.min(l, roomL); r = Math.min(r, roomR);
+      // Nov 6 2026: a side cut short by its bounds (a control near a card's edge) gives its shortfall to the opposite side,
+      // so the area still reaches 44 px where there is room (it was 40 for the Overview's day arrow)
+      const needY = 2 * dy - t - bo; if (needY > 0) { const addB = Math.min(needY, roomB - bo); bo += addB; t += Math.min(needY - addB, roomT - t); }
+      const needX = 2 * dx - l - r; if (needX > 0) { const addR = Math.min(needX, roomR - r); r += addR; l += Math.min(needX - addR, roomL - l); }
+    }
     return { t, r, b: bo, l };
   });
   // split a gap between two facing sides: each keeps what it wants if both fit; otherwise the smaller want is kept when it
@@ -87,21 +94,39 @@ export const GROW_SELECTOR = ['button', '[role="tab"]', '[role="button"]', 'a[hr
 const OBSTACLE_SELECTOR = ['input', 'select', 'textarea'].join(',');
 
 type Mode = 'a' | 'b' | null;   // ::after, ::before, or none (skipped)
-const modeCache = new WeakMap<Element, { mode: Mode; why?: string; makeRel: boolean }>();
+const modeCache = new WeakMap<Element, { mode: Mode; why?: string; makeRel: boolean; cap?: number }>();
 
-function inspect(el: HTMLElement): { mode: Mode; why?: string; makeRel: boolean } {
+/** How far past its padding box a control that clips its own content still paints: `overflow: clip` + a positive
+ *  `overflow-clip-margin` (Nov 6 2026 — the queue / serving / checkout action buttons ellipsize their label this way, so
+ *  a hit area of up to that margin is not clipped). 0 = a control that clips at its edge (hidden / auto / scroll / clip). */
+export function clipAllowance(cs: { overflowX: string; overflowY: string; overflowClipMargin?: string }): number {
+  const ox = cs.overflowX, oy = cs.overflowY;
+  if (!((ox === 'clip' || ox === 'visible') && (oy === 'clip' || oy === 'visible'))) return 0;
+  const m = /(-?[\d.]+)px/.exec(String(cs.overflowClipMargin ?? '')); return m ? Math.max(0, Number(m[1])) : 0;
+}
+
+function inspect(el: HTMLElement): { mode: Mode; why?: string; makeRel: boolean; cap?: number } {
   const hit = modeCache.get(el); if (hit) return hit;
   const cs = getComputedStyle(el);
-  let out: { mode: Mode; why?: string; makeRel: boolean };
+  let out: { mode: Mode; why?: string; makeRel: boolean; cap?: number };
+  const own = CLIPS.test(`${cs.overflow} ${cs.overflowX} ${cs.overflowY}`);
+  const allow = own ? clipAllowance(cs as unknown as { overflowX: string; overflowY: string; overflowClipMargin?: string }) : 0;
   if (cs.display === 'contents' || cs.display === 'inline') out = { mode: null, why: 'inline', makeRel: false };
-  else if (CLIPS.test(`${cs.overflow} ${cs.overflowX} ${cs.overflowY}`)) out = { mode: null, why: 'own-overflow', makeRel: false };
+  else if (own && allow <= 0) out = { mode: null, why: 'own-overflow', makeRel: false };
   else {
     const free = (p: string) => { const c = getComputedStyle(el, p).content; return !c || c === 'none' || c === 'normal'; };
     const mode: Mode = free('::after') ? 'a' : free('::before') ? 'b' : null;
-    const makeRel = cs.position === 'static';
+    const positioned = (v: string) => !!v && v !== 'static';   // '' = static (jsdom leaves an unset position empty)
+    const makeRel = !positioned(cs.position);
     // a static control with an absolutely positioned child: making it positioned would move the child — leave it
-    const absChild = makeRel && [...el.querySelectorAll<HTMLElement>('*')].some((c) => { const p = getComputedStyle(c).position; return p === 'absolute' || p === 'fixed'; });
-    out = mode == null ? { mode: null, why: 'pseudo-taken', makeRel: false } : absChild ? { mode: null, why: 'abs-child', makeRel: false } : { mode, makeRel };
+    // only a child whose containing block WOULD change counts: an absolute child with a positioned ancestor inside the
+    // control (a toggle's knob in its own track) stays where it is; a fixed child is placed against the viewport (Nov 6 2026)
+    const absChild = makeRel && [...el.querySelectorAll<HTMLElement>('*')].some((c) => {
+      if (getComputedStyle(c).position !== 'absolute') return false;
+      for (let a = c.parentElement; a && a !== el; a = a.parentElement) if (positioned(getComputedStyle(a).position)) return false;
+      return true;
+    });
+    out = mode == null ? { mode: null, why: 'pseudo-taken', makeRel: false } : absChild ? { mode: null, why: 'abs-child', makeRel: false } : { mode, makeRel, ...(own ? { cap: allow } : {}) };
   }
   modeCache.set(el, out);
   return out;
@@ -131,14 +156,14 @@ const visible = (r: DOMRect) => r.width > 0 && r.height > 0;
 export function applyHitSlop(root: ParentNode = document): { grown: number; skipped: Record<string, number> } {
   const skipped: Record<string, number> = {};
   const growEls = [...root.querySelectorAll<HTMLElement>(GROW_SELECTOR)];
-  const items: { el: HTMLElement; box: Box; grow: boolean; mode: Mode; makeRel: boolean }[] = [];
+  const items: { el: HTMLElement; box: Box; grow: boolean; mode: Mode; makeRel: boolean; cap?: number }[] = [];
   for (const el of growEls) {
     const r = el.getBoundingClientRect();
     if (!visible(r)) { clear(el); continue; }
     const small = r.width < HIT_MIN || r.height < HIT_MIN;
-    const info = small ? inspect(el) : { mode: null as Mode, makeRel: false };
+    const info: { mode: Mode; makeRel: boolean; why?: string; cap?: number } = small ? inspect(el) : { mode: null as Mode, makeRel: false };
     if (small && info.mode == null) { skipped[(info as { why?: string }).why ?? 'other'] = (skipped[(info as { why?: string }).why ?? 'other'] ?? 0) + 1; clear(el); }
-    items.push({ el, box: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, grow: small && info.mode != null, mode: info.mode, makeRel: info.makeRel });
+    items.push({ el, box: { left: r.left, top: r.top, right: r.right, bottom: r.bottom }, grow: small && info.mode != null, mode: info.mode, makeRel: info.makeRel, cap: info.cap });
   }
   for (const el of root.querySelectorAll<HTMLElement>(OBSTACLE_SELECTOR)) {
     const r = el.getBoundingClientRect(); if (!visible(r)) continue;
@@ -148,11 +173,14 @@ export function applyHitSlop(root: ParentNode = document): { grown: number; skip
   let grown = 0;
   items.forEach((x, i) => {
     if (!x.grow) { if (!x.el.matches(OBSTACLE_SELECTOR) && x.el.hasAttribute('data-hs')) clear(x.el); return; }
-    const s = slop[i];
-    if (!s.t && !s.r && !s.b && !s.l) { clear(x.el); return; }
-    grown++;
+    const s0 = slop[i];
     // the pseudo-element is placed from the padding box: add the border so the numbers mean "beyond the border edge"
     const cs = getComputedStyle(x.el);
+    // a control that clips its own content (overflow: clip) paints — and is hit — only clip-margin past its padding box
+    const capOf = (bw: string) => (x.cap == null ? Infinity : Math.max(0, x.cap - (Number.parseFloat(bw) || 0)));
+    const s = { t: Math.min(s0.t, capOf(cs.borderTopWidth)), r: Math.min(s0.r, capOf(cs.borderRightWidth)), b: Math.min(s0.b, capOf(cs.borderBottomWidth)), l: Math.min(s0.l, capOf(cs.borderLeftWidth)) };
+    if (!s.t && !s.r && !s.b && !s.l) { clear(x.el); return; }
+    grown++;
     // (negative insets — the CSS is `inset: var(--hs)`)
     const px = (n: number, bw: string) => { const w = Number.parseFloat(bw) || 0; const v = Math.round((n + w) * 100) / 100; return `${-v}px`; };   // CSS lengths, not money
     const v = `${px(s.t, cs.borderTopWidth)} ${px(s.r, cs.borderRightWidth)} ${px(s.b, cs.borderBottomWidth)} ${px(s.l, cs.borderLeftWidth)}`;

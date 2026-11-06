@@ -48,10 +48,17 @@ describe('computeSlop (§78)', () => {
     expect(overlap(hitRect(btn, sb), field)).toBe(false);
   });
 
+  it('a side cut short by its bounds gives the shortfall to the opposite side (still 44 px where there is room)', () => {
+    const [s0] = computeSlop([{ left: 100, top: 12, right: 124, bottom: 31 }], [true], [{ left: 0, top: 10, right: 400, bottom: 400 }]);
+    expect(s0.t).toBeCloseTo(2); expect(s0.t + s0.b + 19).toBeCloseTo(HIT_MIN);
+    expect(s0.l + s0.r + 24).toBeCloseTo(HIT_MIN);
+  });
   it('stays inside its bounds (a scroll extent / the viewport): never adds a scrollbar', () => {
     const b = box(5, 3, 30, 20);
     const [s] = computeSlop([b], [true], [box(0, 0, 500, 500)]);
-    expect(s.t).toBe(3); expect(s.l).toBe(5); expect(s.b).toBe(12);
+    expect(s.t).toBe(3); expect(s.l).toBe(5);   // never past the bounds
+    // Nov 6 2026: the shortfall moves to the open side — still a full 44 × 44 (it stopped at 12 / 7 before)
+    expect(s.b).toBe(21); expect(s.r).toBe(9);
   });
 
   it('a dense grid of 200 small buttons: no two hit areas overlap', () => {
@@ -93,5 +100,30 @@ describe('applyHitSlop (DOM wiring)', () => {
     expect(res.grown).toBe(0);
     expect(res.skipped['own-overflow']).toBe(1);
     expect(b.hasAttribute('data-hs')).toBe(false);
+  });
+
+  it('a toggle whose knob is absolute inside its own positioned track still grows; a bare absolute child keeps it static', () => {
+    document.body.innerHTML = '<div class="main"><button id="t" style="display:inline-flex"><span style="position:relative"><span style="position:absolute"></span></span>Auto Refresh</button>'
+      + '<button id="u" style="display:inline-flex"><span style="position:absolute"></span>X</button></div>';
+    const t = document.getElementById('t')!, u = document.getElementById('u')!;
+    t.getBoundingClientRect = () => ({ left: 0, top: 100, right: 120, bottom: 138, width: 120, height: 38, x: 0, y: 100, toJSON: () => ({}) }) as DOMRect;
+    u.getBoundingClientRect = () => ({ left: 400, top: 100, right: 430, bottom: 130, width: 30, height: 30, x: 400, y: 100, toJSON: () => ({}) }) as DOMRect;
+    const res = applyHitSlop(document);
+    expect(t.getAttribute('data-hs')).toBe('a');
+    expect(u.hasAttribute('data-hs')).toBe(false);
+    expect(res.skipped['abs-child']).toBe(1);
+  });
+});
+
+// Nov 6 2026: a control that ellipsizes with overflow: clip + overflow-clip-margin keeps a hit area up to that margin;
+// hidden / auto / scroll (or clip with no margin) still clip at the edge
+import { clipAllowance } from './hitSlop';
+describe('clipAllowance', () => {
+  it('only overflow: clip (or visible) with a positive clip margin lets a hit area out', () => {
+    expect(clipAllowance({ overflowX: 'clip', overflowY: 'clip', overflowClipMargin: '8px' })).toBe(8);
+    expect(clipAllowance({ overflowX: 'clip', overflowY: 'visible', overflowClipMargin: 'padding-box 6px' })).toBe(6);
+    expect(clipAllowance({ overflowX: 'clip', overflowY: 'clip', overflowClipMargin: '0px' })).toBe(0);
+    expect(clipAllowance({ overflowX: 'hidden', overflowY: 'hidden', overflowClipMargin: '8px' })).toBe(0);
+    expect(clipAllowance({ overflowX: 'auto', overflowY: 'clip', overflowClipMargin: '8px' })).toBe(0);
   });
 });

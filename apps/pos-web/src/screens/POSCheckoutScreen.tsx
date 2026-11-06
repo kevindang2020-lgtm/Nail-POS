@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+// one-screen §79 (Nov 6 2026): the queue row's Full View is an icon (its name is the tooltip and the accessible label) — the
+// two text buttons ran 59–79 px past the Checkout Queue card
+import { FaExpand } from 'react-icons/fa';
 import { displayLocale, fmtInZone } from '../i18n/format';
 import { viIncludes } from '@aipowersalon/api-contracts';
 import { ImeSafeInput } from '../components/ImeSafeInput';
@@ -426,20 +429,20 @@ export function POSCheckoutScreen() {
 
   const queueTable = (rows: Row[]) => (
     <table className="co-tbl">
-      <thead><tr>{[tx('pos.time'), tx('pos.guest'), tx('pos.technician'), tx('pos.services'), tx('pos.total'), tx('pos.status'), 'Actions'].map((hh, i) => <th key={i} style={{ textAlign: i === 4 ? 'right' : 'left' }}>{hh === 'Actions' ? <span className="sr-only">{tx('pos.actions')}</span> : hh}</th>)}</tr></thead>
+      <thead><tr>{/* §79 one-screen (Nov 6 2026): the technician sits under the guest (as on Service Done) — a column of its own pushed the
+          row's actions past the card */}{[tx('pos.time'), tx('pos.guest'), tx('pos.services'), tx('pos.total'), tx('pos.status'), 'Actions'].map((hh, i) => <th key={i} style={{ textAlign: i === 3 ? 'right' : 'left' }}>{hh === 'Actions' ? <span className="sr-only">{tx('pos.actions')}</span> : hh}</th>)}</tr></thead>
       <tbody>
         {rows.map((r) => { const sel = r.ticketId === selId; const tone = r.isVip ? STATUS_TONE.vip : STATUS_TONE[r.status] || STATUS_TONE.ready_for_payment; return (
           <tr key={r.ticketId} className="co-row" onClick={() => { selectTicket(r.ticketId); setOverlay(null); }} style={{ background: sel ? '#FCF3E4' : 'transparent' }}>
             <td style={{ color: 'var(--muted)' }}>{hhmm(r.finishedAt || r.completedAt)}</td>
-            <td><div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}><span style={{ width: 18, height: 18, borderRadius: 99, background: '#ECE3D5', color: 'var(--g7)', fontSize: 8, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{initials(r.customerName)}</span><span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.customerName}</span></div></td>
-            <td style={{ color: 'var(--soft)', maxWidth: 110 }}>{r.primaryTechnicianName || tx('pos.any_tech_2')}</td>
-            <td style={{ color: 'var(--soft)', maxWidth: 120 }}>{r.servicesLabel || tx('pos.servicecount_svc', { serviceCount: String(r.serviceCount) })}</td>
+            <td><div style={{ display: 'flex', alignItems: 'center', gap: 5, minWidth: 0 }}><span style={{ width: 18, height: 18, borderRadius: 99, background: '#ECE3D5', color: 'var(--g7)', fontSize: 8, fontWeight: 800, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: 'none' }}>{initials(r.customerName)}</span><span style={{ minWidth: 0, display: 'flex', flexDirection: 'column', lineHeight: 1.2 }}><span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.customerName}</span><span style={{ fontSize: 10, color: 'var(--soft)', overflow: 'hidden', textOverflow: 'ellipsis' }} title={r.primaryTechnicianName || undefined}>{r.primaryTechnicianName || tx('pos.any_tech_2')}</span></span></div></td>
+            <td style={{ color: 'var(--soft)', maxWidth: 120 }} title={r.servicesLabel || undefined}>{r.servicesLabel || tx('pos.servicecount_svc', { serviceCount: String(r.serviceCount) })}</td>
             <td style={{ textAlign: 'right', fontWeight: 700 }}>{money(r.totalDueCents)}</td>
             <td>{chip(boardLabel(r.status, r.isVip), tone)}</td>
-            <td style={{ maxWidth: 'none' }}><button style={{ ...ghostBtn, minHeight: 32 }} onClick={(e) => { e.stopPropagation(); selectTicket(r.ticketId); setOverlay(null); }}>{actionLabel(r.status, r.isVip)}</button> <button style={{ ...ghostBtn, minHeight: 32 }} title={tx('pos.open_full_ipad_view')} onClick={(e) => { e.stopPropagation(); openIPad(checkoutTicketRequest({ ticketId: r.ticketId, ticketNumber: r.ticketNumber, customer: { fullName: r.customerName, isVip: r.isVip, phone: r.customerPhone }, totals: { totalDueCents: r.totalDueCents } })); }}>{tx('pos.full_view')}</button></td>
+            <td style={{ maxWidth: 'none' }}><button style={{ ...ghostBtn, minHeight: 32 }} onClick={(e) => { e.stopPropagation(); selectTicket(r.ticketId); setOverlay(null); }}>{actionLabel(r.status, r.isVip)}</button> <button style={{ ...ghostBtn, minHeight: 32, width: 32, padding: 0 }} title={tx('pos.open_full_ipad_view')} aria-label={tx('pos.full_view')} data-testid="co-row-full-view" onClick={(e) => { e.stopPropagation(); openIPad(checkoutTicketRequest({ ticketId: r.ticketId, ticketNumber: r.ticketNumber, customer: { fullName: r.customerName, isVip: r.isVip, phone: r.customerPhone }, totals: { totalDueCents: r.totalDueCents } })); }}><FaExpand aria-hidden="true" /></button></td>
           </tr>
         ); })}
-        {rows.length === 0 ? <tr><td colSpan={7} style={{ padding: 14, textAlign: 'center', color: 'var(--muted)' }}>{tx('pos.no_guests_ready_for_checkout')}</td></tr> : null}
+        {rows.length === 0 ? <tr><td colSpan={6} style={{ padding: 14, textAlign: 'center', color: 'var(--muted)' }}>{tx('pos.no_guests_ready_for_checkout')}</td></tr> : null}
       </tbody>
     </table>
   );

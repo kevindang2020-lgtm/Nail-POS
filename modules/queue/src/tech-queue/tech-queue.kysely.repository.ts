@@ -383,13 +383,16 @@ export class KyselyTechQueueRepository implements TechQueueRepositoryPort {
       const mixRows = await this.scoped(this.db.selectFrom('ticket_service_lines as l'), ctx, 'l')
         .innerJoin('tickets as t', 't.id', 'l.ticket_id').leftJoin('services as s', 's.id', 'l.service_id').leftJoin('service_categories as sc', 'sc.id', 's.category_id')
         .where('l.ticket_id', 'in', doneTodayIds)
-        .select(['t.primary_technician_id as tid', sql<string>`coalesce(sc.name, 'Other')`.as('category'), sql<number>`count(*)`.as('cnt'), sql<number>`coalesce(sum(l.line_total_cents),0)`.as('rev')])
-        .groupBy(['t.primary_technician_id', sql`coalesce(sc.name, 'Other')`]).execute().catch(() => []);
+        // Nov 6 2026: the technician who did the LINE (else the ticket's primary); a ticket with neither had a null column —
+        // its name was null and the Tech Queue screen crashed on it ("Something went wrong on this screen")
+        .where(sql<boolean>`coalesce(l.technician_id, t.primary_technician_id) is not null`)
+        .select([sql<string>`coalesce(l.technician_id, t.primary_technician_id)`.as('tid'), sql<string>`coalesce(sc.name, 'Other')`.as('category'), sql<number>`count(*)`.as('cnt'), sql<number>`coalesce(sum(l.line_total_cents),0)`.as('rev')])
+        .groupBy([sql`coalesce(l.technician_id, t.primary_technician_id)`, sql`coalesce(sc.name, 'Other')`]).execute().catch(() => []);
       const byTech = new Map<string, { category: string; count: number; revenueCents: number }[]>();
       for (const r of mixRows) { mixCategories.add(r.category); const arr = byTech.get(r.tid) || []; arr.push({ category: r.category, count: Number(r.cnt || 0), revenueCents: Math.round(Number(r.rev || 0)) }); byTech.set(r.tid, arr); }
       serviceMixByTechnician = [...byTech.entries()].map(([tid, cells]) => {
         const total = cells.reduce((a, c) => a + c.count, 0) || 1;
-        return { technicianId: tid, technicianName: techMap[tid]?.name || tid, cells: cells.map((c) => ({ category: c.category, count: c.count, revenueCents: c.revenueCents, percent: Math.round((c.count / total) * 100) })) };
+        return { technicianId: tid, technicianName: techMap[tid]?.name || '', cells: cells.map((c) => ({ category: c.category, count: c.count, revenueCents: c.revenueCents, percent: Math.round((c.count / total) * 100) })) };
       });
     }
     const analytics: TechQueueAnalytics = {
