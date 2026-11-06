@@ -17,7 +17,9 @@
 //   POST super-admin/loyalty-network/global-rules/preview           (view; writes nothing)
 //   POST super-admin/loyalty-network/global-rules | global-rules/:id/cancel | program | enrollments/:tenantId
 //   POST super-admin/loyalty-network/purchases/:id/sandbox-advance  (sandbox provider only)
-import { Body, Controller, Get, Header, HttpException, Inject, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Header, HttpException, Inject, Optional, Param, Post, Query, Req, UseGuards, type OnModuleInit } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
+import { PLATFORM_APPROVALS_TOKEN, type ApprovalsLike } from './global-rewards-dual-control';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireStepUp, ValidatedBody, SuperAdminGuard, AsyncExport, RequireFeature } from '@aipowersalon/permissions/guards';
 import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
 import { Idempotent } from '@aipowersalon/database/nest';
@@ -94,8 +96,15 @@ export class GlobalRewardsController {
 
 @UseGuards(SuperAdminGuard, RolePermissionGuard)
 @Controller('super-admin/loyalty-network')
-export class SuperAdminGlobalRewardsController {
-  constructor(@Inject(GLOBAL_REWARDS_SERVICE) private readonly svc: GlobalRewardsService | null) {}
+export class SuperAdminGlobalRewardsController implements OnModuleInit {
+  constructor(@Inject(GLOBAL_REWARDS_SERVICE) private readonly svc: GlobalRewardsService | null, @Optional() @Inject(ModuleRef) private readonly moduleRef?: ModuleRef | null) {}
+  /** Batch C decision 1: bind the platform maker/checker (by token — loyalty does not import the platform module). */
+  onModuleInit(): void {
+    let a: ApprovalsLike | null = null;
+    try { a = (this.moduleRef?.get(PLATFORM_APPROVALS_TOKEN, { strict: false }) as ApprovalsLike) ?? null; } catch { a = null; }   // a process without the platform module: changes run directly, as with the policy off
+    this.svc?.useApprovals(a);
+  }
+  private who(r: any) { return { userId: String(r?.ctx?.userId ?? '') || null, permissions: (r?.ctx?.permissions ?? []) as string[] }; }
   private s(): GlobalRewardsService { if (!this.svc) throw new HttpException({ code: 'SERVICE_UNAVAILABLE', message: 'The rewards network needs the database.' }, 503); return this.svc; }
   private actor(r: any): string { return String(r?.ctx?.userId ?? ''); }
 
@@ -112,14 +121,14 @@ export class SuperAdminGlobalRewardsController {
   @Post('global-rules/preview') @RequirePermission('super_admin.billing.view')
   previewGlobal(@Body(ValidatedBody(GR_GLOBAL_RULE_BODY, { strict: true })) b: any) { return runGr(() => this.s().previewGlobal(b ?? {})); }
   @RequireStepUp() @Post('global-rules') @RequirePermission('super_admin.billing.manage')
-  publish(@Req() r: any, @Body(ValidatedBody(GR_GLOBAL_RULE_BODY, { strict: true })) b: any) { return runGr(() => this.s().publishGlobal(b ?? {}, this.actor(r))); }
+  publish(@Req() r: any, @Body(ValidatedBody(GR_GLOBAL_RULE_BODY, { strict: true })) b: any) { return runGr(() => this.s().publishGlobalControlled(b ?? {}, this.who(r))); }
   @RequireStepUp() @Post('global-rules/:id/cancel') @RequirePermission('super_admin.billing.manage')
   cancelRule(@Req() r: any, @Param('id') vid: string, @Body(ValidatedBody(GR_EMPTY_BODY, { strict: true })) _b: any) { return runGr(() => this.s().cancelGlobal(id(vid), this.actor(r))); }
   @RequireStepUp() @Post('program') @RequirePermission('super_admin.billing.manage')
   program(@Req() r: any, @Body(ValidatedBody(GR_PROGRAM_BODY, { strict: true })) b: any) {
-    const { expectedVersion, ...patch } = b ?? {};
+    const { expectedVersion, reason, ...patch } = b ?? {};
     const clean = Object.fromEntries(Object.entries(patch).filter(([, v]) => v !== null && v !== undefined));
-    return runGr(() => this.s().updateProgram(clean, Number(expectedVersion), this.actor(r)));
+    return runGr(() => this.s().updateProgramControlled(clean, Number(expectedVersion), reason ?? null, this.who(r)));
   }
   @RequireStepUp() @Post('enrollments/:tenantId') @RequirePermission('super_admin.billing.manage')
   enroll(@Req() r: any, @Param('tenantId') tenantId: string, @Body(ValidatedBody(GR_ENROLLMENT_BODY, { strict: true })) b: any) {

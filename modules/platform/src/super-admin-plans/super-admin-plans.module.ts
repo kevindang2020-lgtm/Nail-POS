@@ -46,6 +46,8 @@ import { invalidateOnWrite } from './plan-feature-source';
           execute: (p: any, actor) => ent.setLimitOverride(String(p?.tenantId), p?.input ?? {}, { userId: actor.userId ?? undefined, role: 'SUPER_ADMIN', permissions: [...actor.permissions] } as any) });
         return a;
       }, inject: [DATABASE, EntitlementsService] },
+    // Batch C decision 1 (Nov 6 2026): the same instance by token, so loyalty registers its approvable actions without importing platform
+    { provide: 'PLATFORM_APPROVALS', useExisting: PlatformApprovals },
     // Constitution 7 §30–§33: feature registry + resolver (platform layers over entitlements)
     { provide: FeatureRegistry, useFactory: (db: AppDatabase, ent: EntitlementsService) => new FeatureRegistry(db, ent), inject: [DATABASE, EntitlementsService] },
     UsageAlertSweep,   // Constitution 7 §41 — hourly, gated, once per tenant/metric/threshold/month

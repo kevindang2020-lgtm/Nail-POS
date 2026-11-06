@@ -301,7 +301,7 @@ export class OwnerController {
   @RequirePermission('owner.expenses.manage') @Patch('expenses/:id') updateExpense(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(OWNER_EXPENSE_UPDATE_BODY, { strict: true })) body: any) {
     return run(() => this.svc.updateExpense(ctxFrom(r), id, body));
   }
-  @RequirePermission('owner.expenses.manage') @Delete('expenses/:id') deleteExpense(@Req() r: any, @Param('id') id: string) {
+  @RequirePermission('owner.expenses.delete_draft') @Delete('expenses/:id') deleteExpense(@Req() r: any, @Param('id') id: string) {
     return run(() => this.svc.deleteExpense(ctxFrom(r), id));
   }
 

@@ -164,7 +164,9 @@ export function RewardsNetworkPanel() {
                 <div><span className="rn-k">{tx('rn.current')}</span> <b>{modeLabel}</b> · {rateText(st.effective)}</div>
                 <div className="fk-hint">{rateDetails(st.effective as RewardsNetEarningRate)}{st.effective?.source === 'TENANT_OVERRIDE' && st.effective.effectiveFrom ? ` · ${tx('rn.since', { date: whenTime(st.effective.effectiveFrom) })}` : ''}</div>
                 {st.mode === 'GLOBAL' && st.globalNext ? <div className="fk-hint">{tx('rn.globalNext', { rate: rateText(st.globalNext), date: whenTime(st.globalNext.effectiveFrom) })}</div> : null}
-                {customBlockedReason && canEdit ? <div className="fk-hint">{customBlockedReason}</div> : null}
+                {/* Batch C decision 2 (Nov 6 2026): custom earning switched off → an ACTIVE custom rule is kept (grandfathered); no new custom changes */}
+                {st.mode === 'CUSTOM' && (!st.flags.customEarning || !st.flags.engine) ? <div className="fk-hint" data-testid="rn-custom-kept">{tx('rn.custom.kept')}</div>
+                  : customBlockedReason && canEdit ? <div className="fk-hint">{customBlockedReason}</div> : null}
               </div>
               <ul className="fk-list rn-mini" aria-label={tx('rn.scheduledAndDrafts')}>
                 {scheduled.map((v) => (

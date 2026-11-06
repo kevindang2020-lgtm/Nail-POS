@@ -148,6 +148,20 @@ describe('the REAL policy file (apps/api/db/retention-policy.json)', () => {
     expect(r.results.filter((x) => x.skipped || x.error)).toEqual([]);
     expect(await runs()).toBe(0);
   });
+  it('Batch C decision 3 (Nov 6 2026): inbox message TEXT is kept 24 months, then replaced — the row (direction, channel, status, time) stays', async () => {
+    const real = new RetentionExecutorService(db);
+    const plan = await real.plan();
+    const msg = plan.rules.find((r) => r.table === 'communication_messages');
+    expect(msg).toMatchObject({ action: 'anonymize', days: 730, anonymizeColumns: ['body'] });
+    expect(plan.rules.find((r) => r.table === 'communication_threads')).toMatchObject({ action: 'anonymize', days: 730, anonymizeColumns: ['last_message_preview'] });
+    await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'M','M','ret-msg','RETMSG','active') on conflict do nothing`, [A]);
+    const th = (await q(`insert into communication_threads (tenant_id, channel, status, last_message_preview, last_message_at) values ($1,'sms','open','old text',$2) returning id`, [A, daysAgo(800)]))[0].id;
+    await q(`insert into communication_messages (tenant_id, thread_id, direction, channel, body, status, created_at) values ($1,$2,'inbound','sms','my old private message','delivered',$3), ($1,$2,'outbound','sms','a recent reply','sent',$4)`, [A, th, daysAgo(800), daysAgo(20)]);
+    const svc = new RetentionExecutorService(db, { policy: policy({ communication_messages: { retention_class: 'communication', delete_policy: 'anonymize_after_days', days: 730, timestamp_column: 'created_at', executor: 'central', anonymize: { columns: ['body'] } } }) });
+    expect((await svc.run({ dryRun: false, trigger: 'job' })).results[0]).toMatchObject({ action: 'anonymize', processed: 1 });
+    expect(await q(`select direction, status, body from communication_messages where thread_id = $1 order by created_at`, [th])).toEqual([
+      { direction: 'inbound', status: 'delivered', body: '[removed]' }, { direction: 'outbound', status: 'sent', body: 'a recent reply' }]);
+  });
   it('financial and audit tables are listed as never (the ownership registry reads these)', async () => {
     const file = new RetentionExecutorService(db).policy()!;
     for (const t of ['payments', 'payment_refunds', 'tickets', 'loyalty_ledger', 'audit_events', 'audit_logs']) expect(file.tables[t]?.delete_policy, t).toBe('never');

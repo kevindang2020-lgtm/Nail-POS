@@ -672,3 +672,19 @@ Built:
   connection yet) leaves the reply as a draft for a person.
 - Customer messages stay English (language mandate) whatever the customer's preference.
 - Tests: `review-request-sender.pgtest` (12, real schema) + `review-auto-reply` (6). Module: 89 pass.
+
+### Batch C decisions + F7 §73 — decided and built (Nov 6 2026, Kevin: "pick best for my pos")
+1. **Dual control on the global loyalty rule / program** — registered with the platform maker/checker (PlatformApprovals),
+   policy ON (migration 824): a second Super Admin approves when another active platform account can (holds
+   super_admin.billing.manage); with none, the change runs as an audited SELF-APPROVAL (one Super Admin is never locked out;
+   adding a second turns dual control on by itself). A pause-only program change (emergency stop) is never held. Super Admin
+   screen says "sent to another Super Admin for approval". `global-rewards-dual-control.ts`, `…dual-control.pgtest` (6).
+2. **Custom-earning flag off vs salons on a custom rate** — GRANDFATHER: the active custom rule keeps applying (customers are
+   not re-priced), no new custom drafts / activations, Use Global Rules and cancelling a scheduled change stay open. POS
+   shows "Custom earning rules are turned off for new changes. Your current custom rule stays…" (EN/VI). Pinned in
+   `global-rewards-engine.pgtest`.
+3. **Inbox message-text retention** — 24 months, then the TEXT is replaced ("[removed]") by the central retention executor;
+   the row (direction, channel, status, time, delivery ids) stays, as does the 4-year notification ledger (TCPA evidence).
+   Thread previews follow 24 months after the last message. `retention-policy.json`, `retention-executor.pgtest`.
+4. **F7 §73 separate expense keys** — delete_draft / archive / bills.manage split out of owner.expenses.manage; nobody loses
+   access (base sets + migration 825 for custom roles and overrides). Details in RECEIPT_EXPENSE_OCR_STATUS §73.

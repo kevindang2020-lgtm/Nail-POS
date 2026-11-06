@@ -11,9 +11,9 @@ import { ExpenseError } from './expense-errors';
 const T = 'f9000000-0000-4000-8000-000000000001', T2 = 'f9000000-0000-4000-8000-000000000002';
 const B1 = 'f9000000-0000-4000-8000-0000000000b1', B2 = 'f9000000-0000-4000-8000-0000000000b2', BX = 'f9000000-0000-4000-8000-0000000000b9';
 const OWNER = 'f9000000-0000-4000-8000-0000000000e1', MGR = 'f9000000-0000-4000-8000-0000000000e2', RECEP = 'f9000000-0000-4000-8000-0000000000e3', O2 = 'f9000000-0000-4000-8000-0000000000e9';
-const ALL = ['owner.expenses.view', 'owner.expenses.manage', 'owner.expenses.approve', 'owner.expenses.export', 'owner.expenses.categories.manage', 'owner.expenses.reimbursements.manage'];
+const ALL = ['owner.expenses.view', 'owner.expenses.manage', 'owner.expenses.approve', 'owner.expenses.export', 'owner.expenses.categories.manage', 'owner.expenses.reimbursements.manage', 'owner.expenses.delete_draft', 'owner.expenses.archive', 'owner.expenses.bills.manage'];
 const owner: FinanceCtx = { tenantId: T, userId: OWNER, role: 'OWNER', permissions: ALL };
-const mgr: FinanceCtx = { tenantId: T, userId: MGR, role: 'MANAGER', permissions: ['owner.expenses.view', 'owner.expenses.manage', 'owner.expenses.approve', 'owner.expenses.export'] };
+const mgr: FinanceCtx = { tenantId: T, userId: MGR, role: 'MANAGER', permissions: ['owner.expenses.view', 'owner.expenses.manage', 'owner.expenses.approve', 'owner.expenses.export', 'owner.expenses.delete_draft', 'owner.expenses.archive', 'owner.expenses.bills.manage'] };   // rbac MANAGER (F7 §73 split keys)
 const recep: FinanceCtx = { tenantId: T, userId: RECEP, role: 'RECEPTIONIST', permissions: ['owner.expenses.view', 'owner.expenses.manage'] };
 const other: FinanceCtx = { tenantId: T2, userId: O2, role: 'OWNER', permissions: ALL };
 
@@ -73,6 +73,13 @@ describe('finance — isolation', () => {
     expect(await code(svc.create(mgr, { amountCents: 100, incurredOn: today, branchId: B2, category: 'other' }))).toBe('EXPENSE_ACCESS_DENIED');
     expect((await svc.list(mgr, { tab: 'all' })).items.some((x) => x.id === b2.expense.id)).toBe(false);
     expect(await code(svc.detail(mgr, b2.expense.id))).not.toBe('ok');
+  });
+  it('F7 §73: recording expenses (owner.expenses.manage) no longer implies deleting a draft, archiving or recording bill payments', async () => {
+    const { expense } = await svc.create(recep, { amountCents: 1500, incurredOn: '2026-10-20', vendor: 'Split Keys Supply', category: 'supplies', branchId: B1, idempotencyKey: 'split-1', intent: 'draft' } as any);
+    expect(await code(svc.deleteDraft(recep, expense.id))).toBe('EXPENSE_ACCESS_DENIED');
+    expect(await code(svc.archive(recep, expense.id))).toBe('EXPENSE_ACCESS_DENIED');
+    expect(await code(svc.recordBillPayment(recep, expense.id, { amountCents: 100, idempotencyKey: 'split-pay' }))).toBe('EXPENSE_ACCESS_DENIED');
+    expect(await code(svc.deleteDraft({ ...recep, permissions: [...recep.permissions, 'owner.expenses.delete_draft'] }, expense.id))).toBe('ok');
   });
   it('a branch from another salon is refused', async () => {
     expect(await code(svc.create(owner, { amountCents: 100, incurredOn: today, branchId: BX, category: 'other' }))).not.toBe('ok');

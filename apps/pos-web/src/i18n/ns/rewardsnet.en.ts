@@ -15,6 +15,7 @@ export const REWARDSNET_EN = {
   'rn.earning.title': 'Earning rule', 'rn.earning.true': 'In force now: {source}',
   'rn.off': 'The AI PowerSalon Rewards Network is not turned on for this salon yet. Your own salon program keeps working as before.',
   'rn.notEnrolled': 'This salon is not enrolled in the AI PowerSalon rewards network yet.', 'rn.earnPaused': 'AI PowerSalon has paused earning for the whole network.',
+  'rn.custom.kept': 'Custom earning rules are turned off for new changes. Your current custom rule stays in force until you switch to the global rules.',
   'rn.custom.off': 'Custom earning rules are not turned on for this salon.',
   'rn.current': 'Current:', 'rn.since': 'since {date}', 'rn.globalNext': 'The global rule changes to {rate} on {date}.',
   'rn.scheduledAndDrafts': 'Scheduled changes and drafts', 'rn.scheduledLine': '{mode} from {date}', 'rn.draftLine': 'Draft #{n}',

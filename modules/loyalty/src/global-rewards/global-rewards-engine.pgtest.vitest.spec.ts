@@ -102,6 +102,17 @@ describe('rule resolution — addendum T01, T02, T19, T03/T04, T05, T06, T07, T2
     expect((await repo.resolveEarningRule(db, TB, new Date(tomorrow.getTime() + 1000)) as any).rule).toMatchObject({ source: 'TENANT_OVERRIDE', pointTenthsPerIncrement: 20 });
     expect(await repo.globalImpact()).toEqual({ globalModeTenants: 2, customModeTenants: 1 });
   });
+  it('Batch C decision 2 (Nov 6 2026): custom earning switched OFF keeps an ACTIVE custom rule (grandfathered) — no new custom changes, the way back to global stays open', async () => {
+    await setFlag(GR_FLAGS.customEarning, false);
+    try {
+      expect((await repo.resolveEarningRule(db, TB, new Date()) as any).rule).toMatchObject({ source: 'TENANT_OVERRIDE', pointTenthsPerIncrement: 20 });   // customers are not re-priced
+      const v = await repo.policyView(owner(TB, BB));
+      expect(v.mode).toBe('CUSTOM'); expect(v.flags.customEarning).toBe(false); expect(v.permissions.canActivate).toBe(false);
+      expect(await code(repo.saveDraft(owner(TB, BB), { spendIncrementCents: 1000, pointTenthsPerIncrement: 10 }))).toBe('CUSTOM_EARNING_DISABLED');
+      expect(await code(repo.activateCustom(owner(TB, BB), { spendIncrementCents: 1000, pointTenthsPerIncrement: 10 }))).toBe('CUSTOM_EARNING_DISABLED');
+      expect(await code(repo.useGlobal(owner(TB, BB), { confirm: false }))).toBe('VALIDATION_FAILED');   // past the custom gate: Use Global is never blocked
+    } finally { await setFlag(GR_FLAGS.customEarning, true); }
+  });
   it('T06 a scheduled custom rule shows "Current: Global / Scheduled Custom" and applies only from its time', async () => {
     const at = new Date(Date.now() + 3_600_000);
     await repo.activateCustom(owner(TC, BC), { spendIncrementCents: 2000, pointTenthsPerIncrement: 10, effectiveFrom: at.toISOString() });

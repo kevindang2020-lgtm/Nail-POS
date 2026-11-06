@@ -1,5 +1,6 @@
 // global-rewards.service.ts — the network's application service: the repository's guarded SQL + the funding provider
 // seam + realtime (ids only). Controllers stay thin; every money and rule decision is in the repository / core.
+import { GR_GLOBAL_RULE_ACTION, GR_PROGRAM_ACTION, GR_APPROVAL_PERMISSION, dualControlMode, auditSelfApproval, needReason, isPauseOnly, pendingApproval, type ApprovalsLike, type GrApprovalActor } from './global-rewards-dual-control';
 import { sql, type Kysely } from 'kysely';
 import { recordPlatformAuditStrict } from '@aipowersalon/audit';
 import { EVENTS, type RealtimeEmitter } from '@aipowersalon/realtime-contracts';
@@ -90,6 +91,38 @@ export class GlobalRewardsService {
     return { proposed: { ...proposed, rateLabel: rateLabel(proposed) }, current: { ...current, rateLabel: rateLabel(current) }, rows: previewRows(proposed, current, program), impact: await this.repo.globalImpact() };
   }
   cancelGlobal(id: string, actorUserId: string) { return this.repo.cancelGlobalRule(id, actorUserId); }
+
+  // ── Batch C decision 1 (Nov 6 2026): dual control on global rule publish / program update (global-rewards-dual-control.ts)
+  private approvals: ApprovalsLike | null = null;
+  /** Bind the platform maker/checker and register the two approvable actions (idempotent; boot-time, so an approval filed
+   *  before a restart still executes). On approval each runs as the REQUESTER. */
+  useApprovals(a: ApprovalsLike | null): this {
+    this.approvals = a;
+    if (!a) return this;
+    const has = (k: string) => a.registered().some((x) => x.key === k);
+    if (!has(GR_GLOBAL_RULE_ACTION)) a.register({ key: GR_GLOBAL_RULE_ACTION, label: 'Publish a global loyalty earning rule', requiredPermission: GR_APPROVAL_PERMISSION,
+      execute: (p: any, actor) => this.publishGlobal(p?.body ?? {}, String(actor.userId ?? '')) });
+    if (!has(GR_PROGRAM_ACTION)) a.register({ key: GR_PROGRAM_ACTION, label: 'Change the loyalty program limits / pauses', requiredPermission: GR_APPROVAL_PERMISSION,
+      execute: (p: any, actor) => this.updateProgram(p?.patch ?? {}, Number(p?.expectedVersion), String(actor.userId ?? '')) });
+    return this;
+  }
+  async publishGlobalControlled(body: Record<string, any>, actor: GrApprovalActor) {
+    const mode = await dualControlMode(this.approvals, this.repo.database, GR_GLOBAL_RULE_ACTION, actor);
+    if (mode === 'off') return this.publishGlobal(body, String(actor.userId ?? ''));
+    await this.previewGlobal(body);   // a request that would fail validation is refused now, never filed for a second person
+    const reason = needReason(body.reason);
+    if (mode === 'self_approval') { await auditSelfApproval(this.repo.database, actor, GR_GLOBAL_RULE_ACTION, reason, { body }); return this.publishGlobal(body, String(actor.userId ?? '')); }
+    const out = await this.approvals!.runOrRequest(GR_GLOBAL_RULE_ACTION, { body }, reason, actor, 'global_rule');
+    return out.executed ? out.result : pendingApproval(out.approvalId, out.expiresAt);
+  }
+  async updateProgramControlled(patch: Record<string, unknown>, expectedVersion: number, reason: string | null | undefined, actor: GrApprovalActor) {
+    const mode = isPauseOnly(patch) ? 'off' : await dualControlMode(this.approvals, this.repo.database, GR_PROGRAM_ACTION, actor);
+    if (mode === 'off') return this.updateProgram(patch, expectedVersion, String(actor.userId ?? ''));
+    const r = needReason(reason);
+    if (mode === 'self_approval') { await auditSelfApproval(this.repo.database, actor, GR_PROGRAM_ACTION, r, { patch, expectedVersion }); return this.updateProgram(patch, expectedVersion, String(actor.userId ?? '')); }
+    const out = await this.approvals!.runOrRequest(GR_PROGRAM_ACTION, { patch, expectedVersion }, r, actor, 'program');
+    return out.executed ? out.result : pendingApproval(out.approvalId, out.expiresAt);
+  }
   updateProgram(patch: Record<string, unknown>, expectedVersion: number, actorUserId: string) { return this.repo.updateProgram(patch, expectedVersion, actorUserId); }
   async setEnrollment(tenantId: string, to: 'enrolled' | 'suspended' | 'withdrawn', a: { earningSuspended?: boolean; purchasingSuspended?: boolean; reason: string; actorUserId: string }) {
     const r = await this.repo.setEnrollment(tenantId, to, a); await this.emit(tenantId, 'enrollment'); return r;

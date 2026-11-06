@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-444 catalog keys — critical 19, high 70, medium 118, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
+447 catalog keys — critical 19, high 71, medium 120, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -696,9 +696,11 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `owner.expenses.view` | View owner expenses | low | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | View owner expenses. |  |
-| `owner.expenses.manage` | Manage owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Record receipts and expenses, edit drafts, record bill payments, archive — the salon's spending records. |  |
+| `owner.expenses.manage` | Manage owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Record receipts and expenses and edit drafts — the salon's spending records. |  |
 | `owner.expenses.approve` | Approve owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Approve or reject receipts and expenses, void an approved one with a reason, decide suspected duplicates, correct an approved expense (audited). |  |
 | `owner.expenses.export` | Export owner expenses | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Download expense records as CSV / Excel for the accountant or tax preparer (every export is audited). |  |
+| `owner.expenses.delete_draft` | Delete draft owner expenses | medium | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Delete an expense that is still a draft (anything submitted or approved can only be voided or archived). |  |
+| `owner.expenses.archive` | Archive owner expenses | medium | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Archive an expense out of the working lists, and restore it. |  |
 
 ### owner.expenses.categories
 
@@ -711,6 +713,12 @@ owner's high-risk report and in every access review.
 | Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
 |---|---|---|---|---|---|---|---|
 | `owner.expenses.reimbursements.manage` | Manage owner expenses reimbursements | high | TENANT |  | OWNER | Approve and mark paid the reimbursements owed to staff who paid for salon supplies themselves. |  |
+
+### owner.expenses.bills
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `owner.expenses.bills.manage` | Manage owner expenses bills | high | SELECTED_BRANCHES, TENANT |  | OWNER, MANAGER | Record payments against a vendor bill (partial or full) and match them to bank / card payments. |  |
 
 ### owner.tenant_branding
 

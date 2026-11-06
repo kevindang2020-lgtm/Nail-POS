@@ -17,6 +17,8 @@ export interface Reconciliation {
   pointsMismatches: number; rewardsLiabilityCents: number; outstandingPointsValueCents: number; liabilityMatchesPoints: boolean;
   payables: { status: string; count: number; amountCents: number }[]; purchases: { status: string; count: number; tokenCents: number }[]; healthy: boolean;
 }
+export interface PendingApproval { ok: true; pending: true; approvalId: string; expiresAt: string; message: string }
+export const isPendingApproval = (x: unknown): x is PendingApproval => !!x && typeof x === 'object' && (x as { pending?: unknown }).pending === true;
 export interface LoyaltyNetOverview { program: Program; globalVersions: GlobalVersion[]; impact: { globalModeTenants: number; customModeTenants: number }; reconciliation: Reconciliation; funding: { provider: string | null; sandbox: boolean } }
 interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
 export interface GlobalPreview { proposed: Rate; current: Rate; rows: PreviewRow[]; impact: { globalModeTenants: number; customModeTenants: number } }
@@ -56,9 +58,10 @@ export const superAdminLoyaltyNetworkApi = {
   enrollments: (q: { q?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<Enrollment>>(`${B}/enrollments`, q),
   purchases: (q: { page: number; pageSize: number }) => api.get<LoyaltyNetPaged<Purchase>>(`${B}/purchases`, q),
   previewGlobal: (rate: Rate) => api.post<GlobalPreview>(`${B}/global-rules/preview`, { ...rate }),
-  publishGlobal: (b: Rate & { effectiveFrom: string | null; reason: string }) => api.post<unknown>(`${B}/global-rules`, { ...b }),
+  // Batch C decision 1 (Nov 6 2026): with a second Super Admin the change is filed for approval — the answer says pending
+  publishGlobal: (b: Rate & { effectiveFrom: string | null; reason: string }) => api.post<PendingApproval | Record<string, unknown>>(`${B}/global-rules`, { ...b }),
   cancelGlobal: (id: string) => api.post<unknown>(`${B}/global-rules/${enc(id)}/cancel`, {}),
-  updateProgram: (patch: ProgramPatch, expectedVersion: number) => api.post<Program>(`${B}/program`, { ...patch, expectedVersion }),
+  updateProgram: (patch: ProgramPatch, expectedVersion: number, reason?: string) => api.post<Program | PendingApproval>(`${B}/program`, { ...patch, expectedVersion, ...(reason ? { reason } : {}) }),
   setEnrollment: (tenantId: string, b: { status: 'enrolled' | 'suspended' | 'withdrawn'; earningSuspended?: boolean; purchasingSuspended?: boolean; reason: string }) => api.post<unknown>(`${B}/enrollments/${enc(tenantId)}`, { ...b }),
   /** SANDBOX ONLY — stands in for the provider's later answers; the server refuses it for a live provider */
   sandboxAdvance: (id: string, status: string) => api.post<Purchase>(`${B}/purchases/${enc(id)}/sandbox-advance`, { status }),

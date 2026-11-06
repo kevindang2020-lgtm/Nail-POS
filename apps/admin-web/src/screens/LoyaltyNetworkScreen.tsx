@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { PageHeader, StatusBadge, ErrorState, LoadingSkeleton, Modal, Pagination, type Tone } from '@aipowersalon/ui';
 import { LoyaltyIntegrityTab } from './LoyaltyIntegrityTab';
-import { superAdminLoyaltyNetworkApi as netApi, type LoyaltyNetOverview, type GlobalVersion, type GlobalPreview, type Enrollment, type Purchase, type LoyaltyNetPaged, type Program, type ProgramPatch, type Reconciliation, type Rate } from '../api/superAdminLoyaltyNetworkApi';
+import { superAdminLoyaltyNetworkApi as netApi, isPendingApproval, type LoyaltyNetOverview, type GlobalVersion, type GlobalPreview, type Enrollment, type Purchase, type LoyaltyNetPaged, type Program, type ProgramPatch, type Reconciliation, type Rate } from '../api/superAdminLoyaltyNetworkApi';
 
 type Tab = 'integrity' | 'overview' | 'rules' | 'salons' | 'purchases' | 'recon';
 const TABS: { id: Tab; label: string }[] = [
@@ -157,7 +157,7 @@ function OverviewTab({ ov, onDone, onFail }: TabProps) {
         </div>
       </section>
       {pending ? <ReasonModal title={pending.title} body={pending.body} confirmLabel="Save" onClose={() => setPending(null)}
-        onConfirm={async () => { try { await netApi.updateProgram(pending.patch, p.version); setEdit({}); onDone(`${pending.title}: saved.`); } catch (e) { onFail(e, 'The program was not changed.'); throw e; } }} /> : null}
+        onConfirm={async (reason) => { try { const r = await netApi.updateProgram(pending.patch, p.version, reason); setEdit({}); onDone(isPendingApproval(r) ? `${pending.title}: sent to another Super Admin for approval (expires ${when(r.expiresAt)}).` : `${pending.title}: saved.`); } catch (e) { onFail(e, 'The program was not changed.'); throw e; } }} /> : null}
     </div>
   );
 }
@@ -179,7 +179,7 @@ function RulesTab({ ov, onDone, onFail }: TabProps) {
   const effIso = at ? new Date(at).toISOString() : null;
   const publish = async () => {
     if (!rate) return; setBusy(true);
-    try { await netApi.publishGlobal({ ...rate, effectiveFrom: effIso, reason: reason.trim() }); setReason(''); setPrev(null); onDone(effIso ? `Global rule ${rateText(rate)} scheduled for ${when(effIso)}.` : `Global rule ${rateText(rate)} is now in force.`); }
+    try { const r = await netApi.publishGlobal({ ...rate, effectiveFrom: effIso, reason: reason.trim() }); setReason(''); setPrev(null); onDone(isPendingApproval(r) ? `Global rule ${rateText(rate)} sent to another Super Admin for approval (expires ${when(r.expiresAt)}).` : effIso ? `Global rule ${rateText(rate)} scheduled for ${when(effIso)}.` : `Global rule ${rateText(rate)} is now in force.`); }
     catch (e) { onFail(e, 'The global rule was not published.'); } finally { setBusy(false); }
   };
   return (

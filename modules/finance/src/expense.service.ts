@@ -85,7 +85,9 @@ export interface ExpenseInput {
   idempotencyKey?: string | null;
 }
 
-const PERM = { view: 'owner.expenses.view', manage: 'owner.expenses.manage', approve: 'owner.expenses.approve', export: 'owner.expenses.export', categories: 'owner.expenses.categories.manage', reimburse: 'owner.expenses.reimbursements.manage' } as const;
+const PERM = { view: 'owner.expenses.view', manage: 'owner.expenses.manage', approve: 'owner.expenses.approve', export: 'owner.expenses.export', categories: 'owner.expenses.categories.manage', reimburse: 'owner.expenses.reimbursements.manage',
+  // F7 §73 (Kevin, Nov 6 2026: pick best): separate keys so a role editor can give "record expenses" without delete / archive / bill payments
+  deleteDraft: 'owner.expenses.delete_draft', archive: 'owner.expenses.archive', bills: 'owner.expenses.bills.manage' } as const;
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PAYMENT_METHODS = new Set(['business_card', 'cash', 'check', 'ach', 'bank_transfer', 'personal_card', 'other']);
 const trimTo = (v: string | null | undefined, max: number) => { const s = String(v ?? '').trim(); return s ? s.slice(0, max) : null; };
@@ -652,7 +654,7 @@ export class ExpenseService {
   }
   /** §85: a draft or rejected expense may be removed (it was never a business record); anything else is voided / archived */
   async deleteDraft(ctx: FinanceCtx, id: string) {
-    this.require(ctx, PERM.manage);
+    this.require(ctx, PERM.deleteDraft);
     const e = await this.getScoped(ctx, id);
     if (e.status !== 'draft' && e.status !== 'rejected') throw new ExpenseError('EXPENSE_INVALID_STATE', 'Only a draft can be deleted. Void or archive an approved expense instead.');
     if (e.receiptDocumentId) throw new ExpenseError('EXPENSE_INVALID_STATE', 'This draft carries a receipt — archive it instead so the evidence is kept.');
@@ -666,7 +668,7 @@ export class ExpenseService {
     return { id, deleted: true };
   }
   async archive(ctx: FinanceCtx, id: string, restore = false) {
-    this.require(ctx, PERM.manage);
+    this.require(ctx, PERM.archive);
     const e = await this.getScoped(ctx, id);
     if (!!e.archivedAt === !restore) return { expense: this.view(e), changed: false };
     const row = await this.db.transaction().execute(async (trx) => {
@@ -736,7 +738,7 @@ export class ExpenseService {
 
   // ── bills (§53–56) ──────────────────────────────────────────────────────────────────────────────────────────────────
   async recordBillPayment(ctx: FinanceCtx, id: string, p: { amountCents: number; paidOn?: string | null; paymentMethod?: string | null; reference?: string | null; idempotencyKey?: string | null }) {
-    this.require(ctx, PERM.manage);
+    this.require(ctx, PERM.bills);
     if (!Number.isInteger(p.amountCents) || p.amountCents <= 0) throw new ExpenseError('BILL_INVALID', 'Enter the amount paid.');
     if (p.paymentMethod && !PAYMENT_METHODS.has(p.paymentMethod)) throw new ExpenseError('BILL_INVALID', 'Choose a payment method from the list.');
     const today = await this.today(ctx.tenantId);

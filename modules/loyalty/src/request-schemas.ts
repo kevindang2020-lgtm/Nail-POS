@@ -28,6 +28,7 @@ export const GR_PROGRAM_BODY: BodySchema = S.object({
   expectedVersion: num, earn_paused: bool, redeem_paused: bool, purchases_paused: bool, reimbursements_paused: bool,
   custom_min_spend_increment_cents: num, custom_max_spend_increment_cents: num, custom_max_point_tenths_per_increment: num, custom_min_eligible_floor_cents: num,
   max_point_tenths_per_ticket: num, low_balance_cents: num, critical_balance_cents: num, reservation_ttl_seconds: num, max_purchase_tokens: num,
+  reason: str(500),   // Batch C decision 1: a change held for (or self-approved under) dual control needs a reason
 });
 export const GR_ENROLLMENT_BODY: BodySchema = S.object({ status: str(20), earningSuspended: bool, purchasingSuspended: bool, reason: str(500) });
 export const GR_SANDBOX_ADVANCE_BODY: BodySchema = S.object({ status: str(40) });

@@ -206,7 +206,7 @@ export function POSExpensesScreen() {
       </FitPanel>
 
       {form ? <ExpenseForm initial={form} today={today} categories={categories} canApprove={canApprove} onClose={() => setForm(null)} onSaved={onSaved} /> : null}
-      {viewId ? <ExpenseView id={viewId} canManage={canManage} canApprove={canApprove} catLabel={catLabel} onClose={() => setViewId(null)}
+      {viewId ? <ExpenseView id={viewId} canManage={canManage} canApprove={canApprove} can={can} catLabel={catLabel} onClose={() => setViewId(null)}
         onEdit={(x) => { setViewId(null); setForm(formOf(x)); }} onAsk={(a) => setAsk(a)} onChanged={(msg) => { setNote({ tone: 'ok', text: msg }); reload(); }} busy={busy} setBusy={setBusy} tick={tick} /> : null}
       {ask ? <AskDialog ask={ask} onClose={() => setAsk(null)} onDone={(msg) => { setAsk(null); setNote({ tone: 'ok', text: msg }); reload(); }} /> : null}
       {cats ? <CategoryBreakdown dates={dates} onClose={() => setCats(false)} /> : null}
@@ -292,8 +292,8 @@ function ExpenseForm({ initial, today, categories, canApprove, onClose, onSaved 
 }
 
 /** View expense: every field, the receipt (private, expiring preview when Receipt AI can show it), and the workflow actions. */
-function ExpenseView({ id, canManage, canApprove, catLabel, onClose, onEdit, onAsk, onChanged, busy, setBusy, tick }: {
-  id: string; canManage: boolean; canApprove: boolean; catLabel: (k: string | null | undefined, l?: string | null) => string; onClose: () => void; onEdit: (x: FinExpense) => void;
+function ExpenseView({ id, canManage, canApprove, can, catLabel, onClose, onEdit, onAsk, onChanged, busy, setBusy, tick }: {
+  id: string; canManage: boolean; canApprove: boolean; can: (k: string) => boolean; catLabel: (k: string | null | undefined, l?: string | null) => string; onClose: () => void; onEdit: (x: FinExpense) => void;
   onAsk: (a: Ask) => void; onChanged: (msg: string) => void; busy: string | null; setBusy: (b: string | null) => void; tick: number;
 }) {
   const d = useLoad<FinDetail>(() => posExpensesApi.detail(id), [id, tick]);
@@ -349,16 +349,16 @@ function ExpenseView({ id, canManage, canApprove, catLabel, onClose, onEdit, onA
             <button type="button" className="fk-btn" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'duplicate', label: tx('pos.mark_as_duplicate_why') })}>{tx('pos.duplicate')}</button>
           </> : null}
           {canApprove && x.status === 'pending_review' ? <button type="button" className="fk-btn" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'reject', label: tx('pos.reject_this_expense_why') })}>{tx('pos.reject')}</button> : null}
-          {canManage && x.kind === 'bill' && x.status === 'approved' && x.openCents > 0 ? <button type="button" className="fk-btn" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'pay', label: tx('pos.record_a_bill_payment') })}>{tx('pos.pay_2')}</button> : null}
+          {can('owner.expenses.bills.manage') && x.kind === 'bill' && x.status === 'approved' && x.openCents > 0 ? <button type="button" className="fk-btn" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'pay', label: tx('pos.record_a_bill_payment') })}>{tx('pos.pay_2')}</button> : null}
           {canApprove && x.status === 'approved' ? <button type="button" className="fk-btn" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'void', label: tx('pos.void_this_expense_why') })} data-testid="act-void">{tx('pos.void')}</button> : null}
           {canManage && x.status === 'approved' && x.paymentMatchStatus !== 'matched' ? <>
             <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.paymentMatch(x.id), (r) => { const v = (r as { verdict?: string })?.verdict; return v === 'matched' ? tx('people.expenses.payment.found') : v === 'possible_match' ? tx('people.expenses.payment.possible') : tx('people.expenses.payment.none'); })}>{tx('people.expenses.payment.find')}</button>
             <button type="button" className="fk-btn ghost" disabled={b} onClick={() => onAsk({ id: x.id, version: x.version, action: 'link_payment', label: tx('people.expenses.payment.linkWhich') })}>{tx('people.expenses.payment.link')}</button>
           </> : null}
           {x.paymentMatchStatus ? <span className={'fk-chip ' + (x.paymentMatchStatus === 'matched' ? 'ok' : 'mut')}>{x.paymentMatchStatus === 'matched' ? tx('people.expenses.payment.matched', { ref: x.matchedPaymentRef ?? '' }) : x.paymentMatchStatus === 'possible_match' ? tx('people.expenses.payment.possible') : tx('people.expenses.payment.unmatched')}</span> : null}
-          {canManage && x.status === 'draft' ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.deleteDraft(x.id), tx('people.expenses.draftDeleted')).then(onClose)}>{tx('pos.delete')}</button> : null}
-          {canManage && x.status !== 'draft' && !x.archivedAt ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.archive(x.id), tx('people.common.archived'))}>{tx('pos.archive')}</button> : null}
-          {canManage && x.archivedAt ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.restore(x.id), tx('people.common.restored'))}>{tx('pos.restore')}</button> : null}
+          {can('owner.expenses.delete_draft') && x.status === 'draft' ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.deleteDraft(x.id), tx('people.expenses.draftDeleted')).then(onClose)}>{tx('pos.delete')}</button> : null}
+          {can('owner.expenses.archive') && x.status !== 'draft' && !x.archivedAt ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.archive(x.id), tx('people.common.archived'))}>{tx('pos.archive')}</button> : null}
+          {can('owner.expenses.archive') && x.archivedAt ? <button type="button" className="fk-btn ghost" disabled={b} onClick={() => void act(() => posExpensesApi.restore(x.id), tx('people.common.restored'))}>{tx('pos.restore')}</button> : null}
         </div>
         {err ? <div className="fk-err" role="alert">{err}</div> : null}
       </>}

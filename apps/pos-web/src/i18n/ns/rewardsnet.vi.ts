@@ -16,6 +16,7 @@ export const REWARDSNET_VI = {
   'rn.earning.title': 'Quy tắc tích điểm', 'rn.earning.true': 'Đang áp dụng: {source}',
   'rn.off': 'Mạng lưới điểm thưởng AI PowerSalon chưa được bật cho tiệm này. Chương trình riêng của tiệm vẫn hoạt động như cũ.',
   'rn.notEnrolled': 'Tiệm này chưa tham gia mạng lưới điểm thưởng AI PowerSalon.', 'rn.earnPaused': 'AI PowerSalon đang tạm dừng tích điểm trên toàn mạng lưới.',
+  'rn.custom.kept': 'Quy tắc tích điểm riêng đã tắt cho thay đổi mới. Quy tắc riêng hiện tại vẫn áp dụng cho đến khi tiệm chuyển sang quy tắc chung.',
   'rn.custom.off': 'Quy tắc tích điểm riêng chưa được bật cho tiệm này.',
   'rn.current': 'Hiện tại:', 'rn.since': 'từ {date}', 'rn.globalNext': 'Quy tắc chung sẽ đổi thành {rate} vào {date}.',
   'rn.scheduledAndDrafts': 'Thay đổi đã hẹn và bản nháp', 'rn.scheduledLine': '{mode} từ {date}', 'rn.draftLine': 'Bản nháp #{n}',

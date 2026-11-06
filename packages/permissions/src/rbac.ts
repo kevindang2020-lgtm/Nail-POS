@@ -98,6 +98,8 @@ export const PERMISSIONS = [
   // Receipt / Expense / OCR / Accounting mandate (Oct 21 2026): approve (§82 — AI extracts, owner / manager approves), the
   // accountant export (§97–100), the salon's categories + categorization rules + expense settings (§175–176), reimbursements (§64)
   'owner.expenses.approve','owner.expenses.export','owner.expenses.categories.manage','owner.expenses.reimbursements.manage',
+  // F7 §73 (Nov 6 2026): delete a draft, archive / restore, record bill payments — split out of owner.expenses.manage
+  'owner.expenses.delete_draft','owner.expenses.archive','owner.expenses.bills.manage',
   // tenant (salon) branding — owners manage only their own salon identity, never the platform logo
   'owner.tenant_branding.view','owner.tenant_branding.update',
   // salon location management (tenant manager side) + super-admin platform verification
@@ -295,6 +297,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     'owner.finance.view','owner.reports.view','owner.alerts.view','owner.notifications.manage','owner.expenses.view',
     // mandate §77 / §82: a manager records, approves and exports expenses — of their own branch only (OwnerService branch scope)
     'owner.expenses.manage','owner.expenses.approve','owner.expenses.export',
+    'owner.expenses.delete_draft','owner.expenses.archive','owner.expenses.bills.manage',   // F7 §73: what manage used to cover — managers keep it
     'reconciliation.view','reconciliation.manage',
     'locations.view','locations.create','locations.update','locations.map.update','locations.publish','locations.unpublish','locations.hours.manage','locations.booking.manage',
     'inventory.view','inventory.create','inventory.update','inventory.archive','inventory.stock.add','inventory.stock.adjust','inventory.stock.count','inventory.transfer','inventory.purchase_order.view','inventory.purchase_order.create','inventory.purchase_order.approve','inventory.purchase_order.receive','inventory.vendor.manage','inventory.category.manage','inventory.brand.manage','inventory.color.manage','inventory.reports.view','inventory.cost.view','inventory.value.view','inventory.technician_report.approve','inventory.barcode.manage',
