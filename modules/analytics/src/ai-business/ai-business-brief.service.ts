@@ -4,7 +4,7 @@
 // revenue section is returned as { available:false } rather than failing the whole brief — honest degradation (§9).
 import { type ReportsContext, type ReportFilters, type DatePreset, type SalesKpis, type SalesTrend, type BookingsOverview, type QueueSummary, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric } from './ai-business-metrics';
-import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
+import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext, presetAllowed, rangeFilters } from './ai-business.dto';
 import {
   deriveWatchItems, DEFAULT_BRIEF_THRESHOLDS,
   type DailyBrief, type BriefRevenue, type BriefThresholds,
@@ -29,11 +29,11 @@ export class AiBusinessBriefService {
 
   async getDailyBrief(ctx: AiBusinessContext, presetInput?: string): Promise<DailyBrief> {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBusinessForbiddenError('Not authenticated');
-    if (presetInput != null && !VALID_PRESETS.includes(presetInput as DatePreset)) {
+    if (!presetAllowed(ctx, presetInput, VALID_PRESETS)) {
       throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
     }
     const preset = (presetInput as DatePreset) ?? 'today';
-    const filters: ReportFilters = { preset };
+    const filters: ReportFilters = { preset, ...rangeFilters(ctx, preset) };
     const c = rctx(ctx);
 
     // Operational sections first — these define the brief; if the user can't even view reports, this throws (mapped

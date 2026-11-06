@@ -38,7 +38,7 @@ export function BzPeriodBar({ value, onChange, today }: { value: BzPeriod; onCha
 }
 
 /** Check AI Business Reports / Alerts System — read-only; every check says what it looked at and when it last passed */
-export function BzHealthButton({ area, run }: { area: 'reports' | 'alerts'; run: () => Promise<any> }) {
+export function BzHealthButton({ area, run }: { area: 'reports' | 'alerts' | 'branches' | 'assistant'; run: () => Promise<any> }) {
   const [h, setH] = useState<any | 'loading' | null>(null);
   const go = () => { setH('loading'); run().then(setH).catch((e) => setH({ error: bzErr(e) })); };
   const title = bt(`bzx.check.${area}`);

@@ -15,7 +15,7 @@
 // REVIEW_REQUEST_SENDER=off stops it.
 import { Injectable, Inject, Optional, Logger, type OnModuleInit, type OnModuleDestroy } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
-import { runAsSingleOwner, branchTimeZone, DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { runAsSingleOwner, branchTimeZone, DATABASE, type AppDatabase, type DB } from '@aipowersalon/database';
 import { logException, runTick } from '@aipowersalon/observability';
 import { runsBackgroundJob } from '@aipowersalon/config';
 import { systemContext } from '@aipowersalon/tenant-context';
@@ -80,7 +80,7 @@ export class ReviewRequestSenderJob implements OnModuleInit, OnModuleDestroy {
     const base: ScopeResult = { tenantId, branchId, expired: 0, outcome: 'sent', sent: 0, failed: 0, optedOut: 0, reminded: 0 };
     base.expired = await this.requests.expireStale(ctx, now, ReviewRequestSenderJob.FRESHNESS_HOURS);
 
-    const rows = await new KyselySettings(this.db as any).load(ctx);
+    const rows = await new KyselySettings(this.db as AppDatabase & Kysely<DB>).load(ctx);
     const eff = resolveSettings({ platform: PLATFORM_DEFAULTS, ...rowsToLayers(rows as SettingsRow[], { branchId: branchId ?? undefined }) });
     if (!eff.enabled || !eff.config.reviewRequest.enabled) return { ...base, outcome: 'disabled' };
 
@@ -88,7 +88,7 @@ export class ReviewRequestSenderJob implements OnModuleInit, OnModuleDestroy {
       const d = await this.access(tenantId, branchId);
       if (!d.allowed && d.enforce) return { ...base, outcome: 'not_entitled' };
     }
-    const tz = await branchTimeZone(this.db as any, tenantId, branchId).catch(() => null);
+    const tz = await branchTimeZone(this.db as Kysely<any>, tenantId, branchId);   // a failed read fails this branch's turn (logged by sweep), never sends in the wrong zone
     if (inQuietHours(now, eff.config.reviewRequest, tz)) return { ...base, outcome: 'quiet_hours' };
 
     const r = await this.requests.sendDue(ctx, now);

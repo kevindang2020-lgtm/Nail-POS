@@ -14,8 +14,21 @@ overview, read one AUTHORIZED branch at a time (OwnerService.listAuthorizedBranc
 - A row opens that branch's figures (tickets, cancelled %, no-show %) with the Sales Report link.
 - The AI Business Assistant and saved branch reports read every branch (`all: true`), not the first page.
 
-## Not built (needs a decision or data that does not exist)
-- Branch Data Health Checker (P1): no recorded check yet.
-- Fair scorecard per technician hour / operating hour / retention (P2): needs scheduled hours per branch.
-- AI explanation of differences (P3) and Growth advisor (P5).
-- All-my-salons across separate legal entities (P4): one tenant only; cross-entity needs an ownership model.
+## Built Nov 6 2026 (Kevin: "continue finish all"; migration 827, `branch-insights.ts`)
+- P1 Branch Data Health Checker ("Check Branch Data"): read-only, recorded (ai_business_health_runs area 'branches'), reused
+  within 30 s — branch time zones, opening hours, shifts never clocked out (> 16 h), sales at inactive branches, tenant
+  isolation, no side effects.
+- P2 fair scorecard: net sales per worked technician hour (time-clock shifts; an open shift counts at most 12 h), per opening
+  hour (each location's hours over the period, closed days and effective dates honoured) and returning-customer rate, each
+  ranked (#), so a small or short-hours branch is not ranked down for its size. N/A where the hours are not set.
+- P3 "Explain the difference": the measured bridge between two branches — volume (ticket count at B's average ticket) +
+  average ticket = the whole difference — plus completion, no-shows, hours and returning customers; it says plainly these
+  are measured differences, not causes. Rendered in the screen language (EN / VI).
+- P5 growth advisor: rules over the scorecard (low yield per technician hour vs the salon median, high no-shows, low return
+  rate, missing opening hours), each with its numbers and a link to where to act.
+- Tests: `branch-insights.pgtest` (5), POS screen tests.
+
+## Not built
+- All-my-salons across separate legal entities (P4): one login belongs to one salon (tenant); comparing several salons
+  needs an owner identity that spans tenants. That is a platform ownership decision, not a screen — recorded in
+  docs/DECISIONS_2026-11-06.md.

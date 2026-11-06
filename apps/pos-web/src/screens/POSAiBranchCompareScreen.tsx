@@ -11,7 +11,8 @@ import { Link } from 'react-router-dom';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
 import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
-import { bt, bzWhen, bzNum, bzValue, bzDays } from '../components/BusinessKit';
+import { bt, bzWhen, bzNum, bzValue, bzDays, BzHealthButton } from '../components/BusinessKit';
+import { BranchInsightsPanel } from './ai-business/BranchInsights';
 import { reportError } from './reportsCommon';
 import { deviceToday } from '../lib/deviceToday';
 
@@ -62,6 +63,7 @@ export function POSAiBranchCompareScreen() {
         <div className="vh"><h1>{bt('pos.ai_branch_comparison')}</h1><div className="sub">{bt('pos.your_authorized_branches_side_by_side_1h3w')}</div></div>
         <div className="rvw-actions">
           {s ? <span className="sub" data-testid="bcx-asof">{bt('bcx.asOf', { at: bzWhen(s.asOf) })}</span> : null}
+          <BzHealthButton area="branches" run={() => posAiBusinessApi.center.branchCheck()} />
           <button type="button" className="btn ghost" data-testid="bcx-refresh" onClick={() => setTick((n) => n + 1)}>{bt('bzx.refresh')}</button>
         </div>
       </div>
@@ -112,6 +114,7 @@ export function POSAiBranchCompareScreen() {
         </div>
       </section>
 
+      <BranchInsightsPanel period={period} tick={tick} />
       {s ? <div className="sub" style={{ marginTop: 10 }}><Link to={s.drilldownRoute} style={{ color: 'var(--aps-orange)' }}>{bt('pos.open_the_sales_report')}</Link></div> : null}
       {s?.notes.length ? <ul className="sub" style={{ marginTop: 10, paddingLeft: 18 }}>{s.notes.map((n, i) => <li key={i} style={{ marginBottom: 4 }}>{n}</li>)}</ul> : null}
 

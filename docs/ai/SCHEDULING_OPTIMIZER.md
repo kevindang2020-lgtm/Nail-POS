@@ -121,9 +121,15 @@ branch session sees its own branch, and a salon-wide session sees the whole salo
 - `POSAISchedulingOptimizerScreen.test.tsx` — 28 tests. The old list-filter test was rewritten to the queue. New tests
   cover counters and drill-down, the module parts, unknown mode, health, history, and Vietnamese on the History tab.
 
-## Left for a decision (not built)
+## Built Nov 6 2026 (Kevin: "continue finish all")
 
-- **Before/after preview of neighbouring bookings.** The detail already shows the simulation and the proposed slot. A
-  full adjacency preview — new gaps and conflicts next to the slot — needs the day reader at preview time.
+- **The technician's full day + before/after preview of neighbouring bookings.** `GET …/recommendations/:id/day`
+  (`ai-scheduling-day-context.ts`) reads the day fresh at preview time and returns the target technician's shift, breaks
+  and every booking before and after the move (the moving booking marked), the bookings right before and after the
+  proposed slot with the gap to each, and how many gaps / conflicts the move opens or closes — the same day model
+  (detectDay) the optimizer uses. Shown in the recommendation detail ("Technician's day"). Changes nothing.
+  Tests: `ai-scheduling-day-context.vitest.spec.ts` (3), the POS detail test.
+
+## Left as it is
 - **Utilization and Duration Insights tabs as the guide names them.** These stay inside Insights and Gaps & conflicts.
   The utilization formula is the one shared formula, `workforce/tech-utilization`.

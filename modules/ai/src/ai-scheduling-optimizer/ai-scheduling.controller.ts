@@ -7,7 +7,7 @@ import { SCHED_APPLY_BODY, SCHED_CUSTOMER_DECISION_BODY, SCHED_DECISION_BODY, SC
 import { Body, Controller, Delete, Get, HttpException, Param, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import type {
   SchedOptionsRequest, SchedGenerateRequest, SchedDecisionRequest, SchedApplyRequest, SchedRunRequest, SchedSettingsUpdate, SchedTimeOffCreate,
-  SchedOptionsResponse, SchedGenerateResponse, SchedRecommendationResponse, SchedApplyResponse, SchedRecommendationList, SchedRunDetail, SchedRun,
+  SchedOptionsResponse, SchedGenerateResponse, SchedRecommendationResponse, SchedDayContextResponse, SchedApplyResponse, SchedRecommendationList, SchedRunDetail, SchedRun,
   SchedSettingsView, SchedRuleVersion, SchedCalendarIndicators, SchedTimeOff, SchedLock, SchedServiceProfile, SchedProposalSummary,
 } from '@aipowersalon/api-contracts/tenant';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
@@ -66,6 +66,8 @@ export class AiSchedulingController {
   async generate(@Req() r: any, @Body(ValidatedBody(SCHED_GENERATE_BODY, { strict: true })) b: SchedGenerateRequest): Promise<SchedGenerateResponse> { return { recommendation: await schedRun(() => this.svc.generate(schedCtx(r), b)) }; }
   @Get('recommendations/:id') @RequirePermission('ai_scheduling.view')
   async get(@Req() r: any, @Param('id') id: string): Promise<SchedRecommendationResponse> { return { recommendation: await schedRun(() => this.svc.get(schedCtx(r), id)) }; }
+  @Get('recommendations/:id/day') @RequirePermission('ai_scheduling.view')
+  async day(@Req() r: any, @Param('id') id: string): Promise<SchedDayContextResponse> { return schedRun(() => this.svc.dayContext(schedCtx(r), id)); }
   @Post('recommendations/:id/accept') @RequirePermission('ai_scheduling.review')
   async accept(@Req() r: any, @Param('id') id: string, @Body(ValidatedBody(SCHED_DECISION_BODY, { strict: true })) b: SchedDecisionRequest): Promise<SchedRecommendationResponse> { return { recommendation: await schedRun(() => this.svc.decide(schedCtx(r), id, 'accept', b)) }; }
   @Post('recommendations/:id/reject') @RequirePermission('ai_scheduling.review')

@@ -15,6 +15,7 @@ import { Link } from 'react-router-dom';
 import { KpiCard, Pager, Empty, ErrorRetry, FitDialog } from '../components/FitKit';
 import { BzPeriodBar, BzHealthButton, bt, bzErr, bzWhen, bzNum, bzValue, bzDays, type BzPeriod } from '../components/BusinessKit';
 import { posAiBusinessApi } from '../api/posAiBusinessApi';
+import { IncidentsPanel, DeliveryDialog } from './ai-business/AlertIncidents';
 
 type Metric = 'net_sales' | 'average_ticket' | 'completed_appointments' | 'cancellation_rate' | 'no_show_rate' | 'customer_retention';
 const METRICS: Metric[] = ['net_sales', 'average_ticket', 'completed_appointments', 'cancellation_rate', 'no_show_rate', 'customer_retention'];
@@ -55,6 +56,7 @@ export function POSAiAlertsScreen() {
       {msg ? <div className={msg.tone === 'err' ? 'err' : 'sub'} role="status" data-testid="bzx-a-msg">{msg.text}</div> : null}
       <NewAlert onCreated={() => { setMsg({ tone: 'ok', text: bt('bzx.a.created') }); refresh(); }} onError={(t) => setMsg({ tone: 'err', text: t })} />
       <Rules tick={tick} onChanged={refresh} onMsg={setMsg} onHistory={(a) => { setHistAlert(a); setTimeout(() => document.querySelector('[data-testid="bzx-a-history"]')?.scrollIntoView({ block: 'start' }), 0); }} />
+      <IncidentsPanel tick={tick} onChanged={refresh} />
       <History tick={tick} onChanged={refresh} alert={histAlert} onAll={() => setHistAlert(null)} />
       <Anomaly />
     </div>
@@ -103,6 +105,7 @@ function Rules({ tick, onChanged, onMsg, onHistory }: { tick: number; onChanged:
   const [del, setDel] = useState<any>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [edit, setEdit] = useState<any>(null);
+  const [notify, setNotify] = useState<any>(null);
   // Duplicate (Business Alerts guide): same condition, a new name, created PAUSED so it never fires twice by surprise
   const duplicate = (a: any) => { setBusy(a.id); posAiBusinessApi.alertCreate({ title: bt('bzx.a.copyOf', { t: a.title }).slice(0, 120), metricId: a.metricId, operator: a.operator, threshold: a.threshold, preset: a.preset, minSampleSize: a.minSampleSize })
     .then((c: any) => posAiBusinessApi.alertUpdate(c.id, { active: false })).then(() => { onMsg({ tone: 'ok', text: bt('bzx.a.duplicated', { t: a.title }) }); onChanged(); }).catch((e) => onMsg({ tone: 'err', text: bzErr(e) })).finally(() => setBusy(null)); };
@@ -143,6 +146,7 @@ function Rules({ tick, onChanged, onMsg, onHistory }: { tick: number; onChanged:
                     <button type="button" className="btn ghost" data-testid="bzx-a-edit" disabled={busy === a.id} onClick={() => setEdit(a)}>{bt('bzx.a.edit')}</button>
                     <button type="button" className="btn ghost" data-testid="bzx-a-dup" disabled={busy === a.id} onClick={() => duplicate(a)}>{bt('bzx.a.duplicate')}</button>
                     <button type="button" className="btn ghost" data-testid="bzx-a-hist" onClick={() => onHistory({ id: a.id, title: a.title })}>{bt('bzx.a.viewHistory')}</button>
+                    <button type="button" className="btn ghost" data-testid="bzx-a-notify" onClick={() => setNotify(a)}>{bt('bzx.d.open')}</button>
                     <button type="button" className="btn ghost" data-testid="bzx-a-del" disabled={busy === a.id} onClick={() => setDel(a)}>{bt('bzx.a.delete')}</button>
                   </div>
                   {ev && ev.stateChange === 'failed' ? <div className="err" data-testid="bzx-a-result">{bt('bzx.es.failed')}</div> : ev ? <div className="sub" data-testid="bzx-a-result"><b>{bt('bzx.es.' + ev.stateChange)}</b> · {bt('bzx.a.valueVs', { v: bzValue(ev.value, UNIT[ev.metricId]), t: bzValue(ev.threshold, UNIT[ev.metricId]) })} · {bt('bzx.a.sample', { n: bzNum(ev.sampleSize) })} · {bzDays(ev.period)}</div> : null}
@@ -157,6 +161,7 @@ function Rules({ tick, onChanged, onMsg, onHistory }: { tick: number; onChanged:
         footer={<><button className="btn" data-testid="bzx-a-del-yes" onClick={remove}>{bt('bzx.a.delete')}</button><button className="btn ghost" onClick={() => setDel(null)}>{bt('bzx.cancel')}</button></>}>
         <p>{bt('bzx.a.deleteNote')}</p></FitDialog> : null}
       {edit ? <EditDialog alert={edit} onClose={() => setEdit(null)} onSaved={(t) => { setEdit(null); onMsg({ tone: 'ok', text: bt('bzx.a.saved', { t }) }); onChanged(); }} /> : null}
+      {notify ? <DeliveryDialog alert={notify} onClose={() => setNotify(null)} onSaved={() => { const t = notify.title; setNotify(null); onMsg({ tone: 'ok', text: bt('bzx.d.saved', { t }) }); }} /> : null}
     </section>
   );
 }

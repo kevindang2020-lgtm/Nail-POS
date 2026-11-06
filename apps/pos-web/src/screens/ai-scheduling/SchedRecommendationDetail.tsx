@@ -14,6 +14,7 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { codedText } from '../../i18n/coded-text';
 import { schedViolationCoded, schedBenefitsCoded, schedExplanationCoded } from '@aipowersalon/api-contracts/tenant';
 import { getLanguage } from '@aipowersalon/mobile-sdk/i18n';
+import { SchedDayPreview } from './SchedDayPreview';
 
 export function SchedRecommendationDetail({ id, can, techName, onChanged, onClose, tick }: {
   id: string; can: Can; techName: (id: string | null | undefined) => string; onChanged: () => void; onClose: () => void; tick: number;
@@ -85,6 +86,7 @@ export function SchedRecommendationDetail({ id, can, techName, onChanged, onClos
         </table>
       ) : <div style={muted}>{t('pos.no_simulation_stored_for_this_recommendation')}</div>}
       {sim && !sim.improved ? <div style={errText}>{t('pos.the_simulation_shows_no_overall_improvement')}</div> : null}
+      {prop ? <SchedDayPreview id={rec.id} tick={tick ?? 0} /> : null}
 
       <div style={{ fontSize: 13 }}>
         {rec.hardConstraintsChecked

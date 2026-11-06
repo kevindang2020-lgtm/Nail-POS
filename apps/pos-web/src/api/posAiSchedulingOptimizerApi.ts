@@ -12,8 +12,7 @@ import type {
   SchedInsightDecisionRequest, SchedInsightKind, SchedInsightList, SchedInsightStatus, SchedOptionsRequest,
   SchedOptionsResponse, SchedRecommendation, SchedRecommendationFilters, SchedRecommendationList, SchedRecommendationResponse,
   SchedLock, SchedProposalSummary, SchedRuleVersion, SchedRun, SchedRunDetail, SchedRunRequest, SchedServiceProfile, SchedSettingsUpdate, SchedSettingsView,
-  SchedTimeOff, SchedTimeOffCreate, SchedUsageSummary,
-} from '@aipowersalon/api-contracts/tenant';
+  SchedTimeOff, SchedTimeOffCreate, SchedUsageSummary, SchedDayContextResponse } from '@aipowersalon/api-contracts/tenant';
 
 const BASE = '/pos/ai-scheduling-optimizer';
 const enc = encodeURIComponent;
@@ -37,6 +36,7 @@ export const posAiSchedulingOptimizerApi = {
 
   // ── recommendations ──
   recommendations: (f: SchedRecommendationFilters = {}) => api.get<SchedRecommendationList>(`${BASE}/recommendations`, body(f)),
+  dayContext: (id: string) => api.get<SchedDayContextResponse>(`${BASE}/recommendations/${enc(id)}/day`),   // A5 (Nov 6 2026)
   recommendation: (id: string) => api.get<SchedRecommendationResponse | SchedRecommendation>(`${BASE}/recommendations/${enc(id)}`).then(oneRec),
   generate: (req: SchedGenerateRequest) => api.post<SchedGenerateResponse>(`${BASE}/recommendations/generate`, body(req)),
   accept: (id: string, d: SchedDecisionRequest) => api.post<SchedRecommendationResponse>(`${BASE}/recommendations/${enc(id)}/accept`, body(d)),

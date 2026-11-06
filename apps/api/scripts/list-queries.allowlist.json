@@ -216,6 +216,14 @@
     "modules/marketing/src/display-advertising/platform-advertising.controller.ts#PlatformAdvertisingController.previewPlaylist": {
       "kind": "not-a-list",
       "reason": "G7 Global Advertising (Nov 5 2026): the ONE playlist a display would play now in PLATFORM_ONLY; ?tz only picks the time zone the schedules are evaluated in — never a filtered row list"
+    },
+    "modules/analytics/src/ai-business/business-center.controller.ts#BusinessCenterController.scorecard": {
+      "kind": "fixed-size",
+      "reason": "A3 Branch Comparison (Nov 6 2026): one row per AUTHORIZED branch for one period (?preset/from/to pick the period, never a row filter); the set is the salon's branches, bounded by the comparison's own rules"
+    },
+    "modules/analytics/src/ai-business/business-center.controller.ts#BusinessCenterController.branchExplain": {
+      "kind": "not-a-list",
+      "reason": "A3 Branch Comparison (Nov 6 2026): ONE explanation of the difference between two branches (?a/b name them, ?preset/from/to the period)"
     }
   }
 }

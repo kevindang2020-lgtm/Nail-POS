@@ -12,6 +12,10 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
 import { growthCode } from './growthLabels';
+import { RangeCalendar } from '../components/FinanceKit';
+import { BzHealthButton } from '../components/BusinessKit';
+import { deviceToday } from '../lib/deviceToday';
+import { RecordResults, ProfitResults, GrowthResults, AssistantHistory } from './ai-business/AssistantExtras';
 type Ask = {
   ok: boolean; needsClarification: boolean; intent: string | null; toolUsed: string | null;
   answer: string | null; structured: any | null;
@@ -33,6 +37,8 @@ const CHIPS: { label: string; intent: string }[] = [
   { get label() { return t('pos.compare_branches'); }, intent: 'compare_branches' },
   { get label() { return t('pos.customer_growth'); }, intent: 'customer_growth' },
   { get label() { return t('pos.technician_performance_2'); }, intent: 'technician_performance' },
+  { get label() { return t('aib.chip.profit'); }, intent: 'profit_expenses' },   // A4 (Nov 6 2026)
+  { get label() { return t('aib.chip.growth'); }, intent: 'growth_advice' },
 ];
 
 // Whitelisted headline fields pulled from whichever tool answered — shown only when present (never fabricated).
@@ -61,6 +67,9 @@ const drilldownOf = (s: any): string | null => s?.drilldownRoute || s?.evidence?
 
 export function POSAiBusinessScreen() {
   const [period, setPeriod] = useState('today');
+  const [range, setRange] = useState<{ from: string; to: string } | null>(null);   // A4: a custom From–To (period === 'custom')
+  const [cal, setCal] = useState(false);
+  const [histTick, setHistTick] = useState(0);
   const [question, setQuestion] = useState('');
   const [res, setRes] = useState<Ask | null>(null);
   const [loading, setLoading] = useState(false);
@@ -75,24 +84,26 @@ export function POSAiBusinessScreen() {
   const [copied, setCopied] = useState(false);
   useEffect(() => {
     let on = true; setSnap(null);
+    if (period === 'custom') { setSnap({ error: t('aib.customSnapshot') }); return () => { on = false; }; }
     Promise.all([posAiBusinessApi.revenueSummary(period).catch(() => null), posAiBusinessApi.appointmentMetrics(period).catch(() => null)])
       .then(([rev, appt]) => { if (on) setSnap(rev || appt ? { at: new Date().toISOString(), rev, appt } : { error: t('aib.snapshotUnavailable') }); });
     return () => { on = false; };
   }, [period, snapTick]);
 
   // a saved question replays with ITS saved period; "Summarize today" is always today (Nov 3 audit)
-  const ask = useCallback(async (body: { intent?: string; question?: string; preset?: string; comparePreset?: string }) => {
+  const ask = useCallback(async (body: { intent?: string; question?: string; preset?: string; comparePreset?: string; from?: string; to?: string }) => {
     setLoading(true); setError(null);
     const preset = body.preset ?? (body.intent === 'daily_summary' ? 'today' : period);
     setLast({ ...body, preset });
     try {
-      const out = await posAiBusinessApi.ask({ ...body, preset }) as Ask; setRes(out); setCopied(false);
+      const custom = preset === 'custom' && range && !body.from ? { from: range.from, to: range.to } : {};
+      const out = await posAiBusinessApi.ask(preset === 'custom' ? { ...body, ...custom, preset: undefined } : { ...body, preset }) as Ask; setRes(out); setCopied(false); setHistTick((n) => n + 1);
       // this session's questions and answers, newest first (nothing is stored on the server)
       setSessionLog((l) => [{ at: new Date().toISOString(), label: body.question ?? (CHIPS.find((c) => c.intent === body.intent)?.label ?? String(body.intent)), preset, answer: out?.answer ?? null }, ...l].slice(0, 50));
     }
     catch (e: any) { setError(reportError(e, t('growth.noun.theBusinessAssistant'))); }
     finally { setLoading(false); }
-  }, [period]);
+  }, [period, range]);
 
   // Saved questions load on mount; a failure (e.g. missing permission) leaves the list empty, never breaks the screen.
   const loadSaved = useCallback(async () => {
@@ -129,9 +140,13 @@ export function POSAiBusinessScreen() {
         <h1>{t('pos.ai_business_assistant')}</h1>
         <div className="sub mb-3">{t('pos.ask_about_revenue_appointments_customers_technicians_vko6')}</div>
       </div>
-      <div className="rvw-dates" data-testid="aib-period">
+      <div className="rvw-dates" data-testid="aib-period" style={{ position: 'relative' }}>
         {AIB_PRESETS.map((x) => <button key={x} type="button" className={'btn ghost' + (period === x ? ' on' : '')} data-testid={`aib-preset-${x}`} onClick={() => setPeriod(x)}>{t('bzx.period.' + x)}</button>)}
+        <button type="button" className={'btn ghost' + (period === 'custom' ? ' on' : '')} data-testid="aib-custom" onClick={() => setCal(true)}>{period === 'custom' && range ? `${range.from} – ${range.to}` : t('bzx.preset.custom')}</button>
+        {cal ? <div className="rvw-cal"><RangeCalendar initial={{ from: range?.from, to: range?.to }} today={deviceToday()}
+          onApply={(r) => { setRange(r); setPeriod('custom'); setCal(false); }} onCancel={() => setCal(false)} onClear={() => { setRange(null); setPeriod('today'); setCal(false); }} /></div> : null}
         <button type="button" className="btn ghost" data-testid="aib-refresh" onClick={() => setSnapTick((n) => n + 1)}>{t('bzx.refresh')}</button>
+        <BzHealthButton area="assistant" run={() => posAiBusinessApi.center.assistantCheck()} />
         {snap?.at ? <span className="sub">{t('bcx.asOf', { at: fmtInZone(snap.at, { hour: 'numeric', minute: '2-digit' }) })}</span> : null}
       </div>
       {/* Business Assistant guide: the period's key numbers before any question is asked (the canonical Sales Report / booking overview) */}
@@ -209,7 +224,10 @@ export function POSAiBusinessScreen() {
             </section>
           )}
 
-          {res.intent && (
+          {res.intent === 'find_record' ? <RecordResults s={s} /> : null}
+          {res.intent === 'profit_expenses' ? <ProfitResults s={s} /> : null}
+          {res.intent === 'growth_advice' ? <GrowthResults s={s} /> : null}
+          {res.intent && res.intent !== 'find_record' && (
             <div style={{ marginTop: 12, display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
               <input
                 className="in" style={{ flex: 1, maxWidth: 320 }} placeholder={t('pos.name_this_question_to_save_it')}
@@ -253,6 +271,8 @@ export function POSAiBusinessScreen() {
           )}
         </>
       )}
+      <AssistantHistory tick={histTick} onReplay={(h) => { if (h.period && h.preset === 'custom') { setRange(h.period); setPeriod('custom'); void ask({ intent: h.intent, question: h.question || undefined, from: h.period.from, to: h.period.to }); }
+        else { if (h.preset) setPeriod(h.preset); void ask({ intent: h.intent, question: h.question || undefined, preset: h.preset || undefined }); } }} />
     </div>
   );
 }

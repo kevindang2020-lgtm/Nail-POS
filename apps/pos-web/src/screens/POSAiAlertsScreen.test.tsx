@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { c, api } = vi.hoisted(() => {
-  const c = { alertSummary: vi.fn(), rules: vi.fn(), history: vi.fn(), evaluate: vi.fn(), acknowledge: vi.fn(), explain: vi.fn(), anomaly: vi.fn(), alertCheck: vi.fn() };
+  const c = { alertSummary: vi.fn(), rules: vi.fn(), history: vi.fn(), evaluate: vi.fn(), acknowledge: vi.fn(), explain: vi.fn(), anomaly: vi.fn(), alertCheck: vi.fn(),
+    incidents: vi.fn(), incident: vi.fn(), incidentAction: vi.fn(), incidentNote: vi.fn(), alertDelivery: vi.fn(), alertSetDelivery: vi.fn() };
   return { c, api: { center: c, alertCreate: vi.fn(), alertUpdate: vi.fn(), alertDelete: vi.fn() } };
 });
 vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: api }));
@@ -19,16 +20,25 @@ beforeEach(() => {
   c.alertSummary.mockResolvedValue({ activeRules: 2, pausedRules: 0, triggeredUnacknowledged: 1, needsReview: 0, neverEvaluated: 1, lastEvaluatedAt: '2026-11-03T15:00:00Z', automaticEvaluation: false });
   c.rules.mockResolvedValue({ items: [RULE], total: 1, page: 1, pageSize: 25, totalPages: 1 });
   c.history.mockResolvedValue({ items: [EV], total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } });
+  c.incidents.mockResolvedValue({ status: 'active', page: 1, limit: 25, total: 1, counts: { open: 1 }, items: [INC] });
+  c.incident.mockResolvedValue(INC_D);
+  c.alertDelivery.mockResolvedValue(DELIVERY);
 });
+const INC = { eventId: 'e1', title: 'test', severity: 'critical', incidentStatus: 'open', version: 1, evaluatedAt: '2026-11-03T15:00:00Z', snoozedUntil: null, assignee: null, display: { value: '$1,300.00', threshold: '$1,235.00' } };
+const INC_D = { ...INC, alertId: 'a1', metricId: 'average_ticket', operator: 'gt', value: 130000, threshold: 123500, assignee: null, acknowledgedAt: null, resolvedAt: null, resolutionNote: null, escalatedAt: null,
+  log: [{ kind: 'notify', body: 'Notified: 1 sent, 1 skipped, 0 failed.', at: '2026-11-03T15:00:00Z', by: 'System' }],
+  deliveries: [{ channel: 'in_app', kind: 'trigger', status: 'sent', reason: null, to: null, at: '2026-11-03T15:00:00Z' }, { channel: 'sms', kind: 'trigger', status: 'skipped', reason: 'quiet_hours', to: 'Owner Kim', at: '2026-11-03T15:00:00Z' }] };
+const DELIVERY = { alertId: 'a1', severity: 'warning', channels: ['in_app'], recipientUserIds: [], quietHoursStart: 21, quietHoursEnd: 8, cooldownMinutes: 60,
+  staff: [{ userId: 'u1', name: 'Owner Kim', role: 'OWNER', hasEmail: true, hasPhone: true }, { userId: 'u2', name: 'Manager Lee', role: 'MANAGER', hasEmail: true, hasPhone: false }] };
 
 describe('POSAiAlertsScreen', () => {
-  it('keeps the rule table and says rules are evaluated by hand; nothing is sent', async () => {
+  it('keeps the rule table; when the server has automatic evaluation switched off the page says rules are evaluated by hand', async () => {
     wrap();
     const row = await screen.findByTestId('bzx-a-row');
     expect(row).toHaveTextContent('Average ticket rises above $1,235.00');
     expect(row).toHaveTextContent('minimum sample 5');
     expect(row).toHaveTextContent('Triggered');
-    expect(screen.getByTestId('bzx-a-manual')).toHaveTextContent('Automatic evaluation and SMS / email delivery are not set up yet');
+    expect(screen.getByTestId('bzx-a-manual')).toHaveTextContent('Automatic evaluation is switched off for this server');
     expect(screen.getByTestId('bzx-a-triggered')).toHaveTextContent('1');
   });
   it('creates an alert with the dollar amount in cents and the minimum sample', async () => {
@@ -104,5 +114,37 @@ describe('POSAiAlertsScreen', () => {
     c.history.mockResolvedValue({ items: [{ ...EV, id: 'e9', stateChange: 'failed', value: null, sampleOk: false, triggered: false, reason: 'Could not read the numbers: reports unavailable' }], total: 1, page: 1, pageSize: 25, totalPages: 1, period: { today: '2026-11-03' } });
     wrap();
     expect(await screen.findByText('Could not read the numbers: reports unavailable')).toBeInTheDocument();
+  });
+
+  it('incidents: the list opens an incident; Resolve needs a note and sends the version; the delivery log says why a text was held', async () => {
+    c.incidentAction.mockResolvedValue({ eventId: 'e1', incidentStatus: 'resolved', version: 2 });
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-i-open'));
+    const dlg = await screen.findByTestId('bzx-incident');
+    expect(dlg).toHaveTextContent('Quiet hours');
+    expect(dlg).toHaveTextContent('Notified: 1 sent, 1 skipped, 0 failed.');
+    expect(screen.getByTestId('bzx-i-resolve')).toBeDisabled();
+    await screen.findByRole('option', { name: 'Manager Lee' });
+    fireEvent.change(screen.getByTestId('bzx-i-assignee'), { target: { value: 'u2' } });
+    fireEvent.click(screen.getByTestId('bzx-i-assign'));
+    await vi.waitFor(() => expect(c.incidentAction).toHaveBeenCalledWith('e1', expect.objectContaining({ action: 'assign', assigneeUserId: 'u2' })));
+    await vi.waitFor(() => expect(c.incident).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(screen.getByTestId('bzx-i-assign')).toBeDisabled());
+    fireEvent.change(screen.getByTestId('bzx-i-note'), { target: { value: 'busy day, fine' } });
+    await vi.waitFor(() => expect(screen.getByTestId('bzx-i-resolve')).not.toBeDisabled());
+    fireEvent.click(screen.getByTestId('bzx-i-resolve'));
+    await vi.waitFor(() => expect(c.incidentAction).toHaveBeenCalledWith('e1', expect.objectContaining({ action: 'resolve', expectedVersion: 1, note: 'busy day, fine' })));
+  });
+  it('Notifications: channels, recipients, quiet hours and cooldown are saved for the rule; no channel is refused', async () => {
+    c.alertSetDelivery.mockResolvedValue({});
+    wrap();
+    fireEvent.click(await screen.findByTestId('bzx-a-notify'));
+    await screen.findByTestId('bzx-delivery');
+    fireEvent.click(await screen.findByTestId('bzx-d-ch-sms'));
+    fireEvent.change(screen.getByTestId('bzx-d-severity'), { target: { value: 'critical' } });
+    fireEvent.click(screen.getAllByTestId('bzx-d-rcpt')[0]);
+    expect(screen.getByTestId('bzx-delivery')).toHaveTextContent('no mobile number');
+    fireEvent.click(screen.getByTestId('bzx-d-save'));
+    await vi.waitFor(() => expect(c.alertSetDelivery).toHaveBeenCalledWith('a1', { severity: 'critical', channels: ['in_app', 'sms'], recipientUserIds: ['u1'], quietHoursStart: 21, quietHoursEnd: 8, cooldownMinutes: 60 }));
   });
 });

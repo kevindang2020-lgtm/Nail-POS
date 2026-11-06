@@ -7566,6 +7566,9 @@ export interface DB {
   ai_business_saved_questions: AiBusinessSavedQuestionsTable;
   ai_business_alerts: AiBusinessAlertsTable;
   ai_business_alert_events: AiBusinessAlertEventsTable;
+  ai_business_conversations: AiBusinessConversationsTable;
+  ai_business_alert_incident_notes: AiBusinessAlertIncidentNotesTable;
+  ai_business_alert_deliveries: AiBusinessAlertDeliveriesTable;
   ai_business_health_runs: AiBusinessHealthRunsTable;
   ai_business_report_jobs: AiBusinessReportJobsTable;
   schedule_optimization_runs: ScheduleOptimizationRunsTable;
@@ -8849,6 +8852,7 @@ export interface AiBusinessAlertsTable {
   min_sample_size: number; frequency: string; channel: string; active: boolean;
   created_at: Ts; last_checked_at: TsNull; last_triggered_at: TsNull;
   archived_at: Generated<TsNull>;
+  severity: Generated<string>; channels: Generated<string[] | null>; recipient_user_ids: Generated<string[]>; quiet_hours_start: Generated<number>; quiet_hours_end: Generated<number>; cooldown_minutes: Generated<number>;
 }
 // migration 781 (AI Business Alerts guide, Nov 3 2026): one row per rule evaluation; a triggered row may be acknowledged
 export interface AiBusinessAlertEventsTable {
@@ -8857,6 +8861,7 @@ export interface AiBusinessAlertEventsTable {
   value: ColumnType<string | null, number | string | null, number | string | null>; sample_size: number | null; min_sample_size: number | null;
   sample_ok: boolean; triggered: boolean; state_change: string; reason: string | null; actor_user_id: string | null;
   acknowledged_at: TsNull; acknowledged_by: string | null; ack_note: string | null; evaluated_at: Generated<Ts>;
+  incident_status: string | null; assignee_user_id: string | null; snoozed_until: TsNull; resolved_at: TsNull; resolved_by: string | null; resolution_note: string | null; escalated_at: TsNull; incident_version: Generated<number>;
 }
 // migration 781: Check AI Business Reports / Alerts System runs
 export interface AiBusinessHealthRunsTable {
@@ -9059,7 +9064,7 @@ export interface ReviewReputationHealthRunsTable {   // migration 768 — read-o
   id: Generated<string>; tenant_id: string; branch_id: string | null; actor_user_id: string | null; overall: string; checks: Generated<unknown>; created_at: Generated<Ts>;
 }
 export interface ReviewRequestCampaignsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; name: string; channel: string; enabled: Generated<boolean>; config: Generated<unknown>; created_at: Generated<Ts>; }
-export interface ReviewRequestsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; customer_id: string | null; appointment_id: string | null; campaign_id: string | null; channel: string; status: Generated<string>; idempotency_key: string; scheduled_for: Ts | null; sent_at: Ts | null; created_at: Generated<Ts>; }
+export interface ReviewRequestsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; customer_id: string | null; appointment_id: string | null; campaign_id: string | null; channel: string; status: Generated<string>; idempotency_key: string; scheduled_for: Ts | null; sent_at: Ts | null; created_at: Generated<Ts>; reminder_sent_at: TsNull; }
 export interface ReviewRequestEventsTable { id: Generated<string>; tenant_id: string; request_id: string; event: string; detail: unknown | null; created_at: Generated<Ts>; }
 export interface ReputationSnapshotsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; snapshot_date: string; avg_rating: number | null; review_count: Generated<number>; positive_pct: number | null; neutral_pct: number | null; negative_pct: number | null; response_rate: number | null; avg_response_minutes: number | null; serious_complaint_count: Generated<number>; metrics: Generated<unknown>; created_at: Generated<Ts>; }
 export interface TenantAiReputationSettingsTable { id: Generated<string>; tenant_id: string; level: 'tenant' | 'branch'; branch_id: string | null; enabled: boolean | null; config: unknown | null; version: Generated<number>; updated_by_user_id: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; updated_by: string | null; }
@@ -10459,4 +10464,16 @@ export interface TokenWalletLedgerTable {
   actor_user_id: string | null;
   reason: string | null;
   created_at: Generated<Ts>;
+}
+// ai_business_alert_deliveries
+export interface AiBusinessAlertDeliveriesTable {
+  id: Generated<string>; tenant_id: string; event_id: string; alert_id: string; channel: string; recipient_user_id: string | null; recipient: string | null; kind: Generated<string>; status: string; reason: string | null; provider_ref: string | null; created_at: Generated<Ts>;
+}
+// ai_business_alert_incident_notes
+export interface AiBusinessAlertIncidentNotesTable {
+  id: Generated<string>; tenant_id: string; event_id: string; kind: string; body: string; author_user_id: string | null; created_at: Generated<Ts>;
+}
+// ai_business_conversations
+export interface AiBusinessConversationsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; user_id: string; question: string | null; intent: string | null; tool_used: string | null; preset: string | null; period_from: string | null; period_to: string | null; answer: string | null; answered_by: string; language: string | null; headline: Generated<unknown>; created_at: Generated<Ts>;
 }

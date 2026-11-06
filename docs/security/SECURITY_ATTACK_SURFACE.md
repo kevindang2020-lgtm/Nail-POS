@@ -2,17 +2,17 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3934 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3947 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3934 |
+| all HTTP routes | 3947 |
 | realm `customer` | 165 |
 | realm `shared` | 284 |
-| realm `staff` | 2293 |
+| realm `staff` | 2306 |
 | realm `super_admin` | 1192 |
 | public (no session; each one reviewed by `check:public`) | 126 |
 | integration key / OAuth (`auth=api_key`) | 13 |
@@ -192,7 +192,7 @@ Authenticity: payment webhooks — per-tenant HMAC over the raw body, timing-saf
 | POST | `/tech/profile/avatar` | modules/workforce/src/tech-profile/tech-profile.controller.ts:62 | tech.profile.edit |
 | POST | `/tech/profile/cover` | modules/workforce/src/tech-profile/tech-profile.controller.ts:68 | tech.profile.edit |
 | POST | `/tech/profile/photos` | modules/workforce/src/tech-profile/tech-profile.controller.ts:77 | tech.profile.edit |
-| POST | `/tech/skills/upload-document` | modules/queue/src/tech/tech.controller.ts:114 | tech.profile.edit |
+| POST | `/tech/skills/upload-document` | modules/queue/src/tech/tech.controller.ts:117 | tech.profile.edit |
 
 All uploads go through `packages/media/src/upload-policy.ts` (size, magic bytes, extension + MIME family, pixel cap, metadata strip, random server key, quota). Malware scan: ClamAV when `CLAMAV_HOST` is set; in production a non-image document that could not be scanned is refused (`SCAN_UNAVAILABLE`) unless `UNSCANNED_DOCUMENTS=allow`. Base64-in-JSON uploads ride the credentialed 25 MB JSON limit.
 

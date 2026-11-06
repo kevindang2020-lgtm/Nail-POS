@@ -10,6 +10,7 @@ import { runsBackgroundJob } from '@aipowersalon/config';
 import { permissionsFor, hasPermission, POS_ROUTE_KEY_ALIASES, type Role } from '@aipowersalon/permissions';
 import { BUSINESS_CENTER } from './business-center.controller';
 import type { BusinessCenter } from './business-center';
+import { BUSINESS_ALERT_INCIDENTS, type BusinessAlertIncidents } from './business-alert-incidents';
 
 /** a role's session permissions: its catalog grants plus every legacy pos.* key those grants allow (what a signed-in session carries) */
 export function sessionPermissionsForRole(role: string): string[] {
@@ -22,14 +23,20 @@ export function sessionPermissionsForRole(role: string): string[] {
 @Injectable()
 export class BusinessAlertsScheduleJob implements OnModuleInit, OnModuleDestroy {
   private timer: ReturnType<typeof setInterval> | null = null;
-  constructor(@Optional() @Inject(BUSINESS_CENTER) private readonly center: BusinessCenter | null, @Optional() @Inject(DATABASE) private readonly db: AppDatabase | null) {}
+  constructor(@Optional() @Inject(BUSINESS_CENTER) private readonly center: BusinessCenter | null, @Optional() @Inject(DATABASE) private readonly db: AppDatabase | null,
+    @Optional() @Inject(BUSINESS_ALERT_INCIDENTS) private readonly incidents: BusinessAlertIncidents | null = null) {}
   onModuleInit() {
     if (!runsBackgroundJob('report')) return;
     if (!this.center || !this.db || process.env.AI_BUSINESS_ALERTS_SCHEDULE === 'off') return;
     const every = 5 * 60_000;
     this.timer = setInterval(() => {
       void runTick({ jobType: 'ai_business.alerts.schedule', jobClass: 'report', everyMs: every },
-        () => runAsSingleOwner(this.db as Kysely<any>, 'ai_business.alerts.schedule', () => (this.center as BusinessCenter).scheduledSweep(sessionPermissionsForRole)))
+        () => runAsSingleOwner(this.db as Kysely<any>, 'ai_business.alerts.schedule', async () => {
+          const r = await (this.center as BusinessCenter).scheduledSweep(sessionPermissionsForRole);
+          // A2 (Nov 6 2026): wake snoozed incidents, escalate critical ones still open after 30 minutes
+          const inc = this.incidents ? await this.incidents.sweep() : { woke: 0, escalated: 0 };
+          return { ...r, ...inc };
+        }))
         .catch((e) => logException(e, { where: 'ai-business.alerts.schedule.tick' }));
     }, every);
     this.timer.unref?.();

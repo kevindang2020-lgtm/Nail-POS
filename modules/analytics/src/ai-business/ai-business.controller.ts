@@ -228,7 +228,7 @@ export class AiBusinessController {
 
   // ---- natural-language assistant: bounded intent → authorized tool → model explanation (§19, §26) ----
   @Post('ask') @RequirePermission('pos.ai_business.view')
-  async ask(@Req() r: any, @Body(ValidatedBody(AI_BUSINESS_ASK_BODY, { strict: true })) body: { question?: string; intent?: string; preset?: string; comparePreset?: string }) {
+  async ask(@Req() r: any, @Body(ValidatedBody(AI_BUSINESS_ASK_BODY, { strict: true })) body: { question?: string; intent?: string; preset?: string; comparePreset?: string; from?: string; to?: string }) {
     try { return await this.assistant.ask(ctxFrom(r), body || {}); }
     catch (e) { throw toHttp(e); }
   }

@@ -5,6 +5,7 @@
 //   • Consent + opt-out + quiet hours + cooldown + frequency cap are always honored.
 //   • At most ONE controlled reminder.
 //   • Idempotent per (tenant, appointment/visit, customer, channel) so a replayed completion event never double-sends.
+import { localHour } from '@aipowersalon/date-time';
 import type { ReviewRequestPolicy } from './ai-review-reputation-settings';
 
 export interface CompletedVisit { tenantId: string; branchId?: string | null; customerId: string | null; appointmentId?: string | null; ticketId?: string | null; completedAt: string; visitValueCents: number; channelContact?: boolean; timeZone?: string | null; }
@@ -61,8 +62,7 @@ export function computeSendTime(completedAt: string, config: ReviewRequestPolicy
  *  too: a request scheduled for 8:55 pm that a late tick reaches at 9:05 pm waits for the morning (G8, Nov 6 2026). */
 export function inQuietHours(now: Date, config: Pick<ReviewRequestPolicy, 'quietHoursStart' | 'quietHoursEnd'>, timeZone?: string | null): boolean {
   if (config.quietHoursStart === config.quietHoursEnd) return false;   // no quiet window
-  let h = now.getHours();
-  if (timeZone) { try { h = Number(new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(now)) % 24; } catch { /* unknown zone: host hours */ } }
+  const h = timeZone ? localHour(now, timeZone) : now.getHours();   // the branch zone is validated where it is set
   return config.quietHoursStart < config.quietHoursEnd ? h >= config.quietHoursStart && h < config.quietHoursEnd : h >= config.quietHoursStart || h < config.quietHoursEnd;
 }
 

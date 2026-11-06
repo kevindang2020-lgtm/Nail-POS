@@ -28,7 +28,7 @@ export const OWNER_PAYROLL_REOPEN_BODY: BodySchema = S.object({ pin, reason: S.n
 
 // ── AI Business Assistant (pos-web posAiBusinessApi) ───────────────────────────────────────────────────────────────
 export const AI_BUSINESS_REPORT_BODY: BodySchema = S.object({ reportType: text(64) });
-export const AI_BUSINESS_ASK_BODY: BodySchema = S.object({ question: text(2000), intent: text(64), preset: text(32), comparePreset: text(32) });
+export const AI_BUSINESS_ASK_BODY: BodySchema = S.object({ question: text(2000), intent: text(64), preset: text(32), comparePreset: text(32), from: text(10), to: text(10) });   // A4: custom From–To
 export const AI_BUSINESS_SAVED_QUESTION_BODY: BodySchema = S.object({
   title: text(500), intent: text(64), preset: text(32), comparePreset: text(32), question: text(2000), sharingScope: text(16),
 });

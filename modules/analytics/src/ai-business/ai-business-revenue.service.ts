@@ -12,8 +12,7 @@
 import { type ReportsContext, type ReportFilters, type DatePreset, type SalesKpis, type SalesTrend, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric } from './ai-business-metrics';
 import {
-  AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext,
-} from './ai-business.dto';
+  AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext, presetAllowed, rangeFilters } from './ai-business.dto';
 import type {
   RevenueSummary, RevenueEvidence, RevenueChangeExplanation, ContributionItem,
 } from './ai-business-revenue.dto';
@@ -37,9 +36,9 @@ export class AiBusinessRevenueService {
   private assertAuthed(ctx: AiBusinessContext): void {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBusinessForbiddenError('Not authenticated');
   }
-  private resolvePreset(input: string | undefined, fallback: DatePreset): DatePreset {
+  private resolvePreset(input: string | undefined, fallback: DatePreset, ctx?: AiBusinessContext): DatePreset {
     if (input == null) return fallback;
-    if (!VALID_PRESETS.includes(input as DatePreset)) {
+    if (!(ctx ? presetAllowed(ctx, input, VALID_PRESETS) : VALID_PRESETS.includes(input as DatePreset))) {
       throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
     }
     return input as DatePreset;
@@ -47,7 +46,7 @@ export class AiBusinessRevenueService {
   /** Pull authoritative KPIs, translating the reports layer's ForbiddenError into the stable ai_business taxonomy. */
   private async sales(ctx: AiBusinessContext, preset: DatePreset, period: 'current' | 'previous' = 'current'): Promise<SalesKpis> {
     try {
-      const { kpis } = await this.reports.getSales(reportsCtx(ctx), { preset, period });
+      const { kpis } = await this.reports.getSales(reportsCtx(ctx), { preset, period, ...rangeFilters(ctx, preset) });
       return kpis;
     } catch (e) {
       if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message);
@@ -65,7 +64,7 @@ export class AiBusinessRevenueService {
 
   async getRevenueSummary(ctx: AiBusinessContext, presetInput?: string): Promise<RevenueSummary> {
     this.assertAuthed(ctx);
-    const preset = this.resolvePreset(presetInput, 'today');
+    const preset = this.resolvePreset(presetInput, 'today', ctx);
     const k = await this.sales(ctx, preset);
     return {
       netSalesCents: k.netSalesCents, grossSalesCents: k.grossSalesCents,

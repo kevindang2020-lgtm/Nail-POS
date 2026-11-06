@@ -9,6 +9,7 @@
 //   technician-day moves into recommendations through the same generate path.
 // Every public method re-checks permissions (need) so a non-HTTP caller is gated too; system / automation contexts pass
 // only on the methods jobs and the ops half call (marked SYS below). Tenant / branch always come from ctx.
+import { technicianDayContext, type DayContext } from './ai-scheduling-day-context';
 import { randomUUID } from 'node:crypto';
 import { hasPermission } from '@aipowersalon/permissions';
 import { localDateTimeToEpochMs, addDays, isYmd } from '@aipowersalon/date-time';
@@ -391,6 +392,22 @@ export class AiSchedulingService {
     if (!this.isSystem(ctx) && !hasPermission(ctx as any, 'ai_scheduling.view') && !hasPermission(ctx as any, 'ai_scheduling.view_own')) throw new SchedError('FORBIDDEN', 'Missing ai_scheduling.view');
     const rec = await this.visibleRec(ctx, id);
     return (await this.withProposals(ctx, [rec]))[0];
+  }
+
+  /** A5 (Nov 6 2026): the target technician's full day around this recommendation — before / after the move, the
+   *  bookings right next to the proposed slot, and the gaps / conflicts it opens or closes. Read fresh at preview time;
+   *  changes nothing. */
+  async dayContext(ctx: SchedCtx, id: string): Promise<DayContext> {
+    const rec = await this.get(ctx, id);
+    const prop = rec.proposedState, cur = rec.currentState;
+    if (!prop || !rec.branchId) throw new SchedError('VALIDATION_FAILED', 'this recommendation does not move an appointment');
+    const day = await this.d.reader.loadDay(ctx, rec.branchId, prop.date);
+    let moving = day.appts.find((a) => a.id === prop.appointmentId) ?? null;
+    if (!moving && cur && cur.date !== prop.date) moving = (await this.d.reader.loadDay(ctx, rec.branchId, cur.date)).appts.find((a) => a.id === prop.appointmentId) ?? null;
+    if (!moving) throw new SchedError('NOT_FOUND', 'the appointment is no longer on the calendar');
+    const r = await this.resolved(ctx, rec.branchId);
+    return technicianDayContext(day, moving, { startMin: toMin(prop.startTime), endMin: toMin(prop.endTime), technicianId: prop.technicianId ?? moving.technicianId },
+      { gapMinServiceMin: r.config.gapMinServiceMin, largeBlockMin: r.config.largeBlockMin });
   }
 
   // ── staff decisions ───────────────────────────────────────────────────────────────────────────────────────────────

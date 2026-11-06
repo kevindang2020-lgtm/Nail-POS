@@ -7,7 +7,7 @@ const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v
 const enc = encodeURIComponent;
 
 export const posAiBusinessApi = {
-  ask: (body: { question?: string; intent?: string; preset?: string; comparePreset?: string }) =>
+  ask: (body: { question?: string; intent?: string; preset?: string; comparePreset?: string; from?: string; to?: string }) =>
     api.post(`/pos/ai-business/ask`, body),
   dailyBrief: (preset?: string) => api.get(`/pos/ai-business/daily-brief`, preset ? { preset } : undefined),
   compareBranches: (q: { preset?: string; from?: string; to?: string; q?: string; includeInactive?: string; page?: number; pageSize?: number } = {}) =>
@@ -45,5 +45,22 @@ export const posAiBusinessApi = {
     explain: (eventId: string) => api.get<any>(`/pos/ai-business/center/alerts/events/${enc(eventId)}/explain`),
     anomaly: () => api.get<any>('/pos/ai-business/center/alerts/anomaly'),
     alertCheck: () => api.post<any>('/pos/ai-business/center/alerts/check', {}),
+    // A3 (Nov 6 2026): fair scorecard, measured explanation, growth advisor, Branch Data Health Checker
+    branchScorecard: (q: Q = {}) => api.get<any>('/pos/ai-business/center/branches/scorecard', clean(q)),
+    branchExplain: (q: Q) => api.get<any>('/pos/ai-business/center/branches/explain', clean(q)),
+    branchCheck: () => api.post<any>('/pos/ai-business/center/branches/check', {}),
+    // A4 (Nov 6 2026): stored assistant history + Check Business Data
+    assistantHistory: (q: Q = {}) => api.get<any>('/pos/ai-business/center/assistant/history', clean(q)),
+    assistantHistoryDelete: (id: string) => api.del<any>(`/pos/ai-business/center/assistant/history/${enc(id)}`),
+    assistantCheck: () => api.post<any>('/pos/ai-business/center/assistant/check', {}),
+    // A2 (Nov 6 2026): incidents + per-rule notification settings
+    incidents: (q: Q = {}) => api.get<any>('/pos/ai-business/center/alerts/incidents', clean(q)),
+    incident: (eventId: string) => api.get<any>(`/pos/ai-business/center/alerts/incidents/${enc(eventId)}`),
+    incidentAction: (eventId: string, b: { action: string; expectedVersion: number; note?: string | null; assigneeUserId?: string | null; snoozeMinutes?: number | null }) =>
+      api.post<any>(`/pos/ai-business/center/alerts/incidents/${enc(eventId)}/action`, b),
+    incidentNote: (eventId: string, note: string) => api.post<any>(`/pos/ai-business/center/alerts/incidents/${enc(eventId)}/notes`, { note }),
+    alertDelivery: (alertId: string) => api.get<any>(`/pos/ai-business/center/alerts/${enc(alertId)}/delivery`),
+    alertSetDelivery: (alertId: string, b: { severity?: string; channels?: string[]; recipientUserIds?: string[]; quietHoursStart?: number; quietHoursEnd?: number; cooldownMinutes?: number }) =>
+      api.post<any>(`/pos/ai-business/center/alerts/${enc(alertId)}/delivery`, b),
   },
 };

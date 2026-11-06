@@ -5,7 +5,7 @@
 // utilization are NOT modeled in the reports layer, so they are deliberately omitted rather than fabricated (§9, §13).
 import { type ReportsContext, type ReportFilters, type DatePreset, type BookingsOverview, type QueueSummary, type AppointmentsTrend, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric, type FreshnessClass } from './ai-business-metrics';
-import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
+import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext, presetAllowed, rangeFilters } from './ai-business.dto';
 import { deriveWatchItems, DEFAULT_BRIEF_THRESHOLDS, type WatchItem, type BriefThresholds } from './ai-business-brief.dto';
 
 export interface AppointmentSource {
@@ -45,11 +45,11 @@ export class AiBusinessAppointmentsService {
 
   async getAppointmentMetrics(ctx: AiBusinessContext, presetInput?: string): Promise<AppointmentMetrics> {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBusinessForbiddenError('Not authenticated');
-    if (presetInput != null && !VALID_PRESETS.includes(presetInput as DatePreset)) {
+    if (!presetAllowed(ctx, presetInput, VALID_PRESETS)) {
       throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
     }
     const preset = (presetInput as DatePreset) ?? 'today';
-    const filters: ReportFilters = { preset };
+    const filters: ReportFilters = { preset, ...rangeFilters(ctx, preset) };
     const c = rctx(ctx);
 
     let booking: BookingsOverview, queue: QueueSummary, trend: AppointmentsTrend;

@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 955,
+  "tables": 958,
   "ownership": {
-   "tenant_owned": 636,
+   "tenant_owned": 639,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 160,
    "tenant_branch_owned": 90,
@@ -21,7 +21,7 @@
    "SECURITY": 31,
    "FINANCE": 83,
    "MARKETING": 24,
-   "AI": 141,
+   "AI": 144,
    "AUDIT": 29,
    "OPERATIONS": 77,
    "SUPPORT": 57,
@@ -41,10 +41,10 @@
    "TENANTS": 29
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 142,
+   "HIGHLY_SENSITIVE": 143,
    "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 527,
+   "INTERNAL": 529,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -272,6 +272,18 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "ai_business_alert_deliveries": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "ai_business_alert_events": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -285,6 +297,18 @@
    "source": "override",
    "reason": "AI Business Alerts evaluation history (migration 781): one row per rule evaluation, acknowledgement on triggered rows"
   },
+  "ai_business_alert_incident_notes": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "ai_business_alerts": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -292,6 +316,18 @@
    "sensitivity": "INTERNAL",
    "retention_class": "indefinite",
    "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_business_conversations": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "ai",
+   "delete_policy": "hard_delete_after_days",
    "has_tenant_id": true,
    "has_branch_id": true,
    "append_only": false,

@@ -1,13 +1,39 @@
-import { describe, it, expect, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { compareMock } = vi.hoisted(() => ({ compareMock: vi.fn() }));
-vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { compareBranches: compareMock } }));
+const { compareMock, center } = vi.hoisted(() => ({ compareMock: vi.fn(), center: { branchScorecard: vi.fn(), branchExplain: vi.fn(), branchCheck: vi.fn() } }));
+vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { compareBranches: compareMock, center } }));
 import { POSAiBranchCompareScreen } from './POSAiBranchCompareScreen';
 
 const render1 = () => render(<MemoryRouter><POSAiBranchCompareScreen /></MemoryRouter>);
 
+const ROW = (o: any) => ({ status: 'active', timeZone: 'UTC', averageTicketCents: 5000, totalBookings: 10, completed: 9, completionRate: 90, noShowPercent: 2, cancelledPercent: 1, customers: 10, returningCustomers: 5, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
+const SC = { preset: 'month', range: null, financialsIncluded: true, notes: [], rows: [
+  ROW({ branchId: 'b1', branchName: 'Marlton', netSalesCents: 500000, ticketsCount: 100, technicianHours: 100, operatingHours: 200, netPerTechnicianHourCents: 5000, netPerOperatingHourCents: 2500, returningRate: 50, rank: { perTechnicianHour: 2, perOperatingHour: 1, returningRate: 1 } }),
+  ROW({ branchId: 'b2', branchName: 'Deptford', netSalesCents: 200000, ticketsCount: 50, technicianHours: 20, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, returningRate: 30, rank: { perTechnicianHour: 1, perOperatingHour: null, returningRate: 2 } }) ],
+  advice: [{ branchId: 'b2', branchName: 'Deptford', kind: 'no_opening_hours', severity: 'info', message: 'x', basis: {}, route: '/tenant/management/locations' }] };
+beforeEach(() => { center.branchScorecard.mockReset().mockResolvedValue({ ...SC, rows: [], advice: [] }); center.branchExplain.mockReset(); });
+
 describe('AI Branch Comparison screen', () => {
+  it('A3: the fair scorecard ranks per technician hour; the advisor speaks the screen language; Explain renders the measured bridge', async () => {
+    compareMock.mockResolvedValue({ preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 0,
+      totals: { netSalesCents: 700000, ticketsCount: 150, averageTicketCents: 4667, totalBookings: 20, completed: 18, completionRate: 90, branches: 2 }, drilldownRoute: '/tenant/reports/sales', notes: [], branches: [] });
+    center.branchScorecard.mockResolvedValue(SC);
+    center.branchExplain.mockResolvedValue({ a: 'Marlton', b: 'Deptford', preset: 'month', range: null, lines: [], bridge: { volumeCents: 200000, priceCents: 100000, totalCents: 300000 } });
+    render1();
+    const rows = await screen.findAllByTestId('bcx-s-row');
+    expect(rows[1]).toHaveTextContent('Deptford');
+    expect(rows[1]).toHaveTextContent('$100.00 · #1');
+    expect(screen.getByTestId('bcx-advice')).toHaveTextContent('Deptford has no opening hours set');
+    fireEvent.click(screen.getByTestId('bcx-explain'));
+    fireEvent.click(await screen.findByTestId('bcx-e-run'));
+    expect(center.branchExplain).toHaveBeenCalledWith({ preset: 'month', a: 'b1', b: 'b2' });
+    const lines = await screen.findByTestId('bcx-e-lines');
+    expect(lines).toHaveTextContent('Marlton took $3,000.00 more than Deptford.');
+    expect(lines).toHaveTextContent('$2,000.00 of that comes from 50 more paid tickets (100 vs 50)');
+    expect(lines).toHaveTextContent('These are measured differences, not causes');
+  });
+
   it('renders a per-branch row with totals and normalized revenue-per-completed', async () => {
     compareMock.mockResolvedValue({
       preset: 'month', range: null, asOf: '2026-11-03T18:00:00Z', partialCurrentPeriod: false, financialsIncluded: true, branchCount: 2, truncated: false, page: 1, pageSize: 25, totalItems: 2, totalPages: 1, inactiveHidden: 1,

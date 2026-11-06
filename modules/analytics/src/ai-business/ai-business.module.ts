@@ -35,6 +35,10 @@ import { DATABASE, DATABASE_READ, type AppDatabase } from '@aipowersalon/databas
 import { BusinessCenter } from './business-center';
 import { BusinessCenterController, BUSINESS_CENTER } from './business-center.controller';
 import { BusinessAlertsScheduleJob } from './business-alerts-schedule.job';
+import { BranchInsights, BRANCH_INSIGHTS } from './branch-insights';
+import { ConversationHistory, searchRecords, profitAndExpenses, periodOf, checkBusinessData, ASSISTANT_EXTRAS, type AssistantExtrasRoutes } from './ai-business-assistant-extras';
+import { KyselyAiAccessRepo, evaluateAiAccess } from '@aipowersalon/ai';
+import { BusinessAlertIncidents, BUSINESS_ALERT_INCIDENTS, type AlertMessenger } from './business-alert-incidents';
 
 @Module({
   imports: [ReportsModule, OwnerModule, AiModule],
@@ -79,7 +83,7 @@ import { BusinessAlertsScheduleJob } from './business-alerts-schedule.job';
           getRevenueSummary: (ctx, preset) => revenue.getRevenueSummary(ctx, preset),
           getAppointmentMetrics: (ctx, preset) => appts.getAppointmentMetrics(ctx, preset),
           getCustomerGrowth: (ctx, preset) => customers.getCustomerGrowth(ctx, preset),
-          compareBranches: (ctx, preset) => branches.compareBranches(ctx, { preset, all: true }),
+          compareBranches: (ctx, preset) => branches.compareBranches(ctx, preset === 'custom' && ctx.range ? { from: ctx.range.from, to: ctx.range.to, all: true } : { preset, all: true }),
         }),
       inject: ['ReportsJobRepositoryPort', AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessCustomersService, AiBusinessBranchesService],
     },
@@ -90,29 +94,47 @@ import { BusinessAlertsScheduleJob } from './business-alerts-schedule.job';
       useFactory: (
         brief: AiBusinessBriefService, revenue: AiBusinessRevenueService, appts: AiBusinessAppointmentsService,
         branches: AiBusinessBranchesService, customers: AiBusinessCustomersService, techs: AiBusinessTechniciansService,
-        assistant: AiAssistantService,
+        assistant: AiAssistantService, db: AppDatabase,
       ) => {
         const toolset: BusinessToolset = {
           getDailyBrief: (ctx, preset) => brief.getDailyBrief(ctx, preset),
           getRevenueSummary: (ctx, preset) => revenue.getRevenueSummary(ctx, preset),
           explainRevenueChange: (ctx, preset, comparePreset) => revenue.explainRevenueChange(ctx, preset, comparePreset),
           getAppointmentMetrics: (ctx, preset) => appts.getAppointmentMetrics(ctx, preset),
-          compareBranches: (ctx, preset) => branches.compareBranches(ctx, { preset, all: true }),
+          compareBranches: (ctx, preset) => branches.compareBranches(ctx, preset === 'custom' && ctx.range ? { from: ctx.range.from, to: ctx.range.to, all: true } : { preset, all: true }),
           getCustomerGrowth: (ctx, preset) => customers.getCustomerGrowth(ctx, preset),
           getTechnicianPerformance: (ctx, preset) => techs.getTechnicianPerformance(ctx, preset),
         };
-        return new AiBusinessAssistantService(toolset, assistant);
+        // A4 (Nov 6 2026): stored history, record search, profit & expenses (database-backed only)
+        return new AiBusinessAssistantService(toolset, assistant, db ? {
+          history: new ConversationHistory(db), searchRecords: (ctx, q) => searchRecords(db, ctx, q),
+          profitAndExpenses: (ctx, p, net) => profitAndExpenses(db, ctx, p, net), periodOf: (ctx, p) => periodOf(db, ctx, p),
+        } : {});
       },
-      inject: [AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiAssistantService],
+      inject: [AiBusinessBriefService, AiBusinessRevenueService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiAssistantService, DATABASE],
     },
     // AI Business Reports + Alerts guides (Nov 3 2026): history / search / pages, Verify Numbers, alert history + acknowledgement,
     // explanations and the read-only system checks — over the same services and the canonical ReportsService.
     {
       provide: BUSINESS_CENTER,
-      useFactory: (db: AppDatabase, reports: AiBusinessReportsService, alerts: AiBusinessAlertsService, revenue: AiBusinessRevenueService, appointments: AiBusinessAppointmentsService, sales: ReportsService) =>
-        (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales }) : null),
-      inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService],
+      useFactory: (db: AppDatabase, reports: AiBusinessReportsService, alerts: AiBusinessAlertsService, revenue: AiBusinessRevenueService, appointments: AiBusinessAppointmentsService, sales: ReportsService, incidents: BusinessAlertIncidents | null) =>
+        (db ? new BusinessCenter(db, { reports, alerts, revenue, appointments, sales, incidents }) : null),
+      inject: [DATABASE, AiBusinessReportsService, AiBusinessAlertsService, AiBusinessRevenueService, AiBusinessAppointmentsService, ReportsService, BUSINESS_ALERT_INCIDENTS],
     },
+    // A2 (Nov 6 2026): incidents + notifications through the salon's messenger (TENANT_MESSENGER, by token)
+    { provide: BUSINESS_ALERT_INCIDENTS, useFactory: (db: AppDatabase, messenger: AlertMessenger | null) => (db ? new BusinessAlertIncidents(db, messenger) : null),
+      inject: [DATABASE, { token: 'TENANT_MESSENGER', optional: true }] },
+    // A4 (Nov 6 2026): conversation history + Check Business Data for the assistant
+    { provide: ASSISTANT_EXTRAS, useFactory: (db: AppDatabase, revenue: AiBusinessRevenueService): AssistantExtrasRoutes | null => {
+        if (!db) return null;
+        const repo = new KyselyAiAccessRepo(db);
+        return { history: new ConversationHistory(db), check: (ctx) => checkBusinessData(db, ctx, {
+          access: async () => { const d = evaluateAiAccess(await repo.loadSnapshot(ctx.tenantId, 'ai_business_assistant', ctx.userId, { branchId: ctx.branchId || null })); return { allowed: d.allowed, reason: String(d.reason) }; },
+          sales: () => revenue.getRevenueSummary(ctx, 'today'),
+        }) };
+      }, inject: [DATABASE, AiBusinessRevenueService] },
+    // A3 (Nov 6 2026): branch scorecard / explanation / advisor / data check
+    { provide: BRANCH_INSIGHTS, useFactory: (db: AppDatabase, branches: AiBusinessBranchesService) => (db ? new BranchInsights(db, branches) : null), inject: [DATABASE, AiBusinessBranchesService] },
     BusinessAlertsScheduleJob,   // A2 (Nov 5 2026): the background evaluator
   ],
   exports: [AiBusinessService, AiBusinessRevenueService, AiBusinessBriefService, AiBusinessAppointmentsService, AiBusinessBranchesService, AiBusinessCustomersService, AiBusinessTechniciansService, AiBusinessAssistantService, AiBusinessSavedQuestionsService, AiBusinessAlertsService, AiBusinessReportsService],

@@ -55,3 +55,17 @@ Not built (each needs a decision or infrastructure that does not exist yet):
 Built Nov 5 2026 (be799be): the background evaluator — every 5 minutes the active rules due on their own schedule (hourly / daily)
 are evaluated as their creator (role permissions), recorded with source 'scheduled'; a departed creator is a recorded failed
 evaluation. AI_BUSINESS_ALERTS_SCHEDULE=off stops it; the health check's Automatic evaluation reads the overdue rules.
+
+Built Nov 6 2026 (Kevin: "continue finish all"; migration 826, `business-alert-incidents.ts`):
+- Incidents: every triggered evaluation opens one — open → investigating → resolved (a note is required), snoozed for
+  30 min … 24 h (wakes up open), reopen, assign to an active staff member, notes; versioned (stale screen → 409) and logged.
+  The old Acknowledge moves an open incident to investigating. Incidents panel + incident dialog on the page.
+- Notifications per rule: severity (info / warning / critical), channels (in-app → the Owner app Alerts inbox; email; SMS),
+  recipients (default: the salon's owners and managers), quiet hours in salon time (email / SMS held, in-app lands),
+  cooldown. Sent through the salon messenger; every attempt is a delivery row (sent / not sent + why / failed + why).
+- Escalation: a critical incident still open 30 min after it opened is sent once more to the owners.
+- The page no longer says delivery is not built; the health check's "Delivery channels" counts failed email / SMS
+  deliveries in the last 7 days.
+- Still not built: rule versions / Draft state, SSE live refresh of this page (it refreshes on action), anomaly metrics
+  beyond net sales and tickets, an AI-written explanation (the measured bridge stays the explanation).
+- Tests: `business-alert-incidents.pgtest` (9), `business-center.pgtest` rewritten to the new truth, POS screen tests (12).

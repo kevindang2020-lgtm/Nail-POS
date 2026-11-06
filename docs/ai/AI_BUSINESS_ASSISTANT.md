@@ -12,7 +12,20 @@ Guide: AI Business Assistant (dc11a0d9, received Nov 3 2026).
   "Summarize today" is always today.
 - Saved questions: search when there are more than six. This session's questions and answers are listed (not stored).
 
-## Not built
-- A stored, searchable conversation history (needs a table and a retention decision).
-- Last 7 / last 30 days, last month and custom ranges (the report presets do not have them yet).
-- Record search (customer / phone / invoice), profit and expenses, export, growth advisor, a Check Business Data button.
+## Built Nov 6 2026 (Kevin: "continue finish all"; migration 828, `ai-business-assistant-extras.ts`)
+- Stored, searchable history: every question (and clarification) is kept for the person who asked — nobody else sees it —
+  for 365 days (central retention executor), with search, Ask again, delete and a CSV download (formula-safe; no print).
+- Custom From–To (at most 366 days) for every question except "why did revenue change" (that compares with the period
+  before a named period; a custom range is refused with DATE_RANGE_UNSUPPORTED). Last 7 / 30 days and last month were
+  added Nov 5.
+- Record search: "find Nguyen" (accent-insensitive), "find 609-555-0101", "ticket 1042" — answered from this salon's own
+  records with links to the customer and the ticket; names and phones are NEVER sent to the model; hidden by role
+  (customers: pos.customers.view, tickets: pos.checkout.view).
+- Profit & expenses: net sales − APPROVED expenses dated in the period, by category, margin, and how many expenses still
+  wait for approval (owner.expenses.view + financial view).
+- Growth advice: rules over the period's customers, appointments and revenue (no-shows, cancellations, retention, new
+  customers, retail), each with its numbers and a link.
+- Check Business Data: recorded read-only check (AI package, Sales Report readable, branch time zones, tickets paid at $0,
+  expenses waiting > 14 days, history privacy).
+- Export of an answer: Copy answer (existing) + the history CSV.
+- Tests: `ai-business-assistant-extras.pgtest` (6), POS screen tests (10).

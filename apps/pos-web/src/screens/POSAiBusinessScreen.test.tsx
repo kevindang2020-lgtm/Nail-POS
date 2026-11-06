@@ -4,8 +4,8 @@ import { MemoryRouter } from 'react-router-dom';
 const { askMock, savedListMock, savedCreateMock, savedDeleteMock, savedUseMock } = vi.hoisted(() => ({
   askMock: vi.fn(), savedListMock: vi.fn(), savedCreateMock: vi.fn(), savedDeleteMock: vi.fn(), savedUseMock: vi.fn(),
 }));
-const { revMock, apptMock } = vi.hoisted(() => ({ revMock: vi.fn(), apptMock: vi.fn() }));
-vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { ask: askMock, savedList: savedListMock, savedCreate: savedCreateMock, savedDelete: savedDeleteMock, savedUse: savedUseMock, revenueSummary: revMock, appointmentMetrics: apptMock } }));
+const { revMock, apptMock, center } = vi.hoisted(() => ({ revMock: vi.fn(), apptMock: vi.fn(), center: { assistantHistory: vi.fn(), assistantHistoryDelete: vi.fn(), assistantCheck: vi.fn() } }));
+vi.mock('../api/posAiBusinessApi', () => ({ posAiBusinessApi: { ask: askMock, savedList: savedListMock, savedCreate: savedCreateMock, savedDelete: savedDeleteMock, savedUse: savedUseMock, revenueSummary: revMock, appointmentMetrics: apptMock, center } }));
 import { POSAiBusinessScreen } from './POSAiBusinessScreen';
 
 beforeEach(() => {
@@ -16,6 +16,9 @@ beforeEach(() => {
   savedCreateMock.mockReset().mockResolvedValue({});
   savedDeleteMock.mockReset().mockResolvedValue({ deleted: true });
   savedUseMock.mockReset().mockResolvedValue({});
+  center.assistantHistory.mockReset().mockResolvedValue({ page: 1, limit: 10, total: 1, totalPages: 1, retentionDays: 365,
+    items: [{ id: 'h1', question: 'How can we grow?', intent: 'growth_advice', preset: 'month', period: { from: '2026-11-01', to: '2026-11-06' }, answer: 'Try reminders.', answeredBy: 'ai', at: '2026-11-06T15:00:00Z' }] });
+  center.assistantHistoryDelete.mockReset().mockResolvedValue({ ok: true });
 });
 const renderScreen = () => render(<MemoryRouter><POSAiBusinessScreen /></MemoryRouter>);
 
@@ -103,5 +106,21 @@ describe('POSAiBusinessScreen', () => {
     fireEvent.click(await screen.findByTestId('aib-retry'));
     expect(await screen.findByText('Steady quarter.')).toBeInTheDocument();
     expect(askMock).toHaveBeenLastCalledWith({ question: 'How is the quarter?', preset: 'quarter' });
+  });
+
+  it('A4: the stored history lists past questions (only yours), Ask again replays them; record search shows links and says nothing goes to the AI', async () => {
+    askMock.mockResolvedValue({ ok: true, needsClarification: false, intent: 'find_record', toolUsed: 'find_record', answer: null, access: null, records: { customers: 1, tickets: 0 },
+      structured: { query: { kind: 'name', term: 'Lan' }, hidden: [], tickets: [], customers: [{ id: 'c1', name: 'Lan Nguyễn', route: '/customers?q=Lan&customerId=c1' }] } });
+    renderScreen();
+    const hist = await screen.findByTestId('aib-history');
+    expect(hist).toHaveTextContent('How can we grow?');
+    expect(hist).toHaveTextContent('Only you see your history. Questions are kept for 365 days.');
+    fireEvent.change(screen.getByTestId('aib-composer'), { target: { value: 'find Lan' } });
+    fireEvent.keyDown(screen.getByTestId('aib-composer'), { key: 'Enter' });
+    const rec = await screen.findByTestId('aib-records');
+    expect(rec).toHaveTextContent('Lan Nguyễn');
+    expect(rec).toHaveTextContent('never sent to the AI');
+    fireEvent.click(screen.getAllByTestId('aib-h-replay')[0]);
+    await waitFor(() => expect(askMock).toHaveBeenLastCalledWith({ intent: 'growth_advice', question: 'How can we grow?', preset: 'month' }));
   });
 });

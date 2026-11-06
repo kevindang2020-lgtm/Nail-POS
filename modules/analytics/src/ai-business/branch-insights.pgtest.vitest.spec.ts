@@ -1,0 +1,102 @@
+// branch-insights.pgtest — A3 AI Branch Comparison "not built" parts (Nov 6 2026; migration 827) on the REAL schema:
+// fair scorecard (per worked technician hour, per operating hour, returning customers), the measured explanation of a
+// difference, the growth advisor, the recorded Branch Data Health Checker.
+import { describe, it, expect, beforeAll } from 'vitest';
+import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
+import { BranchInsights, BranchInsightsError, operatingHoursOver, explainDifference, adviseBranches, type ScorecardRow } from './branch-insights';
+
+const id = (n: number) => `82700000-0000-4000-8000-${String(n).padStart(12, '0')}`;
+const T = id(1), BIG = id(2), SMALL = id(3), OWNER = id(10), C1 = id(20), C2 = id(21), C3 = id(22), TECH = id(30);
+const PERMS = ['pos.ai_business.view'];
+const ctx = (o: any = {}) => ({ tenantId: T, branchId: '', userId: OWNER, role: 'OWNER', permissions: PERMS, ...o });
+let pg: any; let db: any; let bi: BranchInsights;
+const q = async (text: string, params: unknown[] = []) => (await pg.query(text, params)).rows as any[];
+async function code(p: Promise<unknown>) { try { await p; return 'ok'; } catch (e: any) { return e instanceof BranchInsightsError ? e.code : e?.message; } }
+const NOW = Date.parse('2026-11-06T20:00:00Z');
+// what AiBusinessBranchesService.compareBranches returns for "week" (its own tests cover it): BIG 3× the sales of SMALL
+const compare = {
+  async compareBranches(c: any) {
+    if (!c.permissions.includes('pos.ai_business.view')) throw new Error('forbidden');
+    return { preset: 'week', range: { from: '2026-11-02', to: '2026-11-06' }, financialsIncluded: true, branches: [
+      { branchId: BIG, branchName: 'Big Main St', status: 'active', netSalesCents: 300000, ticketsCount: 60, averageTicketCents: 5000, totalBookings: 70, completed: 60, completionRate: 86, cancelledPercent: 5, noShowPercent: 9 },
+      { branchId: SMALL, branchName: 'Small Annex', status: 'active', netSalesCents: 100000, ticketsCount: 16, averageTicketCents: 6250, totalBookings: 18, completed: 16, completionRate: 89, cancelledPercent: 5, noShowPercent: 2 },
+    ] } as any;
+  },
+};
+
+beforeAll(async () => {
+  pg = await migratedPglite();
+  db = kyselyFor(pg);
+  await q(`insert into tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) values ($1,'S','Lux','bi-827','BI827','active')`, [T]);
+  await q(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$3,'Big Main St','active','UTC'), ($2,$3,'Small Annex','active','UTC')`, [BIG, SMALL, T]);
+  await q(`insert into users (id, tenant_id, full_name, email, status, role) values ($1,$3,'Owner','o@bi.test','active','OWNER'), ($2,$3,'Tech','t@bi.test','active','TECHNICIAN')`, [OWNER, TECH, T]);
+  // BIG: 5 shifts × 10 h = 50 technician hours; SMALL: 2 shifts × 5 h = 10 h
+  for (let d = 2; d <= 6; d++) await q(`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, end_time, status) values ($1,$2,$3,$4::date,$5,$6,'closed')`,
+    [T, BIG, TECH, `2026-11-0${d}`, `2026-11-0${d}T09:00:00Z`, `2026-11-0${d}T19:00:00Z`]);
+  for (const d of [3, 5]) await q(`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, end_time, status) values ($1,$2,$3,$4::date,$5,$6,'closed')`,
+    [T, SMALL, TECH, `2026-11-0${d}`, `2026-11-0${d}T10:00:00Z`, `2026-11-0${d}T15:00:00Z`]);
+  // opening hours: BIG every day 9–19 (10 h); SMALL none
+  for (let dow = 0; dow < 7; dow++) await q(`insert into tenant_location_hours (tenant_id, location_id, day_of_week, opens_at, closes_at, is_closed) values ($1,$2,$3,'09:00','19:00',false)`, [T, BIG, dow]);
+  // customers: C1 returning at BIG (visited in October), C2 new at BIG, C3 new at SMALL
+  await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name) values ($1,$4,$5,'A','A','A A'), ($2,$4,$5,'B','B','B B'), ($3,$4,$5,'C','C','C C')`, [C1, C2, C3, T, BIG]);
+  const tk = (b: string, c: string, at: string) => q(`insert into tickets (tenant_id, branch_id, customer_id, status, subtotal_cents, total_cents, ticket_number, paid_at, created_at) values ($1,$2,$3,'paid',5000,5000,$4,$5,$5)`, [T, b, c, 'BI' + Math.random(), at]);
+  await tk(BIG, C1, '2026-10-10T15:00:00Z'); await tk(BIG, C1, '2026-11-03T15:00:00Z'); await tk(BIG, C2, '2026-11-04T15:00:00Z'); await tk(SMALL, C3, '2026-11-05T15:00:00Z');
+  bi = new BranchInsights(db, compare, () => NOW);
+}, 180_000);
+
+describe('A3 — fair scorecard', () => {
+  it('BI-01 per worked technician hour, per operating hour and returning customers; the small branch outranks the big one per hour', async () => {
+    const s = await bi.scorecard(ctx(), { preset: 'week' });
+    const big = s.rows.find((r) => r.branchId === BIG)!, small = s.rows.find((r) => r.branchId === SMALL)!;
+    expect(big).toMatchObject({ technicianHours: 50, operatingHours: 50, netPerTechnicianHourCents: 6000, netPerOperatingHourCents: 6000, customers: 2, returningCustomers: 1, returningRate: 50 });
+    expect(small).toMatchObject({ technicianHours: 10, operatingHours: null, netPerTechnicianHourCents: 10000, netPerOperatingHourCents: null, customers: 1, returningRate: 0 });
+    expect(small.rank.perTechnicianHour).toBe(1);                  // $1,000 earned in 10 h beats $3,000 in 50 h
+    expect(big.rank.perTechnicianHour).toBe(2);
+    expect(big.rank.perOperatingHour).toBe(1); expect(small.rank.perOperatingHour).toBeNull();
+    expect(s.advice.map((a) => [a.branchName, a.kind])).toEqual(expect.arrayContaining([['Small Annex', 'no_opening_hours']]));
+  });
+  it('BI-02 opening hours honour closed days and effective dates', () => {
+    const rows = [{ day_of_week: 1, opens_at: '09:00', closes_at: '17:30', is_closed: false }, { day_of_week: 0, opens_at: '10:00', closes_at: '15:00', is_closed: true },
+      { day_of_week: 2, opens_at: '09:00', closes_at: '17:00', is_closed: false, effective_from: '2026-11-04' }];
+    expect(operatingHoursOver(rows, '2026-11-01', '2026-11-03')).toBe(8.5);   // Sun closed, Mon 8.5 h, Tue (Nov 3) before the rule starts
+    expect(operatingHoursOver([], '2026-11-01', '2026-11-03')).toBeNull();
+  });
+});
+
+describe('A3 — explanation and advisor', () => {
+  it('BI-03 the bridge adds up: volume (tickets at B\'s average) + average ticket = the whole difference; no invented cause', async () => {
+    const e = await bi.explain(ctx(), { preset: 'week', a: BIG, b: SMALL });
+    expect(e.bridge).toEqual({ volumeCents: 275000, priceCents: -75000, totalCents: 200000 });
+    expect(e.lines[0]).toBe('Big Main St took $2,000.00 more than Small Annex.');
+    expect(e.lines.join(' ')).toMatch(/No-shows: 9% vs 2%/);
+    expect(e.lines.at(-1)).toMatch(/measured differences, not causes/);
+    expect(await code(bi.explain(ctx(), { a: BIG, b: BIG }))).toBe('VALIDATION_FAILED');
+    expect(await code(bi.explain(ctx(), { a: BIG, b: id(99) }))).toBe('BRANCH_NOT_AUTHORIZED');
+  });
+  it('BI-04 advisor rules state their numbers: low yield per technician hour, high no-shows, low return rate', () => {
+    const base = (o: Partial<ScorecardRow>): ScorecardRow => ({ branchId: 'x', branchName: 'X', status: 'active', timeZone: 'UTC', netSalesCents: 1, ticketsCount: 1, averageTicketCents: 1, totalBookings: 1, completed: 1,
+      completionRate: 100, noShowPercent: 2, cancelledPercent: 0, technicianHours: 10, operatingHours: 10, customers: 20, returningCustomers: 10, netPerTechnicianHourCents: 10000,
+      netPerOperatingHourCents: 1, returningRate: 50, rank: { perTechnicianHour: null, perOperatingHour: null, returningRate: null }, ...o });
+    const rows = [base({ branchId: 'a', branchName: 'A' }), base({ branchId: 'b', branchName: 'B' }), base({ branchId: 'c', branchName: 'C', netPerTechnicianHourCents: 5000, noShowPercent: 12, returningRate: 30 })];
+    const adv = adviseBranches(rows);
+    expect(adv.map((a) => a.kind).sort()).toEqual(['high_no_shows', 'low_return_rate', 'low_yield_per_tech_hour']);
+    expect(adv.find((a) => a.kind === 'low_yield_per_tech_hour')!.message).toMatch(/C earns \$50\.00 per technician hour, below the salon median of \$100\.00/);
+    expect(adviseBranches([rows[0]])).toEqual([]);                   // nothing to compare against
+    expect(explainDifference({ ...rows[0], netSalesCents: null, ticketsCount: null }, rows[1]).lines[0]).toMatch(/Revenue is hidden/);
+  });
+});
+
+describe('A3 — Branch Data Health Checker', () => {
+  it('BI-05 recorded, read-only, reused within 30 s; flags missing opening hours and a shift never clocked out', async () => {
+    await q(`insert into technician_shifts (tenant_id, branch_id, technician_id, shift_date, start_time, end_time, status) values ($1,$2,$3,'2026-11-05','2026-11-05T09:00:00Z',null,'open')`, [T, SMALL, TECH]);
+    const h = await bi.check(ctx());
+    const by = Object.fromEntries(h.checks.map((c) => [c.key, c]));
+    expect(h.overall).toBe('WARNING');
+    expect(by.opening_hours).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.open_shifts).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.tenant_isolation.state).toBe('PASSED'); expect(by.branch_time_zones.state).toBe('PASSED');
+    expect((await bi.check(ctx())).reused).toBe(true);
+    expect((await q(`select count(*)::int as n from ai_business_health_runs where tenant_id = $1 and area = 'branches'`, [T]))[0].n).toBe(1);
+    expect(await code(bi.check(ctx({ permissions: [] })))).toBe('PERMISSION_DENIED');
+  });
+});

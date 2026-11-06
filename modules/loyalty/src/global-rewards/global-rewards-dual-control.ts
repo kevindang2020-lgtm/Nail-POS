@@ -13,6 +13,7 @@
 //     never held for a second approver. Un-pausing and limit changes are.
 import { sql, type Kysely } from 'kysely';
 import { platformPermissionsFor, isPlatformRole, PLATFORM_FALLBACK_ROLE } from '@aipowersalon/permissions';
+import { recordPlatformAuditStrict } from '@aipowersalon/audit';
 import { GlobalRewardsError } from './global-rewards-core';
 
 export const GR_GLOBAL_RULE_ACTION = 'loyalty.global_rule_publish';
@@ -50,9 +51,8 @@ export async function dualControlMode(approvals: ApprovalsLike | null, db: Kysel
 }
 
 export async function auditSelfApproval(db: Kysely<any>, actor: GrApprovalActor, action: string, reason: string, meta: Record<string, unknown>): Promise<void> {
-  await sql`INSERT INTO audit_logs (user_id, role, action_type, entity_type, entity_id, metadata_json)
-    VALUES (${actor.userId}, 'SUPER_ADMIN', 'approval_self_approved', 'platform_approval', ${action},
-      ${JSON.stringify({ action, reason, why: 'no other active platform account can approve this change', ...meta })}::jsonb)`.execute(db);
+  await recordPlatformAuditStrict(db, { userId: actor.userId, role: 'super_admin' }, { module: 'platform', action: 'approval_self_approved', resourceType: 'platform_approval', resourceId: action,
+    metadata: { action, reason, why: 'no other active platform account can approve this change', ...meta } });
 }
 
 export function needReason(reason: unknown): string {

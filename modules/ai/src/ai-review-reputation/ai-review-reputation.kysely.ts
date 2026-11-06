@@ -151,29 +151,29 @@ export class KyselyRequestStore implements RequestStorePort {
     return rows.map((r) => ({ id: String(r.id), customerId: String(r.customer_id), appointmentId: r.appointment_id ? String(r.appointment_id) : null, channel: String(r.channel) }));
   }
   async claim(ctx: ReqCtx, id: string) {
-    const r = await (this.db as any).updateTable('review_requests').set({ status: 'sending' }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('status', '=', 'scheduled').executeTakeFirst();
+    const r = await this.db.updateTable('review_requests').set({ status: 'sending' }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('status', '=', 'scheduled').executeTakeFirst();
     return Number(r?.numUpdatedRows ?? 0) === 1;
   }
   async expireStale(ctx: ReqCtx, olderThanIso: string) {
-    let q: any = (this.db as any).updateTable('review_requests').set({ status: 'expired' }).where('tenant_id', '=', tid(ctx)).where('status', '=', 'scheduled').where('scheduled_for', '<', new Date(olderThanIso));
+    let q: any = this.db.updateTable('review_requests').set({ status: 'expired' }).where('tenant_id', '=', tid(ctx)).where('status', '=', 'scheduled').where('scheduled_for', '<', new Date(olderThanIso));
     q = ctx.branchId ? q.where('branch_id', '=', ctx.branchId) : q.where('branch_id', 'is', null);
     const rows: any[] = await q.returning(['id']).execute();
     for (const r of rows) await this.recordEvent(ctx, String(r.id), 'expired', { reason: 'past_freshness_window' });
     return rows.length;
   }
   async listReminderDue(ctx: ReqCtx, sentBeforeIso: string, sentAfterIso: string) {
-    let q: any = (this.db as any).selectFrom('review_requests').select(['id', 'customer_id', 'appointment_id', 'channel', 'sent_at']).where('tenant_id', '=', tid(ctx)).where('status', '=', 'sent')
+    let q: any = this.db.selectFrom('review_requests').select(['id', 'customer_id', 'appointment_id', 'channel', 'sent_at']).where('tenant_id', '=', tid(ctx)).where('status', '=', 'sent')
       .where('reminder_sent_at', 'is', null).where('sent_at', '<=', new Date(sentBeforeIso)).where('sent_at', '>=', new Date(sentAfterIso));
     q = ctx.branchId ? q.where('branch_id', '=', ctx.branchId) : q.where('branch_id', 'is', null);
     const rows: any[] = await q.orderBy('sent_at').limit(500).execute();
     return rows.map((r) => ({ id: String(r.id), customerId: String(r.customer_id), appointmentId: r.appointment_id ? String(r.appointment_id) : null, channel: String(r.channel), sentAt: new Date(r.sent_at).toISOString() }));
   }
   async claimReminder(ctx: ReqCtx, id: string, atIso: string) {
-    const r = await (this.db as any).updateTable('review_requests').set({ reminder_sent_at: new Date(atIso) }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('reminder_sent_at', 'is', null).executeTakeFirst();
+    const r = await this.db.updateTable('review_requests').set({ reminder_sent_at: new Date(atIso) }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('reminder_sent_at', 'is', null).executeTakeFirst();
     return Number(r?.numUpdatedRows ?? 0) === 1;
   }
   async reviewedSince(ctx: ReqCtx, customerId: string, sinceIso: string) {
-    const r = await (this.db as any).selectFrom('reviews').select(['id']).where('tenant_id', '=', tid(ctx)).where('customer_id', '=', customerId).where('created_at', '>=', new Date(sinceIso)).executeTakeFirst();
+    const r = await this.db.selectFrom('reviews').select(['id']).where('tenant_id', '=', tid(ctx)).where('customer_id', '=', customerId).where('created_at', '>=', new Date(sinceIso)).executeTakeFirst();
     return !!r;
   }
   async markStatus(ctx: ReqCtx, id: string, status: string, at?: string | null) { const set: any = { status }; if (status === 'sent' && at) set.sent_at = at; await this.db.updateTable('review_requests').set(set).where('tenant_id', '=', tid(ctx)).where('id', '=', id).execute().catch(() => {}); }
@@ -292,18 +292,18 @@ import { googleReviewLink, type ReviewRequestProfilePort } from './ai-review-rep
 export class KyselyReviewRequestProfile implements ReviewRequestProfilePort {
   constructor(private readonly db: Kysely<DB>) {}
   async salon(tenantId: string, branchId: string | null) {
-    const t: any = await (this.db as any).selectFrom('tenants').select(['display_name', 'legal_name']).where('id', '=', tenantId).executeTakeFirst();
-    const b: any = branchId ? await (this.db as any).selectFrom('branches').select(['name', 'public_display_name', 'google_place_id']).where('tenant_id', '=', tenantId).where('id', '=', branchId).executeTakeFirst() : null;
+    const t: any = await this.db.selectFrom('tenants').select(['display_name', 'legal_name']).where('id', '=', tenantId).executeTakeFirst();
+    const b: any = branchId ? await this.db.selectFrom('branches').select(['name', 'public_display_name', 'google_place_id']).where('tenant_id', '=', tenantId).where('id', '=', branchId).executeTakeFirst() : null;
     // a salon-level request (no branch) uses the salon's only Google listing when it has exactly one
     let placeId: string | null = b?.google_place_id ?? null;
     if (!branchId) {
-      const ids: any[] = await (this.db as any).selectFrom('branches').select(['google_place_id']).where('tenant_id', '=', tenantId).where('google_place_id', 'is not', null).limit(2).execute();
+      const ids: any[] = await this.db.selectFrom('branches').select(['google_place_id']).where('tenant_id', '=', tenantId).where('google_place_id', 'is not', null).limit(2).execute();
       if (ids.length === 1) placeId = ids[0].google_place_id;
     }
     return { brandName: String(t?.display_name || t?.legal_name || ''), link: googleReviewLink(placeId) };
   }
   async customer(tenantId: string, customerId: string) {
-    const c: any = await (this.db as any).selectFrom('customers').select(['normalized_phone', 'email', 'preferred_language']).where('tenant_id', '=', tenantId).where('id', '=', customerId).executeTakeFirst();
+    const c: any = await this.db.selectFrom('customers').select(['normalized_phone', 'email', 'preferred_language']).where('tenant_id', '=', tenantId).where('id', '=', customerId).executeTakeFirst();
     return c ? { phone: c.normalized_phone ?? null, email: c.email ?? null, language: c.preferred_language ?? null } : null;
   }
 }

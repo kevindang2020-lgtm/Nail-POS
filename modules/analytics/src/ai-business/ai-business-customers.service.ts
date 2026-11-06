@@ -5,7 +5,7 @@
 // clearly-labeled sum — not a new database metric.
 import { type ReportsContext, type ReportFilters, type DatePreset, type CustomerInsights, ForbiddenError } from '@aipowersalon/reports';
 import { getMetric, type FreshnessClass } from './ai-business-metrics';
-import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext } from './ai-business.dto';
+import { AiBusinessError, AiBusinessErrorCode, AiBusinessForbiddenError, type AiBusinessContext, presetAllowed, rangeFilters } from './ai-business.dto';
 
 export interface CustomerSource {
   getCustomers(ctx: ReportsContext, f?: ReportFilters): Promise<CustomerInsights>;
@@ -34,14 +34,14 @@ export class AiBusinessCustomersService {
 
   async getCustomerGrowth(ctx: AiBusinessContext, presetInput?: string): Promise<CustomerGrowth> {
     if (!ctx?.tenantId || !ctx?.userId) throw new AiBusinessForbiddenError('Not authenticated');
-    if (presetInput != null && !VALID_PRESETS.includes(presetInput as DatePreset)) {
+    if (!presetAllowed(ctx, presetInput, VALID_PRESETS)) {
       throw new AiBusinessError(AiBusinessErrorCode.INVALID_DATE_RANGE, 'Unsupported reporting period');
     }
     const preset = (presetInput as DatePreset) ?? 'month';
 
     let ci: CustomerInsights;
     try {
-      ci = await this.reports.getCustomers(rctx(ctx), { preset });
+      ci = await this.reports.getCustomers(rctx(ctx), { preset, ...rangeFilters(ctx, preset) });
     } catch (e) {
       if (e instanceof ForbiddenError) throw new AiBusinessForbiddenError(e.message);
       throw e;

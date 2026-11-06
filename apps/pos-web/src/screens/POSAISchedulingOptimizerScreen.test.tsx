@@ -66,6 +66,12 @@ const defaults = (): Record<string, Reply | ((c: Call) => Reply)> => ({
   [`POST ${B}/center/check`]: { body: { id: 'h1', overall: 'WARNING', reused: false, checkedAt: '2026-10-08T14:10:00Z', checks: [{ key: 'open_conflicts', state: 'WARNING', count: 1 }, { key: 'tenant_isolation', state: 'PASSED' }] } },
   // the server's current r1 — decisions change it, so the reload after an action sees the new state (as the real API does)
   [`GET ${B}/recommendations/r1`]: () => ({ body: { recommendation: server.r1 } }),
+  // A5 (Nov 6 2026): the technician's day around the recommendation
+  [`GET ${B}/recommendations/r1/day`]: { body: { date: '2026-10-07', timeZone: 'America/New_York', appointmentId: 'a1', proposed: { start: '11:15', end: '12:15', technicianId: 't2' },
+    neighbours: { previous: { appointmentId: 'p', start: '10:00', end: '11:15', services: ['Gel'], status: 'confirmed', locked: false, moving: false }, next: null, gapBeforeMin: 0, gapAfterMin: null },
+    before: { technicianId: 't2', technicianName: 'Leo', shifts: [{ start: '09:00', end: '18:00' }], breaks: [], items: [{ appointmentId: 'p', start: '10:00', end: '11:15', services: ['Gel'], status: 'confirmed', locked: false, moving: false }], gaps: [{ start: '11:15', end: '13:00', minutes: 105 }], conflicts: [] },
+    after: { technicianId: 't2', technicianName: 'Leo', shifts: [{ start: '09:00', end: '18:00' }], breaks: [], items: [{ appointmentId: 'p', start: '10:00', end: '11:15', services: ['Gel'], status: 'confirmed', locked: false, moving: false }, { appointmentId: 'a1', start: '11:15', end: '12:15', services: ['Pedicure'], status: 'confirmed', locked: false, moving: true }], gaps: [{ start: '12:15', end: '13:00', minutes: 45 }], conflicts: [] },
+    change: { newGaps: 1, closedGaps: 1, newConflicts: 0, resolvedConflicts: 0 } } },
   [`POST ${B}/recommendations/r1/accept`]: (c) => { server.r1 = rec({ status: 'customer_approval_required', version: c.body.expectedVersion + 2 }); return { body: { recommendation: server.r1 } }; },
   [`POST ${B}/recommendations/r1/reject`]: (c) => ({ body: { recommendation: rec({ status: 'rejected', version: c.body.expectedVersion + 2 }) } }),
   [`POST ${B}/recommendations/r1/explain`]: () => { server.r1 = rec({ explanation: 'Moving Jane to 11:15 fills Leo’s gap.', explanationSource: 'template' }); return { body: { recommendation: server.r1 } }; },
@@ -212,6 +218,11 @@ describe('Recommendations', () => {
     expect(within(d).getByTestId('sched-proposed').textContent).toContain('11:15 AM');
     expect(within(d).getByTestId('sched-proposed').textContent).toContain('Leo');
     expect(within(d).getByTestId('sched-versions').textContent).toContain('settings v4');
+    // A5: the technician's day — neighbours, before / after, what the move opens and closes
+    const day = await within(d).findByTestId('sched-day');
+    expect(within(day).getByTestId('sched-day-neighbours').textContent).toBe('Before it: 10:00–11:15 (0 min gap) · Nothing after it');
+    expect(within(day).getByTestId('sched-day-change').textContent).toBe('This move opens 1 gap(s), closes 1, adds 0 conflict(s) and resolves 0.');
+    expect(within(day).getByTestId('sched-day-after').textContent).toContain('This booking');
     fireEvent.click(within(d).getByText('Accept'));
     await waitFor(() => expect(sent('POST', '/r1/accept')[0]?.body).toEqual({ expectedVersion: 5, reason: null }));
     expect(await within(d).findByText(/customer has been asked/)).toBeTruthy();

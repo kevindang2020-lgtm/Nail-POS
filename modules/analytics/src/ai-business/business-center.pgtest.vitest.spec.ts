@@ -117,7 +117,7 @@ describe('AI Business Alerts', () => {
       values ($1,$2,$3,'Needs 50','net_sales','lt',1,'today',50,'daily','sms',true) returning id`, [T, B, OWNER]))[0].id;
     expect((await bc.alertEvaluate(ctx(), big) as any).stateChange).toBe('not_evaluated');
     const s: any = await bc.alertSummary(ctx());
-    expect(s).toMatchObject({ activeRules: 2, needsReview: 1, automaticEvaluation: false, notificationsSent: false });
+    expect(s).toMatchObject({ activeRules: 2, needsReview: 1, automaticEvaluation: true, notificationsSent: true });   // the evaluator (Nov 5) and notifications (Nov 6, 826) exist
   });
   it('AL-02 acknowledge a triggered event once; history filters by state and newest first; rules list by status', async () => {
     const h: any = await bc.alertHistory(ctx(), { alertId: rule });
@@ -193,12 +193,17 @@ describe('AI Business — system checks', () => {
     expect((await bc.check(ctx(), 'reports') as any)).toMatchObject({ reused: true, id: h.id });
     expect((await q(`select count(*)::int as n from ai_business_report_jobs where tenant_id = $1`, [T]))[0].n).toBe(before);
   });
-  it('HL-02 alerts: automatic evaluation (A2, Nov 5) and SMS / email rules without delivery are reported', async () => {
+  it('HL-02 alerts: automatic evaluation (A2, Nov 5) and failed email / SMS alert deliveries (Nov 6) are reported', async () => {
     const h: any = await bc.check(ctx(), 'alerts');
     const by = Object.fromEntries(h.checks.map((x: any) => [x.key, x]));
     expect(['PASSED', 'WARNING']).toContain(by.automatic_evaluation.state);   // a real state now: overdue active rules → WARNING
     expect(by.automatic_evaluation.detail).toHaveProperty('lastAutomaticAt');
-    expect(by.delivery_channels).toMatchObject({ state: 'WARNING', count: 1 });
+    expect(by.delivery_channels).toMatchObject({ state: 'PASSED', count: 0 });
+    const ev = (await q(`select id, alert_id from ai_business_alert_events where tenant_id = $1 limit 1`, [T]))[0];
+    await q(`insert into ai_business_alert_deliveries (tenant_id, event_id, alert_id, channel, status, reason) values ($1,$2,$3,'sms','failed','blocked')`, [T, ev.id, ev.alert_id]);
+    await q(`delete from ai_business_health_runs where tenant_id = $1`, [T]);
+    const h2: any = await bc.check(ctx(), 'alerts');
+    expect(h2.checks.find((x: any) => x.key === 'delivery_channels')).toMatchObject({ state: 'WARNING', count: 1 });
     expect(by.rules_evaluated.state).toBe('PASSED');
     expect(await code(bc.check(ctx({ permissions: [] }), 'alerts'))).toBe('PERMISSION_DENIED');
   });

@@ -31,6 +31,7 @@ import { presetRange as presetRangeOf } from '@aipowersalon/reports';
 import type { AiBusinessContext } from './ai-business.dto';
 import type { AiBusinessReportsService } from './ai-business-reports.service';
 import type { AiBusinessAlertsService } from './ai-business-alerts.service';
+import type { BusinessAlertIncidents } from './business-alert-incidents';
 import type { AiBusinessRevenueService } from './ai-business-revenue.service';
 import type { AiBusinessAppointmentsService } from './ai-business-appointments.service';
 import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
@@ -65,6 +66,8 @@ const TYPE_LABEL: Record<string, string> = { daily_brief: 'daily brief', weekly_
 export interface BcDeps {
   reports: AiBusinessReportsService; alerts: AiBusinessAlertsService; revenue: AiBusinessRevenueService; appointments: AiBusinessAppointmentsService;
   sales: Pick<ReportsService, 'getSales'>;
+  /** A2 (Nov 6 2026): incidents + notifications for a triggered evaluation (business-alert-incidents.ts) */
+  incidents?: Pick<BusinessAlertIncidents, 'onTriggered' | 'sweep'> | null;
 }
 
 export class BusinessCenter {
@@ -251,7 +254,7 @@ export class BusinessCenter {
         count(*) filter (where a.active and ev.ev_id is null)::int as never, count(*) filter (where a.active and ev.ev_state = 'failed')::int as failed, max(ev.ev_at) as last_at
       from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`.execute(this.db)).rows[0] ?? {};
     return { activeRules: N(r.active), pausedRules: N(r.paused), triggeredUnacknowledged: N(r.triggered), needsReview: N(r.needs_review), neverEvaluated: N(r.never), failedEvaluations: N(r.failed),
-      lastEvaluatedAt: iso(r.last_at), automaticEvaluation: false, notificationsSent: false };
+      lastEvaluatedAt: iso(r.last_at), automaticEvaluation: process.env.AI_BUSINESS_ALERTS_SCHEDULE !== 'off', notificationsSent: true };   // Nov 6: the evaluator (Nov 5) and notifications (826) exist
   }
 
   async alertRules(ctx: AiBusinessContext, f: Row = {}) {
@@ -319,7 +322,7 @@ export class BusinessCenter {
       return { alertId: id, metricId: a.metric_id, operator: a.operator, threshold: N(a.threshold), preset: a.preset, value: null, sampleSize: null, sampleOk: false, triggered: false,
         reason, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: 'failed', period: { from: range.from, to: range.to, timeZone: tz } };
     }
-    return this.db.transaction().execute(async (trx) => {
+    const out = await this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('ai-business-alert:' || ${id}))`.execute(trx);
       const prev = (await sql<Row>`select e.triggered, e.sample_ok from ai_business_alert_events e where e.tenant_id = ${T} and e.alert_id = ${id}::uuid and e.sample_ok
         order by e.evaluated_at desc, e.id desc limit 1`.execute(trx)).rows[0];
@@ -331,6 +334,12 @@ export class BusinessCenter {
         returning id, evaluated_at`.execute(trx)).rows[0];
       return { ...ev, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: change, period: { from: range.from, to: range.to, timeZone: tz } };
     });
+    // A2 (Nov 6 2026): a trigger opens an incident and notifies per the rule (after the commit; a failed send is a delivery row)
+    if (out.stateChange === 'triggered' && this.d.incidents) {
+      try { return { ...out, deliveries: await this.d.incidents.onTriggered(T, out.eventId) }; }
+      catch (e) { return { ...out, deliveries: [], notifyError: String((e as Error)?.message ?? e).slice(0, 200) }; }
+    }
+    return out;
   }
 
   /** A2 (Nov 5 2026) — the background evaluator: every active rule is evaluated on its own schedule (hourly / daily) as the
@@ -367,7 +376,8 @@ export class BusinessCenter {
     this.need(ctx);
     if (!isUuid(eventId)) throw new BusinessCenterError('Alert event not found.', 'BC_EVENT_NOT_FOUND', 404);
     const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) : '';
-    const r = (await sql<Row>`update ai_business_alert_events e set acknowledged_at = now(), acknowledged_by = ${isUuid(ctx.userId) ? ctx.userId : null}, ack_note = ${note || null}
+    const r = (await sql<Row>`update ai_business_alert_events e set acknowledged_at = now(), acknowledged_by = ${isUuid(ctx.userId) ? ctx.userId : null}, ack_note = ${note || null},
+        incident_status = case when e.incident_status = 'open' then 'investigating' else e.incident_status end, incident_version = e.incident_version + 1
       where e.tenant_id = ${ctx.tenantId} and e.id = ${eventId}::uuid and ${this.scope(ctx, 'e')} and e.triggered and e.acknowledged_at is null
       returning e.id, e.acknowledged_at`.execute(this.db)).rows[0];
     if (!r) {
@@ -460,7 +470,7 @@ export class BusinessCenter {
     } else {
       const r = await one(sql<Row>`select count(*) filter (where a.active)::int as active, count(*) filter (where a.active and ev.ev_id is null)::int as never,
           count(*) filter (where a.active and (ev.ev_at is null or ev.ev_at < now() - interval '1 day'))::int as stale,
-          count(*) filter (where a.active and a.min_sample_size < 1)::int as no_sample, count(*) filter (where a.active and a.channel in ('email', 'sms'))::int as channel_rules
+          count(*) filter (where a.active and a.min_sample_size < 1)::int as no_sample, (select count(*)::int from ai_business_alert_deliveries d where d.tenant_id = ${T} and d.status = 'failed' and d.created_at > now() - interval '7 days') as channel_rules
         from ${BusinessCenter.RULE_FROM(T)} where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`);
       checks.push({ key: 'rules_readable', component: 'rules', state: N(r.active) ? 'PASSED' : 'INSUFFICIENT_DATA', count: N(r.active) });
       checks.push({ key: 'rules_evaluated', component: 'evaluation', state: N(r.stale) ? 'WARNING' : 'PASSED', count: N(r.stale), detail: { never: N(r.never) } });
@@ -470,7 +480,7 @@ export class BusinessCenter {
         from ai_business_alerts a where a.tenant_id = ${T} and a.archived_at is null and ${this.scope(ctx, 'a')}`);
       checks.push({ key: 'automatic_evaluation', component: 'evaluation', state: process.env.AI_BUSINESS_ALERTS_SCHEDULE === 'off' ? 'UNAVAILABLE' : N(auto.overdue) ? 'WARNING' : 'PASSED', count: N(auto.overdue), detail: { lastAutomaticAt: iso(auto.last_auto) } });
       checks.push({ key: 'sample_guard', component: 'rules', state: N(r.no_sample) ? 'WARNING' : 'PASSED', count: N(r.no_sample) });
-      checks.push({ key: 'delivery_channels', component: 'notifications', state: N(r.channel_rules) ? 'WARNING' : 'PASSED', count: N(r.channel_rules) });
+      checks.push({ key: 'delivery_channels', component: 'notifications', state: N(r.channel_rules) ? 'WARNING' : 'PASSED', count: N(r.channel_rules) });   // failed email / SMS deliveries, last 7 days
     }
     const cross = await one(area === 'reports'
       ? sql<Row>`select count(*)::int as n from ai_business_report_jobs j join users u on u.id = j.requested_by_user_id where j.tenant_id = ${T} and u.tenant_id is not null and u.tenant_id <> j.tenant_id`

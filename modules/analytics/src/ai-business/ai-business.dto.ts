@@ -10,6 +10,17 @@ export interface AiBusinessContext {
   userId: string;
   role: string;
   permissions: string[];     // coarse capabilities carried by the session token
+  /** A4 (Nov 6 2026): a custom From–To for the 'custom' preset (validated by the assistant; at most 366 days) */
+  range?: { from: string; to: string } | null;
+}
+
+/** A4 (Nov 6 2026): 'custom' is a valid preset only when the context carries a validated range. */
+export function presetAllowed(ctx: AiBusinessContext, preset: string | undefined, valid: readonly string[]): boolean {
+  return preset == null || valid.includes(preset) || (preset === 'custom' && !!ctx.range);
+}
+/** The From–To a 'custom' preset reads, merged into the report filters (nothing for a named preset). */
+export function rangeFilters(ctx: AiBusinessContext, preset: string): { from?: string; to?: string } {
+  return preset === 'custom' && ctx.range ? { from: ctx.range.from, to: ctx.range.to } : {};
 }
 
 /** Stable, project-compatible error codes (spec §48). User-facing messages never leak SQL/tables/keys/other tenants. */

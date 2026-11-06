@@ -265,3 +265,14 @@ export function schedInsightReasonCoded(reason: string | null | undefined): Code
   if (m) return coded(Number(m[1]) === 1 ? 'SCHED_INSIGHT.ADD_HOURS_ONE' : 'SCHED_INSIGHT.ADD_HOURS', { hours: Number(m[1]) });
   return null;
 }
+
+/** A5 (Nov 6 2026): the target technician's full day around a recommendation — before / after, the neighbouring bookings,
+ *  new gaps and conflicts (server: ai-scheduling-day-context.ts). */
+export interface SchedDayContextItem { appointmentId: string; start: string; end: string; services: string[]; status: string; locked: boolean; moving: boolean }
+export interface SchedDayContextSide { technicianId: string | null; technicianName: string | null; shifts: { start: string; end: string }[]; breaks: { start: string; end: string }[];
+  items: SchedDayContextItem[]; gaps: { start: string; end: string; minutes: number }[]; conflicts: { type: string; severity: string; message: string }[] }
+export interface SchedDayContextResponse {
+  date: string; timeZone: string; appointmentId: string; proposed: { start: string; end: string; technicianId: string | null };
+  neighbours: { previous: SchedDayContextItem | null; next: SchedDayContextItem | null; gapBeforeMin: number | null; gapAfterMin: number | null };
+  before: SchedDayContextSide; after: SchedDayContextSide; change: { newGaps: number; closedGaps: number; newConflicts: number; resolvedConflicts: number };
+}

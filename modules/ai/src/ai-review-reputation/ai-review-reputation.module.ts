@@ -69,8 +69,8 @@ const noDispatch: DispatchPort = { async send() { throw new Error('DISPATCH_FAIL
     // remains only for a process without the notifications module (it records, it does not deliver)
     { provide: ReviewRequestService, useFactory: (db: AppDatabase, comm: CommunicationsService, messenger: ReviewMessenger | null) => new ReviewRequestService(db ? new KyselyRequestStore(db) : memRequestStore, db ? new KyselyConsent(db) : memConsent,
       db && messenger ? new MessengerDispatchAdapter(messenger, new KyselyReviewRequestProfile(db), async (t, b) => {
-        const rows = await new KyselySettings(db).load(systemContext({ tenantId: t, branchId: b, actor: 'review-request-sender' }) as any);
-        return resolveSettings({ platform: PLATFORM_DEFAULTS, ...rowsToLayers(rows as any, { branchId: b ?? undefined }) }).config.salonName || null;
+        const rows = await new KyselySettings(db).load(systemContext({ tenantId: t, branchId: b, actor: 'review-request-sender' }) as unknown as Parameters<KyselySettings['load']>[0]);
+        return resolveSettings({ platform: PLATFORM_DEFAULTS, ...rowsToLayers(rows, { branchId: b ?? undefined }) }).config.salonName || null;
       }) : comm ? new CommunicationsDispatchAdapter(comm, db ? { languageOf: async (tenantId: string, customerId: string) => ((await db.selectFrom('customers').select(['preferred_language']).where('tenant_id', '=', tenantId).where('id', '=', customerId).executeTakeFirst()) as { preferred_language?: string | null } | undefined)?.preferred_language ?? null } : undefined) : noDispatch), inject: [DATABASE, CommunicationsService, { token: TENANT_MESSENGER, optional: true }] },
     // the AI package decision the automatic paths honour (G8): the shared gate, enforced only when the platform enforces
     { provide: REVIEW_SENDER_ACCESS, useFactory: (db: AppDatabase): ReviewSenderAccess | null => {

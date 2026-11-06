@@ -47,7 +47,7 @@ describe('Batch C decision 1 — dual control on the global loyalty rule and pro
     expect(r.pending).toBeUndefined();
     expect(await rules()).toBe(before + 1);
     expect(filed).toHaveLength(0);
-    const a = await q(sql`select metadata_json from audit_logs where action_type = 'approval_self_approved' and entity_id = ${GR_GLOBAL_RULE_ACTION} order by created_at desc limit 1`);
+    const a = await q(sql`select metadata_json from audit_logs where action_type = 'platform.approval_self_approved' and entity_id = ${GR_GLOBAL_RULE_ACTION} order by created_at desc limit 1`);
     expect(a[0].metadata_json).toMatchObject({ action: GR_GLOBAL_RULE_ACTION, reason: 'November promotion for global salons' });
   });
   it('DC-03 a platform account that cannot approve (auditor) does not count; a second Super Admin does', async () => {

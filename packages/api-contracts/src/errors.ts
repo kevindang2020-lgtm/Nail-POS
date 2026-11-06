@@ -589,6 +589,7 @@ export const ERROR_REGISTRY = {
   ALERT_REPAIR_NOT_ALLOWED:       { status: 400, message: 'That fix is not available for this alert.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   AI_QUEUE_NOT_ACTIVE:            { status: 409, message: 'AI queue assignment is not turned on for this salon.', domain: 'ai', retryable: false, severity: 'info', action: 'REFRESH' },
   DATE_RANGE_MAX_DAYS:            { status: 400, message: 'Choose at most {max} days.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
+  DATE_RANGE_UNSUPPORTED:         { status: 400, message: 'Choose a named period (this week, this month …) for this question.', domain: 'general', retryable: false, severity: 'info', action: 'NONE' },
   LOCATION_INHERITS_ONLY:         { status: 400, message: 'Only a location inherits — the salon values are the base.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   SIMULATE_TECHNICIANS_REQUIRED:  { status: 400, message: 'Add at least one technician to simulate.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   PLAN_LINES_NEED_TECHNICIAN:     { status: 400, message: 'Every line of the plan needs a technician — adjust it or keep the guest unassigned.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
