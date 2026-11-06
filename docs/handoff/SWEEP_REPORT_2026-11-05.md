@@ -72,7 +72,7 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs
 
 ## Addendum — Face ID after sign-out (Nov 5, 11 pm)
 
-Kevin decided Face ID stays on after a normal sign-out (as in banking apps). Commit after `6292cea`.
+Kevin decided Face ID stays on after a normal sign-out (as in banking apps). Commit `d74a353`.
 
 | Situation | Customer / Tech / Owner | Manager Pay |
 | --- | --- | --- |
