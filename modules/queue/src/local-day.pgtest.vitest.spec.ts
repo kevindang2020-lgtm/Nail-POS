@@ -12,6 +12,7 @@ import { KyselyServingRepository } from './serving/serving.kysely.repository';
 import { KyselyTechQueueRepository } from './tech-queue/tech-queue.kysely.repository';
 import { KyselyTechRepository, requestedLine } from './tech/tech.kysely.repository';
 import { KyselyLiveScheduleRepository } from './live-technician-schedule/live-technician-schedule.kysely.repository';
+import { LiveTechnicianScheduleService } from './live-technician-schedule/live-technician-schedule.service';
 
 const T = 'ddddeeee-0000-4000-8000-000000000001';
 const B = 'ddddeeee-0000-4000-8000-000000000002';
@@ -120,5 +121,16 @@ describe('the live technician schedule opens on the branch\'s day and clock', ()
     const names = JSON.stringify(st);
     expect(names).toContain('Monday Guest');
     expect(names).not.toContain('Tuesday Guest');
+  });
+  it('200-technician §2 remainder: one page-state read loads the salon day ONCE (board, KPIs and filters share it); a later read loads again', async () => {
+    const r: any = clocked(new KyselyLiveScheduleRepository(db));
+    let loads = 0; const orig = r.loadDay.bind(r); r.loadDay = (...a: unknown[]) => { loads++; return orig(...a); };
+    const svc = new LiveTechnicianScheduleService(r);
+    const owner = { ...(ctx as any), permissions: ['pos.technicians.view'] };
+    const page: any = await svc.pageState(owner, { lanePage: 1, lanePageSize: 12 } as never);
+    expect(loads).toBe(1);
+    expect(page.kpis).toBeTruthy(); expect(page.schedule.technicians.length).toBeGreaterThan(0); expect(page.filters.technicians.length).toBeGreaterThan(0);
+    await svc.pageState(owner, {} as never);
+    expect(loads).toBe(2);   // nothing is cached after a read settles — a write in between is always seen
   });
 });

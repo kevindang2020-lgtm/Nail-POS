@@ -371,11 +371,11 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-check — `docs/ai/REVIEW_REPUTATION_SETTINGS.md` exists |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
-| G11 | Full Security Deep Scan | matrix `SECURITY_DEEP_SCAN_STATUS.md` — re-check |
+| G11 | Full Security Deep Scan | re-checked Nov 5: §93 egress allowlist built (report by default); 19 PARTIAL rows otherwise unchanged — see the G11/G14 section |
 | G12 | Secure Tap to Pay / Device Authentication | matrix `SECURE_TAP_STATUS.md` — re-check (Apple TTP is BLOCKED_EXTERNAL) |
 | G13 | Remaining Production Work / Payment Recovery | matrix `REMAINING_PRODUCTION_STATUS.md` — re-check |
-| G14 | 200 Technician Large Salon | matrix `200_TECHNICIAN_STATUS.md` — re-check |
-| G15 | Super Admin POS Top-Bar Announcement | matrix `PLATFORM_ANNOUNCEMENT_STATUS.md` — re-check |
+| G14 | 200 Technician Large Salon | re-checked Nov 5: §2 DONE (one day read per refresh); §1 / §101 PARTIAL = clock-in burst p95, a ≥ 4-core host question |
+| G15 | Super Admin POS Top-Bar Announcement | re-checked Nov 5: 0 PARTIAL / 0 OPEN (the matrix's last OPEN, §108, closed Oct 27); 2 BLOCKED_EXTERNAL |
 
 ### G1 Customer Profile & Global Loyalty Protection — built (Nov 5 2026)
 
@@ -551,4 +551,17 @@ Tests: backup-center-core (16), backup-center.pgtest (16, two PGlite databases),
 Remaining: provider job wiring + first VERIFIED point (Kevin, HOSTING), off-site immutable bucket, PITR decision, independent
 recovery identity (BLOCKED_EXTERNAL); destructive apply + pre-restore safety point + rollback (P1 engineering); 100k-customer
 timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZED in communications.controller.ts (fails on the base commit too).
+
+### G11 / G14 / G15 re-check (Nov 5 2026, after G9)
+
+- **G15 Announcement:** nothing internal open (summary 0 PARTIAL; §108 closed Oct 27).
+- **G14 200-technician §2 → DONE.** The Live Technician Schedule read the salon day three times per refresh (board, KPIs,
+  filters) and built every column twice; `KyselyLiveScheduleRepository.load` now shares one in-flight read per tenant +
+  branch + day (no cache after it settles) and memoises columns per read. `local-day.pgtest` +1 (1 load per page read;
+  3 with the sharing removed — mutation-checked); queue module 803 green. §1 / §101 stay PARTIAL: clock-in burst p95 is CPU
+  (≥ 4 cores, external).
+- **G11 §93 egress allowlist — application half built** (`packages/security/src/egress-policy.ts`, installed at boot in API
+  + worker; report by default, enforce opt-in; tenant-typed URLs exempt via safeOutboundRequest). Stays PARTIAL until the
+  report logs justify `EGRESS_POLICY=enforce` and because network egress is the host's. Next internal G11 items, largest
+  first: §74 IDOR sweep over write routes + customer realm, §110 per-processor webhook schemas, §38 `@ResourceScope`.
 

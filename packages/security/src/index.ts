@@ -8,5 +8,6 @@ export * from './client-ip';   // moved from apps/api/src/common/client-ip.ts (C
 export { RedisKeyedRateLimiter, NoopKeyedRateLimiter, mfaAttemptLimiter, voiceKeyLimiter, MFA_ATTEMPT_LIMITER, type KeyedRateLimiter, type KeyedRateLimitRedis, type KeyedLimitDecision, type KeyedRateLimitOptions } from './keyed-rate-limit';   // the pure limiter; the guard is ./nest
 export * from './code-lookup-limit';   // Phase 14 (Constitution 12): the per-caller lookup-by-code limit — budgets, classifier, store port
 export * from './safe-outbound';
+export * from './egress-policy';   // Security Deep Scan §93 (Nov 5 2026): the process-wide egress allowlist (installed at boot by the API / worker)
 export * from './content-disposition';
 export * from './anon-rate-limit';   // Security Deep Scan §28/§43/§44: the per-IP limit for public routes (decorator in ./nest)

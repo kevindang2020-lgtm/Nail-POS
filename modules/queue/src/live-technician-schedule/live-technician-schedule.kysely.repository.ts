@@ -59,7 +59,20 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
     return q;
   }
 
-  private async load(ctx: LiveScheduleContext, date: string): Promise<Bundle> {
+  /** 200-technician §2 remainder (Nov 5 2026): one page-state read asked for the same salon day THREE times (board, KPIs,
+   *  filters — run together), each reading the whole roster's skills / states / shifts / appointments / blocks / punches.
+   *  Concurrent callers for the same tenant + branch + day now share ONE in-flight read; nothing is cached after it
+   *  settles, so a write is never hidden behind a stale copy. */
+  private readonly inflight = new Map<string, Promise<Bundle>>();
+  private load(ctx: LiveScheduleContext, date: string): Promise<Bundle> {
+    const key = `${ctx.tenantId}|${ctx.branchId}|${date}`;
+    const hit = this.inflight.get(key);
+    if (hit) return hit;
+    const p = this.loadDay(ctx, date).finally(() => { this.inflight.delete(key); });
+    this.inflight.set(key, p);
+    return p;
+  }
+  private async loadDay(ctx: LiveScheduleContext, date: string): Promise<Bundle> {
     const techs = await this.scoped(this.db.selectFrom('technicians as tech'), ctx, 'tech')
       .leftJoin('users as u', 'u.id', 'tech.user_id')
       .leftJoin('global_tech_profiles as gtp', (join: any) =>
@@ -155,7 +168,14 @@ export class KyselyLiveScheduleRepository implements LiveScheduleRepositoryPort 
     return { techs, skillsBy, statusBy, shiftBy, apptsBy, blocksBy, nowMinutes: await this.nowMinutes(ctx) };
   }
 
+  /** The shared day is read once; each technician's column is computed once per read too (board + KPIs used to build every column twice). */
+  private readonly columns = new WeakMap<Bundle, Map<string, LiveTechnicianColumn>>();
   private column(b: Bundle, t: TechRow): LiveTechnicianColumn {
+    let m = this.columns.get(b); if (!m) { m = new Map(); this.columns.set(b, m); }
+    const hit = m.get(t.id); if (hit) return hit;
+    const c = this.buildColumn(b, t); m.set(t.id, c); return c;
+  }
+  private buildColumn(b: Bundle, t: TechRow): LiveTechnicianColumn {
     const shift = b.shiftBy[t.id]; const appts = b.apptsBy[t.id] || []; const blocks = b.blocksBy[t.id] || [];
     const status = lsNormalizeStatus(b.statusBy[t.id], !!shift, appts, blocks, b.nowMinutes);
     const busy = [...appts.filter((a) => a.status !== 'cancelled' && a.status !== 'no_show').map((a) => ({ startTime: a.startTime, endTime: a.endTime })), ...blocks.map((x) => ({ startTime: x.startTime, endTime: x.endTime }))];

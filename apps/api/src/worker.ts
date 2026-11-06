@@ -11,6 +11,7 @@
 // Run the web process with PROCESS_ROLE=api beside it, or both jobs will run twice. The default PROCESS_ROLE=all keeps
 // today's single-process deploy (the API runs everything) until the split is made.
 import './common/utc-clock';   // FIRST: the process runs in UTC before anything reads the clock
+import './common/egress-install';   // SECOND: the egress allowlist wraps outbound HTTP before any client exists (§93)
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { processRole, workerJobClasses } from '@aipowersalon/config';

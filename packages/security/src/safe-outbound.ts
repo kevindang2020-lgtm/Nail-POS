@@ -12,6 +12,7 @@
 import { BlockList, isIP } from 'node:net';
 import { lookup as dnsLookup } from 'node:dns';
 import { request as httpsRequest } from 'node:https';
+import { egressExempt } from './egress-policy';
 
 const BLOCK = new BlockList();
 for (const [net, bits] of [
@@ -97,7 +98,7 @@ export function safeOutboundRequest(url: string, init: { method?: string; header
   if (!chk.ok) return Promise.resolve({ ok: false, status: null, error: chk.reason });
   const u = chk.url; const max = init.maxBytes ?? 64 * 1024; const timeout = init.timeoutMs ?? 5000;
   const resolver = deps.resolver ?? dnsLookup; const req = deps.request ?? httpsRequest;
-  return new Promise((resolve) => {
+  return egressExempt.run(true, () => new Promise<SafeRequestResult>((resolve) => {
     let settled = false; const done = (r: SafeRequestResult) => { if (!settled) { settled = true; resolve(r); } };
     const r = req({
       protocol: 'https:', hostname: u.hostname.replace(/^\[|\]$/g, ''), port: u.port ? Number(u.port) : 443, path: u.pathname + u.search,
@@ -114,5 +115,5 @@ export function safeOutboundRequest(url: string, init: { method?: string; header
     r.on('error', (e: any) => done({ ok: false, status: null, error: e?.code === 'EBLOCKEDADDR' ? 'Unsafe URL' : (e?.code === 'ENOTFOUND' ? 'Host does not resolve' : 'network error') }));
     if (init.body != null) r.write(init.body);
     r.end();
-  });
+  }));
 }

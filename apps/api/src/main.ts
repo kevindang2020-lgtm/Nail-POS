@@ -1,5 +1,6 @@
 // main.ts — AIPowerSalon API bootstrap.
 import './common/utc-clock';   // FIRST: the process runs in UTC before anything reads the clock
+import './common/egress-install';   // SECOND: the egress allowlist wraps outbound HTTP before any client exists (§93)
 import { apiVersionMiddleware } from './common/api-version';
 import { trustProxyHops, eventPublisherEnabled, runsBackgroundJob } from '@aipowersalon/config';
 import { networkPosture, databaseRolePosture } from './common/network-posture';
