@@ -2,7 +2,7 @@
 
 > GENERATED from `packages/permissions/src/permission-registry.ts` by `tooling/permissions/generate-permission-docs.mjs`. Do not edit by hand.
 
-440 catalog keys — critical 19, high 70, medium 117, low 234; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
+444 catalog keys — critical 19, high 70, medium 118, low 237; 32 need a fresh step-up to grant or use; 183 legacy `pos.*` route keys folded in as aliases.
 
 Authorization is by PERMISSION, never by role name: a role (or template / custom role) is a set of these keys; a per-person
 ALLOW / DENY override adds or removes one; DENY always wins. Scopes say where a key applies (OWN = the person's own records,
@@ -1194,6 +1194,15 @@ owner's high-risk report and in every access review.
 |---|---|---|---|---|---|---|---|
 | `super_admin.database.view` | View database | low | PLATFORM |  | platform roles | View database. |  |
 | `super_admin.database.manage` | Manage database | medium | PLATFORM |  | platform roles | Manage database. |  |
+
+### backups
+
+| Key | Label | Sensitivity | Scopes | Step-up | Default roles | Description | Legacy aliases |
+|---|---|---|---|---|---|---|---|
+| `super_admin.backups.view` | View backups | low | PLATFORM |  | platform roles | View backups. |  |
+| `super_admin.backups.plan` | Plan backups | low | PLATFORM |  | platform roles | Plan backups. |  |
+| `super_admin.backups.approve` | Approve backups | medium | PLATFORM |  | platform roles | Approve backups. |  |
+| `super_admin.backups.execute` | Execute backups | low | PLATFORM |  | platform roles | Execute backups. |  |
 
 ### mobile_versions
 

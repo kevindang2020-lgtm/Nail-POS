@@ -363,6 +363,7 @@ function MatchDialog({ init, canApprove, onClose, onDone }: { init: { depositId?
   useEffect(() => { if (D && S && !amount) setAmount(textFromCents(maxCents)); }, [D?.id, S?.id]);   // eslint-disable-line react-hooks/exhaustive-deps
   const [reviewed, setReviewed] = useState(false); const [noteText, setNoteText] = useState('');
   const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a NEW key per deposit / settlement pair (the deps are the point)
   const key = useMemo(() => requestId(), [depositId, settlementId]);   // one key per attempt at this pair (a retry reuses it)
   const cents = centsFromText(amount);
   const partialBoth = !!(D && S && cents != null && cents < D.remainingCents && cents < S.remainingCents);

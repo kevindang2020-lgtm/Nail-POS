@@ -224,7 +224,7 @@ export class InboxRepository {
     // C2 audit (Nov 4 2026): "Missed" = calls missed today (salon day) from the call ledger — the tile counted threads in a
     // 'missed' status nothing ever sets, so it was always 0. The threads count stays beside it.
     const mc: Row = (await sql<Row>`SELECT count(*)::int AS n FROM call_intelligence_events ce
-      WHERE ce.tenant_id = ${ctx.tenantId} AND (ce.status = 'missed' OR ce.outcome = 'missed')
+      WHERE ce.tenant_id = ${ctx.tenantId} AND ce.status = 'missed'   -- 'missed' is a status (149); outcome never holds it
         AND ${branch ? sql`ce.branch_id = ${branch}::uuid` : this.branchOk(ctx, sql`ce.branch_id`)}
         AND COALESCE(ce.started_at, ce.created_at) >= (${sql`(now() AT TIME ZONE ${tz})::date`})::timestamp AT TIME ZONE ${tz}`.execute(this.db).catch(() => ({ rows: [{ n: null }] }))).rows[0] ?? {};
     return {
@@ -360,7 +360,7 @@ export class InboxRepository {
              ORDER BY ti.created_at DESC LIMIT 1) AS summary
         FROM call_intelligence_events ce WHERE ce.tenant_id = ${tid} AND ${who} AND ${this.branchOk(ctx, sql`ce.branch_id`)} ${before(sql`COALESCE(ce.started_at, ce.created_at)`, sql`ce.id`)}
         ORDER BY COALESCE(ce.started_at, ce.created_at) DESC, ce.id DESC LIMIT ${L}`.execute(this.db);
-      lists.push((r.rows as Row[]).map((x) => ev({ id: String(x.id), source: 'call', type: x.status === 'missed' || x.outcome === 'missed' ? 'missed_call' : x.ai_handled ? 'ai_call' : 'call', channel: 'call',
+      lists.push((r.rows as Row[]).map((x) => ev({ id: String(x.id), source: 'call', type: x.status === 'missed' ? 'missed_call' : x.ai_handled ? 'ai_call' : 'call', channel: 'call',
         direction: x.direction === 'outbound' ? 'outbound' : 'inbound', actorKind: x.ai_handled ? 'ai' : 'customer', at: iso(x.at)!, state: String(x.outcome ?? x.status ?? ''),
         summary: x.summary ? preview(x.summary, 400) : null, ref: x.recovered_appointment_id ? { kind: 'appointment', id: String(x.recovered_appointment_id) } : { kind: 'call', id: String(x.id) } })));
     }

@@ -379,7 +379,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
   const [tpls, setTpls] = useState<{ id: string; name: string }[] | null>(null);
   useEffect(() => { posMessageTemplatesApi.list({ channel: 'sms', status: 'active', page: 1, pageSize: 50 })
     .then((r) => setTpls((r.items ?? []).filter((x) => ['customer_follow_up', 'promotions', 'general'].includes(String(x.category))).map((x) => ({ id: x.id, name: x.name }))), () => setTpls([])); }, []);
-  const useTemplate = async (id: string) => { if (!id) return; try { const d = await posMessageTemplatesApi.detail(id); setBody(String(d.template.body ?? '').replace(/\{\{?\s*salon_?name\s*\}?\}/gi, '').trim()); } catch { /* the message stays as typed */ } };
+  const applyTemplate = async (id: string) => { if (!id) return; try { const d = await posMessageTemplatesApi.detail(id); setBody(String(d.template.body ?? '').replace(/\{\{?\s*salon_?name\s*\}?\}/gi, '').trim()); } catch { /* the message stays as typed */ } };
   const placeholders = /\{\{?\s*[a-z_][a-z0-9_.]*\s*\}?\}/i.test(body);
   const [pv, setPv] = useState<Preview | null>(null); const [busy, setBusy] = useState(false); const [err, setErr] = useState<string | null>(null);
   const [changed, setChanged] = useState<{ noLongerEligible: number; stillEligible: number; reasons: Record<string, number> } | null>(null);
@@ -422,7 +422,7 @@ function ComposeDialog({ ready, sel, onClose, onQueued, audience = 'win_back' }:
       </>}>
       {audience === 'first_visit' ? <div className="fk-note info" data-testid="fv-note"><span>{tx('rt2.fv.note')}</span></div> : null}
       {!pv ? <>
-        {tpls && tpls.length ? <label className="fk-field"><span>{tx('rt5.template')}</span><select defaultValue="" onChange={(e) => void useTemplate(e.target.value)} data-testid="rt-template"><option value="">{tx('rt5.templateNone')}</option>{tpls.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label> : null}
+        {tpls && tpls.length ? <label className="fk-field"><span>{tx('rt5.template')}</span><select defaultValue="" onChange={(e) => void applyTemplate(e.target.value)} data-testid="rt-template"><option value="">{tx('rt5.templateNone')}</option>{tpls.map((x) => <option key={x.id} value={x.id}>{x.name}</option>)}</select></label> : null}
         <label className="fk-field"><span>{tx('people.retention.message')}</span><textarea data-autofocus value={body} maxLength={560} onChange={(e) => setBody(e.target.value)} placeholder={tx('people.retention.messagePlaceholder')} /></label>
         {placeholders ? <div className="fk-err" role="note" data-testid="rt-placeholders">{tx('rt5.placeholders')}</div> : null}
         <div className="fk-hint">{tx('people.retention.messageRules', { n: String(len) })}</div>

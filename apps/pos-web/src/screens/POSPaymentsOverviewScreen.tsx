@@ -39,7 +39,8 @@ export function POSPaymentsOverviewScreen() {
   const pq = periodQuery(period);
   const o = useLoad(() => posMoneyOverviewApi.overview(pq), [JSON.stringify(pq), tick]);
   const d = o.data; const k = d?.kpis; const out = d?.outstanding;
-  useEffect(() => { setTxPage(1); }, [kind, JSON.stringify(pq)]);
+  const pqKey = JSON.stringify(pq);
+  useEffect(() => { setTxPage(1); }, [kind, pqKey]);
   const drillDay = (start: string) => { setPeriod({ preset: 'custom', from: start, to: start }); setSpace('transactions'); setKind('payments'); };
   if (isForbidden(o.error)) return <div className="work fit pm" data-testid="money-screen"><h1>{tx('pos.payments_money')}</h1><StateBlock error={o.error} onRetry={o.reload} /></div>;
   const scopeP = d ? periodText(d.period) : '';
@@ -187,7 +188,8 @@ function TransactionsSpace({ pq, kind, setKind, page, setPage, tick, onTx, onAll
 
 function RevenueSpace({ d, pq, onDay }: { d: any; pq: any; onDay: (s: string) => void }) {
   const [page, setPage] = useState(1); const [s, setS] = useState(''); const sq = useDebounced(s.trim(), 300);
-  useEffect(() => { setPage(1); }, [sq, JSON.stringify(pq)]);
+  const pqKey = JSON.stringify(pq);
+  useEffect(() => { setPage(1); }, [sq, pqKey]);
   const fit = useFitRows<HTMLDivElement>(40, { min: 3, max: 14, reserve: 34 });
   const l = useLoad(() => posMoneyOverviewApi.services({ ...pq, search: sq || undefined, page, pageSize: fit.rows }), [JSON.stringify(pq), sq, page, fit.rows]);
   const items: any[] = l.data?.items ?? []; const top = Math.max(1, ...items.map((x) => x.revenueCents));

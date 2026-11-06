@@ -14,3 +14,4 @@ export * from './signed-in-user.guard';   // Constitution 3/12 §27: a signed-in
 export * from './async-export';   // BUILD_PLAN Phase 12 (Constitution 5 §32–33): @AsyncExport — 202 + status URL for a large export
 export * from './require-feature';   // BUILD_PLAN Phase 12 (#13): @RequireFeature + FeatureEntitlementGuard
 export * from './validated-body';   // BUILD_PLAN Phase 12 (#17): @Body(ValidatedBody(schema))
+export * from './resource-scope';   // Security Deep Scan §38: @ResourceScope

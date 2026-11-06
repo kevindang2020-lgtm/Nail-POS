@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MemoryRouter } from 'react-router-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';
-const { api } = vi.hoisted(() => ({ api: { overview: vi.fn(), rewards: vi.fn(), members: vi.fn(), redemptions: vi.fn(), redeem: vi.fn(), createReward: vi.fn(), tiers: vi.fn(), createTier: vi.fn(), updateTier: vi.fn(), setMemberTier: vi.fn() } }));
+const { api } = vi.hoisted(() => ({ api: { bonusHealth: vi.fn(), overview: vi.fn(), rewards: vi.fn(), members: vi.fn(), redemptions: vi.fn(), redeem: vi.fn(), createReward: vi.fn(), tiers: vi.fn(), createTier: vi.fn(), updateTier: vi.fn(), setMemberTier: vi.fn() } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
 vi.mock('../api/posLoyaltyApi', () => ({ posLoyaltyApi: api }));
 import { POSLoyaltyScreen } from './POSLoyaltyScreen';
@@ -23,6 +23,19 @@ describe('POSLoyaltyScreen', () => {
     await waitFor(() => expect(screen.getByTestId('kpi-points')).toHaveTextContent('620'));
     expect(screen.getByTestId('kpi-members')).toHaveTextContent('2');
     expect(screen.getByTestId('panel-tiers')).toHaveTextContent('VIP');
+  });
+  it('Check Customer & Loyalty System (G1 §11): read-only checks by name, result and affected count; Check again re-reads', async () => {
+    api.bonusHealth.mockResolvedValue({ checkedAt: '2026-11-05T15:00:00Z', checks: [
+      { key: 'approved_bonus_posted_once', result: 'passed', detail: 'x', affected: [] },
+      { key: 'approved_but_not_completed', result: 'warning', detail: 'x', affected: ['r1', 'r2'] },
+    ] });
+    mount();
+    fireEvent.click(await screen.findByTestId('loyalty-health-open'));
+    const dlg = await screen.findByTestId('loyalty-health-checks');
+    expect(within(dlg).getByTestId('loyalty-health-approved_bonus_posted_once')).toHaveTextContent(/Passed.*added exactly once/);
+    expect(within(dlg).getByTestId('loyalty-health-approved_but_not_completed')).toHaveTextContent(/Needs a look.*did not finish.*2 record/);
+    fireEvent.click(screen.getByTestId('loyalty-health-run'));
+    await waitFor(() => expect(api.bonusHealth).toHaveBeenCalledTimes(2));
   });
   it('a failed overview is an error with Retry — never zeros', async () => {
     api.overview.mockRejectedValue({ status: 503 });

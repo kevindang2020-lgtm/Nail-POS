@@ -4,12 +4,13 @@
 // enforces its own permission); an integration key may not. The path is realm 'any' (session-from-request.ts) so a
 // customer's token and a staff token are both read here; the ticket records which realm it belongs to.
 import { Controller, Post, Req, UseGuards, HttpCode } from '@nestjs/common';
-import { TenantAuthGuard } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, ResourceScope } from '@aipowersalon/permissions/guards';
 import { sessionFromRequest } from '@aipowersalon/identity';
 import type { StreamTicketResponse } from '@aipowersalon/api-contracts';
 import { StreamTicketService } from './stream-tickets';
 
 @UseGuards(TenantAuthGuard)
+@ResourceScope('OWN')   // §38: a ticket for the caller's own session (the stream enforces its own permission)
 @Controller('realtime')
 export class StreamTicketController {
   constructor(private readonly tickets: StreamTicketService) {}

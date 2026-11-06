@@ -371,7 +371,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-checked Nov 5: built; 2 decisions wait on Kevin (automatic replies job; review-request sender) |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
-| G11 | Full Security Deep Scan | Nov 5: §93 egress allowlist built (report by default); §74 IDOR sweep extended to write routes + the customer app — live 17/17, 7 defects fixed (SD-74a…g); §110 / §38 next |
+| G11 | Full Security Deep Scan | Nov 5: §93 egress allowlist built (report by default); §74 IDOR sweep extended to write routes + the customer app — live 17/17, 7 defects fixed (SD-74a…g); §110 per-processor webhook schemas and §38 per-route resource scope built |
 | G12 | Secure Tap to Pay / Device Authentication | re-checked Nov 5: 10 PARTIAL, each blocked only by an outside dependency (internal half built); 1 BLOCKED_EXTERNAL |
 | G13 | Remaining Production Work / Payment Recovery | re-checked Nov 5: 52 DONE / 1 PARTIAL (§39 lint + as-any ratchets, per-screen work) / 20 BLOCKED_EXTERNAL; the pilot's two old 10e FAILs are fixed in the script |
 | G14 | 200 Technician Large Salon | re-checked Nov 5: §2 DONE (one day read per refresh); §1 / §101 PARTIAL = clock-in burst p95, a ≥ 4-core host question |
@@ -591,3 +591,26 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
   `POST /pos/ai-checkout-upsell/checkout/:id/dismiss` records a dismissal under salon B for an id that is not B's — it is
   B-scoped and harmless to A, left as is.
 - §74 → DONE for what the sweep covers; next G11: §110 per-processor webhook schemas, §38 `@ResourceScope`.
+
+### G11 §110 + §38, and a full gate run (Nov 5 2026, late night)
+
+- **§110 → DONE (app).** `modules/payments/src/payments/webhook-payload-schemas.ts`: one exact schema per sender — Fiserv family
+  (incl. CardPointe's own names), Clover, the bank deposit feed. Every field our parser reads has a type and bound; a
+  CardPointe name in a Clover delivery, two names for the same thing with different values, or a non-object body is
+  refused after the signature check and before any effect. A refused signed delivery stays in the ledger unprocessed with
+  the failing field names; the corrected re-delivery processes. Unknown fields are kept and named back
+  (`WEBHOOK_UNKNOWN_FIELDS=reject` refuses them). External half: the processors' published payload specs.
+- **§38 → DONE.** Every manifest line carries `resource=SCOPE/source`; `@ResourceScope` declares it where nothing decides it
+  (19 routes); §39 audit `route-resource-scope.vitest` cross-checks the labels with the IDOR table.
+- **Full gate run (`tooling/ci/run-gates.mjs`) found 17 red gates; fixed in this unit:** a referral-offer query on a column
+  that does not exist (`tenants.name` → 500 in the customer app — G2, mine); an impossible inbox predicate; check:tenant
+  (four platform-wide files reviewed); check:secrets (a boolean read reviewed); DI check (constant-provided tokens were
+  invisible to it); crosswire / unreached (two API clients the analyzer could not read; the loyalty health check now has
+  its screen action — G1 §11 "Check Customer & Loyalty System", EN / VI); realtime catalog; permission docs; kysely types
+  (25 tables, 31 columns added from the migrated schema); lint (a hook-named function, 23 warnings); strict-bodies
+  typeproof; response-exposure (explicit columns).
+- **Still red, next unit:** architecture tests — 33 salon-day sites using the server's UTC day (`current_date`,
+  `toISOString().slice(0,10)`) in the A-batch AI centers, 32 frontend types mirroring API types, 2 direct realtime
+  emissions, 1 platform→domain back-edge (observability → backup-center), 2 hand-built system contexts; 5 workforce
+  pgtests that fail after midnight UTC (Team Performance, weekly days off — they fail on the tree before this unit too);
+  check:api-contract (the known wire-type ratchet).

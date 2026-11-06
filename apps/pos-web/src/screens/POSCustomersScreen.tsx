@@ -18,7 +18,7 @@ import { CompareOverlay } from './POSAICustomerDuplicateReviewScreen';
 import { FitDialog } from '../components/FitKit';
 import { MembershipChip, useMemberStatusMap } from './MembershipChip';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
-import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
+import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { statusLabel } from '../i18n/status-label';
 import { ImeSafeInput } from '../components/ImeSafeInput';
 import { CUSTOMER_LANGUAGES, customerLanguageCode } from '../components/customerLanguage';
@@ -255,7 +255,7 @@ export function POSCustomersScreen() {
   const onImportFile = (e: { target: HTMLInputElement }) => { const file = e.target.files?.[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { setImportCsv(String(reader.result || '')); setImpPreview(null); setImpResult(null); setNote(null); }; reader.readAsText(file); };
   const doImportPreview = async () => { if (!importCsv.trim()) { setNote(tx('pos.paste_csv_or_load_a_csv_6rl1')); return; } setNote(null); setImpResult(null); setBusy('imp-preview'); try { setImpPreview(await posCustomersApi.importPreview(importCsv, updateExisting) as ImpPreview); } catch (e: any) { setNote(e?.message || tx('pos.preview_failed')); } finally { setBusy(null); } };
   const doImportCommit = async () => { if (!importCsv.trim()) { setNote(tx('pos.nothing_to_import')); return; } setNote(null); setBusy('imp-commit'); try { const r = await posCustomersApi.importCommit(importCsv, updateExisting) as ImpResult; setImpResult(r); setImpPreview(null); setImportCsv(''); await Promise.all([refetch(), loadDups()]); } catch (e: any) { setNote(e?.message || tx('pos.import_failed')); } finally { setBusy(null); } };
-  const { confirm: askConfirm, confirmUi } = useInlineConfirm();
+  const { confirmUi } = useInlineConfirm();
 
   // One batch member-status request for the whole roster page; non-members are absent from the map. Called before the
   // early returns (optional-chained off `s`) so the hook order stays stable while customers are still loading.

@@ -18,3 +18,4 @@ export { WORKER_GRANTS, workerPrincipal, isWorkerPrincipal, invalidWorkerGrant, 
 export * from './feature-entitlement';   // BUILD_PLAN Phase 12 (#13): the ONE entitlement decision + service
 export * from './request-schema';   // BUILD_PLAN Phase 12 (#17): the ONE request-body validation mechanism
 export { POS_ROUTE_KEY_ALIASES } from './permission-aliases.generated';   // Nov 5 2026: the scheduled AI Business evaluator builds a role's session keys
+export { routeResourceScope, ROUTE_RESOURCE_SCOPES, RESOURCE_SCOPE_META, isRouteResourceScope, type RouteResourceScope, type RouteScopeSource, type RouteScopeInput, type RouteScopeOutput } from './route-resource-scope';   // Security Deep Scan §38

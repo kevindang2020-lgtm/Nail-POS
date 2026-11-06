@@ -104,7 +104,6 @@ import { POSSocialScreen } from './screens/POSSocialScreen';
 import { POSIntegrationsScreen } from './screens/POSIntegrationsScreen';
 import { POSDepositReconScreen } from './screens/POSDepositReconScreen';
 import { POSAiAnalyticsScreen } from './screens/POSAiAnalyticsScreen';
-import { POSAiPackageScreen } from './screens/POSAiPackageScreen';
 import { POSAIBookingScreen } from './screens/POSAIBookingScreen';
 import { POSAIReviewAssistantScreen } from './screens/POSAIReviewAssistantScreen';
 import { POSAIFraudProtectionAssistantScreen } from './screens/POSAIFraudProtectionAssistantScreen';

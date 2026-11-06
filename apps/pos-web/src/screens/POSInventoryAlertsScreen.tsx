@@ -9,7 +9,7 @@
 // key; a correction is a signed adjustment with a reason, never an edit).
 // What was wrong: the sidebar counted products at their base reorder level (11) while this page listed persisted alert rows
 // that are only written when a product CROSSES a threshold — products already low never got one (0, "inventory is healthy").
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createIntentKeys } from '@aipowersalon/api-client';
@@ -236,7 +236,7 @@ export function RecordUseDialog({ productId, canOnBehalf, onClose, onDone }: { p
   const [find, setFind] = useState(''); const fq = useDebounced(find.trim(), 250);
   const pick = useLoad(() => posInventoryAlertsApi.pickers(fq || undefined), [fq]);
   const [pid, setPid] = useState<string | null>(productId ?? null);
-  const products: any[] = pick.data?.products ?? []; const techs: any[] = pick.data?.technicians ?? [];
+  const products: any[] = useMemo(() => pick.data?.products ?? [], [pick.data]); const techs: any[] = pick.data?.technicians ?? [];
   const [chosen, setChosen] = useState<any | null>(null);
   useEffect(() => { if (pid && !chosen) { const p = products.find((x) => x.id === pid); if (p) setChosen(p); } }, [pid, products, chosen]);
   useEffect(() => { if (productId && !chosen) posInventoryAlertsApi.pickers().then((r) => { const p = (r?.products ?? []).find((x: any) => x.id === productId); if (p) setChosen(p); }).catch(() => undefined); }, [productId]);   // eslint-disable-line react-hooks/exhaustive-deps

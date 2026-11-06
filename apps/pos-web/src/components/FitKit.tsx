@@ -79,7 +79,8 @@ export function FitDialog({ title, subtitle, onClose, busy = false, wide = false
       if (e.shiftKey && document.activeElement === a) { e.preventDefault(); z.focus(); } else if (!e.shiftKey && document.activeElement === z) { e.preventDefault(); a.focus(); }
     };
     document.addEventListener('keydown', onKey);
-    return () => { document.removeEventListener('keydown', onKey); (opener.current as HTMLElement | null)?.focus?.(); };
+    const back = opener.current as HTMLElement | null;   // the element that opened the dialog (set once, at mount)
+    return () => { document.removeEventListener('keydown', onKey); back?.focus?.(); };
   }, []);
   return (
     <div className={'fk-backdrop' + (side ? ' side' : '')} onMouseDown={(e) => { if (e.target === e.currentTarget && !busy) onClose(); }} data-testid={testId}>

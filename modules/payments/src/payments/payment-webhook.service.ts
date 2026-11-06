@@ -12,6 +12,7 @@
 // NOTE (honest): signature is verified over the JSON the app re-serializes. A production processor signs the RAW request
 // bytes, so live verification needs raw-body capture + the processor's exact scheme/header — wire that when the real
 // gateway sandbox is available. The tenant-isolation logic below is independent of that detail.
+import { checkWebhookPayload, unknownFieldMode, webhookFamily } from './webhook-payload-schemas';   // Security Deep Scan §110
 import { canMoveToSql } from '@aipowersalon/database';
 import { PAYMENT, CHARGEBACK, MERCHANT_ONBOARDING, PAYMENT_REFUND } from '../payments-lifecycles';
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
@@ -248,6 +249,7 @@ export class PaymentWebhookService {
       processed_at: row.processed_at ? sql`now()` : null,
       // §45: a re-delivery after a processing failure is attempt n+1 on a fresh claim (the failed row released its claim)
       processing_attempts: 1,
+      ...(row.last_error ? { last_error: String(row.last_error).slice(0, 500) } : {}),   // §110: why a signed delivery was refused (field names only)
     } as any).returning('id').executeTakeFirst().then((r: any) => String(r?.id ?? 'claimed'), (e: any) => { if (e?.code === '23505' && row.processed_at) return false; throw e; });
   }
 
@@ -298,6 +300,20 @@ export class PaymentWebhookService {
     }
     processorType = String(tenant.processorType || processorType);
 
+    // Security Deep Scan §110: the signed body must be the configured processor's exact shape before anything reads it.
+    // Refused deliveries are kept in the ledger (unprocessed — a corrected re-delivery still processes) with the
+    // field NAMES that failed, never their values.
+    const family = webhookFamily(processorType);
+    let unknownFields: string[] = [];
+    if (family) {
+      const shape = checkWebhookPayload(family, body, { unknownFields: unknownFieldMode() });
+      if (!shape.ok) {
+        await this.record({ tenant_id: tenant.tenantId, payment_gateway_id: tenant.tenantId, processor_type: processorType, event_type: eventType || null, event_id: eventId, processor_transaction_id: txnId, merchant_id_masked: tenant.merchantIdMasked, payload_json_safe: payload, signature_valid: true, last_error: `invalid_payload: ${shape.errors.map((e) => `${e.field}:${e.rule}`).join(', ')}`.slice(0, 500) });
+        return { status: 400, body: { ok: false, code: 'invalid_payload', errors: shape.errors } };
+      }
+      unknownFields = shape.unknownFields;
+    }
+
     // 3) Idempotency — if this event_id was already processed, do not apply it again.
     if (eventId) {
       const dup = await this.db.selectFrom('payment_gateway_events').select(['id'])
@@ -320,7 +336,9 @@ export class PaymentWebhookService {
     if (eventId && !claimed) return { status: 200, body: { ok: true, duplicate: true } };
 
     try {
-      return await this.applyEffects({ processorType, eventType, txnId, eventId, branchId, tenant, matchedPaymentId, body, payload });
+      const out = await this.applyEffects({ processorType, eventType, txnId, eventId, branchId, tenant, matchedPaymentId, body, payload });
+      // §110 report mode: fields we do not know were kept (never read) — named back so an operator can review them
+      return unknownFields.length && out.status === 200 ? { ...out, body: { ...(out.body as object), unknownFields } } : out;
     } catch (e) {
       // §45: the delivery is kept with its error and attempt count; the claim is released so the processor's retry can
       // run the effects again (every effect below is idempotent on its own key). 500 asks the processor to retry.

@@ -10,7 +10,7 @@
 // server-side under the per-customer lock, idempotent), Void an issued code (owners / managers, reason, points restored
 // through the ledger), Create / Edit / Activate rewards (owners / managers). Nothing here invents a tier: tiers are the
 // labels the salon's members actually carry.
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
@@ -119,7 +119,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
 
   // overlays
   const [dlg, setDlg] = useState<null | { kind: 'enroll' } | { kind: 'reward'; reward?: Reward } | { kind: 'adjust'; member: Member } | { kind: 'redeem'; member: Member }
-    | { kind: 'redemption'; id: string } | { kind: 'ledger'; customerId?: string; name?: string } | { kind: 'tiers' } | { kind: 'memberTier'; member: Member } | { kind: 'rewardRedemptions'; reward: Reward }>(null);
+    | { kind: 'redemption'; id: string } | { kind: 'ledger'; customerId?: string; name?: string } | { kind: 'tiers' } | { kind: 'memberTier'; member: Member } | { kind: 'rewardRedemptions'; reward: Reward } | { kind: 'health' }>(null);
   const done = (text: string, lists: ('rewards' | 'members' | 'reds')[]) => {
     setNote({ tone: 'ok', text }); setDlg(null); loadOverview();
     if (lists.includes('rewards')) rewards.toFirst(); if (lists.includes('members')) members.toFirst(); if (lists.includes('reds')) reds.toFirst();
@@ -260,6 +260,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
         <span className="fk-quick-l">{tx('pos.quick_actions_2')}</span>
         <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'ledger' })}>{tx('people.loyalty.pointsLedger')}</button>
         <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'tiers' })}>{tx('people.loyalty.manageTiers')}</button>
+        <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'health' })} data-testid="loyalty-health-open">{tx('people.loyalty.health.button')}</button>
         <button type="button" className="fk-btn ghost" onClick={() => nav('/tenant/reports/customers')}>{tx('people.loyalty.reports')}</button>
         <button type="button" className="fk-btn ghost" onClick={() => nav('/settings?section=loyalty-memberships')}>{tx('pos.settings')}</button>
         <span className="fk-quick-period">{ov ? tx('people.loyalty.periodNote', { tz: ov.period.timeZone }) : ''}</span>
@@ -273,6 +274,7 @@ function LoyaltyProgramView({ switcher }: { switcher: ReactNode }) {
       {dlg?.kind === 'ledger' ? <LedgerDialog customerId={dlg.customerId} name={dlg.name} onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'tiers' ? <TiersDialog canManage={canManage} onChanged={loadOverview} onClose={() => setDlg(null)} onPick={(tier) => { members.setFilters({ tier }); setDlg(null); }} /> : null}
       {dlg?.kind === 'memberTier' ? <MemberTierDialog member={dlg.member} onClose={() => setDlg(null)} onDone={(msg) => done(msg, ['members'])} /> : null}
+      {dlg?.kind === 'health' ? <LoyaltyHealthDialog onClose={() => setDlg(null)} /> : null}
       {dlg?.kind === 'rewardRedemptions' ? <RewardRedemptionsDialog reward={dlg.reward} onClose={() => setDlg(null)} onOpen={(id) => setDlg({ kind: 'redemption', id })} /> : null}
     </div>
   );
@@ -451,6 +453,30 @@ function LedgerDialog({ customerId, name, onClose }: { customerId?: string; name
       {err ? <ErrorRetry message={err} onRetry={() => setRetry((n) => n + 1)} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : d.items.length === 0 ? <Empty title={type ? tx('people.fit.noMatch') : tx('people.loyalty.noLedger')} /> : (
         <table className="fk-table"><thead><tr><th>{tx('people.loyalty.when')}</th><th>{tx('pos.customer')}</th><th>{tx('people.loyalty.entryType')}</th><th className="num">{tx('people.loyalty.points')}</th><th className="num">{tx('people.loyalty.balance')}</th><th>{tx('pos.reason_2')}</th></tr></thead>
           <tbody>{d.items.map((l) => <tr key={l.id}><td>{whenTime(l.createdAt)}</td><td>{l.customerName || '—'}</td><td>{entryLabel(l.entryType)}</td><td className={'num ' + (l.delta < 0 ? 'neg' : 'pos')}>{l.delta > 0 ? '+' : ''}{nf(l.delta)}</td><td className="num">{nf(l.balanceAfter)}</td><td>{l.reason || '—'}</td></tr>)}</tbody></table>
+      )}
+    </FitDialog>
+  );
+}
+
+type HealthRun = Awaited<ReturnType<typeof posLoyaltyApi.bonusHealth>>;
+// G1 guide §11 "Check Customer & Loyalty System": GET /pos/loyalty/bonus-requests/health — read-only checks of the bonus
+// approvals (posted once, never without the owner, no manual reduction, approved-but-unfinished). Each check is shown by its
+// key in EN / VI (the server's English detail is not shown to the salon); affected records are counted, never listed by name.
+function LoyaltyHealthDialog({ onClose }: { onClose: () => void }) {
+  const [d, setD] = useState<HealthRun | null>(null); const [err, setErr] = useState<string | null>(null); const [run, setRun] = useState(0);
+  useEffect(() => { let alive = true; setErr(null); setD(null); posLoyaltyApi.bonusHealth().then((r) => alive && setD(r)).catch((e) => alive && setErr(errText(e, tx('people.loyalty.loadFailed')))); return () => { alive = false; }; }, [run]);
+  const tone = (r: string) => (r === 'passed' ? 'ok' : r === 'warning' ? 'warn' : 'bad');
+  return (
+    <FitDialog title={tx('people.loyalty.health.title')} subtitle={d ? tx('people.loyalty.health.sub', { when: whenTime(d.checkedAt) }) : undefined} onClose={onClose} testId="dlg-loyalty-health"
+      footer={<><button type="button" className="fk-btn ghost" onClick={() => setRun((n) => n + 1)} disabled={!d && !err} data-testid="loyalty-health-run">{tx('people.loyalty.health.run')}</button><button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
+      {err ? <ErrorRetry message={err} onRetry={() => setRun((n) => n + 1)} /> : !d ? <div className="fk-loading">{tx('pos.loading')}</div> : (
+        <ul className="fk-list" data-testid="loyalty-health-checks">{d.checks.map((c) => (
+          <li key={c.key} data-testid={`loyalty-health-${c.key}`}>
+            <span className={'fk-chip ' + tone(c.result)}>{tx(`people.loyalty.health.${c.result}`)}</span>{' '}
+            <span>{tx(`people.loyalty.health.${c.key}`)}</span>
+            {c.affected.length ? <span className="fk-muted"> · {tx('people.loyalty.health.affected', { n: c.affected.length })}</span> : null}
+          </li>))}
+        </ul>
       )}
     </FitDialog>
   );

@@ -166,7 +166,10 @@ function extractFrontendCalls() {
         const ure = /\bconst\s+url\s*=\s*\([^)]*\)\s*=>\s*`\$\{[A-Za-z_$][\w$]*\}(\/[a-z0-9\-/]+)\$\{/i.exec(text);
         if (ure) base = ure[1];
       }
-      const withBase = (p) => (base && !SURFACES.test(p) ? base.replace(/\/$/, '') + (p.startsWith('/') ? p : '/' + p) : p);
+      // Nov 5 2026: '/health…' under a based helper is the module's own health check (POST /pos/ai-queue-assignment/health/run),
+      // never the API's root /health — root probes are not called through a module's helper
+      const isSurface = (p) => SURFACES.test(p) && !(base && /^\/health\b/.test(p));
+      const withBase = (p) => (base && !isSurface(p) ? base.replace(/\/$/, '') + (p.startsWith('/') ? p : '/' + p) : p);
 
       // ── api.get(…) / http.post(…) / client.patch(…).  (4)(5): a generic may span lines, never a paren.
       const re = /\b(?:api|http|client)\s*\.\s*(get|post|put|patch|delete|del|upload)\s*(?:<[^()]*?>)?\s*\(\s*([`'"])/g;

@@ -244,6 +244,7 @@ export const BRANCH_TABLES = {
   campaigns: SW('marketing campaigns are salon-wide (owner / manager tool)'),
   gift_cards: SW('a gift card is redeemable at every location of the salon'),
   technicians: SW('a technician may work at several locations; the roster is salon-wide (branch membership is a separate table)'),
+  technician_skill_assignments: SW('G3 Skills Catalog: a technician holds a skill at every location of the salon (branch_id records where it was approved, it does not confine it)'),
   users: SW('a staff account is salon-wide; its location access is user_branch_access'),
   reviews: SW('reviews are read salon-wide by the reputation tools'),
   inventory_service_recipes: SW('a service recipe is part of the salon menu'),

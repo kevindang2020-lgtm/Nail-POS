@@ -5,7 +5,7 @@
 import { Controller, Get, Post, Param, Body, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { RequiresAiPackage } from '@aipowersalon/ai';
 import { ValidationError as BookingValidationError } from '@aipowersalon/booking';
-import { TenantAuthGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, ValidatedBody, ResourceScope } from '@aipowersalon/permissions/guards';
 import { AiBookingService } from './ai-booking.service';
 import { AiBookingMutationService } from './ai-booking-mutation.service';
 import { AiBookingConversionService, type FunnelStage } from './ai-booking-conversion.service';
@@ -26,6 +26,7 @@ function trusted(r: any, source: unknown, correlationId?: string) {
 // unsubscribed / expired / over-limit is RECORDED as a would-be denial in ai_usage_logs. Nobody's access
 // changes until AI_ENTITLEMENT_ENFORCEMENT=enforce is set deliberately - see ai-entitlement.guard.ts.
 @RequiresAiPackage('ai_booking_assistant')
+@ResourceScope('BRANCH')   // §38: bookings at the session's location; ai_booking.* + the booking engine's pos.booking.* checks run in the services
 @Controller('api/ai-booking/v1')
 export class AiBookingController {
   constructor(private readonly svc: AiBookingService, private readonly conversion: AiBookingConversionService, private readonly mutation: AiBookingMutationService) {}

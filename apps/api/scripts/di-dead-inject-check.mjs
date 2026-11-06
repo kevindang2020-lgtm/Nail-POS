@@ -57,6 +57,7 @@ const codeLines = (s) =>
 const files = [SRC, ...MODULE_SRC_ROOTS].flatMap((r) => walk(r));
 const injected = new Map();   // token -> [files]
 const provided = new Set();
+const providedConsts = new Set(); const constValues = new Map();
 
 for (const f of files) {
   const src = codeLines(readFileSync(f, 'utf8'));
@@ -66,8 +67,13 @@ for (const f of files) {
     injected.get(t).push(f.replace(SRC + '/', ''));
   }
   for (const m of src.matchAll(/provide\s*:\s*'([^']+)'/g)) provided.add(m[1]);
+  // Nov 5 2026: `provide: TENANT_APPROVALS` where `export const TENANT_APPROVALS = 'TENANT_APPROVALS'` — the token is the
+  // constant's string (resolved after every file is read, below)
+  for (const m of src.matchAll(/provide\s*:\s*([A-Z][A-Z0-9_]+)\b/g)) providedConsts.add(m[1]);
+  for (const m of src.matchAll(/export\s+const\s+([A-Z][A-Z0-9_]+)\s*=\s*'([^']+)'/g)) constValues.set(m[1], m[2]);
 }
 
+for (const c of providedConsts) if (constValues.has(c)) provided.add(constValues.get(c));
 const dead = [...injected.entries()].filter(([t]) => !provided.has(t));
 
 console.log(`@Inject string tokens: ${injected.size}   providers declared: ${provided.size}`);

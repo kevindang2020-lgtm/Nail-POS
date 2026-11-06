@@ -393,6 +393,7 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
       return n;
     }, { replace: true });
   }, [setSp]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new search resets the page; setView changes with the URL
   useEffect(() => { if (q) setView({}, false); }, [q]);   // a new search goes back to page 1
 
   const loadSummary = useCallback(() => { bvApi.summary().then((x) => { setSummary(x); setSumErr(null); }).catch(setSumErr); }, []);
@@ -404,6 +405,7 @@ function VerificationOps({ settingsPanel, children }: { settingsPanel: ReactNode
     bvApi.history({ q: q || undefined, status: f.status || undefined, channel: f.channel || undefined, basis: f.basis, preset: f.preset,
       from: f.preset === 'custom' ? f.from : undefined, to: f.preset === 'custom' ? f.to : undefined, page: f.page, pageSize: f.pageSize })
       .then((x) => { setHist(x); setHistErr(null); }).catch(setHistErr).finally(() => setHistLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- histKey is the serialised query (every field it reads)
   }, [histKey]);
   useEffect(loadSummary, [loadSummary]);
   useEffect(loadLive, [loadLive]);

@@ -32,6 +32,7 @@ for (const f of readdirSync(MIG).filter((x) => x.endsWith('.sql')).sort()) {
 // 2. scan source
 function* walk(d) { for (const n of readdirSync(d)) { const p = join(d, n); if (n === 'node_modules' || n === 'dist' || n.startsWith('.')) continue; const s = statSync(p); if (s.isDirectory()) yield* walk(p); else if (p.endsWith('.ts') && !/\.(spec|test)\.ts$/.test(p) && !/pgtest|vitest/.test(p)) yield p; } }
 const ALLOW = {
+  'settings/settings.terminals.kysely.repository.ts': 'E2 Payment Terminals (reviewed Nov 5 2026): processors() selects only `(bolt_base_url is not null and bolt_api_key_enc is not null) as terminal_api` — a boolean, never the encrypted key',
   'oauth/oauth.service.ts': 'Constitution 3 Step 10d: compares sha256(presented client secret) to oauth_clients.client_secret_hash in-process to authenticate a confidential client — never returned',
   'common/api-key-auth.ts': 'Constitution 3 Step 7: compares sha256(presented key) to tenant_api_keys.secret_hash / previous_secret_hash in the WHERE clause — the hash is never returned, only whether it matched',
   // file fragment → why reading the secret column is legitimate (reviewed Sep 29 2026; none reaches a screen)

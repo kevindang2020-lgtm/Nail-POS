@@ -48,7 +48,7 @@ export class SkillsCatalogRepository {
         where x.tenant_id = k.tenant_id and x.skill_id = k.id and s.name ilike ${like(text)}))` : sql`true`}`;
     const total = N((await sql<any>`select count(*)::int as n from tenant_skills k where k.tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.n);
     const sv = served(page, pageSize, total);
-    const rows = (await sql<any>`select k.*, coalesce(nullif(u.full_name, ''), u.email) as created_by_name,
+    const rows = (await sql<any>`select k.id, k.tenant_id, k.name, k.category, k.description, k.required_certification, k.status, k.version, k.created_by, k.updated_by, k.archived_at, k.created_at, k.updated_at, coalesce(nullif(u.full_name, ''), u.email) as created_by_name,
         (select coalesce(json_agg(json_build_object('id', s.id, 'name', s.name, 'active', s.status = 'active' and s.archived_at is null) order by s.name), '[]'::json)
           from tenant_skill_services x join services s on s.id = x.service_id and s.tenant_id = x.tenant_id where x.tenant_id = k.tenant_id and x.skill_id = k.id) as services,
         (select count(*)::int from technician_skill_assignments a where a.tenant_id = k.tenant_id and a.skill_id = k.id and a.status = 'APPROVED') as technicians
@@ -72,7 +72,7 @@ export class SkillsCatalogRepository {
       if (dupe) throw err(409, 'SKILL_EXISTS', `A skill named "${name}" already exists in this salon.`, { skillId: String(dupe.id) });
       let id: string; let before: any = null;
       if (typeof b.id === 'string' && UUID.test(b.id)) {
-        before = (await sql<any>`select * from tenant_skills where tenant_id = ${T} and id = ${b.id} for update`.execute(trx)).rows[0];
+        before = (await sql<any>`select id, tenant_id, name, category, description, required_certification, status, version, created_by, updated_by, archived_at, created_at, updated_at from tenant_skills where tenant_id = ${T} and id = ${b.id} for update`.execute(trx)).rows[0];
         if (!before) throw err(404, 'SKILL_NOT_FOUND', 'That skill was not found.');
         if (b.expectedVersion != null && Math.trunc(Number(b.expectedVersion)) !== N(before.version)) throw err(409, 'VERSION_CONFLICT', 'Someone else changed this skill. Reload to see the latest.', { currentVersion: N(before.version) });
         await sql`update tenant_skills set name = ${name}, category = ${category}, description = ${description}, required_certification = ${cert}, version = version + 1, updated_by = ${ctx.userId ?? null}, updated_at = now()
@@ -174,7 +174,7 @@ export class SkillsCatalogRepository {
   /** what revoking would remove + the future bookings that use those services (nothing written) */
   private async revokePlan(exec: Kysely<any>, ctx: TeamCtx, t: any, assignmentId: string, lock = false) {
     const T = ctx.tenantId;
-    const a = (await sql<any>`select a.*, k.name from technician_skill_assignments a join tenant_skills k on k.id = a.skill_id and k.tenant_id = a.tenant_id
+    const a = (await sql<any>`select a.id, a.tenant_id, a.branch_id, a.technician_id, a.skill_id, a.status, a.proficiency, a.effective_from, a.expires_on, a.approved_by, a.approved_at, a.revoked_by, a.revoked_at, a.revoke_reason, a.version, a.updated_by, a.created_at, a.updated_at, k.name from technician_skill_assignments a join tenant_skills k on k.id = a.skill_id and k.tenant_id = a.tenant_id
       where a.tenant_id = ${T} and a.technician_id = ${t.id} and a.id = ${assignmentId} ${lock ? sql`for update of a` : sql``}`.execute(exec)).rows[0];
     if (!a) throw err(404, 'SKILL_ASSIGNMENT_NOT_FOUND', 'That skill is not assigned to this technician.');
     // services this skill granted that no OTHER live skill of the technician also links

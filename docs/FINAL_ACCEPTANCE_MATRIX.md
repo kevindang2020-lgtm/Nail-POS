@@ -145,7 +145,7 @@ Section status (`SECURITY_DEEP_SCAN_STATUS.md`, Oct 27 2026): 155 DONE · 20 PAR
 | SSRF | PASS | §91 / §92 / §164 (`safe-outbound`); note §93 process-wide egress allowlist still PARTIAL |
 | COMMAND INJECTION | PASS | §94 / §95 — no shell execution with untrusted values; hidden-code gate |
 | FILE UPLOAD SECURITY | BLOCKED_EXTERNAL | §102 / §103 / §165 DONE; §104 / §106 app half (`251b24d2`): images refused unscanned in production once a scanner is deployed; the ClamAV host itself is S-B5 |
-| WEBHOOK SECURITY | **FAIL** | §107 / §109 DONE; **gap §110:** strict webhook payload schemas not built (§108 replay timestamps wait on the processors' spec — external) |
+| WEBHOOK SECURITY | PASS (app) | §107 / §109 DONE; §110 per-processor payload schemas built Nov 5 2026 (`webhook-payload-schemas.ts`); §108 replay timestamps wait on the processors' spec — external |
 | REALTIME SECURITY | PASS | §111–§116, §168; `realtime-isolation`, `sse-session-guard` |
 | PAYMENT SECURITY | PASS | §117–§129, §169 (pilot phases 4–6, 10, 12; race lane); §128 log-capture scan over payment / refund / webhook flows (`6e1647fa`) |
 | SUPER ADMIN HARDENING | PASS | §131–§140: §134 approvable platform-admin actions (`7cd0548e`), §136 trusted device for platform sign-in (`d598d8d3`, S-A13); VPN / IAP external |

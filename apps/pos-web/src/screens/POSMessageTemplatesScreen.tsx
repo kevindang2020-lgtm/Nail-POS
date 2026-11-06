@@ -209,7 +209,7 @@ function Editor({ initial, summary, canManage, onSaved, onConflict }: { initial:
   const draft = useDebounced(JSON.stringify({ channel: f.channel, category: f.category || null, subject: f.subject || null, body: f.body }), 400);
   const [pv, setPv] = useState<MtPreview | null>(null);
   useEffect(() => {
-    const d = JSON.parse(draft); if (!d.body.trim()) { setPv(null); return; }
+    const d = JSON.parse(draft) as { channel: string; category: string | null; subject: string | null; body: string }; if (!d.body.trim()) { setPv(null); return; }
     let live = true; api.preview({ draft: d }).then((r) => { if (live) setPv(r); }, () => { if (live) setPv(null); });
     return () => { live = false; };
   }, [draft]);

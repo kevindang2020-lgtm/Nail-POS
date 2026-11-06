@@ -17,7 +17,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import type { FinanceExpenseCreateRequest } from '@aipowersalon/api-contracts/tenant';
-import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinSummary, type FinReport, type FinDetail } from '../api/posExpensesApi';
+import { posExpensesApi, saveExportFile, type ExpenseTab, type FinCategory, type FinExpense, type FinReport, type FinDetail } from '../api/posExpensesApi';
 import { posAiOcrReceiptApi } from '../api/posAiOcrReceiptApi';
 import { useCan } from '../components/usePermissions';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, useFitRows, useDebounced, requestId } from '../components/FitKit';

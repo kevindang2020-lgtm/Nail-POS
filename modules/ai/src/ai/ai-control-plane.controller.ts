@@ -6,7 +6,7 @@
 // **filtered by the caller's own AI permissions** — §168 and §169 are absences, and an endpoint that returns
 // everything and lets the UI hide things is how an absence gets violated.
 import { Controller, Get, Post, Body, Query, Req, UseGuards, Inject, HttpException, HttpStatus } from '@nestjs/common';
-import { SuperAdminGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { SuperAdminGuard, ValidatedBody, ResourceScope } from '@aipowersalon/permissions/guards';
 import { AI_DASHBOARD_FEEDBACK_BODY, AI_DASHBOARD_SETTINGS_BODY } from '../request-schemas';
 import { AiControlPlaneService } from './ai-control-plane.service';
 import { validateFeedback, FeedbackValidationError, DEFAULT_AI_PERMISSIONS, AI_PERMISSIONS } from './ai-feedback';
@@ -65,6 +65,7 @@ function aiPermissionsOf(req: any): { tenantId: string; role: string; permission
 }
 
 @ListQueries(TenantAiDashboardControllerListQueries)
+@ResourceScope('TENANT')   // §38: the salon's AI dashboard, filtered by the caller's own AI permissions
 @Controller('ai/dashboard')
 export class TenantAiDashboardController {
   constructor(private readonly svc: AiControlPlaneService, @Inject('AiSettingsStore') private readonly settings: AiSettingsStore) {}

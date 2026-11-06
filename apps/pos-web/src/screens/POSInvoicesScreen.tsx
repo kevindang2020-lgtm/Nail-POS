@@ -98,7 +98,7 @@ export function POSInvoicesScreen() {
     pendingSave.current = null;
     if ((data.items ?? []).some((x: Row) => x.id === p.id)) { setHighlight(p.id); setTimeout(() => setHighlight(null), 4000); setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) }); }
     else setNote({ tone: 'ok', text: tx(p.verb, { n: p.number }) + ' ' + tx('finance.iv.outsideFilters'), actions: [{ label: tx('finance.iv.viewInvoice'), run: () => setDlg({ kind: 'detail', id: p.id }) }, { label: tx('finance.clearFilters'), run: clearAll }] });
-  }, [list.data, list.loading]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [list.data, list.loading]);
   const exportCsv = async () => { try { download('invoices.csv', await api.exportCsv({ ...scope, status: status || undefined, sort }), 'text/csv;charset=utf-8'); setNote({ tone: 'ok', text: tx('finance.exported') }); } catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } };
 
   return (

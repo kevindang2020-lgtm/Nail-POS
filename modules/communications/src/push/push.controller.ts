@@ -3,8 +3,9 @@
 import { Body, Controller, Post, Req, HttpException } from '@nestjs/common';
 import { PushService, PushError } from './push.service';
 import { PUSH_REGISTER_BODY, PUSH_UNREGISTER_BODY } from '../request-schemas';
-import { ValidatedBody } from '@aipowersalon/permissions/guards';
+import { ValidatedBody, ResourceScope } from '@aipowersalon/permissions/guards';
 
+@ResourceScope('OWN')   // §38: the signed-in person's own device tokens
 @Controller('push')
 export class PushController {
   constructor(private readonly svc: PushService) {}

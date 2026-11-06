@@ -5,7 +5,7 @@
 // pending request for the owner (Owner App → Approvals). Nothing moves until the owner approves. Below it, this customer's
 // recent requests with their status (waiting / added / not approved / expired / not completed — e.g. not enough tokens).
 // Used by the Customer Profile drawer, the Customer Profile screen and the Loyalty screen.
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posLoyaltyApi, type BonusPreview, type BonusRequestRow } from '../api/posLoyaltyApi';
 import { errorTextOf } from '../i18n/error-text';
@@ -32,8 +32,8 @@ export function LoyaltyBonusRequest({ customerId, currentPoints, canRequest, onS
   const n = Math.trunc(Number(pts) || 0);
   const valid = n >= 1 && n <= 5000 && (why !== 'other' || note.trim().length >= 3);
 
-  const loadHist = () => posLoyaltyApi.bonusRequests({ customerId, pageSize: 10 }).then((r) => { setHist(r.items); setHistErr(false); }).catch(() => setHistErr(true));
-  useEffect(() => { void loadHist(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [customerId]);
+  const loadHist = useCallback(() => posLoyaltyApi.bonusRequests({ customerId, pageSize: 10 }).then((r) => { setHist(r.items); setHistErr(false); }).catch(() => setHistErr(true)), [customerId]);
+  useEffect(() => { void loadHist(); }, [loadHist]);
   useEffect(() => {
     if (!valid && !(n >= 1 && n <= 5000)) { setPreview(null); return; }
     const t = setTimeout(() => { posLoyaltyApi.bonusPreview(customerId, n).then(setPreview).catch(() => setPreview(null)); }, 250);

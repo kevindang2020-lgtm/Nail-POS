@@ -9,12 +9,17 @@
 // passes, until the recovery pilots (§47) have run. Nothing is reported RESTORED without evidence (§14, §33).
 import { Inject, Injectable, Logger, Optional } from '@nestjs/common';
 import { sql, Kysely, PostgresDialect } from 'kysely';
+import { Pool } from 'pg';
 import { DATABASE, canMoveToSql, enqueueJob, registerJobHandler, jobHandlerFor } from '@aipowersalon/database';
 import {
   BACKUP_RECOVERY_POINT, BACKUP_RESTORE_PLAN, BackupCenterError, APPROVAL_TTL_MS, BACKUP_TZ, RESTORE_MODES,
   validateManifest, canonicalJson, sha256Hex, retentionFor, midnightSchedule, missedMidnightCheckpoint, localDate,
   evaluatePlan, planChecksum, checkApproval, type RestoreMode, type PointView, type PostPointActivity, type PlanPreview,
 } from './backup-center-core';
+
+// response-exposure (Nov 5 2026): explicit columns — a column added later is not returned by accident
+const RP_COLS = sql.raw('id, environment, scope, tenant_id, branch_id, source, backup_ref, recovery_timestamp, pitr_window_start, pitr_window_end, database_checkpoint, wal_timeline, schema_version, app_release, manifest, manifest_sha256, size_bytes, retention_class, expires_at, immutable_replica_status, verification_status, verification_detail, verified_at, rejected_reasons, created_at, updated_at, updated_by');
+const PLAN_COLS = sql.raw('id, mode, tenant_id, branch_id, recovery_point_id, target_timestamp, reason, plan, plan_sha256, status, version, idempotency_key, requested_by, approved_by, approved_at, approval_expires_at, approved_plan_sha256, finance_acknowledged, job_id, started_at, completed_at, failure_code, failure_detail, evidence, created_at, updated_at, updated_by');
 
 export const RESTORE_JOB_TYPE = 'backups.restore_execute';
 const log = new Logger('BackupCenter');
@@ -31,8 +36,6 @@ export const envStagingSource = (env: NodeJS.ProcessEnv = process.env): StagingS
     const url = env.RESTORE_STAGING_DATABASE_URL;
     if (!url) return null;
     if (url === env.DATABASE_URL || url === env.PG_WORKER_DATABASE_URL) throw new BackupCenterError('RESTORE_STATE_CONFLICT', 'RESTORE_STAGING_DATABASE_URL points at the live database. A restore is staged in an isolated clone only.', 409);
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    const { Pool } = require('pg');
     const pool = new Pool({ connectionString: url, max: 2 });
     const db = new Kysely<any>({ dialect: new PostgresDialect({ pool }) });
     return { db, close: () => db.destroy() };
@@ -114,7 +117,7 @@ export class BackupCenterService {
 
   private async pointRow(id: string): Promise<any> {
     if (!UUID.test(id)) throw new BackupCenterError('RECOVERY_POINT_NOT_FOUND', 'That recovery point was not found.', 404);
-    const r = (await sql<any>`select * from backup_recovery_points where id = ${id}`.execute(this.db)).rows[0];
+    const r = (await sql<any>`select ${RP_COLS} from backup_recovery_points where id = ${id}`.execute(this.db)).rows[0];
     if (!r) throw new BackupCenterError('RECOVERY_POINT_NOT_FOUND', 'That recovery point was not found.', 404);
     return r;
   }
@@ -150,7 +153,7 @@ export class BackupCenterService {
 
   async overview() {
     const now = this.clock();
-    const pts = (await sql<any>`select * from backup_recovery_points where recovery_timestamp > now() - interval '400 days' order by recovery_timestamp desc limit 2000`.execute(this.db)).rows.map((r) => pointView(r, now));
+    const pts = (await sql<any>`select ${RP_COLS} from backup_recovery_points where recovery_timestamp > now() - interval '400 days' order by recovery_timestamp desc limit 2000`.execute(this.db)).rows.map((r) => pointView(r, now));
     const platform = pts.filter((p) => p.scope === 'platform');
     const verified = pts.filter((p) => p.verificationStatus === 'VERIFIED');
     const latestVerified = verified.reduce<number | null>((m, p) => { const t = p.source === 'pitr_window' ? Date.parse(p.pitrWindowEnd!) : Date.parse(p.recoveryTimestamp); return m === null || t > m ? t : m; }, null);
@@ -217,7 +220,7 @@ export class BackupCenterService {
     const tenantId = q.tenantId || null, branchId = q.branchId || null;
     await this.assertScope(tenantId, branchId);
     const now = this.clock();
-    const rows = (await sql<any>`select * from backup_recovery_points
+    const rows = (await sql<any>`select ${RP_COLS} from backup_recovery_points
       where scope = 'platform' or (${tenantId}::uuid is not null and tenant_id = ${tenantId} and (branch_id is null or ${branchId}::uuid is null or branch_id = ${branchId}))
       order by recovery_timestamp desc limit 500`.execute(this.db)).rows.map((r) => pointView(r, now));
     // §17/§38: the calendar shows only what a VERIFIED point really covers; everything else is disabled
@@ -325,7 +328,7 @@ export class BackupCenterService {
   }
   private async planRow(id: string): Promise<any> {
     if (!UUID.test(id)) throw new BackupCenterError('RESTORE_PLAN_NOT_FOUND', 'That restore plan was not found.', 404);
-    const r = (await sql<any>`select * from backup_restore_plans where id = ${id}`.execute(this.db)).rows[0];
+    const r = (await sql<any>`select ${PLAN_COLS} from backup_restore_plans where id = ${id}`.execute(this.db)).rows[0];
     if (!r) throw new BackupCenterError('RESTORE_PLAN_NOT_FOUND', 'That restore plan was not found.', 404);
     return r;
   }
@@ -338,7 +341,7 @@ export class BackupCenterService {
     const size = Math.min(100, Math.max(1, Number(q.pageSize) || 25)); const page = Math.max(1, Number(q.page) || 1);
     const st = q.status && (BACKUP_RESTORE_PLAN.states as readonly string[]).includes(q.status) ? q.status : null;
     const tid = q.tenantId && UUID.test(q.tenantId) ? q.tenantId : null;
-    const rows = (await sql<any>`select * from backup_restore_plans where (${st}::text is null or status = ${st}) and (${tid}::uuid is null or tenant_id = ${tid})
+    const rows = (await sql<any>`select ${PLAN_COLS} from backup_restore_plans where (${st}::text is null or status = ${st}) and (${tid}::uuid is null or tenant_id = ${tid})
       order by created_at desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     const total = (await sql<any>`select count(*)::int n from backup_restore_plans where (${st}::text is null or status = ${st}) and (${tid}::uuid is null or tenant_id = ${tid})`.execute(this.db)).rows[0]?.n ?? 0;
     return { items: rows.map((r) => this.planView(r)), page, pageSize: size, total };

@@ -161,7 +161,7 @@ export class PlatformAdvertisingService {
   private async media(ids: (string | null)[], trx: Db = this.db): Promise<Map<string, MediaRow>> {
     const want = [...new Set(ids.filter(isUuid))];
     if (!want.length) return new Map();
-    const rows = (await sql<any>`select *, null::uuid as tenant_id from platform_ad_media where id = any(${want}::uuid[])`.execute(trx)).rows;
+    const rows = (await sql<any>`select id, mime_type, width, height, byte_size, total_bytes, sha256, storage_key, variants, suggested_focal_x, suggested_focal_y, original_filename, created_by, created_at, deleted_at, deleted_by, null::uuid as tenant_id from platform_ad_media where id = any(${want}::uuid[])`.execute(trx)).rows;
     return new Map(rows.map((r: any) => [String(r.id), toMedia(r)]));
   }
   private view(a: AdRecord, media: Map<string, MediaRow>) {

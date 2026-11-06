@@ -144,7 +144,8 @@ export function POSTechQueueScreen() {
   const [techId, setTechId] = useState<string | null>(null); const [ticketId, setTicketId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const srvTab = mode === 'history' ? 'history' : tab;
-  useEffect(() => setTPage(1), [srvTab, tSearch, JSON.stringify(hPeriod), hField]);
+  const hKey = JSON.stringify(hPeriod);
+  useEffect(() => setTPage(1), [srvTab, tSearch, hKey, hField]);
   const listQ = useLoad(() => (srvTab === 'live' && !tSearch ? Promise.resolve(null) : posTechQueueScreenApi.tickets({ tab: srvTab, q: tSearch || undefined, page: tPage, pageSize: 10, ...(mode === 'history' ? { ...periodQuery(hPeriod), dateField: hField } : {}) })), [srvTab, tSearch, tPage, JSON.stringify(hPeriod), hField, tick]);
   const counts = useLoad(() => posTechQueueScreenApi.tabCounts(), [tick]);
   const found = useLoad(() => (uqQ.length >= 2 ? posTechQueueScreenApi.search({ q: uqQ }) : Promise.resolve(null)), [uqQ]);

@@ -5,7 +5,8 @@ import type { AibOverview, AibActivityPage, AibActivityRow, AibRequestDetail, Ai
 import { posHttp } from './client';
 export type { AibOverview, AibActivityPage, AibActivityRow, AibRequestDetail, AibRecoveryList, AibRecoveryCase, AibHealthRun, AibHealthCheck, AibHealthStatus, AibAlternatives };
 export class ApiError extends Error { constructor(message: string, public status: number, public code?: string) { super(message); this.name = 'ApiError'; } }
-const http = <T,>(path: string, init?: RequestInit) => posHttp<T>('/pos/ai-booking' + path, init, { mapError: (status, body, message) => new ApiError(message, status, (body as { code?: string } | null)?.code) });
+const BASE = '/pos/ai-booking';
+const http = <T,>(path: string, init?: RequestInit) => posHttp<T>(BASE + path, init, { mapError: (status, body, message) => new ApiError(message, status, (body as { code?: string } | null)?.code) });
 const qs = (f: Record<string, unknown>) => { const p = new URLSearchParams(); for (const [k, v] of Object.entries(f)) if (v !== undefined && v !== null && v !== '') p.set(k, String(v)); const s = p.toString(); return s ? '?' + s : ''; };
 export interface AibActivityQuery { q?: string; status?: string; source?: string; technicianId?: string; basis?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }
 const key = () => globalThis.crypto?.randomUUID?.() ?? `aib-${Date.now()}-${Math.random()}`;

@@ -20,7 +20,6 @@ export const posCustomersApi = {
   getNotes: (customerId: string) => api.get<any>(`/pos/customers/${enc(customerId)}/notes`),
   setNotes: (customerId: string, notes: Record<string, unknown>) => api.patch(`/pos/customers/${enc(customerId)}/notes`, notes),
   setTags: (customerId: string, tags: string[]) => api.patch(`/pos/customers/${enc(customerId)}/tags`, { tags }),
-  setLoyalty: (customerId: string, loyalty: Record<string, unknown>) => api.patch(`/pos/customers/${enc(customerId)}/loyalty`, loyalty),
   getLoyaltyLedger: (customerId: string) => api.get<any[]>(`/pos/customers/${enc(customerId)}/loyalty-ledger`),
   update: (id: string, body: Record<string, unknown>) => api.patch(`/pos/customers/${enc(id)}`, body),
 

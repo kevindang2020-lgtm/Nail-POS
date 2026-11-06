@@ -76,6 +76,7 @@ export function POSCommunicationsScreen() {
   const [search, setSearch] = useState('');
   const q = useDebounced(search, 300);
   const firstQ = useRef(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- only a new search resets the page
   useEffect(() => { if (firstQ.current) { firstQ.current = false; return; } if (st.page !== 1) go({ ...st, page: 1 }, true); }, [q]);   // new search → page 1
   const live = useCommsLive();
 
@@ -87,6 +88,7 @@ export function POSCommunicationsScreen() {
     const n = ++listReq.current; setListBusy(true);
     posCommunicationsApi.inbox.list(JSON.parse(qs)).then((d) => { if (n !== listReq.current) return; setList(d); setListErr(null); if (d.page !== st.page) go({ ...st, page: d.page }, true); },
       (e) => { if (n !== listReq.current) return; setListErr(errText(e, tx('ci.listFailed'))); }).finally(() => { if (n === listReq.current) setListBusy(false); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- qs is the serialised list query; the server page correction must not re-run the list
   }, [qs, live.tick]);
 
   // ── KPIs (conversation counts from SQL; activity from its own sources — each honest about availability) ──
@@ -117,8 +119,11 @@ export function POSCommunicationsScreen() {
       setOlderCursor((c) => c ?? d.olderCursor);
       if (markRead && d.thread.unreadCount > 0) posCommunicationsApi.inbox.read(id).then(() => live.refreshNow(), () => undefined);
     }, (e) => { if (n !== detailReq.current) return; setDetailErr(errText(e, tx('ci.openFailed'))); setDetail(null); });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- live.refreshNow is the only part of live this reads
   }, [live.refreshNow]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a new selection opens it once; loadDetail is stable per live.refreshNow
   useEffect(() => { setOlder([]); setOlderCursor(null); setTab('conversation'); stick.current = true; setDetail(null); setDetailErr(null); if (selId) loadDetail(selId, true); }, [selId]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- a live event re-reads the open conversation only — never on a selection change
   useEffect(() => { if (selId && live.tick) loadDetail(selId, false); }, [live.tick]);   // a live event never changes the selection or the draft
   const messages = useMemo(() => { const seen = new Set<string>(); return [...older, ...(detail?.messages ?? [])].filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true))); }, [older, detail]);
   useEffect(() => { const el = scroller.current; if (el && stick.current) el.scrollTop = el.scrollHeight; }, [messages.length, detail?.thread.id]);

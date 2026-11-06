@@ -124,16 +124,16 @@ export class RetentionSnapshotRepository {
           rf as (select tv.customer_id, coalesce(sum(pr.amount_cents), 0)::bigint as refunded
                  from payment_refunds pr join payments p on p.id = pr.payment_id and p.tenant_id = pr.tenant_id join tv on tv.id = p.ticket_id, tw
                  where pr.tenant_id = ${T} and pr.status = 'refunded' and pr.created_at < tw.e group by tv.customer_id),
-          c as (select c.id, c.branch_id as home_branch_id from customers c, tw where c.tenant_id = ${T} and c.created_at < tw.e
+          cu as (select c.id, c.branch_id as home_branch_id from customers c, tw where c.tenant_id = ${T} and c.created_at < tw.e
                  and (c.status <> 'archived' or (c.archived_at is not null and c.archived_at >= tw.e))),
-          x as (select c.id, c.home_branch_id, lb.branch_id as last_branch_id, coalesce(v.visits, 0) as visits, v.first_vt, v.last_vt, greatest(0, coalesce(v.spend, 0) - coalesce(rf.refunded, 0))::bigint as net,
+          x as (select cu.id, cu.home_branch_id, lb.branch_id as last_branch_id, coalesce(v.visits, 0) as visits, v.first_vt, v.last_vt, greatest(0, coalesce(v.spend, 0) - coalesce(rf.refunded, 0))::bigint as net,
                  case when v.last_vt is null then null else (${date}::date - (v.last_vt at time zone ${tz})::date) end as days,
                  -- Customer Segments §11: the VIP flag / loyalty tier IN FORCE are recorded only for a COMPLETE (nightly, yesterday)
                  -- day; a reconstructed day leaves them NULL (a past VIP flag is not reproducible — never invented)
                  case when ${quality}::text = 'complete' then (lp.vip_since is not null or coalesce(lp.loyalty_tier, '') ~* 'vip') end as is_vip,
                  case when ${quality}::text = 'complete' then coalesce(lp.loyalty_tier, 'Regular') end as loyalty_tier
-                 from c left join v on v.customer_id = c.id left join lb on lb.customer_id = c.id left join rf on rf.customer_id = c.id
-                 left join lateral (select clp.loyalty_tier, clp.vip_since from customer_loyalty_profiles clp where clp.tenant_id = ${T} and clp.customer_id = c.id order by clp.created_at limit 1) lp on true),
+                 from cu left join v on v.customer_id = cu.id left join lb on lb.customer_id = cu.id left join rf on rf.customer_id = cu.id
+                 left join lateral (select clp.loyalty_tier, clp.vip_since from customer_loyalty_profiles clp where clp.tenant_id = ${T} and clp.customer_id = cu.id order by clp.created_at limit 1) lp on true),
           ins as (insert into customer_retention_daily_snapshots (tenant_id, customer_id, snapshot_local_date, definition_version, settings_version, segment, first_visit_at, last_visit_at,
                    visit_count, net_lifetime_value_cents, days_away, data_quality, run_id, source_watermark, calculated_at, is_vip, loyalty_tier, last_visit_branch_id, home_branch_id)
                  select ${T}, x.id, ${date}::date, ${dv}, ${def.version ?? -1},

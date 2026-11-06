@@ -17,6 +17,7 @@ export interface PaymentsTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   stranded_at: TsNull;   // migration 549 (Phase 11): the stranded-attempt sweep could not verify this card charge
   payment_surface: string | null; device_id: string | null; card_brand: string | null; card_last4: string | null;   // migration 660 (Tap to Pay: surface dimension + safe card metadata)
+  register_id: string | null;   // types sync (Nov 5 2026)
 }
 
 export interface PaymentSignaturesTable {
@@ -56,7 +57,7 @@ export interface TicketsTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
 }
 export interface TicketServiceLinesTable {
-  is_taxable: Generated<boolean>;   // migration 792: the line's taxable flag, snapshotted from the service at insert
+  is_taxable: Generated<boolean>;   // migration 792 — the line's taxable flag, snapshotted from the service at insert
   id: Generated<string>; tenant_id: string; branch_id: string; ticket_id: string; service_id: string | null;
   product_id: string | null;
   technician_id: string | null; service_name_snapshot: string; price_cents_snapshot: number;
@@ -85,6 +86,9 @@ export interface CustomerDisplayDevicesTable {
   reported_mode: string | null; app_version: string | null; screen_width: number | null; screen_height: number | null;
   pixel_ratio: string | number | null; display_profile: string | null; maintenance_at: TsNull;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  applied_ad_policy_version: number | null;   // types sync (Nov 5 2026)
+  applied_ad_mode: string | null;   // types sync (Nov 5 2026)
+  applied_ad_at: TsNull;   // types sync (Nov 5 2026)
 }
 // 23-inch spec §9–§10 (migration 511): a POS register — a display dedicated to it has pos_station_id = its id.
 export interface PosStationsTable {
@@ -139,6 +143,7 @@ export interface PosPaymentTerminalsTable {
   merchant_account_id: string | null; disabled_at: TsNull; disabled_by: string | null; disabled_reason: string | null;
   last_seen_at: TsNull; last_ping_at: TsNull; last_ping_ok: boolean | null; last_transaction_at: TsNull;
   updated_at: TsNull; updated_by: string | null;
+  pair_request_key: string | null;   // types sync (Nov 5 2026)
 }
 export interface TenantSettingsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; category: string; settings_json: unknown;
@@ -155,6 +160,8 @@ export interface TechnicianSkillChangeRequestsTable {
 export interface TicketTipAllocationsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; ticket_id: string; technician_id: string;
   tip_cents: number; created_at: Ts;
+  source: Generated<string>;   // types sync (Nov 5 2026)
+  selection_version: number | null;   // types sync (Nov 5 2026)
 }
 export interface TechnicianAuditLogsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; technician_id: string | null; user_id: string | null;
@@ -3688,6 +3695,7 @@ export interface InventoryTransferLinesTable {
   quantity_requested: Generated<number>;
   quantity_moved: Generated<number>;
   created_at: Ts;
+  quantity_received: number | null;   // types sync (Nov 5 2026)
 }
 export interface InventoryTransfersTable {
   id: Generated<string>;
@@ -3703,6 +3711,12 @@ export interface InventoryTransfersTable {
   created_at: Ts;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  dispatched_at: TsNull;   // types sync (Nov 5 2026)
+  received_at: TsNull;   // types sync (Nov 5 2026)
+  received_by_user_id: string | null;   // types sync (Nov 5 2026)
+  cancelled_at: TsNull;   // types sync (Nov 5 2026)
+  cancelled_by_user_id: string | null;   // types sync (Nov 5 2026)
+  cancel_reason: string | null;   // types sync (Nov 5 2026)
 }
 export interface InventoryUnitsTable {
   id: Generated<string>;
@@ -3726,6 +3740,8 @@ export interface InventoryUnitsTable {
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   sold_ticket_id: string | null;   // migration 667 (B-17): the ticket a retail sale took this unit for
   sold_line_id: string | null;     // migration 667 (B-17): … and the ticket line
+  in_transfer_id: string | null;   // types sync (Nov 5 2026)
+  transit_from_status: string | null;   // types sync (Nov 5 2026)
 }
 export interface InventoryVendorsTable {
   id: Generated<string>;
@@ -4672,6 +4688,8 @@ export interface PurchaseOrderLinesTable {
   created_at: Ts;
   updated_at: Ts;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
+  units_per_purchase_unit: Generated<number>;   // types sync (Nov 5 2026)
+  quantity_damaged_units: Generated<number>;   // types sync (Nov 5 2026)
 }
 export interface PurchaseOrdersTable {
   id: Generated<string>;
@@ -5057,6 +5075,14 @@ export interface ReferralProgramSettingsTable {
   requires_approval: Generated<boolean>; separation_of_duties: Generated<boolean>; min_qualifying_spend_cents: Generated<number>;
   qualification_window_days: number | null; record_grace_hours: Generated<number>; version: Generated<number>;
   created_at: Generated<Ts>; created_by: string | null; updated_at: Generated<Ts>; updated_by: string | null;
+  friend_reward_cents: number | null;   // types sync (Nov 5 2026)
+  referrer_reward_cents: number | null;   // types sync (Nov 5 2026)
+  voucher_min_spend_cents: Generated<number>;   // types sync (Nov 5 2026)
+  voucher_expiry_days: Generated<number>;   // types sync (Nov 5 2026)
+  budget_total_cents: number | null;   // types sync (Nov 5 2026)
+  budget_monthly_cents: number | null;   // types sync (Nov 5 2026)
+  per_referrer_cap: number | null;   // types sync (Nov 5 2026)
+  budget_warn_percent: Generated<number>;   // types sync (Nov 5 2026)
 }
 export interface ReferralRewardsTable {
   id: Generated<string>; tenant_id: string; referral_id: string; recipient_customer_id: string; reward_type: string; points: number | null; amount_cents: number | null;
@@ -6750,6 +6776,8 @@ export interface VoiceCallOutcomesTable {
   agent_ref: string | null;
   disconnection_reason: string | null;
   direction: string | null;
+  caller_number: string | null;   // types sync (Nov 5 2026)
+  dialed_number: string | null;   // types sync (Nov 5 2026)
 }
 export interface VoiceImprovementSuggestionsTable {
   id: Generated<string>;
@@ -6852,6 +6880,432 @@ export interface JobsTable {
   updated_at: Generated<Date>;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   traceparent: string | null;   // migration 548 (Phase 11 tracing)
+}
+
+// advertising_global_policy — generated from the migrated schema (Nov 5 2026 types sync)
+export interface AdvertisingGlobalPolicyTable {
+  id: Generated<number>;
+  allow_tenant_advertising: Generated<boolean>;
+  version: Generated<number>;
+  effective_at: Ts;
+  updated_by: string | null;
+  reason: string | null;
+  updated_at: Ts;
+}
+
+// advertising_policy_events — generated from the migrated schema (Nov 5 2026 types sync)
+export interface AdvertisingPolicyEventsTable {
+  id: Generated<string>;
+  version: number;
+  from_mode: string;
+  to_mode: string;
+  reason: string;
+  actor_user_id: string | null;
+  preview: Generated<unknown>;
+  created_at: Ts;
+}
+
+// ai_booking_health_runs — generated from the migrated schema (Nov 5 2026 types sync)
+export interface AiBookingHealthRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  overall: string;
+  checks: Generated<unknown>;
+  checked_by: string | null;
+  created_at: Ts;
+}
+
+// ai_booking_recovery_dismissals — generated from the migrated schema (Nov 5 2026 types sync)
+export interface AiBookingRecoveryDismissalsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  case_key: string;
+  reason: string | null;
+  dismissed_by: string | null;
+  created_at: Ts;
+}
+
+// ai_queue_health_runs — generated from the migrated schema (Nov 5 2026 types sync)
+export interface AiQueueHealthRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string;
+  overall: string;
+  checks: Generated<unknown>;
+  checked_by: string | null;
+  created_at: Ts;
+}
+
+// backup_point_verifications — generated from the migrated schema (Nov 5 2026 types sync)
+export interface BackupPointVerificationsTable {
+  id: Generated<string>;
+  recovery_point_id: string;
+  result: string;
+  checks: unknown;
+  detail: string | null;
+  started_at: TsNull;
+  completed_at: Ts;
+  reported_by: string;
+  created_at: Ts;
+}
+
+// backup_recovery_points — generated from the migrated schema (Nov 5 2026 types sync)
+export interface BackupRecoveryPointsTable {
+  id: Generated<string>;
+  environment: string;
+  scope: string;
+  tenant_id: string | null;
+  branch_id: string | null;
+  source: string;
+  backup_ref: string;
+  recovery_timestamp: Ts;
+  pitr_window_start: TsNull;
+  pitr_window_end: TsNull;
+  database_checkpoint: string | null;
+  wal_timeline: string | null;
+  schema_version: string;
+  app_release: string | null;
+  manifest: unknown;
+  manifest_sha256: string;
+  size_bytes: Generated<number>;
+  retention_class: string;
+  expires_at: TsNull;
+  immutable_replica_status: Generated<string>;
+  verification_status: Generated<string>;
+  verification_detail: string | null;
+  verified_at: TsNull;
+  rejected_reasons: Generated<unknown>;
+  created_at: Ts;
+  updated_at: Ts;
+  updated_by: string | null;
+}
+
+// backup_restore_events — generated from the migrated schema (Nov 5 2026 types sync)
+export interface BackupRestoreEventsTable {
+  id: Generated<string>;
+  plan_id: string;
+  from_status: string | null;
+  to_status: string;
+  action: string;
+  actor_user_id: string | null;
+  actor_label: string | null;
+  detail: Generated<unknown>;
+  created_at: Ts;
+}
+
+// backup_restore_plans — generated from the migrated schema (Nov 5 2026 types sync)
+export interface BackupRestorePlansTable {
+  id: Generated<string>;
+  mode: string;
+  tenant_id: string | null;
+  branch_id: string | null;
+  recovery_point_id: string;
+  target_timestamp: Ts;
+  reason: string;
+  plan: unknown;
+  plan_sha256: string;
+  status: Generated<string>;
+  version: Generated<number>;
+  idempotency_key: string;
+  requested_by: string | null;
+  approved_by: string | null;
+  approved_at: TsNull;
+  approval_expires_at: TsNull;
+  approved_plan_sha256: string | null;
+  finance_acknowledged: Generated<boolean>;
+  job_id: string | null;
+  started_at: TsNull;
+  completed_at: TsNull;
+  failure_code: string | null;
+  failure_detail: string | null;
+  evidence: Generated<unknown>;
+  created_at: Ts;
+  updated_at: Ts;
+  updated_by: string | null;
+}
+
+// checkout_tip_selection_events — generated from the migrated schema (Nov 5 2026 types sync)
+export interface CheckoutTipSelectionEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  ticket_id: string;
+  version: number;
+  action: string;
+  detail: Generated<unknown>;
+  session_id: string | null;
+  created_at: Ts;
+  actor_user_id: string | null;
+}
+
+// checkout_tip_selections — generated from the migrated schema (Nov 5 2026 types sync)
+export interface CheckoutTipSelectionsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  ticket_id: string;
+  version: Generated<number>;
+  state: Generated<string>;
+  recipients_key: string;
+  selections: Generated<unknown>;
+  total_tip_cents: Generated<number>;
+  source: Generated<string>;
+  session_id: string | null;
+  confirmed_at: TsNull;
+  locked_at: TsNull;
+  superseded_reason: string | null;
+  updated_by: string | null;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// invoice_credits — generated from the migrated schema (Nov 5 2026 types sync)
+export interface InvoiceCreditsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  invoice_id: string;
+  credit_number: string;
+  credit_cents: number;
+  refund_cents: Generated<number>;
+  refund_method: string | null;
+  refund_reference: string | null;
+  reason: string;
+  issued_on: ColumnType<string, string, string>;
+  idempotency_key: string;
+  created_by: string | null;
+  created_at: Ts;
+}
+
+// invoice_deliveries — generated from the migrated schema (Nov 5 2026 types sync)
+export interface InvoiceDeliveriesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  invoice_id: string;
+  channel: string;
+  destination: string;
+  status: string;
+  reason: string | null;
+  provider_id: string | null;
+  notification_id: string | null;
+  idempotency_key: string;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// loyalty_tiers — generated from the migrated schema (Nov 5 2026 types sync)
+export interface LoyaltyTiersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  rank: Generated<number>;
+  min_points: number | null;
+  benefits: Generated<string>;
+  active: Generated<boolean>;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// marketing_health_runs — generated from the migrated schema (Nov 5 2026 types sync)
+export interface MarketingHealthRunsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  area: string;
+  overall: string;
+  checks: Generated<unknown>;
+  checked_by: string | null;
+  created_at: Ts;
+}
+
+// platform_ad_events — generated from the migrated schema (Nov 5 2026 types sync)
+export interface PlatformAdEventsTable {
+  id: Generated<string>;
+  ad_id: string | null;
+  action: string;
+  actor_user_id: string | null;
+  detail: Generated<unknown>;
+  created_at: Ts;
+}
+
+// platform_ad_media — generated from the migrated schema (Nov 5 2026 types sync)
+export interface PlatformAdMediaTable {
+  id: Generated<string>;
+  mime_type: string;
+  width: number;
+  height: number;
+  byte_size: number;
+  total_bytes: number;
+  sha256: string;
+  storage_key: string;
+  variants: unknown;
+  suggested_focal_x: Generated<number>;
+  suggested_focal_y: Generated<number>;
+  original_filename: string | null;
+  created_by: string | null;
+  created_at: Ts;
+  deleted_at: TsNull;
+  deleted_by: string | null;
+}
+
+// platform_display_ads — generated from the migrated schema (Nov 5 2026 types sync)
+export interface PlatformDisplayAdsTable {
+  id: Generated<string>;
+  name: string;
+  media_id: string | null;
+  headline: string | null;
+  subheadline: string | null;
+  description: string | null;
+  cta_text: string | null;
+  qr_kind: string | null;
+  qr_url: string | null;
+  fit_mode: Generated<string>;
+  focal_x: Generated<number>;
+  focal_y: Generated<number>;
+  start_date: ColumnType<string | null, string | null, string | null>;
+  end_date: ColumnType<string | null, string | null, string | null>;
+  days_of_week: number[] | null;
+  daily_start_time: string | null;
+  daily_end_time: string | null;
+  display_duration_seconds: number | null;
+  priority: Generated<number>;
+  status: Generated<string>;
+  published_at: TsNull;
+  paused_at: TsNull;
+  archived_at: TsNull;
+  version: Generated<number>;
+  created_by: string | null;
+  updated_by: string | null;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// referral_vouchers — generated from the migrated schema (Nov 5 2026 types sync)
+export interface ReferralVouchersTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  referral_id: string;
+  customer_id: string;
+  role: string;
+  face_cents: number;
+  min_spend_cents: Generated<number>;
+  state: string;
+  policy_version: number;
+  coupon_code_id: string | null;
+  code_hint: string | null;
+  expires_at: TsNull;
+  available_at: TsNull;
+  redeemed_at: TsNull;
+  ticket_id: string | null;
+  closed_reason: string | null;
+  row_version: Generated<number>;
+  created_at: Ts;
+  updated_at: Ts;
+  updated_by: string | null;
+}
+
+// service_price_schedules — generated from the migrated schema (Nov 5 2026 types sync)
+export interface ServicePriceSchedulesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  service_id: string;
+  price_cents: number | null;
+  duration_minutes: number | null;
+  effective_at: Ts;
+  status: Generated<string>;
+  reason: string;
+  created_by_user_id: string | null;
+  created_at: Ts;
+  applied_at: TsNull;
+  cancelled_at: TsNull;
+  cancelled_by_user_id: string | null;
+  cancel_reason: string | null;
+}
+
+// technician_skill_assignments — generated from the migrated schema (Nov 5 2026 types sync)
+export interface TechnicianSkillAssignmentsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  technician_id: string;
+  skill_id: string;
+  status: string;
+  proficiency: string | null;
+  effective_from: Generated<ColumnType<string, string, string>>;
+  expires_on: ColumnType<string | null, string | null, string | null>;
+  approved_by: string | null;
+  approved_at: TsNull;
+  revoked_by: string | null;
+  revoked_at: TsNull;
+  revoke_reason: string | null;
+  version: Generated<number>;
+  updated_by: string | null;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// technician_weekly_off_events — generated from the migrated schema (Nov 5 2026 types sync)
+export interface TechnicianWeeklyOffEventsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  technician_id: string;
+  rule_id: string | null;
+  action: string;
+  before_json: unknown | null;
+  after_json: unknown | null;
+  reason: string | null;
+  actor_user_id: string | null;
+  created_at: Ts;
+}
+
+// technician_weekly_off_rules — generated from the migrated schema (Nov 5 2026 types sync)
+export interface TechnicianWeeklyOffRulesTable {
+  id: Generated<string>;
+  tenant_id: string;
+  branch_id: string | null;
+  technician_id: string;
+  weekdays: number[];
+  effective_from: ColumnType<string, string, string>;
+  effective_to: ColumnType<string | null, string | null, string | null>;
+  status: Generated<string>;
+  reason: string | null;
+  version: Generated<number>;
+  created_by: string | null;
+  updated_by: string | null;
+  ended_by: string | null;
+  ended_at: TsNull;
+  created_at: Ts;
+  updated_at: Ts;
+}
+
+// tenant_skill_services — generated from the migrated schema (Nov 5 2026 types sync)
+export interface TenantSkillServicesTable {
+  tenant_id: string;
+  skill_id: string;
+  service_id: string;
+  created_at: Ts;
+}
+
+// tenant_skills — generated from the migrated schema (Nov 5 2026 types sync)
+export interface TenantSkillsTable {
+  id: Generated<string>;
+  tenant_id: string;
+  name: string;
+  category: string | null;
+  description: string | null;
+  required_certification: string | null;
+  status: Generated<string>;
+  version: Generated<number>;
+  created_by: string | null;
+  updated_by: string | null;
+  archived_at: TsNull;
+  created_at: Ts;
+  updated_at: Ts;
 }
 
 export interface DB {
@@ -7788,6 +8242,31 @@ export interface DB {
   tenant_retention_settings_history: TenantRetentionSettingsHistoryTable;
   tenant_sms_pricing: TenantSmsPricingTable;
 
+  advertising_global_policy: AdvertisingGlobalPolicyTable;
+  advertising_policy_events: AdvertisingPolicyEventsTable;
+  ai_booking_health_runs: AiBookingHealthRunsTable;
+  ai_booking_recovery_dismissals: AiBookingRecoveryDismissalsTable;
+  ai_queue_health_runs: AiQueueHealthRunsTable;
+  backup_point_verifications: BackupPointVerificationsTable;
+  backup_recovery_points: BackupRecoveryPointsTable;
+  backup_restore_events: BackupRestoreEventsTable;
+  backup_restore_plans: BackupRestorePlansTable;
+  checkout_tip_selection_events: CheckoutTipSelectionEventsTable;
+  checkout_tip_selections: CheckoutTipSelectionsTable;
+  invoice_credits: InvoiceCreditsTable;
+  invoice_deliveries: InvoiceDeliveriesTable;
+  loyalty_tiers: LoyaltyTiersTable;
+  marketing_health_runs: MarketingHealthRunsTable;
+  platform_ad_events: PlatformAdEventsTable;
+  platform_ad_media: PlatformAdMediaTable;
+  platform_display_ads: PlatformDisplayAdsTable;
+  referral_vouchers: ReferralVouchersTable;
+  service_price_schedules: ServicePriceSchedulesTable;
+  technician_skill_assignments: TechnicianSkillAssignmentsTable;
+  technician_weekly_off_events: TechnicianWeeklyOffEventsTable;
+  technician_weekly_off_rules: TechnicianWeeklyOffRulesTable;
+  tenant_skill_services: TenantSkillServicesTable;
+  tenant_skills: TenantSkillsTable;
 }
 export interface GoCheckinDevicesTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; device_name: string;
@@ -8550,7 +9029,7 @@ export interface EmailSendKeysTable { tenant_id: string; idempotency_key: string
 export interface TenantBirthdaySettingsTable { tenant_id: string; feb29_policy: Generated<string>; version: Generated<number>; created_by: string | null; updated_by: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; }
 export interface BirthdayMessageClaimsTable { id: Generated<string>; tenant_id: string; customer_id: string; occasion_year: number; channel: string; campaign_id: string; status: Generated<string>; created_by: string | null; updated_by: string | null; created_at: Generated<Ts>; updated_at: Generated<Ts>; }
 export interface RetentionHealthRunsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; trigger: Generated<string>; overall: string; results: Generated<unknown>; ruleset_version: string; settings_version: number; duration_ms: Generated<number>; created_by_user_id: string | null; created_at: Generated<Ts>; }
-export interface EmailHealthChecksTable { id: Generated<string>; tenant_id: string; trigger_type: string; configuration: string; sender_identity: string; provider_health: string; callbacks: string; overall: string; issue_code: string | null; detail: string | null; checked_by: string | null; checked_at: Generated<Ts>; }
+export interface EmailHealthChecksTable { id: Generated<string>; tenant_id: string; trigger_type: string; configuration: string; sender_identity: string; provider_health: string; callbacks: string; overall: string; issue_code: string | null; detail: string | null; checked_by: string | null; checked_at: Generated<Ts>; sender_identity_json: unknown | null; }   // sender_identity_json: types sync (Nov 5 2026)
 export interface NotificationRetryRequestsTable { id: Generated<string>; tenant_id: string; original_notification_id: string; new_notification_id: string | null; idempotency_key: string; failure_category: string; outcome: string; refusal_code: string | null; requested_by: string | null; created_at: Generated<Ts>; }
 export interface ReviewAnalysisTable { id: Generated<string>; tenant_id: string; branch_id: string | null; review_id: string; sentiment: string | null; severity: string | null; categories: Generated<unknown>; serious_signals: Generated<unknown>; escalation_required: Generated<boolean>; auto_response_eligible: Generated<boolean>; is_spam: Generated<boolean>; injection_suspected: Generated<boolean>; confidence: number | null; model_name: string | null; model_version: string | null; prompt_version: string | null; analysis_source: Generated<string>; processing_status: Generated<string>; analyzed_at: Generated<Ts>; }
 export interface ReviewResponseDraftsTable { id: Generated<string>; tenant_id: string; branch_id: string | null; review_id: string; status: Generated<string>; tone: string | null; current_text: string | null; current_version: Generated<number>; is_auto: Generated<boolean>; created_by_ai: Generated<boolean>; updated_at: Generated<Ts>; created_at: Generated<Ts>; updated_by: string | null; }
@@ -9927,6 +10406,8 @@ export interface TenantTokenWalletsTable {
   updated_by: string | null;
   created_at: Generated<Ts>;
   updated_at: Generated<Ts>;
+  low_balance_cents_override: number | null;   // types sync (Nov 5 2026)
+  critical_balance_cents_override: number | null;   // types sync (Nov 5 2026)
 }
 
 export interface TokenPurchaseEventsTable {
