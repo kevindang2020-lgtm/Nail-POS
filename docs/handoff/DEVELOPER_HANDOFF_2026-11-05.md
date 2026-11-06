@@ -32,22 +32,24 @@ New migrations: 701 (payment gates), 702 (assign unassigned terminals), 703 (ter
 
 ## Current status
 
-All test suites pass and all eight frontends build. 3 of about 47 CI gates still fail (26 failed on the uploaded code); all 3 depend on code that is not in this package (see "What the team must finish").
+All test suites pass and all eight frontends build. 2 of about 47 CI gates still fail (26 failed on the uploaded code); both depend on code that is not in this package (see "What the team must finish").
 
 | Area | On the uploaded code | Now (Nov 5, 2026) |
 | --- | --- | --- |
 | pos-web tests | Timed out after 25 min (two files hung) | 340 files, 1,594 tests pass |
 | admin-web tests | 7 failed | 1,032 pass (duplicate `http-core` test removed; it lives in ui) |
-| customer-web tests | 27 failed | 246 pass (Face ID/WebAuthn copies and their tests moved to mobile-sdk) |
+| customer-web tests | 27 failed | 254 pass (Face ID/WebAuthn copies and their tests moved to mobile-sdk) |
 | owner-web tests | 5 failed | 275 pass |
 | tech-web tests | 4 failed | 117 pass |
 | customer-display tests | 2 failed | 201 pass |
 | manager-pay-web tests | Passed | 60 pass |
 | Packages and modules | Failures in ui, mobile-sdk, checkout, communications, queue | All pass |
 | Clean build (`build:packages`, `build:modules` 26/26, `build:api`, 8 frontends) | Failed at `packages/auth` | Passes from empty `dist` folders |
-| CI gates (`node tooling/ci/run-gates.mjs`) | 26 failed | 3 failed |
+| CI gates (`node tooling/ci/run-gates.mjs`) | 26 failed | 2 failed |
+| Real-Postgres race lane (never run before) | Not run | 86 files, 295 tests pass |
+| API suite | 24 failed | 3,008 pass |
 
-The 3 gates still failing: `check:crosswire`, `check:unreached`, `check:realtime-contract` (items 5–8).
+The 2 gates still failing: `check:crosswire`, `check:unreached` (items 5–8). The evening sweep (`SWEEP_REPORT_2026-11-05.md`) fixed 14 more bugs, including `check:realtime-contract`.
 
 ## What was added and fixed
 
@@ -119,7 +121,7 @@ Sixteen items remain. The P0 items stand between the code and real card payments
 | 2 | P0 — blocks live payments | UAT run and certification | After item 1: run `npm run uat:cardpointe` on UAT only, hand Fiserv the JSON/CSV evidence, complete certification. | Dev team |
 | 3 | P0 — blocks live payments | Tap to Pay on iPhone | Apple entitlement (§2 of the requests doc), native plugin in manager-pay iOS, then wire `device-proof.ts` into the mobile-checkout routes. | Kevin + dev team |
 | 4 | P0 — blocks live payments | Production enablement | Production MID and keys through Fiserv's secure channel only; rotate UAT keys; enable in Super Admin. Production stays off until 2 and 3 pass. | Kevin |
-| 5 | P1 — missing code | Finance / expenses server code | 22 Owner app calls to `/owner/finance` have no server route; nothing sends the `expense_updated` event. Built in the later session (migrations 670–673). | Dev team |
+| 5 | P1 — missing code | Finance / expenses server code | 22 Owner app calls to `/owner/finance` have no server route; nothing sent the `expense_updated` event (fixed Nov 5 for the existing `/owner/expenses` routes). Built in the later session (migrations 670–673). | Dev team |
 | 6 | P1 — missing code | Payroll paychecks | 31 POS calls to `/pos/payroll/paychecks` have no route (`PayrollPaycheckService`, migration 673). | Dev team |
 | 7 | P1 — missing code | Other POS calls with no route | Booking drafts (6), mobile-checkout devices (4), checkout (3), AI OCR receipt (3), serving (2), customers (2), customer verify (2), `PUT /pos/me/language` (the language switch does not save), tech earnings detail. Full list: `check:crosswire` (80 calls). | Dev team |
 | 8 | P1 — missing code | Routes no screen uses | `check:unreached`: 40 newly dead POS/Tech/Owner routes, e.g. tech time-off, turn queue, profile photo showcase. Build the screen or put the route on the debt ledger. | Dev team |
@@ -165,7 +167,7 @@ npm run typecheck
 npm test
 cd apps/pos-web && npx vitest run   # repeat per app
 
-# CI gates (expect 3 failures until items 5–8 land)
+# CI gates (expect 2 failures until items 5–8 land)
 node tooling/ci/run-gates.mjs
 npm run architecture:test
 cd apps/api && npm run -s check:crosswire   # any single gate
