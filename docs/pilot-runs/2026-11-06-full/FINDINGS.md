@@ -90,3 +90,13 @@ Pilot / sweep corrections:
 - **Live route sweep 4xx list**: mostly fixture gaps (a made-up id → 404, a missing parameter → 400); the AI Analytics /
   Business / Marketing centres answer 403 to the owner — most likely the AI package gate (the pilot salon without the
   package shows "Subscribe to unlock"); not yet confirmed on the sweep's salon; the sweep's explained-4xx list predates Batches C–G.
+
+## Nov 6 (night) — after Kevin's decisions (G8, Batch C, §73, phase 15)
+- Full pilot day on a fresh database, no PILOT_SKIP: **241 / 241** (`pilot-final-241.log`) — the 236 checks of the earlier
+  run plus phase 15 (several terminals at once, 5 checks).
+- An earlier full run made while four module test suites ran on the same machine gave 238 / 241: the 11 reconnect frame, the
+  S14 store-switch audit row read right after the response, and the 13g Super Admin session. All three passed on the quiet
+  re-run. The S14 harness now polls up to 10 s for the audit row (it still fails without the row). The other two are timing
+  under heavy load; noted, not changed.
+- Module suites on HEAD: ai 2432, super-admin 2053, checkout 1030, communications 757, identity 600, platform 114,
+  finance 112, loyalty 95 — all pass (skips are the pre-existing ones).

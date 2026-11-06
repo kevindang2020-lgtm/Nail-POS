@@ -564,7 +564,9 @@ export async function secureTapToPayPhase(env) {
   const foSu = await FO.s.post('/auth/step-up', { password: OWNER_PW });
   const selClosed = await sel(BZ.id);   // fresh step-up, but that location's merchant is disabled
   const selOk = await sel(BA.id);
-  const swAudit = await q(`select action, metadata from audit_events where tenant_id = $1 and action ilike '%branch_switch%' and (metadata->>'deviceId' = $2 or metadata::text like '%' || $2 || '%') order by occurred_at desc limit 3`, [T, F.id]).catch(() => []);
+  // the audit row is written after the response (the audit writer does not hold the request): poll up to 10 s, never pass without it
+  let swAudit = [];
+  for (let i = 0; i < 20 && !swAudit.length; i++) { swAudit = await q(`select action, metadata from audit_events where tenant_id = $1 and action ilike '%branch_switch%' and (metadata->>'deviceId' = $2 or metadata::text like '%' || $2 || '%') order by occurred_at desc limit 3`, [T, F.id]).catch(() => []); if (!swAudit.length) await sleep(500); }
   const swAuth = await q(`select event_type from auth_events where tenant_id = $1 and event_type ilike '%BRANCH%' and occurred_at > now() - interval '5 minutes' order by occurred_at desc limit 3`, [T]).catch(() => []);
   s14.switch = { ownerSignIn: foIn.ok ? 200 : foIn, unauthorized: [selUnauth.status, code(selUnauth)], branches: [brSet.status, (brSet.body?.allowedBranchIds ?? []).length], stale: [selStale.status, code(selStale)], stepUp: foSu.status, closed: [selClosed.status, code(selClosed)], ok: selOk.status, audit: swAudit.map((r) => r.action), authEvents: swAuth.map((r) => r.event_type) };
   check('S14', 'STORE SWITCH (§10 / §68) on the shared front desk phone (the owner signed in): to a location the PHONE is not authorized for → 403 DEVICE_BRANCH_NOT_AUTHORIZED; authorized (owner, step-up) but no fresh step-up on this session → 403 STEP_UP_REQUIRED; after the step-up, a location whose merchant is DISABLED → 409 MERCHANT_NOT_CONFIGURED (checked before switching); the annex with its own merchant → switched, audited',
