@@ -90,6 +90,19 @@ equal the point's (proof it is the recovered copy of THIS point). Then:
   rows into the live shared schema is deliberately not enabled until pilots A, B and G (§47) are run and signed off. Until
   then, an actual salon restore follows `DISASTER_RECOVERY.md` §3.1 with the comparison evidence in hand.
 
+### 4a. Decision — when a backup is restored into live data (Kevin, Nov 6 2026: "pick best for my POS")
+* **Never in place, never automatically.** A restore always goes into a NEW, separate database first (the isolated staged
+  clone above; for the whole platform a new Railway Postgres per `DISASTER_RECOVERY.md` §3.1 with `POST_RESTORE_HOLD=1`).
+* **Whole platform lost / corrupted:** restore the newest verified point into a new database, run `restore-verify.ts`,
+  then CUT OVER (point `DATABASE_URL` at it) — the old database is kept untouched until the restored one is confirmed.
+* **One salon or one branch:** stays COMPARE-ONLY in the product (`DESTRUCTIVE_APPLY_NOT_AVAILABLE` remains). The owner gets
+  the comparison evidence; any correction is made by Kevin's developer from the staged clone with the runbook, one salon
+  at a time. The in-product destructive apply is enabled only after pilots A, B and G pass on STAGING and the drill below
+  has been done once — that is a separate, explicit change, not a setting.
+* **Drill:** before launch, then every quarter: restore the latest nightly backup into a throw-away database (never
+  production), run `apps/api/scripts/restore-verify.ts`, record the time taken (RTO) and the age of the data (RPO) in §6.
+  (HOSTING A3.)
+
 ## 5. Full platform and emergency recovery (§19–21, §37)
 
 Unchanged and authoritative: `DISASTER_RECOVERY.md` §3.1 (database) and §3.2 (project/region lost), with

@@ -49,6 +49,7 @@ PostgreSQL stops when the container restarts. Start it again with `pg_ctlcluster
 - Nov 6 (later): F1 §45–80 done incl. §79 busy salon (100k customers, real PostgreSQL 16: p50 1.23 s, p95 1.33 s). JIT is off in `poolOptions()` (`PG_JIT=on` re-enables); migration 822 keeps `customers.search_fold` / `search_digits`. F7 §44 vendor normalized name (821). See GUIDE_QUEUE F1. Next: F5/F7 partials, then the F4/F6 full run.
 - Nov 6 (evening): F4/F6 full run + repairs. Pilot day 236/236 at 835b58e; one-screen 18/18 busy + light. Remaining reds: `check:api-contract` (845 untyped routes — decision), route-sweep fixture gaps. Record: `docs/pilot-runs/2026-11-06-full/FINDINGS.md`.
 
+- Nov 6 (night): Kevin answered the decision list ("pick best" for most) — every pick is recorded in `docs/DECISIONS_2026-11-06.md`. Built: G8 review-request sender job + automatic replies, both off until a salon turns them on (d715ef3, migration 823); Batch C dual control (self-approval with one Super Admin, migration 824), grandfathered custom rates, 24-month message-text retention, F7 §73 split expense keys (8d23795, migration 825); api-contract types re-baselined as recorded debt (`docs/api/API_CONTRACT_TYPES_DEBT.md`) — the gate is green and catches new untyped routes; G9 restore policy (`BACKUP_AND_DR.md` §4a); pilot phase 15 multi-terminal (live queue on a second terminal, assign race, pay race, retried tap) 5/5. Still on Kevin: real touchscreen, live Twilio, and the hosting / provider items in the decisions file.
 
 | Area | State |
 |---|---|

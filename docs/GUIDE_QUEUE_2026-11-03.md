@@ -688,3 +688,14 @@ Built:
    Thread previews follow 24 months after the last message. `retention-policy.json`, `retention-executor.pgtest`.
 4. **F7 §73 separate expense keys** — delete_draft / archive / bills.manage split out of owner.expenses.manage; nobody loses
    access (base sets + migration 825 for custom roles and overrides). Details in RECEIPT_EXPENSE_OCR_STATUS §73.
+
+### Nov 6 (night) — the rest of Kevin's list (`docs/DECISIONS_2026-11-06.md`)
+- `check:api-contract` GREEN: the 845 untyped routes re-baselined as recorded debt (`docs/api/API_CONTRACT_TYPES_DEBT.md`);
+  a NEW untyped route still fails.
+- G9: restore into live data is never in place — new database, verify, cut over; per-salon restore stays compare-only
+  (`docs/backup/BACKUP_AND_DR.md` §4a).
+- Several terminals at once: pilot phase 15 (`scripts/lib/pilot-multi-terminal.mjs`) — a walk-in at terminal A shows on
+  terminal B's open Queue in under a second with no reload; assign race 201 / 409; pay race one payment (other terminal
+  PAYMENT_IN_PROGRESS); retried tap records nothing new. 109/109 with phases 11–14 skipped
+  (`docs/pilot-runs/2026-11-06-full/pilot-phase15-multi-terminal.log`).
+- Webhook specs, production restore drill, WAF / secrets, OCR real-receipt accuracy: picks documented, no code needed.

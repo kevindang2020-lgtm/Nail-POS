@@ -46,6 +46,8 @@
 //  14  RECOVERY FLOWS (Oct 27 2026, Remaining Production §68): a wallet top-up, a Skip-the-Line app payment, a split card and a
 //      card refund each lose the processor's answer; Verify (staff / POS) or the stranded sweep settles each exactly once,
 //      and every other tender is refused while one is open (lib/pilot-recovery.mjs, PILOT_SKIP=14)
+//  15  SEVERAL TERMINALS AT ONCE (Nov 6 2026): two POS terminals live on one queue, an assign race, a pay race, a retried tap
+//      (lib/pilot-multi-terminal.mjs, PILOT_SKIP=15)
 //
 // Run:  DATABASE_URL=postgres://…/<scratch db> PORT_PROOF=3201 node scripts/live-pilot-day.mjs   (apps/api built).
 // NEVER point it at production: it creates a whole new salon (unique code per run) through the Super Admin console.
@@ -57,6 +59,7 @@ import { writeFileSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { pgLogErrors } from './lib/pg-log-errors.mjs';
 import { largeSalonPhase } from './lib/pilot-large-salon.mjs';
+import { multiTerminalPhase } from './lib/pilot-multi-terminal.mjs';
 import { largeSalonM5Phase } from './lib/pilot-large-salon-m5.mjs';
 import { largeSalonBlocksPhase } from './lib/pilot-large-salon-blocks.mjs';
 import { largeSalonOwnerPhase } from './lib/pilot-large-salon-owner.mjs';
@@ -1585,6 +1588,14 @@ try {
     await recoveryPhase({ own, rec, pub, session, check, info, q, numbers, ctx, B, T, tag, SALON_CODE, short, ok2, serve, LISA, MARY, CP_TOKENS, cpCalls, cpControl, CARD, OWNER_PW, sleep });
   });
   if (STOP_AFTER <= 14) throw new Error('STOP_AFTER');
+
+  // ══ 15. SEVERAL TERMINALS AT ONCE (Nov 6 2026) — scripts/lib/pilot-multi-terminal.mjs ═══════════════════════════════
+  phase('15 multi-terminal');
+  if (SKIP.has('15')) info('PILOT_SKIP=15: the multi-terminal phase was skipped in this run');
+  else await sub('15 multi-terminal', async () => {
+    await multiTerminalPhase({ rec, mgr, check, info, q, ctx, tag, ok2, short, openLive, SCREENS, sleep, serve, LISA, MARY, numbers });
+  });
+  if (STOP_AFTER <= 15) throw new Error('STOP_AFTER');
 } catch (e) {
   if (String(e?.message) !== 'STOP_AFTER') check('the pilot ran to the end', false, String(e?.stack || e).split('\n').slice(0, 3).join(' | '));
 } finally {

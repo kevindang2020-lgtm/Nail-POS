@@ -85,7 +85,9 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     const { untyped, typed, total } = typesRatchet(routes, []);
     writeFileSync(TYPES_BASELINE, '# Routes whose handler names no @aipowersalon/api-contracts wire type (request or response). Frozen at BUILD_PLAN Phase 12\n' +
       '# (Oct 8 2026); ONLY SHRINKS. Type a route (import its type from api-contracts into the controller signature), then\n' +
-      '# regenerate to REMOVE its line: node apps/api/scripts/check-api-contract.mjs --write-types-baseline\n' + untyped.join('\n') + '\n');
+      '# regenerate to REMOVE its line: node apps/api/scripts/check-api-contract.mjs --write-types-baseline\n' +
+      '# Re-baselined Nov 6 2026 (Kevin: "pick best"): the 845 routes built Oct 8 – Nov 6 without a wire type were ADDED as\n' +
+      '# recorded debt (docs/api/API_CONTRACT_TYPES_DEBT.md) so the gate is green and catches every NEW untyped route again.\n' + untyped.join('\n') + '\n');
     console.log(`types baseline: ${untyped.length} untyped routes (${typed} of ${total} typed)`); process.exit(0);
   }
   const { unreachable, unclassified, unkeyedStaff, ineffective, ungated } = evaluate();
