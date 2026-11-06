@@ -1,5 +1,6 @@
 // checkout.module.ts — POS Checkout & Payment controllers + service + repository. Kysely-backed adapter when a Postgres
 // handle exists (REPO_DRIVER=postgres), else the in-memory adapter (dev/offline/tests default).
+import { assertCustomerTipsConfirmed } from './technician-tips-guard';
 import { AiReviewReputationModule, ReviewRequestService, CheckoutReviewRequestHook, KyselySettings } from '@aipowersalon/ai';
 import { processorFromEnv, PaymentGatewayResolver } from '@aipowersalon/payments';
 import { SalonPromotionsModule, DealsModule, DealsCheckoutService } from '@aipowersalon/deals';
@@ -18,6 +19,7 @@ import { CheckoutService, type BookingDepositCheckoutPort, type GlobalRewardsChe
 import { CommerceHubTapToPayRefunds } from '../mobile-checkout/ttp-refund-processor';
 import { TENANT_APPROVALS_TOKEN, type RefundApprovalsPort } from './refund-approval';
 import { DATABASE, type AppDatabase, branchTimeZone } from '@aipowersalon/database';
+import type { Kysely } from 'kysely';
 import { InMemoryCheckoutRepository, type CheckoutRepositoryPort } from './checkout.repository';
 import { KyselyCheckoutRepository } from './checkout.kysely.repository';
 import { InMemoryGiftCardLookupThrottle } from './gift-card-lookup-throttle';
@@ -49,13 +51,14 @@ const giftCardLookupThrottle = new InMemoryGiftCardLookupThrottle();
     { provide: CompensationService, useFactory: (db: AppDatabase) => (db ? new CompensationService(new KyselyCompensationPorts(db)) : undefined), inject: [DATABASE] },
     { provide: MembershipCompService, useFactory: (db: AppDatabase) => new MembershipCompService(db ? new KyselyMembershipCompRepository(db) : new InMemoryMembershipCompRepository()), inject: [DATABASE] },
     { provide: 'ReviewRequestHook', useFactory: (requests: ReviewRequestService, db: AppDatabase) => new CheckoutReviewRequestHook(requests, db ? new KyselySettings(db) : { async load() { return []; }, async tenantContextInput(c: any, cfg: any) { return { tenantId: c.tenantId, brandName: '', config: cfg }; } }, db ? (t: string, b: string | null) => branchTimeZone(db, t, b) : undefined), inject: [ReviewRequestService, DATABASE] },
-    { provide: CheckoutService, useFactory: (repo: CheckoutRepositoryPort, gateway: PaymentGatewayResolver, realtime: RealtimeEmitter, compensation: CompensationService | undefined, membershipComp: MembershipCompService, locks: CheckoutLockService, reviewHook: CheckoutReviewRequestHook, deals: DealsCheckoutService | null, messenger?: TenantMessenger, approvals?: RefundApprovalsPort | null, push?: PushService | null, stock?: InventoryService | null, deposits?: BookingDepositCheckoutPort | null, rewards?: GlobalRewardsCheckoutPort | null) => new CheckoutService(repo, smsFromEnv(), emailFromEnv(), processorFromEnv(), gateway, realtime, compensation, membershipComp, locks, reviewHook, giftCardLookupThrottle, messenger ?? undefined).useDeals(deals).usePush(push ?? null).useStock(stock ?? null)   // BUILD_PLAN Phase 5: deals + coupons on tickets
+    { provide: CheckoutService, useFactory: (repo: CheckoutRepositoryPort, gateway: PaymentGatewayResolver, realtime: RealtimeEmitter, compensation: CompensationService | undefined, membershipComp: MembershipCompService, locks: CheckoutLockService, reviewHook: CheckoutReviewRequestHook, deals: DealsCheckoutService | null, messenger?: TenantMessenger, approvals?: RefundApprovalsPort | null, push?: PushService | null, stock?: InventoryService | null, deposits?: BookingDepositCheckoutPort | null, rewards?: GlobalRewardsCheckoutPort | null, db?: AppDatabase) => new CheckoutService(repo, smsFromEnv(), emailFromEnv(), processorFromEnv(), gateway, realtime, compensation, membershipComp, locks, reviewHook, giftCardLookupThrottle, messenger ?? undefined).useDeals(deals).usePush(push ?? null).useStock(stock ?? null)   // BUILD_PLAN Phase 5: deals + coupons on tickets
         .useTapToPayRefunds(gateway ? new CommerceHubTapToPayRefunds(gateway) : null)   // Oct 28 2026: Tap to Pay refunds / voids go back to the location's CommerceHub merchant
         .useApprovals(approvals ?? null)   // BUILD_PLAN Phase 9: refunds past the salon's limit go to the salon approvals engine (@Global token; absent → the old 403)
         .usePush(push ?? null)   // developer merge (Oct 6 2026): "Receipt saved" to the customer's devices
         .useGlobalRewards(rewards ?? null)   // Global Loyalty (Oct 30 2026): cross-salon reward holds ('GLOBAL_REWARDS_CHECKOUT' from modules/loyalty; absent → no rewards tender)
+        .useTipGuard(db ? (c, ticketId, staff) => assertCustomerTipsConfirmed(db as unknown as Kysely<any>, { tenantId: c.tenantId, ticketId, userId: c.userId ?? null, staffConfirmation: staff }) : null)   // G4 follow-up (Nov 5 2026): front-desk tenders need the customer's tip confirmation (or an attributed staff entry)
         .useDeposits(deposits ?? null),   // D11 (Oct 21 2026): the booking deposit comes off the ticket (@Global token 'BOOKING_DEPOSITS' from modules/booking; absent → no deposits)
-      inject: ['CheckoutRepositoryPort', PaymentGatewayResolver, REALTIME, CompensationService, MembershipCompService, CheckoutLockService, 'ReviewRequestHook', { token: DealsCheckoutService, optional: true }, { token: TENANT_MESSENGER, optional: true }, { token: TENANT_APPROVALS_TOKEN, optional: true }, { token: PushService, optional: true }, { token: InventoryService, optional: true }, { token: 'BOOKING_DEPOSITS', optional: true }, { token: 'GLOBAL_REWARDS_CHECKOUT', optional: true }] },
+      inject: ['CheckoutRepositoryPort', PaymentGatewayResolver, REALTIME, CompensationService, MembershipCompService, CheckoutLockService, 'ReviewRequestHook', { token: DealsCheckoutService, optional: true }, { token: TENANT_MESSENGER, optional: true }, { token: TENANT_APPROVALS_TOKEN, optional: true }, { token: PushService, optional: true }, { token: InventoryService, optional: true }, { token: 'BOOKING_DEPOSITS', optional: true }, { token: 'GLOBAL_REWARDS_CHECKOUT', optional: true }, DATABASE] },
     PaymentAttemptSweepScheduler,   // BUILD_PLAN Phase 11 (Constitution 4 §116): stranded card attempts → the processor's answer, or review + alert
   ],
   exports: [CheckoutService, 'CheckoutRepositoryPort'],   // the repository port: the mobile checkout records its tenders through the SAME writer (mobile-capture-recorder)

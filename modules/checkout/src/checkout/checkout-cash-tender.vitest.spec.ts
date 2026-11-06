@@ -44,3 +44,20 @@ describe('payCash — tender validation + money conservation', () => {
     expect(changeDueCents).toBe(0);
   });
 });
+
+// G4 follow-up (Nov 5 2026): every NEW front-desk tender asks the tip guard first (with the cashier's on-behalf entry), and
+// a refusal is a registry-coded ValidationError raised before any money moves.
+describe('front-desk tenders consult the per-technician tip guard', () => {
+  it('payCash: the guard sees the staff entry; its refusal stops the tender with TECH_TIPS_NOT_CONFIRMED', async () => {
+    const { repo, svc } = setup(); const due = await dueOf(repo);
+    const { TechTipsGuardError } = await import('./technician-tips-guard');
+    const seen: unknown[] = [];
+    svc.useTipGuard(async (_c, ticketId, staff) => { seen.push([ticketId, staff]); throw new TechTipsGuardError('TECH_TIPS_NOT_CONFIRMED', 'not confirmed'); });
+    const e = await svc.payCash(ctx, TK, { amountReceivedCents: due }).catch((x) => x);
+    expect(e).toBeInstanceOf(ValidationError); expect(e.code).toBe('TECH_TIPS_NOT_CONFIRMED');
+    expect(await repo.paidTotalCents(ctx, TK)).toBe(0);
+    svc.useTipGuard(async (_c, ticketId, staff) => { seen.push([ticketId, staff]); });
+    await svc.payCash(ctx, TK, { amountReceivedCents: due, staffTipConfirmation: { reason: 'told me' } });
+    expect(seen).toEqual([[TK, null], [TK, { reason: 'told me' }]]);
+  });
+});

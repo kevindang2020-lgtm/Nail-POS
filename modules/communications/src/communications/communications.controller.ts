@@ -47,7 +47,7 @@ export class CommunicationsController {
     const own: string[] | null = Array.isArray(r?.ctx?.authz?.branchIds) ? r.ctx.authz.branchIds.filter((b: unknown) => typeof b === 'string') : null;
     const want = typeof branch === 'string' && branch.trim() && branch !== 'all' ? branch.trim() : null;
     if (want && !/^[0-9a-f-]{36}$/i.test(want)) throw new HttpException({ code: 'VALIDATION_FAILED', message: 'Choose a location from the list.' }, 400);
-    if (want && own && !own.includes(want)) throw new HttpException({ code: 'BRANCH_NOT_AUTHORIZED', message: 'You do not have access to that location.' }, 403);
+    if (want && own && !own.includes(want)) throw new HttpException({ code: 'BRANCH_ACCESS_DENIED', message: 'You do not have access to that location.' }, 403);   // Nov 5: the registered code (BRANCH_NOT_AUTHORIZED was never in the registry)
     return run(() => this.activitySvc.activity(ctx.tenantId, days ? Number(days) : 30, want ? [want] : own));
   }
   // GET threads/:id and POST threads/:id/read were retired with the SMS Inbox (Oct 30 2026): the POS reads and marks a

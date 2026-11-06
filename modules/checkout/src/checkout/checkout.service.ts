@@ -1,6 +1,7 @@
 // checkout.service.ts — tenant POS Checkout & Payment. Resolves tenant/role from session; enforces per-action
 // permissions; computes money via dto helpers; NEVER fakes a card charge; honest disabled reasons; audits everything.
 // ASYNC: the repository is async (Postgres/Kysely or in-memory), so every use-case awaits the repo.
+import { TechTipsGuardError } from './technician-tips-guard';   // G4 follow-up: the front-desk tip confirmation guard
 import type { UnsettledTender } from './unsettled-tenders';
 import { taxCents } from '@aipowersalon/money';
 import { rewardCodeDiscountCents, rewardCodeProblem, normalizeRewardCode } from './loyalty-reward-code';
@@ -162,6 +163,16 @@ export class CheckoutService {
   /** D11 (Oct 21 2026): the booking deposit on this ticket's appointment becomes a payment on the ticket, once. */
   private deposits: BookingDepositCheckoutPort | null = null;
   useDeposits(port: BookingDepositCheckoutPort | null | undefined): this { this.deposits = port ?? null; return this; }
+  /** G4 follow-up (Nov 5 2026): assertCustomerTipsConfirmed bound to the database (absent without one → no guard) */
+  private tipGuard: ((ctx: CheckoutContext, ticketId: string, staff: { reason?: string | null } | null) => Promise<unknown>) | null = null;
+  useTipGuard(fn: ((ctx: CheckoutContext, ticketId: string, staff: { reason?: string | null } | null) => Promise<unknown>) | null | undefined): this { this.tipGuard = fn ?? null; return this; }
+  /** Before a NEW front-desk tender: the customer's per-technician tips must be confirmed (or confirmed on their behalf, attributed). */
+  private async guardTips(ctx: CheckoutContext, id: string, staff: unknown): Promise<void> {
+    if (!this.tipGuard) return;
+    const s = staff && typeof staff === 'object' ? { reason: String((staff as { reason?: unknown }).reason ?? '') } : null;
+    try { await this.tipGuard(ctx, id, s); }
+    catch (e) { if (e instanceof TechTipsGuardError) throw new ValidationError(e.message, e.code); throw e; }
+  }
   private rewards: GlobalRewardsCheckoutPort | null = null;
   useGlobalRewards(port: GlobalRewardsCheckoutPort | null | undefined): this { this.rewards = port ?? null; return this; }
 
@@ -180,7 +191,9 @@ export class CheckoutService {
   }
   /** Apply `blocks` reward blocks as one tender: the tender row and the point hold commit together. Finalized (points spent,
    *  salon owed) only by the paid-ticket event; removed or expired otherwise. */
-  async payGlobalReward(ctx: CheckoutContext, id: string, body: { blocks: number; idempotencyKey: string }): Promise<{ payment: PaymentRecord; remainingDueCents: Money; hold: { redemptionId: string; pointTenths: number; valueCents: number; expiresAt: string } }> {
+  async payGlobalReward(ctx: CheckoutContext, id: string, body: { blocks: number; idempotencyKey: string; staffTipConfirmation?: { reason: string } | null }): Promise<{ payment: PaymentRecord; remainingDueCents: Money; hold: { redemptionId: string; pointTenths: number; valueCents: number; expiresAt: string } }> {
+    this.need(ctx, 'pos.checkout.take_payment');
+    await this.guardTips(ctx, id, body.staffTipConfirmation);
     return this.paying(ctx, id, async () => {
       this.need(ctx, 'pos.checkout.take_payment');
       if (!this.rewards || !this.repo.recordRewardPaymentAtomic) throw withCode(new ValidationError('AI PowerSalon Rewards are not available here.'), 'LOYALTY_DISABLED');
@@ -835,6 +848,8 @@ export class CheckoutService {
     return this.repo.unsettledTendersForTicket ? this.repo.unsettledTendersForTicket(ctx, id) : [];
   }
   async payCash(ctx: CheckoutContext, id: string, body: CashPaymentRequest): Promise<{ payment: PaymentRecord; changeDueCents: Money }> {
+    this.need(ctx, 'pos.checkout.take_payment');
+    await this.guardTips(ctx, id, body?.staffTipConfirmation);
     return this.paying(ctx, id, () => this.payCashNow(ctx, id, body));
   }
   private async payCashNow(ctx: CheckoutContext, id: string, body: CashPaymentRequest): Promise<{ payment: PaymentRecord; changeDueCents: Money }> {
@@ -861,6 +876,8 @@ export class CheckoutService {
   private fallbackLeases?: InMemoryTerminalLeases;
   private leases(): TerminalLeasePort { return this.repo.terminalLeases ?? (this.fallbackLeases ??= new InMemoryTerminalLeases()); }
   async payCard(ctx: CheckoutContext, id: string, body: CardPaymentRequest): Promise<PaymentResult | NotConfigured> {
+    this.need(ctx, 'pos.checkout.take_payment');
+    await this.guardTips(ctx, id, body?.staffTipConfirmation);
     return this.paying(ctx, id, () => this.payCardNow(ctx, id, body));
   }
   private async payCardNow(ctx: CheckoutContext, id: string, body: CardPaymentRequest): Promise<PaymentResult | NotConfigured> {
@@ -1084,6 +1101,8 @@ export class CheckoutService {
   }
 
   async payGiftCard(ctx: CheckoutContext, id: string, body: GiftCardPaymentRequest): Promise<{ payment: PaymentRecord; remainingDueCents: Money; giftRemainingCents: Money }> {
+    this.need(ctx, 'pos.checkout.take_payment');
+    await this.guardTips(ctx, id, body?.staffTipConfirmation);
     return this.paying(ctx, id, () => this.payGiftCardNow(ctx, id, body));
   }
   private async payGiftCardNow(ctx: CheckoutContext, id: string, body: GiftCardPaymentRequest): Promise<{ payment: PaymentRecord; remainingDueCents: Money; giftRemainingCents: Money }> {
@@ -1164,6 +1183,8 @@ export class CheckoutService {
     return { ok: res.ok, reason: res.reason, newReference: res.newReference, newCardNumber: res.newCardNumber, newCardNumberMasked: res.newCardNumberMasked, balanceCents: res.balanceCents };
   }
   async paySplit(ctx: CheckoutContext, id: string, body: SplitPaymentRequest): Promise<{ payments: PaymentRecord[]; status: string; cardSurchargeCents: number } | NotConfigured> {
+    this.need(ctx, 'pos.checkout.take_payment');
+    await this.guardTips(ctx, id, body?.staffTipConfirmation);
     return this.paying(ctx, id, () => this.paySplitNow(ctx, id, body));
   }
   private async paySplitNow(ctx: CheckoutContext, id: string, body: SplitPaymentRequest): Promise<{ payments: PaymentRecord[]; status: string; cardSurchargeCents: number } | NotConfigured> {

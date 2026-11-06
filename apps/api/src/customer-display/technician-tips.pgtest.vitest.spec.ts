@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { DEFAULT_CHECKOUT_SETTINGS, supersedeCustomerTipsIfChanged } from '@aipowersalon/checkout';
+import { DEFAULT_CHECKOUT_SETTINGS, supersedeCustomerTipsIfChanged, assertCustomerTipsConfirmed, TechTipsGuardError } from '@aipowersalon/checkout';
 import { CustomerDisplayService } from './customer-display.service';
 import { TechnicianTipStore } from './technician-tips.store';
 
@@ -111,3 +111,37 @@ describe('per-technician tips on the customer display', () => {
     perTech = true;
   });
 });
+
+describe('§34 the FRONT DESK pay paths (G4 follow-up): no fabricated customer confirmation', () => {
+  const TK2 = id('c2'), CASHIER = id('e7');
+  const guard = (staff?: { reason?: string } | null) => assertCustomerTipsConfirmed(db, { tenantId: T, ticketId: TK2, userId: CASHIER, staffConfirmation: staff ?? null });
+  const gcode = async (p: Promise<unknown>) => { try { return await p; } catch (e) { return e instanceof TechTipsGuardError ? e.code : (e as Error).message; } };
+  beforeAll(async () => {
+    await q(sql`insert into tickets (id, tenant_id, branch_id, customer_id, status, subtotal_cents, tax_cents, discount_cents, total_cents, tip_cents) values (${TK2}, ${T}, ${B}, ${CUST}, 'open', 10000, 0, 0, 10000, 0)`);
+    for (const [lid, tech, cents, sid] of [[id('f3'), ANNA, 4000, id('91')], [id('f4'), BEN, 6000, id('92')]] as const)
+      await q(sql`insert into ticket_service_lines (id, tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, commission_type_snapshot, commission_value_snapshot, line_total_cents, status, progress_percent)
+        values (${lid}, ${T}, ${B}, ${TK2}, ${sid}, ${tech}, 'Svc', ${cents}, 30, 'percent', 40, ${cents}, 'completed', 100)`);
+  });
+  it('no customer selection → the front desk pays as before', async () => { expect(await guard()).toBe('no_selection'); });
+  it('a DRAFT the customer never confirmed blocks a front-desk tender; a reason-less staff entry is refused too', async () => {
+    session = { ...session, ticketId: TK2, state: 'ticket_review', lastPaymentStatus: null };
+    await svc.submitTip(SES, TOKEN, { technicians: [{ technicianId: ANNA, tipType: 'custom', amountCents: 300 }, { technicianId: BEN, tipType: 'custom', amountCents: 700 }], expectedVersion: 0 });
+    expect(await gcode(guard())).toBe('TECH_TIPS_NOT_CONFIRMED');
+    expect(await gcode(guard({ reason: '' }))).toBe('TECH_TIPS_REQUIRED');
+    expect((await q(sql`select state from checkout_tip_selections where ticket_id = ${TK2}`))[0].state).toBe('DRAFT');
+  });
+  it('a changed performer is STALE — even a staff entry cannot vouch for a split that no longer matches the ticket', async () => {
+    await q(sql`update ticket_service_lines set technician_id = ${CARA} where id = ${id('f4')}`);
+    expect(await gcode(guard({ reason: 'Customer told me verbally' }))).toBe('TECH_TIPS_STALE');
+    await q(sql`update ticket_service_lines set technician_id = ${BEN} where id = ${id('f4')}`);
+  });
+  it('confirming ON THE CUSTOMER\'S BEHALF is explicit and attributed: CONFIRMED, source staff on the selection and its rows, a history row naming the cashier and the reason', async () => {
+    expect(await guard({ reason: 'Customer confirmed out loud at the counter' })).toBe('staff_confirmed');
+    expect((await q(sql`select state, source from checkout_tip_selections where ticket_id = ${TK2}`))[0]).toEqual({ state: 'CONFIRMED', source: 'staff' });
+    expect((await q(sql`select technician_id, tip_cents, source from ticket_tip_allocations where ticket_id = ${TK2} order by tip_cents`)).map((r) => `${r.tip_cents}:${r.source}`)).toEqual(['300:staff', '700:staff']);
+    const ev = (await q(sql`select action, actor_user_id, detail from checkout_tip_selection_events where ticket_id = ${TK2} order by created_at desc limit 1`))[0];
+    expect(ev).toMatchObject({ action: 'STAFF_CONFIRMED_ON_BEHALF', actor_user_id: CASHIER, detail: { reason: 'Customer confirmed out loud at the counter' } });
+    expect(await guard()).toBe('confirmed');   // now confirmed: later tenders proceed
+  });
+});
+

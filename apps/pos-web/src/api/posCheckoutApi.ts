@@ -3,7 +3,12 @@ import type { ApplyDiscountRequest, CardPaymentRequest, CashPaymentRequest, Chec
 export type { ApplyDiscountRequest, CardPaymentRequest, CashPaymentRequest, CheckoutFilters, GiftCardPaymentRequest, PaymentMethod, ReopenServiceRequest, SendReceiptRequest, SetTipRequest, SplitPaymentRequest };   // the API's own contract (Constitution 13 §15) — never re-declare it here
 import type { OfferReason, OfferSummary, TicketOffers, UnsettledTender } from '@aipowersalon/api-contracts/tenant';
 
-export class ApiError extends Error { constructor(message: string, public status: number, public body?: any) { super(message); this.name = 'ApiError'; } }
+// Nov 5 2026: the registry code rides on the error (screens branch on e.code — e.g. CHECKOUT_ALREADY_IN_PROGRESS, TECH_TIPS_NOT_CONFIRMED;
+// before this the module's own error dropped it and those branches never fired)
+export class ApiError extends Error {
+  public code?: string;
+  constructor(message: string, public status: number, public body?: any) { super(message); this.name = 'ApiError'; this.code = typeof body?.error?.code === 'string' ? body.error.code : typeof body?.code === 'string' ? body.code : undefined; }
+}
 function qs(f: Record<string, unknown>): string { const p = new URLSearchParams(); Object.keys(f).forEach((k) => { const v = f[k]; if (v != null && v !== '') p.set(k, String(v)); }); const s = p.toString(); return s ? '?' + s : ''; }
 import { posHttp } from './client';
 const idem = (k?: string): Record<string, string> => (k ? { 'Idempotency-Key': k } : {});

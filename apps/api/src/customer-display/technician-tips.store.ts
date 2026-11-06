@@ -11,7 +11,7 @@
 //             ticket's total tip, and append the history row. A paid ticket is never touched.
 //   lock      the customer started payment: CONFIRMED → LOCKED (the frozen snapshot the payment uses)
 import { sql, type Kysely } from 'kysely';
-import { CHECKOUT_TIP_SELECTION, type TipLineInput, type TechTipResult } from '@aipowersalon/checkout';
+import { CHECKOUT_TIP_SELECTION, loadTipLines, type TechTipResult } from '@aipowersalon/checkout';
 import { canMoveToSql } from '@aipowersalon/database';
 
 export class TipSelectionStale extends Error { constructor(readonly currentVersion: number) { super('The tips changed on another screen. Showing the latest.'); } }
@@ -23,23 +23,8 @@ const N = (v: unknown) => Number(v ?? 0) || 0;
 export class TechnicianTipStore {
   constructor(private readonly db: Kysely<any>) {}
 
-  async lines(tenantId: string, ticketId: string): Promise<{ lines: TipLineInput[]; discountCents: number; avatars: Record<string, string | null>; paid: boolean }> {
-    const t = (await sql<any>`select discount_cents, status from tickets where tenant_id = ${tenantId} and id = ${ticketId}`.execute(this.db)).rows[0];
-    if (!t) return { lines: [], discountCents: 0, avatars: {}, paid: false };
-    const rows = (await sql<any>`select l.id, l.technician_id, l.service_name_snapshot, coalesce(l.line_total_cents, 0) as total, (l.product_id is not null or coalesce(l.line_kind, '') in ('product', 'retail')) as is_product,
-        te.full_name as tech_name,
-        (select coalesce(json_agg(json_build_object('technicianId', a.technician_id, 'shareBps', a.share_bps, 'name', ta.full_name) order by a.created_at), '[]'::json)
-          from ticket_service_line_allocations a left join technicians ta on ta.id = a.technician_id and ta.tenant_id = a.tenant_id where a.tenant_id = l.tenant_id and a.line_id = l.id) as shares
-      from ticket_service_lines l left join technicians te on te.id = l.technician_id and te.tenant_id = l.tenant_id
-      where l.tenant_id = ${tenantId} and l.ticket_id = ${ticketId} and l.removed_at is null and coalesce(l.status, '') not in ('cancelled', 'canceled', 'voided', 'removed')
-      order by l.created_at, l.id`.execute(this.db)).rows;
-    const lines: TipLineInput[] = rows.map((r: any) => ({ lineId: String(r.id), technicianId: r.technician_id ? String(r.technician_id) : null, technicianName: r.tech_name ?? null, serviceName: String(r.service_name_snapshot ?? 'Service'),
-      lineTotalCents: N(r.total), isProduct: !!r.is_product, shares: (Array.isArray(r.shares) ? r.shares : []).map((s: any) => ({ technicianId: String(s.technicianId), shareBps: N(s.shareBps), name: s.name ?? null })) }));
-    const ids = [...new Set(lines.flatMap((l) => [l.technicianId, ...(l.shares ?? []).map((s) => s.technicianId)]).filter((x): x is string => !!x))];
-    const avatars: Record<string, string | null> = {};
-    if (ids.length) for (const r of (await sql<any>`select id, avatar_url from technicians where tenant_id = ${tenantId} and id = any(${ids}::uuid[])`.execute(this.db)).rows) avatars[String(r.id)] = r.avatar_url ?? null;
-    return { lines, discountCents: N(t.discount_cents), avatars, paid: t.status === 'paid' };
-  }
+  /** the ONE reader of a ticket's tip recipients (moved to @aipowersalon/checkout so the POS pay guard reads the same) */
+  lines(tenantId: string, ticketId: string) { return loadTipLines(this.db, tenantId, ticketId); }
 
   async selection(tenantId: string, ticketId: string): Promise<TipSelectionRow | null> {
     const r = (await sql<any>`select version, state, recipients_key, selections, total_tip_cents from checkout_tip_selections where tenant_id = ${tenantId} and ticket_id = ${ticketId}`.execute(this.db)).rows[0];

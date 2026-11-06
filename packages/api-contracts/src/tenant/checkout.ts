@@ -13,13 +13,15 @@ export interface SetTipRequest { tipType: "none" | "percent" | "custom"; tipPerc
 export interface ApplyDiscountRequest { discountCents: Money; reason?: string; managerPin?: string; }
 
 // payment request bodies (§12)
-export interface CashPaymentRequest { amountReceivedCents: Money; tipCents?: Money; lockedTotalCents?: Money; }
+/** G4 follow-up (Nov 5 2026): the cashier confirms the customer's per-technician tips ON THEIR BEHALF (recorded, attributed). */
+export interface StaffTipConfirmationRequest { reason: string }
+export interface CashPaymentRequest { amountReceivedCents: Money; tipCents?: Money; lockedTotalCents?: Money; staffTipConfirmation?: StaffTipConfirmationRequest | null; }
 
-export interface CardPaymentRequest { tipCents?: Money; lockedTotalCents?: Money; idempotencyKey?: string; cardToken?: string; expiry?: string; terminalId?: string; }   // terminalId: pay on a named terminal (developer, Sep 2026)
+export interface CardPaymentRequest { tipCents?: Money; lockedTotalCents?: Money; idempotencyKey?: string; cardToken?: string; expiry?: string; terminalId?: string; staffTipConfirmation?: StaffTipConfirmationRequest | null; }   // terminalId: pay on a named terminal (developer, Sep 2026)
 
-export interface GiftCardPaymentRequest { giftCardCode: string; pin?: string; tipCents?: Money; lockedTotalCents?: Money; }
+export interface GiftCardPaymentRequest { giftCardCode: string; pin?: string; tipCents?: Money; lockedTotalCents?: Money; staffTipConfirmation?: StaffTipConfirmationRequest | null; }
 
-export interface SplitPaymentRequest { segments: { method: PaymentMethod; amountCents: Money; giftCardCode?: string; pin?: string; terminalId?: string }[]; tipCents?: Money; cardToken?: string; expiry?: string; terminalId?: string; }   // terminalId: developer, Sep 2026
+export interface SplitPaymentRequest { segments: { method: PaymentMethod; amountCents: Money; giftCardCode?: string; pin?: string; terminalId?: string }[]; tipCents?: Money; cardToken?: string; expiry?: string; terminalId?: string; staffTipConfirmation?: StaffTipConfirmationRequest | null; }   // terminalId: developer, Sep 2026
 
 export interface SendReceiptRequest { channels: ("sms" | "email" | "app" | "print")[]; }
 

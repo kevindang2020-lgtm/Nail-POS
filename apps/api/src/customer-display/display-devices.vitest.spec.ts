@@ -128,7 +128,8 @@ describe('the display pairs itself (§8–§12)', () => {
 
 describe('the heartbeat (§85–§86)', () => {
   it('validates every field — a public client is never trusted as sent', () => {
-    expect(parseHeartbeat(HB)).toEqual({ mode: 'advertisement', appVersion: '0.1.0+t', width: 1920, height: 1080, pixelRatio: 1, profile: 'CUSTOMER_DISPLAY_23_LANDSCAPE' });
+    // G7 (Nov 5 2026): a heartbeat without an ad-policy acknowledgment parses to adPolicy null (the display did not report one)
+    expect(parseHeartbeat(HB)).toEqual({ mode: 'advertisement', appVersion: '0.1.0+t', width: 1920, height: 1080, pixelRatio: 1, profile: 'CUSTOMER_DISPLAY_23_LANDSCAPE', adPolicy: null });
     for (const bad of [{ ...HB, mode: 'party' }, { ...HB, appVersion: '' }, { ...HB, appVersion: 'x'.repeat(41) }, { ...HB, appVersion: 'v\u0007' },
       { ...HB, screen: { width: 50, height: 1080, pixelRatio: 1 } }, { ...HB, screen: { width: 1920.5, height: 1080, pixelRatio: 1 } }, { ...HB, screen: { width: 1920, height: 1080, pixelRatio: 9 } }, { ...HB, profile: 'TV' }, null]) {
       expect(() => parseHeartbeat(bad)).toThrow(DisplayDeviceError);

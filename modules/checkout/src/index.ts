@@ -22,7 +22,8 @@ export { TicketHistoryLine, TicketHistoryRevision } from './ticket-history/ticke
 export { AiCheckoutUpsellModule } from './ai-checkout-upsell/ai-checkout-upsell.module';
 export { SkipLineCheckoutModule } from './skip-line-checkout/skip-line-checkout.module';
 export * from './checkout/technician-tips';
-export * from './checkout/technician-tips-supersede';   // G4 (Nov 5 2026): individual technician tipping — pure cents math
+export * from './checkout/technician-tips-supersede';
+export * from './checkout/technician-tips-guard';   // G4 follow-up (Nov 5 2026): the front-desk pay paths require the customer's confirmation (or an attributed staff entry)   // G4 (Nov 5 2026): individual technician tipping — pure cents math
 export * from './ai-checkout-upsell/ai-checkout-upsell.dto';
 export * from './skip-line-checkout/skip-line-checkout.dto';
 export { CashDrawerRepository } from './cash-drawer/cash-drawer.repository';   // used by the API's cash-drawer producer pgtest

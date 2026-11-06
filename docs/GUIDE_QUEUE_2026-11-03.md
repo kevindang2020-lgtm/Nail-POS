@@ -364,16 +364,16 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G1 | Customer Profile & Global Loyalty Protection (owner-approved bonus points) | BUILT — see the G1 section below |
 | G2 | Refer a Friend / Referral Rewards build | BUILT (two-sided salon vouchers + hard budget) — see the G2 section below |
 | G3 | Technician Profile & Team Management (repeating days off, Skills Catalog) | BUILT (P1 branch names, P2 weekly days off, P3 Skills Catalog) — see the G3 section below |
-| G4 | Split Tips — individual technician tipping at checkout | BUILT behind a default-off flag — see `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md` (PRODUCTION: blocked on Fiserv device checks) |
-| G5 | AI Usage Limits (duplicate of an earlier upload) | re-check |
-| G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
+| G4 | Split Tips — individual technician tipping at checkout | BUILT behind a default-off flag; front-desk confirmation guard added Nov 5 (§34 PASS) — see `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md` (PRODUCTION: blocked on Fiserv device checks) |
+| G5 | AI Usage Limits (duplicate of an earlier upload) | re-checked Nov 5: built earlier (`4c2807d` AI Usage check; the `_done` copy of the same guide) — nothing new |
+| G6 | Customer Timeline (duplicate of an earlier upload) | re-checked Nov 5: `docs/customers/CUSTOMER_TIMELINE.md` lists no open item |
 | G7 | Global Advertising + Tenant Control (master switch, platform ads, 50/50, ACK fleet status) | BUILT — see `docs/advertising/GLOBAL_ADVERTISING.md` |
-| G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-check — `docs/ai/REVIEW_REPUTATION_SETTINGS.md` exists |
+| G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-checked Nov 5: built; 2 decisions wait on Kevin (automatic replies job; review-request sender) |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
 | G11 | Full Security Deep Scan | re-checked Nov 5: §93 egress allowlist built (report by default); 19 PARTIAL rows otherwise unchanged — see the G11/G14 section |
-| G12 | Secure Tap to Pay / Device Authentication | matrix `SECURE_TAP_STATUS.md` — re-check (Apple TTP is BLOCKED_EXTERNAL) |
-| G13 | Remaining Production Work / Payment Recovery | matrix `REMAINING_PRODUCTION_STATUS.md` — re-check |
+| G12 | Secure Tap to Pay / Device Authentication | re-checked Nov 5: 10 PARTIAL, each blocked only by an outside dependency (internal half built); 1 BLOCKED_EXTERNAL |
+| G13 | Remaining Production Work / Payment Recovery | re-checked Nov 5: 52 DONE / 1 PARTIAL (§39 lint + as-any ratchets, per-screen work) / 20 BLOCKED_EXTERNAL; the pilot's two old 10e FAILs are fixed in the script |
 | G14 | 200 Technician Large Salon | re-checked Nov 5: §2 DONE (one day read per refresh); §1 / §101 PARTIAL = clock-in burst p95, a ≥ 4-core host question |
 | G15 | Super Admin POS Top-Bar Announcement | re-checked Nov 5: 0 PARTIAL / 0 OPEN (the matrix's last OPEN, §108, closed Oct 27); 2 BLOCKED_EXTERNAL |
 
@@ -565,3 +565,11 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
   report logs justify `EGRESS_POLICY=enforce` and because network egress is the host's. Next internal G11 items, largest
   first: §74 IDOR sweep over write routes + customer realm, §110 per-processor webhook schemas, §38 `@ResourceScope`.
 
+### G4 follow-up + G5/G6/G8/G12/G13 re-check (Nov 5 2026, evening)
+
+- **G4 §34 front-desk guard built** (see `docs/tips/TIP_INDIVIDUAL_TECHNICIAN.md` row 34): new tenders refuse an unconfirmed
+  customer split unless the cashier confirms on the customer's behalf with a reason (attributed, source `staff`, migration 820).
+  POS shows the panel in EN / VI. Also fixed: `posCheckoutApi` errors now carry the server code (two screen branches were dead).
+- **Pre-existing gate fixes:** `check-error-codes` — the communications activity filter now answers the registered
+  `BRANCH_ACCESS_DENIED`; `display-devices.vitest` rewritten to the G7 heartbeat truth (`adPolicy: null`) — a G7 miss of mine.
+- G5 / G6 / G8 / G12 / G13: no new internal work (statuses in the Batch G table).

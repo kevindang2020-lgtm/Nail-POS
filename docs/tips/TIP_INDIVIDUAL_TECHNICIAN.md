@@ -69,7 +69,7 @@ cash/payroll, security, test results, external dependencies, readiness, next ste
 | 28 | language boundary | PASS | display strings English only; POS setting EN/VI |
 | 29, 31 | sandbox vs real UAT; branch merchant routing | BLOCKED_EXTERNAL | no provider in this environment |
 | 30 | physical touch / 27-inch | NOT_TESTED (jsdom only) |
-| 34 | no fabricated customer confirmation | PARTIAL | display Pay requires confirm; the FRONT DESK pay path does not check confirmation (see next steps) |
+| 34 | no fabricated customer confirmation | PASS | display Pay requires confirm; **Nov 5:** every NEW front-desk tender (cash / card / gift card / split / rewards — never Verify) runs `assertCustomerTipsConfirmed`: a DRAFT → `TECH_TIPS_NOT_CONFIRMED`; performers changed → `TECH_TIPS_STALE`; the cashier may confirm ON THE CUSTOMER'S BEHALF with a reason (`staffTipConfirmation`) → CONFIRMED with source `staff` on the selection and its rows, history `STAFF_CONFIRMED_ON_BEHALF` naming the cashier (migration 820). `technician-tips.pgtest` +4, `checkout-cash-tender` +1, `POSCheckoutScreen.tips-on-behalf.test` 2/2 (EN + VI panel) |
 | 35 | gift card / loyalty funding tips | NOT_TESTED — unchanged tender rules |
 | 36 | discount → basis | PASS | vitest |
 
@@ -81,7 +81,8 @@ cash/payroll, security, test results, external dependencies, readiness, next ste
 
 ## Next steps (P1)
 
-1. Front desk Pay (POS) with an unconfirmed per-technician DRAFT: show "customer has not confirmed the tips" and require an
-   explicit staff-entered-on-behalf choice (actor-attributed; `source 'staff'` exists in the schema).
+1. ~~Front desk Pay with an unconfirmed DRAFT~~ — built Nov 5 (row 34). Found on the way: the POS checkout API's own error
+   class dropped the server's code, so `e.code` branches on that screen (incl. the CHECKOUT_ALREADY_IN_PROGRESS refresh)
+   never fired — fixed (`ApiError.code`).
 2. POS checkout screen: show the per-technician tips live (the display already emits `customerDisplayTipSelected`).
 3. Verify the Clover terminal's own tip prompt is OFF for display-tipped checkouts (BLOCKED_EXTERNAL).

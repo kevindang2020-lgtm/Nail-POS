@@ -176,11 +176,17 @@ export function POSCheckoutScreen() {
   });
   useEffect(() => { autoSelect(); }, [s, selId, autoSelect]);
 
+  // G4 follow-up (Nov 5 2026): the customer's per-technician tips are still a DRAFT on the display → the server refuses a
+  // front-desk tender (TECH_TIPS_NOT_CONFIRMED). The cashier either asks the customer to confirm there, or confirms ON THEIR
+  // BEHALF with a reason — recorded with the cashier's name, never as the customer's confirmation.
+  const [tipAsk, setTipAsk] = useState<{ reason: string } | null>(null);
+  const staffTip = useRef<{ reason: string } | null>(null);
   const run = async (key: string, fn: () => Promise<any>, after?: (r: any) => void) => {
     setNote(null); setBusy(key);
     try { const r = await fn(); if (after) after(r); }
     catch (e: any) {
       setNote(e?.message || msg('pos.action_failed'));
+      if (key === 'pay' && e?.code === 'TECH_TIPS_NOT_CONFIRMED') setTipAsk({ reason: '' });
       // Smooth Refresh spec §76: another station paid or changed this visit first — show the server's truth at once
       // (only this board + the open ticket, no page reload) instead of leaving a stale total on screen.
       if (e?.status === 409 && e?.code === 'CHECKOUT_ALREADY_IN_PROGRESS') void refreshAll();
@@ -215,12 +221,13 @@ export function POSCheckoutScreen() {
     // §35 / §108: a card charge on this ticket is UNKNOWN — no new tender until it is verified (the server guards it too)
     if (verifyFor && verifyFor === selId) { setNote(msg('payment.unknown.completeBlocked')); return; }
     if (mobileClaim) { setNote(msg('pos.payment_in_progress_on_v0_v1_1fr4', { v0: mobileClaim.deviceLabel || msg('pos.a_payment_phone'), v1: String(mobileClaim.userName ? ` · ${mobileClaim.userName}` : '') })); return; }
+    const onBehalf = staffTip.current ? { staffTipConfirmation: staffTip.current } : {}; staffTip.current = null; setTipAsk(null);
     if (method === 'cash') {
-      const body = { amountReceivedCents: dollarsToCents(cashStr) }; const k = keyed(body);
+      const body = { amountReceivedCents: dollarsToCents(cashStr), ...onBehalf }; const k = keyed(body);
       run('pay', () => posCheckoutApi.payCash(selId, body, k.key), async (r) => { k.done(); setNote(msg('pos.cash_payment_recorded_change_due_changeduecents_yw2h', { changeDueCents: String(money(r?.changeDueCents)) })); await refreshAll(); });
     } else if (method === 'gift_card') {
       if (!giftCode.trim()) { setNote(msg('pos.enter_a_gift_card_code')); return; }
-      const body = { giftCardCode: giftCode.trim(), pin: giftPin.trim() || undefined }; const k = keyed(body);
+      const body = { giftCardCode: giftCode.trim(), pin: giftPin.trim() || undefined, ...onBehalf }; const k = keyed(body);
       run('pay', () => posCheckoutApi.payGiftCard(selId, body, k.key), async (r) => { k.done(); setNote(msg('pos.gift_card_applied_remaining_due_remainingduecents_lyk0', { remainingDueCents: String(money(r?.remainingDueCents)), giftRemainingCents: String(money(r?.giftRemainingCents)) })); await refreshAll(); });
     } else if (method === 'split') {
       const segs = segments.map((sg) => ({ method: sg.method, amountCents: dollarsToCents(sg.amountStr) }));
@@ -228,8 +235,8 @@ export function POSCheckoutScreen() {
       const due = detail.totals.totalDueCents || 0;
       if (segs.length === 0) { setNote(msg('pos.add_at_least_one_split_segment')); return; }
       if (sum !== due) { setNote(msg('pos.split_must_total_the_amount_due_v7ux', { sum: String(money(sum)), due: String(money(due)), v2: String(money(Math.abs(sum - due))) })); return; }
-      const k = keyed({ segments: segs });
-      run('pay', () => posCheckoutApi.paySplit(selId, { segments: segs }, k.key), async (r) => {
+      const k = keyed({ segments: segs, ...onBehalf });
+      run('pay', () => posCheckoutApi.paySplit(selId, { segments: segs, ...onBehalf }, k.key), async (r) => {
         k.done();
         if (r && r.configured === false) setNote(r.disabledReason || msg('pos.a_split_method_is_not_configured_182f'));
         else setNote(msg('payment.result.splitRecorded', { status: st('payment', String(r?.status || 'recorded')), count: segs.length }));
@@ -237,7 +244,7 @@ export function POSCheckoutScreen() {
       });
     } else {
       const tid = selId;
-      run('pay', () => posCheckoutApi.payCard(tid, {}).catch((e: any) => {
+      run('pay', () => posCheckoutApi.payCard(tid, { ...onBehalf }).catch((e: any) => {
         // The charge left the POS but no answer came back (network / terminal / gateway timeout). Its outcome is UNKNOWN:
         // do not offer "pay again" — offer to verify with the processor.
         if (!e?.status || e.status >= 500) { setVerifyFor(tid); return { status: 'unknown' }; }
@@ -559,6 +566,16 @@ export function POSCheckoutScreen() {
                 if (v?.status !== 'pending' && v?.status !== 'unknown') setVerifyFor(null);
                 await refreshAll();
               })}>{tx('payment.unknown.verifyPayment')}</button>
+            </div>
+          ) : null}
+          {tipAsk && detail ? (
+            <div role="alert" data-testid="tips-on-behalf" style={{ flex: 'none', border: '1px solid #B8892B', background: '#FFF8E7', borderRadius: 10, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6, flexWrap: 'wrap' }}>
+              <span style={{ flex: '1 1 260px' }}><b>{tx('payment.tipsOnBehalf.title')}</b> {tx('payment.tipsOnBehalf.body')}</span>
+              <input aria-label={tx('payment.tipsOnBehalf.reason')} placeholder={tx('payment.tipsOnBehalf.reason')} value={tipAsk.reason} maxLength={300}
+                onChange={(e) => setTipAsk({ reason: e.target.value })} style={{ minHeight: 44, flex: '1 1 200px', border: '1px solid var(--line)', borderRadius: 8, padding: '0 8px' }} />
+              <button className="btn primary" style={{ minHeight: 44 }} disabled={tipAsk.reason.trim().length < 3 || busy === 'pay'}
+                onClick={() => { staffTip.current = { reason: tipAsk.reason.trim() }; takePayment(); }}>{tx('payment.tipsOnBehalf.confirm')}</button>
+              <button className="btn" style={{ minHeight: 44 }} onClick={() => setTipAsk(null)}>{tx('payment.tipsOnBehalf.cancel')}</button>
             </div>
           ) : null}
           {!detail ? (

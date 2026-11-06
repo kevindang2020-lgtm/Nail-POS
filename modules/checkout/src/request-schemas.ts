@@ -22,15 +22,17 @@ export const PROMO_CODE_BODY: BodySchema = S.object({ code: scalar(64) });
 export const APPLY_OFFER_BODY: BodySchema = S.object({ dealId: str(64), code: str(64), couponId: str(64), fromAppointment: bool });
 export const RECALCULATE_BODY: BodySchema = S.object({ paymentMethod: str(20) });
 export const REOPEN_SERVICE_BODY: BodySchema = S.object({ reason: scalar(1000), managerPin: scalar(32) });
-export const PAY_CASH_BODY: BodySchema = money({ amountReceivedCents: cents, tipCents: cents, lockedTotalCents: cents });
-export const PAY_CARD_BODY: BodySchema = money({ tipCents: cents, lockedTotalCents: cents, idempotencyKey: str(128), cardToken: str(4096), expiry: str(10), terminalId: str(64) });
+/** G4 follow-up (Nov 5 2026): the cashier confirms an unconfirmed per-technician tip split on the customer's behalf (attributed) */
+const STAFF_TIP = S.nullable(S.strict(S.object({ reason: S.text(300) }, ['reason'])));
+export const PAY_CASH_BODY: BodySchema = money({ amountReceivedCents: cents, tipCents: cents, lockedTotalCents: cents, staffTipConfirmation: STAFF_TIP });
+export const PAY_CARD_BODY: BodySchema = money({ tipCents: cents, lockedTotalCents: cents, idempotencyKey: str(128), cardToken: str(4096), expiry: str(10), terminalId: str(64), staffTipConfirmation: STAFF_TIP });
 // Global Loyalty (Oct 30 2026): whole redemption blocks (10 points = $1); the request key rides as the Idempotency-Key header
-export const PAY_REWARDS_BODY: BodySchema = S.object({ blocks: S.number() });
+export const PAY_REWARDS_BODY: BodySchema = S.object({ blocks: S.number(), staffTipConfirmation: STAFF_TIP });
 export const EMPTY_REWARDS_BODY: BodySchema = S.object({});
-export const PAY_GIFT_CARD_BODY: BodySchema = money({ giftCardCode: scalar(64), pin: scalar(16), tipCents: cents, lockedTotalCents: cents });
+export const PAY_GIFT_CARD_BODY: BodySchema = money({ giftCardCode: scalar(64), pin: scalar(16), tipCents: cents, lockedTotalCents: cents, staffTipConfirmation: STAFF_TIP });
 export const PAY_SPLIT_BODY: BodySchema = money({
   segments: S.nullable(S.array(S.object({ method: str(20), amountCents: cents, giftCardCode: scalar(64), pin: scalar(16), terminalId: str(64) }, [], { 'x-forbidden': MONEY }), { maxItems: 20 })),
-  tipCents: cents, cardToken: str(4096), expiry: str(10), terminalId: str(64),
+  tipCents: cents, cardToken: str(4096), expiry: str(10), terminalId: str(64), staffTipConfirmation: STAFF_TIP,
 });
 export const ISSUE_GIFT_CARD_BODY: BodySchema = money({ amountCents: cents, code: scalar(64), customerId: str(64), idempotencyKey: str(128) });
 export const GIFT_CARD_SALE_BODY: BodySchema = money({
