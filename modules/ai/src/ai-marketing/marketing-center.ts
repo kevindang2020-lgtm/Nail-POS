@@ -20,6 +20,7 @@
 //
 // Nothing here sends, schedules or approves a campaign. save-draft creates an UNSENT Segments audience draft and an UNAPPROVED
 // Campaign Center draft that uses it.
+import { hasPermission } from '@aipowersalon/permissions';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
@@ -43,7 +44,9 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const N = (v: unknown) => (v == null ? 0 : Number(v) || 0);
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
-const has = (ctx: McCtx, p: string) => (ctx.permissions ?? []).includes(p);
+// the platform's one permission rule (Nov 6 2026 full-run route sweep): a raw includes() missed alias-granted keys, so every
+// owner and manager was refused here although the route guard (the same rule) had let them in
+const has = (ctx: McCtx, p: string) => hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], p);
 const addDays = (d: string, k: number) => addYmdDays(d, k);
 const micros = (v: unknown) => Math.round(N(v) / 10_000);
 /** Message Studio drafts use {{tokens}}; Campaign Center fills only {salon_name} and {offer}, once, for everyone (there is no

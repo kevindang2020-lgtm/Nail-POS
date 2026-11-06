@@ -4,6 +4,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { ForecastCenter, ForecastCenterError, type FcProbes } from './forecast-center';
+import { permissionsFor } from '@aipowersalon/permissions';
 
 const id = (n: number) => `77760000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const T = id(1), B = id(2), B2 = id(3), X = id(4), BX = id(5), OWNER = id(10), TECH = id(30);
@@ -51,6 +52,13 @@ describe('Forecast center — who may see it', () => {
     expect(s.domains).toEqual(['appointments', 'product_demand']);
     const l: any = await fc.list(ctx(), {});
     expect(l).toMatchObject({ items: [], total: 0, page: 1, totalPages: 1 });
+  });
+  it('Nov 6 2026 route sweep: an OWNER / MANAGER session (the catalog grants, alias-granted keys) is let in — it was refused', async () => {
+    for (const role of ['OWNER', 'MANAGER'] as const) {
+      const l: any = await fc.list(ctx({ role, permissions: [...permissionsFor(role)] }), {});
+      expect(l).toMatchObject({ page: 1 });
+    }
+    expect(await code(fc.list(ctx({ role: 'FRONT_DESK', permissions: [...permissionsFor('FRONT_DESK')] }), {}))).toBe('PERMISSION_DENIED');
   });
   it('SU-02 without the AI analytics permission, or without any forecast type, → PERMISSION_DENIED', async () => {
     expect(await code(fc.list(ctx({ permissions: ['reports.view'] }), {}))).toBe('PERMISSION_DENIED');

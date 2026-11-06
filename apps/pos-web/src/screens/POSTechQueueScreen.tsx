@@ -571,7 +571,7 @@ export function POSTechQueueScreen() {
 
       <div className={'mos-row cg-row ' + (live ? 'three' : 'one')}>
         {live ? <FitPanel testId="waiting-guests" title={tx('pos.d1_waiting_guests_by_skill_match')} footer={<button type="button" className="fk-link" onClick={() => nav('/queue')}>{tx('pos.view_all_waiting_guests')}</button>}>
-          <div className="tq-scroll"><table className="fk-table fn-table cg-table tq-table"><thead><tr><th>#</th><th>{tx('pos.guest')}</th><th className="t-opt">{tx('pos.pref_tech')}</th><th className="num">{tx('pos.wait')}</th><th>{tx('pos.best_match_3')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
+          <div className="tq-scroll"><table className="fk-table fn-table cg-table tq-table" style={{ tableLayout: 'fixed', width: '100%' }}>{/* fixed layout (Nov 6 2026): on a busy floor the names and chips widened the table and pushed "Phân công" past the panel */}<colgroup><col style={{ width: 28 }} /><col /><col className="t-opt" style={{ width: '17%' }} /><col style={{ width: 58 }} /><col style={{ width: '22%' }} /><col style={{ width: 124 }} /></colgroup><thead><tr><th>#</th><th>{tx('pos.guest')}</th><th className="t-opt">{tx('pos.pref_tech')}</th><th className="num">{tx('pos.wait')}</th><th>{tx('pos.best_match_3')}</th><th aria-label={tx('finance.actions')} /></tr></thead>
             <tbody>{waiting.slice(0, 5).map((g, i) => <tr key={g.queueItemId ?? i} data-testid="waiting-row">
               <td className="fk-muted" title={tx('tq.positionTitle')}>{i + 1}</td>
               {/* §79 one-screen (Nov 6 2026): the service sits under the guest — a column of its own pushed the actions 33–86 px past the panel */}

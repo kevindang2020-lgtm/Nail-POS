@@ -190,7 +190,8 @@ export async function vietnamesePhase(env) {
         const manage = p.page.locator('table tbody').getByRole('button', { name: 'Quản lý', exact: true }).first();   // the row's button, not the sidebar's "Quản lý" group
         if (await manage.count()) {
           await manage.click(); await sleep(500);
-          const btn = p.page.getByRole('button', { name: /Phân công \/ đổi thợ|Chỉ định/ }).first();
+          // the Manage drawer's technician field opens the picker from its button ("Phân công / đổi thợ" is the field's label)
+          const btn = p.page.getByTestId('technician-picker-button').first();
           await btn.click().catch(() => undefined);
           out.queue.pickerPages = await waitFor(async () => /Trang 1 \/ 1[5-9]/.test(await p.page.getByTestId('technician-picker').innerText().catch(() => '')), 10000, 200)
             ? (await p.page.getByTestId('technician-picker').innerText()).match(/Trang 1 \/ \d+/)?.[0] : null;
@@ -245,6 +246,9 @@ export async function vietnamesePhase(env) {
     if (fonts) await routeFonts(ctx2, fonts);
     const verdicts = await runOneScreenMatrix({ newPage: () => ctx2.newPage(), setLanguage: mgrLang, base: `http://127.0.0.1:${port}`, shots: `${shotsDir}one-screen/`, state: 'busy200', viewports: VIEWPORTS,
       allow: VI_NAMES.flatMap((n) => n.split(' ')) });
+    // the matrix runs for minutes: the page may have refreshed the manager's session (rotating its refresh token) — hand the
+    // cookies back, or the proof's next refresh replays a used token and the platform revokes the session (Nov 6 2026)
+    for (const c of await ctx2.cookies().catch(() => [])) env.mgr.jar.set(c.name, `${c.name}=${c.value}`);
     await ctx2.close();
     const prim = verdicts.filter((v) => v.primary);
     V.oneScreen = { primary: prim.map((v) => ({ m: v.label, lang: v.lang, pass: v.pass, reasons: v.reasons, v: v.vScroll, h: v.hScroll, minBtn: v.minButton, font: v.font.hanken })), responsive: verdicts.filter((v) => !v.primary).map((v) => ({ m: v.label, lang: v.lang, w: v.w, h: v.h, pass: v.pass, reasons: v.reasons, v: v.vScroll })),
@@ -287,7 +291,12 @@ export async function vietnamesePhase(env) {
       const t0 = Date.now();
       // Nov 6 2026 full run: the switch was missing here — say where the page was and what it showed, with a screenshot
       if (!(await pg.getByTestId('language-switch').count())) { await p.shot('13f-no-language-switch'); throw new Error(`no language switch at ${pg.url()} :: ${(await bodyText(pg)).replace(/\s+/g, ' ').slice(0, 300)}`); }
-      await pg.getByTestId('language-switch').click();
+      try { await pg.getByTestId('language-switch').click({ timeout: 10000 }); }
+      catch (e) {
+        await p.shot('13f-language-switch-not-clickable');
+        const why = await pg.evaluate(() => { const b = document.querySelector('[data-testid="language-switch"]'); if (!b) return 'gone'; const r = b.getBoundingClientRect(); const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2); const cs = getComputedStyle(b); return { box: [r.left, r.top, r.width, r.height].map(Math.round), vis: cs.visibility, disp: cs.display, onTop: top === b || b.contains(top) ? 'self' : (top ? top.tagName + '.' + String(top.className).slice(0, 60) : 'none'), url: location.pathname }; }).catch((x) => String(x).slice(0, 80));
+        throw new Error(`language switch not clickable: ${JSON.stringify(why)} :: ${String(e?.message ?? e).split('\n').slice(0, 6).join(' | ')}`);
+      }
       await pg.getByTestId(`language-option-${l}`).click();
       await waitFor(async () => (await pg.evaluate(() => document.documentElement.lang)) === l && (l === 'vi' ? /Trang 3 \//.test(await label()) : /Page 3 of/.test(await label())), 5000, 10);
       await pg.evaluate(() => new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r))));

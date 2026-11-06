@@ -22,6 +22,7 @@
 //            weekday over the previous 8 weeks, median and spread, only with enough comparable days) · Check AI Business Alerts
 //            System.
 // Nothing here edits a sale, an appointment, a customer, a price or a schedule, and nothing sends a message.
+import { hasPermission } from '@aipowersalon/permissions';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
@@ -53,7 +54,9 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const N = (v: unknown) => (v == null ? 0 : Number(v) || 0);
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
-const has = (ctx: AiBusinessContext, p: string) => (ctx.permissions ?? []).includes(p);
+// the platform's one permission rule (Nov 6 2026 full-run route sweep): a raw includes() missed alias-granted keys, so every
+// owner and manager was refused here although the route guard (the same rule) had let them in
+const has = (ctx: AiBusinessContext, p: string) => hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], p);
 const esc = (s: string) => '%' + s.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
 const pick = <T extends readonly (string | number)[]>(list: T, v: unknown): T[number] | undefined => (list as readonly unknown[]).includes(v) ? v as T[number] : undefined;
 const addDays = (d: string, k: number) => addYmdDays(d, k);

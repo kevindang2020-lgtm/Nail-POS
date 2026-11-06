@@ -19,6 +19,7 @@
 //               redaction, a leak scan of what search reads, summaries, customer matching, search freshness, deletions reaching
 //               derived data, isolation, no side effects. Read-only.
 // The branch is ALWAYS the server's: a branch login sees its branch (and salon-wide calls); only a salon-wide login sees all.
+import { hasPermission } from '@aipowersalon/permissions';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
@@ -60,7 +61,9 @@ const N = (v: unknown) => (v == null ? 0 : Number(v));
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
-const has = (ctx: VcCtx, p: string) => (ctx.permissions ?? []).includes(p);
+// the platform's one permission rule (Nov 6 2026 full-run route sweep): a raw includes() missed alias-granted keys, so every
+// owner and manager was refused here although the route guard (the same rule) had let them in
+const has = (ctx: VcCtx, p: string) => hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], p);
 const addDays = (d: string, k: number) => addYmdDays(d, k);
 const esc = (s: string) => s.replace(/[\\%_]/g, (m) => '\\' + m);
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);

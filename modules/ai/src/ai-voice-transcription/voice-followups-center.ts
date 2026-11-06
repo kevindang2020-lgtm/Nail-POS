@@ -19,6 +19,7 @@
 //     which date (call · reviewed · due), presets + From/To in salon time, sort, numbered pages;
 //   • an empty state that says WHY it is empty (no calls · still processing · pipeline errors · genuinely nothing open);
 //   • Check Voice Follow-Up System — read-only.
+import { hasPermission } from '@aipowersalon/permissions';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
@@ -50,7 +51,9 @@ const N = (v: unknown) => (v == null ? 0 : Number(v));
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
-const has = (ctx: VfCtx, p: string) => (ctx.permissions ?? []).includes(p);
+// the platform's one permission rule (Nov 6 2026 full-run route sweep): a raw includes() missed alias-granted keys, so every
+// owner and manager was refused here although the route guard (the same rule) had let them in
+const has = (ctx: VfCtx, p: string) => hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], p);
 /** the item's priority in the task system's words (health / safety is always urgent) */
 export const vfPriority = (type: string, p: string) => (type === 'health_safety' ? 'urgent' : p === 'high' ? 'high' : p === 'low' ? 'low' : 'normal');
 

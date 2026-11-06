@@ -282,6 +282,11 @@ const ensureBrowser = async () => {
   return browser;
 };
 const ensureApp = async (appName) => { const port = screenApps[appName]; if (!appServers.find((x) => x.address()?.port === port)) await serveApp(appName, port); return port; };
+/** Nov 6 2026: a browser page signed in with a session's cookies may REFRESH it (the access cookie lives ~15 min) — the
+ *  refresh token rotates inside the browser, and the proof's own jar then holds a used one: its next refresh is a replay,
+ *  which the platform rightly answers by revoking the session (REFRESH_REUSE_DETECTED — the Super Admin's 401s in phase 13).
+ *  Every page hands its cookies back to the session when it closes. */
+const syncBack = async (context, sess) => { if (!sess?.jar) return; try { for (const c of await context.cookies()) sess.jar.set(c.name, `${c.name}=${c.value}`); } catch { /* the browser went away */ } };
 /** A page that STAYS open (M5): `appName` at `path` as `sess`, `viewport`, optional init scripts; the caller closes it. */
 const openLive = async (appName, path, sess, { viewport, init = [] } = {}) => {
   if (!SCREENS) return null;
@@ -295,7 +300,7 @@ const openLive = async (appName, path, sess, { viewport, init = [] } = {}) => {
   page.on('request', (r) => requests.push({ t: Date.now(), url: r.url(), method: r.method() }));
   await page.goto(`http://127.0.0.1:${port}${path}`, { waitUntil: 'load', timeout: 30_000 });
   const shot = async (name) => { const file = `${SHOTS}pilot-${String(shots.length + 1).padStart(2, '0')}-${name}.png`; await page.screenshot({ path: file }).catch(() => undefined); shots.push({ name, app: appName, path, file: file.split('/').pop(), matched: true, pageErrors }); return file; };
-  return { context, page, pageErrors, requests, port, shot, close: () => context.close().catch(() => undefined) };
+  return { context, page, pageErrors, requests, port, shot, close: async () => { await syncBack(context, sess); await context.close().catch(() => undefined); } };
 };
 /** Open `appName` at `path` as `sess` (its cookies), wait for `expect` (regex) in the page, screenshot, return the text. */
 const shoot = async (name, appName, path, sess, expect, act) => {
@@ -316,6 +321,7 @@ const shoot = async (name, appName, path, sess, expect, act) => {
     if (mobile && Date.now() - t0 < 3200) await sleep(3200 - (Date.now() - t0));   // the apps' 2.6 s animated splash overlays the screen
     const file = `${SHOTS}pilot-${String(shots.length + 1).padStart(2, '0')}-${name}.png`;
     await page.screenshot({ path: file, fullPage: !mobile });
+    await syncBack(context, sess);
     await context.close();
     shots.push({ name, app: appName, path, file: file.split('/').pop(), matched: expect ? expect.test(text) : true, pageErrors });
     return { text, pageErrors, matched: expect ? expect.test(text) : true };
