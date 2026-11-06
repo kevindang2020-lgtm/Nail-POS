@@ -123,3 +123,14 @@ Kevin approved the three Vietnamese drafts: `errors.PROVIDER_HOST_NOT_ALLOWED`, 
 | Session lifetime | 12 h from sign-in; 30 days with "Remember me" | `AUTH_SESSION_TTL` / `AUTH_SESSION_TTL_REMEMBER` |
 | Super Admin session | 8 h, "Remember me" ignored | `AUTH_SESSION_TTL_SUPER_ADMIN` (max 12 h) |
 | Security events | Immediately | Sign out other devices, Super Admin ending a session, password change, access changed or suspended, stolen refresh token |
+
+## Addendum — fewer sign-outs on busy days (Nov 6)
+
+Two more ways a busy salon got signed out, both fixed:
+
+| Cause | What happened | Fix |
+| --- | --- | --- |
+| Two POS tabs (or a reply lost on Wi-Fi) renewing at the same moment | The second renewal presented an already-used key; the server treated it as stolen and ended the whole session, with no grace period | A key reused within 30 s of its rotation (`REFRESH_REUSE_GRACE_SECONDS`, 0 = strict, max 120) gets an extra valid key for the same session and nothing is retired; after 30 s reuse is still treated as theft and ends the session (and Face ID, migration 705). Covers both the "already replaced" path and the exact-same-instant race. |
+| A Wi-Fi blip or server restart during renewal | Any failed renewal signed the person out | No answer or a 5xx is retried twice (after 1 s and 3 s). Only a clear "no" from the server ends the session. |
+
+Proof: unit tests (two tabs, a lost reply, outside the window, grace off, settings); real Postgres 16 (two tabs at the very same instant both stay signed in and both keys renew later; with grace off the strict 10-way replay test still burns the family); the client retry tests. Race lane 295/295, identity 552, API auth 1,409, gates unchanged.

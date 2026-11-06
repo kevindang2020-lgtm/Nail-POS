@@ -13,6 +13,17 @@ export interface RefreshRepository {
   /** Marks `id` superseded by `newId` ONLY if it was not superseded yet — the atomic step a replay loses. */
   supersede(id: string, newId: string): Promise<boolean>;
   revokeAllForSession(sessionId: string): Promise<void>;
+  /** When the token `id` was created (ms) — for a superseded token, its successor's creation is the moment it was rotated. */
+  createdAtMs(id: string): Promise<number | null>;
+}
+
+/** Nov 6 2026: how long after a rotation the PREVIOUS token is still accepted (REFRESH_REUSE_GRACE_SECONDS, default 30,
+ *  0 turns it off, max 120). Two POS tabs share one cookie and renew at the same moment; a reply lost on salon Wi-Fi
+ *  leaves the device holding the old token. Without a grace window both looked like theft and signed the person out. */
+export function refreshReuseGraceMs(env: Record<string, string | undefined> = process.env): number {
+  const n = Number(env.REFRESH_REUSE_GRACE_SECONDS);
+  const s = Number.isFinite(n) && env.REFRESH_REUSE_GRACE_SECONDS !== undefined && env.REFRESH_REUSE_GRACE_SECONDS !== '' ? n : 30;
+  return Math.min(Math.max(Math.floor(s), 0), 120) * 1000;
 }
 export const hashRefreshToken = (raw: string) => createHash('sha256').update(raw).digest('hex');
 const newRawToken = () => 'rt_' + randomBytes(32).toString('base64url');
@@ -22,7 +33,7 @@ export type RotateResult =
   | { ok: false; reason: 'invalid' | 'expired' | 'reused' | 'session_revoked' };
 
 export class RefreshSessionService {
-  constructor(private readonly repo: RefreshRepository, private readonly sessions: { revoke(id: string): Promise<void>; isRevoked(id: string): Promise<boolean> } | null, private readonly now: () => number = () => Date.now()) {}
+  constructor(private readonly repo: RefreshRepository, private readonly sessions: { revoke(id: string): Promise<void>; isRevoked(id: string): Promise<boolean> } | null, private readonly now: () => number = () => Date.now(), private readonly graceMs: number = refreshReuseGraceMs()) {}
 
   /** At login: a refresh token living as long as the session. The raw token is returned ONCE and never stored. */
   async issue(sessionId: string, userId: string, ttlSeconds: number): Promise<{ refreshToken: string; expiresAtMs: number }> {
@@ -36,6 +47,14 @@ export class RefreshSessionService {
     const row = await this.repo.findByHash(hashRefreshToken(raw));
     if (!row || row.revokedAt) return { ok: false, reason: 'invalid' };
     if (row.supersededById) {   // §170: a token that was already rotated is being presented again — a replay or a theft
+      // Nov 6 2026: …unless it was rotated a moment ago — the same device racing itself (a second tab, a lost reply). Then
+      // this caller gets an extra valid token for the SAME session and nothing is retired: whichever reply the browser
+      // keeps last, the cookie holds a token that renews. The family is not burned.
+      const rotatedAt = this.graceMs > 0 ? await this.repo.createdAtMs(row.supersededById) : null;
+      if (rotatedAt !== null && this.now() - rotatedAt <= this.graceMs && row.expiresAtMs > this.now()
+          && !(this.sessions && await this.sessions.isRevoked(row.sessionId))) {
+        return this.sibling(row);
+      }
       await this.burn(row.sessionId);
       return { ok: false, reason: 'reused' };
     }
@@ -44,9 +63,19 @@ export class RefreshSessionService {
     const next = newRawToken();
     const newId = await this.repo.insert({ sessionId: row.sessionId, userId: row.userId, tokenHash: hashRefreshToken(next), expiresAtMs: row.expiresAtMs, rotatedFromId: row.id });
     if (!(await this.repo.supersede(row.id, newId))) {   // lost the race to a concurrent use of the same token: replay
+      // Nov 6 2026: two tabs renewing at the very same instant land here too — the same device racing itself. With the
+      // grace window on, the token just inserted stays valid as an extra token for the session (nothing retired).
+      if (this.graceMs > 0) return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
       await this.burn(row.sessionId);
       return { ok: false, reason: 'reused' };
     }
+    return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
+  }
+
+  /** Grace path: an extra valid token for the same session, ending when the session ends; nothing is retired. */
+  private async sibling(row: RefreshTokenRow): Promise<RotateResult> {
+    const next = newRawToken();
+    await this.repo.insert({ sessionId: row.sessionId, userId: row.userId, tokenHash: hashRefreshToken(next), expiresAtMs: row.expiresAtMs, rotatedFromId: row.id });
     return { ok: true, sessionId: row.sessionId, userId: row.userId, refreshToken: next, expiresAtMs: row.expiresAtMs };
   }
 
@@ -76,11 +105,18 @@ export class KyselyRefreshRepository implements RefreshRepository {
   async revokeAllForSession(sessionId: string): Promise<void> {
     await sql`update refresh_tokens set revoked_at = now() where session_id = ${sessionId}::uuid and revoked_at is null`.execute(this.db);
   }
+  async createdAtMs(id: string): Promise<number | null> {
+    const res: any = await sql`select created_at from refresh_tokens where id = ${id}::uuid`.execute(this.db);
+    return res.rows[0] ? new Date(res.rows[0].created_at).getTime() : null;
+  }
 }
 
 export class InMemoryRefreshRepository implements RefreshRepository {
-  rows: (RefreshTokenRow & { tokenHash: string })[] = [];
-  async insert(r: { sessionId: string; userId: string; tokenHash: string; expiresAtMs: number; rotatedFromId?: string | null }) { const id = 'rt' + (this.rows.length + 1); this.rows.push({ id, sessionId: r.sessionId, userId: r.userId, tokenHash: r.tokenHash, expiresAtMs: r.expiresAtMs, revokedAt: null, supersededById: null }); return id; }
+  rows: (RefreshTokenRow & { tokenHash: string; createdAtMs: number })[] = [];
+  constructor(private readonly clock: () => number = () => Date.now()) {}
+  async insert(r: { sessionId: string; userId: string; tokenHash: string; expiresAtMs: number; rotatedFromId?: string | null }) { const id = 'rt' + (this.rows.length + 1); this.rows.push({ id, sessionId: r.sessionId, userId: r.userId, tokenHash: r.tokenHash, expiresAtMs: r.expiresAtMs, revokedAt: null, supersededById: null, createdAtMs: this.clock() }); return id; }
+  async createdAtMs(id: string) { return this.rows.find((x) => x.id === id)?.createdAtMs ?? null; }
+
   async findByHash(h: string) { const r = this.rows.find((x) => x.tokenHash === h); return r ? { ...r } : null; }
   async supersede(id: string, newId: string) { const r = this.rows.find((x) => x.id === id); if (!r || r.supersededById || r.revokedAt) return false; r.supersededById = newId; return true; }
   async revokeAllForSession(sid: string) { for (const r of this.rows) if (r.sessionId === sid && !r.revokedAt) r.revokedAt = new Date().toISOString(); }
