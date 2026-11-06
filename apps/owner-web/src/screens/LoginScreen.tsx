@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { OwnerForgotPasswordScreen } from './OwnerForgotPasswordScreen';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
+import { saveNativeRefreshToken } from '@aipowersalon/mobile-sdk';
 import { authApi } from '../api/authApi';
 import { ownerPublicApi } from '../api/ownerPublicApi';
 import { useAuth } from '../auth/AuthContext';
@@ -110,6 +111,7 @@ export function LoginScreen() {
         ownerAccessCode: cleanAccessCode || undefined,  // OPTIONAL; validated server-side, never here
         rememberMe: remember,
       });
+      await saveNativeRefreshToken((r as any)?.refreshToken);   // native only (the web never gets it): renews the 15-minute access token
       // NATIVE only: the server returns a token when (and only when) the request came from the native app. On the
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JS.
       await saveNativeToken(tokenFromResponse(r));

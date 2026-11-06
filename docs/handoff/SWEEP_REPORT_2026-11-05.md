@@ -104,3 +104,22 @@ Tests: the mobile SDK proves sign-in never prompts (undecided: no prompt and no 
 ## Addendum — Vietnamese (Nov 6)
 
 Kevin approved the three Vietnamese drafts: `errors.PROVIDER_HOST_NOT_ALLOWED`, `errors.LOCATION_REQUIRED` and `payment.surcharge.disclosure`. The POS "Turn on notifications" banner is now translated (`pos.pushPrompt.*` in `catalog.en.ts` / `catalog.vi.ts`) and follows the language switch. Its Vietnamese text is marked DRAFT for Kevin's review. The other apps have no Vietnamese mode yet, so their banner stays in English.
+
+## Addendum — the POS signed people out after ~15 minutes (Nov 6) — FIXED
+
+**Cause:** the access token lives 15 minutes (`AUTH_ACCESS_TTL`) and is meant to be renewed silently through `POST /auth/refresh`. The renewal code (`installAuthRefresh`, `packages/api-client/src/auth-refresh.ts`) was built in October but **no app installed it**, not even in the uploaded code. So 15 minutes after a sign-in, the next request got 401 and the app returned to the login screen, however busy the person was. Picking a branch issued a 12-hour token instead, which is why some sign-ins lasted longer. The phone apps also threw away the refresh token at sign-in, so they could not have renewed either.
+
+**Fix:** all six apps (POS, Super Admin, Owner, Tech, Customer, Manager Pay) install the renewal in `main.tsx` before anything fetches; the phone builds renew with the Keychain token pair. The phone sign-ins now keep the refresh token.
+
+**Proof (live API, access token set to 60 s):** before, a request at 70 s → 401 (signed out). After, 200 at 70 s and at 140 s, and a real sign-out still ends the session (401 afterwards). The guard test `apps/api/src/common/auth-refresh-installed.vitest.spec.ts` pins the wiring. All app suites, gates and builds pass.
+
+**What still signs people out, on purpose:**
+
+| Rule | Default | Who can change it |
+| --- | --- | --- |
+| POS idle **lock** (PIN screen, not a sign-out) | 60 min without activity | Owner: 5–120 min for the salon; each device may choose shorter |
+| Locked longer than 8 hours | Full sign-in | Fixed (Decision 35) |
+| 5 wrong PINs on the lock screen | Full sign-in | Fixed |
+| Session lifetime | 12 h from sign-in; 30 days with "Remember me" | `AUTH_SESSION_TTL` / `AUTH_SESSION_TTL_REMEMBER` |
+| Super Admin session | 8 h, "Remember me" ignored | `AUTH_SESSION_TTL_SUPER_ADMIN` (max 12 h) |
+| Security events | Immediately | Sign out other devices, Super Admin ending a session, password change, access changed or suspended, stolen refresh token |

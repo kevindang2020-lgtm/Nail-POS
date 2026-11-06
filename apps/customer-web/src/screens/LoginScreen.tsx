@@ -3,6 +3,7 @@ import { ActivateAccountScreen } from './ActivateAccountScreen';
 import { signInWithFaceId, faceIdMode } from '../auth/faceid';
 import { authApi } from '../api/authApi';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
+import { saveNativeRefreshToken } from '@aipowersalon/mobile-sdk';
 import { useAuth } from '../auth/AuthContext';
 import { RegisterScreen } from './RegisterScreen';
 import { ForgotPasswordScreen } from './ForgotPasswordScreen';
@@ -173,6 +174,7 @@ export function LoginScreen({ onGuest, notice }: { onGuest?: () => void; notice?
     try {
       // portal 'customer' → the lookup only ever sees role = 'CUSTOMER'. No salon code.
       const r = await authApi.login({ portal: 'customer', identifier: identifier.trim(), password, rememberMe: remember });
+      await saveNativeRefreshToken((r as any)?.refreshToken);   // native only (the web never gets it): renews the 15-minute access token
       // NATIVE only: the server returns a token when (and only when) the request came from the native app. On the
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JavaScript.
       await saveNativeToken(tokenFromResponse(r));

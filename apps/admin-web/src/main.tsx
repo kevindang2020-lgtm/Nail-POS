@@ -5,6 +5,13 @@ import { App } from './App';
 import './styles.css';
 import { applyPlatformBranding } from '@aipowersalon/ui';
 import { AppErrorBoundary, initErrorReporting } from '@aipowersalon/ui';
+import { installAuthRefresh } from '@aipowersalon/api-client';
+import { apiBase } from './api/client';
+
+// Nov 6 2026: the access token lives 15 minutes (AUTH_ACCESS_TTL). This renews it silently on the first 401 and retries
+// the request once (@aipowersalon/api-client auth-refresh). It was built in October but never switched on, so every app
+// signed people out about 15 minutes after sign-in. Installed before anything fetches.
+installAuthRefresh(window, { apiBase });
 
 // Apply any Super-Admin colour overrides at boot (best-effort; locked defaults already loaded).
 applyPlatformBranding();

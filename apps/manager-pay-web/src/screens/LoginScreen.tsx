@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { authApi, type Principal } from '../api/authApi';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
+import { saveNativeRefreshToken } from '@aipowersalon/mobile-sdk';
 import { faceIdMode, signInWithFaceId, isFaceIdEnrolled, enrollFaceId, type FaceIdMode } from '../auth/faceid';
 import { isTapToPayAvailable } from '../native/tapToPay';
 import logoImage from '../../public/brand/taptopay.png';
@@ -107,6 +108,7 @@ export function LoginScreen({ onAuthed }: { onAuthed: (p: Principal) => void }) 
         portal: 'tenant', salonCode: codeToSend, identifier: identifier.trim(), password,
         rememberMe: remember, ...(mfaNeeded ? { mfaCode: mfaCode.trim() } : {}),
       });
+      await saveNativeRefreshToken((r as any)?.refreshToken);   // native only (the web never gets it): renews the 15-minute access token
       await saveNativeToken(tokenFromResponse(r)); // native only; web keeps the httpOnly cookie
       if (r.outcome === 'SUCCESS' && r.principal) {
         persistSalon(codeToSend);

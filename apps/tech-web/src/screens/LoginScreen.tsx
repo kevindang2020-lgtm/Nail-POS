@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { saveNativeToken, tokenFromResponse } from '../auth/native-auth';
+import { saveNativeRefreshToken } from '@aipowersalon/mobile-sdk';
 import { authApi, type BranchOption } from '../api/authApi';
 import { useAuth } from '../auth/AuthContext';
 import logoImage from '../brand/techlogo.png';
@@ -205,6 +206,7 @@ export function LoginScreen() {
         rememberMe: remember,                 // FIX: "Remember Me" now actually selects the server's extended session TTL
         ...(mfaNeeded ? { mfaCode: mfaCode.trim() } : {}),
       });
+      await saveNativeRefreshToken((r as any)?.refreshToken);   // native only (the web never gets it): renews the 15-minute access token
       // NATIVE only: the server returns a token when (and only when) the request came from the native app. On the
       // web this is absent and nothing is stored — the httpOnly cookie does the work and stays out of JS.
       await saveNativeToken(tokenFromResponse(r));
