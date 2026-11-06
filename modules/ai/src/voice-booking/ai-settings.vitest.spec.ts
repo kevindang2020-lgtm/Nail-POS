@@ -30,13 +30,16 @@ describe('AiSettingsService', () => {
   it('returns defaults when nothing is stored', async () => {
     const { meta, ...rest } = await svc().get(owner as any);
     expect(rest).toEqual(DEFAULT_SETTINGS);
-    expect(meta).toEqual({ version: 0, source: 'defaults', scope: 'salon', appliedToCalls: false });
+    expect(meta).toEqual({ version: 0, source: 'defaults', scope: 'salon', appliedToCalls: false, consent: { approved: false, approvedAt: null, approvedBy: null, supported: true } });
   });
   it('refuses writes without ai.manage', async () => {
     await expect(svc().update(viewer as any, { enabled: true })).rejects.toBeInstanceOf(SettingsForbiddenError);
   });
   it('merges a patch over current settings and persists', async () => {
     const s = svc();
+    // A9 Nov 6: recording needs an owner-approved notice first
+    await expect(s.update(owner as any, { enabled: true, recordingEnabled: true })).rejects.toMatchObject({ code: 'AI_RCPT_CONSENT_NOT_APPROVED' });
+    await s.approveConsent({ ...owner, role: 'OWNER' } as any, DEFAULT_SETTINGS.recordingConsentMessage);
     const updated = await s.update(owner as any, { enabled: true, recordingEnabled: true });
     expect(updated).toMatchObject({ enabled: true, recordingEnabled: true, defaultLanguage: 'en' });
     const reread = await s.get(owner as any);

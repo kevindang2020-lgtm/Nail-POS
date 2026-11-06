@@ -7566,6 +7566,8 @@ export interface DB {
   ai_business_saved_questions: AiBusinessSavedQuestionsTable;
   ai_business_alerts: AiBusinessAlertsTable;
   ai_business_alert_events: AiBusinessAlertEventsTable;
+  ai_receptionist_settings_checks: AiReceptionistSettingsChecksTable;
+  ai_receptionist_consent_approvals: AiReceptionistConsentApprovalsTable;
   ai_business_conversations: AiBusinessConversationsTable;
   ai_business_alert_incident_notes: AiBusinessAlertIncidentNotesTable;
   ai_business_alert_deliveries: AiBusinessAlertDeliveriesTable;
@@ -10476,4 +10478,12 @@ export interface AiBusinessAlertIncidentNotesTable {
 // ai_business_conversations
 export interface AiBusinessConversationsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; user_id: string; question: string | null; intent: string | null; tool_used: string | null; preset: string | null; period_from: string | null; period_to: string | null; answer: string | null; answered_by: string; language: string | null; headline: Generated<unknown>; created_at: Generated<Ts>;
+}
+// ai_receptionist_consent_approvals
+export interface AiReceptionistConsentApprovalsTable {
+  id: Generated<string>; tenant_id: string; branch_id: Generated<string>; text_sha256: string; consent_text: string; approved_by: string | null; approved_role: string | null; created_at: Generated<Ts>;
+}
+// ai_receptionist_settings_checks
+export interface AiReceptionistSettingsChecksTable {
+  id: Generated<string>; tenant_id: string; branch_id: Generated<string>; overall: string; checks: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
 }

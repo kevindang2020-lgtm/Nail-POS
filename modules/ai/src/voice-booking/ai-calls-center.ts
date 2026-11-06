@@ -109,7 +109,7 @@ export class AiCallsCenter {
       items: page.items.map((i) => {
         const e = by.get(i.callRef);
         const stale = !!e && !e.ended_at && Date.now() - new Date(e.st).getTime() > AIC_STALE_HOURS * 3_600_000;
-        return { ...i, status: stale && i.status === 'in_progress' ? 'unknown' : i.status, agentRef: e?.agent_ref ?? null, lastSyncedAt: iso(e?.synced),
+        return { ...i, status: (stale && i.status === 'in_progress') || i.status === 'no_end_recorded' ? 'unknown' : i.status, agentRef: e?.agent_ref ?? null, lastSyncedAt: iso(e?.synced),
           tools: { requested: N(e?.tools), failed: N(e?.tool_failed) }, linkedAppointments: N(e?.appts),
           // A10: the salon number that was dialed (the caller is already shown, masked, from the call record)
           callerMasked: i.callerMasked ?? (e?.caller_number ? maskNumber(String(e.caller_number)) : null), dialedNumber: e?.dialed_number ?? null };

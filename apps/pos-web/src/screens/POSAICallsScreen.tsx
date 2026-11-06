@@ -26,16 +26,17 @@ import { statusLabel } from '../i18n/status-label';   // the code stays the trut
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
 const PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
-const STATUSES = ['completed', 'abandoned', 'failed', 'handed_off'] as const;
+const STATUSES = ['completed', 'missed', 'abandoned', 'failed', 'handed_off', 'in_progress'] as const;
+const BASES = ['call_started', 'call_ended', 'recorded', 'last_event'] as const;   // A10 Nov 6: more date bases
 const OUTCOMES = ['booked', 'booking_requested', 'question', 'handoff', 'follow_up'] as const;
 const TABS = ['overview', 'customer', 'summary', 'recording', 'tools', 'booking', 'handoff', 'audit'] as const;
 const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', NOT_CONFIGURED: 'warn', DISABLED: 'muted', UNKNOWN: 'bad', BLOCKED_EXTERNAL: 'muted' };
-const STAT_TONE: Record<string, string> = { completed: 'ok', failed: 'bad', abandoned: 'bad', handed_off: 'warn', in_progress: 'warn', unknown: 'muted' };
+const STAT_TONE: Record<string, string> = { completed: 'ok', failed: 'bad', abandoned: 'bad', missed: 'bad', handed_off: 'warn', in_progress: 'warn', unknown: 'muted' };
 const when = (v?: string | null) => (v ? fmtDateTime(v) : '—');
 const dur = (s?: number | null) => (s == null ? '—' : `${Math.floor(s / 60)}m ${s % 60}s`);
 const num = (v: number | null | undefined) => (v == null ? '—' : String(v));
 const today = () => deviceToday();
-const QKEYS = ['status', 'outcome', 'dateBasis', 'period', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
+const QKEYS = ['status', 'outcome', 'dateBasis', 'period', 'from', 'to', 'sort', 'page', 'pageSize', 'agent', 'direction', 'minSeconds', 'maxSeconds'] as const;
 
 function Badge({ tone, label, testId }: { tone: string; label: string; testId?: string }) { return <span className={`aic-badge aic-${tone}`} data-testid={testId}>{label}</span>; }
 function Metric({ id, label, value, sub }: { id: string; label: string; value: string; sub?: string }) {
@@ -47,7 +48,7 @@ export function POSAICallsScreen() {
   const [sp, setSp] = useSearchParams();
   const initial = useMemo<AicCallsQuery>(() => {
     const o: AicCallsQuery = { page: 1, pageSize: 10, sort: 'newest', dateBasis: 'call_started' };
-    for (const k of QKEYS) { const v = sp.get(k); if (v) (o as Record<string, unknown>)[k] = k === 'page' || k === 'pageSize' ? Number(v) : v; }
+    for (const k of QKEYS) { const v = sp.get(k); if (v) (o as Record<string, unknown>)[k] = k === 'page' || k === 'pageSize' || k === 'minSeconds' || k === 'maxSeconds' ? Number(v) : v; }
     if (![10, 20, 50].includes(Number(o.pageSize))) o.pageSize = 10;
     return o;
   }, []);   // eslint-disable-line react-hooks/exhaustive-deps -- read the URL once; later changes are written back
@@ -163,12 +164,23 @@ export function POSAICallsScreen() {
               <option value="">{t('aic.f.allOutcome')}</option>{OUTCOMES.map((s) => <option key={s} value={s}>{t(`aic.out.${s}`)}</option>)}
             </select>
             <select aria-label={t('aic.f.basis')} value={f.dateBasis} onChange={(e) => setFilter({ dateBasis: e.target.value })} data-testid="aic-f-basis">
-              <option value="call_started">{t('aic.basis.call_started')}</option><option value="recorded">{t('aic.basis.recorded')}</option>
+              {BASES.map((b) => <option key={b} value={b}>{t(`aic.basis.${b}`)}</option>)}
             </select>
             <select aria-label={t('aic.period')} value={f.period ?? ''} onChange={(e) => (e.target.value === 'custom' ? setCal('calls') : setFilter({ period: e.target.value || undefined, from: undefined, to: undefined }))} data-testid="aic-f-period">
               <option value="">{t('aic.period.any')}</option>{PERIODS.map((p) => <option key={p} value={p}>{t(`aic.period.${p}`)}</option>)}
             </select>
             <button className="btn ghost" data-testid="aic-cal" onClick={() => setCal('calls')}>{f.from || f.to ? `${f.from ?? '…'} – ${f.to ?? '…'}` : t('aic.fromTo')}</button>
+            {list?.agents?.length ? (
+              <select aria-label={t('aic.f.agent')} value={f.agent ?? ''} onChange={(e) => setFilter({ agent: e.target.value || undefined })} data-testid="aic-f-agent">
+                <option value="">{t('aic.f.allAgents')}</option>{list.agents.map((a: any) => <option key={a.ref} value={a.ref}>{a.name}</option>)}
+              </select>) : null}
+            <select aria-label={t('aic.f.direction')} value={f.direction ?? ''} onChange={(e) => setFilter({ direction: e.target.value || undefined })} data-testid="aic-f-direction">
+              <option value="">{t('aic.f.allDirections')}</option>{['inbound', 'outbound'].map((d) => <option key={d} value={d}>{t(`aic.dir.${d}`)}</option>)}
+            </select>
+            <select aria-label={t('aic.f.length')} value={f.minSeconds === 300 ? 'long' : f.maxSeconds === 59 ? 'short' : f.minSeconds === 60 ? 'medium' : ''} data-testid="aic-f-length"
+              onChange={(e) => { const r: Record<string, [number | undefined, number | undefined]> = { short: [undefined, 59], medium: [60, 299], long: [300, undefined] }; const x = r[e.target.value]; setFilter({ minSeconds: x?.[0], maxSeconds: x?.[1] }); }}>
+              <option value="">{t('aic.f.anyLength')}</option>{['short', 'medium', 'long'].map((k) => <option key={k} value={k}>{t(`aic.len.${k}`)}</option>)}
+            </select>
             <select aria-label={t('aic.sort')} value={f.sort} onChange={(e) => setFilter({ sort: e.target.value })}>{['newest', 'oldest', 'longest'].map((s) => <option key={s} value={s}>{t(`aic.sort.${s}`)}</option>)}</select>
           </> : null}
           <select aria-label={t('aic.pageSize')} value={f.pageSize} onChange={(e) => setFilter({ pageSize: Number(e.target.value) })} data-testid="aic-pagesize">{[10, 20, 50].map((n) => <option key={n} value={n}>{t('aic.perPage', { n })}</option>)}</select>

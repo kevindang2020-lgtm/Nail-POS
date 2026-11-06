@@ -171,6 +171,34 @@ describe('KPIs, history, search, priority — guide §06–§08, §12, §14', ()
     expect((await mk(ENV_FULL).calls(own, { status: 'failed' })).items.map((x: any) => x.callRef)).toEqual(['call_err']);
     expect((await mk(ENV_FULL).calls(own, { outcome: 'booked' })).items.map((x: any) => x.callRef)).toEqual(['k1']);
   });
+  it('A15 / A10 Nov 6: missed and in-progress statuses, agent / service / direction / length filters, caller + dialed number columns and search, more date bases', async () => {
+    const now = Date.now(), iso = (ms: number) => new Date(ms).toISOString();
+    await call(TA, BA, 'nov6_missed', { started: iso(now - 3600_000), ended: iso(now - 3595_000), dur: 5, abandoned: true });
+    await call(TA, BA, 'nov6_gaveup', { started: iso(now - 3500_000), ended: iso(now - 3400_000), dur: 100, abandoned: true });
+    await call(TA, BA, 'nov6_live', { started: iso(now - 60_000) });
+    await call(TA, BA, 'nov6_stale', { started: iso(now - 5 * 3600_000) });
+    await call(TA, BA, 'nov6_long', { started: iso(now - 7200_000), ended: iso(now - 6000_000), dur: 1200, intents: ['gel removal'] });
+    await sql`update voice_call_outcomes set agent_ref = 'agent_rose', direction = 'inbound', caller_number = '+16095557711', dialed_number = '+18565550100', last_event_at = now() where tenant_id = ${TA} and provider_call_id = 'nov6_long'`.execute(db);
+    const r = mk(ENV_FULL); const refs = async (f: any) => (await r.calls(own, f)).items.map((x: any) => x.callRef).filter((x: string) => x.startsWith('nov6_')).sort();
+    expect(await refs({ status: 'missed' })).toEqual(['nov6_missed']);
+    expect(await refs({ status: 'abandoned' })).toEqual(['nov6_gaveup']);
+    expect(await refs({ status: 'in_progress' })).toEqual(['nov6_live']);                 // a 5-hour-old open call is a sync gap, not live
+    const all = (await r.calls(own, { q: 'nov6_' })).items as any[];
+    expect(all.find((x) => x.callRef === 'nov6_stale').status).toBe('no_end_recorded');
+    expect(await refs({ agent: 'agent_rose' })).toEqual(['nov6_long']);
+    expect(await refs({ service: 'gel removal' })).toEqual(['nov6_long']);
+    expect(await refs({ direction: 'inbound' })).toEqual(['nov6_long']);
+    expect(await refs({ minSeconds: 600 })).toEqual(['nov6_long']);
+    expect(await refs({ minSeconds: 1, maxSeconds: 10 })).toEqual(['nov6_missed']);
+    await expect(r.calls(own, { minSeconds: 20, maxSeconds: 10 })).rejects.toMatchObject({ code: 'AI_RCPT_INVALID_FILTER' });
+    const long = all.find((x) => x.callRef === 'nov6_long');
+    expect(long).toMatchObject({ callerMasked: '•••• 7711', dialedMasked: '•••• 0100', direction: 'inbound', agentRef: 'agent_rose' });
+    expect(JSON.stringify(all)).not.toContain('6095557711');
+    expect(await refs({ q: '5557711' })).toEqual(['nov6_long']);                           // caller digits
+    expect(await refs({ q: '5550100' })).toEqual(['nov6_long']);                           // dialed digits
+    expect((await r.calls(own, { dateBasis: 'call_ended', period: 'today' })).dateBasis).toBe('call_ended');
+    expect(await refs({ dateBasis: 'last_event', period: 'today', q: 'nov6_long' })).toEqual(['nov6_long']);
+  });
   it('SR-01 customer search: name / phone / email / id, masked, shared phone flagged (never merged); SEC-01 tenant isolation', async () => {
     const r = await mk(ENV_FULL).search(own, { scope: 'customers', q: '0142' });
     expect(r.items.map((x: any) => x.name).sort()).toEqual(['Ava Kim', 'Ben Kim']);

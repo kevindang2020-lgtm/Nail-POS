@@ -111,3 +111,22 @@ Revert the commit; run the rollback in the migration header. The ledger keeps wo
    - **Tests:** guard spec 24/24, including expired→refused, active→allowed, unmarked→observe only, and off wins.
    - **Note:** read-only Copilot routes (overview, search, priorities) and drafting stay in the platform mode.
 3. **Review expiry stays 5 minutes: YES.** No change.
+
+## Built Nov 6 2026 (A8 / A16 — Kevin: "continue finish all")
+
+- **Name pickers.** Check for Conflicts asks for a technician name and Cancel asks for a customer name, phone or date. Both search
+  with the scoped search and pass the chosen record's ID. Nothing is picked automatically, and a pasted ID still matches.
+- **URL filters.** The workspace tab, search scope, search words, page and page size are saved in the address
+  (`rctab`, `rcscope`, `rcq`, `rcpage`, `rcsize`).
+- **Who fixes it.** Every Check Copilot System part names who is responsible for fixing it (`CC_RESPONSIBLE`):
+  - Owner: package, switches, Twilio.
+  - Manager: roles, booking data.
+  - Front desk: customer lookup, queue.
+  - AIPowerSalon support: background tasks.
+- **Tabbed workspace.** The tabs are All, Front desk, Actions, History & search and Settings. "All" is the default and keeps the
+  one-page view salons use today; nothing was removed. The chosen tab is saved in the address (`?rcview=`).
+- **Texts search scope.** Finds sent SMS by their words, by the recipient's phone digits, or by the provider or notification ID.
+  The number is masked, results are newest first, and only this salon and branch are searched.
+- **Tests:**
+  - `reception-copilot-center.pgtest` (15)
+  - `POSReceptionCopilotScreen.test` (19)

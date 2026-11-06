@@ -1893,6 +1893,7 @@ GET /tenant/ai/receptionist/calls/{providerCallId}  realm=staff  auth=session  d
 GET /tenant/ai/receptionist/overview  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /tenant/ai/receptionist/provisioning/{jobId}  realm=staff  auth=session  domain=ai  perm=ai.use  resource=TENANT/records  guards=TenantAuthGuard
 GET /tenant/ai/receptionist/settings  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
+GET /tenant/ai/receptionist/settings/check/last  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /tenant/ai/receptionist/settings/history  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /tenant/ai/revenue/summary  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
 GET /tenant/ai/subscriptions  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission
@@ -3787,6 +3788,8 @@ POST /tenant/ai/center/copilot/take-over-call  realm=staff  auth=session  domain
 POST /tenant/ai/center/copilot/technicians  realm=staff  auth=session  domain=ai  perm=reception_copilot.view_recommendations  resource=BRANCH/permission  guards=TenantAuthGuard
 POST /tenant/ai/plans/{code}/trial  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/records
 POST /tenant/ai/receptionist/agents/{id}/provision  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission  guards=TenantAuthGuard
+POST /tenant/ai/receptionist/settings/check  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
+POST /tenant/ai/receptionist/settings/consent/approve  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission  guards=TenantAuthGuard
 POST /tenant/ai/revenue/attributions  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=TenantAuthGuard
 POST /tenant/ai/subscriptions  realm=staff  auth=session  domain=ai  perm=ai.manage  resource=TENANT/permission
 POST /tenant/ai/usage-screen/alerts/{id}/acknowledge  realm=staff  auth=session  domain=ai  perm=ai.use  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard

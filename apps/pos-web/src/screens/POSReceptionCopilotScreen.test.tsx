@@ -12,14 +12,19 @@ vi.mock("../api/posServicesApi", () => ({ posServicesApi: { list: () => Promise.
 vi.mock("../api/posAiApi", () => ({ posAiApi: { receptionCopilot: (q: string) => receptionCopilot(q), receptionCopilotContext: (p: string) => receptionCopilotContext(p), receptionCopilotQueue: () => receptionCopilotQueue(), receptionCopilotDuplicates: () => Promise.resolve({ groups: [] }), receptionCopilotAvailability: (d: string) => Promise.resolve({ available: true, date: d, recommendations: [{ time: "10:00", technicianId: "t1", technicianName: "Amy" }], byTechnician: [] }), receptionCopilotConflict: () => Promise.resolve({ hasConflict: false, status: "ok", conflictingAppointmentId: null }), receptionCopilotTechnicians: () => Promise.resolve({ available: true, technicians: [{ technicianId: "t1", name: "Amy", firstAvailable: "10:00", openSlots: 2, isUsual: false }] }), receptionCopilotDraftMessage: () => Promise.resolve({ kind: "reminder", body: "Hi Ann, reminder2026", matched: true, customerName: "Ann" }), receptionCopilotGetSettings: () => receptionCopilotGetSettings(), receptionCopilotIntent: () => Promise.resolve({ intent: "general_question", confidence: "low", label: "General question", matched: [] }), receptionCopilotAiPhoneActivity: () => Promise.resolve({ available: false, calls: [] }), receptionCopilotExplainService: () => Promise.resolve({ found: false }), receptionCopilotWaitlist: () => Promise.resolve({ recommended: true, waiting: 2, estimatedWaitMinutes: 15, message: "Offer standby: 2 guests waiting." }), receptionCopilotNextActions: () => Promise.resolve([]), receptionCopilotPatchSettings: (p: any) => receptionCopilotPatchSettings(p) } }));
 // Reception Copilot guide: customer-affecting actions go prepare → confirm through /pos/ai/copilot-center
 const ccPrepare = vi.fn((a: any) => Promise.resolve({ state: 'awaiting_confirmation', title: '', type: a.type, current: null, proposed: {}, warnings: [], notices: [], blocked: [], token: 'tok-1', expiresAt: null }));
+// A8 Nov 6: name pickers search by name; the scoped search returns real matches
+const ccSearch = vi.fn((q: any) => Promise.resolve(
+  q.scope === 'appointments' && /ann/i.test(q.q ?? '') ? { items: [{ id: 'appt_1', customer: 'Ann Lee', date: '2026-11-20', startTime: '10:00', technician: 'Amy', status: 'booked' }], total: 1, page: 1, pageSize: 10, pages: 1 }
+  : q.scope === 'technicians' && /amy/i.test(q.q ?? '') ? { items: [{ id: 't1', name: 'Amy', active: true }], total: 1, page: 1, pageSize: 10, pages: 1 }
+  : { items: [], total: 0, page: 1, pageSize: 20, pages: 1, hint: 'Type at least 2 characters.' }));
 const ccConfirm = vi.fn((a: any, _t: string) => Promise.resolve({ ok: true, requestKey: 'cc:1', errorCode: null, message: null, duplicate: false, state: 'completed', record: { appointmentId: a.appointmentId ?? 'new-1', status: 'booked' } }));
 vi.mock('../api/posCopilotCenterApi', () => ({ posCopilotCenterApi: {
   prepare: (a: any) => ccPrepare(a), confirm: (a: any, t: string) => ccConfirm(a, t),
   overview: () => Promise.resolve({ asOf: '2026-10-31T12:00:00Z', queue: null, queueState: 'no_branch', activeTechnicians: 0, upcomingNext2h: 0, missedCalls24h: 0, failedActions24h: 0, lastHealth: null }),
   priorities: () => Promise.resolve({ asOf: '2026-10-31T12:00:00Z', items: [] }),
   activity: () => Promise.resolve({ items: [], total: 0, page: 1, pageSize: 20, pages: 1, window: { from: '2026-10-01', to: '2026-10-31', tz: 'UTC' } }),
-  search: () => Promise.resolve({ items: [], total: 0, page: 1, pageSize: 20, pages: 1, hint: 'Type at least 2 characters.' }),
-  health: () => Promise.resolve({ overall: 'READY', checks: [] }), customer: () => Promise.resolve(null),
+  search: (q: any) => ccSearch(q),
+  health: () => Promise.resolve({ overall: 'READY', checks: [{ id: 'twilio', area: 'Twilio messaging', label: 'Salon text sender', state: 'READY', detail: 'ok', evidence: 'e', remedy: null, responsible: 'owner' }] }), customer: () => Promise.resolve(null),
 } }));
 import { POSReceptionCopilotScreen } from './POSReceptionCopilotScreen';
 
@@ -76,7 +81,8 @@ describe('POSReceptionCopilotScreen', () => {
 
   it('cancel action is prepared on the server (no write) and runs only after an explicit confirmation', async () => {
     render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
-    fireEvent.change(screen.getByPlaceholderText('Appointment ID'), { target: { value: 'appt_1' } });
+    fireEvent.change(screen.getByPlaceholderText('Customer name, phone or date'), { target: { value: 'Ann' } });
+    fireEvent.click(await screen.findByTestId('rc-cx-appt-opt'));
     fireEvent.change(screen.getByPlaceholderText('Reason'), { target: { value: 'customer request' } });
     fireEvent.click(screen.getByText('Prepare'));
     await waitFor(() => expect(ccPrepare).toHaveBeenCalledWith({ type: 'cancel_appointment', appointmentId: 'appt_1', reason: 'customer request' }));
@@ -106,7 +112,8 @@ describe('POSReceptionCopilotScreen', () => {
     render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
     // Wait for settings to load, then the cancel Prepare button should be disabled even with valid inputs.
     await waitFor(() => expect(screen.getByText('Copilot settings')).toBeInTheDocument());
-    fireEvent.change(screen.getByPlaceholderText('Appointment ID'), { target: { value: 'appt_1' } });
+    fireEvent.change(screen.getByPlaceholderText('Customer name, phone or date'), { target: { value: 'Ann' } });
+    fireEvent.click(await screen.findByTestId('rc-cx-appt-opt'));
     fireEvent.change(screen.getByPlaceholderText('Reason'), { target: { value: 'x' } });
     await waitFor(() => expect(screen.getByText('Prepare').closest('button')).toBeDisabled());
   });
@@ -138,5 +145,42 @@ describe('Copilot panels accessibility (§54)', () => {
     expect(await screen.findByRole('region', { name: 'Waitlist and standby' })).toBeInTheDocument();
     // the service select is labelled for screen readers
     expect(await screen.findByRole('combobox', { name: /explain a service/i })).toBeInTheDocument();
+  });
+});
+
+describe('A8 / A16 Nov 6 — name pickers, tabbed workspace', () => {
+  it('Check for Conflicts picks a technician by name and sends that technician’s ID', async () => {
+    render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
+    fireEvent.change(screen.getByPlaceholderText('Technician name'), { target: { value: 'Amy' } });
+    fireEvent.click(await screen.findByTestId('rc-cf-tech-opt'));
+    expect(ccSearch).toHaveBeenCalledWith(expect.objectContaining({ scope: 'technicians', q: 'Amy' }));
+    expect((screen.getByPlaceholderText('Technician name') as HTMLInputElement).value).toBe('Amy');
+  });
+  it('the view tabs show one part at a time and remember the choice in the address', async () => {
+    window.history.replaceState(null, '', '/tenant/ai/copilot');
+    render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
+    expect(screen.getByText('Cancel an appointment')).toBeInTheDocument();      // All: the whole page, as before
+    fireEvent.click(screen.getByTestId('rc-view-history'));
+    expect(screen.queryByText('Cancel an appointment')).toBeNull();
+    expect(screen.getByTestId('rcc-workspace')).toBeInTheDocument();
+    expect(window.location.search).toContain('rcview=history');
+    fireEvent.click(screen.getByTestId('rc-view-actions'));
+    expect(screen.getByText('Cancel an appointment')).toBeInTheDocument();
+    expect(screen.queryByTestId('rcc-workspace')).toBeNull();
+    fireEvent.click(screen.getByTestId('rc-view-all'));
+    expect(window.location.search).not.toContain('rcview');
+  });
+  it('Check Copilot System names who fixes each part', async () => {
+    render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
+    fireEvent.click(screen.getByTestId('rcc-check'));
+    expect(await screen.findByTestId('rcc-resp-twilio')).toHaveTextContent('Owner');
+  });
+  it('search opens from the address (Texts scope, words) and searches sent texts', async () => {
+    ccSearch.mockClear();
+    window.history.replaceState(null, '', '/tenant/ai/copilot?rctab=search&rcscope=messages&rcq=nails');
+    render(<MemoryRouter><POSReceptionCopilotScreen /></MemoryRouter>);
+    await waitFor(() => expect(ccSearch).toHaveBeenCalledWith(expect.objectContaining({ scope: 'messages', q: 'nails', page: 1 })));
+    expect((screen.getByTestId('rcc-scope') as HTMLSelectElement).value).toBe('messages');
+    window.history.replaceState(null, '', '/tenant/ai/copilot');
   });
 });

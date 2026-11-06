@@ -24,6 +24,17 @@ export interface ReceptionistSettings {
   recordingConsentMessage: string;
 }
 
+/** A9 Nov 6: Check Receptionist Settings (read-only, recorded) */
+export interface ReceptionistSettingsCheckResult {
+  overall: 'READY' | 'WARNING' | 'FAILED';
+  checks: { id: string; label: string; state: 'READY' | 'WARNING' | 'FAILED'; detail: string; remedy: string | null }[];
+  checkedAt: string; runId: string | null; recorded: boolean;
+}
+export interface ReceptionistSettingsLastCheck { id: string; overall: string; checks: unknown[]; at: string }
+/** settings with where they came from, and whether the recording notice is owner-approved */
+export type ReceptionistSettingsWithMeta = ReceptionistSettings & { meta?: { version: number; source: string; scope: string; appliedToCalls: false;
+  consent?: { approved: boolean; approvedAt: string | null; approvedBy: string | null; supported: boolean } } };
+
 export interface ProvisioningJob {
   id: string; tenantId: string; agentId: string; status: 'pending' | 'running' | 'succeeded' | 'failed';
   currentStep: string | null; currentStepLabel: string | null; progress: number;

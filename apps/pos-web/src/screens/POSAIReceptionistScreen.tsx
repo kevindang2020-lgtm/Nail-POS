@@ -13,7 +13,7 @@
 //   • priority list: urgent + oldest first; Front Desk prepares a follow-up task, an owner/manager confirms — texts and
 //     booking changes are never executed here
 //   • controls (owner/manager): arm booking actions, verify the test call (a real recorded call), activate — all gated.
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posAiReceptionistCenterApi, type RcCallsQuery, type RcControlAction } from '../api/posAiReceptionistCenterApi';
@@ -30,6 +30,30 @@ const TONE: Record<string, string> = { READY: 'ok', WARNING: 'warn', FAILED: 'ba
 const STEP_TONE: Record<string, string> = { verified: 'ok', configured: 'warn', blocked: 'bad', incomplete: 'muted' };
 const STAGE_TONE: Record<string, string> = { live: 'ok', test_call_verified: 'ok', ready_for_test: 'warn', configured: 'warn', not_configured: 'muted', degraded: 'bad' };
 const SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
+const CALL_STATUSES = ['completed', 'missed', 'abandoned', 'failed', 'handed_off', 'in_progress'] as const;
+const BASES = ['call_started', 'call_ended', 'recorded', 'last_event'] as const;
+const LENGTHS: Record<string, [number | undefined, number | undefined]> = { short: [undefined, 59], medium: [60, 299], long: [300, undefined] };
+// URL filters (A15 Nov 6): scope, words and call filters live in the address (rp* keys) so a refresh or a shared link
+// reopens the same list. LIVE_MS: the list, KPIs and priorities re-read on this interval while the tab is visible.
+const LIVE_MS = 30_000;
+const URL_KEYS = ['rpscope', 'rpq', 'rpstatus', 'rpoutcome', 'rpbasis', 'rpperiod', 'rpfrom', 'rpto', 'rpsort', 'rppage', 'rpsize', 'rpagent', 'rpservice', 'rpdir', 'rplen'] as const;
+function readRpUrl() { try { return new URLSearchParams(window.location.search); } catch { return new URLSearchParams(); } }
+function writeRpUrl(v: Record<string, string | number | undefined>) {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    for (const k of URL_KEYS) p.delete(k);
+    for (const [k, x] of Object.entries(v)) if (x !== undefined && x !== '' && x !== null) p.set(k, String(x));
+    const qs = p.toString(); window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? '?' + qs : ''));
+  } catch { /* no URL in this host */ }
+}
+function lengthOf(f: RcCallsQuery) { return Object.entries(LENGTHS).find(([, [a, b]]) => a === f.minSeconds && b === f.maxSeconds)?.[0] ?? ''; }
+function callsFromUrl(): RcCallsQuery {
+  const u = readRpUrl(); const g = (k: string) => u.get(k) ?? undefined; const len = LENGTHS[u.get('rplen') ?? ''];
+  return { page: Math.max(1, Number(u.get('rppage')) || 1), pageSize: [10, 20, 50].includes(Number(u.get('rpsize'))) ? Number(u.get('rpsize')) : 10,
+    sort: g('rpsort') ?? 'newest', dateBasis: (BASES as readonly string[]).includes(u.get('rpbasis') ?? '') ? u.get('rpbasis')! : 'call_started',
+    status: g('rpstatus'), outcome: g('rpoutcome'), period: g('rpperiod'), from: g('rpfrom'), to: g('rpto'), agent: g('rpagent'), service: g('rpservice'), direction: g('rpdir'),
+    minSeconds: len?.[0], maxSeconds: len?.[1] };
+}
 const PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
 const today = () => deviceToday();
 const dur = (s: number | null | undefined) => (s == null ? '—' : `${Math.floor(s / 60)}m ${s % 60}s`);
@@ -46,9 +70,11 @@ export function POSAIReceptionistScreen() {
   const [ready, setReady] = useState<any>(null); const [readyErr, setReadyErr] = useState<string | null>(null);
   const [period, setPeriod] = useState<{ period: string; from?: string; to?: string }>({ period: 'month' });
   const [kpi, setKpi] = useState<any>(null); const [kpiErr, setKpiErr] = useState<string | null>(null);
-  const [scope, setScope] = useState<typeof SCOPES[number]>('calls');
-  const [search, setSearch] = useState(''); const dq = useDebounced(search, 300);
-  const [f, setF] = useState<RcCallsQuery>({ page: 1, pageSize: 10, sort: 'newest', dateBasis: 'call_started' });
+  const [scope, setScope] = useState<typeof SCOPES[number]>(() => { const v = readRpUrl().get('rpscope') ?? ''; return (SCOPES as readonly string[]).includes(v) ? v as typeof SCOPES[number] : 'calls'; });
+  const [search, setSearch] = useState(() => readRpUrl().get('rpq') ?? ''); const dq = useDebounced(search, 300);
+  const [f, setF] = useState<RcCallsQuery>(callsFromUrl);
+  const [svc, setSvc] = useState(() => readRpUrl().get('rpservice') ?? ''); const dsvc = useDebounced(svc, 300);
+  const [liveAt, setLiveAt] = useState<string | null>(null);
   const [list, setList] = useState<any>(null); const [listErr, setListErr] = useState<string | null>(null); const [loading, setLoading] = useState(true);
   const [cal, setCal] = useState<null | 'kpi' | 'calls'>(null);
   const [prio, setPrio] = useState<any>(null); const [prioPage, setPrioPage] = useState(1); const [prioErr, setPrioErr] = useState<string | null>(null);
@@ -71,7 +97,22 @@ export function POSAIReceptionistScreen() {
   useEffect(() => { loadKpi(); }, [loadKpi]);
   useEffect(() => { loadPrio(); }, [loadPrio]);
   useEffect(() => { void loadList(); }, [loadList]);
-  useEffect(() => { setF((x) => ({ ...x, page: 1 })); }, [dq, scope]);
+  const firstFilter = useRef(true);
+  useEffect(() => { if (firstFilter.current) { firstFilter.current = false; return; } setF((x) => ({ ...x, page: 1 })); }, [dq, scope]);
+  useEffect(() => { setF((x) => (x.service === (dsvc || undefined) ? x : { ...x, service: dsvc || undefined, page: 1 })); }, [dsvc]);
+  useEffect(() => {
+    writeRpUrl({ rpscope: scope === 'calls' ? undefined : scope, rpq: dq || undefined, rpstatus: f.status, rpoutcome: f.outcome, rpbasis: f.dateBasis === 'call_started' ? undefined : f.dateBasis,
+      rpperiod: f.period, rpfrom: f.from, rpto: f.to, rpsort: f.sort === 'newest' ? undefined : f.sort, rppage: (f.page ?? 1) > 1 ? f.page : undefined, rpsize: f.pageSize === 10 ? undefined : f.pageSize,
+      rpagent: f.agent, rpservice: f.service, rpdir: f.direction, rplen: lengthOf(f) || undefined });
+  }, [scope, dq, f]);
+  // live updates (A15 Nov 6): re-read while the tab is visible; nothing re-orders under the user's finger — a page keeps its filters
+  useEffect(() => {
+    const tick = () => { if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return; loadKpi(); loadPrio(); void loadList(); setLiveAt(new Date().toISOString()); };
+    const h = window.setInterval(tick, LIVE_MS);
+    const onVis = () => { if (document.visibilityState === 'visible') tick(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { window.clearInterval(h); document.removeEventListener('visibilitychange', onVis); };
+  }, [loadKpi, loadPrio, loadList]);
   const setFilter = (patch: Partial<RcCallsQuery>) => setF((x) => ({ ...x, ...patch, page: 1 }));
   const refreshAll = () => { loadReady(); loadKpi(); loadPrio(); void loadList(); };
   const ctl = ready?.control;
@@ -223,33 +264,46 @@ export function POSAIReceptionistScreen() {
           <input className="rcp-search" data-testid="rcp-search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('rcpt.searchPh')} aria-label={t('rcpt.searchPh')} />
           {scope === 'calls' ? <>
             <select aria-label={t('rcpt.f.status')} value={f.status ?? ''} onChange={(e) => setFilter({ status: e.target.value || undefined })} data-testid="rcp-f-status">
-              <option value="">{t('rcpt.f.allStatus')}</option>{['completed', 'abandoned', 'failed', 'handed_off'].map((s) => <option key={s} value={s}>{t(`rcpt.cstat.${s}`)}</option>)}
+              <option value="">{t('rcpt.f.allStatus')}</option>{CALL_STATUSES.map((s) => <option key={s} value={s}>{t(`rcpt.cstat.${s}`)}</option>)}
             </select>
             <select aria-label={t('rcpt.f.outcome')} value={f.outcome ?? ''} onChange={(e) => setFilter({ outcome: e.target.value || undefined })} data-testid="rcp-f-outcome">
               <option value="">{t('rcpt.f.allOutcome')}</option>{['booked', 'booking_requested', 'question', 'handoff', 'follow_up'].map((s) => <option key={s} value={s}>{t(`rcpt.out.${s}`)}</option>)}
             </select>
             <select aria-label={t('rcpt.f.basis')} value={f.dateBasis} onChange={(e) => setFilter({ dateBasis: e.target.value })}>
-              <option value="call_started">{t('rcpt.basis.call_started')}</option><option value="recorded">{t('rcpt.basis.recorded')}</option>
+              {BASES.map((b) => <option key={b} value={b}>{t(`rcpt.basis.${b}`)}</option>)}
             </select>
             <select aria-label={t('rcpt.period')} value={f.period ?? ''} onChange={(e) => (e.target.value === 'custom' ? setCal('calls') : setFilter({ period: e.target.value || undefined, from: undefined, to: undefined }))} data-testid="rcp-f-period">
               <option value="">{t('rcpt.period.any')}</option>{PERIODS.map((p) => <option key={p} value={p}>{t(`rcpt.period.${p}`)}</option>)}
             </select>
             <button className="btn ghost" data-testid="rcp-cal" onClick={() => setCal('calls')}>{f.from || f.to ? `${f.from ?? '…'} – ${f.to ?? '…'}` : t('rcpt.fromTo')}</button>
+            {list?.agents?.length ? (
+              <select aria-label={t('rcpt.f.agent')} value={f.agent ?? ''} onChange={(e) => setFilter({ agent: e.target.value || undefined })} data-testid="rcp-f-agent">
+                <option value="">{t('rcpt.f.allAgents')}</option>{list.agents.map((a: any) => <option key={a.ref} value={a.ref}>{a.name}</option>)}
+              </select>) : null}
+            <input className="rcp-search" style={{ maxWidth: 160 }} value={svc} onChange={(e) => setSvc(e.target.value)} placeholder={t('rcpt.f.service')} aria-label={t('rcpt.f.service')} data-testid="rcp-f-service" />
+            <select aria-label={t('rcpt.f.direction')} value={f.direction ?? ''} onChange={(e) => setFilter({ direction: e.target.value || undefined })} data-testid="rcp-f-direction">
+              <option value="">{t('rcpt.f.allDirections')}</option>{['inbound', 'outbound'].map((d) => <option key={d} value={d}>{t(`rcpt.dir.${d}`)}</option>)}
+            </select>
+            <select aria-label={t('rcpt.f.length')} value={lengthOf(f)} onChange={(e) => { const r = LENGTHS[e.target.value]; setFilter({ minSeconds: r?.[0], maxSeconds: r?.[1] }); }} data-testid="rcp-f-length">
+              <option value="">{t('rcpt.f.anyLength')}</option>{Object.keys(LENGTHS).map((k) => <option key={k} value={k}>{t(`rcpt.len.${k}`)}</option>)}
+            </select>
             <select aria-label={t('rcpt.sort')} value={f.sort} onChange={(e) => setFilter({ sort: e.target.value })}>{['newest', 'oldest', 'longest'].map((s) => <option key={s} value={s}>{t(`rcpt.sort.${s}`)}</option>)}</select>
           </> : null}
           <select aria-label={t('rcpt.pageSize')} value={f.pageSize} onChange={(e) => setFilter({ pageSize: Number(e.target.value) })} data-testid="rcp-pagesize">{[10, 20, 50].map((n) => <option key={n} value={n}>{t('rcpt.perPage', { n })}</option>)}</select>
-          <button className="btn ghost" onClick={() => { setSearch(''); setF({ page: 1, pageSize: f.pageSize, sort: 'newest', dateBasis: 'call_started' }); }}>{t('rcpt.clear')}</button>
+          <button className="btn ghost" onClick={() => { setSearch(''); setSvc(''); setF({ page: 1, pageSize: f.pageSize, sort: 'newest', dateBasis: 'call_started' }); }}>{t('rcpt.clear')}</button>
         </div>
+        <div className="rcp-muted" data-testid="rcp-live">{t('rcpt.live', { s: LIVE_MS / 1000 })}{liveAt ? ` · ${t('rcpt.liveAt', { when: when(liveAt) })}` : ''}</div>
         {scope === 'calls' && (f.period || f.from) ? <div className="rcp-muted" data-testid="rcp-basis-note">{t('rcpt.basisNote', { basis: t(`rcpt.basis.${f.dateBasis}`) })}</div> : null}
         {listErr ? <ErrorRetry message={listErr} onRetry={() => void loadList()} /> : loading && !list ? <div className="state">{t('rcpt.loading')}</div>
-          : !list || list.items.length === 0 ? <Empty title={dq || f.status || f.outcome || f.period || f.from ? t('rcpt.noMatch') : scope === 'calls' ? t('rcpt.noCalls') : t('rcpt.typeToSearch')} />
+          : !list || list.items.length === 0 ? <Empty title={dq || f.status || f.outcome || f.period || f.from || f.agent || f.service || f.direction || f.minSeconds != null || f.maxSeconds != null ? t('rcpt.noMatch') : scope === 'calls' ? t('rcpt.noCalls') : t('rcpt.typeToSearch')} />
           : scope === 'calls' ? (
-            <table className="tbl rcp-tbl" data-testid="rcp-call-table"><thead><tr><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.caller')}</th><th>{t('rcpt.col.status')}</th><th>{t('rcpt.col.booking')}</th><th>{t('rcpt.col.handoff')}</th><th>{t('rcpt.col.duration')}</th><th /></tr></thead>
+            <table className="tbl rcp-tbl" data-testid="rcp-call-table"><thead><tr><th>{t('rcpt.col.when')}</th><th>{t('rcpt.col.caller')}</th><th>{t('rcpt.col.dialed')}</th><th>{t('rcpt.col.status')}</th><th>{t('rcpt.col.booking')}</th><th>{t('rcpt.col.handoff')}</th><th>{t('rcpt.col.duration')}</th><th /></tr></thead>
               <tbody>{list.items.map((c: any) => (
                 <tr key={c.id} data-testid="rcp-call-row">
                   <td>{when(c.startedAt)}<div className="rcp-muted">{c.callRef.slice(0, 14)}</div></td>
                   <td>{c.callerMasked ?? '—'}<div className="rcp-muted">{t(`rcpt.identity.${c.identity}`)}</div></td>
-                  <td><Badge s={c.status} tone={c.status === 'completed' ? 'ok' : c.status === 'failed' || c.status === 'abandoned' ? 'bad' : 'warn'} label={t(`rcpt.cstat.${c.status}`)} /></td>
+                  <td>{c.dialedMasked ?? '—'}{c.direction ? <div className="rcp-muted">{t(`rcpt.dir.${c.direction}`)}</div> : null}</td>
+                  <td><Badge s={c.status} tone={c.status === 'completed' ? 'ok' : c.status === 'failed' || c.status === 'abandoned' || c.status === 'missed' ? 'bad' : 'warn'} label={t(`rcpt.cstat.${c.status}`)} /></td>
                   <td>{c.bookingOutcome ?? '—'}</td><td>{c.handoffOutcome ?? '—'}</td><td>{dur(c.durationSeconds)}</td>
                   <td><button className="btn ghost" onClick={() => setOpen(c.callRef)}>{t('rcpt.open')}</button></td>
                 </tr>

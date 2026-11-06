@@ -193,6 +193,15 @@ describe('search, activity history and calendar (CP04, CP07–CP11)', () => {
     expect(((await cc.search(owner, { scope: 'customers', q: 'Ng' })).items as any[]).every((x) => x.sharedPhoneProfiles === 1)).toBe(true);
     expect((await cc.search(owner, { scope: 'customers', q: 'p' })).hint).toBeTruthy();
   });
+  it('A8 Nov 6: the Texts scope finds sent SMS by words or phone digits, masked, newest first, this salon only', async () => {
+    for (const [t, to, body] of [[T, '+16095558801', 'Your nails are ready at Rose Spa'], [T, '+16095558802', 'Reminder: gel fill tomorrow'], [T2, '+16095558801', 'Your nails are ready elsewhere']] as const)
+      await q(sql`insert into notifications (id, tenant_id, branch_id, channel, to_address, body, status) values (${randomUUID()}, ${t}, ${t === T ? B : B2}, 'sms', ${to}, ${body}, 'sent')`);
+    await q(sql`insert into notifications (id, tenant_id, channel, to_address, body, status) values (${randomUUID()}, ${T}, 'email', 'x@ex.test', 'Your nails are ready (email)', 'sent')`);
+    const w = await cc.search(owner, { scope: 'messages', q: 'nails are ready' });
+    expect(w.total).toBe(1); expect((w.items[0] as any).to).toBe('•••8801'); expect((w.items[0] as any).preview).toContain('Rose Spa');
+    expect((await cc.search(owner, { scope: 'messages', q: '5558802' })).total).toBe(1);
+    expect((await cc.search(owner, { scope: 'messages', q: 'zzz-none' })).total).toBe(0);
+  });
   it('activity is newest first with stable paging, state filter and an inclusive salon-local window', async () => {
     const all = await cc.activity(owner, { period: 'year', pageSize: 10 });
     expect(all.total).toBeGreaterThanOrEqual(5);
@@ -216,6 +225,8 @@ describe('Check Copilot System, priorities and the customer overlay (CP29–CP33
     expect((h.checks as any[]).map((c) => c.id).sort()).toEqual(['background', 'booking', 'customers', 'entitlement', 'queue', 'roles', 'settings', 'twilio']);
     expect((h.checks as any[]).find((c) => c.id === 'twilio').state).toBe('NOT_CONFIGURED');
     expect((h.checks as any[]).find((c) => c.id === 'entitlement').state).toBe('UNKNOWN');
+    // A8 Nov 6: every part names who fixes it
+    expect(Object.fromEntries((h.checks as any[]).map((c) => [c.id, c.responsible]))).toEqual({ entitlement: 'owner', settings: 'owner', roles: 'manager', customers: 'front_desk', booking: 'manager', queue: 'front_desk', twilio: 'owner', background: 'platform_support' });
     const again = await cc.health(owner); expect(again).toMatchObject({ rateLimited: true, runId: h.runId });
     expect((await q(sql`select count(*)::int c from notifications where tenant_id = ${T}`))[0].c).toBe(n0);
     expect((await q(sql`select count(*)::int c from pos_tech_appointments where tenant_id = ${T}`))[0].c).toBe(a0);

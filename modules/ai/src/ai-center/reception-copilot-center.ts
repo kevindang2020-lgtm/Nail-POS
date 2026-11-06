@@ -28,7 +28,11 @@ import type { CopilotSettings } from './copilot-settings.service';
 
 export const COPILOT_CENTER = Symbol('COPILOT_CENTER');
 export const CC_PACKAGE = 'ai_reception_copilot';
-export const CC_SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'activity'] as const;
+export const CC_SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'messages', 'activity'] as const;
+/** Who fixes each Check Copilot System part (A8 Nov 6 — Kevin: "continue finish all"). */
+export const CC_RESPONSIBLE: Record<string, 'owner' | 'manager' | 'front_desk' | 'platform_support'> = {
+  entitlement: 'owner', settings: 'owner', roles: 'manager', customers: 'front_desk', booking: 'manager', queue: 'front_desk', twilio: 'owner', background: 'platform_support',
+};
 export const CC_ACTION_TYPES = ['create_appointment', 'reschedule_appointment', 'cancel_appointment', 'send_message'] as const;
 export const CC_STATES = ['pending', 'succeeded', 'failed', 'unknown'] as const;
 export const CC_PERIODS = ['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const;
@@ -54,7 +58,7 @@ const DOMAIN_PERM: Record<string, string | null> = {
 type Row = Record<string, any>;
 export interface CcCtx { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
 export type CcState = 'READY' | 'WARNING' | 'FAILED' | 'NOT_CONFIGURED' | 'DISABLED' | 'UNKNOWN';
-export interface CcCheck { id: string; area: string; label: string; state: CcState; detail: string; evidence: string; remedy: string | null; checkedAt: string }
+export interface CcCheck { id: string; area: string; label: string; state: CcState; detail: string; evidence: string; remedy: string | null; checkedAt: string; responsible?: string }
 export interface CcAccessRepo { loadSnapshot(tenantId: string, packageCode: string, userId: string | null, opts?: { branchId?: string | null }): Promise<AiAccessSnapshot> }
 export interface CcQueuePort { queueSummary(ctx: CcCtx): Promise<{ available: boolean; waiting: number; inService: number; unassigned: number; vipWaiting: number; longestWaitMinutes: number | null; denied?: boolean }> }
 export interface CcSettingsPort { get(ctx: CcCtx): Promise<CopilotSettings> }
@@ -334,6 +338,16 @@ export class ReceptionCopilotCenter {
       return { scope, total, page: pg.page, pageSize: pg.size, pages: Math.max(1, Math.ceil(total / pg.size)),
         items: rows.map((x) => ({ id: x.id, name: x.full_name, status: x.status, active: !!x.is_active })) };
     }
+    if (scope === 'messages') {
+      // Texts the salon sent (SMS only). Matches the message words or the recipient's phone digits; the number is masked.
+      const where = sql`n.channel = 'sms' and (${b}::uuid is null or n.branch_id = ${b}) and (n.body ilike ${like(q)} or n.id = ${idq}::uuid or n.provider_id = ${q}
+        or (${d.length >= 4} and regexp_replace(n.to_address, '\\D', '', 'g') like ${'%' + d + '%'}))`;
+      const total = n((await sql<Row>`select count(*)::int c from notifications n where n.tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.c);
+      const rows = (await sql<Row>`select n.id, n.to_address, n.status, n.purpose, n.created_at, n.provider_error_code, left(n.body, 90) preview
+        from notifications n where n.tenant_id = ${T} and ${where} order by n.created_at desc, n.id desc limit ${pg.size} offset ${pg.offset}`.execute(this.db)).rows;
+      return { scope, total, page: pg.page, pageSize: pg.size, pages: Math.max(1, Math.ceil(total / pg.size)),
+        items: rows.map((x) => ({ id: x.id, to: maskPhone(x.to_address), at: iso(x.created_at), status: x.status, purpose: x.purpose ?? null, errorCode: x.provider_error_code ?? null, preview: x.preview ?? '' })) };
+    }
     const where = sql`(${b}::uuid is null or o.branch_id = ${b}) and (o.provider_call_id ilike ${like(q)} or o.summary ilike ${like(q)})`;
     const total = n((await sql<Row>`select count(*)::int c from voice_call_outcomes o where o.tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.c);
     const rows = (await sql<Row>`select o.id, o.provider_call_id, o.started_at, o.duration_seconds, o.booking_outcome, o.handoff_outcome, o.follow_up_required
@@ -372,7 +386,7 @@ export class ReceptionCopilotCenter {
       order by created_at desc limit 1`.execute(this.db)).rows[0];
     if (recent) return { runId: recent.id, overall: recent.overall, checks: recent.checks, checkedAt: iso(recent.created_at), rateLimited: true };
     const at = new Date().toISOString(); const out: CcCheck[] = [];
-    const add = (id: string, area: string, label: string, state: CcState, detail: string, evidence: string, remedy: string | null = null) => out.push({ id, area, label, state, detail, evidence, remedy, checkedAt: at });
+    const add = (id: string, area: string, label: string, state: CcState, detail: string, evidence: string, remedy: string | null = null) => out.push({ id, area, label, state, detail, evidence, remedy, checkedAt: at, responsible: CC_RESPONSIBLE[id] ?? 'manager' });
     const guard = async (id: string, area: string, label: string, fn: () => Promise<void>) => {
       try { await fn(); } catch (e) { add(id, area, label, 'UNKNOWN', 'This could not be checked right now.', `read failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Run the check again; if it repeats, contact support with the run time.'); }
     };

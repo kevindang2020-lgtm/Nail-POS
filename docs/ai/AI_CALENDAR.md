@@ -76,4 +76,15 @@ Rollout: deploy 758 (additive; rollback in the file header) → enable the AI Ca
 
 ## Handoffs
 * Guide 26 AI Follow-Ups / 27 AI Center: the calendar summary (`/pos/ai/calendar-center/summary`) and health run are reusable read models.
-* Open owner decisions: (1) map saved salon hours into the booking engine (affects Open Slots), (2) Front Desk full contact in the overlay?, (3) deep-link focus on an appointment inside POS Booking.
+* Owner decisions taken Nov 6 2026 (Kevin: "pick best"):
+  1. **Open Slots follow the saved salon hours.** The count is clipped to the branch's saved hours for that weekday
+     (`tenant_location_hours`; effective-dated rows win).
+     - On a saved closed day, nothing is counted.
+     - With no saved hours, the count uses the engine's own hours.
+     - The booking engine itself is NOT changed, because that would change real booking for every salon. Its raw total is still
+       shown, and the reconciliation line says how many start times fall outside the saved hours.
+     - Test: `ai-calendar-center.pgtest` "A11 Nov 6".
+  2. **Full contact in the overlay** stays limited to `customers.export` roles (unchanged).
+  3. **Deep link.** POS Booking reads `?appointmentId=` (the overlay's Open Booking link) and opens that appointment's Manage
+     drawer, scrolled into view. An id that is not on the list opens nothing.
+     - Test: `POSBookingScreen.arrived-late.test` "A11 Nov 6".

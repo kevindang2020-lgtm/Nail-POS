@@ -1195,6 +1195,15 @@ export function POSBookingScreen() {
     finally { setBusyId(null); }
   };
 
+  // A11 Nov 6 (owner decision, Kevin "pick best"): /booking?date=…&appointmentId=<id> (the AI Calendar overlay link) opens that appointment's Manage drawer
+  // once the day's list contains it, and scrolls it into view. Read once; an id that is not on the list opens nothing.
+  const deepAppt = useRef<string | null>((() => { try { const u = new URLSearchParams(window.location.search); const v = u.get('appointmentId') ?? u.get('appointment') ?? ''; return /^[0-9a-f-]{36}$/i.test(v) ? v : null; } catch { return null; } })());
+  useEffect(() => {
+    const id = deepAppt.current; if (!id || !s?.bookings?.items) return;
+    const a = s.bookings.items.find((x) => x.appointmentId === id); if (!a) return;
+    deepAppt.current = null; toggleDrawer(a as Row);
+    window.setTimeout(() => { try { document.querySelector(`[data-appt-row="${id}"]`)?.scrollIntoView({ block: 'center' }); } catch { /* jsdom / no layout */ } }, 0);
+  });   // no deps on purpose: runs until the deep-linked row appears, then never again
   const toggleDrawer = (a: Row) => {
     if (openId === a.appointmentId) { setOpenId(null); return; }
     setOpenId(a.appointmentId); setNote(null); setReason('');
@@ -1827,7 +1836,7 @@ export function POSBookingScreen() {
         <div className="list" style={{ maxHeight: 'calc(100vh - 320px)' }}>
           {s.bookings.items.length === 0 ? <div className="muted">{tx('pos.no_appointments_match')}</div> : null}
           {s.bookings.items.map((a) => (
-            <div key={a.appointmentId} style={{ borderBottom: '1px solid var(--line)' }}>
+            <div key={a.appointmentId} data-appt-row={a.appointmentId} style={{ borderBottom: '1px solid var(--line)' }}>
               <div className="row" style={{ borderBottom: 'none', gap: 12, alignItems: 'center' }}>
                 <div style={{ width: 140, flex: 'none' }} className="s">{tm(a.startTime)}–{tm(a.endTime)}</div>
                 <div style={{ flex: '1 1 180px', minWidth: 150 }}>

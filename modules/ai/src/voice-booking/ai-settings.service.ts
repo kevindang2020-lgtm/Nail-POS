@@ -8,6 +8,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
 import { withCode } from '@aipowersalon/api-contracts';
+import { createHash } from 'node:crypto';
 
 export interface SettingsCtx { tenantId: string; branchId: string | null; userId: string; role: string; permissions: string[] }
 
@@ -66,9 +67,18 @@ export interface SettingsRepo {
   /** the row's version (0 = never saved) */
   version?(tenantId: string, branchId: string): Promise<number>;
   history?(tenantId: string, branchId: string, page: number, pageSize: number): Promise<{ items: SettingsVersion[]; total: number }>;
+  /** A9 Nov 6: the newest approval of this exact notice text in any of the given scopes (branch first, then salon) */
+  consentApproval?(tenantId: string, scopes: string[], textSha: string): Promise<{ at: string; by: string | null; byName: string | null } | null>;
+  approveConsent?(tenantId: string, branchId: string, text: string, textSha: string, userId: string, role: string): Promise<void>;
+  recordCheck?(tenantId: string, branchId: string, overall: string, checks: unknown[], userId: string): Promise<{ id: string; at: string }>;
+  lastCheck?(tenantId: string, branchId: string): Promise<{ id: string; overall: string; checks: unknown[]; at: string } | null>;
 }
+export class SettingsConsentError extends Error { constructor(msg: string, readonly code: string) { super(msg); this.name = 'SettingsConsentError'; } }
+export const consentSha = (text: string) => createHash('sha256').update(String(text ?? '').trim()).digest('hex');
+export interface SettingsCheck { id: string; label: string; state: 'READY' | 'WARNING' | 'FAILED'; detail: string; remedy: string | null }
 export interface SettingsVersion { version: number; settings: Partial<ReceptionistSettings>; before: Partial<ReceptionistSettings> | null; changedKeys: string[]; actorUserId: string | null; actorName: string | null; at: string }
-export interface SettingsMeta { version: number; source: 'branch' | 'salon' | 'defaults'; scope: 'branch' | 'salon'; appliedToCalls: false }
+export interface SettingsMeta { version: number; source: 'branch' | 'salon' | 'defaults'; scope: 'branch' | 'salon'; appliedToCalls: false;
+  consent?: { approved: boolean; approvedAt: string | null; approvedBy: string | null; supported: boolean } }
 const SENTINEL = '00000000-0000-0000-0000-000000000000';
 const scopeBranch = (branchId: string | null) => branchId || SENTINEL;
 
@@ -84,7 +94,51 @@ export class AiSettingsService {
     const version = this.repo.version ? await this.repo.version(ctx.tenantId, scopeBranch(ctx.branchId)) : 0;
     // Receptionist Settings guide: say where the values come from, and honestly that the live call runtime does not read them yet
     const meta: SettingsMeta = { version, source: branch ? 'branch' : salon ? 'salon' : 'defaults', scope: ctx.branchId ? 'branch' : 'salon', appliedToCalls: false };
-    return { ...DEFAULT_SETTINGS, ...(salon ?? {}), ...(branch ?? {}), defaultLanguage: 'en', meta };   // English only, whatever was stored before Oct 28 2026
+    const eff: ReceptionistSettings = { ...DEFAULT_SETTINGS, ...(salon ?? {}), ...(branch ?? {}), defaultLanguage: 'en' };   // English only, whatever was stored before Oct 28 2026
+    const ap = await this.approval(ctx, eff.recordingConsentMessage);
+    meta.consent = { approved: !!ap, approvedAt: ap?.at ?? null, approvedBy: ap?.byName ?? null, supported: !!this.repo.consentApproval };
+    return { ...eff, meta };
+  }
+  private async approval(ctx: SettingsCtx, text: string) {
+    if (!this.repo.consentApproval) return null;
+    const scopes = ctx.branchId ? [scopeBranch(ctx.branchId), SENTINEL] : [SENTINEL];
+    return this.repo.consentApproval(ctx.tenantId, scopes, consentSha(text));
+  }
+  /** A9 Nov 6: an OWNER approves the exact recording notice (for this branch, or the salon when no branch is chosen). */
+  async approveConsent(ctx: SettingsCtx, text: unknown) {
+    if (!hasPermission(ctx as unknown as Parameters<typeof hasPermission>[0], 'ai.manage')) throw new SettingsForbiddenError('Missing ai.manage');
+    if (String(ctx.role ?? '').toUpperCase() !== 'OWNER') throw new SettingsConsentError('Only an owner can approve the recording notice.', 'AI_RCPT_OWNER_ONLY');
+    const t = typeof text === 'string' ? text.trim() : '';
+    if (!t) throw withCode(new SettingsValidationError('Type the recording notice to approve.'), 'VALIDATION_FAILED', { field: 'text' });
+    if (t.length > 2000) throw withCode(new SettingsValidationError('The recording notice must be 2000 characters or fewer.'), 'FIELD_TOO_LONG', { field: 'text', max: 2000 });
+    if (!this.repo.approveConsent) throw new SettingsConsentError('Approvals cannot be stored here.', 'AI_RCPT_CONSENT_NOT_APPROVED');
+    await this.repo.approveConsent(ctx.tenantId, scopeBranch(ctx.branchId), t, consentSha(t), ctx.userId, String(ctx.role));
+    return this.get(ctx);
+  }
+  /** A9 Nov 6: Check Receptionist Settings — read-only, recorded. Never calls the provider and changes no setting. */
+  async check(ctx: SettingsCtx) {
+    const checks: SettingsCheck[] = [];
+    const add = (id: string, label: string, state: SettingsCheck['state'], detail: string, remedy: string | null = null) => checks.push({ id, label, state, detail, remedy });
+    let s: (ReceptionistSettings & { meta?: SettingsMeta }) | null = null;
+    try { s = await this.get(ctx); add('read', 'Settings can be read', 'READY', `Using the ${s.meta?.source} values (version ${s.meta?.version ?? 0}).`); }
+    catch (e) { add('read', 'Settings can be read', 'FAILED', `The settings could not be read: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'Try again; if it repeats, contact AIPowerSalon support.'); }
+    if (s) {
+      if (s.recordingEnabled && !s.meta?.consent?.approved) add('consent', 'Recording notice approved', 'FAILED', 'Recording is on, but no owner has approved the current recording notice.', 'An owner approves the notice on this page, or recording is turned off.');
+      else if (s.recordingEnabled) add('consent', 'Recording notice approved', 'READY', `Approved${s.meta?.consent?.approvedBy ? ` by ${s.meta.consent.approvedBy}` : ''}.`);
+      else add('consent', 'Recording notice approved', s.meta?.consent?.approved ? 'READY' : 'WARNING', s.meta?.consent?.approved ? 'Recording is off; the notice is approved for when it is turned on.' : 'Recording is off. The notice is not approved yet.', s.meta?.consent?.approved ? null : 'An owner approves the notice before recording is turned on.');
+      if (s.recordingEnabled && !/record/i.test(s.recordingConsentMessage)) add('notice_words', 'Recording notice says “recorded”', 'WARNING', 'The notice does not say the call is recorded.', 'Say plainly that the call may be recorded.');
+      else add('notice_words', 'Recording notice says “recorded”', 'READY', s.recordingEnabled ? 'The notice tells callers the call may be recorded.' : 'Not needed while recording is off.');
+      if (s.silenceTimeoutSeconds * 2 >= s.maxCallDurationSeconds) add('timing', 'Silence and call length', 'WARNING', `The silence timeout (${s.silenceTimeoutSeconds} s) is long next to the call limit (${s.maxCallDurationSeconds} s).`, 'Shorten the silence timeout or raise the call limit.');
+      else add('timing', 'Silence and call length', 'READY', `Silence timeout ${s.silenceTimeoutSeconds} s; calls end after ${s.maxCallDurationSeconds} s.`);
+      add('history', 'Change history kept', this.repo.history ? 'READY' : 'WARNING', this.repo.history ? 'Every save keeps a version you can compare and restore.' : 'This store keeps no history.');
+      // honest: the live call agent does not read these values yet (Retell runtime config — external)
+      add('runtime', 'Live calls use these settings', 'WARNING', 'Live calls do not read these settings yet; the voice agent keeps its own provider configuration.', 'Kept as a known gap until the voice agent is connected to read them.');
+    }
+    const overall: 'READY' | 'WARNING' | 'FAILED' = checks.some((c) => c.state === 'FAILED') ? 'FAILED' : checks.some((c) => c.state === 'WARNING') ? 'WARNING' : 'READY';
+    const run = this.repo.recordCheck ? await this.repo.recordCheck(ctx.tenantId, scopeBranch(ctx.branchId), overall, checks, ctx.userId) : null;
+    return { overall, checks, checkedAt: run?.at ?? new Date().toISOString(), runId: run?.id ?? null, recorded: !!run };
+  }
+  async lastCheck(ctx: SettingsCtx) { return this.repo.lastCheck ? this.repo.lastCheck(ctx.tenantId, scopeBranch(ctx.branchId)) : null;
   }
   async history(ctx: SettingsCtx, page = 1, pageSize = 20) {
     const size = [10, 20, 50].includes(pageSize) ? pageSize : 20; const p = Math.max(1, Math.trunc(page) || 1);
@@ -101,6 +155,11 @@ export class AiSettingsService {
     const changedKeys = (Object.keys(valid) as (keyof ReceptionistSettings)[]).filter((k) => JSON.stringify(current[k]) !== JSON.stringify(merged[k]));
     const expectedVersion = ev == null ? undefined : Number(ev);
     if (expectedVersion !== undefined && !Number.isInteger(expectedVersion)) throw withCode(new SettingsValidationError('expectedVersion must be a whole number.'), 'VALIDATION_FAILED', { field: 'expectedVersion' });
+    // A9 Nov 6: recording may only be on with an owner-approved notice. Checked only when this save turns recording on or
+    // changes the notice while recording is on — saves of other settings never fail on it.
+    if (merged.recordingEnabled && (changedKeys.includes('recordingEnabled') || changedKeys.includes('recordingConsentMessage')) && this.repo.consentApproval
+      && !(await this.approval(ctx, merged.recordingConsentMessage)))
+      throw new SettingsConsentError('An owner must approve this recording notice before recording can be on.', 'AI_RCPT_CONSENT_NOT_APPROVED');
     await this.repo.upsert(ctx.tenantId, scopeBranch(ctx.branchId), merged, ctx.userId, { expectedVersion, before: current, changedKeys });
     return (await this.get(ctx));
   }
@@ -121,6 +180,15 @@ export class InMemorySettingsRepo implements SettingsRepo {
     this.hist.unshift({ k, version: cur + 1, settings: merged, before: opt.before ?? null, changedKeys: opt.changedKeys ?? [], actorUserId: userId ?? null, actorName: null, at: new Date().toISOString() });
     return cur + 1;
   }
+  private approvals: { t: string; b: string; sha: string; at: string; by: string }[] = [];
+  private runs: { t: string; b: string; id: string; overall: string; checks: unknown[]; at: string }[] = [];
+  async consentApproval(tenantId: string, scopes: string[], sha: string) {
+    for (const b of scopes) { const a = this.approvals.filter((x) => x.t === tenantId && x.b === b && x.sha === sha).pop(); if (a) return { at: a.at, by: a.by, byName: null }; }
+    return null;
+  }
+  async approveConsent(tenantId: string, branchId: string, _text: string, sha: string, userId: string) { this.approvals.push({ t: tenantId, b: branchId, sha, at: new Date().toISOString(), by: userId }); }
+  async recordCheck(tenantId: string, branchId: string, overall: string, checks: unknown[]) { const r = { t: tenantId, b: branchId, id: String(this.runs.length + 1), overall, checks, at: new Date().toISOString() }; this.runs.push(r); return { id: r.id, at: r.at }; }
+  async lastCheck(tenantId: string, branchId: string) { const r = this.runs.filter((x) => x.t === tenantId && x.b === branchId).pop(); return r ? { id: r.id, overall: r.overall, checks: r.checks, at: r.at } : null; }
   async history(tenantId: string, branchId: string, page: number, pageSize: number) {
     const all = this.hist.filter((h) => h.k === this.key(tenantId, branchId));
     return { items: all.slice((page - 1) * pageSize, page * pageSize).map(({ k: _k, ...h }) => h), total: all.length };
@@ -159,5 +227,26 @@ export class KyselySettingsRepo implements SettingsRepo {
       WHERE h.tenant_id = ${tenantId} AND h.branch_id = ${branchId} ORDER BY h.version DESC LIMIT ${pageSize} OFFSET ${(page - 1) * pageSize}`.execute(this.db)).rows;
     return { total, items: rows.map((r) => ({ version: Number(r.version), settings: r.settings ?? {}, before: r.before ?? null, changedKeys: r.changed_keys ?? [], actorUserId: r.actor_user_id ?? null,
       actorName: r.full_name ?? null, at: new Date(r.created_at).toISOString() })) };
+  }
+  async consentApproval(tenantId: string, scopes: string[], sha: string) {
+    for (const b of scopes) {
+      const r: any = (await sql`SELECT a.created_at, a.approved_by, u.full_name FROM ai_receptionist_consent_approvals a LEFT JOIN users u ON u.id = a.approved_by AND u.tenant_id = a.tenant_id
+        WHERE a.tenant_id = ${tenantId} AND a.branch_id = ${b}::uuid AND a.text_sha256 = ${sha} ORDER BY a.created_at DESC LIMIT 1`.execute(this.db)).rows[0];
+      if (r) return { at: new Date(r.created_at).toISOString(), by: r.approved_by ?? null, byName: r.full_name ?? null };
+    }
+    return null;
+  }
+  async approveConsent(tenantId: string, branchId: string, text: string, sha: string, userId: string, role: string) {
+    const uid = /^[0-9a-f-]{36}$/i.test(String(userId)) ? userId : null;
+    await sql`INSERT INTO ai_receptionist_consent_approvals (tenant_id, branch_id, text_sha256, consent_text, approved_by, approved_role) VALUES (${tenantId}, ${branchId}::uuid, ${sha}, ${text}, ${uid}, ${role})`.execute(this.db);
+  }
+  async recordCheck(tenantId: string, branchId: string, overall: string, checks: unknown[], userId: string) {
+    const uid = /^[0-9a-f-]{36}$/i.test(String(userId)) ? userId : null;
+    const r: any = (await sql`INSERT INTO ai_receptionist_settings_checks (tenant_id, branch_id, overall, checks, run_by) VALUES (${tenantId}, ${branchId}::uuid, ${overall}, ${JSON.stringify(checks)}::jsonb, ${uid}) RETURNING id, created_at`.execute(this.db)).rows[0];
+    return { id: String(r.id), at: new Date(r.created_at).toISOString() };
+  }
+  async lastCheck(tenantId: string, branchId: string) {
+    const r: any = (await sql`SELECT c.id, c.overall, c.checks, c.created_at FROM ai_receptionist_settings_checks c WHERE c.tenant_id = ${tenantId} AND c.branch_id = ${branchId}::uuid ORDER BY c.created_at DESC LIMIT 1`.execute(this.db)).rows[0];
+    return r ? { id: String(r.id), overall: String(r.overall), checks: r.checks ?? [], at: new Date(r.created_at).toISOString() } : null;
   }
 }

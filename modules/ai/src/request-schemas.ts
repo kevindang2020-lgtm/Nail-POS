@@ -221,6 +221,8 @@ export const RECEPTIONIST_SETTINGS_BODY: BodySchema = S.bounded(S.object({
   enabled: bool, allowInterruptions: bool, recordingEnabled: bool, defaultLanguage: text(32), afterHoursBehavior: text(64),
   silenceTimeoutSeconds: numish, maxCallDurationSeconds: numish, recordingConsentMessage: text(2000), expectedVersion: numish,
 }, [], { additionalProperties: true }), 2, 200);
+/** A9 Nov 6: POST /tenant/ai/receptionist/settings/consent/approve — the exact notice text an owner approves */
+export const CONSENT_APPROVE_BODY: BodySchema = S.object({ text: text(2000) }, ['text']);
 /** POST /voice/calls/:callId/outcome — the call-outcome report from the voice agent (voice-call-outcome-core) */
 /** AI Calls guide (Oct 31 2026): Retell call lifecycle webhook — a bounded envelope; the signature is the authentication */
 export const VOICE_RETELL_EVENT_BODY: BodySchema = S.webhookEnvelope();

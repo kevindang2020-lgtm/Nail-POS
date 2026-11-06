@@ -6,7 +6,8 @@
 import { api } from './client';
 const enc = encodeURIComponent;
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
-export type RcCallsQuery = { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type RcCallsQuery = { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number;
+  agent?: string; service?: string; direction?: string; minSeconds?: number; maxSeconds?: number };
 export type RcControlAction = 'arm_booking' | 'disarm_booking' | 'verify_test_call' | 'clear_test_call' | 'activate' | 'deactivate';
 export const posAiReceptionistCenterApi = {
   readiness: () => api.get<any>(`/pos/ai/receptionist-center/readiness`),

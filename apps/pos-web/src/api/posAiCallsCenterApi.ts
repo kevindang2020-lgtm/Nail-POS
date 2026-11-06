@@ -5,7 +5,8 @@
 import { api } from './client';
 const enc = encodeURIComponent;
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
-export type AicCallsQuery = { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type AicCallsQuery = { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number;
+  agent?: string; direction?: string; minSeconds?: number; maxSeconds?: number };
 export const posAiCallsCenterApi = {
   kpis: (q: { period?: string; from?: string; to?: string }) => api.get<any>(`/pos/ai/calls-center/kpis`, clean(q)),
   calls: (q: AicCallsQuery) => api.get<any>(`/pos/ai/calls-center/calls`, clean(q)),

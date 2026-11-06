@@ -9,7 +9,7 @@ import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission } from '@aipowersalon/permissions/guards';
 import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
-import { ReceptionistCenterError, RC_CALL_STATUSES, RC_OUTCOMES, RC_DATE_BASES, RC_PERIODS, RC_SCOPES, type RcCtx } from './receptionist-center';
+import { ReceptionistCenterError, RC_CALL_STATUSES, RC_OUTCOMES, RC_DATE_BASES, RC_DIRECTIONS, RC_PERIODS, RC_SCOPES, type RcCtx } from './receptionist-center';
 import { AiCallsCenter } from './ai-calls-center';
 import { AI_CALLS_CENTER } from './ai-calls-tokens';
 
@@ -29,7 +29,8 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 const CALLS_LIST = {
-  filters: { status: { type: 'enum', values: RC_CALL_STATUSES }, outcome: { type: 'enum', values: RC_OUTCOMES }, dateBasis: { type: 'enum', values: RC_DATE_BASES }, period: { type: 'enum', values: RC_PERIODS } },
+  filters: { status: { type: 'enum', values: RC_CALL_STATUSES }, outcome: { type: 'enum', values: RC_OUTCOMES }, dateBasis: { type: 'enum', values: RC_DATE_BASES }, period: { type: 'enum', values: RC_PERIODS },
+    agent: { type: 'text', maxLength: 120 }, service: { type: 'text', maxLength: 100 }, direction: { type: 'enum', values: RC_DIRECTIONS }, minSeconds: { type: 'int', min: 0, max: 86400 }, maxSeconds: { type: 'int', min: 0, max: 86400 } },
   sorts: { newest: null, oldest: null, longest: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'],
 } as const;
 const SEARCH_LIST = { filters: { scope: { type: 'enum', values: RC_SCOPES } }, sorts: {}, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
@@ -50,7 +51,8 @@ export class AiCallsCenterController {
   @Get('calls') @RequirePermission('ai.use') @ListQuery(CALLS_LIST)
   calls(@Req() q: any, @Query() p: any) {
     const c = ctxFrom(q); need(c, 'ai.use');
-    return run(() => this.c().calls(c, { q: p?.q, status: p?.status, outcome: p?.outcome, dateBasis: p?.dateBasis, period: p?.period, from: p?.from, to: p?.to, sort: p?.sort, page: p?.page, pageSize: p?.pageSize }));
+    return run(() => this.c().calls(c, { q: p?.q, status: p?.status, outcome: p?.outcome, dateBasis: p?.dateBasis, period: p?.period, from: p?.from, to: p?.to, sort: p?.sort, page: p?.page, pageSize: p?.pageSize,
+      agent: p?.agent, service: p?.service, direction: p?.direction, minSeconds: p?.minSeconds, maxSeconds: p?.maxSeconds }));
   }
 
   /** scoped search: calls | customers (masked, shared phones flagged) | AI appointments | AI activity */

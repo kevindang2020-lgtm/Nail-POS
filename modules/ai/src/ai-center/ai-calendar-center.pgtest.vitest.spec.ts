@@ -95,6 +95,22 @@ describe('T31–T37 the four counters, traced to canonical rows', () => {
     expect(s.openSlots.reconciliation.join(' ')).toMatch(/8 start time\(s\) removed because a live booking hold/);
     expect(s.openSlots.definition).toMatch(/45-minute service.*15-minute grid/);
   });
+  it('A11 Nov 6: Open Slots counts only inside the branch’s saved opening hours; a saved closed day counts none; removing them restores the engine hours', async () => {
+    const full = await cal.summary(OWNER, DAY);
+    // Friday (dow 5): saved hours 10:00–16:00
+    await q(sql`insert into tenant_location_hours (tenant_id, location_id, day_of_week, opens_at, closes_at, is_closed) values (${T}, ${B}, 5, '10:00', '16:00', false)`);
+    const s = await cal.summary(OWNER, DAY);
+    expect(s.openSlots.savedHours).toBe('10:00–16:00');
+    expect(s.openSlots.value!).toBeLessThan(full.openSlots.value!);
+    expect(s.openSlots.value! + s.openSlots.hoursExcluded).toBeGreaterThanOrEqual(full.openSlots.value!);
+    expect(s.openSlots.engineValue).toBe(full.openSlots.engineValue);                  // Booking's own grid is untouched
+    expect(s.openSlots.reconciliation.join(' ')).toMatch(/saved hours 10:00–16:00/);
+    await q(sql`update tenant_location_hours set is_closed = true where tenant_id = ${T} and location_id = ${B}`);
+    const c = await cal.summary(OWNER, DAY);
+    expect(c.openSlots.value).toBe(0); expect(c.openSlots.savedHours).toBe('closed');
+    await q(sql`delete from tenant_location_hours where tenant_id = ${T} and location_id = ${B}`);
+    expect((await cal.summary(OWNER, DAY)).openSlots.value).toBe(full.openSlots.value);
+  });
   it('T32 an expired or converted hold no longer removes availability', async () => {
     const before = (await cal.summary(OWNER, DAY)).openSlots.value!;
     await q(sql`insert into booking_holds (tenant_id, branch_id, technician_id, start_time, end_time, expires_at, status) values (${T}, ${B}, ${TECH[0]}, ${local(DAY, '17:00')}, ${local(DAY, '18:00')}, now() - interval '1 minute', 'held')`);

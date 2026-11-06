@@ -28,3 +28,32 @@ describe('receptionist settings versions (real schema)', () => {
     expect((await svc.get(own({ tenantId: T2 }))).meta).toMatchObject({ source: 'defaults' });
   });
 });
+
+describe('A9 Nov 6 — recording-notice approval and Check Receptionist Settings (real schema, migration 829)', () => {
+  it('recording cannot be turned on until an OWNER approves the exact notice; a manager cannot approve; a changed notice needs a new approval', async () => {
+    const T3 = T2;   // a clean salon for this test
+    const o = own({ tenantId: T3 });
+    await expect(svc.update(o, { recordingEnabled: true })).rejects.toMatchObject({ code: 'AI_RCPT_CONSENT_NOT_APPROVED' });
+    expect((await svc.get(o)).recordingEnabled).toBe(false);                                            // nothing was saved
+    await expect(svc.approveConsent(own({ tenantId: T3, role: 'MANAGER' }), 'This call may be recorded.')).rejects.toMatchObject({ code: 'AI_RCPT_OWNER_ONLY' });
+    const cur = (await svc.get(o)).recordingConsentMessage;
+    const a = await svc.approveConsent(o, cur);
+    expect(a.meta?.consent).toMatchObject({ approved: true, supported: true });
+    expect((await svc.update(o, { recordingEnabled: true })).recordingEnabled).toBe(true);
+    await expect(svc.update(o, { recordingConsentMessage: 'New words: this call is recorded.' })).rejects.toMatchObject({ code: 'AI_RCPT_CONSENT_NOT_APPROVED' });
+    await svc.approveConsent(o, 'New words: this call is recorded.');
+    expect((await svc.update(o, { recordingConsentMessage: 'New words: this call is recorded.' })).meta?.consent?.approved).toBe(true);
+    expect((await svc.update(o, { maxCallDurationSeconds: 700 })).maxCallDurationSeconds).toBe(700);   // other saves never trip on it
+    expect((await svc.get(own())).meta?.consent?.approved).toBe(false);                              // another salon's approval does not count
+  });
+  it('the check reports per-part results, is recorded, and changes nothing', async () => {
+    const before = await svc.get(own());
+    const r = await svc.check(own());
+    expect(r.recorded).toBe(true);
+    expect(r.checks.map((c) => c.id)).toEqual(['read', 'consent', 'notice_words', 'timing', 'history', 'runtime']);
+    expect(r.checks.find((c) => c.id === 'runtime')?.state).toBe('WARNING');                           // honest: live calls do not read them yet
+    expect(r.overall).toBe('WARNING');
+    expect((await svc.lastCheck(own()))?.id).toBe(r.runId);
+    expect(await svc.get(own())).toEqual(before);
+  });
+});

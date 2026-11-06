@@ -145,10 +145,20 @@ export class AiCalendarCenter {
     const g: Row = await this.booking.dayGrid(this.bctx(ctx), date);
     const interval = n(g.slotIntervalMinutes), dur = n(g.defaultServiceDurationMinutes), buf = n(g.bufferMinutes);
     const notBefore = date === clk.today ? Math.ceil(clk.minute / interval) * interval : null;
-    let value = 0; let pastExcluded = 0; let holdExcluded = 0; let columns = 0;
+    // A11 Nov 6 (owner decision, Kevin "pick best"): the open-slot COUNT honours the branch's saved opening hours
+    // (tenant_location_hours, Business Setup) — the booking engine itself is unchanged. No saved hours → the engine's hours.
+    const saved = await this.savedHours(ctx, date);
+    let value = 0; let pastExcluded = 0; let holdExcluded = 0; let columns = 0; let hoursExcluded = 0;
     for (const c of (g.columns ?? []) as Row[]) {
       if (!c.available || !(c.windows ?? []).length) continue;
       columns++;
+      const allWin = c.windows as { start: number; end: number }[];
+      const win = saved === null ? allWin : saved.closed ? [] : allWin.map((w) => ({ start: Math.max(w.start, saved.open), end: Math.min(w.end, saved.close) })).filter((w) => w.end > w.start);
+      if (saved !== null) {
+        const mineAll = ((g.appointments ?? []) as Row[]).filter((x) => x.technicianId === c.technicianId).map((x) => busy(x.startTime, x.endTime, x.status));
+        hoursExcluded += pbComputeAvailabilityInWindows(allWin, interval, dur, buf, mineAll).length - pbComputeAvailabilityInWindows(win, interval, dur, buf, mineAll).length;
+      }
+      c.windows = win;
       const mine = ((g.appointments ?? []) as Row[]).filter((x) => x.technicianId === c.technicianId).map((x) => busy(x.startTime, x.endTime, x.status));
       const held = holds.filter((h) => h.technician_id === c.technicianId).map((h) => busy(h.s, h.e, 'booked'));
       const base = pbComputeAvailabilityInWindows(c.windows, interval, dur, buf, mine);
@@ -158,15 +168,31 @@ export class AiCalendarCenter {
     }
     const engineValue = n(g.totalOpenSlots);
     return {
-      value, engineValue, state: 'computed', columnsCounted: columns, slotIntervalMinutes: interval, serviceMinutes: dur, bufferMinutes: buf, hours: `${g.openTime}–${g.closeTime}`,
+      value, engineValue, state: 'computed', columnsCounted: columns, savedHours: saved === null ? null : saved.closed ? 'closed' : `${hhmm(saved.open)}–${hhmm(saved.close)}`, hoursExcluded, slotIntervalMinutes: interval, serviceMinutes: dur, bufferMinutes: buf, hours: `${g.openTime}–${g.closeTime}`,
       definition: `Bookable start times for a ${dur}-minute service (Booking's default duration, ${buf}-minute buffer) on the ${interval}-minute grid, summed over ${columns} technician column(s) with working hours ${g.openTime}–${g.closeTime}. Excludes appointments, blocked times, live holds${notBefore != null ? ' and times already past today' : ''}. A grid estimate — a longer service fits fewer starts.`,
       reconciliation: [
         `POS Booking engine total: ${engineValue} (counts every active column, does not subtract live holds or past times).`,
         holdExcluded ? `${holdExcluded} start time(s) removed because a live booking hold covers them.` : 'No live booking holds on this day.',
         notBefore != null ? `${pastExcluded} start time(s) removed because they are already past (${hhmm(clk.minute)} salon time).` : 'Not today: no past-time adjustment.',
-        `Hours ${g.openTime}–${g.closeTime} come from Booking's settings; saved salon hours are not yet mapped into the booking engine (see Business Setup).`,
+        saved === null ? `Hours ${g.openTime}–${g.closeTime} come from Booking's settings (this branch has no saved opening hours in Business Setup).`
+          : saved.closed ? `The branch's saved hours say it is closed this day, so no start times are counted (Booking's own grid still shows ${g.openTime}–${g.closeTime}).`
+          : `Counted inside the branch's saved hours ${hhmm(saved.open)}–${hhmm(saved.close)}${hoursExcluded ? `; ${hoursExcluded} start time(s) of Booking's ${g.openTime}–${g.closeTime} grid fall outside them` : ''}. Booking itself still uses its own hours.`,
       ],
     };
+  }
+
+  /** the branch's saved opening hours for the date's weekday (effective-dated rows win), in minutes; null = none saved */
+  private async savedHours(ctx: AicCtx, date: string): Promise<{ closed: boolean; open: number; close: number } | null> {
+    const b = this.branch(ctx); if (!b) return null;
+    const r: Row | undefined = (await sql<Row>`select h.opens_at, h.closes_at, h.is_closed from tenant_location_hours h
+      where h.tenant_id = ${ctx.tenantId} and h.location_id = ${b} and h.day_of_week = extract(dow from ${date}::date)::int
+        and (h.effective_from is null or h.effective_from <= ${date}::date) and (h.effective_to is null or h.effective_to >= ${date}::date)
+      order by (h.effective_from is not null) desc, h.effective_from desc nulls last, h.updated_at desc limit 1`.execute(this.db)).rows[0];
+    if (!r) return null;
+    if (r.is_closed) return { closed: true, open: 0, close: 0 };
+    const m = (v: unknown) => { const x = /^(\d{1,2}):(\d{2})/.exec(String(v ?? '')); return x ? Number(x[1]) * 60 + Number(x[2]) : null; };
+    const o = m(r.opens_at), c = m(r.closes_at);
+    return o === null || c === null || c <= o ? null : { closed: false, open: o, close: c };
   }
 
   private async techniciansOn(ctx: AicCtx, date: string, clk: { today: string }) {

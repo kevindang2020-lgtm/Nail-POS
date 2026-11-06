@@ -4,13 +4,14 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
 import { RequiresAiPackage } from '../ai-entitlement/ai-entitlement.guard';
 import { TenantAuthGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
-import { RECEPTIONIST_SETTINGS_BODY } from '../request-schemas';
+import type { ReceptionistSettingsCheckResult, ReceptionistSettingsLastCheck, ReceptionistSettingsWithMeta } from '@aipowersalon/api-contracts/tenant';
+import { RECEPTIONIST_SETTINGS_BODY, CONSENT_APPROVE_BODY } from '../request-schemas';
 import { TenantReceptionistService, type ReceptionistCtx } from './tenant-receptionist.service';
 import { AiAgentService, AgentForbiddenError, AgentNotFoundError } from './ai-agent.service';
 import { AgentValidationError } from './ai-agent-core';
 import { AiFollowUpService, FollowUpForbiddenError, FollowUpNotFoundError, FollowUpValidationError } from './ai-follow-up.service';
 import { AiFaqService, FaqForbiddenError, FaqNotFoundError, FaqValidationError } from './ai-faq.service';
-import { AiSettingsService, SettingsForbiddenError, SettingsValidationError, SettingsConflictError, type SettingsCtx } from './ai-settings.service';
+import { AiSettingsService, SettingsForbiddenError, SettingsValidationError, SettingsConflictError, SettingsConsentError, type SettingsCtx } from './ai-settings.service';
 import { AiProvisioningService, ProvForbiddenError, ProvNotFoundError, type ProvCtx } from './ai-provisioning.service';
 import { AuditService } from '@aipowersalon/audit';
 import { ListQueries } from '@aipowersalon/database';
@@ -27,6 +28,7 @@ async function runAgent<T>(fn: () => Promise<T> | T): Promise<T> {
     if (e instanceof AgentForbiddenError || e instanceof FollowUpForbiddenError || e instanceof FaqForbiddenError || e instanceof SettingsForbiddenError || e instanceof ProvForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
     if (e instanceof AgentNotFoundError || e instanceof FollowUpNotFoundError || e instanceof FaqNotFoundError || e instanceof ProvNotFoundError) throw new HttpException(e.message, HttpStatus.NOT_FOUND);
     if (e instanceof AgentValidationError || e instanceof FollowUpValidationError || e instanceof FaqValidationError || e instanceof SettingsValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    if (e instanceof SettingsConsentError) throw new HttpException({ code: e.code, message: e.message }, e.code === 'AI_RCPT_OWNER_ONLY' ? HttpStatus.FORBIDDEN : HttpStatus.CONFLICT);
     if (e instanceof SettingsConflictError) throw new HttpException({ code: 'VERSION_CONFLICT', message: e.message, currentVersion: e.current }, HttpStatus.CONFLICT);
     throw new HttpException(e?.message || 'Error', HttpStatus.INTERNAL_SERVER_ERROR);
   }
@@ -71,5 +73,12 @@ export class TenantReceptionistController {
   @RequirePermission('ai.use') @Get('settings') getSettings(@Req() r: any) { return runAgent(() => this.settings.get(ctxFrom(r) as SettingsCtx)); }
   @RequirePermission('ai.manage') @Patch('settings') async updateSettings(@Req() r: any, @Body(ValidatedBody(RECEPTIONIST_SETTINGS_BODY)) b: any) { const s = await runAgent(() => this.settings.update(ctxFrom(r) as SettingsCtx, b || {})); await this.aud(r, 'settings.updated', null, 'Updated receptionist settings', { changed: Object.keys(b || {}).filter((k) => k !== 'expectedVersion'), version: s.meta?.version ?? null }); return s; }
   /** Receptionist Settings guide: every saved version, newest first (before / after / who), for compare and restore */
+  /** A9 Nov 6: an owner approves the exact recording notice; recording can only be on with an approved notice */
+  @RequirePermission('ai.manage') @Post('settings/consent/approve') async approveConsent(@Req() r: any, @Body(ValidatedBody(CONSENT_APPROVE_BODY)) b: any): Promise<ReceptionistSettingsWithMeta> {
+    const s = await runAgent(() => this.settings.approveConsent(ctxFrom(r) as SettingsCtx, b?.text)); await this.aud(r, 'settings.consent_approved', null, 'Approved the recording notice', { length: String(b?.text ?? '').trim().length }); return s;
+  }
+  /** A9 Nov 6: Check Receptionist Settings — read-only, recorded */
+  @RequirePermission('ai.use') @Post('settings/check') settingsCheck(@Req() r: any): Promise<ReceptionistSettingsCheckResult> { return runAgent(() => this.settings.check(ctxFrom(r) as SettingsCtx)); }
+  @RequirePermission('ai.use') @Get('settings/check/last') settingsLastCheck(@Req() r: any): Promise<ReceptionistSettingsLastCheck | null> { return runAgent(() => this.settings.lastCheck(ctxFrom(r) as SettingsCtx)); }
   @RequirePermission('ai.use') @Get('settings/history') settingsHistory(@Req() r: any, @Query('page') page?: string, @Query('pageSize') pageSize?: string) { return runAgent(() => this.settings.history(ctxFrom(r) as SettingsCtx, Number(page) || 1, Number(pageSize) || 20)); }
 }

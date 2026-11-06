@@ -63,6 +63,10 @@ export const posAiApi = {
   receptionistOverview: () => api.get<ReceptionistOverview>('/tenant/ai/receptionist/overview'),
   receptionistSettings: () => api.get<ReceptionistSettings>('/tenant/ai/receptionist/settings'),
   updateReceptionistSettings: (b: Record<string, unknown>) => api.patch<ReceptionistSettings>('/tenant/ai/receptionist/settings', b),
+  /** A9 Nov 6: an owner approves the exact recording notice; Check Receptionist Settings (recorded) */
+  approveReceptionistConsent: (text: string) => api.post<any>('/tenant/ai/receptionist/settings/consent/approve', { text }),
+  checkReceptionistSettings: () => api.post<any>('/tenant/ai/receptionist/settings/check', {}),
+  receptionistSettingsLastCheck: () => api.get<any>('/tenant/ai/receptionist/settings/check/last'),
   receptionistSettingsHistory: (page = 1, pageSize = 10) => api.get<any>('/tenant/ai/receptionist/settings/history', { page, pageSize }),
   provisionReceptionistAgent: (id: string) => api.post<ProvisioningJob>(`/tenant/ai/receptionist/agents/${id}/provision`, {}),
   receptionistProvisioningJob: (jobId: string) => api.get<ProvisioningJob>(`/tenant/ai/receptionist/provisioning/${jobId}`),

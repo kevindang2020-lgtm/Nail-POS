@@ -42,3 +42,14 @@ describe('Booking board — Arrived and Late (Decision 38)', () => {
     expect(screen.getByRole('button', { name: 'Arrived' })).toBeInTheDocument();
   });
 });
+
+describe('A11 Nov 6 — deep link from the AI Calendar', () => {
+  it('?appointmentId=<id> opens that appointment’s Manage drawer; another id opens nothing', async () => {
+    const id = '0b6f9a2e-1111-4c4c-9d9d-000000000001';
+    window.history.replaceState(null, '', `/booking?date=2026-06-07&appointmentId=${id}`);
+    mount([row({ appointmentId: id }), row({ appointmentId: '0b6f9a2e-1111-4c4c-9d9d-000000000002', customerName: 'Ann Lee' })]);
+    expect(await screen.findByRole('button', { name: 'Close' })).toBeInTheDocument();          // the drawer is open on that row
+    expect(screen.getAllByRole('button', { name: 'Manage' })).toHaveLength(1);                 // the other row stays closed
+    window.history.replaceState(null, '', '/');
+  });
+});

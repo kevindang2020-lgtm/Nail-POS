@@ -9,11 +9,13 @@ import { posAiApi, type CopilotHoldResult, type CopilotReply, type CopilotContex
 import { posServicesApi } from '../api/posServicesApi';
 import { useRealtime } from '../realtime/useRealtime';
 import { t as tx, enPlural } from '@aipowersalon/mobile-sdk/i18n';
-import { useCopilotAction, PreparedCard, ActionOutcome, CopilotOpsBar, PriorityAssistant, CopilotWorkspace } from './receptionCopilotCenter';
+import { useCopilotAction, PreparedCard, ActionOutcome, CopilotOpsBar, PriorityAssistant, CopilotWorkspace, NamePicker } from './receptionCopilotCenter';
 import { fmtInZone } from '../i18n/format';   // the location's clock (not the device's)
 
 const cardBox: React.CSSProperties = { background: '#FFFCF6', border: '1px solid var(--line)', borderRadius: 14, padding: 14 };
 const GOLD = '#A96F22';
+const RC_VIEWS = ['all', 'desk', 'actions', 'history', 'settings'] as const;
+type RcView = (typeof RC_VIEWS)[number];
 const inputStyle: React.CSSProperties = { flex: 1, height: 40, padding: '0 12px', borderRadius: 10, border: '1px solid var(--line)', background: '#fff', fontSize: 14, fontFamily: 'inherit' };
 const btnGold: React.CSSProperties = { height: 40, padding: '0 18px', borderRadius: 10, border: 'none', background: GOLD, color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' };
 const linkBtn: React.CSSProperties = { background: 'none', border: 'none', color: GOLD, fontSize: 12, fontWeight: 600, cursor: 'pointer', padding: 0, fontFamily: 'inherit' };
@@ -322,12 +324,30 @@ export function POSReceptionCopilotScreen() {
     } finally { setBusy(false); }
   };
 
+  // Tabbed workspace (A16 Nov 6): All keeps the one-page view every salon already uses; the other tabs show one part.
+  // The choice lives in the address (?rcview=) so a refresh or a shared link reopens it.
+  const [view, setView] = useState<RcView>(() => { try { const v = new URLSearchParams(window.location.search).get('rcview') ?? ''; return (RC_VIEWS as readonly string[]).includes(v) ? v as RcView : 'all'; } catch { return 'all'; } });
+  const pickView = (k: RcView) => {
+    setView(k);
+    try { const sp = new URLSearchParams(window.location.search); if (k === 'all') sp.delete('rcview'); else sp.set('rcview', k); const qs = sp.toString(); window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? '?' + qs : '')); } catch { /* no URL in this host */ }
+  };
+  const show = (k: RcView) => view === 'all' || view === k;
   return (
     <div className="work" style={{ display: 'flex', flexDirection: 'column', gap: 14, height: '100%' }}>
       <div className="vh"><div><h1>{tx('pos.reception_copilot')}</h1><div className="sub">{tx('pos.ask_your_front_desk_assistant_about_bwcw')}</div></div></div>
+      <div role="tablist" aria-label={tx('pos.copilot_view')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} data-testid="rc-views">
+        {RC_VIEWS.map((k) => (
+          <button key={k} role="tab" aria-selected={view === k} onClick={() => pickView(k)} data-testid={`rc-view-${k}`}
+            style={{ padding: '6px 14px', borderRadius: 999, border: `1px solid ${view === k ? '#A96F22' : 'var(--line)'}`, background: view === k ? '#FBF4E8' : '#FFF', fontSize: 12.5, color: view === k ? '#9B6B1E' : '#8A7A66', cursor: 'pointer', minHeight: 36 }}>
+            {tx(`pos.copilot_view_${k}`)}
+          </button>
+        ))}
+      </div>
 
       <CopilotOpsBar />
+      {show('desk') && (<>
       <PriorityAssistant nav={nav} />
+      </>)}
 
       {queue && queue.available && (
         <div style={{ ...cardBox, display: 'flex', gap: 18, flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -354,6 +374,7 @@ export function POSReceptionCopilotScreen() {
         [role="region"] :focus-visible, .rc-a11y-scope button:focus-visible, .rc-a11y-scope select:focus-visible, .rc-a11y-scope input:focus-visible { outline: 2px solid ${GOLD}; outline-offset: 2px; }
         @media (prefers-reduced-motion: reduce) { .rc-a11y-scope *, [role="region"] * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
       `}</style>
+      {show('desk') && (<>
       <AiPhoneActivityPanel />
       <ServiceExplainerPanel />
       <WaitlistPanel />
@@ -401,6 +422,8 @@ export function POSReceptionCopilotScreen() {
         </section>
       )}
 
+      </>)}
+      {show('actions') && (<>
       <section style={cardBox}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.find_open_times')}</div>
         <div style={{ display: 'flex', gap: 8 }}>
@@ -460,7 +483,7 @@ export function POSReceptionCopilotScreen() {
       <section style={cardBox}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.check_for_conflicts')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input style={{ ...inputStyle, minWidth: 120 }} value={cf.technicianId} onChange={(e) => setCf({ ...cf, technicianId: e.target.value })} placeholder={tx('pos.technician_id')} disabled={cfBusy} />
+          <NamePicker scope="technicians" value={cf.technicianId} onPick={(id) => setCf((c) => ({ ...c, technicianId: id }))} placeholder={tx('pos.copilot_pick_technician')} disabled={cfBusy} testId="rc-cf-tech" />
           <input style={{ ...inputStyle, width: 90, minWidth: 90 }} value={cf.startTime} onChange={(e) => setCf({ ...cf, startTime: e.target.value })} placeholder="14:00" disabled={cfBusy} />
           <input style={{ ...inputStyle, width: 90, minWidth: 90 }} value={cf.endTime} onChange={(e) => setCf({ ...cf, endTime: e.target.value })} placeholder="14:45" disabled={cfBusy} />
           <input style={{ ...inputStyle, width: 140, minWidth: 140 }} type="date" value={cf.date} onChange={(e) => setCf({ ...cf, date: e.target.value })} disabled={cfBusy} />
@@ -480,14 +503,16 @@ export function POSReceptionCopilotScreen() {
       <section style={cardBox}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.cancel_an_appointment')}</div>
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <input style={{ ...inputStyle, minWidth: 160 }} value={cxApptId} onChange={(e) => setCxApptId(e.target.value)} placeholder={tx('pos.appointment_id')} disabled={cxActing} />
+          <NamePicker scope="appointments" value={cxApptId} onPick={setCxApptId} placeholder={tx('pos.copilot_pick_appointment')} disabled={cxActing} testId="rc-cx-appt" />
           <input style={{ ...inputStyle, minWidth: 160 }} value={cxReason} onChange={(e) => setCxReason(e.target.value)} placeholder={tx('pos.reason_2')} disabled={cxActing} />
           <button style={{ ...inputStyle, width: 'auto', padding: '0 14px', cursor: 'pointer', flex: '0 0 auto', opacity: !cxApptId.trim() || !cxReason.trim() ? 0.6 : 1 }} disabled={!cxApptId.trim() || !cxReason.trim() || actionOff('allowCancel')} onClick={prepareCancel}>{tx('pos.prepare')}</button>
         </div>
         <PreparedCard h={cx} confirmLabel={tx('pos.confirm_cancel')} testId="rcc-cancel" />
         <ActionOutcome h={cx} testId="rcc-cancel-outcome" />
       </section>
+      </>)}
 
+      {show('settings') && (<>
       {settings && (
         <section style={cardBox}>
           <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.copilot_settings')}</div>
@@ -506,7 +531,9 @@ export function POSReceptionCopilotScreen() {
           {settingsNote && <div style={{ fontSize: 11.5, color: '#B4673B', marginTop: 6 }}>{settingsNote}</div>}
         </section>
       )}
+      </>)}
 
+      {show('actions') && (<>
       <section style={cardBox}>
         <div style={{ fontSize: 13, fontWeight: 700, color: '#3A342E', marginBottom: 8 }}>{tx('pos.send_a_text_message')}</div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginBottom: 8 }}>
@@ -548,9 +575,13 @@ export function POSReceptionCopilotScreen() {
         <PreparedCard h={rsA} confirmLabel={tx('pos.confirm_reschedule')} testId="rcc-resched" />
         <ActionOutcome h={rsA} testId="rcc-resched-outcome" />
       </section>
+      </>)}
 
+      {show('history') && (<>
       <CopilotWorkspace />
+      </>)}
 
+      {show('desk') && (<>
       <section style={{ ...cardBox,  display: 'flex', flexDirection: 'column' }}>
         <div style={{ flex: 1,  display: 'flex', flexDirection: 'column', gap: 10 }}>
           {msgs.length === 0 ? (
@@ -583,6 +614,7 @@ export function POSReceptionCopilotScreen() {
         </div>
       <div className='mt-3' style={{ fontSize: 11, color: '#9B8B78' }}>{tx('pos.the_copilot_uses_your_salon_u2019s_1d6h')}</div>
       </section>
+      </>)}
 
     </div>
   );

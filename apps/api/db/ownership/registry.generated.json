@@ -8,12 +8,12 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 958,
+  "tables": 960,
   "ownership": {
    "tenant_owned": 639,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 160,
-   "tenant_branch_owned": 90,
+   "tenant_branch_owned": 92,
    "cross_tenant_platform_data": 25
   },
   "domain": {
@@ -21,7 +21,7 @@
    "SECURITY": 31,
    "FINANCE": 83,
    "MARKETING": 24,
-   "AI": 144,
+   "AI": 146,
    "AUDIT": 29,
    "OPERATIONS": 77,
    "SUPPORT": 57,
@@ -44,7 +44,7 @@
    "HIGHLY_SENSITIVE": 143,
    "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 529,
+   "INTERNAL": 531,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -831,6 +831,18 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "ai_receptionist_consent_approvals": {
+   "ownership": "tenant_branch_owned",
+   "class": "C",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "ai_receptionist_control": {
    "ownership": "tenant_owned",
    "class": "B",
@@ -940,6 +952,18 @@
    "source": "heuristic"
   },
   "ai_receptionist_settings": {
+   "ownership": "tenant_branch_owned",
+   "class": "C",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "ai_receptionist_settings_checks": {
    "ownership": "tenant_branch_owned",
    "class": "C",
    "domain": "AI",

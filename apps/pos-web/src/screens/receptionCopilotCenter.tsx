@@ -7,7 +7,7 @@
 //   CopilotWorkspace     scoped search + Copilot activity history (filters, From/To month calendar, pages 10/20/50, newest
 //                        first) — history only; the live queue keeps its own fair order
 //   CustomerActivityOverlay  Overview · Appointments · Calls & Messages · Copilot Actions · Consent · Audit, Close, Open Booking
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { posCopilotCenterApi, type CcAction, type CcConfirmed, type CcPrepared } from '../api/posCopilotCenterApi';
 import { errorTextOf } from '../i18n/error-text';
@@ -126,9 +126,9 @@ export function CopilotOpsBar() {
           {health.error ? <div className="rcc-err">{health.error}</div> : (
             <>
               <div className="rcc-row"><b>{t('rcc.overall')}</b> <Badge s={health.overall} /></div>
-              <table className="rcc-table"><thead><tr><th>{t('rcc.area')}</th><th>{t('rcc.state')}</th><th>{t('rcc.detail')}</th><th>{t('rcc.next')}</th></tr></thead>
+              <table className="rcc-table"><thead><tr><th>{t('rcc.area')}</th><th>{t('rcc.state')}</th><th>{t('rcc.detail')}</th><th>{t('rcc.next')}</th><th>{t('rcc.responsible')}</th></tr></thead>
                 <tbody>{(health.checks ?? []).map((c: any) => (
-                  <tr key={c.id} data-check={c.id}><td>{c.area}<div className="rcc-muted">{c.label}</div></td><td><Badge s={c.state} /></td><td>{c.detail}<div className="rcc-muted">{c.evidence}</div></td><td>{c.remedy ?? '—'}</td></tr>
+                  <tr key={c.id} data-check={c.id}><td>{c.area}<div className="rcc-muted">{c.label}</div></td><td><Badge s={c.state} /></td><td>{c.detail}<div className="rcc-muted">{c.evidence}</div></td><td>{c.remedy ?? '—'}</td><td data-testid={`rcc-resp-${c.id}`}>{c.responsible ? t(`rcc.resp.${c.responsible}`) : '—'}</td></tr>
                 ))}</tbody></table>
               <div className="rcc-note">{t('rcc.checkNote')}</div>
             </>
@@ -174,12 +174,24 @@ export function PriorityAssistant({ nav }: { nav: (to: string) => void }) {
 }
 
 // ── scoped search + activity history ──────────────────────────────────────────────────────────────────────────────────
-const SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'activity'] as const;
+const SCOPES = ['customers', 'appointments', 'technicians', 'calls', 'messages', 'activity'] as const;
+// URL filters (A8 Nov 6): the tab, search scope, words, page and page size live in the address so a refresh or a shared
+// link reopens the same view. Only rc* keys are touched.
+const RC_KEYS = ['rctab', 'rcscope', 'rcq', 'rcpage', 'rcsize'] as const;
+const readUrl = () => { try { return new URLSearchParams(window.location.search); } catch { return new URLSearchParams(); } };
+function writeUrl(f: Partial<Record<(typeof RC_KEYS)[number], string | number | undefined>>) {
+  try {
+    const p = new URLSearchParams(window.location.search);
+    for (const [k, v] of Object.entries(f)) { if (!(RC_KEYS as readonly string[]).includes(k)) continue; if (v === undefined || v === '' || v === null) p.delete(k); else p.set(k, String(v)); }
+    const qs = p.toString(); window.history.replaceState(window.history.state, '', window.location.pathname + (qs ? '?' + qs : ''));
+  } catch { /* no URL in this host */ }
+}
 const STATES = ['pending', 'succeeded', 'failed', 'unknown'] as const;
 const TYPES = ['create_appointment', 'reschedule_appointment', 'cancel_appointment', 'send_message'] as const;
 const PERIODS = ['today', 'yesterday', 'week', 'month', 'year', 'custom'] as const;
 export function CopilotWorkspace() {
-  const [tab, setTab] = useState<'search' | 'activity'>('activity');
+  const [tab, setTabState] = useState<'search' | 'activity'>(() => (readUrl().get('rctab') === 'search' ? 'search' : 'activity'));
+  const setTab = (k: 'search' | 'activity') => { setTabState(k); writeUrl({ rctab: k === 'activity' ? undefined : k }); };
   const [open, setOpen] = useState<string | null>(null);
   return (
     <section className="rcc-panel" data-testid="rcc-workspace">
@@ -192,9 +204,15 @@ export function CopilotWorkspace() {
   );
 }
 function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
-  const [scope, setScope] = useState<string>('customers'); const [q, setQ] = useState(''); const dq = useDebounced(q, 300); const [page, setPage] = useState(1); const [size, setSize] = useState(20);
+  const u0 = readUrl();
+  const [scope, setScope] = useState<string>(() => { const v = u0.get('rcscope') ?? ''; return (SCOPES as readonly string[]).includes(v) ? v : 'customers'; });
+  const [q, setQ] = useState(() => u0.get('rcq') ?? ''); const dq = useDebounced(q, 300);
+  const [page, setPage] = useState(() => Math.max(1, Number(u0.get('rcpage')) || 1));
+  const [size, setSize] = useState(() => { const v = Number(u0.get('rcsize')); return [10, 20, 50].includes(v) ? v : 20; });
   const [r, setR] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { setPage(1); }, [scope, dq, size]);
+  const first = useRef(true);
+  useEffect(() => { if (first.current) { first.current = false; return; } setPage(1); }, [scope, dq, size]);
+  useEffect(() => { writeUrl({ rcscope: scope === 'customers' ? undefined : scope, rcq: dq || undefined, rcpage: page > 1 ? page : undefined, rcsize: size === 20 ? undefined : size }); }, [scope, dq, page, size]);
   useEffect(() => {
     let on = true; setErr(null);
     posCopilotCenterApi.search({ scope, q: dq, page, pageSize: size }).then((x) => on && setR(x)).catch((e) => on && setErr(errorTextOf(e, t('rcc.failed'))));
@@ -217,6 +235,7 @@ function SearchTab({ onOpen }: { onOpen: (id: string) => void }) {
             : scope === 'appointments' ? <><td><b>{x.customer}</b><div className="rcc-muted"><code>{x.id}</code></div></td><td>{x.date} {x.startTime}</td><td>{x.technician ?? '—'}</td><td>{statusLabel(['appointment', 'state'], x.status)}</td></>
             : scope === 'technicians' ? <><td><b>{x.name}</b></td><td><code>{x.id}</code></td><td>{x.active ? t('rcc.active') : t('rcc.inactive')}</td></>
             : scope === 'calls' ? <><td><code>{x.providerRef ?? x.id}</code></td><td>{when(x.at)}</td><td>{x.booking ?? '—'}</td><td>{x.followUp ? t('rcc.followUp') : ''}</td></>
+            : scope === 'messages' ? <><td><b>{x.to ?? '—'}</b><div className="rcc-muted">{x.preview}</div></td><td>{when(x.at)}</td><td>{statusLabel(['notification', 'status'], x.status)}{x.errorCode ? <div className="rcc-warn">{t('rcc.providerError', { code: x.errorCode })}</div> : null}</td></>
             : <><td>{when(x.at)}</td><td>{x.summary}</td><td><Badge s={x.state} /></td></>}
           </tr>
         ))}</tbody></table>
@@ -293,5 +312,43 @@ export function CustomerActivityOverlay({ customerId, onClose, nav }: { customer
         </>
       )}
     </FitDialog>
+  );
+}
+
+// ── name pickers (A8 Nov 6) ───────────────────────────────────────────────────────────────────────────────────────────
+// Check for Conflicts and Cancel asked staff to type a technician / appointment ID. The picker searches by name (or a
+// pasted ID) through the same scoped search, shows real matches, and hands back the ID. Nothing is chosen for the user.
+export function NamePicker({ scope, value, onPick, placeholder, disabled, testId }: {
+  scope: 'technicians' | 'appointments'; value: string; onPick: (id: string) => void; placeholder: string; disabled?: boolean; testId: string;
+}) {
+  const [q, setQ] = useState(''); const dq = useDebounced(q, 250); const [items, setItems] = useState<any[]>([]); const [label, setLabel] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => { if (!value) setLabel(''); }, [value]);
+  useEffect(() => {
+    let on = true; setErr(null);
+    if (dq.trim().length < 2 || (label && dq === label)) { setItems([]); return () => { on = false; }; }
+    posCopilotCenterApi.search({ scope, q: dq, page: 1, pageSize: 10 }).then((r) => on && setItems(r?.items ?? [])).catch((e) => on && setErr(errorTextOf(e, t('rcc.failed'))));
+    return () => { on = false; };
+  }, [dq, scope, label]);
+  const name = (x: any) => (scope === 'technicians' ? x.name : `${x.customer} · ${x.date} ${x.startTime}${x.technician ? ` · ${x.technician}` : ''}`);
+  return (
+    <div style={{ position: 'relative', minWidth: 200 }} data-testid={testId}>
+      <input className="rcc-grow" value={label || q} disabled={disabled} placeholder={placeholder} aria-label={placeholder}
+        onChange={(e) => { setLabel(''); setQ(e.target.value); if (value) onPick(''); }} data-testid={`${testId}-q`}
+        style={{ height: 40, border: '1px solid var(--line)', borderRadius: 10, padding: '0 10px', fontSize: 13, width: '100%' }} />
+      {err ? <div className="rcc-err">{err}</div> : null}
+      {items.length ? (
+        <ul role="listbox" className="rcc-list" style={{ position: 'absolute', zIndex: 5, left: 0, right: 0, background: '#fff', border: '1px solid var(--line)', borderRadius: 10, margin: '4px 0 0', padding: 4, listStyle: 'none', maxHeight: 240, overflowY: 'auto' }}>
+          {items.map((x) => (
+            <li key={x.id} role="option" aria-selected={value === x.id}>
+              <button type="button" className="btn ghost" style={{ width: '100%', textAlign: 'left', minHeight: 40 }} data-testid={`${testId}-opt`}
+                onClick={() => { const n = name(x); setLabel(n); setQ(n); setItems([]); onPick(x.id); }}>
+                {name(x)}{scope === 'appointments' ? <span className="rcc-muted"> · {statusLabel(['appointment', 'state'], x.status)}</span> : null}
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : dq.trim().length >= 2 && !label && !err ? <div className="rcc-muted" style={{ fontSize: 11.5 }}>{t('rcc.noMatches')}</div> : null}
+    </div>
   );
 }

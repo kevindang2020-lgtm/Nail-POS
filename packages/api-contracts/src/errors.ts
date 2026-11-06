@@ -517,6 +517,8 @@ export const ERROR_REGISTRY = {
   FAQ_ANSWER_REQUIRED:            { status: 400, message: 'Enter an answer.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   AI_SETUP_INVALID_FILTER:        { status: 400, message: 'Check the filters and dates.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   AI_SETUP_IDEMPOTENCY_REQUIRED:  { status: 400, message: 'The request is missing its key. Reload and try again.', domain: 'ai', retryable: false, severity: 'info', action: 'REFRESH' },
+  AI_RCPT_CONSENT_NOT_APPROVED:  { status: 409, message: 'An owner must approve the recording notice before recording can be on.', domain: 'ai', retryable: false, severity: 'warning', action: 'NONE' },
+  AI_RCPT_OWNER_ONLY:            { status: 403, message: 'Only an owner can approve the recording notice.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   AI_RCPT_INVALID_FILTER:        { status: 400, message: 'Check the filters and dates.', domain: 'ai', retryable: false, severity: 'info', action: 'NONE' },
   AI_CALLS_CHECK_RATE_LIMITED:   { status: 429, message: 'A check just ran. Wait a few seconds and try again.', domain: 'ai', retryable: true, severity: 'info', action: 'RETRY' },
   VOICE_EVENTS_NOT_CONFIGURED:   { status: 503, message: 'Signed voice call events are not configured.', domain: 'ai', retryable: false, severity: 'warning', action: 'CONTACT_MANAGER' },

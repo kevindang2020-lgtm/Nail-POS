@@ -41,9 +41,25 @@ export function POSAISettingsScreen() {
   const [hist, setHist] = useState<any>(null);
   const [histPage, setHistPage] = useState(1);
   const [tick, setTick] = useState(0);
-  const meta = (s as (ReceptionistSettings & { meta?: { version: number; source: string; scope: string; appliedToCalls: boolean } }) | null)?.meta;
+  const meta = (s as (ReceptionistSettings & { meta?: { version: number; source: string; scope: string; appliedToCalls: boolean; consent?: { approved: boolean; approvedAt: string | null; approvedBy: string | null } } }) | null)?.meta;
+  // A9 Nov 6: recording-notice approval + Check Receptionist Settings
+  const [savedText, setSavedText] = useState<string | null>(null);
+  const [approvedFor, setApprovedFor] = useState<string | null>(null);
+  const [approving, setApproving] = useState(false);
+  const [check, setCheck] = useState<any>(null); const [checking, setChecking] = useState(false); const [last, setLast] = useState<any>(null);
+  const textNow = s?.recordingConsentMessage.trim() ?? '';
+  const noticeApproved = approvedFor === textNow || (!!meta?.consent?.approved && savedText === textNow);
+  const approve = async () => {
+    if (!s) return; setApproving(true); setError(null);
+    try { await posAiApi.approveReceptionistConsent(textNow); setApprovedFor(textNow); } catch (e) { setError(errorTextOf(e, t('pos.could_not_save_settings'))); } finally { setApproving(false); }
+  };
+  const runCheck = async () => {
+    setChecking(true);
+    try { setCheck(await posAiApi.checkReceptionistSettings()); } catch (e) { setCheck({ error: errorTextOf(e, t('pos.something_went_wrong')) }); } finally { setChecking(false); }
+  };
 
-  useEffect(() => { setConflict(false); posAiApi.receptionistSettings().then((x) => { setS(x); setDirty(false); }).catch((e: unknown) => setError(errorTextOf(e, t('pos.failed_to_load_settings')))); }, [tick]);
+  useEffect(() => { setConflict(false); posAiApi.receptionistSettings().then((x) => { setS(x); setSavedText(x.recordingConsentMessage.trim()); setDirty(false); }).catch((e: unknown) => setError(errorTextOf(e, t('pos.failed_to_load_settings')))); }, [tick]);
+  useEffect(() => { posAiApi.receptionistSettingsLastCheck().then(setLast).catch(() => setLast(null)); }, [check]);
   useEffect(() => { posAiApi.receptionistSettingsHistory(histPage, 10).then(setHist).catch(() => setHist({ error: true })); }, [histPage, tick, saved]);
 
   const set = (patch: Partial<ReceptionistSettings>) => { setS((cur) => cur ? { ...cur, ...patch } : cur); setSaved(false); setDirty(true); };
@@ -53,7 +69,7 @@ export function POSAISettingsScreen() {
     if (!s) return; setBusy(true); setError(null);
     try {
       const next = await posAiApi.updateReceptionistSettings({ enabled: s.enabled, defaultLanguage: s.defaultLanguage, afterHoursBehavior: s.afterHoursBehavior, allowInterruptions: s.allowInterruptions, silenceTimeoutSeconds: s.silenceTimeoutSeconds, maxCallDurationSeconds: s.maxCallDurationSeconds, recordingEnabled: s.recordingEnabled, recordingConsentMessage: s.recordingConsentMessage, expectedVersion: meta?.version ?? 0 });
-      setS(next); setSaved(true); setDirty(false);
+      setS(next); setSavedText(next.recordingConsentMessage.trim()); setSaved(true); setDirty(false);
     } catch (e: any) {
       // someone else saved first: never overwrite their change silently
       if (e?.status === 409) { setConflict(true); setError(t('aist.conflict')); }
@@ -77,11 +93,22 @@ export function POSAISettingsScreen() {
           {saved ? <span style={{ fontSize: 12, color: '#3E8F57' }}>{t('pos.saved')}</span> : null}
           {dirty ? <span className="chip warn" data-testid="aist-dirty">{t('aist.unsaved')}</span> : null}
           {meta ? <span className="sub" data-testid="aist-version">{t('aist.version', { v: meta.version, src: t('aist.src.' + meta.source) })}</span> : null}
+          <button className="btn ghost w-fit whitespace-nowrap" disabled={checking} onClick={runCheck} data-testid="aist-check">{checking ? t('aist.checking') : t('aist.check')}</button>
           <button className="btn w-fit whitespace-nowrap"  disabled={busy} onClick={save}>{busy ? t('pos.saving_2') : t('pos.save_changes')}</button>
         </div>
       </div>
       {error ? <div className="err" role="alert">{error}{conflict ? <> <button style={linkBtn} data-testid="aist-reload" onClick={() => setTick((n) => n + 1)}>{t('aist.reload')}</button></> : null}</div> : null}
       {meta && !meta.appliedToCalls ? <div className="state" data-testid="aist-not-applied">{t('aist.notApplied')}</div> : null}
+      {last ? <div className="sub" data-testid="aist-last-check">{t('aist.lastCheck', { when: fmtDateTime(last.at), state: t('aist.state.' + last.overall) })}</div> : null}
+      {check ? (
+        <section style={cardBox} data-testid="aist-check-result">
+          <div style={{ ...headStyle, display: 'flex', justifyContent: 'space-between' }}><span>{t('aist.check')}{check.overall ? ` — ${t('aist.state.' + check.overall)}` : ''}</span><button style={linkBtn} onClick={() => setCheck(null)}>{t('aist.close')}</button></div>
+          {check.error ? <div className="err">{check.error}</div> : (
+            <table className="tbl"><tbody>{check.checks.map((c: any) => (
+              <tr key={c.id} data-testid={`aist-check-${c.id}`}><td><b>{t('aist.chk.' + c.id)}</b></td><td>{t('aist.state.' + c.state)}</td><td>{c.detail}{c.remedy ? <div className="sub">{c.remedy}</div> : null}</td></tr>
+            ))}</tbody></table>)}
+          <div className="sub">{t('aist.checkNote')}</div>
+        </section>) : null}
 
       <section style={cardBox}>
         <div style={headStyle}>{t('pos.general')}</div>
@@ -102,6 +129,13 @@ export function POSAISettingsScreen() {
         <div style={headStyle}>{t('pos.recording_consent')}</div>
         <Toggle label={t('pos.enable_call_recording')} checked={s.recordingEnabled} onChange={(v) => set({ recordingEnabled: v })} />
         <label style={{ fontSize: 12, display: 'block', marginTop: 8 }}>{t('pos.consent_message_played_to_callers')}<textarea style={{ ...inputStyle, width: '100%', height: 52, padding: 8 }} value={s.recordingConsentMessage} onChange={(e) => set({ recordingConsentMessage: e.target.value })} /></label>
+        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8 }} data-testid="aist-consent">
+          {noticeApproved
+            ? <span className="chip ok" data-testid="aist-consent-approved">{t('aist.consent.approved')}{meta?.consent?.approvedBy && approvedFor !== textNow ? ` · ${meta.consent.approvedBy}` : ''}</span>
+            : <><span className="chip warn" data-testid="aist-consent-pending">{savedText !== textNow ? t('aist.consent.changed') : t('aist.consent.pending')}</span>
+                <button style={linkBtn} disabled={approving || !textNow} onClick={approve} data-testid="aist-consent-approve">{approving ? t('pos.saving_2') : t('aist.consent.approve')}</button></>}
+        </div>
+        {s.recordingEnabled && !noticeApproved ? <div style={{ fontSize: 11.5, color: '#B4673B', marginTop: 6 }} data-testid="aist-consent-needed">{t('aist.consent.needed')}</div> : null}
         <div style={{ fontSize: 11.5, color: '#9B6B1E', marginTop: 6 }}>{t('pos.recording_activates_only_when_a_provider_2g59')}</div>
       </section>
 

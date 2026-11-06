@@ -41,9 +41,22 @@ export const RC_STATES = ['READY', 'WARNING', 'FAILED', 'NOT_CONFIGURED', 'DISAB
 export type RcState = typeof RC_STATES[number];
 export const RC_STAGES = ['not_configured', 'configured', 'ready_for_test', 'test_call_verified', 'live', 'degraded'] as const;
 export const RC_PERIODS = ['today', 'week', 'month', 'year', 'custom'] as const;
-export const RC_CALL_STATUSES = ['completed', 'abandoned', 'failed', 'handed_off'] as const;
+export const RC_CALL_STATUSES = ['completed', 'abandoned', 'failed', 'handed_off', 'missed', 'in_progress'] as const;
+/** A15 / A10 Nov 6 — a call is MISSED when the caller hung up before the agent could help (abandoned in under MISSED_SECONDS);
+ *  IN PROGRESS when it has started, has no end and is younger than STALE_HOURS (older open calls are a sync gap, not live). */
+export const MISSED_SECONDS = 15;
+export const STALE_HOURS = 2;
+export const RC_DIRECTIONS = ['inbound', 'outbound'] as const;
+export function callStatus(r: { error_category?: unknown; abandoned?: unknown; duration_seconds?: unknown; handoff_outcome?: unknown; ended_at?: unknown; started_at?: unknown; created_at?: unknown }, now = Date.now()): string {
+  if (r.error_category) return 'failed';
+  if (r.abandoned) return Number(r.duration_seconds ?? 0) < MISSED_SECONDS ? 'missed' : 'abandoned';
+  if (r.handoff_outcome && r.handoff_outcome !== 'none') return 'handed_off';
+  if (r.ended_at) return 'completed';
+  const t = new Date(String(r.started_at ?? r.created_at ?? '')).getTime();
+  return Number.isFinite(t) && now - t < STALE_HOURS * 3_600_000 ? 'in_progress' : 'no_end_recorded';
+}
 export const RC_OUTCOMES = ['booked', 'booking_requested', 'question', 'handoff', 'follow_up'] as const;
-export const RC_DATE_BASES = ['call_started', 'recorded'] as const;
+export const RC_DATE_BASES = ['call_started', 'recorded', 'call_ended', 'last_event'] as const;
 export const RC_SORTS = ['newest', 'oldest', 'longest'] as const;
 export const RC_SCOPES = ['calls', 'customers', 'appointments', 'activity'] as const;
 export const RC_CONTROL_ACTIONS = ['arm_booking', 'disarm_booking', 'verify_test_call', 'clear_test_call', 'activate', 'deactivate'] as const;
@@ -350,21 +363,27 @@ export class ReceptionistCenter {
   }
 
   // ── call history: server search, filters, salon-local From/To, numbered pages, newest first (guide §06–§08) ─────────────
-  async calls(ctx: RcCtx, f: { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: unknown; pageSize?: unknown }) {
+  async calls(ctx: RcCtx, f: { q?: string; status?: string; outcome?: string; dateBasis?: string; period?: string; from?: string; to?: string; sort?: string; page?: unknown; pageSize?: unknown;
+    agent?: string; service?: string; direction?: string; minSeconds?: unknown; maxSeconds?: unknown }) {
     const page = pageOf(f.page), size = sizeOf(f.pageSize); const b = this.branch(ctx);
     const w = (f.period || f.from || f.to) ? await this.window(ctx, f) : null;
-    const col = f.dateBasis === 'recorded' ? sql`o.created_at` : sql`coalesce(o.started_at, o.created_at)`;
+    const col = f.dateBasis === 'recorded' ? sql`o.created_at` : f.dateBasis === 'call_ended' ? sql`o.ended_at` : f.dateBasis === 'last_event' ? sql`coalesce(o.last_event_at, o.updated_at)` : sql`coalesce(o.started_at, o.created_at)`;
     const conds = [sql`o.tenant_id = ${ctx.tenantId}`, sql`(${b}::uuid is null or o.branch_id = ${b})`];
     const q = String(f.q ?? '').trim().slice(0, 100);
     if (q) {
       const d = digits(q);
       conds.push(sql`(o.provider_call_id ilike ${like(q)} or coalesce(o.summary, '') ilike ${like(q)} or coalesce(o.error_category, '') ilike ${like(q)}
         or coalesce(o.booking_outcome, '') ilike ${like(q)} or coalesce(o.intents::text, '') ilike ${like(q)}
+        or (${d.length >= 4} and (regexp_replace(coalesce(o.caller_number, ''), '\\D', '', 'g') like ${'%' + d + '%'} or regexp_replace(coalesce(o.dialed_number, ''), '\\D', '', 'g') like ${'%' + d + '%'}))
         or exists (select 1 from ai_receptionist_follow_ups fu where fu.tenant_id = o.tenant_id and fu.provider_call_id = o.provider_call_id
           and (${d.length >= 4 ? d : null}::text is not null and regexp_replace(coalesce(fu.caller_phone, ''), '\\D', '', 'g') like '%' || ${d.length >= 4 ? d : ''}::text)))`);
     }
+    const missed = sql`(o.abandoned and coalesce(o.duration_seconds, 0) < ${MISSED_SECONDS})`;
+    const live = sql`(o.ended_at is null and not o.abandoned and o.error_category is null and coalesce(o.started_at, o.created_at) > now() - make_interval(hours => ${STALE_HOURS}))`;
     if (f.status === 'completed') conds.push(sql`o.ended_at is not null and not o.abandoned and o.error_category is null`);
-    else if (f.status === 'abandoned') conds.push(sql`o.abandoned`);
+    else if (f.status === 'abandoned') conds.push(sql`o.abandoned and not ${missed}`);
+    else if (f.status === 'missed') conds.push(missed);
+    else if (f.status === 'in_progress') conds.push(live);
     else if (f.status === 'failed') conds.push(sql`o.error_category is not null`);
     else if (f.status === 'handed_off') conds.push(sql`o.handoff_outcome is not null and o.handoff_outcome <> 'none'`);
     if (f.outcome === 'booked') conds.push(sql`o.booking_outcome = 'booked'`);
@@ -372,12 +391,22 @@ export class ReceptionistCenter {
     else if (f.outcome === 'question') conds.push(sql`o.booking_outcome is null and (o.handoff_outcome is null or o.handoff_outcome = 'none')`);
     else if (f.outcome === 'handoff') conds.push(sql`o.handoff_outcome is not null and o.handoff_outcome <> 'none'`);
     else if (f.outcome === 'follow_up') conds.push(sql`o.follow_up_required`);
+    const agent = String(f.agent ?? '').trim().slice(0, 120); if (agent) conds.push(sql`o.agent_ref = ${agent}`);
+    const service = String(f.service ?? '').trim().slice(0, 100);
+    if (service) conds.push(sql`(coalesce(o.intents::text, '') ilike ${like(service)} or coalesce(o.tool_calls::text, '') ilike ${like(service)} or coalesce(o.summary, '') ilike ${like(service)})`);
+    if ((RC_DIRECTIONS as readonly string[]).includes(String(f.direction))) conds.push(sql`o.direction = ${String(f.direction)}`);
+    const secs = (v: unknown) => (v === undefined || v === null || v === '' || !Number.isFinite(Number(v)) ? null : Math.max(0, Math.floor(Number(v))));
+    const minS = secs(f.minSeconds), maxS = secs(f.maxSeconds);
+    if (minS !== null && maxS !== null && minS > maxS) throw new ReceptionistCenterError('The shortest length is longer than the longest.', 'AI_RCPT_INVALID_FILTER');
+    if (minS !== null) conds.push(sql`coalesce(o.duration_seconds, 0) >= ${minS}`);
+    if (maxS !== null) conds.push(sql`coalesce(o.duration_seconds, 0) <= ${maxS}`);
     if (w) { conds.push(sql`${col} >= (${w.from}::date)::timestamp at time zone ${w.tz}`); conds.push(sql`${col} < ((${w.to}::date + 1))::timestamp at time zone ${w.tz}`); }
     const where = sql.join(conds, sql` and `);
     const order = f.sort === 'oldest' ? sql`${col} asc, o.id asc` : f.sort === 'longest' ? sql`o.duration_seconds desc nulls last, o.id desc` : sql`${col} desc, o.id desc`;
     const total = N((await sql<Row>`select count(*)::int n from voice_call_outcomes o where o.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
     const rows: Row[] = (await sql<Row>`select o.id, o.provider_call_id, o.branch_id, o.started_at, o.ended_at, o.created_at, o.duration_seconds, o.intents, o.booking_outcome,
-        o.handoff_outcome, o.abandoned, o.follow_up_required, o.error_category, o.language,
+        o.handoff_outcome, o.abandoned, o.follow_up_required, o.error_category, o.language, o.caller_number, o.dialed_number, o.direction, o.agent_ref, o.disconnection_reason,
+        coalesce(o.last_event_at, o.updated_at) last_event_at,
         (select fu.caller_phone from ai_receptionist_follow_ups fu where fu.tenant_id = o.tenant_id and fu.provider_call_id = o.provider_call_id order by fu.created_at desc limit 1) caller_phone,
         (select fu.customer_id from ai_receptionist_follow_ups fu where fu.tenant_id = o.tenant_id and fu.provider_call_id = o.provider_call_id and fu.customer_id is not null order by fu.created_at desc limit 1) customer_id
       from voice_call_outcomes o where o.tenant_id = ${ctx.tenantId} and ${where} order by ${order} limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
@@ -386,11 +415,15 @@ export class ReceptionistCenter {
         id: r.id, callRef: String(r.provider_call_id), startedAt: iso(r.started_at ?? r.created_at), endedAt: iso(r.ended_at), durationSeconds: r.duration_seconds == null ? null : N(r.duration_seconds),
         intents: Array.isArray(r.intents) ? r.intents : [], bookingOutcome: r.booking_outcome ?? null, handoffOutcome: r.handoff_outcome ?? null, abandoned: !!r.abandoned,
         followUpRequired: !!r.follow_up_required, errorCategory: r.error_category ?? null, language: r.language ?? null,
-        callerMasked: maskPhone(r.caller_phone), identity: r.customer_id ? 'linked_customer' : r.caller_phone ? 'caller_only' : 'unknown',
-        status: r.error_category ? 'failed' : r.abandoned ? 'abandoned' : r.handoff_outcome && r.handoff_outcome !== 'none' ? 'handed_off' : r.ended_at ? 'completed' : 'in_progress',
+        callerMasked: maskPhone(r.caller_phone ?? r.caller_number), dialedMasked: maskPhone(r.dialed_number), direction: r.direction ?? null, agentRef: r.agent_ref ?? null,
+        disconnection: r.disconnection_reason ?? null, lastEventAt: iso(r.last_event_at),
+        identity: r.customer_id ? 'linked_customer' : (r.caller_phone ?? r.caller_number) ? 'caller_only' : 'unknown',
+        status: callStatus(r),
       })),
       pagination: { page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) },
-      window: w, dateBasis: f.dateBasis === 'recorded' ? 'recorded' : 'call_started',
+      // agent picker for the filter: this salon's agents only (name + the provider reference stored on each call)
+      agents: (await sql<Row>`select a.provider_agent_id ref, a.name from ai_receptionist_agents a where a.tenant_id = ${ctx.tenantId} and a.archived_at is null and a.provider_agent_id is not null order by a.name`.execute(this.db)).rows.map((a) => ({ ref: String(a.ref), name: String(a.name ?? a.ref) })),
+      window: w, dateBasis: (RC_DATE_BASES as readonly string[]).includes(String(f.dateBasis)) ? String(f.dateBasis) : 'call_started',
     };
   }
 

@@ -98,3 +98,17 @@ migration header's rollback; existing features keep working.
 Found, out of scope: `email-public.controller.ts` (guide 15) calls `recordWebhook` with outcome strings the `WebhookOutcome` type does not allow
 (`not_configured`, `bad_signature`, `ok`) — a CI type-check failure to fix; the frozen `catalog.en.ts` still holds the old literal `—` text for the
 retired AI Calls empty-state key (no longer used by the page).
+
+## Built Nov 6 2026 (A10)
+
+- **Same call list as A15.** AI Calls reads the same list, so it gets the same additions:
+  - Missed status.
+  - Call ended and last update date bases.
+  - Agent, direction and length filters.
+  - Search by caller or dialed digits.
+- **URL keys.** The new filters are saved in the address with the page's existing URL keys.
+- **Labels.** "Missed / hung up" is now two statuses: **Missed** and **Hung up**.
+- **Not built:**
+  - A separate `call_links` table. Links stay in `voice_tool_executions`.
+  - Server push (SSE).
+  - A Twilio SID column. Search matches the stored provider call reference only.

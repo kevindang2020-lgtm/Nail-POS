@@ -83,3 +83,43 @@ transaction, and recorded append-only with before/after (`ai_receptionist_contro
 1. Should Front Desk be able to confirm a prepared follow-up task itself (today owner/manager only)?
 2. Verified-test-call window: 7 days — keep?
 3. Show voice-minute cost on this page once a per-minute rate is approved (none exists in code)?
+
+## Built Nov 6 2026 (A15 — Kevin: "continue finish all")
+
+- **New call statuses:**
+  - **Missed:** the caller hung up in under 15 s (`MISSED_SECONDS`). Hang-ups of 15 s or more stay **Hung up / Abandoned**.
+  - **In progress:** the call has no end and started less than 2 h ago (`STALE_HOURS`). An older open call shows **No end recorded**
+    (on AI Calls: **Unknown**). It is never shown as live.
+- **New filters:** agent (this salon's agents), service (words in the intents, tool calls or summary), direction, and length
+  (under 1 min, 1–5 min, over 5 min). If the shortest length is longer than the longest, the request is refused with
+  `AI_RCPT_INVALID_FILTER`.
+- **Number called column.** Shows the salon number that was dialed, masked. Search now also matches caller digits and dialed digits.
+- **More date bases:** call started, call ended, recorded, last update.
+- **URL filters.** All of the above are saved in the address (`rp*` keys).
+- **Live updates.** The list, the KPIs and the priorities re-read every 30 s while the tab is visible, and again when the tab comes
+  back into view. The page says so. This is polling, not server push.
+- **Tests:**
+  - `receptionist-center.pgtest` (17)
+  - `POSAIReceptionistScreen.test` (2)
+
+## Built Nov 6 2026 (A9 Receptionist Settings — Kevin: "continue finish all")
+
+- **Recording-notice approval.** Migration 829 adds `ai_receptionist_consent_approvals`.
+  - Approval is append-only and covers one exact text (sha256), approved by an **owner** for the salon or for one branch.
+  - These saves are refused with `AI_RCPT_CONSENT_NOT_APPROVED` until the effective notice text is approved:
+    - turning recording on;
+    - changing the notice while recording is on.
+  - Other saves never trip on this check.
+  - A manager who tries to approve is refused with `AI_RCPT_OWNER_ONLY`.
+  - The page shows Approved / Not approved / Changed — needs approval, and has an "Approve this notice (owner)" button.
+  - Each approval is audited (`settings.consent_approved`).
+- **Check Receptionist Settings.** `POST …/settings/check` reports six parts: read, consent, notice words, timing, history, live use.
+  - Each run is recorded in `ai_receptionist_settings_checks`, and the last run is shown on the page.
+  - The check is read-only: it changes no setting and calls no provider.
+- **Not built (external).** Live calls do not read these settings yet; the voice agent keeps its own Retell configuration. The page
+  says this, and the "Live calls use these settings" part of the check is always a WARNING until the agent configuration push is built
+  and tested against a real Retell agent.
+- **Tests:**
+  - `ai-settings.pgtest`
+  - `ai-settings.vitest`
+  - `POSAICallsAndSettings.test` (4)
