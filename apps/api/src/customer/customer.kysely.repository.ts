@@ -1,5 +1,5 @@
 import { storedDateString } from '@aipowersalon/customers';
-import { branchTimeZone } from '@aipowersalon/database';
+import { branchTimeZone, tenantTimeZone } from '@aipowersalon/database';
 import { businessDate } from '@aipowersalon/date-time';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { isCheckInEligible } from '@aipowersalon/api-contracts';
@@ -423,10 +423,11 @@ export class KyselyCustomerRepository implements CustomerDataPort {
 
   /** Refer a Friend build R030–R033: what the app may promise — only a configured, enabled salon-voucher offer with budget left */
   async referralOffer(ctx: CustomerContext) {
+    const tz = await tenantTimeZone(this.db, ctx.tenantId);   // §87: the salon's calendar month (the monthly voucher cap)
     const r = (await sql<any>`select t.display_name as salon, s.enabled, s.reward_type, s.friend_reward_cents, s.referrer_reward_cents, s.voucher_min_spend_cents, s.voucher_expiry_days,
         s.budget_total_cents, s.budget_monthly_cents,
         (select coalesce(sum(v.face_cents), 0)::bigint from referral_vouchers v where v.tenant_id = t.id and v.state in ('PENDING', 'AVAILABLE', 'REDEEMED')) as committed,
-        (select coalesce(sum(v.face_cents), 0)::bigint from referral_vouchers v where v.tenant_id = t.id and v.state in ('PENDING', 'AVAILABLE', 'REDEEMED') and v.created_at >= date_trunc('month', now())) as month
+        (select coalesce(sum(v.face_cents), 0)::bigint from referral_vouchers v where v.tenant_id = t.id and v.state in ('PENDING', 'AVAILABLE', 'REDEEMED') and v.created_at >= (date_trunc('month', now() at time zone ${tz}) at time zone ${tz})) as month
       from tenants t left join referral_program_settings s on s.tenant_id = t.id where t.id = ${ctx.tenantId}`.execute(this.db)).rows[0];
     if (!r) return { salonName: null, offer: null };
     const per = Number(r.friend_reward_cents ?? 0) + Number(r.referrer_reward_cents ?? 0);

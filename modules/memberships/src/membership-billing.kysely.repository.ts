@@ -7,6 +7,7 @@ import { CUSTOMER_MEMBERSHIP } from './membership-machine';
 import { Kysely, sql } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { MembershipBillingRepositoryPort, FirstPaymentArgs, BillingMembership, RecordPaymentArgs, AdvanceArgs, DunningArgs, ActivityArgs, AuditArgs } from './membership-billing.repository';
+import { utcDate } from '@aipowersalon/date-time';   // §87
 
 const n = (v: unknown): number => (typeof v === 'number' ? v : Number(v ?? 0)) || 0;
 const d = (v: unknown): Date | null => (v == null ? null : new Date(v as any));
@@ -109,7 +110,7 @@ export class KyselyMembershipBillingRepository implements MembershipBillingRepos
    *  expires. Held credits are never expired. Once per membership, benefit and day (the reason carries the date), so an extra
    *  run expires nothing twice. Returns the number of ledger rows written. */
   async expireAgedCredits(now: Date, limit = 1000): Promise<number> {
-    const day = now.toISOString().slice(0, 10);
+    const day = utcDate(now);   // the platform job's once-per-day key (every salon in one run) — not a salon's calendar day
     const reason = 'credit_expiry:' + day;
     const r = await sql`insert into membership_credit_ledger (tenant_id, customer_membership_id, benefit_id, entry_type, service_id, quantity, amount_cents, reason)
       select x.tenant_id, x.customer_membership_id, x.benefit_id, 'expired', b.service_id, greatest(x.q - x.recent_q, 0), greatest(x.a - x.recent_a, 0), ${reason}

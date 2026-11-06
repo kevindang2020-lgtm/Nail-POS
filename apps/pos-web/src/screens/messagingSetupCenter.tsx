@@ -13,31 +13,31 @@ import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { fmtDateTime } from '../i18n/format';
 import { FitDialog, FitPanel, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, type PeriodState, type ServerPeriod } from '../components/FinanceKit';
-import { posMessagingSetupApi as api, type SetupOverview, type PartState, type PartKey, type WizardKey, type BranchSenders as BranchSendersView, type ActivityPage, type ActivityDetail, type ActivityKind } from '../api/posMessagingSetupApi';
+import { posMessagingSetupApi as api, type SetupOverview, type MsgSetupPartState, type MsgSetupPartKey, type MsgSetupWizardKey, type BranchSenders as BranchSendersView, type MsgSetupActivityPage, type ActivityDetail, type MsgSetupActivityKind } from '../api/posMessagingSetupApi';
 
 /** literal keys (read at render — never translated at import) */
-const STATE: Record<PartState, () => string> = {
+const STATE: Record<MsgSetupPartState, () => string> = {
   ready: () => t('ms.state.ready'), attention_required: () => t('ms.state.attention_required'), pending: () => t('ms.state.pending'),
   failed: () => t('ms.state.failed'), unknown: () => t('ms.state.unknown'), off: () => t('ms.state.off'),
 };
-const TONE: Record<PartState, string> = { ready: 'ok', attention_required: 'warn', pending: 'info', failed: 'bad', unknown: 'muted', off: 'muted' };
-const PART: Record<PartKey, () => string> = {
+const TONE: Record<MsgSetupPartState, string> = { ready: 'ok', attention_required: 'warn', pending: 'info', failed: 'bad', unknown: 'muted', off: 'muted' };
+const PART: Record<MsgSetupPartKey, () => string> = {
   account: () => t('ms.part.account'), sender: () => t('ms.part.sender'), registration: () => t('ms.part.registration'),
   inbound: () => t('ms.part.inbound'), delivery: () => t('ms.part.delivery'), booking_verify: () => t('ms.part.booking_verify'),
 };
-const STEP: Record<WizardKey, () => string> = {
+const STEP: Record<MsgSetupWizardKey, () => string> = {
   scope: () => t('ms.wiz.step.scope'), connect: () => t('ms.wiz.step.connect'), number: () => t('ms.wiz.step.number'), registration: () => t('ms.wiz.step.registration'),
   webhooks: () => t('ms.wiz.step.webhooks'), test: () => t('ms.wiz.step.test'), summary: () => t('ms.wiz.step.summary'),
 };
 const STEP_STATE: Record<string, () => string> = { done: () => t('ms.wiz.state.done'), action: () => t('ms.wiz.state.action'), pending: () => t('ms.wiz.state.pending'), blocked: () => t('ms.wiz.state.blocked') };
-const KIND: Record<ActivityKind, () => string> = {
+const KIND: Record<MsgSetupActivityKind, () => string> = {
   test_sms: () => t('ms.act.kind.test_sms'), health_check: () => t('ms.act.kind.health_check'), registration_check: () => t('ms.act.kind.registration_check'), number_purchase: () => t('ms.act.kind.number_purchase'),
 };
 const ASTATE: Record<string, () => string> = { ok: () => t('ms.act.state.ok'), pending: () => t('ms.act.state.pending'), failed: () => t('ms.act.state.failed') };
 const BASIS: Record<string, () => string> = { created: () => t('ms.act.basis.created'), updated: () => t('ms.act.basis.updated'), delivered: () => t('ms.act.basis.delivered') };
 const when = (iso: string | null | undefined) => (iso ? fmtDateTime(iso) : '—');
 
-export function StateChip({ state, testId }: { state: PartState; testId?: string }) {
+export function StateChip({ state, testId }: { state: MsgSetupPartState; testId?: string }) {
   return <span className={'ms-chip ' + TONE[state]} data-testid={testId} data-state={state}>{STATE[state]()}</span>;
 }
 
@@ -68,7 +68,7 @@ export function SmsReadinessPanel({ ov, error, onOpen }: { ov: SetupOverview | n
 
 /** §12 the guided wizard */
 export function SetupWizard({ ov, onClose, onOpen }: { ov: SetupOverview; onClose: () => void; onOpen: (link: string) => void }) {
-  const [sel, setSel] = useState<WizardKey>(ov.wizard.resumeAt);
+  const [sel, setSel] = useState<MsgSetupWizardKey>(ov.wizard.resumeAt);
   const step = ov.wizard.steps.find((s) => s.key === sel) ?? ov.wizard.steps[0];
   return (
     <FitDialog title={t('ms.wiz.title')} subtitle={t('ms.wiz.sub')} onClose={onClose} wide testId="ms-wizard"
@@ -136,7 +136,7 @@ export function SetupActivity({ branches, refreshKey }: { branches: { id: string
   const [qText, setQText] = useState('');
   const q = useDebounced(qText.trim(), 300);
   const [v, setV] = useState<View>(START);
-  const [page, setPage] = useState<ActivityPage | null>(null);
+  const [page, setPage] = useState<MsgSetupActivityPage | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [detail, setDetail] = useState<ActivityDetail | null>(null);
@@ -150,14 +150,14 @@ export function SetupActivity({ branches, refreshKey }: { branches: { id: string
   useEffect(() => { load(); }, [load, refreshKey]);
   const period: PeriodState = v.preset === 'custom' ? { preset: 'custom', from: v.from, to: v.to } : { preset: v.preset };
   const filtersOn = !!(q || v.kind || v.state || v.branchId || v.preset !== 'all' || v.basis !== 'created');
-  const open = (r: { kind: ActivityKind; id: string }) => { api.detail(r.kind, r.id).then(setDetail).catch((e) => setErr((e as Error)?.message || 'error')); };
+  const open = (r: { kind: MsgSetupActivityKind; id: string }) => { api.detail(r.kind, r.id).then(setDetail).catch((e) => setErr((e as Error)?.message || 'error')); };
   return (
     <FitPanel title={t('ms.act.title')} testId="ms-activity" className="ms-full">
       <div className="pmc-hint">{t('ms.act.sub')}</div>
       <div className="ms-filters">
         <input className="fk-input ms-search" type="search" value={qText} onChange={(e) => setQText(e.target.value)} placeholder={t('ms.act.search')} aria-label={t('ms.act.search')} data-testid="ms-search" />
         <select className="fk-select" value={v.kind} onChange={(e) => set({ kind: e.target.value })} aria-label={t('ms.act.kind')} data-testid="ms-kind">
-          <option value="">{t('ms.act.kind.all')}</option>{(Object.keys(KIND) as ActivityKind[]).map((k) => <option key={k} value={k}>{KIND[k]()}</option>)}
+          <option value="">{t('ms.act.kind.all')}</option>{(Object.keys(KIND) as MsgSetupActivityKind[]).map((k) => <option key={k} value={k}>{KIND[k]()}</option>)}
         </select>
         <select className="fk-select" value={v.state} onChange={(e) => set({ state: e.target.value })} aria-label={t('ms.act.state')} data-testid="ms-state">
           <option value="">{t('ms.act.state.all')}</option>{Object.keys(ASTATE).map((k) => <option key={k} value={k}>{ASTATE[k]()}</option>)}

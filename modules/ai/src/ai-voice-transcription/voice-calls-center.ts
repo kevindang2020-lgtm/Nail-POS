@@ -25,6 +25,7 @@ import { branchTimeZone } from '@aipowersalon/database';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { redactText } from './ai-voice-transcription-redaction';
 import { parseTerms } from './ai-voice-transcription-search';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface VcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -60,7 +61,7 @@ const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | 
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
 const has = (ctx: VcCtx, p: string) => (ctx.permissions ?? []).includes(p);
-const addDays = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, k: number) => addYmdDays(d, k);
 const esc = (s: string) => s.replace(/[\\%_]/g, (m) => '\\' + m);
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 /** a short excerpt around the first term, redacted AGAIN (the stored text is already redacted — this is the second guard) */

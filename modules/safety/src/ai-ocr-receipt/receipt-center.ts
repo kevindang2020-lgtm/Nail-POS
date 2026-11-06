@@ -17,6 +17,7 @@
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
+import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface RcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -56,7 +57,7 @@ const HEALTH_GAP_SECONDS = 30;
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const N = (v: unknown) => (v == null ? 0 : Number(v));
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
-const day = (v: unknown) => (v == null ? null : (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10)));
+const day = (v: unknown) => (v == null ? null : (dateColumnYmd(v)));
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
 /** "12.50", "$12.50", "12" → cents; anything else → null */
@@ -93,7 +94,7 @@ export class ReceiptCenter {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(this.now()));
     const preset = pick(RC_PRESETS, f.preset) ?? (f.from || f.to ? 'custom' : fallback);
     if (preset === 'all') return { preset, from: null as string | null, to: null as string | null, start: null as Date | null, end: null as Date | null, today, tz };
-    const d = (s: string, n: number) => { const x = new Date(s + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const d = (s: string, n: number) => addYmdDays(s, n);
     const t = new Date(today + 'T12:00:00Z'); const dow = (t.getUTCDay() + 6) % 7;
     let from: string; let to = today;
     switch (preset) {

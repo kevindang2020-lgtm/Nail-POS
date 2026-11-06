@@ -11,6 +11,7 @@
 // Every query is scoped to the caller's salon, and to their location when the session has one.
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
+import { addDays as addYmdDays, dateColumnYmd, epochToLocalDate, utcDate } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 /** a stored JSON list (array column or JSON text); anything else is an empty list, said in the log */
 function jsonList(v: unknown): unknown[] {
@@ -32,12 +33,12 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const N = (v: unknown) => Number(v ?? 0) || 0;
 const iso = (v: unknown) => (v ? new Date(v as string | number | Date).toISOString() : null);
-const ymd = (v: unknown) => (v == null ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+const ymd = (v: unknown) => (v == null ? null : dateColumnYmd(v));
 const like = (q: string) => q.replace(/[\\%_]/g, (m) => '\\' + m);
 const mask = (p: unknown) => { const d = String(p ?? '').replace(/[^0-9]/g, ''); return d.length >= 4 ? '••• ' + d.slice(-4) : null; };
 const SEVERITY: BkHealthStatus[] = ['FAILED', 'UNKNOWN', 'ATTENTION_REQUIRED', 'NOT_CONFIGURED', 'DISABLED', 'READY'];
-const todayIn = (tz: string, now: number) => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch { return new Date(now).toISOString().slice(0, 10); } };
-const addDays = (d: string, n: number) => new Date(Date.UTC(+d.slice(0, 4), +d.slice(5, 7) - 1, +d.slice(8, 10) + n)).toISOString().slice(0, 10);
+const todayIn = (tz: string, now: number) => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch { return utcDate(new Date(now)); } };
+const addDays = (d: string, n: number) => addYmdDays(d, n);
 export function bkPeriod(preset: string | undefined, today: string, from?: string, to?: string): { preset: string; from: string | null; to: string | null } {
   const p = (BK_PRESETS as readonly string[]).includes(String(preset)) ? String(preset) : (from || to ? 'custom' : 'month');
   if (p === 'today') return { preset: p, from: today, to: today };
@@ -177,6 +178,7 @@ export class AiBookingCenter {
   // ── §8 overlay ────────────────────────────────────────────────────────────────────────────────────────────────────
   async detail(ctx: BkCtx, requestId: string) {
     this.need(ctx, 'ai_booking.view');
+    const tz = await this.zone(ctx); const today = todayIn(tz, this.now());   // §87: the location's day, not the server's
     const id = String(requestId ?? '').slice(0, 100);
     const r: any = (await sql<any>`select * from ${this.requests(ctx)} where r.cid = ${id}`.execute(this.db)).rows[0];
     if (!r) throw new AiBookingCenterError('That booking request could not be found.', 'NOT_FOUND', 404);
@@ -193,7 +195,7 @@ export class AiBookingCenter {
     const tools = r.appt_id ? (await sql<any>`select tool_name, tool_kind, status, business_result, error_category, requests, requested_at, finished_at from voice_tool_executions
       where tenant_id = ${ctx.tenantId} and related_id = ${String(r.appt_id)} order by requested_at asc limit 50`.execute(this.db).catch(() => ({ rows: [] as Array<Record<string, any>> }))).rows : [];
     const nearby = r.customer_id ? (await sql<any>`select id, appt_date, start_time, status, source from pos_tech_appointments where tenant_id = ${ctx.tenantId} and customer_id = ${r.customer_id}
-      and appt_date between current_date - 60 and current_date + 60 order by appt_date asc, start_time asc limit 12`.execute(this.db)).rows : [];
+      and appt_date between ${today}::date - 60 and ${today}::date + 60 order by appt_date asc, start_time asc limit 12`.execute(this.db)).rows : [];
     return {
       ...this.row(r), branchId: r.branch_id ? String(r.branch_id) : null,
       customer: { customerId: r.customer_id ? String(r.customer_id) : null, name: r.customer_name ?? null, maskedPhone: mask(r.customer_phone ?? r.normalized_phone),
@@ -215,6 +217,9 @@ export class AiBookingCenter {
   // ── §10 recovery cases ────────────────────────────────────────────────────────────────────────────────────────────
   async recovery(ctx: BkCtx) {
     this.need(ctx, 'ai_booking.view');
+    // §87 (Nov 5 2026): "today and tomorrow" is the location's — after 7 pm in New York the server's day was already tomorrow,
+    // so today's unconfirmed AI bookings dropped off this list; a hold's date is its local day too
+    const tz = await this.zone(ctx); const today = todayIn(tz, this.now());
     const hb = ctx.branchId ? sql`and h.branch_id = ${ctx.branchId}` : sql``;
     const vb = ctx.branchId ? sql`and v.branch_id = ${ctx.branchId}` : sql``;
     const ab = ctx.branchId ? sql`and a.branch_id = ${ctx.branchId}` : sql``;
@@ -232,7 +237,7 @@ export class AiBookingCenter {
     for (const h of holds) {
       const live = new Date(h.expires_at).getTime() > this.now();
       cases.push({ key: 'hold:' + h.id, type: live ? 'hold_expiring' : 'hold_expired', urgency: live ? 'high' : 'medium', requestId: null, at: iso(h.expires_at), customerName: h.full_name ?? null,
-        maskedPhone: mask(h.normalized_phone), appointmentId: null, date: h.start_time ? new Date(h.start_time).toISOString().slice(0, 10) : null, reason: live ? 'hold_expires_soon' : 'hold_expired_unbooked', source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
+        maskedPhone: mask(h.normalized_phone), appointmentId: null, date: h.start_time ? epochToLocalDate(new Date(h.start_time).getTime(), tz) : null, reason: live ? 'hold_expires_soon' : 'hold_expired_unbooked', source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
     }
     const ver = (await sql<any>`select v.id, v.correlation_id, v.status, v.expires_at, v.phone_mask, v.failure_reason, v.created_at from booking_verification_sessions v
       where v.tenant_id = ${ctx.tenantId} ${vb} and v.channel = 'ai_receptionist' and v.status in ('expired','locked','failed') and v.created_at >= now() - interval '1 day'
@@ -240,7 +245,7 @@ export class AiBookingCenter {
     for (const v of ver) cases.push({ key: 'verify:' + v.id, type: 'verification_' + v.status, urgency: 'medium', requestId: v.correlation_id ? String(v.correlation_id) : null, at: iso(v.created_at),
       customerName: null, maskedPhone: v.phone_mask ?? null, appointmentId: null, date: null, reason: v.failure_reason ?? null, source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
     const unconfirmed = (await sql<any>`select a.id, a.appt_date, a.start_time, a.customer_name, a.customer_phone, a.created_at from pos_tech_appointments a
-      where a.tenant_id = ${ctx.tenantId} ${ab} and a.source = 'ai' and a.status = 'booked' and a.appt_date between current_date and current_date + 1
+      where a.tenant_id = ${ctx.tenantId} ${ab} and a.source = 'ai' and a.status = 'booked' and a.appt_date between ${today}::date and ${today}::date + 1
       order by a.appt_date asc, a.start_time asc limit 50`.execute(this.db)).rows;
     for (const a of unconfirmed) cases.push({ key: 'unconfirmed:' + a.id, type: 'unconfirmed_appointment', urgency: 'medium', requestId: null, at: iso(a.created_at), customerName: a.customer_name ?? null,
       maskedPhone: mask(a.customer_phone), appointmentId: String(a.id), date: ymd(a.appt_date), reason: 'not_confirmed', source: 'AI_PHONE_RECEPTIONIST', attempts: 0 });
@@ -338,6 +343,7 @@ export class AiBookingCenter {
   async health(ctx: BkCtx) {
     this.need(ctx, 'ai_booking.view');
     const T = ctx.tenantId, B = ctx.branchId;
+    const today = todayIn(await this.zone(ctx), this.now());   // §87: the next 7 days from the location's today
     const at = new Date(this.now()).toISOString();
     const out: BkHealthCheck[] = [];
     const add = (key: string, status: BkHealthStatus, evidence: string, owner: string, facts: Record<string, string | number> = {}, failure: string | null = null, fix: string | null = null): void => { out.push({ key, status, evidence, failure, fix, owner, facts, checkedAt: at }); };
@@ -380,7 +386,7 @@ export class AiBookingCenter {
       add('technicians', N(r.n) ? 'READY' : 'NOT_CONFIGURED', `${N(r.n)} active technician(s).`, 'Manager', { total: N(r.n) }, N(r.n) ? null : 'No active technicians.', N(r.n) ? null : 'Add technicians under Team.');
     });
     await attempt('availability', 'Manager', async () => {
-      const r: any = (await sql<any>`select count(*)::int n from pos_tech_appointments a where a.tenant_id = ${T} ${bAnd('a')} and a.appt_date between current_date and current_date + 7 and a.status in ('booked','confirmed')`.execute(this.db)).rows[0];
+      const r: any = (await sql<any>`select count(*)::int n from pos_tech_appointments a where a.tenant_id = ${T} ${bAnd('a')} and a.appt_date between ${today}::date and ${today}::date + 7 and a.status in ('booked','confirmed')`.execute(this.db)).rows[0];
       add('availability', 'READY', `The POS Booking calendar is readable: ${N(r.n)} upcoming appointment(s) in the next 7 days. The assistant searches the same engine.`, 'Manager', { upcoming: N(r.n) });
     });
     await attempt('booking_api', 'AIPowerSalon', async () => {

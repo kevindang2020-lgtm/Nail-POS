@@ -29,6 +29,7 @@ import type { DiscountType } from './deals.core';
 import type { DiscountsScreenRepository } from '../salon-promotions/discounts-screen';
 import { DEAL_DATE_FIELDS, DEAL_KINDS_ALL, LIFECYCLES, REDEMPTION_STATES } from '../salon-promotions/discounts-screen';
 import type { CouponCenter } from '../salon-promotions/coupon-center';
+import { utcDate } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 const N = (v: unknown) => Number(v ?? 0) || 0;
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
@@ -74,7 +75,7 @@ export class DealsCenter {
     const tz = df || dt || preset ? await tenantTimeZone(this.db, T).catch(() => 'America/New_York') : 'UTC';
     if (preset && !df && !dt) {   // the salon's today, not the server's
       const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz }).format(new Date());
-      const at = (y: number, m: number, d: number) => new Date(Date.UTC(y, m, d)).toISOString().slice(0, 10);
+      const at = (y: number, m: number, d: number) => utcDate(new Date(Date.UTC(y, m, d)));
       const [y, m, d] = today.split('-').map(Number) as [number, number, number];
       if (preset === 'today') { df = today; dt = today; }
       else if (preset === 'week') { const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7; df = at(y, m - 1, d - dow); dt = at(y, m - 1, d - dow + 6); }

@@ -17,6 +17,7 @@ import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, toStoredCustomerPhone, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { summarizeVisits, classifyInactivity, rebookingOpportunity, evaluateChurnRisk, DEFAULT_TUNABLES, type ProfileTunables, type VisitRecord, type AppointmentRecord } from './ai-customer-profile-core';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export type CiCtx = RetentionContext;
@@ -82,8 +83,7 @@ export function classifyCustomer(customerId: string, visitTimes: string[], upcom
     rebookingWindowEnd: addDays(vs.lastVisit, vs.typicalIntervalDays == null ? null : vs.typicalIntervalDays * t.inactiveMultiplier),
   };
 }
-const addDays = (fromIso: string | null, days: number | null) => (fromIso == null || days == null ? null
-  : new Date(Date.parse(fromIso.slice(0, 10) + 'T00:00:00.000Z') + Math.round(days) * 86_400_000).toISOString().slice(0, 10));
+const addDays = (fromIso: string | null, days: number | null) => (fromIso == null || days == null ? null : addYmdDays(fromIso.slice(0, 10), Math.round(days)));
 
 /** the authorized customer search (alias `c`): name (accents optional) · phone in any format · email · customer id · appointment id ·
  *  technician / service from completed visits. Shared by Customer Intelligence and Churn Watch. */

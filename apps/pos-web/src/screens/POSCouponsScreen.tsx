@@ -17,7 +17,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posDiscountsApi } from '../api/posDiscountsApi';
 import { posDealsApi, type DealView } from '../api/posDealsApi';
-import { posCouponsApi, type AssistGoal, type CouponCheck } from '../api/posCouponsApi';
+import { posCouponsApi, type CouponAssistGoal, type CouponCheck } from '../api/posCouponsApi';
 import { posServicesApi } from '../api/posServicesApi';
 import { authApi } from '../api/authApi';
 import { useCan } from '../components/usePermissions';
@@ -35,7 +35,7 @@ const STATUSES = ['live', 'active', 'scheduled', 'paused', 'draft', 'expired', '
 const BASES = ['created', 'updated', 'starts', 'ends', 'active'];
 const STATES = ['confirmed', 'pending', 'released', 'reversed', 'all'];
 const SIZES = [10, 20, 50];
-const GOALS: AssistGoal[] = ['slow_weekdays', 'promote_service', 'returning_visits', 'reconnect_inactive'];
+const GOALS: CouponAssistGoal[] = ['slow_weekdays', 'promote_service', 'returning_visits', 'reconnect_inactive'];
 const nf = (n: number) => fmtNumber(n || 0);
 const day = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short', day: 'numeric', year: 'numeric' }) || '—' : '—');
 /** the lifecycle actions the deal's status allows (the server's DEAL machine refuses anything else) */
@@ -320,8 +320,8 @@ export function DuplicateDialog({ id, name, onClose, onDone }: { id: string; nam
 
 /** Suggest → edit → save as a DRAFT. Deals & Offers reuses it with its own endpoints, title and no code (a salon deal has none). */
 export function AssistantDialog({ services, onClose, onDone, api = posCouponsApi, title, withCode = true }: { services: { id: string; name: string }[]; onClose: () => void; onDone: (v: any) => void;
-  api?: { suggest: (goal: AssistGoal) => Promise<any>; draft: (body: Record<string, unknown>) => Promise<any> }; title?: string; withCode?: boolean }) {
-  const [goal, setGoal] = useState<AssistGoal>('slow_weekdays'); const [s, setS] = useState<any | null>(null);
+  api?: { suggest: (goal: CouponAssistGoal) => Promise<any>; draft: (body: Record<string, unknown>) => Promise<any> }; title?: string; withCode?: boolean }) {
+  const [goal, setGoal] = useState<CouponAssistGoal>('slow_weekdays'); const [s, setS] = useState<any | null>(null);
   const [name, setName] = useState(''); const [pct, setPct] = useState(''); const [code, setCode] = useState('');
   const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
   const suggest = async () => { setBusy(true); setErr(null); setS(null); try { const r = await api.suggest(goal); setS(r); setName(r.terms.title); setPct(String(r.terms.discountPercent ?? '')); } catch (e) { setErr(errorTextOf(e, tx('cp.failed'))); } finally { setBusy(false); } };
@@ -334,7 +334,7 @@ export function AssistantDialog({ services, onClose, onDone, api = posCouponsApi
   return <FitDialog wide title={title ?? tx('cp.assistant')} subtitle={tx('cp.assistSub')} onClose={onClose} testId="dlg-assistant"
     footer={<>{s ? <button type="button" className="fk-btn primary" onClick={save} disabled={busy || !name.trim()} data-testid="assist-save">{tx('cp.assistSave')}</button> : null}<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('pos.close')}</button></>}>
     <div className="cp-form">
-      <label className="lf"><span>{tx('cp.goal')}</span><select className="fk-select" value={goal} onChange={(e) => { setGoal(e.target.value as AssistGoal); setS(null); }} data-testid="assist-goal">{GOALS.map((g) => <option key={g} value={g}>{tx('cp.goal.' + g)}</option>)}</select></label>
+      <label className="lf"><span>{tx('cp.goal')}</span><select className="fk-select" value={goal} onChange={(e) => { setGoal(e.target.value as CouponAssistGoal); setS(null); }} data-testid="assist-goal">{GOALS.map((g) => <option key={g} value={g}>{tx('cp.goal.' + g)}</option>)}</select></label>
       <button type="button" className="fk-btn" onClick={suggest} disabled={busy} data-testid="assist-suggest">{busy && !s ? tx('pos.loading') : tx('cp.suggest')}</button>
     </div>
     {err ? <div className="fk-note bad" role="alert">{err}</div> : null}

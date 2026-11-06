@@ -25,6 +25,7 @@ import { projectionDeliversRealtime } from '@aipowersalon/config';
 import { applyLoyaltyEntry, lockLoyaltyCustomer, LoyaltyLedgerError } from '../loyalty/loyalty-ledger.service';
 import { mergeCustomersTx } from './customer-merge';
 import { directoryState, liveCustomersByIds, withDirectoryPlan, type DirectoryRow } from './customer-directory-sql';
+import { dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 interface Cust {
   customerId: string; firstName: string; lastName: string; phone: string; normalizedPhone?: string | null; email: string; avatarUrl?: string | null; status: 'active' | 'inactive' | 'archived';
@@ -180,7 +181,7 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     const runs: any[] = await this.db.selectFrom('customer_retention_snapshot_runs').select(['snapshot_local_date', 'definition_version', 'status', 'coverage', 'has_branch'])
       .where('tenant_id', '=', ctx.tenantId).where('snapshot_local_date', '>=', since).where('status', '=', 'completed')
       .orderBy('snapshot_local_date', 'desc').execute();
-    const day = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+    const day = (v: any): string => dateColumnYmd(v) ?? String(v ?? '').slice(0, 10);
     const out: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[] = [];
     for (const m of months) {
       const r = runs.find((x) => day(x.snapshot_local_date).startsWith(m) && x.coverage !== 'incomplete');

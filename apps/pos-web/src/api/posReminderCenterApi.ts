@@ -3,8 +3,8 @@
 // stay on posRemindersApi (GET/PATCH /pos/reminders).
 import { api } from './client';
 
-export type RcState = 'scheduled' | 'short_notice' | 'missed_window' | 'claimed' | 'submitted' | 'sent' | 'simulated' | 'delivered' | 'undelivered' | 'failed' | 'skipped' | 'cancelled' | 'deferred';
-export type HealthState = 'ready' | 'attention_required' | 'pending' | 'failed' | 'unknown' | 'off' | 'test_mode';
+type RcState = 'scheduled' | 'short_notice' | 'missed_window' | 'claimed' | 'submitted' | 'sent' | 'simulated' | 'delivered' | 'undelivered' | 'failed' | 'skipped' | 'cancelled' | 'deferred';
+type HealthState = 'ready' | 'attention_required' | 'pending' | 'failed' | 'unknown' | 'off' | 'test_mode';
 export interface RcKpi { value: number | null; basis: string; known?: boolean; lastReportAt?: string | null }
 export interface RcKpis { timezone: string; period: { preset: string; from: string | null; to: string | null }; scheduled: RcKpi; sent: RcKpi; delivered: RcKpi; failed: RcKpi; cancelled: RcKpi; upcomingToday: RcKpi }
 export interface RcRow {
@@ -15,7 +15,7 @@ export interface RcRow {
   providerStatus: string | null; providerErrorCode?: string | null; attempts?: number; notificationId?: string | null; superseded: boolean; appointmentStatus?: string | null; retryable?: boolean;
 }
 export interface RcPage { tab: string; basis: string; timezone: string; period: { preset: string; from: string | null; to: string | null }; page: number; pageSize: number; totalItems: number; totalPages: number; items: RcRow[] }
-export interface RcQuery { tab?: string; q?: string; channel?: string; branchId?: string; basis?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }
+export interface ReminderRcQuery { tab?: string; q?: string; channel?: string; branchId?: string; basis?: string; preset?: string; from?: string; to?: string; page?: number; pageSize?: number }
 export interface RcAttempt { id: string; status: string; reason: string | null; reasonText: string | null; kind: string; notificationId: string | null; byStaff: boolean; note: string | null; at: string | null }
 export interface RcDetails {
   item: RcRow & { providerReference?: string | null; failureReason?: string | null };
@@ -35,7 +35,7 @@ const qs = (o: Record<string, unknown>) => {
 
 export const posReminderCenterApi = {
   kpis: (q: { preset?: string; from?: string; to?: string; branchId?: string }) => api.get<RcKpis>(`/pos/reminder-center/kpis${qs(q)}`),
-  list: (q: RcQuery) => api.get<RcPage>(`/pos/reminder-center/reminders${qs(q as Record<string, unknown>)}`),
+  list: (q: ReminderRcQuery) => api.get<RcPage>(`/pos/reminder-center/reminders${qs(q as Record<string, unknown>)}`),
   details: (id: string) => api.get<RcDetails>(`/pos/reminder-center/reminders/${encodeURIComponent(id)}`),
   cancel: (id: string, reason: string) => api.post<{ id: string; state: string }>(`/pos/reminder-center/reminders/${encodeURIComponent(id)}/cancel`, { reason }),
   retry: (id: string, b: { idempotencyKey: string; reason: string; confirm: boolean; acknowledgeDuplicateRisk?: boolean }) =>

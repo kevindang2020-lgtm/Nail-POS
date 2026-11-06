@@ -614,3 +614,25 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
   emissions, 1 platform→domain back-edge (observability → backup-center), 2 hand-built system contexts; 5 workforce
   pgtests that fail after midnight UTC (Team Performance, weekly days off — they fail on the tree before this unit too);
   check:api-contract (the known wire-type ratchet).
+
+### Architecture regressions + clock-dependent tests (Nov 6 2026, early morning) — F6 run & repair
+
+- **Salon-day defects fixed (§87):** AI Booking recovery listed "today and tomorrow" unconfirmed AI bookings by the
+  SERVER's day (after 7 pm New York, today's dropped off) and dated holds by UTC; its detail and health windows too;
+  the AI health checks of Churn Watch / Rebooking / Service Recommendations (overdue deferrals), AI Inventory (late
+  purchase orders), Customer Search / Timeline (90-day windows); the Refer-a-Friend monthly voucher cap (server month →
+  the salon's month, POS and Customer App); inventory bottle expiry (a bottle expired on the location's day, not UTC's).
+  25 further sites were correct calendar arithmetic and now use the shared helpers (`addDays`, `dateColumnYmd`,
+  `utcDate`, `businessDate`). Customer Timeline now honours its injected clock for "today".
+- **Architecture:** platform→domain back-edge removed (the midnight backup schedule moved to
+  `observability/backup-schedule.ts`); two hand-built system contexts → `systemContext()`; two delivery notices marked
+  §343-exempt with reasons; 5 frontend types that collided with contract names renamed, 30 colliding frontend type names
+  renamed or un-exported. `architecture:test` → no regression; lint 0 / 0.
+- **Clock-dependent tests fixed:** Team Performance (a "last month" review landed on Nov 1 across the DST change),
+  weekly days off (events in one transaction shared `now()` — the product now stamps `clock_timestamp()`, so its history
+  order is real), Customer Timeline "today" (fixtures "hours ago" crossed midnight New York).
+- **A miss of mine, caught by `check:sql`:** the retention snapshot rename in aae3cd1 left one `count(*) from c` — the
+  nightly retention snapshot would have failed. Fixed; `retention-round2.pgtest` 15/15 (I had not run it after that edit).
+- **Gate run now:** 74 pass; 5 red — `check:api-contract` (known wire-type ratchet, 845 routes), and POS i18n (`i18n`,
+  `pos-i18n`, `inert controls`): 17 English strings not behind `t()`, 20 screens with untranslated label maps, 20 keys
+  added to the frozen catalogue, one EN/VI placeholder mismatch, one no-op handler on the Deals screen. Next unit.

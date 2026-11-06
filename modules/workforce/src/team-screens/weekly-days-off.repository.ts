@@ -11,6 +11,8 @@
 //            cancelled, moved or reassigned here; one transaction: rule rows, history, audit row, outbox event
 //   end      Remove Recurrence from a date (the last off day is the day before)
 // Planned days off are not paid leave and never touch Time Clock or payroll hours.
+// Events carry clock_timestamp(): a change writes SUPERSEDED then CREATED in ONE transaction, and now() would give both the
+// same instant (the history list then ordered them by random uuid).
 import { sql, type Kysely } from 'kysely';
 import { createDomainEvent, DOMAIN_EVENTS, type OutboxWriter } from '@aipowersalon/events';
 import { addLocalDays, weekdayOf } from '@aipowersalon/booking';
@@ -146,16 +148,16 @@ export class WeeklyDaysOffRepository {
         const endTo = addLocalDays(p.c.from, -1);
         if (r.effectiveFrom <= endTo) await sql`update technician_weekly_off_rules set effective_to = ${endTo}::date, version = version + 1, updated_by = ${ctx.userId ?? null}, updated_at = now() where tenant_id = ${T} and id = ${r.id}`.execute(trx);
         else await sql`update technician_weekly_off_rules set status = 'ENDED', ended_at = now(), ended_by = ${ctx.userId ?? null}, version = version + 1, updated_by = ${ctx.userId ?? null}, updated_at = now() where tenant_id = ${T} and id = ${r.id} and ${canMoveToSql(TECHNICIAN_WEEKLY_OFF_RULE, 'ENDED')}`.execute(trx);
-        await sql`insert into technician_weekly_off_events (tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
-          values (${T}, ${p.t.id}, ${r.id}, 'SUPERSEDED', ${JSON.stringify(r)}::jsonb, ${JSON.stringify({ effectiveTo: r.effectiveFrom <= endTo ? endTo : null, status: r.effectiveFrom <= endTo ? 'ACTIVE' : 'ENDED' })}::jsonb, ${p.c.reason}, ${ctx.userId ?? null})`.execute(trx);
+        await sql`insert into technician_weekly_off_events (created_at, tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
+          values (clock_timestamp(), ${T}, ${p.t.id}, ${r.id}, 'SUPERSEDED', ${JSON.stringify(r)}::jsonb, ${JSON.stringify({ effectiveTo: r.effectiveFrom <= endTo ? endTo : null, status: r.effectiveFrom <= endTo ? 'ACTIVE' : 'ENDED' })}::jsonb, ${p.c.reason}, ${ctx.userId ?? null})`.execute(trx);
       }
       const version = curVersion + 1;
       const row = (await sql<any>`insert into technician_weekly_off_rules (tenant_id, branch_id, technician_id, weekdays, effective_from, effective_to, status, reason, version, created_by, updated_by)
         values (${T}, ${branch}, ${p.t.id}, ${p.c.days}::smallint[], ${p.c.from}::date, ${p.c.to}::date, 'ACTIVE', ${p.c.reason}, ${version}, ${ctx.userId ?? null}, ${ctx.userId ?? null}) returning id`.execute(trx)).rows[0];
       const after = { weekdays: p.c.days, effectiveFrom: p.c.from, effectiveTo: p.c.to, branchId: branch, version };
       const acknowledged = p.conflicts.map((c) => ({ appointmentId: c.appointmentId, date: c.date }));
-      await sql`insert into technician_weekly_off_events (tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
-        values (${T}, ${p.t.id}, ${row.id}, 'CREATED', ${live.length ? JSON.stringify(live) : null}::jsonb, ${JSON.stringify({ ...after, acknowledgedConflicts: acknowledged })}::jsonb, ${p.c.reason}, ${ctx.userId ?? null})`.execute(trx);
+      await sql`insert into technician_weekly_off_events (created_at, tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
+        values (clock_timestamp(), ${T}, ${p.t.id}, ${row.id}, 'CREATED', ${live.length ? JSON.stringify(live) : null}::jsonb, ${JSON.stringify({ ...after, acknowledgedConflicts: acknowledged })}::jsonb, ${p.c.reason}, ${ctx.userId ?? null})`.execute(trx);
       await writeAuditRow(trx, ctx, { module: 'workforce', action: 'technician.weekly_off.saved', resourceType: 'technician_weekly_off_rule', resourceId: String(row.id),
         summary: `Weekly days off set: ${p.c.days.map((d) => WEEKDAY_NAMES[d]).join(' + ')} from ${p.c.from}${p.c.to ? ` to ${p.c.to}` : ' (until changed)'}`, before: live.length ? { rules: live } : null, after, reason: p.c.reason,
         metadata: { technicianId: p.t.id, conflictsAcknowledged: acknowledged.length }, requestId });
@@ -183,8 +185,8 @@ export class WeeklyDaysOffRepository {
       const last = addLocalDays(endFrom, -1);
       if (r.effectiveFrom <= last) await sql`update technician_weekly_off_rules set effective_to = ${last}::date, version = version + 1, updated_by = ${ctx.userId ?? null}, updated_at = now() where tenant_id = ${T} and id = ${r.id}`.execute(trx);
       else await sql`update technician_weekly_off_rules set status = 'ENDED', ended_at = now(), ended_by = ${ctx.userId ?? null}, version = version + 1, updated_by = ${ctx.userId ?? null}, updated_at = now() where tenant_id = ${T} and id = ${r.id} and ${canMoveToSql(TECHNICIAN_WEEKLY_OFF_RULE, 'ENDED')}`.execute(trx);
-      await sql`insert into technician_weekly_off_events (tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
-        values (${T}, ${t.id}, ${r.id}, 'ENDED', ${JSON.stringify(r)}::jsonb, ${JSON.stringify({ worksAgainFrom: endFrom })}::jsonb, ${reason}, ${ctx.userId ?? null})`.execute(trx);
+      await sql`insert into technician_weekly_off_events (created_at, tenant_id, technician_id, rule_id, action, before_json, after_json, reason, actor_user_id)
+        values (clock_timestamp(), ${T}, ${t.id}, ${r.id}, 'ENDED', ${JSON.stringify(r)}::jsonb, ${JSON.stringify({ worksAgainFrom: endFrom })}::jsonb, ${reason}, ${ctx.userId ?? null})`.execute(trx);
       await writeAuditRow(trx, ctx, { module: 'workforce', action: 'technician.weekly_off.ended', resourceType: 'technician_weekly_off_rule', resourceId: r.id,
         summary: `Weekly days off removed from ${endFrom}`, before: r, after: { worksAgainFrom: endFrom }, reason, metadata: { technicianId: t.id }, requestId });
       if (this.outbox) await this.outbox.write(trx as unknown as Parameters<OutboxWriter['write']>[0], createDomainEvent({ eventType: DOMAIN_EVENTS.TECHNICIAN_SHIFT_OVERRIDE_CHANGED, tenantId: T, branchId: r.branchId ?? undefined,

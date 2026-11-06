@@ -5,9 +5,10 @@ import type { Kysely } from 'kysely';
 import type { DB } from '@aipowersalon/database';
 import type { LoyaltyContext, LoyaltyProfile, LoyaltyReward, LoyaltyRedemption } from './loyalty.dto';
 import type { LoyaltyRepositoryPort } from './loyalty.repository';
+import { dateColumnYmd } from '@aipowersalon/date-time';   // §87
 
 /** a date column (Date or text) as YYYY-MM-DD, or null */
-const ymdOf = (v: unknown): string | null => (v == null ? null : v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+const ymdOf = (v: unknown): string | null => dateColumnYmd(v);
 
 export class KyselyLoyaltyRepository implements LoyaltyRepositoryPort {
   constructor(private readonly db: Kysely<DB>) {}

@@ -3,8 +3,8 @@
 // writes go through the server's one send path. Settings stay on the existing pos/follow-ups/settings route.
 import { api } from './client';
 
-export type HealthState = 'ready' | 'pending' | 'attention_required' | 'failed' | 'unknown' | 'not_used' | 'off';
-export interface EodHealthRow { key: string; state: HealthState; detail: string; evidence: string; nextStep: string | null }
+export type EodHealthState = 'ready' | 'pending' | 'attention_required' | 'failed' | 'unknown' | 'not_used' | 'off';
+export interface EodHealthRow { key: string; state: EodHealthState; detail: string; evidence: string; nextStep: string | null }
 export interface EodNextRun { businessDate: string; localTime: string; timezone: string; at: string | null; dueNow: boolean }
 export interface EodSummary {
   settings: import('./posFollowUpApi').FollowUpSettings;
@@ -40,7 +40,7 @@ const clean = (o: Record<string, unknown>) => Object.fromEntries(Object.entries(
 
 export const posEodFollowUpsApi = {
   summary: () => api.get<EodSummary>('/pos/eod-follow-ups/summary'),
-  health: () => api.get<{ overall: HealthState; rows: EodHealthRow[] }>('/pos/eod-follow-ups/health'),
+  health: () => api.get<{ overall: EodHealthState; rows: EodHealthRow[] }>('/pos/eod-follow-ups/health'),
   preview: (date?: string) => api.get<EodPreview>('/pos/eod-follow-ups/preview', clean({ date })),
   runs: (page = 1, pageSize = 10) => api.get<EodPage<EodRun>>('/pos/eod-follow-ups/runs', { page, pageSize }),
   tasks: (f: EodTaskQuery) => api.get<EodPage<EodTaskRow> & { basis: string; sort: string }>('/pos/eod-follow-ups/tasks', clean(f as Record<string, unknown>)),

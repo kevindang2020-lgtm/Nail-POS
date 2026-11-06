@@ -15,6 +15,7 @@ import {
 } from './end-of-day-followups.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 import { EOD_RULE_VERSION, summarizeCandidates, type ClaimResult } from './eod-center';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 const DEFAULT_TZ = 'America/New_York';
 
@@ -29,7 +30,7 @@ const REFUSAL: Record<string, (detail?: string) => Error> = {
 };
 
 
-const ymdAdd = (ymd: string, days: number) => { const [y, m, d] = ymd.split('-').map(Number); const t = new Date(Date.UTC(y, m - 1, d + days)); return t.toISOString().slice(0, 10); };
+const ymdAdd = (ymd: string, days: number) => addYmdDays(ymd, days);
 
 export class DailyFollowUpService {
   // realtime is OPTIONAL: unit tests/harness construct with just the repo (emits become no-ops); the module injects the bus.

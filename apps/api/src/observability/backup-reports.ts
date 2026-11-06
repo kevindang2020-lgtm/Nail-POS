@@ -22,7 +22,7 @@ import { DATABASE } from '@aipowersalon/database';
 import type { Evaluation } from './health-core';
 import type { DesiredAlert } from './alert-rules';
 import { BACKUP_REPORT_BODY } from './request-schemas';
-import { missedMidnightCheckpoint } from '../backup-center/backup-center-core';
+import { missedMidnightCheckpoint } from './backup-schedule';
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
 
 export const BACKUP_MAX_AGE_HOURS = Number(process.env.BACKUP_MAX_AGE_HOURS ?? 26);

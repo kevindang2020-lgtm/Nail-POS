@@ -3,7 +3,7 @@
 // existing phone* methods → pos/customers/:customerId/phone/*, which own the state machine and the audit.
 import { api } from './client';
 
-export type PcGroup = 'pending' | 'code_sent' | 'retry_allowed' | 'expired' | 'failed' | 'manager_review' | 'cancelled' | 'completed' | 'sync_attention';
+type PcGroup = 'pending' | 'code_sent' | 'retry_allowed' | 'expired' | 'failed' | 'manager_review' | 'cancelled' | 'completed' | 'sync_attention';
 export type PcSync = 'not_needed' | 'pending' | 'in_progress' | 'synced' | 'retry_scheduled' | 'failed' | 'unknown';
 export interface PcKpi { value: number | string; source: string }
 export interface PcSummary { timezone: string; generatedAt: string; kpis: Record<'verified' | 'pending' | 'failed' | 'today' | 'shared' | 'smsHealth', PcKpi>; syncAttention: number; can: { startChange: boolean; editSettings: boolean; retrySync: boolean } }

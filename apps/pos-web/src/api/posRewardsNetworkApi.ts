@@ -4,9 +4,9 @@
 // SAME key, so the server returns the same purchase and never submits a second charge.
 import { api } from './client';
 
-export interface EarningRate { spendIncrementCents: number; pointTenthsPerIncrement: number; minEligibleCents: number; perTicketCapTenths: number | null; roundingMode?: string }
+export interface RewardsNetEarningRate { spendIncrementCents: number; pointTenthsPerIncrement: number; minEligibleCents: number; perTicketCapTenths: number | null; roundingMode?: string }
 export interface RateInput { spendIncrementCents: number; pointTenthsPerIncrement: number; minEligibleCents: number; perTicketCapTenths: number | null }
-export interface VersionLite { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; effectiveFrom: string | null; rate: EarningRate | null; rateLabel: string | null }
+export interface VersionLite { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; effectiveFrom: string | null; rate: RewardsNetEarningRate | null; rateLabel: string | null }
 export interface WalletSummary {
   exists: boolean; availableCents: number; pendingCents: number; pendingPurchases: number; usedThisMonthCents: number;
   lifetimeFundedCents: number; lifetimeAllocatedCents: number; deficitCents: number; status: string; alertLevel: 'ok' | 'low' | 'critical' | 'empty' | string; tokenValueCents: number; updatedAt: string | null;
@@ -15,9 +15,9 @@ export interface WalletSummary {
 }
 export interface NetworkState {
   generatedAt: string; mode: 'GLOBAL' | 'CUSTOM';
-  effective: (EarningRate & { source: 'GLOBAL_DEFAULT' | 'TENANT_OVERRIDE' | string; versionId?: string; versionNo?: number; effectiveFrom?: string | null }) | null;
-  globalNow: (EarningRate & { versionNo?: number; effectiveFrom?: string }) | null;
-  globalNext: (EarningRate & { versionNo?: number; effectiveFrom?: string }) | null;
+  effective: (RewardsNetEarningRate & { source: 'GLOBAL_DEFAULT' | 'TENANT_OVERRIDE' | string; versionId?: string; versionNo?: number; effectiveFrom?: string | null }) | null;
+  globalNow: (RewardsNetEarningRate & { versionNo?: number; effectiveFrom?: string }) | null;
+  globalNext: (RewardsNetEarningRate & { versionNo?: number; effectiveFrom?: string }) | null;
   scheduled: VersionLite[]; drafts: VersionLite[];
   program: { pointsPerRedeemBlock: number; redeemBlockValueCents: number; tokenValueCents: number;
     limits: { minSpendIncrementCents: number; maxSpendIncrementCents: number; maxPointTenthsPerIncrement: number; minEligibleFloorCents: number; maxPointTenthsPerTicket: number };
@@ -28,13 +28,13 @@ export interface NetworkState {
   permissions: { canEdit: boolean; canActivate: boolean; canBuyTokens: boolean };
   funding: { provider: string | null; sandbox: boolean; available: boolean };
 }
-export interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
-export interface Preview { proposed: EarningRate; global: EarningRate; rows: PreviewRow[] }
-export interface HistoryItem { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; state: 'DRAFT' | 'DISCARDED' | 'CANCELED' | 'SCHEDULED' | 'ACTIVE' | 'SUPERSEDED'; effectiveFrom: string | null; rate: EarningRate | null; reason: string | null; activatedAt: string | null; createdAt: string | null }
-export interface LedgerRow { id: string; entryType: string; deltaCents: number; balanceAfterCents: number; sourceTable: string | null; sourceId: string; reason: string | null; at: string | null }
+interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
+export interface Preview { proposed: RewardsNetEarningRate; global: RewardsNetEarningRate; rows: PreviewRow[] }
+export interface HistoryItem { id: string; versionNo: number; mode: 'GLOBAL' | 'CUSTOM'; state: 'DRAFT' | 'DISCARDED' | 'CANCELED' | 'SCHEDULED' | 'ACTIVE' | 'SUPERSEDED'; effectiveFrom: string | null; rate: RewardsNetEarningRate | null; reason: string | null; activatedAt: string | null; createdAt: string | null }
+export interface RewardsNetLedgerRow { id: string; entryType: string; deltaCents: number; balanceAfterCents: number; sourceTable: string | null; sourceId: string; reason: string | null; at: string | null }
 export interface Purchase { id: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null; created?: boolean }
 export interface PurchaseEvent { from: string | null; to: string; source: string; at: string | null }
-export interface Paged<T> { total: number; page: number; pageSize: number; pageCount: number; totalItems: number; totalPages: number; items: T[] }
+export interface RewardsNetPaged<T> { total: number; page: number; pageSize: number; pageCount: number; totalItems: number; totalPages: number; items: T[] }
 
 const enc = encodeURIComponent;
 const B = '/pos/loyalty/network';
@@ -50,8 +50,8 @@ export const posRewardsNetworkApi = {
   cancelScheduled: (id: string) => api.post<unknown>(`${B}/earning/versions/${enc(id)}/cancel`, {}),
   wallet: () => api.get<WalletSummary>(`${B}/wallet`),
   setWalletLevels: (b: { lowBalanceCents: number | null; criticalBalanceCents: number | null }) => api.post<unknown>(`${B}/wallet/levels`, b),
-  ledger: (q: { page: number; pageSize: number }) => api.get<Paged<LedgerRow>>(`${B}/wallet/ledger`, q),
-  purchases: (q: { page: number; pageSize: number }) => api.get<Paged<Purchase>>(`${B}/purchases`, q),
+  ledger: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<RewardsNetLedgerRow>>(`${B}/wallet/ledger`, q),
+  purchases: (q: { page: number; pageSize: number }) => api.get<RewardsNetPaged<Purchase>>(`${B}/purchases`, q),
   purchase: (id: string) => api.get<Purchase & { events?: PurchaseEvent[] }>(`${B}/purchases/${enc(id)}`),
   /** step-up route + REQUIRED Idempotency-Key: the same key for every retry of one purchase */
   buyTokens: (tokens: number, idempotencyKey: string) => api.post<Purchase>(`${B}/purchases`, { tokens }, { 'Idempotency-Key': idempotencyKey }),

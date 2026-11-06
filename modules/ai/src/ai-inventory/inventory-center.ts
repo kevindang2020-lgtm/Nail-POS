@@ -19,6 +19,7 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { positionStatus } from './ai-inventory-core';
+import { addDays as addYmdDays, businessDate } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface IcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -46,7 +47,7 @@ const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | und
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
 const has = (ctx: IcCtx, p: string) => (ctx.permissions ?? []).includes(p);
 const esc = (s: string) => '%' + s.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
-const addDays = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, k: number) => addYmdDays(d, k);
 /** the critical level the classification uses, and where it comes from */
 export function criticalOf(reorderLevel: number, criticalLevel: number | null): { level: number; source: 'explicit' | 'derived' | 'none' } {
   if (criticalLevel != null && criticalLevel > 0) return { level: criticalLevel, source: 'explicit' };
@@ -197,6 +198,7 @@ export class InventoryCenter {
   async check(ctx: IcCtx) {
     this.need(ctx);
     const T = ctx.tenantId; const B = this.branch(ctx);
+    const today = businessDate(await branchTimeZone(this.db, T, B));   // §87: the location's day
     type St = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from inventory_health_runs where tenant_id = ${T} and branch_id is not distinct from ${B}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
@@ -225,7 +227,7 @@ export class InventoryCenter {
       from inventory_stock_movements m where m.tenant_id = ${T} ${B ? sql`and m.branch_id = ${B}::uuid` : sql``}`);
     checks.push({ key: 'movements_recorded', component: 'ledger', state: !use.last ? 'INSUFFICIENT_DATA' : N(use.n30) ? 'PASSED' : 'WARNING', count: N(use.n30), detail: { lastMovementAt: iso(use.last) } });
     const overdue = N((await one(sql<Row>`select count(*)::int as n from purchase_orders po where po.tenant_id = ${T} ${B ? sql`and po.branch_id = ${B}::uuid` : sql``}
-      and po.status in ('approved', 'ordered', 'partial') and po.expected_date is not null and po.expected_date < current_date - 3`)).n);
+      and po.status in ('approved', 'ordered', 'partial') and po.expected_date is not null and po.expected_date < ${today}::date - 3`)).n);
     checks.push({ key: 'orders_received', component: 'purchasing', state: overdue ? 'WARNING' : 'PASSED', count: overdue });
     const needLead = k.filter((x) => (x.k.status === 'critical' || x.k.status === 'low' || x.k.status === 'out_of_stock') && (x.r.vendor == null || x.r.lead_time_days == null)).length;
     checks.push({ key: 'reorder_data', component: 'purchasing', state: needLead ? 'WARNING' : 'PASSED', count: needLead });

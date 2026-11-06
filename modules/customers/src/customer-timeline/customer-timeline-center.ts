@@ -18,6 +18,8 @@ import { Logger } from '@nestjs/common';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
 import { toStoredCustomerPhone } from '../customer-activation-rules/customer-activation-core';
 import { RetentionRepository, isUuid, maskEmail, type RetentionContext, type BranchScope } from '../retention/retention.repository';
+import { utcDate, businessDate } from '@aipowersalon/date-time';   // §87: one calendar helper
+import { tenantTimeZone } from '@aipowersalon/database';   // §87
 
 type Row = Record<string, any>;
 const log = new Logger('CustomerTimeline');
@@ -46,7 +48,7 @@ const uuidOrNull = (v: unknown) => (isUuid(String(v ?? '')) ? String(v) : null);
 
 /** salon-local [from, to] for a preset given the salon's today */
 export function tlPresetRange(preset: string, today: string): { from: string; to: string } | null {
-  const d = (s: string) => new Date(s + 'T00:00:00Z'); const f = (x: Date) => x.toISOString().slice(0, 10);
+  const d = (s: string) => new Date(s + 'T00:00:00Z'); const f = (x: Date) => utcDate(x);   // a UTC-midnight calendar date, never "today"
   const add = (s: string, n: number) => { const x = d(s); x.setUTCDate(x.getUTCDate() + n); return f(x); };
   const t = d(today);
   switch (preset) {
@@ -91,7 +93,7 @@ export class CustomerTimelineCenter {
   private async period(ctx: TlCtx, f: TlQuery) {
     const preset = pick(TL_PRESETS, f.preset) ?? (f.from || f.to ? 'custom' : 'all');
     const w = await this.ret.window(ctx, { preset: 'today' });
-    const today = w.today, tz = w.tz;
+    const tz = w.tz; const today = businessDate(tz, new Date(this.now()));   // the center's own clock decides its today (it read the server's)
     if (preset === 'all') return { preset, from: null as string | null, to: null as string | null, start: null as Date | null, end: null as Date | null, today, tz };
     let from: string, to: string;
     if (preset === 'custom') {
@@ -315,6 +317,7 @@ export class CustomerTimelineCenter {
   // ── Check Customer Timeline System (read-only; records its own evidence; one run per salon per 30 s) ─────────
   async check(ctx: TlCtx) {
     const T = ctx.tenantId;
+    const today = businessDate(await tenantTimeZone(this.db, T));   // §87: the salon's day, not the server's
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from customer_timeline_health_runs where tenant_id = ${T}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
@@ -361,7 +364,7 @@ export class CustomerTimelineCenter {
       checks.push({ key: 'visits_without_services', state: noLines ? 'WARNING' : 'PASSED', count: noLines });
 
       const unlinked = N((await one(sql<Row>`select count(*)::int as n from pos_tech_appointments a where a.tenant_id = ${T} and a.customer_id is not null and a.status = 'completed'
-        and a.appt_date >= current_date - 90 and not exists (select 1 from pos_queue_items q where q.tenant_id = a.tenant_id and q.appointment_id = a.id and q.ticket_id is not null)`)).n);
+        and a.appt_date >= ${today}::date - 90 and not exists (select 1 from pos_queue_items q where q.tenant_id = a.tenant_id and q.appointment_id = a.id and q.ticket_id is not null)`)).n);
       checks.push({ key: 'booking_to_service_done', state: unlinked ? 'WARNING' : 'PASSED', count: unlinked });
 
       const noTime = N((await one(sql<Row>`select count(*)::int as n from tickets where tenant_id = ${T} and customer_id is not null and removed_at is null

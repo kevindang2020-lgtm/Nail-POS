@@ -11,11 +11,12 @@
 // A review is current while the signal has not RISEN above the level it was reviewed at (and a deferral has not passed its
 // date); a rising signal returns to Needs Review. Nothing here texts, books, edits a customer or changes points.
 import { sql, type Kysely } from 'kysely';
-import { canMoveToSql } from '@aipowersalon/database';
+import { canMoveToSql, tenantTimeZone } from '@aipowersalon/database';
 import { CHURN_WATCH_REVIEW } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { customerSearchPredicate, CI_RULE_VERSION } from './customer-intelligence-center';
+import { businessDate } from '@aipowersalon/date-time';   // §87
 
 type Row = Record<string, any>;
 export type CwCtx = RetentionContext;
@@ -285,6 +286,7 @@ export class ChurnWatchCenter {
   // ── Check Churn Watch System (read-only; records its own evidence; one run per salon per 30 s) ─────────────────
   async check(ctx: CwCtx) {
     const T = ctx.tenantId;
+    const today = businessDate(await tenantTimeZone(this.db, T));   // §87: the salon's day, not the server's
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from churn_watch_health_runs where tenant_id = ${T} and branch_id is not distinct from ${uuidOrNull(ctx.branchId)}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
@@ -314,7 +316,7 @@ export class ChurnWatchCenter {
         (select count(*) from customer_intelligence_snapshots sn join customers c on c.id = sn.customer_id where sn.tenant_id = ${T} and c.tenant_id <> sn.tenant_id)
       + (select count(*) from churn_watch_reviews r join customers c on c.id = r.customer_id where r.tenant_id = ${T} and c.tenant_id <> r.tenant_id) as n`)).n);
     checks.push({ key: 'tenant_isolation', state: cross ? 'FAILED' : 'PASSED', count: cross });
-    const overdueDeferrals = N((await one(sql<Row>`select count(*)::int as n from churn_watch_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= current_date`)).n);
+    const overdueDeferrals = N((await one(sql<Row>`select count(*)::int as n from churn_watch_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= ${today}::date`)).n);
     checks.push({ key: 'deferrals_due', state: overdueDeferrals ? 'WARNING' : 'PASSED', count: overdueDeferrals });
     // Churn Watch has no send / book / edit path: its only writes are its own review rows (verified by the tests)
     checks.push({ key: 'no_customer_side_effects', state: 'PASSED' });

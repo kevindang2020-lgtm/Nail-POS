@@ -3,9 +3,9 @@
 // (no blind increments → safe under concurrency). Every mutation writes an immutable movement + audit.
 import { OutboxWriter, DOMAIN_EVENTS, createDomainEvent } from '@aipowersalon/events';
 import type { ServiceRecipe } from '@aipowersalon/api-contracts/tenant';
-import { utcDate } from '@aipowersalon/date-time';
+import { utcDate, businessDate } from '@aipowersalon/date-time';
 import { sql, type Kysely } from 'kysely';
-import { transitionStatus, canMoveToSql, type DB } from '@aipowersalon/database';
+import { transitionStatus, canMoveToSql, type DB, branchTimeZone } from '@aipowersalon/database';
 import { PURCHASE_ORDER, INVENTORY_COUNT, INVENTORY_TECH_REPORT, PRODUCT_USAGE_EVENT, INVENTORY_TRANSFER } from './inventory-lifecycles';
 import { onOrderSql } from './stock-alert-state';
 import {
@@ -181,10 +181,11 @@ export class InventoryService {
 
   /** Recompute location stock for a product from its bottle rows — the single source of truth. */
   private async recompute(ctx: InvCtx, productId: string, exec: Kysely<DB> = this.need()): Promise<{ onHand: number; before: number }> {
+    const today = businessDate(await branchTimeZone(exec, ctx.tenantId, ctx.branchId));   // §87: expired on the LOCATION's day
     // a bottle past its expiration date is not stock (it is never used on a client — consumption skips it — so counting it on hand
     // hid a real shortage); it counts as expired until someone disposes of it
     const units = await sql<{ status: BottleStatus }>`SELECT CASE WHEN status IN ('unopened', 'opened', 'low') AND expiration_date IS NOT NULL
-        AND expiration_date < (now() AT TIME ZONE 'UTC')::date THEN 'expired' ELSE status END AS status FROM inventory_units
+        AND expiration_date < ${today}::date THEN 'expired' ELSE status END AS status FROM inventory_units
       WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${productId}`.execute(exec);
     const prev = await sql<{ quantity_on_hand: number }>`SELECT quantity_on_hand FROM inventory_location_stock
       WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${productId}`.execute(exec);
@@ -1568,6 +1569,7 @@ export class InventoryService {
     if (!opts.exec) return this.need().transaction().execute((trx) => this.consumeServiceRecipe(ctx, serviceId, multiplier, { ...opts, exec: trx as unknown as Kysely<DB> }));
     await this.service(ctx, serviceId);
     const exec = opts.exec;
+    const expiryDay = businessDate(await branchTimeZone(exec, ctx.tenantId, ctx.branchId));   // §87: a bottle expires on the LOCATION's day
     const mult = Math.max(1, Math.floor(multiplier || 1));
     // product_id order, and the stock rows locked in that order BEFORE the first count (M4 lanes — see lockStock): the
     // "before" count is then taken after every concurrent deduction of these products has committed, so before − after
@@ -1584,7 +1586,7 @@ export class InventoryService {
         SELECT id, status, estimated_remaining_percent, created_at::text AS created_at, to_char(expiration_date, 'YYYY-MM-DD') AS expires_on FROM inventory_units
          WHERE tenant_id = ${ctx.tenantId} AND branch_id = ${ctx.branchId} AND product_id = ${l.product_id} AND status IN ('unopened', 'opened', 'low')
            -- an expired bottle is never used on a client; sealed bottles soonest-expiring first
-           AND (expiration_date IS NULL OR expiration_date >= (now() AT TIME ZONE 'UTC')::date)
+           AND (expiration_date IS NULL OR expiration_date >= ${expiryDay}::date)
          ORDER BY created_at, id FOR UPDATE`.execute(exec)).rows.map((b): BottleRow => ({ id: b.id, status: b.status, remainingPercent: b.estimated_remaining_percent == null ? null : Number(b.estimated_remaining_percent), createdAt: String(b.created_at), expiresOn: b.expires_on }));
       const plan = allocate(bottles, want);   // never negative: what the bottles cannot cover is the shortfall
       const taken = want - plan.short;

@@ -8,7 +8,7 @@ const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v
 
 export const MG_SCOPES = ['all', 'customers', 'campaigns', 'offers', 'loyalty', 'referrals', 'gift_cards', 'reviews'] as const;
 export const MG_EVENT_TYPES = ['campaign', 'message', 'redemption', 'loyalty', 'referral', 'gift_card', 'review'] as const;
-export type MgScope = (typeof MG_SCOPES)[number];
+export type GrowthMgScope = (typeof MG_SCOPES)[number];
 
 export const posMarketingGrowthApi = {
   reconciliation: (q: Q = {}) => api.get<any>(`/pos/marketing-growth/reconciliation`, clean(q)),

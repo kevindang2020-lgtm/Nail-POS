@@ -10,9 +10,10 @@ import { sql, type Kysely } from 'kysely';
 import { branchTimeZone, type DB } from '@aipowersalon/database';
 import type { AiForecastContext, AppointmentSeriesSource, RevenueSeriesSource } from './ai-analytics-forecasting.dto';
 import type { SeriesPoint } from './forecast-core';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
-const addDays = (d: string, n: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, n: number) => addYmdDays(d, n);
 /** the salon's "today" (YYYY-MM-DD) in its own time zone */
 export async function salonToday(db: Kysely<DB>, ctx: { tenantId: string; branchId: string | null }, now = new Date()): Promise<string> {
   const tz = await branchTimeZone(db, ctx.tenantId, isUuid(ctx.branchId) ? ctx.branchId : null);

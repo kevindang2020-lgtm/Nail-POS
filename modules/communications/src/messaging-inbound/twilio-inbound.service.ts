@@ -142,6 +142,7 @@ export class TwilioInboundService {
    *  the message's provider id and its new status only — never a phone or text) */
   private notifyDelivery(tenantId: string, messageSid: string, status: string): void {
     if (!this.realtime) return;
+    // §343 exempt: a delivery-status notice so screens refetch — the delivery log row the callback updated is the record
     try { this.realtime.toTenant({ tenantId } as Parameters<RealtimeEmitter['toTenant']>[0], EVENTS.messageDeliveryUpdated, { messageSid, status: String(status).slice(0, 20) }); }
     catch (e) { logException(e, { where: 'twilio-inbound.notifyDelivery' }); }
   }

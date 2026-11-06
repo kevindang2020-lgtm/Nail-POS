@@ -19,6 +19,7 @@ import { InvestigationService } from './ai-money-protection-investigations.servi
 import { MoneyProtectionExplainService } from './ai-money-protection-explain.service';
 import { InMemoryEntitlement, KyselyEntitlement, type EntitlementPort } from './ai-money-protection-entitlement';
 import { moneyProtectionFlags } from './ai-money-protection-flags';
+import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one system context
 
 @Module({
   imports: [AiModule],
@@ -52,7 +53,7 @@ import { moneyProtectionFlags } from './ai-money-protection-flags';
       useFactory: (db: AppDatabase, svc: MoneyProtectionService, ent: EntitlementPort) => (db ? new MoneyProtectionCenter(db as never, {
         flags: () => moneyProtectionFlags(), entitlement: ent, scheduled: () => detectionScheduled(),
         detect: async (tenantId: string) => {
-          const sys = { tenantId, branchId: null, userId: 'system', role: 'SYSTEM', permissions: ['ai_money_protection.manage_rules'] } as never;
+          const sys = { ...systemContext({ tenantId, actor: 'ai.money_protection.detect', permissions: ['ai_money_protection.manage_rules'] }), branchId: null } as never;   // every location
           const d = await svc.evaluateDeterministic(sys);
           const r = await svc.evaluateReconciliation(sys);
           return { evaluated: d.evaluated + r.evaluated, created: d.created + r.created, updated: d.updated + r.updated, layers: { deterministic: d, reconciliation: r } };

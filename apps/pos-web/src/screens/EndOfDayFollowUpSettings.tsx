@@ -8,7 +8,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posFollowUpApi, type FollowUpSettings } from '../api/posFollowUpApi';
-import { posEodFollowUpsApi as api, type EodSummary, type EodHealthRow, type HealthState, type EodPreview, type EodTaskRow, type EodPage, type EodRun, type EodTaskDetail, type EodTaskQuery } from '../api/posEodFollowUpsApi';
+import { posEodFollowUpsApi as api, type EodSummary, type EodHealthRow, type EodHealthState, type EodPreview, type EodTaskRow, type EodPage, type EodRun, type EodTaskDetail, type EodTaskQuery } from '../api/posEodFollowUpsApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
@@ -19,7 +19,7 @@ const EXPIRE_OPTS = [0, 12, 24, 48, 72];
 const COOLDOWN_OPTS = [0, 12, 24, 48, 72, 168];
 const labelTime = (t: string) => { const [h, m] = t.split(':'); let hh = Number(h); const ap = hh < 12 ? 'AM' : 'PM'; hh = hh % 12 || 12; return `${hh}:${m} ${ap}`; };
 const when = (iso: string | null | undefined, tz?: string) => (iso ? new Date(iso).toLocaleString(undefined, { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—');
-const TONE: Record<HealthState, 'ok' | 'warn' | 'bad' | undefined> = { ready: 'ok', pending: 'warn', attention_required: 'warn', failed: 'bad', unknown: 'warn', not_used: undefined, off: undefined };
+const TONE: Record<EodHealthState, 'ok' | 'warn' | 'bad' | undefined> = { ready: 'ok', pending: 'warn', attention_required: 'warn', failed: 'bad', unknown: 'warn', not_used: undefined, off: undefined };
 const stText = (s: string) => tx(`eod.st.${s}`);
 const errText = (e: unknown) => errorTextOf(e, tx('eod.loadError'));
 
@@ -35,7 +35,7 @@ function Toggle({ label, hint, on, onChange, testId }: { label: string; hint?: s
 export function EndOfDayFollowUpSettings() {
   const nav = useNavigate();
   const [summary, setSummary] = useState<EodSummary | null>(null);
-  const [health, setHealth] = useState<{ overall: HealthState; rows: EodHealthRow[] } | null>(null);
+  const [health, setHealth] = useState<{ overall: EodHealthState; rows: EodHealthRow[] } | null>(null);
   const [s, setS] = useState<FollowUpSettings | null>(null);
   const [err, setErr] = useState<unknown>(null);
   const [note, setNote] = useState<string | null>(null);

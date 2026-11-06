@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { PageHeader, StatusBadge, ErrorState, LoadingSkeleton, Modal, Pagination, type Tone } from '@aipowersalon/ui';
 import { LoyaltyIntegrityTab } from './LoyaltyIntegrityTab';
-import { superAdminLoyaltyNetworkApi as netApi, type Overview, type GlobalVersion, type GlobalPreview, type Enrollment, type Purchase, type Paged, type Program, type ProgramPatch, type Reconciliation, type Rate } from '../api/superAdminLoyaltyNetworkApi';
+import { superAdminLoyaltyNetworkApi as netApi, type LoyaltyNetOverview, type GlobalVersion, type GlobalPreview, type Enrollment, type Purchase, type LoyaltyNetPaged, type Program, type ProgramPatch, type Reconciliation, type Rate } from '../api/superAdminLoyaltyNetworkApi';
 
 type Tab = 'integrity' | 'overview' | 'rules' | 'salons' | 'purchases' | 'recon';
 const TABS: { id: Tab; label: string }[] = [
@@ -36,7 +36,7 @@ const input = 'w-full rounded-lg border border-[#e2d5c1] bg-white px-3 py-2 text
 
 export function LoyaltyNetworkScreen() {
   const [tab, setTab] = useState<Tab>('overview');
-  const [ov, setOv] = useState<Overview | null>(null);
+  const [ov, setOv] = useState<LoyaltyNetOverview | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [note, setNote] = useState<{ tone: 'ok' | 'bad'; text: string } | null>(null);
   const load = useCallback(() => { setErr(null); netApi.overview().then(setOv).catch((e) => setErr(errText(e, 'Could not load the rewards network.'))); }, []);
@@ -72,7 +72,7 @@ export function LoyaltyNetworkScreen() {
   );
 }
 
-type TabProps = { ov: Overview; onDone: (t: string) => void; onFail: (e: any, fb: string) => void };
+type TabProps = { ov: LoyaltyNetOverview; onDone: (t: string) => void; onFail: (e: any, fb: string) => void };
 
 function Stat({ label, value, sub, testId }: { label: string; value: ReactNode; sub?: ReactNode; testId?: string }) {
   return <div className="rounded-xl border border-[#eee5d8] bg-[#fffdf9] p-4" data-testid={testId}><div className="text-xs font-semibold uppercase tracking-wide text-[#9a8876]">{label}</div><div className="mt-1 text-xl font-bold text-[#30291f]">{value}</div>{sub ? <div className="mt-1 text-xs text-[#857566]">{sub}</div> : null}</div>;
@@ -221,7 +221,7 @@ function RulesTab({ ov, onDone, onFail }: TabProps) {
 
 // ── Salons: enrollment ─────────────────────────────────────────────────────────────────────────────────────────────
 function SalonsTab({ ov, onDone, onFail }: TabProps) {
-  const [q, setQ] = useState(''); const [page, setPage] = useState(1); const [data, setData] = useState<Paged<Enrollment> | null>(null); const [err, setErr] = useState<string | null>(null);
+  const [q, setQ] = useState(''); const [page, setPage] = useState(1); const [data, setData] = useState<LoyaltyNetPaged<Enrollment> | null>(null); const [err, setErr] = useState<string | null>(null);
   const [act, setAct] = useState<null | { row: Enrollment; to: 'enrolled' | 'suspended' | 'withdrawn' }>(null);
   const load = useCallback(() => { setErr(null); netApi.enrollments({ q: q.trim() || undefined, page, pageSize: 20 }).then(setData).catch((e) => setErr(errText(e, 'Could not load salons.'))); }, [q, page]);
   useEffect(() => { const t = setTimeout(load, 250); return () => clearTimeout(t); }, [load]);
@@ -254,7 +254,7 @@ function SalonsTab({ ov, onDone, onFail }: TabProps) {
 
 // ── Token purchases (all salons) + sandbox stand-in for the provider ───────────────────────────────────────────────
 function PurchasesTab({ ov, onDone, onFail }: TabProps) {
-  const [page, setPage] = useState(1); const [data, setData] = useState<Paged<Purchase> | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState<string | null>(null);
+  const [page, setPage] = useState(1); const [data, setData] = useState<LoyaltyNetPaged<Purchase> | null>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(() => { setErr(null); netApi.purchases({ page, pageSize: 20 }).then(setData).catch((e) => setErr(errText(e, 'Could not load purchases.'))); }, [page]);
   useEffect(() => { load(); }, [load]);
   const advance = async (p: Purchase, to: string) => { setBusy(p.id); try { await netApi.sandboxAdvance(p.id, to); load(); onDone(`Sandbox purchase moved to ${to}.`); } catch (e) { onFail(e, 'The purchase was not moved.'); } finally { setBusy(null); } };

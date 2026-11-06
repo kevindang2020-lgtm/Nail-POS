@@ -16,6 +16,7 @@ import type { QueueAssignmentSettingsPort } from './ai-queue-assignment-settings
 import type { QueueAssignmentEntitlementPort } from './ai-queue-assignment-entitlement';
 import type { QueueOpsQueuePort } from './ai-queue-assignment-ops.ports';
 import { technicianIsFree } from './ai-queue-assignment-detection';
+import { addDays as addYmdDays, dateColumnYmd, utcDate } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 /** a stored JSON list (array column or JSON text); anything else is an empty list, said in the log — never a thrown read */
 function jsonList(v: unknown): unknown[] {
@@ -33,8 +34,8 @@ export const HISTORY_DECISIONS = ['accepted', 'rejected', 'overridden', 'kept_un
 export const PAGE_SIZES = [10, 20, 50] as const;
 const N = (v: unknown) => Number(v ?? 0) || 0;
 export const HISTORY_PRESETS = ['all', 'today', 'yesterday', 'week', 'month', 'year', 'custom'] as const;
-const todayIn = (tz: string, now: number) => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch { return new Date(now).toISOString().slice(0, 10); } };
-const addDays = (ymd: string, n: number) => new Date(Date.UTC(+ymd.slice(0, 4), +ymd.slice(5, 7) - 1, +ymd.slice(8, 10) + n)).toISOString().slice(0, 10);
+const todayIn = (tz: string, now: number) => { try { return new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(now)); } catch { return utcDate(new Date(now)); } };
+const addDays = (ymd: string, n: number) => addYmdDays(ymd, n);
 /** a preset → whole salon days (Mon-start week); 'custom' keeps the given From / To; 'all' has no bounds */
 export function historyPeriod(preset: string | undefined, today: string, from?: string, to?: string): { preset: string; from: string | null; to: string | null } {
   const p = (HISTORY_PRESETS as readonly string[]).includes(String(preset)) ? String(preset) : (from || to ? 'custom' : 'all');
@@ -160,7 +161,7 @@ export class QueueAssignmentCenter {
       // verified facts only — the customer record's own preferred technician, visit counts from paid tickets
       customer: { customerId: e.customer_id ? String(e.customer_id) : null, name: e.customer_name ?? null, maskedPhone: maskPhone(e.customer_phone),
         preferredTechnicianId: e.preferred_technician_id ? String(e.preferred_technician_id) : null, customerSince: iso(e.customer_since), paidVisits: N(e.paid_visits), lastVisitAt: iso(e.last_visit_at) },
-      appointments: appts.map((a: any) => ({ appointmentId: String(a.id), date: a.appt_date instanceof Date ? a.appt_date.toISOString().slice(0, 10) : String(a.appt_date).slice(0, 10), startAt: iso(a.start_at), endAt: iso(a.end_at), status: a.status, source: a.source,
+      appointments: appts.map((a: any) => ({ appointmentId: String(a.id), date: dateColumnYmd(a.appt_date) ?? String(a.appt_date ?? '').slice(0, 10), startAt: iso(a.start_at), endAt: iso(a.end_at), status: a.status, source: a.source,
         technicianId: a.technician_id ? String(a.technician_id) : null, technicianName: a.tech_name ?? null })),
       events: events.map((o: any) => ({ eventType: o.event_type, deliveryStatus: o.publish_status, attempts: N(o.attempt_count), occurredAt: iso(o.occurred_at), publishedAt: iso(o.published_at) })),
     };

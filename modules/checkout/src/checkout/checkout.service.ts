@@ -2057,6 +2057,7 @@ export class CheckoutService {
         }
         const delivery = r.sent ? (r.simulated ? 'simulated' : 'sent') : r.status;
         this.log(ctx, 'pos_checkout_receipt_email_sent', 'pos_receipt', id, undefined, undefined, { delivery, providerRef: r.providerId ?? null, receiptNumber: rec.receiptNumber, notificationId: r.notificationId ?? null, ...(r.sent ? {} : { reason: r.reason ?? null }) });
+        // §343 exempt: a delivery notice (the receipt reached the customer) — the receipt delivery log row is the record
         if (r.sent) { await pushReceiptNotifications(rec.receiptNumber); this.realtime?.toTenant(ctx, EVENTS.receiptSent, { ticketId: id, channel }); }
         return { channel, configured: true, delivery, providerRef: r.providerId, receiptNumber: rec.receiptNumber, ...(r.sent ? {} : { reason: r.reason ?? 'send_failed' }) };
       }

@@ -6,7 +6,7 @@
 // redemption (funding → earning → hold → redemption → payable → payout). CSV export is audit-logged on the server.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { StatusBadge, ErrorState, LoadingSkeleton, Modal, Pagination, type Tone } from '@aipowersalon/ui';
-import { superAdminLoyaltyNetworkApi as netApi, type Integrity, type Finding, type Payable, type FraudAlert, type Lineage, type Paged } from '../api/superAdminLoyaltyNetworkApi';
+import { superAdminLoyaltyNetworkApi as netApi, type Integrity, type LoyaltyNetFinding, type Payable, type FraudAlert, type Lineage, type LoyaltyNetPaged } from '../api/superAdminLoyaltyNetworkApi';
 
 const usd = (c: number | null | undefined) => (c == null ? '—' : (c / 100).toLocaleString('en-US', { style: 'currency', currency: 'USD' }));
 const pts = (t: number) => (t / 10).toLocaleString('en-US', { maximumFractionDigits: 1 });
@@ -54,10 +54,10 @@ function LineageDialog({ redemptionId, onClose }: { redemptionId: string; onClos
 
 export function LoyaltyIntegrityTab({ onNote }: { onNote: (tone: 'ok' | 'bad', text: string) => void }) {
   const [i, setI] = useState<Integrity | null>(null); const [err, setErr] = useState<string | null>(null);
-  const [fp, setFp] = useState(1); const [findings, setFindings] = useState<Paged<Finding> | null>(null);
-  const [pp, setPp] = useState(1); const [payables, setPayables] = useState<Paged<Payable> | null>(null);
-  const [alerts, setAlerts] = useState<Paged<FraudAlert> | null>(null);
-  const [dlg, setDlg] = useState<null | { kind: 'finding'; f: Finding } | { kind: 'fraud'; a: FraudAlert } | { kind: 'acct'; a: FraudAlert } | { kind: 'hold'; p: Payable } | { kind: 'lineage'; id: string }>(null);
+  const [fp, setFp] = useState(1); const [findings, setFindings] = useState<LoyaltyNetPaged<LoyaltyNetFinding> | null>(null);
+  const [pp, setPp] = useState(1); const [payables, setPayables] = useState<LoyaltyNetPaged<Payable> | null>(null);
+  const [alerts, setAlerts] = useState<LoyaltyNetPaged<FraudAlert> | null>(null);
+  const [dlg, setDlg] = useState<null | { kind: 'finding'; f: LoyaltyNetFinding } | { kind: 'fraud'; a: FraudAlert } | { kind: 'acct'; a: FraudAlert } | { kind: 'hold'; p: Payable } | { kind: 'lineage'; id: string }>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const load = useCallback(() => {
     setErr(null);

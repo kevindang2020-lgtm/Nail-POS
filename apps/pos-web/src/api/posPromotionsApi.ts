@@ -3,7 +3,7 @@
 // draft / related campaigns / health are posCouponsApi. This client is only what Promotions adds: the LOGGED read-only check,
 // the Eligibility Checks search scope, trends, the assistant's safety flags + message preview, and the activity (audit) tab.
 import { api } from './client';
-import type { AssistGoal, CouponCheck } from './posCouponsApi';
+import type { CouponAssistGoal, CouponCheck } from './posCouponsApi';
 
 type Q = Record<string, string | number | undefined | null>;
 const clean = (q: Q) => Object.fromEntries(Object.entries(q).filter(([, v]) => v !== undefined && v !== null && v !== '')) as Record<string, string | number>;
@@ -13,6 +13,6 @@ export const posPromotionsApi = {
     api.post<CouponCheck & { checkId: string; checkedAt: string; logged: boolean }>(`/pos/promotions/${encodeURIComponent(dealId)}/check`, body),
   checks: (q: Q) => api.get<any>(`/pos/promotions/eligibility-checks`, clean(q)),
   trends: (q: Q) => api.get<any>(`/pos/promotions/trends`, clean(q)),
-  suggest: (goal: AssistGoal) => api.post<any>(`/pos/promotions/assistant/suggest`, { goal }),
+  suggest: (goal: CouponAssistGoal) => api.post<any>(`/pos/promotions/assistant/suggest`, { goal }),
   activity: (dealId: string) => api.get<any>(`/pos/promotions/${encodeURIComponent(dealId)}/activity`),
 };

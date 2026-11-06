@@ -7,7 +7,7 @@
 // Used by the Customer Profile drawer, the Customer Profile screen and the Loyalty screen.
 import { useCallback, useEffect, useState } from 'react';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posLoyaltyApi, type BonusPreview, type BonusRequestRow } from '../api/posLoyaltyApi';
+import { posLoyaltyApi, type LoyaltyBonusPreview, type BonusRequestRow } from '../api/posLoyaltyApi';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtNumber, fmtInZone } from '../i18n/format';
 
@@ -23,7 +23,7 @@ export function LoyaltyBonusRequest({ customerId, currentPoints, canRequest, onS
   const [pts, setPts] = useState('');
   const [why, setWhy] = useState<(typeof REASONS)[number]>('service_recovery');
   const [note, setNote] = useState('');
-  const [preview, setPreview] = useState<BonusPreview | null>(null);
+  const [preview, setPreview] = useState<LoyaltyBonusPreview | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);

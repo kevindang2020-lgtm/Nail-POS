@@ -32,6 +32,7 @@ import type { AiBusinessReportsService } from './ai-business-reports.service';
 import type { AiBusinessAlertsService } from './ai-business-alerts.service';
 import type { AiBusinessRevenueService } from './ai-business-revenue.service';
 import type { AiBusinessAppointmentsService } from './ai-business-appointments.service';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export class BusinessCenterError extends Error {
@@ -55,7 +56,7 @@ const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}
 const has = (ctx: AiBusinessContext, p: string) => (ctx.permissions ?? []).includes(p);
 const esc = (s: string) => '%' + s.replace(/[\\%_]/g, (m) => '\\' + m) + '%';
 const pick = <T extends readonly (string | number)[]>(list: T, v: unknown): T[number] | undefined => (list as readonly unknown[]).includes(v) ? v as T[number] : undefined;
-const addDays = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, k: number) => addYmdDays(d, k);
 const TYPE_LABEL: Record<string, string> = { daily_brief: 'daily brief', weekly_summary: 'weekly summary', monthly_review: 'monthly review', branch_comparison: 'branch comparison' };
 
 export interface BcDeps {

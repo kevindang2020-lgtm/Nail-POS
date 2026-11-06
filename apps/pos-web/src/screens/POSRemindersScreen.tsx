@@ -10,7 +10,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t } from '@aipowersalon/mobile-sdk/i18n';
 import { posRemindersApi, type ReminderConfig } from '../api/posRemindersApi';
-import { posReminderCenterApi as rc, type RcKpis, type RcPage, type RcDetails, type RcHealth, type RcQuery } from '../api/posReminderCenterApi';
+import { posReminderCenterApi as rc, type RcKpis, type RcPage, type RcDetails, type RcHealth, type ReminderRcQuery } from '../api/posReminderCenterApi';
 import { authApi } from '../api/authApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
@@ -113,7 +113,7 @@ export function POSRemindersScreen() {
   useEffect(() => { rc.health().then(setHealth).catch(() => setHealth(null)); }, [tick]);
   const loadList = useCallback(async () => {
     setLoading(true); setListErr(null);
-    const query: RcQuery = { tab: filters.tab, q: q || undefined, channel: filters.channel || undefined, branchId: filters.branchId || undefined, basis: filters.basis || undefined,
+    const query: ReminderRcQuery = { tab: filters.tab, q: q || undefined, channel: filters.channel || undefined, branchId: filters.branchId || undefined, basis: filters.basis || undefined,
       preset: filters.from || filters.to ? 'custom' : 'all', from: filters.from, to: filters.to, page: filters.page, pageSize: filters.pageSize };
     try { setPage(await rc.list(query)); } catch (e) { setListErr(errText(e)); } finally { setLoading(false); }
   }, [filters, q]);

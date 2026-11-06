@@ -17,12 +17,12 @@ export interface Reconciliation {
   pointsMismatches: number; rewardsLiabilityCents: number; outstandingPointsValueCents: number; liabilityMatchesPoints: boolean;
   payables: { status: string; count: number; amountCents: number }[]; purchases: { status: string; count: number; tokenCents: number }[]; healthy: boolean;
 }
-export interface Overview { program: Program; globalVersions: GlobalVersion[]; impact: { globalModeTenants: number; customModeTenants: number }; reconciliation: Reconciliation; funding: { provider: string | null; sandbox: boolean } }
-export interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
+export interface LoyaltyNetOverview { program: Program; globalVersions: GlobalVersion[]; impact: { globalModeTenants: number; customModeTenants: number }; reconciliation: Reconciliation; funding: { provider: string | null; sandbox: boolean } }
+interface PreviewRow { eligibleCents: number; pointTenths: number; tokenCostCents: number; globalPointTenths: number; globalTokenCostCents: number; differenceCents: number }
 export interface GlobalPreview { proposed: Rate; current: Rate; rows: PreviewRow[]; impact: { globalModeTenants: number; customModeTenants: number } }
 export interface Enrollment { tenantId: string; name: string | null; code: string | null; enrollment: string; earningSuspended: boolean; purchasingSuspended: boolean; enrolledAt: string | null; mode: 'GLOBAL' | 'CUSTOM'; availableCents: number; alertLevel: string; deficitCents: number }
 export interface Purchase { id: string; tenantId: string; tokenCents: number; amountCents: number; feeCents: number; status: string; pending: boolean; provider: string | null; providerRefLast6: string | null; failureCode: string | null; createdAt: string | null; confirmedAt: string | null; fundedAt: string | null }
-export interface Paged<T> { total: number; page: number; pageSize: number; pageCount: number; items: T[] }
+export interface LoyaltyNetPaged<T> { total: number; page: number; pageSize: number; pageCount: number; items: T[] }
 export type ProgramPatch = Partial<Record<'earn_paused' | 'redeem_paused' | 'purchases_paused' | 'reimbursements_paused', boolean> & Record<'custom_min_spend_increment_cents' | 'custom_max_spend_increment_cents' | 'custom_max_point_tenths_per_increment' | 'custom_min_eligible_floor_cents' | 'max_point_tenths_per_ticket' | 'low_balance_cents' | 'critical_balance_cents' | 'reservation_ttl_seconds' | 'max_purchase_tokens', number>>;
 
 export interface Integrity {
@@ -37,7 +37,7 @@ export interface Integrity {
   discrepancies: { severity: string; open: number; oldestAt: string | null }[]; fraud: { severity: string; open: number }[];
 }
 export interface BooksRun { id: string; runKey: string; trigger: string; status: string; startedAt: string | null; finishedAt: string | null; durationMs: number | null; checks: number; failed: number; warnings: number; attempts: number; error: string | null }
-export interface Finding { id: string; runId: string; runKey: string; checkType: string; outcome: string; severity: string; tenantId: string | null; salon: string | null; expectedCents: number | null; actualCents: number | null; deltaCents: number | null; affectedIds: string[]; detail: string; recommendedAction: string | null; reviewStatus: string; reviewedAt: string | null; reviewNote: string | null; createdAt: string | null }
+export interface LoyaltyNetFinding { id: string; runId: string; runKey: string; checkType: string; outcome: string; severity: string; tenantId: string | null; salon: string | null; expectedCents: number | null; actualCents: number | null; deltaCents: number | null; affectedIds: string[]; detail: string; recommendedAction: string | null; reviewStatus: string; reviewedAt: string | null; reviewNote: string | null; createdAt: string | null }
 export interface Payable { id: string; tenantId: string; salon: string | null; redemptionId: string; ticketId: string | null; amountCents: number; adjustedCents: number; owedCents: number; status: string; holdReason: string | null; providerRef: string | null; paidAt: string | null; createdAt: string | null; pointTenths: number }
 export interface FraudAlert { id: string; signal: string; severity: string; confidence: number; customerRef: string | null; hasAccount?: boolean; tenantId: string | null; evidence: Record<string, unknown>; status: string; reviewNote: string | null; reviewedAt: string | null; createdAt: string | null }
 export interface Lineage {
@@ -51,10 +51,10 @@ export interface Lineage {
 const B = '/super-admin/loyalty-network';
 const enc = encodeURIComponent;
 export const superAdminLoyaltyNetworkApi = {
-  overview: () => api.get<Overview>(`${B}/overview`),
+  overview: () => api.get<LoyaltyNetOverview>(`${B}/overview`),
   reconciliation: () => api.get<Reconciliation>(`${B}/reconciliation`),
-  enrollments: (q: { q?: string; page: number; pageSize: number }) => api.get<Paged<Enrollment>>(`${B}/enrollments`, q),
-  purchases: (q: { page: number; pageSize: number }) => api.get<Paged<Purchase>>(`${B}/purchases`, q),
+  enrollments: (q: { q?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<Enrollment>>(`${B}/enrollments`, q),
+  purchases: (q: { page: number; pageSize: number }) => api.get<LoyaltyNetPaged<Purchase>>(`${B}/purchases`, q),
   previewGlobal: (rate: Rate) => api.post<GlobalPreview>(`${B}/global-rules/preview`, { ...rate }),
   publishGlobal: (b: Rate & { effectiveFrom: string | null; reason: string }) => api.post<unknown>(`${B}/global-rules`, { ...b }),
   cancelGlobal: (id: string) => api.post<unknown>(`${B}/global-rules/${enc(id)}/cancel`, {}),
@@ -64,18 +64,18 @@ export const superAdminLoyaltyNetworkApi = {
   sandboxAdvance: (id: string, status: string) => api.post<Purchase>(`${B}/purchases/${enc(id)}/sandbox-advance`, { status }),
   // Final Completion guide §07–§09
   integrity: () => api.get<Integrity>(`${B}/integrity`),
-  runs: (q: { page: number; pageSize: number }) => api.get<Paged<BooksRun>>(`${B}/books-check/runs`, q),
-  findings: (q: { runId?: string; outcome?: string; reviewStatus?: string; tenantId?: string; page: number; pageSize: number }) => api.get<Paged<Finding>>(`${B}/books-check/findings`, q),
+  runs: (q: { page: number; pageSize: number }) => api.get<LoyaltyNetPaged<BooksRun>>(`${B}/books-check/runs`, q),
+  findings: (q: { runId?: string; outcome?: string; reviewStatus?: string; tenantId?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<LoyaltyNetFinding>>(`${B}/books-check/findings`, q),
   findingsCsv: (runId?: string) => api.exportAsync<string>(`${B}/books-check/findings.csv`, runId ? { runId } : undefined, 'text'),
   runBooksCheck: () => api.post<{ runId: string; status: string; replay: boolean }>(`${B}/books-check/run`, {}),
   reviewFinding: (id: string, to: string, note: string) => api.post<unknown>(`${B}/books-check/findings/${enc(id)}/review`, { to, note }),
-  payables: (q: { status?: string; tenantId?: string; page: number; pageSize: number }) => api.get<Paged<Payable>>(`${B}/payables`, q),
+  payables: (q: { status?: string; tenantId?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<Payable>>(`${B}/payables`, q),
   lineage: (redemptionId: string) => api.get<Lineage>(`${B}/redemptions/${enc(redemptionId)}/lineage`),
   markEligible: (id: string) => api.post<unknown>(`${B}/payables/${enc(id)}/eligible`, {}),
   holdPayable: (id: string, reason: string) => api.post<unknown>(`${B}/payables/${enc(id)}/hold`, { reason }),
   /** money out: one request key per attempt; no approved provider → PAYOUT_PROVIDER_UNAVAILABLE (the payable stays owed) */
   requestPayout: (id: string, key: string) => api.postOnce<unknown>(`${B}/payables/${enc(id)}/payout`, {}, key),
-  fraudAlerts: (q: { status?: string; page: number; pageSize: number }) => api.get<Paged<FraudAlert>>(`${B}/fraud-alerts`, q),
+  fraudAlerts: (q: { status?: string; page: number; pageSize: number }) => api.get<LoyaltyNetPaged<FraudAlert>>(`${B}/fraud-alerts`, q),
   reviewFraud: (id: string, to: string, note: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/review`, { to, note }),
   /** C1 audit (Nov 4 2026) §4.4: pause / lift the pause on the rewards account the alert is about (step-up, reason) */
   alertAccountStatus: (id: string, status: 'suspended' | 'active', reason: string) => api.post<unknown>(`${B}/fraud-alerts/${enc(id)}/account-status`, { status, reason }),

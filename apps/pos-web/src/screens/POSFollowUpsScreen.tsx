@@ -7,8 +7,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posFollowUpQueueApi as qa, type QueueKpis, type QueueRow, type QueuePage, type QueueQuery, type ContactCheck, type MissedCallRow, type QueueResults, type CustomerFollowUp, type GenerateOutcome, type PriorityReason } from '../api/posFollowUpQueueApi';
-import { posEodFollowUpsApi as eod, type EodTaskDetail, type EodHealthRow, type HealthState } from '../api/posEodFollowUpsApi';
+import { posFollowUpQueueApi as qa, type FollowUpQueueKpis, type FollowUpQueueRow, type QueuePage, type FollowUpQueueQuery, type ContactCheck, type MissedCallRow, type QueueResults, type CustomerFollowUp, type GenerateOutcome, type FollowUpPriorityReason } from '../api/posFollowUpQueueApi';
+import { posEodFollowUpsApi as eod, type EodTaskDetail, type EodHealthRow, type EodHealthState } from '../api/posEodFollowUpsApi';
 import { posFollowUpApi, type FollowUpTaskView } from '../api/posFollowUpApi';
 import { FollowUpTechnicianSummary } from '../components/FollowUpTechnicianSummary';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
@@ -50,13 +50,13 @@ export function POSFollowUpsScreen() {
   const [filters, setFilters] = useState<Filters>({ ...DEFAULTS, ...fromUrl });
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim(), 300);
-  const [kpis, setKpis] = useState<QueueKpis | null>(null);
+  const [kpis, setKpis] = useState<FollowUpQueueKpis | null>(null);
   const [kpiErr, setKpiErr] = useState<unknown>(null);
-  const [rows, setRows] = useState<(QueuePage<QueueRow> & { view: string; basis: string }) | null>(null);
+  const [rows, setRows] = useState<(QueuePage<FollowUpQueueRow> & { view: string; basis: string }) | null>(null);
   const [missed, setMissed] = useState<QueuePage<MissedCallRow> | null>(null);
   const [mcState, setMcState] = useState('');
   const [listErr, setListErr] = useState<unknown>(null);
-  const [health, setHealth] = useState<{ overall: HealthState; rows: EodHealthRow[] } | null>(null);
+  const [health, setHealth] = useState<{ overall: EodHealthState; rows: EodHealthRow[] } | null>(null);
   const [results, setResults] = useState<QueueResults | null>(null);
   const [techs, setTechs] = useState<{ id: string; name: string }[]>([]);
   const [todayTasks, setTodayTasks] = useState<FollowUpTaskView[]>([]);
@@ -83,7 +83,7 @@ export function POSFollowUpsScreen() {
     try {
       if (type === 'missed_call') { setMissed(await qa.missedCalls({ q: q || undefined, from: filters.from, to: filters.to, state: mcState || undefined, page: filters.page, pageSize: filters.pageSize })); }
       else {
-        const f: QueueQuery = { ...filters, q: q || undefined };
+        const f: FollowUpQueueQuery = { ...filters, q: q || undefined };
         const r = await qa.tasks(f); setRows(r);
         setTechs((cur) => { const m = new Map(cur.map((x) => [x.id, x.name])); for (const i of r.items) m.set(i.technicianId, i.technicianName); return [...m].map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name)); });
       }
@@ -269,7 +269,7 @@ export function POSFollowUpsScreen() {
   );
 }
 
-function reasonText(r: PriorityReason, tz?: string) {
+function reasonText(r: FollowUpPriorityReason, tz?: string) {
   const base = tx(`fuq.pr.${r.code}`, { detail: r.detail ?? '' });
   return r.at ? `${base} (${when(r.at, tz)})` : base;
 }

@@ -13,8 +13,9 @@ import { branchTimeZone } from '@aipowersalon/database';
 import type { ReportFilters } from './reports.dto';
 import { ReportsContext, ReportsRepositoryPort, Tx, buildReportsState, buildExportRows, daysAgo, attributeCardSurcharge } from './reports.repository';
 import { REPORTABLE_PAYMENT_STATUSES, isRefundStatus } from '@aipowersalon/api-contracts';
+import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
 
-const dateOnly = (v: any) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+const dateOnly = (v: any): string => dateColumnYmd(v) ?? String(v ?? '').slice(0, 10);
 const normMethod = (m: string) => (m === 'gift_card' ? 'giftCard' : m === 'gift' ? 'giftCard' : m || 'card');
 const isRefund = isRefundStatus; // shared single source of truth (was a duplicated local list)
 
@@ -138,7 +139,7 @@ function sqlDate(eb: any, col: string) { return eb.fn('date', [eb.ref(col)]); }
 /** the salon-local days a report preset names (inclusive), for `now` in `tz`; weeks start on Monday */
 export function presetRange(preset: string, now: Date, tz: string): { from: string; to: string } {
   const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(now);
-  const add = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+  const add = (d: string, k: number) => addYmdDays(d, k);
   const y = today.slice(0, 4), m = Number(today.slice(5, 7));
   switch (preset) {
     case 'today': return { from: today, to: today };
@@ -162,7 +163,7 @@ export function presetRange(preset: string, now: Date, tz: string): { from: stri
  */
 export function previousPeriodRange(preset: string, now: Date, tz: string): { from: string; to: string } {
   const cur = presetRange(preset, now, tz);
-  const add = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+  const add = (d: string, k: number) => addYmdDays(d, k);
   const shiftMonths = (d: string, k: number) => {
     const y = Number(d.slice(0, 4)), m = Number(d.slice(5, 7)) - 1 + k, day = Number(d.slice(8, 10));
     const ty = y + Math.floor(m / 12), tm = ((m % 12) + 12) % 12;

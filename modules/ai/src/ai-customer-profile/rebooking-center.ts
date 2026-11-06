@@ -18,12 +18,13 @@
 // opportunity returns to Due for Review. A booking made after the last evaluation is read LIVE from the Booking Calendar,
 // so a stale snapshot can never offer a second booking.
 import { sql, type Kysely } from 'kysely';
-import { canMoveToSql } from '@aipowersalon/database';
+import { canMoveToSql, tenantTimeZone } from '@aipowersalon/database';
 import { REBOOKING_REVIEW } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { customerSearchPredicate, CI_RULE_VERSION } from './customer-intelligence-center';
 import { DEFAULT_TUNABLES, type ProfileTunables } from './ai-customer-profile-core';
+import { businessDate } from '@aipowersalon/date-time';   // §87
 
 type Row = Record<string, any>;
 export type RbCtx = RetentionContext;
@@ -424,6 +425,7 @@ export class RebookingCenter {
   // ── Check Rebooking System (read-only; records its own evidence; one run per salon per 30 s) ──────────────────
   async check(ctx: RbCtx) {
     const T = ctx.tenantId;
+    const today = businessDate(await tenantTimeZone(this.db, T));   // §87: the salon's day, not the server's
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from rebooking_health_runs where tenant_id = ${T} and branch_id is not distinct from ${uuidOrNull(ctx.branchId)}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
@@ -460,7 +462,7 @@ export class RebookingCenter {
     const orphan = N((await one(sql<Row>`select count(*)::int as n from rebooking_reviews r where r.tenant_id = ${T}
       and not exists (select 1 from customers c where c.id = r.customer_id and c.tenant_id = r.tenant_id and c.archived_at is null)`)).n);
     checks.push({ key: 'reviews_point_at_live_customers', state: orphan ? 'WARNING' : 'PASSED', count: orphan });
-    const overdue = N((await one(sql<Row>`select count(*)::int as n from rebooking_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= current_date`)).n);
+    const overdue = N((await one(sql<Row>`select count(*)::int as n from rebooking_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= ${today}::date`)).n);
     checks.push({ key: 'deferrals_due', state: overdue ? 'WARNING' : 'PASSED', count: overdue });
     const cross = N((await one(sql<Row>`select
         (select count(*) from rebooking_reviews r join customers c on c.id = r.customer_id where r.tenant_id = ${T} and c.tenant_id <> r.tenant_id)

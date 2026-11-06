@@ -21,7 +21,7 @@ export interface CcCampaign {
   createdAt: string; updatedAt: string; scheduledAt: string | null; startedAt: string | null; completedAt: string | null;
   createdBy: string | null; submittedAt: string | null; approvedAt: string | null; approvedBy: string | null; approvalCurrent: boolean; counts: CcCounts;
 }
-export interface CcPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
+interface CcPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
 export interface CcPage { page: number; pageSize: number; totalItems: number; totalPages: number }
 
 export const posCampaignCenterApi = {

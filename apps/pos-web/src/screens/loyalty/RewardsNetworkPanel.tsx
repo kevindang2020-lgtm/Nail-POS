@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseDollarsToCents } from '@aipowersalon/money';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
-import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type LedgerRow, type Purchase, type Preview, type RateInput, type EarningRate, type Paged, type VersionLite, type PurchaseEvent } from '../../api/posRewardsNetworkApi';
+import { posRewardsNetworkApi as netApi, type NetworkState, type HistoryItem, type RewardsNetLedgerRow, type Purchase, type Preview, type RateInput, type RewardsNetEarningRate, type RewardsNetPaged, type VersionLite, type PurchaseEvent } from '../../api/posRewardsNetworkApi';
 import { errorTextOf } from '../../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../../i18n/format';
 import { FitDialog, FitPanel, KpiCard, Pager, Empty, ErrorRetry, useFitRows, requestId, useDebounced } from '../../components/FitKit';
@@ -31,11 +31,11 @@ const whenTime = (iso?: string | null) => (iso ? fmtInZone(iso, { month: 'short'
 export const pointsOf = (tenths: number) => fmtNumber((Number(tenths) || 0) / 10, 1);
 /** wallet cents → tokens (1 token = tokenValueCents) */
 export const tokensOf = (cents: number, tokenValueCents = 100) => fmtNumber((Number(cents) || 0) / Math.max(1, tokenValueCents), 2);
-export function rateText(r: Pick<EarningRate, 'spendIncrementCents' | 'pointTenthsPerIncrement'> | null | undefined): string {
+export function rateText(r: Pick<RewardsNetEarningRate, 'spendIncrementCents' | 'pointTenthsPerIncrement'> | null | undefined): string {
   if (!r) return '—';
   return tx(r.pointTenthsPerIncrement === 10 ? 'rn.rate.one' : 'rn.rate', { spend: fmtMoney(r.spendIncrementCents), points: pointsOf(r.pointTenthsPerIncrement) });
 }
-const rateDetails = (r: EarningRate | null | undefined) => {
+const rateDetails = (r: RewardsNetEarningRate | null | undefined) => {
   if (!r) return '';
   const bits = [tx('rn.rate.min', { amount: fmtMoney(r.minEligibleCents) })];
   bits.push(r.perTicketCapTenths != null ? tx('rn.rate.cap', { points: pointsOf(r.perTicketCapTenths) }) : tx('rn.rate.noCap'));
@@ -52,9 +52,9 @@ const localToIso = (v: string): string | null => { if (!v) return null; const d 
 type Dlg = null | { kind: 'custom'; draft?: VersionLite } | { kind: 'global' } | { kind: 'buy' } | { kind: 'purchase'; id: string } | { kind: 'levels' };
 
 /** a server-paged list whose page size is however many rows fit right now */
-function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<Paged<T>>, pageSize: number) {
+function usePaged<T>(fetcher: (q: { page: number; pageSize: number }) => Promise<RewardsNetPaged<T>>, pageSize: number) {
   const [page, setPage] = useState(1);
-  const [data, setData] = useState<Paged<T> | null>(null);
+  const [data, setData] = useState<RewardsNetPaged<T> | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reload, setReload] = useState(0);
   const seq = useRef(0); const f = useRef(fetcher); f.current = fetcher;
@@ -83,7 +83,7 @@ export function RewardsNetworkPanel() {
   const ledFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const histFit = useFitRows<HTMLDivElement>(46, { min: 2, max: 10 });
   const purchases = usePaged<Purchase>((q) => netApi.purchases(q), purFit.rows);
-  const ledger = usePaged<LedgerRow>((q) => netApi.ledger(q), ledFit.rows);
+  const ledger = usePaged<RewardsNetLedgerRow>((q) => netApi.ledger(q), ledFit.rows);
   useEffect(() => { void loadState(); void loadHist(); }, [loadState, loadHist]);
   const refreshAll = useCallback(() => { void loadState(); void loadHist(); purchases.refresh(); ledger.refresh(); }, [loadState, loadHist]);   // eslint-disable-line react-hooks/exhaustive-deps
   // addendum §6.2: another POS, the owner app or Super Admin changed the rule / wallet → every till refetches (ids only)
@@ -136,7 +136,7 @@ export function RewardsNetworkPanel() {
       <div className="fk-kpis five" data-testid="rn-kpis">
         {stErr ? <ErrorRetry message={stErr} onRetry={() => void loadState()} /> : <>
           <KpiCard testId="rn-kpi-mode" label={tx('rn.kpi.mode')} loading={!st} value={modeLabel} sub={kpiModeSub} tone={st?.mode === 'CUSTOM' ? 'gold' : undefined} onClick={() => setDlg(st?.permissions.canActivate ? { kind: 'custom' } : null)} />
-          <KpiCard testId="rn-kpi-rate" label={tx('rn.kpi.rate')} loading={!st} value={st ? rateText(st.effective) : ''} sub={st ? (off || st.program.earnPaused ? tx('rn.kpi.earningOff') : rateDetails(st.effective as EarningRate)) : ''} tone={off ? 'warn' : undefined} />
+          <KpiCard testId="rn-kpi-rate" label={tx('rn.kpi.rate')} loading={!st} value={st ? rateText(st.effective) : ''} sub={st ? (off || st.program.earnPaused ? tx('rn.kpi.earningOff') : rateDetails(st.effective as RewardsNetEarningRate)) : ''} tone={off ? 'warn' : undefined} />
           <KpiCard testId="rn-kpi-tokens" label={tx('rn.kpi.tokens')} loading={!st} value={w ? tokensOf(w.availableCents, tv) : ''} tone={w ? ALERT_TONE[w.alertLevel] ?? 'gold' : undefined}
             sub={w ? tx('rn.kpi.tokensSub', { value: fmtMoney(w.availableCents), level: label('rn.alert', w.alertLevel) }) : ''} onClick={() => ledger.toFirst()} />
           <KpiCard testId="rn-kpi-value" label={tx('rn.kpi.value')} loading={!st} value={st ? tx('rn.value', { points: fmtNumber(st.program.pointsPerRedeemBlock), amount: fmtMoney(st.program.redeemBlockValueCents) }) : ''} sub={st ? tx('rn.kpi.valueSub', { token: fmtMoney(tv) }) : ''} />
@@ -162,7 +162,7 @@ export function RewardsNetworkPanel() {
               </div>
               <div className="rn-current" data-testid="rn-current">
                 <div><span className="rn-k">{tx('rn.current')}</span> <b>{modeLabel}</b> · {rateText(st.effective)}</div>
-                <div className="fk-hint">{rateDetails(st.effective as EarningRate)}{st.effective?.source === 'TENANT_OVERRIDE' && st.effective.effectiveFrom ? ` · ${tx('rn.since', { date: whenTime(st.effective.effectiveFrom) })}` : ''}</div>
+                <div className="fk-hint">{rateDetails(st.effective as RewardsNetEarningRate)}{st.effective?.source === 'TENANT_OVERRIDE' && st.effective.effectiveFrom ? ` · ${tx('rn.since', { date: whenTime(st.effective.effectiveFrom) })}` : ''}</div>
                 {st.mode === 'GLOBAL' && st.globalNext ? <div className="fk-hint">{tx('rn.globalNext', { rate: rateText(st.globalNext), date: whenTime(st.globalNext.effectiveFrom) })}</div> : null}
                 {customBlockedReason && canEdit ? <div className="fk-hint">{customBlockedReason}</div> : null}
               </div>
@@ -266,7 +266,7 @@ export function RewardsNetworkPanel() {
 type RunFn = <T>(action: () => Promise<T>, message?: string) => Promise<T>;
 const dollarsText = (c: number | null | undefined) => (c == null ? '' : (c / 100).toFixed(2));
 function CustomRuleDialog({ st, draft, stepUpRun, onClose, onDone }: { st: NetworkState; draft?: VersionLite; stepUpRun: RunFn; onClose: () => void; onDone: (msg: string) => void }) {
-  const seed: EarningRate | null = draft?.rate ?? (st.mode === 'CUSTOM' ? (st.effective as EarningRate) : null) ?? (st.globalNow as EarningRate | null);
+  const seed: RewardsNetEarningRate | null = draft?.rate ?? (st.mode === 'CUSTOM' ? (st.effective as RewardsNetEarningRate) : null) ?? (st.globalNow as RewardsNetEarningRate | null);
   const [spend, setSpend] = useState(dollarsText(seed?.spendIncrementCents ?? 500));
   const [points, setPoints] = useState(seed ? String((seed.pointTenthsPerIncrement ?? 5) / 10) : '0.5');
   const [minimum, setMinimum] = useState(dollarsText(seed?.minEligibleCents ?? 0));
@@ -351,7 +351,7 @@ function CustomRuleDialog({ st, draft, stepUpRun, onClose, onDone }: { st: Netwo
       </> : <>
         <dl className="rn-review" data-testid="rn-review-panel">
           <dt>{tx('rn.review.before')}</dt><dd>{st.mode === 'CUSTOM' ? tx('rn.mode.custom') : tx('rn.mode.global')} · {rateText(st.effective)}</dd>
-          <dt>{tx('rn.review.after')}</dt><dd>{tx('rn.mode.custom')} · {rateText(parsed.rate)} · {rateDetails(parsed.rate as EarningRate)}</dd>
+          <dt>{tx('rn.review.after')}</dt><dd>{tx('rn.mode.custom')} · {rateText(parsed.rate)} · {rateDetails(parsed.rate as RewardsNetEarningRate)}</dd>
           <dt>{tx('rn.review.starts')}</dt><dd>{effIso ? whenTime(effIso) : tx('rn.review.immediately')}</dd>
           {reason.trim() ? <><dt>{tx('rn.f.reason')}</dt><dd>{reason.trim()}</dd></> : null}
         </dl>

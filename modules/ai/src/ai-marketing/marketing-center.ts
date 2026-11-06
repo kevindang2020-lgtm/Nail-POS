@@ -27,6 +27,7 @@ import { estimateSmsSegments } from '@aipowersalon/api-contracts';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import type { CampaignCenter, CampaignsContext } from '@aipowersalon/communications';
 import type { WinBackCenter, RetentionContext } from '@aipowersalon/customers';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface McCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[]; salonName?: string; authz?: { scope?: string | null; branchIds?: readonly string[] | null } | null }
@@ -43,7 +44,7 @@ const N = (v: unknown) => (v == null ? 0 : Number(v) || 0);
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
 const has = (ctx: McCtx, p: string) => (ctx.permissions ?? []).includes(p);
-const addDays = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, k: number) => addYmdDays(d, k);
 const micros = (v: unknown) => Math.round(N(v) / 10_000);
 /** Message Studio drafts use {{tokens}}; Campaign Center fills only {salon_name} and {offer}, once, for everyone (there is no
  *  per-customer personalization in the sender). Map the two it can fill and list the rest — they would go out as literal text. */

@@ -140,7 +140,7 @@ export class RetentionSnapshotRepository {
                    case when x.visits = 0 then 'never_visited' when x.days >= ${def.riskDays} then 'at_risk' when x.days >= ${def.approachingDays} then 'approaching' else 'active' end,
                    x.first_vt, x.last_vt, x.visits, x.net, x.days, ${quality}, ${runId}::uuid, ${src.wm ?? null}, now(), x.is_vip, x.loyalty_tier, x.last_branch_id, x.home_branch_id
                  from x on conflict do nothing returning 1)
-          select (select count(*) from ins)::int as written, (select count(*) from c)::int as customers`.execute(trx)).rows[0];
+          select (select count(*) from ins)::int as written, (select count(*) from cu)::int as customers`.execute(trx)).rows[0];
         const fin = (await sql<{ id: string }>`update customer_retention_snapshot_runs set status = 'completed', coverage = ${quality}, coverage_reason = null, rows_written = ${N(r.written)}, customers_count = ${N(r.customers)}, has_branch = true,
           source_watermark = ${src.wm ?? null}, earliest_ticket_at = ${src.earliest ?? null}, finished_at = now(), updated_at = now() where tenant_id = ${T} and id = ${runId} and ${canMoveToSql(CUSTOMER_RETENTION_SNAPSHOT_RUN, 'completed')}
           returning id`.execute(trx)).rows[0];

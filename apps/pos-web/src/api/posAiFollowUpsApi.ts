@@ -11,7 +11,7 @@ export interface FuRow {
 export interface FuPeriod { preset: string; from: string | null; to: string | null; tz: string; today: string }
 export interface FuPage { items: FuRow[]; page: number; pageSize: number; totalItems: number; totalPages: number; filters: { status: string; basis: string; sort: string; period: FuPeriod; q: string | null } }
 export interface FuKpis { asOf: string; timeZone: string; today: string; cards: { open: number; assigned: number; inProgress: number; waiting: number; overdue: number; resolved: number; resolvedToday: number; unassigned: number; total: number }; handoffs30d: { needsStaff: number; transfersCompleted: number }; definitions: Record<string, string> }
-export interface FuQuery { q?: string; status?: string; priority?: string; source?: string; assignee?: string; overdue?: string; basis?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number }
+interface FuQuery { q?: string; status?: string; priority?: string; source?: string; assignee?: string; overdue?: string; basis?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number }
 export interface FuCheck { domain: string; status: string; detail: string; evidence: string; nextAction: string | null; responsibleRole: string; checkedAt: string }
 export interface FuDetail {
   overview: FuRow & { resolution: string | null; resolutionCategory: string | null; notes: string | null; createdBy: string; branchId: string | null; dueTimeZone: string | null; reopenedCount: number; waitingUntil: string | null };

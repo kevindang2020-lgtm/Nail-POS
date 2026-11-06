@@ -14,6 +14,7 @@
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
+import { addDays as addYmdDays } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface UcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -59,7 +60,7 @@ export class UpsellCenter {
     const today = new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(this.now()));
     const preset = pick(UC_PRESETS, f.preset) ?? (f.from || f.to ? 'custom' : 'all');
     if (preset === 'all') return { preset, from: null as string | null, to: null as string | null, start: null as Date | null, end: null as Date | null, today, tz };
-    const d = (s: string, n: number) => { const x = new Date(s + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + n); return x.toISOString().slice(0, 10); };
+    const d = (s: string, n: number) => addYmdDays(s, n);
     const dow = (new Date(today + 'T12:00:00Z').getUTCDay() + 6) % 7;
     let from: string; let to = today;
     switch (preset) {

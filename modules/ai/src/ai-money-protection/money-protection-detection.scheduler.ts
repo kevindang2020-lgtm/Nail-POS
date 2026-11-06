@@ -14,6 +14,7 @@ import { sql } from 'kysely';
 import { MONEY_PROTECTION_PACKAGE } from './ai-money-protection-entitlement';
 import type { MoneyProtectionCenter } from './money-protection-center';
 import { MONEY_PROTECTION_CENTER } from './money-protection-center.controller';
+import { systemContext } from '@aipowersalon/tenant-context';   // §72: the one system context
 
 export const MP_DETECT_JOB = 'ai.money_protection.detect';
 export const detectionScheduled = (env: NodeJS.ProcessEnv = process.env) => env.AI_MONEY_PROTECTION_DETECTION_ENABLED === '1';
@@ -32,7 +33,7 @@ export class MoneyProtectionDetectionScheduler implements OnModuleInit, OnModule
   onModuleInit(): void {
     if (this.db && this.center && !jobHandlerFor(MP_DETECT_JOB)) registerJobHandler(MP_DETECT_JOB, async (_payload, ctx) => {
       if (!ctx.tenantId) throw withCode(new PermanentJobError('ai.money_protection.detect needs a tenant'), 'VALIDATION_FAILED');
-      const r = await this.center!.runDetection({ tenantId: ctx.tenantId, branchId: null, userId: null, role: 'SYSTEM', permissions: [] }, 'scheduled');
+      const r = await this.center!.runDetection({ ...systemContext({ tenantId: ctx.tenantId, actor: 'ai.money_protection.detect' }), branchId: null }, 'scheduled');
       return { tenant: ctx.tenantId, status: r.status };
     });
     if (!runsBackgroundJob('ai') || !detectionScheduled()) return;

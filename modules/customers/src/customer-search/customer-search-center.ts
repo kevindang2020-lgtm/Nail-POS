@@ -20,6 +20,8 @@ import { randomUUID } from 'node:crypto';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
 import { toStoredCustomerPhone } from '../customer-activation-rules/customer-activation-core';
 import { RetentionRepository, isUuid, maskPhone, maskEmail, type RetentionContext, type BranchScope } from '../retention/retention.repository';
+import { businessDate } from '@aipowersalon/date-time';   // §87
+import { tenantTimeZone } from '@aipowersalon/database';   // §87
 
 type Row = Record<string, any>;
 export type CsCtx = RetentionContext;
@@ -391,6 +393,7 @@ export class CustomerSearchCenter {
   // ── Check Customer Search System (read-only; the run is recorded; one run per salon per 30 s) ─────────────────
   async check(ctx: CsCtx) {
     const T = ctx.tenantId;
+    const today = businessDate(await tenantTimeZone(this.db, T));   // §87: the salon's day, not the server's
     return this.db.transaction().execute(async (trx) => {
       await sql`select pg_advisory_xact_lock(hashtext('customer-search-health:' || ${T}))`.execute(trx);
       const recent = (await sql<Row>`select id, overall, checks, created_at from customer_search_health_runs where tenant_id = ${T}
@@ -438,7 +441,7 @@ export class CustomerSearchCenter {
       await run('booking_links', async () => {
         const r = (await sql<Row>`select count(*) filter (where a.customer_id is not null and c.id is null)::int as dangling, count(*) filter (where a.customer_id is null)::int as unlinked, count(*)::int as total
           from pos_tech_appointments a left join customers c on c.id = a.customer_id and c.tenant_id = a.tenant_id
-          where a.tenant_id = ${T} and a.appt_date >= current_date - 90`.execute(trx)).rows[0];
+          where a.tenant_id = ${T} and a.appt_date >= ${today}::date - 90`.execute(trx)).rows[0];
         if (N(r.dangling)) return { state: 'FAILED', evidence: `${N(r.dangling)} recent appointment(s) point at a customer record that no longer exists.`, action: 'Those bookings cannot show in a customer\'s history; report to support.', count: N(r.dangling), detail: { n: N(r.dangling) } };
         return { state: N(r.unlinked) ? 'WARNING' : 'READY', evidence: `${N(r.total)} appointments in the last 90 days; ${N(r.unlinked)} have no customer record (walk-ins or guest bookings).`,
           action: N(r.unlinked) ? 'Unlinked bookings never appear in Customer Search; link the guest in Booking when you know who it is.' : null, count: N(r.unlinked), detail: { total: N(r.total), unlinked: N(r.unlinked) } };

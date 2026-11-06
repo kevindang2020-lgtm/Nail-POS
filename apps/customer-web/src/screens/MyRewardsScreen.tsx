@@ -8,13 +8,13 @@ import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { centsToUsd } from '@aipowersalon/money';
 import { fmtDate } from '@aipowersalon/mobile-sdk';
-import { customerRewardsApi, type RewardsView } from '../api/customerRewardsApi';
+import { customerRewardsApi, type GlobalRewardsView } from '../api/customerRewardsApi';
 
 const STATUS: Record<string, string> = { HELD: 'Held at checkout', CONFIRMED_REDEEMED: 'Redeemed', RELEASED: 'Released', EXPIRED: 'Released', REVERSED: 'Refunded', EARNED: 'Earned', PARTIALLY_REVERSED: 'Partly refunded' };
 
 export function MyRewardsScreen() {
   const nav = useNavigate();
-  const [v, setV] = useState<RewardsView | null>(null);
+  const [v, setV] = useState<GlobalRewardsView | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);

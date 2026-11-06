@@ -20,6 +20,7 @@ import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
 import { branchTimeZone } from '@aipowersalon/database';
 import { enforcementMode } from '../ai-entitlement/ai-entitlement.guard';
+import { addDays as addYmdDays, dateColumnYmd } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 type Row = Record<string, any>;
 export interface FcCtx { tenantId: string; branchId?: string | null; userId?: string | null; role?: string | null; permissions?: string[] }
@@ -41,11 +42,11 @@ const DAY = /^\d{4}-\d{2}-\d{2}$/;
 const N = (v: unknown) => (v == null ? 0 : Number(v));
 const num = (v: unknown) => (v == null ? null : Number(v));
 const iso = (v: unknown) => (v == null ? null : new Date(v as string | number | Date).toISOString());
-const ymd = (v: unknown) => (v == null ? null : typeof v === 'string' ? v.slice(0, 10) : new Date(v as Date).toISOString().slice(0, 10));
+const ymd = (v: unknown) => dateColumnYmd(v);
 const pick = <T extends readonly string[]>(list: T, v: unknown): T[number] | undefined => (typeof v === 'string' && (list as readonly string[]).includes(v) ? v as T[number] : undefined);
 const isUuid = (v: unknown) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(v ?? ''));
 const has = (ctx: FcCtx, p: string) => (ctx.permissions ?? []).includes(p);
-const addDays = (d: string, k: number) => { const x = new Date(d + 'T12:00:00Z'); x.setUTCDate(x.getUTCDate() + k); return x.toISOString().slice(0, 10); };
+const addDays = (d: string, k: number) => addYmdDays(d, k);
 
 export type FcState = 'PASSED' | 'WARNING' | 'FAILED' | 'INSUFFICIENT_DATA' | 'UNAVAILABLE';
 export interface FcCheck { key: string; component: string; state: FcState; count?: number | null; detail?: Record<string, unknown>; lastPassedAt?: string | null }

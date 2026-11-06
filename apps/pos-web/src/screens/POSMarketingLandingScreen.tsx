@@ -21,7 +21,7 @@ import { posGiftCardsApi } from '../api/posGiftCardsApi';
 import { posMarketingReportApi } from '../api/posMarketingReportApi';
 import { posCampaignCenterApi } from '../api/posCampaignCenterApi';
 import { posDiscountsApi } from '../api/posDiscountsApi';
-import { posMarketingGrowthApi, MG_SCOPES, MG_EVENT_TYPES, type MgScope } from '../api/posMarketingGrowthApi';
+import { posMarketingGrowthApi, MG_SCOPES, MG_EVENT_TYPES, type GrowthMgScope } from '../api/posMarketingGrowthApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
 import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
@@ -71,7 +71,7 @@ export function POSMarketingLandingScreen() {
     setSp(next, { replace: true });
   }, [sp, setSp]);
   // view state lives in the URL (never a customer's name, phone or e-mail — only ids, scopes and dates)
-  const scope = ((MG_SCOPES as readonly string[]).includes(sp.get('scope') ?? '') ? sp.get('scope') : 'all') as MgScope;
+  const scope = ((MG_SCOPES as readonly string[]).includes(sp.get('scope') ?? '') ? sp.get('scope') : 'all') as GrowthMgScope;
   const page = Math.max(1, Number(sp.get('page')) || 1);
   const size = (SIZES as readonly number[]).includes(Number(sp.get('size'))) ? Number(sp.get('size')) : 10;
   const type = (MG_EVENT_TYPES as readonly string[]).includes(sp.get('type') ?? '') ? String(sp.get('type')) : '';
@@ -366,8 +366,8 @@ function ActivityTable({ items, onJourney }: { items: any[]; onJourney: (id: str
   );
 }
 
-function SearchResults({ q, res, err, scope, size, onScope, onPage, onJourney, nav }: { q: string; res: any; err: string | null; scope: MgScope; size: number;
-  onScope: (s: MgScope) => void; onPage: (p: number) => void; onJourney: (id: string) => void; nav: (p: string) => void }) {
+function SearchResults({ q, res, err, scope, size, onScope, onPage, onJourney, nav }: { q: string; res: any; err: string | null; scope: GrowthMgScope; size: number;
+  onScope: (s: GrowthMgScope) => void; onPage: (p: number) => void; onJourney: (id: string) => void; nav: (p: string) => void }) {
   if (q.length < 2) return <div className="fk-hint">{tx('mg.search.hint')}</div>;
   if (err) return <div className="fk-error" data-testid="mg-search-error">{err}</div>;
   if (!res) return <Loading />;

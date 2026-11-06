@@ -43,9 +43,10 @@ beforeAll(async () => {
   for (const r of [5, 5, 4.5, 4.5, 5]) await review(ANNA, r); // 4.8 over 5 reviews
   for (const r of [3.5, 3.5, 3.5]) await review(BAO, r);      // exactly 3.5 → Very Good (boundary)
   await review(KEVIN, 2.5);                                   // exactly 2.5 → Good (boundary)
-  // a previous-period review: the last day of LAST month (40 days ago fell two months back on the 1st–9th of a month)
-  const dayNY = Number(new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', day: 'numeric' }).format(new Date()));
-  await review(ANNA, 2, { ago: `${dayNY} days` });
+  // a previous-period review: noon (New York) on the last day of LAST month. It was `now() - <day of month> days`, which
+  // landed on the 1st of THIS month when the span crossed a daylight-saving change (Nov 1 2026: a 25-hour day)
+  await q(`insert into reviews (tenant_id, branch_id, technician_id, rating, comment, created_at)
+    values ($1,$2,$3,2,'nice', ((date_trunc('month', now() at time zone 'America/New_York') - interval '12 hours') at time zone 'America/New_York'))`, [T, B, ANNA]);
   await q(`insert into reviews (tenant_id, branch_id, technician_id, rating) values ($1,$2,$3,5)`, [T2, BX, OTHER]);
   repo = new TeamPerformanceScreenRepository(kyselyFor(pg) as never);
 }, 180_000);

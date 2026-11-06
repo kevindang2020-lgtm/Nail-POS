@@ -16,13 +16,14 @@
 // service-level) · Service inactive (deactivated since the evaluation) · Superseded (no longer suggested — history only).
 // "Open AI Booking Assistant" re-checks all of that and returns a one-use prefill for POS → Booking: never an appointment.
 import { sql, type Kysely } from 'kysely';
-import { canMoveToSql } from '@aipowersalon/database';
+import { canMoveToSql, tenantTimeZone } from '@aipowersalon/database';
 import { SERVICE_RECOMMENDATION, SERVICE_RECOMMENDATION_REVIEW, SERVICE_RECOMMENDATION_SCAN } from '../ai-lifecycles';
 import { randomUUID } from 'node:crypto';
 import { Logger } from '@nestjs/common';
 import { RetentionRepository, isUuid, maskStoredPhone, maskEmail, salonPresetRange, VISIT_TICKET_STATUSES, type RetentionContext, type BranchScope } from '@aipowersalon/customers';
 import { customerSearchPredicate } from './customer-intelligence-center';
 import { DEFAULT_TUNABLES, recommendServices, type ProfileTunables, type VisitRecord } from './ai-customer-profile-core';
+import { businessDate } from '@aipowersalon/date-time';   // §87
 
 type Row = Record<string, any>;
 export type SrCtx = RetentionContext;
@@ -545,6 +546,7 @@ export class ServiceRecommendationsCenter {
   // ── Check Service Recommendations System (read-only; records its own evidence; one run per salon per 30 s) ─────
   async check(ctx: SrCtx) {
     const T = ctx.tenantId;
+    const today = businessDate(await tenantTimeZone(this.db, T));   // §87: the salon's day, not the server's
     const recentRun = async (ex: Kysely<any>) => (await sql<Row>`select id, overall, checks, created_at from service_recommendation_health_runs where tenant_id = ${T} and branch_id is not distinct from ${uuidOrNull(ctx.branchId)}
       and created_at >= now() - ${HEALTH_GAP_SECONDS + ' seconds'}::interval order by created_at desc limit 1`.execute(ex)).rows[0];
     const reusedOut = (r: Row) => ({ id: r.id, overall: r.overall, checks: r.checks, checkedAt: iso(r.created_at), reused: true });
@@ -579,7 +581,7 @@ export class ServiceRecommendationsCenter {
     const orphan = N((await one(sql<Row>`select count(*)::int as n from service_recommendations r where r.tenant_id = ${T} and r.status = 'open'
       and not exists (select 1 from customers c where c.id = r.customer_id and c.tenant_id = r.tenant_id and c.archived_at is null)`)).n);
     checks.push({ key: 'live_customers', state: orphan ? 'WARNING' : 'PASSED', count: orphan });
-    const overdue = N((await one(sql<Row>`select count(*)::int as n from service_recommendation_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= current_date`)).n);
+    const overdue = N((await one(sql<Row>`select count(*)::int as n from service_recommendation_reviews where tenant_id = ${T} and status = 'deferred' and due_on <= ${today}::date`)).n);
     checks.push({ key: 'deferrals_due', state: overdue ? 'WARNING' : 'PASSED', count: overdue });
     const cross = N((await one(sql<Row>`select
         (select count(*) from service_recommendations r join customers c on c.id = r.customer_id where r.tenant_id = ${T} and c.tenant_id <> r.tenant_id)

@@ -3,7 +3,7 @@
 import { api } from './client';
 
 const enc = encodeURIComponent;
-export interface WeeklyOffBody { technicianId: string; weekdays: number[]; effectiveFrom: string; effectiveTo?: string | null; reason?: string | null; expectedVersion?: number | null; acknowledgeConflicts?: boolean | null }
+interface WeeklyOffBody { technicianId: string; weekdays: number[]; effectiveFrom: string; effectiveTo?: string | null; reason?: string | null; expectedVersion?: number | null; acknowledgeConflicts?: boolean | null }
 export const posWeeklyDaysOffApi = {
   list: (technicianId: string, month?: string) => api.get<any>(`/pos/weekly-days-off?technicianId=${enc(technicianId)}${month ? `&month=${enc(month)}` : ''}`),
   preview: (b: WeeklyOffBody) => api.post<any>(`/pos/weekly-days-off/preview`, b as unknown as Record<string, unknown>),

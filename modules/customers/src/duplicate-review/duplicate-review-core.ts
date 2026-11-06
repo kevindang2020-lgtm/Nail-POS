@@ -15,6 +15,7 @@
 // the NON-EMPTY values: one "test" with a phone + one "test" without → one distinct phone → "same phone" → Strong. That is
 // exactly the screenshot's "Strong / Similar name" on two records with zero shared contact. Fixed here.
 import { createHash } from 'node:crypto';
+import { utcDate } from '@aipowersalon/date-time';   // §87: one calendar helper
 
 export const DR_RULE_VERSION = 'dr-2026-11-02';
 export const DR_STATUSES = ['pending', 'in_review', 'deferred', 'kept_separate', 'merged', 'failed', 'resolved'] as const;
@@ -105,7 +106,7 @@ export function pairsOf(ids: string[]): [string, string][] {
 /** salon-local [from, to] for a preset, given the salon's today (YYYY-MM-DD); custom is validated by the caller */
 export function presetRange(preset: string, today: string): { from: string; to: string } | null {
   const d = (s: string) => new Date(s + 'T00:00:00Z');
-  const f = (x: Date) => x.toISOString().slice(0, 10);
+  const f = (x: Date) => utcDate(x);   // a UTC-midnight calendar date, never "today"
   const add = (s: string, n: number) => { const x = d(s); x.setUTCDate(x.getUTCDate() + n); return f(x); };
   const t = d(today);
   switch (preset) {

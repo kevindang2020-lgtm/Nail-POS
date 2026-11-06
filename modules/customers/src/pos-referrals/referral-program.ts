@@ -11,7 +11,7 @@
 // Fraud signals (a shared phone / email / card) put a referral UNDER_REVIEW for a person; they never merge customers or confiscate.
 import { sql, type Kysely } from 'kysely';
 import { utcDate } from '@aipowersalon/date-time';
-import { canMoveToSql } from '@aipowersalon/database';
+import { canMoveToSql, tenantTimeZone } from '@aipowersalon/database';
 import { REFERRAL, REFERRAL_REWARD, REFERRAL_CODE, REFERRAL_VOUCHER } from '../customer-lifecycles';
 import { applyLoyaltyEntry } from '../loyalty/loyalty-ledger.service';
 import { VISIT_TICKET_STATUSES } from '../customers/customer-segments';
@@ -284,9 +284,10 @@ export class ReferralProgram {
   }
   /** R020–R022: what the campaign has committed (pending + available + redeemed vouchers) against its caps — in dollars */
   async budget(x: Kysely<any>, T: string, policy: RpSettings): Promise<RpBudget> {
+    const tz = await tenantTimeZone(x, T);   // §87: the monthly cap is the salon's calendar month, not the server's
     const r = (await sql<any>`select
         coalesce(sum(face_cents) filter (where state in ('PENDING', 'AVAILABLE', 'REDEEMED')), 0)::bigint as committed,
-        coalesce(sum(face_cents) filter (where state in ('PENDING', 'AVAILABLE', 'REDEEMED') and created_at >= date_trunc('month', now())), 0)::bigint as month,
+        coalesce(sum(face_cents) filter (where state in ('PENDING', 'AVAILABLE', 'REDEEMED') and created_at >= (date_trunc('month', now() at time zone ${tz}) at time zone ${tz})), 0)::bigint as month,
         coalesce(sum(face_cents) filter (where state = 'REDEEMED'), 0)::bigint as redeemed,
         coalesce(sum(face_cents) filter (where state = 'AVAILABLE'), 0)::bigint as outstanding,
         coalesce(sum(face_cents) filter (where state = 'PENDING'), 0)::bigint as pending
