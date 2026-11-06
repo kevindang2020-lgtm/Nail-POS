@@ -76,5 +76,11 @@ export const xlsxExportAdapter: AccountingExportPort = {
   key: 'xlsx', contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', extension: 'xlsx',
   render: (rows, meta) => toExpenseXlsx(rows, meta),
 };
+/** §98 PDF summary (Kevin, Nov 6 2026: build it) — totals by category / payment method + every line; expense-pdf.ts,
+ *  loaded on first use (it imports this file's helpers, so a static import would be a cycle). */
+export const pdfExportAdapter: AccountingExportPort = {
+  key: 'pdf', contentType: 'application/pdf', extension: 'pdf',
+  render: async (rows, meta) => (await import('./expense-pdf')).toExpensePdf(rows, meta),
+};
 /** the registered adapters; an unknown key is refused by the caller (no silent fallback to another format) */
-export const ACCOUNTING_EXPORT_ADAPTERS: ReadonlyMap<string, AccountingExportPort> = new Map([csvExportAdapter, xlsxExportAdapter].map((a) => [a.key, a]));
+export const ACCOUNTING_EXPORT_ADAPTERS: ReadonlyMap<string, AccountingExportPort> = new Map([csvExportAdapter, xlsxExportAdapter, pdfExportAdapter].map((a) => [a.key, a]));

@@ -30,7 +30,7 @@ export const posExpensesApi = {
   deleteDraft: (id: string) => api.del(`/owner/finance/expenses/${enc(id)}`),
   duplicateDecision: (id: string, decision: 'not_duplicate' | 'duplicate', reason: string) => api.post(`/owner/finance/expenses/${enc(id)}/duplicate-decision`, { decision, reason }),
   billPayment: (id: string, amountCents: number, idempotencyKey: string) => api.post(`/owner/finance/expenses/${enc(id)}/bill-payments`, { amountCents, idempotencyKey }),
-  exportFile: (format: 'csv' | 'xlsx', period: string, filters: { from?: string; to?: string; category?: string; paymentMethod?: string; q?: string } = {}) => api.exportAsync<FinanceExportPayload>(`/owner/finance/expenses/export`, { format, period, ...filters }, 'json'),
+  exportFile: (format: 'csv' | 'xlsx' | 'pdf', period: string, filters: { from?: string; to?: string; category?: string; paymentMethod?: string; q?: string } = {}) => api.exportAsync<FinanceExportPayload>(`/owner/finance/expenses/export`, { format, period, ...filters }, 'json'),
   // Oct 27 2026 — §142 the receipt document carries the finance suggestion of an existing expense; a person links it here
   attachReceipt: (expenseId: string, documentId: string) => api.post<FinanceAttachResult>(`/owner/finance/expenses/${enc(expenseId)}/documents`, { documentId, role: 'receipt' }),
   // §62/§63 the payment / bank transaction behind an expense — looked up (UNMATCHED honestly without a feed), linked or cleared by a person

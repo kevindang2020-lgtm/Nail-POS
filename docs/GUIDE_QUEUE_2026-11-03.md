@@ -266,8 +266,8 @@ New documents, each a queue row:
 | F4 | Full System Test (23 pages, 20 parts) | Nov 6: full run of every lane + repairs — pilot day 236 / 236, harnesses 26/26, race lane green, e2e-html green, one-screen 18/18 busy + light. Open: `check:api-contract` 845-route wire-type backlog, sweep fixture gaps, 27-inch touch / screenshots (external). Record: `docs/pilot-runs/2026-11-06-full/FINDINGS.md` |
 | F5 | Full Platform Architecture & Code Audit — Completion Mandate | Nov 5: 219 DONE / 40 PARTIAL / 3 BLOCKED of 262 (§68 re-verified DONE; §192 egress gate built — still PARTIAL for CSP unsafe-inline) |
 | F6 | Full System Run, Audit, Repair & Wiring — Completion Mandate | Nov 6: run + repair done (commits 3e875ea, 0016ac6, 53bfdc9, 835b58e) — 9 product defects fixed (Tech Queue crash, Check-In tables, AI centres refusing owners, Tech App 500, reschedule clock, one-screen layout, …). Same record as F4 |
-| F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Nov 5: 195 DONE / 15 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 (§87, §94, §102 built; §98 PDF summary waits on Kevin vs the no-print rule) |
-| F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | Oct 27 matrix: 160 DONE / 1 PARTIAL (17.5 pay-stub PDF) of 161 |
+| F7 | Receipt, Expense, OCR & Accounting — Master Completion Mandate | Nov 5: 195 DONE / 15 PARTIAL / 1 NOT DONE / 1 BLOCKED of 212 (§87, §94, §102 built; §98 PDF summary built Nov 6 on Kevin's yes) |
+| F8 | Weekly Technician Paycheck, Cash Payout & Owner Approval — Master Mandate | 161 / 161 DONE — the 17.5 pay-stub PDF was built Oct 27 (row was stale; Kevin confirmed Nov 6) |
 
 Order: F1 → F2 → F3 → the F7 PARTIAL rows → F5 product gaps → F8 17.5 → F4 / F6 as one full run at the end.
 
@@ -371,7 +371,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G7 | Global Advertising + Tenant Control (master switch, platform ads, 50/50, ACK fleet status) | BUILT — see `docs/advertising/GLOBAL_ADVERTISING.md` |
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-checked Nov 5: built; 2 decisions wait on Kevin (automatic replies job; review-request sender) |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
-| G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
+| G10 | Weekly Technician Paycheck (= F8) | 161 / 161 DONE (pay-stub PDF built Oct 27; downloaded in every pilot day) |
 | G11 | Full Security Deep Scan | Nov 5: §93 egress allowlist built (report by default); §74 IDOR sweep extended to write routes + the customer app — live 17/17, 7 defects fixed (SD-74a…g); §110 per-processor webhook schemas and §38 per-route resource scope built |
 | G12 | Secure Tap to Pay / Device Authentication | re-checked Nov 5: 10 PARTIAL, each blocked only by an outside dependency (internal half built); 1 BLOCKED_EXTERNAL |
 | G13 | Remaining Production Work / Payment Recovery | re-checked Nov 5: 52 DONE / 1 PARTIAL (§39 lint + as-any ratchets, per-screen work) / 20 BLOCKED_EXTERNAL; the pilot's two old 10e FAILs are fixed in the script |

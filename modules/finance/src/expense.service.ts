@@ -1044,7 +1044,7 @@ export class ExpenseService {
   }
 
   // ── export (§97–100, §202) ─────────────────────────────────────────────────────────────────────────────────────────
-  async exportFile(ctx: FinanceCtx, q: { format: 'csv' | 'xlsx'; period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean; category?: string; paymentMethod?: string; q?: string }) {
+  async exportFile(ctx: FinanceCtx, q: { format: 'csv' | 'xlsx' | 'pdf'; period?: ReportPeriod; from?: string; to?: string; branchId?: string | null; includeUnapproved?: boolean; category?: string; paymentMethod?: string; q?: string }) {
     this.require(ctx, PERM.export);
     const s = await this.scope(ctx, q.branchId);
     const today = await this.today(ctx.tenantId);

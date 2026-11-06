@@ -102,7 +102,7 @@ export function POSExpensesScreen() {
     } catch (e) { setNote({ tone: 'bad', text: errMsg(e, tx('people.expenses.err.upload')) }); }
     finally { setBusy(null); if (fileRef.current) fileRef.current.value = ''; }
   };
-  const exportAs = async (format: 'csv' | 'xlsx') => {
+  const exportAs = async (format: 'csv' | 'xlsx' | 'pdf') => {
     setBusy('export-' + format); setNote(null);
     try { const f = await posExpensesApi.exportFile(format, (dates as { period?: string }).period ?? 'month', { from: (dates as { from?: string }).from, to: (dates as { to?: string }).to, ...filters }); saveExportFile(f); setNote({ tone: 'ok', text: tx('people.expenses.exported') }); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e, tx('people.expenses.err.export')) }); }
@@ -127,6 +127,7 @@ export function POSExpensesScreen() {
           {canExport ? <>
             <button type="button" className="fk-btn" disabled={busy === 'export-csv'} onClick={() => void exportAs('csv')} title={tx('finance.ex.exportScope')} data-testid="export-csv">{tx('pos.export_csv')}</button>
             <button type="button" className="fk-btn" disabled={busy === 'export-xlsx'} onClick={() => void exportAs('xlsx')} title={tx('finance.ex.exportScope')} data-testid="export-xlsx">{tx('pos.export_excel')}</button>
+            <button type="button" className="fk-btn" disabled={busy === 'export-pdf'} onClick={() => void exportAs('pdf')} title={tx('finance.ex.exportScope')} data-testid="export-pdf">{tx('pos.export_pdf')}</button>
           </> : null}
           {canManage ? <button type="button" className="fk-btn primary" onClick={() => { setNote(null); setForm(emptyForm(today)); }} data-testid="add-expense">{tx('pos.add_expense')}</button> : null}
         </div>

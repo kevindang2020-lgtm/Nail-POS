@@ -112,7 +112,7 @@ export const ownerFinanceExpensesApi = {
   batchApprove: (ids: string[]) => api.post<FinanceBatchResult>('/owner/finance/expenses/batch/approve', { ids }),
   checkDuplicates: (body: FinanceDuplicateCheckRequest) => api.post<FinanceDuplicateResult>('/owner/finance/expenses/check-duplicates', body as unknown as Record<string, unknown>),
   importRows: (rows: FinanceImportRow[], dryRun: boolean) => api.post<FinanceImportResult>('/owner/finance/expenses/import', { rows, dryRun } as unknown as Record<string, unknown>),
-  exportFile: (format: 'csv' | 'xlsx', period: string, branchId?: string) => api.exportAsync<FinanceExportPayload>('/owner/finance/expenses/export', { format, period, ...br(branchId) }, 'json'),
+  exportFile: (format: 'csv' | 'xlsx' | 'pdf', period: string, branchId?: string) => api.exportAsync<FinanceExportPayload>('/owner/finance/expenses/export', { format, period, ...br(branchId) }, 'json'),
   /** a receipt photo or PDF → the Receipt AI pipeline (scan → read → a person reviews; nothing posts on its own) */
   uploadReceipt: (payload: { filename: string; mimeType: string; sizeBytes: number; bytes: number[]; headerBytes: number[]; source?: 'owner_app_upload' | 'mobile_camera'; deferExtraction?: boolean }) => api.post<OcrUploadResult>('/pos/ai-ocr-receipt/upload', payload as unknown as Record<string, unknown>),
   /** §17/§18 (Oct 27 2026): page 2, 3 … of ONE receipt document; then readReceipt runs the reading once the pages are in */

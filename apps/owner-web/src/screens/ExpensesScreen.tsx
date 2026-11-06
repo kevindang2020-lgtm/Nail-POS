@@ -257,7 +257,7 @@ export function ExpensesScreen() {
   };
   const runImport = () => { const r = importRows; if (!r) return; setImportRows(null); act(async () => { const x = await fin.importRows(r, false); setImportInfo(`${x.created} expenses imported.`); }, 'Import finished.'); };
   const recategorize = (e: FinanceExpense, category: string) => act(() => fin.update(e.id, { category, version: e.version }), 'Category changed.');
-  const exportAs = (format: 'csv' | 'xlsx') => {
+  const exportAs = (format: 'csv' | 'xlsx' | 'pdf') => {
     setBusy(true); setNote(null);
     fin.exportFile(format, period, effectiveBranchId).then((f) => { saveFile(f); setNote('Export downloaded.'); })
       .catch((e: unknown) => setNote(errMsg(e, 'Could not export.'))).finally(() => setBusy(false));
@@ -498,6 +498,7 @@ export function ExpensesScreen() {
               <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
                 <button className="owner-actbtn" disabled={busy} onClick={() => exportAs('csv')}>Export CSV</button>
                 <button className="owner-actbtn" disabled={busy} onClick={() => exportAs('xlsx')}>Export Excel</button>
+                <button className="owner-actbtn" disabled={busy} onClick={() => exportAs('pdf')}>Export PDF</button>
               </div>
               {/* Receipt mandate §162 (Oct 28 2026): the export is bookkeeping, not tax advice */}
               <div className="muted" style={{ fontSize: 11, marginTop: 6 }}>For bookkeeping only — not tax or accounting advice. Review deductions with your accountant.</div>

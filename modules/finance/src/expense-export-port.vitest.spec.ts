@@ -7,9 +7,10 @@ const row: ExportRow = { date: '2026-11-01', vendor: '=HYPERLINK("x")', category
   totalCents: 1066, paymentMethod: 'cash', receiptNumber: 'R1', invoiceNumber: '', receiptAttached: true, status: 'approved' } as ExportRow;
 
 describe('AccountingExportPort (§102)', () => {
-  it('registers exactly the CSV and XLSX adapters by key', () => {
-    expect([...ACCOUNTING_EXPORT_ADAPTERS.keys()].sort()).toEqual(['csv', 'xlsx']);
-    expect(ACCOUNTING_EXPORT_ADAPTERS.get('pdf')).toBeUndefined();
+  it('registers exactly the CSV, XLSX and PDF-summary adapters by key (PDF: §98, Kevin Nov 6 2026)', () => {
+    expect([...ACCOUNTING_EXPORT_ADAPTERS.keys()].sort()).toEqual(['csv', 'pdf', 'xlsx']);
+    expect(ACCOUNTING_EXPORT_ADAPTERS.get('pdf')!.contentType).toBe('application/pdf');
+    expect(ACCOUNTING_EXPORT_ADAPTERS.get('docx')).toBeUndefined();
   });
   it('the CSV adapter renders the same bytes as the CSV writer (formula-safe, exact cents)', async () => {
     const bytes = await csvExportAdapter.render([row], { title: 'Expenses', period: 'p' });

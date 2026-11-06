@@ -56,7 +56,7 @@ export class ExpenseController {
   @AsyncExport({ kind: 'owner.finance.expenses.export', maxSyncRows: 20_000, estimate: { table: 'expenses' } })
   @RequirePermission('owner.expenses.export') @Get('expenses/export') async exportFile(@Req() r: Req, @Query('format') format?: string, @Query('period') p?: string, @Query('from') from?: string, @Query('to') to?: string, @Query('branchId') branchId?: string, @Query('includeUnapproved') inc?: string, @Query('category') category?: string, @Query('paymentMethod') paymentMethod?: string, @Query('q') search?: string): Promise<FinanceExportPayload> {
     return financeRun(async () => {
-      const f = await this.svc.exportFile(financeCtx(r, branchId), { format: format === 'xlsx' ? 'xlsx' : 'csv', period: period(p), from, to, branchId: branchId || null, includeUnapproved: inc === '1' || inc === 'true', category: category || undefined, paymentMethod: paymentMethod || undefined, q: search || undefined });
+      const f = await this.svc.exportFile(financeCtx(r, branchId), { format: format === 'xlsx' ? 'xlsx' : format === 'pdf' ? 'pdf' : 'csv', period: period(p), from, to, branchId: branchId || null, includeUnapproved: inc === '1' || inc === 'true', category: category || undefined, paymentMethod: paymentMethod || undefined, q: search || undefined });
       return { filename: f.filename, contentType: f.contentType, encoding: 'base64', content: Buffer.from(f.bytes).toString('base64'), rowCount: f.rows, totalCents: f.totalCents };
     });
   }
