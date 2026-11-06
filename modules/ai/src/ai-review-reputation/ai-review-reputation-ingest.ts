@@ -86,10 +86,13 @@ export interface ReviewStorePort {
 }
 export interface EscalationSink { raise(ctx: IngestContext, reviewId: string, analysis: ReviewAnalysis): Promise<void>; }
 
-export interface SyncResult { fetched: number; created: number; updated: number; skipped: number; escalated: number; spam: number; }
+/** G8 (Nov 6 2026): a NEW review is offered to the automatic-reply policy (off unless the salon turned it on). Never throws. */
+export interface AutoReplySink { onNewReview(ctx: IngestContext, reviewId: string, review: { text: string | null; rating: number | null }, analysis: ReviewAnalysis): Promise<{ autoResponded: boolean; reason: string }>; }
+
+export interface SyncResult { fetched: number; created: number; updated: number; skipped: number; escalated: number; spam: number; autoReplied?: number; }
 
 export class ReviewIngestionService {
-  constructor(private readonly store: ReviewStorePort, private readonly escalations?: EscalationSink) {}
+  constructor(private readonly store: ReviewStorePort, private readonly escalations?: EscalationSink, private readonly autoReply?: AutoReplySink) {}
 
   async sync(ctx: IngestContext, adapter: ReviewSourceAdapter, since?: string | null): Promise<SyncResult> {
     if (!ctx?.tenantId) throw new Error('TENANT_REQUIRED');
@@ -111,6 +114,10 @@ export class ReviewIngestionService {
       }
       const ins = await this.store.insert(ctx, n, analysis); res.created++;
       if (analysis.escalationRequired) { await this.escalations?.raise(ctx, ins.id, analysis); res.escalated++; }
+      else if (this.autoReply) {   // only new, non-escalated reviews; edits to an existing review never trigger a reply
+        const a = await this.autoReply.onNewReview(ctx, ins.id, { text: n.comment ?? null, rating: n.rating ?? null }, analysis).catch(() => ({ autoResponded: false, reason: 'error' }));
+        if (a.autoResponded) res.autoReplied = (res.autoReplied ?? 0) + 1;
+      }
     }
     return res;
   }

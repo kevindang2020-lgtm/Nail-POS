@@ -20,6 +20,8 @@ import { hasTenantWideScope } from '@aipowersalon/permissions';
 
 const now = () => new Date().toISOString();
 const tid = (ctx: { tenantId: string }) => ctx.tenantId;
+/** a system principal ("system:review-auto-reply") is not a user row — its actor column stays empty (the event says auto) */
+const uuidOrNull = (v: unknown): string | null => (typeof v === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v) ? v : null);
 
 // ---- ingestion: reviews + review_analysis ----
 export class KyselyReviewStore implements ReviewStorePort {
@@ -87,7 +89,7 @@ export class KyselyApprovalStore implements ApprovalStorePort {
   async record(ctx: { tenantId: string }, reviewId: string, action: string, reason?: string | null, version?: number | null) {
     // the real draft id (it used to store the review id), the acting user, and no swallowed failure
     const d: any = await this.db.selectFrom('review_response_drafts').select(['id']).where('tenant_id', '=', tid(ctx)).where('review_id', '=', reviewId).executeTakeFirst();
-    await this.db.insertInto('review_approvals').values({ tenant_id: tid(ctx), review_id: reviewId, draft_id: d ? String(d.id) : reviewId, action, actor_user_id: (ctx as { userId?: string }).userId ?? null, reason: reason ?? null, version: version ?? null }).execute();
+    await this.db.insertInto('review_approvals').values({ tenant_id: tid(ctx), review_id: reviewId, draft_id: d ? String(d.id) : reviewId, action, actor_user_id: uuidOrNull((ctx as { userId?: string }).userId), reason: reason ?? null, version: version ?? null }).execute();
   }
 }
 
@@ -140,8 +142,39 @@ export class KyselyRequestStore implements RequestStorePort {
     return { id: String(r.id) };
   }
   async listDue(ctx: ReqCtx, nowIso: string) {
-    const rows: any[] = await this.db.selectFrom('review_requests').select(['id', 'customer_id', 'appointment_id', 'channel']).where('tenant_id', '=', tid(ctx)).where('status', '=', 'scheduled').where('scheduled_for', '<=', new Date(nowIso)).limit(500).execute().catch(() => []);
+    // G8 sender (Nov 6 2026): per branch — the sender runs one branch at a time (that branch's settings, quiet hours and
+    // review link); a request with no branch is the salon-level row. A failed read now fails the tick (it used to read as
+    // "nothing due").
+    let q: any = this.db.selectFrom('review_requests').select(['id', 'customer_id', 'appointment_id', 'channel']).where('tenant_id', '=', tid(ctx)).where('status', '=', 'scheduled').where('scheduled_for', '<=', new Date(nowIso));
+    q = ctx.branchId ? q.where('branch_id', '=', ctx.branchId) : q.where('branch_id', 'is', null);
+    const rows: any[] = await q.orderBy('scheduled_for').limit(500).execute();
     return rows.map((r) => ({ id: String(r.id), customerId: String(r.customer_id), appointmentId: r.appointment_id ? String(r.appointment_id) : null, channel: String(r.channel) }));
+  }
+  async claim(ctx: ReqCtx, id: string) {
+    const r = await (this.db as any).updateTable('review_requests').set({ status: 'sending' }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('status', '=', 'scheduled').executeTakeFirst();
+    return Number(r?.numUpdatedRows ?? 0) === 1;
+  }
+  async expireStale(ctx: ReqCtx, olderThanIso: string) {
+    let q: any = (this.db as any).updateTable('review_requests').set({ status: 'expired' }).where('tenant_id', '=', tid(ctx)).where('status', '=', 'scheduled').where('scheduled_for', '<', new Date(olderThanIso));
+    q = ctx.branchId ? q.where('branch_id', '=', ctx.branchId) : q.where('branch_id', 'is', null);
+    const rows: any[] = await q.returning(['id']).execute();
+    for (const r of rows) await this.recordEvent(ctx, String(r.id), 'expired', { reason: 'past_freshness_window' });
+    return rows.length;
+  }
+  async listReminderDue(ctx: ReqCtx, sentBeforeIso: string, sentAfterIso: string) {
+    let q: any = (this.db as any).selectFrom('review_requests').select(['id', 'customer_id', 'appointment_id', 'channel', 'sent_at']).where('tenant_id', '=', tid(ctx)).where('status', '=', 'sent')
+      .where('reminder_sent_at', 'is', null).where('sent_at', '<=', new Date(sentBeforeIso)).where('sent_at', '>=', new Date(sentAfterIso));
+    q = ctx.branchId ? q.where('branch_id', '=', ctx.branchId) : q.where('branch_id', 'is', null);
+    const rows: any[] = await q.orderBy('sent_at').limit(500).execute();
+    return rows.map((r) => ({ id: String(r.id), customerId: String(r.customer_id), appointmentId: r.appointment_id ? String(r.appointment_id) : null, channel: String(r.channel), sentAt: new Date(r.sent_at).toISOString() }));
+  }
+  async claimReminder(ctx: ReqCtx, id: string, atIso: string) {
+    const r = await (this.db as any).updateTable('review_requests').set({ reminder_sent_at: new Date(atIso) }).where('tenant_id', '=', tid(ctx)).where('id', '=', id).where('reminder_sent_at', 'is', null).executeTakeFirst();
+    return Number(r?.numUpdatedRows ?? 0) === 1;
+  }
+  async reviewedSince(ctx: ReqCtx, customerId: string, sinceIso: string) {
+    const r = await (this.db as any).selectFrom('reviews').select(['id']).where('tenant_id', '=', tid(ctx)).where('customer_id', '=', customerId).where('created_at', '>=', new Date(sinceIso)).executeTakeFirst();
+    return !!r;
   }
   async markStatus(ctx: ReqCtx, id: string, status: string, at?: string | null) { const set: any = { status }; if (status === 'sent' && at) set.sent_at = at; await this.db.updateTable('review_requests').set(set).where('tenant_id', '=', tid(ctx)).where('id', '=', id).execute().catch(() => {}); }
   async recordEvent(ctx: ReqCtx, id: string, event: string, detail?: Record<string, unknown>) { await this.db.insertInto('review_request_events').values({ tenant_id: tid(ctx), request_id: id, event, detail: detail ? JSON.stringify(detail) : null }).execute().catch(() => {}); }
@@ -251,5 +284,26 @@ export class KyselyReviewRead implements ReviewReadPort {
   async integrationStatus(ctx: RepCtx) {
     const rows: any[] = await this.db.selectFrom('reviews').select(['source']).select((eb) => eb.fn.max('last_synced_at').as('last')).where('tenant_id', '=', tid(ctx)).groupBy('source').execute().catch(() => []);
     return rows.filter((r) => r.source !== 'internal' && r.source !== 'manual').map((r) => ({ source: String(r.source), connected: !!r.last, lastSyncAt: r.last ? new Date(r.last).toISOString() : null }));
+  }
+}
+
+// ---- G8 sender (Nov 6 2026): who the review request is from and who it goes to ----
+import { googleReviewLink, type ReviewRequestProfilePort } from './ai-review-reputation.integrations';
+export class KyselyReviewRequestProfile implements ReviewRequestProfilePort {
+  constructor(private readonly db: Kysely<DB>) {}
+  async salon(tenantId: string, branchId: string | null) {
+    const t: any = await (this.db as any).selectFrom('tenants').select(['display_name', 'legal_name']).where('id', '=', tenantId).executeTakeFirst();
+    const b: any = branchId ? await (this.db as any).selectFrom('branches').select(['name', 'public_display_name', 'google_place_id']).where('tenant_id', '=', tenantId).where('id', '=', branchId).executeTakeFirst() : null;
+    // a salon-level request (no branch) uses the salon's only Google listing when it has exactly one
+    let placeId: string | null = b?.google_place_id ?? null;
+    if (!branchId) {
+      const ids: any[] = await (this.db as any).selectFrom('branches').select(['google_place_id']).where('tenant_id', '=', tenantId).where('google_place_id', 'is not', null).limit(2).execute();
+      if (ids.length === 1) placeId = ids[0].google_place_id;
+    }
+    return { brandName: String(t?.display_name || t?.legal_name || ''), link: googleReviewLink(placeId) };
+  }
+  async customer(tenantId: string, customerId: string) {
+    const c: any = await (this.db as any).selectFrom('customers').select(['normalized_phone', 'email', 'preferred_language']).where('tenant_id', '=', tenantId).where('id', '=', customerId).executeTakeFirst();
+    return c ? { phone: c.normalized_phone ?? null, email: c.email ?? null, language: c.preferred_language ?? null } : null;
   }
 }

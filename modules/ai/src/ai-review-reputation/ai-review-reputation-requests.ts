@@ -57,6 +57,15 @@ export function computeSendTime(completedAt: string, config: ReviewRequestPolicy
   return t;
 }
 
+/** Is `now` inside the policy's quiet hours, in the salon's zone (host zone when none)? The sender checks this at send time
+ *  too: a request scheduled for 8:55 pm that a late tick reaches at 9:05 pm waits for the morning (G8, Nov 6 2026). */
+export function inQuietHours(now: Date, config: Pick<ReviewRequestPolicy, 'quietHoursStart' | 'quietHoursEnd'>, timeZone?: string | null): boolean {
+  if (config.quietHoursStart === config.quietHoursEnd) return false;   // no quiet window
+  let h = now.getHours();
+  if (timeZone) { try { h = Number(new Intl.DateTimeFormat('en-US', { timeZone, hour: 'numeric', hourCycle: 'h23' }).format(now)) % 24; } catch { /* unknown zone: host hours */ } }
+  return config.quietHoursStart < config.quietHoursEnd ? h >= config.quietHoursStart && h < config.quietHoursEnd : h >= config.quietHoursStart || h < config.quietHoursEnd;
+}
+
 export interface ReviewRequestState { status: string; sentAt: string | null; reminderSent: boolean; converted: boolean; optedOut: boolean; }
 /** One controlled reminder: only if the first send was delivered, not converted, not opted-out, no prior reminder, and enough time passed. */
 export function shouldSendReminder(req: ReviewRequestState, reminderAfterHours: number, now: Date, config: ReviewRequestPolicy): boolean {

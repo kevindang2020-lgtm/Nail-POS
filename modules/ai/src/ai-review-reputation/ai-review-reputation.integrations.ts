@@ -40,6 +40,68 @@ export class CommunicationsDispatchAdapter implements DispatchPort {
   }
 }
 
+/** The salon's public Google review page for a branch (branches.google_place_id). */
+export function googleReviewLink(placeId: string | null | undefined): string | null {
+  const id = String(placeId ?? '').trim();
+  return id ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(id)}` : null;
+}
+
+/** The reminder wording (policy.oneReminder): one short nudge, same destination, same language rule. */
+export function reviewReminderBody(brandName: string, link: string | null, customerLanguage?: string | null): string {
+  if (customerMessageLanguage(customerLanguage) === 'vi') {
+    const viBase = `${brandName ? `${brandName}: ` : ''}Nếu quý khách có chút thời gian, chúng tôi rất mong nhận được đánh giá của quý khách.`;
+    return link ? `${viBase} ${link}` : viBase;
+  }
+  const base = `${brandName ? `${brandName}: ` : ''}If you have a minute, we'd still love to hear how your visit went.`;
+  return link ? `${base} ${link}` : base;
+}
+
+/** The salon's one send path (packages/notifications TenantMessenger), declared narrowly so the ai module does not depend
+ *  on the notifications package for one interface. */
+export interface ReviewMessenger {
+  sendSms(req: { tenantId: string | null; branchId?: string | null; to: string; body: string; purpose: 'followup'; customerId?: string | null; source?: { type: 'follow_up'; id: string } | null }): Promise<{ sent: boolean; status: string; reason?: string; providerId?: string; notificationId?: string }>;
+  sendEmail?(req: { tenantId: string; branchId?: string | null; to: string; subject: string; body: string; purpose: 'followup'; customerId?: string | null; source?: { type: 'follow_up'; id: string } | null; idempotencyKey?: string | null }): Promise<{ sent: boolean; status: string; reason?: string; providerId?: string; notificationId?: string }>;
+}
+/** What the message needs to know about the salon and the customer (bound to the database in the module). */
+export interface ReviewRequestProfilePort {
+  salon(tenantId: string, branchId: string | null): Promise<{ brandName: string; link: string | null }>;
+  customer(tenantId: string, customerId: string): Promise<{ phone: string | null; email: string | null; language: string | null } | null>;
+}
+
+/**
+ * G8 (Nov 6 2026): the REAL dispatch. Before this the only adapter (CommunicationsDispatchAdapter above) wrote an inbox
+ * thread whose message row said "sent" — nothing reached Twilio/SendGrid, and its author column could not take a system
+ * principal. This one goes through the salon's messenger: the salon's own number/account, the opt-out list, the
+ * notification ledger and its delivery callbacks. A send the messenger did not hand to a provider THROWS, so the request
+ * is marked failed, never sent.
+ */
+export class MessengerDispatchAdapter implements DispatchPort {
+  constructor(private readonly messenger: ReviewMessenger, private readonly profile: ReviewRequestProfilePort, private readonly brandOverride?: (tenantId: string, branchId: string | null) => Promise<string | null>) {}
+  async send(ctx: ReqCtx, msg: { customerId: string; appointmentId: string | null; channel: string; requestId?: string; reminder?: boolean }): Promise<{ dispatchId: string }> {
+    const branchId = ctx.branchId || null;
+    const who = await this.profile.customer(ctx.tenantId, msg.customerId);
+    if (!who) throw new Error('CUSTOMER_NOT_FOUND');
+    const salon = await this.profile.salon(ctx.tenantId, branchId);
+    const brand = (this.brandOverride ? await this.brandOverride(ctx.tenantId, branchId) : null) || salon.brandName;
+    const body = msg.reminder ? reviewReminderBody(brand, salon.link, who.language) : reviewRequestBody(brand, salon.link, who.language);
+    const source = msg.requestId ? { type: 'follow_up' as const, id: msg.requestId } : null;
+    let r;
+    if (msg.channel === 'email') {
+      if (!who.email) throw new Error('NO_CONTACT');
+      if (!this.messenger.sendEmail) throw new Error('EMAIL_NOT_AVAILABLE');
+      const vi = customerMessageLanguage(who.language) === 'vi';
+      r = await this.messenger.sendEmail({ tenantId: ctx.tenantId, branchId, to: who.email, subject: vi ? 'Quý khách thấy dịch vụ thế nào?' : 'How was your visit?', body, purpose: 'followup', customerId: msg.customerId, source,
+        idempotencyKey: msg.requestId ? `review-request:${msg.requestId}${msg.reminder ? ':reminder' : ''}` : null });
+    } else {
+      // app / in_app requests have no push template yet: SMS is the deliverable channel (as before)
+      if (!who.phone) throw new Error('NO_CONTACT');
+      r = await this.messenger.sendSms({ tenantId: ctx.tenantId, branchId, to: who.phone, body, purpose: 'followup', customerId: msg.customerId, source });
+    }
+    if (!r.sent) throw new Error(`SEND_${String(r.status || 'failed').toUpperCase()}:${r.reason ?? 'unknown'}`);
+    return { dispatchId: r.notificationId ?? r.providerId ?? '' };
+  }
+}
+
 // --- checkout completion trigger adapter ---
 import { ReviewRequestService } from './ai-review-reputation-requests.service';
 import { resolveSettings, rowsToLayers, PLATFORM_DEFAULTS } from './ai-review-reputation-settings';

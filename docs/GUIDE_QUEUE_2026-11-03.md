@@ -369,7 +369,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G5 | AI Usage Limits (duplicate of an earlier upload) | re-checked Nov 5: built earlier (`4c2807d` AI Usage check; the `_done` copy of the same guide) — nothing new |
 | G6 | Customer Timeline (duplicate of an earlier upload) | re-checked Nov 5: `docs/customers/CUSTOMER_TIMELINE.md` lists no open item |
 | G7 | Global Advertising + Tenant Control (master switch, platform ads, 50/50, ACK fleet status) | BUILT — see `docs/advertising/GLOBAL_ADVERTISING.md` |
-| G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-checked Nov 5: built; 2 decisions wait on Kevin (automatic replies job; review-request sender) |
+| G8 | Review & Reputation Settings (duplicate of an earlier upload) | DONE Nov 6 (Kevin: "pick best"): review-request SENDER job built (`ai-review-reputation-sender.job.ts`, migration 823) and automatic replies wired to ingestion (`ai-review-reputation-auto-reply.ts`) — both stay OFF until a salon turns them on; see the G8 section below |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 161 / 161 DONE (pay-stub PDF built Oct 27; downloaded in every pilot day) |
 | G11 | Full Security Deep Scan | Nov 5: §93 egress allowlist built (report by default); §74 IDOR sweep extended to write routes + the customer app — live 17/17, 7 defects fixed (SD-74a…g); §110 per-processor webhook schemas and §38 per-route resource scope built |
@@ -652,3 +652,23 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
   `aiset.sample.*` in `ns/aisetup.vi.ts`, `cg.csv.*` in `ns/catalogscreens.vi.ts`.
 - Not covered: the review check's evidence lines are still English sentences from the server (numbers inside); codes a
   screen meets that no domain lists fall back to the humanised English code.
+
+### G8 — review-request sender + automatic replies (Nov 6 2026, Kevin: "pick best for my pos")
+Found: checkout scheduled `review_requests` rows but nothing ever sent them; the only dispatch adapter wrote an inbox row
+marked "sent" without reaching Twilio/SendGrid (and could not take a system principal); `autoRespond` had no caller.
+Built:
+- **Sender job** (`ReviewRequestSenderJob`, every 5 min, runTick + runAsSingleOwner, `REVIEW_REQUEST_SENDER=off` stops it):
+  per salon/branch — rows more than 48 h past their send time EXPIRE (never a late "thanks for visiting"; also stops every
+  pre-sender row from firing on day one); current settings decide (off by default); AI package honoured when the platform
+  enforces; quiet hours re-checked in the salon zone; opt-out re-checked per customer; each row CLAIMED before the send
+  (scheduled→sending→sent|failed — no double texts); sent through the salon messenger (its number, opt-out list,
+  notification ledger) with the salon name and its branch's Google review link (`branches.google_place_id`).
+- **One reminder** only when the salon turns "one reminder" on: 72 h after the first send, within 7 days, not to an
+  opted-out customer, not after that customer left a review; at most once (`reminder_sent_at`, migration 823).
+- **Automatic replies**: each NEW, non-escalated review from ingestion is offered to `autoRespond`; it publishes only with
+  the assistant on, automatic replies on, approval OFF, a clean 5-star review, the AI package (when enforced) and a safe
+  draft. Note for salons: the deterministic analyzer's confidence is 0.8 and the default floor is 0.9, so a salon must also
+  set the floor to 0.8 — with every default nothing is auto-published. A publish the integration cannot carry (no Google
+  connection yet) leaves the reply as a draft for a person.
+- Customer messages stay English (language mandate) whatever the customer's preference.
+- Tests: `review-request-sender.pgtest` (12, real schema) + `review-auto-reply` (6). Module: 89 pass.
