@@ -57,7 +57,6 @@ Every test suite, every CI gate, a real Postgres 16 database, a live API boot an
 | --- | --- | --- |
 | `check:crosswire` | 77 calls with no server route: POS finance/expenses (`/owner/finance/*`), payroll paychecks, booking drafts, mobile-checkout devices, AI OCR receipt, wallet top-ups, `/tech/earnings/detail`. This is the server code in the missing POS 12 package. Down from 80 (3 fixed above). | Dev team |
 | `check:unreached` | Server routes no screen calls (tech time-off, turn queue and others). Each needs a screen or a debt-ledger entry. | Dev team |
-| Push permission prompt | The shared push hook asks for notification permission on sign-in, not on a user tap. Browsers may block or penalise this. Suggest moving it behind a button. | Dev team |
 | Fiserv / Apple / production | Unchanged: handoff items 1–4. | Kevin + dev team |
 
 ## How to reproduce
@@ -86,3 +85,18 @@ Kevin decided Face ID stays on after a normal sign-out (as in banking apps). Com
 How it works: `POST /auth/logout` revokes its own session inside a transaction that sets `aps.keep_face_id = 'on'`. Migration 705's trigger on `sessions` revokes the biometric credential for that user and device whenever a session becomes revoked without that flag. One trigger covers the 14+ code paths that revoke sessions. The flag is transaction-local, so it cannot leak to other requests on the same connection.
 
 Proof: `biometric-auth.pgtest` (4 new tests, including a revoke on another phone leaving this phone alone), the same check run by hand on real Postgres 16, and `native-auth-coverage.vitest.spec.ts` now pins the new rule (mutation-tested: an unconditional `clearFaceId()` fails it).
+
+## Addendum — notification permission from a tap (Nov 6)
+
+Signing in no longer asks for notification permission in any app; the old prompt came too late to count as the person's click, so browsers blocked or hid it. A device that already allowed notifications registers silently as before. Otherwise a "Turn on notifications" banner (`EnableNotificationsBanner`, `@aipowersalon/ui`) shows one line on why, with **Turn on** (the system prompt, from the tap) and **Not now** (hidden on that device for 30 days). If the person refuses, it explains how to allow notifications in settings.
+
+| App | Where the banner shows | Push client |
+| --- | --- | --- |
+| POS | inside the alert slot above every screen | `@aipowersalon/web-push` (`enable()`, `usePushPrompt`) |
+| Super Admin | above every screen | `@aipowersalon/web-push` — **moved off the developer's own copy**, which prompted at sign-in, logged the token to the console and needed a gstatic worker the CSP blocks |
+| Customer, Tech, Owner | top of the app | `@aipowersalon/mobile-sdk/web-push` (`enablePush`, `usePushPrompt`) |
+| Manager Pay | under the header | its own native push (`enablePush`) |
+
+Also: the two leftover copies (`admin-web` and `pos-web` `hooks/useWebPush.ts`) were deleted. Admin's headers now allow the push endpoints, and admin builds the shared push worker. POS and Super Admin browser push stay off until the build sets `VITE_FIREBASE_WEB_CONFIG` + `VITE_FIREBASE_VAPID_KEY`; this is now noted in the production env files.
+
+Tests: the mobile SDK proves sign-in never prompts (undecided: no prompt and no registration; already allowed: silent registration; banner tap: prompt, then registration). Banner tests, `enable()` tests, and every app suite pass (POS 1,594, admin 1,032, customer 254, owner 275, tech 117, manager-pay 60). One POS layout test caught the banner breaking the 3-row grid; it now sits inside the alert slot.

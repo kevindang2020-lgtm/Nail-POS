@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { fileURLToPath, URL } from "node:url";
 import { contractsFromSource } from "../../tooling/vite/contracts-from-source.mjs";
 import { appVersion } from "../../tooling/vite/app-version.mjs";
+import { webPushServiceWorker } from "../../tooling/vite/web-push-sw.mjs";
 
 // AIPowerSalon Super-Admin web app (Vite + React). Dev proxies /super-admin and /auth to the NestJS backend on :3000.
 // The canonical shared UI kit (@aipowersalon/ui) is aliased to its source so Vite transpiles it as in-repo code.
@@ -15,7 +16,7 @@ export default defineConfig(({ mode }) => {
 
   return {
     root: fileURLToPath(new URL("./", import.meta.url)),
-    plugins: [contractsFromSource(), appVersion(), react(), tailwindcss()],
+    plugins: [contractsFromSource(), appVersion(), webPushServiceWorker(), react(), tailwindcss()],
     resolve: {
       alias: {
         "@aipowersalon/ui": fileURLToPath(

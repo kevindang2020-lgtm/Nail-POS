@@ -3,7 +3,7 @@
 // routed to the app's gate (onTap). Web: Firebase Messaging with the service worker. The token is registered with
 // POST /push/register through the app's own transport. Imported from '@aipowersalon/mobile-sdk/web-push' so apps that do
 // not use push never bundle Firebase.
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { Capacitor } from '@capacitor/core';
@@ -21,6 +21,56 @@ const firebaseConfig = {
 };
 
 const VAPID_KEY = "BJq7xD1DPmqV8uVQhJnVUyJAIsP0de6WBtN4rIctGMKWN3ArC-OPNd1wdK4frGyY_p40elUXtG0nSeSBRqrDwz8";
+
+// Nov 6 2026 — permission is asked from a TAP only (the "Turn on notifications" banner), never at sign-in.
+export const PUSH_ENABLED_EVENT = 'aps:push-enabled';
+export type PushPermission = 'granted' | 'prompt' | 'denied' | 'unsupported';
+/** The signed-in session's registration, run when the person allows notifications (module-level: survives remounts). */
+let registerOnEnable: (() => void) | null = null;
+
+/** The current notification permission, without prompting. */
+export async function pushPermission(): Promise<PushPermission> {
+  try {
+    if (Capacitor.isNativePlatform()) {
+      const p = await PushNotifications.checkPermissions();
+      return p.receive === 'granted' ? 'granted' : p.receive === 'denied' ? 'denied' : 'prompt';
+    }
+    if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return 'unsupported';
+    const p = Notification.permission;
+    return p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : 'prompt';
+  } catch { return 'unsupported'; }
+}
+
+/** Ask for permission — call from the person's tap. On "allow" the signed-in push hook registers this device. */
+export async function enablePush(): Promise<boolean> {
+  try {
+    let granted = false;
+    if (Capacitor.isNativePlatform()) {
+      granted = (await PushNotifications.requestPermissions()).receive === 'granted';
+      if (granted) { try { await LocalNotifications.requestPermissions(); } catch { /* the foreground copy is optional */ } }
+    } else if (typeof window !== 'undefined' && 'Notification' in window) {
+      granted = (await Notification.requestPermission()) === 'granted';
+    }
+    if (granted) { registerOnEnable?.(); if (typeof window !== 'undefined') window.dispatchEvent(new Event(PUSH_ENABLED_EVENT)); }
+    return granted;
+  } catch { return false; }
+}
+
+/** For the banner: show it to a signed-in person whose device has not decided yet and who did not snooze it. */
+export function usePushPrompt(signedIn: boolean, snoozed: () => boolean, snooze: () => void): { visible: boolean; enable: () => Promise<boolean>; dismiss: () => void } {
+  const [state, setState] = useState<PushPermission | null>(null);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => {
+    if (!signedIn) { setState(null); return; }
+    let alive = true;
+    void pushPermission().then((p) => { if (alive) setState(p); });
+    return () => { alive = false; };
+  }, [signedIn]);
+  const visible = signedIn && state === 'prompt' && !hidden && !snoozed();
+  const enable = async () => { const ok = await enablePush(); if (ok) { setHidden(true); setState('granted'); } return ok; };
+  const dismiss = () => { snooze(); setHidden(true); };
+  return { visible, enable, dismiss };
+}
 
 // Module-level deduplication cache for foreground notifications
 const recentPushes = new Map<string, number>();
@@ -77,20 +127,10 @@ export function useWebPush(o: WebPushOptions): void {
       // -------------------------------------------------------------
       const registerNativePush = async () => {
         try {
-          let pushPerm = await PushNotifications.checkPermissions();
-          if (pushPerm.receive !== 'granted') {
-            pushPerm = await PushNotifications.requestPermissions();
-          }
-
-          const localPerm = await LocalNotifications.checkPermissions();
-          if (localPerm.display !== 'granted') {
-            await LocalNotifications.requestPermissions();
-          }
-
-          if (pushPerm.receive !== 'granted') {
-            console.warn('[Push][Native] Push permission was NOT granted:', pushPerm.receive);
-            return;
-          }
+          // Nov 6 2026: never PROMPT here (sign-in is not the person asking). Register only when notifications are already
+          // allowed; otherwise the "Turn on notifications" banner asks from a tap (enablePush) and fires aps:push-enabled.
+          const pushPerm = await PushNotifications.checkPermissions();
+          if (pushPerm.receive !== 'granted') return;
 
           // Create high priority notification channels on Android 8+
           if (Capacitor.getPlatform() === 'android') {
@@ -198,7 +238,8 @@ export function useWebPush(o: WebPushOptions): void {
         }
       };
 
-      registerNativePush();
+      registerOnEnable = () => { void registerNativePush(); };
+      void registerNativePush();
     } else {
       // -------------------------------------------------------------
       // WEB PUSH (Browser PWA / Desktop)
@@ -213,15 +254,8 @@ export function useWebPush(o: WebPushOptions): void {
 
       const requestPermissionAndGetToken = async () => {
         try {
-          let permission = Notification.permission;
-          if (permission !== 'granted') {
-            permission = await Notification.requestPermission();
-          }
-
-          if (permission !== 'granted') {
-            console.warn('[Push][Web] Push permission denied or ignored:', permission);
-            return;
-          }
+          // Nov 6 2026: never prompt here — browsers block a prompt the person did not start (see enablePush)
+          if (Notification.permission !== 'granted') return;
 
           // Nov 5 2026: the ONE CSP-safe worker (packages/web-push/src/sw.js, emitted as /aps-push-sw.js by
           // tooling/vite/web-push-sw.mjs). The old /firebase-messaging-sw.js importScripts'd Firebase from gstatic,
@@ -248,7 +282,8 @@ export function useWebPush(o: WebPushOptions): void {
         }
       };
 
-      requestPermissionAndGetToken();
+      registerOnEnable = () => { void requestPermissionAndGetToken(); };
+      void requestPermissionAndGetToken();
 
       const unsubscribe = onMessage(messaging, (payload) => {
         const title = (payload.notification?.title || payload.data?.title || 'New Notification').trim();

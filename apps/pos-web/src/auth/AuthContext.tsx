@@ -29,8 +29,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Every principal that comes from the SERVER (login, /auth/me) is remembered for an offline reopen.
   const setPrincipal = (p: Principal | null) => {
     if (p) rememberSession(p); scopeTo(p); setPrincipalState(p); setOffline(false);
-    // a person's own sign-in is the meaningful action behind the browser's push prompt (§58: never at page load)
-    if (p) void webPush.noteMeaningfulAction();
+    // Nov 6 2026: no prompt at sign-in (by the time the login request returns, the browser no longer counts it as the
+    // person's click). If notifications are already allowed this registers silently; otherwise the layout's
+    // "Turn on notifications" banner asks from a tap (shell/POSLayout.tsx PosPushPrompt).
+    if (p) void webPush.resume();
   };
   // a session restored on load registers silently when the browser already allowed notifications; never prompts
   const signedInUserId = principal?.userId;

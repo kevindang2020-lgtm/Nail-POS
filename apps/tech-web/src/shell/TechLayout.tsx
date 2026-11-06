@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
 import { useTechNav, type TechTab } from './nav';
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from '@aipowersalon/ui';
+import { usePushPrompt } from '@aipowersalon/mobile-sdk/web-push';
+import { useAuth } from '../auth/AuthContext';
 
 // Fixed, safe-area-aware 5-tab bottom navigation (Home · Schedule · Tickets · Earnings · More) matching the reference.
 // Active tab uses champagne gold; ≥48pt targets; each screen renders its own header inside the scrollable area.
@@ -19,12 +22,20 @@ const TABS: { key: TechTab; label: string; Icon: (p: IconProps) => ReactNode }[]
   { key: 'more', label: 'More', Icon: More },
 ];
 
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in. */
+function PushPrompt() {
+  const { principal } = useAuth();
+  const p = usePushPrompt(!!principal, pushPromptSnoozed, snoozePushPrompt);
+  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get alerts when a guest is assigned to you and when your turn is up." />;
+}
+
 export function TechLayout({ children }: { children: ReactNode }) {
   const { tab, pushed, go } = useTechNav();
   const activeTab = pushed ? null : tab;
   return (
     <div className="tech-app">
 
+      <PushPrompt />
       <div className="tech-main">{children}</div>
       <nav className="tech-bottomnav" aria-label="Primary">
         {TABS.map(({ key, label, Icon }) => {

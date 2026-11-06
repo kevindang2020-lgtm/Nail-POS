@@ -1,5 +1,8 @@
 import type { ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { usePayNav, type PayTab } from './nav';
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from '@aipowersalon/ui';
+import { pushPermission, enablePush } from '../lib/push';
 import logoupper from '../../public/brand/taptopay.png';
 type IconProps = { active: boolean };
 const s = (a: boolean) => (a ? 'var(--pay-primary)' : 'var(--pay-text-muted)');
@@ -45,6 +48,19 @@ const TABS: { key: PayTab; label: string; Icon: (p: IconProps) => ReactNode }[] 
   { key: 'account', label: 'Account', Icon: AccountIcon },
 ];
 
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in. PayLayout renders only signed in. */
+function PushPrompt() {
+  const [state, setState] = useState<string | null>(null);
+  const [hidden, setHidden] = useState(false);
+  useEffect(() => { let alive = true; void pushPermission().then((p) => { if (alive) setState(p); }); return () => { alive = false; }; }, []);
+  const visible = state === 'prompt' && !hidden && !pushPromptSnoozed();
+  return (
+    <EnableNotificationsBanner visible={visible} reason="Get alerts when a ticket is ready to collect and when a payment goes through."
+      onEnable={async () => { const ok = await enablePush(); if (ok) setHidden(true); return ok; }}
+      onDismiss={() => { snoozePushPrompt(); setHidden(true); }} />
+  );
+}
+
 export function PayLayout({ children }: { children: ReactNode }) {
   const nav = usePayNav();
   return (
@@ -56,6 +72,7 @@ export function PayLayout({ children }: { children: ReactNode }) {
           className="brandbar-logo"
         />
       </header>
+      <PushPrompt />
       <div className="pay-scroll">{children}</div>
       <nav className="pay-bottomnav" aria-label="Main Navigation">
         {TABS.map((t) => {

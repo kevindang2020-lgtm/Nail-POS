@@ -1,5 +1,8 @@
 import { useEffect, type ReactNode, type ComponentType } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from '@aipowersalon/ui';
+import { usePushPrompt } from '@aipowersalon/mobile-sdk/web-push';
+import { useAuth } from '../auth/AuthContext';
 
 // Five-tab bottom navigation per the reference (Home · Appointments · Deals · Wallet · Profile).
 // Fixed to the bottom, safe-area aware, ≥48pt targets, active tab in the gold brand color. Each screen renders
@@ -27,6 +30,13 @@ const TABS: Tab[] = [
   { to: '/profile', label: 'Profile', Icon: User },
 ];
 
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in. */
+function PushPrompt() {
+  const { principal } = useAuth();
+  const p = usePushPrompt(!!principal, pushPromptSnoozed, snoozePushPrompt);
+  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get reminders for your appointments, your turn in line and your receipts." />;
+}
+
 export function CustomerLayout({ children }: { children: ReactNode }) {
   const nav = useNavigate();
 
@@ -42,6 +52,7 @@ export function CustomerLayout({ children }: { children: ReactNode }) {
   return (
     <div className="cust-app" style={{ minHeight: '100vh' }}>
 
+      <PushPrompt />
       <main className="cust-main" style={{ width: '100%', maxWidth: 640, margin: '0 auto', minHeight: '100vh', boxSizing: 'border-box', paddingTop: 'max(14px, env(safe-area-inset-top))', paddingBottom: '76px' }}>{children}</main>
       <nav className="cust-nav" aria-label="Primary">
         {TABS.map(({ to, end, label, Icon }) => (

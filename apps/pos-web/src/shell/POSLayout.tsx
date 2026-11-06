@@ -22,6 +22,16 @@ import { OfflineDraftsPanel } from '../components/OfflineDraftsPanel';
 import { useSafetySync } from '../realtime/useRealtime';
 import { CommunityEmergencyBanner } from '../screens/community/CommunityEmergencyBanner';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from '@aipowersalon/ui';
+import { usePushPrompt } from '@aipowersalon/web-push';
+import { webPush } from '../lib/webPush';
+
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in (browsers block that). */
+function PosPushPrompt() {
+  const { principal } = useAuth();
+  const p = usePushPrompt(webPush, !!principal, pushPromptSnoozed, snoozePushPrompt);
+  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get alerts at the front desk for check-ins, ready tickets and payments." />;
+}
 
 const OPEN_KEY = 'aps.pos.nav.open.v1';
 const COLLAPSE_KEY = 'aps.pos.nav.collapsed.v1';
@@ -613,7 +623,7 @@ export function POSLayout() {
         {/* BUILD_PLAN Phase 8: high / critical Safety Community alerts, above every screen (dismiss per user). The slot is
             ALWAYS rendered — .main is a 3-row grid (header · this slot · the screen); without the slot the banner took the
             screen's 1fr row and pushed the screen into an implicit row (found by the Phase 8 browser proof). */}
-        <div className="community-alert-slot" data-testid="community-alert-slot"><CommunityEmergencyBanner /></div>
+        <div className="community-alert-slot" data-testid="community-alert-slot"><CommunityEmergencyBanner /><PosPushPrompt /></div>
         <Outlet />
         <RealtimeStatusPill />
         <RealtimeToasts />

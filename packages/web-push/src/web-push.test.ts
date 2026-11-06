@@ -100,3 +100,24 @@ describe('foreground messages', () => {
     expect(seen).toHaveLength(1);
   });
 });
+
+// Nov 6 2026: the "Turn on notifications" banner asks from a tap — enable() / permission()
+describe('enable() from the banner tap', () => {
+  it('permission() reports without prompting; unconfigured is unsupported', () => {
+    expect(client().permission()).toBe('prompt');
+    permission = 'denied'; expect(client().permission()).toBe('denied');
+    permission = 'granted'; expect(client().permission()).toBe('granted');
+    expect(client({ config: null }).permission()).toBe('unsupported');
+    expect(asked).toBe(0);
+  });
+  it('allowed → registers this browser and resolves true', async () => {
+    await expect(client().enable()).resolves.toBe(true);
+    expect(asked).toBe(1);
+    expect(posts).toEqual([{ path: '/push/register', body: { platform: 'web', token: 'tok-1', app: 'owner' } }]);
+  });
+  it('blocked → nothing registered, resolves false', async () => {
+    grantOnAsk = false;
+    await expect(client().enable()).resolves.toBe(false);
+    expect(posts).toEqual([]);
+  });
+});

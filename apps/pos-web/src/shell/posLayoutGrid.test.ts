@@ -15,6 +15,7 @@ describe('POS main grid', () => {
     for (const r of rows) expect(r).toMatch(/^(?:\d+px|var\(--pos-header-height\))\s+auto\s+minmax\(0,\s*1fr\)$/);
   });
   it('the banner lives inside an always-rendered slot, directly before the screen outlet', () => {
-    expect(layout).toMatch(/<div className="community-alert-slot"[^>]*><CommunityEmergencyBanner \/><\/div>\s*<Outlet \/>/);
+    // Nov 6 2026: the "Turn on notifications" banner shares the slot (the grid's `auto` row), never a fourth grid child
+    expect(layout).toMatch(/<div className="community-alert-slot"[^>]*><CommunityEmergencyBanner \/>(<PosPushPrompt \/>)?<\/div>\s*<Outlet \/>/);
   });
 });

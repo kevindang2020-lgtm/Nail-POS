@@ -6,6 +6,16 @@ import { ScopeProvider } from "./ScopeContext";
 import { TenantScopeSelector } from "./TenantScopeSelector";
 import { ProfileAvatarWithPreview } from "@aipowersalon/ui";
 import { FaBars, FaTimes } from "react-icons/fa";
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from "@aipowersalon/ui";
+import { usePushPrompt } from "@aipowersalon/web-push";
+import { webPush } from "../lib/webPush";
+
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in. */
+function AdminPushPrompt() {
+  const { principal } = useAuth();
+  const p = usePushPrompt(webPush, !!principal, pushPromptSnoozed, snoozePushPrompt);
+  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get platform alerts as they happen." />;
+}
 const link = ({ isActive }: { isActive: boolean }) =>
   "navlink" + (isActive ? " active" : "");
 
@@ -1053,6 +1063,7 @@ export function AdminLayout() {
               </div>
             )}
           </header>
+          <AdminPushPrompt />
           <Outlet />
         </div>
       </div>

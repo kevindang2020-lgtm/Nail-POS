@@ -2,6 +2,9 @@ import type { ReactNode } from 'react';
 import { SalonSwitcher } from './SalonSwitcher';
 import { useOwnerNav, type OwnerTab } from './nav';
 import { OwnerBranchSelector } from './OwnerBranchSelector';
+import { EnableNotificationsBanner, pushPromptSnoozed, snoozePushPrompt } from '@aipowersalon/ui';
+import { usePushPrompt } from '@aipowersalon/mobile-sdk/web-push';
+import { useAuth } from '../auth/AuthContext';
 
 // Fixed, safe-area-aware 5-tab bottom navigation (Home · Live · Approvals · Reports · More) matching the reference
 // poster. Active tab uses champagne gold; ≥48pt targets; each screen renders its own header inside the scroll area.
@@ -21,6 +24,13 @@ const TABS: { key: OwnerTab; label: string; Icon: (p: IconProps) => ReactNode }[
   { key: 'more', label: 'More', Icon: More },
 ];
 
+/** Nov 6 2026: notification permission is asked from this banner's tap, never at sign-in. */
+function PushPrompt() {
+  const { principal } = useAuth();
+  const p = usePushPrompt(!!principal, pushPromptSnoozed, snoozePushPrompt);
+  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get alerts for payments, bookings and anything that needs your attention." />;
+}
+
 export function OwnerLayout({ children }: { children: ReactNode }) {
   const { tab, go } = useOwnerNav();
   return (
@@ -32,6 +42,7 @@ export function OwnerLayout({ children }: { children: ReactNode }) {
         <SalonSwitcher />
       </header>
       <OwnerBranchSelector />
+      <PushPrompt />
       <div className="owner-scroll">{children}</div>
       <nav className="owner-bottomnav" aria-label="Primary">
         {TABS.map(({ key, label, Icon }) => {

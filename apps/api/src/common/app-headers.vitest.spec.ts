@@ -22,10 +22,12 @@ describe('every app shell has a generated, up-to-date _headers file', () => {
 
 describe('browser push (developer merge, Oct 6 2026): the FCM token endpoints are allowed only where the ONE client is used', () => {
   // Nov 5 2026: owner/tech/customer moved to the shared mobile-sdk push hook, which also registers for browser push in a
-  // web build — so their CSP needs the two FCM endpoints. Admin and the kiosk never register.
-  it('pos-web, owner-web, tech-web and customer-web register for browser push; admin-web does not', () => {
-    for (const a of ['pos-web', 'owner-web', 'tech-web', 'customer-web']) expect(appUsesWebPush(a)).toBe(true);
-    expect(appUsesWebPush('admin-web')).toBe(false);
+  // web build — so their CSP needs the two FCM endpoints. Nov 6 2026: admin-web moved off its own copy onto the shared
+  // client (@aipowersalon/web-push), so it is allowed too. The kiosk and the customer display never register.
+  it('pos, owner, tech, customer and admin register for browser push; the kiosk and the display do not', () => {
+    for (const a of ['pos-web', 'owner-web', 'tech-web', 'customer-web', 'admin-web']) expect(appUsesWebPush(a)).toBe(true);
+    expect(appUsesWebPush('go-check-in-kiosk')).toBe(false);
+    expect(appUsesWebPush('customer-display')).toBe(false);
   });
   it('connect-src gains exactly the two Google endpoints, and script-src stays \'self\' (the SDK is bundled, the worker same-origin)', () => {
     const p = policyFor('<html></html>', { webPush: true });

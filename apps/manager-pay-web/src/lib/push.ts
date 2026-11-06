@@ -14,6 +14,7 @@ import { Capacitor } from '@capacitor/core';
 import { pushApi } from '../api/pushApi';
 import { openPushRoute } from './mobile-shell';
 
+let listening = false;
 let registered = false; // register once per session (the OS token is stable; re-POSTing on every render is wasteful)
 
 // The token we handed the backend. Kept so we can HAND IT BACK on sign-out.
@@ -26,6 +27,33 @@ const TOKEN_KEY = 'aps.push.token';
 const remember = (t: string) => { try { localStorage.setItem(TOKEN_KEY, t); } catch { /* private mode */ } };
 const forget = () => { try { localStorage.removeItem(TOKEN_KEY); } catch { /* private mode */ } };
 const lastToken = () => { try { return localStorage.getItem(TOKEN_KEY); } catch { return null; } };
+
+/** Notification permission without prompting ('unsupported' in a browser preview: no native token there). */
+export async function pushPermission(): Promise<'granted' | 'prompt' | 'denied' | 'unsupported'> {
+  try {
+    if (!Capacitor?.isNativePlatform?.()) return 'unsupported';
+    const pkg = '@capacitor/push-notifications';
+    const mod: any = await import(/* @vite-ignore */ pkg).catch(() => null);
+    if (!mod?.PushNotifications) return 'unsupported';
+    const p = await mod.PushNotifications.checkPermissions();
+    return p?.receive === 'granted' ? 'granted' : p?.receive === 'denied' ? 'denied' : 'prompt';
+  } catch { return 'unsupported'; }
+}
+
+/** The "Turn on notifications" tap: ask, then register this device. Resolves true when allowed. */
+export async function enablePush(): Promise<boolean> {
+  try {
+    if (!Capacitor?.isNativePlatform?.()) return false;
+    const pkg = '@capacitor/push-notifications';
+    const mod: any = await import(/* @vite-ignore */ pkg).catch(() => null);
+    if (!mod?.PushNotifications) return false;
+    const p = await mod.PushNotifications.requestPermissions();
+    if (p?.receive !== 'granted') return false;
+    registered = false;
+    await registerPushToken();
+    return true;
+  } catch { return false; }
+}
 
 export async function registerPushToken(): Promise<void> {
   try {
@@ -40,22 +68,28 @@ export async function registerPushToken(): Promise<void> {
     const PushNotifications = mod?.PushNotifications;
     if (!PushNotifications) return; // plugin not present in this shell — nothing to do
 
-    // POST the token to the backend when the OS hands it to us.
-    PushNotifications.addListener('registration', (t: { value: string }) => {
-      if (!t?.value) return;
-      remember(t.value);   // so sign-out can hand it back
-      pushApi.registerPush(platform, t.value).catch(() => { /* best-effort */ });
-    });
-    // A tap names a destination (the typed route in the payload); the route gate opens it after the session check.
-    PushNotifications.addListener('pushNotificationActionPerformed', (a: any) => { openPushRoute(a?.notification?.data ?? null); });
-    // Surfacing registration errors is non-fatal; we just don't get pushes.
-    PushNotifications.addListener('registrationError', () => { registered = false; });
+    // listeners once per app run — enablePush() may run this a second time
+    if (!listening) {
+      listening = true;
+      // POST the token to the backend when the OS hands it to us.
+      PushNotifications.addListener('registration', (t: { value: string }) => {
+        if (!t?.value) return;
+        remember(t.value);   // so sign-out can hand it back
+        pushApi.registerPush(platform, t.value).catch(() => { /* best-effort */ });
+      });
+      // A tap names a destination (the typed route in the payload); the route gate opens it after the session check.
+      PushNotifications.addListener('pushNotificationActionPerformed', (a: any) => { openPushRoute(a?.notification?.data ?? null); });
+      // Surfacing registration errors is non-fatal; we just don't get pushes.
+      PushNotifications.addListener('registrationError', () => { registered = false; });
+    }
 
-    const perm = await PushNotifications.requestPermissions();
+    // Nov 6 2026: never PROMPT at sign-in — register only when notifications are already allowed. Otherwise the
+    // "Turn on notifications" banner (shell/PayLayout.tsx) asks from a tap through enablePush() below.
+    const perm = await PushNotifications.checkPermissions();
     if (perm?.receive === 'granted') {
       await PushNotifications.register();
     } else {
-      registered = false; // allow a later retry if the user grants permission afterwards
+      registered = false; // enablePush() retries once the person allows notifications
     }
   } catch {
     registered = false; // never throw out of here
