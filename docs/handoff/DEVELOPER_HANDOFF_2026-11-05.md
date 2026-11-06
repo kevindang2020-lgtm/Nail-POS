@@ -4,7 +4,7 @@ Nov 5, 2026 · Kevin Dang
 
 Live, editable version (status dropdowns, comments): https://claude.ai/artifact/LKXUW3PBgWvRDpYdWJ2g2d
 
-The handoff package is the full repo; the last code commit is `bec2cd4`. It holds 13 commits on top of the code Kevin uploaded (base `fb3738c`): 423 files changed, about 6,600 lines added and 12,100 removed (mostly duplicate code moved into shared packages).
+The handoff package is the full repo; the last code commit is `6292cea`. It holds 16 commits on top of the code Kevin uploaded (base `fb3738c`): 457 files changed, about 7,200 lines added and 12,300 removed (mostly duplicate code moved into shared packages).
 
 ## Package contents
 
