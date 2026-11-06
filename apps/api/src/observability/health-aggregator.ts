@@ -20,7 +20,7 @@ import { Inject, Injectable, OnModuleDestroy, OnModuleInit, Optional } from '@ne
 import { sql } from 'kysely';
 import { DATABASE } from '@aipowersalon/database';
 import { syntheticResults, persistedSyntheticResults } from './synthetic-probes';
-import { BackupReportsService, evaluateBackups, backupStalenessAlert, BACKUP_STALENESS_KEY, type BackupSummary } from './backup-reports';
+import { BackupReportsService, evaluateBackups, backupStalenessAlert, BACKUP_STALENESS_KEY, midnightCheckpointAlert, MIDNIGHT_CHECKPOINT_KEY, type BackupSummary } from './backup-reports';
 import { AlertNotifier } from './alert-notifier';
 import { evaluateIntegrity, lastIntegrityRun } from './integrity-checks';
 import { evaluateRealtimeHealth } from '../realtime/realtime-health';
@@ -212,7 +212,9 @@ export class HealthAggregator implements OnModuleInit, OnModuleDestroy {
     })));
     // BUILD_PLAN Phase 14 C: the backup staleness rule pages (P2) and supersedes the `backups` component's own alert (§104).
     const staleBackup = backupStalenessAlert(backupSummary, now);
-    await this.reconcileAlerts(staleBackup ? [...componentAlerts.filter((a) => a.component !== 'backups'), staleBackup] : componentAlerts, now, [...COMPONENTS.map((c) => c.key), BACKUP_STALENESS_KEY]);
+    const missedMidnight = midnightCheckpointAlert(backupSummary);   // G9 §34: the 12:00 AM America/New_York checkpoint
+    await this.reconcileAlerts([...(staleBackup ? [...componentAlerts.filter((a) => a.component !== 'backups'), staleBackup] : componentAlerts), ...(missedMidnight ? [missedMidnight] : [])],
+      now, [...COMPONENTS.map((c) => c.key), BACKUP_STALENESS_KEY, MIDNIGHT_CHECKPOINT_KEY]);
     // §106: SLO burn every 5 minutes (every 10th tick) — a 30-day query does not belong on a 30-second cadence.
     if (this.db && this.ticks++ % SLO_EVERY_TICKS === 0) {
       try {

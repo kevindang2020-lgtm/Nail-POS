@@ -323,6 +323,7 @@ export const NAV_GROUPS: SANavGroup[] = [
       { to: "/support-access", label: "Support Center", badge: "support" },
       { to: "/system-operations", label: "System Operations" },   // Constitution 11 (kept through the Sep 2026 layout merge)
       { to: "/jobs", label: "Jobs & Dead Letters" },   // BUILD_PLAN Phase 2: the job queue + event dead letters
+      { to: "/backups", label: "Backup & Disaster Recovery" },   // G9 (Nov 5 2026): recovery catalog, Restore Center, restore jobs
       { to: "/database", label: "Database" },   // BUILD_PLAN Phase 10: Constitution 1 §97 System Operations → Database
       { to: "/mobile-versions", label: "Mobile App Versions" },   // BUILD_PLAN Phase 13 B: Constitution 6 §150 app version dashboard
       { to: "/request-search", label: "Request Search" },   // BUILD_PLAN Phase 14 A: Constitution 11 §291–292 request / correlation / trace search

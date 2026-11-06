@@ -18,6 +18,7 @@ const BY_PATH = null;
 /** Source directory → domain. Key: `<module>:<first dir under src>` for modules/*, `api:<dir>` for apps/api/src. */
 export const SOURCE_DOMAINS = {
   // apps/api/src
+  'api:backup-center': 'OPERATIONS',   // G9 Backup & DR (Nov 5 2026): recovery catalog, Backup Center, restore plans
   'api:account': 'IDENTITY', 'api:ai-booking': 'AI', 'api:api-webhooks': 'OPERATIONS', 'api:common': BY_PATH,
   'api:customer-display': 'OPERATIONS', 'api:customer': 'CUSTOMERS', 'api:deployments': 'OPERATIONS',
   'api:domain-streams': 'OPERATIONS', 'api:events': 'OPERATIONS', 'api:health': 'OPERATIONS', 'api:jobs': 'OPERATIONS',

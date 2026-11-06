@@ -18,6 +18,7 @@ const excluded = (method: string, path: string) => exclusions.some((e) => (e.met
 const SELF_AUTHENTICATING: Array<[string, string, string]> = [
   ['GET', '/health/ready', "Railway's deploy healthcheck"], ['GET', '/health/live', 'liveness'],
   ['POST', '/client-telemetry/errors', 'crash intake'], ['POST', '/client-telemetry/events', 'analytics / perf intake (C6 §116–119)'], ['POST', '/internal/backups/report', 'backup reporter'],
+  ['POST', '/internal/backups/recovery-points', 'G9 recovery catalog'], ['POST', '/internal/backups/recovery-points/p1/verification', 'G9 restore-test evidence'],
   ['POST', '/webhooks/twilio/sms/inbound', 'Twilio inbound (STOP opt-outs)'], ['POST', '/webhooks/twilio/sms/status', 'Twilio status'],
   ['POST', '/webhooks/twilio/booking-verification/status', 'verification status'], ['POST', '/integrations/inbound/abc123', 'integration inbound'],
   ['POST', '/internal/ai-billing/webhook', 'AI billing'], ['POST', '/internal/ai-billing/sweep-trials', 'AI billing cron'],

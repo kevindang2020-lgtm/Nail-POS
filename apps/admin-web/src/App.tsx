@@ -1,3 +1,4 @@
+import { BackupCenterScreen } from './screens/backup/BackupCenterScreen';
 import { AdvertisingScreen } from './screens/advertising/AdvertisingScreen';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { AdminLayout } from './shell/AdminLayout';
@@ -200,6 +201,7 @@ function Gate() {
         <Route path="system-operations" element={<SystemOperationsScreen />} />
         <Route path="jobs" element={<JobsDeadLettersScreen />} />
         <Route path="database" element={<DatabaseScreen />} />
+        <Route path="backups" element={<BackupCenterScreen />} />   {/* G9 Backup & Disaster Recovery (Nov 5 2026) */}
         <Route path="mobile-versions" element={<MobileVersionsScreen />} />
         <Route path="request-search" element={<RequestSearchScreen />} />
         <Route path="oncall" element={<OnCallScreen />} />

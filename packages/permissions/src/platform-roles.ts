@@ -125,6 +125,7 @@ export const PLATFORM_PATH_DOMAIN: Readonly<Record<string, PlatformDomain>> = {
   // system status & operations
   'system-status': 'system', 'system': 'system', 'system-health': 'system', 'realtime': 'system', 'events': 'system',
   'mobile-versions': 'system',   // BUILD_PLAN Phase 13 B: store app version policies (routes declare super_admin.mobile_versions.*)
+  'backups': 'system',   // G9 Backup & DR (Nov 5 2026): routes declare super_admin.backups.* (approve/execute are Super-Admin-only)
   'database': 'system',   // BUILD_PLAN Phase 10: the Database page (its routes declare super_admin.database.*)
   'observability': 'system',   // BUILD_PLAN Phase 14 A: request / correlation / trace / log search (routes declare super_admin.telemetry.*)
   'jobs': 'system',   // Phase 2: the one job queue (stats, dead jobs, retry/cancel)
@@ -183,7 +184,9 @@ const oneOf = (...keys: string[]) => (k: string) => keys.includes(k);
 const anyOf = (...ps: Array<(k: string) => boolean>) => (k: string) => ps.some((p) => p(k));
 
 /** Keys only the top role may hold: platform role changes (§25) and security policy / emergency controls. */
-export const SUPER_ADMIN_ONLY_KEYS: readonly string[] = ['super_admin.platform_roles.manage', 'super_admin.security.manage'];
+export const SUPER_ADMIN_ONLY_KEYS: readonly string[] = ['super_admin.platform_roles.manage', 'super_admin.security.manage',
+  // G9 (§35): approving and starting a production restore is more privileged than any daily platform work
+  'super_admin.backups.approve', 'super_admin.backups.execute'];
 
 /**
  * Each role as a predicate over the full super_admin.* key list. Least privilege: a role gets its domains, plus READ on
@@ -204,13 +207,14 @@ export const PLATFORM_ROLE_GRANTS: Readonly<Record<PlatformRole, (key: string) =
   ),
   PLATFORM_SECURITY: anyOf(
     oneOf(v('security'), v('audit'), v('users'), v('tenants'), v('system'), v('integrations'),
-          'super_admin.integrations.compromised.disable', 'super_admin.integrations.audit.view',
+          'super_admin.integrations.compromised.disable', 'super_admin.integrations.audit.view', 'super_admin.backups.view',
           'super_admin.telemetry.view', 'super_admin.telemetry.sensitive.view'),   // §181: security traces
   ),
   PLATFORM_OPERATIONS: anyOf(
     oneOf(v('system'), m('system'), v('integrations'), m('integrations'), v('operations'), v('tenants'), v('analytics'),
           'super_admin.sms_emergency.disable', 'super_admin.integrations.api_health.view', 'super_admin.integrations.connection.test',
           'super_admin.mobile_versions.view', 'super_admin.mobile_versions.manage',
+          'super_admin.backups.view', 'super_admin.backups.plan',   // G9: operations plans restores; a Super Admin approves
           'super_admin.telemetry.view', 'super_admin.telemetry.sensitive.view',   // §181: operations debug per-request rows
           'super_admin.tickets.remove'),   // D7: POS Ticket Oversight is operations work, removal included
   ),

@@ -44,7 +44,7 @@ PostgreSQL stops when the container restarts. Start it again with `pg_ctlcluster
 
 - Nov 5: latest unit ca75e5b (C5 First Visit Invitation). Open gap lists are at the end of `docs/GUIDE_QUEUE_2026-11-03.md`.
 - Nov 5 (later): Batch F added to the guide queue; working F1 Customer Directory (commits 4819af4 … a9c8860). F1 done / remaining is in the F1 section at the end of `docs/GUIDE_QUEUE_2026-11-03.md`; metric definitions in `docs/customer-directory-metrics.md`.
-- Nov 5 (afternoon): Batch G (15 guides). G1 loyalty bonus approvals (3a7571d), G2 Refer a Friend salon vouchers (b79e6fd, migration 815) and G3 Technician Profile weekly days off + Skills Catalog (0b3aa7a, migration 816) G4 Split Tips behind a default-off flag (a6b5721, migration 817) and G7 Global Advertising (migration 818) built; next G9 Backup, then re-check G5/G6/G8 and G10–G15 against their status matrices, then the G4 front-desk confirmation guard. Status per guide in the Batch G table of `docs/GUIDE_QUEUE_2026-11-03.md`.
+- Nov 5 (afternoon): Batch G (15 guides). G1 loyalty bonus approvals (3a7571d), G2 Refer a Friend salon vouchers (b79e6fd, migration 815) and G3 Technician Profile weekly days off + Skills Catalog (0b3aa7a, migration 816) G4 Split Tips behind a default-off flag (a6b5721, migration 817) and G7 Global Advertising (migration 818) built. G9 Backup & DR built (migration 819, `docs/backup/BACKUP_AND_DR.md`; destructive restore apply deliberately gated). Next: re-check G5/G6/G8 and G10–G15 against their status matrices, then the G4 front-desk confirmation guard. Status per guide in the Batch G table of `docs/GUIDE_QUEUE_2026-11-03.md`.
 
 
 | Area | State |

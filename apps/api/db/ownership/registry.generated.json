@@ -8,11 +8,11 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 951,
+  "tables": 955,
   "ownership": {
-   "tenant_owned": 634,
+   "tenant_owned": 636,
    "platform_identity_tenant_relationship": 44,
-   "platform_global": 158,
+   "platform_global": 160,
    "tenant_branch_owned": 90,
    "cross_tenant_platform_data": 25
   },
@@ -23,7 +23,7 @@
    "MARKETING": 24,
    "AI": 141,
    "AUDIT": 29,
-   "OPERATIONS": 73,
+   "OPERATIONS": 77,
    "SUPPORT": 57,
    "BOOKING": 43,
    "PAYMENTS": 59,
@@ -44,12 +44,12 @@
    "HIGHLY_SENSITIVE": 142,
    "CONFIDENTIAL": 165,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 523,
+   "INTERNAL": 527,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
-  "append_only": 52,
-  "platform_rows": 99
+  "append_only": 54,
+  "platform_rows": 101
  },
  "tables": {
   "access_requests": {
@@ -1472,6 +1472,31 @@
    "append_only": false,
    "source": "heuristic"
   },
+  "backup_point_verifications": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "OPERATIONS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "backup_recovery_points": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "OPERATIONS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "platform_rows": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "heuristic"
+  },
   "backup_reports": {
    "ownership": "platform_global",
    "class": "A",
@@ -1481,6 +1506,31 @@
    "delete_policy": "none",
    "has_tenant_id": false,
    "has_branch_id": false,
+   "append_only": false,
+   "source": "heuristic"
+  },
+  "backup_restore_events": {
+   "ownership": "platform_global",
+   "class": "A",
+   "domain": "OPERATIONS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": false,
+   "has_branch_id": false,
+   "append_only": true,
+   "source": "heuristic"
+  },
+  "backup_restore_plans": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "OPERATIONS",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "platform_rows": true,
+   "has_branch_id": true,
    "append_only": false,
    "source": "heuristic"
   },

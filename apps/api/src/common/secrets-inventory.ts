@@ -82,6 +82,7 @@ export const SECRETS: readonly SecretEntry[] = [
   { env: 'GOOGLE_PLACES_API_KEY', kind: 'provider_credential', protects: 'server-side places lookup (restrict by IP in Google Cloud)', rotateDays: 365, highEntropy: false },
   // ── Connection strings (carry credentials; rotate the database/Redis password in Railway) ──
   { env: 'DATABASE_URL', kind: 'connection_string', protects: 'the production database (URL contains its password)', rotateDays: 0, highEntropy: false, requiredInProduction: true },
+  { env: 'RESTORE_STAGING_DATABASE_URL', kind: 'connection_string', protects: 'G9: the ISOLATED recovered clone a restore job reads (never the live database — refused if equal to DATABASE_URL); unset = restores stop at BLOCKED', rotateDays: 0, highEntropy: false, requiredInProduction: false },
   { env: 'PG_WORKER_DATABASE_URL', kind: 'connection_string', protects: 'optional separate (least-privilege) login for the worker pool — BUILD_PLAN Phase 10; falls back to DATABASE_URL', rotateDays: 0, highEntropy: false, requiredInProduction: false },
   { env: 'REDIS_URL', kind: 'connection_string', protects: 'shared Redis (may contain a password)', rotateDays: 0, highEntropy: false },
   { env: 'CACHE_REDIS_URL', kind: 'connection_string', protects: 'cache Redis, if separate', rotateDays: 0, highEntropy: false },

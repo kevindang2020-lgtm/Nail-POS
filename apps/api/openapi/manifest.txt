@@ -1287,6 +1287,12 @@ GET /super-admin/audit-logs/retention-policies  realm=super_admin  auth=session 
 GET /super-admin/audit-logs/retention-policies/{category}/history  realm=super_admin  auth=session  domain=audit  derived=super_admin.audit_logs.view  guards=SuperAdminGuard
 GET /super-admin/audit-logs/tamper-controls  realm=super_admin  auth=session  domain=audit  derived=super_admin.audit_logs.view  guards=SuperAdminGuard
 GET /super-admin/automation-rules/overview  realm=super_admin  auth=session  domain=platform  derived=super_admin.ai.view  guards=SuperAdminGuard
+GET /super-admin/backups/overview  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
+GET /super-admin/backups/recovery-points  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
+GET /super-admin/backups/recovery-points/{id}  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
+GET /super-admin/backups/restore-plans  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
+GET /super-admin/backups/restore-plans/{id}  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
+GET /super-admin/backups/tenants  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.view  guards=SuperAdminGuard
 GET /super-admin/billing  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.view  guards=SuperAdminGuard
 GET /super-admin/billing/exports/jobs/{token}  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.view  guards=SuperAdminGuard
 GET /super-admin/billing/exports/jobs/{token}/download  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.view  guards=SuperAdminGuard
@@ -2332,6 +2338,8 @@ POST /internal/ai-billing/cardpointe  realm=shared  auth=public  domain=ai
 POST /internal/ai-billing/event  realm=shared  auth=public  domain=ai
 POST /internal/ai-billing/sweep-trials  realm=shared  auth=public  domain=ai
 POST /internal/ai-billing/webhook  realm=shared  auth=public  domain=ai
+POST /internal/backups/recovery-points  realm=shared  auth=public  domain=operations
+POST /internal/backups/recovery-points/{id}/verification  realm=shared  auth=public  domain=operations
 POST /internal/backups/report  realm=shared  auth=public  domain=operations
 POST /internal/hardware-payment/run-monthly  realm=shared  auth=public  domain=payments
 POST /internal/membership-billing/apply  realm=shared  auth=public  domain=memberships
@@ -3221,6 +3229,10 @@ POST /super-admin/automation-rules/rules  realm=super_admin  auth=session  domai
 POST /super-admin/automation-rules/rules/{id}/status  realm=super_admin  auth=session  domain=platform  derived=super_admin.ai.manage  guards=SuperAdminGuard
 POST /super-admin/automation-rules/rules/{id}/test  realm=super_admin  auth=session  domain=platform  derived=super_admin.ai.manage  guards=SuperAdminGuard
 POST /super-admin/automation-rules/test  realm=super_admin  auth=session  domain=platform  derived=super_admin.ai.manage  guards=SuperAdminGuard
+POST /super-admin/backups/restore-plans  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.plan  guards=SuperAdminGuard
+POST /super-admin/backups/restore-plans/{id}/approve  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.approve  step-up  guards=SuperAdminGuard
+POST /super-admin/backups/restore-plans/{id}/cancel  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.plan  guards=SuperAdminGuard
+POST /super-admin/backups/restore-plans/{id}/execute  realm=super_admin  auth=session  domain=operations  perm=super_admin.backups.execute  step-up  guards=SuperAdminGuard
 POST /super-admin/billing/change-requests/{changeId}/review  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.manage  guards=SuperAdminGuard
 POST /super-admin/billing/credits/apply  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.manage  guards=SuperAdminGuard
 POST /super-admin/billing/cycle/run  realm=super_admin  auth=session  domain=finance  derived=super_admin.billing.manage  guards=SuperAdminGuard

@@ -313,9 +313,36 @@
    "pending_review",
    "retired"
   ],
+  "backup_recovery_points.immutable_replica_status": [
+   "missing",
+   "present"
+  ],
+  "backup_recovery_points.verification_status": [
+   "EXPIRED",
+   "FAILED",
+   "PARTIAL",
+   "UNVERIFIED",
+   "VERIFIED"
+  ],
   "backup_reports.status": [
    "failure",
    "success"
+  ],
+  "backup_restore_plans.status": [
+   "APPROVED",
+   "AWAITING_APPROVAL",
+   "BLOCKED",
+   "CANCELLED",
+   "COMPLETED",
+   "FAILED",
+   "PLANNING",
+   "PREPARING",
+   "RECONCILING",
+   "REQUESTED",
+   "RESTORING",
+   "ROLLED_BACK",
+   "VALIDATING",
+   "VERIFYING"
   ],
   "bank_accounts.status": [
    "active",

@@ -2,26 +2,26 @@
 
 **Generated** by `node apps/api/scripts/attack-surface.mjs` from the OpenAPI route manifest (which `check:openapi` keeps
 equal to the code) — do not edit by hand; `--check` fails CI when this file drifts. Full per-route table:
-[attack-surface-routes.csv](attack-surface-routes.csv) (3921 rows: method, path, file:line, realm, auth, permission,
+[attack-surface-routes.csv](attack-surface-routes.csv) (3933 rows: method, path, file:line, realm, auth, permission,
 step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway (no AWS): there is no cloud WAF, IMDS or IAM layer.
 
 ## 1. Counts
 
 | | routes |
 |---|---|
-| all HTTP routes | 3921 |
+| all HTTP routes | 3933 |
 | realm `customer` | 165 |
-| realm `shared` | 282 |
+| realm `shared` | 284 |
 | realm `staff` | 2292 |
-| realm `super_admin` | 1182 |
-| public (no session; each one reviewed by `check:public`) | 124 |
+| realm `super_admin` | 1192 |
+| public (no session; each one reviewed by `check:public`) | 126 |
 | integration key / OAuth (`auth=api_key`) | 13 |
-| with `@RequireStepUp` (fresh password + code) | 189 |
+| with `@RequireStepUp` (fresh password + code) | 191 |
 | with an idempotency contract | 58 |
 | webhooks | 9 |
 | multipart uploads | 9 |
 | server-sent event streams | 13 |
-| service / scheduler endpoints (`/internal`, `/jobs`) | 13 |
+| service / scheduler endpoints (`/internal`, `/jobs`) | 15 |
 
 ## 2. Layers every request passes (in order)
 
@@ -128,7 +128,9 @@ step-up, idempotency, guards, class, body limit, rate limit). Hosting is Railway
 | POST | `/internal/ai-billing/event` | modules/ai/src/ai/ai-subscription-billing.service.ts:85 | service | service secret (no anonymous access); not rate limited |
 | POST | `/internal/ai-billing/sweep-trials` | modules/ai/src/ai/ai-subscription-billing.service.ts:106 | service | service secret (no anonymous access); not rate limited |
 | POST | `/internal/ai-billing/webhook` | modules/ai/src/ai/ai-subscription-billing.service.ts:42 | webhook | service secret (no anonymous access); not rate limited |
-| POST | `/internal/backups/report` | apps/api/src/observability/backup-reports.ts:121 | service | service secret (no anonymous access); not rate limited |
+| POST | `/internal/backups/recovery-points` | apps/api/src/backup-center/backup-center.controller.ts:74 | service | service secret (no anonymous access); not rate limited |
+| POST | `/internal/backups/recovery-points/{id}/verification` | apps/api/src/backup-center/backup-center.controller.ts:76 | service | service secret (no anonymous access); not rate limited |
+| POST | `/internal/backups/report` | apps/api/src/observability/backup-reports.ts:109 | service | service secret (no anonymous access); not rate limited |
 | POST | `/internal/hardware-payment/run-monthly` | modules/payments/src/hardware-payment/hardware-payment.cron.controller.ts:24 | service | service secret (no anonymous access); not rate limited |
 | POST | `/internal/membership-billing/apply` | modules/memberships/src/membership-billing.controller.ts:47 | service | service secret (no anonymous access); not rate limited |
 | POST | `/internal/membership-billing/cardpointe` | modules/memberships/src/membership-billing.controller.ts:40 | service | service secret (no anonymous access); not rate limited |
@@ -221,7 +223,9 @@ Rooms are derived from the session server-side; revocation and authorization cha
 | POST | `/internal/ai-billing/cardpointe` | modules/ai/src/ai/ai-subscription-billing.service.ts:114 | public |
 | POST | `/internal/ai-billing/event` | modules/ai/src/ai/ai-subscription-billing.service.ts:85 | public |
 | POST | `/internal/ai-billing/sweep-trials` | modules/ai/src/ai/ai-subscription-billing.service.ts:106 | public |
-| POST | `/internal/backups/report` | apps/api/src/observability/backup-reports.ts:121 | public |
+| POST | `/internal/backups/recovery-points` | apps/api/src/backup-center/backup-center.controller.ts:74 | public |
+| POST | `/internal/backups/recovery-points/{id}/verification` | apps/api/src/backup-center/backup-center.controller.ts:76 | public |
+| POST | `/internal/backups/report` | apps/api/src/observability/backup-reports.ts:109 | public |
 | POST | `/internal/hardware-payment/run-monthly` | modules/payments/src/hardware-payment/hardware-payment.cron.controller.ts:24 | public |
 | POST | `/internal/membership-billing/apply` | modules/memberships/src/membership-billing.controller.ts:47 | public |
 | POST | `/internal/membership-billing/cardpointe` | modules/memberships/src/membership-billing.controller.ts:40 | public |
@@ -314,6 +318,8 @@ Service callers present a short-lived scoped service token (`SERVICE_TOKEN_SECRE
 | POST | `/super-admin/ai-scheduling-optimizer/tenants/{tenantId}/recommendations/{id}/rollback` | super_admin |
 | POST | `/super-admin/approvals/{id}/approve` | super_admin |
 | POST | `/super-admin/approvals/policies/{action}` | super_admin |
+| POST | `/super-admin/backups/restore-plans/{id}/approve` | super_admin |
+| POST | `/super-admin/backups/restore-plans/{id}/execute` | super_admin |
 | POST | `/super-admin/booking-verification/emergency-disable` | super_admin |
 | POST | `/super-admin/booking-verification/module` | super_admin |
 | POST | `/super-admin/commission-auth-code/generate` | super_admin |

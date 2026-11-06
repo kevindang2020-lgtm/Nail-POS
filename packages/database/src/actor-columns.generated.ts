@@ -40,6 +40,8 @@ export const ACTOR_COLUMNS: Readonly<Record<string, string>> = {
   automation_failures: 'ut',
   automation_rule_versions: 'c',
   automation_rules: 'ut',
+  backup_recovery_points: 'ut',
+  backup_restore_plans: 'ut',
   bank_accounts: 'ut',
   bank_deposits: 'ut',
   before_after_sets: 'ut',

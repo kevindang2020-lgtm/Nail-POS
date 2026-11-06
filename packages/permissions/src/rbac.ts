@@ -70,6 +70,9 @@ export const PERMISSIONS = [
   'super_admin.system_operations.view',
   // BUILD_PLAN Phase 10 (Constitution 1 §94–98): System Operations → Database — read the figures / run the audited actions
   'super_admin.database.view','super_admin.database.manage',
+  // G9 Backup & Disaster Recovery (Nov 5 2026): read the recovery catalog / plan a restore / approve (a SECOND person) /
+  // start it. approve + execute are Super-Admin-only keys (platform-roles SUPER_ADMIN_ONLY_KEYS).
+  'super_admin.backups.view','super_admin.backups.plan','super_admin.backups.approve','super_admin.backups.execute',
   // BUILD_PLAN Phase 13 B (Constitution 6 §55–57, §150): System Operations → Mobile app versions — read the policies and the
   // installed-version distribution / set a store app's minimum, recommended and latest version (step-up + reason + audit)
   'super_admin.mobile_versions.view','super_admin.mobile_versions.manage',

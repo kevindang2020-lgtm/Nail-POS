@@ -1,6 +1,7 @@
 {
   "note": "Reviewed non-literal sql.raw/lit/ref/table/id / CompiledQuery.raw call sites (Security Deep Scan D5, Oct 23 2026). Each argument is a constant, an allow-listed identifier or a validated zone name. Update only after review.",
   "sites": {
+    "apps/api/src/backup-center/backup-center.service.ts :: sql.table(t)": 1,
     "apps/api/src/common/async-export/async-export.service.ts :: sql.table(t)": 1,
     "apps/api/src/common/db-constraints.service.ts :: CompiledQuery.raw(text)": 1,
     "apps/api/src/common/restore-verify.ts :: sql.table(t)": 1,

@@ -103,6 +103,8 @@ const EXPECTED_PUBLIC = [
   'GET auth/biometric/status',                                   // Phase 13 D: is Face ID switched on at all — the feature flag only, nothing per user
   'POST auth/biometric/login',                                   // Phase 13 D: the Face ID sign-in itself (device id + single-use secret; re-checks the account like a refresh)
   'POST internal/backups/report',                                // x-backup-report-token, constant-time, fails closed
+  'POST internal/backups/recovery-points',                       // G9: same credential as the report, fails closed
+  'POST internal/backups/recovery-points/:id/verification',      // G9: same credential, fails closed
   'POST webhooks/twilio/sms/inbound',                            // Twilio signature (per-tenant token) — STOP opt-outs
   'POST webhooks/twilio/sms/status',                             // Twilio signature
   'POST webhooks/email/sendgrid',                                // SendGrid signed event webhook (ECDSA over timestamp + raw body)

@@ -42,6 +42,7 @@ import { DatabaseModule } from '@aipowersalon/database/nest';
 import { ProviderSecretsModule } from './common/provider-secrets.module';
 import { TerminalProbeModule } from './payments/terminal-probe.module';   // wave 3 PAYI §166: @Global terminal readiness probe (Bolt ping through the provider router)
 import { ObservabilityModule } from './observability/observability.module';
+import { BackupCenterModule } from './backup-center/backup-center.module';
 import { SecuritySignalsMiddleware } from './observability/security-signals';   // BUILD_PLAN Phase 14 C (D8)
 import { HttpMetricsInterceptor } from './observability/http-metrics';
 import { Module, NestModule, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
@@ -110,6 +111,7 @@ import { DbConstraintRetrierModule } from './common/db-constraint-retrier.module
     StepUpModule,                                                         // Constitution 7 §8 — POST /auth/step-up
     MobileLinksModule,                                                    // BUILD_PLAN Phase 13 D — /.well-known AASA + assetlinks, /app-links fallback
     ObservabilityModule,   // Constitution 11 §296: the Platform Health Aggregator
+    BackupCenterModule,   // G9 Backup & DR (Nov 5 2026): recovery catalog, Backup Center, restore plans/jobs
     CustomerPhoneModule,
     AuditModule,
     CampaignsModule,
@@ -345,6 +347,8 @@ export class AppModule implements NestModule {
         { path: 'client-telemetry/errors', method: RequestMethod.POST },          // allow-listed, capped, scrubbed, rate-limited crash intake (C11 §12a)
         { path: 'client-telemetry/events', method: RequestMethod.POST },          // BUILD_PLAN Phase 13 (C6 §116–119): allow-listed analytics / perf intake, rate-limited, stores nothing
         { path: 'internal/backups/report', method: RequestMethod.POST },          // x-backup-report-token, constant-time, refuses all when unset (C11 Phase 19)
+        { path: 'internal/backups/recovery-points', method: RequestMethod.POST },  // G9: the provider job's manifest — svc.backups token or x-backup-report-token, fails closed
+        { path: 'internal/backups/recovery-points/:id/verification', method: RequestMethod.POST },   // G9: a restore test's evidence — same credential, fails closed
         { path: 'webhooks/twilio/sms/inbound', method: RequestMethod.POST },      // Twilio signature (per-tenant token) — incl. STOP opt-outs
         { path: 'webhooks/twilio/sms/status', method: RequestMethod.POST },       // Twilio signature
         { path: 'webhooks/email/sendgrid', method: RequestMethod.POST },           // Email guide: SendGrid signed event webhook (ECDSA; 503 when no key)

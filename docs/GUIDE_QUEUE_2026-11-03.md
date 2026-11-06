@@ -369,7 +369,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G6 | Customer Timeline (duplicate of an earlier upload) | re-check — `docs/customers/CUSTOMER_TIMELINE.md` exists |
 | G7 | Global Advertising + Tenant Control (master switch, platform ads, 50/50, ACK fleet status) | BUILT — see `docs/advertising/GLOBAL_ADVERTISING.md` |
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-check — `docs/ai/REVIEW_REPUTATION_SETTINGS.md` exists |
-| G9 | Enterprise Backup & Disaster Recovery | NOT AUDITED yet (hosted backups / PITR are BLOCKED_EXTERNAL in F5 §210) |
+| G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
 | G11 | Full Security Deep Scan | matrix `SECURITY_DEEP_SCAN_STATUS.md` — re-check |
 | G12 | Secure Tap to Pay / Device Authentication | matrix `SECURE_TAP_STATUS.md` — re-check (Apple TTP is BLOCKED_EXTERNAL) |
@@ -533,4 +533,22 @@ playlist request and every salon advertising write (saved salon ads kept, pause 
 the salon engine (validation, lifecycle, image pipeline, playlist builder). Displays acknowledge the applied policy in their
 heartbeat; the fleet status counts only those acknowledgments. Idle layout exactly 50 / 50. Migration 818. Tests:
 `platform-advertising.pgtest` (6), `heartbeat-ad-policy` (2); display-ads (98), common (1,522), customer-display (205) green.
+
+### G9 Enterprise Backup & Disaster Recovery — built, with an honest gate (Nov 5 2026)
+
+Report (§50 A–K) and the executed-evidence matrix (Appendix B): `docs/backup/BACKUP_AND_DR.md`. Extends what existed
+(`DISASTER_RECOVERY.md`, backup_reports heartbeat, restore-verify, drills, POST_RESTORE_HOLD) rather than replacing it.
+Migration 819: recovery catalog (manifest sha256, key references, schema version, retention class, immutable-copy status,
+verification status), append-only verifications, checksummed restore plans with one-active-per-tenant fencing, append-only
+plan events, cross-tenant trigger. Manifests with credentials / embedded passwords / no key reference / no checksum are
+refused (recorded FAILED). A point is "recoverable" only after a real restore test posts VERIFIED. Midnight America/New_York
+checkpoint (DST-safe) + P2 alert when missed. Super Admin (English) Backup & Disaster Recovery: Overview, Restore Center
+(search salon → scope → verified point → dry run listing payments / payouts / gift-card / loyalty / sends after the time,
+unresolved card attempts BLOCK), second-person step-up approval bound to the plan checksum (30 min, finance acknowledgement
+when money moved), durable idempotent job. Compare-only restores run against an isolated staged clone and complete with
+per-table evidence; whole-salon / one-branch stop at BLOCKED `DESTRUCTIVE_APPLY_NOT_AVAILABLE` until pilots A/B/G.
+Tests: backup-center-core (16), backup-center.pgtest (16, two PGlite databases), BackupCenterScreen (3); common 1,524 green.
+Remaining: provider job wiring + first VERIFIED point (Kevin, HOSTING), off-site immutable bucket, PITR decision, independent
+recovery identity (BLOCKED_EXTERNAL); destructive apply + pre-restore safety point + rollback (P1 engineering); 100k-customer
+timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZED in communications.controller.ts (fails on the base commit too).
 

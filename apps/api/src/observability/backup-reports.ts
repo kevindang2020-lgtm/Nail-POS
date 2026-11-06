@@ -22,6 +22,7 @@ import { DATABASE } from '@aipowersalon/database';
 import type { Evaluation } from './health-core';
 import type { DesiredAlert } from './alert-rules';
 import { BACKUP_REPORT_BODY } from './request-schemas';
+import { missedMidnightCheckpoint } from '../backup-center/backup-center-core';
 import { ValidatedBody } from '@aipowersalon/permissions/guards';
 
 export const BACKUP_MAX_AGE_HOURS = Number(process.env.BACKUP_MAX_AGE_HOURS ?? 26);
@@ -50,6 +51,8 @@ export function tokenMatches(presented: string | undefined, configured: string |
 }
 
 export interface BackupSummary {
+  /** G9 §34: the 12:00 AM America/New_York platform checkpoint — null until the recovery catalog has ever been fed. */
+  midnightCheckpoint?: { missed: boolean; scheduledAt: string } | null;
   lastSuccessfulBackupAt: string | null; lastBackupStatus: 'success' | 'failure' | null; lastBackupAt: string | null; backupAgeHours: number | null;
   pitrEnabled: boolean | null; lastDrillAt: string | null; lastDrillOk: boolean | null; lastDrillDetail: string | null;
 }
@@ -91,12 +94,39 @@ export function backupStalenessAlert(s: BackupSummary | null, now: number, env: 
   };
 }
 
+/**
+ * G9 Backup & DR §34 (Nov 5 2026): the midnight checkpoint rule. Once the recovery catalog has received a platform point,
+ * a scheduled 12:00 AM America/New_York checkpoint with no platform point within ±2 h, still missing 2 h after midnight,
+ * is a P2 page — independent of the 26-hour staleness rule (a job that ran at 3 PM is not the midnight checkpoint). Pure.
+ */
+export const MIDNIGHT_CHECKPOINT_KEY = 'backup:midnight_checkpoint';
+export function midnightCheckpointAlert(s: BackupSummary | null): DesiredAlert | null {
+  const m = s?.midnightCheckpoint;
+  if (!m || !m.missed) return null;
+  return {
+    component: MIDNIGHT_CHECKPOINT_KEY, severity: 'high', owner: 'platform', runbook: 'RUNBOOKS.md#backup-failure', causes: [],
+    title: 'Midnight backup checkpoint missed',
+    message: `No platform recovery point was reported for the ${m.scheduledAt} (12:00 AM America/New_York) checkpoint. Check the provider backup job and its manifest report (docs/backup/BACKUP_AND_DR.md §2). Owner: platform. Runbook: RUNBOOKS.md#backup-failure`,
+  };
+}
+
 @Injectable()
 export class BackupReportsService {
   constructor(@Optional() @Inject(DATABASE) private readonly db: any) {}
   async record(r: BackupReportInput): Promise<void> {
     await sql`insert into backup_reports (kind, status, started_at, completed_at, size_bytes, pitr_enabled, integrity_ok, smoke_test_ok, detail)
               values (${r.kind}, ${r.status}, ${r.startedAt ? new Date(r.startedAt) : null}, ${new Date(r.completedAt)}, ${r.sizeBytes ?? null}, ${r.pitrEnabled ?? null}, ${r.integrityOk ?? null}, ${r.smokeTestOk ?? null}, ${r.detail ?? null})`.execute(this.db);
+  }
+  /** G9: the missed-midnight check over the recovery catalog (null until a platform point was ever reported). */
+  async midnightCheckpoint(now: number): Promise<{ missed: boolean; scheduledAt: string } | null> {
+    try {
+      const ever = (await sql<any>`select 1 from backup_recovery_points where scope = 'platform' limit 1`.execute(this.db)).rows.length > 0;
+      if (!ever) return null;
+      const rows = (await sql<any>`select recovery_timestamp from backup_recovery_points where scope = 'platform' and verification_status <> 'FAILED'
+        and recovery_timestamp > ${new Date(now - 3 * 86_400_000).toISOString()} order by recovery_timestamp desc limit 20`.execute(this.db)).rows;
+      const m = missedMidnightCheckpoint(now, rows.map((x: any) => new Date(x.recovery_timestamp).getTime()));
+      return { missed: m.missed, scheduledAt: new Date(m.scheduledAt).toISOString() };
+    } catch (e) { void e; return null; }   // catalog table absent on an old database: the rule does not apply (not an alert about alerts)
   }
   async summary(now = Date.now()): Promise<BackupSummary | null> {
     if (!this.db) return null;
@@ -110,6 +140,7 @@ export class BackupReportsService {
       lastDrillAt: drill ? new Date(drill.completed_at).toISOString() : null,
       lastDrillOk: drill ? drill.status === 'success' && drill.integrity_ok !== false && drill.smoke_test_ok !== false : null,
       lastDrillDetail: drill?.detail ?? null,
+      midnightCheckpoint: await this.midnightCheckpoint(now),
     };
   }
 }

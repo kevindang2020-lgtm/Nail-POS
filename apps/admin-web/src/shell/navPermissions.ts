@@ -60,6 +60,7 @@ export const NAV_DOMAIN_VIEW_KEY: Readonly<Record<string, string>> = {
   // system
   'system-operations': 'super_admin.system_operations.view', 'system-status': 'super_admin.system_operations.view', 'system-health': 'super_admin.system_operations.view',
   'devices-management': 'super_admin.system_operations.view', 'alerts': 'super_admin.system_operations.view', 'jobs': 'super_admin.system_operations.view',
+  'backups': 'super_admin.backups.view',   // G9 Backup & Disaster Recovery
   'database': 'super_admin.database.view',   // BUILD_PLAN Phase 10: System Operations → Database
   'mobile-versions': 'super_admin.mobile_versions.view',   // BUILD_PLAN Phase 13 B: System Operations → Mobile app versions
   'request-search': 'super_admin.telemetry.view',   // BUILD_PLAN Phase 14 A: System → Request search (C11 §181, §291–292)
