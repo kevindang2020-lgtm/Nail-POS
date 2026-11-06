@@ -5,7 +5,7 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
-import { DEFAULT_CHECKOUT_SETTINGS, supersedeCustomerTipsIfChanged, assertCustomerTipsConfirmed, TechTipsGuardError } from '@aipowersalon/checkout';
+import { DEFAULT_CHECKOUT_SETTINGS, supersedeCustomerTipsIfChanged, assertCustomerTipsConfirmed, TechTipsGuardError, customerTipSelection } from '@aipowersalon/checkout';
 import { CustomerDisplayService } from './customer-display.service';
 import { TechnicianTipStore } from './technician-tips.store';
 
@@ -142,6 +142,15 @@ describe('§34 the FRONT DESK pay paths (G4 follow-up): no fabricated customer c
     const ev = (await q(sql`select action, actor_user_id, detail from checkout_tip_selection_events where ticket_id = ${TK2} order by created_at desc limit 1`))[0];
     expect(ev).toMatchObject({ action: 'STAFF_CONFIRMED_ON_BEHALF', actor_user_id: CASHIER, detail: { reason: 'Customer confirmed out loud at the counter' } });
     expect(await guard()).toBe('confirmed');   // now confirmed: later tenders proceed
+  });
+  it('the POS reads the selection live: state, who entered it, names from this salon, each tip, and staleness', async () => {
+    const v = await customerTipSelection(db, T, TK2);
+    expect(v).toMatchObject({ state: 'CONFIRMED', source: 'staff', stale: false, totalTipCents: 1000 });
+    expect(v!.technicians.map((t) => `${t.name}:${t.tipCents}`)).toEqual(['Anna:300', 'Ben:700']);
+    await q(sql`update ticket_service_lines set technician_id = ${CARA} where id = ${id('f4')}`);
+    expect((await customerTipSelection(db, T, TK2))!.stale).toBe(true);
+    await q(sql`update ticket_service_lines set technician_id = ${BEN} where id = ${id('f4')}`);
+    expect(await customerTipSelection(db, T2, TK2)).toBeNull();   // another salon sees nothing
   });
 });
 

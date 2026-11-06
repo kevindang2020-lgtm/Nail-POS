@@ -36,6 +36,8 @@ export const posCheckoutApi = {
   giftCardLookup: (input: string) => http<{ found: boolean; cardId?: string; reference?: string; cardNumberMasked?: string; balanceCents?: number; status?: string; redeemableHere?: boolean; viaNetwork?: boolean }>(`${CO}/gift-cards/lookup`, { method: 'POST', body: JSON.stringify({ input }) }),
   replaceGiftCard: (input: string) => http<{ ok: boolean; reason?: string; newReference?: string; newCardNumber?: string; newCardNumberMasked?: string; balanceCents?: number }>(`${CO}/gift-cards/replace`, { method: 'POST', body: JSON.stringify({ input }) }),
   signature: (tid: string) => http<{ signaturePng: string | null; capturedOn?: string | null }>(`${CO}/tickets/${id(tid)}/signature`),
+  /** G4 (Nov 5 2026): the customer's per-technician tip choice from the display — null when there is none */
+  tipSelection: (tid: string) => http<{ selection: { state: 'DRAFT' | 'CONFIRMED' | 'LOCKED' | 'SUPERSEDED'; source: 'customer_display' | 'staff'; version: number; stale: boolean; totalTipCents: number; technicians: { technicianId: string; name: string; tipType: string; percent: number | null; tipCents: number }[]; updatedAt: string } | null }>(`${CO}/tickets/${id(tid)}/tip-selection`),
   technicianSplit: (tid: string) => http<{ participantCount: number; technicians: { technicianId: string; displayName?: string; serviceEarningsCents: number; cardTipCents: number; cashTipCents: number }[] }>(`${CO}/tickets/${id(tid)}/technician-split`),
   // ticket mutations (real routes + typed bodies)
   /** Oct 6 2026: set the ticket aside / back in the queue; move it to one of this location's registers. */

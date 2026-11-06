@@ -166,6 +166,10 @@ export class CheckoutService {
   /** G4 follow-up (Nov 5 2026): assertCustomerTipsConfirmed bound to the database (absent without one → no guard) */
   private tipGuard: ((ctx: CheckoutContext, ticketId: string, staff: { reason?: string | null } | null) => Promise<unknown>) | null = null;
   useTipGuard(fn: ((ctx: CheckoutContext, ticketId: string, staff: { reason?: string | null } | null) => Promise<unknown>) | null | undefined): this { this.tipGuard = fn ?? null; return this; }
+  private tipView: ((ctx: CheckoutContext, ticketId: string) => Promise<unknown>) | null = null;
+  useTipSelectionReader(fn: ((ctx: CheckoutContext, ticketId: string) => Promise<unknown>) | null | undefined): this { this.tipView = fn ?? null; return this; }
+  /** G4: the customer's per-technician tip choice for the POS screen (null when none / no database) */
+  async tipSelection(ctx: CheckoutContext, id: string): Promise<unknown> { this.need(ctx, 'pos.checkout.view'); await this.ticketOr404(ctx, id); return this.tipView ? this.tipView(ctx, id) : null; }
   /** Before a NEW front-desk tender: the customer's per-technician tips must be confirmed (or confirmed on their behalf, attributed). */
   private async guardTips(ctx: CheckoutContext, id: string, staff: unknown): Promise<void> {
     if (!this.tipGuard) return;

@@ -67,3 +67,26 @@ export async function assertCustomerTipsConfirmed(db: Kysely<any>, a: { tenantId
   });
   return 'staff_confirmed';
 }
+
+/** G4 next step 2 (Nov 5 2026): what the customer chose on the display, for the POS checkout screen — live, with the
+ *  state (Draft / Confirmed / Locked / Superseded), who entered it (customer or staff), and whether the ticket's
+ *  performers changed since (stale). Names come from this salon's technicians only. Null when there is no selection. */
+export interface CustomerTipSelectionView {
+  state: 'DRAFT' | 'CONFIRMED' | 'LOCKED' | 'SUPERSEDED'; source: 'customer_display' | 'staff'; version: number; stale: boolean; totalTipCents: number;
+  technicians: { technicianId: string; name: string; tipType: string; percent: number | null; tipCents: number }[]; updatedAt: string;
+}
+export async function customerTipSelection(db: Kysely<any>, tenantId: string, ticketId: string): Promise<CustomerTipSelectionView | null> {
+  const sel = (await sql<any>`select version, state, source, recipients_key, selections, total_tip_cents, updated_at from checkout_tip_selections where tenant_id = ${tenantId} and ticket_id = ${ticketId}`.execute(db)).rows[0];
+  if (!sel) return null;
+  const items: { technicianId: string; tipType: string; percent: number | null; tipCents: number }[] = Array.isArray(sel.selections) ? sel.selections : (typeof sel.selections === 'string' ? JSON.parse(sel.selections) : []);
+  const ids = items.map((i) => i.technicianId).filter(Boolean);
+  const names = new Map<string, string>();
+  if (ids.length) for (const r of (await sql<any>`select id, full_name from technicians where tenant_id = ${tenantId} and id = any(${ids}::uuid[])`.execute(db)).rows) names.set(String(r.id), String(r.full_name ?? ''));
+  const l = await loadTipLines(db, tenantId, ticketId);
+  const stale = sel.state !== 'SUPERSEDED' && recipientsKey(tipRecipients(l.lines, l.discountCents)) !== String(sel.recipients_key);
+  return {
+    state: sel.state, source: sel.source === 'staff' ? 'staff' : 'customer_display', version: N(sel.version), stale, totalTipCents: N(sel.total_tip_cents),
+    technicians: items.map((i) => ({ technicianId: String(i.technicianId), name: names.get(String(i.technicianId)) || '—', tipType: String(i.tipType), percent: i.percent == null ? null : Number(i.percent), tipCents: N(i.tipCents) })),
+    updatedAt: new Date(sel.updated_at).toISOString(),
+  };
+}

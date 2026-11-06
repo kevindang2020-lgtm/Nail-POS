@@ -20,6 +20,7 @@ const detail = (id: string, name: string) => ({
 
 
 const bodies: unknown[] = [];
+let selection: unknown = null;
 function server() {
   const fetch = vi.fn(async (url: unknown, init?: RequestInit) => {
     const u = String(url); const method = (init?.method as string) || 'GET';
@@ -29,6 +30,7 @@ function server() {
       if (!b.staffTipConfirmation) return ok({ code: 'TECH_TIPS_NOT_CONFIRMED', message: 'The customer has not confirmed the tips on the display yet.' }, 409);
       return ok({ status: 'approved', payment: { status: 'approved' } });
     }
+    if (/\/tip-selection$/.test(u)) return ok({ selection: selection });
     const m = /\/pos\/checkout\/tickets\/([^/?]+)$/.exec(u);
     if (m) return ok(detail(m[1], 'Jessica Miller'));
     if (u.includes('/pos/checkout/state')) return ok({ kpisFull: kpis, tickets: { items: [row('t1', 'Jessica Miller')], pagination: { totalItems: 1 } }, paymentSettings: settings, customerDisplay: { pairedDevices: [], activeSession: null } });
@@ -36,7 +38,7 @@ function server() {
   });
   return fetch;
 }
-beforeEach(async () => { vi.restoreAllMocks(); bodies.length = 0; await setLanguage('en'); });
+beforeEach(async () => { vi.restoreAllMocks(); bodies.length = 0; selection = null; await setLanguage('en'); });
 afterEach(async () => { await setLanguage('en'); });
 
 describe('front desk: tips the customer has not confirmed (G4 §34)', () => {
@@ -66,5 +68,16 @@ describe('front desk: tips the customer has not confirmed (G4 §34)', () => {
     fireEvent.click(complete!);
     const panel = await screen.findByTestId('tips-on-behalf');
     expect(panel.textContent).toContain('Thợ');
+  });
+  it('the customer\'s per-technician tips show live on the checkout screen, with their state', async () => {
+    selection = { state: 'DRAFT', source: 'customer_display', version: 2, stale: false, totalTipCents: 1800, updatedAt: '2026-11-05T20:00:00Z',
+      technicians: [{ technicianId: 'a', name: 'Anna', tipType: 'custom', percent: null, tipCents: 800 }, { technicianId: 'b', name: 'Ben', tipType: 'percent', percent: 20, tipCents: 1000 }] };
+    globalThis.fetch = server() as any;
+    render(<MemoryRouter initialEntries={['/checkout']}><Routes><Route path="/checkout" element={<POSCheckoutScreen />} /></Routes></MemoryRouter>);
+    const box = await screen.findByTestId('customer-tip-selection');
+    expect(box.textContent).toContain('Not confirmed yet');
+    expect(box.textContent).toContain('Anna'); expect(box.textContent).toContain('$8.00');
+    expect(box.textContent).toContain('Ben'); expect(box.textContent).toContain('$10.00 (20%)');
+    expect(box.textContent).toContain('$18.00');
   });
 });

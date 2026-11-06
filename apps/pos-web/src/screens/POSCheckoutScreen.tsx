@@ -131,6 +131,9 @@ export function POSCheckoutScreen() {
   const loadDetail = useCallback(async (tid: string, preferMethod?: PaymentMethod) => {
     const d = await posCheckoutApi.detail(tid) as Detail;
     setDetail(d);
+    // G4 (Nov 5 2026): the customer's per-technician tips from the display, refreshed with the ticket (and on every
+    // checkout push). A failed read shows nothing rather than a guess.
+    posCheckoutApi.tipSelection(tid).then((r) => setTipSel(r?.selection ?? null)).catch(() => setTipSel(null));
     const m = preferMethod || d.totals.paymentMethod || enabledMethods[0]?.m || 'card';
     setMethod(m);
     setCashStr(((d.totals.totalDueCents || 0) / 100).toFixed(2));
@@ -180,6 +183,7 @@ export function POSCheckoutScreen() {
   // front-desk tender (TECH_TIPS_NOT_CONFIRMED). The cashier either asks the customer to confirm there, or confirms ON THEIR
   // BEHALF with a reason — recorded with the cashier's name, never as the customer's confirmation.
   const [tipAsk, setTipAsk] = useState<{ reason: string } | null>(null);
+  const [tipSel, setTipSel] = useState<Awaited<ReturnType<typeof posCheckoutApi.tipSelection>>['selection']>(null);
   const staffTip = useRef<{ reason: string } | null>(null);
   const run = async (key: string, fn: () => Promise<any>, after?: (r: any) => void) => {
     setNote(null); setBusy(key);
@@ -892,6 +896,21 @@ export function POSCheckoutScreen() {
                         >
                           {tx('pos.no_tip')}
                         </button>
+                      ) : null}
+
+                      {tipSel ? (
+                        <div data-testid="customer-tip-selection" className="bg-[var(--page)] rounded-xl p-2 border border-[var(--line)] mt-2 text-xs">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            {tx('payment.customerTips.title')}
+                            <span style={{ marginLeft: 'auto', fontWeight: 700, color: tipSel.stale || tipSel.state === 'DRAFT' ? '#B8892B' : tipSel.state === 'SUPERSEDED' ? 'var(--muted)' : '#2E9E54' }}>
+                              {tipSel.stale ? tx('payment.customerTips.stale') : tx('payment.customerTips.state.' + tipSel.state)}{tipSel.source === 'staff' ? ` · ${tx('payment.customerTips.byStaff')}` : ''}
+                            </span>
+                          </div>
+                          {tipSel.technicians.map((t) => (
+                            <div key={t.technicianId} className="flex items-center py-0.5"><span>{t.name}</span><span style={{ marginLeft: 'auto', fontWeight: 700 }}>{t.tipType === 'none' ? tx('pos.no_tip') : money(t.tipCents)}{t.tipType === 'percent' && t.percent != null ? ` (${t.percent}%)` : ''}</span></div>
+                          ))}
+                          <div className="flex items-center pt-1 border-t border-[var(--line)] font-bold"><span>{tx('payment.customerTips.total')}</span><span style={{ marginLeft: 'auto' }}>{money(tipSel.totalTipCents)}</span></div>
+                        </div>
                       ) : null}
 
                       <h3 style={{ ...h2, fontSize: 12, margin: '12px 0 6px' }}>

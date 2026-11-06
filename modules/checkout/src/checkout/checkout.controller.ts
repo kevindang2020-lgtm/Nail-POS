@@ -70,6 +70,7 @@ export class CheckoutController {
   @Get('tickets/:ticketId/signature') @RequirePermission('pos.checkout.view') signature(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.getPaymentSignature(ctxFrom(r), id)); }
   // Technician-split review preview (spec §13) — per-tech earnings + tip allocation; POS shows it when >2 techs participate.
   @Get('tickets/:ticketId/technician-split') @RequirePermission('pos.checkout.view') techSplit(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.technicianSplit(ctxFrom(r), id)); }
+  @Get('tickets/:ticketId/tip-selection') @RequirePermission('pos.checkout.view') tipSelection(@Req() r: any, @Param('ticketId') id: string) { return run(async () => ({ selection: await this.svc.tipSelection(ctxFrom(r), id) })); }   // G4: the customer's per-technician tips, live
 
   @Post('tickets/:ticketId/review') @RequirePermission('pos.checkout.view') review(@Req() r: any, @Param('ticketId') id: string) { return run(() => this.svc.review(ctxFrom(r), id)); }
   @Post('tickets/:ticketId/rating') @RequirePermission('pos.checkout.view') rating(@Req() r: any, @Param('ticketId') id: string, @Body(ValidatedBody(RATING_BODY, { strict: true })) b: any) { return run(() => this.svc.recordSatisfaction(ctxFrom(r), id, Number(b?.rating))); }

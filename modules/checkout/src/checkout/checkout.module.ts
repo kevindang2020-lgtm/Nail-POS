@@ -1,6 +1,6 @@
 // checkout.module.ts — POS Checkout & Payment controllers + service + repository. Kysely-backed adapter when a Postgres
 // handle exists (REPO_DRIVER=postgres), else the in-memory adapter (dev/offline/tests default).
-import { assertCustomerTipsConfirmed } from './technician-tips-guard';
+import { assertCustomerTipsConfirmed, customerTipSelection } from './technician-tips-guard';
 import { AiReviewReputationModule, ReviewRequestService, CheckoutReviewRequestHook, KyselySettings } from '@aipowersalon/ai';
 import { processorFromEnv, PaymentGatewayResolver } from '@aipowersalon/payments';
 import { SalonPromotionsModule, DealsModule, DealsCheckoutService } from '@aipowersalon/deals';
@@ -57,6 +57,7 @@ const giftCardLookupThrottle = new InMemoryGiftCardLookupThrottle();
         .usePush(push ?? null)   // developer merge (Oct 6 2026): "Receipt saved" to the customer's devices
         .useGlobalRewards(rewards ?? null)   // Global Loyalty (Oct 30 2026): cross-salon reward holds ('GLOBAL_REWARDS_CHECKOUT' from modules/loyalty; absent → no rewards tender)
         .useTipGuard(db ? (c, ticketId, staff) => assertCustomerTipsConfirmed(db as unknown as Kysely<any>, { tenantId: c.tenantId, ticketId, userId: c.userId ?? null, staffConfirmation: staff }) : null)   // G4 follow-up (Nov 5 2026): front-desk tenders need the customer's tip confirmation (or an attributed staff entry)
+        .useTipSelectionReader(db ? (c, ticketId) => customerTipSelection(db as unknown as Kysely<any>, c.tenantId, ticketId) : null)   // G4: the POS shows the customer's per-technician tips live
         .useDeposits(deposits ?? null),   // D11 (Oct 21 2026): the booking deposit comes off the ticket (@Global token 'BOOKING_DEPOSITS' from modules/booking; absent → no deposits)
       inject: ['CheckoutRepositoryPort', PaymentGatewayResolver, REALTIME, CompensationService, MembershipCompService, CheckoutLockService, 'ReviewRequestHook', { token: DealsCheckoutService, optional: true }, { token: TENANT_MESSENGER, optional: true }, { token: TENANT_APPROVALS_TOKEN, optional: true }, { token: PushService, optional: true }, { token: InventoryService, optional: true }, { token: 'BOOKING_DEPOSITS', optional: true }, { token: 'GLOBAL_REWARDS_CHECKOUT', optional: true }, DATABASE] },
     PaymentAttemptSweepScheduler,   // BUILD_PLAN Phase 11 (Constitution 4 §116): stranded card attempts → the processor's answer, or review + alert

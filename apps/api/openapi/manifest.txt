@@ -571,6 +571,7 @@ GET /pos/checkout/tickets/{ticketId}/refunds/unsettled  realm=staff  auth=sessio
 GET /pos/checkout/tickets/{ticketId}/rewards  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/signature  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/technician-split  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/checkout/tickets/{ticketId}/tip-selection  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/checkout/tickets/{ticketId}/unsettled-tenders  realm=staff  auth=session  domain=checkout  perm=pos.checkout.view  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/churn-watch/customers  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/churn-watch/customers/{id}  realm=staff  auth=session  domain=ai  perm=pos.ai_customer_profile.churn  guards=RolePermissionGuard,TenantAuthGuard

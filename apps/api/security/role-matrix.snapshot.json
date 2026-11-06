@@ -554,6 +554,7 @@
   "GET /pos/checkout/tickets/{ticketId}/rewards": "AAAADRRRRRRRRRRRR",
   "GET /pos/checkout/tickets/{ticketId}/signature": "AAAADRRRRRRRRRRRR",
   "GET /pos/checkout/tickets/{ticketId}/technician-split": "AAAADRRRRRRRRRRRR",
+  "GET /pos/checkout/tickets/{ticketId}/tip-selection": "AAAADRRRRRRRRRRRR",
   "GET /pos/checkout/tickets/{ticketId}/unsettled-tenders": "AAAADRRRRRRRRRRRR",
   "GET /pos/churn-watch/customers": "AAAADRRRRRRRRRRRR",
   "GET /pos/churn-watch/customers/{id}": "AAAADRRRRRRRRRRRR",

@@ -84,5 +84,5 @@ cash/payroll, security, test results, external dependencies, readiness, next ste
 1. ~~Front desk Pay with an unconfirmed DRAFT~~ — built Nov 5 (row 34). Found on the way: the POS checkout API's own error
    class dropped the server's code, so `e.code` branches on that screen (incl. the CHECKOUT_ALREADY_IN_PROGRESS refresh)
    never fired — fixed (`ApiError.code`).
-2. POS checkout screen: show the per-technician tips live (the display already emits `customerDisplayTipSelected`).
+2. ~~POS checkout screen: show the per-technician tips live~~ — built Nov 5: `GET /pos/checkout/tickets/:id/tip-selection` (state, customer or staff, each technician's tip, stale when performers changed; this salon only) shown in the Quick Tip column, refreshed with the ticket and every checkout push; EN/VI. `technician-tips.pgtest` +1, `POSCheckoutScreen.tips-on-behalf.test` +1.
 3. Verify the Clover terminal's own tip prompt is OFF for display-tipped checkouts (BLOCKED_EXTERNAL).
