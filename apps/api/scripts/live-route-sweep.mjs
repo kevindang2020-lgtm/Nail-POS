@@ -306,6 +306,7 @@ const BY_DESIGN = [
   [/DISABLED|not active for this salon|community_disabled/, 'feature switched off for this salon (feature / package gate)'],
   [/SUPPORT_SESSION_REQUIRED/, 'Super Admin salon detail needs an open support session (by design)'],
   [/STEP_UP_REQUIRED/, 'step-up re-authentication required (by design)'],
+  [/"code":"ENDPOINT_RETIRED"/, 'a retired route answers 410 with the routes that replaced it (by design, Nov 6 2026)'],
   [/OPERATION_NOT_READY/, 'the seeded export has not finished — 409 is the contract'],
   [/INSUFFICIENT_HISTORY/, 'forecast needs 14 days of history — 422 is the contract'],
   [/This profile is private/, 'the seeded social profile is private'],

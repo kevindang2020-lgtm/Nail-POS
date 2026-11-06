@@ -328,7 +328,10 @@ export async function vietnamesePhase(env) {
       await cq.page.getByLabel('Cancel reason').fill('khách đổi ý').catch(() => undefined);
       const drawerOpen = async () => (await cq.page.getByRole('button', { name: /Cancel from Queue|Hủy khỏi hàng chờ/ }).count()) > 0;
       const reqs0 = cq.requests.length;
-      for (const l of ['vi', 'en', 'vi', 'en']) { await cq.page.getByTestId('language-switch').click(); await cq.page.getByTestId(`language-option-${l}`).click(); await sleep(400); }
+      // the Manage view is a MODAL (aria-modal; its backdrop covers the topbar, and a click outside closes it) — a person
+      // cannot reach the switch while it is open. What §107 protects is the open visit and the half-typed reason when the
+      // language changes under them, so the clicks are delivered to the switch itself, not through the backdrop (Nov 6 2026)
+      for (const l of ['vi', 'en', 'vi', 'en']) { await cq.page.getByTestId('language-switch').dispatchEvent('click'); await cq.page.getByTestId(`language-option-${l}`).dispatchEvent('click'); await sleep(400); }
       const after = await rows();
       const reasonKept = await cq.page.getByLabel(/Cancel reason|Lý do hủy/).inputValue().catch(() => null);
       V.queueSwitch = { open: await drawerOpen(), sameOrder: JSON.stringify(after.slice(0, 10)) === JSON.stringify(before.slice(0, 10)), reasonKept, requests: cq.requests.slice(reqs0).filter((r) => !r.url.includes('/pos/me/language')).map((r) => r.url.replace(/^https?:\/\/[^/]+/, '').split('?')[0]).slice(0, 8) };

@@ -2348,6 +2348,9 @@ button.ch-dif{cursor:pointer}button.ch-dif:focus-visible{outline:2px solid var(-
 .tq-table{font-size:13px}.tq-table td,.tq-table th{white-space:nowrap}.tq-table td .fk-li-s{display:block;white-space:normal}
 .tq-who{display:inline-flex;align-items:center;gap:8px;border:none;background:none;font:inherit;cursor:pointer;min-height:44px;padding:0;text-align:left;color:inherit}
 span.tq-who{cursor:default}
+/* shrinks with its cell (Nov 6 2026): in a fixed-layout table the avatar + name button ran past a narrow name column — the name
+   ellipsizes, the full name is the row's own title / the profile it opens */
+.tq-who{max-width:100%;min-width:0}.tq-who>b{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .tq-pager{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px;font-size:13px}.tq-pager-b{margin-left:auto;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .tq-pager .fk-btn{min-height:44px}
 .tq-ins .fk-li{height:auto;min-height:44px;align-items:flex-start;padding:6px 0}.tq-ins .fk-li.warn .fk-li-t{color:#7A4A0E}.tq-ins .fk-li-t .fk-li-s{display:block;font-weight:400}
