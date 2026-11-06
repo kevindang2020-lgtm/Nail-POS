@@ -693,6 +693,7 @@ export class OwnerService {
     const b = await this.ensureBranch(ctx, input.branchId ?? undefined);
     const exp = await this.repo.createExpense(ctx, { ...input, branchId: b });
     await this.repo.writeAudit(ctx, { action: 'expense_create', entityType: 'expense', entityId: exp.id, branchId: b, metadata: { amountCents: exp.amountCents, category: exp.category } });
+    this.expenseChanged(ctx, exp.id, 'created', b);
     return exp;
   }
 
@@ -707,6 +708,7 @@ export class OwnerService {
     const updated = await this.repo.updateExpense(ctx, id, patch);
     if (!updated) throw new OwnerError('not_found', 'Expense not found.');
     await this.repo.writeAudit(ctx, { action: 'expense_update', entityType: 'expense', entityId: id, branchId: updated.branchId });
+    this.expenseChanged(ctx, id, 'updated', updated.branchId);
     return updated;
   }
 
@@ -718,7 +720,18 @@ export class OwnerService {
     if (restricted !== null && exp.branchId !== restricted) throw new OwnerError('forbidden', 'You can only manage your branch’s expenses.');
     const deleted = await this.repo.deleteExpense(ctx, id);
     await this.repo.writeAudit(ctx, { action: 'expense_delete', entityType: 'expense', entityId: id, branchId: exp.branchId });
+    if (deleted) this.expenseChanged(ctx, id, 'deleted', exp.branchId);
     return { id, deleted };
+  }
+
+  /** Nov 5 2026: `expense_updated` (realtime registry: the expenses, finance-reports and dashboard screens) had no
+   *  producer, so an open Expenses or Finance screen never refreshed after a write. The repository writes expense.changed in
+   *  the write's transaction and the realtime projection broadcasts it; this direct push is only the fallback when the
+   *  publisher is off. Ids only — no amounts on the wire. */
+  private expenseChanged(ctx: OwnerContext, expenseId: string, action: 'created' | 'updated' | 'deleted', branchId: string | null | undefined): void {
+    if (!this.repo.emitsDomainEvents?.()) {   // §343: else the projection delivers expense.changed → expense_updated
+      try { this.rt?.toOwner(ctx.tenantId, EVENTS.expenseUpdated, { expenseId, action, branchId: branchId ?? null }); } catch { /* best-effort: the screen still reconciles */ }
+    }
   }
 
   // ---- Ticket Oversight (read-only, tenant + owner-branch scoped) ----

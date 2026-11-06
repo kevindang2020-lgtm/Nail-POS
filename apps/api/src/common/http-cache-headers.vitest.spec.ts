@@ -30,9 +30,15 @@ describe('HTTP caching headers on public GETs (Phase 2.3)', () => {
 
   it('public tech discovery reads are cacheable', () => {
     expect(cacheControl(CustomerTechController.prototype, 'nearby')).toContain('public');
-    expect(cacheControl(CustomerTechController.prototype, 'profile')).toContain('public');
     expect(cacheControl(CustomerTechController.prototype, 'salonTechs')).toContain('public');
     expect(cacheControl(CustomerTechController.prototype, 'serviceTechs')).toContain('public');
+  });
+
+  // Nov 5 2026: the profile is VIEWER-SPECIFIC — a customer who has booked this tech sees the `booked_only` links — so
+  // it must never sit in a shared cache (it would hand those links to the next viewer). no-store is the correct header.
+  it('the tech profile (viewer-specific: booked_only links) is never publicly cached', () => {
+    expect(cacheControl(CustomerTechController.prototype, 'profile')).not.toContain('public');
+    expect(cacheControl(CustomerTechController.prototype, 'profile')).toContain('no-store');
   });
 
   it('authenticated tech routes are NOT publicly cacheable (no per-user data leak into caches)', () => {

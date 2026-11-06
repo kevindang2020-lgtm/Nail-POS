@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { clearNativeToken } from './native-auth';
+import { clearFaceId } from './faceid';
 import { signalSignedOut } from '@aipowersalon/mobile-sdk';
 import { registerPushToken, unregisterPushToken } from '../lib/push';
 import { authApi, type Principal } from '../api/authApi';
@@ -53,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // leave it in the Keychain it is resent on every request forever, and Face ID would keep unlocking a
       // credential the server has already rejected. Wipe it, then show the sign-in screen.
       void clearNativeToken();
+      void clearFaceId();   // the device credential dies with the session (packages/mobile-sdk faceid.ts)
       setPrincipal(null);
     };
     window.addEventListener('aps:unauthorized', onUnauthorized);
@@ -63,6 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await unregisterPushToken().catch(() => {});
     try { await authApi.logout(); } catch { /* ignore */ }
     await clearNativeToken();
+    await clearFaceId();
     signalSignedOut();   // closes the live stream: a signed-out phone keeps no channel to the salon
     setPrincipal(null);
   };

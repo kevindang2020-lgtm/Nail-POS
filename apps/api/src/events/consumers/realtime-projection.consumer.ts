@@ -273,6 +273,7 @@ const MAP: Partial<Record<string, (e: DomainEvent<any>) => Client | Client[]>> =
   [DOMAIN_EVENTS.TECH_OFFER_EXPIRED]:            (e) => [{ event: EVENTS.queueUpdated, payload: { reason: 'offer_expired', techQueueTicketId: e.aggregateId } },
     ...(e.payload?.technicianId ? [{ event: EVENTS.queueUpdated, payload: { reason: 'offer_expired', techQueueTicketId: e.aggregateId }, scope: 'technician' as const, technicianId: String(e.payload.technicianId) }] : [])],
   // owner alerts and payroll periods — the owner app's room, and (payroll) every technician on the period in their own room
+  [DOMAIN_EVENTS.EXPENSE_CHANGED]:               (e) => ({ event: EVENTS.expenseUpdated, payload: { expenseId: e.aggregateId, action: e.payload?.action ?? null, branchId: e.payload?.branchId ?? null }, scope: 'owner' }),   // Nov 5 2026
   [DOMAIN_EVENTS.OWNER_ALERT_STATUS_CHANGED]:    (e) => ({ event: EVENTS.ownerAlertUpdated, payload: { alertId: e.aggregateId, status: e.payload?.status ?? null }, scope: 'owner' }),
   [DOMAIN_EVENTS.PAYROLL_PERIOD_FINALIZED]:      (e) => payrollClients(e, 'payroll_approved'),
   [DOMAIN_EVENTS.PAYROLL_PERIOD_PAID]:           (e) => payrollClients(e, 'payroll_locked'),

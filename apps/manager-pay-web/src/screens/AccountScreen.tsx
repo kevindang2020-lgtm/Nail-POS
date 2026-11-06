@@ -4,7 +4,7 @@ import { clearNativeToken } from '../auth/native-auth';
 import { signalSignedOut } from '@aipowersalon/mobile-sdk';
 import { unregisterPushToken } from '../lib/push';
 import { mobileCheckoutApi, type ReadinessReport } from '../api/mobileCheckoutApi';
-import { faceIdMode, enrollFaceId, disableFaceId, isFaceIdEnrolled } from '../auth/faceid';
+import { faceIdMode, enrollFaceId, disableFaceId, isFaceIdEnrolled, clearFaceId } from '../auth/faceid';
 import { titleCase } from '../util/format';
 import { SESSION_ID, DEVICE_ID } from '../util/session';
 
@@ -111,6 +111,7 @@ export function AccountScreen() {
     await unregisterPushToken();
     try { await authApi.logout(); } catch { /* best-effort */ }
     await clearNativeToken();
+    await clearFaceId();
     signalSignedOut();   // closes the live checkout stream
     setPrincipal(null);
     window.dispatchEvent(new CustomEvent('aps:unauthorized'));

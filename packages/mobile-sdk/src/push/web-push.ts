@@ -223,7 +223,10 @@ export function useWebPush(o: WebPushOptions): void {
             return;
           }
 
-          const swReg = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+          // Nov 5 2026: the ONE CSP-safe worker (packages/web-push/src/sw.js, emitted as /aps-push-sw.js by
+          // tooling/vite/web-push-sw.mjs). The old /firebase-messaging-sw.js importScripts'd Firebase from gstatic,
+          // which the apps' `script-src 'self'` policy blocks, and tech/customer did not ship it at all.
+          const swReg = await navigator.serviceWorker.register('/aps-push-sw.js', { scope: '/aps-push/' });
 
           const currentToken = await getToken(messaging, {
             vapidKey: VAPID_KEY,
@@ -262,8 +265,24 @@ export function useWebPush(o: WebPushOptions): void {
         }
       });
 
+      // The worker posts foreground pushes as { type: 'aps-push' } and notification taps as { type: 'aps-push-tap' }
+      // (it is plain Web Push, so Firebase's onMessage never sees them).
+      const onSwMessage = (e: MessageEvent) => {
+        const m = e?.data as { type?: string; title?: string; body?: string; data?: Record<string, string> } | null;
+        if (!m || typeof m !== 'object') return;
+        if (m.type === 'aps-push-tap') { if (m.data) tap.current?.(m.data); return; }
+        if (m.type !== 'aps-push') return;
+        const title = String(m.title || m.data?.title || 'New Notification').trim();
+        const body = String(m.body || m.data?.body || '').trim();
+        const ref = m.data?.reference || m.data?.appointmentId || m.data?.ticketId || m.data?.queueItemId;
+        if (isDuplicate(ref ? `${ref}:::${title}` : `${title}:::${body}`, 10000)) return;
+        window.dispatchEvent(new CustomEvent('aps:notification', { detail: { notification: { title, body }, data: m.data || {} } }));
+      };
+      navigator.serviceWorker.addEventListener('message', onSwMessage);
+
       return () => {
         unsubscribe();
+        navigator.serviceWorker.removeEventListener('message', onSwMessage);
       };
     }
   }, [tenantId, userType, userId, appId]);

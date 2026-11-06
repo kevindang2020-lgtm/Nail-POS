@@ -72,7 +72,7 @@ describe('prevention and detection cover the SAME relationships', () => {
     expect(trg).toEqual(INVARIANTS.map((i) => `trg_tc_${i.id}`).sort());
   });
   it('each trigger names the right parent and column (the migration was generated from INVARIANTS, not typed)', () => {
-    const sql = ['450_tenant_consistency_triggers.sql', '539_versions_consistency_ids_settlement.sql', '601_turn_unit_rules.sql', '602_technician_turn_state_and_events.sql', '638_payment_merchant_accounts_and_terminal_registry.sql', '646_technician_employment_history_and_profile_policy.sql', '660_mobile_pay_intent_surface_and_device_trust.sql'].map((f) => readFileSync(`${MIGRATIONS_DIR}/${f}`, 'utf8')).join('\n').replace(/\s+/g, ' ');   // whitespace-insensitive: 601/602 wrap the clause
+    const sql = ['450_tenant_consistency_triggers.sql', '539_versions_consistency_ids_settlement.sql', '601_turn_unit_rules.sql', '602_technician_turn_state_and_events.sql', '638_payment_merchant_accounts_and_terminal_registry.sql', '646_technician_employment_history_and_profile_policy.sql', '660_mobile_pay_intent_surface_and_device_trust.sql', '674_platform_pos_announcements.sql'].map((f) => readFileSync(`${MIGRATIONS_DIR}/${f}`, 'utf8')).join('\n').replace(/\s+/g, ' ');   // whitespace-insensitive: 601/602 wrap the clause
     for (const i of INVARIANTS) expect(sql).toContain(`ON ${i.child} FOR EACH ROW EXECUTE FUNCTION enforce_tenant_consistency('${i.parent}', '${i.column}')`);
   });
 });

@@ -4,7 +4,8 @@ import { AccountScreen } from './AccountScreen';
 
 vi.mock('../api/authApi', () => ({ authApi: { me: vi.fn(), logout: vi.fn() } }));
 vi.mock('../api/mobileCheckoutApi', () => ({ mobileCheckoutApi: { readiness: vi.fn(), myDevices: vi.fn(), approveDevice: vi.fn(), revokeDevice: vi.fn() } }));
-vi.mock('../auth/faceid', () => ({ faceIdMode: async () => 'none', enrollFaceId: vi.fn(), disableFaceId: vi.fn() }));
+vi.mock('../auth/faceid', () => ({ faceIdMode: async () => 'none', enrollFaceId: vi.fn(), disableFaceId: vi.fn(), isFaceIdEnrolled: async () => false, clearFaceId: vi.fn(async () => undefined) }));
+import { clearFaceId } from '../auth/faceid';
 import { authApi } from '../api/authApi';
 import { mobileCheckoutApi } from '../api/mobileCheckoutApi';
 
@@ -33,6 +34,7 @@ describe('AccountScreen', () => {
     fireEvent.click(await screen.findByText('Sign out'));
     await waitFor(() => expect(authApi.logout).toHaveBeenCalled());
     expect(await screen.findByText('Not signed in')).toBeInTheDocument();
+    expect(clearFaceId).toHaveBeenCalled();   // Nov 5 2026: sign-out also removes the Face ID device credential
   });
 
   it('shows a not-signed-in state when there is no principal', async () => {

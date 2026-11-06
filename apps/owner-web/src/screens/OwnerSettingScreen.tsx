@@ -478,6 +478,7 @@ import {
   enrollFaceId,
   faceIdMode,
   disableFaceId,
+  isFaceIdEnrolled,
 } from '../auth/faceid';
 export function OwnerSettingScreen() {
   const { back, openNotifications } = useOwnerNav();
@@ -554,7 +555,6 @@ export function OwnerSettingScreen() {
     try {
       await disableFaceId();
 
-      sessionStorage.removeItem('aps_bio_login_success');
       localStorage.setItem('owner_faceid_enabled', 'false');
 
       setIsFaceIdEnabled(false);
@@ -589,12 +589,8 @@ export function OwnerSettingScreen() {
       const supported = mode !== 'none';
       setFaceIdSupported(supported);
 
-      if (supported) {
-        const enrolled =
-          sessionStorage.getItem('aps_bio_login_success') === 'true';
-
-        setIsFaceIdEnabled(enrolled);
-      }
+      // Nov 5 2026: the SDK's enrolment state, not the never-set aps_bio_login_success flag (bug 14)
+      if (supported) void isFaceIdEnrolled().then((enrolled) => { if (alive) setIsFaceIdEnabled(enrolled); }).catch(() => undefined);
     });
 
     return () => {

@@ -236,6 +236,9 @@ export const DOMAIN_EVENTS = {
   // so NOT a platform.* name), payload = ids + version + the branch ids it targets; projected to platform_announcement_updated
   ANNOUNCEMENT_PUBLISHED: 'announcement.published',
   ANNOUNCEMENT_CHANGED: 'announcement.changed',
+  // Nov 5 2026: an operating expense was recorded, edited or deleted (owner/manager). Payload = ids + action only, never
+  // the amount; projected to expense_updated for the Expenses, Finance and Dashboard screens.
+  EXPENSE_CHANGED: 'expense.changed',
 } as const;
 
 export type DomainEventType = typeof DOMAIN_EVENTS[keyof typeof DOMAIN_EVENTS];

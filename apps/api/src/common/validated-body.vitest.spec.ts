@@ -42,7 +42,7 @@ describe('ValidatedBody over HTTP (the standard envelope)', () => {
     expect(JSON.stringify(r.body)).not.toContain('4111111111111111');
   });
   it('a dangerous field (status on a money row, tenantId anywhere undeclared) is refused, not dropped', async () => {
-    expect((await post('/v/refund', { ticketId: T, amountCents: 1, status: 'REFUNDED' })).body.error.details.fields).toEqual([{ path: 'status', message: 'may not be set by the client' }]);
+    expect((await post('/v/refund', { ticketId: T, amountCents: 1, status: 'REFUNDED' })).body.error.details.fields).toEqual([{ path: 'status', message: 'may not be set by the client', rule: 'NOT_ALLOWED' }]);   // `rule`: the machine-readable reason (request-schema.ts)
     expect((await post('/v/refund', { ticketId: T, amountCents: 1, tenantId: T })).status).toBe(400);
   });
 });

@@ -109,11 +109,15 @@ export const customerApi = {
   // The booking is REFUSED with a 428 until the phone behind it is proven. These two close that loop.
   // `bookingSessionId` is SERVER-issued (it arrives in the 428 payload) — never generated here: it is what binds
   // the verification to ONE booking attempt, and a client-chosen one could be pointed at somebody else's.
-  sendBookingVerification: (b: { bookingSessionId?: string; phone: string; channel?: string; captchaToken?: string }) =>
-    api.post<{ status: string; bookingSessionId: string; maskedPhone: string; message: string }>('/customer/booking/verification/send', { channel: 'customer_app', ...b }),
+  // Nov 5 2026: the server takes the phone from the customer's own record and REJECTS a `phone` key in the body
+  // (x-forbidden → 400 "may not be set by the client", even when empty). These used to send it, so every code
+  // send/check from the app failed. `phone` stays in the signature for callers; it is never sent.
+  sendBookingVerification: (b: { bookingSessionId?: string; phone?: string; channel?: string; captchaToken?: string }) =>
+    api.post<{ status: string; bookingSessionId: string; maskedPhone: string; message: string }>('/customer/booking/verification/send',
+      { bookingSessionId: b.bookingSessionId, ...(b.captchaToken ? { captchaToken: b.captchaToken } : {}) }),
 
-  checkBookingVerification: (b: { bookingSessionId: string; phone: string; code: string }) =>
-    api.post<{ status: string; message: string }>('/customer/booking/verification/check', b),
+  checkBookingVerification: (b: { bookingSessionId: string; phone?: string; code: string }) =>
+    api.post<{ status: string; message: string }>('/customer/booking/verification/check', { bookingSessionId: b.bookingSessionId, code: b.code }),
   createBooking: (body: { salonId?: string; serviceId: string; serviceIds?: string[]; technicianId: string; date: string; startTime: string; inspirationNote?: string; inspirationPhotoId?: string; dealId?: string; dealIdempotencyKey?: string }) => api.post<BookingResult>('/customer/booking', body),
   availability: (serviceId: string, date: string, technicianId?: string, salonId?: string) => api.get<AvailabilityResult>('/customer/booking/availability', { serviceId, date, ...(technicianId ? { technicianId } : {}), ...(salonId ? { salonId } : {}) }),
   queue: () => api.get<CustomerQueueState>('/customer/queue'),
@@ -168,8 +172,10 @@ export const customerApi = {
     api.post<{ state: string; activated: boolean; message: string }>(`/customer/profile/phone/${encodeURIComponent(sessionId)}/verify`, { sessionId, phone, code }),
   phoneChangeCancel: (sessionId: string) =>
     api.post(`/customer/profile/phone/${encodeURIComponent(sessionId)}/cancel`, { sessionId }),
-  requestPhoneCode: () => api.post<PhoneVerifyResult>('/customer/verify/phone/request', {}),
-  confirmPhoneCode: (code: string) => api.post<PhoneVerifyResult>('/customer/verify/phone/confirm', { code }),
+  // Nov 5 2026: /customer/verify/phone/* was removed server-side (BUILD_PLAN Phase 4 moved it to the one phone service);
+  // these still called it, so "Verify my number" on Edit Profile always 404'd. Same request/response shape.
+  requestPhoneCode: () => api.post<PhoneVerifyResult>('/customer/profile/phone/verify-current/request', {}),
+  confirmPhoneCode: (code: string) => api.post<PhoneVerifyResult>('/customer/profile/phone/verify-current/confirm', { code }),
   requestAccountDeletion: (reason?: string, contactEmail?: string) => api.post<AccountDeletionResult>('/customer/me/delete-account-request', { ...(reason ? { reason } : {}), ...(contactEmail ? { contactEmail } : {}) }),
   privacyExport: () => api.get<unknown>('/customer/me/privacy-export'),
 };

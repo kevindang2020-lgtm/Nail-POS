@@ -40,8 +40,12 @@ describe('every native-shipped app can authenticate on a phone', () => {
     it(`${app}: has the secure-token module`, () => {
       expect(existsSync(nativeAuth), 'packages/mobile-sdk/src/native-auth.ts is missing').toBe(true);
       const main = code(join(APPS_ROOT, app, 'src/main.tsx'));
+      // Nov 5 2026: the wiring may sit in src/api/client.ts — it runs at module load, which every app reaches through its
+      // import graph before main.tsx's body runs (ES imports evaluate first). Either place is "at start-up".
+      const client = code(join(APPS_ROOT, app, 'src/api/client.ts'));
+      const wired = (f: string) => /from '@aipowersalon\/mobile-sdk'/.test(f) && /configureMobileSdk\(/.test(f);
       expect(
-        /from '@aipowersalon\/mobile-sdk'/.test(main) && /configureMobileSdk\(/.test(main),
+        wired(main) || wired(client),
         `${app} does not wire @aipowersalon/mobile-sdk at start-up. On a native build its session cookie is never sent ` +
         `(origin is capacitor://localhost → cross-site), so it can NEVER authenticate on a phone — while its ` +
         `browser tests all pass.`,

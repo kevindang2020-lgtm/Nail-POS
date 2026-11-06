@@ -8,6 +8,7 @@ import { mobileCheckoutApi } from './api/mobileCheckoutApi';
 import { DEVICE_ID } from './util/session';
 import { isTapToPayAvailable } from './native/tapToPay';
 import { registerPushToken } from './lib/push';
+import { clearFaceId } from './auth/faceid';
 import { CheckoutQueueScreen } from './screens/CheckoutQueueScreen';
 import { TicketScreen } from './screens/TicketScreen';
 import { TapToPayScreen } from './screens/TapToPayScreen';
@@ -76,7 +77,8 @@ export function App() {
   // drop the principal so the login screen renders instead of leaving the manager stuck in a shell where every
   // request 401s. (This app holds its principal here rather than in an AuthContext, so the listener lives here.)
   useEffect(() => {
-    const onUnauthorized = () => setPrincipal(null);
+    // the device credential dies with the session (sign-out dispatches this event too)
+    const onUnauthorized = () => { void clearFaceId(); setPrincipal(null); };
     window.addEventListener('aps:unauthorized', onUnauthorized);
     return () => window.removeEventListener('aps:unauthorized', onUnauthorized);
   }, []);

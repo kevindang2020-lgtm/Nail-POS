@@ -6,7 +6,7 @@ import { techApi } from '../api/techApi';
 import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { useTechNav } from '../shell/nav';
-import { enrollFaceId, faceIdMode, disableFaceId } from '../auth/faceid';
+import { enrollFaceId, faceIdMode, disableFaceId, isFaceIdEnrolled } from '../auth/faceid';
 
 const APP_VERSION = '0.1.0';
 const CAP_LABELS: [string, string][] = [
@@ -39,9 +39,8 @@ export function SettingsScreen() {
     techApi.settings().then(setCaps).catch((e: any) => setError(e?.message || 'Could not load settings.')); 
     faceIdMode().then(m => {
       setFaceIdSupported(m !== 'none');
-      if (sessionStorage.getItem('aps_bio_login_success') === 'true') {
-        setIsFaceIdEnabled(true);
-      }
+      // Nov 5 2026: the SDK's enrolment state, not the never-set aps_bio_login_success flag (bug 14)
+      if (m !== 'none') void isFaceIdEnrolled().then(setIsFaceIdEnabled).catch(() => setIsFaceIdEnabled(false));
     });
   }, []);
 
@@ -120,7 +119,6 @@ export function SettingsScreen() {
                     if (isFaceIdEnabled) {
                       try {
                         await disableFaceId();
-                        sessionStorage.removeItem('aps_bio_login_success');
                         localStorage.setItem('tech_faceid_enabled', 'false');
                         setIsFaceIdEnabled(false);
                         setIsAutoStartupEnabled(false);

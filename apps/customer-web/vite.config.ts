@@ -1,4 +1,6 @@
 import { fileURLToPath, URL } from 'node:url';
+import { webPushServiceWorker } from '../../tooling/vite/web-push-sw.mjs';
+import { appVersion } from '../../tooling/vite/app-version.mjs';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 
@@ -24,7 +26,7 @@ export default defineConfig(({ mode }) => {
       '@aipowersalon/realtime-client': fileURLToPath(new URL('../../packages/realtime-client/src', import.meta.url)),
     },
   },
-  plugins: [react()],
+  plugins: [webPushServiceWorker(), appVersion(), react()],
   server: { port: 5176, proxy: { '/api/v1': { target: apiTarget, changeOrigin: true }, '/customer': { target: apiTarget, changeOrigin: true }, '/auth': { target: apiTarget, changeOrigin: true } } },
   build: { outDir: 'dist', sourcemap: false },
 

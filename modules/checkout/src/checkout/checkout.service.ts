@@ -198,39 +198,9 @@ export class CheckoutService {
     try { await this.repo.activatePendingGiftCardReloads(ctx, ticketId); }
     catch (e) { this.postPaymentFailed('gift_card_reload_activation', ctx, ticketId, e); }
 
-    // Direct push notification dispatch for payment completion (instant delivery)
-    if (this.push) {
-      try {
-        const tk = await this.repo.ticket(ctx, ticketId);
-        const label = tk?.ticketNumber ? `#${tk.ticketNumber}` : `#${ticketId.slice(0, 8)}`;
-        // 1. Owner & Manager push
-        if (this.repo.activeOwnerUserIds) {
-          const ownerIds = await this.repo.activeOwnerUserIds(ctx);
-          for (const oid of ownerIds) {
-            await this.push.dispatchToUser(ctx.tenantId, oid, {
-              title: 'Payment received',
-              body: `Payment received on ticket ${label}.`,
-              data: { kind: 'payment_received', ticketId },
-              reference: `payment_received:${ticketId}:${oid}`,
-              category: 'PAYMENT_ALERT',
-            });
-          }
-        }
-        // 2. Customer payment push
-        if (this.repo.customerUserIdForTicket) {
-          const uid = await this.repo.customerUserIdForTicket(ctx, ticketId);
-          if (uid) {
-            await this.push.dispatchToUser(ctx.tenantId, uid, {
-              title: 'Payment completed',
-              body: `Your payment was processed on ticket ${label}.`,
-              data: { kind: 'receipt', ticketId },
-              reference: `payment_receipt:${ticketId}`,
-              category: 'RECEIPT',
-            });
-          }
-        }
-      } catch { /* best-effort */ }
-    }
+    // Nov 5 2026: the "Payment received" (owner/manager) and "Payment completed" (customer) pushes are sent ONCE, by the
+    // outbox consumer (apps/api/src/events/consumers/push-notification.consumer.ts, on checkout.completed — written in
+    // the same transaction as the paid status by every path that pays a ticket). A copy here sent each of them twice.
   }
 
   /**

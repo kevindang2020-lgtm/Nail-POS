@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import { enrollFaceId, faceIdMode, canEnrollFaceId, disableFaceId } from '../auth/faceid';
+import { enrollFaceId, faceIdMode, canEnrollFaceId, disableFaceId, isFaceIdEnrolled } from '../auth/faceid';
 
 // ProfileSecurityScreen — Profile → Security for the Customer App.
 //
@@ -43,7 +43,6 @@ export function ProfileSecurityScreen() {
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState<string | null>(null);
   const [faceIdSupported, setFaceIdSupported] = useState(false);
-  const [faceIdDebug, setFaceIdDebug] = useState('');
   const [enrolling, setEnrolling] = useState(false);
   const [bioAlreadyEnrolled, setBioAlreadyEnrolled] = useState(false);
 
@@ -61,18 +60,11 @@ export function ProfileSecurityScreen() {
   // Can Face ID be turned on now (supported, enabled by the server, signed in)? The server still checks for a recent password.
   const [canEnroll, setCanEnroll] = useState(false);
   useEffect(() => { void canEnrollFaceId().then(setCanEnroll).catch(() => setCanEnroll(false)); }, []);
-  useEffect(() => { 
-    faceIdMode().then(m => {
-      setFaceIdSupported(m !== 'none');
-      import('@aipowersalon/mobile-sdk').then(mod => mod.faceIdState()).then(s => {
-        setFaceIdDebug(`mode=${m}, state=${JSON.stringify(s)}`);
-      });
-      const bioSuccess = typeof sessionStorage !== 'undefined' && sessionStorage ? sessionStorage.getItem('aps_bio_login_success') === 'true' : false;
-      const bioEnrolled = typeof localStorage !== 'undefined' && localStorage ? localStorage.getItem('aps_bio_enrolled') === 'true' : false;
-      if (bioSuccess || bioEnrolled) {
-        setBioAlreadyEnrolled(true);
-      }
-    });
+  // Nov 5 2026: enrolment comes from the SDK (the device credential / WebAuthn key), not the localStorage and
+  // sessionStorage flags this screen used to read — `aps_bio_login_success` was never set by anything (bug 14).
+  useEffect(() => {
+    void faceIdMode().then((m) => setFaceIdSupported(m !== 'none')).catch(() => setFaceIdSupported(false));
+    void isFaceIdEnrolled().then(setBioAlreadyEnrolled).catch(() => setBioAlreadyEnrolled(false));
   }, []);
 
   const enableFaceId = async () => {
@@ -80,7 +72,6 @@ export function ProfileSecurityScreen() {
     setErr(null); setOk(null); setEnrolling(true);
     try {
       await enrollFaceId();
-      localStorage.setItem('aps_bio_enrolled', 'true');
       localStorage.setItem('customer_faceid_enabled', 'true');
       setBioAlreadyEnrolled(true);
       setOk('Face ID is enabled. You can use it to sign in next time.');
@@ -266,8 +257,6 @@ export function ProfileSecurityScreen() {
                 </div>
                 <button type="button" onClick={async () => {
                   try { await disableFaceId(); } catch { /* ignore */ }
-                  sessionStorage.removeItem('aps_bio_login_success');
-                  localStorage.removeItem('aps_bio_enrolled');
                   localStorage.setItem('customer_faceid_enabled', 'false');
                   setBioAlreadyEnrolled(false);
                 }} style={{ background: 'none', border: 'none', color: '#8F3226', fontSize: 13, fontWeight: 500, cursor: 'pointer', padding: 4 }}>

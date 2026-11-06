@@ -58,4 +58,6 @@ export class LanguageController {
   @RequirePermission('self.profile.edit') @Put('owner/me/language') async ownerPut(@Req() r: any, @Body(ValidatedBody(SET_LANGUAGE_BODY)) b: SetUserLanguageBody): Promise<UserLanguagePreference> { return this.svc.set(own(r), lang(b)); }
   @RequirePermission('self.profile.view') @Get('tech/me/locale') async techGet(@Req() r: any): Promise<UserLocaleContext> { return this.svc.locale({ userId: own(r), tenantId: r?.ctx?.tenantId, branchId: r?.ctx?.branchId }); }
   @RequirePermission('self.profile.view') @Get('pos/me/locale') async posGet(@Req() r: any): Promise<UserLocaleContext> { return this.svc.locale({ userId: own(r), tenantId: r?.ctx?.tenantId, branchId: r?.ctx?.branchId }); }
+  // Nov 5 2026: the POS LanguageSwitch (apps/pos-web/src/shell/LanguageSwitch.tsx) saves here — it called this route and got a 404.
+  @RequirePermission('self.profile.edit') @Put('pos/me/language') async posPut(@Req() r: any, @Body(ValidatedBody(SET_LANGUAGE_BODY)) b: SetUserLanguageBody): Promise<UserLanguagePreference> { return this.svc.set(own(r), lang(b)); }
 }

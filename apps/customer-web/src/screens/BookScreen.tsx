@@ -12,6 +12,7 @@ import {
   type CustomerSalonInfo,
 } from '../api/customerApi';
 import { money2 } from '../lib/appt';
+import { withCaptcha } from '../lib/captcha';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 const ymd = (d: Date) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
@@ -314,7 +315,7 @@ export function BookScreen() {
       if (e?.status === 428 || e?.code === 'phone_verification_required') {
         const d = (e.details || {}) as any;
         try {
-          const sent = await customerApi.sendBookingVerification({ bookingSessionId: d.bookingSessionId, phone: '' });
+          const sent = await withCaptcha((captchaToken) => customerApi.sendBookingVerification({ bookingSessionId: d.bookingSessionId, phone: '', captchaToken }));
           setVerify({ bookingSessionId: sent.bookingSessionId || d.bookingSessionId, maskedPhone: sent.maskedPhone || d.maskedPhone });
         } catch (se: any) {
           setError(se?.message || 'We could not send a verification code. Please call the salon.');

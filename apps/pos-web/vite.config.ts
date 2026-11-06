@@ -1,4 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
+import { webPushServiceWorker } from '../../tooling/vite/web-push-sw.mjs';
+import { appVersion } from '../../tooling/vite/app-version.mjs';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath, URL } from 'node:url';
 import tailwindcss from '@tailwindcss/vite';
@@ -13,7 +15,7 @@ export default defineConfig(({ mode }) => {
   const proxyOpts = { target: apiTarget, changeOrigin: true, bypass: bypassHtml };
 
   return {
-    plugins: [
+    plugins: [webPushServiceWorker(), appVersion(), 
       react(),
       tailwindcss(),
     ],

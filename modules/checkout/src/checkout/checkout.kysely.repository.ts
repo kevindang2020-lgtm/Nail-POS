@@ -507,7 +507,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     // $40,$30,$20,$10,$0). The balance this UPDATE wrote is the only true balance-after for this redemption.
     if (!res) return null;
     const after = res;
-    const led: any = await exec.insertInto('gift_card_transactions').values({ tenant_id: ledgerTenantId, branch_id: crossTenant ? null : (ctx.branchId || null), gift_card_id: id, type: 'redeem', amount_cents: by, balance_after_cents: after ? Number((after as any).balance_cents) : 0, created_by_user_id: ctx.userId, ticket_id: ticketId && isUuidStr(ticketId) ? ticketId : null } as any).returning(['id']).executeTakeFirst();
+    const led: any = await exec.insertInto('gift_card_transactions').values({ tenant_id: ledgerTenantId, branch_id: crossTenant ? null : (ctx.branchId || null), gift_card_id: id, type: 'redeem', amount_cents: by, balance_after_cents: after ? Number((after as any).balance_cents) : 0, created_by_user_id: ctx.userId || null, ticket_id: ticketId && isUuidStr(ticketId) ? ticketId : null } as any).returning(['id']).executeTakeFirst();
     if (crossTenant) {
       const ob = clearingObligation({ issuingTenantId, redeemingTenantId: ctx.tenantId, amountCents: by });
       if (ob.applicable) await exec.insertInto('gift_card_clearing_entries').values({ program_id: programId, gift_card_id: id, redemption_transaction_id: led ? (led as any).id : null, issuing_tenant_id: issuingTenantId, redeeming_tenant_id: ctx.tenantId, amount_cents: ob.amountCents, platform_fee_cents: ob.platformFeeCents, status: 'pending' } as any).execute();
@@ -530,9 +530,9 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     };
     const prior = await findByKey();
     if (prior) return prior;
-    const ins = await this.db.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: null, code: req.code, card_number_hash: req.cardNumber ? hashCardNumber(req.cardNumber) : null, card_number_last4: req.cardNumber ? lastFour(req.cardNumber) : null, initial_balance_cents: req.amountCents, balance_cents: req.amountCents, purchased_cents: req.amountCents, status: 'active', customer_id: req.customerId || null, issued_by_user_id: ctx.userId } as any).returning(['id']).executeTakeFirstOrThrow();
+    const ins = await this.db.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: null, code: req.code, card_number_hash: req.cardNumber ? hashCardNumber(req.cardNumber) : null, card_number_last4: req.cardNumber ? lastFour(req.cardNumber) : null, initial_balance_cents: req.amountCents, balance_cents: req.amountCents, purchased_cents: req.amountCents, status: 'active', customer_id: req.customerId || null, issued_by_user_id: ctx.userId || null } as any).returning(['id']).executeTakeFirstOrThrow();
     try {
-      await this.db.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (ins as any).id, type: 'issue', amount_cents: req.amountCents, balance_after_cents: req.amountCents, created_by_user_id: ctx.userId, idempotency_key: req.idempotencyKey || null } as any).execute();
+      await this.db.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (ins as any).id, type: 'issue', amount_cents: req.amountCents, balance_after_cents: req.amountCents, created_by_user_id: ctx.userId || null, idempotency_key: req.idempotencyKey || null } as any).execute();
     } catch (e) {
       // Concurrent same-key race: another issuance won the ledger idempotency insert. Return the winner; the card row we
       // just inserted carries no ledger entry and never affects a balance (each card's balance is its own).
@@ -546,7 +546,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
   }
   async createPendingGiftCardSale(ctx: CheckoutContext, req: { code: string; amountCents: Money; customerId?: string; ticketId: string; reference: string; cardNumber: string }): Promise<{ code: string; reference: string }> {
     // Pending sale: no stored value and no 'issue' ledger yet. The card is worthless until its ticket is paid.
-    await this.db.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: req.cardNumber ? hashCardNumber(req.cardNumber) : null, card_number_last4: req.cardNumber ? lastFour(req.cardNumber) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId, sale_ticket_id: req.ticketId, reference: req.reference } as any).execute();
+    await this.db.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: req.cardNumber ? hashCardNumber(req.cardNumber) : null, card_number_last4: req.cardNumber ? lastFour(req.cardNumber) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId || null, sale_ticket_id: req.ticketId, reference: req.reference } as any).execute();
     return { code: req.code, reference: req.reference };
   }
 
@@ -559,7 +559,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         .where('tenant_id', '=', ctx.tenantId).where('card_number_hash', '=', hash).where('status', '=', 'available').where(canMoveToSql(GIFT_CARD_STOCK, 'activated') as any).executeTakeFirst();
       if (Number(claim?.numUpdatedRows ?? 0) === 0) return null;
       // Create the pending sale on the pre-printed number (worthless until the ticket is paid, exactly like a digital sale).
-      const ins: any = await trx.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: hash, card_number_last4: lastFour(req.cardNumber), card_pin_hash: req.pin ? hashCardPin(req.code, req.pin) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId, sale_ticket_id: req.ticketId, reference: req.reference } as any).returning(['id']).executeTakeFirstOrThrow();
+      const ins: any = await trx.insertInto('gift_cards').values({ tenant_id: ctx.tenantId, branch_id: (ctx as any).branchId ?? null, code: req.code, card_number_hash: hash, card_number_last4: lastFour(req.cardNumber), card_pin_hash: req.pin ? hashCardPin(req.code, req.pin) : null, initial_balance_cents: req.amountCents, balance_cents: 0, purchased_cents: req.amountCents, status: 'pending_payment', customer_id: req.customerId || null, issued_by_user_id: ctx.userId || null, sale_ticket_id: req.ticketId, reference: req.reference } as any).returning(['id']).executeTakeFirstOrThrow();
       await trx.updateTable('gift_card_stock').set({ gift_card_id: String(ins.id), updated_at: new Date() } as any).where('tenant_id', '=', ctx.tenantId).where('card_number_hash', '=', hash).execute();
       return { code: req.code, reference: req.reference };
     });
@@ -578,7 +578,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         .where('id', '=', c.id).where('tenant_id', '=', ctx.tenantId).where('status', '=', 'pending_payment').where(canMoveToSql(GIFT_CARD, 'active') as any)
         .executeTakeFirst();
       if (Number((upd as any)?.numUpdatedRows ?? 0) > 0) {
-        await this.db.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: c.id, type: 'activate', amount_cents: c.purchased_cents, balance_after_cents: c.purchased_cents, created_by_user_id: ctx.userId, idempotency_key: 'activate:' + c.id } as any).execute().catch(() => undefined);
+        await this.db.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: c.id, type: 'activate', amount_cents: c.purchased_cents, balance_after_cents: c.purchased_cents, created_by_user_id: ctx.userId || null, idempotency_key: 'activate:' + c.id } as any).execute().catch(() => undefined);
         await this.giftCardFact(this.db, ctx, DOMAIN_EVENTS.GIFT_CARD_ISSUED, ctx.tenantId, String(c.id), { giftCardId: String(c.id), amountCents: Number(c.purchased_cents), source: 'sale', ticketId });
         activated++;
       }
@@ -644,12 +644,12 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         card_number_hash: hashCardNumber(newNumber), card_number_last4: lastFour(newNumber),
         initial_balance_cents: bal, balance_cents: bal, purchased_cents: Number(old.purchased_cents || bal),
         status: 'active', customer_id: old.customer_id, program_id: old.program_id, design_id: old.design_id,
-        issued_by_user_id: ctx.userId, replacement_of_card_id: old.id,
+        issued_by_user_id: ctx.userId || null, replacement_of_card_id: old.id,
       } as any).returning(['id']).executeTakeFirstOrThrow();
       const newId = String(ins.id);
       // Move the value: a 'transfer' credit onto the new card and a matching debit off the old (not a new issuance).
-      await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: newId, type: 'transfer', amount_cents: bal, balance_after_cents: bal, created_by_user_id: ctx.userId } as any).execute();
-      await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: old.id, type: 'transfer', amount_cents: -bal, balance_after_cents: 0, created_by_user_id: ctx.userId } as any).execute();
+      await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: newId, type: 'transfer', amount_cents: bal, balance_after_cents: bal, created_by_user_id: ctx.userId || null } as any).execute();
+      await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: old.id, type: 'transfer', amount_cents: -bal, balance_after_cents: 0, created_by_user_id: ctx.userId || null } as any).execute();
       // Retire the original and record the forward lineage.
       // Phase 12 (#27): the original retires through GIFT_CARD, conditional on the status AND balance read — two concurrent
       // replacements of one card used to both mint a replacement carrying the full balance (money twice); the second now
@@ -676,7 +676,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
     const existing = await this.db.selectFrom('gift_card_transactions').select(['id']).where('tenant_id', '=', ctx.tenantId).where('idempotency_key', '=', key).executeTakeFirst().catch(() => undefined);
     if (!existing) {
       await this.db.insertInto('gift_card_transactions')
-        .values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'hold', amount_cents: req.amountCents, balance_after_cents: Number((card as any).balance_cents), ticket_id: req.ticketId, created_by_user_id: ctx.userId, idempotency_key: key } as any)
+        .values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'hold', amount_cents: req.amountCents, balance_after_cents: Number((card as any).balance_cents), ticket_id: req.ticketId, created_by_user_id: ctx.userId || null, idempotency_key: key } as any)
         .execute().catch(() => undefined);
     }
     return { reference: req.reference, amountCents: req.amountCents };
@@ -702,7 +702,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         // refunded card); the row is locked for the read-modify-write of the balance
         assertTransition(GIFT_CARD, String((cur as any).status), 'active');
         const newBal = Number((cur as any).balance_cents) + Number(h.amount_cents);
-        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: h.gift_card_id, type: 'adjust', amount_cents: Number(h.amount_cents), balance_after_cents: newBal, created_by_user_id: ctx.userId, idempotency_key: 'reload:' + h.id } as any).execute();
+        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: h.gift_card_id, type: 'adjust', amount_cents: Number(h.amount_cents), balance_after_cents: newBal, created_by_user_id: ctx.userId || null, idempotency_key: 'reload:' + h.id } as any).execute();
         await trx.updateTable('gift_cards').set({ balance_cents: newBal, status: 'active', updated_at: new Date().toISOString() } as any).where('id', '=', h.gift_card_id).where('tenant_id', '=', ctx.tenantId).where(canMoveToSql(GIFT_CARD, 'active') as any).execute();
         return true;
       }).catch(() => false);
@@ -722,7 +722,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         const up: any = await trx.updateTable('gift_cards').set({ balance_cents: newBal, status: 'active', updated_at: new Date().toISOString() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', (card as any).id)
           .where('status', '=', (card as any).status).where('balance_cents', '=', (card as any).balance_cents).where(canMoveToSql(GIFT_CARD, 'active') as any).executeTakeFirst();
         if (!Number(up?.numUpdatedRows ?? 0)) throw new InvalidStateTransitionError(GIFT_CARD, null, 'active', 'concurrent');
-        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'adjust', amount_cents: amountCents, balance_after_cents: newBal, created_by_user_id: ctx.userId } as any).execute();
+        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'adjust', amount_cents: amountCents, balance_after_cents: newBal, created_by_user_id: ctx.userId || null } as any).execute();
       }
       return (await this.getGiftCard(ctx, code))!;
     });
@@ -738,7 +738,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
         const up: any = await trx.updateTable('gift_cards').set({ balance_cents: 0, status: 'void', updated_at: new Date().toISOString() } as any).where('tenant_id', '=', ctx.tenantId).where('id', '=', (card as any).id)
           .where('status', '=', (card as any).status).where('balance_cents', '=', (card as any).balance_cents).where(canMoveToSql(GIFT_CARD, 'void') as any).executeTakeFirst();
         if (!Number(up?.numUpdatedRows ?? 0)) throw new InvalidStateTransitionError(GIFT_CARD, null, 'void', 'concurrent');
-        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'adjust', amount_cents: -prior, balance_after_cents: 0, created_by_user_id: ctx.userId } as any).execute();
+        await trx.insertInto('gift_card_transactions').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId || null, gift_card_id: (card as any).id, type: 'adjust', amount_cents: -prior, balance_after_cents: 0, created_by_user_id: ctx.userId || null } as any).execute();
       }
       return (await this.getGiftCard(ctx, code))!;
     });
@@ -795,7 +795,7 @@ export class KyselyCheckoutRepository implements CheckoutRepositoryPort {
       if (dup) return mapRow(dup);
     }
     let insErr: unknown;
-    const ins = await exec.insertInto('payments').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId, ticket_id: rec.ticketId, method: rec.method, amount_cents: rec.amountCents, tip_cents: rec.tipCents || 0, surcharge_cents: rec.surchargeCents || 0, tax_cents: 0, discount_cents: 0, status: rec.status, processor_transaction_id: rec.processorTransactionId || null, idempotency_key: rec.idempotencyKey || null, change_due_cents: rec.changeDueCents || 0, created_by_user_id: ctx.userId, gift_card_last4: rec.method === 'gift_card' && typeof rec.giftCardLast4 === 'string' && /^[A-Z0-9]{4}$/.test(rec.giftCardLast4) ? rec.giftCardLast4 : null,
+    const ins = await exec.insertInto('payments').values({ tenant_id: ctx.tenantId, branch_id: ctx.branchId, ticket_id: rec.ticketId, method: rec.method, amount_cents: rec.amountCents, tip_cents: rec.tipCents || 0, surcharge_cents: rec.surchargeCents || 0, tax_cents: 0, discount_cents: 0, status: rec.status, processor_transaction_id: rec.processorTransactionId || null, idempotency_key: rec.idempotencyKey || null, change_due_cents: rec.changeDueCents || 0, created_by_user_id: ctx.userId || null, gift_card_last4: rec.method === 'gift_card' && typeof rec.giftCardLast4 === 'string' && /^[A-Z0-9]{4}$/.test(rec.giftCardLast4) ? rec.giftCardLast4 : null,
       // migration 660 (Tap to Pay mandate §66/§82/§221): surface dimension + device + brand/last4 only — never a PAN
       payment_surface: rec.paymentSurface || null, device_id: rec.deviceId || null, card_brand: typeof rec.cardBrand === 'string' && rec.cardBrand ? rec.cardBrand.slice(0, 32) : null, card_last4: typeof rec.cardLast4 === 'string' && /^[0-9]{4}$/.test(rec.cardLast4) ? rec.cardLast4 : null } as any).returning(['id']).executeTakeFirst().catch((e: unknown) => { insErr = e; return undefined; });
     if (ins) {

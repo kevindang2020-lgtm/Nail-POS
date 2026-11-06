@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';import { fileURLToPath, URL } from 'node:url';
+import { appVersion } from '../../tooling/vite/app-version.mjs';
 import react from '@vitejs/plugin-react';
 // AIPowerSalon Owner & Manager Payment App (Vite + React). Tap-to-Pay backup checkout.
 // Dev proxies /mobile-checkout and /auth to the NestJS backend on :3000.
@@ -24,7 +25,7 @@ export default defineConfig(({ mode }) => {
         '@aipowersalon/realtime-client': fileURLToPath(new URL('../../packages/realtime-client/src', import.meta.url)),
       },
     },
-    plugins: [react()],
+    plugins: [appVersion(), react()],
     server: {
       host: true,
       port: 5181,

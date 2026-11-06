@@ -2991,6 +2991,7 @@ PUT /pos/ai-scheduling-optimizer/service-profiles/{serviceId}  realm=staff  auth
 PUT /pos/ai-scheduling-optimizer/settings  realm=staff  auth=session  domain=ai  perm=ai_scheduling.configure  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/ai-voice-transcription/settings  realm=staff  auth=session  domain=ai  perm=ai_voice_transcription.manage_settings  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/approvals/policies  realm=staff  auth=session  domain=workforce  perm=approvals.manage_policies  step-up  guards=RolePermissionGuard,TenantAuthGuard
+PUT /pos/me/language  realm=staff  auth=session  domain=identity  perm=self.profile.edit
 PUT /pos/queue/items/{queueItemId}/service-assignments  realm=staff  auth=session  domain=booking  perm=pos.queue.assign_technician  guards=RolePermissionGuard,TenantAuthGuard
 PUT /pos/time-clock/break-policy  realm=staff  auth=session  domain=workforce  perm=payroll.manage  guards=RolePermissionGuard,TenantAuthGuard
 PUT /super-admin/ai-scheduling-optimizer/platform-switch  realm=super_admin  auth=session  domain=ai  perm=super_admin.ai.manage  step-up  guards=SuperAdminGuard

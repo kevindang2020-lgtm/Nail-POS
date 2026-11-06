@@ -13,6 +13,7 @@
 // mask, so this component *cannot* leak it even by accident.
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { customerApi } from '../api/customerApi';
+import { withCaptcha } from '../lib/captcha';
 
 const GOLD = 'var(--customer-accent, #A96F22)';
 const LINE = 'var(--customer-line, #E7DBC6)';
@@ -98,7 +99,7 @@ export function PhoneVerificationStep({
   const resend = async () => {
     setBusy(true); setError(null);
     try {
-      await customerApi.sendBookingVerification({ bookingSessionId, phone });
+      await withCaptcha((captchaToken) => customerApi.sendBookingVerification({ bookingSessionId, phone, captchaToken }));
       setCooldown(RESEND_COOLDOWN);
       setDigits(['', '', '', '', '', '']);
       refs.current[0]?.focus();

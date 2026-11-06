@@ -668,12 +668,23 @@ export class KyselyOwnerRepository implements OwnerDataPort {
   // ---- Expenses (operating costs; incurred_on is a salon-local DATE, so windows compare against local date bounds) ----
   private mapExpense(x: any): OwnerExpense { return { id: x.id, branchId: x.branch_id, category: x.category, amountCents: n(x.amount_cents), description: x.description ?? null, vendor: x.vendor ?? null, incurredOn: this.dstr(x.incurred_on), createdAt: new Date(x.created_at).toISOString() }; }
 
+  /** Nov 5 2026: expense.changed rides the same transaction as the write (§343: the projection broadcasts expense_updated). */
+  private expenseTx<T>(fn: (x: Kysely<DB>) => Promise<T>): Promise<T> { return this.outbox ? this.db.transaction().execute((trx) => fn(trx as any)) : fn(this.db); }
+  private async expenseEvent(x: Kysely<DB>, ctx: OwnerContext, expenseId: string, action: 'created' | 'updated' | 'deleted', branchId: string | null): Promise<void> {
+    if (!this.outbox) return;
+    await this.outbox.write(x as any, createDomainEvent({ eventType: DOMAIN_EVENTS.EXPENSE_CHANGED, tenantId: ctx.tenantId, branchId: branchId ?? undefined,
+      aggregateType: 'expense', aggregateId: expenseId, actorId: ctx.userId || undefined, actorType: 'user', payload: { expenseId, action, branchId } }));
+  }
+
   async createExpense(ctx: OwnerContext, e: OwnerExpenseInput): Promise<OwnerExpense> {
-    const row = await this.db.insertInto('expenses').values({
-      tenant_id: ctx.tenantId, branch_id: e.branchId ?? null, category: e.category, amount_cents: e.amountCents,
-      description: e.description ?? null, vendor: e.vendor ?? null, incurred_on: e.incurredOn, created_by: ctx.userId,
-    } as any).returningAll().executeTakeFirstOrThrow();
-    return this.mapExpense(row);
+    return this.expenseTx(async (x) => {
+      const row: any = await x.insertInto('expenses').values({
+        tenant_id: ctx.tenantId, branch_id: e.branchId ?? null, category: e.category, amount_cents: e.amountCents,
+        description: e.description ?? null, vendor: e.vendor ?? null, incurred_on: e.incurredOn, created_by: ctx.userId,
+      } as any).returningAll().executeTakeFirstOrThrow();
+      await this.expenseEvent(x, ctx, String(row.id), 'created', row.branch_id ?? null);
+      return this.mapExpense(row);
+    });
   }
 
   async listExpenses(ctx: OwnerContext, branchId: string | null, r: DateRange, limit = 100): Promise<OwnerExpense[]> {
@@ -697,13 +708,20 @@ export class KyselyOwnerRepository implements OwnerDataPort {
     if (patch.vendor !== undefined) set.vendor = patch.vendor;
     if (patch.incurredOn !== undefined) set.incurred_on = patch.incurredOn;
     if (patch.branchId !== undefined) set.branch_id = patch.branchId;
-    await this.db.updateTable('expenses').set(set).where('id', '=', id).where('tenant_id', '=', ctx.tenantId).execute();
-    return this.getExpense(ctx, id);
+    const res = await this.expenseTx(async (x) => {
+      const r: any = await x.updateTable('expenses').set(set).where('id', '=', id).where('tenant_id', '=', ctx.tenantId).returning(['id', 'branch_id'] as any).executeTakeFirst();
+      if (r) await this.expenseEvent(x, ctx, id, 'updated', r.branch_id ?? null);
+      return r;
+    });
+    return res ? this.getExpense(ctx, id) : null;
   }
 
   async deleteExpense(ctx: OwnerContext, id: string): Promise<boolean> {
-    const res = await this.db.deleteFrom('expenses').where('id', '=', id).where('tenant_id', '=', ctx.tenantId).executeTakeFirst();
-    return Number(res?.numDeletedRows ?? 0) > 0;
+    return this.expenseTx(async (x) => {
+      const r: any = await x.deleteFrom('expenses').where('id', '=', id).where('tenant_id', '=', ctx.tenantId).returning(['id', 'branch_id'] as any).executeTakeFirst();
+      if (r) await this.expenseEvent(x, ctx, id, 'deleted', r.branch_id ?? null);
+      return !!r;
+    });
   }
 
   async expensesTotalCents(ctx: OwnerContext, branchId: string | null, r: DateRange): Promise<number> {
