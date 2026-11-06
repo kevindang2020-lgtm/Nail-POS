@@ -297,8 +297,8 @@ Built and tested (commits 4819af4, 1426448, a4c84ad, 0c053d2, a9c8860):
 
 Remaining F1 work:
 
-- §39: check-ins and profile edits as their own feed events — PARTIAL (visits, new profiles, bookings and loyalty adjustments are in).
-- §58 / §62: the server still reads every customer in scope and filters in memory (linear; ~3–4 s projected at 100k on PGlite) — move search / filters / counts / paging into SQL.
+- ~~§39 check-ins and profile edits~~ — DONE Nov 5: `checked_in` (queue check-ins) and `edited` (a saved edit: record_version > 1) feed events, EN/VI; `customer-directory-f1.pgtest` +1.
+- ~~§58 / §62 SQL directory~~ — DONE Nov 5: `customer-directory-sql.ts` — ONE statement over a MATERIALIZED per-customer CTE gives the page (LIMIT/OFFSET, stable order), total, six tab counts, every KPI, tags tally, tiers, analytics groups and the recent lists; nested loops off for that transaction (bad estimates right after an import cost 11.5 s → 0.16 s). Equivalence: `customer-directory-sql.pgtest` 27/27 — the SQL path equals the previous in-memory path on 24 filter sets + a location view + paging (mutation-checked). Scale (PGlite, single-threaded): 10k 163 ms (was 369), 100k 1.78 s (was 4.09 s), payload 27 KB. Fixed on the way: customer tags were never read by the list (Tags card always empty, tag filter / search on tags returned nothing). Export still uses the in-memory reader (it returns every matched row by design).
 - §45-80: the sidebar module audit (Profiles, Appointment History, Loyalty, Gift Cards, Notes, Saved Cards, Retention, NailShowcase, Add / Edit / Archive, Export, realtime, scale, touch, EN/VI) and the test sections §68-80.
 - §81-89: before / after screenshots, code map and handoff package. Screenshots are BLOCKED here (no browser on the 27-inch target).
 

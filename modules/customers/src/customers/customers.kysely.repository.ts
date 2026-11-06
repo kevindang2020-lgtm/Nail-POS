@@ -24,6 +24,7 @@ import { clampPageSize, clampPage, foldVi } from '@aipowersalon/api-contracts';
 import { projectionDeliversRealtime } from '@aipowersalon/config';
 import { applyLoyaltyEntry, lockLoyaltyCustomer, LoyaltyLedgerError } from '../loyalty/loyalty-ledger.service';
 import { mergeCustomersTx } from './customer-merge';
+import { directoryState, liveCustomersByIds, withDirectoryPlan, type DirectoryRow } from './customer-directory-sql';
 
 interface Cust {
   customerId: string; firstName: string; lastName: string; phone: string; normalizedPhone?: string | null; email: string; avatarUrl?: string | null; status: 'active' | 'inactive' | 'archived';
@@ -196,7 +197,111 @@ export class KyselyCustomersRepository implements CustomersRepositoryPort {
     return out;
   }
 
-  async query(ctx: CustomersContext, f: CustomerFilters): Promise<POSCustomersFullState> {
+  /** F1 §58 / §62 (Nov 5 2026): the directory state computed in Postgres (customer-directory-sql.ts) — the page, the counts and
+   *  the KPIs are SQL statements; no per-customer list of the whole salon is read into the API any more. The duplicate-risk
+   *  filter is SQL too. `queryInMemory` below is the previous implementation, kept as the reference the equivalence pgtest
+   *  compares against (customer-directory-sql.pgtest). */
+  async query(ctx: CustomersContext, f: CustomerFilters, nowMs = Date.now()): Promise<POSCustomersFullState> {
+    const scope = { tenantId: ctx.tenantId, branchId: ctx.branchId ?? null };
+    const riskDays = await this.riskDays(ctx);
+    const tz = await this.salonTimeZone(ctx);
+    const opts = { riskDays, timeZone: tz, nowMs };
+    const page = clampPage(f.page), pageSize = clampPageSize(f.pageSize, 20);
+    const { rows, counts, roll, recent } = await withDirectoryPlan(this.db as unknown as Kysely<any>, (trx) => directoryState(trx, scope, f, opts, page, pageSize));
+    const pageRows = rows.map((r) => this.custFromDirectory(r));
+    const dup = new Map<string, DuplicateRisk>(rows.filter((r) => r.dup_risk !== 'none').map((r) => [r.id, r.dup_risk as DuplicateRisk]));
+    const totalItems = counts.totalItems, totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const pagination: Pagination = { page, pageSize, totalItems, totalPages };
+    const listItems: CustomerListItem[] = pageRows.map((c) => ({
+      customerId: c.customerId, fullName: `${c.firstName} ${c.lastName}`.trim(), phone: c.phone, normalizedPhone: c.normalizedPhone ?? null, email: c.email,
+      visitsCount: c.visitCount, favoriteServiceName: undefined, favoriteTechnicianName: undefined, avatarUrl: c.avatarUrl || undefined,
+      loyaltyTier: ((c.loyaltyTier || 'Regular') as CustomerListItem['loyaltyTier']), lastVisitDate: c.lastVisitAt || undefined, totalSpendCents: c.totalSpendCents, status: c.status as CustomerListItem['status'],
+    }));
+    const rowItems = pageRows.map((c) => this.toRow(ctx, c, dup));
+    const live = counts.live;
+    const pct = (cur: number, prev: number): number | null => (prev > 0 ? Math.round(((cur - prev) / prev) * 1000) / 10 : null);
+    const spendWin = async (lo: number, hi: number) => {
+      const r = await this.scoped(this.db.selectFrom('tickets'), ctx).where('paid_at', 'is not', null)
+        .where('paid_at', '>=', new Date(lo).toISOString()).where('paid_at', '<', new Date(hi).toISOString())
+        .select((eb: any) => [eb.fn.sum('total_cents').as('rev'), eb.fn.count('customer_id').distinct().as('custs')]).executeTakeFirst().catch((e: unknown) => { this.warn('avgSpendTrend window', e); return undefined; });
+      const rev = Number(r?.rev) || 0; const custs = Number(r?.custs) || 0; return custs > 0 ? rev / custs : 0;
+    };
+    let avgSpendTrend: number | null = null;
+    try { const [aThis, aPrior] = await Promise.all([spendWin(nowMs - 30 * 864e5, nowMs), spendWin(nowMs - 60 * 864e5, nowMs - 30 * 864e5)]); avgSpendTrend = pct(aThis, aPrior); } catch (e) { this.warn('avgSpendTrend', e); avgSpendTrend = null; }
+    const priorTotal = live - counts.newThis30;
+    const trends = { totalCustomers: priorTotal > 0 ? Math.round((counts.newThis30 / priorTotal) * 1000) / 10 : null, newCustomers: pct(counts.newThis30, counts.newPrior30), avgSpend: avgSpendTrend, inactive: null, retention: null, clv: null };
+    const unavailable: string[] = [];
+    const retentionSeries = await this.retentionSeries(ctx).catch((e: unknown) => { unavailable.push('retentionSeries'); this.warn('retentionSeries', e); return []; });
+    const name = (r: { first_name: string | null; last_name: string | null }) => `${r.first_name || ''} ${r.last_name || ''}`.trim();
+    const events = await this.activityEventsSql(ctx, scope).catch((e: unknown) => { unavailable.push('recentActivity'); this.warn('recentActivity', e); return []; });
+    const recentActivity = [
+      ...recent.visits.map((r) => ({ customerId: r.id, displayName: name(r), avatarUrl: r.avatar_url || undefined, kind: 'visit' as const, at: new Date(r.last_visit as string).toISOString() })),
+      ...recent.added.map((r) => ({ customerId: r.id, displayName: name(r), avatarUrl: r.avatar_url || undefined, kind: 'added' as const, at: new Date(r.created_at as string).toISOString() })),
+      ...events,
+    ].sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime() || a.customerId.localeCompare(b.customerId)).slice(0, 8);
+    const directory = { topTags: roll.tags.slice(0, 6), allTags: roll.tags.slice(0, 200), sources: live ? [{ name: 'manual', count: live }] : [], topSpendersCount: Math.round(live * 0.05) };
+    const avgSpendAll = live ? Math.round(counts.spendSum / live) : 0;
+    const kpis: CustomerKpis = {
+      totalCustomers: live, totalCustomersTrendPercent: 0, newThisMonth: counts.newThisMonth, newThisMonthTrendPercent: 0,
+      vipMembers: counts.vip, vipPercentOfTotal: live ? Math.round((counts.vip / live) * 100) : 0,
+      returningRatePercent: live ? Math.round((counts.returning / live) * 100) : 0, returningRateTrendPercent: 0,
+      birthdaysThisWeek: counts.birthdaysThisMonth, birthdayCustomerAvatars: [], birthdayExtraCount: 0,
+    };
+    const kpisFull: POSCustomersKpisFull = {
+      totalCustomers: live, newCustomersToday: counts.newToday, returningCustomersToday: counts.returningToday, vipCustomers: counts.vip,
+      birthdayThisMonth: counts.birthdaysThisMonth, inactiveCustomers: counts.inactive, duplicateProfiles: counts.duplicates, loyaltyMembers: counts.loyaltyMembers,
+      averageSpendCents: avgSpendAll, newThisMonth: counts.newThisMonth, returningThisMonth: counts.returningThisMonth, atRiskCustomers: counts.atRisk, riskDays, archivedCustomers: counts.archived,
+    };
+    return {
+      kpis, customers: { items: listItems, pagination } as CustomerListResponse,
+      filters: { statuses: ['active', 'inactive', 'archived'], loyaltyTiers: ['VIP Gold', 'VIP Silver', 'Gold', 'Silver', 'Regular'] },
+      kpisFull, analytics: roll.analytics, rows: { items: rowItems, pagination }, trends, directory, retentionSeries, recentActivity, segmentCounts: counts.segmentCounts, ...(unavailable.length ? { unavailable } : {}),
+      filterFacets: {
+        segments: ['never', 'new', 'returning', 'vip', 'at_risk'], statuses: ['active', 'inactive', 'archived'],
+        loyaltyTiers: roll.tiers, visitRanges: ['0', '1-3', '4-9', '10+'],
+        spendRanges: ['0-5000', '5001-20000', '20001+'], sources: live ? ['manual'] : [], tags: roll.tags.map((t) => t.name),
+      },
+    };
+  }
+  private custFromDirectory(r: DirectoryRow): Cust {
+    const tier = r.tier || 'Regular';
+    const ts = (v: unknown) => (v == null || v === '' ? '' : new Date(v as string).toISOString());   // JSON timestamps → the same ISO the old path gave
+    return {
+      customerId: r.id, firstName: r.first_name || '', lastName: r.last_name || '',
+      phone: r.phone_display || r.normalized_phone || '', normalizedPhone: r.normalized_phone || null, email: r.email || '', status: r.status, avatarUrl: r.avatar_url || undefined,
+      source: 'manual' as CustomerSource, visitCount: Number(r.visits || 0), lastVisitAt: r.last_visit ? ts(r.last_visit) : null,
+      totalSpendCents: Number(r.spend || 0), loyaltyPoints: Number(r.points || 0), loyaltyTier: tier, isVip: !!r.is_vip, tags: Array.isArray(r.tags) ? r.tags : [],
+      birthdayMonth: monthDayOf(r.birthday)?.month, birthdayYear: r.birthday && r.birthday_year_known !== false ? Number(storedDateString(r.birthday)!.slice(0, 4)) : undefined,
+      birthday: r.birthday && r.birthday_year_known !== false ? storedDateString(r.birthday) ?? undefined : undefined,
+      birthdayMonthDay: r.birthday ? storedDateString(r.birthday)?.slice(5) : undefined,
+      marketingOptIn: !!r.marketing_sms_opt_in || !!r.marketing_email_opt_in, smsOptIn: !!r.marketing_sms_opt_in, emailOptIn: !!r.marketing_email_opt_in,
+      createdAt: ts(r.created_at), updatedAt: ts(r.updated_at), notes: r.notes || '', version: Number(r.record_version ?? 1),
+      preferredName: r.preferred_name ?? null, preferredLanguage: r.preferred_language ?? null, preferredBranchId: r.preferred_branch_id ?? null,
+    } as Cust;
+  }
+  /** F1 §39 bookings made and loyalty adjustments (last 30 days), naming only live customers in scope — looked up by id */
+  private async activityEventsSql(ctx: CustomersContext, scope: { tenantId: string; branchId: string | null }) {
+    const since = new Date(Date.now() - 30 * 864e5).toISOString();
+    const booked: any[] = await this.scoped(this.db.selectFrom('pos_tech_appointments'), ctx).select(['customer_id', 'created_at'])
+      .where('customer_id', 'is not', null).where('created_at', '>=', since).orderBy('created_at', 'desc').limit(20).execute();
+    const loyalty: any[] = await this.scoped(this.db.selectFrom('loyalty_ledger'), ctx).select(['customer_id', 'created_at'])
+      .where('entry_type', '=', 'adjust').where('created_at', '>=', since).orderBy('created_at', 'desc').limit(20).execute();
+    // F1 §39 (Nov 5 2026): check-ins and profile edits as their own events (an edit = a saved change: record_version > 1)
+    const checkins: { customer_id: string; created_at: unknown }[] = await this.scoped(this.db.selectFrom('pos_queue_items'), ctx).select(['customer_id', sql<string>`coalesce(checked_in_at, created_at)`.as('created_at')])
+      .where('customer_id', 'is not', null).where(sql<boolean>`coalesce(checked_in_at, created_at) >= ${since}::timestamptz`).orderBy(sql`coalesce(checked_in_at, created_at)`, 'desc').limit(20).execute();
+    const edited: { customer_id: string; created_at: unknown }[] = await this.scoped(this.db.selectFrom('customers'), ctx).select(['id as customer_id', 'updated_at as created_at'])
+      .where('updated_at', '>=', since).where('record_version', '>', 1).orderBy('updated_at', 'desc').limit(20).execute();   // every profile edit bumps record_version (an import / creation stays 1)
+    const people = await liveCustomersByIds(this.db as unknown as Kysely<any>, scope, [...new Set([...booked, ...loyalty, ...checkins, ...edited].map((r) => String(r.customer_id)))]);
+    const out: { customerId: string; displayName: string; avatarUrl?: string; kind: 'booked' | 'loyalty' | 'checked_in' | 'edited'; at: string }[] = [];
+    for (const [rows, kind] of [[booked, 'booked'], [loyalty, 'loyalty'], [checkins, 'checked_in'], [edited, 'edited']] as const) for (const r of rows) {
+      const c = people.get(String(r.customer_id)); if (!c) continue;
+      out.push({ customerId: String(r.customer_id), displayName: `${c.firstName} ${c.lastName}`.trim(), avatarUrl: c.avatarUrl || undefined, kind, at: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at) });
+    }
+    return out;
+  }
+
+  /** The previous in-memory implementation (reads the whole scope) — the reference customer-directory-sql.pgtest compares the SQL path against. */
+  async queryInMemory(ctx: CustomersContext, f: CustomerFilters): Promise<POSCustomersFullState> {
     const everyone = await this.load(ctx); const dup = this.dupSet(everyone);
     // F1 §29: KPI numerators and denominators count non-archived profiles; the list reaches archived ones via the status filter
     const all = everyone.filter((c) => c.status !== 'archived');

@@ -41,6 +41,8 @@
     "modules/communications/src/sms-packages/sms-packages.service.ts :: sql.raw(k)": 1,
     "modules/communications/src/tenant-a2p/tenant-a2p.service.ts :: sql.raw(`UPDATE tenant_a2p_registrations SET ${k} = `)": 1,
     "modules/communications/src/tenant-messaging/platform-messaging-provisioner.ts :: sql.raw(STALE_CLAIM)": 1,
+    "modules/customers/src/customers/customer-directory-sql.ts :: sql.ref(col)": 2,
+    "modules/customers/src/customers/customer-directory-sql.ts :: sql.ref('seg_' + g)": 1,
     "modules/customers/src/customers/customer-merge.ts :: sql.table(t)": 1,
     "modules/customers/src/duplicate-review/duplicate-review-center.ts :: sql.table(t)": 1,
     "modules/deals/src/deals/deals.kysely.repository.ts :: sql.ref(col[k])": 1,

@@ -181,3 +181,17 @@ describe('F1 Customer Directory — archive / restore tells other screens (§60)
     expect(JSON.stringify(pl)).not.toMatch(/Cust8/);
   });
 });
+
+describe('F1 Customer Directory — check-ins and profile edits are their own feed events (§39, Nov 5 2026)', () => {
+  it('a check-in today and a profile saved today (not its creation) lead the feed; archived customers never show', async () => {
+    await q(`insert into pos_queue_items (id, tenant_id, branch_id, customer_id, customer_name, status, checked_in_at, created_at) values ($1,$2,$3,$4,'Cust3 X','waiting', now(), now())`, [id('fa3'), T, B, id('c3')]);
+    await repo.update(ctx, id('c4'), { notes: 'prefers almond' } as any);   // a real edit (bumps record_version)
+    const st = await repo.query(ctx, {});
+    const top = st.recentActivity!.slice(0, 4).map((a: any) => `${a.kind}:${a.customerId}`);
+    expect(top).toEqual(expect.arrayContaining([`checked_in:${id('c3')}`, `edited:${id('c4')}`]));
+    expect(st.recentActivity!.some((a: any) => a.kind === 'edited' && a.customerId === id('c11'))).toBe(false);   // added 2 days ago, never edited
+    await q(`update customers set status = 'archived', updated_at = now() where id = $1`, [id('c3')]);
+    expect((await repo.query(ctx, {})).recentActivity!.some((a: any) => a.customerId === id('c3'))).toBe(false);
+    await q(`update customers set status = 'active' where id = $1`, [id('c3')]);
+  });
+});

@@ -1,5 +1,5 @@
 // customer-directory-scale.pgtest.vitest.spec.ts — F1 §58 / §61 / §62 evidence: the directory state at 1,000 and 10,000
-// customers (synthetic). Runs only with CUSTOMER_SCALE=1 (it takes ~a minute on PGlite); prints latency and payload size.
+// customers (synthetic) — and 100,000 (Nov 5 2026, the SQL path; the previous in-memory path is timed beside it). Runs only with CUSTOMER_SCALE=1 (it takes ~a minute on PGlite); prints latency and payload size.
 // It asserts what must hold at any size: one page of rows comes back (never the whole base) and the tab counts add up.
 import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
@@ -17,7 +17,7 @@ describe.skipIf(!RUN)('F1 Customer Directory at scale (synthetic)', () => {
     await pg.query(`insert into branches (id, tenant_id, name, status, timezone) values ($1,$2,'Main','active','America/New_York')`, [B, T]);
     repo = new KyselyCustomersRepository(kyselyFor(pg) as never);
   }, 120_000);
-  for (const n of [1000, 10000]) {
+  for (const n of [1000, 10000, 100000]) {
     it(`${n} customers: page 1 of 25 returns 25 rows; counts reconcile`, async () => {
       const have = Number((await pg.query(`select count(*)::int n from customers where tenant_id = $1`, [T])).rows[0].n);
       await pg.query(`insert into customers (tenant_id, branch_id, first_name, last_name, full_name, normalized_phone, created_at)
@@ -29,7 +29,8 @@ describe.skipIf(!RUN)('F1 Customer Directory at scale (synthetic)', () => {
       const st = await repo.query(ctx, { page: 1, pageSize: 25 });
       const ms = Math.round(performance.now() - t0);
       const bytes = JSON.stringify(st).length;
-      console.log(`[scale] ${n} customers: state ${ms} ms, payload ${(bytes / 1024).toFixed(1)} KB, rows ${st.rows.items.length}`);
+      const t1 = performance.now(); await repo.queryInMemory(ctx, { page: 1, pageSize: 25 }); const legacyMs = Math.round(performance.now() - t1);
+      console.log(`[scale] ${n} customers: state ${ms} ms (SQL; previous in-memory path ${legacyMs} ms), payload ${(bytes / 1024).toFixed(1)} KB, rows ${st.rows.items.length}`);
       expect(st.rows.items.length).toBe(25);
       expect(st.rows.pagination.totalItems).toBe(n);
       expect(st.segmentCounts!.never + st.segmentCounts!.new + st.segmentCounts!.returning).toBe(n);

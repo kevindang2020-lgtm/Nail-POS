@@ -306,7 +306,7 @@ export interface POSCustomersFullState extends POSCustomersState {
   // F1 §16: analytics parts that could not be read this time ('retentionSeries' | 'recentActivity'); the list is unaffected
   unavailable?: string[];
   segmentCounts?: Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>;
-  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty'; at: string }[];
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty' | 'checked_in' | 'edited'; at: string }[];
 }
 
 // duplicate detection (§16): group by exact phone, exact email, or similar first+last name

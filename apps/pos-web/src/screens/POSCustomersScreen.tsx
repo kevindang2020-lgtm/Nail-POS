@@ -51,7 +51,7 @@ type CustomersState = {
   unavailable?: string[];
   segmentCounts?: Partial<Record<'all' | 'never' | 'new' | 'returning' | 'vip' | 'at_risk', number>>;
   retentionSeries?: { month: string; date: string | null; ratePercent: number | null; reason: string | null }[];
-  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty'; at: string }[];
+  recentActivity?: { customerId: string; displayName: string; avatarUrl?: string; kind: 'visit' | 'added' | 'booked' | 'loyalty' | 'checked_in' | 'edited'; at: string }[];
 };
 type ImpSampleRow = { rowNumber: number; firstName: string; lastName: string; phone?: string; email?: string; birthday?: string; action: 'create' | 'update' | 'duplicate' | 'error'; reason?: string };
 type ImpPreview = { totalRows: number; toCreate: number; toUpdate: number; duplicates: number; errors: number; invalidEmailsDropped: number; detectedColumns: Record<string, string | undefined>; sample: ImpSampleRow[] };

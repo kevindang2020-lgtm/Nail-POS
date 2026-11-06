@@ -281,6 +281,8 @@ export const DUPREVIEW_EN: Record<string, string> = {
   "cd.msg.failed": "Could not open this customer's conversation.",
   "cd.act.booked": "Booked an appointment",
   "cd.act.loyalty": "Loyalty points adjusted",
+  "cd.act.checked_in": "Checked in",
+  "cd.act.edited": "Profile updated",
   "cd.unavailable": "Couldn't load this right now. The customer list is not affected — it will retry on the next refresh.",
   "cd.rail.pick": "Choose one to filter the customer list.",
   "cd.rfm.champions": "Champions",
