@@ -18,7 +18,7 @@
 import { spawn } from 'node:child_process';
 import { randomUUID } from 'node:crypto';
 import { createRequire } from 'node:module';
-import { idorRoutes, classifyIdorRoute, actorFor, queryFor, branchScopeOf } from './idor-routes.mjs';
+import { idorRoutes, classifyIdorRoute, actorFor, queryFor, branchScopeOf, idorWriteRoutes, idorCustomerRoutes, classifyCustomerRoute } from './idor-routes.mjs';
 
 const require = createRequire(import.meta.url);
 const pg = require('pg');
@@ -109,6 +109,14 @@ for (const s of [SA, SB]) {
 await q(`insert into users (id, tenant_id, branch_id, first_name, last_name, full_name, email, password_hash, status, role) values ($1,$2,$3,'Mia','Mgr2','Mia Mgr2',$4,$5,'active','MANAGER')`,
   [SA.mgr2, SA.id, SA.branch2, email(SA, 'mgr2'), hash]);
 await q(`insert into user_branch_access (tenant_id, branch_id, user_id, access_level) values ($1,$2,$3,'manager')`, [SA.id, SA.branch2, SA.mgr2]);
+// §74 (Nov 5 2026): one customer login per salon (the customer realm sweep) — a CUSTOMER user + their salon profile
+for (const s of [SA, SB]) {
+  s.custUser = randomUUID(); s.cust = randomUUID();
+  await q(`insert into users (id, tenant_id, branch_id, first_name, last_name, full_name, email, password_hash, status, role) values ($1,$2,$3,$4,'Guest',$4 || ' Guest',$5,$6,'active','CUSTOMER')`,
+    [s.custUser, s.id, s.branch, s === SA ? MARK : 'Bee', email(s, 'cust'), hash]);
+  await q(`insert into customers (id, tenant_id, branch_id, first_name, last_name, full_name, email, user_id, status) values ($1,$2,$3,$4,'Guest',$4 || ' Guest',$5,$6,'active')`,
+    [s.cust, s.id, s.branch, s === SA ? MARK : 'Bee', email(s, 'cust'), s.custUser]);
+}
 
 // ── the generic seeder: one row of salon A in any table, required columns filled from the schema ─────────────────
 const colCache = new Map(), fkCache = new Map();
@@ -131,7 +139,7 @@ const SEED_OVERRIDES = (s) => ({
   ai_business_alerts: { metric_id: 'net_sales', operator: 'gt', frequency: 'daily', channel: 'in_app', active: true },
   ai_business_alert_events: { source: 'manual', operator: 'gt', threshold: 1, preset: 'today', sample_ok: true, triggered: false, state_change: 'unchanged' },
 });
-const token = (s, v) => (v === '$owner' ? s.owner : v === '$techUser' ? s.techUser : v === '$tech' ? s.tech : v);
+const token = (s, v) => (v === '$owner' ? s.owner : v === '$techUser' ? s.techUser : v === '$tech' ? s.tech : v === '$cust' ? s.cust : v === '$custUser' ? s.custUser : v);
 const seedLog = [];
 async function valueFor(s, table, c, fk, depth) {
   if (fk) return FIXED(s)[fk] ?? (fk === table ? null : await rowOf(s, fk, depth + 1));
@@ -228,6 +236,36 @@ for (const r of routes) {
   const qs = queryFor(r.path);
   cases.push({ ...r, values, url: r.path.replace(/\{([^}]+)\}/g, (_, n) => encodeURIComponent(String(values[n]))) + (qs ? `?${qs}` : '') });
 }
+// §74: write routes and the customer realm — the same fixture resolution; each case remembers WHICH rows it targets
+async function resolveCase(params) {
+  const values = {}; const targets = [];
+  for (const [name, fx] of Object.entries(params)) {
+    if (fx.value) { values[name] = fx.value; continue; }
+    const id = await rowOf(SA, fx.table, 0, fx.over ?? null);
+    values[name] = fx.col === 'id' ? id : (await q(`select "${fx.col}" as v from "${fx.table}" where id = $1`, [id]))[0]?.v ?? null;
+    if (values[name] === null && fx.col !== 'id') { await q(`update "${fx.table}" set "${fx.col}" = $2 where id = $1`, [id, `${MARK}-${fx.col}`]); values[name] = `${MARK}-${fx.col}`; }
+    targets.push({ table: fx.table, id });
+  }
+  return { values, targets };
+}
+const urlOf = (path, values) => path.replace(/\{([^}]+)\}/g, (_, n) => encodeURIComponent(String(values[n] ?? `${MARK}-none`)));
+const writeCases = []; const writeSkipped = [];
+for (const r of idorWriteRoutes()) {
+  const c = classifyIdorRoute(r);
+  if (c.exempt || c.unclassified) { writeSkipped.push(`${r.method} ${r.path} — ${c.exempt ?? 'unclassified ' + c.unclassified.join(',')}`); continue; }
+  try { const { values, targets } = await resolveCase(c.params); writeCases.push({ ...r, values, targets, url: urlOf(r.path, values) }); }
+  catch (e) { writeSkipped.push(`${r.method} ${r.path} — ${String(e.message || e).slice(0, 120)}`); }
+}
+const custCases = []; const custSkipped = [];
+for (const r of idorCustomerRoutes()) {
+  const c = classifyCustomerRoute(r);
+  if (c.exempt || c.unclassified) { custSkipped.push(`${r.method} ${r.path} — ${c.exempt ?? 'unclassified'}`); continue; }
+  try {
+    const { values, targets } = await resolveCase(c.params);
+    for (const x of c.extra ?? []) values[x] = randomUUID();   // a sub-record id under A's record (any id: the parent decides)
+    custCases.push({ ...r, values, targets, url: urlOf(r.path, values) });
+  } catch (e) { custSkipped.push(`${r.method} ${r.path} — ${String(e.message || e).slice(0, 120)}`); }
+}
 // salon A's sub-resources, so a by-id sub-route that leaked would have something of A's to leak
 for (const t of ['tenant_community_settings', 'ticket_service_lines', 'payments', 'payment_signatures', 'customer_tags', 'customer_payment_methods', 'customer_notes', 'loyalty_ledger',
   'technician_services', 'technician_shifts', 'technician_skills', 'service_add_ons', 'tenant_messaging_credentials', 'tenant_webhook_deliveries',
@@ -239,7 +277,7 @@ for (const s of [SA, SB]) {
   for (const pkg of ['ai_voice_transcription', 'ai_queue_technician_assignment']) await q(`insert into tenant_ai_subscriptions (tenant_id, package_code, status) values ($1,$2,'active')`, [s.id, pkg]);
   if (s === SB) await q(`insert into tenant_community_settings (tenant_id, enabled) values ($1, true) on conflict do nothing`, [s.id]).catch(() => undefined);
 }
-const aValues = new Set([SA.id, SA.owner, SA.techUser, SA.tech, SA.branch2, ...seeded.values()].map(String));
+const aValues = new Set([SA.id, SA.owner, SA.techUser, SA.tech, SA.branch2, SA.cust, SA.custUser, ...seeded.values()].map(String));
 
 // ── boot + sign in ────────────────────────────────────────────────────────────────────────────────────────────────
 const env = { ...process.env, REPO_DRIVER: 'postgres', AUTH_SESSION_SECRET: 'live-proof-session-secret-0123456789abcdef', NODE_ENV: 'development', PORT: String(PORT), TRUST_PROXY_HOPS: '1' };
@@ -256,6 +294,26 @@ const signIn = async (s, who, branchId = s.branch) => {
   const sel = await fetch(API + '/api/v1/auth/select-branch', { method: 'POST', headers: { cookie: cookieJar(c1), 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify({ branchId }) });
   return { ok: l.status === 200 && sel.status === 200, detail: `${s.key}/${who}: login ${l.status} select ${sel.status}`, cookie: cookieJar(c1, setCookies(sel)), ip };
 };
+const signInCustomer = async (s) => {
+  const ip = `10.214.${s === SA ? 3 : 4}.${++ipN}`;
+  const l = await fetch(API + '/api/v1/auth/login', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': ip }, body: JSON.stringify({ portal: 'customer', identifier: email(s, 'cust'), password: PW }) });
+  return { ok: l.status === 200, detail: `${s.key}/customer: login ${l.status}`, cookie: cookieJar(setCookies(l)), ip };
+};
+/** §74: one write as `who` (an empty JSON body — enough to reach the lookup on most routes; a 400 before it proves nothing, the row check still holds) */
+const send = async (who, method, path) => {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 15_000);
+    try {
+      const r = await fetch(API + '/api/v1' + path, { method, headers: { cookie: who.cookie, 'x-forwarded-for': who.ip, accept: 'application/json', 'content-type': 'application/json', 'idempotency-key': `idor-${randomUUID()}` },
+        body: method === 'DELETE' ? undefined : '{}', signal: ac.signal });
+      const text = await r.text().catch(() => '');
+      if (r.status === 429) { await sleep(Math.min(5000, 1000 * Number(r.headers.get('retry-after') || 1))); continue; }
+      return { status: r.status, text };
+    } catch (e) { return { status: 0, text: String(e?.message || e) }; } finally { clearTimeout(t); }
+  }
+  return { status: 429, text: 'rate limited' };
+};
+const rowHash = async (t) => (await q(`select md5(x::text) as h from "${t.table}" x where id = $1`, [t.id]))[0]?.h ?? 'gone';
 const get = async (who, path) => {
   for (let attempt = 0; attempt < 4; attempt++) {
     const ac = new AbortController(); const t = setTimeout(() => ac.abort(), 15_000);
@@ -279,7 +337,7 @@ const leakIn = (text, own) => {
 const cleanup = async () => {
   try { proc?.kill('SIGTERM'); } catch { /* */ }
   await sleep(1000);
-  const users = [SA.owner, SA.techUser, SA.mgr2, SB.owner, SB.techUser];
+  const users = [SA.owner, SA.techUser, SA.mgr2, SB.owner, SB.techUser, SA.custUser, SB.custUser].filter(Boolean);
   for (const t of ['refresh_tokens', 'sessions', 'auth_events', 'auth_devices']) await q(`delete from ${t} where user_id = any($1::uuid[])`, [users]).catch(() => undefined);
   await q(`delete from login_attempts where identifier like $1`, [`p14-idor-%-${tag}@aipowersalon.test`]).catch(() => undefined);
   const a = await removeProofTenant(SA.id).catch((e) => ({ removed: false, kept: [String(e?.message || e)] }));
@@ -337,6 +395,44 @@ try {
   if (process.env.IDOR_BRANCH_JSON) (await import('node:fs')).writeFileSync(process.env.IDOR_BRANCH_JSON, JSON.stringify(br.map((r) => ({ path: r.path, scope: r.branch.scope, why: r.branch.why, mgr2: r.branch.status, served: r.branch.served, control: r.control })), null, 1));
   const proven = rows.filter((r) => r.control !== 'weak' && !r.control.startsWith('weak'));
   check('the positive control: salon A is served its own record where salon B is refused, on most routes (the fixtures are real)', proven.length >= Math.floor(rows.length * 0.75), `${proven.length}/${rows.length} proven or differential`);
+
+  // ── §74 (Nov 5 2026): WRITE routes — salon B writes against salon A's real ids; salon A's rows must not change ─────
+  const wrows = [];
+  for (const c of writeCases) {
+    const actor = actorFor(c.path);
+    const before = await Promise.all(c.targets.map(rowHash));
+    const b = await send(who.B[actor], c.method, c.url);
+    const after = await Promise.all(c.targets.map(rowHash));
+    const changed = c.targets.filter((_, i) => before[i] !== after[i]).map((t) => t.table);
+    wrows.push({ route: `${c.method} ${c.path}`, status: b.status, changed, crash: b.status >= 500 || b.status === 0, text: b.text.slice(0, 160) });
+  }
+  const wLeaks = wrows.filter((r) => r.changed.length), wCrash = wrows.filter((r) => r.crash);
+  check(`no write route changes salon A's record when salon B sends it (${wrows.length} write routes; ${writeSkipped.length} not attacked — listed)`, wLeaks.length === 0, wLeaks.map((r) => `${r.route} ${r.status} changed ${r.changed.join(',')}`).join(' | '));
+  check('no write route crashes on another salon\'s id (5xx)', wCrash.length === 0, wCrash.map((r) => `${r.route} ${r.status} ${r.text}`).join(' | '));
+  const wby = {}; for (const r of wrows) { const k = r.status >= 200 && r.status < 300 ? '2xx' : String(r.status); wby[k] = (wby[k] || 0) + 1; }
+  results.push(`INFO  write routes by salon B's status: ${JSON.stringify(wby)} (a 2xx with A's row unchanged acted on B's own data or nothing)`);
+
+  // ── §74: the CUSTOMER realm — customer B (salon B) against customer A's records; customer A is the control ─────
+  const cA = await signInCustomer(SA), cB = await signInCustomer(SB);
+  check('both proof customers sign in to the customer app', cA.ok && cB.ok, `${cA.detail} / ${cB.detail}`);
+  const crows = [];
+  for (const c of custCases) {
+    const own = new Set(Object.values(c.values).map(String));
+    if (c.method === 'GET') {
+      const b = await get(cB, c.url); const a = await get(cA, c.url);
+      const leak = b.status >= 200 && b.status < 300 ? leakIn(b.text, own) : null;
+      crows.push({ route: `GET ${c.path}`, b: b.status, a: a.status, leak, changed: [], crash: b.status >= 500 || b.status === 0, text: b.text.slice(0, 160) });
+    } else {
+      const before = await Promise.all(c.targets.map(rowHash));
+      const b = await send(cB, c.method, c.url);
+      const after = await Promise.all(c.targets.map(rowHash));
+      crows.push({ route: `${c.method} ${c.path}`, b: b.status, a: null, leak: null, changed: c.targets.filter((_, i) => before[i] !== after[i]).map((t) => t.table), crash: b.status >= 500 || b.status === 0, text: b.text.slice(0, 160) });
+    }
+  }
+  const cBad = crows.filter((r) => r.leak || r.changed.length);
+  check(`no customer route hands customer B customer A's record or changes it (${crows.length} customer routes; ${custSkipped.length} public / own-list by design)`, cBad.length === 0, cBad.map((r) => `${r.route} ${r.b} ${r.leak ?? 'changed ' + r.changed.join(',')}`).join(' | '));
+  check('no customer route crashes on another customer\'s id (5xx)', crows.every((r) => !r.crash), crows.filter((r) => r.crash).map((r) => `${r.route} ${r.b} ${r.text}`).join(' | '));
+  if (process.env.IDOR_WRITE_JSON) (await import('node:fs')).writeFileSync(process.env.IDOR_WRITE_JSON, JSON.stringify({ writes: wrows, writeSkipped, customer: crows, custSkipped }, null, 1));
 } catch (e) {
   check('the proof ran to the end', false, String(e?.stack || e).split('\n').slice(0, 3).join(' | '));
 } finally {

@@ -187,6 +187,8 @@ export class SkipLineCheckoutService {
 
   async cancelAppPayment(ctx: SLCtx, ticketId: string): Promise<{ cancelled: boolean }> {
     if (!this.has(ctx, 'pos.checkout.take_payment')) throw withCode(new SkipLineError('forbidden', 'Missing pos.checkout.take_payment', 403), 'PERMISSION_DENIED');
+    // §74 (write sweep): another salon's ticket id answered {cancelled:true} and wrote an audit row — it is not ours
+    if (!(await this.repo.billForTicket(ctx, ticketId))) throw withCode(new SkipLineError('not_found', 'Ticket not found.', 404), 'TICKET_NOT_FOUND');
     const conf = await this.repo.pendingCashForTicket(ctx, ticketId);
     if (conf?.payment_intent_id) await this.repo.setIntentStatus(ctx, conf.payment_intent_id, 'cancelled');
     if (conf) await this.repo.setCashConfirmationStatus(ctx, conf.id, 'cancelled', ctx.userId ?? null);

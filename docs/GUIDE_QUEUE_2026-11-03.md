@@ -371,7 +371,7 @@ Deep Scan, Secure Tap to Pay, Remaining Production, 200 Technician, Platform Ann
 | G8 | Review & Reputation Settings (duplicate of an earlier upload) | re-checked Nov 5: built; 2 decisions wait on Kevin (automatic replies job; review-request sender) |
 | G9 | Enterprise Backup & Disaster Recovery | BUILT (catalog, Backup Center, plan/approve/job, compare-only restore) — destructive apply GATED, hosting items BLOCKED_EXTERNAL; see `docs/backup/BACKUP_AND_DR.md` |
 | G10 | Weekly Technician Paycheck (= F8) | 160 DONE / 1 PARTIAL (pay-stub PDF — waits on Kevin vs the no-print rule) |
-| G11 | Full Security Deep Scan | re-checked Nov 5: §93 egress allowlist built (report by default); 19 PARTIAL rows otherwise unchanged — see the G11/G14 section |
+| G11 | Full Security Deep Scan | Nov 5: §93 egress allowlist built (report by default); §74 IDOR sweep extended to write routes + the customer app — live 17/17, 7 defects fixed (SD-74a…g); §110 / §38 next |
 | G12 | Secure Tap to Pay / Device Authentication | re-checked Nov 5: 10 PARTIAL, each blocked only by an outside dependency (internal half built); 1 BLOCKED_EXTERNAL |
 | G13 | Remaining Production Work / Payment Recovery | re-checked Nov 5: 52 DONE / 1 PARTIAL (§39 lint + as-any ratchets, per-screen work) / 20 BLOCKED_EXTERNAL; the pilot's two old 10e FAILs are fixed in the script |
 | G14 | 200 Technician Large Salon | re-checked Nov 5: §2 DONE (one day read per refresh); §1 / §101 PARTIAL = clock-in burst p95, a ≥ 4-core host question |
@@ -573,3 +573,21 @@ timing (P2). Pre-existing, not G9: `check-error-codes` flags BRANCH_NOT_AUTHORIZ
 - **Pre-existing gate fixes:** `check-error-codes` — the communications activity filter now answers the registered
   `BRANCH_ACCESS_DENIED`; `display-devices.vitest` rewritten to the G7 heartbeat truth (`adPolicy: null`) — a G7 miss of mine.
 - G5 / G6 / G8 / G12 / G13: no new internal work (statuses in the Batch G table).
+
+### G11 §74 — IDOR sweep over write routes and the customer app (Nov 5 2026, night)
+
+- **Live run on PostgreSQL: 17 / 17** (`apps/api/scripts/live-phase14-idor.mjs`). GET: 310 cases, 0 leaks. Writes: salon B sends
+  542 create / change / delete routes with salon A's ids — **0 of A's rows changed** (row hashes before / after), **0 crashes**.
+  Customer app: 43 routes, customer B with customer A's ids — 0 leaks, 0 changes, 0 crashes. Status mix for B's writes:
+  400×270 · 403×50 · 404×195 · 409×6 · 410×1 · 422×2 · 2xx×18 (each 2xx reviewed: a no-op answer such as `{ok:false}` /
+  `{released:false}`, or B's own data).
+- **Defects the sweep found, all fixed with tests** (register rows SD-74a…g): reconciliation case assign / review / reopen
+  500 → 404; mobile proceed-to-payment and add-retail 500 → 400; mobile receipt queued work for another salon's ticket;
+  cancel-app-payment answered `cancelled:true` + audit for another salon's ticket; booking phone-verification settings stored
+  a row keyed to another salon's location (table has no FK); community evidence said "storage not configured" before checking
+  ownership; AI queue explanation 500 on a partial stored envelope. Also: loyalty bonus routes now plan-gated (`loyalty`).
+- **Honest gap:** 230 write routes are not attacked yet (no fixture for their path id, or body-only ids) — listed in the run,
+  201 of them ratcheted in `apps/api/security/idor-write-unclassified.baseline.json` (the list may only shrink). One note:
+  `POST /pos/ai-checkout-upsell/checkout/:id/dismiss` records a dismissal under salon B for an id that is not B's — it is
+  B-scoped and harmless to A, left as is.
+- §74 → DONE for what the sweep covers; next G11: §110 per-processor webhook schemas, §38 `@ResourceScope`.

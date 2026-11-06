@@ -3,7 +3,7 @@
 // Reads require reconciliation.view; writes require reconciliation.manage.
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { Controller, Get, Post, Body, Param, Req, UseGuards, HttpException, HttpStatus } from '@nestjs/common';
-import { DepositReconciliationService, ReconForbiddenError, ReconValidationError } from './deposit-reconciliation.service';
+import { DepositReconciliationService, ReconForbiddenError, ReconValidationError, reconRefusalStatus } from './deposit-reconciliation.service';
 import { FeeReconciliationService } from './deposit-reconciliation.fees.service';
 import { AdjustmentsReconciliationService } from './deposit-reconciliation.adjustments.service';
 import { DuplicateDetectionService } from './deposit-reconciliation.duplicates.service';
@@ -24,7 +24,7 @@ async function run<T>(fn: () => T | Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e) {
     if (e instanceof ReconForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
-    if (e instanceof ReconValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    if (e instanceof ReconValidationError) throw new HttpException(e.message, reconRefusalStatus(e) ?? HttpStatus.BAD_REQUEST);
     throw e;
   }
 }

@@ -1342,6 +1342,9 @@ export class MobileCheckoutService {
    */
   async sendReceipt(ctx: Ctx, ticketId: string, channel: 'sms' | 'email' | 'app') {
     if (this.db && this.x.outbox) {
+      // §74 (found by the write sweep): the queued path never read the ticket — another salon's ticket id queued a
+      // RECEIPT_REQUESTED for it. The ticket must be in this salon before anything is queued.
+      await this.checkout.assertTicketInScope(ctx, ticketId);
       try {
         await this.x.outbox.write(this.db, createDomainEvent({ eventType: DOMAIN_EVENTS.RECEIPT_REQUESTED, tenantId: ctx.tenantId, branchId: ctx.branchId || undefined, aggregateType: 'ticket', aggregateId: ticketId,
           actorId: ctx.userId ?? undefined, actorType: 'user', correlationId: `ticket:${ticketId}`, payload: { ticketId, channel, requestedBy: ctx.userId ?? null, role: ctx.role ?? null, permissions: ['pos.receipts.send'], surface: TAP_TO_PAY_SURFACE } }));

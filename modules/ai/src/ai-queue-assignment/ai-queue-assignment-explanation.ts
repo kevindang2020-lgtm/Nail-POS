@@ -5,19 +5,22 @@
 import type { RecommendationEnvelope } from './ai-queue-assignment.dto';
 
 export function deterministicExplanation(env: RecommendationEnvelope): string {
+  // §74 sweep: a stored envelope from an older writer can lack the arrays — explain it rather than 500
+  const conflicts = Array.isArray(env.conflicts) ? env.conflicts : [];
+  const warnings = Array.isArray(env.warnings) ? env.warnings : [];
   if (!env.recommended) {
-    const why = env.conflicts.length ? env.conflicts.join('; ') : 'no eligible technician is available';
+    const why = conflicts.length ? conflicts.join('; ') : 'no eligible technician is available';
     return `No technician could be recommended: ${why}.`;
   }
   const r = env.recommended;
-  const reasons = r.reasons.slice(0, 3);
+  const reasons = (Array.isArray(r.reasons) ? r.reasons : []).slice(0, 3);
   // BUILD_PLAN Phase 6 (audit, explanations): a suggestion for staff to confirm — never "the best match" (the spec forbids
   // presenting it as a verdict).
   let out = `Suggested: ${r.name}`;
   if (reasons.length) out += ` — ${reasons.join(', ')}`;
   out += `.`;
-  if (env.warnings.length) out += ` Note: ${env.warnings.join('; ')}.`;
-  out += ` Confidence ${Math.round(env.confidence * 100)}%.`;
+  if (warnings.length) out += ` Note: ${warnings.join('; ')}.`;
+  if (Number.isFinite(env.confidence)) out += ` Confidence ${Math.round(env.confidence * 100)}%.`;
   return out;
 }
 
@@ -26,9 +29,9 @@ export function explanationPromptData(env: RecommendationEnvelope): Record<strin
   return {
     recommendedTechnician: env.recommended?.name ?? null,
     reasons: env.recommended?.reasons?.slice(0, 5) ?? [],
-    warnings: env.warnings.slice(0, 5),
-    confidencePercent: Math.round(env.confidence * 100),
-    alternates: env.alternates.map((a) => a.name).slice(0, 3),
+    warnings: Array.isArray(env.warnings) ? env.warnings.slice(0, 5) : [],
+    confidencePercent: Number.isFinite(env.confidence) ? Math.round(env.confidence * 100) : null,
+    alternates: (Array.isArray(env.alternates) ? env.alternates : []).map((a) => a.name).slice(0, 3),
     requiredAction: env.requiredAction,
   };
 }

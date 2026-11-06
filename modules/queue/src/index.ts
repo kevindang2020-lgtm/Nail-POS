@@ -8,6 +8,7 @@ export * from './tech-queue/tech-queue.dto';
 export { KyselyServiceDoneRepository } from './service-done/service-done.kysely.repository';   // used by the API today
 export { KyselyServingRepository } from './serving/serving.kysely.repository';   // used by the API today
 export { ServingService } from './serving/serving.service';   // used by the API today
+export { ForbiddenError as ServingForbiddenError, ValidationError as ServingValidationError, ConflictError as ServingConflictError } from './serving/serving.service';   // §74: mobile checkout maps the serving engine's refusals (they were 500s)
 export { STAFF_BRANCH_ACCESS, type StaffBranchAccessPort } from './serving/manager-pin.kysely';   // Oct 28 2026: the API's composition root provides the location rule
 export { TechQueueService } from './tech-queue/tech-queue.service';   // used by the API today
 // joined by --into (queue, check-in):

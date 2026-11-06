@@ -179,6 +179,14 @@ Full §178 fields for every row. "Files" = the commit's exact paths in [SECURITY
 | E8, E9, E10, E11 | OCR preview / media / kiosk / display tokens | a key from another branch / revoked session / enumeration / query-string tokens in edge logs | cross-branch read / stale access / enumeration / token in logs | aae1e752, b036d51c |
 | SD-1 … SD-8 | see the Oct 26 table | as described there | as described there | 2881125c, d571dbab |
 
+| SD-74a | payments · `POST /pos/deposit-reconciliation/workspace/exceptions/:id/{assign,review,reopen}` | salon B with salon A's case id | 500 (refusal class unmapped; nothing changed) → 404 `RECON_CASE_NOT_FOUND` | §74 write sweep (Nov 5) |
+| SD-74b | checkout · `POST /mobile-checkout/tickets/:id/{proceed-to-payment,retail}` | another salon's ticket id | 500 → 400 (proceed was not wrapped; serving-engine refusals unmapped) | §74 write sweep (Nov 5) |
+| SD-74c | checkout · `POST /mobile-checkout/tickets/:id/receipt` (queued path) | another salon's ticket id | a RECEIPT_REQUESTED queued for a ticket outside the salon → `TICKET_NOT_FOUND` first | §74 write sweep (Nov 5) |
+| SD-74d | checkout · `POST /pos/tickets/:id/{cancel-app-payment,move-to-front-desk-checkout}` | another salon's ticket id | `{cancelled:true}` + an audit row → 404 `TICKET_NOT_FOUND` | §74 write sweep (Nov 5) |
+| SD-74e | booking · `PATCH /pos/settings/booking-phone-verification[/branches/:id]` | another salon's location id | a settings row stored under B keyed to A's location (no FK) → 404 `BRANCH_NOT_FOUND` | §74 write sweep (Nov 5) |
+| SD-74f | safety · `POST /community/evidence/:id/complete` | another salon's evidence id | 503 "storage not configured" before the ownership check → 404 `evidence_not_found` first | §74 write sweep (Nov 5) |
+| SD-74g | ai · `GET /pos/ai-queue-assignment/recommendations/:id/explanation` | a stored envelope without its arrays | 500 → explained | §74 sweep (Nov 5) |
+
 ## Infrastructure items (no code can close these)
 
 See [NEXT_STEPS.md](NEXT_STEPS.md) §B. In short: the K-12 sequence (rebuild the developer machine → rotate credentials → revoke the

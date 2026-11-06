@@ -274,9 +274,10 @@ export class CommunityInteractionsService {
   async completeUpload(ctx: CommunityCtx, evidenceId: string): Promise<CommunityEvidenceView> {
     requireId(evidenceId, 'evidenceId');
     await this.writer(ctx, 'upload_evidence');
-    this.storageReady();
+    // §74: ownership before configuration — another salon's evidence id is not_found whatever the storage state
     const ev = await this.repo.getOwnEvidence(ctx.tenantId, evidenceId);
     if (!ev || ev.removedAt) throw new CommunityError('evidence_not_found', 404);
+    this.storageReady();
     if (ev.uploadStatus === 'failed') throw new CommunityError('upload_failed', 409);
     if (ev.uploadStatus === 'pending_upload') {
       const obj = await this.blob.head!(ev.storageKey);

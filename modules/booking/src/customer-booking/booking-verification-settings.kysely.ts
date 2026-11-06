@@ -20,6 +20,12 @@ export class KyselyVerificationSettingsStore implements VerificationSettingsStor
     return res.rows?.[0] ?? null;
   }
 
+  async branchInTenant(tenantId: string, branchId: string): Promise<boolean> {
+    if (!this.db) return true;
+    const res: any = await sql`SELECT 1 FROM branches WHERE id = ${branchId}::uuid AND tenant_id = ${tenantId}::uuid LIMIT 1`.execute(this.db);
+    return (res.rows?.length ?? 0) > 0;
+  }
+
   async upsert(row: Record<string, any>): Promise<void> {
     if (!this.db) return;
 

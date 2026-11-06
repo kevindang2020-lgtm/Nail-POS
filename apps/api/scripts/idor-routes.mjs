@@ -293,3 +293,72 @@ export function branchScopeOf(route) {
 
 /** The tech realm's routes are attacked by salon B's TECHNICIAN; every other route by salon B's OWNER. */
 export const actorFor = (path) => (path.startsWith('/tech/') ? 'tech' : 'owner');
+
+// ── Security Deep Scan §74 (Nov 5 2026): WRITE routes and the CUSTOMER realm ──────────────────────────────────────
+// The GET sweep above proved reads. §74 asks for the ~700 id-bearing write routes (POST / PATCH / PUT / DELETE) and the
+// customer realm too: salon B (customer B) sends the write against salon A's (customer A's) real id and salon A's row
+// must be UNCHANGED (md5 of the whole row before and after) — whatever the status. A write route uses the same fixture
+// table as the reads (classifyIdorRoute); a write route the table cannot classify yet is listed in
+// security/idor-write-unclassified.baseline.json, which only shrinks (idor-route-coverage fails on a NEW unclassified one).
+
+/** The manifest's tenant-realm (staff / shared) write routes with a path parameter. */
+export function idorWriteRoutes(manifestText = readFileSync(resolve(API_ROOT, 'openapi/manifest.txt'), 'utf8')) {
+  const out = [];
+  for (const line of manifestText.split('\n')) {
+    const m = /^(POST|PATCH|PUT|DELETE) (\S+)\s+realm=(\S+)\s+auth=(\S+)\s+domain=(\S+)(.*)$/.exec(line);
+    if (!m || !m[2].includes('{')) continue;
+    const [, method, path, realm, auth, domain, rest] = m;
+    if (realm !== 'staff' && realm !== 'shared') continue;
+    out.push({ method, path, realm, auth, domain, perm: /perm=(\S+)/.exec(rest)?.[1] ?? null });
+  }
+  return out;
+}
+
+/** Customer realm: '$cust' = customer A's salon profile (customers.id), '$custUser' = customer A's login (users.id). */
+const C = (table, over = { customer_id: '$cust' }, col = 'id') => ({ table, col, over });
+export const CUSTOMER_FIXTURES = [
+  [/^\/customer\/(booking\/)?appointments\/\{id\}/, C('pos_tech_appointments', { customer_id: '$cust', technician_id: '$tech', start_time: '10:00', end_time: '11:00' })],
+  [/^\/customer\/invoices\/\{id\}/, C('invoices')],
+  [/^\/customer\/payments\/\{invoiceId\}/, C('tickets')],            // skip-line checkout: "invoiceId" is the ticket id
+  [/^\/customer\/payments\/\{paymentId\}/, C('payment_intents')],    // "paymentId" is the payment-intent id
+  [/^\/customer\/tickets\/\{ticketId\}/, C('tickets')],
+  [/^\/customer\/queue\/\{queueItemId\}/, C('pos_queue_items')],
+  [/^\/customer\/addresses\/\{id\}/, C('customer_addresses')],
+  [/^\/customer\/payment-methods\/\{id\}/, C('customer_payment_methods')],
+  [/^\/customer\/gift-cards\/\{id\}/, C('gift_cards')],
+  [/^\/customer\/messages\/\{threadId\}/, C('communication_threads')],
+  [/^\/customer\/operations\/\{id\}/, C('api_operations', { realm: 'customer', actor_user_id: '$custUser' })],
+  [/^\/customer\/me\/security\/sessions\/\{id\}/, C('sessions', { user_id: '$custUser' })],
+  [/^\/customer\/wallet\/top-ups\/\{id\}/, C('wallet_topup_intents')],
+  [/^\/customer\/schedule-proposals\/\{id\}/, C('schedule_change_proposals')],
+  [/^\/customer\/my-photo-consents\/\{photoId\}/, C('nail_photo_consent')],
+  [/^\/customer\/follow-ups\/\{id\}/, C('service_follow_up_tasks')],
+  [/^\/customer\/profile\/phone\/\{sessionId\}/, C('customer_phone_verifications')],
+  // public / social by design — the same answer for every customer
+  [/^\/customer\/(salons|techs|deals\/public)\//, X('public salon / technician / deal pages — the same for every visitor by design')],
+  [/^\/customer\/deals\/\{id\}/, X('a published deal is offered to every customer; save / estimate act on the caller\'s own list')],
+  [/^\/customer\/social\//, X('public social profiles (follow / block / report act on the caller\'s own relations)')],
+  [/^\/customer\/nail-showcase\//, X('the public showcase; edit / delete check the author (nail-showcase owner checks + its own pgtests)')],
+  [/^\/customer\/me\/favorite-salons\//, X('a public salon id; the favourite list is the caller\'s own')],
+  [/^\/customer\/tech-favorites\//, X('a public technician slug; the favourite list is the caller\'s own')],
+  [/^\/customer\/rewards\/\{id\}/, X('a reward from the platform catalog; redemption spends the caller\'s own points')],
+];
+/** The customer realm's session routes with a path parameter (reads and writes). */
+export function idorCustomerRoutes(manifestText = readFileSync(resolve(API_ROOT, 'openapi/manifest.txt'), 'utf8')) {
+  const out = [];
+  for (const line of manifestText.split('\n')) {
+    const m = /^(GET|POST|PATCH|PUT|DELETE) (\S+)\s+realm=customer\s+auth=(\S+)\s+domain=(\S+)/.exec(line);
+    if (!m || !m[2].includes('{')) continue;
+    out.push({ method: m[1], path: m[2], realm: 'customer', auth: m[3], domain: m[4] });
+  }
+  return out;
+}
+export function classifyCustomerRoute(route) {
+  if (route.auth !== 'session') return { exempt: `auth=${route.auth} — a public route, the same for every visitor` };
+  const hit = CUSTOMER_FIXTURES.find(([re]) => re.test(route.path));
+  if (!hit) return { unclassified: [...route.path.matchAll(/\{([^}]+)\}/g)].map((x) => x[1]) };
+  if (hit[1].exempt) return hit[1];
+  const names = [...route.path.matchAll(/\{([^}]+)\}/g)].map((x) => x[1]);
+  // the first parameter is the customer-owned record; any further one is a sub-record of it (attacked through the first)
+  return { params: { [names[0]]: hit[1] }, extra: names.slice(1) };
+}

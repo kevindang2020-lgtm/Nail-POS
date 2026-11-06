@@ -80,3 +80,13 @@ describe('QueueExplanationService', () => {
     await expect(svc.explain(ctx(), 'nope')).rejects.toBeInstanceOf(QueueAssignmentValidationError);
   });
 });
+
+// §74 sweep (Nov 5 2026): GET /pos/ai-queue-assignment/recommendations/:id/explanation answered 500 for a stored
+// envelope without its arrays (an older writer's row). It is explained, never a crash.
+describe('deterministicExplanation tolerates a partial stored envelope', () => {
+  it('no arrays, no confidence', () => {
+    expect(deterministicExplanation({ recommended: null } as never)).toMatch(/No technician could be recommended: no eligible technician/);
+    expect(deterministicExplanation({ recommended: { name: 'Mia' } } as never)).toBe('Suggested: Mia.');
+    expect(explanationPromptData({ recommended: null } as never)).toMatchObject({ warnings: [], confidencePercent: null });
+  });
+});

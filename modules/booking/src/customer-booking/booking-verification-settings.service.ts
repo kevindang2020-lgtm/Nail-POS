@@ -33,10 +33,12 @@ export interface VerificationSettingsStore {
   /** Has this tenant's Twilio ever actually VALIDATED? (`configured` is not `working`.) */
   providerValidated(tenantId: string, branchId: string): Promise<boolean>;
   platformPolicy(tenantId: string): Promise<{ requiredForTenant: boolean; blockedForTenant: boolean; emergencyDisabled: boolean; moduleEnabled?: boolean }>;
+  /** §74: is this location one of the salon's own? (the table has no branch FK — a foreign id would store a row) */
+  branchInTenant?(tenantId: string, branchId: string): Promise<boolean>;
 }
 
 export class VerificationSettingsError extends Error {
-  constructor(msg: string, readonly code: 'provider_required' | 'forbidden' | 'invalid') { super(msg); }
+  constructor(msg: string, readonly code: 'provider_required' | 'forbidden' | 'invalid' | 'not_found') { super(msg); }
 }
 
 export interface VerificationSettingsView {
@@ -126,6 +128,10 @@ export class BookingVerificationSettingsService {
       holdSeconds: number;
     }>,
   ): Promise<VerificationSettingsView> {
+    // §74 (write sweep): another salon's location id stored a settings row under this salon — refuse it first
+    if (branchId && this.store.branchInTenant && !(await this.store.branchInTenant(tenantId, branchId))) {
+      throw withCode(new VerificationSettingsError('That location does not belong to this salon.', 'not_found'), 'BRANCH_NOT_FOUND');
+    }
     const platform = await this.platformState(tenantId);
 
     // Super Admin has forced this on. The tenant may configure the DETAILS but may not switch it off — and the

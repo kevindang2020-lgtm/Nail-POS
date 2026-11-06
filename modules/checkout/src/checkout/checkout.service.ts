@@ -404,6 +404,9 @@ export class CheckoutService {
     if (this.repo.persistAudit && !/_viewed$/.test(actionType)) void this.repo.persistAudit(entityType === 'pos_gift_card' && entityId ? { ...entry, entityId: 'GC-****-' + String(entityId).slice(-4) } : entry).catch(() => undefined);
   }
   auditLog(): POSCheckoutAuditLog[] { return this.audit.slice(); }
+  /** §74: the ticket is in the caller's salon (and location scope) — TICKET_NOT_FOUND otherwise. For a caller that queues
+   *  work on a ticket id without reading it (the mobile receipt's outbox path). */
+  async assertTicketInScope(ctx: CheckoutContext, id: string): Promise<void> { await this.ticketOr404(ctx, id); }
   private async ticketOr404(ctx: CheckoutContext, id: string) { const t = await this.repo.ticket(ctx, id); if (!t) throw withCode(new ValidationError('Ticket not found'), 'TICKET_NOT_FOUND'); return t; }
   // POS↔mobile mutual exclusion: refuse to charge a ticket the Owner & Manager Payment App currently has open.
   // No-op when the lock read isn't wired (unit tests) or no active mobile lock exists.

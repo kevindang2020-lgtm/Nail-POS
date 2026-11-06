@@ -244,6 +244,8 @@ describe('evidence (own salon only, private storage, scanner fails closed)', () 
   it('no storage configured → 503 evidence_storage_not_configured (never 500, never a fake URL)', async () => {
     const off = new CommunityInteractionsService(core, repo, events, audit, { connected: false, put: async (k: string) => ({ key: k }), signedUrl: async () => null, remove: async () => undefined, presignPut: async () => null, head: async () => null }, scanner as any);
     await expectCode(off.requestUpload(ctxOf(A, A_OWNER), { postId: P1, mimeType: 'image/png', sizeBytes: 10, sha256: sha }), 'evidence_storage_not_configured', 503);
+    // §74: completing an id that is not this salon's is not_found — ownership is checked before configuration
+    await expectCode(off.completeUpload(ctxOf(B, B_OWNER), '00000000-0000-4000-8000-0000000000e1'), 'evidence_not_found', 404);
   });
   it('upload → complete → scan; size mismatch fails; another salon cannot touch it; access is logged', async () => {
     await expectCode(svc.requestUpload(ctxOf(B, B_OWNER), { postId: P1, mimeType: 'image/png', sizeBytes: 10, sha256: sha }), 'post_not_found', 404);

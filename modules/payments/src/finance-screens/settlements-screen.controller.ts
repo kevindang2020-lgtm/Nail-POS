@@ -11,6 +11,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Param, Query, Req, Header, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { SettlementsScreenRepository, assertTab, settlementDetailCsv } from './settlements-screen.repository';
 import { FinanceError, pageReq, type FinanceCtx } from './finance-scope';
+import { reconRefusalStatus } from '../deposit-reconciliation/deposit-reconciliation.service';
 
 export const SETTLEMENTS_SCREEN_REPOSITORY = 'SettlementsScreenRepository';
 
@@ -26,6 +27,9 @@ export async function runFinance<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e) {
     if (e instanceof FinanceError) throw new HttpException({ code: e.code, message: e.message, details: e.details ?? {} }, e.status);
+    // §74: the exception workflow refuses with Recon*Error (a foreign case id → RECON_CASE_NOT_FOUND); it was a 500.
+    const status = reconRefusalStatus(e);
+    if (status != null) throw new HttpException({ code: (e as { apiCode?: string }).apiCode ?? (status === 403 ? 'PERMISSION_DENIED' : 'VALIDATION_FAILED'), message: (e as Error).message }, status);
     throw e;
   }
 }

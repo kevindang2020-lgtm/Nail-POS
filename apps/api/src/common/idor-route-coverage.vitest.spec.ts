@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 // @ts-expect-error — a plain .mjs script module (no types)
-import { idorRoutes, classifyIdorRoute, PARAM_FIXTURES, SEGMENT_FIXTURES, EXEMPT, BRANCH_TABLES, branchScopeOf } from '../../scripts/idor-routes.mjs';
+import { idorRoutes, classifyIdorRoute, PARAM_FIXTURES, SEGMENT_FIXTURES, EXEMPT, BRANCH_TABLES, branchScopeOf, idorWriteRoutes, idorCustomerRoutes, classifyCustomerRoute, CUSTOMER_FIXTURES } from '../../scripts/idor-routes.mjs';
 
 const API = join(__dirname, '..', '..');
 const created = new Set<string>();
@@ -68,3 +68,37 @@ describe('§299 the IDOR route table covers the manifest', () => {
     expect(s).toMatch(/no route crashes on another salon/);
   });
 });
+
+// Security Deep Scan §74 (Nov 5 2026): the sweep covers WRITE routes and the CUSTOMER realm too.
+describe('§74 write routes and the customer realm are in the sweep', () => {
+  const writes = idorWriteRoutes();
+  const base: string[] = JSON.parse(readFileSync(join(API, 'security', 'idor-write-unclassified.baseline.json'), 'utf8')).routes;
+  it('the generator reads the manifest\'s id-bearing write routes (POST / PATCH / PUT / DELETE, staff + shared realms)', () => {
+    expect(writes.length).toBeGreaterThan(600);
+    expect(writes.some((r: any) => r.method === 'POST' && r.path === '/pos/checkout/tickets/{ticketId}/pay/cash')).toBe(true);
+  });
+  it('most write routes have a fixture; a NEW unclassified write route fails (the baseline only shrinks)', () => {
+    const classified = writes.filter((r: any) => classifyIdorRoute(r).params);
+    expect(classified.length).toBeGreaterThan(500);
+    const now = writes.filter((r: any) => classifyIdorRoute(r).unclassified).map((r: any) => `${r.method} ${r.path}`);
+    expect(now.filter((r: string) => !base.includes(r)), 'classify the new write route in scripts/idor-routes.mjs').toEqual([]);
+    expect(base.filter((r) => !now.includes(r)), 'classified or gone — remove from security/idor-write-unclassified.baseline.json').toEqual([]);
+  });
+  it('every customer-realm session route with an id is classified: a customer-owned fixture, or public / own-list by design (reasoned)', () => {
+    const cust = idorCustomerRoutes();
+    expect(cust.length).toBeGreaterThan(40);
+    const un = cust.filter((r: any) => classifyCustomerRoute(r).unclassified).map((r: any) => `${r.method} ${r.path}`);
+    expect(un, 'add the customer route to CUSTOMER_FIXTURES in scripts/idor-routes.mjs').toEqual([]);
+    expect(cust.filter((r: any) => classifyCustomerRoute(r).params).length).toBeGreaterThan(30);
+    for (const [, f] of CUSTOMER_FIXTURES as any[]) if (f.table) expect(created.has(f.table), f.table).toBe(true);
+    for (const r of cust) { const c = classifyCustomerRoute(r); if (c.exempt) expect(String(c.exempt).length).toBeGreaterThan(20); }
+  });
+  it('the live script attacks the write routes (row unchanged) and the customer realm as another customer', () => {
+    const s = readFileSync(join(API, 'scripts', 'live-phase14-idor.mjs'), 'utf8');
+    expect(s).toMatch(/idorWriteRoutes\(\)/);
+    expect(s).toMatch(/no write route changes salon A's record/);
+    expect(s).toMatch(/idorCustomerRoutes\(\)/);
+    expect(s).toMatch(/no customer route hands customer B customer A's record or changes it/);
+  });
+});
+

@@ -5,7 +5,7 @@
 //   GET  /pos/loyalty/bonus-requests/preview    pos.customers.view           server preview: current, after, token cost
 //   GET  /pos/loyalty/bonus-requests            pos.customers.view           history (customer / status filter, numbered pages)
 //   GET  /pos/loyalty/bonus-requests/health     pos.customers.loyalty.edit   "Check Customer & Loyalty System" (read-only)
-import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
+import { TenantAuthGuard, RolePermissionGuard, RequirePermission, RequireFeature, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { ListQuery } from '@aipowersalon/database';
 import { Body, Controller, Get, HttpException, Inject, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { LoyaltyBonusService, LoyaltyBonusError, cleanBonusInput, type BonusActor } from './loyalty-bonus';
@@ -27,6 +27,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 }
 
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
+@RequireFeature('loyalty')   // plan-gated like the rest of loyalty (check:api-contract PLAN_FEATURE_ROUTES)
 @Controller('pos/loyalty/bonus-requests')
 export class LoyaltyBonusController {
   constructor(@Inject(LoyaltyBonusService) private readonly svc: LoyaltyBonusService) {}

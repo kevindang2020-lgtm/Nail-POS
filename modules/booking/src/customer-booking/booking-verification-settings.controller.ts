@@ -19,7 +19,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
     if (e instanceof VerificationSettingsError) {
       // 409, not 400: the request is well-formed, the SYSTEM is not ready for it. A tenant who has not connected
       // Twilio has not made a mistake — they have not finished a prerequisite, and the message says which.
-      const status = e.code === 'forbidden' ? HttpStatus.FORBIDDEN : e.code === 'provider_required' ? HttpStatus.CONFLICT : HttpStatus.BAD_REQUEST;
+      const status = e.code === 'forbidden' ? HttpStatus.FORBIDDEN : e.code === 'provider_required' ? HttpStatus.CONFLICT : e.code === 'not_found' ? HttpStatus.NOT_FOUND : HttpStatus.BAD_REQUEST;
       throw new HttpException({ code: e.code, message: e.message }, status);
     }
     throw e;

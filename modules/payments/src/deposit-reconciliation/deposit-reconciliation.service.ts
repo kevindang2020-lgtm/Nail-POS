@@ -7,10 +7,18 @@ import {
   type ReconContext, type ReconState, type BankAccount, type BankDeposit, type ReconOptions,
 } from './deposit-reconciliation.dto';
 import type { ReconRepositoryPort, CreateBankAccountInput, CreateDepositInput } from './deposit-reconciliation.repository';
-import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
+import { withCode, ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
 
 export class ReconForbiddenError extends Error {}
 export class ReconValidationError extends Error {}
+/** §74: the HTTP status for a reconciliation refusal — the registry's status for its code (a foreign or unknown
+ *  case id → RECON_CASE_NOT_FOUND 404), else 403 / 400 by class; null when `e` is not a reconciliation refusal. */
+export function reconRefusalStatus(e: unknown): number | null {
+  if (!(e instanceof ReconForbiddenError) && !(e instanceof ReconValidationError)) return null;
+  const code = (e as { apiCode?: unknown }).apiCode;
+  if (isRegisteredCode(code)) return ERROR_REGISTRY[code].status;
+  return e instanceof ReconForbiddenError ? 403 : 400;
+}
 
 export class DepositReconciliationService {
   constructor(private readonly repo: ReconRepositoryPort) {}

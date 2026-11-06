@@ -26,12 +26,13 @@ const creds = (status: 'configured' | 'not_configured'): TenantCredentialResolve
 
 /** A fake store. No database, no SQL — the DECISIONS are what matter here, and they are what break a tenant's
  *  bookings if they are wrong. */
-function svcWith(opts: { configured: boolean; validated?: boolean; required?: boolean; blocked?: boolean; row?: any; moduleOff?: boolean }) {
+function svcWith(opts: { configured: boolean; validated?: boolean; required?: boolean; blocked?: boolean; row?: any; moduleOff?: boolean; ownBranches?: string[] }) {
   const writes: any[] = [];
   const store: VerificationSettingsStore = {
     async settingsRow() { return opts.row ?? null; },
     async upsert(row) { writes.push(row); },
     async providerValidated() { return !!opts.validated; },
+    ...(opts.ownBranches ? { async branchInTenant(_t: string, b: string) { return opts.ownBranches!.includes(b); } } : {}),
     async platformPolicy() {
       return { requiredForTenant: !!opts.required, blockedForTenant: !!opts.blocked, emergencyDisabled: false, moduleEnabled: !opts.moduleOff };
     },
@@ -156,3 +157,19 @@ describe('Phase 4', () => {
   });
 });
 
+
+// §74 (Nov 5 2026, the live write sweep): the table has no branch FK, so salon B patching salon A's location id
+// stored a settings row under B keyed to A's location and answered 200.
+describe('a location that is not the salon\'s own is refused before anything is stored', () => {
+  it("another salon's location id → BRANCH_NOT_FOUND, nothing written", async () => {
+    const { svc, writes } = svcWith({ configured: true, validated: true, ownBranches: ['b-own'] });
+    await expect(svc.patch('u1', 't1', 'b-of-salon-A', { holdSeconds: 300 })).rejects.toMatchObject({ code: 'not_found', apiCode: 'BRANCH_NOT_FOUND' });
+    expect(writes).toHaveLength(0);
+  });
+  it('its own location and the salon default still save', async () => {
+    const { svc, writes } = svcWith({ configured: true, validated: true, ownBranches: ['b-own'] });
+    await svc.patch('u1', 't1', 'b-own', { holdSeconds: 300 });
+    await svc.patch('u1', 't1', null, { holdSeconds: 300 });
+    expect(writes).toHaveLength(2);
+  });
+});

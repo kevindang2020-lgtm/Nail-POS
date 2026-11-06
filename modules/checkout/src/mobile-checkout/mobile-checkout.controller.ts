@@ -14,6 +14,8 @@ import { LockHeldElsewhereError, LockNotHeldError } from '../checkout-lock/check
 import { AttemptError } from './mobile-checkout.service';
 import { InvalidTransitionError } from './payment-attempt-state';
 import { ValidationError } from '../checkout/checkout.service';
+import { ServingForbiddenError, ServingValidationError, ServingConflictError } from '@aipowersalon/queue';
+import { recordConflict } from '@aipowersalon/observability';
 import { TapToPayNotConfiguredError, TapToPayNotImplementedError } from './tap-to-pay-session';
 import { ListQueries } from '@aipowersalon/database';
 import { MobileCheckoutControllerListQueries } from './mobile-checkout.list-queries';
@@ -36,6 +38,10 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
     if (e instanceof LockNotHeldError) throw new HttpException({ error: 'lock_not_held', message: e.message }, HttpStatus.CONFLICT);
     if (e instanceof InvalidTransitionError) throw new HttpException({ error: 'invalid_transition', message: e.message }, HttpStatus.CONFLICT);
     if (e instanceof ValidationError) throw new HttpException({ error: 'validation', message: e.message, ...(e.code ? { code: e.code } : {}), ...(e.params ? { details: e.params } : {}) }, HttpStatus.BAD_REQUEST);
+    // §74: the serving engine (retail lines, discounts) refuses with its own classes — a foreign ticket id was a 500
+    if (e instanceof ServingValidationError) throw new HttpException({ error: 'validation', message: e.message, ...(e.code ? { code: e.code } : {}), ...(e.params ? { details: e.params } : {}) }, HttpStatus.BAD_REQUEST);
+    if (e instanceof ServingForbiddenError) throw new HttpException({ error: 'forbidden', code: 'PERMISSION_DENIED', message: e.message }, HttpStatus.FORBIDDEN);
+    if (e instanceof ServingConflictError) { recordConflict('mobile_checkout', e.code ?? 'serving_conflict'); throw new HttpException({ error: 'conflict', ...(e.code ? { code: e.code } : {}), message: e.message }, HttpStatus.CONFLICT); }
     // M6-6 §57: the registry code beside the legacy `error` (clients read `code`)
     if (e instanceof TapToPayNotConfiguredError) throw new HttpException({ error: e.code, code: 'TAP_TO_PAY_NOT_AVAILABLE', message: e.message }, HttpStatus.SERVICE_UNAVAILABLE);
     if (e instanceof TapToPayNotImplementedError) throw new HttpException({ error: e.code, message: e.message }, HttpStatus.NOT_IMPLEMENTED);
@@ -291,13 +297,13 @@ export class MobileCheckoutController {
   @Post('tickets/:ticketId/proceed-to-payment')
   @RequirePermission('mobile_checkout.tap_to_pay')
   proceed(@Req() req: any, @Param('ticketId') ticketId: string, @Body(ValidatedBody(MC_PROCEED_BODY, { strict: true })) b: any) {
-    return this.svc.evaluateProceed(ctxFrom(req), ticketId, {
+    return run(() => this.svc.evaluateProceed(ctxFrom(req), ticketId, {
       sessionId: String(b?.sessionId || ''),
       deviceId: typeof b?.deviceId === 'string' ? b.deviceId : undefined,
       tip: b?.tip,
       segments: Array.isArray(b?.segments) ? b.segments : undefined,
       expectedVersion: typeof b?.expectedVersion === 'string' ? b.expectedVersion : undefined,
-    });
+    }));
   }
 
   /** Idempotently record a payment attempt (state 'created'). Re-posting the same idempotencyKey returns the same attempt.
