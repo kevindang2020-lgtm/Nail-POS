@@ -180,7 +180,9 @@ export async function vietnamesePhase(env) {
     // Tech Queue + Customer Queue (assign picker on the server) + Serving + Service Done
     for (const [k, path, expect] of [['techQueue', '/tech-queue', /Hàng chờ thợ/], ['queue', '/queue', /Hàng chờ khách/], ['serving', '/serving', /Đang phục vụ/], ['serviceDone', '/service-done', /Hoàn tất dịch vụ/]]) {
       const p = await live(path, mgr); if (!p) continue;
-      await waitFor(async () => expect.test(await bodyText(p.page)) && !/Đang tải/.test((await bodyText(p.page)).slice(0, 300)), 30000, 250);
+      // the whole page, not its first 300 characters: on the Customer Queue the sidebar alone is longer than that, so the
+      // board was read while it still said "Đang tải hàng chờ…" (Nov 6 2026 full run — the API answered in ~0.1 s)
+      await waitFor(async () => { const tx = await bodyText(p.page); return expect.test(tx) && !/Đang tải/.test(tx); }, 30000, 250);
       const tx = await bodyText(p.page);
       out[k] = { ok: expect.test(tx), viNames: (tx.match(/Nguyễn|Trần|Lê |Phạm|Hoàng|Huỳnh|Võ |Đặng|Bùi|Đỗ /g) ?? []).length, errors: p.pageErrors.slice(0, 2) };
       if (k === 'queue') {
@@ -283,6 +285,8 @@ export async function vietnamesePhase(env) {
     const switchTimes = [];
     const switchTo = async (l) => {
       const t0 = Date.now();
+      // Nov 6 2026 full run: the switch was missing here — say where the page was and what it showed, with a screenshot
+      if (!(await pg.getByTestId('language-switch').count())) { await p.shot('13f-no-language-switch'); throw new Error(`no language switch at ${pg.url()} :: ${(await bodyText(pg)).replace(/\s+/g, ' ').slice(0, 300)}`); }
       await pg.getByTestId('language-switch').click();
       await pg.getByTestId(`language-option-${l}`).click();
       await waitFor(async () => (await pg.evaluate(() => document.documentElement.lang)) === l && (l === 'vi' ? /Trang 3 \//.test(await label()) : /Page 3 of/.test(await label())), 5000, 10);

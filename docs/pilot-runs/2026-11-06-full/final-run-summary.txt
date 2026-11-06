@@ -1,0 +1,55 @@
+07:05:16 final run — commit 0160556 (2026-11-06 02:03:59 -0500) — node v22.23.4
+07:05:16 git status: 1 uncommitted file(s)
+07:05:17 START migrations-fresh
+07:05:20 END   migrations-fresh rc=0 :: migrate: applying 738_promotion_eligibility_checks.sql ... ok (5 ms) migrate: applying 787_validate_not_valid_checks.sql ... ok (2 ms) migrate: complete — 760 applied, 0 already present (760 total). 
+07:05:20 START build-packages
+07:05:40 END   build-packages rc=0 :: 
+07:05:40 START build-modules
+07:09:33 END   build-modules rc=0 :: 
+07:09:33 START build-api
+07:09:51 END   build-api rc=0 :: 
+07:09:51 START build-frontends
+07:12:17 END   build-frontends rc=0 :: 
+07:12:17 START typecheck-api
+07:12:33 END   typecheck-api rc=0 :: 
+07:12:33 START lint
+07:13:08 END   lint rc=0 :: 
+07:13:08 START gates
+07:19:05 END   gates rc=1 :: PASS  admin-english-only PASS  english-only-apps 1 FAILED: check:api-contract 
+07:19:05 START tests-packages
+07:20:05 END   tests-packages rc=0 :: PASS  packages/ui: Test Files  7 passed (7) | Tests  81 passed (81) PASS  packages/web-push: Test Files  1 passed (1) | Tests  10 passed (10) all suites passed 
+07:20:05 START tests-modules
+08:11:09 END   tests-modules rc=1 :: PASS  modules/tenants: Test Files  21 passed (21) | Tests  166 passed (166) PASS  modules/workforce: Test Files  151 passed | 7 skipped (158) | Tests  1298 passed | 23 skipped (1321) 3 FAILED: modules/ai, modules/booking, modules/payments 
+08:11:09 START tests-apps
+08:25:56 END   tests-apps rc=1 ::       FAIL  src/screens/POSAiPackageScreen.test.tsx > POSAiPackageScreen > a lapsed trial reads "Trial expired" with its end date and next step — not "On trial" + "Li PASS  apps/tech-web: Test Files  40 passed (40) | Tests  204 passed (204) 1 FAILED: apps/pos-web 
+08:25:56 START tests-api
+08:45:43 END   tests-api rc=1 ::       FAIL  src/observability/job-telemetry-coverage.vitest.spec.ts > every scheduler is instrumented > every background scheduler ticks through runTick (single owner       FAIL  src/observability/job-telemetry-coverage.vitest.spec.ts > every scheduler is instrumented > job types are stable dotted n
+08:45:43 START migrations-harness
+08:45:47 END   migrations-harness rc=0 :: migrate: applying 738_promotion_eligibility_checks.sql ... ok (5 ms) migrate: applying 787_validate_not_valid_checks.sql ... ok (2 ms) migrate: complete — 760 applied, 0 already present (760 total). 
+08:45:47 START harnesses
+08:47:06 END   harnesses rc=1 ::   ✅ verify-owner-tz.ts — 🎉 verify-owner-tz: 9 passed, 0 failed   ✅ verify-terminal-capture.ts — 🎉 verify-terminal-capture: 17 passed, 0 failed harnesses: 8 passed, 1 failed, 1 skipped 
+08:47:06 START migrations-race
+08:47:10 END   migrations-race rc=0 :: migrate: applying 738_promotion_eligibility_checks.sql ... ok (5 ms) migrate: applying 787_validate_not_valid_checks.sql ... ok (2 ms) migrate: complete — 760 applied, 0 already present (760 total). 
+08:47:10 START race-lane
+08:53:00 END   race-lane rc=1 :: PASS  modules/super-admin    files: 3 passed (3)   tests: 9 passed (9) PASS  modules/workforce      files: 7 passed (7)   tests: 23 passed (23) race lane: 128 files, 420 tests passed, 5 skipped across 18 packages 
+08:53:00 START migrations-live
+08:53:05 END   migrations-live rc=0 :: migrate: applying 738_promotion_eligibility_checks.sql ... ok (4 ms) migrate: applying 787_validate_not_valid_checks.sql ... ok (1 ms) migrate: complete — 760 applied, 0 already present (760 total). 
+08:53:05 START live-route-sweep
+08:53:41 END   live-route-sweep rc=1 :: PASS  every preview POST answers without a 5xx (a 4xx here is the input validation answering a minimal body) —  4xx: POST /owner/compensation/preview 400 | POST /owner/compensation/compliance-preview 400 | POST /pos/access/preview 400 | POST /pos/ai-queue-assignment/fair-turn/simulate 400 | POST /
+08:53:41 START live-api-harnesses
+08:53:50 END   live-api-harnesses rc=0 ::   ✅ verify-customer-import.mjs — ✅ BULK CUSTOMER IMPORT VERIFIED: 9 passed, 0 failed harnesses: 1 passed, 0 failed, 0 skipped 
+08:53:50 START seed-pilot01
+08:53:53 END   seed-pilot01 rc=0 :: ⚠️  Using DEFAULT seed passwords. Set SEED_SUPER_ADMIN_PASSWORD and SEED_OWNER_PASSWORD to your own before seeding production. ✅ Seed complete. 
+08:53:53 START live-event-wiring
+08:55:23 END   live-event-wiring rc=1 :: PASS  no consumer dead-lettered an event of the flows PASS  the publisher delivers promptly (p95 outbox → published under 3 s) — p95 939 ms 18/19 checks passed 
+08:55:23 START live-display-lifecycle
+08:55:27 END   live-display-lifecycle rc=0 :: PASS  a second release is harmless — 201 PASS  a forged device token is refused — 403 all 30 live checks passed 
+08:55:27 START migrations-pilot
+08:55:32 END   migrations-pilot rc=0 :: migrate: applying 738_promotion_eligibility_checks.sql ... ok (4 ms) migrate: applying 787_validate_not_valid_checks.sql ... ok (1 ms) migrate: complete — 760 applied, 0 already present (760 total). 
+08:55:32 START live-pilot-day
+09:12:23 END   live-pilot-day rc=1 :: FAIL  [9 api log] the API logged no unexpected errors during the day — {"timestamp":"2026-11-06T08:56:03.234Z","level":"error","service":"api","environment":"development","deploymentVersion":"1.0.0","requestId":"req_01M6R14YCWVBSCVCAZQ85PH0S0","correlationId":"req_01M6R14YCWVBSCVCAZQ85PH0S0","trac
+09:12:23 START drill-restore
+09:12:34 END   drill-restore rc=0 :: {"timestamp":"2026-11-06T09:12:30.758Z","level":"info","service":"job","environment":"development","deploymentVersion":"1.0.0","requestId":"job_07ab5488-6432-4485-9bb3-efbca63570a9","correlationId":"job_07ab5488-6432-4485-9bb3-efbca63570a9","traceId":"8fcec21527fa4857bc3ca13e128af4f9","spanId":"2980
+09:12:34 START e2e-html
+09:12:34 END   e2e-html rc=1 :: 
+09:12:34 DONE — see /home/claude/work/aipowersalon/final-run/2026-11-06/summary.txt

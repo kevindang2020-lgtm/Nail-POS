@@ -101,7 +101,9 @@ function reqJson(method: string, path: string, body: any, headers: http.Outgoing
 
   const child: ChildProcess = spawn('node', ['dist/main.js'], {
     cwd: process.cwd(),
-    env: { ...process.env, REPO_DRIVER: 'postgres', DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${DB_PORT}/postgres`, PORT: String(HTTP_PORT), AUTH_SESSION_SECRET: 'test-secret', NODE_ENV: 'test' },
+    // PG_POOL_MAX=1 (Nov 6 2026): the PGlite socket server serves ONE connection at a time — two reads in parallel (the
+    // serving floor loads sessions and lines together) opened a second connection that the server cut
+    env: { ...process.env, REPO_DRIVER: 'postgres', DATABASE_URL: `postgres://postgres:postgres@127.0.0.1:${DB_PORT}/postgres`, PORT: String(HTTP_PORT), AUTH_SESSION_SECRET: 'test-secret', NODE_ENV: 'test', PG_POOL_MAX: '1' },
     stdio: ['ignore', 'ignore', 'pipe'],
   });
   let childErr = '';

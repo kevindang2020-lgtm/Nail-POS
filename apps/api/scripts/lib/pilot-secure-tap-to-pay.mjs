@@ -500,15 +500,20 @@ export async function secureTapToPayPhase(env) {
   const KEY11 = `s11-bea-${tag}`;
   const rStale = await M.post(`/mobile-checkout/payments/${payBea?.paymentId}/refund`, refundBody, { headers: { 'idempotency-key': KEY11 } });
   const beaSu = await M.s.post('/auth/step-up', { password: STAFF_PW });
+  const chRefundsBefore = chCalls.filter((c) => c.path === '/payments/v1/refunds').length, cpBefore = (cpCalls ?? []).length;
   const rFresh = await M.post(`/mobile-checkout/payments/${payBea?.paymentId}/refund`, refundBody, { headers: { 'idempotency-key': KEY11 } });
+  const chRefunds = chCalls.filter((c) => c.path === '/payments/v1/refunds').slice(chRefundsBefore), cpDuring = (cpCalls ?? []).length - cpBefore;
+  const rAgain = await M.post(`/mobile-checkout/payments/${payBea?.paymentId}/refund`, refundBody, { headers: { 'idempotency-key': KEY11 } });   // the retried request
+  const chRefundsAfterRetry = chCalls.filter((c) => c.path === '/payments/v1/refunds').length - chRefundsBefore;
   const payAfter = (await q(`select p.status, (select coalesce(sum(r.amount_cents), 0)::int from payment_refunds r where r.payment_id = p.id) as refunded from payments p where p.id = $1`, [payBea?.paymentId]).catch((e) => [{ err: e.message }]))[0];
   const refundAudit = await q(`select action, actor_user_id from audit_events where tenant_id = $1 and resource_id = $2 and action = 'mobile_refund_requested' order by occurred_at`, [T, payBea?.paymentId]);
-  out.refund = { receptionist: { stepUp: recSu.status, refund: [rRec.status, code(rRec)] }, staleManager: [rStale.status, code(rStale)], stepUp: beaSu.status, fresh: [rFresh.status, rFresh.status >= 300 ? rFresh.body : (rFresh.body?.status ?? rFresh.body?.refund?.status ?? 'ok')], payment: payAfter, audit: refundAudit.map((r) => [r.action, r.actor_user_id === staff.bea.id ? 'Bea' : r.actor_user_id]) };
-  // Oct 28 2026 (Secure Tap audit §41 / §43): a Tap to Pay payment is NOT refunded through the branch's card gateway (it used
-  // to be — this step passed only because both rails were loopback fakes). Until the Tap to Pay port has refund / void, the
-  // authorised request is refused with TAP_TO_PAY_REFUND_AT_PROCESSOR and moves no money; permissions and step-up are unchanged.
-  check('S11', 'REFUND TRIO (§67) over HTTP on Bea\'s Tap to Pay payment: the RECEPTIONIST (even after her own step-up) is denied 403; BEA (manager) with a stale step-up → 403 STEP_UP_REQUIRED; after POST /auth/step-up the same request is refused TAP_TO_PAY_REFUND_AT_PROCESSOR (never sent to the branch card gateway) and nothing is refunded',
-    !!payBea?.paymentId && rRec.status === 403 && rStale.status === 403 && code(rStale) === 'STEP_UP_REQUIRED' && ok2(beaSu.status) && rFresh.status >= 400 && rFresh.status < 500 && code(rFresh) === 'TAP_TO_PAY_REFUND_AT_PROCESSOR' && (payAfter?.refunded ?? 0) === 0,
+  out.refund = { receptionist: { stepUp: recSu.status, refund: [rRec.status, code(rRec)] }, staleManager: [rStale.status, code(rStale)], stepUp: beaSu.status, fresh: [rFresh.status, rFresh.status >= 300 ? rFresh.body : (rFresh.body?.status ?? rFresh.body?.refund?.status ?? 'ok')], commerceHub: { refunds: chRefunds.length, signed: chRefunds.every((c) => c.signed), afterRetry: chRefundsAfterRetry }, branchGatewayCalls: cpDuring, retry: rAgain.status, payment: payAfter, audit: refundAudit.map((r) => [r.action, r.actor_user_id === staff.bea.id ? 'Bea' : r.actor_user_id]) };
+  // Oct 28 2026 (Secure Tap audit §41 / §43, then Kevin's decision the same day — ttp-refund-processor.ts): a Tap to Pay
+  // payment is refunded on the CommerceHub rail it was captured on, NEVER through the branch's card gateway. Permissions and
+  // step-up are unchanged; the retried request (same key) sends nothing twice.
+  check('S11', 'REFUND TRIO (§67) over HTTP on Bea\'s Tap to Pay payment: the RECEPTIONIST (even after her own step-up) is denied 403; BEA (manager) with a stale step-up → 403 STEP_UP_REQUIRED; after POST /auth/step-up the $5.00 refund goes to the Tap to Pay rail (ONE signed CommerceHub refund, nothing to the branch card gateway) and is recorded once; the retried request refunds nothing twice',
+    !!payBea?.paymentId && rRec.status === 403 && rStale.status === 403 && code(rStale) === 'STEP_UP_REQUIRED' && ok2(beaSu.status) && ok2(rFresh.status)
+      && chRefunds.length === 1 && chRefunds.every((c) => c.signed) && cpDuring === 0 && chRefundsAfterRetry === 1 && ok2(rAgain.status) && (payAfter?.refunded ?? 0) === 500,
     short(out.refund));
 
   // ══ S12 §77 the Customer Display follows the mobile payment (data captured around S5) ═══════════════════════════════
@@ -538,7 +543,10 @@ export async function secureTapToPayPhase(env) {
   // names of their own: phase 11 (M5 transfer) already opened "Pilot Annex <tag>" in this salon, and a salon may not hold two
   // branches with one name — with phase 11 skipped (the Oct 26 S10–S14 run) the collision never showed (M7 full run)
   const BA = await mkBranch('Tap to Pay Annex', 31), BZ = await mkBranch('Tap to Pay Closed Annex', 37);
-  const mid = (n) => ({ processorType: 'cardpointe', environment: 'sandbox', baseUrl: `https://${CP_HOST}/cardconnect/rest`, merchantId: n, apiUsername: 'pilotuser', apiPassword: 'pilot-pass-' + tag, status: 'active' });
+  // migration 704 (Kevin, Oct 28 2026): a location with its OWN merchant account takes Tap to Pay through its OWN CommerceHub
+  // MID (ttpMerchantId) — it never falls back to the salon default (another account's money); without one the phone is
+  // refused MERCHANT_NOT_CONFIGURED, which the Nov 6 full run showed
+  const mid = (n) => ({ processorType: 'cardpointe', environment: 'sandbox', baseUrl: `https://${CP_HOST}/cardconnect/rest`, merchantId: n, apiUsername: 'pilotuser', apiPassword: 'pilot-pass-' + tag, status: 'active', ttpMerchantId: `CHTTP${n.slice(-6)}` });
   const mA = BA.id ? await sa.post(`/super-admin/tenants/${T}/payment-gateway/branches/${BA.id}`, mid('496160873999')) : { status: 0 };
   const mZ = BZ.id ? await sa.post(`/super-admin/tenants/${T}/payment-gateway/branches/${BZ.id}`, mid('496160873777')) : { status: 0 };
   const zOff = BZ.id ? await sa.post(`/super-admin/tenants/${T}/payment-gateway/branches/${BZ.id}/status`, { action: 'disable', reason: 'S14: this location may not take cards' }) : { status: 0 };
@@ -582,7 +590,7 @@ export async function secureTapToPayPhase(env) {
   const chMid = chargesFor(pA?.sessionToken)[0]?.body?.merchantDetails ?? null;
   const mainMid = chCalls.find((c) => c.path === '/payments/v1/charges' && c.body?.source?.session && c.body.source.session !== pA?.sessionToken)?.body?.merchantDetails ?? null;
   const sameChMid = !!chMid && JSON.stringify(chMid) === JSON.stringify(mainMid);
-  s14.payment = { moved, capability: [capA.status, capA.body?.state ?? capA.body?.status], pay: pA && [pA.lock, pA.attempt?.slice(0, 2), pA.ready, pA.capture?.slice(0, 3)], row: rowA && { ...rowA, b: rowA.b === BA.id ? 'annex' : rowA.b === B ? 'MAIN' : rowA.b, mac: rowA.mac === annexMerchant ? 'annex merchant' : rowA.mac, u: rowA.u === env.OWNER_ID ? 'owner' : rowA.u ? 'set' : null },
+  s14.payment = { moved, capability: [capA.status, capA.body?.state ?? capA.body?.status], pay: pA && [pA.lock, pA.proceed, pA.attempt?.slice(0, 2), pA.ready, pA.capture?.slice(0, 3)], payRefusal: pA?.attempt?.[2] ?? pA?.lockBody ?? null, row: rowA && { ...rowA, b: rowA.b === BA.id ? 'annex' : rowA.b === B ? 'MAIN' : rowA.b, mac: rowA.mac === annexMerchant ? 'annex merchant' : rowA.mac, u: rowA.u === env.OWNER_ID ? 'owner' : rowA.u ? 'set' : null },
     reportAnnex: inList(histAnnex) && { branchId: inList(histAnnex).branchId === BA.id ? 'annex' : inList(histAnnex).branchId, deviceLabel: inList(histAnnex).deviceLabel, employee: inList(histAnnex).employeeName }, reportMain: !!inList(histMain), commerceHubMerchantDetails: !chMid ? 'none sent' : sameChMid ? 'the SAME CommerceHub merchant as the main location (one MID from the environment)' : 'a different CommerceHub merchant' };
   check('S14', 'after the switch the phone\'s MONEY is the annex\'s: a payment taken there is PAID with its row in the ANNEX, the intent records the ANNEX\'s own merchant account (PaymentGatewayResolver for the new location), the owner\'s report in the annex lists it (device label, employee) and the main location\'s report does not',
     moved === 'ok' && ok2(pA?.capture?.[0]) && pA?.capture?.[1] === 'confirmed' && rowA?.b === BA.id && rowA?.status === 'approved' && !!annexMerchant && rowA?.mac === annexMerchant

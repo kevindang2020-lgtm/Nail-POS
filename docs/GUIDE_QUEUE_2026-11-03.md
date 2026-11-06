@@ -260,7 +260,7 @@ New documents, each a queue row:
 
 | Row | Document | Status at Nov 5 |
 |---|---|---|
-| F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | IN PROGRESS — see the F1 section below |
+| F1 | Customer Directory — Master Redesign, Functional Repair & Developer Handoff (90 sections) | Nov 6: §1–80 DONE (0160556); §72 touch / §74 multi-terminal external; §81–89 handoff package — screenshots BLOCKED (no browser at 27-inch) |
 | F2 | Customer Retention — Claude Full Build Spec (Oct 29) | BUILT — audited Nov 5: this is the Oct 29 mandate `retention.repository.ts` was built from; the Oct 30 Complete Build Guide (C5) extended it. See the F2 section below |
 | F3 | Membership Overview — Claude Build Spec (Oct 29) | BUILT — audited Nov 5: the "Membership Overview mandate" the screen and `memberships.kysely.repository.ts` cite (9 references); see the F3 section below |
 | F4 | Full System Test (23 pages, 20 parts) | a whole-platform test run, not a feature; needs the full regression + the 27-inch pilot |

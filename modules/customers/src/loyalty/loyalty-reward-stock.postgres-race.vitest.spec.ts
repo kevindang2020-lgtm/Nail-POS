@@ -6,6 +6,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Kysely, PostgresDialect, sql } from 'kysely';
 import pg from 'pg';
 import { LoyaltyProgramRepository, LoyaltyProgramError } from './loyalty-program.repository';
+import { applyLoyaltyEntry } from './loyalty-ledger.service';
 
 const url = process.env.PG_RACE_URL;
 const P = 'a4000000-0000-4000-8000-';
@@ -36,8 +37,9 @@ describe.skipIf(!url)('real-Postgres reward stock and per-member limit under con
     await sql`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, stock_total) values (${RW}, ${T}, 'Last one', 10, true, 'amount_off', 100, 1)`.execute(db);
     await sql`insert into loyalty_rewards (id, tenant_id, title, points_cost, active, reward_type, value_cents, per_member_limit) values (${RM}, ${T}, 'Once each', 10, true, 'amount_off', 100, 1)`.execute(db);
     repo = new LoyaltyProgramRepository(db as never, { record: async () => undefined });
-    let n = 0;
-    for (const c of CUST) await repo.adjust(ctx, { customerId: c, delta: 500, reason: 'race seed', idempotencyKey: KEY(n++) });
+    // the points come through the ledger as an owner-approved bonus does (repo.adjust is retired since Nov 5 2026 — staff
+    // never change points by hand — and refused this seed in the Nov 6 full run)
+    for (const c of CUST) await db.transaction().execute((t) => applyLoyaltyEntry(t as never, { tenantId: T, customerId: c, entryType: 'adjust', delta: 500, reason: 'race seed (approved bonus)' }));
   }, 60_000);
   afterAll(async () => { await cleanup(); await db?.destroy(); });
 

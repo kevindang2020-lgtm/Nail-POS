@@ -183,14 +183,16 @@ describe('Payment Terminals — processor filter and Device Audit History', () =
     expect(none.total).toBe(all.total - 1);
   });
   it('lists terminal and Tap to Pay audit events newest first within the period; kind / device / search narrow it; other salons and locations never', async () => {
+    // minutes, not hours, apart: 3 hours ago is yesterday in the salon's first hours, outside 'today' (failed in the
+    // 07:20 UTC full run of Nov 6 2026). The order newest-first is the same.
     await q(`insert into settings_audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, after_json, created_at) values
-      ($1,$2,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_000003','{"id":"term_000003","provider":"cardpointe","merchantAccountId":"x"}', now() - interval '3 hours'),
-      ($1,$2,$3,'OWNER','pos_settings_terminal_tested','payments_checkout','term_000003','{"id":"term_000003","reachable":false}', now() - interval '2 hours'),
-      ($1,$6,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_elsewhere','{}', now() - interval '1 hours'),
+      ($1,$2,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_000003','{"id":"term_000003","provider":"cardpointe","merchantAccountId":"x"}', now() - interval '3 minutes'),
+      ($1,$2,$3,'OWNER','pos_settings_terminal_tested','payments_checkout','term_000003','{"id":"term_000003","reachable":false}', now() - interval '2 minutes'),
+      ($1,$6,$3,'OWNER','pos_settings_terminal_paired','payments_checkout','term_elsewhere','{}', now() - interval '1 minutes'),
       ($4,$5,$7,'OWNER','pos_settings_terminal_paired','payments_checkout','term_000099','{}', now()),
       ($1,$2,$3,'OWNER','pos_settings_receipts_saved','receipts','receipts','{}', now())`, [T, B, OWNER, T2, B2, id('b9'), id('e9')]);
     await q(`insert into audit_logs (tenant_id, branch_id, user_id, role, action_type, entity_type, entity_id, metadata_json, created_at) values
-      ($1,$2,$3,'OWNER','mobile_pay_device_revoked','mobile_pay_device','iphone-device-0002','{"reason":"Lost phone","token":"secret"}', now() - interval '30 minutes'),
+      ($1,$2,$3,'OWNER','mobile_pay_device_revoked','mobile_pay_device','iphone-device-0002','{"reason":"Lost phone","token":"secret"}', now() - interval '30 seconds'),
       ($4,$5,null,'OWNER','mobile_pay_device_revoked','mobile_pay_device','iphone-other','{}', now())`, [T, B, OWNER, T2, B2]);
     const period = resolvePeriod({ preset: 'today' }, TZ);
     const h = await repo.auditHistory(ctx, { period, q: '' }, pageReq({}));

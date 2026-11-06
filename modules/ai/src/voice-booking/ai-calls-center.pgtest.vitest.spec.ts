@@ -158,7 +158,9 @@ describe('metrics, detail, health, paging, isolation — guide §07–§12, §17
   });
   it('KP-02 a call with no end event after 2 hours is Unknown and stale — never Completed', async () => {
     await send(ev('call_started', 'call_stale', 'agent_a', { start_timestamp: at(180) }));
-    const k = await ac.kpis(own, { period: 'today' });
+    // a range that always holds a call that started 3 hours ago: in the salon's first hours of the day it started yesterday
+    // ('today' then rightly leaves it out — this failed in the 07:20 UTC full run of Nov 6 2026)
+    const k = await ac.kpis(own, { from: '2000-01-01' });
     expect(k.stale).toBeGreaterThanOrEqual(1);
     const page = await ac.calls(own, { q: 'call_stale' });
     expect(page.items[0].status).toBe('unknown');

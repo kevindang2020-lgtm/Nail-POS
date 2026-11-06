@@ -34,10 +34,11 @@ describe.skipIf(!url)('AI Receptionist on real Postgres: one hold per slot, one 
     await q(sql`insert into technician_services (tenant_id, branch_id, technician_id, service_id) values (${T}, ${B}, ${TECH}, ${SVC})`);
     await q(sql`insert into tenant_messaging_credentials (tenant_id, provider, account_sid, auth_token_enc, from_number, status, last_validated_at) values (${T}, 'twilio', 'AC_race', 'enc', '+16095550100', 'configured', now())`);
     await q(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, provider, provider_agent_id) values (${T}, ${B}, 'Desk', 'live', 'retell', ${'agent_' + TAG})`);
-    await q(sql`insert into voice_integration_keys (tenant_id, branch_id, label, provider, prefix, secret_hash) values (${T}, ${B}, 'live', 'retell', ${'vk_' + TAG.slice(0, 6)}, 'h')`);
+    await q(sql`insert into voice_integration_keys (tenant_id, branch_id, label, provider, prefix, secret_hash) values (${T}, ${B}, 'live', 'retell', ${'vk_' + TAG.slice(0, 6)}, ${'h_' + TAG})`);   // a hash of its own: an active key's hash is unique (uq_voice_keys_active_hash)
   }, 120_000);
   afterAll(async () => {
     if (dbs[0]) await q(sql`delete from booking_holds where tenant_id = ${T}`).catch(() => undefined);
+    if (dbs[0]) await q(sql`update voice_integration_keys set revoked_at = now() where tenant_id = ${T} and revoked_at is null`).catch(() => undefined);
     await Promise.all(dbs.map((d) => d.destroy()));
   });
 

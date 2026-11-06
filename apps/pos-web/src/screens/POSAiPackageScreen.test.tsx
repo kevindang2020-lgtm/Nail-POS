@@ -20,7 +20,7 @@ describe('POSAiPackageScreen', () => {
     render(<POSAiPackageScreen code="ai_ocr_receipt_scanner" title="AI Receipt Scanner" />);
     expect(await screen.findByTestId('pkg-state')).toHaveTextContent('Trial expired');
     expect(screen.queryByText('On trial')).toBeNull();
-    expect(screen.getByTestId('pkg-trial')).toHaveTextContent(/Ended Oct 1\d, 2026/);
+    expect(screen.getByTestId('pkg-trial')).toHaveTextContent(/Ended Oct (19|20), 2026/);   // midnight UTC Oct 20: Oct 19 in a US zone, Oct 20 under TZ=UTC (the full run)
     expect(screen.getByTestId('pkg-next')).toHaveTextContent(/Upgrade through Billing/);
     expect(screen.getByTestId('pkg-price')).toHaveTextContent('$29.00/mo');
     expect(screen.queryByTestId('pkg-cancel')).toBeNull();

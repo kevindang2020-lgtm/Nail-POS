@@ -129,6 +129,7 @@ const cleanup = async () => {
   await q(`delete from outbox_events where tenant_id = $1 and (aggregate_id::text = any($2::text[]) or payload_json::text like any($3::text[]))`, [T, ids, ids.map((s) => `%${s}%`)]).catch(() => undefined);
   await q(`delete from booking_verified_phones where tenant_id = $1 and phone_hash = any($2::text[])`, [T, [P_APP, P_PUB, P_VOICE, P_OVR, P_WEB].map(phoneKey)]).catch(() => undefined);
   await q(`delete from owner_alerts where tenant_id = $1 and category = 'booking_verification' and metadata::text like any($2::text[])`, [T, ids.map((s) => `%${s}%`)]).catch(() => undefined);
+  await q(`delete from ai_receptionist_control where tenant_id = $1 and branch_id = $2`, [T, B]).catch(() => undefined);
   await q(`delete from customer_identity_links where identity_id = $1`, [IDENT]).catch(() => undefined);
   await q(`delete from customer_identities where id = $1`, [IDENT]).catch(() => undefined);
   for (const u of [OWN, CU, SA]) for (const t of ['refresh_tokens', 'sessions', 'auth_events', 'auth_devices']) await q(`delete from ${t} where user_id = $1`, [u]).catch(() => undefined);
@@ -294,6 +295,11 @@ try {
   }
 
   // ── 3. the AI RECEPTIONIST ───────────────────────────────────────────────────────────────────────────────────────
+  // AI Receptionist guide (Oct 31 2026): the AI books only where the salon ARMED booking actions (else handoff-only, 503).
+  // Arming has its own gates (package, agent, key, business setup — receptionist-center tests); this proof is about the
+  // phone code, so the salon's armed state is recorded here as the owner's arm action would leave it.
+  await q(`insert into ai_receptionist_control (tenant_id, branch_id, booking_armed, booking_armed_at, booking_armed_by, booking_arm_reason)
+    values ($1, $2, true, now(), $3, 'phase-4 proof') on conflict (tenant_id, coalesce(branch_id, '00000000-0000-0000-0000-000000000000'::uuid)) do update set booking_armed = true`, [T, B, OWN]);
   const vBody = { serviceId: svc.id, technicianId: TECH, date: day, startTime: '12:00', customerName: 'Vic Voice', customerPhone: P_VOICE, callerConfirmed: true };
   const v1 = await voice('POST', '/api/ai-receptionist/v1/appointments', vBody, `voice-${tag}`);
   check('AI RECEPTIONIST: reachable with the voice key (not a 401 "No session") and refused with collect_verification_code (DTMF)', ok2(v1.status) && v1.body?.action === 'collect_verification_code' && v1.body?.input === 'dtmf' && !!v1.body?.dtmfUrl && String(v1.body?.bookingSessionId).startsWith('bs~'), `status ${v1.status} ${JSON.stringify(v1.body).slice(0, 260)}`);

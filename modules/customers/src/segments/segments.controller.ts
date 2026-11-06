@@ -14,7 +14,7 @@ import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { RETENTION_REPOSITORY } from '../retention/retention.controller';
-import { RetentionRepository, PERIOD_PRESETS, isUuid, type RetentionContext } from '../retention/retention.repository';
+import { RetentionRepository, RetentionError, PERIOD_PRESETS, isUuid, type RetentionContext } from '../retention/retention.repository';
 import { SegmentsRepository, SegmentsError, SEGMENTS, SEGMENT_SORTS, SEGMENT_BASES, type SegmentFilters } from './segments.repository';
 import { SEGMENT_AUDIENCE_DRAFT_BODY, SEGMENT_EMPTY_BODY, SEGMENT_DRAFT_CAMPAIGN_BODY } from '../request-schemas';
 
@@ -31,6 +31,8 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   try { return await fn(); }
   catch (e) {
     if (e instanceof SegmentsError) throw new HttpException({ code: e.code, message: e.message, details: e.details ?? {} }, e.status);
+    // the stored-history reads (snapshots/day) go through the retention snapshot reader: a bad date was a 500 (Nov 6 full run)
+    if (e instanceof RetentionError) throw new HttpException({ code: e.code, message: e.message, details: e.details ?? {} }, e.status);
     throw e;
   }
 }

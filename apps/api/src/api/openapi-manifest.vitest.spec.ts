@@ -108,7 +108,7 @@ export class T {
   refund(@Param('id') id: string) {}
 }`);
     expect(gen.manifestLine(gen.factsOf(r))).toBe(
-      'POST /super-admin/tenants/{id}/refund  realm=super_admin  auth=session  domain=tenants  perm=platform.tenants.manage  step-up  idempotency=required  guards=SuperAdminGuard');
+      'POST /super-admin/tenants/{id}/refund  realm=super_admin  auth=session  domain=tenants  perm=platform.tenants.manage  resource=PLATFORM/realm  step-up  idempotency=required  guards=SuperAdminGuard');
   });
 
   it('voice routes are api_key, infrastructure is unversioned', () => {

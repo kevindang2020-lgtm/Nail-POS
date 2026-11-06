@@ -14,6 +14,8 @@ import { describe, it, expect, beforeAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { SegmentsRepository, SegmentsError } from './segments.repository';
 import { RetentionSnapshotRepository } from '../retention/retention-snapshots';
+import { SegmentsController } from './segments.controller';
+import { RetentionRepository } from '../retention/retention.repository';
 
 const P = 'c5e93500-0000-4000-8000-0000000';
 const id = (n: string) => P + n.padStart(5, '0');
@@ -164,6 +166,12 @@ describe('§07 search · §08 calendar · §09 pagination', () => {
 });
 
 describe('§11 historical snapshots (stored, rule-versioned, idempotent)', () => {
+  it('GET snapshots/day with a bad date is a 400 SNAPSHOT_INVALID_DATE, not a 500 (Nov 6 2026 full-run route sweep)', async () => {
+    const ctl = new SegmentsController(new RetentionRepository(db));
+    const e: any = await ctl.snapshotDay({ ctx } as any, { date: 'x' }).catch((x: unknown) => x);
+    expect(e?.getStatus?.()).toBe(400);
+    expect(e?.getResponse?.()).toMatchObject({ code: 'SNAPSHOT_INVALID_DATE' });
+  });
   it('a complete day records VIP; the job is idempotent; a reconstructed day leaves VIP unrecorded; Sept → Oct example; no invented history', async () => {
     const y = await dayAgo(1);
     const a = await snaps.computeDay(T, y, { kind: 'nightly' }); const b = await snaps.computeDay(T, y, { kind: 'nightly' });

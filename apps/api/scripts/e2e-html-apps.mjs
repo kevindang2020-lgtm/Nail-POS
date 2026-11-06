@@ -21,7 +21,7 @@
 // Run from apps/api:   node scripts/e2e-html-apps.mjs
 // Not part of the vitest battery (browser + ports); wired as `npm run e2e:html`.
 import http from 'node:http';
-import { readFileSync, existsSync as _exists } from 'node:fs';
+import { readFileSync, existsSync as _exists, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -129,7 +129,10 @@ const check = (ok, label) => { console.log(`   ${ok ? '✓' : '✗'} ${label}`);
 
 // Oct 20 2026: same rule as live-pilot-day.mjs — Playwright's pinned headless-shell may not be downloaded on a CI box
 // (this one has chromium-1194 under /opt/pw-browsers); use CHROMIUM_PATH, else an installed Chromium, else Playwright's own.
-const INSTALLED = ['/opt/pw-browsers/chromium/chrome-linux/chrome', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => _exists(p));
+// Nov 6 2026: newer boxes link /opt/pw-browsers/chromium straight to the binary (…/chrome-linux64/chrome) — the old
+// candidates were directories-only and the run fell through to a headless shell that is not downloaded
+const INSTALLED = ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium/chrome-linux/chrome', '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome']
+  .find((p) => { try { return _exists(p) && statSync(p).isFile(); } catch { return false; } });
 const execPath = process.env.CHROMIUM_PATH || INSTALLED;
 const browser = await chromium.launch(execPath ? { executablePath: execPath, args: ['--no-sandbox'] } : {});
 // A journey that stalls (e.g. the app hit an error screen because its request was rejected) must fail with a

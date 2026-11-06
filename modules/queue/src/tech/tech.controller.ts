@@ -16,6 +16,7 @@ import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { makeMediaStorage, acceptUpload, uploadObjectKey, UPLOAD_POLICIES } from '@aipowersalon/media';
 import { TechService, TechError } from './tech.service';
+import { servingHttpError } from '../serving/serving.controller';
 import { MembershipEnrollService } from '@aipowersalon/memberships';
 import type { TechContext } from './tech.repository';
 import { ListQueries } from '@aipowersalon/database';
@@ -40,6 +41,8 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
     }
     // an exposed client error (a registry code with a 4xx status, e.g. 401 HANDOFF_TOKEN_INVALID) goes to the platform filter as it is
     if (e?.expose === true && Number(e?.status) >= 400 && Number(e?.status) < 500 && typeof e?.code === 'string') throw e;
+    // change / remove line requests run through the serving engine: its refusals keep their status and code (were a 500)
+    const serving = servingHttpError(e); if (serving) throw serving;
     throw new InternalServerErrorException(e?.message || String(e));
   }
 }

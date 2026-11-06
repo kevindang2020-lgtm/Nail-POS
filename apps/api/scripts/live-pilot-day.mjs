@@ -276,7 +276,7 @@ const serveApp = (appName, port) => new Promise((res) => {
 const ensureBrowser = async () => {
   if (!browser) {
     const { chromium } = await import('playwright');
-    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1243/chrome-linux/chrome', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => fsExists(p) && fsStat(p).isFile()) || undefined, args: ['--no-sandbox'] });
+    browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH || ['/opt/pw-browsers/chromium', '/opt/pw-browsers/chromium-1243/chrome-linux64/chrome', '/opt/pw-browsers/chromium-1243/chrome-linux/chrome', '/opt/pw-browsers/chromium-1194/chrome-linux/chrome'].find((p) => fsExists(p) && fsStat(p).isFile()) || undefined, args: ['--no-sandbox'] });
     mkdirSync(SHOTS, { recursive: true });
   }
   return browser;
@@ -683,6 +683,10 @@ try {
   const vk = await sa.post('/super-admin/voice/keys', { tenantId: T, branchId: B, label: 'Pilot AI receptionist', provider: 'retell' });
   const VOICE_KEY = vk.body?.raw;
   const voice = (method, path, body, idem) => fetch(API + path, { method, headers: { 'x-voice-key': VOICE_KEY, 'content-type': 'application/json', ...(idem ? { 'idempotency-key': idem } : {}) }, body: body ? JSON.stringify(body) : undefined }).then(j);
+  // AI Receptionist guide (Oct 31 2026): the AI books only where the salon ARMED booking actions (otherwise handoff-only,
+  // 503). The arm gates (package, agent, key, business setup) have their own tests; the pilot records the owner's arm.
+  await q(`insert into ai_receptionist_control (tenant_id, branch_id, booking_armed, booking_armed_at, booking_armed_by, booking_arm_reason)
+    values ($1, $2, true, now(), $3, 'pilot day') on conflict (tenant_id, coalesce(branch_id, '00000000-0000-0000-0000-000000000000'::uuid)) do update set booking_armed = true`, [T, B, ctx.ownerUserId ?? null]);
   const vs = await voice('GET', '/api/ai-receptionist/v1/services');
   const va = await voice('GET', `/api/ai-receptionist/v1/availability?serviceId=${ctx.services.pedi}&technicianId=${MARY}&date=${TODAY}`);
   const vslots = (va.body?.data?.slots ?? va.body?.slots ?? []).map((x) => x.displayTime ?? x.startTime ?? x).filter((x) => typeof x === 'string' && (Number(x.slice(0, 2)) * 60 + Number(x.slice(3, 5))) >= localNowMin + 90);
@@ -854,7 +858,10 @@ try {
   // ── KIM (Mary): she joins the salon's "Pedi Club" membership (20 % off pedicures) — the benefit comes off her bill
   const mPlan = await own.post('/pos/memberships/plans', { name: 'Pedi Club', planCode: `PEDI${tag}`, productType: 'recurring', description: '20 % off every pedicure', memberVisible: true });
   const planId = mPlan.body?.planId ?? mPlan.body?.id;
-  const k_ver = await own.post(`/pos/memberships/plans/${planId}/versions`, { billingInterval: 'month', intervalCount: 1, priceCents: 2900, autoRenew: false, termType: 'evergreen',
+  // D6 Membership (Nov 4 2026): a paid plan with no trial waits for its confirmed first payment (pending, no benefits). The
+  // pilot has no card gateway, so the plan opens with a 30-day trial — benefits apply during the trial, as for a salon's
+  // "first month free".
+  const k_ver = await own.post(`/pos/memberships/plans/${planId}/versions`, { billingInterval: 'month', intervalCount: 1, priceCents: 2900, trialDays: 30, autoRenew: false, termType: 'evergreen',
     benefits: [{ benefitType: 'percent_discount', label: '20 % off pedicures', percent: 20, categorySnapshot: 'Nails', sortOrder: 1 }] });
   const kimCustomer = (await q(`select customer_id from tickets where id = $1`, [TKIM]))[0]?.customer_id;
   const k_enr = await own.post('/pos/memberships/enroll', { customerId: kimCustomer, planId, channel: 'pos', agreementVersion: 'v1' });
@@ -1108,7 +1115,7 @@ try {
     const od = await shoot('owner-app-dashboard', 'owner-web', '/', own, /Dashboard|Revenue|Today/i);
     const of = await shoot('owner-app-reports', 'owner-web', '/', own, new RegExp(`TOTAL REVENUE[^$]*\\$${Math.floor(numbers.collectedCents / 100)}`), async (page) => { await sleep(1500); await page.getByRole('button', { name: /reports/i }).first().click({ timeout: 8000 }).catch(() => undefined); });
     const pr = await shoot('pos-reports', 'pos-web', '/reports', own, /322\.00|Gross/i);
-    check(`SCREEN: the Owner app dashboard renders; POS Reports render the day (net sales $304.00, no invented rating); the Owner app Reports tab shows total revenue $${collectedTxt} (rounded to dollars) (Chromium)`,
+    check(`SCREEN: the Owner app dashboard renders; POS Reports render the day (net sales $304.00 = gross $322.00 − $18.00 discounts incl. Kim's membership, no invented rating); the Owner app Reports tab shows total revenue $${collectedTxt} (rounded to dollars) (Chromium)`,
       !!od.matched && !!of.matched && !!pr.matched && /Average Rating —/i.test(pr.text ?? '') && /Net Sales \$304\.00/i.test(pr.text ?? '') && [od, of, pr].every((x) => !(x.pageErrors?.length)), short({ od: od.err ?? (od.text ?? '').slice(0, 160), of: of.matched, ofT: (of.text ?? '').slice(0, 200), pr: pr.matched, e: [od, of, pr].map((x) => x.pageErrors) }));
     info(`screenshots (${shots.length}) in ${SHOTS}: ${shots.map((x) => `${x.file ?? x.name}${x.matched === false ? ' (text not found)' : ''}${x.error ? ' ERROR ' + x.error : ''}`).join(', ')}`);
   }
@@ -1373,21 +1380,26 @@ try {
     const stubTech = st0 ? TECH_DEF.find((t) => t.id === st0.technicianId) : null;
     const otherStubTech = TECH_DEF.find((t) => t.id !== st0?.technicianId);
     const usd = (c) => (Number(c) < 0 ? '−' : '') + '$' + (Math.abs(Number(c)) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const viStub = st0 && stubTech ? await tech[stubTech.key].bytes(`/tech/payroll/statements/${st0.id}/pay-stub.pdf?lang=vi`) : { status: 0, headers: new Headers(), buf: Buffer.alloc(0) };
+    // POSLanguage §11–§12 (Oct 28 2026): the Technician App is English only — her stub is English even when she asks for
+    // ?lang=vi; the Vietnamese stub is the Front Desk POS's (it follows the POS language)
+    const techStub = st0 && stubTech ? await tech[stubTech.key].bytes(`/tech/payroll/statements/${st0.id}/pay-stub.pdf?lang=vi`) : { status: 0, headers: new Headers(), buf: Buffer.alloc(0) };
+    const viStub = st0 ? await own.bytes(`/pos/payroll/paychecks/statements/${st0.id}/pay-stub.pdf?lang=vi`) : { status: 0, headers: new Headers(), buf: Buffer.alloc(0) };
     const enStub = st0 ? await own.bytes(`/pos/payroll/paychecks/statements/${st0.id}/pay-stub.pdf?lang=en`) : { status: 0, headers: new Headers(), buf: Buffer.alloc(0) };
     const notHers = st0 ? await tech[otherStubTech.key].bytes(`/tech/payroll/statements/${st0.id}/pay-stub.pdf`) : { status: 0, headers: new Headers(), buf: Buffer.alloc(0) };
     const viText = viStub.status === 200 ? pdfText(viStub.buf) : '';
+    const techText = techStub.status === 200 ? pdfText(techStub.buf) : '';
     const enText = enStub.status === 200 ? pdfText(enStub.buf) : '';
     const want = st0 ? { number: st0.statementNumber, gross: usd(st0.grossEarningsCents), payable: usd(st0.approvedPayableCents), paid: usd(st0.paidCents), unpaid: usd(st0.unpaidCents) } : {};
     const enHas = Object.fromEntries(Object.entries(want).map(([k, v]) => [k, enText.includes(v)]));
     const stubAudits = st0 ? (await q(`select count(*)::int n from audit_events where tenant_id = $1 and module = 'payroll' and action = 'pay_stub.downloaded' and resource_id = $2`, [T, st0.id]))[0].n : -1;
-    numbers.mandate.paycheck.payStub = { statement: want, tech: [viStub.status, viStub.headers.get('content-type'), viStub.buf.length], pos: [enStub.status, enStub.buf.length], enHas,
+    numbers.mandate.paycheck.payStub = { statement: want, tech: [techStub.status, techStub.headers.get('content-type'), techStub.buf.length, techText.includes('PHIẾU LƯƠNG') ? 'vi' : 'en'], pos: [enStub.status, enStub.buf.length], posVi: [viStub.status, viStub.buf.length], enHas,
       viHas: { title: viText.includes('PHIẾU LƯƠNG'), technician: viText.includes('Thợ'), number: viText.includes(want.number ?? '\u0000') },
       disposition: enStub.headers.get('content-disposition'), cache: enStub.headers.get('cache-control'), otherTechnician: notHers.status, audits: stubAudits };
-    check(`PAY STUB (17.5): ${stubTech?.first ?? 'the technician'} downloads her approved week's stub from the Tech App (Vietnamese — "PHIẾU LƯƠNG", "Thợ", ${want.number}); the owner downloads it from the POS (English) and its text carries the stored totals — gross ${want.gross}, payable ${want.payable}, paid ${want.paid}, still to pay ${want.unpaid}; an attachment, never cached; another technician → 404; both downloads audited`,
-      viStub.status === 200 && /application\/pdf/.test(viStub.headers.get('content-type') ?? '') && viStub.buf.subarray(0, 5).toString() === '%PDF-' && numbers.mandate.paycheck.payStub.viHas.title && numbers.mandate.paycheck.payStub.viHas.technician && numbers.mandate.paycheck.payStub.viHas.number
+    check(`PAY STUB (17.5): ${stubTech?.first ?? 'the technician'} downloads her approved week's stub from the Tech App (English only — even when asked for Vietnamese); the POS downloads it in Vietnamese ("PHIẾU LƯƠNG", "Thợ", ${want.number}) and in English, whose text carries the stored totals — gross ${want.gross}, payable ${want.payable}, paid ${want.paid}, still to pay ${want.unpaid}; an attachment, never cached; another technician → 404; every download audited`,
+      techStub.status === 200 && /application\/pdf/.test(techStub.headers.get('content-type') ?? '') && techStub.buf.subarray(0, 5).toString() === '%PDF-' && techText.includes(want.number ?? '\u0000') && !techText.includes('PHIẾU LƯƠNG')
+        && viStub.status === 200 && numbers.mandate.paycheck.payStub.viHas.title && numbers.mandate.paycheck.payStub.viHas.technician && numbers.mandate.paycheck.payStub.viHas.number
         && enStub.status === 200 && Object.values(enHas).every(Boolean) && /^attachment;/.test(enStub.headers.get('content-disposition') ?? '') && /no-store/.test(enStub.headers.get('cache-control') ?? '')
-        && notHers.status === 404 && stubAudits >= 2, short(numbers.mandate.paycheck.payStub));
+        && notHers.status === 404 && stubAudits >= 3, short(numbers.mandate.paycheck.payStub));
   });
 
   // ── 10e2. PAYCHECK CLOSE-OUT (Oct 27 2026): the preparation report, the manager's "ready for review" push, the

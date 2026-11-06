@@ -224,11 +224,13 @@ export class KyselyServingRepository implements ServingRepositoryPort {
   private async hydrateMany(ctx: ServingContext, tickets: any[]): Promise<SVTicket[]> {
     if (tickets.length === 0) return [];
     const ids = tickets.map((t) => t.id);
+    // Nov 6 2026: no catch on these two — a failed read made a ticket look like it had no lines ("Service line not found",
+    // a wrong serving status). The name / customer label reads below may still degrade to blanks.
     const [sessions, rawLines] = await Promise.all([
       this.db.selectFrom('ticket_service_sessions').select(['ticket_id', 'id', 'technician_id', 'status', 'idempotency_key', 'created_at'])
-        .where('tenant_id', '=', ctx.tenantId).where('ticket_id', 'in', ids).where('is_helper', '=', false).orderBy('created_at', 'desc').execute().catch(() => [] as Row[]),
+        .where('tenant_id', '=', ctx.tenantId).where('ticket_id', 'in', ids).where('is_helper', '=', false).orderBy('created_at', 'desc').execute(),
       this.scoped(this.db.selectFrom('ticket_service_lines'), ctx).where('ticket_id', 'in', ids).where('removed_at', 'is', null)
-        .select(['id', 'ticket_id', 'service_id', 'service_name_snapshot', 'technician_id', 'price_cents_snapshot', 'line_total_cents', 'duration_minutes_snapshot', 'status', 'is_add_on', 'category_snapshot', 'created_at']).orderBy('created_at').execute().catch(() => [] as Row[]),
+        .select(['id', 'ticket_id', 'service_id', 'service_name_snapshot', 'technician_id', 'price_cents_snapshot', 'line_total_cents', 'duration_minutes_snapshot', 'status', 'is_add_on', 'category_snapshot', 'created_at']).orderBy('created_at').execute(),
     ]);
     const sessionBy: Record<string, Row> = {}; for (const x of sessions as Row[]) if (!sessionBy[x.ticket_id]) sessionBy[x.ticket_id] = x;   // latest first
     const linesBy: Record<string, Row[]> = {}; for (const l of rawLines as Row[]) (linesBy[l.ticket_id] ??= []).push(l);

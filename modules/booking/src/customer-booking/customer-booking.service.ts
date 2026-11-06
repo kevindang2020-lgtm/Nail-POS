@@ -379,7 +379,9 @@ export class CustomerBookingService {
     if (!TIME_RE.test(startTime)) throw new BookingValidationError('startTime must be HH:MM');
     // a coarse guard only (the slot check refuses a past time in the salon's own zone): the UTC day is already tomorrow on a US
     // evening, so comparing with it refused rescheduling to later TODAY — compare with the UTC day before instead
-    if (date < new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)) throw new BookingValidationError('Pick a future date.');
+    // Nov 6 2026: only when there is no salon clock — with one, assertNotPast decides (the server's UTC day disagreed with
+    // the salon's day and refused a move the salon clock allowed)
+    if (!this.repo.salonNow && date < new Date(Date.now() - 86_400_000).toISOString().slice(0, 10)) throw new BookingValidationError('Pick a future date.');
     await this.assertNotPast(ctx, date, startTime);
     const customer = await this.repo.resolveCustomerId(ctx);
     if (!customer) throw new NotCustomerError('No customer profile is linked to this account.');

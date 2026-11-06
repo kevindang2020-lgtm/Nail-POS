@@ -14,20 +14,25 @@ import { ERROR_REGISTRY, isRegisteredCode } from '@aipowersalon/api-contracts'; 
 
 function ctxFrom(req: any): ServingContext { const c = req?.ctx || {}; return { tenantId: c.tenantId, branchId: c.branchId ?? '', userId: c.userId, role: c.role, permissions: c.permissions || [] }; }
 function filtersFrom(q: any): ServingFilters { const n = (v: any) => (v === undefined || v === '' ? undefined : Number(v)); return { search: q.search, status: q.status, technicianId: q.technicianId, serviceCategory: q.serviceCategory, station: q.station, delayStatus: q.delayStatus, page: n(q.page), pageSize: n(q.pageSize) }; }
-async function run<T>(fn: () => T | Promise<T>): Promise<T> {
-  try { return await fn(); } catch (e) {
-    if (e instanceof ForbiddenError) throw new HttpException(e.message, HttpStatus.FORBIDDEN);
+/** the serving engine's refusals as HTTP answers (null = not a serving refusal). Shared with the Tech App controller
+ *  (Nov 6 2026): its change / remove line requests run through the serving engine and answered every refusal as a 500. */
+export function servingHttpError(e: unknown): HttpException | null {
+    if (e instanceof ForbiddenError) return new HttpException(e.message, HttpStatus.FORBIDDEN);
     // Serving mandate §101–§104: a conflict carries its registry code (TECHNICIAN_ALREADY_SERVING, TICKET_CHANGED_RELOAD, …)
     // so the POS words it in the cashier's language — it answered a bare English 409
-    if (e instanceof ConflictError) { const code = e.code ?? (e as { apiCode?: string }).apiCode; throw new HttpException(code && isRegisteredCode(code) ? { message: e.message, code } : e.message, HttpStatus.CONFLICT); }
+    if (e instanceof ConflictError) { const code = e.code ?? (e as { apiCode?: string }).apiCode; return new HttpException(code && isRegisteredCode(code) ? { message: e.message, code } : e.message, HttpStatus.CONFLICT); }
     // V-5: the code the POS words in the cashier's language. `apiCode` is where withCode() puts it — most serving refusals
     // carry it there, and run() read only `code`, so they answered a bare 400 (Serving mandate fix, as in Service Done)
     const coded = e as { apiCode?: string; apiParams?: Record<string, unknown> };
     const vcode = e instanceof ValidationError ? (e.code ?? coded.apiCode) : undefined;
     const details = e instanceof ValidationError ? (e.params ?? coded.apiParams) : undefined;
-    if (e instanceof ValidationError && vcode && isRegisteredCode(vcode)) throw new HttpException({ message: e.message, code: vcode, ...(details ? { details } : {}) }, ERROR_REGISTRY[vcode as keyof typeof ERROR_REGISTRY].status);
-    if (e instanceof ValidationError) throw new HttpException(e.message, HttpStatus.BAD_REQUEST);
-    throw e;
+    if (e instanceof ValidationError && vcode && isRegisteredCode(vcode)) return new HttpException({ message: e.message, code: vcode, ...(details ? { details } : {}) }, ERROR_REGISTRY[vcode as keyof typeof ERROR_REGISTRY].status);
+    if (e instanceof ValidationError) return new HttpException(e.message, HttpStatus.BAD_REQUEST);
+    return null;
+}
+async function run<T>(fn: () => T | Promise<T>): Promise<T> {
+  try { return await fn(); } catch (e) {
+    throw servingHttpError(e) ?? e;
   }
 }
 
