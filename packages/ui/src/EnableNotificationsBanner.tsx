@@ -29,9 +29,18 @@ export interface EnableNotificationsBannerProps {
   reason?: string;
   accent?: string;
   style?: React.CSSProperties;
+  /** Translated text (packages/ui has no i18n — an app that translates passes its strings; English otherwise). */
+  text?: Partial<BannerText>;
 }
 
-export function EnableNotificationsBanner({ visible, onEnable, onDismiss, reason, accent = '#A96F22', style }: EnableNotificationsBannerProps) {
+export interface BannerText { title: string; reason: string; turnOn: string; notNow: string; blocked: string; ok: string; region: string }
+export const BANNER_TEXT_EN: BannerText = {
+  title: 'Turn on notifications', reason: 'Get alerts for new bookings, payments and messages.', turnOn: 'Turn on', notNow: 'Not now',
+  blocked: 'Notifications are blocked. You can allow them in your device or browser settings.', ok: 'OK', region: 'Notifications',
+};
+
+export function EnableNotificationsBanner({ visible, onEnable, onDismiss, reason, accent = '#A96F22', style, text }: EnableNotificationsBannerProps) {
+  const tx: BannerText = { ...BANNER_TEXT_EN, ...(reason ? { reason } : {}), ...(text ?? {}) };
   const [busy, setBusy] = useState(false);
   const [blocked, setBlocked] = useState(false);
   if (!visible) return null;
@@ -40,20 +49,20 @@ export function EnableNotificationsBanner({ visible, onEnable, onDismiss, reason
     try { const ok = await onEnable(); if (!ok) setBlocked(true); } catch { setBlocked(true); } finally { setBusy(false); }
   };
   return (
-    <div role="region" aria-label="Notifications" style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 12, padding: '10px 14px', margin: '8px 12px', borderRadius: 12, background: '#FFF8EC', border: `1px solid ${accent}55`, color: '#2C2118', fontSize: 13.5, lineHeight: 1.35, ...style }}>
+    <div role="region" aria-label={tx.region} style={{ display: 'flex', flexShrink: 0, alignItems: 'center', gap: 12, padding: '10px 14px', margin: '8px 12px', borderRadius: 12, background: '#FFF8EC', border: `1px solid ${accent}55`, color: '#2C2118', fontSize: 13.5, lineHeight: 1.35, ...style }}>
       <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.73 21a2 2 0 0 1-3.46 0" /></svg>
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontWeight: 600 }}>Turn on notifications</div>
+        <div style={{ fontWeight: 600 }}>{tx.title}</div>
         <div style={{ opacity: 0.8 }}>
-          {blocked ? 'Notifications are blocked. You can allow them in your device or browser settings.' : (reason ?? 'Get alerts for new bookings, payments and messages.')}
+          {blocked ? tx.blocked : tx.reason}
         </div>
       </div>
       {blocked ? (
-        <button type="button" onClick={onDismiss} style={{ background: 'none', border: 0, color: accent, fontWeight: 600, cursor: 'pointer', padding: '6px 8px' }}>OK</button>
+        <button type="button" onClick={onDismiss} style={{ background: 'none', border: 0, color: accent, fontWeight: 600, cursor: 'pointer', padding: '6px 8px' }}>{tx.ok}</button>
       ) : (
         <>
-          <button type="button" onClick={onDismiss} disabled={busy} style={{ background: 'none', border: 0, color: '#6D5F50', cursor: 'pointer', padding: '6px 8px', font: 'inherit' }}>Not now</button>
-          <button type="button" onClick={enable} disabled={busy} style={{ background: accent, color: '#fff', border: 0, borderRadius: 9, fontWeight: 600, padding: '8px 12px', cursor: busy ? 'default' : 'pointer', font: 'inherit' }}>{busy ? '…' : 'Turn on'}</button>
+          <button type="button" onClick={onDismiss} disabled={busy} style={{ background: 'none', border: 0, color: '#6D5F50', cursor: 'pointer', padding: '6px 8px', font: 'inherit' }}>{tx.notNow}</button>
+          <button type="button" onClick={enable} disabled={busy} style={{ background: accent, color: '#fff', border: 0, borderRadius: 9, fontWeight: 600, padding: '8px 12px', cursor: busy ? 'default' : 'pointer', font: 'inherit' }}>{busy ? '…' : tx.turnOn}</button>
         </>
       )}
     </div>

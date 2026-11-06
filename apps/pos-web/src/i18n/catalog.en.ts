@@ -4963,6 +4963,13 @@ export const POS_EN = {
   'pos.notification_preferences': 'Notification Preferences',
   'pos.notification_settings': 'Notification Settings',
   'pos.notifications': 'Notifications',
+  // Nov 6 2026: the "Turn on notifications" banner (shell/POSLayout.tsx PosPushPrompt)
+  'pos.pushPrompt.title': 'Turn on notifications',
+  'pos.pushPrompt.reason': 'Get alerts at the front desk for check-ins, ready tickets and payments.',
+  'pos.pushPrompt.turnOn': 'Turn on',
+  'pos.pushPrompt.notNow': 'Not now',
+  'pos.pushPrompt.blocked': 'Notifications are blocked. You can allow them in your browser settings.',
+  'pos.pushPrompt.ok': 'OK',
   'pos.notifications_are_not_configured': 'Notifications are not configured.',
   'pos.notifications_for_the_salon': 'Notifications for the salon',
   'pos.notifications_reminders': 'Notifications & Reminders',

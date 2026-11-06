@@ -30,7 +30,11 @@ import { webPush } from '../lib/webPush';
 function PosPushPrompt() {
   const { principal } = useAuth();
   const p = usePushPrompt(webPush, !!principal, pushPromptSnoozed, snoozePushPrompt);
-  return <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss} reason="Get alerts at the front desk for check-ins, ready tickets and payments." />;
+  useLanguage();   // re-render on a language switch
+  return (
+    <EnableNotificationsBanner visible={p.visible} onEnable={p.enable} onDismiss={p.dismiss}
+      text={{ title: tx('pos.pushPrompt.title'), reason: tx('pos.pushPrompt.reason'), turnOn: tx('pos.pushPrompt.turnOn'), notNow: tx('pos.pushPrompt.notNow'), blocked: tx('pos.pushPrompt.blocked'), ok: tx('pos.pushPrompt.ok'), region: tx('pos.notifications') }} />
+  );
 }
 
 const OPEN_KEY = 'aps.pos.nav.open.v1';

@@ -100,3 +100,7 @@ Signing in no longer asks for notification permission in any app; the old prompt
 Also: the two leftover copies (`admin-web` and `pos-web` `hooks/useWebPush.ts`) were deleted. Admin's headers now allow the push endpoints, and admin builds the shared push worker. POS and Super Admin browser push stay off until the build sets `VITE_FIREBASE_WEB_CONFIG` + `VITE_FIREBASE_VAPID_KEY`; this is now noted in the production env files.
 
 Tests: the mobile SDK proves sign-in never prompts (undecided: no prompt and no registration; already allowed: silent registration; banner tap: prompt, then registration). Banner tests, `enable()` tests, and every app suite pass (POS 1,594, admin 1,032, customer 254, owner 275, tech 117, manager-pay 60). One POS layout test caught the banner breaking the 3-row grid; it now sits inside the alert slot.
+
+## Addendum — Vietnamese (Nov 6)
+
+Kevin approved the three Vietnamese drafts: `errors.PROVIDER_HOST_NOT_ALLOWED`, `errors.LOCATION_REQUIRED` and `payment.surcharge.disclosure`. The POS "Turn on notifications" banner is now translated (`pos.pushPrompt.*` in `catalog.en.ts` / `catalog.vi.ts`) and follows the language switch. Its Vietnamese text is marked DRAFT for Kevin's review. The other apps have no Vietnamese mode yet, so their banner stays in English.

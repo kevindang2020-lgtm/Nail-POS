@@ -4964,6 +4964,13 @@ export const POS_VI: Record<keyof typeof POS_EN, string> = {
   'pos.notification_preferences': 'Tùy chọn thông báo',
   'pos.notification_settings': 'Cài đặt thông báo',
   'pos.notifications': 'Thông báo',
+  // DRAFT (Nov 6 2026) — Kevin to review: the "Turn on notifications" banner (shell/POSLayout.tsx PosPushPrompt)
+  'pos.pushPrompt.title': 'Bật thông báo',
+  'pos.pushPrompt.reason': 'Nhận thông báo tại quầy lễ tân khi khách check-in, khi phiếu sẵn sàng thanh toán và khi có thanh toán.',
+  'pos.pushPrompt.turnOn': 'Bật',
+  'pos.pushPrompt.notNow': 'Để sau',
+  'pos.pushPrompt.blocked': 'Thông báo đang bị chặn. Bạn có thể cho phép trong phần cài đặt của trình duyệt.',
+  'pos.pushPrompt.ok': 'Đã hiểu',
   'pos.notifications_are_not_configured': 'Chưa cấu hình thông báo.',
   'pos.notifications_for_the_salon': 'Thông báo cho tiệm',
   'pos.notifications_reminders': 'Thông báo & nhắc nhở',
