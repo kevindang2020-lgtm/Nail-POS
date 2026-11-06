@@ -10,7 +10,7 @@ import { sql } from 'kysely';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { AiCallsIngest } from '../voice-booking/ai-calls-ingest';
 import { KyselyFollowUpRepo, AiFollowUpService } from '../voice-booking/ai-follow-up.service';
-import { AiFollowUpCenter, FollowUpCenterError, escalateOverdueFollowUps, localToUtc, fuPeriod, type FuCtx, type FuTextPort } from './ai-follow-up-center';
+import { AiFollowUpCenter, FollowUpCenterError, escalateOverdueFollowUps, expireFollowUpHolds, localToUtc, fuPeriod, type FuCtx, type FuTextPort } from './ai-follow-up-center';
 
 const P = 'c7590000-0000-4000-8000-0000000';
 const id = (s: string) => P + s.padStart(5, '0');
@@ -161,7 +161,9 @@ describe('assignment, lifecycle, escalation, contact (T23–T26, T34–T37)', ()
     expect(await code(fc.assign(desk, t, { assignedUserId: MGR, version: 1 }))).toBe('RECORD_CHANGED_RELOAD');
     await fc.assign(desk, t, { assignedUserId: MGR, version: await ver(t) });
     const acts = (await sql`select event_type, from_value, to_value from ai_follow_up_activity where follow_up_id = ${t} order by created_at`.execute(db)).rows as any[];
-    expect(acts.map((x) => x.event_type)).toEqual(['created', 'assigned', 'reassigned']);
+    // A13 Nov 6: assigning to someone else also notifies them (assignee_notified rows)
+    expect(acts.map((x) => x.event_type).filter((e) => e !== 'assignee_notified')).toEqual(['created', 'assigned', 'reassigned']);
+    expect(acts.some((x) => x.event_type === 'assignee_notified')).toBe(true);
     expect(N((await q1(sql`select count(*)::int n from audit_events where resource_id = ${t} and action = 'follow_up.assigned'`)).n)).toBe(2);
   });
   it('T24/T25 lifecycle via the canonical machine; Resolved needs an outcome; reopen needs a reason; a complaint needs a note', async () => {
@@ -286,5 +288,48 @@ describe('overlay, health, assistant, security (T33, T40–T46)', () => {
   });
   it('activity is append-only', async () => {
     await expect(sql`update ai_follow_up_activity set note = 'x'`.execute(db)).rejects.toThrow(/append-only/);
+  });
+});
+
+describe('A13 Nov 6 — missed-call / Copilot sources, recommended assignee, notify assignee, hold expiry, health history', () => {
+  it('missed calls (short hang-up or flagged) and failed / unknown Copilot actions become follow-ups once; a source filter finds them', async () => {
+    await sql`insert into voice_call_outcomes (tenant_id, branch_id, provider, provider_call_id, started_at, duration_seconds, abandoned, caller_number)
+      values (${TA}, ${BA}, 'retell', 'nov6_missed_1', now() - interval '1 hour', 4, true, '+16095557001'), (${TA}, ${BA}, 'retell', 'nov6_long_hangup', now() - interval '1 hour', 300, true, null)`.execute(db);
+    await sql`insert into reception_copilot_action_ledger (tenant_id, branch_id, idempotency_key, action_type, state, error_code) values
+      (${TA}, ${BA}, 'nov6-cp-1', 'cancel_appointment', 'failed', 'BOOKING_FAILED'), (${TA}, ${BA}, 'nov6-cp-2', 'send_message', 'unknown', null), (${TA}, ${BA}, 'nov6-cp-3', 'send_message', 'succeeded', null)`.execute(db);
+    const r = await fc.importSources(own);
+    expect(r).toEqual({ createdFromMissedCalls: 1, createdFromCopilot: 2 });
+    expect(await fc.importSources(own)).toEqual({ createdFromMissedCalls: 0, createdFromCopilot: 0 });          // idempotent
+    const m = await fc.list(own, { status: 'all', source: 'missed_call' });
+    expect(m.items.map((x: any) => x.reason)).toEqual(['CALLBACK']);
+    const cp = (await fc.list(own, { status: 'all', source: 'copilot' })).items as any[];
+    expect(cp.map((x) => x.priority).sort()).toEqual(['high', 'normal']);                                       // unknown outcome = high
+    expect((await fc.importSources(ownB))).toEqual({ createdFromMissedCalls: 0, createdFromCopilot: 0 });       // another salon gets none
+  });
+  it('the recommended assignee is the staff member with the fewest open tasks; assigning notifies them (not when you take it yourself)', async () => {
+    const rec = await fc.recommendAssignee(own);
+    expect(rec).toBeTruthy(); expect(rec!.reason).toMatch(/Fewest open follow-ups/);
+    const t = await fc.create(desk, { reason: 'OTHER', description: 'Nov 6 notify test', callerPhone: '+16095550199', idempotencyKey: 'nov6-notify-0001' });
+    await fc.assign(own, t.id, { assignedUserId: FD, version: 1 });
+    const a = await q1(sql`select title, metadata from owner_alerts where tenant_id = ${TA} and category = 'ai_follow_up_assigned' and metadata->>'followUpId' = ${t.id}`);
+    expect(a.title).toMatch(/assigned to/); expect(a.metadata.assignedUserId).toBe(FD);
+    expect(N((await q1(sql`select count(*)::int n from ai_follow_up_activity where follow_up_id = ${t.id} and event_type = 'assignee_notified'`)).n)).toBe(1);
+    const t2 = await fc.create(desk, { reason: 'OTHER', description: 'Nov 6 self assign', callerPhone: '+16095550199', idempotencyKey: 'nov6-notify-0002' });
+    await fc.assign(desk, t2.id, { assignedUserId: FD, version: 1 });
+    expect(await q1(sql`select id from owner_alerts where category = 'ai_follow_up_assigned' and metadata->>'followUpId' = ${t2.id}`)).toBeUndefined();
+  });
+  it('a waiting task whose time has passed goes back to the queue (hold expiry), with an activity row', async () => {
+    const t = await fc.create(desk, { reason: 'OTHER', description: 'Nov 6 hold test', callerPhone: '+16095550199', idempotencyKey: 'nov6-hold-0001' });
+    await sql`update ai_receptionist_follow_ups set status = 'waiting', waiting_until = now() - interval '1 minute' where id = ${t.id}`.execute(db);
+    expect((await expireFollowUpHolds(db, TA)).returned).toBeGreaterThanOrEqual(1);
+    expect((await q1(sql`select status, waiting_until from ai_receptionist_follow_ups where id = ${t.id}`))).toMatchObject({ status: 'in_progress', waiting_until: null });
+    expect(N((await q1(sql`select count(*)::int n from ai_follow_up_activity where follow_up_id = ${t.id} and event_type = 'hold_expired'`)).n)).toBe(1);
+  });
+  it('health history lists every recorded run, newest first', async () => {
+    await fc.health(own);
+    const h = await fc.healthHistory(own, {});
+    expect(h.totalItems).toBeGreaterThanOrEqual(1);
+    expect(h.items[0].overall).toBeTruthy();
+    expect((await fc.healthHistory(ownB, {})).totalItems).toBe(0);
   });
 });

@@ -60,7 +60,10 @@ describe('cross-tenant isolation — settings', () => {
   it('A and B keep separate settings; B\u2019s write never affects A', async () => {
     const svc = new AiSettingsService(new InMemorySettingsRepo());
     await svc.update(A as any, { enabled: true });
+    // A9 Nov 6: recording needs B's owner to approve B's notice first — and that approval is B's alone
+    await svc.approveConsent({ ...(B as any), role: 'OWNER' }, (await svc.get(B as any)).recordingConsentMessage);
     await svc.update(B as any, { enabled: false, recordingEnabled: true });
+    expect((await svc.get(A as any)).meta?.consent?.approved).toBe(false);
     expect((await svc.get(A as any)).enabled).toBe(true);
     expect((await svc.get(A as any)).recordingEnabled).toBe(false);         // B's change didn't leak into A
     expect((await svc.get(B as any)).recordingEnabled).toBe(true);

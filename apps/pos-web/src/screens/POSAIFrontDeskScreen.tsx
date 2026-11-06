@@ -313,7 +313,10 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
   const [calls, setCalls] = useState<any>(null); const [cPage, setCPage] = useState(1); const [ev, setEv] = useState<any>(null); const [hc, setHc] = useState<any>(null); const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<string | null>(null);
   const load = useCallback(async () => { try { setD(await posAiFrontDeskApi.detail(id)); setErr(null); } catch (e) { setErr(errorTextOf(e, t('aifd.load_failed'))); } }, [id]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (tab === 'calls') posAiFrontDeskApi.calls(id, { page: cPage, pageSize: 10 }).then(setCalls).catch((e) => setCalls({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id, cPage]);
+  // A14 Nov 6: search the agent's calls (caller / dialed digits, customer name, appointment id); a row opens the call record
+  const [cq, setCq] = useState(''); const dcq = useDebounced(cq, 300); const navTo = useNavigate();
+  useEffect(() => { setCPage(1); }, [dcq]);
+  useEffect(() => { if (tab === 'calls') posAiFrontDeskApi.calls(id, { page: cPage, pageSize: 10, q: dcq || undefined }).then(setCalls).catch((e) => setCalls({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id, cPage, dcq]);
   useEffect(() => { if (tab === 'health') posAiFrontDeskApi.events({ agentId: id, pageSize: 10 }).then(setEv).catch((e) => setEv({ error: errorTextOf(e, t('aifd.load_failed')) })); }, [tab, id]);
   const o = d?.overview;
   const footer = o ? (
@@ -354,12 +357,14 @@ function AgentOverlay({ id, manage, isOwner, onClose, onEdit, onAct, onDuplicate
             {tab === 'booking' ? <dl className="fd-dl"><dt>{t('aifd.col.booking')}</dt><dd>{t('aifd.mode.' + d.booking.mode)} · {d.booking.salonArmed ? t('aifd.armed') : t('aifd.handoff_only')}</dd>
               <dt>{t('aifd.ov.last_booking')}</dt><dd>{when(d.booking.lastBookingSuccessAt)}</dd><dt>{t('aifd.f.handoff')}</dt><dd>{d.booking.handoffDestination ?? t('aifd.not_set')}</dd>
               <dt /><dd className="fd-muted">{t('aifd.pending_rule')}</dd><dt /><dd><button className="btn ghost sm" onClick={onOpenBooking}>{t('aifd.open_booking')}</button></dd></dl> : null}
-            {tab === 'calls' ? (!calls ? <div className="fd-muted">{t('aifd.loading')}</div> : calls.error ? <div className="err">{calls.error}</div> : calls.items.length === 0 ? <div className="fd-muted">{calls.note ?? t('aifd.no_calls')}</div> : <>
+            {tab === 'calls' ? <input className="fd-search" value={cq} onChange={(e) => setCq(e.target.value)} placeholder={t('aifd.calls_search')} aria-label={t('aifd.calls_search')} data-testid="fd-calls-q" /> : null}
+            {tab === 'calls' && calls && !calls.error ? <div className="fd-muted" data-testid="fd-calls-avg">{t('aifd.avg_call', { v: calls.avgDurationSeconds == null ? '—' : `${calls.avgDurationSeconds}s` })}</div> : null}
+            {tab === 'calls' ? (!calls ? <div className="fd-muted">{t('aifd.loading')}</div> : calls.error ? <div className="err">{calls.error}</div> : calls.items.length === 0 ? <div className="fd-muted">{calls.note ?? (dcq ? t('aifd.no_match') : t('aifd.no_calls'))}</div> : <>
               <table className="tbl fd-tbl"><thead><tr><th>{t('aifd.col.when')}</th><th>{t('aifd.col.call')}</th><th>{t('aifd.col.duration')}</th><th>{t('aifd.col.booking')}</th><th>{t('aifd.col.handoff')}</th><th>{t('aifd.col.error')}</th></tr></thead>
-                <tbody>{calls.items.map((x: any) => <tr key={x.providerCallId}><td className="fd-muted">{when(x.at)}</td><td>{x.callRef}</td><td>{x.durationSeconds == null ? '—' : x.durationSeconds + 's'}</td><td>{x.booking ?? '—'}</td><td>{x.handoff ?? '—'}</td><td>{x.error ?? '—'}</td></tr>)}</tbody></table>
+                <tbody>{calls.items.map((x: any) => <tr key={x.providerCallId}><td className="fd-muted">{when(x.at)}</td><td><button className="link" onClick={() => navTo(`/tenant/ai/receptionist/calls?call=${encodeURIComponent(x.providerCallId)}`)} data-testid="fd-call-open">{x.callRef}</button></td><td>{x.durationSeconds == null ? '—' : x.durationSeconds + 's'}</td><td>{x.booking ?? '—'}</td><td>{x.handoff ?? '—'}</td><td>{x.error ?? '—'}</td></tr>)}</tbody></table>
               <Pager info={calls.pagination} onPage={setCPage} /><button className="btn ghost sm" onClick={onOpenCalls}>{t('aifd.open_ai_calls')}</button><div className="fd-muted">{t('aifd.transcripts_note')}</div></>) : null}
             {tab === 'usage' ? <dl className="fd-dl"><dt>{t('aifd.ov.entitlement')}</dt><dd><Badge s={d.usage.entitlement} /> <span className="fd-muted">{d.usage.entitlementDetail}</span></dd>
-              <dt>{t('aifd.ov.calls_month')}</dt><dd>{d.usage.callsThisMonth}</dd><dt>{t('aifd.ov.minutes_month')}</dt><dd>{d.usage.voiceMinutesThisMonth}</dd>
+              <dt>{t('aifd.ov.calls_month')}</dt><dd>{d.usage.callsThisMonth}</dd><dt>{t('aifd.ov.avg_month')}</dt><dd data-testid="fd-ov-avg">{d.usage.avgCallSecondsThisMonth == null ? '—' : `${d.usage.avgCallSecondsThisMonth}s`}</dd><dt>{t('aifd.ov.minutes_month')}</dt><dd>{d.usage.voiceMinutesThisMonth}</dd>
               <dt>{t('aifd.ov.charges')}</dt><dd><Badge s="UNKNOWN" /> <span className="fd-muted">{d.usage.chargesNote}</span></dd><dt>{t('aifd.ov.quota')}</dt><dd className="fd-muted">{t('aifd.mon.quota_na')}</dd></dl> : null}
             {tab === 'health' ? <div>
               {hc ? <div data-testid="fd-ov-health-result"><Badge s={hc.overall} /> <span className="fd-muted">{t('aifd.checked_at', { at: when(hc.checkedAt) })} · {t('aifd.read_only')}</span>

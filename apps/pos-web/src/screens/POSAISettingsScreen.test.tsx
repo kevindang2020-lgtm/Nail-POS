@@ -3,7 +3,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-const { api } = vi.hoisted(() => ({ api: { receptionistSettings: vi.fn(), updateReceptionistSettings: vi.fn(), receptionistSettingsHistory: vi.fn() } }));
+const { api } = vi.hoisted(() => ({ api: { receptionistSettings: vi.fn(), updateReceptionistSettings: vi.fn(), receptionistSettingsHistory: vi.fn(), receptionistSettingsLastCheck: vi.fn(() => Promise.resolve(null)), approveReceptionistConsent: vi.fn(), checkReceptionistSettings: vi.fn() } }));
 vi.mock('../api/posAiApi', () => ({ posAiApi: api }));
 import { POSAISettingsScreen } from './POSAISettingsScreen';
 

@@ -149,3 +149,24 @@ All three are recorded as DECIDED in `docs/ai/RECEPTION_COPILOT.md`:
 2. Duplicate-text window: 4 hours per task. Keep it?
 3. Should staff get an in-app or SMS notification when a task is assigned to them (T34)?
 4. Configure the Retell agent's post-call analysis fields `callback_requested` and `complaint`? Without them, only failed transfers and the agent's own handoff create tasks.
+
+## Built Nov 6 2026 (A13 — Kevin: "continue finish all")
+
+- **New task sources.** `importFollowUpSources` creates follow-ups from:
+  - **Missed AI calls:** the caller hung up in under 15 s, or the call is flagged for a call back. Created as reason CALLBACK,
+    source `missed_call`, due in 1 h.
+  - **Failed or unknown Reception Copilot actions:** source `reception_copilot`. An unknown outcome gets priority `high`.
+- Both sources look back 7 days and create one task per source event (`source_event_key`), so running them again adds nothing.
+- The 5-minute follow-up job runs the import for every salon, and the "Bring in missed calls" button runs it on demand.
+  Missed call and Reception Copilot are now filters on the list.
+- **Recommended assignee.** The assignable staff member with the fewest open tasks (ties: assigned least recently). It is shown
+  in the task with an "Assign to them" button; it is a suggestion only.
+- **Notify the assignee.** When a task is given to someone else, an in-app alert (`ai_follow_up_assigned`) and an
+  `assignee_notified` activity row are written. There is no per-person inbox in the POS, so the alert names the person. Nothing is
+  sent outside the salon.
+- **Hold expiry.** When a Waiting task's time passes, it goes back to In progress (the follow-up lifecycle allows waiting → in progress only) and gets a `hold_expired` activity row
+  (`expireFollowUpHolds`, run by the 5-minute job).
+- **Check history.** `GET …/health/history` lists every recorded Check Follow-Up System run.
+- **Tests:**
+  - `ai-follow-up-center.pgtest` (26)
+  - `POSAIFollowUpsScreen.test` (7)

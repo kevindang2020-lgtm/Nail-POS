@@ -6,11 +6,18 @@
 import { api } from './client';
 const enc = encodeURIComponent;
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
-export type FaqQuery = { q?: string; status?: string; category?: string; branch?: string; dateBasis?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type FaqQuery = { q?: string; status?: string; category?: string; tag?: string; branch?: string; dateBasis?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
 export type FaqAction = 'edit' | 'submit' | 'approve' | 'reject' | 'archive' | 'restore';
 export const posAiBusinessSetupApi = {
   readiness: () => api.get<any>(`/pos/ai/business-setup/readiness`),
   health: () => api.get<any>(`/pos/ai/business-setup/health`),
+  /** A12 Nov 6: run + record the check; the last recorded run; closures; FAQ tags */
+  healthRun: () => api.post<any>(`/pos/ai/business-setup/health/run`, {}),
+  healthLast: () => api.get<any>(`/pos/ai/business-setup/health/last`),
+  closures: () => api.get<any>(`/pos/ai/business-setup/closures`),
+  addClosure: (b: { date: string; closed: boolean; opensAt?: string; closesAt?: string; note?: string; scope: 'salon' | 'branch' }) => api.post<any>(`/pos/ai/business-setup/closures`, b),
+  removeClosure: (id: string) => api.post<any>(`/pos/ai/business-setup/closures/${enc(id)}/remove`, {}),
+  setTags: (id: string, tags: string[]) => api.post<any>(`/pos/ai/business-setup/faqs/${enc(id)}/tags`, { tags }),
   faqs: (q: FaqQuery) => api.get<any>(`/pos/ai/business-setup/faqs`, clean(q)),
   faq: (id: string) => api.get<any>(`/pos/ai/business-setup/faqs/${enc(id)}`),
   createFaq: (b: { question: string; answer: string; category?: string | null; branchScope?: 'all' | 'branch' | null; origin?: 'pos' | 'assistant' | null; idempotencyKey: string }) =>

@@ -7,6 +7,7 @@
 // The legacy `tenant/ai/receptionist/faqs` routes are retired (their only caller was this screen, rebuilt Oct 31 2026):
 // they wrote is_active directly and DELETE erased history, which the approval workflow forbids.
 import { ListQuery } from '@aipowersalon/database';
+import type { BusinessSetupHealthResult, BusinessClosureList, BusinessClosureSaved, FaqTagsResult, BusinessSetupHealthRun } from '@aipowersalon/api-contracts/tenant';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
@@ -23,6 +24,9 @@ export const BS_FAQ_ACTION_BODY: BodySchema = S.object({
   action: S.enumOf([...FAQ_ACTIONS]), expectedVersion: S.integer(), question: S.nullable(S.text(300)), answer: S.nullable(S.text(2000)),
   category: S.nullable(S.text(60)), reason: S.nullable(S.text(500)), idempotencyKey: S.text(120),
 }, ['action', 'expectedVersion', 'idempotencyKey']);
+/** A12 Nov 6 */
+export const BS_CLOSURE_BODY: BodySchema = S.object({ date: S.text(10), closed: S.boolean(), opensAt: S.text(5), closesAt: S.text(5), note: S.text(200), scope: S.text(10) }, ['date']);
+export const BS_FAQ_TAGS_BODY: BodySchema = S.object({ tags: S.array(S.text(30), { maxItems: 10 }) }, ['tags']);
 export const BS_PREVIEW_BODY: BodySchema = S.object({ question: S.text(300) }, ['question']);
 
 function ctxFrom(req: any): BsCtx {
@@ -42,12 +46,13 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 }
 const FAQ_LIST = {
   filters: {
-    status: { type: 'enum', values: FAQ_STATUSES }, category: { type: 'text' }, branch: { type: 'text' }, author: { type: 'uuid' },
+    status: { type: 'enum', values: FAQ_STATUSES }, category: { type: 'text' }, tag: { type: 'text', maxLength: 30 }, branch: { type: 'text' }, author: { type: 'uuid' },
     dateBasis: { type: 'enum', values: FAQ_DATE_BASES },
   },
   sorts: { newest: null, oldest: null, updated: null, approved: null, question_az: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 },
   maxLimit: 50, defaultLimit: 20, params: ['page'],
 } as const;
+const CLOSURE_LIST = { filters: {}, sorts: {}, dateRange: { maxDays: 400 }, maxLimit: 400, defaultLimit: 400 } as const;
 const SEARCH_LIST = { filters: { scope: { type: 'enum', values: SEARCH_SCOPES } }, sorts: {}, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
 const HISTORY_LIST = { filters: { basis: { type: 'enum', values: HISTORY_BASES } }, sorts: {}, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] } as const;
 void FAQ_SORTS;
@@ -66,10 +71,27 @@ export class BusinessSetupCenterController {
   @Get('health') @RequirePermission('ai.use')
   health(@Req() q: any) { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().health(c)); }
 
+  /** A12 Nov 6: run the check AND record it (who, when, each part); GET health above stays read-only */
+  @Post('health/run') @RequirePermission('ai.use')
+  healthRun(@Req() q: any): Promise<BusinessSetupHealthResult> { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().health(c, { record: true })); }
+  @Get('health/last') @RequirePermission('ai.use')
+  healthLast(@Req() q: any): Promise<BusinessSetupHealthRun | null> { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().lastHealth(c)); }
+
+  /** A12 Nov 6: holiday closures / special hours (today → +60 days by default) */
+  @Get('closures') @RequirePermission('ai.use') @ListQuery(CLOSURE_LIST)
+  closures(@Req() q: any, @Query() p: any): Promise<BusinessClosureList> { const c = ctxFrom(q); need(c, 'ai.use'); return run(() => this.r().closures(c, { from: p?.from, to: p?.to })); }
+  @Post('closures') @RequirePermission('ai.manage')
+  addClosure(@Req() q: any, @Body(ValidatedBody(BS_CLOSURE_BODY, { strict: true })) b: any): Promise<BusinessClosureSaved> { const c = ctxFrom(q); need(c, 'ai.manage'); return run(() => this.r().addClosure(c, b ?? {})); }
+  @Post('closures/:id/remove') @RequirePermission('ai.manage')
+  removeClosure(@Req() q: any, @Param('id') id: string): Promise<BusinessClosureSaved> { const c = ctxFrom(q); need(c, 'ai.manage'); return run(() => this.r().removeClosure(c, id)); }
+  /** A12 Nov 6: FAQ tags — internal labels for filtering; never spoken by the AI */
+  @Post('faqs/:id/tags') @RequirePermission('ai.manage')
+  setTags(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(BS_FAQ_TAGS_BODY, { strict: true })) b: any): Promise<FaqTagsResult> { const c = ctxFrom(q); need(c, 'ai.manage'); return run(() => this.r().setFaqTags(c, id, b?.tags)); }
+
   @Get('faqs') @RequirePermission('ai.use') @ListQuery(FAQ_LIST)
   faqs(@Req() q: any, @Query() p: any) {
     const c = ctxFrom(q); need(c, 'ai.use');
-    return run(() => this.r().faqs(c, { q: p?.q, status: p?.status, category: p?.category, branch: p?.branch, author: p?.author, dateBasis: p?.dateBasis, from: p?.from, to: p?.to, sort: p?.sort, page: p?.page, pageSize: p?.pageSize }));
+    return run(() => this.r().faqs(c, { q: p?.q, status: p?.status, category: p?.category, tag: p?.tag, branch: p?.branch, author: p?.author, dateBasis: p?.dateBasis, from: p?.from, to: p?.to, sort: p?.sort, page: p?.page, pageSize: p?.pageSize }));
   }
 
   @Get('faqs/:id') @RequirePermission('ai.use')

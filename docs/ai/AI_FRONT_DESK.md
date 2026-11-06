@@ -103,3 +103,17 @@ Also in this build, as a pre-task (commit `ec9309d9`): the guide 15 email webhoo
 1. Should a manager be able to activate (today: owner only, per the guide's "owner-approved")?
 2. Should editing a live agent create a pending revision that needs re-activation, rather than being refused (today: pause or duplicate)?
 3. Keep agents tenant-wide by default (branch scope empty), or require a branch per agent?
+
+## Built Nov 6 2026 (A14)
+
+- **Agent search.** The agent list search now also matches:
+  - the creator's name;
+  - the salon number the agent's calls were dialed on (digits, from `voice_call_outcomes.dialed_number`);
+  - the agent's handoff number.
+- **Call search.** The overlay's Calls tab searches the agent's calls by caller or dialed digits, the customer's name (linked
+  through the call's follow-up) and an appointment id (through `voice_tool_executions`).
+- **Call detail.** Each call opens its full record in the AI Calls overlay (`/tenant/ai/receptionist/calls?call=`).
+- **Average duration.** Counts ended calls only, for the filtered set (Calls tab) and for this month (Overview).
+- **Tests:**
+  - `front-desk-center.pgtest` (19)
+  - `POSAIFrontDeskScreen.test` (5)

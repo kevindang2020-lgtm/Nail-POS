@@ -56,3 +56,20 @@ tenant isolation · no automatic actions. Text is localized on the POS (`rpx.hea
 
 - Draft and approve use the same manage permission — split them (and forbid approving your own draft)?
 - Build the review-request sender (consent, quiet hours, frequency cap), or keep requests off?
+
+## Built Nov 6 2026 (A17 Reviews & Reputation — Kevin: "continue finish all")
+
+- **Assign.** `POST /pos/reviews-center/reviews/:id/assign` gives a review to an active staff member of this salon to follow up, or
+  takes it back.
+  - Uses `reviews.assigned_user_id`; migration 831 adds `assigned_at` / `assigned_by`.
+  - Audited as `review.assigned` / `review.unassigned`.
+  - New list filter "Assigned to": me, nobody, or a person. It is kept in the URL.
+  - The overlay shows the assignee and has a staff picker.
+- **Communication tab.** Shows the linked customer's last 20 messages (channel, status, first 160 characters) and how many review
+  requests were sent. Anonymous reviews say there is no history.
+- **First / last name search.** A two-word search also matches the customer's first and last name, in either order.
+- **Recorded checks.** `POST …/check/run` records each run in `reviews_health_runs`; `GET …/check/last` returns the latest.
+  `GET …/check` stays read-only.
+- **Tests:**
+  - `reviews-center.pgtest` (22)
+  - `POSReviewsScreen.test` (8)

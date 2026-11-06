@@ -12,6 +12,7 @@ import { posCustomersApi } from '../api/posCustomersApi';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced } from '../components/FitKit';
 import { PeriodBar, periodQuery, type PeriodState } from '../components/FinanceKit';
 import { errorTextOf } from '../i18n/error-text';
+import { fmtDateTime } from '../i18n/format';
 
 const CHIPS = ['open', 'assigned', 'in_progress', 'waiting', 'resolved', 'all'] as const;
 const PRIOS = ['urgent', 'high', 'normal', 'low'] as const;
@@ -52,6 +53,14 @@ export function POSAIFollowUpsScreen() {
   const filtered = !!(dq.trim() || priority || source || assignee || overdue || period.preset !== 'all');
   const clearAll = () => { setQ(''); setPriority(''); setSource(''); setAssignee(''); setOverdue(false); setPeriod({ preset: 'all' }); setBasis('created'); };
   const runHealth = () => fa.health().then(setHealth).catch((e) => setNotice(errorTextOf(e, tx('aifu.loadFailed'))));
+  // A13 Nov 6: bring in missed calls / Copilot failures now (the 5-minute job also does it); past check runs
+  const [importing, setImporting] = useState(false); const [runs, setRuns] = useState<any>(null);
+  const runImport = async () => {
+    setImporting(true);
+    try { const r = await fa.importSources(); setNotice(tx('aifu.imported', { calls: r.createdFromMissedCalls, copilot: r.createdFromCopilot })); load(); }
+    catch (e) { setNotice(errorTextOf(e, tx('aifu.loadFailed'))); } finally { setImporting(false); }
+  };
+  const showRuns = () => fa.healthHistory(1, 10).then(setRuns).catch((e) => setNotice(errorTextOf(e, tx('aifu.loadFailed'))));
   const c = kpis?.cards;
 
   return (
@@ -61,10 +70,18 @@ export function POSAIFollowUpsScreen() {
         <div className="aifu-actions">
           <button className="btn" onClick={() => setCreating(true)} data-testid="aifu-new">{tx('aifu.new')}</button>
           <button className="btn ghost" onClick={load} data-testid="aifu-refresh">{tx('aifu.refresh')}</button>
+          <button className="btn ghost" onClick={runImport} disabled={importing} data-testid="aifu-import">{tx('aifu.import')}</button>
           <button className="btn ghost" onClick={runHealth} data-testid="aifu-health">{tx('aifu.check')}</button>
+          <button className="btn ghost" onClick={showRuns} data-testid="aifu-health-history">{tx('aifu.checkHistory')}</button>
           <button className="btn ghost" onClick={() => nav('/tenant/ai/command-center')} data-testid="aifu-back">{tx('aifu.back')}</button>
         </div>
       </div>
+      {runs ? (
+        <section className="panel" data-testid="aifu-runs">
+          <div className="aifu-head"><h3>{tx('aifu.checkHistory')}</h3><button className="link" onClick={() => setRuns(null)}>{tx('aifu.dismiss')}</button></div>
+          {!runs.items.length ? <div className="muted">{tx('aifu.noRuns')}</div> : (
+            <table className="tbl"><tbody>{runs.items.map((r: any, i: number) => <tr key={i} data-testid="aifu-run-row"><td>{r.at ? fmtDateTime(r.at) : '—'}</td><td>{r.overall}</td><td>{r.by ?? '—'}</td><td>{r.failed ? tx('aifu.runFailed', { n: r.failed }) : ''}</td></tr>)}</tbody></table>)}
+        </section>) : null}
       {notice ? <div className="aifu-notice" role="status">{notice} <button className="link" onClick={() => setNotice(null)}>{tx('aifu.dismiss')}</button></div> : null}
       <div className="aifu-kpis" data-testid="aifu-kpis">
         <KpiCard label={tx('aifu.k.open')} value={c ? c.open : '—'} onClick={() => setStatus('open')} testId="aifu-k-open" />
@@ -80,7 +97,7 @@ export function POSAIFollowUpsScreen() {
       <div className="aifu-toolbar">
         <input className="aifu-search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={tx('aifu.searchPh')} aria-label={tx('aifu.searchPh')} data-testid="aifu-q" />
         <select value={priority} onChange={(e) => setPriority(e.target.value)} aria-label={tx('aifu.f.priority')} data-testid="aifu-f-priority"><option value="">{tx('aifu.f.anyPriority')}</option>{PRIOS.map((p) => <option key={p} value={p}>{label('prio', p)}</option>)}</select>
-        <select value={source} onChange={(e) => setSource(e.target.value)} aria-label={tx('aifu.f.source')} data-testid="aifu-f-source"><option value="">{tx('aifu.f.anySource')}</option>{['ai', 'manual', 'complaint'].map((s) => <option key={s} value={s}>{label('src', s)}</option>)}</select>
+        <select value={source} onChange={(e) => setSource(e.target.value)} aria-label={tx('aifu.f.source')} data-testid="aifu-f-source"><option value="">{tx('aifu.f.anySource')}</option>{['ai', 'missed_call', 'copilot', 'manual', 'complaint'].map((s) => <option key={s} value={s}>{label('src', s)}</option>)}</select>
         <select value={assignee} onChange={(e) => setAssignee(e.target.value)} aria-label={tx('aifu.f.assignee')} data-testid="aifu-f-assignee"><option value="">{tx('aifu.f.anyone')}</option><option value="unassigned">{tx('aifu.f.unassigned')}</option><option value="me">{tx('aifu.f.me')}</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
         <label className="aifu-check"><input type="checkbox" checked={overdue} onChange={(e) => setOverdue(e.target.checked)} data-testid="aifu-f-overdue" /> {tx('aifu.f.overdue')}</label>
         <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label={tx('aifu.f.sort')} data-testid="aifu-f-sort">{['newest', 'priority', 'due'].map((s) => <option key={s} value={s}>{tx(`aifu.sort.${s}`)}</option>)}</select>
@@ -100,7 +117,7 @@ export function POSAIFollowUpsScreen() {
                 <tbody>{data.items.map((r) => (
                   <tr key={r.id} onClick={() => setOpenId(r.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') setOpenId(r.id); }} className={r.overdue ? 'aifu-overdue' : ''} data-testid="aifu-row">
                     <td><div className="aifu-name">{r.customer?.name ?? tx('aifu.unmatchedCaller')}</div><div className="sub">{r.caller ?? tx('aifu.none')}{r.customerMatch === 'ambiguous' ? ` · ${tx('aifu.sharedPhone')}` : ''}</div></td>
-                    <td>{label('reason', r.reason)}<div className="sub aifu-desc">{label('src', r.source === 'ai_receptionist' ? 'ai' : 'manual')}{r.description ? ` · ${r.description}` : ''}</div></td>
+                    <td>{label('reason', r.reason)}<div className="sub aifu-desc">{label('src', r.source === 'ai_receptionist' ? 'ai' : r.source === 'missed_call' ? 'missed_call' : r.source === 'reception_copilot' ? 'copilot' : 'manual')}{r.description ? ` · ${r.description}` : ''}</div></td>
                     <td className="sub">{r.providerCallId ? `${r.providerCallId.slice(0, 12)}…` : tx('aifu.none')}</td>
                     <td><span className={`aifu-pill p-${r.priority}`}>{label('prio', r.priority)}</span>{r.escalationLevel ? <span className="aifu-pill esc">{tx('aifu.escalated')}</span> : null}</td>
                     <td>{r.assignee?.name ?? tx('aifu.f.unassigned')}</td>
@@ -172,6 +189,9 @@ function CreateDialog({ staff, onClose, onSaved }: { staff: { id: string; name: 
 function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id: string; name: string }[]; onClose: () => void; onBooking: (customerId: string) => void }) {
   const [d, setD] = useState<FuDetail | null>(null); const [err, setErr] = useState<string | null>(null); const [tab, setTab] = useState<(typeof TABS)[number]>('overview');
   const [busy, setBusy] = useState(false); const [msg, setMsg] = useState<string | null>(null);
+  // A13 Nov 6: who to give it to (fewest open tasks) — a suggestion; a person still assigns
+  const [rec, setRec] = useState<{ userId: string; name: string; reason: string } | null>(null);
+  useEffect(() => { fa.recommendedAssignee().then(setRec).catch(() => setRec(null)); }, [id]);
   const [form, setForm] = useState({ note: '', reason: '', resolution: 'customer_reached', channel: 'phone_call', outcome: 'reached', text: '', override: '' });
   const [prep, setPrep] = useState<FuPrepared | null>(null); const [textKey, setTextKey] = useState(key);
   const reload = useCallback(() => fa.detail(id).then((x) => { setD(x); setErr(null); }).catch((e) => setErr(errorTextOf(e, tx('aifu.loadFailed')))), [id]);
@@ -198,6 +218,7 @@ function TaskDialog({ id, staff, onClose, onBooking }: { id: string; staff: { id
             {can?.canWork && active ? <EditBlock o={o} busy={busy} onSave={(b) => act(() => fa.edit(id, { ...b, version: v }), tx('aifu.done'))} /> : null}
             {can?.canWork ? <div className="aifu-acts">
               {active ? <label>{tx('aifu.c.assign')}<select value={o.assignee?.id ?? ''} disabled={busy} onChange={(e) => act(() => fa.assign(id, { assignedUserId: e.target.value || null, version: v }), tx('aifu.done'))} data-testid="aifu-d-assign"><option value="">{tx('aifu.f.unassigned')}</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select></label> : null}
+              {active && rec && !o.assignee ? <div className="sub" data-testid="aifu-d-recommend">{tx('aifu.recommend', { name: rec.name })} <button className="link" disabled={busy} onClick={() => act(() => fa.assign(id, { assignedUserId: rec.userId, version: v }), tx('aifu.done'))} data-testid="aifu-d-recommend-assign">{tx('aifu.assignThem')}</button></div> : null}
               <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} placeholder={tx('aifu.notePh')} data-testid="aifu-d-note" />
               <input value={form.reason} onChange={(e) => setForm({ ...form, reason: e.target.value })} placeholder={tx('aifu.reasonPh')} data-testid="aifu-d-reason" />
               <div className="aifu-row-btns">

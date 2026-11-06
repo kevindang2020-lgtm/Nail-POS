@@ -26,7 +26,9 @@ type Row = Record<string, any>;
 export const AI_FOLLOW_UP_CENTER = Symbol('AI_FOLLOW_UP_CENTER');
 export const FU_STATUS_CHIPS = ['open', 'assigned', 'in_progress', 'waiting', 'resolved', 'all'] as const;
 export const FU_PRIORITIES = ['urgent', 'high', 'normal', 'low'] as const;
-export const FU_SOURCES = ['ai', 'manual', 'complaint'] as const;
+export const FU_SOURCES = ['ai', 'manual', 'complaint', 'missed_call', 'copilot'] as const;
+/** A13 Nov 6: a missed call = the caller hung up in under this many seconds (same as AI Receptionist / AI Calls) */
+export const FU_MISSED_SECONDS = 15;
 export const FU_BASES = ['created', 'due', 'updated', 'call', 'assigned', 'first_response', 'last_contact', 'resolved'] as const;
 export const FU_SORTS = ['newest', 'priority', 'due'] as const;
 export const FU_CREATE_REASONS = ['CALLBACK', 'COMPLAINT', 'BOOKING_HELP', 'FAILED_TRANSFER', 'VERIFICATION_ISSUE', 'OTHER'] as const;
@@ -164,6 +166,7 @@ export class AiFollowUpCenter {
     if (status === 'resolved') conds.push(sql`f.status in ('resolved','closed')`); else if (status !== 'all') conds.push(sql`f.status = ${status}`);
     if (q.priority) conds.push(sql`f.priority = ${q.priority}`);
     if (q.source === 'ai') conds.push(sql`f.source = 'ai_receptionist'`); else if (q.source === 'manual') conds.push(sql`f.source = 'manual'`); else if (q.source === 'complaint') conds.push(sql`f.reason = 'COMPLAINT'`);
+    else if (q.source === 'missed_call') conds.push(sql`f.source = 'missed_call'`); else if (q.source === 'copilot') conds.push(sql`f.source = 'reception_copilot'`);
     if (q.assignee === 'unassigned') conds.push(sql`f.assigned_user_id is null`); else if (q.assignee === 'me') conds.push(sql`f.assigned_user_id = ${ctx.userId}`);
     else if (q.assignee) { if (!UUIDRE.test(q.assignee)) throw fail('Unknown assignee filter.', 'FOLLOWUP_CENTER_INVALID_FILTER', 400, { field: 'assignee' }); conds.push(sql`f.assigned_user_id = ${q.assignee}`); }
     if (q.overdue === '1' || q.overdue === 'true') conds.push(sql`f.status = any(${ACTIVE}::text[]) and f.due_at < now()`);
@@ -285,6 +288,15 @@ export class AiFollowUpCenter {
         where id = ${id} and tenant_id = ${ctx.tenantId} and version = ${n(cur.version)} and ${moved ? canMoveToSql(AI_RECEPTIONIST_FOLLOW_UP, nextStatus) : sql`true`} returning *`.execute(trx)).rows[0];
       if (!r) throw fail('This follow-up changed — refresh and try again.', 'RECORD_CHANGED_RELOAD', 409);
       await this.activity(trx, ctx, ctx.tenantId, id, cur.assigned_user_id ? 'reassigned' : 'assigned', cur.assigned_user_id ?? null, to, b.note ? String(b.note).slice(0, 500) : null, moved ? { status: [cur.status, nextStatus] } : {});
+      // A13 Nov 6: tell the person it was given to. There is no per-person inbox in the POS, so the notice is an in-app alert
+      // (Alerts) naming them, plus an activity row; nothing is sent outside the salon. Not sent when you assign it to yourself.
+      if (to && to !== ctx.userId) {
+        const who: Row | undefined = (await sql<Row>`select full_name from users where id = ${to} and tenant_id = ${ctx.tenantId}`.execute(trx)).rows[0];
+        await sql`insert into owner_alerts (tenant_id, branch_id, category, severity, status, title, body, metadata, audience)
+          values (${ctx.tenantId}, ${r.branch_id ?? null}, 'ai_follow_up_assigned', 'info', 'new', ${`Follow-up assigned to ${who?.full_name ?? 'a staff member'}`},
+            ${String(r.description ?? r.notes ?? r.reason).slice(0, 300)}, ${JSON.stringify({ followUpId: id, assignedUserId: to })}::jsonb, 'all')`.execute(trx);
+        await this.activity(trx, ctx, ctx.tenantId, id, 'assignee_notified', null, to, null, { channel: 'in_app_alert' });
+      }
       await this.audit(ctx, trx, 'follow_up.assigned', id, to ? 'Follow-up assigned' : 'Follow-up unassigned', { before: { assignedUserId: cur.assigned_user_id ?? null, status: cur.status }, after: { assignedUserId: to, status: nextStatus } });
       return this.rowOut(r);
     });
@@ -526,6 +538,34 @@ export class AiFollowUpCenter {
     };
   }
 
+  // ── A13 Nov 6: more sources, recommended assignee, hold expiry, health history ───────────────────────────────────────
+  /** Bring in missed AI calls (hung up in under FU_MISSED_SECONDS, or flagged for follow-up, last 7 days) and failed / unknown
+   *  Reception Copilot actions (last 7 days) as follow-ups. Idempotent: one task per source event (source_event_key). */
+  async importSources(ctx: FuCtx) { return importFollowUpSources(this.db, ctx.tenantId, this.branch(ctx)); }
+  /** Recommended assignee: the assignable staff member with the fewest open tasks in this branch (ties: assigned least recently).
+   *  A suggestion only — a person still assigns. */
+  async recommendAssignee(ctx: FuCtx) {
+    this.needView(ctx); const b = this.branch(ctx);
+    const r: Row | undefined = (await sql<Row>`select u.id, u.full_name, u.role,
+        (select count(*)::int from ai_receptionist_follow_ups f where f.tenant_id = u.tenant_id and f.assigned_user_id = u.id and f.status = any(${ACTIVE}::text[])) open_tasks,
+        (select max(f.assigned_at) from ai_receptionist_follow_ups f where f.tenant_id = u.tenant_id and f.assigned_user_id = u.id) last_assigned
+      from users u where u.tenant_id = ${ctx.tenantId} and u.status = 'active' and u.role = any(${ASSIGNABLE_ROLES}::text[]) and (u.branch_id = ${b} or u.branch_id is null or ${b}::uuid is null)
+      order by open_tasks asc, last_assigned asc nulls first, u.full_name, u.id limit 1`.execute(this.db)).rows[0];
+    return r ? { userId: String(r.id), name: String(r.full_name ?? ''), role: String(r.role), openTasks: n(r.open_tasks), reason: `Fewest open follow-ups (${n(r.open_tasks)}) among staff who can take them.` } : null;
+  }
+  /** Hold expiry (A13 Nov 6): see expireFollowUpHolds */
+  async expireHolds(tenantId?: string) { return expireFollowUpHolds(this.db, tenantId); }
+  /** Check Follow-Up System history: every recorded run, newest first */
+  async healthHistory(ctx: FuCtx, f: { page?: unknown; pageSize?: unknown } = {}) {
+    this.needView(ctx); const b = this.branch(ctx);
+    const size = [10, 20, 50].includes(Number(f.pageSize)) ? Number(f.pageSize) : 10; const page = Math.max(1, Math.trunc(Number(f.page)) || 1);
+    const total = n((await sql<Row>`select count(*)::int c from ai_follow_up_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${b}`.execute(this.db)).rows[0]?.c);
+    const rows: Row[] = (await sql<Row>`select h.overall, h.results, h.ran_at, u.full_name from ai_follow_up_health_runs h left join users u on u.id = h.actor_user_id and u.tenant_id = h.tenant_id
+      where h.tenant_id = ${ctx.tenantId} and h.branch_id is not distinct from ${b} order by h.ran_at desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
+    return { items: rows.map((r) => ({ overall: String(r.overall), at: iso(r.ran_at), by: r.full_name ?? null, failed: (Array.isArray(r.results) ? r.results : []).filter((x: Row) => x.state === 'FAILED' || x.status === 'FAILED').length })),
+      page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) };
+  }
+
   // ── Check Follow-Up System (read-only) ────────────────────────────────────────────────────────────────────────
   async health(ctx: FuCtx) {
     this.needView(ctx);
@@ -656,3 +696,60 @@ export async function escalateOverdueFollowUps(db: Kysely<any>, now = new Date()
   return { escalated };
 }
 export const newRequestKey = () => randomUUID();
+
+/** A13 Nov 6: an activity row written by the system (no staff actor) */
+async function fuActivity(db: Kysely<any>, tenantId: string, id: string, type: string, from: string | null, to: string | null, note: string | null, meta: Row = {}) {
+  await sql`insert into ai_follow_up_activity (tenant_id, follow_up_id, actor_user_id, event_type, from_value, to_value, note, metadata)
+    values (${tenantId}, ${id}, null, ${type}, ${from}, ${to}, ${note}, ${JSON.stringify(meta)}::jsonb)`.execute(db);
+}
+/** A13 Nov 6: missed AI calls (hung up in under FU_MISSED_SECONDS, or flagged for a call back) and failed / unknown Reception
+ *  Copilot actions of the last 7 days become follow-ups. Idempotent: one task per source event (source_event_key). */
+export async function importFollowUpSources(db: Kysely<any>, T: string, b: string | null) {
+  const missed: Row[] = (await sql<Row>`select o.provider_call_id, o.branch_id, o.caller_number, coalesce(o.started_at, o.created_at) at, o.follow_up_required
+    from voice_call_outcomes o where o.tenant_id = ${T} and (${b}::uuid is null or o.branch_id = ${b}) and coalesce(o.started_at, o.created_at) > now() - interval '7 days'
+      and ((o.abandoned and coalesce(o.duration_seconds, 0) < ${FU_MISSED_SECONDS}) or o.follow_up_required)
+      and not exists (select 1 from ai_receptionist_follow_ups f where f.tenant_id = o.tenant_id and f.provider_call_id = o.provider_call_id)
+    order by at limit 200`.execute(db)).rows;
+  let calls = 0, copilot = 0;
+  for (const m of missed) {
+    const r = (await sql<Row>`insert into ai_receptionist_follow_ups (tenant_id, branch_id, reason, priority, status, caller_phone, provider_call_id, source, source_event_key, description, due_at)
+      values (${T}, ${m.branch_id}, 'CALLBACK', 'normal', 'open', ${m.caller_number ?? null}, ${m.provider_call_id}, 'missed_call', ${'missed:' + m.provider_call_id},
+        ${m.follow_up_required ? 'The AI flagged this call for a call back.' : 'Missed call — the caller hung up before the AI could help.'}, now() + interval '1 hour')
+      on conflict do nothing returning id`.execute(db)).rows[0];
+    if (r) { calls++; await fuActivity(db, T, String(r.id), 'created', null, 'open', null, { source: 'missed_call' }); }
+  }
+  const failed: Row[] = (await sql<Row>`select l.id, l.branch_id, l.action_type, l.state, l.error_code, l.resource_id from reception_copilot_action_ledger l
+    where l.tenant_id = ${T} and (${b}::uuid is null or l.branch_id = ${b}) and l.state in ('failed', 'unknown') and l.created_at > now() - interval '7 days'
+      and not exists (select 1 from ai_receptionist_follow_ups f where f.tenant_id = l.tenant_id and f.source_event_key = 'copilot:' || l.id::text)
+    order by l.created_at limit 200`.execute(db)).rows;
+  for (const l of failed) {
+    const appt = /^[0-9a-f-]{36}$/i.test(String(l.resource_id ?? '')) && String(l.action_type).includes('appointment') ? String(l.resource_id) : null;
+    const what = `Reception Copilot ${String(l.action_type).replace(/_/g, ' ')} ${l.state === 'unknown' ? 'has an unknown outcome — check the record by hand' : 'failed'}${l.error_code ? ` (${l.error_code})` : ''}.`;
+    const r = (await sql<Row>`insert into ai_receptionist_follow_ups (tenant_id, branch_id, reason, priority, status, appointment_id, source, source_event_key, description, due_at)
+      values (${T}, ${l.branch_id}, ${l.action_type === 'send_message' ? 'OTHER' : 'BOOKING_HELP'}, ${l.state === 'unknown' ? 'high' : 'normal'}, 'open', ${appt}::uuid, 'reception_copilot', ${'copilot:' + l.id},
+        ${what}, now() + interval '30 minutes')
+      on conflict do nothing returning id`.execute(db)).rows[0];
+    if (r) { copilot++; await fuActivity(db, T, String(r.id), 'created', null, 'open', null, { source: 'reception_copilot' }); }
+  }
+  return { createdFromMissedCalls: calls, createdFromCopilot: copilot };
+}
+
+/** A13 Nov 6 — hold expiry: a task Waiting until a time goes back to In progress when that time passes (activity
+ *  'hold_expired'), so it shows in the queue again. Run by the 5-minute follow-up job. */
+export async function expireFollowUpHolds(db: Kysely<any>, tenantId?: string): Promise<{ returned: number }> {
+  // through the follow-up lifecycle: waiting → in_progress (the only working state a Waiting task may move to)
+  const rows: Row[] = (await sql<Row>`update ai_receptionist_follow_ups f set status = 'in_progress', waiting_until = null, version = version + 1, updated_at = now()
+    where f.status = 'waiting' and f.waiting_until is not null and f.waiting_until <= now()
+      and (${tenantId ?? null}::uuid is null or f.tenant_id = ${tenantId ?? null}::uuid) and ${canMoveToSql(AI_RECEPTIONIST_FOLLOW_UP, 'in_progress')}
+    returning f.id, f.tenant_id`.execute(db)).rows;
+  for (const r of rows) await fuActivity(db, String(r.tenant_id), String(r.id), 'hold_expired', 'waiting', 'in_progress', 'The waiting time passed; the follow-up is back in progress.');
+  return { returned: rows.length };
+}
+/** A13 Nov 6 — the job's import: every salon with a candidate missed call or Copilot failure in the last 7 days */
+export async function importAllFollowUpSources(db: Kysely<any>): Promise<{ tenants: number; created: number }> {
+  const ts: Row[] = (await sql<Row>`select distinct tenant_id from voice_call_outcomes where coalesce(started_at, created_at) > now() - interval '7 days' and (abandoned or follow_up_required)
+    union select distinct tenant_id from reception_copilot_action_ledger where state in ('failed', 'unknown') and created_at > now() - interval '7 days' limit 2000`.execute(db)).rows;
+  let created = 0;
+  for (const t of ts) { const r = await importFollowUpSources(db, String(t.tenant_id), null); created += r.createdFromMissedCalls + r.createdFromCopilot; }
+  return { tenants: ts.length, created };
+}

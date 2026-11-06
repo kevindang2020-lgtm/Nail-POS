@@ -154,7 +154,8 @@ export class BusinessSetupCenter {
       const warnings: string[] = [];
       if (v.overnightDays.length) warnings.push(`Open past midnight on ${v.overnightDays.join(', ')}.`);
       if (other > 0) warnings.push('Super Admin also keeps location hours for this branch; the AI reads the POS Settings hours only.');
-      warnings.push('No holiday or special-closure schedule exists in the system yet, so the AI cannot know about closures.');
+      const ex = (await this.closures(ctx)).items;
+      warnings.push(ex.length ? `${ex.length} holiday closure / special-hours day(s) in the next 60 days — the AI tells callers about them.` : 'No holiday closures or special hours entered for the next 60 days.');
       const status: BsStatus = h.source === 'platform_default' ? 'NEEDS_SETUP' : v.invalidDays.length ? 'FAILED' : v.openDays === 0 ? 'NEEDS_SETUP' : 'READY';
       const detail = h.source === 'platform_default' ? 'Hours were never saved for this salon — the AI would only see the platform default week.'
         : v.invalidDays.length ? `Invalid hours on ${v.invalidDays.join(', ')}.` : v.openDays === 0 ? 'Every day is closed.' : `Open ${v.openDays} day(s) a week (${h.timezone}).`;
@@ -239,7 +240,7 @@ export class BusinessSetupCenter {
   }
 
   // ── one-click health check (guide §11; non-mutating) ─────────────────────────────────────────────────────────────────
-  async health(ctx: BsCtx) {
+  async health(ctx: BsCtx, opts: { record?: boolean } = {}) {
     const r = await this.readiness(ctx);
     const checks: Check[] = [];
     checks.push({ key: 'tenant_branch', status: this.branch(ctx) ? 'READY' : 'NEEDS_SETUP', source: 'Signed-in session', branchScope: this.scopeLabel(ctx), rawCount: null, eligibleCount: null, exclusions: [], warnings: [],
@@ -268,11 +269,15 @@ export class BusinessSetupCenter {
         detail: st === 'READY' ? 'No failed or stuck AI setup jobs in the last 7 days.' : `${N(j.failed)} failed and ${N(j.stuck)} stuck AI setup job(s).`, action: { label: 'Open AI Receptionist', route: '/tenant/ai/receptionist' }, checkedAt: nowIso(), traceId: trace() });
     } catch (e) { checks.push(this.unknown('audit_jobs', 'AI agent provisioning jobs', ctx, e)); }
     const worst = (['FAILED', 'UNKNOWN', 'NEEDS_SETUP', 'STALE', 'DISABLED', 'READY'] as BsStatus[]).find((s) => checks.some((c) => c.status === s && c.key !== 'agent_knowledge' && c.key !== 'provider' && c.key !== 'booking')) ?? 'READY';
-    return { overall: worst, checkedAt: nowIso(), checks, note: 'This check only reads; it changed nothing. Provider and deployment items are listed separately and are never shown as ready from a saved setting alone.' };
+    // A12 Nov 6: every run is recorded (who, when, each part) — the run row is the only write
+    if (!opts.record) return { overall: worst, checkedAt: nowIso(), runId: null as string | null, checks, note: 'This check only reads; it changed nothing. Provider and deployment items are listed separately and are never shown as ready from a saved setting alone.' };
+    const run: Row = (await sql<Row>`insert into business_setup_health_runs (tenant_id, branch_id, overall, checks, run_by) values (${ctx.tenantId}, ${this.branch(ctx)}, ${worst}, ${JSON.stringify(checks)}::jsonb, ${isUuid(ctx.userId) ? ctx.userId : null})
+      returning id, created_at`.execute(this.db)).rows[0];
+    return { overall: worst, checkedAt: iso(run.created_at) ?? nowIso(), runId: String(run.id) as string | null, checks, note: 'This check only reads your setup; it changed nothing except recording this run. Provider and deployment items are listed separately and are never shown as ready from a saved setting alone.' };
   }
 
   // ── FAQ list / detail ───────────────────────────────────────────────────────────────────────────────────────────────
-  async faqs(ctx: BsCtx, f: { q?: string; status?: string; category?: string; branch?: string; author?: string; dateBasis?: string; from?: string; to?: string; sort?: string; page?: unknown; pageSize?: unknown }) {
+  async faqs(ctx: BsCtx, f: { q?: string; status?: string; category?: string; tag?: string; branch?: string; author?: string; dateBasis?: string; from?: string; to?: string; sort?: string; page?: unknown; pageSize?: unknown }) {
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
     if (f.from && !DATE.test(f.from)) throw new BusinessSetupError('Choose a valid From date.', 'AI_SETUP_INVALID_FILTER');
     if (f.to && !DATE.test(f.to)) throw new BusinessSetupError('Choose a valid To date.', 'AI_SETUP_INVALID_FILTER');
@@ -282,10 +287,11 @@ export class BusinessSetupCenter {
     const col = basis === 'updated' ? sql`f.updated_at` : basis === 'approved' ? sql`f.approved_at` : sql`f.created_at`;
     const conds = [sql`true`];
     const q = String(f.q ?? '').trim().slice(0, 100);
-    if (q) conds.push(sql`(f.question ilike ${like(q)} or f.answer ilike ${like(q)} or coalesce(f.category, '') ilike ${like(q)} or f.id::text = ${q}
+    if (q) conds.push(sql`(f.question ilike ${like(q)} or f.answer ilike ${like(q)} or coalesce(f.category, '') ilike ${like(q)} or f.id::text = ${q} or ${q.toLowerCase()} = any(f.tags)
       or exists (select 1 from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.faq_id = f.id and r.id = f.draft_revision_id and (r.question ilike ${like(q)} or r.answer ilike ${like(q)})))`);
     if (f.status && (FAQ_STATUSES as readonly string[]).includes(f.status)) conds.push(sql`f.status = ${f.status}`);
     if (f.category) conds.push(sql`lower(coalesce(f.category, '')) = ${f.category.toLowerCase().slice(0, 60)}`);
+    if (f.tag) conds.push(sql`${String(f.tag).trim().toLowerCase().slice(0, 30)} = any(f.tags)`);
     if (f.branch === 'all') conds.push(sql`f.branch_id is null`); else if (isUuid(f.branch)) conds.push(sql`f.branch_id = ${f.branch}`);
     if (isUuid(f.author)) conds.push(sql`f.created_by_user_id = ${f.author}`);
     if (f.from) conds.push(sql`${col} >= (${f.from}::date)::timestamp at time zone ${tz}`);
@@ -294,24 +300,25 @@ export class BusinessSetupCenter {
     const order = f.sort === 'oldest' ? sql`f.created_at asc, f.id asc` : f.sort === 'updated' ? sql`f.updated_at desc, f.id desc`
       : f.sort === 'approved' ? sql`f.approved_at desc nulls last, f.id desc` : f.sort === 'question_az' ? sql`lower(f.question) asc, f.id asc` : sql`f.created_at desc, f.id desc`;
     const total = N((await sql<Row>`select count(*)::int n from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and ${where}`.execute(this.db)).rows[0]?.n);
-    const rows: Row[] = (await sql<Row>`select f.id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id,
+    const rows: Row[] = (await sql<Row>`select f.id, f.branch_id, f.question, f.answer, f.category, f.tags, f.status, f.version, f.approved_revision_id, f.draft_revision_id,
         f.created_by_user_id, f.created_at, f.updated_at, f.approved_at, f.submitted_at, f.archived_at,
         (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
         (select r.answer from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_answer
       from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and ${where} order by ${order} limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     const cats: Row[] = (await sql<Row>`select distinct category from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} and category is not null order by category limit 100`.execute(this.db)).rows;
-    return { items: rows.map((r) => this.faqRow(r)), page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), timezone: tz, dateBasis: basis, categories: cats.map((c) => c.category) };
+    const tagRows: Row[] = (await sql<Row>`select distinct unnest(tags) t from ai_receptionist_faqs where tenant_id = ${ctx.tenantId} order by 1 limit 100`.execute(this.db)).rows;
+    return { items: rows.map((r) => this.faqRow(r)), page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)), timezone: tz, dateBasis: basis, categories: cats.map((c) => c.category), tags: tagRows.map((x) => String(x.t)) };
   }
   private faqRow(r: Row) {
     const pending = !!r.draft_revision_id && r.draft_revision_id !== r.approved_revision_id;
-    return { id: r.id, branchId: r.branch_id ?? null, question: r.question, answer: r.answer, category: r.category ?? null, status: r.status, version: N(r.version),
+    return { id: r.id, branchId: r.branch_id ?? null, question: r.question, answer: r.answer, category: r.category ?? null, tags: Array.isArray(r.tags) ? r.tags : [], status: r.status, version: N(r.version),
       aiServable: r.status === 'approved' && !!r.approved_revision_id, hasPendingChange: r.status === 'approved' && pending,
       draftQuestion: pending ? r.draft_question ?? null : null, draftAnswer: pending ? r.draft_answer ?? null : null,
       createdAt: iso(r.created_at), updatedAt: iso(r.updated_at), approvedAt: iso(r.approved_at), submittedAt: iso(r.submitted_at), archivedAt: iso(r.archived_at) };
   }
   async faq(ctx: BsCtx, id: string) {
     if (!isUuid(id)) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
-    const r: Row = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.question, f.answer, f.category, f.status, f.version, f.approved_revision_id, f.draft_revision_id, f.approved_at, f.submitted_at, f.archived_at, f.created_at, f.updated_at, f.created_by_user_id, (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
+    const r: Row = (await sql<Row>`select f.id, f.tenant_id, f.branch_id, f.question, f.answer, f.category, f.tags, f.status, f.version, f.approved_revision_id, f.draft_revision_id, f.approved_at, f.submitted_at, f.archived_at, f.created_at, f.updated_at, f.created_by_user_id, (select r.question from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_question,
         (select r.answer from ai_receptionist_faq_revisions r where r.tenant_id = f.tenant_id and r.id = f.draft_revision_id) draft_answer
       from ai_receptionist_faqs f where f.tenant_id = ${ctx.tenantId} and f.id = ${id}`.execute(this.db)).rows[0];
     if (!r) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
@@ -437,12 +444,76 @@ export class BusinessSetupCenter {
   }
 
   // ── AI knowledge (the voice tool reads this; approved revisions ONLY) ───────────────────────────────────────────────
+  // ── A12 Nov 6: holiday / special-hours exceptions (business_closures, migration 830) ───────────────────────────────
+  /** Live exceptions for [from, to] (default: today → +60 days). A branch row wins over the salon row for the same date. */
+  async closures(ctx: BsCtx, f: { from?: string; to?: string } = {}) {
+    if (f.from && !DATE.test(f.from)) throw new BusinessSetupError('Choose a valid From date.', 'AI_SETUP_INVALID_FILTER');
+    if (f.to && !DATE.test(f.to)) throw new BusinessSetupError('Choose a valid To date.', 'AI_SETUP_INVALID_FILTER');
+    const tz = await this.zone(ctx); const b = this.branch(ctx);
+    const from = f.from ?? null, to = f.to ?? null;
+    const rows: Row[] = (await sql<Row>`select distinct on (c.closure_date) c.id, c.branch_id, to_char(c.closure_date, 'YYYY-MM-DD') d, c.closed, c.opens_at, c.closes_at, c.note, c.created_at
+      from business_closures c where c.tenant_id = ${ctx.tenantId} and c.archived_at is null and (c.branch_id is null or c.branch_id = ${b})
+        and c.closure_date >= coalesce(${from}::date, (now() at time zone ${tz})::date)
+        and c.closure_date <= coalesce(${to}::date, (now() at time zone ${tz})::date + 60)
+      order by c.closure_date, (c.branch_id is not null) desc, c.created_at desc limit 400`.execute(this.db)).rows;
+    return { timezone: tz, items: rows.map((r) => ({ id: String(r.id), date: String(r.d), scope: (r.branch_id ? 'branch' : 'salon') as 'branch' | 'salon', closed: !!r.closed,
+      opensAt: r.opens_at ?? null, closesAt: r.closes_at ?? null, note: r.note ?? null, createdAt: iso(r.created_at) })) };
+  }
+  async addClosure(ctx: BsCtx, b: { date?: unknown; closed?: unknown; opensAt?: unknown; closesAt?: unknown; note?: unknown; scope?: unknown }) {
+    const date = String(b.date ?? ''); if (!DATE.test(date)) throw new BusinessSetupError('Choose a valid date.', 'AI_SETUP_INVALID_FILTER');
+    const closed = b.closed !== false; const HM = /^\d{2}:\d{2}$/;
+    const o = closed ? null : String(b.opensAt ?? ''), c = closed ? null : String(b.closesAt ?? '');
+    if (!closed && (!HM.test(o!) || !HM.test(c!) || c! <= o!)) throw new BusinessSetupError('Enter special hours as HH:MM, with closing after opening.', 'AI_SETUP_INVALID_FILTER');
+    const note = String(b.note ?? '').trim().slice(0, 200) || null;
+    const branchId = b.scope === 'branch' && this.branch(ctx) ? this.branch(ctx) : null;
+    return this.db.transaction().execute(async (trx) => {
+      // one live exception per date and scope: a new one replaces the old (archived, kept for history)
+      await sql`update business_closures set archived_at = now(), archived_by = ${ctx.userId} where tenant_id = ${ctx.tenantId} and archived_at is null
+        and closure_date = ${date}::date and branch_id is not distinct from ${branchId}`.execute(trx);
+      const r: Row = (await sql<Row>`insert into business_closures (tenant_id, branch_id, closure_date, closed, opens_at, closes_at, note, created_by)
+        values (${ctx.tenantId}, ${branchId}, ${date}::date, ${closed}, ${o}, ${c}, ${note}, ${isUuid(ctx.userId) ? ctx.userId : null}) returning id`.execute(trx)).rows[0];
+      await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role ?? null },
+        { module: 'ai_business_setup', action: 'closure.saved', resourceType: 'business_closure', resourceId: String(r.id), summary: closed ? `Closed on ${date}` : `Special hours on ${date}: ${o}–${c}`, metadata: { scope: branchId ? 'branch' : 'salon' } });
+      return { id: String(r.id) };
+    });
+  }
+  async removeClosure(ctx: BsCtx, id: string) {
+    if (!isUuid(id)) throw new BusinessSetupError('Closure not found.', 'AI_FAQ_NOT_FOUND', 404);
+    return this.db.transaction().execute(async (trx) => {
+      const r: Row = (await sql<Row>`update business_closures set archived_at = now(), archived_by = ${isUuid(ctx.userId) ? ctx.userId : null}
+        where tenant_id = ${ctx.tenantId} and id = ${id} and archived_at is null returning id, to_char(closure_date, 'YYYY-MM-DD') d`.execute(trx)).rows[0];
+      if (!r) throw new BusinessSetupError('Closure not found.', 'AI_FAQ_NOT_FOUND', 404);
+      await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role ?? null },
+        { module: 'ai_business_setup', action: 'closure.removed', resourceType: 'business_closure', resourceId: id, summary: `Removed the exception on ${r.d}` });
+      return { id, removed: true };
+    });
+  }
+  // ── A12 Nov 6: FAQ tags (internal labels; never spoken, never part of the approved text) ─────────────────────────────
+  async setFaqTags(ctx: BsCtx, id: string, tags: unknown) {
+    if (!isUuid(id)) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
+    const list = Array.isArray(tags) ? [...new Set(tags.map((t) => String(t ?? '').trim().toLowerCase().slice(0, 30)).filter(Boolean))].slice(0, 10) : null;
+    if (!list) throw new BusinessSetupError('Tags must be a list.', 'AI_SETUP_INVALID_FILTER');
+    return this.db.transaction().execute(async (trx) => {
+      const r: Row = (await sql<Row>`update ai_receptionist_faqs set tags = ${list}::text[] where tenant_id = ${ctx.tenantId} and id = ${id} returning id`.execute(trx)).rows[0];
+      if (!r) throw new BusinessSetupError('FAQ not found.', 'AI_FAQ_NOT_FOUND', 404);
+      await recordAuditStrict(trx, { tenantId: ctx.tenantId, branchId: this.branch(ctx), userId: ctx.userId, role: ctx.role ?? null },
+        { module: 'ai_business_setup', action: 'faq.tags_set', resourceType: 'ai_receptionist_faq', resourceId: id, summary: 'Changed FAQ tags', metadata: { tags: list } });
+      return { id, tags: list };
+    });
+  }
+  async lastHealth(ctx: BsCtx) {
+    const r: Row | undefined = (await sql<Row>`select id, overall, checks, created_at from business_setup_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${this.branch(ctx)}
+      order by created_at desc limit 1`.execute(this.db)).rows[0];
+    return r ? { id: String(r.id), overall: String(r.overall), checks: r.checks ?? [], at: iso(r.created_at) } : null;
+  }
+
   async knowledge(tenantId: string, branchId: string | null) {
     const ctx: BsCtx = { tenantId, branchId, userId: 'ai-receptionist' };
     const h = await this.hours(ctx);
     const faqs: Row[] = (await sql<Row>`select f.id, r.id revision_id, r.question, r.answer, r.category from ai_receptionist_faqs f join ai_receptionist_faq_revisions r on r.id = f.approved_revision_id and r.tenant_id = f.tenant_id
       where f.tenant_id = ${tenantId} and f.status = 'approved' and (f.branch_id is null or f.branch_id = ${isUuid(branchId) ? branchId : null}) order by f.approved_at desc nulls last, f.id desc limit 200`.execute(this.db)).rows;
-    return { hours: h.source === 'platform_default' ? null : { timezone: h.timezone, week: h.storeHours, source: h.source },
+    const closures = (await this.closures(ctx)).items;
+    return { closures, hours: h.source === 'platform_default' ? null : { timezone: h.timezone, week: h.storeHours, source: h.source },
       hoursNote: h.source === 'platform_default' ? 'Business hours are not set up; do not state opening hours — offer to take a message.' : null,
       faqs: faqs.map((x) => ({ id: x.id, revisionId: x.revision_id, question: x.question, answer: x.answer, category: x.category ?? null })) };
   }
@@ -466,7 +537,9 @@ export class BusinessSetupCenter {
           const day = DAYS.find((d) => question.toLowerCase().includes(d));
           const fmt = (d: string) => { const x = kn.hours!.week[d]; return x?.isOpen ? `${d[0].toUpperCase() + d.slice(1)}: ${x.openTime}–${x.closeTime}` : `${d[0].toUpperCase() + d.slice(1)}: closed`; };
           answer = day ? fmt(day) + ` (${kn.hours.timezone}).` : DAYS.map(fmt).join('; ') + ` (${kn.hours.timezone}).`;
-          answer += ' Holiday closures are not recorded in the system.'; outcome = 'answered';
+          const up = (kn.closures ?? []).slice(0, 3).map((c) => c.closed ? `closed on ${c.date}${c.note ? ` (${c.note})` : ''}` : `${c.opensAt}–${c.closesAt} on ${c.date}${c.note ? ` (${c.note})` : ''}`);
+          answer += up.length ? ` Upcoming exceptions: ${up.join('; ')}.` : ' No holiday closures or special hours are entered for the next 60 days.'; outcome = 'answered';
+          if (up.length) sources.push({ type: 'closures', label: 'Holiday & special hours (Business Setup)' });
           sources.push({ type: 'hours', label: kn.hours.source === 'branch' ? 'Store hours (this branch)' : 'Store hours (salon-wide)' });
         }
       } else if (intent === 'price' || intent === 'technician') {

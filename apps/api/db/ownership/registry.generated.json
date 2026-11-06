@@ -8,9 +8,9 @@
   "E": "cross_tenant_platform_data"
  },
  "summary": {
-  "tables": 960,
+  "tables": 963,
   "ownership": {
-   "tenant_owned": 639,
+   "tenant_owned": 642,
    "platform_identity_tenant_relationship": 44,
    "platform_global": 160,
    "tenant_branch_owned": 92,
@@ -21,14 +21,14 @@
    "SECURITY": 31,
    "FINANCE": 83,
    "MARKETING": 24,
-   "AI": 146,
+   "AI": 148,
    "AUDIT": 29,
    "OPERATIONS": 77,
    "SUPPORT": 57,
    "BOOKING": 43,
    "PAYMENTS": 59,
    "WORKFORCE": 76,
-   "CUSTOMERS": 57,
+   "CUSTOMERS": 58,
    "CATALOG": 21,
    "COMMUNICATIONS": 41,
    "CHECKOUT": 14,
@@ -41,10 +41,10 @@
    "TENANTS": 29
   },
   "sensitivity": {
-   "HIGHLY_SENSITIVE": 143,
-   "CONFIDENTIAL": 165,
+   "HIGHLY_SENSITIVE": 144,
+   "CONFIDENTIAL": 166,
    "SECURITY_SECRET": 39,
-   "INTERNAL": 531,
+   "INTERNAL": 532,
    "PAYMENT_RESTRICTED": 76,
    "PUBLIC": 6
   },
@@ -1945,6 +1945,32 @@
    "has_branch_id": false,
    "append_only": false,
    "source": "heuristic"
+  },
+  "business_closures": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "HIGHLY_SENSITIVE",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "A12 Business Setup (Nov 6 2026, migration 830): holiday closures / special hours the AI receptionist tells callers about; Booking keeps its own hours"
+  },
+  "business_setup_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "AI",
+   "sensitivity": "INTERNAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "A12 Business Setup (Nov 6 2026, migration 830): recorded runs of Check Business Setup for the AI receptionist — same domain as ai_business_health_runs / ai_receptionist_settings_checks"
   },
   "call_consent_records": {
    "ownership": "tenant_owned",
@@ -8277,6 +8303,19 @@
    "append_only": false,
    "source": "override",
    "reason": "a salon's review of its own visit: tenant-owned; global_tech_profile_id only attributes it to the technician's platform profile"
+  },
+  "reviews_health_runs": {
+   "ownership": "tenant_owned",
+   "class": "B",
+   "domain": "CUSTOMERS",
+   "sensitivity": "CONFIDENTIAL",
+   "retention_class": "indefinite",
+   "delete_policy": "none",
+   "has_tenant_id": true,
+   "has_branch_id": true,
+   "append_only": false,
+   "source": "override",
+   "reason": "A17 Reviews (Nov 6 2026, migration 831): recorded runs of Check Review System — same owner as reviews"
   },
   "reward_earn_transactions": {
    "ownership": "tenant_owned",

@@ -6,6 +6,7 @@
 //   pos.marketing.manage   reviews/:id/moderate (Hide / Unhide: reason-coded, version-checked, idempotent, audited)
 // Reply drafting / approval / publishing stays in the existing approval-gated `pos/ai-review-reputation/*` workflow.
 import { ListQuery } from '@aipowersalon/database';
+import type { ReviewAssignResult, ReviewStaffList, ReviewCheckRun, ReviewCheckResult } from '@aipowersalon/api-contracts/tenant';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
@@ -39,11 +40,12 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 const actor = (c: RetentionContext) => ({ tenantId: c.tenantId, branchId: isUuid(c.branchId) ? c.branchId : null, userId: c.userId, role: c.role });
+export const RV_ASSIGN_BODY: BodySchema = S.object({ assignedUserId: S.nullable(S.text(40)) }, []);
 const LIST = {
   filters: {
     comment: { type: 'enum', values: RV_COMMENT }, visibility: { type: 'enum', values: RV_VISIBILITY }, followup: { type: 'enum', values: RV_FOLLOWUP },
     source: { type: 'enum', values: RV_SOURCES }, basis: { type: 'enum', values: RV_BASES }, preset: { type: 'enum', values: RV_PRESETS },
-    rating: { type: 'int', min: 1, max: 5 }, technician: { type: 'text' }, service: { type: 'uuid' },
+    rating: { type: 'int', min: 1, max: 5 }, technician: { type: 'text' }, service: { type: 'uuid' }, assignee: { type: 'text', maxLength: 40 },
   },
   sorts: { newest: null, oldest: null, lowest: null, highest: null, moderated: null, attention: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 },
   maxLimit: 50, defaultLimit: 20, params: ['page'],
@@ -75,6 +77,22 @@ export class ReviewsCenterController {
   /** Check Review System — read-only diagnostics */
   @Get('check') @RequirePermission('pos.marketing.view')
   check(@Req() q: any) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().check(c)); }
+
+  /** A17 Nov 6: run the check AND record it; the last recorded run */
+  @Post('check/run') @RequirePermission('pos.marketing.view')
+  checkRun(@Req() q: any): Promise<ReviewCheckResult> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().check(c, { record: true })); }
+  @Get('check/last') @RequirePermission('pos.marketing.view')
+  checkLast(@Req() q: any): Promise<ReviewCheckRun | null> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().lastCheck(c)); }
+  /** A17 Nov 6: staff a review can be given to */
+  @Get('staff') @RequirePermission('pos.marketing.view')
+  staff(@Req() q: any): Promise<ReviewStaffList> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().staff(c)); }
+  /** A17 Nov 6: give a review to a staff member to follow up (null takes it back) — audited */
+  @Post('reviews/:id/assign') @RequirePermission('pos.marketing.manage')
+  assign(@Req() q: any, @Param('id') id: string, @Body(ValidatedBody(RV_ASSIGN_BODY, { strict: true })) b: any): Promise<ReviewAssignResult> {
+    const c = ctxFrom(q); need(c, 'pos.marketing.manage');
+    return run(() => this.r().assign(c, id, b ?? {}, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'marketing', action: meta.to ? 'review.assigned' : 'review.unassigned', resourceType: 'review', resourceId: id,
+      summary: meta.to ? 'Review assigned for follow-up' : 'Review assignment removed', metadata: meta })));
+  }
 
   /** the overlay — full customer contact only with pos.customers.view; opening a linked customer is audited (fail-closed) */
   @Get('reviews/:id') @RequirePermission('pos.marketing.view')

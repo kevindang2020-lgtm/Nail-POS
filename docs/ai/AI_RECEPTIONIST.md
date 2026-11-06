@@ -123,3 +123,23 @@ transaction, and recorded append-only with before/after (`ai_receptionist_contro
   - `ai-settings.pgtest`
   - `ai-settings.vitest`
   - `POSAICallsAndSettings.test` (4)
+
+## Built Nov 6 2026 (A12 Business Setup)
+
+- **Holiday closures and special hours** (`business_closures`, migration 830).
+  - A day can be closed all day, or open with special hours.
+  - Set salon-wide or for one branch. A branch row wins over the salon row for the same date.
+  - There is one live row per date and scope: a new row archives the old one. Removing a day also archives it.
+  - Every change is audited (`closure.saved` / `closure.removed`).
+  - `knowledge()` returns the next 60 days, so the AI and the knowledge preview tell callers about these days. The hours check now
+    reports them instead of "no closure schedule exists".
+  - Booking keeps its own hours. Closures do not block the booking engine.
+- **FAQ tags.** Up to 10 per FAQ, stored lowercase and de-duplicated.
+  - Tags are internal: they are never spoken by the AI, are not part of the approved text, and do not change the version.
+  - The list has a tag filter, and search matches tags.
+- **FAQ overlay.** New "AI preview" tab: it runs the FAQ's question through the read-only preview and says whether the AI used this FAQ.
+- **Recorded health runs.** `POST …/health/run` records each run in `business_setup_health_runs`; `GET …/health/last` returns the
+  latest. `GET …/health` stays read-only.
+- **Tests:**
+  - `business-setup-center.pgtest` (25)
+  - `POSAIBusinessAndCalendar.test` (3)

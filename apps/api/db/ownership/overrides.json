@@ -458,6 +458,18 @@
   "ai_business_health_runs": {
    "domain": "AI",
    "reason": "Check AI Business Reports / Alerts System evidence (migration 781): read-only health runs"
+  },
+  "business_setup_health_runs": {
+   "domain": "AI",
+   "reason": "A12 Business Setup (Nov 6 2026, migration 830): recorded runs of Check Business Setup for the AI receptionist \u2014 same domain as ai_business_health_runs / ai_receptionist_settings_checks"
+  },
+  "business_closures": {
+   "domain": "AI",
+   "reason": "A12 Business Setup (Nov 6 2026, migration 830): holiday closures / special hours the AI receptionist tells callers about; Booking keeps its own hours"
+  },
+  "reviews_health_runs": {
+   "domain": "CUSTOMERS",
+   "reason": "A17 Reviews (Nov 6 2026, migration 831): recorded runs of Check Review System \u2014 same owner as reviews"
   }
  }
 }

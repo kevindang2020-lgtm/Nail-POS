@@ -61,3 +61,22 @@ export interface VoiceAnalytics {
 }
 
 export type ProviderState = 'connected' | 'not_connected' | 'error';
+
+/** A12 Nov 6: Business Setup — holiday / special-hours exceptions, FAQ tags, recorded health runs */
+export interface BusinessClosure { id: string; date: string; scope: 'salon' | 'branch'; closed: boolean; opensAt: string | null; closesAt: string | null; note: string | null; createdAt: string | null }
+export interface BusinessClosureList { timezone: string; items: BusinessClosure[] }
+export interface BusinessClosureSaved { id: string; removed?: boolean }
+export interface FaqTagsResult { id: string; tags: string[] }
+export interface BusinessSetupHealthRun { id: string; overall: string; checks: unknown[]; at: string | null }
+
+/** A13 Nov 6: AI Follow-Ups — more sources, recommended assignee, health history */
+export interface FollowUpImportResult { createdFromMissedCalls: number; createdFromCopilot: number }
+export interface FollowUpRecommendedAssignee { userId: string; name: string; role: string; openTasks: number; reason: string }
+export interface FollowUpHealthHistory { items: { overall: string; at: string | null; by: string | null; failed: number }[]; page: number; pageSize: number; totalItems: number; totalPages: number }
+export interface BusinessSetupHealthResult { overall: string; checkedAt: string; runId: string | null; checks: unknown[]; note: string }
+
+/** A17 Nov 6: Reviews — assignment, staff list, recorded checks */
+export interface ReviewAssignResult { id: string; assignedUserId: string | null }
+export interface ReviewStaffList { items: { id: string; name: string; role: string }[] }
+export interface ReviewCheckRun { id: string; overall: string; checks: unknown[]; at: string | null }
+export interface ReviewCheckResult { overall: string; checks: unknown[]; checkedAt: string }

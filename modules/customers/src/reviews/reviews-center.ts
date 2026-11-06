@@ -62,6 +62,8 @@ const isExternal = (src: unknown) => (RV_EXTERNAL_SOURCES as readonly string[]).
 export interface RvListFilters {
   q?: unknown; rating?: unknown; comment?: unknown; visibility?: unknown; followup?: unknown; technician?: unknown; source?: unknown; service?: unknown;
   basis?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown;
+  /** A17 Nov 6: a staff id, 'me' or 'none' */
+  assignee?: unknown;
 }
 export interface ModerateBody { action?: unknown; reasonCode?: unknown; reasonText?: unknown; evidence?: unknown; expectedVersion?: unknown; idempotencyKey?: unknown }
 export type AuditFn = (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<unknown>;
@@ -175,15 +177,20 @@ export class ReviewsCenter {
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
     if (f.rating != null && f.rating !== '' && !(rating >= 1 && rating <= 5)) throw new ReviewsCenterError('Choose a rating from 1 to 5 stars.', 'REVIEWS_FILTER_INVALID');
     const qd = q ? digits(q) : '';
+    const w2 = q && /^\S+\s+\S+$/.test(q.trim()) ? q.trim().split(/\s+/).map((x) => x.replace(/[%_\\]/g, (m) => '\\' + m)) as [string, string] : null;
     // customer fields match ONLY through a real tenant link (c joined on tenant); anonymous reviews never match a name/phone
     const qw = q ? sql`(c.full_name ilike ${'%' + q + '%'} or c.email ilike ${'%' + q + '%'} or te.full_name ilike ${'%' + q + '%'} or r.comment ilike ${'%' + q + '%'}
         or r.hidden_reason ilike ${'%' + q + '%'} or r.source = ${q.toLowerCase()} or r.id::text = ${q} or c.id::text = ${q} or te.id::text = ${q}
         or coalesce(r.external_review_id, '') = ${q} or r.ticket_id::text = ${q} or r.appointment_id::text = ${q} or coalesce(tk.ticket_number::text, '') = ${q}
         or coalesce(sl.service_name_snapshot, '') ilike ${'%' + q + '%'}
         or (${/^[1-5]$/.test(q)} and round(r.rating)::text = ${q})
-        or (${qd.length >= 4} and regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${'%' + qd + '%'}))` : sql`true`;
+        or (${qd.length >= 4} and regexp_replace(coalesce(c.normalized_phone, ''), '[^0-9]', '', 'g') like ${'%' + qd + '%'})
+        -- A17 Nov 6: "first last" (either order) matches the customer's first and last name separately
+        or (${w2 != null} and ((c.first_name ilike ${(w2?.[0] ?? '') + '%'} and c.last_name ilike ${(w2?.[1] ?? '') + '%'}) or (c.first_name ilike ${(w2?.[1] ?? '') + '%'} and c.last_name ilike ${(w2?.[0] ?? '') + '%'}))))` : sql`true`;
+    const asg = f.assignee === 'me' ? actorId(ctx) : f.assignee === 'none' ? 'none' : isUuid(f.assignee) ? String(f.assignee) : null;
+    const aw = asg === 'none' ? sql`r.assigned_user_id is null` : asg ? sql`r.assigned_user_id = ${asg}` : sql`true`;
     const bc = this.basisCol(basis, tz);
-    const where = sql`r.tenant_id = ${T} and ${this.branchW(ctx)} and ${qw}
+    const where = sql`r.tenant_id = ${T} and ${this.branchW(ctx)} and ${qw} and ${aw}
       and ${rating ? sql`round(r.rating) = ${rating}` : sql`true`}
       and ${comment === 'written' ? sql`nullif(btrim(coalesce(r.comment, '')), '') is not null` : comment === 'star_only' ? sql`nullif(btrim(coalesce(r.comment, '')), '') is null` : sql`true`}
       and ${vis === 'public' ? PUBLIC_REVIEW_SQL : vis === 'not_public' ? sql`not (${PUBLIC_REVIEW_SQL})` : vis === 'hidden' ? sql`coalesce(r.is_hidden_by_manager, false)` : vis === 'spam' ? sql`coalesce(r.is_spam, false)` : sql`true`}
@@ -267,6 +274,11 @@ export class ReviewsCenter {
       const pubs = (await sql<any>`select result, external_response_id, error, is_auto, created_at from review_publications where tenant_id = ${T} and review_id = ${id} order by created_at desc limit 20`.execute(trx)).rows;
       const mod = (await sql<any>`select e.action, e.previous_hidden, e.new_hidden, e.reason_code, e.reason_text, e.evidence, e.source, e.created_at, e.actor_user_id, u.full_name as actor_name
           from review_moderation_events e left join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.review_id = ${id} order by e.created_at desc, e.id desc limit 50`.execute(trx)).rows;
+      // A17 Nov 6: communication history — messages to this customer and review requests (newest first; bodies trimmed)
+      const comms = c ? (await sql<any>`select n.id, n.channel, n.status, n.purpose, n.created_at, left(n.body, 160) body from notifications n
+          where n.tenant_id = ${T} and n.customer_id = ${c.id} order by n.created_at desc, n.id desc limit 20`.execute(trx)).rows : [];
+      const reqs = c ? (await sql<any>`select q.id, q.status, q.created_at from review_requests q where q.tenant_id = ${T} and q.customer_id = ${c.id} order by q.created_at desc limit 10`.execute(trx)).rows : [];
+      const asg = r.assigned_user_id ? (await sql<any>`select full_name from users where id = ${r.assigned_user_id} and tenant_id = ${T}`.execute(trx)).rows[0] : null;
       if (c) await opts.audit(trx, { reviewId: id, customerId: String(c.id), fullContact: opts.fullContact });
       const external = isExternal(r.source);
       const verified = Number(r.rating) >= 1 && Number(r.rating) <= 5 && !r.is_hidden_by_manager && !r.is_spam;
@@ -288,6 +300,9 @@ export class ReviewsCenter {
           contactMasked: !opts.fullContact, status: c.status, visits: N(c.visits), lastVisitAt: iso(c.last_visit), reviews: N(c.reviews), messages: N(c.messages),
           priorReviews: prior.map((x: any) => ({ id: String(x.id), rating: Number(x.rating), at: iso(x.at) })), canBook: c.status !== 'archived' } : null,
         anonymous: !c,
+        assignment: r.assigned_user_id ? { userId: String(r.assigned_user_id), name: asg?.full_name ?? null, at: iso(r.assigned_at) } : null,
+        communications: { messages: comms.map((m: any) => ({ id: String(m.id), channel: m.channel, status: m.status, purpose: m.purpose ?? null, at: iso(m.created_at), preview: m.body ?? '' })),
+          reviewRequests: reqs.map((x: any) => ({ id: String(x.id), status: x.status, at: iso(x.created_at) })) },
         technician: r.technician_id ? { id: String(r.technician_id), name: r.technician_name ?? null, ...tech } : null,
         visit: r.ticket_id || r.appointment_id ? { ticketId: r.ticket_id ? String(r.ticket_id) : null, ticketNumber: r.ticket_number ?? null, paidAt: iso(r.paid_at), totalCents: r.total_cents == null ? null : N(r.total_cents),
           ticketStatus: r.ticket_status ?? null, serviceName: r.service_name ?? null, appointmentId: r.appointment_id ? String(r.appointment_id) : null,
@@ -304,6 +319,36 @@ export class ReviewsCenter {
   }
 
   // ── Hide / Unhide (guide §09) ─────────────────────────────────────────────────────────────────────────────────────
+  /** A17 Nov 6: give a review to a staff member to follow up (or take it back). Active staff of this salon only; audited. */
+  async assign(ctx: RvCtx, id: string, b: { assignedUserId?: unknown }, audit: AuditFn) {
+    if (!isUuid(id)) throw new ReviewsCenterError('Review not found.', 'REVIEW_NOT_FOUND', 404);
+    const to = b.assignedUserId == null || b.assignedUserId === '' ? null : String(b.assignedUserId);
+    if (to !== null && !isUuid(to)) throw new ReviewsCenterError('Choose a staff member.', 'REVIEWS_FILTER_INVALID');
+    const T = ctx.tenantId;
+    return this.db.transaction().execute(async (trx) => {
+      const cur = (await sql<any>`select r.id, r.assigned_user_id from reviews r where r.id = ${id} and r.tenant_id = ${T} and ${this.branchW(ctx)} for update`.execute(trx)).rows[0];
+      if (!cur) throw new ReviewsCenterError('Review not found.', 'REVIEW_NOT_FOUND', 404);
+      if (to) {
+        const u = (await sql<any>`select id from users where id = ${to} and tenant_id = ${T} and status = 'active'`.execute(trx)).rows[0];
+        if (!u) throw new ReviewsCenterError('That staff member is not active in this salon.', 'REVIEWS_FILTER_INVALID');
+      }
+      await sql`update reviews set assigned_user_id = ${to}, assigned_at = ${to ? sql`now()` : null}, assigned_by = ${to ? actorId(ctx) : null}, updated_at = now(), updated_by = ${actorId(ctx)}
+        where id = ${id} and tenant_id = ${T}`.execute(trx);
+      await audit(trx, { reviewId: id, from: cur.assigned_user_id ?? null, to });
+      return { id, assignedUserId: to };
+    });
+  }
+  async staff(ctx: RvCtx) {
+    const rows = (await sql<any>`select id, full_name, role from users where tenant_id = ${ctx.tenantId} and status = 'active' and role = any(${['OWNER', 'MANAGER', 'FRONT_DESK', 'RECEPTION']}::text[])
+      order by full_name, id limit 200`.execute(this.db)).rows;
+    return { items: rows.map((u: any) => ({ id: String(u.id), name: u.full_name ?? '', role: u.role })) };
+  }
+  async lastCheck(ctx: RvCtx) {
+    const r = (await sql<any>`select id, overall, checks, created_at from reviews_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null}
+      order by created_at desc limit 1`.execute(this.db)).rows[0];
+    return r ? { id: String(r.id), overall: String(r.overall), checks: r.checks ?? [], at: iso(r.created_at) } : null;
+  }
+
   async moderate(ctx: RvCtx, id: string, b: ModerateBody, audit: AuditFn, opts: { legacy?: boolean } = {}) {
     if (!isUuid(id)) throw new ReviewsCenterError('Review not found.', 'REVIEW_NOT_FOUND', 404);
     const action = pick(RV_ACTIONS, b.action);
@@ -377,7 +422,7 @@ export class ReviewsCenter {
   }
 
   // ── Check Review System (guide §13): READ-ONLY ─────────────────────────────────────────────────────────────────────
-  async check(ctx: RvCtx): Promise<{ overall: Check['state']; checks: Check[]; checkedAt: string }> {
+  async check(ctx: RvCtx, opts: { record?: boolean } = {}): Promise<{ overall: Check['state']; checks: Check[]; checkedAt: string }> {
     const T = ctx.tenantId; const at = new Date().toISOString();
     const B = this.branchW(ctx);
     const out: Check[] = [];
@@ -453,6 +498,8 @@ export class ReviewsCenter {
     });
     const rank = { FAILED: 3, WARNING: 2, UNKNOWN: 1, READY: 0 } as const;
     const overall = out.reduce<Check['state']>((a, c) => (rank[c.state] > rank[a] ? c.state : a), 'READY');
+    // A17 Nov 6: POST check/run records the run (its only write); GET check stays read-only
+    if (opts.record) await sql`insert into reviews_health_runs (tenant_id, branch_id, overall, checks, run_by) values (${T}, ${isUuid(ctx.branchId) ? ctx.branchId : null}, ${overall}, ${JSON.stringify(out)}::jsonb, ${actorId(ctx)})`.execute(this.db);
     return { overall, checks: out, checkedAt: at };
   }
 }

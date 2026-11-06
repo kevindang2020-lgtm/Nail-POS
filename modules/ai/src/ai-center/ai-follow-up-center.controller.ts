@@ -2,6 +2,7 @@
 // come from the session only. NOT gated on the AI package: existing and manual follow-ups must stay workable when the AI
 // receptionist subscription lapses (guide T40/T41) — new AI-generated tasks stop at the source because the paid voice side
 // stops. Writes need ai.use + communications.manage (Front Desk holds both); overrides need ai.manage.
+import type { FollowUpImportResult, FollowUpRecommendedAssignee, FollowUpHealthHistory } from '@aipowersalon/api-contracts/tenant';
 import { ListQuery } from '@aipowersalon/database';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
@@ -53,6 +54,7 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
+const HEALTH_HISTORY_LIST = { filters: {}, sorts: {}, maxLimit: 50, defaultLimit: 10, params: ['page'] } as const;
 @UseGuards(TenantAuthGuard, RolePermissionGuard)
 @Controller('pos/ai/follow-ups-center')
 export class AiFollowUpCenterController {
@@ -103,6 +105,16 @@ export class AiFollowUpCenterController {
 
   @Post('health') @RequirePermission('ai.use')
   health(@Req() q: any) { return run(() => this.c().health(ctxFrom(q))); }
+
+  /** A13 Nov 6: bring in missed AI calls and failed Copilot actions now (the 5-minute job also does it) */
+  @Post('import-sources') @RequirePermission('ai.use')
+  importSources(@Req() q: any): Promise<FollowUpImportResult> { return run(() => { const c = ctxFrom(q); this.c().needWork(c); return this.c().importSources(c); }); }
+  /** A13 Nov 6: who to give the next task to (fewest open tasks) — a suggestion only */
+  @Get('recommended-assignee') @RequirePermission('ai.use')
+  recommended(@Req() q: any): Promise<FollowUpRecommendedAssignee | null> { return run(() => this.c().recommendAssignee(ctxFrom(q))); }
+  /** A13 Nov 6: every recorded Check Follow-Up System run, newest first */
+  @Get('health/history') @RequirePermission('ai.use') @ListQuery(HEALTH_HISTORY_LIST)
+  healthHistory(@Req() q: any, @Query() p: any): Promise<FollowUpHealthHistory> { return run(() => this.c().healthHistory(ctxFrom(q), { page: p?.page, pageSize: p?.pageSize })); }
 
   @Get('priorities') @RequirePermission('ai.use')
   priorities(@Req() q: any) { return run(() => this.c().priorities(ctxFrom(q))); }

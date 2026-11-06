@@ -18,7 +18,10 @@ const detail = vi.fn((_id: string) => Promise.resolve({ overview: { ...row, reso
   customer: { id: null, name: null, phone: '•••0000', unmatched: true, match: 'unmatched', smsOptedOut: false, sharedPhoneProfiles: 0 }, call: null, attempts: [], booking: { linked: null, upcoming: 0 }, activity: [],
   permissions: { canWork: true, canManage: false, canText: true, canBook: true } }));
 
+const importSources = vi.fn(() => Promise.resolve({ createdFromMissedCalls: 2, createdFromCopilot: 1 }));
+const healthHistory = vi.fn(() => Promise.resolve({ items: [{ overall: 'WARNING', at: '2026-11-06T15:00:00Z', by: 'Olivia Owner', failed: 1 }], page: 1, pageSize: 10, totalItems: 1, totalPages: 1 }));
 vi.mock('../api/posAiFollowUpsApi', () => ({ posAiFollowUpsApi: {
+  importSources: () => importSources(), healthHistory: () => healthHistory(), recommendedAssignee: () => Promise.resolve({ userId: 'u9', name: 'Fran Desk', role: 'FRONT_DESK', openTasks: 0, reason: 'x' }),
   list: (q: any) => list(q), kpis: () => Promise.resolve(kpis), staff: () => Promise.resolve({ items: [] }), priorities: () => Promise.resolve({ items: [], bookingsAwaitingVerification: 0, note: '' }),
   create: (b: any) => create(b), detail: (id: string) => detail(id), prepareText: (id: string, b: any) => prepareText(id, b), confirmText: (...a: any[]) => confirmText(...a),
   edit: (id: string, b: any) => edit(id, b), health: vi.fn(), decide: vi.fn(), assign: vi.fn(), status: vi.fn(), note: vi.fn(), priority: vi.fn(), attempt: vi.fn(),
@@ -80,5 +83,14 @@ describe('POSAIFollowUpsScreen', () => {
     fireEvent.change(screen.getByTestId('aifu-e-desc'), { target: { value: 'Call back after 3pm' } });
     fireEvent.click(screen.getByTestId('aifu-e-save'));
     await waitFor(() => expect(edit).toHaveBeenCalledWith('fu1', { description: 'Call back after 3pm', version: 1 }));
+  });
+  it('A13 Nov 6: Bring in missed calls reports what was added; Check history lists past runs; Missed call / Copilot are source filters', async () => {
+    render(<MemoryRouter><POSAIFollowUpsScreen /></MemoryRouter>);
+    fireEvent.click(await screen.findByTestId('aifu-import'));
+    expect(await screen.findByText('Added 2 missed call(s) and 1 Copilot problem(s).')).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('aifu-health-history'));
+    expect(await screen.findByTestId('aifu-run-row')).toHaveTextContent('Olivia Owner');
+    const src = screen.getByTestId('aifu-f-source') as HTMLSelectElement;
+    expect([...src.options].map((o) => o.value)).toEqual(expect.arrayContaining(['missed_call', 'copilot']));
   });
 });

@@ -42,6 +42,10 @@ export const posAiFollowUpsApi = {
   prepareText: (id: string, b: { body: string; overrideReason?: string | null }) => api.post<FuPrepared>(`${B}/tasks/${id}/text/prepare`, b),
   confirmText: (id: string, b: { body: string; token: string; idempotencyKey: string; overrideReason?: string | null }) => api.post<{ duplicate: boolean; state: string; ok: boolean; errorCode: string | null; message: string | null }>(`${B}/tasks/${id}/text/confirm`, b),
   health: () => api.post<{ overall: string; checks: FuCheck[]; ranAt: string; cached: boolean }>(`${B}/health`, {}),
+  /** A13 Nov 6 */
+  importSources: () => api.post<{ createdFromMissedCalls: number; createdFromCopilot: number }>(`${B}/import-sources`, {}),
+  recommendedAssignee: () => api.get<{ userId: string; name: string; role: string; openTasks: number; reason: string } | null>(`${B}/recommended-assignee`),
+  healthHistory: (page = 1, pageSize = 10) => api.get<{ items: { overall: string; at: string | null; by: string | null; failed: number }[]; page: number; pageSize: number; totalItems: number; totalPages: number }>(`${B}/health/history`, { page: String(page), pageSize: String(pageSize) }),
   priorities: () => api.get<{ items: FuPriority[]; bookingsAwaitingVerification: number; note: string }>(`${B}/priorities`),
   decide: (b: { taskId: string; signal: string; decision: 'accept' | 'dismiss' | 'escalate'; note?: string | null; version?: number }) => api.post<unknown>(`${B}/priorities/decide`, b),
 };

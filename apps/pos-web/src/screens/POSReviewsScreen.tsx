@@ -14,11 +14,12 @@ import { fmtNumber, fmtInZone, fmtMoney } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar, isForbidden } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
+import { statusLabel } from '../i18n/status-label';
 
 const t = (k: string, v?: Record<string, string | number>) => tx(k, v as Parameters<typeof tx>[1]);
 const stars = (n: number | null | undefined) => { if (n == null) return '☆☆☆☆☆'; const full = Math.max(0, Math.min(5, Math.round(n))); return '★★★★★'.slice(0, full) + '☆☆☆☆☆'.slice(0, 5 - full); };
 const when = (iso?: string | null, withTime = false) => (iso ? fmtInZone(iso, withTime ? { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' } : { month: 'short', day: 'numeric', year: 'numeric' }) : '—');
-const URL_KEYS = ['rating', 'comment', 'visibility', 'followup', 'technician', 'service', 'source', 'basis', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
+const URL_KEYS = ['rating', 'comment', 'visibility', 'followup', 'assignee', 'technician', 'service', 'source', 'basis', 'preset', 'from', 'to', 'sort', 'page', 'pageSize'] as const;
 const HIDE_REASONS = ['spam', 'abusive_language', 'personal_information', 'wrong_salon_or_customer', 'duplicate', 'test_review', 'other'];
 const STATE_TONE: Record<string, 'ok' | 'warn' | 'bad' | undefined> = { READY: 'ok', WARNING: 'warn', FAILED: 'bad', UNKNOWN: undefined };
 
@@ -67,6 +68,11 @@ export function POSReviewsScreen() {
   // live refresh: a new matching review shows up on its own; an open overlay or dialog is never interrupted
   useEffect(() => { const h = setInterval(() => { if (!openId && !mod && !cal) load(true); }, 60_000); return () => clearInterval(h); }, [load, openId, mod, cal]);
 
+  // A17 Nov 6: staff a review can be given to (assignee filter + overlay), and the last recorded check
+  const [staffList, setStaffList] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => { posReviewsCenterApi.staff().then((x) => setStaffList(x.items)).catch(() => setStaffList([])); }, []);
+  const [lastCheck, setLastCheck] = useState<any>(null);
+  useEffect(() => { posReviewsCenterApi.checkLast().then(setLastCheck).catch(() => setLastCheck(null)); }, [health]);
   const k = sum;
   const dist: { star: number; count: number }[] = k?.ratingDistribution ?? [];
   const maxBucket = Math.max(1, ...dist.map((d) => d.count));
@@ -86,7 +92,8 @@ export function POSReviewsScreen() {
           <span className="sub" data-testid="rvw-updated">{loadedAt ? t('rvw.updated', { time: when(loadedAt, true) }) : ''}</span>
           <button className="btn ghost" data-testid="rvw-refresh" onClick={() => load()}>{t('rvw.refresh')}</button>
           <button className="btn ghost" data-testid="rvw-assistant" onClick={() => { setInsights('loading'); posReviewsCenterApi.insights(range).then(setInsights).catch((e) => setInsights({ error: errorTextOf(e, t('rvw.loadFailed')) })); }}>{t('rvw.assistant')}</button>
-          <button className="btn" data-testid="rvw-check" onClick={() => { setHealth('loading'); posReviewsCenterApi.check().then(setHealth).catch((e) => setHealth({ error: errorTextOf(e, t('rvw.loadFailed')) })); }}>{t('rvw.check')}</button>
+          {lastCheck ? <span className="sub" data-testid="rvw-last-check">{t('rvw.lastCheck', { when: when(lastCheck.at) })}</span> : null}
+          <button className="btn" data-testid="rvw-check" onClick={() => { setHealth('loading'); posReviewsCenterApi.checkRun().then(setHealth).catch((e) => setHealth({ error: errorTextOf(e, t('rvw.loadFailed')) })); }}>{t('rvw.check')}</button>
         </div>
       </div>
 
@@ -136,6 +143,7 @@ export function POSReviewsScreen() {
         {sel('followup', t('rvw.f.followup'), [['unanswered', t('rvw.fu.unanswered')], ['responded', t('rvw.fu.responded')], ['needs_attention', t('rvw.fu.needs_attention')], ['reviewed', t('rvw.fu.reviewed')]], 'flt-followup')}
         {sel('technician', t('rvw.f.technician'), [['none', t('rvw.noTech')], ...(opts?.technicians ?? []).map((x) => [x.id, x.name] as [string, string])], 'flt-technician')}
         {sel('service', t('rvw.f.service'), (opts?.services ?? []).map((x) => [x.id, x.name] as [string, string]), 'flt-service')}
+        {sel('assignee', t('rvw.f.assignee'), [['me', t('rvw.asg.me')], ['none', t('rvw.asg.none')], ...staffList.map((u) => [u.id, u.name] as [string, string])], 'flt-assignee')}
         {sel('source', t('rvw.f.source'), (opts?.sources ?? []).map((x) => [x.source, `${t('rvw.src.' + x.source)} (${x.count})`] as [string, string]), 'flt-source')}
         {sel('sort', t('rvw.f.sort'), [['oldest', t('rvw.sort.oldest')], ['lowest', t('rvw.sort.lowest')], ['highest', t('rvw.sort.highest')], ['moderated', t('rvw.sort.moderated')], ['attention', t('rvw.sort.attention')]], 'flt-sort')}
         <div className="rvw-dates" data-testid="rvw-dates">
@@ -199,7 +207,14 @@ function ReviewOverlay({ id, canManage, onClose, onModerate, onBook, onProfile }
   const [err, setErr] = useState<string | null>(null);
   const [tab, setTab] = useState('review');
   useEffect(() => { setD(null); setErr(null); posReviewsCenterApi.review(id).then(setD).catch((e) => setErr(errorTextOf(e, t('rvw.loadFailed')))); }, [id]);
-  const tabs = ['review', 'customer', 'technician', 'visit', 'response', 'moderation'];
+  const tabs = ['review', 'customer', 'communication', 'technician', 'visit', 'response', 'moderation'];
+  // A17 Nov 6: assign the review to a staff member to follow up
+  const [staff, setStaff] = useState<{ id: string; name: string }[]>([]); const [asgBusy, setAsgBusy] = useState(false);
+  useEffect(() => { if (canManage) posReviewsCenterApi.staff().then((x) => setStaff(x.items)).catch(() => setStaff([])); }, [canManage]);
+  const assignTo = async (uid: string | null) => {
+    setAsgBusy(true);
+    try { await posReviewsCenterApi.assign(id, uid); setD(await posReviewsCenterApi.review(id)); } catch (e) { setErr(errorTextOf(e, t('rvw.loadFailed'))); } finally { setAsgBusy(false); }
+  };
   const r = d?.review;
   return (
     <FitDialog wide testId="rvw-overlay" title={t('rvw.ov.title')} subtitle={r ? `${stars(r.rating)} · ${when(r.submittedAt)}` : undefined} onClose={onClose}
@@ -212,6 +227,10 @@ function ReviewOverlay({ id, canManage, onClose, onModerate, onBook, onProfile }
       </div>}>
       {err ? <div className="err">{err}</div> : !d ? <div className="state">{t('rvw.loading')}</div> : <>
         <div className="rvw-tabs" role="tablist">{tabs.map((x) => <button key={x} role="tab" aria-selected={tab === x} className={'btn ghost' + (tab === x ? ' on' : '')} data-testid={`ov-tab-${x}`} onClick={() => setTab(x)}>{t('rvw.ov.tab.' + x)}</button>)}</div>
+        <div className="rvw-assign" data-testid="ov-assign">{t('rvw.asg.label')}: {canManage ? (
+          <select value={d.assignment?.userId ?? ''} disabled={asgBusy} onChange={(e) => assignTo(e.target.value || null)} data-testid="ov-assign-select" aria-label={t('rvw.asg.label')}>
+            <option value="">{t('rvw.asg.nobody')}</option>{staff.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>)
+          : <b>{d.assignment?.name ?? t('rvw.asg.nobody')}</b>}{d.assignment?.at ? <span className="sub"> · {when(d.assignment.at)}</span> : null}</div>
         <div className="rvw-ov-body" data-testid={`ov-${tab}`}>
           {tab === 'review' ? <dl className="rvw-dl">
             <dt>{t('rvw.ov.id')}</dt><dd className="mono">{r.id}</dd>
@@ -233,6 +252,10 @@ function ReviewOverlay({ id, canManage, onClose, onModerate, onBook, onProfile }
             <dt>{t('rvw.ov.reviews')}</dt><dd>{fmtNumber(d.customer.reviews)}</dd><dt>{t('rvw.ov.messages')}</dt><dd>{fmtNumber(d.customer.messages)}</dd>
             <dt>{t('rvw.ov.prior')}</dt><dd>{d.customer.priorReviews.length ? d.customer.priorReviews.map((p: any) => `${stars(p.rating)} ${when(p.at)}`).join(' · ') : '—'}</dd>
           </dl> : <Empty title={t('rvw.ov.anonymous')}>{t('rvw.ov.anonymousSub')}</Empty>) : null}
+          {tab === 'communication' ? (d.anonymous ? <div className="state">{t('rvw.comm.anonymous')}</div> : <>
+            {d.communications.messages.length ? <table className="tbl" data-testid="ov-comm-messages"><tbody>{d.communications.messages.map((m: any) => <tr key={m.id}><td>{when(m.at)}</td><td>{statusLabel('channel', m.channel)}</td><td>{statusLabel(['notification', 'status'], m.status)}</td><td>{m.preview}</td></tr>)}</tbody></table> : <div className="state">{t('rvw.comm.none')}</div>}
+            {d.communications.reviewRequests.length ? <div className="sub" data-testid="ov-comm-requests">{t('rvw.comm.requests', { n: d.communications.reviewRequests.length })}</div> : null}
+          </>) : null}
           {tab === 'technician' ? (d.technician ? <dl className="rvw-dl" data-testid="ov-tech-stats">
             <dt>{t('rvw.ov.technician')}</dt><dd>{d.technician.name}</dd>
             <dt>{t('rvw.ov.verifiedRating')}</dt><dd>{d.technician.verifiedAverage == null ? t('rvw.na') : d.technician.verifiedAverage.toFixed(1)} ({t('rvw.ov.nReviews', { n: d.technician.verifiedCount })})</dd>

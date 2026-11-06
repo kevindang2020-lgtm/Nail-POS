@@ -69,13 +69,16 @@ export function POSAIBusinessSetupScreen() {
   const [cal, setCal] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [dialog, setDialog] = useState<null | 'health' | 'preview' | 'assistant'>(null);
+  // A12 Nov 6: the last recorded Check Business Setup run (re-read after the dialog closes)
+  const [lastRun, setLastRun] = useState<{ at: string; overall: string } | null>(null);
+  useEffect(() => { if (dialog === null) posAiBusinessSetupApi.healthLast().then(setLastRun).catch(() => setLastRun(null)); }, [dialog]);
 
   const loadReady = useCallback(() => { setReadyErr(null); posAiBusinessSetupApi.readiness().then(setReady).catch((e) => setReadyErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { loadReady(); }, [loadReady]);
   const loadList = useCallback(async () => {
     setLoading(true); setListErr(null);
     try {
-      if (scope === 'faqs') setList(await posAiBusinessSetupApi.faqs({ q: dq, status: f.status, category: f.category, dateBasis: f.dateBasis, from: f.from, to: f.to, sort: f.sort, page: f.page, pageSize: f.pageSize }));
+      if (scope === 'faqs') setList(await posAiBusinessSetupApi.faqs({ q: dq, status: f.status, category: f.category, tag: f.tag, dateBasis: f.dateBasis, from: f.from, to: f.to, sort: f.sort, page: f.page, pageSize: f.pageSize }));
       else if (scope === 'history') setList(await posAiBusinessSetupApi.history({ basis: f.basis, from: f.from, to: f.to, page: f.page, pageSize: f.pageSize }));
       else setList(await posAiBusinessSetupApi.search({ scope, q: dq, page: f.page, pageSize: f.pageSize }));
     } catch (e) { setListErr(errorTextOf(e, tx('pos.something_went_wrong'))); setList(null); } finally { setLoading(false); }
@@ -106,6 +109,7 @@ export function POSAIBusinessSetupScreen() {
         <div><h1>{t('aiset.title')}</h1><div className="sub">{t('aiset.subtitle')}</div></div>
         <div className="ais-head-actions">
           <button className="btn" data-testid="ais-check" onClick={() => setDialog('health')}>{t('aiset.checkSetup')}</button>
+          {lastRun ? <span className="sub" data-testid="ais-last-run">{t('aiset.lastRun', { when: fmtInZone(lastRun.at), state: lastRun.overall })}</span> : null}
           <button className="btn ghost" data-testid="ais-preview" onClick={() => setDialog('preview')}>{t('aiset.preview')}</button>
           <button className="btn ghost" data-testid="ais-assistant" onClick={() => setDialog('assistant')}>{t('aiset.assistant')}</button>
         </div>
@@ -143,12 +147,14 @@ export function POSAIBusinessSetupScreen() {
         </section>
       </div>
 
+      <ClosuresPanel canManage={canManage} />
       <section className="panel ais-card" data-testid="ais-list">
         <div className="ais-tabs" role="tablist">{SCOPES.map((s) => <button key={s} role="tab" aria-selected={scope === s} className={'btn' + (scope === s ? '' : ' ghost')} data-testid={`ais-scope-${s}`} onClick={() => setScope(s)}>{t(`aiset.scope.${s}`)}</button>)}</div>
         <div className="ais-filters">
           {scope !== 'history' ? <input className="ais-search" data-testid="ais-search" value={search} maxLength={100} placeholder={t('aiset.searchPh')} onChange={(e) => setSearch(e.target.value)} aria-label={t('aiset.searchPh')} /> : null}
           {scope === 'faqs' ? <>
             <select aria-label={t('aiset.statusFilter')} value={f.status ?? ''} onChange={(e) => setFilter({ status: e.target.value || undefined })} data-testid="ais-f-status"><option value="">{t('aiset.allStatuses')}</option>{FAQ_STATUS.map((s) => <option key={s} value={s}>{t(`aiset.faq.${s}`)}</option>)}</select>
+            {(list?.tags ?? []).length ? <select aria-label={t('aiset.tagFilter')} value={f.tag ?? ''} onChange={(e) => setFilter({ tag: e.target.value || undefined })} data-testid="ais-tag-filter"><option value="">{t('aiset.allTags')}</option>{list.tags.map((x: string) => <option key={x} value={x}>#{x}</option>)}</select> : null}
             <select aria-label={t('aiset.categoryFilter')} value={f.category ?? ''} onChange={(e) => setFilter({ category: e.target.value || undefined })}><option value="">{t('aiset.allCategories')}</option>{(list?.categories ?? []).map((c: string) => <option key={c} value={c}>{c}</option>)}</select>
             <select aria-label={t('aiset.dateBasis')} value={f.dateBasis} onChange={(e) => setFilter({ dateBasis: e.target.value })}>{['created', 'updated', 'approved'].map((b) => <option key={b} value={b}>{t(`aiset.basis.${b}`)}</option>)}</select>
             <select aria-label={t('aiset.sort')} value={f.sort} onChange={(e) => setFilter({ sort: e.target.value })}>{['newest', 'oldest', 'updated', 'approved', 'question_az'].map((s) => <option key={s} value={s}>{t(`aiset.sortBy.${s}`)}</option>)}</select>
@@ -171,7 +177,7 @@ export function POSAIBusinessSetupScreen() {
           : scope === 'faqs' ? (
             <div className="ais-faqs" data-testid="ais-faq-rows">{list.items.map((x: any) => (
               <button key={x.id} className="ais-faq" onClick={() => setOpen(x.id)} data-testid="ais-faq-row">
-                <div className="ais-faq-top"><b>{x.question}</b><FaqBadge s={x.status} />{x.aiServable ? <span className="ais-chip ais-ok">{t('aiset.aiUses')}</span> : null}{x.hasPendingChange ? <span className="ais-chip ais-warn">{t('aiset.pendingChange')}</span> : null}{x.category ? <span className="ais-chip">{x.category}</span> : null}</div>
+                <div className="ais-faq-top"><b>{x.question}</b><FaqBadge s={x.status} />{x.aiServable ? <span className="ais-chip ais-ok">{t('aiset.aiUses')}</span> : null}{x.hasPendingChange ? <span className="ais-chip ais-warn">{t('aiset.pendingChange')}</span> : null}{x.category ? <span className="ais-chip">{x.category}</span> : null}{(x.tags ?? []).map((g: string) => <span key={g} className="ais-chip">#{g}</span>)}</div>
                 <div className="ais-faq-a">{x.answer}</div>
                 <div className="ais-source">{t('aiset.createdAt', { at: fmtInZone(x.createdAt) })}{x.approvedAt ? ` · ${t('aiset.approvedAt', { at: fmtInZone(x.approvedAt) })}` : ''}</div>
               </button>))}</div>
@@ -199,7 +205,14 @@ export function POSAIBusinessSetupScreen() {
 
 function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canManage: boolean; onClose: () => void; onChanged: () => void }) {
   const [d, setD] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
-  const [tab, setTab] = useState<'overview' | 'answer' | 'history' | 'audit'>('overview');
+  const [tab, setTab] = useState<'overview' | 'answer' | 'preview' | 'history' | 'audit'>('overview');
+  const [tagText, setTagText] = useState<string | null>(null); const [pv, setPv] = useState<any>(null);
+  const saveTags = async () => {
+    if (tagText === null) return; setBusy(true); setErr(null);
+    try { await posAiBusinessSetupApi.setTags(id, tagText.split(',').map((x) => x.trim()).filter(Boolean)); setTagText(null); load(); onChanged(); }
+    catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); }
+  };
+  const runPreview = async () => { if (!d) return; setPv({ loading: true }); try { setPv(await posAiBusinessSetupApi.preview(d.question)); } catch (e) { setPv({ error: errorTextOf(e, tx('pos.something_went_wrong')) }); } };
   const [edit, setEdit] = useState<null | { question: string; answer: string; category: string; reason: string }>(null);
   const [ask, setAsk] = useState<null | 'reject' | 'archive'>(null); const [reason, setReason] = useState('');
   const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.faq(id).then(setD).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, [id]);
@@ -229,7 +242,7 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
       {err ? <div className="err" role="alert">{err}</div> : null}
       {!d ? <div className="state">{t('aiset.loading')}</div> : (
         <>
-          <div className="ais-tabs">{(['overview', 'answer', 'history', 'audit'] as const).map((x) => <button key={x} className={'btn' + (tab === x ? '' : ' ghost')} onClick={() => setTab(x)} data-testid={`ais-tab-${x}`}>{t(`aiset.tab.${x}`)}</button>)}</div>
+          <div className="ais-tabs">{(['overview', 'answer', 'preview', 'history', 'audit'] as const).map((x) => <button key={x} className={'btn' + (tab === x ? '' : ' ghost')} onClick={() => setTab(x)} data-testid={`ais-tab-${x}`}>{t(`aiset.tab.${x}`)}</button>)}</div>
           {edit ? (
             <div className="ais-edit" data-testid="ais-edit">
               <div className="sub">{d.status === 'approved' ? t('aiset.editApprovedNote') : t('aiset.editDraftNote')}</div>
@@ -253,7 +266,19 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
               <dt>{t('aiset.approved')}</dt><dd>{d.approvedAt ? fmtInZone(d.approvedAt) : '—'}</dd>
               <dt>{t('aiset.previewUses')}</dt><dd>{d.previewUses}</dd>
               <dt>{t('aiset.version')}</dt><dd>{d.version}</dd>
+              <dt>{t('aiset.tags')}</dt><dd data-testid="ais-tags">{tagText !== null ? (
+                <span className="ais-actions"><input value={tagText} maxLength={330} onChange={(e) => setTagText(e.target.value)} placeholder={t('aiset.tagsPh')} data-testid="ais-tags-input" />
+                  <button className="btn" disabled={busy} onClick={saveTags} data-testid="ais-tags-save">{t('aiset.save')}</button><button className="btn ghost" onClick={() => setTagText(null)}>{t('aiset.cancel')}</button></span>
+              ) : <>{(d.tags ?? []).length ? d.tags.map((g: string) => <span key={g} className="ais-chip">#{g}</span>) : '—'}{canManage ? <button className="btn ghost" onClick={() => setTagText((d.tags ?? []).join(', '))} data-testid="ais-tags-edit">{t('aiset.editTags')}</button> : null}</>}</dd>
             </dl>
+          ) : tab === 'preview' ? (
+            <div data-testid="ais-faq-preview">
+              <div className="sub">{t('aiset.previewThisNote')}</div>
+              <button className="btn" onClick={runPreview} data-testid="ais-faq-preview-run">{t('aiset.previewThis')}</button>
+              {pv?.loading ? <div className="state">{t('aiset.loading')}</div> : pv?.error ? <div className="err">{pv.error}</div> : pv ? (
+                <div className="ais-live" data-testid="ais-faq-preview-answer">{pv.answer}<div className="sub">{(pv.sources ?? []).map((x: any) => x.label).join(' · ')}</div>
+                  {(pv.sources ?? []).some((x: any) => x.id === d.id) ? <div className="sub">{t('aiset.previewUsedThis')}</div> : <div className="sub">{t('aiset.previewNotThis')}</div>}</div>) : null}
+            </div>
           ) : tab === 'answer' ? (
             <div className="ais-answer">
               <h3>{t('aiset.liveAnswer')}</h3>
@@ -274,7 +299,7 @@ function FaqOverlay({ id, canManage, onClose, onChanged }: { id: string; canMana
 
 function HealthDialog({ onClose, onGo }: { onClose: () => void; onGo: (r: string) => void }) {
   const [h, setH] = useState<any>(null); const [err, setErr] = useState<string | null>(null);
-  const load = useCallback(() => { setErr(null); setH(null); posAiBusinessSetupApi.health().then(setH).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
+  const load = useCallback(() => { setErr(null); setH(null); posAiBusinessSetupApi.healthRun().then(setH).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
   useEffect(() => { load(); }, [load]);
   return (
     <FitDialog title={t('aiset.checkSetup')} subtitle={h ? <StatusBadge s={h.overall} /> : null} onClose={onClose} wide testId="ais-health" footer={<div className="ais-actions"><button className="btn ghost" onClick={load}>{t('aiset.runAgain')}</button><button className="btn ghost" onClick={onClose}>{t('aiset.close')}</button></div>}>
@@ -327,5 +352,41 @@ function AssistantDialog({ onClose, onGo, onDraft, onOpenFaq }: { onClose: () =>
       )}
       <div className="sub ais-note">{t('aiset.assistantNote')}</div>
     </FitDialog>
+  );
+}
+
+// ── A12 Nov 6: holiday closures / special hours (today → +60 days). The AI tells callers about them; removing one archives it.
+function ClosuresPanel({ canManage }: { canManage: boolean }) {
+  const [l, setL] = useState<any>(null); const [err, setErr] = useState<string | null>(null); const [busy, setBusy] = useState(false);
+  const [f, setF] = useState({ date: '', closed: true, opensAt: '10:00', closesAt: '15:00', note: '', scope: 'salon' as 'salon' | 'branch' });
+  const load = useCallback(() => { setErr(null); posAiBusinessSetupApi.closures().then(setL).catch((e) => setErr(errorTextOf(e, tx('pos.something_went_wrong')))); }, []);
+  useEffect(() => { load(); }, [load]);
+  const add = async () => {
+    setBusy(true); setErr(null);
+    try { await posAiBusinessSetupApi.addClosure({ date: f.date, closed: f.closed, ...(f.closed ? {} : { opensAt: f.opensAt, closesAt: f.closesAt }), note: f.note.trim() || undefined, scope: f.scope }); setF({ ...f, date: '', note: '' }); load(); }
+    catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); }
+  };
+  const remove = async (id: string) => { setBusy(true); try { await posAiBusinessSetupApi.removeClosure(id); load(); } catch (e) { setErr(errorTextOf(e, tx('pos.something_went_wrong'))); } finally { setBusy(false); } };
+  return (
+    <section className="panel ais-card" data-testid="ais-closures">
+      <h2>{t('aiset.closures')}</h2>
+      <div className="sub">{t('aiset.closuresNote')}</div>
+      {err ? <div className="err" role="alert">{err}</div> : null}
+      {!l ? <div className="state">{t('aiset.loading')}</div> : !l.items.length ? <div className="sub" data-testid="ais-closures-none">{t('aiset.noClosures')}</div> : (
+        <table className="tbl"><tbody>{l.items.map((c: any) => (
+          <tr key={c.id} data-testid="ais-closure-row"><td>{c.date}</td><td>{c.closed ? t('aiset.closedDay') : t('aiset.specialHours', { o: c.opensAt, c: c.closesAt })}</td>
+            <td>{c.scope === 'branch' ? t('aiset.thisBranch') : t('aiset.allBranches')}</td><td>{c.note ?? ''}</td>
+            <td>{canManage ? <button className="btn ghost" disabled={busy} onClick={() => remove(c.id)} data-testid="ais-closure-remove">{t('aiset.remove')}</button> : null}</td></tr>))}</tbody></table>)}
+      {canManage ? (
+        <div className="ais-actions" style={{ flexWrap: 'wrap' }} data-testid="ais-closure-form">
+          <input type="date" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} aria-label={t('aiset.date')} data-testid="ais-closure-date" />
+          <select value={f.closed ? 'closed' : 'special'} onChange={(e) => setF({ ...f, closed: e.target.value === 'closed' })} aria-label={t('aiset.closureKind')} data-testid="ais-closure-kind">
+            <option value="closed">{t('aiset.closedDay')}</option><option value="special">{t('aiset.specialHoursShort')}</option></select>
+          {!f.closed ? <><input type="time" value={f.opensAt} onChange={(e) => setF({ ...f, opensAt: e.target.value })} aria-label={t('aiset.opens')} /><input type="time" value={f.closesAt} onChange={(e) => setF({ ...f, closesAt: e.target.value })} aria-label={t('aiset.closes')} /></> : null}
+          <select value={f.scope} onChange={(e) => setF({ ...f, scope: e.target.value as 'salon' | 'branch' })} aria-label={t('aiset.scopeLabel')}><option value="salon">{t('aiset.allBranches')}</option><option value="branch">{t('aiset.thisBranch')}</option></select>
+          <input value={f.note} maxLength={200} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder={t('aiset.closureNotePh')} aria-label={t('aiset.closureNotePh')} />
+          <button className="btn" disabled={busy || !f.date} onClick={add} data-testid="ais-closure-add">{t('aiset.addClosure')}</button>
+        </div>) : null}
+    </section>
   );
 }

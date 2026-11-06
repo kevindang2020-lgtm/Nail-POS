@@ -251,3 +251,28 @@ describe('Nov 3 audit — per-branch route, honest 24h counts', () => {
     expect(after.transfersFailed24h - before.transfersFailed24h).toBe(1);
   });
 });
+
+describe('A14 Nov 6 — agent search by creator / number, call search by phone / customer / appointment, average call length', () => {
+  it('finds an agent by its creator and by the salon number its calls were dialed on; its calls by caller digits and appointment id; average of ended calls only', async () => {
+    const aid = (await q1(sql`insert into ai_receptionist_agents (tenant_id, branch_id, name, status, provider_agent_id, created_by_user_id, handoff_destination)
+      values (${TA}, ${BA}, 'Nov6 Desk Agent', 'draft', 'agent_nov6', ${OWNER}, '+18565550111') returning id`)).id;
+    await sql`insert into users (id, tenant_id, full_name, email, status, role) values (${OWNER}, ${TA}, 'Olivia Creator', 'olivia-nov6@fd.test', 'active', 'OWNER') on conflict (id) do update set full_name = excluded.full_name`.execute(db);
+    await sql`insert into voice_call_outcomes (tenant_id, branch_id, provider, provider_call_id, agent_ref, started_at, ended_at, duration_seconds, caller_number, dialed_number) values
+      (${TA}, ${BA}, 'retell', 'nov6_fd_1', 'agent_nov6', now() - interval '2 hours', now() - interval '2 hours' + interval '100 seconds', 100, '+16095554411', '+18565550123'),
+      (${TA}, ${BA}, 'retell', 'nov6_fd_2', 'agent_nov6', now() - interval '1 hour', now() - interval '1 hour' + interval '300 seconds', 300, '+16095559999', '+18565550123'),
+      (${TA}, ${BA}, 'retell', 'nov6_fd_3', 'agent_nov6', now() - interval '1 minute', null, 40, '+16095558888', '+18565550123')`.execute(db);
+    const ids = async (q: string) => ((await fd.list(own, { q })).items as any[]).map((x) => x.id);
+    expect(await ids('Olivia Creator')).toContain(aid);
+    expect(await ids('5550123')).toContain(aid);            // the salon number its calls were dialed on
+    expect(await ids('5550111')).toContain(aid);            // its handoff number
+    const refs = async (q: string) => ((await fd.calls(own, aid, { q })).items as any[]).map((x) => x.providerCallId);
+    expect(await refs('5554411')).toEqual(['nov6_fd_1']);
+    const all = await fd.calls(own, aid, {});
+    expect(all.avgDurationSeconds).toBe(200);              // (100 + 300) / 2 — the open call is not counted
+    const appt = (await q1(sql`select gen_random_uuid() id`)).id;
+    await sql`insert into voice_tool_executions (tenant_id, branch_id, provider_call_id, invocation_key, tool_name, tool_kind, status, related_type, related_id, requested_at)
+      values (${TA}, ${BA}, 'nov6_fd_2', 'nov6-fd-inv-1', 'create_appointment', 'write', 'succeeded', 'appointment', ${appt}, now())`.execute(db);
+    expect(await refs(appt)).toEqual(['nov6_fd_2']);
+    expect((await fd.calls(ownB, aid, {}).catch((e: any) => e.code))).toBeTruthy();   // another salon cannot read them
+  });
+});

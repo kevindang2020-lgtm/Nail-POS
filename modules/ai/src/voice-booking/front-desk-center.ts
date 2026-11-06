@@ -157,8 +157,13 @@ export class FrontDeskCenter {
       : status === 'degraded' ? sql`(a.status = 'error' or (a.status = 'live' and not (${live})))`
       : sql`a.status = ${status}`;
     const byBranch = !f.branchId ? this.scopeSql(ctx, sql`a.branch_id`) : f.branchId === 'tenant' ? sql`a.branch_id is null` : sql`a.branch_id = ${f.branchId}`;
+    const qd = q.replace(/\D/g, '');
     const byQ = !q ? sql`true` : sql`(a.name ilike ${like(q)} or coalesce(a.description, '') ilike ${like(q)} or a.id::text ilike ${like(q.toLowerCase())}
-      or coalesce(a.provider_agent_id, '') ilike ${like(q)} or coalesce(br.name, '') ilike ${like(q)})`;
+      or coalesce(a.provider_agent_id, '') ilike ${like(q)} or coalesce(br.name, '') ilike ${like(q)}
+      -- A14 Nov 6: the creator's name, and the number the agent answers (the salon number dialed on its calls) or hands off to
+      or exists (select 1 from users u where u.tenant_id = a.tenant_id and u.id = a.created_by_user_id and u.full_name ilike ${like(q)})
+      or (${qd.length >= 4} and (regexp_replace(coalesce(a.handoff_destination, ''), '\\D', '', 'g') like ${'%' + qd + '%'}
+        or exists (select 1 from voice_call_outcomes o where o.tenant_id = a.tenant_id and o.agent_ref = a.provider_agent_id and regexp_replace(coalesce(o.dialed_number, ''), '\\D', '', 'g') like ${'%' + qd + '%'}))))`;
     let byDate = sql`true`; let window: { from: string; to: string; tz: string; basis: string } | null = null;
     if (f.period || f.from || f.to) {
       if ((f.from && !realDay(f.from)) || (f.to && !realDay(f.to))) throw new FrontDeskError('Choose valid dates.', 'AI_FD_INVALID_FILTER');
@@ -221,9 +226,10 @@ export class FrontDeskCenter {
     const biz = this.business ? await this.business.readiness(ctx).catch((e: unknown) => ({ core: [{ key: 'error', status: 'UNKNOWN', detail: `Business setup could not be read (${(e as { code?: string })?.code ?? 'QUERY_FAILED'}).` }] })) : null;
     const tz = await this.zone(ctx);
     const usage: Row = a.provider_agent_id ? (await sql<Row>`select count(*)::int calls, coalesce(sum(duration_seconds), 0)::int seconds,
+        round(avg(duration_seconds) filter (where ended_at is not null and duration_seconds is not null))::int avg_seconds,
         count(*) filter (where error_category is not null)::int failed
       from voice_call_outcomes where tenant_id = ${T} and agent_ref = ${a.provider_agent_id}
-        and coalesce(started_at, created_at) >= (date_trunc('month', now() at time zone ${tz}) at time zone ${tz})`.execute(this.db)).rows[0] : { calls: 0, seconds: 0, failed: 0 };
+        and coalesce(started_at, created_at) >= (date_trunc('month', now() at time zone ${tz}) at time zone ${tz})`.execute(this.db)).rows[0] : { calls: 0, seconds: 0, failed: 0, avg_seconds: null };
     const lastBooking: Row | undefined = a.provider_agent_id ? (await sql<Row>`select x.finished_at from voice_tool_executions x join voice_call_outcomes o
         on o.tenant_id = x.tenant_id and o.provider_call_id = x.provider_call_id
       where x.tenant_id = ${T} and o.agent_ref = ${a.provider_agent_id} and x.tool_kind = 'write' and x.status = 'succeeded' and x.related_type = 'appointment'
@@ -251,7 +257,7 @@ export class FrontDeskCenter {
       booking: { mode: a.booking_mode, salonArmed: !!route.control?.booking_armed, lastBookingSuccessAt: iso(lastBooking?.finished_at ?? null),
         handoffDestination: a.handoff_destination ? (String(a.handoff_destination).startsWith('+') ? '•••• ' + String(a.handoff_destination).slice(-4) : a.handoff_destination) : null,
         verificationRule: 'A booking that still needs the six-digit code is a pending booking session, never a confirmed appointment.' },
-      usage: { entitlement: ent?.state ?? 'UNKNOWN', entitlementDetail: ent?.detail ?? null, callsThisMonth: N(usage.calls), voiceMinutesThisMonth: Math.round(N(usage.seconds) / 6) / 10,
+      usage: { entitlement: ent?.state ?? 'UNKNOWN', entitlementDetail: ent?.detail ?? null, callsThisMonth: N(usage.calls), avgCallSecondsThisMonth: usage.avg_seconds == null ? null : N(usage.avg_seconds), voiceMinutesThisMonth: Math.round(N(usage.seconds) / 6) / 10,
         failedThisMonth: N(usage.failed), charges: 'UNKNOWN', chargesNote: 'No verified provider charge record exists here; costs are not inferred from usage.', quotaWarnings: 'NOT_AVAILABLE' },
       health: { last: lastHealth ? { overall: lastHealth.overall, checkedAt: iso(lastHealth.created_at), checks: lastHealth.checks } : null,
         recentErrors: recentErrors.map((e) => ({ callRef: String(e.provider_call_id).slice(0, 12) + '…', error: e.error_category, at: iso(e.at_) })) },
@@ -269,14 +275,25 @@ export class FrontDeskCenter {
       const w = await this.rc.window(ctx, { period: f.period, from: f.from, to: f.to });
       byDate = sql`coalesce(started_at, created_at) >= (${w.from}::date::timestamp at time zone ${w.tz}) and coalesce(started_at, created_at) < ((${w.to}::date + 1)::timestamp at time zone ${w.tz})`;
     }
-    const byQ = q ? sql`(provider_call_id ilike ${like(q)} or coalesce(booking_outcome, '') ilike ${like(q)} or coalesce(handoff_outcome, '') ilike ${like(q)} or coalesce(error_category, '') ilike ${like(q)})` : sql`true`;
+    // A14 Nov 6: also by caller / dialed phone digits, the customer's name (linked through its follow-up) and an appointment id
+    const qd = q.replace(/\D/g, ''); const qid = /^[0-9a-f-]{36}$/i.test(q) ? q : null;
+    const byQ = q ? sql`(provider_call_id ilike ${like(q)} or coalesce(booking_outcome, '') ilike ${like(q)} or coalesce(handoff_outcome, '') ilike ${like(q)} or coalesce(error_category, '') ilike ${like(q)}
+      or (${qd.length >= 4} and (regexp_replace(coalesce(caller_number, ''), '\\D', '', 'g') like ${'%' + qd + '%'} or regexp_replace(coalesce(dialed_number, ''), '\\D', '', 'g') like ${'%' + qd + '%'}))
+      or exists (select 1 from ai_receptionist_follow_ups fu join customers cu on cu.id = fu.customer_id and cu.tenant_id = fu.tenant_id
+        where fu.tenant_id = voice_call_outcomes.tenant_id and fu.provider_call_id = voice_call_outcomes.provider_call_id and cu.full_name ilike ${like(q)})
+      or (${qid}::text is not null and exists (select 1 from voice_tool_executions x where x.tenant_id = voice_call_outcomes.tenant_id and x.provider_call_id = voice_call_outcomes.provider_call_id
+        and x.related_type = 'appointment' and x.related_id::text = ${qid}::text)))` : sql`true`;
     const where = sql`agent_ref = ${a.provider_agent_id} and ${byQ} and ${byDate}`;
-    const total = N((await sql<Row>`select count(*)::int n from voice_call_outcomes where tenant_id = ${T} and ${where}`.execute(this.db)).rows[0]?.n);
+    const agg: Row = (await sql<Row>`select count(*)::int n, round(avg(duration_seconds) filter (where ended_at is not null and duration_seconds is not null))::int avg_s
+      from voice_call_outcomes where tenant_id = ${T} and ${where}`.execute(this.db)).rows[0] ?? {};
+    const total = N(agg.n);
     const rows: Row[] = (await sql<Row>`select provider_call_id, coalesce(started_at, created_at) at_, duration_seconds, booking_outcome, handoff_outcome, error_category, abandoned
       from voice_call_outcomes where tenant_id = ${T} and ${where} order by coalesce(started_at, created_at) desc, id desc limit ${size} offset ${(page - 1) * size}`.execute(this.db)).rows;
     return { items: rows.map((c) => ({ callRef: String(c.provider_call_id).slice(0, 12) + '…', providerCallId: c.provider_call_id, at: iso(c.at_),
       durationSeconds: c.duration_seconds == null ? null : N(c.duration_seconds), booking: c.booking_outcome ?? null, handoff: c.handoff_outcome ?? null,
       error: c.error_category ?? null, abandoned: !!c.abandoned })),
+      // A14 Nov 6: the average length of the ENDED calls in this filtered set (null when none ended)
+      avgDurationSeconds: agg.avg_s == null ? null : N(agg.avg_s),
       pagination: { page, pageSize: size, totalItems: total, totalPages: Math.max(1, Math.ceil(total / size)) } };
   }
 

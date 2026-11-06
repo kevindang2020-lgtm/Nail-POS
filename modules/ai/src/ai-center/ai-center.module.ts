@@ -35,7 +35,7 @@ import { ReceptionCopilotCenterController } from './reception-copilot-center.con
 import { ReceptionCopilotCenter, COPILOT_CENTER } from './reception-copilot-center';
 import { AiCalendarCenterController } from './ai-calendar-center.controller';
 import { AiCalendarCenter, AI_CALENDAR_CENTER } from './ai-calendar-center';
-import { AiFollowUpCenter, AI_FOLLOW_UP_CENTER, escalateOverdueFollowUps, type FuTextPort } from './ai-follow-up-center';
+import { AiFollowUpCenter, AI_FOLLOW_UP_CENTER, escalateOverdueFollowUps, expireFollowUpHolds, importAllFollowUpSources, type FuTextPort } from './ai-follow-up-center';
 import { AiFollowUpCenterController } from './ai-follow-up-center.controller';
 import { KyselyAiAccessRepo } from '../ai/ai-access.kysely.repository';
 import { RedisCache, makeCacheRedis } from '../cache/cache-redis';
@@ -63,7 +63,14 @@ export class AiFollowUpEscalationJob implements OnModuleInit, OnModuleDestroy {
     const every = 5 * 60_000;
     this.timer = setInterval(() => {
       void runTick({ jobType: 'ai.follow_up_escalation', jobClass: 'reconciliation', everyMs: every },
-        () => runAsSingleOwner(this.db as unknown as Kysely<any>, 'ai.follow_up_escalation', () => escalateOverdueFollowUps(this.db as unknown as Kysely<any>)))
+        () => runAsSingleOwner(this.db as unknown as Kysely<any>, 'ai.follow_up_escalation', async () => {
+          // A13 Nov 6: the same 5-minute owner also returns expired holds to the queue and brings in missed calls / Copilot failures
+          const db = this.db as unknown as Kysely<any>;
+          const r = await escalateOverdueFollowUps(db);
+          await expireFollowUpHolds(db);
+          await importAllFollowUpSources(db);
+          return r;
+        }))
         .catch((e) => logException(e, { where: 'ai-follow-up.escalation.tick' }));
     }, every);
     this.timer.unref?.();

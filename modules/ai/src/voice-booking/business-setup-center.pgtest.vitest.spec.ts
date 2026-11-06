@@ -244,3 +244,43 @@ describe('Nov 3 audit — FAQ request keys', () => {
     await expect(c.faqAction(own, b.id, { action: 'archive', expectedVersion: (await c.faq(own, b.id)).version, reason: 'Test', idempotencyKey: k })).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
   });
 });
+
+describe('A12 Nov 6 — holiday closures / special hours, FAQ tags, recorded health runs (migration 830)', () => {
+  const day = (n: number) => { const d = new Date(Date.now() + n * 86_400_000); return d.toISOString().slice(0, 10); };
+  it('closures: salon-wide and branch rows (branch wins), one live row per date, removal archives, audited; the preview tells callers', async () => {
+    await c.addClosure(own, { date: day(10), closed: true, note: 'Thanksgiving', scope: 'salon' });
+    await c.addClosure(own, { date: day(12), closed: false, opensAt: '10:00', closesAt: '14:00', scope: 'salon' });
+    await c.addClosure(own, { date: day(12), closed: true, note: 'Branch repairs', scope: 'branch' });            // branch row wins on that date
+    await c.addClosure(own, { date: day(10), closed: true, note: 'Thanksgiving Day', scope: 'salon' });           // replaces the salon row
+    const l = await c.closures(own);
+    expect(l.items.map((x) => [x.date, x.scope, x.closed, x.note])).toEqual([[day(10), 'salon', true, 'Thanksgiving Day'], [day(12), 'branch', true, 'Branch repairs']]);
+    expect((await q1(sql`select count(*)::int n from business_closures where tenant_id = ${TA} and archived_at is not null`)).n).toBe(1);
+    await expect(c.addClosure(own, { date: day(13), closed: false, opensAt: '15:00', closesAt: '09:00' })).rejects.toMatchObject({ code: 'AI_SETUP_INVALID_FILTER' });
+    expect((await c.closures(ownB)).items).toHaveLength(0);                                                        // another salon sees none
+    const p = await c.preview(own, { question: 'What are your hours on Friday?' });
+    if (p.outcome === 'answered') expect(p.answer).toMatch(/Upcoming exceptions: closed on .*Thanksgiving Day/);
+    await c.removeClosure(own, l.items[0].id);
+    expect((await c.closures(own)).items.map((x) => x.date)).toEqual([day(12)]);
+    expect((await q1(sql`select count(*)::int n from audit_events where tenant_id = ${TA} and action like 'closure.%'`)).n).toBeGreaterThanOrEqual(5);
+  });
+  it('FAQ tags: normalized, max 10, filter by tag and search by tag; tags never change the approved text or the version', async () => {
+    const f = await c.createFaq(own, { question: 'Do you take walk-ins?', answer: 'Yes, every day.', idempotencyKey: key() });
+    const before = await c.faq(own, f.id);
+    expect((await c.setFaqTags(own, f.id, ['Walk-In', 'walk-in', ' policy '])).tags).toEqual(['walk-in', 'policy']);
+    const after = await c.faq(own, f.id);
+    expect(after.version).toBe(before.version);
+    expect((await c.faqs(own, { tag: 'walk-in' })).items.map((x) => x.id)).toEqual([f.id]);
+    expect((await c.faqs(own, { q: 'policy' })).items.map((x) => x.id)).toContain(f.id);
+    expect((await c.faqs(own, {})).tags).toEqual(expect.arrayContaining(['policy', 'walk-in']));
+    await expect(c.setFaqTags(ownB, f.id, ['x'])).rejects.toMatchObject({ code: 'AI_FAQ_NOT_FOUND' });
+  });
+  it('health: GET stays read-only; the recorded run is stored and returned as the last run', async () => {
+    const n0 = (await q1(sql`select count(*)::int n from business_setup_health_runs where tenant_id = ${TA}`)).n;
+    const g = await c.health(own); expect(g.runId).toBeNull();
+    expect((await q1(sql`select count(*)::int n from business_setup_health_runs where tenant_id = ${TA}`)).n).toBe(n0);
+    const r = await c.health(own, { record: true });
+    expect(r.runId).toBeTruthy();
+    expect((await c.lastHealth(own))?.id).toBe(r.runId);
+    expect((await c.lastHealth(ownB))).toBeNull();
+  });
+});

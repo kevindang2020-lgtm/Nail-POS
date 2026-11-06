@@ -207,6 +207,7 @@ export interface ReviewsTable {
   technician_response: string | null; technician_response_at: TsNull;
   updated_by: string | null;   // migration 543 (Phase 10 actor stamps / retention executor)
   moderation_version: Generated<number>; last_moderated_at: TsNull;   // migration 752 (Reviews & Reputation)
+  assigned_at: TsNull; assigned_by: string | null;
 }
 // 377 — App Access, Permissions and Skills. Before this they had no tables and the repo returned literals.
 export interface CommissionChangeAuditLogsTable {
@@ -1297,6 +1298,7 @@ export interface AiReceptionistFaqsTable {
   // migration 753 — AI Business Setup FAQ approval workflow
   status: Generated<string>; version: Generated<number>; approved_revision_id: string | null; draft_revision_id: string | null;
   approved_by_user_id: string | null; approved_at: Ts | null; submitted_at: Ts | null; archived_at: Ts | null; idempotency_key: string | null;
+  tags: Generated<string[]>;
 }
 export interface AiReceptionistFaqRevisionsTable {   // migration 753 — append-only FAQ text history
   id: Generated<string>; tenant_id: string; faq_id: string; revision_no: number; question: string; answer: string; category: string | null;
@@ -7566,6 +7568,9 @@ export interface DB {
   ai_business_saved_questions: AiBusinessSavedQuestionsTable;
   ai_business_alerts: AiBusinessAlertsTable;
   ai_business_alert_events: AiBusinessAlertEventsTable;
+  reviews_health_runs: ReviewsHealthRunsTable;
+  business_setup_health_runs: BusinessSetupHealthRunsTable;
+  business_closures: BusinessClosuresTable;
   ai_receptionist_settings_checks: AiReceptionistSettingsChecksTable;
   ai_receptionist_consent_approvals: AiReceptionistConsentApprovalsTable;
   ai_business_conversations: AiBusinessConversationsTable;
@@ -10486,4 +10491,16 @@ export interface AiReceptionistConsentApprovalsTable {
 // ai_receptionist_settings_checks
 export interface AiReceptionistSettingsChecksTable {
   id: Generated<string>; tenant_id: string; branch_id: Generated<string>; overall: string; checks: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
+}
+// business_closures
+export interface BusinessClosuresTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; closure_date: string; closed: Generated<boolean>; opens_at: string | null; closes_at: string | null; note: string | null; created_by: string | null; created_at: Generated<Ts>; archived_at: TsNull; archived_by: string | null;
+}
+// business_setup_health_runs
+export interface BusinessSetupHealthRunsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; overall: string; checks: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
+}
+// reviews_health_runs
+export interface ReviewsHealthRunsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; overall: string; checks: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
 }

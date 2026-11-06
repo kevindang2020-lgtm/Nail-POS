@@ -1,7 +1,10 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 
+const addClosure = vi.fn((_b: any) => Promise.resolve({ id: 'c2' }));
+const closureItems: any[] = [{ id: 'c1', date: '2026-11-26', scope: 'salon', closed: true, opensAt: null, closesAt: null, note: 'Thanksgiving', createdAt: null }];
+const setTags = vi.fn((_id: string, tags: string[]) => Promise.resolve({ id: 'faq1', tags }));
 vi.mock('../api/posAiBusinessSetupApi', () => ({
   posAiBusinessSetupApi: {
     readiness: () => Promise.resolve({ branchScope: 'branch', checkedAt: '2026-10-31T12:00:00Z',
@@ -14,7 +17,10 @@ vi.mock('../api/posAiBusinessSetupApi', () => ({
       page: 1, pageSize: 20, totalItems: 1, totalPages: 1, categories: ['General'] }),
     search: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
     history: () => Promise.resolve({ items: [], page: 1, pageSize: 20, totalItems: 0, totalPages: 1 }),
-    createFaq: vi.fn(), act: vi.fn(), faq: vi.fn(), preview: vi.fn(), health: vi.fn(), assistant: vi.fn(),
+    createFaq: vi.fn(), act: vi.fn(), preview: vi.fn(), health: vi.fn(), assistant: vi.fn(),
+    faq: () => Promise.resolve({ id: 'faq1', question: 'Do you take walk-ins?', answer: 'Yes when available.', category: 'General', tags: ['policy'], status: 'approved', aiServable: true, hasPendingChange: false, version: 3, createdAt: '2026-10-01T12:00:00Z', revisions: [], events: [], previewUses: 0 }),
+    closures: () => Promise.resolve({ timezone: 'America/New_York', items: closureItems }), addClosure: (b: any) => addClosure(b), removeClosure: vi.fn(), setTags: (id: string, t: string[]) => setTags(id, t),
+    healthRun: vi.fn(), healthLast: () => Promise.resolve(null),
   },
 }));
 // AI Calendar guide: the screen reads the calendar center (canonical Booking rows); realtime is mocked
@@ -40,6 +46,19 @@ describe('POSAIBusinessSetupScreen', () => {
     expect(screen.getByText('2 of 4 service(s) can be booked by the AI.')).toBeInTheDocument();
     expect(screen.getByTestId('ais-ready-technicians')).toHaveTextContent(/bs_3/);
     expect(screen.queryByText(/0 technicians/)).not.toBeInTheDocument();
+  });
+  it('A12 Nov 6: holiday closures are listed and a special-hours day is added; FAQ tags are edited from the overlay', async () => {
+    render(<MemoryRouter><POSAIBusinessSetupScreen /></MemoryRouter>);
+    expect(await screen.findByTestId('ais-closure-row')).toHaveTextContent('Thanksgiving');
+    fireEvent.change(screen.getByTestId('ais-closure-date'), { target: { value: '2026-12-24' } });
+    fireEvent.change(screen.getByTestId('ais-closure-kind'), { target: { value: 'special' } });
+    fireEvent.click(screen.getByTestId('ais-closure-add'));
+    await waitFor(() => expect(addClosure).toHaveBeenCalledWith(expect.objectContaining({ date: '2026-12-24', closed: false, opensAt: '10:00', closesAt: '15:00', scope: 'salon' })));
+    fireEvent.click(screen.getByText('Do you take walk-ins?'));
+    fireEvent.click(await screen.findByTestId('ais-tags-edit'));
+    fireEvent.change(screen.getByTestId('ais-tags-input'), { target: { value: 'policy, walk-in' } });
+    fireEvent.click(screen.getByTestId('ais-tags-save'));
+    await waitFor(() => expect(setTags).toHaveBeenCalledWith('faq1', ['policy', 'walk-in']));
   });
 });
 

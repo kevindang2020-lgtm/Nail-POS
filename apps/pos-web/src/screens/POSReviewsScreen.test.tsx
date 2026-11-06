@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { api, navigate, perms } = vi.hoisted(() => ({
-  api: { summary: vi.fn(), reviews: vi.fn(), options: vi.fn(), review: vi.fn(), moderate: vi.fn(), insights: vi.fn(), check: vi.fn() },
+  api: { summary: vi.fn(), reviews: vi.fn(), options: vi.fn(), review: vi.fn(), moderate: vi.fn(), insights: vi.fn(), check: vi.fn(), checkRun: vi.fn(), checkLast: vi.fn(), staff: vi.fn(), assign: vi.fn() },
   navigate: vi.fn(), perms: { list: ['marketing.view', 'marketing.manage'] as string[] } }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posReviewsCenterApi', () => ({ posReviewsCenterApi: api }));
@@ -22,6 +22,7 @@ const mount = () => render(<MemoryRouter initialEntries={['/tenant/marketing/rev
 beforeEach(() => {
   for (const f of [...Object.values(api), navigate]) f.mockReset();
   perms.list = ['marketing.view', 'marketing.manage'];
+  api.staff.mockResolvedValue({ items: [{ id: 'u1', name: 'Fran Desk', role: 'FRONT_DESK' }] }); api.checkLast.mockResolvedValue(null); api.assign.mockResolvedValue({ id: 'r1', assignedUserId: 'u1' });
   api.summary.mockResolvedValue(SUM); api.reviews.mockResolvedValue(page([ROW(), ROW({ id: 'r2' })])); api.options.mockResolvedValue({ technicians: [], services: [], sources: [] });
 });
 
@@ -81,5 +82,18 @@ describe('POSReviewsScreen', () => {
     api.summary.mockRejectedValue({ status: 403, code: 'PERMISSION_DENIED' });
     mount();
     expect(await screen.findByText(/permission/i)).toBeInTheDocument();
+  });
+  it('A17 Nov 6: the Assigned to filter goes to the server; the overlay assigns the review and lists the customer’s messages', async () => {
+    mount();
+    fireEvent.change(await screen.findByTestId('flt-assignee'), { target: { value: 'me' } });
+    await waitFor(() => expect(api.reviews).toHaveBeenLastCalledWith(expect.objectContaining({ assignee: 'me' })));
+    api.review.mockResolvedValue({ review: { ...ROW({ customer: { id: 'c1', name: 'Ava Kim' } }), tags: [], branch: { name: 'Main' } }, metric: { why: '' }, moderationScope: '', anonymous: false, assignment: null,
+      customer: { id: 'c1', name: 'Ava Kim', canBook: true, priorReviews: [] }, communications: { messages: [{ id: 'n1', channel: 'sms', status: 'sent', at: '2026-11-01T12:00:00Z', preview: 'Thanks for visiting!' }], reviewRequests: [] },
+      technician: null, visit: null, response: { draft: null, versions: [], approvals: [], publications: [], publishable: 'internal_only' }, moderation: [] });
+    fireEvent.click((await screen.findAllByTestId('rvw-row'))[0]);
+    fireEvent.change(await screen.findByTestId('ov-assign-select'), { target: { value: 'u1' } });
+    await waitFor(() => expect(api.assign).toHaveBeenCalledWith('r1', 'u1'));
+    fireEvent.click(screen.getByTestId('ov-tab-communication'));
+    expect(await screen.findByTestId('ov-comm-messages')).toHaveTextContent('Thanks for visiting!');
   });
 });

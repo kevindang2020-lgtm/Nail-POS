@@ -227,3 +227,38 @@ describe('Nov 3 audit — KPIs follow the technician / source filters', () => {
     expect(v.scope.technician).toBe('one technician');
   });
 });
+
+describe('A17 Nov 6 — assign, first/last name search, communication history, recorded check runs (migration 831)', () => {
+  it('assigns a review to active salon staff (audited), filters by assignee / me / none, and takes it back; another salon cannot', async () => {
+    const r = (await rc.list(ctx(), {})).items[0];
+    expect(await code(rc.assign(ctx(), r.id, { assignedUserId: id(999) }, audit))).toBe('REVIEWS_FILTER_INVALID');          // not staff here
+    audits.length = 0;
+    expect(await rc.assign(ctx(), r.id, { assignedUserId: OWNER }, audit)).toEqual({ id: r.id, assignedUserId: OWNER });
+    expect(audits[0]).toMatchObject({ reviewId: r.id, to: OWNER });
+    expect((await rc.list(ctx(), { assignee: 'me' })).items.map((x) => x.id)).toEqual([r.id]);
+    expect((await rc.list(ctx(), { assignee: OWNER })).items.map((x) => x.id)).toEqual([r.id]);
+    expect((await rc.list(ctx(), { assignee: 'none' })).items.map((x) => x.id)).not.toContain(r.id);
+    expect((await rc.detail(ctx(), r.id, { fullContact: true, audit })).assignment).toMatchObject({ userId: OWNER, name: 'Owner One' });
+    await rc.assign(ctx(), r.id, { assignedUserId: null }, audit);
+    expect((await rc.list(ctx(), { assignee: 'me' })).items).toHaveLength(0);
+    expect(await code(rc.assign(ctx(X, BX), r.id, { assignedUserId: null }, audit))).toBe('REVIEW_NOT_FOUND');
+  });
+  it('"first last" (either order) matches the customer’s first and last name; the overlay lists the customer’s messages', async () => {
+    const [first, last] = ['Ava', (await q(sql`select last_name from customers where id = ${C.ava}`))[0].last_name as string];
+    const a = (await rc.list(ctx(), { q: `${first} ${last}` })).items.map((x) => x.id);
+    const b = (await rc.list(ctx(), { q: `${last} ${first}` })).items.map((x) => x.id);
+    expect(a.length).toBeGreaterThan(0); expect(b).toEqual(a);
+    await q(sql`insert into notifications (tenant_id, channel, to_address, body, status, customer_id) values (${T}, 'sms', '+16095550201', 'Thanks for visiting!', 'sent', ${C.ava})`);
+    const d = await rc.detail(ctx(), a[0], { fullContact: true, audit });
+    expect(d.communications.messages.map((m: any) => m.preview)).toContain('Thanks for visiting!');
+  });
+  it('GET check stays read-only; POST check/run records a run that is returned as the last one', async () => {
+    const n0 = (await q(sql`select count(*)::int n from reviews_health_runs where tenant_id = ${T}`))[0].n;
+    await rc.check(ctx());
+    expect((await q(sql`select count(*)::int n from reviews_health_runs where tenant_id = ${T}`))[0].n).toBe(n0);
+    const r = await rc.check(ctx(), { record: true });
+    const last = await rc.lastCheck(ctx());
+    expect(last?.overall).toBe(r.overall);
+    expect(await rc.lastCheck(ctx(X, BX))).toBeNull();
+  });
+});
