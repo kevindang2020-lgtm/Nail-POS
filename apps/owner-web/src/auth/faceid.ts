@@ -2,3 +2,4 @@
 export {
   faceIdMode, enrollFaceId, signInWithFaceId, clearFaceId, disableFaceId, canEnrollFaceId, isFaceIdEnrolled, type FaceIdMode,
 } from '@aipowersalon/mobile-sdk';
+export { useFaceIdSignOutOption, END_FACE_ID_LABEL } from '@aipowersalon/mobile-sdk/faceid-signout';

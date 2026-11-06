@@ -18,7 +18,6 @@ import { LoginService, type LoginInput } from './auth-login.service';
 import { loginResponse, logoutResponse, selectBranchResponse, accessTtlSeconds, refreshCookieNameFor, REFRESH_COOKIE_PATH, type HttpResponseSpec } from './auth.http';
 import { RefreshSessionService } from './refresh-session';
 import { KyselyAuthDevices, validDeviceKey, newWebDeviceKey, WEB_DEVICE_COOKIE } from './auth-devices';
-import { KyselyBiometricCredentials } from './biometric-credentials';
 import { KyselyAuthEvents, maskIdentifier, type AuthEvent } from './auth-events';
 import { looksLikeRecoveryCode } from './mfa-recovery-codes';
 function readCookie(req: any, name: string): string | null {
@@ -51,11 +50,12 @@ import { BranchSelectionService, BranchError, type BranchSessionInput } from './
 import { BRANCH_SWITCH_GUARD, type BranchSwitchGuardPort } from './branch-switch-guard';
 import { ModuleRef } from '@nestjs/core';
 import { sessionFromRequest } from './session-from-request';
-import { DATABASE, type AppDatabase } from '@aipowersalon/database';
+import { DATABASE, canMoveToSql, type AppDatabase } from '@aipowersalon/database';
 import { buildMediaUrl } from '@aipowersalon/media';
 
 import { LOGIN_BODY, PIN_BODY, REFRESH_BODY, SELECT_BRANCH_BODY } from '../request-schemas';   // BUILD_PLAN Phase 12 (#17)
 import { sql } from 'kysely';
+import { SESSION } from './identity-lifecycles';
 /** /auth/set-pin: failed re-authentications per user inside the window before the route answers 429 (Oct 12 2026 merge). */
 export const PIN_SET_FAIL_LIMIT = 5;
 export const PIN_SET_WINDOW_MS = 10 * 60_000;
@@ -245,16 +245,20 @@ export class AuthController {
   async doLogout(@Req() req: any, @Res() res: any) {
     const payload = sessionFromRequest(req, process.env.AUTH_SESSION_SECRET || '');
     const sid = (payload as any)?.sid;
-    if (this.sessions && sid) { try { await this.sessions.revoke(sid); } catch { /* still clear the cookie */ } }
-    if (this.refresh && sid) { try { await this.refresh.revokeSession(sid); } catch { /* the session is already revoked */ } }   // §7–12: no refresh after sign-out
-    // BUILD_PLAN Phase 13 D (Constitution 6 §37, §35): signing out of a device ends Face ID on it too — the biometric device
-    // credential for (this person, this device) is revoked, so the Keychain item the app also deletes could never be replayed.
+    // Nov 5 2026 (Kevin; changes Constitution 6 §37): a normal sign-out on the phone KEEPS Face ID on it, so the person signs
+    // back in with Face ID. Migration 705's trigger ends Face ID whenever a session is revoked for any OTHER reason (sign
+    // out other devices, Super Admin, theft, access change, …); this revoke sets the transaction-local flag that exempts it.
+    // Turning Face ID off at sign-out is the app's explicit choice: it calls POST /auth/biometric/revoke first.
     if (this.db && sid) {
       try {
-        const row: any = await this.db.selectFrom('sessions').select(['user_id', 'device_id']).where('id', '=', sid).executeTakeFirst();
-        if (row?.device_id) await new KyselyBiometricCredentials(this.db).revokeForDevice(String(row.user_id), String(row.device_id), 'logout');
-      } catch { /* sign-out never fails on this; the credential also dies with the next password change / device revoke */ }
+        await this.db.transaction().execute(async (trx: any) => {
+          await sql`select set_config('aps.keep_face_id', 'on', true)`.execute(trx);
+          await sql`update sessions set status = 'revoked', revoked_at = now() where id = ${sid} and ${canMoveToSql(SESSION, 'revoked')}`.execute(trx);
+        });
+      } catch { /* the session store revoke below still ends the session */ }
     }
+    if (this.sessions && sid) { try { await this.sessions.revoke(sid); } catch { /* still clear the cookie */ } }
+    if (this.refresh && sid) { try { await this.refresh.revokeSession(sid); } catch { /* the session is already revoked */ } }   // §7–12: no refresh after sign-out
     if (sid) this.ev(req, { type: 'LOGOUT', outcome: 'info', userId: req?.ctx?.userId ?? null, tenantId: req?.ctx?.tenantId ?? null, sessionId: sid });
     this.apply(res, logoutResponse(), req);
   }

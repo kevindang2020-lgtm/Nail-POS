@@ -36,7 +36,7 @@ Every test suite, every CI gate, a real Postgres 16 database, a live API boot an
 | 7 | All static apps | The security headers files (`_headers`: CSP, HSTS, frame-deny and others) were missing from all 7 static apps. | Generated. FCM endpoints are allowed where push is used; captcha hosts are allowed for the customer app. |
 | 8 | pos, owner, tech, customer, manager-pay | The app version was never stamped into the build, so error reports said "unknown". Turning on the Tap to Pay minimum-version check would have refused every phone. | The version plugin was added to every app (version taken from `package.json`). |
 | 9 | Owner app | Expenses and Finance screens never refreshed live: nothing produced the `expense_updated` event. | New `expense.changed` domain event, written in the same transaction as the expense write and projected to `expense_updated` (ids only, no amounts). `check:realtime-contract` now passes. |
-| 10 | All 4 mobile apps | A 401 (session revoked) or a sign-out did not remove the Face ID device credential. | `clearFaceId()` now runs on 401 and on sign-out in customer, tech, owner and manager-pay. |
+| 10 | All 4 mobile apps | Face ID and sign-out followed no consistent rule; remotely ending a session ("sign out other devices", Super Admin, a stolen refresh token) never ended Face ID on that phone. | **Decided by Kevin (changes Constitution 6 §37):** a normal sign-out and an expired session KEEP Face ID in customer, tech and owner; the sign-out confirmation offers "Also turn off Face ID on this phone". Migration 705 ends Face ID whenever a session is revoked for any other reason. Manager Pay (shared front-desk phones) keeps the strict rule: sign-out and 401 end Face ID. |
 | 11 | Customer, tech, owner | The Settings screens decided "Face ID is on" from a storage flag that nothing ever sets. | They now read `isFaceIdEnrolled()` from the SDK. |
 | 12 | Gift cards | Reload and void failed with a database error when there was no signed-in user (an empty user id was cast to uuid). Found by the race lane. | `created_by_user_id` / `issued_by_user_id` fall back to null. |
 | 13 | Integrity monitoring | The tenant-consistency triggers on the platform-notice tables (migration 674) had no matching integrity check. | Two invariants added to `integrity-checks.ts`. |
@@ -58,7 +58,6 @@ Every test suite, every CI gate, a real Postgres 16 database, a live API boot an
 | `check:crosswire` | 77 calls with no server route: POS finance/expenses (`/owner/finance/*`), payroll paychecks, booking drafts, mobile-checkout devices, AI OCR receipt, wallet top-ups, `/tech/earnings/detail`. This is the server code in the missing POS 12 package. Down from 80 (3 fixed above). | Dev team |
 | `check:unreached` | Server routes no screen calls (tech time-off, turn queue and others). Each needs a screen or a debt-ledger entry. | Dev team |
 | Push permission prompt | The shared push hook asks for notification permission on sign-in, not on a user tap. Browsers may block or penalise this. Suggest moving it behind a button. | Dev team |
-| Face ID after sign-out | By design (SDK `clearFaceId`), signing out removes the Face ID credential, so users sign in with their password and turn Face ID on again. Confirm this is the behaviour you want. | Kevin |
 | Fiserv / Apple / production | Unchanged: handoff items 1–4. | Kevin + dev team |
 
 ## How to reproduce
@@ -70,3 +69,20 @@ node tooling/ci/run-tests.mjs api|modules|packages|apps
 DATABASE_URL=postgres://…/aps_race npm run db:migrate
 PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs
 ```
+
+## Addendum — Face ID after sign-out (Nov 5, 11 pm)
+
+Kevin decided Face ID stays on after a normal sign-out (as in banking apps). Commit after `6292cea`.
+
+| Situation | Customer / Tech / Owner | Manager Pay |
+| --- | --- | --- |
+| Normal sign-out | Face ID kept | Face ID ended |
+| Sign-out with "Also turn off Face ID on this phone" ticked | Face ID ended (server revoke) | — |
+| Session expired (401) | Face ID kept | Face ID ended |
+| Session revoked elsewhere: sign out other devices, Super Admin, stolen refresh token, PIN lockout, access change | Face ID ended (migration 705 trigger) | Face ID ended |
+| Password change, device revoked or blocked, account suspended, salon turns Face ID off, credential expired | Face ID ended (unchanged) | Face ID ended |
+| A different person signs in on the phone | Previous person's Face ID cleared (unchanged) | Same |
+
+How it works: `POST /auth/logout` revokes its own session inside a transaction that sets `aps.keep_face_id = 'on'`. Migration 705's trigger on `sessions` revokes the biometric credential for that user and device whenever a session becomes revoked without that flag. One trigger covers the 14+ code paths that revoke sessions. The flag is transaction-local, so it cannot leak to other requests on the same connection.
+
+Proof: `biometric-auth.pgtest` (4 new tests, including a revoke on another phone leaving this phone alone), the same check run by hand on real Postgres 16, and `native-auth-coverage.vitest.spec.ts` now pins the new rule (mutation-tested: an unconditional `clearFaceId()` fails it).

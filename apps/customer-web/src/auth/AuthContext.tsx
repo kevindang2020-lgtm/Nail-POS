@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { clearNativeToken } from './native-auth';
-import { clearFaceId } from './faceid';
+import { clearFaceId, disableFaceId } from './faceid';
 import { signalSignedOut } from '@aipowersalon/mobile-sdk';
 import { registerPushToken, unregisterPushToken } from '../lib/push';
 import { authApi, type Principal } from '../api/authApi';
@@ -11,7 +11,7 @@ import { exitGuestMode } from './guest';
 // principal returned by POST /auth/login; logout clears the cookie + state. A 401 from any request drops the principal
 // so the sign-in screen renders instead of a broken shell. Cross-origin deployments must serve the cookie SameSite=None
 // + Secure for the reload restore to reach the API — that is server/deploy config, not this client.
-interface AuthShape { principal: Principal | null; loading: boolean; setPrincipal: (p: Principal | null) => void; logout: () => Promise<void>; }
+interface AuthShape { principal: Principal | null; loading: boolean; setPrincipal: (p: Principal | null) => void; logout: (opts?: { endFaceId?: boolean }) => Promise<void>; }
 const AuthCtx = createContext<AuthShape>({ principal: null, loading: true, setPrincipal: () => {}, logout: async () => {} });
 
 import { useWebPush } from '@aipowersalon/mobile-sdk/web-push';
@@ -54,18 +54,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // leave it in the Keychain it is resent on every request forever, and Face ID would keep unlocking a
       // credential the server has already rejected. Wipe it, then show the sign-in screen.
       void clearNativeToken();
-      void clearFaceId();   // the device credential dies with the session (packages/mobile-sdk faceid.ts)
+      // Face ID stays (Nov 5 2026): an expired session is routine; a REVOKED one already ended the credential on the
+      // server (migration 705), and the next Face ID sign-in then wipes it here (native-faceid.ts).
       setPrincipal(null);
     };
     window.addEventListener('aps:unauthorized', onUnauthorized);
     return () => window.removeEventListener('aps:unauthorized', onUnauthorized);
   }, []);
-  const logout = async () => {
+  const logout = async (opts?: { endFaceId?: boolean }) => {
     exitGuestMode();
     await unregisterPushToken().catch(() => {});
+    // Face ID stays on after sign-out unless the person chose "Also turn off Face ID" — that revoke needs the session.
+    if (opts?.endFaceId) { try { await disableFaceId(); } catch { /* the local wipe still happens below */ } }
     try { await authApi.logout(); } catch { /* ignore */ }
     await clearNativeToken();
-    await clearFaceId();
+    if (opts?.endFaceId) await clearFaceId();
     signalSignedOut();   // closes the live stream: a signed-out phone keeps no channel to the salon
     setPrincipal(null);
   };

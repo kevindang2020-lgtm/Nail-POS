@@ -4,7 +4,7 @@ import { AccountScreen } from './AccountScreen';
 
 vi.mock('../api/authApi', () => ({ authApi: { me: vi.fn(), logout: vi.fn() } }));
 vi.mock('../api/mobileCheckoutApi', () => ({ mobileCheckoutApi: { readiness: vi.fn(), myDevices: vi.fn(), approveDevice: vi.fn(), revokeDevice: vi.fn() } }));
-vi.mock('../auth/faceid', () => ({ faceIdMode: async () => 'none', enrollFaceId: vi.fn(), disableFaceId: vi.fn(), isFaceIdEnrolled: async () => false, clearFaceId: vi.fn(async () => undefined) }));
+vi.mock('../auth/faceid', () => ({ faceIdMode: async () => 'none', enrollFaceId: vi.fn(), disableFaceId: vi.fn(async () => undefined), isFaceIdEnrolled: async () => false, clearFaceId: vi.fn(async () => undefined) }));
 import { clearFaceId } from '../auth/faceid';
 import { authApi } from '../api/authApi';
 import { mobileCheckoutApi } from '../api/mobileCheckoutApi';

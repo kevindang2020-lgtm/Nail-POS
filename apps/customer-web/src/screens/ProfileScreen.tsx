@@ -4,6 +4,7 @@ import { customerApi, type CustomerProfile, type CustomerLoyaltySummary } from '
 import { useAuth } from '../auth/AuthContext';
 import { isGuest, exitGuestMode } from '../auth/guest';
 import { GuestModal } from '../components/GuestModal';
+import { useFaceIdSignOutOption, END_FACE_ID_LABEL } from '../auth/faceid';
 import {
   FiUser,
   FiMessageSquare,
@@ -89,6 +90,7 @@ export function ProfileScreen() {
   const guest = isGuest();
   const { principal, logout } = useAuth();
   const [confirm, setConfirm] = useState(false);
+  const faceIdChoice = useFaceIdSignOutOption(confirm && !guest);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [guestModalOpen, setGuestModalOpen] = useState(false);
@@ -129,7 +131,7 @@ export function ProfileScreen() {
   const doLogout = async () => {
     setBusy(true);
     try {
-      await logout();
+      await logout({ endFaceId: faceIdChoice.faceIdOn && faceIdChoice.endFaceId });
       if (guest) exitGuestMode();
     } finally {
       setBusy(false);
@@ -383,6 +385,14 @@ export function ProfileScreen() {
                 ? 'Are you sure you want to exit guest mode? You will return to the sign in screen where you can log in or register.'
                 : 'Are you sure you want to log out of your session? You’ll need to sign in again to view your appointments and rewards.'}
             </div>
+
+            {/* Nov 5 2026: Face ID stays on after sign-out unless the person turns it off here (shared / borrowed phone) */}
+            {!guest && faceIdChoice.faceIdOn ? (
+              <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, color: '#2C2118', marginBottom: 16, cursor: 'pointer' }}>
+                <input type="checkbox" checked={faceIdChoice.endFaceId} onChange={(e) => faceIdChoice.setEndFaceId(e.target.checked)} style={{ width: 18, height: 18, accentColor: '#A96F22' }} />
+                {END_FACE_ID_LABEL}
+              </label>
+            ) : null}
 
             {/* Modal Actions */}
             <div

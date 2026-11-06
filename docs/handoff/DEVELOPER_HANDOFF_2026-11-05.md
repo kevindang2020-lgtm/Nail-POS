@@ -133,7 +133,7 @@ Sixteen items remain. The P0 items stand between the code and real card payments
 | 14 | P2 — review / cleanup | Android upgrade test | Android moved from the `http` to the `https` scheme. The WebView origin changes, so existing installs lose local storage and sign in again once. Test an upgrade on a real device before release. | Dev team |
 | 15 | P2 — review / cleanup | Find Salons gaps | The redesign dropped the "Call" button and the cross-salon note; partner badge reads "Partner". Decide whether to restore them. | Kevin |
 | 16 | P2 — review / cleanup | Small cleanup | Lint warnings still under baseline (78 unused vars, 59 hook deps); a stray comment in `apps/pos-web/src/api/posCheckoutApi.ts`. | Dev team |
-| 17 | P2 — review / cleanup | Face ID re-enroll on upgrade | Face ID no longer stores passwords, so users who set it up before this build sign in with their password once and turn Face ID on again. Mention it in release notes; test on a real iPhone. | Dev team |
+| 17 | P2 — review / cleanup | Face ID re-enroll on upgrade | Face ID no longer stores passwords, so users who set it up before this build sign in with their password once and turn Face ID on again. After that, Face ID stays on through normal sign-outs (customer, tech, owner; Kevin's decision Nov 5, changes Constitution 6 §37 — see the sweep report addendum). Mention it in release notes; test on a real iPhone, including "sign out other devices" ending Face ID on the other phone. | Dev team |
 
 ## Rules the team must keep
 

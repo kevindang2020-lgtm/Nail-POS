@@ -1,10 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 
 export type ConfirmOpts = {
   title?: string;
   confirmLabel?: string;
   destructive?: boolean;
+  /** Extra content under the question (e.g. the sign-out "Also turn off Face ID" choice). Keeps its own state. */
+  extra?: ReactNode;
 };
 
 type Pending = { question: string; onConfirm: () => void; opts: ConfirmOpts };
@@ -136,6 +138,7 @@ export function useInlineConfirm(): {
             >
               {pending.question}
             </div>
+            {pending.opts.extra ? <div style={{ marginTop: -8, marginBottom: 16 }}>{pending.opts.extra}</div> : null}
 
             {/* Modal Actions */}
             <div

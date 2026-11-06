@@ -166,7 +166,8 @@ export async function signInWithNativeFaceId(): Promise<any> {
   return rest;
 }
 
-/** Sign-out, a dead session (401) or a revoked credential: remove the credential AND the session token. */
+/** Remove the credential AND the session token. Since Nov 5 2026 only manager-pay calls this on sign-out / 401 (customer,
+ *  tech and owner keep Face ID through a normal sign-out — see faceid-signout.ts and migration 705). */
 export async function clearNativeFaceId(): Promise<void> {
   await clearNativeToken();
   await wipeCredential();

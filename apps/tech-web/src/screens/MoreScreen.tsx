@@ -10,6 +10,7 @@ const Chev = () => (<svg className="chev" width="18" height="18" viewBox="0 0 24
 
 import { useEscapeKey } from '@aipowersalon/ui';
 import { FiUser, FiBriefcase, FiClock, FiStar, FiCheckCircle, FiRefreshCw, FiFileText, FiTrendingUp, FiDollarSign, FiCreditCard, FiTag, FiMessageCircle, FiBell, FiPackage, FiHelpCircle, FiShield, FiFile, FiAlertTriangle, FiSettings } from 'react-icons/fi';
+import { useFaceIdSignOutOption, END_FACE_ID_LABEL } from '../auth/faceid';
 export function MoreScreen() {
   const nav = useTechNav();
   const { logout } = useAuth();
@@ -17,6 +18,7 @@ export function MoreScreen() {
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [confirm, setConfirm] = useState(false);
+  const faceIdChoice = useFaceIdSignOutOption(!!confirm);
   const [skills, setSkills] = useState<TechSkillsView | null>(null);
   useEscapeKey(confirm || !!skills, () => { setConfirm(false); setSkills(null); });
   const [skillSel, setSkillSel] = useState('');
@@ -341,7 +343,14 @@ export function MoreScreen() {
             <div className="tech-card" style={{ width: '100%', maxWidth: 480, borderRadius: '8px ', margin: 0, paddingBottom: 'calc(16px + env(safe-area-inset-bottom))' }} onClick={(e) => e.stopPropagation()}>
               <div className="tech-section-title" style={{ marginBottom: 8 }}>Log out?</div>
               <div className="tech-muted" style={{ fontSize: 13, marginBottom: 12 }}>You’ll need to sign in again to access your schedule and tickets.</div>
-              <button className="tech-btn danger-outline" onClick={() => logout()}>Log Out</button>
+              {/* Nov 5 2026: Face ID stays on after sign-out unless turned off here (shared / borrowed phone) */}
+              {faceIdChoice.faceIdOn ? (
+                <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13, marginBottom: 12, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={faceIdChoice.endFaceId} onChange={(e) => faceIdChoice.setEndFaceId(e.target.checked)} style={{ width: 18, height: 18 }} />
+                  {END_FACE_ID_LABEL}
+                </label>
+              ) : null}
+              <button className="tech-btn danger-outline" onClick={() => logout({ endFaceId: faceIdChoice.faceIdOn && faceIdChoice.endFaceId })}>Log Out</button>
               <button className="tech-btn outline" style={{ marginTop: 8 }} onClick={() => setConfirm(false)}>Cancel</button>
             </div>
           </div>

@@ -109,6 +109,9 @@ export function AccountScreen() {
   const onSignOut = useCallback(async () => {
     setSigningOut(true);
     await unregisterPushToken();
+    // Manager Pay keeps the strict rule (Nov 5 2026): a Tap to Pay phone is often shared at the front desk, so signing out
+    // ends Face ID on it. The server no longer does that on logout (migration 705) — revoke it here while the session lives.
+    try { await disableFaceId(); } catch { /* clearFaceId below still wipes it locally */ }
     try { await authApi.logout(); } catch { /* best-effort */ }
     await clearNativeToken();
     await clearFaceId();

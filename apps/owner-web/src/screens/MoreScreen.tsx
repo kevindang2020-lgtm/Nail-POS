@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useFaceIdSignOutOption, END_FACE_ID_LABEL } from '../auth/faceid';
 import { useInlineConfirm } from '../components/InlineConfirm';
 import { ownerMoreApi, type OwnerProfileCard } from '../api/ownerApi';
 import { useOwnerNav } from '../shell/nav';
@@ -47,16 +48,21 @@ export function MoreScreen() {
     };
   }, []);
 
-  const onLogout = () =>
+  // Nov 5 2026: Face ID stays on after sign-out unless the owner turns it off in the confirmation (shared / borrowed phone)
+  const endFaceIdRef = useRef(false);
+  const onLogout = () => {
+    endFaceIdRef.current = false;
     askConfirm(
       'Are you sure you want to log out of your PowerSalon owner session?',
-      () => logout(),
+      () => logout({ endFaceId: endFaceIdRef.current }),
       {
         title: 'Confirm Logout',
         confirmLabel: 'Log Out',
         destructive: true,
+        extra: <EndFaceIdOption onChange={(v) => { endFaceIdRef.current = v; }} />,
       }
     );
+  };
   const { confirm: askConfirm, confirmUi } = useInlineConfirm();
 
   return (
@@ -559,5 +565,17 @@ export function MoreScreen() {
             <div className="muted" style={{ fontSize: 11.5 }}>Business Alerts are backed by the new <code>owner_alerts</code> table (severity + lifecycle status). The unread badge reflects alerts with status “new”.</div>
           </div>
     </>
+  );
+}
+
+/** The sign-out choice: shown only when Face ID is on for this phone. */
+function EndFaceIdOption({ onChange }: { onChange: (v: boolean) => void }) {
+  const { faceIdOn, endFaceId, setEndFaceId } = useFaceIdSignOutOption(true);
+  if (!faceIdOn) return null;
+  return (
+    <label style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 13.5, cursor: 'pointer' }}>
+      <input type="checkbox" checked={endFaceId} onChange={(e) => { setEndFaceId(e.target.checked); onChange(e.target.checked); }} style={{ width: 18, height: 18 }} />
+      {END_FACE_ID_LABEL}
+    </label>
   );
 }

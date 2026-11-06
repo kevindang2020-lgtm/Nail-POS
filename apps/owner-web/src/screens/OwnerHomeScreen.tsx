@@ -273,7 +273,7 @@ export function OwnerHomeScreen() {
           <div className="big owner-serif">Couldn’t load your dashboard</div>
           <div className="muted" style={{ marginBottom: 16 }}>{err}</div>
           <button className="owner-btn" onClick={load}>Retry</button>{' '}
-          <button className="owner-btn ghost" onClick={logout}>Sign out</button>
+          <button className="owner-btn ghost" onClick={() => logout()}>Sign out</button>
         </div>
       )}
 
