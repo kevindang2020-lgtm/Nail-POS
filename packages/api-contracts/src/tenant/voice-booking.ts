@@ -80,3 +80,11 @@ export interface ReviewAssignResult { id: string; assignedUserId: string | null 
 export interface ReviewStaffList { items: { id: string; name: string; role: string }[] }
 export interface ReviewCheckRun { id: string; overall: string; checks: unknown[]; at: string | null }
 export interface ReviewCheckResult { overall: string; checks: unknown[]; checkedAt: string }
+
+/** A18 Nov 6: Referral Program — recorded checks and filter options */
+export interface ReferralHealthRun { id: string; overall: string; items: unknown[]; at: string | null }
+export interface ReferralHealthResult { overall: string; items: unknown[]; errors: Record<string, string>; checkedAt: string; mutating: boolean; runId: string | null }
+export interface ReferralFilterOptions { creators: { id: string; name: string }[]; reviewers: { id: string; name: string }[]; branches: { id: string; name: string }[] }
+
+/** A19 Nov 6: Win-Back — picked customers saved as an unsent audience draft */
+export interface WinbackPickedResult { draftId: string; status: string; channel: string; selected: number; eligible: number; excluded: number; sends: number; duplicate: boolean }

@@ -87,3 +87,21 @@ Commands: `FST_PG_TEMPLATE=aps REPO_ROOT=$PWD bash tooling/full-system-test/unit
 2. Should Front Desk get read-only Birthday Campaigns (today: no marketing access → a notice)? Front Desk can already record a birthday from the customer profile (`customers.edit`).
 3. A send that ends in a provider exception keeps the year's birthday claim (no risk of a second text). Release it instead?
 4. Should a nightly job create birthday campaign *drafts* automatically (still approval-gated), or stay manual?
+
+## Built Nov 6 2026 (A20 — Kevin: "continue finish all")
+
+- **More date bases.** Last settled visit, birthday message sent, birthday changed (`birthday_updated_at`), alongside the existing
+  occurrence and created.
+- **New filters:**
+  - Activity: visited in the last 60 days (`BD_ACTIVE_DAYS`), no visit in 60 days, or never visited.
+  - Birthday source (`birthday_source`; none recorded = "unknown").
+  - The tier filter already existed server-side.
+- **Offer column.** Shows the offer from this occasion's sent birthday campaign: Redeemed (a `deal_redemptions` row that is
+  redeemed and not reversed), Not used, or No offer.
+- **History dialog.** Search covers name, campaign, channel and status. New From–To range on when the message was claimed (salon
+  days), and page size 10 / 20 / 50.
+- **Birthday timeline (overlay).** Up to six years. For each year: the message status, the offer status, and the closest settled
+  visit within 14 days of the birthday. A customer with no birthday has no timeline.
+- **Tests:**
+  - `birthday-center.pgtest` (21)
+  - `POSBirthdaysScreen.test` (9)

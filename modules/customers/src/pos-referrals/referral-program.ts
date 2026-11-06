@@ -84,7 +84,13 @@ export interface RpSettings {
   friendRewardCents: number | null; referrerRewardCents: number | null; voucherMinSpendCents: number; voucherExpiryDays: number;
   budgetTotalCents: number | null; budgetMonthlyCents: number | null; perReferrerCap: number | null; budgetWarnPercent: number;
 }
-export interface RpListFilters { tab?: unknown; q?: unknown; rewardType?: unknown; basis?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown; branch?: unknown }
+export interface RpListFilters { tab?: unknown; q?: unknown; rewardType?: unknown; basis?: unknown; preset?: unknown; from?: unknown; to?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown; branch?: unknown;
+  /** A18 Nov 6: 'flagged' (risk signals) | 'clean'; who recorded it; who reviewed (approved / rejected) it */
+  eligibility?: unknown; creator?: unknown; reviewer?: unknown }
+export const RP_RISK_FILTER = ['flagged', 'clean'] as const;
+/** A18 Nov 6: velocity signal — more than this many referrals by one referrer inside RP_VELOCITY_DAYS needs a person's look */
+export const RP_VELOCITY_COUNT = 3;
+export const RP_VELOCITY_DAYS = 7;
 
 export class ReferralProgram {
   readonly ret: RetentionRepository;
@@ -257,6 +263,16 @@ export class ReferralProgram {
     const flags: Flag[] = [];
     if (r && digits(r.ap).length >= 7 && digits(r.ap) === digits(r.bp)) flags.push({ code: 'shared_phone', detail: 'The referrer and the new customer share a phone number (could be family — a person should review).' });
     if (r && r.ae && r.be && String(r.ae).toLowerCase() === String(r.be).toLowerCase()) flags.push({ code: 'shared_email', detail: 'The referrer and the new customer share an email address.' });
+    // A18 Nov 6: more signals (still review-only, never a merge or a confiscation)
+    const vel = N((await sql<any>`select count(*)::int as n from referral_redemptions where tenant_id = ${T} and referrer_customer_id = ${referrerId}
+      and redeemed_at > now() - make_interval(days => ${RP_VELOCITY_DAYS})`.execute(db)).rows[0]?.n);
+    if (vel + 1 > RP_VELOCITY_COUNT) flags.push({ code: 'referral_velocity', detail: `The referrer has ${vel + 1} referrals in ${RP_VELOCITY_DAYS} days (more than ${RP_VELOCITY_COUNT}).` });
+    const priorVisit = (await sql<any>`select 1 from tickets where tenant_id = ${T} and customer_id = ${referredId} and removed_at is null and status = any(${VISIT}::text[])
+      and coalesce(paid_at, created_at) < now() - interval '1 day' ${ticketId ? sql`and id <> ${ticketId}` : sql``} limit 1`.execute(db)).rows.length > 0;
+    if (priorVisit) flags.push({ code: 'existing_customer', detail: 'The new customer already had a paid visit before this referral.' });
+    const sameName = (await sql<any>`select 1 from customers a, customers b where a.tenant_id = ${T} and a.id = ${referrerId} and b.tenant_id = ${T} and b.id = ${referredId}
+      and nullif(lower(btrim(a.last_name)), '') = lower(btrim(b.last_name)) and nullif(lower(btrim(a.first_name)), '') = lower(btrim(b.first_name))`.execute(db)).rows.length > 0;
+    if (sameName) flags.push({ code: 'same_name', detail: 'The referrer and the new customer have the same first and last name (possibly the same person).' });
     if (ticketId) {
       const card = (await sql<any>`select 1 from payments p join payments q on q.tenant_id = p.tenant_id and q.card_last4 = p.card_last4 and q.card_brand = p.card_brand
           join tickets qt on qt.id = q.ticket_id and qt.tenant_id = q.tenant_id
@@ -668,6 +684,7 @@ export class ReferralProgram {
     const sort = opts.approvals ? 'oldest' : pick(RP_SORTS, f.sort) ?? 'newest';
     const page = pageOf(f.page), size = sizeOf(f.pageSize);
     const rewardType = pick(RP_REWARD_TYPES, f.rewardType);
+    const elig = pick(RP_RISK_FILTER, f.eligibility);
     const basisCol = basis === 'qualified' ? sql`rr.qualified_at` : basis === 'decided' ? sql`rr.decided_at` : basis === 'issued' ? sql`rw.issued_at` : basis === 'transaction' ? sql`qt.paid_at` : sql`rr.redeemed_at`;
     const qd = q ? digits(q) : '';
     const qw = q ? sql`(rr.code ilike ${'%' + q + '%'} or rc.full_name ilike ${'%' + q + '%'} or dc.full_name ilike ${'%' + q + '%'} or rc.email ilike ${'%' + q + '%'} or dc.email ilike ${'%' + q + '%'}
@@ -676,6 +693,10 @@ export class ReferralProgram {
         or exists (select 1 from pos_tech_appointments ap where ap.tenant_id = rr.tenant_id and ap.customer_id = rr.referred_customer_id and ap.id::text = ${q}))` : sql`true`;
     const where = sql`rr.tenant_id = ${T} and ${this.branchW(ctx)} and ${states ? sql`rr.state = any(${states}::text[])` : sql`true`} and ${qw}
       and ${rewardType ? sql`rw.reward_type = ${rewardType}` : sql`true`}
+      and ${f.branch === 'none' ? sql`rr.branch_id is null` : isUuid(f.branch) ? sql`rr.branch_id = ${String(f.branch)}` : sql`true`}
+      and ${elig === 'flagged' ? sql`jsonb_array_length(coalesce(rr.fraud_flags, '[]'::jsonb)) > 0` : elig === 'clean' ? sql`jsonb_array_length(coalesce(rr.fraud_flags, '[]'::jsonb)) = 0` : sql`true`}
+      and ${isUuid(f.creator) ? sql`rr.recorded_by = ${String(f.creator)}` : sql`true`}
+      and ${isUuid(f.reviewer) ? sql`exists (select 1 from referral_events e where e.tenant_id = rr.tenant_id and e.referral_id = rr.id and e.actor_user_id = ${String(f.reviewer)} and e.event_type like 'review%')` : sql`true`}
       and ${rg ? sql`${basisCol} >= (${rg.from}::date)::timestamp at time zone ${tz} and ${basisCol} < ((${rg.to}::date + 1))::timestamp at time zone ${tz}` : sql`true`}`;
     const order = sort === 'oldest' ? sql`coalesce(rw.requested_at, rr.redeemed_at) asc, rr.id asc` : sort === 'name_asc' ? sql`lower(coalesce(dc.full_name, '')) asc, rr.id asc` : sort === 'name_desc' ? sql`lower(coalesce(dc.full_name, '')) desc, rr.id desc` : sql`rr.redeemed_at desc, rr.id desc`;
     const from = sql`from referral_redemptions rr left join customers rc on rc.id = rr.referrer_customer_id and rc.tenant_id = rr.tenant_id
@@ -791,7 +812,11 @@ export class ReferralProgram {
         disposition: reward.state === 'ISSUED' ? (reward.reward_type === 'loyalty_points' ? 'points_issued' : 'credit_issued') : reward.state === 'BLOCKED_EXTERNAL' ? 'payout_blocked_external' : reward.state.toLowerCase() } : null,
       vouchers: (await sql<any>`select id, role, face_cents, min_spend_cents, state, code_hint, expires_at, available_at, redeemed_at, closed_reason from referral_vouchers where tenant_id = ${T} and referral_id = ${id} order by role`.execute(this.db)).rows
         .map((v: any) => ({ id: String(v.id), role: v.role, faceCents: N(v.face_cents), minSpendCents: N(v.min_spend_cents), state: v.state, hint: v.code_hint ?? null, expiresAt: iso(v.expires_at), availableAt: iso(v.available_at), redeemedAt: iso(v.redeemed_at), closedReason: v.closed_reason ?? null })),
-      communication: { items: [], note: 'No referral invitation or confirmation messages are sent by this program; nothing to show.' },
+      // A18 Nov 6: the messages the salon sent the referrer and the new customer (any purpose), newest first
+      communication: { items: (await sql<any>`select n.id, n.customer_id, n.channel, n.status, n.purpose, n.created_at, left(n.body, 160) as body from notifications n
+          where n.tenant_id = ${T} and n.customer_id = any(${[r.referrer_customer_id, r.referred_customer_id].filter(Boolean).map(String)}::uuid[]) order by n.created_at desc, n.id desc limit 30`.execute(this.db)).rows
+          .map((m: any) => ({ id: String(m.id), who: String(m.customer_id) === String(r.referrer_customer_id) ? 'referrer' : 'referred', channel: m.channel, status: m.status, purpose: m.purpose ?? null, at: iso(m.created_at), preview: m.body ?? '' })),
+        note: 'The referral program itself sends no invitation or confirmation; these are the salon’s messages to the two customers.' },
       audit: events.map((e: any) => ({ type: e.event_type, from: e.from_state, to: e.to_state, reason: e.reason, source: e.source_ref, idempotencyKey: e.idempotency_key, at: iso(e.created_at), actor: e.actor_name ?? (e.event_type === 'qualified' || e.event_type.startsWith('refund') ? 'Checkout event' : null),
         meta: typeof e.metadata === 'string' ? JSON.parse(e.metadata) : e.metadata })),
     };
@@ -825,7 +850,21 @@ export class ReferralProgram {
   }
 
   // ── Check Referral System (guide §16) — NON-MUTATING ───────────────────────────────────────────────────────────────
-  async health(ctx: RefCtx) {
+  async lastHealth(ctx: RefCtx) {
+    const r = (await sql<any>`select id, overall, items, created_at from referral_health_runs where tenant_id = ${ctx.tenantId} and branch_id is not distinct from ${isUuid(ctx.branchId) ? ctx.branchId : null}
+      order by created_at desc limit 1`.execute(this.db)).rows[0];
+    return r ? { id: String(r.id), overall: String(r.overall), items: r.items ?? [], at: iso(r.created_at) } : null;
+  }
+  /** A18 Nov 6: the people and branches the list can be filtered by (from real rows) */
+  async filterOptions(ctx: RefCtx) {
+    const T = ctx.tenantId;
+    const creators = (await sql<any>`select distinct u.id, u.full_name from referral_redemptions rr join users u on u.id = rr.recorded_by and u.tenant_id = rr.tenant_id where rr.tenant_id = ${T} order by u.full_name limit 100`.execute(this.db)).rows;
+    const reviewers = (await sql<any>`select distinct u.id, u.full_name from referral_events e join users u on u.id = e.actor_user_id and u.tenant_id = e.tenant_id where e.tenant_id = ${T} and e.event_type like 'review%' order by u.full_name limit 100`.execute(this.db)).rows;
+    const branches = (await sql<any>`select id, name from branches where tenant_id = ${T} order by name limit 100`.execute(this.db)).rows;
+    const m = (x: any) => ({ id: String(x.id), name: String(x.full_name ?? x.name ?? '') });
+    return { creators: creators.map(m), reviewers: reviewers.map(m), branches: branches.map(m) };
+  }
+  async health(ctx: RefCtx, opts: { record?: boolean } = {}) {
     const T = ctx.tenantId;
     const items: { key: string; status: 'ready' | 'attention_required' | 'failed' | 'pending' | 'unknown'; summary: string; evidence: string; fix: string | null }[] = [];
     const add = (key: string, status: (typeof items)[number]['status'], summary: string, evidence: string, fix: string | null = null) => items.push({ key, status, summary, evidence, fix });
@@ -883,7 +922,13 @@ export class ReferralProgram {
       and not exists (select 1 from referral_events e where e.tenant_id = rr.tenant_id and e.referral_id = rr.id)`.execute(this.db)).rows[0]);
     add('audit_logging', !aud ? 'unknown' : N(aud.n) ? 'attention_required' : 'ready', !aud ? 'Audit trail could not be checked.' : N(aud.n) ? `${N(aud.n)} referral(s) recorded before Oct 31 2026 have no event history.` : 'Every referral has an append-only event history.', 'referral_events (append-only trigger)', N(aud.n) ? 'Older referrals predate the event history; their state is still shown.' : null);
     const worst = items.some((i) => i.status === 'failed') ? 'failed' : items.some((i) => i.status === 'attention_required') ? 'attention_required' : items.some((i) => i.status === 'unknown') ? 'unknown' : items.some((i) => i.status === 'pending') ? 'pending' : 'ready';
-    return { overall: worst, items, errors, checkedAt: new Date().toISOString(), mutating: false };
+    // A18 Nov 6: POST health/run records the run (its only write); GET health stays non-mutating
+    if (opts.record) {
+      const run = (await sql<any>`insert into referral_health_runs (tenant_id, branch_id, overall, items, run_by) values (${T}, ${isUuid(ctx.branchId) ? ctx.branchId : null}, ${worst}, ${JSON.stringify(items)}::jsonb, ${actorId(ctx)})
+        returning id, created_at`.execute(this.db)).rows[0];
+      return { overall: worst, items, errors, checkedAt: iso(run.created_at) ?? new Date().toISOString(), mutating: false, runId: String(run.id) as string | null };
+    }
+    return { overall: worst, items, errors, checkedAt: new Date().toISOString(), mutating: false, runId: null as string | null };
   }
 
   // ── AI Referral Growth Assistant (guide §11): advice + an UNSENT audience; Campaign Center sends after approval ────────

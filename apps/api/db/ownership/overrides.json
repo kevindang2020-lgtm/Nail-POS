@@ -470,6 +470,10 @@
   "reviews_health_runs": {
    "domain": "CUSTOMERS",
    "reason": "A17 Reviews (Nov 6 2026, migration 831): recorded runs of Check Review System \u2014 same owner as reviews"
+  },
+  "referral_health_runs": {
+   "domain": "CUSTOMERS",
+   "reason": "A18 Referral Program (Nov 6 2026, migration 832): recorded runs of Check Referral System \u2014 same owner as referral_redemptions"
   }
  }
 }

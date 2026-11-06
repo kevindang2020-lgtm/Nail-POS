@@ -48,7 +48,9 @@ export function POSBirthdaysScreen() {
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
   const [calOpen, setCalOpen] = useState(false);
   const [scope, setScope] = useState<(typeof SCOPES)[number]>('period');
-  const [basis, setBasis] = useState<'occurrence' | 'created'>('occurrence');
+  const [basis, setBasis] = useState<string>('occurrence');
+  // A20 Nov 6: activity (last visit) and birthday-source filters
+  const [activity, setActivity] = useState(''); const [source, setSource] = useState('');
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim(), 300);
   const [elig, setElig] = useState('');
@@ -64,9 +66,9 @@ export function POSBirthdaysScreen() {
 
   // the range sent to the server: Month dropdown = "month", a preset, or a custom From → To
   const rangeQ = useMemo(() => (preset === 'custom' && range ? { preset: 'custom', from: range.from, to: range.to } : preset === 'month' ? { preset: 'month', month } : { preset }), [preset, range, month]);
-  const query: BirthdayQuery = useMemo(() => ({ ...rangeQ, scope, basis: scope === 'period' ? basis : undefined, q: q || undefined, eligibility: elig || undefined, sort: sort || undefined, page, pageSize }),
-    [rangeQ, scope, basis, q, elig, sort, page, pageSize]);
-  useEffect(() => { setPage(1); }, [rangeQ, scope, basis, q, elig, sort, pageSize]);   // any filter change → page 1
+  const query: BirthdayQuery = useMemo(() => ({ ...rangeQ, scope, basis: scope === 'period' ? basis : undefined, q: q || undefined, eligibility: elig || undefined, activity: activity || undefined, source: source || undefined, sort: sort || undefined, page, pageSize }),
+    [rangeQ, scope, basis, q, elig, activity, source, sort, page, pageSize]);
+  useEffect(() => { setPage(1); }, [rangeQ, scope, basis, q, elig, activity, source, sort, pageSize]);   // any filter change → page 1
 
   const load = useCallback(async () => {
     setErr(null);
@@ -83,8 +85,8 @@ export function POSBirthdaysScreen() {
   const rows: any[] = list?.items ?? [];
   const k = sum?.kpis; const comp = sum?.completeness;
   const rangeText = sum?.range ? tx('bd.range', { from: ymd(sum.range.from), to: ymd(sum.range.to) }) : '';
-  const anyFilter = !!(search || elig || sort || scope !== 'period' || basis !== 'occurrence');
-  const clearAll = () => { setSearch(''); setElig(''); setSort(''); setScope('period'); setBasis('occurrence'); };
+  const anyFilter = !!(search || elig || activity || source || sort || scope !== 'period' || basis !== 'occurrence');
+  const clearAll = () => { setSearch(''); setElig(''); setSort(''); setScope('period'); setBasis('occurrence'); setActivity(''); setSource(''); };
   const label = preset === 'month' ? monthLong(month - 1) : rangeText;
 
   if (forbidden) return <div className="work sg bd" data-testid="birthdays-screen"><Empty title={tx('bd.noAccess')} /></div>;
@@ -130,11 +132,15 @@ export function POSBirthdaysScreen() {
         <div className="fk-seg" role="tablist">
           {SCOPES.map((s) => <button key={s} type="button" role="tab" aria-selected={scope === s} className={scope === s ? 'on' : ''} onClick={() => setScope(s)} data-testid={'bd-scope-' + s}>{tx('bd.scope.' + s)}</button>)}
         </div>
-        {scope === 'period' ? <select className="fk-select" aria-label={tx('bd.basis')} value={basis} onChange={(e) => setBasis(e.target.value === 'created' ? 'created' : 'occurrence')} data-testid="bd-basis">
-          <option value="occurrence">{tx('bd.basis.occurrence')}</option><option value="created">{tx('bd.basis.created')}</option></select> : null}
+        {scope === 'period' ? <select className="fk-select" aria-label={tx('bd.basis')} value={basis} onChange={(e) => setBasis(e.target.value || 'occurrence')} data-testid="bd-basis">
+          {['occurrence', 'created', 'last_visit', 'message_sent', 'birthday_updated'].map((b) => <option key={b} value={b}>{tx('bd.basis.' + b)}</option>)}</select> : null}
         <input className="fk-input fk-search sg-search" type="search" placeholder={tx('bd.search')} aria-label={tx('bd.search')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="bd-search" />
         <select className="fk-select" aria-label={tx('bd.elig.any')} value={elig} onChange={(e) => setElig(e.target.value)} data-testid="bd-elig">
           <option value="">{tx('bd.elig.any')}</option>{ELIG.map((x) => <option key={x} value={x}>{tx('bd.elig.' + x)}</option>)}</select>
+        <select className="fk-select" aria-label={tx('bd.f.activity')} value={activity} onChange={(e) => setActivity(e.target.value)} data-testid="bd-activity">
+          <option value="">{tx('bd.f.activity.any')}</option>{['active', 'lapsed', 'never'].map((x) => <option key={x} value={x}>{tx('bd.f.activity.' + x)}</option>)}</select>
+        <select className="fk-select" aria-label={tx('bd.f.source')} value={source} onChange={(e) => setSource(e.target.value)} data-testid="bd-source">
+          <option value="">{tx('bd.f.source.any')}</option>{['customer_app', 'pos', 'import', 'unknown'].map((x) => <option key={x} value={x}>{tx('bd.f.source.' + x)}</option>)}</select>
         <select className="fk-select" aria-label={tx('bd.sort.upcoming')} value={sort} onChange={(e) => setSort(e.target.value)} data-testid="bd-sort">
           <option value="">{scope === 'missing' ? tx('bd.sort.newest') : tx('bd.sort.upcoming')}</option>{SORTS.filter((s) => s !== (scope === 'missing' ? 'newest' : 'upcoming')).map((s) => <option key={s} value={s}>{tx('bd.sort.' + s)}</option>)}</select>
         {anyFilter ? <button type="button" className="fk-link" onClick={clearAll} data-testid="bd-clear">{tx('bd.clear')}</button> : null}
@@ -162,7 +168,7 @@ export function POSBirthdaysScreen() {
           ) : (
             <table className="fk-table rt-table sg-table bd-table">
               <thead><tr><th>{tx('pos.customer')}</th><th>{tx('bd.col.birthday')}</th><th>{tx('bd.col.next')}</th><th>{tx('bd.col.lastVisit')}</th><th>{tx('bd.col.loyalty')}</th>
-                <th>{tx('bd.col.eligibility')}</th><th>{tx('bd.col.message')}</th><th>{tx('bd.col.actions')}</th></tr></thead>
+                <th>{tx('bd.col.eligibility')}</th><th>{tx('bd.col.message')}</th><th>{tx('bd.col.offer')}</th><th>{tx('bd.col.actions')}</th></tr></thead>
               <tbody>{rows.map((r) => (
                 <tr key={r.customerId} data-testid="bd-row">
                   <td><button type="button" className="fk-li-t link sg-name" onClick={() => setDlg({ kind: 'customer', id: r.customerId })} data-testid="bd-open">{r.name}</button>
@@ -173,6 +179,7 @@ export function POSBirthdaysScreen() {
                   <td>{r.loyaltyTier || '—'}</td>
                   <td><span className="sg-tags"><span className={'fk-chip ' + (r.sms === 'eligible' ? 'ok' : 'mut')}>{tx('px.ch.sms')} {st(r.sms)}</span><span className={'fk-chip ' + (r.email === 'eligible' ? 'ok' : 'mut')}>{tx('pos.email')} {st(r.email)}</span></span></td>
                   <td>{r.birthdayMessage ? tx('bd.msg.' + r.birthdayMessage) : '—'}</td>
+                  <td data-testid="bd-offer">{r.offerStatus ? tx('bd.offer.' + r.offerStatus) : '—'}</td>
                   <td><button type="button" className="fk-btn ghost sg-why" onClick={() => setDlg({ kind: 'customer', id: r.customerId })}>{tx('bd.details')}</button></td>
                 </tr>))}</tbody>
             </table>
@@ -239,6 +246,10 @@ function CustomerDialog({ id, canEdit, onClose, onSaved, onBook, onProfile }: { 
             <h3>{tx('bd.ov.offers')}</h3>
             {o.birthdayOffers.length ? <ul className="sg-list">{o.birthdayOffers.map((x: any) => <li key={x.redemptionId}>{x.title} · {statusLabel(['deal', 'state'], x.status)}{x.redeemedAt ? ` · ${when(x.redeemedAt)}` : ''}</li>)}</ul> : <div className="fk-muted">{tx('bd.ov.none')}</div>}
           </section>
+          <section className="fk-panel bd-sec" data-testid="bd-ov-timeline"><h3>{tx('bd.ov.timeline')}</h3>
+            {o.timeline?.length ? <table className="fk-table"><tbody>{o.timeline.map((t: any) => <tr key={t.year}><td>{t.year}</td><td>{tx('bd.tl.msg', { s: t.message === 'none' ? tx('bd.tl.noMessage') : tx('bd.hist.status.' + t.message) })}</td>
+              <td>{tx('bd.offer.' + t.offer)}</td><td>{t.visitNearBirthday ? tx('bd.tl.visit', { when: when(t.visitNearBirthday) ?? '' }) : tx('bd.tl.noVisit')}</td></tr>)}</tbody></table> : <div className="fk-muted">{tx('bd.tl.none')}</div>}
+          </section>
           <section className="fk-panel bd-sec"><h3>{tx('bd.ov.visits')}</h3>
             {o.visits?.length ? <ul className="sg-list">{o.visits.slice(0, 8).map((v: any, i: number) => <li key={i}>{when(v.at ?? v.paidAt ?? v.date) ?? '—'}{v.totalCents != null ? ` · ${fmtMoney(v.totalCents)}` : ''}</li>)}</ul> : <div className="fk-muted">{tx('bd.never')}</div>}
             <h3>{tx('bd.ov.appointments')}</h3>
@@ -279,9 +290,18 @@ function MissingDialog({ onClose, onShow }: { onClose: () => void; onShow: () =>
 
 function HistoryDialog({ onClose }: { onClose: () => void }) {
   const [page, setPage] = useState(1); const [h, setH] = useState<any | null>(null); const [err, setErr] = useState<string | null>(null);
-  useEffect(() => { posBirthdaysApi.history({ page, pageSize: 10 }).then(setH).catch((e) => setErr(errorTextOf(e, tx('pos.loading')))); }, [page]);
+  // A20 Nov 6: search, From–To range and page size
+  const [hq, setHq] = useState(''); const dhq = useDebounced(hq, 300); const [from, setFrom] = useState(''); const [to, setTo] = useState(''); const [size, setSize] = useState(10);
+  useEffect(() => { setPage(1); }, [dhq, from, to, size]);
+  useEffect(() => { setErr(null); posBirthdaysApi.history({ page, pageSize: size, q: dhq || undefined, from: from || undefined, to: to || undefined }).then(setH).catch((e) => setErr(errorTextOf(e, tx('pos.loading')))); }, [page, dhq, from, to, size]);
   return (
     <FitDialog wide title={tx('bd.hist.title')} onClose={onClose} testId="bd-hist" footer={<button type="button" className="fk-btn ghost" onClick={onClose}>{tx('bd.ov.close')}</button>}>
+      <div className="rt-filters sg-tools" data-testid="bd-hist-tools">
+        <input className="fk-input fk-search" type="search" value={hq} onChange={(e) => setHq(e.target.value)} placeholder={tx('bd.hist.search')} aria-label={tx('bd.hist.search')} data-testid="bd-hist-q" />
+        <input className="fk-input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} aria-label={tx('bd.hist.from')} data-testid="bd-hist-from" />
+        <input className="fk-input" type="date" value={to} onChange={(e) => setTo(e.target.value)} aria-label={tx('bd.hist.to')} data-testid="bd-hist-to" />
+        <select className="fk-select" value={String(size)} onChange={(e) => setSize(Number(e.target.value))} aria-label={tx('bd.hist.size')} data-testid="bd-hist-size">{[10, 20, 50].map((n) => <option key={n} value={n}>{n}</option>)}</select>
+      </div>
       {err ? <div className="err">{err}</div> : !h ? <div className="fk-loading">{tx('pos.loading')}</div> : !h.items.length ? <Empty title={tx('bd.hist.empty')} /> : (
         <><table className="fk-table rt-table"><thead><tr><th>{tx('pos.customer')}</th><th>{tx('bd.hist.year')}</th><th>{tx('px.ch.smsEmail')}</th><th>{tx('bd.col.message')}</th><th>{tx('bd.hist.campaign')}</th><th>{tx('bd.col.created')}</th></tr></thead>
           <tbody>{h.items.map((x: any) => <tr key={x.id}><td>{x.customerName}</td><td>{x.occasionYear}</td><td>{x.channel.toUpperCase()}</td><td>{tx('bd.hist.status.' + x.status)}</td><td>{x.campaignName ?? '—'}</td><td>{when(x.claimedAt)}</td></tr>)}</tbody></table>

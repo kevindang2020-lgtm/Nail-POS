@@ -101,4 +101,19 @@ describe('POSBirthdaysScreen', () => {
     mount();
     expect(await screen.findByText(/cannot open Birthday Campaigns/)).toBeInTheDocument();
   });
+  it('A20 Nov 6: activity / source filters and the new date bases reach the server; the Offer column shows; history search, range and page size', async () => {
+    api.customers.mockResolvedValue(list([row({ offerStatus: 'redeemed' })]));
+    api.history.mockResolvedValue({ page: 1, pageSize: 10, totalItems: 0, totalPages: 1, items: [] });
+    mount();
+    expect(await screen.findByTestId('bd-offer')).toHaveTextContent('Redeemed');
+    fireEvent.change(screen.getByTestId('bd-activity'), { target: { value: 'lapsed' } });
+    fireEvent.change(screen.getByTestId('bd-source'), { target: { value: 'customer_app' } });
+    fireEvent.change(screen.getByTestId('bd-basis'), { target: { value: 'last_visit' } });
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ activity: 'lapsed', source: 'customer_app', basis: 'last_visit', page: 1 })));
+    fireEvent.click(screen.getByTestId('bd-history'));
+    fireEvent.change(await screen.findByTestId('bd-hist-from'), { target: { value: '2026-10-01' } });
+    fireEvent.change(screen.getByTestId('bd-hist-size'), { target: { value: '50' } });
+    fireEvent.change(screen.getByTestId('bd-hist-q'), { target: { value: 'sms' } });
+    await waitFor(() => expect(api.history).toHaveBeenLastCalledWith(expect.objectContaining({ from: '2026-10-01', pageSize: 50, q: 'sms', page: 1 })));
+  });
 });

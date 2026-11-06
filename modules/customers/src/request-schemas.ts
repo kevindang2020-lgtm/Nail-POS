@@ -80,7 +80,8 @@ export const RETENTION_SMS_PREVIEW_BODY: BodySchema = S.object({
   customerIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
   selection: S.nullable(S.object({ segment: str(32), q: str(120), excludeIds: S.nullable(S.array(S.uuid(), { maxItems: 5000 })),
     preset: str(16), from: str(10), to: str(10), basis: str(24), band: str(12), sms: str(16), minVisits: S.nullable(S.integer()), sort: str(24), branch: str(40),
-    email: str(16), future: str(8), minDays: S.nullable(S.integer()) })),   // listFilters() reads these too
+    email: str(16), future: str(8), minDays: S.nullable(S.integer()),
+    scope: str(16), category: str(40), technician: str(40), spend: str(8) })),   // A19 Nov 6 filters   // listFilters() reads these too
   body: S.text(600), label: str(120), audience: S.nullable(S.enumOf(['win_back', 'first_visit'])),
 }, ['body']);
 /** PUT /pos/retention/settings — the salon's thresholds (Complete Build Guide §05), optimistic version */
@@ -111,6 +112,8 @@ export const RETENTION_SMS_CANCEL_BODY: BodySchema = S.object({ reason: str(300)
 export const WINBACK_PLAN_BODY: BodySchema = S.object({
   goal: S.enumOf(['inactive_risk', 'inactive_90', 'repeat_visits', 'slow_weekdays', 'promote_service']), channel: S.nullable(S.enumOf(['sms', 'email'])), service: str(60),
 }, ['goal']);
+/** A19 Nov 6: POST /pos/retention/winback/audience/picked — the customers staff picked in the list */
+export const WINBACK_PICKED_BODY: BodySchema = S.object({ customerIds: S.array(S.uuid(), { maxItems: 500 }), channel: S.nullable(S.enumOf(['sms', 'email'])), idempotencyKey: S.text(120) }, ['customerIds', 'idempotencyKey']);
 export const WINBACK_AUDIENCE_BODY: BodySchema = S.object({
   goal: S.enumOf(['inactive_risk', 'inactive_90', 'repeat_visits', 'slow_weekdays', 'promote_service']), channel: S.nullable(S.enumOf(['sms', 'email'])), service: str(60),
   message: str(1000), idempotencyKey: S.text(80),

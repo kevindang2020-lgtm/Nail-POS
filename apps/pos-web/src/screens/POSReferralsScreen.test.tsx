@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 const { api, cust, navigate, perms } = vi.hoisted(() => ({
-  api: { summary: vi.fn(), referrals: vi.fn(), approvals: vi.fn(), referral: vi.fn(), check: vi.fn(), record: vi.fn(), review: vi.fn(), issue: vi.fn(), reverse: vi.fn(), codes: vi.fn(), codeStatus: vi.fn(), health: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(), plan: vi.fn(), save: vi.fn() },
+  api: { summary: vi.fn(), referrals: vi.fn(), approvals: vi.fn(), referral: vi.fn(), check: vi.fn(), record: vi.fn(), review: vi.fn(), issue: vi.fn(), reverse: vi.fn(), codes: vi.fn(), codeStatus: vi.fn(), health: vi.fn(), healthRun: vi.fn(), healthLast: vi.fn(), filterOptions: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(), plan: vi.fn(), save: vi.fn() },
   cust: { quickSearch: vi.fn() }, navigate: vi.fn(), perms: { list: ['marketing.view', 'marketing.manage', 'customers.view'] as string[] } }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posReferralProgramApi', () => ({ posReferralProgramApi: api }));
@@ -23,6 +23,8 @@ beforeEach(() => {
   for (const f of [...Object.values(api), cust.quickSearch, navigate]) f.mockReset();
   perms.list = ['marketing.view', 'marketing.manage', 'customers.view'];
   api.summary.mockResolvedValue(SUM); api.referrals.mockResolvedValue(page([])); api.approvals.mockResolvedValue(page([])); api.health.mockResolvedValue({ overall: 'ready', items: [] });
+  api.healthRun.mockResolvedValue({ overall: 'ready', items: [] }); api.healthLast.mockResolvedValue(null);
+  api.filterOptions.mockResolvedValue({ creators: [{ id: 'u1', name: 'Olivia Owner' }], reviewers: [{ id: 'u2', name: 'Mia Manager' }], branches: [{ id: 'b1', name: 'Main' }, { id: 'b2', name: 'Mall' }] });
 });
 
 describe('POSReferralsScreen', () => {
@@ -80,5 +82,13 @@ describe('POSReferralsScreen', () => {
     api.summary.mockRejectedValue({ status: 403, code: 'PERMISSION_DENIED' });
     mount();
     expect(await screen.findByText('Your role cannot view the Referral Program.')).toBeInTheDocument();
+  });
+  it('A18 Nov 6: risk / branch / recorded-by / reviewed-by filters go to the server', async () => {
+    mount();
+    fireEvent.change(await screen.findByTestId('rfp-f-risk'), { target: { value: 'flagged' } });
+    fireEvent.change(screen.getByTestId('rfp-f-branch'), { target: { value: 'b2' } });
+    fireEvent.change(screen.getByTestId('rfp-f-creator'), { target: { value: 'u1' } });
+    fireEvent.change(screen.getByTestId('rfp-f-reviewer'), { target: { value: 'u2' } });
+    await waitFor(() => expect(api.referrals).toHaveBeenLastCalledWith(expect.objectContaining({ eligibility: 'flagged', branch: 'b2', creator: 'u1', reviewer: 'u2', page: 1 })));
   });
 });

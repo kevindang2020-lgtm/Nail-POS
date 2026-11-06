@@ -203,3 +203,43 @@ describe('§16 send-time block + R40 tenant isolation', () => {
     expect(ids(await repo.customers(ctx2, { segment: 'all', pageSize: 50 }))).toEqual([X]);
   });
 });
+
+describe('A19 Nov 6 — search scopes, category / technician / spend filters, "New" = exactly one visit, Add to eligible audience', () => {
+  it('search in one field only; category, technician and spend-band filters; New counts only first-time customers with one visit', async () => {
+    const all = { segment: 'all', preset: 'year' } as any;
+    expect(ids(await repo.customers(ctx, { ...all, q: 'olga@x', scope: 'email' }))).toEqual([OLD]);
+    expect(ids(await repo.customers(ctx, { ...all, q: 'olga', scope: 'phone' }))).toEqual([]);              // a name is not a phone
+    expect(ids(await repo.customers(ctx, { ...all, q: '0303', scope: 'phone' }))).toEqual([OLD]);
+    expect(ids(await repo.customers(ctx, { ...all, q: 'Olga', scope: 'name' }))).toEqual([OLD]);
+    // Olga's ticket gets a gel line by Tam in the "Gel" category
+    const CAT = id('ca01'), SVC = id('ca02');
+    await q(`insert into service_categories (id, tenant_id, branch_id, name, sort_order, status) values ($1,$2,$3,'Gel',1,'active')`, [CAT, T, B]);
+    await q(`insert into services (id, tenant_id, branch_id, category_id, name, duration_minutes, price_cents, commission_type, commission_value, status) values ($1,$2,$3,$4,'Gel X',45,5000,'percent',0,'active')`, [SVC, T, B, CAT]);
+    const olgaT = (await one(`select id from tickets where tenant_id = $1 and customer_id = $2 limit 1`, [T, OLD])).id;
+    await q(`insert into ticket_service_lines (tenant_id, branch_id, ticket_id, service_id, technician_id, service_name_snapshot, price_cents_snapshot, duration_minutes_snapshot, line_total_cents, status, supply_method_snapshot, supply_value_snapshot)
+      values ($1,$2,$3,$4,$5,'Gel X',5000,45,5000,'completed','none',0)`, [T, B, olgaT, SVC, TECH]);
+    expect(ids(await repo.customers(ctx, { ...all, category: CAT }))).toEqual([OLD]);
+    expect(ids(await repo.customers(ctx, { ...all, technician: TECH }))).toEqual([OLD]);
+    expect(ids(await repo.customers(ctx, { ...all, q: 'gel x', scope: 'service' }))).toEqual([OLD]);
+    const high = ids(await repo.customers(ctx, { ...all, spend: 'high' })), low = ids(await repo.customers(ctx, { ...all, spend: 'low' }));
+    expect(high).toEqual([]);                                                                                   // nobody here spent $500+
+    expect(low.length).toBeGreaterThan(0);
+    // New = first visit in the period AND exactly one visit: Owen (one visit 10 days ago) yes; Dee (two tickets) no
+    // date-proof window: the last 60 salon days (a calendar month / year would miss Owen on the 1st–10th)
+    const nyDay = (back: number) => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/New_York' }).format(new Date(Date.now() - back * 86_400_000));
+    const win = { preset: 'custom', from: nyDay(60), to: nyDay(0) } as any;
+    const nv = ids(await repo.customers(ctx, { segment: 'new_visitors', ...win } as any));
+    expect(nv).toContain(ONE); expect(nv).not.toContain(DUP);
+    expect((await repo.summary(ctx, win) as any).segments.new_visitors).toBe(nv.length);
+  });
+  it('Add to eligible audience: picked customers become ONE unsent draft with their verdicts; a repeat is the same draft; none eligible is refused', async () => {
+    const audits: any[] = [];
+    const d: any = await wb.addToAudience(ctx, { customerIds: [OLD, NC, TWO], channel: 'sms', idempotencyKey: 'wb-pick-0001' }, async (_t, m) => { audits.push(m); });
+    expect(d).toMatchObject({ status: 'draft', selected: 3, sends: 0, duplicate: false });
+    expect(d.eligible).toBeGreaterThanOrEqual(1); expect(d.excluded).toBeGreaterThanOrEqual(1);              // Nico has no SMS consent
+    expect((await wb.addToAudience(ctx, { customerIds: [OLD, NC, TWO], channel: 'sms', idempotencyKey: 'wb-pick-0001' }, async () => undefined) as any).duplicate).toBe(true);
+    expect(await code(wb.addToAudience(ctx, { customerIds: [NC], channel: 'sms', idempotencyKey: 'wb-pick-0002' }, async () => undefined))).toBe('WINBACK_AUDIENCE_EMPTY');
+    expect(await code(wb.addToAudience(ctx, { customerIds: [], idempotencyKey: 'wb-pick-0003' }, async () => undefined))).toBe('WINBACK_AUDIENCE_EMPTY');
+    expect(audits[0]).toMatchObject({ picked: 3 });
+  });
+});

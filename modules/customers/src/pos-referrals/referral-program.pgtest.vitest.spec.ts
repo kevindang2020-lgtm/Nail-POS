@@ -174,6 +174,8 @@ describe('record → qualify → approve → issue ONCE (T03, T06–T13)', () =>
   });
   it('T15: a cash payout has no approved provider — BLOCKED_EXTERNAL, nothing paid; Rewards Paid stays $0', async () => {
     await setPolicy({ rewardType: 'cash_payout', rewardCents: 1000, requiresApproval: false, separationOfDuties: false });
+    // A18 Nov 6: more than 3 referrals by one referrer in 7 days is a risk signal; Rita's earlier test referrals are moved a month back
+    await q(sql`update referral_redemptions set redeemed_at = now() - interval '30 days' where tenant_id = ${T}`);
     await rp.record(ctx(), { code: 'RITA10', referredCustomerId: C.quinn, idempotencyKey: 'rec-quinn-1' });
     expect((await rp.qualifyForTicket(T, await ticket(C.quinn, 7000), 'e3')).outcome).toBe('auto_approved');
     expect((await reward((await ref(C.quinn)).id)).state).toBe('BLOCKED_EXTERNAL');
@@ -237,5 +239,34 @@ describe('search, dates, pagination, health and the security boundary (T20–T24
   });
   it('events are append-only (UPDATE / DELETE refused by the database)', async () => {
     expect(await code(q(sql`delete from referral_events where tenant_id = ${T}`))).toMatch(/append-only|P0001/);
+  });
+});
+
+describe('A18 Nov 6 — more risk signals, risk / creator / reviewer / branch filters, communication, recorded checks', () => {
+  it('a fourth referral by one referrer inside 7 days carries the velocity signal; filters find flagged and clean rows; the check run is recorded', async () => {
+    const flagsOf = async (referredId: string) => rp.fraudSignals(T, C.rita, referredId, null);
+    await q(sql`update referral_redemptions set redeemed_at = now() where tenant_id = ${T}`);
+    const n = Number((await q(sql`select count(*)::int n from referral_redemptions where tenant_id = ${T} and referrer_customer_id = ${C.rita}`))[0].n);
+    const f = (await flagsOf(C.nia)).map((x: any) => x.code);
+    if (n + 1 > 3) expect(f).toContain('referral_velocity'); else expect(f).not.toContain('referral_velocity');
+    await q(sql`update referral_redemptions set redeemed_at = now() - interval '30 days' where tenant_id = ${T}`);
+    expect((await flagsOf(C.nia)).map((x: any) => x.code)).not.toContain('referral_velocity');
+    const flagged = await rp.list(ctx(), { eligibility: 'flagged' }); const clean = await rp.list(ctx(), { eligibility: 'clean' });
+    expect(flagged.totalItems + clean.totalItems).toBe((await rp.list(ctx(), {})).totalItems);
+    expect(flagged.items.every((r: any) => r.flags.length > 0)).toBe(true); expect(clean.items.every((r: any) => r.flags.length === 0)).toBe(true);
+    expect((await rp.list(ctx(), { creator: OWNER })).totalItems).toBe((await rp.list(ctx(), {})).totalItems);
+    expect((await rp.list(ctx(), { creator: X })).totalItems).toBe(0);
+    const opts = await rp.filterOptions(ctx());
+    expect(opts.creators.map((c: any) => c.id)).toContain(OWNER);
+    const run = await rp.health(ctx(), { record: true });
+    expect(run.runId).toBeTruthy(); expect((await rp.lastHealth(ctx()))?.id).toBe(run.runId);
+    expect(await rp.lastHealth(ctx(OWNER, X, BX))).toBeNull();
+  });
+  it('the overlay communication tab lists the salon’s messages to both customers', async () => {
+    const r = (await rp.list(ctx(), {})).items[0];
+    const d: any = await rp.detail(ctx(), r.id);
+    await q(sql`insert into notifications (tenant_id, channel, to_address, body, status, customer_id) values (${T}, 'sms', '+16095550111', 'See you soon!', 'sent', ${d.referrerProfile.customerId})`);
+    const d2: any = await rp.detail(ctx(), r.id);
+    expect(d2.communication.items.map((m: any) => [m.who, m.preview])).toContainEqual(['referrer', 'See you soon!']);
   });
 });

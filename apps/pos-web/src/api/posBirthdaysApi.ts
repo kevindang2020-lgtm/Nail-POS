@@ -4,14 +4,14 @@
 // Smart Birthday Campaign Assistant (an UNSENT draft in Campaign Center — nothing here sends). Tenant/branch: the session.
 import { api } from './client';
 const enc = encodeURIComponent;
-export type BirthdayQuery = { scope?: string; preset?: string; month?: number; from?: string; to?: string; basis?: string; q?: string; eligibility?: string; tier?: string; sort?: string; page?: number; pageSize?: number };
+export type BirthdayQuery = { scope?: string; preset?: string; month?: number; from?: string; to?: string; basis?: string; q?: string; eligibility?: string; tier?: string; sort?: string; page?: number; pageSize?: number; activity?: string; source?: string };
 export type AssistantInput = { objective: 'greeting' | 'service_promotion' | 'loyalty_reward'; channel: 'sms' | 'email'; preset?: string; month?: number; from?: string; to?: string; dealId?: string | null; templateId?: string | null };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export const posBirthdaysApi = {
   summary: (q: Pick<BirthdayQuery, 'preset' | 'month' | 'from' | 'to'>) => api.get<any>(`/pos/birthdays/summary`, clean(q)),
   customers: (q: BirthdayQuery) => api.get<any>(`/pos/birthdays/customers`, clean(q)),
   missing: () => api.get<any>(`/pos/birthdays/missing`),
-  history: (q: { q?: string; page?: number; pageSize?: number; year?: number }) => api.get<any>(`/pos/birthdays/history`, clean(q)),
+  history: (q: { q?: string; page?: number; pageSize?: number; year?: number; from?: string; to?: string }) => api.get<any>(`/pos/birthdays/history`, clean(q)),
   settings: () => api.get<any>(`/pos/birthdays/settings`),
   saveSettings: (b: { feb29Policy: 'feb28' | 'mar1'; expectedVersion: number }) => api.put<any>(`/pos/birthdays/settings`, b),
   customer: (id: string) => api.get<any>(`/pos/birthdays/customers/${enc(id)}`),

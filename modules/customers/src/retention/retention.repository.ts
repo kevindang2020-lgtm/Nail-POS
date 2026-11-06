@@ -110,7 +110,10 @@ export function composeRetentionSms(body: string, salonName?: string | null): st
 
 export interface RetentionSettings { riskDays: number; approachingDays: number; observationWindowDays: number; version: number; isDefault: boolean; updatedAt: string | null; updatedByUserId: string | null }
 export interface PeriodInput { preset?: unknown; from?: unknown; to?: unknown; branch?: unknown }
-export interface ListFilters extends PeriodInput { segment?: string; q?: string; sort?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
+/** A19 Nov 6: where the search looks (all = name, email, phone, ids, services); spend bands in cents */
+export const SEARCH_SCOPES = ['all', 'name', 'phone', 'email', 'service', 'id'] as const;
+export const SPEND_BANDS = { low: [0, 10_000], mid: [10_000, 50_000], high: [50_000, null] } as const;
+export interface ListFilters extends PeriodInput { segment?: string; q?: string; sort?: string; scope?: string; category?: string; technician?: string; spend?: string; basis?: string; band?: string; sms?: string; email?: string; future?: string; minDays?: unknown; minVisits?: unknown; page?: unknown; pageSize?: unknown }
 /** Win-Back guide §06: the inactivity presets (salon days since the last completed visit); custom = any whole number 1–3650 */
 export const INACTIVITY_PRESETS = [30, 60, 90, 120] as const;
 /** the resolved window every read uses: salon time zone, the period [start, end) and the effective thresholds */
@@ -310,7 +313,8 @@ export class RetentionRepository {
       case 'recovered': case 'returned': return sql`b.recovered_in`;
       case 'contactable': return sql`b.visits > 0 and b.days_away >= ${k.risk} and b.sms_status = 'eligible'`;
       case 'returning': return sql`b.returned_in`;
-      case 'new_visitors': return sql`b.first_visit >= ${k.start} and b.first_visit < ${k.end}`;
+      // A19 Nov 6 (guide: "New" = exactly one visit): first visit in the period AND no second visit yet
+      case 'new_visitors': return sql`b.visits = 1 and b.first_visit >= ${k.start} and b.first_visit < ${k.end}`;
       // Win-Back guide §05: Already Rebooked = has visited before AND holds an upcoming booking (suppressed from win-back);
       // Contacted = a marketing message was submitted to them in the period (Retention SMS or Campaign Center, any channel)
       case 'rebooked': return sql`b.visits > 0 and b.next_date is not null`;
@@ -332,7 +336,15 @@ export class RetentionRepository {
     const basis = pick(DATE_BASES, f.basis) ?? 'none';
     const band = pick(PRIORITY_BANDS, f.band);
     const minVisits = Math.max(0, Math.trunc(Number(f.minVisits)) || 0);
-    const parts = [this.segmentWhere(seg, k), this.search(ctx, f.q)];
+    const parts = [this.segmentWhere(seg, k), this.search(ctx, f.q, pick(SEARCH_SCOPES, f.scope) ?? 'all')];
+    // A19 Nov 6: service category / technician (a settled visit with it) and lifetime-spend band
+    const T = ctx.tenantId;
+    if (isUuid(f.category)) parts.push(sql`exists (select 1 from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id join services sv on sv.id = l.service_id and sv.tenant_id = l.tenant_id
+      where l.tenant_id = ${T} and t.customer_id = b.id and l.removed_at is null and t.removed_at is null and t.status = any(${VISIT}::text[]) and sv.category_id = ${f.category})`);
+    if (isUuid(f.technician)) parts.push(sql`exists (select 1 from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
+      where l.tenant_id = ${T} and t.customer_id = b.id and l.removed_at is null and t.removed_at is null and t.status = any(${VISIT}::text[]) and l.technician_id = ${f.technician})`);
+    const sb = f.spend === 'low' || f.spend === 'mid' || f.spend === 'high' ? SPEND_BANDS[f.spend] : null;
+    if (sb) parts.push(sb[1] == null ? sql`b.spend >= ${sb[0]}` : sql`b.spend >= ${sb[0]} and b.spend < ${sb[1]}`);
     if (basis === 'campaign') parts.push(sql`exists (select 1 from retention_sms_recipients r where r.tenant_id = ${ctx.tenantId} and r.customer_id = b.id and r.status <> 'excluded'
       and coalesce(r.sent_at, r.created_at) >= ${k.start} and coalesce(r.sent_at, r.created_at) < ${k.end})`);
     else if (basis !== 'none') parts.push(this.basisWhere(basis, k));
@@ -346,7 +358,7 @@ export class RetentionRepository {
     if (f.email === 'eligible') parts.push(sql`b.email_status = 'eligible'`); else if (f.email === 'not_eligible') parts.push(sql`b.email_status <> 'eligible'`);
     else if (f.email === 'opted_out') parts.push(sql`(b.email_status = 'opted_out' or b.sms_status = 'opted_out')`);
     if (f.future === 'yes') parts.push(sql`b.next_date is not null`); else if (f.future === 'no') parts.push(sql`b.next_date is null`);
-    return { where: sql.join(parts, sql` and `), applied: { basis, band: band ?? null, sms: f.sms === 'eligible' || f.sms === 'not_eligible' ? f.sms : null, minVisits: minVisits || null,
+    return { where: sql.join(parts, sql` and `), applied: { scope: pick(SEARCH_SCOPES, f.scope) ?? 'all', category: isUuid(f.category) ? f.category : null, technician: isUuid(f.technician) ? f.technician : null, spend: sb ? f.spend : null, basis, band: band ?? null, sms: f.sms === 'eligible' || f.sms === 'not_eligible' ? f.sms : null, minVisits: minVisits || null,
       minDays, email: ['eligible', 'not_eligible', 'opted_out'].includes(String(f.email)) ? String(f.email) : null, future: f.future === 'yes' || f.future === 'no' ? f.future : null } };
   }
   /** spec §10: All Customers = newest profile first; Win-Back (At Risk) = Smart Priority; the others their natural order */
@@ -370,9 +382,10 @@ export class RetentionRepository {
   }
   /** spec §08 universal search over the whole salon: name · phone digits · exact customer id · appointment / ticket id or
    *  ticket number · a service the customer had on a settled ticket */
-  search(ctx: RetentionContext, q?: string) {
+  search(ctx: RetentionContext, q?: string, scope: (typeof SEARCH_SCOPES)[number] = 'all') {
     const raw = String(q ?? '').trim().slice(0, 100); if (!raw) return sql`true`;
     const T = ctx.tenantId;
+    if (scope !== 'all') return this.scoped(T, raw, scope);
     if (isUuid(String(raw))) return sql`(b.id = ${raw}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${raw}::uuid and a.customer_id = b.id)
       or exists (select 1 from tickets t where t.tenant_id = ${T} and t.id = ${raw}::uuid and t.customer_id = b.id))`;
     const digits = raw.replace(/\D/g, '');
@@ -388,6 +401,20 @@ export class RetentionRepository {
       return sql`(coalesce(b.normalized_phone, '') like ${'%' + digits + '%'} or exists (select 1 from tickets t where t.tenant_id = ${T} and t.customer_id = b.id and t.ticket_number::text = ${raw}))`;
     }
     return sql`(${name} or ${email} or ${service})`;
+  }
+  /** A19 Nov 6: one field only (the Search in … picker) */
+  private scoped(T: string, raw: string, scope: Exclude<(typeof SEARCH_SCOPES)[number], 'all'>) {
+    const esc = (x: string) => x.replace(/[\\%_]/g, (m) => '\\' + m);
+    const digits = raw.replace(/\D/g, '');
+    switch (scope) {
+      case 'name': { const words = raw.split(/\s+/).filter(Boolean).slice(0, 5); return sql`(${sql.join(words.map((w) => sql`vi_fold(coalesce(b.full_name, '')) like '%' || vi_fold(${esc(w)}) || '%'`), sql` and `)})`; }
+      case 'phone': return digits.length >= 3 ? sql`coalesce(b.normalized_phone, '') like ${'%' + digits + '%'}` : sql`false`;
+      case 'email': return sql`coalesce(b.email, '') ilike ${'%' + esc(raw) + '%'}`;
+      case 'service': return sql`exists (select 1 from ticket_service_lines l join tickets t on t.id = l.ticket_id and t.tenant_id = l.tenant_id
+        where l.tenant_id = ${T} and t.customer_id = b.id and l.removed_at is null and t.removed_at is null and t.status = any(${VISIT}::text[]) and l.service_name_snapshot ilike ${'%' + esc(raw) + '%'})`;
+      case 'id': return isUuid(raw) ? sql`(b.id = ${raw}::uuid or exists (select 1 from pos_tech_appointments a where a.tenant_id = ${T} and a.id = ${raw}::uuid and a.customer_id = b.id)
+        or exists (select 1 from tickets t where t.tenant_id = ${T} and t.id = ${raw}::uuid and t.customer_id = b.id))` : sql`exists (select 1 from tickets t where t.tenant_id = ${T} and t.customer_id = b.id and t.ticket_number::text = ${raw})`;
+    }
   }
   private row(r: any): RetentionRow {
     const st = String(r.sms_status) as RetentionRow['smsStatus'];
@@ -412,7 +439,7 @@ export class RetentionRepository {
     const r = (await sql<any>`${this.base(ctx, k)}
       select count(*) filter (where b.visited_in)::int as visited_in,
              count(*) filter (where b.returned_in)::int as returning,
-             count(*) filter (where b.first_visit >= ${k.start} and b.first_visit < ${k.end})::int as new_first_visit,
+             count(*) filter (where b.visits = 1 and b.first_visit >= ${k.start} and b.first_visit < ${k.end})::int as new_first_visit,
              count(*) filter (where b.created_at >= ${k.start} and b.created_at < ${k.end})::int as new_registered,
              count(*) filter (where b.segment = 'at_risk')::int as at_risk,
              count(*) filter (where b.visits > 0 and b.days_away >= ${Math.max(90, k.risk)})::int as at_risk_90,

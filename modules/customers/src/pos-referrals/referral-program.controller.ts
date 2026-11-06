@@ -6,6 +6,7 @@
 //                                              policy · assistant (an UNSENT audience only — Campaign Center sends after approval)
 // Every manager action and every sensitive read writes an audit row in the same transaction (fail-closed).
 import { ListQuery } from '@aipowersalon/database';
+import type { ReferralHealthRun, ReferralHealthResult, ReferralFilterOptions } from '@aipowersalon/api-contracts/tenant';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
@@ -13,7 +14,7 @@ import { Controller, Get, Post, Put, Body, Param, Query, Req, UseGuards, HttpExc
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { isUuid, type RetentionContext } from '../retention/retention.repository';
 import { SegmentsError } from '../segments/segments.repository';
-import { ReferralProgram, ReferralProgramError, RP_TABS, RP_SORTS, RP_BASES, RP_PRESETS, RP_REWARD_TYPES, RP_GOALS, RP_REVIEW_ACTIONS } from './referral-program';
+import { ReferralProgram, RP_RISK_FILTER, ReferralProgramError, RP_TABS, RP_SORTS, RP_BASES, RP_PRESETS, RP_REWARD_TYPES, RP_GOALS, RP_REVIEW_ACTIONS } from './referral-program';
 
 export const REFERRAL_PROGRAM = 'ReferralProgram';
 
@@ -52,7 +53,8 @@ async function run<T>(fn: () => Promise<T>): Promise<T> {
 }
 const actor = (c: RetentionContext) => ({ tenantId: c.tenantId, branchId: isUuid(c.branchId) ? c.branchId : null, userId: c.userId, role: c.role });
 const LIST = {
-  filters: { tab: { type: 'enum', values: RP_TABS }, basis: { type: 'enum', values: RP_BASES }, preset: { type: 'enum', values: RP_PRESETS }, rewardType: { type: 'enum', values: RP_REWARD_TYPES } },
+  filters: { tab: { type: 'enum', values: RP_TABS }, basis: { type: 'enum', values: RP_BASES }, preset: { type: 'enum', values: RP_PRESETS }, rewardType: { type: 'enum', values: RP_REWARD_TYPES },
+    branch: { type: 'text', maxLength: 40 }, eligibility: { type: 'enum', values: RP_RISK_FILTER }, creator: { type: 'uuid' }, reviewer: { type: 'uuid' } },
   sorts: { newest: null, oldest: null, name_asc: null, name_desc: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'],
 } as const;
 
@@ -127,6 +129,14 @@ export class ReferralProgramController {
     const c = ctxFrom(q); need(c, 'pos.marketing.manage');
     return run(() => this.r().setCodeStatus(c, id, b, this.audit(c, 'referrals.code.status', 'referral_code', id, `Referral code ${String(b?.status)}`)));
   }
+
+  /** A18 Nov 6: run the check AND record it; the last recorded run; the filter people / branches */
+  @Post('health/run') @RequirePermission('pos.marketing.view')
+  healthRun(@Req() q: any): Promise<ReferralHealthResult> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().health(c, { record: true })); }
+  @Get('health/last') @RequirePermission('pos.marketing.view')
+  healthLast(@Req() q: any): Promise<ReferralHealthRun | null> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().lastHealth(c)); }
+  @Get('filter-options') @RequirePermission('pos.marketing.view')
+  filterOptions(@Req() q: any): Promise<ReferralFilterOptions> { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().filterOptions(c)); }
 
   /** Check Referral System — non-mutating */
   @Get('health') @RequirePermission('pos.marketing.view')

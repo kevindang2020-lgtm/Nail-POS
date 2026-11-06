@@ -101,3 +101,18 @@ Also fixed (exposed while regenerating the state vocabularies): `birthday_messag
 3. **Approval**: manager approval required (default on); separation of duties (default off — a solo owner could not approve otherwise).
 4. **Legacy hand-marked rewards** (UNDER_REVIEW after backfill): honour them (issue points), or reject them?
 5. Should Front Desk be able to record referrals? Today it has no marketing access (403), as for Coupons / Birthdays.
+
+## Built Nov 6 2026 (A18 — Kevin: "continue finish all")
+
+- **List filters.** Branch (or "no branch"), risk signals (flagged / clean), recorded by, reviewed by. The people and branches in the
+  filters come from real rows (`GET /pos/referral-program/filter-options`).
+- **More risk signals.** These still only send a referral to a person for review; nothing is merged or confiscated.
+  - `referral_velocity`: more than 3 referrals by one referrer in 7 days.
+  - `existing_customer`: the new customer had a paid visit before this referral.
+  - `same_name`: the referrer and the new customer have the same first and last name.
+- **Communication tab.** Shows the salon's messages to the referrer and to the new customer. The program itself still sends nothing.
+- **Recorded checks.** `POST …/health/run` records each run in `referral_health_runs` (migration 832); `GET …/health/last`
+  returns the latest. `GET …/health` stays non-mutating.
+- **Tests:**
+  - `referral-program.pgtest` (25). T15 was rewritten for the velocity truth: earlier referrals are moved a month back.
+  - `POSReferralsScreen.test` (7)

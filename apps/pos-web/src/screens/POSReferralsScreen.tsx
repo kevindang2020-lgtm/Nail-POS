@@ -12,7 +12,7 @@ import { posReferralProgramApi, type ReferralQuery } from '../api/posReferralPro
 import { posCustomersApi } from '../api/posCustomersApi';
 import { useCan } from '../components/usePermissions';
 import { errorTextOf } from '../i18n/error-text';
-import { fmtMoney, fmtNumber, fmtInZone } from '../i18n/format';
+import { fmtMoney, fmtNumber, fmtInZone, fmtDateTime } from '../i18n/format';
 import { FitDialog, KpiCard, Pager, Empty, ErrorRetry, useDebounced, requestId } from '../components/FitKit';
 import { RangeCalendar } from '../components/FinanceKit';
 import { deviceToday } from '../lib/deviceToday';
@@ -40,6 +40,10 @@ export function POSReferralsScreen() {
   const [search, setSearch] = useState('');
   const q = useDebounced(search.trim(), 300);
   const [rewardType, setRewardType] = useState('');
+  // A18 Nov 6: branch / risk / creator / reviewer filters (people and branches from real rows)
+  const [xf, setXf] = useState<{ branch?: string; eligibility?: string; creator?: string; reviewer?: string }>({});
+  const [fo, setFo] = useState<{ creators: { id: string; name: string }[]; reviewers: { id: string; name: string }[]; branches: { id: string; name: string }[] } | null>(null);
+  useEffect(() => { posReferralProgramApi.filterOptions().then(setFo).catch(() => setFo(null)); }, []);
   const [basis, setBasis] = useState<string>('recorded');
   const [preset, setPreset] = useState<string>('');
   const [range, setRange] = useState<{ from: string; to: string } | null>(null);
@@ -57,8 +61,8 @@ export function POSReferralsScreen() {
   const [dlg, setDlg] = useState<Dlg>(null);
 
   const rangeQ = useMemo(() => (preset === 'custom' && range ? { preset: 'custom', from: range.from, to: range.to } : preset ? { preset } : {}), [preset, range]);
-  const query: ReferralQuery = useMemo(() => ({ tab, q: q || undefined, rewardType: rewardType || undefined, basis: preset ? basis : undefined, ...rangeQ, sort, page, pageSize }), [tab, q, rewardType, basis, preset, rangeQ, sort, page, pageSize]);
-  useEffect(() => { setPage(1); }, [tab, q, rewardType, basis, preset, range, sort, pageSize]);   // any filter change → page 1
+  const query: ReferralQuery = useMemo(() => ({ tab, q: q || undefined, rewardType: rewardType || undefined, ...xf, basis: preset ? basis : undefined, ...rangeQ, sort, page, pageSize }), [tab, q, rewardType, xf, basis, preset, rangeQ, sort, page, pageSize]);
+  useEffect(() => { setPage(1); }, [tab, q, rewardType, xf, basis, preset, range, sort, pageSize]);   // any filter change → page 1
 
   const load = useCallback(async () => {
     setErr(null);
@@ -110,6 +114,16 @@ export function POSReferralsScreen() {
         <input className="fk-input fk-search sg-search" type="search" placeholder={tx('rfp.search')} aria-label={tx('rfp.search')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="rfp-search" />
         <select className="fk-select" aria-label={tx('rfp.rewardType')} value={rewardType} onChange={(e) => setRewardType(e.target.value)} data-testid="rfp-reward-type">
           <option value="">{tx('rfp.rewardType.any')}</option><option value="loyalty_points">{tx('rfp.rewardType.loyalty_points')}</option><option value="cash_payout">{tx('rfp.rewardType.cash_payout')}</option><option value="salon_voucher">{tx('rfp.rewardType.salon_voucher')}</option></select>
+        {fo ? <>
+          <select className="fk-select" aria-label={tx('rfp.f.risk')} value={xf.eligibility ?? ''} onChange={(e) => setXf((o) => ({ ...o, eligibility: e.target.value || undefined }))} data-testid="rfp-f-risk">
+            <option value="">{tx('rfp.f.riskAny')}</option><option value="flagged">{tx('rfp.f.flagged')}</option><option value="clean">{tx('rfp.f.clean')}</option></select>
+          {fo.branches.length > 1 ? <select className="fk-select" aria-label={tx('rfp.f.branch')} value={xf.branch ?? ''} onChange={(e) => setXf((o) => ({ ...o, branch: e.target.value || undefined }))} data-testid="rfp-f-branch">
+            <option value="">{tx('rfp.f.branchAny')}</option>{fo.branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}</select> : null}
+          <select className="fk-select" aria-label={tx('rfp.f.creator')} value={xf.creator ?? ''} onChange={(e) => setXf((o) => ({ ...o, creator: e.target.value || undefined }))} data-testid="rfp-f-creator">
+            <option value="">{tx('rfp.f.creatorAny')}</option>{fo.creators.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+          <select className="fk-select" aria-label={tx('rfp.f.reviewer')} value={xf.reviewer ?? ''} onChange={(e) => setXf((o) => ({ ...o, reviewer: e.target.value || undefined }))} data-testid="rfp-f-reviewer">
+            <option value="">{tx('rfp.f.reviewerAny')}</option>{fo.reviewers.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}</select>
+        </> : null}
         <div className="fk-seg rfp-presets">
           {PRESETS.map((p) => <button key={p} type="button" className={preset === p ? 'on' : ''} aria-pressed={preset === p} onClick={() => { setPreset(preset === p ? '' : p); setCalOpen(false); }} data-testid={'rfp-preset-' + p}>{tx('rfp.preset.' + p)}</button>)}
           <button type="button" className={preset === 'custom' ? 'on' : ''} aria-pressed={preset === 'custom'} aria-haspopup="dialog" aria-expanded={calOpen} onClick={() => setCalOpen((o) => !o)} data-testid="rfp-preset-custom">{preset === 'custom' && range ? rangeText : tx('rfp.preset.custom')}</button>
@@ -315,7 +329,9 @@ function ReferralDialog({ id, canManage, onClose, onChanged, onBook, onProfile }
             <dt>{tx('rfp.f.issued')}</dt><dd>{when(w.issuedAt) ?? '—'}</dd><dt>{tx('rfp.f.ledger')}</dt><dd>{w.ledger ? tx('rfp.f.ledgerValue', { delta: nf(w.ledger.delta), bal: nf(w.ledger.balanceAfter) }) : '—'}</dd>
             {w.issueError ? <><dt>{tx('rfp.f.error')}</dt><dd>{w.issueError}</dd></> : null}
             {w.reversedAt ? <><dt>{tx('rfp.f.reversed')}</dt><dd>{when(w.reversedAt)} · {w.reversalReason}{w.reversalShortfall ? ' · ' + tx('rfp.f.shortfall', { n: nf(w.reversalShortfall) }) : ''}</dd></> : null}</dl> : <Empty title={d.qualifiedAt ? tx('rfp.noRewardYet') : tx('rfp.notQualifiedYet')} />) : null}
-          {tab === 'communication' ? <Empty title={d.communication.note} /> : null}
+          {tab === 'communication' ? (d.communication.items.length ? <>
+            <table className="fk-table" data-testid="rfp-comm"><tbody>{d.communication.items.map((m: any) => <tr key={m.id}><td>{fmtDateTime(m.at)}</td><td>{tx('rfp.comm.' + m.who)}</td><td>{m.channel}</td><td>{m.status}</td><td>{m.preview}</td></tr>)}</tbody></table>
+            <div className="fk-hint">{d.communication.note}</div></> : <Empty title={tx('rfp.comm.none')}>{d.communication.note}</Empty>) : null}
           {tab === 'audit' ? <ol className="rfp-audit" data-testid="rfp-audit">{d.audit.map((e: any, i: number) => <li key={i}><b>{tx('rfp.ev.' + e.type) !== 'rfp.ev.' + e.type ? tx('rfp.ev.' + e.type) : e.type}</b> · {when(e.at)}{e.actor ? ' · ' + e.actor : ''}{e.to ? ' → ' + stLabel(e.to) : ''}{e.reason ? <div className="fk-muted">{e.reason}</div> : null}</li>)}</ol> : null}
         </div>
         {canManage ? <div className="rfp-manage" data-testid="rfp-manage">
@@ -335,12 +351,16 @@ function ReferralDialog({ id, canManage, onClose, onChanged, onBook, onProfile }
 
 function HealthDialog({ onClose }: { onClose: () => void }) {
   const [h, setH] = useState<any | null>(null); const [err, setErr] = useState<string | null>(null);
-  const run = useCallback(async () => { setErr(null); setH(null); try { setH(await posReferralProgramApi.health()); } catch (e: any) { setErr(errorTextOf(e, tx('rfp.loading'))); } }, []);
+  // A18 Nov 6: every run is recorded; the previous run is shown for comparison
+  const [prev, setPrev] = useState<any>(null);
+  useEffect(() => { posReferralProgramApi.healthLast().then(setPrev).catch(() => setPrev(null)); }, []);
+  const run = useCallback(async () => { setErr(null); setH(null); try { setH(await posReferralProgramApi.healthRun()); } catch (e: any) { setErr(errorTextOf(e, tx('rfp.loading'))); } }, []);
   useEffect(() => { void run(); }, [run]);
   return (
     <FitDialog title={tx('rfp.health')} subtitle={tx('rfp.healthSub')} onClose={onClose} wide testId="rfp-health-dialog" footer={<><button type="button" className="fk-btn ghost" onClick={run}>{tx('rfp.refresh')}</button><button type="button" className="fk-btn" onClick={onClose}>{tx('rfp.close')}</button></>}>
       {err ? <ErrorRetry message={err} onRetry={run} /> : !h ? <div className="fk-loading">{tx('rfp.loading')}</div> : (<>
         <div className={'fk-chip ' + (h.overall === 'ready' ? 'ok' : h.overall === 'failed' ? 'bad' : 'warn')} data-testid="rfp-health-overall">{tx('rfp.hs.' + h.overall)}</div>
+        {prev ? <div className="fk-muted" data-testid="rfp-health-prev">{tx('rfp.healthPrev', { when: fmtDateTime(prev.at), state: tx('rfp.hs.' + prev.overall) })}</div> : null}
         <table className="fk-table"><thead><tr><th>{tx('rfp.h.part')}</th><th>{tx('rfp.h.status')}</th><th>{tx('rfp.h.summary')}</th><th>{tx('rfp.h.fix')}</th></tr></thead>
           <tbody>{h.items.map((i: any) => <tr key={i.key} data-testid={'rfp-h-' + i.key}><td>{tx('rfp.hk.' + i.key)}</td><td><span className={'fk-chip ' + (i.status === 'ready' ? 'ok' : i.status === 'failed' ? 'bad' : 'warn')}>{tx('rfp.hs.' + i.status)}</span></td>
             <td>{i.summary}<div className="fk-muted">{i.evidence}</div></td><td>{i.fix ?? '—'}</td></tr>)}</tbody></table>

@@ -130,3 +130,21 @@ The two mutation checks show what each fix guards:
 1. Run "Check Retention Data" automatically every night, with an alert when a check fails?
 2. Should a failed check, such as a queued text to a never-visited customer, also cancel the pending win-back campaign automatically? Today the worker blocks each such text at send time and the check only reports it.
 3. Is a 5-minute same-amount window the right definition of a "possible double checkout"?
+
+## Built Nov 6 2026 (A19 — Kevin: "continue finish all")
+
+- **Search in.** Everything (unchanged), name, phone, email, service, or ID / ticket number.
+- **New filters:**
+  - service category and technician (the customer had a settled visit with that category or technician);
+  - lifetime spend: under $100, $100–$500, $500 or more (`SPEND_BANDS`).
+- **"New" changed (as the guide asks).** A customer is New when their first visit is in the period AND they have exactly one
+  visit. The "New" KPI and tab use this definition. The monthly trend line still counts first visits; that is a different measure.
+- **Add to eligible audience.** The customers picked in the list become one unsent audience draft
+  (`POST /pos/retention/winback/audience/picked`).
+  - Every picked customer gets its verdict.
+  - Repeating the same request returns the same draft.
+  - If no picked customer can receive the message, the request is refused.
+  - The draft is audited, and Campaign Center reviews and sends it.
+- **Tests:**
+  - `winback-center.pgtest` (13; the date window is the last 60 salon days, so it does not fail early in a month)
+  - `POSRetentionScreen.test` (12)

@@ -8,7 +8,7 @@
 import { api } from './client';
 const enc = encodeURIComponent;
 export type RetentionPeriodQuery = { preset?: string; from?: string; to?: string; branch?: string };
-export type RetentionListQuery = RetentionPeriodQuery & { segment: string; page: number; pageSize: number; q?: string; sort?: string; basis?: string; band?: string; sms?: string; minVisits?: number;
+export type RetentionListQuery = RetentionPeriodQuery & { segment: string; page: number; pageSize: number; q?: string; scope?: string; category?: string; technician?: string; spend?: string; sort?: string; basis?: string; band?: string; sms?: string; minVisits?: number;
   /** Win-Back guide §06: inactivity threshold (salon days), marketing-email eligibility, upcoming booking yes / no */ minDays?: number; email?: string; future?: string };
 export type RetentionSelection = Omit<RetentionListQuery, 'page' | 'pageSize'> & { excludeIds?: string[] };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
@@ -26,6 +26,8 @@ export const posRetentionApi = {
   health: () => api.get<any>(`/pos/retention/health`),
   healthCheck: () => api.post<any>(`/pos/retention/health-check`, {}),
   winbackPlan: (b: { goal: string; channel?: 'sms' | 'email'; service?: string }) => api.post<any>(`/pos/retention/winback/plan`, b),
+  /** A19 Nov 6: the picked customers become an unsent win-back audience draft (Campaign Center sends) */
+  winbackPicked: (b: { customerIds: string[]; channel?: 'sms' | 'email'; idempotencyKey: string }) => api.post<any>(`/pos/retention/winback/audience/picked`, b),
   winbackAudience: (b: { goal: string; channel?: 'sms' | 'email'; service?: string; message?: string; idempotencyKey: string }) => api.post<any>(`/pos/retention/winback/audience`, b),
   preview: (b: { customerIds?: string[]; selection?: RetentionSelection; body: string; label?: string; audience?: 'win_back' | 'first_visit' }) => api.post<any>(`/pos/retention/sms/preview`, b as Record<string, unknown>),
   confirm: (b: { previewId: string; idempotencyKey: string; acceptChanges?: boolean; label?: string }) => api.post<any>(`/pos/retention/sms/campaigns`, b as Record<string, unknown>),

@@ -960,7 +960,9 @@ GET /pos/receipt-center/documents/{id}  realm=staff  auth=session  domain=ai  pe
 GET /pos/receipt-center/summary  realm=staff  auth=session  domain=ai  perm=pos.ai_ocr_receipt.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/approvals  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/codes  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/referral-program/filter-options  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/health  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+GET /pos/referral-program/health/last  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/referrals  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/referrals/{id}  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/referral-program/settings  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3005,6 +3007,7 @@ POST /pos/receipt-center/check  realm=staff  auth=session  domain=ai  perm=pos.a
 POST /pos/referral-program/assistant/plan  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/assistant/save  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/check  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/referral-program/health/run  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/referrals  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/referrals/{id}/review  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/records  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/referral-program/rewards/{id}/issue  realm=staff  auth=session  domain=loyalty  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
@@ -3020,6 +3023,7 @@ POST /pos/retention/sms/campaigns/{campaignId}/cancel  realm=staff  auth=session
 POST /pos/retention/sms/preview  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/snapshots/backfill  realm=staff  auth=session  domain=marketing  perm=pos.settings.edit  resource=TENANT/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/winback/audience  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
+POST /pos/retention/winback/audience/picked  realm=staff  auth=session  domain=marketing  perm=pos.marketing.manage  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/retention/winback/plan  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reviews-center/check/run  realm=staff  auth=session  domain=customers  perm=pos.marketing.view  resource=BRANCH/permission  guards=RolePermissionGuard,TenantAuthGuard
 POST /pos/reviews-center/reviews/{id}/assign  realm=staff  auth=session  domain=customers  perm=pos.marketing.manage  resource=TENANT/records  guards=RolePermissionGuard,TenantAuthGuard

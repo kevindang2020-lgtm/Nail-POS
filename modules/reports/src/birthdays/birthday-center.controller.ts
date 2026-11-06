@@ -12,7 +12,7 @@ import { hasPermission, S, type BodySchema } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Put, Body, Param, Query, Req, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { isUuid, type RetentionContext, SegmentsError } from '@aipowersalon/customers';
-import { BirthdayCenter, BirthdayError, BD_SCOPES, BD_SORTS, BD_BASES, BD_PRESETS, BD_ELIGIBILITY, BD_OBJECTIVES } from './birthday-center';
+import { BirthdayCenter, BirthdayError, BD_SCOPES, BD_SORTS, BD_BASES, BD_PRESETS, BD_ELIGIBILITY, BD_OBJECTIVES, BD_ACTIVITY } from './birthday-center';
 
 export const BIRTHDAY_CENTER = 'BirthdayCenter';
 
@@ -58,10 +58,11 @@ export class BirthdayCenterController {
 
   /** the customer table: scope · occurrence / created basis · search · eligibility · tier · sort · pages of 10 / 20 / 50 */
   @Get('customers') @RequirePermission('pos.marketing.view')
-  @ListQuery({ filters: { ...RANGE, scope: { type: 'enum', values: BD_SCOPES }, basis: { type: 'enum', values: BD_BASES }, eligibility: { type: 'enum', values: BD_ELIGIBILITY }, tier: { type: 'text', maxLength: 40 } }, sorts: { upcoming: null, newest: null, name_asc: null, name_desc: null }, search: { maxLength: 100 }, dateRange: { maxDays: 366 }, maxLimit: 50, defaultLimit: 20, params: ['page'] })
+  @ListQuery({ filters: { ...RANGE, scope: { type: 'enum', values: BD_SCOPES }, basis: { type: 'enum', values: BD_BASES }, eligibility: { type: 'enum', values: BD_ELIGIBILITY }, tier: { type: 'text', maxLength: 40 }, activity: { type: 'enum', values: BD_ACTIVITY }, source: { type: 'text', maxLength: 40 } }, sorts: { upcoming: null, newest: null, name_asc: null, name_desc: null }, search: { maxLength: 100 }, dateRange: { maxDays: 366 }, maxLimit: 50, defaultLimit: 20, params: ['page'] })
   customers(@Req() q: any, @Query() f: any) {
     const c = ctxFrom(q); need(c, 'pos.marketing.view');
-    return run(() => this.r().customers(c, { scope: f?.scope, preset: f?.preset, month: f?.month, from: f?.from, to: f?.to, basis: f?.basis, q: f?.q, eligibility: f?.eligibility, tier: f?.tier, sort: f?.sort, page: f?.page, pageSize: f?.pageSize }));
+    return run(() => this.r().customers(c, { scope: f?.scope, preset: f?.preset, month: f?.month, from: f?.from, to: f?.to, basis: f?.basis, q: f?.q, eligibility: f?.eligibility, tier: f?.tier, sort: f?.sort, page: f?.page, pageSize: f?.pageSize,
+      activity: f?.activity, source: f?.source }));
   }
 
   /** Missing Birthdays Center — read-only (it never changes a customer) */
@@ -70,8 +71,8 @@ export class BirthdayCenterController {
 
   /** birthday message history, newest first */
   @Get('history') @RequirePermission('pos.marketing.view')
-  @ListQuery({ filters: { year: { type: 'number', min: 2000, max: 2200 } }, sorts: { newest: null }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 20, params: ['page'] })
-  history(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().history(c, { q: f?.q, page: f?.page, pageSize: f?.pageSize, year: f?.year })); }
+  @ListQuery({ filters: { year: { type: 'number', min: 2000, max: 2200 } }, sorts: { newest: null }, search: { maxLength: 100 }, dateRange: { maxDays: 3660 }, maxLimit: 50, defaultLimit: 20, params: ['page'] })
+  history(@Req() q: any, @Query() f: any) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().history(c, { q: f?.q, page: f?.page, pageSize: f?.pageSize, year: f?.year, from: f?.from, to: f?.to })); }
 
   @Get('settings') @RequirePermission('pos.marketing.view')
   settings(@Req() q: any) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.r().settings(c)); }

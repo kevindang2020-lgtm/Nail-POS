@@ -263,6 +263,21 @@ export class WinBackCenter {
   /** Save the assistant's audience as an UNSENT Segments audience draft (purpose win_back): the audience is recomputed on the
    *  server (never trusted from the client), re-verdicted and stored; Campaign Center turns it into a campaign that still needs
    *  approval. Idempotent on idempotencyKey. */
+  /** A19 Nov 6 — Add to eligible audience: the customers staff picked in the list become an UNSENT audience draft (Campaign
+   *  Center approves and sends). Every pick gets its verdict; only eligible ones would ever receive a message. */
+  async addToAudience(ctx: RetentionContext, b: { customerIds?: unknown; channel?: unknown; idempotencyKey?: unknown },
+    audit: (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<void>) {
+    const channel = this.channel(b.channel);
+    const key = String(b.idempotencyKey ?? '');
+    if (key.length < 8) throw new RetentionError('An idempotency key is required.', 'IDEMPOTENCY_KEY_REQUIRED');
+    const ids = Array.isArray(b.customerIds) ? [...new Set(b.customerIds.map(String).filter((x) => /^[0-9a-f-]{36}$/i.test(x)))] : [];
+    if (!ids.length) throw new RetentionError('Pick at least one customer.', 'WINBACK_AUDIENCE_EMPTY', 409);
+    if (ids.length > WINBACK_MAX_AUDIENCE) throw new RetentionError(`Pick at most ${WINBACK_MAX_AUDIENCE} customers.`, 'WINBACK_AUDIENCE_EMPTY', 409);
+    const v = await this.seg.verdicts(ctx, ids, channel, 'win_back');
+    if (!ids.some((id) => v.get(id)?.status === 'eligible')) throw new RetentionError('None of the picked customers can receive this message right now.', 'WINBACK_AUDIENCE_EMPTY', 409);
+    return this.seg.createDraft(ctx, { channel, purpose: 'win_back', selectionMode: 'selected', customerIds: ids, filters: { segment: 'all' },
+      message: null, idempotencyKey: `winback-pick:${key}` }, (trx, meta) => audit(trx, { ...meta, picked: ids.length, ruleset: SEGMENTATION_VERSION }));
+  }
   async saveAudience(ctx: RetentionContext, b: { goal?: unknown; channel?: unknown; service?: unknown; message?: unknown; idempotencyKey?: unknown },
     audit: (trx: Kysely<any>, meta: Record<string, unknown>) => Promise<void>) {
     const goal = this.goal(b.goal); const channel = this.channel(b.channel);

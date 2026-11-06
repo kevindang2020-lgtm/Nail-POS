@@ -6,7 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 const { api } = vi.hoisted(() => ({ api: { summary: vi.fn(), customers: vi.fn(), customer: vi.fn(), recovery: vi.fn(), settings: vi.fn(), saveSettings: vi.fn(), exportCsv: vi.fn(),
   readiness: vi.fn(), preview: vi.fn(), confirm: vi.fn(), campaigns: vi.fn(), campaign: vi.fn(),
-  snapshotDay: vi.fn(), snapshotMembers: vi.fn(), snapshotCompare: vi.fn(), snapshotRuns: vi.fn(), backfill: vi.fn(), smsPricing: vi.fn(), setSmsPricing: vi.fn() } }));
+  snapshotDay: vi.fn(), snapshotMembers: vi.fn(), snapshotCompare: vi.fn(), snapshotRuns: vi.fn(), backfill: vi.fn(), smsPricing: vi.fn(), setSmsPricing: vi.fn(), winbackPicked: vi.fn() } }));
+vi.mock('../api/posServicesApi', () => ({ posServicesApi: { categories: () => Promise.resolve([{ id: 'cat1', name: 'Gel' }]) } }));
+vi.mock('../api/posTechniciansApi', () => ({ posTechniciansApi: { list: () => Promise.resolve({ items: [{ id: 't1', fullName: 'Tam N' }] }) } }));
 const { navigate } = vi.hoisted(() => ({ navigate: vi.fn() }));
 vi.mock('react-router-dom', async (orig) => ({ ...(await orig<any>()), useNavigate: () => navigate }));
 vi.mock('../api/posRetentionApi', () => ({ posRetentionApi: api }));
@@ -173,5 +175,21 @@ describe('POSRetentionScreen', () => {
     expect(screen.getByTestId('sms-preview')).toBeDisabled();
     fireEvent.change(box, { target: { value: 'Hi! We miss you.' } });
     expect(screen.queryByTestId('rt-placeholders')).toBeNull();
+  });
+  it('A19 Nov 6: search scope, category, technician and spend filters go to the server; picked customers become an unsent audience', async () => {
+    api.winbackPicked.mockResolvedValue({ draftId: 'd1', status: 'draft', selected: 1, eligible: 1, excluded: 0, sends: 0, duplicate: false });
+    render(<POSRetentionScreen />);
+    fireEvent.change(await screen.findByTestId('flt-scope'), { target: { value: 'email' } });
+    fireEvent.change(await screen.findByTestId('flt-category'), { target: { value: 'cat1' } });
+    fireEvent.change(await screen.findByTestId('flt-technician'), { target: { value: 't1' } });
+    fireEvent.change(screen.getByTestId('flt-spend'), { target: { value: 'high' } });
+    await waitFor(() => expect(api.customers).toHaveBeenLastCalledWith(expect.objectContaining({ scope: 'email', category: 'cat1', technician: 't1', spend: 'high' })));
+    const boxes = await screen.findAllByRole('checkbox');
+    const row = boxes.find((b) => !(b as HTMLInputElement).disabled && b.getAttribute('aria-label') !== 'Select this page');
+    expect(row).toBeTruthy();
+    fireEvent.click(row!);
+    fireEvent.click(await screen.findByTestId('add-picked'));
+    await waitFor(() => expect(api.winbackPicked).toHaveBeenCalledWith(expect.objectContaining({ channel: 'sms', customerIds: expect.any(Array) })));
+    expect(await screen.findByText(/Saved as an unsent audience/)).toBeInTheDocument();
   });
 });

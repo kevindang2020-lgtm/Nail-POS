@@ -15,17 +15,18 @@
 //                                   (403 BRANCH_NOT_AUTHORIZED otherwise); customers stay tenant-wide
 //   CR-03      pos.marketing.view   GET sms/pricing · PUT sms/pricing needs pos.settings.edit (append-only, effective-dated, audited)
 import { ListQuery, type ListQuerySpec } from '@aipowersalon/database';
+import type { WinbackPickedResult } from '@aipowersalon/api-contracts/tenant';
 import { withCode } from '@aipowersalon/api-contracts';
 import { TenantAuthGuard, RolePermissionGuard, RequirePermission, ValidatedBody, AsyncExport } from '@aipowersalon/permissions/guards';
 import { hasPermission } from '@aipowersalon/permissions';
 import { Controller, Get, Post, Put, Body, Param, Query, Req, Header, UseGuards, HttpException, HttpStatus, Inject } from '@nestjs/common';
 import { recordAuditStrict } from '@aipowersalon/audit';
 import { logException } from '@aipowersalon/observability';
-import { RetentionRepository, RetentionError, RETENTION_SEGMENTS, PERIOD_PRESETS, DATE_BASES, PRIORITY_BANDS, isUuid, type RetentionContext, type ListFilters } from './retention.repository';
+import { RetentionRepository, RetentionError, RETENTION_SEGMENTS, PERIOD_PRESETS, DATE_BASES, PRIORITY_BANDS, SEARCH_SCOPES, isUuid, type RetentionContext, type ListFilters } from './retention.repository';
 import { RetentionSmsService } from './retention-sms.service';
 import { RetentionSnapshotRepository, SNAPSHOT_SEGMENTS } from './retention-snapshots';
 import { RetentionPricingRepository } from './retention-pricing';
-import { RETENTION_SMS_PREVIEW_BODY, RETENTION_SMS_CONFIRM_BODY, RETENTION_SMS_CANCEL_BODY, RETENTION_SETTINGS_BODY, RETENTION_SNAPSHOT_BACKFILL_BODY, RETENTION_SMS_PRICING_BODY, WINBACK_EMPTY_BODY, WINBACK_PLAN_BODY, WINBACK_AUDIENCE_BODY } from '../request-schemas';
+import { RETENTION_SMS_PREVIEW_BODY, RETENTION_SMS_CONFIRM_BODY, RETENTION_SMS_CANCEL_BODY, RETENTION_SETTINGS_BODY, RETENTION_SNAPSHOT_BACKFILL_BODY, RETENTION_SMS_PRICING_BODY, WINBACK_EMPTY_BODY, WINBACK_PLAN_BODY, WINBACK_AUDIENCE_BODY, WINBACK_PICKED_BODY } from '../request-schemas';
 import { WinBackCenter } from './winback-center';
 
 export const RETENTION_REPOSITORY = 'RetentionRepository';
@@ -51,10 +52,12 @@ const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : unde
 /** the list's query → filters (period + date basis, band, SMS, visits); unknown values are dropped by the repository */
 function listFilters(f: any): ListFilters {
   return { segment: str(f?.segment), q: str(f?.q), sort: str(f?.sort), preset: str(f?.preset), from: str(f?.from), to: str(f?.to), basis: str(f?.basis), band: str(f?.band),
-    sms: str(f?.sms), email: str(f?.email), future: str(f?.future), minDays: f?.minDays, minVisits: f?.minVisits, page: f?.page, pageSize: f?.pageSize, branch: str(f?.branch) };
+    sms: str(f?.sms), email: str(f?.email), future: str(f?.future), minDays: f?.minDays, minVisits: f?.minVisits, page: f?.page, pageSize: f?.pageSize, branch: str(f?.branch),
+    scope: str(f?.scope), category: str(f?.category), technician: str(f?.technician), spend: str(f?.spend) };   // A19 Nov 6
 }
 const LIST_QUERY = { filters: { segment: { type: 'enum', values: RETENTION_SEGMENTS }, preset: { type: 'enum', values: PERIOD_PRESETS },
   basis: { type: 'enum', values: DATE_BASES }, band: { type: 'enum', values: PRIORITY_BANDS }, sms: { type: 'enum', values: ['eligible', 'not_eligible'] }, minVisits: { type: 'int', min: 0, max: 1000 },
+  scope: { type: 'enum', values: SEARCH_SCOPES }, category: { type: 'uuid' }, technician: { type: 'uuid' }, spend: { type: 'enum', values: ['low', 'mid', 'high'] },
   email: { type: 'enum', values: ['eligible', 'not_eligible', 'opted_out'] }, future: { type: 'enum', values: ['yes', 'no'] }, minDays: { type: 'int', min: 1, max: 3650 },
   branch: { type: 'text', maxLength: 40 } },
   sorts: { priority: null, created_desc: null, oldest_visit: null, newest_visit: null, name: null, spend: null, visits: null }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 1830 }, params: ['page'] } satisfies ListQuerySpec;
@@ -108,6 +111,14 @@ export class RetentionController {
   // ── Win-Back guide §10 AI Win-Back Assistant: suggestions + an UNSENT audience; Campaign Center approves and sends ──────
   @Post('winback/plan') @RequirePermission('pos.marketing.view')
   winbackPlan(@Req() q: any, @Body(ValidatedBody(WINBACK_PLAN_BODY, { strict: true })) b: any) { const c = ctxFrom(q); need(c, 'pos.marketing.view'); return run(() => this.w().plan(c, b || {})); }
+
+  /** A19 Nov 6: Add to eligible audience — the picked customers become an unsent draft (Campaign Center sends) */
+  @Post('winback/audience/picked') @RequirePermission('pos.marketing.manage')
+  winbackPicked(@Req() q: any, @Body(ValidatedBody(WINBACK_PICKED_BODY, { strict: true })) b: any): Promise<WinbackPickedResult> {
+    const c = ctxFrom(q); need(c, 'pos.marketing.manage');
+    return run(() => this.w().addToAudience(c, b || {}, (trx, meta) => recordAuditStrict(trx, actor(c), { module: 'customers', action: 'retention.winback.picked_audience_saved',
+      resourceType: 'segment_audience_draft', resourceId: String(meta.draftId), summary: `Win-back audience from picked customers: ${String(meta.eligible)} eligible of ${String(meta.selected)} — not sent`, after: meta }))) as Promise<WinbackPickedResult>;
+  }
 
   @Post('winback/audience') @RequirePermission('pos.marketing.manage')
   winbackAudience(@Req() q: any, @Body(ValidatedBody(WINBACK_AUDIENCE_BODY, { strict: true })) b: any) {

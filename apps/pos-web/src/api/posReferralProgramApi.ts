@@ -5,7 +5,7 @@
 // the AI Referral Growth Assistant (an UNSENT audience for Campaign Center — nothing here sends). Tenant/branch: the session.
 import { api } from './client';
 const enc = encodeURIComponent;
-export type ReferralQuery = { tab?: string; q?: string; rewardType?: string; basis?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
+export type ReferralQuery = { tab?: string; q?: string; rewardType?: string; branch?: string; eligibility?: string; creator?: string; reviewer?: string; basis?: string; preset?: string; from?: string; to?: string; sort?: string; page?: number; pageSize?: number };
 const clean = <T extends Record<string, unknown>>(o: T) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined && v !== '' && v !== null)) as Record<string, string | number>;
 export const posReferralProgramApi = {
   summary: () => api.get<any>(`/pos/referral-program/summary`),
@@ -20,6 +20,10 @@ export const posReferralProgramApi = {
   codes: (q: { q?: string; page?: number; pageSize?: number }) => api.get<any>(`/pos/referral-program/codes`, clean(q)),
   codeStatus: (id: string, b: { status: 'active' | 'disabled'; reason?: string | null; expectedVersion: number }) => api.put<any>(`/pos/referral-program/codes/${enc(id)}/status`, b),
   health: () => api.get<any>(`/pos/referral-program/health`),
+  /** A18 Nov 6: run + record the check; the last run; filter people / branches */
+  healthRun: () => api.post<any>(`/pos/referral-program/health/run`, {}),
+  healthLast: () => api.get<any>(`/pos/referral-program/health/last`),
+  filterOptions: () => api.get<{ creators: { id: string; name: string }[]; reviewers: { id: string; name: string }[]; branches: { id: string; name: string }[] }>(`/pos/referral-program/filter-options`),
   settings: () => api.get<any>(`/pos/referral-program/settings`),
   saveSettings: (b: Record<string, unknown>) => api.put<any>(`/pos/referral-program/settings`, b),
   plan: (b: { goal: string; channel?: 'sms' | 'email'; budgetCents?: number | null }) => api.post<any>(`/pos/referral-program/assistant/plan`, clean(b)),

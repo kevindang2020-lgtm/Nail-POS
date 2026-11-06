@@ -276,3 +276,39 @@ describe('Nov 3 audit — Feb 29 sorts on its celebrated day; KPIs follow the ra
     expect(octIds.length).toBeGreaterThan(0);
   });
 });
+
+describe('A20 Nov 6 — more date bases, activity / source filters, offer status, history range + search, birthday timeline', () => {
+  it('activity (active / lapsed / never) and source filters; last-visit and created bases; offer status on each row', async () => {
+    const T0 = async (cid: string, daysAgo: number) => q(`insert into tickets (tenant_id, branch_id, customer_id, status, total_cents, ticket_number, created_at, paid_at)
+      values ($1,$2,$3,'closed',4000,$4, now() - make_interval(days => $5), now() - make_interval(days => $5))`, [T, B, cid, String(91000 + Math.floor(Math.random() * 8000)), daysAgo]);
+    await T0(C.ava, 10); await T0(C.eve, 200);
+    const all = { scope: 'all' } as any;
+    const act = async (activity: string) => names(await bc.customers(ctx, { ...all, activity, pageSize: 50 }));
+    expect(await act('active')).toEqual(['Ava']);
+    expect(await act('lapsed')).toEqual(['Eve']);
+    expect(await act('never')).not.toContain('Ava');
+    expect(await bc.customers(ctx, { ...all, activity: 'nope' }).catch((e: any) => e.code)).toBe('BIRTHDAY_FILTER_INVALID');
+    await q(`update customers set birthday_source = 'customer_app' where id = $1`, [C.ben]);
+    expect(names(await bc.customers(ctx, { ...all, source: 'customer_app' }))).toEqual(['Ben']);
+    const lv = names(await bc.customers(ctx, { scope: 'period', basis: 'last_visit', preset: 'custom', from: today, to: today, pageSize: 50 } as any));
+    expect(lv).toEqual([]);                                                              // nobody visited today
+    const lv30 = names(await bc.customers(ctx, { scope: 'period', basis: 'last_visit', preset: 'year', pageSize: 50 } as any));
+    expect(lv30).toContain(names(await bc.customers(ctx, { ...all, activity: 'active' }))[0] ?? 'Ava');
+    const row = (await bc.customers(ctx, { ...all, q: 'Ava' })).items[0];
+    expect(row.offerStatus).toBe('no_offer');                                             // no birthday campaign with an offer was sent
+  });
+  it('history: From–To range and search by channel; the overlay shows a birthday timeline per year with a nearby visit', async () => {
+    const all = (await bc.history(ctx, {})).totalItems;
+    const old = new Date(Date.parse(today + 'T12:00:00Z') - 40 * 86_400_000).toISOString().slice(0, 10), older = new Date(Date.parse(today + 'T12:00:00Z') - 30 * 86_400_000).toISOString().slice(0, 10);
+    expect((await bc.history(ctx, { from: old, to: older })).totalItems).toBe(0);          // nothing was claimed a month ago
+    expect((await bc.history(ctx, { from: old, to: today })).totalItems).toBe(all);
+    expect((await bc.history(ctx, { q: 'sms' })).items.every((x: any) => x.channel === 'sms')).toBe(true);
+    const o: any = await bc.overlay(ctx, C.ava);
+    expect(Array.isArray(o.timeline)).toBe(true);
+    // Ava visited 10 days ago, so this year (or last, early in January) is on her timeline with that visit's year
+    const visitYear = new Date(Date.now() - 10 * 86_400_000).getUTCFullYear();
+    expect(o.timeline.map((t: any) => t.year)).toContain(visitYear);
+    expect(o.timeline.every((t: any) => ['no_offer', 'not_used', 'redeemed'].includes(t.offer) || typeof t.offer === 'string')).toBe(true);
+    expect((await bc.overlay(ctx, C.none)).timeline).toEqual([]);                        // no birthday: no timeline
+  });
+});

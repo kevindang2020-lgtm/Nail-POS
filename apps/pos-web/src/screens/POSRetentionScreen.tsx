@@ -29,6 +29,8 @@ import { useNavigate } from 'react-router-dom';
 import { ProfileAvatarWithPreview } from '@aipowersalon/ui';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { posRetentionApi, type RetentionSelection } from '../api/posRetentionApi';
+import { posServicesApi } from '../api/posServicesApi';
+import { posTechniciansApi } from '../api/posTechniciansApi';
 import { posCustomersApi } from '../api/posCustomersApi';
 import { posMessageTemplatesApi } from '../api/posMessageTemplatesApi';
 import { useCan } from '../components/usePermissions';
@@ -83,8 +85,8 @@ export const whyText = (p: Priority, r: { daysAway: number | null; visits: numbe
   tx('rt2.why.' + p.topDriver, { d: nf(r.daysAway ?? 0), v: nf(r.visits), s: fmtMoney(r.lifetimeSpendCents) });
 const serverPeriod = (p?: Period | null): ServerPeriod | null => (p ? { preset: p.preset as ServerPeriod['preset'], from: p.from, to: p.to, tz: p.timeZone, today: p.today } : null);
 
-type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string };
-const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '' };
+type Filters = { basis: string; band: string; sms: string; minVisits: number; inactivity: string; customDays: string; email: string; future: string; scope: string; category: string; technician: string; spend: string };
+const NO_FILTERS: Filters = { basis: 'none', band: '', sms: '', minVisits: 0, inactivity: '', customDays: '', email: '', future: '', scope: '', category: '', technician: '', spend: '' };
 /** Win-Back guide §06: 30 / 60 / 90 / 120 or a custom number of salon days; '' = not filtered */
 const minDaysOf = (f: Filters): number | undefined => { const n = Math.trunc(Number(f.inactivity === 'custom' ? f.customDays : f.inactivity)); return Number.isFinite(n) && n >= 1 && n <= 3650 ? n : undefined; };
 type Selection = { mode: 'ids'; ids: Map<string, Row> } | { mode: 'matching'; filter: RetentionSelection; segment: Segment; total: number; excludeIds: Set<string> };
@@ -123,7 +125,8 @@ export function POSRetentionScreen() {
   const [reload, setReload] = useState(0);
   const seq = useRef(0);
   const query = useMemo(() => ({ segment, ...JSON.parse(pKey), q: q.trim() || undefined, sort: sort || undefined, basis: flt.basis !== 'none' ? flt.basis : undefined,
-    band: flt.band || undefined, sms: flt.sms || undefined, minVisits: flt.minVisits || undefined, minDays: minDaysOf(flt), email: flt.email || undefined, future: flt.future || undefined }), [segment, pKey, q, sort, flt]);
+    band: flt.band || undefined, sms: flt.sms || undefined, minVisits: flt.minVisits || undefined, minDays: minDaysOf(flt), email: flt.email || undefined, future: flt.future || undefined,
+    scope: flt.scope || undefined, category: flt.category || undefined, technician: flt.technician || undefined, spend: flt.spend || undefined }), [segment, pKey, q, sort, flt]);
   useEffect(() => {
     const my = ++seq.current; setListErr(null);
     posRetentionApi.customers({ ...query, page, pageSize: fit.rows })
@@ -134,6 +137,22 @@ export function POSRetentionScreen() {
 
   // selection (customer ids; kept across pages; cleared when the cohort / filters change — never carried into another list)
   const [sel, setSel] = useState<Selection>(EMPTY_SEL);
+  // A19 Nov 6: filter lists (real categories / technicians) and Add to eligible audience (an unsent draft for Campaign Center)
+  const [cats, setCats] = useState<{ id: string; name: string }[]>([]); const [techs, setTechs] = useState<{ id: string; name: string }[]>([]);
+  useEffect(() => {
+    posServicesApi.categories().then((x: any) => setCats((Array.isArray(x) ? x : x?.items ?? x?.categories ?? []).map((c: any) => ({ id: String(c.id ?? c.categoryId), name: String(c.name) })))).catch(() => setCats([]));
+    posTechniciansApi.list({ pageSize: 100, status: 'active' }).then((x: any) => setTechs((Array.isArray(x) ? x : x?.items ?? x?.technicians ?? []).map((t: any) => ({ id: String(t.id ?? t.technicianId), name: String(t.fullName ?? t.name ?? t.full_name ?? '') })))).catch(() => setTechs([]));
+  }, []);
+  const [adding, setAdding] = useState(false); const pickKey = useRef(requestId());
+  const addPicked = async () => {
+    if (sel.mode !== 'ids' || !sel.ids.size) return;
+    setAdding(true);
+    try {
+      const d = await posRetentionApi.winbackPicked({ customerIds: [...sel.ids.keys()], channel: 'sms', idempotencyKey: pickKey.current });
+      pickKey.current = requestId();
+      setNote({ tone: 'ok', text: tx('wb.picked.saved', { e: String(d.eligible), s: String(d.selected) }) });
+    } catch (e) { setNote({ tone: 'bad', text: errText(e, tx('people.retention.loadFailed')) }); } finally { setAdding(false); }
+  };
   const clearSelIfAny = () => { if (sel.mode === 'matching' || (sel.mode === 'ids' && sel.ids.size)) { setSel(EMPTY_SEL); setNote({ tone: 'ok', text: tx('people.retention.selectionCleared') }); } };
   const pickSegment = (s: Segment, srt = '') => { setSegment(s); setSort(srt); setPage(1); if (!WINBACK.has(s)) setFlt((f) => ({ ...f, band: '' })); clearSelIfAny(); };
   const setFilter = (patch: Partial<Filters>) => { setFlt((f) => ({ ...f, ...patch })); clearSelIfAny(); };
@@ -204,6 +223,7 @@ export function POSRetentionScreen() {
           {canViewCampaigns ? <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'campaigns' })} data-testid="open-campaigns">{tx('people.retention.campaignHistory')}</button> : null}
           <button type="button" className="fk-btn ghost" onClick={() => setDlg({ kind: 'settings' })} data-testid="open-settings" title={per ? tx('rt2.settingsTitle', { d: String(per.riskDays), a: String(per.approachingDays) }) : undefined}>{tx('rt2.settings')}</button>
           {canExport ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="rt-export">{exporting ? tx('pos.loading') : tx('rt2.export')}</button> : null}
+          {canViewCampaigns && sel.mode === 'ids' && sel.ids.size ? <button type="button" className="fk-btn ghost" onClick={addPicked} disabled={adding} data-testid="add-picked">{tx('wb.picked.add', { n: String(sel.ids.size) })}</button> : null}
           <button type="button" className="fk-btn primary" onClick={createWinBack} data-testid="create-winback">{tx('rt2.createWinBack')}</button>
         </div>
       </header>
@@ -252,10 +272,17 @@ export function POSRetentionScreen() {
         <select className="fk-select" aria-label={tx('wb.flt.email')} value={flt.email} onChange={(e) => setFilter({ email: e.target.value })} data-testid="flt-email">
           <option value="">{tx('wb.flt.email.any')}</option>{(['eligible', 'not_eligible', 'opted_out'] as const).map((v) => <option key={v} value={v}>{tx('wb.flt.email.' + v)}</option>)}
         </select>
+        {/* A19 Nov 6: service category / technician (a settled visit with it) and lifetime-spend band */}
+        {cats.length ? <select className="fk-select" aria-label={tx('wb.flt.category')} value={flt.category} onChange={(e) => setFilter({ category: e.target.value })} data-testid="flt-category">
+          <option value="">{tx('wb.flt.category.any')}</option>{cats.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select> : null}
+        {techs.length ? <select className="fk-select" aria-label={tx('wb.flt.technician')} value={flt.technician} onChange={(e) => setFilter({ technician: e.target.value })} data-testid="flt-technician">
+          <option value="">{tx('wb.flt.technician.any')}</option>{techs.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}</select> : null}
+        <select className="fk-select" aria-label={tx('wb.flt.spend')} value={flt.spend} onChange={(e) => setFilter({ spend: e.target.value })} data-testid="flt-spend">
+          <option value="">{tx('wb.flt.spend.any')}</option>{['low', 'mid', 'high'].map((v) => <option key={v} value={v}>{tx('wb.flt.spend.' + v)}</option>)}</select>
         <select className="fk-select" aria-label={tx('wb.flt.future')} value={flt.future} onChange={(e) => setFilter({ future: e.target.value })} data-testid="flt-future">
           <option value="">{tx('wb.flt.future.any')}</option><option value="yes">{tx('wb.flt.future.yes')}</option><option value="no">{tx('wb.flt.future.no')}</option>
         </select>
-        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
+        {(flt.basis !== 'none' || flt.band || flt.sms || flt.minVisits || flt.inactivity || flt.email || flt.future || flt.category || flt.technician || flt.spend || flt.scope || search) ? <button type="button" className="fk-link" onClick={() => { setFlt(NO_FILTERS); setSearch(''); clearSelIfAny(); }} data-testid="flt-clear">{tx('pos.clear_all')}</button> : null}
       </div>
 
       <div className="rt-filters" role="tablist" aria-label={tx('people.retention.segments')}>
@@ -276,6 +303,9 @@ export function POSRetentionScreen() {
           <select className="fk-select rt3-branch" aria-label={tx('rt3.branch.label')} value={branch} onChange={(e) => changeBranch(e.target.value)} data-testid="flt-branch" title={scopeText}>
             <option value="">{tx('rt3.branch.all')}</option>
             {(scope?.branches ?? []).map((b) => <option key={b.branchId} value={b.branchId}>{b.name}</option>)}
+          </select>
+          <select className="fk-select" aria-label={tx('wb.scope.label')} value={flt.scope} onChange={(e) => setFilter({ scope: e.target.value })} data-testid="flt-scope">
+            {['', 'name', 'phone', 'email', 'service', 'id'].map((v) => <option key={v} value={v}>{tx('wb.scope.' + (v || 'all'))}</option>)}
           </select>
           <input type="search" className="fk-search" aria-label={tx('rt2.search')} placeholder={tx('rt2.search')} value={search} onChange={(e) => setSearch(e.target.value)} data-testid="rt-search" />
           <select className="fk-select" aria-label={tx('people.retention.sortBy')} value={sort} onChange={(e) => { setSort(e.target.value); setPage(1); }} data-testid="rt-sort">

@@ -7568,6 +7568,7 @@ export interface DB {
   ai_business_saved_questions: AiBusinessSavedQuestionsTable;
   ai_business_alerts: AiBusinessAlertsTable;
   ai_business_alert_events: AiBusinessAlertEventsTable;
+  referral_health_runs: ReferralHealthRunsTable;
   reviews_health_runs: ReviewsHealthRunsTable;
   business_setup_health_runs: BusinessSetupHealthRunsTable;
   business_closures: BusinessClosuresTable;
@@ -10503,4 +10504,8 @@ export interface BusinessSetupHealthRunsTable {
 // reviews_health_runs
 export interface ReviewsHealthRunsTable {
   id: Generated<string>; tenant_id: string; branch_id: string | null; overall: string; checks: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
+}
+// referral_health_runs
+export interface ReferralHealthRunsTable {
+  id: Generated<string>; tenant_id: string; branch_id: string | null; overall: string; items: Generated<unknown>; run_by: string | null; created_at: Generated<Ts>;
 }

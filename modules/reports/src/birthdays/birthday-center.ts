@@ -21,7 +21,10 @@ export class BirthdayError extends Error {
 }
 export const BD_SCOPES = ['period', 'all', 'missing'] as const;
 export const BD_SORTS = ['upcoming', 'newest', 'name_asc', 'name_desc'] as const;
-export const BD_BASES = ['occurrence', 'created'] as const;
+export const BD_BASES = ['occurrence', 'created', 'last_visit', 'message_sent', 'birthday_updated'] as const;
+/** A20 Nov 6: activity (last settled visit) bands and where the birthday came from */
+export const BD_ACTIVITY = ['active', 'lapsed', 'never'] as const;
+export const BD_ACTIVE_DAYS = 60;
 export const BD_PRESETS = ['today', 'next7', 'month', 'next_month', 'year', 'custom'] as const;
 export const BD_ELIGIBILITY = ['sms_eligible', 'email_eligible', 'not_eligible'] as const;
 export const BD_OBJECTIVES = ['greeting', 'service_promotion', 'loyalty_reward'] as const;
@@ -40,7 +43,9 @@ const maskPhone = (p: unknown) => { const d = String(p ?? '').replace(/\D/g, '')
 const maskEmail = (e: unknown) => { const s = String(e ?? ''); const at = s.indexOf('@'); return at > 0 ? `${s[0]}•••${s.slice(at)}` : null; };
 
 export interface BirthdayListFilters { scope?: unknown; preset?: unknown; month?: unknown; from?: unknown; to?: unknown; basis?: unknown; q?: unknown;
-  eligibility?: unknown; tier?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown }
+  eligibility?: unknown; tier?: unknown; sort?: unknown; page?: unknown; pageSize?: unknown;
+  /** A20 Nov 6 */
+  activity?: unknown; source?: unknown }
 
 export class BirthdayCenter {
   constructor(readonly db: Kysely<any>, readonly ret: RetentionRepository, readonly seg: SegmentsRepository, readonly cc: CampaignCenter) {}
@@ -177,7 +182,15 @@ export class BirthdayCenter {
       if (scope === 'period') {
         r = this.range(b, f);
         if (basis === 'occurrence') conds.push(sql`${md} = any(${this.mdKeysIn(r.from, r.to, b.policy)}::int[])`);
-        else conds.push(sql`c.created_at >= (${r.from}::date::timestamp at time zone ${b.tz}) and c.created_at < ((${r.to}::date + 1)::timestamp at time zone ${b.tz})`);
+        else {
+          // A20 Nov 6: more date bases — profile created, last settled visit, birthday message sent, birthday changed
+          const lo = sql`(${r.from}::date::timestamp at time zone ${b.tz})`, hi = sql`((${r.to}::date + 1)::timestamp at time zone ${b.tz})`;
+          if (basis === 'created') conds.push(sql`c.created_at >= ${lo} and c.created_at < ${hi}`);
+          else if (basis === 'birthday_updated') conds.push(sql`c.birthday_updated_at >= ${lo} and c.birthday_updated_at < ${hi}`);
+          else if (basis === 'last_visit') conds.push(sql`(select max(coalesce(tk.paid_at, tk.created_at)) from tickets tk where tk.tenant_id = c.tenant_id and tk.customer_id = c.id and tk.status in ('paid', 'closed') and tk.removed_at is null) >= ${lo}
+            and (select max(coalesce(tk.paid_at, tk.created_at)) from tickets tk where tk.tenant_id = c.tenant_id and tk.customer_id = c.id and tk.status in ('paid', 'closed') and tk.removed_at is null) < ${hi}`);
+          else conds.push(sql`exists (select 1 from birthday_message_claims m where m.tenant_id = c.tenant_id and m.customer_id = c.id and m.status = 'sent' and coalesce(m.updated_at, m.created_at) >= ${lo} and coalesce(m.updated_at, m.created_at) < ${hi})`);
+        }
       }
     }
     if (scope === 'missing' && (f.from || f.to)) { const rr = this.range(b, { preset: 'custom', from: f.from, to: f.to }); conds.push(sql`c.created_at >= (${rr.from}::date::timestamp at time zone ${b.tz}) and c.created_at < ((${rr.to}::date + 1)::timestamp at time zone ${b.tz})`); }
@@ -193,6 +206,13 @@ export class BirthdayCenter {
     if (elig === 'sms_eligible') conds.push(this.smsEligibleW());
     if (elig === 'email_eligible') conds.push(this.emailEligibleW());
     if (elig === 'not_eligible') conds.push(sql`not ${this.smsEligibleW()} and not ${this.emailEligibleW()}`);
+    const act = f.activity == null || f.activity === '' ? undefined : pick(BD_ACTIVITY, f.activity);
+    if (f.activity != null && f.activity !== '' && !act) throw new BirthdayError('Unknown activity filter.', 'BIRTHDAY_FILTER_INVALID');
+    const lastVisit = sql`(select max(coalesce(tk.paid_at, tk.created_at)) from tickets tk where tk.tenant_id = c.tenant_id and tk.customer_id = c.id and tk.status in ('paid', 'closed') and tk.removed_at is null)`;
+    if (act === 'never') conds.push(sql`${lastVisit} is null`);
+    if (act === 'active') conds.push(sql`${lastVisit} >= now() - make_interval(days => ${BD_ACTIVE_DAYS})`);
+    if (act === 'lapsed') conds.push(sql`${lastVisit} < now() - make_interval(days => ${BD_ACTIVE_DAYS})`);
+    const src = str(f.source, 40); if (src) conds.push(sql`coalesce(c.birthday_source, 'unknown') = ${src}`);
     const tier = str(f.tier, 40);
     if (tier) conds.push(sql`exists (select 1 from customer_loyalty_profiles lp where lp.tenant_id = c.tenant_id and lp.customer_id = c.id and lp.loyalty_tier = ${tier})`);
     const where = sql.join(conds, sql` and `);
@@ -216,6 +236,11 @@ export class BirthdayCenter {
       from customers c where c.tenant_id = ${ctx.tenantId} and ${where} order by ${order} limit ${pageSize} offset ${(page - 1) * pageSize}`.execute(this.db)).rows;
     const ids = rows.map((x: any) => String(x.id));
     const [vs, ve] = ids.length ? await Promise.all([this.seg.verdicts(ctx, ids, 'sms', 'general'), this.seg.verdicts(ctx, ids, 'email', 'general')]) : [new Map(), new Map()];
+    // A20 Nov 6: offer status — the birthday campaign's offer (deal) for this occasion: redeemed / not used / no offer
+    const offerRows = ids.length ? (await sql<any>`select m.customer_id, m.occasion_year, cp.deal_id,
+        exists (select 1 from deal_redemptions dr where dr.tenant_id = m.tenant_id and dr.customer_id = m.customer_id and dr.deal_id = cp.deal_id and dr.status = 'redeemed' and dr.reversed_at is null) as redeemed
+      from birthday_message_claims m join campaigns cp on cp.id = m.campaign_id and cp.tenant_id = m.tenant_id
+      where m.tenant_id = ${ctx.tenantId} and m.customer_id = any(${ids}::uuid[]) and m.status = 'sent' and cp.deal_id is not null`.execute(this.db)).rows : [];
     const claims = ids.length ? (await sql<any>`select customer_id, channel, status, occasion_year from birthday_message_claims where tenant_id = ${ctx.tenantId} and customer_id = any(${ids}::uuid[]) and occasion_year between ${b.year - 1} and ${b.year + 1}`.execute(this.db)).rows : [];
     const items = rows.map((x: any) => {
       const id = String(x.id); const m = monthDayOf(x.birthday);
@@ -230,6 +255,7 @@ export class BirthdayCenter {
         birthdaySource: x.birthday_source ?? null, nextOccurrence: next?.date ?? null, daysUntil: next?.daysUntil ?? null,
         lastVisitAt: iso(x.last_visit), loyaltyTier: x.tier ?? null,
         sms: vs.get(id)?.status ?? 'unknown', email: ve.get(id)?.status ?? 'unknown', birthdayMessage: m ? message : null,
+        offerStatus: (() => { const o = offerRows.filter((x: any) => String(x.customer_id) === id && N(x.occasion_year) === occ); return !m || !o.length ? 'no_offer' : o.some((x: any) => x.redeemed) ? 'redeemed' : 'not_used'; })(),
       };
     });
     return { scope, basis, sort, range: r, page, pageSize, totalItems: total, totalPages: Math.max(1, Math.ceil(total / pageSize)), items,
@@ -282,8 +308,24 @@ export class BirthdayCenter {
       birthdayMessages: claims.map((x: any) => ({ occasionYear: N(x.occasion_year), channel: String(x.channel), status: String(x.status), at: iso(x.updated_at ?? x.created_at),
         campaignId: x.campaign_id ? String(x.campaign_id) : null, campaignName: x.campaign_name ?? null })),
       birthdayOffers: offers.map((x: any) => ({ redemptionId: String(x.id), dealId: String(x.deal_id), title: String(x.title ?? ''), status: String(x.status), redeemedAt: iso(x.redeemed_at), ticketId: x.ticket_id ? String(x.ticket_id) : null })),
+      // A20 Nov 6: birthday timeline — per occasion year: the message, the offer, and a visit within 14 days of the birthday
+      timeline: m ? await this.timeline(ctx, customerId, m, claims, offers) : [],
       // a true empty state, never a fabricated greeting (guide §09)
       noHistory: claims.length === 0 };
+  }
+
+  private async timeline(ctx: RetentionContext, customerId: string, m: { month: number; day: number }, claims: any[], offers: any[]) {
+    const visits = (await sql<any>`select coalesce(paid_at, created_at) as at from tickets where tenant_id = ${ctx.tenantId} and customer_id = ${customerId} and status in ('paid', 'closed') and removed_at is null
+      order by at desc limit 200`.execute(this.db)).rows.map((x: any) => new Date(x.at));
+    const years = [...new Set([...claims.map((x: any) => N(x.occasion_year)), ...visits.map((d: Date) => d.getUTCFullYear())])].filter((y) => y >= 2000).sort((a, b) => b - a).slice(0, 6);
+    return years.map((y) => {
+      const bd = Date.UTC(y, m.month - 1, Math.min(m.day, m.month === 2 && m.day === 29 && !isLeap(y) ? 28 : m.day));
+      const near = visits.filter((d: Date) => Math.abs(d.getTime() - bd) <= 14 * 86_400_000).sort((a: Date, b: Date) => Math.abs(a.getTime() - bd) - Math.abs(b.getTime() - bd))[0];
+      const msg = claims.filter((x: any) => N(x.occasion_year) === y);
+      const offer = offers.find((o: any) => msg.some((x: any) => x.deal_id && String(x.deal_id) === String(o.deal_id)));
+      return { year: y, message: msg.length ? (msg.some((x: any) => x.status === 'sent') ? 'sent' : String(msg[0].status)) : 'none',
+        channel: msg[0]?.channel ?? null, offer: offer ? String(offer.status) : msg.some((x: any) => x.deal_id) ? 'not_used' : 'no_offer', visitNearBirthday: near ? near.toISOString() : null };
+    });
   }
 
   // ── role-gated birthday edit (guide §10) ───────────────────────────────────────────────────────────────────────
@@ -314,12 +356,17 @@ export class BirthdayCenter {
   }
 
   // ── birthday message history (guide §04 H) ─────────────────────────────────────────────────────────────────────
-  async history(ctx: RetentionContext, f: { q?: unknown; page?: unknown; pageSize?: unknown; year?: unknown }) {
+  async history(ctx: RetentionContext, f: { q?: unknown; page?: unknown; pageSize?: unknown; year?: unknown; from?: unknown; to?: unknown }) {
     const pageSize = [10, 20, 50].includes(Math.trunc(N(f.pageSize))) ? Math.trunc(N(f.pageSize)) : 20;
     const page = Math.max(1, Math.trunc(N(f.page)) || 1);
     const conds = [sql`m.tenant_id = ${ctx.tenantId}`, this.branchW(ctx)];   // another branch's customers never appear (Nov 3 audit)
     const y = Math.trunc(N(f.year)); if (y >= 2000 && y <= 2200) conds.push(sql`m.occasion_year = ${y}`);
-    const q = str(f.q, 100); if (q) conds.push(sql`(c.full_name ilike ${'%' + q + '%'} or cp.name ilike ${'%' + q + '%'})`);
+    const q = str(f.q, 100); if (q) conds.push(sql`(c.full_name ilike ${'%' + q + '%'} or cp.name ilike ${'%' + q + '%'} or m.channel = ${q.toLowerCase()} or m.status = ${q.toLowerCase()})`);
+    // A20 Nov 6: a From–To range on when the message was claimed (salon days)
+    if (f.from || f.to) {
+      const b = await this.base(ctx); const rr = this.range(b, { preset: 'custom', from: f.from, to: f.to });
+      conds.push(sql`m.created_at >= (${rr.from}::date::timestamp at time zone ${b.tz}) and m.created_at < ((${rr.to}::date + 1)::timestamp at time zone ${b.tz})`);
+    }
     const where = sql.join(conds, sql` and `);
     const total = N((await sql<any>`select count(*)::int as n from birthday_message_claims m left join customers c on c.id = m.customer_id and c.tenant_id = m.tenant_id left join campaigns cp on cp.id = m.campaign_id and cp.tenant_id = m.tenant_id where ${where}`.execute(this.db)).rows[0]?.n);
     const rows = (await sql<any>`select m.id, m.customer_id, c.full_name, m.occasion_year, m.channel, m.status, m.created_at, m.updated_at, cp.id as campaign_id, cp.name as campaign_name
