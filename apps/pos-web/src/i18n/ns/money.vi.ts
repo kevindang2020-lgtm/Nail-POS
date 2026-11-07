@@ -103,7 +103,7 @@ export const MONEY_VI = {
   "cdr.signedOff": "Đã duyệt bởi {name}",
   "cdr.signedOffShort": "đã duyệt",
   "cdr.breakdown": "Tờ tiền và tiền xu:",
-  "cdr.history": "Lịch sử ngăn kéo",
+  "cdr.history": "Lịch sử két tiền",   // DRAFT — Kevin reviews (reworded Nov 7 to match "Két tiền")
   "cdr.from": "Từ",
   "cdr.to": "Đến",
   "cdr.allStatuses": "Mọi trạng thái",
@@ -139,14 +139,14 @@ export const MONEY_VI = {
   "cdr.kind.refund": "Hoàn tiền mặt",   // DRAFT — Kevin reviews
   "cdr.kind.cash_in": "Tiền vào",   // DRAFT — Kevin reviews
   "cdr.kind.cash_out": "Tiền ra",   // DRAFT — Kevin reviews
-  "cdr.kind.float": "Tiền đầu ca",   // DRAFT — Kevin reviews
+  "cdr.kind.float": "Tiền lẻ đầu ca",   // DRAFT — Kevin reviews
   "cdr.state.voided": "Đã hủy",   // DRAFT — Kevin reviews
   "cdr.state.open": "Két đang mở",   // DRAFT — Kevin reviews
   "cdr.state.reconciled": "Đã đối soát",   // DRAFT — Kevin reviews
   "cdr.state.discrepancy": "Chênh lệch",   // DRAFT — Kevin reviews
   "cdr.state.cancelled": "Đã hủy",   // DRAFT — Kevin reviews
   "cdr.state.refunded": "Đã hoàn",   // DRAFT — Kevin reviews
-  "cdr.state.partial": "Đã trả (chia)",   // DRAFT — Kevin reviews
+  "cdr.state.partial": "Đã trả (chia thanh toán)",   // DRAFT — Kevin reviews
   "cdr.state.paid": "Đã trả",   // DRAFT — Kevin reviews
   "cdr.state.recorded": "Đã ghi",   // DRAFT — Kevin reviews
   "cdr.exported": "Đã xuất {n} dòng.",   // DRAFT — Kevin reviews
@@ -156,7 +156,7 @@ export const MONEY_VI = {
   "cdr.kpi.salesSub": "Tiền mặt thu vào két này",   // DRAFT — Kevin reviews
   "cdr.kpi.refundsSub": "Tiền mặt hoàn từ két này",   // DRAFT — Kevin reviews
   "cdr.kpi.expectedMoves": "Gồm tiền vào {in} · ra {out}",   // DRAFT — Kevin reviews
-  "cdr.kpi.expectedSub": "Tiền đầu ca + bán − hoàn",   // DRAFT — Kevin reviews
+  "cdr.kpi.expectedSub": "Tiền lẻ đầu ca + bán − hoàn",   // DRAFT — Kevin reviews
   "cdr.kpi.varianceSub": "Hiện sau khi đếm két",   // DRAFT — Kevin reviews
   "cdr.kpi.countedSub": "Đã đếm {amount}",   // DRAFT — Kevin reviews
   "cdr.pendingCount": "Chưa đếm",   // DRAFT — Kevin reviews
@@ -166,7 +166,7 @@ export const MONEY_VI = {
   "cdr.activity": "Hoạt động két tiền",   // DRAFT — Kevin reviews
   "cdr.act.searchPh": "Khách, số điện thoại, #phiếu, nhân viên hoặc lý do",   // DRAFT — Kevin reviews
   "cdr.act.kind": "Loại",   // DRAFT — Kevin reviews
-  "cdr.act.allKinds": "Tất cả",   // DRAFT — Kevin reviews
+  "cdr.act.allKinds": "Tất cả loại",   // DRAFT — Kevin reviews
   "cdr.act.drawerDay": "Ngày két",   // DRAFT — Kevin reviews
   "cdr.act.totals": "{from} – {to} · vào {in} · ra {out} · ròng {net}",   // DRAFT — Kevin reviews
   "cdr.act.noMatch": "Không có khoản nào khớp “{q}”.",   // DRAFT — Kevin reviews
@@ -178,8 +178,8 @@ export const MONEY_VI = {
   "cdr.col.in": "Tiền vào",   // DRAFT — Kevin reviews
   "cdr.col.out": "Tiền ra",   // DRAFT — Kevin reviews
   "cdr.col.status": "Trạng thái",   // DRAFT — Kevin reviews
-  "cdr.noCustomer": "Phiếu không có khách",   // DRAFT — Kevin reviews
-  "cdr.unknownEmployee": "Không ghi nhận",   // DRAFT — Kevin reviews
+  "cdr.noCustomer": "Phiếu không gắn khách hàng",   // DRAFT — Kevin reviews
+  "cdr.unknownEmployee": "Không rõ nhân viên",   // DRAFT — Kevin reviews
   "cdr.session": "Két {day}",   // DRAFT — Kevin reviews
   "cdr.denomTotal": "Tổng {amount}",   // DRAFT — Kevin reviews
   "cdr.denomTypeInstead": "Nhập tổng thay vào đó",   // DRAFT — Kevin reviews
@@ -193,5 +193,30 @@ export const MONEY_VI = {
   "cdr.kindHint.refund": "Tiền mặt hoàn lại cho khách từ két này.",   // DRAFT — Kevin reviews
   "cdr.kindHint.cash_in": "Tiền thêm vào giữa ca. Hủy sẽ giữ hồ sơ và bỏ khỏi tổng.",   // DRAFT — Kevin reviews
   "cdr.kindHint.cash_out": "Tiền lấy ra giữa ca (chi vặt, rút tiền, chi trả). Hủy sẽ giữ hồ sơ và bỏ khỏi tổng.",   // DRAFT — Kevin reviews
-  "cdr.kindHint.float": "Số tiền mặt két bắt đầu trong ngày.",   // DRAFT — Kevin reviews
+  "cdr.kindHint.float": "Số tiền mặt có trong két khi bắt đầu ngày.",   // DRAFT — Kevin reviews
+  "cdr.openCloseout": "Chốt ca ngày",   // DRAFT — Kevin reviews (same words as the menu item)
+  "cdr.chk.button": "Kiểm tra két",   // DRAFT — Kevin reviews
+  "cdr.chk.title": "Kiểm tra két",   // DRAFT — Kevin reviews
+  "cdr.chk.subtitle": "{register} · ngày két {day} · kiểm lúc {at}",   // DRAFT — Kevin reviews
+  "cdr.chk.again": "Kiểm lại",   // DRAFT — Kevin reviews
+  "cdr.chk.readOnly": "Chỉ đọc: kiểm tra này đọc lại két và so sánh. Không đếm, hủy, ghi hay ký bất cứ gì.",   // DRAFT — Kevin reviews
+  "cdr.chk.state.pass": "Ổn",   // DRAFT — Kevin reviews
+  "cdr.chk.state.warn": "Cần xem",   // DRAFT — Kevin reviews
+  "cdr.chk.state.fail": "Có lỗi",   // DRAFT — Kevin reviews
+  "cdr.chk.ledger.label": "Hoạt động khớp số",   // DRAFT — Kevin reviews
+  "cdr.chk.ledgerOk": "Tiền vào − tiền ra trong hoạt động = {amount} = Dự kiến trong két.",   // DRAFT — Kevin reviews
+  "cdr.chk.ledgerBad": "Hoạt động ròng {ledger} nhưng Dự kiến trong két là {expected}. Đừng đếm cho đến khi rõ — báo bộ phận hỗ trợ.",   // DRAFT — Kevin reviews
+  "cdr.chk.count.label": "Đếm hôm nay",   // DRAFT — Kevin reviews
+  "cdr.chk.notCounted": "Két ngày {day} chưa được đếm.",   // DRAFT — Kevin reviews
+  "cdr.chk.counted": "Đã đếm {amount}; không có gì thay đổi.",   // DRAFT — Kevin reviews
+  "cdr.chk.stale.label": "Các ngày trước",   // DRAFT — Kevin reviews
+  "cdr.chk.staleOpen": "{n} két ngày trước chưa bao giờ được đếm: {days}.",   // DRAFT — Kevin reviews
+  "cdr.chk.noStale": "Mọi két ngày trước đã được đếm.",   // DRAFT — Kevin reviews
+  "cdr.chk.review.label": "Ký duyệt",   // DRAFT — Kevin reviews
+  "cdr.chk.review": "{n} lần đếm chênh lệch lớn vẫn cần quản lý ký: {days}.",   // DRAFT — Kevin reviews
+  "cdr.chk.noReview": "Không có lần đếm nào chờ ký.",   // DRAFT — Kevin reviews
+  "cdr.chk.float.label": "Tiền lẻ đầu ca",   // DRAFT — Kevin reviews
+  "cdr.chk.floatSet": "Tiền lẻ đầu ca {amount}.",   // DRAFT — Kevin reviews
+  "cdr.chk.noFloat": "Hôm nay chưa đặt tiền lẻ đầu ca. Hãy đặt nếu két bắt đầu có tiền mặt.",   // DRAFT — Kevin reviews
+  "cdr.chk.load.label": "Không kiểm tra được",   // DRAFT — Kevin reviews
 };

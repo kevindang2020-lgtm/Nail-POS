@@ -1,5 +1,6 @@
 import { AiAssistantPanel } from '../components/AiAssistantPanel';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { posCashDrawerApi, type DrawerState, type DrawerStatus, type CashMovement, type DrawerRegister, type DrawerHistory, type DrawerHistoryRow, type DrawerActivity, type DrawerActivityRow } from '../api/posCashDrawerApi';
 import { useCan } from '../components/usePermissions';
@@ -40,8 +41,10 @@ const KINDS = ['sale', 'refund', 'cash_in', 'cash_out', 'float'] as const;
 type LedgerPeriod = PeriodState | { preset: 'session' };
 
 export function POSCashDrawerScreen() {
-  const can = useCan();
-  const [date, setDate] = useState('');
+  const can = useCan(); const nav = useNavigate();
+  // ?date=YYYY-MM-DD (from End-of-Day Cash, Nov 7 2026): open that business day's drawer; otherwise the server names today
+  const [params] = useSearchParams();
+  const [date, setDate] = useState(() => (/^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date')! : ''));
   const [d, setD] = useState<DrawerState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<Msg | null>(null);   // a KEY, translated at render (WP-D2)
@@ -67,6 +70,36 @@ export function POSCashDrawerScreen() {
   const [aKind, setAKind] = useState(''); const [aSearch, setASearch] = useState(''); const aQ = useDebounced(aSearch.trim(), 300);
   const [aPage, setAPage] = useState(1); const [act, setAct] = useState<DrawerActivity | null>(null); const [actErr, setActErr] = useState<string | null>(null);
   const [actTick, setActTick] = useState(0); const [openAct, setOpenAct] = useState<DrawerActivityRow | null>(null);
+  // One-click drawer check (SUNMI Cash Drawer addendum, health checker): READ-ONLY — it asks the server again and compares;
+  // it never posts, counts, voids or signs anything.
+  const [check, setCheck] = useState<null | 'running' | DrawerCheck[]>(null); const [checkedAt, setCheckedAt] = useState<string | null>(null);
+  const runCheck = async () => {
+    setCheck('running');
+    const out: DrawerCheck[] = [];
+    try {
+      const [st, led, open, review] = await Promise.all([
+        posCashDrawerApi.state(date || undefined, registerId),
+        posCashDrawerApi.activity({ registerId, preset: 'session', date, page: 1, pageSize: 5 }),
+        posCashDrawerApi.history({ status: 'open', registerId, page: 1, pageSize: 50 }),
+        posCashDrawerApi.history({ status: 'needs_review', registerId, page: 1, pageSize: 50 }),
+      ]);
+      const net = led.totals.cashInCents - led.totals.cashOutCents;
+      out.push(net === st.expectedCashCents ? { id: 'ledger', state: 'pass', detail: t('cdr.chk.ledgerOk', { amount: money(net) }) }
+        : { id: 'ledger', state: 'fail', detail: t('cdr.chk.ledgerBad', { ledger: money(net), expected: money(st.expectedCashCents) }) });
+      out.push(st.countedCents == null ? { id: 'count', state: 'warn', detail: t('cdr.chk.notCounted', { day: st.businessDate ?? date }) }
+        : st.changedSinceCount ? { id: 'count', state: 'warn', detail: t('cdr.changedSinceCount', { amount: money(st.liveExpectedCashCents ?? st.expectedCashCents) }) }
+        : { id: 'count', state: 'pass', detail: t('cdr.chk.counted', { amount: money(st.countedCents) }) });
+      const stale = open.items.filter((r) => r.businessDate < (st.businessDate ?? date));
+      out.push(stale.length ? { id: 'stale', state: 'warn', detail: t('cdr.chk.staleOpen', { n: String(stale.length), days: stale.slice(0, 5).map((r) => r.businessDate).join(', ') }) }
+        : { id: 'stale', state: 'pass', detail: t('cdr.chk.noStale') });
+      const waiting = review.items.filter((r) => !r.approvedAt);
+      out.push(waiting.length ? { id: 'review', state: 'warn', detail: t('cdr.chk.review', { n: String(waiting.length), days: waiting.slice(0, 5).map((r) => r.businessDate).join(', ') }) }
+        : { id: 'review', state: 'pass', detail: t('cdr.chk.noReview') });
+      out.push(st.openingFloatCents > 0 || st.status !== 'open' ? { id: 'float', state: 'pass', detail: t('cdr.chk.floatSet', { amount: money(st.openingFloatCents) }) }
+        : { id: 'float', state: 'warn', detail: t('cdr.chk.noFloat') });
+    } catch (e) { out.push({ id: 'load', state: 'fail', detail: (e as { message?: string })?.message || t('cdr.act.failed') }); }
+    setCheckedAt(new Date().toISOString()); setCheck(out);
+  };
   const fit = useFitRows<HTMLDivElement>(42, { min: 3, max: 12, reserve: 34 });
   const pageSize = [3, 4, 5, 6, 8, 10].reduce((best, n) => (n <= fit.rows ? n : best), 3);
 
@@ -185,6 +218,9 @@ export function POSCashDrawerScreen() {
           </select></label> : null}
           {st ? <span className="cdr-chip" style={{ color: st.color, background: st.bg }} data-testid="drawer-status">{st.label}</span> : null}
           <button type="button" className="fk-btn" onClick={load} data-testid="refresh">{t('pos.refresh')}</button>
+          {/* Daily Closeout (End-of-Day Cash) for the same day: the technicians' cash hand-offs this drawer leaves out */}
+          <button type="button" className="fk-btn ghost" onClick={() => nav(date ? `/cash-handoffs?date=${date}` : '/cash-handoffs')} data-testid="open-closeout">{t('cdr.openCloseout')}</button>
+          <button type="button" className="fk-btn ghost" onClick={runCheck} disabled={check === 'running' || !date} data-testid="drawer-check">{t('cdr.chk.button')}</button>
           <button type="button" className="fk-btn ghost" onClick={exportLedger} disabled={busy === 'export' || !act || act.total === 0} title={act && act.total === 0 ? t('cdr.exportNothing') : undefined} data-testid="export">{busy === 'export' ? t('pos.loading') : t('cdr.export')}</button>
         </div>
       </header>
@@ -298,6 +334,16 @@ export function POSCashDrawerScreen() {
       {/* Original guide + SUNMI addendum §10: the Money Protection check sits at the bottom, after the activity and its pages */}
       <div className="cdr-ai" data-module-id="cdr-ai"><AiAssistantPanel packageCode="ai_fraud_money_protection" cta={t('pos.check_for_anomalies')} action="fraud_scan" buildPrompt={() => "Review the cash drawer activity for anomalies or possible fraud at a nail salon and flag anything unusual. Be brief."} /></div>
 
+      {check ? <FitDialog title={t('cdr.chk.title')} subtitle={check === 'running' ? t('pos.loading') : t('cdr.chk.subtitle', { day: d?.businessDate ?? date, register: regName(registerId), at: checkedAt ? fmtInZone(checkedAt, { hour: 'numeric', minute: '2-digit', second: '2-digit' }) : '' })}
+        onClose={() => setCheck(null)} testId="drawer-check-dialog"
+        footer={<><button type="button" className="fk-btn ghost" onClick={runCheck} disabled={check === 'running'}>{t('cdr.chk.again')}</button><button type="button" className="fk-btn primary" onClick={() => setCheck(null)}>{t('pos.close')}</button></>}>
+        {check === 'running' ? <div className="fk-loading">{t('pos.loading')}</div> : <ul className="cdr-checks" data-testid="drawer-checks">
+          {check.map((c) => <li key={c.id} data-testid={'chk-' + c.id} data-state={c.state}><span className={'fk-chip ' + (c.state === 'pass' ? 'ok' : c.state === 'warn' ? 'warn' : 'bad')}>{t('cdr.chk.state.' + c.state)}</span>
+            <span><b>{t('cdr.chk.' + c.id + '.label')}</b><span className="fk-li-s">{c.detail}</span></span></li>)}
+        </ul>}
+        <div className="fk-hint">{t('cdr.chk.readOnly')}</div>
+      </FitDialog> : null}
+
       {denomOpen ? <FitDialog title={t('cdr.byDenom')} subtitle={t('cdr.denomTotal', { amount: money(denomTotal) })} onClose={() => setDenomOpen(false)} testId="dlg-denoms"
         footer={<><button type="button" className="fk-btn ghost" onClick={() => { setByDenom(false); setDenomOpen(false); }}>{t('cdr.denomTypeInstead')}</button>
           <button type="button" className="fk-btn primary" onClick={() => { setByDenom(true); setDenomOpen(false); }} data-testid="denom-use">{t('cdr.denomUse')}</button></>}>
@@ -340,6 +386,9 @@ export function POSCashDrawerScreen() {
     </div>
   );
 }
+
+/** One line of the drawer check. */
+type DrawerCheck = { id: 'ledger' | 'count' | 'stale' | 'review' | 'float' | 'load'; state: 'pass' | 'warn' | 'fail'; detail: string };
 
 /** The ledger's period as query parameters: the drawer's own day, a preset, or a custom range. */
 function periodParams(preset: string, from: string, to: string, date: string): { preset: string; date?: string; from?: string; to?: string } {

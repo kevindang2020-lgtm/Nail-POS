@@ -135,7 +135,7 @@ export function TenantSuppliersScreen() {
                 <td className="t-opt">{v.lastOrderAt ? day(v.lastOrderAt) : <span className="fk-muted">{tx('sup.never')}</span>}</td>
                 <td><span className={'fk-chip ' + (v.active ? 'ok' : 'mut')}>{v.active ? tx('sup.status.active') : tx('sup.status.inactive')}</span>{v.preferred ? <span className="fk-chip gold">{tx('inv.preferred')}</span> : null}</td>
                 <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => select(v.id)} data-testid="view">{tx('sup.view')}</button>
-                  {v.active && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory/purchase-orders?new=1&vendorId=${encodeURIComponent(v.id)}`)} data-testid="draft-po">{tx('sup.draftPo')}</button> : null}</td>
+                  {v.active && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory?tab=purchaseOrders&new=1&vendorId=${encodeURIComponent(v.id)}`)} data-testid="draft-po">{tx('sup.draftPo')}</button> : null}</td>
               </tr>)}</tbody></table>}
         </FitPanel> : <FitPanel testId="orders" bodyRef={fit.ref} className="fn-records" title={<span className="fn-chips">{tx('pos.purchase_orders')}{pos.data ? <span className="fk-muted"> · {fmtNumber(pos.data.total)}</span> : null}<span className="fk-hint">{tx('sup.poHint')}</span></span>}
           footer={<Pager info={pos.data ? { page: pos.data.page, pageSize: pos.data.pageSize, totalItems: pos.data.total, totalPages: pos.data.pages } : null} onPage={setPoPage} label={tx('pos.purchase_orders')} />}>
@@ -171,7 +171,7 @@ function SupplierDetail({ vendorId, tick, can, nav, onChanged, onEdit, onViewPo,
         <div className="fk-li-s">{[primary ? primary.name : s.contactName, primary ? (primary.mobilePhone ?? primary.officePhone) : s.phone, primary?.email ?? s.email].filter(Boolean).join(' · ') || tx('sup.noContact')}</div></div>
       <div className="sup-d-acts">
         {manage ? <button type="button" className="fk-btn sm" onClick={() => onEdit(s)} data-testid="edit-supplier">{tx('pos.edit')}</button> : null}
-        {s.active && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn sm primary" onClick={() => nav(`/tenant/inventory/purchase-orders?new=1&vendorId=${encodeURIComponent(s.id)}`)} data-testid="detail-draft-po">{tx('sup.draftPo')}</button> : null}
+        {s.active && can('inventory.purchase_order.create') ? <button type="button" className="fk-btn sm primary" onClick={() => nav(`/tenant/inventory?tab=purchaseOrders&new=1&vendorId=${encodeURIComponent(s.id)}`)} data-testid="detail-draft-po">{tx('sup.draftPo')}</button> : null}
         {manage && s.active ? <button type="button" className="fk-btn ghost sm" disabled={busy} onClick={() => act(() => inventoryApi.archiveVendor(s.id))} data-testid="deactivate">{tx('sup.deactivate')}</button> : null}
         {manage && !s.active ? <button type="button" className="fk-btn ghost sm" disabled={busy} onClick={() => act(() => posSuppliersApi.restore(s.id))} data-testid="reactivate">{tx('sup.reactivate')}</button> : null}
       </div>

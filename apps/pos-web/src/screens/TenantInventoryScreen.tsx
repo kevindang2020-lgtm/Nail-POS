@@ -130,7 +130,7 @@ export function TenantInventoryScreen() {
       </div>
       {detail ? <ProductDetailsDialog productId={detail.id} initialTab={detail.tab} can={can} onClose={() => setDetail(null)} onChanged={refresh}
         onEdit={(p) => { setDetail(null); setEditing(p.id); }} onAddStock={(p) => { setDetail(null); setStockFor(p); }} onRecordUse={(id) => { setDetail(null); setRecording(id); }}
-        onReorder={(p) => nav(`/tenant/inventory/purchase-orders?new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`)} /> : null}
+        onReorder={(p) => nav(`/tenant/inventory?tab=purchaseOrders&new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`)} /> : null}
       {adding ? <ProductFormDialog onClose={() => setAdding(false)} onSaved={(id) => { setAdding(false); go('products', { search: '', status: '', period: { preset: 'all' }, extra: { sort: 'newest' } }); refresh(); setNote({ tone: 'ok', text: tx('prd.created'), productId: id }); }} /> : null}
       {editing ? <EditProductDialog productId={editing} onClose={() => setEditing(null)} onSaved={(id) => { setEditing(null); refresh(); setNote({ tone: 'ok', text: tx('prd.saved'), productId: id }); }} /> : null}
       {stockFor ? <AddStockDialog product={stockFor} onClose={() => setStockFor(null)} onSaved={() => { const p = stockFor; setStockFor(null); refresh(); setNote({ tone: 'ok', text: tx('prd.stockAdded', { n: p.name }), productId: p.id }); }} /> : null}
@@ -200,7 +200,7 @@ function ProductsTab({ s, q, patch, setExtra, tick, can, onDetail, onEdit, onAdd
                     {can('inventory.product_usage.submit') ? <button type="button" role="menuitem" onClick={() => { setMenu(null); onRecord(p.id); }} data-testid="m-record">{tx('sa.recordUse')}</button> : null}
                     <button type="button" role="menuitem" onClick={() => { setMenu(null); onDetail(p.id, 'usage'); }} data-testid="m-usage">{tx('inv.usageHistory')}</button>
                     <button type="button" role="menuitem" onClick={() => { setMenu(null); onDetail(p.id, 'history'); }} data-testid="m-moves">{tx('inv.movements')}</button>
-                    {can('inventory.purchase_order.create') && p.suggestedReorder > 0 ? <button type="button" role="menuitem" onClick={() => nav(`/tenant/inventory/purchase-orders?new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`)} data-testid="m-reorder">{tx('sa.reorder')}</button> : null}
+                    {can('inventory.purchase_order.create') && p.suggestedReorder > 0 ? <button type="button" role="menuitem" onClick={() => nav(`/tenant/inventory?tab=purchaseOrders&new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`)} data-testid="m-reorder">{tx('sa.reorder')}</button> : null}
                   </div> : null}</span>
               </td>
             </tr>))}</tbody>
@@ -262,7 +262,13 @@ function PurchaseOrdersTab({ s, q, patch, tick, can, onChanged }: TabProps & { o
   const scope = { search: q || undefined, status: s.status || undefined, ...periodQuery(s.period), dateField: s.dateField };
   const key = JSON.stringify(scope);
   const d = useLoad(() => posInventoryScreenApi.purchaseOrders({ ...scope, page: s.page, pageSize: SIZES.purchaseOrders }), [key, s.page, tick]);
-  const [creating, setCreating] = useState(false); const [receiveFor, setReceiveFor] = useState<string | null>(null); const [view, setView] = useState<string | null>(null);
+  const [params, setParams] = useSearchParams();
+  const [prefill, setPrefill] = useState<{ productId: string; quantity: string; vendorId: string } | undefined>(() => (params.get('new') === '1' && can('inventory.purchase_order.create')
+    ? { productId: params.get('productId') ?? '', quantity: String(Math.max(1, parseInt(params.get('qty') ?? '1', 10) || 1)), vendorId: params.get('vendorId') ?? '' } : undefined));
+  const [creating, setCreating] = useState(!!prefill); const [receiveFor, setReceiveFor] = useState<string | null>(null); const [view, setView] = useState<string | null>(null);
+  useEffect(() => {   // the Reorder link's parameters are used once — a refresh must not open a second draft
+    if (!params.has('new')) return; const sp = new URLSearchParams(params); ['new', 'productId', 'qty', 'vendorId'].forEach((k) => sp.delete(k)); setParams(sp, { replace: true });
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   const [editing, setEditing] = useState<PoEdit | null>(null);
   const [busy, setBusy] = useState<string | null>(null); const [err, setErr] = useState<string | null>(null);
   const pick = usePickProducts(creating || !!editing);
@@ -291,7 +297,7 @@ function PurchaseOrdersTab({ s, q, patch, tick, can, onChanged }: TabProps & { o
         : <PoTable rows={rows} busy={busy} can={can} onView={setView} onReceive={setReceiveFor} onEdit={(id) => void openEdit(id)}
             onApprove={(id) => act(id, () => inventoryApi.approvePurchaseOrder(id))} onCancel={(id) => confirm(tx('inv.confirmCancelPo'), () => { void act(id, () => inventoryApi.cancelPurchaseOrder(id)); }, { confirmLabel: tx('inv.cancelPo') })} />}
     </FitPanel>
-    {creating ? (pick ? <CreatePOModal products={pick} onClose={() => setCreating(false)} onSaved={() => { setCreating(false); patch({ page: 1, status: '', search: '', period: { preset: 'all' } }); d.reload(); onChanged(); }} /> : <FitDialog title={tx('pos.new_purchase_order_3')} onClose={() => setCreating(false)}><div className="fk-loading">{tx('pos.loading')}</div></FitDialog>) : null}
+    {creating ? (pick ? <CreatePOModal products={pick} prefill={prefill} onClose={() => { setCreating(false); setPrefill(undefined); }} onSaved={() => { setCreating(false); setPrefill(undefined); patch({ page: 1, status: '', search: '', period: { preset: 'all' } }); d.reload(); onChanged(); }} /> : <FitDialog title={tx('pos.new_purchase_order_3')} onClose={() => setCreating(false)}><div className="fk-loading">{tx('pos.loading')}</div></FitDialog>) : null}
     {editing && pick ? <CreatePOModal products={pick} edit={editing} onClose={() => setEditing(null)} onSaved={() => { setEditing(null); d.reload(); onChanged(); }} /> : null}
     {receiveFor ? <ReceivePOModal poId={receiveFor} onClose={() => setReceiveFor(null)} onSaved={() => { setReceiveFor(null); d.reload(); onChanged(); }} /> : null}
     {view ? <PoDialog poId={view} onClose={() => setView(null)} /> : null}
@@ -484,7 +490,7 @@ function AlertsTab({ s, q, patch, tick, can, onDetail, onChanged, nav }: TabProp
             <td>{r.vendor ?? '—'}</td><td><LastUsed r={r} /></td><td className="t-opt">{r.since ? when(r.since) : <span className="fk-muted">{tx('sa.sinceUnknown')}</span>}</td>
             <td className="fn-acts">
               {!r.acknowledgedAt ? <button type="button" className="fk-btn ghost sm" disabled={busy === r.productId} onClick={() => ack(r.productId)} data-testid="ack">{tx('pos.acknowledge')}</button> : null}
-              {can('inventory.purchase_order.create') && r.suggestedReorder > 0 ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory/purchase-orders?new=1&productId=${encodeURIComponent(r.productId)}&qty=${r.suggestedReorder}${r.vendorId ? '&vendorId=' + encodeURIComponent(r.vendorId) : ''}`)} data-testid="reorder">{tx('sa.reorder')}</button> : null}
+              {can('inventory.purchase_order.create') && r.suggestedReorder > 0 ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory?tab=purchaseOrders&new=1&productId=${encodeURIComponent(r.productId)}&qty=${r.suggestedReorder}${r.vendorId ? '&vendorId=' + encodeURIComponent(r.vendorId) : ''}`)} data-testid="reorder">{tx('sa.reorder')}</button> : null}
             </td></tr>)}</tbody></table>}
     </FitPanel>
   </>;
@@ -496,12 +502,15 @@ type DraftLine = { productId: string; quantity: string; costDollars: string };
 /** D9 gaps (Nov 5 2026): `edit` opens the same form on a DRAFT order — the supplier stays, lines / date / shipping change */
 type PoEdit = { id: string; poNumber: string; vendorId: string; expectedDate: string; shippingCents: number; lines: DraftLine[] };
 const centsToDollars = (c: number) => (c ? (c / 100).toFixed(2) : '');
-function CreatePOModal({ products, onClose, onSaved, edit }: { products: InvProduct[]; onClose: () => void; onSaved: () => void; edit?: PoEdit }) {
+/** `prefill` (Nov 7 2026): a Reorder from Stock Alerts / Products / Inventory opens a DRAFT with that product, quantity and
+ *  supplier — what the old standalone Purchase Orders page did (?new=1&productId=…&qty=…&vendorId=…). Nothing is saved
+ *  until Create. */
+function CreatePOModal({ products, onClose, onSaved, edit, prefill }: { products: InvProduct[]; onClose: () => void; onSaved: () => void; edit?: PoEdit; prefill?: { productId: string; quantity: string; vendorId: string } }) {
   const [vendors, setVendors] = useState<InvVendor[]>([]);
-  const [vendorId, setVendorId] = useState(edit?.vendorId ?? '');
+  const [vendorId, setVendorId] = useState(edit?.vendorId ?? prefill?.vendorId ?? '');
   const [expectedDate, setExpectedDate] = useState(edit?.expectedDate ?? '');
   const [shipping, setShipping] = useState(edit ? centsToDollars(edit.shippingCents) : '');
-  const [lines, setLines] = useState<DraftLine[]>(edit?.lines.length ? edit.lines : [{ productId: '', quantity: '12', costDollars: '' }]);
+  const [lines, setLines] = useState<DraftLine[]>(edit?.lines.length ? edit.lines : prefill?.productId ? [{ productId: prefill.productId, quantity: prefill.quantity, costDollars: '' }] : [{ productId: '', quantity: '12', costDollars: '' }]);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   useEffect(() => { inventoryApi.vendors().then((r) => setVendors(r?.vendors ?? [])).catch(() => setVendors([])); }, []);

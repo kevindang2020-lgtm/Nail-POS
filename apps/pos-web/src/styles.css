@@ -3980,3 +3980,8 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .cdr-ledger .fk-panel-actions{flex:1 1 auto;justify-content:flex-end}
 .cdr-ledger .cdr-tools{flex:1 1 auto;justify-content:flex-end}
 .cdr-ledger .cdr-tools>.fk-search{flex:1 1 360px;max-width:460px;width:auto}
+
+.cdr-checks{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:10px}
+.cdr-checks li{display:grid;grid-template-columns:72px minmax(0,1fr);gap:10px;align-items:start;font-size:13.5px}
+.cdr-checks li .fk-chip{justify-self:start}
+.cdr-checks li .fk-li-s{display:block;margin-top:2px}

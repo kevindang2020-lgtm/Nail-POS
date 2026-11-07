@@ -61,4 +61,9 @@ describe('POSCashHandoffScreen', () => {
     api.summary.mockRejectedValue({ status: 403 }); api.list.mockRejectedValue({ status: 403 });
     mount(); expect(await screen.findByText(/Your role cannot see this information/i)).toBeInTheDocument(); expect(screen.queryByTestId('record-handoff')).toBeNull();
   });
+  it('a link from the Cash Drawer (?date=) opens that business day, and Cash Drawer goes back to the same day (Nov 7 2026)', async () => {
+    render(<MemoryRouter initialEntries={['/cash-handoffs?date=2026-11-05']}><POSCashHandoffScreen /></MemoryRouter>);
+    await waitFor(() => expect(api.list.mock.calls[0][0]).toMatchObject({ preset: 'custom', from: '2026-11-05', to: '2026-11-05' }));
+    expect(await screen.findByTestId('open-drawer')).toBeTruthy();
+  });
 });

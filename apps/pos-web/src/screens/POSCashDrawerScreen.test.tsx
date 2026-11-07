@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render as rtlRender, screen, fireEvent, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import type { ReactElement } from 'react';
+// the screen links to End-of-Day Cash (Nov 7 2026), so it renders inside a router
+const render = (ui: ReactElement, path = '/cash-drawer') => rtlRender(<MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>);
 vi.mock('../realtime/useRealtime', () => ({ useRealtime: () => {} }));
 vi.mock('../api/posCashDrawerApi', async (orig) => ({ ...(await orig<typeof import('../api/posCashDrawerApi')>()), posCashDrawerApi: { registers: vi.fn(), state: vi.fn(), open: vi.fn(), reconcile: vi.fn(), movement: vi.fn(), movements: vi.fn(), voidMovement: vi.fn(), approve: vi.fn(), history: vi.fn(), activity: vi.fn() } }));
 vi.mock('../components/usePermissions', () => ({ useCan: () => () => true }));
@@ -198,5 +202,39 @@ describe('POSCashDrawerScreen (register reconciliation)', () => {
     render(<POSCashDrawerScreen />);
     const ledger = await screen.findByTestId('drawer-activity'); const ai = screen.getByTestId('money-protection');
     expect(ledger.compareDocumentPosition(ai) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
+  it('opens the day named in the address (from End-of-Day Cash) and links to that day\'s Daily Closeout', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer({ businessDate: '2026-06-14' }));
+    render(<POSCashDrawerScreen />, '/cash-drawer?date=2026-06-14');
+    await waitFor(() => expect(posCashDrawerApi.state).toHaveBeenCalledWith('2026-06-14', 'main'));
+    expect(await screen.findByTestId('open-closeout')).toBeTruthy();
+  });
+
+  it('Check drawer (read-only): the activity adds up to Expected; an earlier uncounted drawer and a pending sign-off are flagged', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.activity as any).mockResolvedValue(activity([row({ id: 'p1', cashInCents: 7650 }), row({ kind: 'float', id: 's1', cashInCents: 10000, state: 'open' })]));
+    (posCashDrawerApi.history as any).mockImplementation(async (q: any) => q.status === 'open'
+      ? { items: [{ businessDate: '2026-06-12', registerId: 'main', status: 'open' }, { businessDate: TODAY, registerId: 'main', status: 'open' }], total: 2, page: 1, pageSize: 50, pages: 1 }
+      : q.status === 'needs_review' ? { items: [{ businessDate: '2026-06-10', registerId: 'main', status: 'discrepancy', approvalRequired: true, approvedAt: null }], total: 1, page: 1, pageSize: 50, pages: 1 }
+      : { items: [], total: 0, page: 1, pageSize: 10, pages: 1 });
+    render(<POSCashDrawerScreen />);
+    fireEvent.click(await screen.findByTestId('drawer-check'));
+    await screen.findByTestId('drawer-checks');
+    expect(screen.getByTestId('chk-ledger').getAttribute('data-state')).toBe('pass');      // 7650 + 10000 = 17650 = expected
+    expect(screen.getByTestId('chk-count').getAttribute('data-state')).toBe('warn');       // not counted yet
+    expect(screen.getByTestId('chk-stale')).toHaveTextContent('2026-06-12');               // an earlier day, never counted
+    expect(screen.getByTestId('chk-stale')).not.toHaveTextContent(TODAY);
+    expect(screen.getByTestId('chk-review')).toHaveTextContent('2026-06-10');
+    for (const f of ['open', 'reconcile', 'movement', 'voidMovement', 'approve']) expect((posCashDrawerApi as any)[f]).not.toHaveBeenCalled();   // read-only
+  });
+
+  it('Check drawer: an activity that does not add up to Expected is a Problem', async () => {
+    (posCashDrawerApi.state as any).mockResolvedValue(drawer());
+    (posCashDrawerApi.activity as any).mockResolvedValue(activity([row({ id: 'p1', cashInCents: 100 })]));
+    render(<POSCashDrawerScreen />);
+    fireEvent.click(await screen.findByTestId('drawer-check'));
+    const l = await screen.findByTestId('chk-ledger');
+    expect(l.getAttribute('data-state')).toBe('fail'); expect(l).toHaveTextContent('$176.50');
   });
 });

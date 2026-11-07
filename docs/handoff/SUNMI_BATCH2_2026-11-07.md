@@ -48,15 +48,26 @@ its overlay, AI Money Protection) and added what the addendum asks for:
 Verified: pgtest (7 cases, incl. another salon's cash never shows, voids leave the totals, paging), 14 screen tests,
 real stack with 8 seeded cash sales ($410.69 ledger = Cash Sales = Expected).
 
-## Not built (recommendations in the addenda, not requirements)
-- Per-page "one-click health checker" for DATA (catalog integrity, KPI reconciliation…). The screen-fit part exists for
-  every page: profile menu → **Check this screen** (ScreenCheckDialog). Loyalty has its own data check.
-- End-of-Day Cash "View Daily Closeout": this page IS Daily Closeout in the navigation (`/cash-handoffs`); there is no
-  separate closeout report to link to.
-- The standalone Purchase Orders page (`/tenant/inventory/purchase-orders`) has no PDF of its own; purchasing lives in
-  Suppliers & Purchasing (which has it). Kept as is; it passes the fit check.
-- Real SUNMI hardware: everything above is a desktop Chromium at the SUNMI viewport sizes. Touch, the Android keyboard
-  and the browser bars need the device.
+## Kevin's four decisions (delegated to Claude, Nov 7 2026) — what was picked
+1. **Health checkers** — screen fit: every page already has profile menu → *Check this screen*. Data: built where a wrong
+   number costs money and nothing else checks it — **Cash Drawer → Check drawer** (read-only): the activity adds up to
+   Expected in Drawer; today's count (or changed since); earlier days never counted; counts waiting for a manager's
+   sign-off; opening float set. The other money pages already carry their own reconciliation signals (End-of-Day
+   difference strip, Tips snapshot-mismatch flags, Transactions definitions, Refunds "Needs Review"); Loyalty has its own
+   check. No per-page checker was added where it would only repeat those.
+2. **Daily Closeout** — no button that links a page to itself. Instead Cash Drawer and End-of-Day Cash (the Daily
+   Closeout) open each other **for the same business day** (`?date=`): the drawer leaves technicians' cash to the
+   closeout, so the two are read together.
+3. **Purchase Orders** — one workspace: Inventory → Purchase Orders already had everything the old standalone page did
+   (create, approve, receive, cancel, lines) plus search, dates, pages and receipts. The old page, its two tests and its
+   API file are removed; `/tenant/inventory/purchase-orders` redirects there, and every Reorder (Stock Alerts, Products,
+   Inventory, Suppliers) opens a draft prefilled with product, quantity and supplier, as before. The menu item stays.
+4. **Vietnamese** — all new Cash Drawer strings reviewed against the POS's existing terms (Két tiền, Tiền lẻ đầu ca,
+   Chốt ca ngày); nine reworded for consistency ("Lịch sử ngăn kéo" → "Lịch sử két tiền" beside "Hoạt động két tiền").
+   They keep their `// DRAFT — Kevin reviews` marks so your review list stays complete; they ship as they are.
+
+Still not covered: real SUNMI hardware (touch, Android keyboard, browser bars) — everything here is desktop Chromium at
+the SUNMI viewport sizes.
 
 ## Vietnamese DRAFT for Kevin
-`cdr.*` in `apps/pos-web/src/i18n/ns/money.vi.ts` (70 new strings, each marked `// DRAFT — Kevin reviews`).
+`cdr.*` in `apps/pos-web/src/i18n/ns/money.vi.ts` (96 strings, each marked `// DRAFT — Kevin reviews`).

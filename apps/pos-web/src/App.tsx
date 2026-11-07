@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { IPadViewProvider } from './components/IPadViewProvider';
 import './components/ipad-modules';
@@ -85,7 +85,6 @@ import { POSSplitPaymentsScreen } from './screens/POSSplitPaymentsScreen';
 import { POSInvoicesScreen } from './screens/POSInvoicesScreen';
 import { POSInventoryReportScreen } from './screens/POSInventoryReportScreen';
 import { POSInventoryAlertsScreen } from './screens/POSInventoryAlertsScreen';
-import { POSPurchaseOrdersScreen } from './screens/POSPurchaseOrdersScreen';
 import { POSProductsScreen } from './screens/POSProductsScreen';
 import { POSFeaturesScreen } from './screens/POSFeaturesScreen';
 import { POSSetupHealthScreen } from './screens/POSSetupHealthScreen';
@@ -376,7 +375,9 @@ function POSRoutes() {
         <Route path="tenant/account/usage-limits" element={<POSUsageLimitsScreen />} />
         <Route path="tenant/account/invoices" element={<POSAccountInvoicesScreen />} />
         <Route path="tenant/inventory/alerts" element={<POSInventoryAlertsScreen />} />
-        <Route path="tenant/inventory/purchase-orders" element={<POSPurchaseOrdersScreen />} />
+        {/* Nov 7 2026: one purchase-order workspace — Inventory → Purchase Orders (search, dates, pages, create / approve / receive / cancel,
+            receipts). The old standalone page duplicated a subset of it; its address and Reorder prefill (?new=1&productId&qty&vendorId) carry over. */}
+        <Route path="tenant/inventory/purchase-orders" element={<PurchaseOrdersRedirect />} />
         <Route path="tenant/products" element={<POSProductsScreen />} />
         <Route path="tenant/management/features" element={<POSFeaturesScreen />} />
         <Route path="tenant/management/setup-health" element={<POSSetupHealthScreen />} />
@@ -483,4 +484,11 @@ function Gate() {
 
 export function App() {
   return <AuthProvider><IPadViewProvider><Gate /></IPadViewProvider></AuthProvider>;
+}
+
+/** /tenant/inventory/purchase-orders → Inventory's Purchase Orders tab, keeping a Reorder's prefill parameters. */
+function PurchaseOrdersRedirect() {
+  const loc = useLocation();
+  const sp = new URLSearchParams(loc.search); sp.set('tab', 'purchaseOrders');
+  return <Navigate to={`/tenant/inventory?${sp.toString()}`} replace />;
 }

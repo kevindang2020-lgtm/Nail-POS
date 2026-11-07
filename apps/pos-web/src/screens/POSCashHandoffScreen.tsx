@@ -10,7 +10,7 @@
 // What was wrong: one day only, KPIs summed in the browser, no search / paging, a count overwrote the previous one, a
 // second counter could silently overwrite the first, and a read error looked like "No technician collected cash".
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { t as tx } from '@aipowersalon/mobile-sdk/i18n';
 import { createIntentKeys } from '@aipowersalon/api-client';
 import { posCashHandoffApi } from '../api/posCashHandoffApi';
@@ -42,7 +42,9 @@ export function POSCashHandoffScreen() {
   const nav = useNavigate();
   const [search, setSearch] = useState(''); const q = useDebounced(search.trim(), 300);
   const [status, setStatus] = useState(''); const [tech, setTech] = useState(''); const [sort, setSort] = useState('created_desc');
-  const [period, setPeriod] = useState<PeriodState>({ preset: 'today' }); const [basis, setBasis] = useState('business');
+  // ?date=YYYY-MM-DD (from the Cash Drawer, Nov 7 2026): open that business day — the same day the drawer shows
+  const [params] = useSearchParams(); const linkedDay = /^\d{4}-\d{2}-\d{2}$/.test(params.get('date') ?? '') ? params.get('date')! : null;
+  const [period, setPeriod] = useState<PeriodState>(linkedDay ? { preset: 'custom', from: linkedDay, to: linkedDay } : { preset: 'today' }); const [basis, setBasis] = useState('business');
   const [page, setPage] = useState(1); const [tick, setTick] = useState(0); const [note, setNote] = useState<Note>(null); const [exporting, setExporting] = useState(false);
   const [detail, setDetail] = useState<{ techId: string; date: string } | null>(null);
   const [counting, setCounting] = useState<{ techId?: string; date?: string } | null>(null);
@@ -81,7 +83,7 @@ export function POSCashHandoffScreen() {
           {perms.count ? <button type="button" className="fk-btn primary" onClick={() => setCounting({})} data-testid="record-handoff">{tx('ch.record')}</button> : null}
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
           {perms.export ? <button type="button" className="fk-btn" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('ch.export')}</button> : null}
-          <button type="button" className="fk-btn" onClick={() => nav('/cash-drawer')} data-testid="open-drawer">{tx('ch.openDrawer')}</button>
+          <button type="button" className="fk-btn" onClick={() => nav(period.preset === 'custom' && period.from && period.from === period.to ? `/cash-drawer?date=${period.from}` : '/cash-drawer')} data-testid="open-drawer">{tx('ch.openDrawer')}</button>
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span>

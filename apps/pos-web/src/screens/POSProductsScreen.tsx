@@ -72,7 +72,7 @@ export function POSProductsScreen() {
     try { const csv = await posInventoryScreenApi.exportProducts(scope); const blob = new Blob([String(csv)], { type: 'text/csv;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'products.csv'; a.click(); URL.revokeObjectURL(a.href); setNote({ tone: 'ok', text: tx('finance.exported') }); }
     catch (e) { setNote({ tone: 'bad', text: errMsg(e) }); } finally { setExporting(false); }
   };
-  const reorder = (p: any) => nav(`/tenant/inventory/purchase-orders?new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`);
+  const reorder = (p: any) => nav(`/tenant/inventory?tab=purchaseOrders&new=1&productId=${encodeURIComponent(p.id)}&qty=${p.suggestedReorder}${p.vendorId ? '&vendorId=' + encodeURIComponent(p.vendorId) : ''}`);
   if (isForbidden(metrics.error)) return <div className="work prd" data-testid="products-screen"><h1>{tx('pos.products')}</h1><StateBlock error={metrics.error} onRetry={metrics.reload} /></div>;
   const L = lookups.data;
   return (

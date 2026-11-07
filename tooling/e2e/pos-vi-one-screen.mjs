@@ -81,7 +81,6 @@ export const BATCH2_MODULES = [
   { key: 'discounts', path: '/tenant/services/discounts', label: 'DISCOUNTS' },
   { key: 'products', path: '/tenant/products', label: 'PRODUCTS' },
   { key: 'inventory', path: '/tenant/inventory', label: 'INVENTORY' },
-  { key: 'purchase-orders', path: '/tenant/inventory/purchase-orders', label: 'PURCHASE ORDERS' },
   { key: 'suppliers', path: '/tenant/inventory/vendors', label: 'SUPPLIERS' },
   { key: 'stock-alerts', path: '/tenant/inventory/alerts', label: 'STOCK ALERTS' },
   { key: 'payments', path: '/tenant/payments/overview', label: 'PAYMENTS & MONEY' },

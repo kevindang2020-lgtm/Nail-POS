@@ -88,7 +88,7 @@ export function POSInventoryAlertsScreen() {
           <button type="button" className="fk-btn" onClick={refresh} data-testid="refresh">{tx('finance.refresh')}</button>
           {canRecord ? <button type="button" className="fk-btn primary" onClick={() => setRecording({})} data-testid="record-use">{tx('sa.recordUse')}</button> : null}
           <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory')} data-testid="view-inventory">{tx('sa.viewInventory')}</button>
-          {can('inventory.purchase_order.create') ? <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory/purchase-orders?new=1')} data-testid="create-po">{tx('sa.createPo')}</button> : null}
+          {can('inventory.purchase_order.create') ? <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory?tab=purchaseOrders&new=1')} data-testid="create-po">{tx('sa.createPo')}</button> : null}
           {can('inventory.update') ? <button type="button" className="fk-btn" onClick={() => nav('/tenant/inventory?tab=products')} data-testid="alert-settings" title={tx('sa.settingsHint')}>{tx('sa.alertSettings')}</button> : null}
           {can('inventory.reports.view') ? <button type="button" className="fk-btn ghost" onClick={doExport} disabled={exporting} data-testid="export">{exporting ? tx('pos.loading') : tx('finance.exportReport')}</button> : null}
         </div>
@@ -135,7 +135,7 @@ export function POSInventoryAlertsScreen() {
                 <td className="t-opt">{r.since ? when(r.since) : <span className="fk-muted">{tx('sa.sinceUnknown')}</span>}</td>
                 <td className="fn-acts">
                   {!r.acknowledgedAt ? <button type="button" className="fk-btn ghost sm" onClick={() => acknowledge(r.productId)} disabled={busyAck === r.productId} data-testid="ack">{busyAck === r.productId ? tx('pos.saving_2') : tx('pos.acknowledge')}</button> : null}
-                  {can('inventory.purchase_order.create') && r.suggestedReorder > 0 ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory/purchase-orders?new=1&productId=${encodeURIComponent(r.productId)}&qty=${r.suggestedReorder}${r.vendorId ? '&vendorId=' + encodeURIComponent(r.vendorId) : ''}`)} data-testid="reorder">{tx('sa.reorder')}</button> : null}
+                  {can('inventory.purchase_order.create') && r.suggestedReorder > 0 ? <button type="button" className="fk-btn ghost sm" onClick={() => nav(`/tenant/inventory?tab=purchaseOrders&new=1&productId=${encodeURIComponent(r.productId)}&qty=${r.suggestedReorder}${r.vendorId ? '&vendorId=' + encodeURIComponent(r.vendorId) : ''}`)} data-testid="reorder">{tx('sa.reorder')}</button> : null}
                 </td>
               </tr>) : tab === 'usage' ? (
               <tr key={r.productId} data-testid="usage-row">
