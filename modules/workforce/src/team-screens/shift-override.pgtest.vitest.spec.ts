@@ -3,7 +3,7 @@
 // off with bookings is a conflict review, never a deletion; a 13:00–13:30 lunch keeps 13:15 out of Booking availability;
 // two managers on the same date → the second gets 409; a 20:00–02:00 overnight shift owns the next morning and converts
 // to UTC correctly; every save writes its history, audit row and the outbox event for realtime.
-import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { migratedPglite, kyselyFor } from '@aipowersalon/testing';
 import { OutboxWriter } from '@aipowersalon/events';
 import { KyselyBookingRepository, pbTechDayWindows, pbComputeAvailabilityInWindows, effectiveDaySchedule, addLocalDays } from '@aipowersalon/booking';
@@ -19,11 +19,20 @@ const mgr2 = { ...mgr, userId: U2 };
 const viewer = { ...mgr, permissions: ['pos.technicians.view'] };
 const other = { tenantId: T2, branchId: BX, userId: id('e9'), role: 'MANAGER', permissions: ['pos.technicians.view', 'pos.technicians.schedule.edit'] };
 const FRI = '2026-11-06', NEXT_FRI = '2026-11-13';
-// The acceptance examples are dated (Friday 2026-11-06 …): pin the wall clock to Monday 2026-11-02 so "a past date cannot be
-// edited" stays true to the example instead of failing once the real date passes it (only Date is faked — timers stay real
-// for the database). Fixed Nov 7 2026: the suite turned red the day after the example Friday.
-beforeAll(() => { vi.useFakeTimers({ toFake: ['Date'], shouldAdvanceTime: true }); vi.setSystemTime(new Date('2026-11-02T14:00:00Z')); });
-afterAll(() => { vi.useRealTimers(); });
+// The acceptance examples are dated (Friday 2026-11-06 …): shift the wall clock so "now" is Monday 2026-11-02 and "a past
+// date cannot be edited" stays true to the example instead of failing once the real date passes it. The shifted clock
+// still ticks at full resolution (fake timers advance in 20 ms steps, and PGlite's now() follows Date — under load two
+// history rows got the same timestamp and swapped order). Fixed Nov 7 2026: the suite turned red the day after the Friday.
+const RealDate = Date;
+beforeAll(() => {
+  const off = RealDate.now() - RealDate.parse('2026-11-02T14:00:00Z');
+  class ShiftedDate extends RealDate {
+    constructor(...a: any[]) { if (a.length === 0) super(RealDate.now() - off); else super(...(a as [any])); }
+    static now() { return RealDate.now() - off; }
+  }
+  (globalThis as any).Date = ShiftedDate;
+});
+afterAll(() => { (globalThis as any).Date = RealDate; });
 let pg: any; let db: any; let repo: ShiftOverrideRepository;
 // the stand-in has no query builder, so OutboxWriter's insert cannot run here: the events written inside the save
 // transaction are captured instead (the projection mapping is covered by the realtime-projection spec)

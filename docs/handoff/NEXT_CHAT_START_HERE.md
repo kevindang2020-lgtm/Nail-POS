@@ -27,7 +27,7 @@ Payments: Fiserv CardPointe/Bolt + Clover Compact, sandbox/UAT only.
 ```bash
 npm install
 npm run build:packages && npm run build:modules && npm run build --workspace @aipowersalon/api   # gates read compiled output (as CI does)
-node tooling/ci/run-gates.mjs                  # expect EXACTLY 2 failures: check:crosswire, check:unreached
+node tooling/ci/run-gates.mjs                  # Nov 7 (after the merge): all 57 gates + 22 audits pass
 node apps/api/scripts/security-audit.mjs --lane fast   # PASSED 20 · FAILED 2 (the same two) · secret scan clean
 npm run architecture:test                      # "no regression"
 node tooling/ci/lint-ratchet.mjs               # 0 errors, under baseline
@@ -41,10 +41,13 @@ DATABASE_URL=postgres://…/aps_race npm run db:migrate
 PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 files, 295 tests
 ```
 
-## 4. What the Nov 4–6 sessions did (newest first; details in the sweep report + `git log`)
+## 4. What the Nov 4–7 sessions did (newest first; details in the sweep report + `git log`)
 
 | Commit | What |
 | --- | --- |
+| `ffec73be` | POS session limit (the §5 decision, recommended option): the POS stays signed in while in use, a locked POS ends 8 h after the lock, 7-day cap |
+| `8e8aec22` | SUNMI FLEX 3: Weekly Technician Paycheck one-screen workspace (1920×945 measured on the real stack) |
+| `09066094` | **Merge of Power-Salon-main** (26 developer commits) — decisions, renumbered migrations 836–841, dead code removed: `docs/handoff/MERGE_2026-11-07.md` |
 | `53b4492` | Busy-day sign-outs: refresh-token grace window (two POS tabs / a lost Wi-Fi reply no longer look like theft; `REFRESH_REUSE_GRACE_SECONDS`, default 30) + renewal retried on network errors/5xx |
 | `65751d3` | **Every app signed people out ~15 min after sign-in** — the access-token renewal (`installAuthRefresh`) was never switched on; now installed in all 6 apps; phone sign-ins keep the refresh token |
 | `4b69bbf` | 3 Vietnamese drafts approved; POS notifications banner translated (VI = DRAFT) |
@@ -57,16 +60,12 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 fi
 ## 5. Open — what is NOT done
 
 **Waiting on Kevin**
-- **Decision: the 12-hour session limit.** Recommended: the POS stays signed in while in use (renews; still ends after
-  8 h locked = each morning; idle PIN lock unchanged; hard cap 7 days). Alternatives: keep 12 h, or tick "Remember me"
-  by default on the POS. Not built until Kevin chooses.
-- Review the Vietnamese DRAFT for the POS notifications banner (`apps/pos-web/src/i18n/catalog.vi.ts`, `pos.pushPrompt.*`).
-- Manager Pay ends Face ID at sign-out (shared front-desk phones) — confirm or switch to the new rule.
+- The picks in `docs/handoff/MERGE_2026-11-07.md` (session limit built as recommended; Manager Pay keeps ending Face ID
+  at sign-out; old saved cards must be re-added) — change any of them by saying so.
+- Review the Vietnamese DRAFT strings: `pos.pushPrompt.*`, `payment.terminal.*`, `sunmi.profile.*`, `sunmi.pay.*`.
 
-**Needs the lost "AI-PowerSalon POS 12" package** (server code that is not in this repo)
-- `check:crosswire`: 77 client calls with no server route — `/owner/finance/*`, payroll paychecks, booking drafts,
-  mobile-checkout devices, AI OCR receipt, wallet top-ups, `/tech/earnings/detail`.
-- `check:unreached`: server routes no screen calls (tech time-off, turn queue, …).
+~~Needs the lost "AI-PowerSalon POS 12" package~~ — closed: `check:crosswire` and `check:unreached` pass since the
+Nov 7 merge.
 
 **Owner-side** (handoff items 1–4): Fiserv answers + certification, Apple Tap to Pay entitlement, production hosting.
 Browser push for every web build (POS, Super Admin, and the customer/owner/tech web builds) needs `VITE_FIREBASE_WEB_CONFIG` +
