@@ -48,7 +48,7 @@ export class ReviewRequestSenderJob implements OnModuleInit, OnModuleDestroy {
     if (!this.db || process.env.REVIEW_REQUEST_SENDER === 'off' || process.env.NODE_ENV === 'test') return;
     const every = 5 * 60_000;
     this.timer = setInterval(() => {
-      void runTick({ jobType: REVIEW_REQUEST_SENDER_JOB, jobClass: 'standard', everyMs: every },
+      void runTick({ jobType: 'ai.review_request.send', jobClass: 'standard', everyMs: every },
         () => runAsSingleOwner(this.db as Kysely<any>, REVIEW_REQUEST_SENDER_JOB, () => this.sweep()))
         .catch((e) => logException(e, { where: 'ai.review_request.send.tick' }));
     }, every);

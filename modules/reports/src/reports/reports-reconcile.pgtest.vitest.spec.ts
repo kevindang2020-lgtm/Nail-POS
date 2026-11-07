@@ -19,8 +19,8 @@ const T1 = 'a8001000-0000-4000-8000-0000000000e1', T2 = 'a8001000-0000-4000-8000
 const P = 'a8001000-0000-4000-8000-0000000000f1', SVC = 'a8001000-0000-4000-8000-0000000000d1';
 let pg: any; let repo: KyselyReportsRepository;
 const ctx: any = { tenantId: T, branchId: B, userId: 'u', role: 'OWNER', permissions: [] };
-// The report files a payment by date(created_at) in the DATABASE session's zone; the session is pinned to UTC below and
-// 'today' is the database's own date (the test failed between 00:00 and 05:00 UTC on PGlite's GMT+5 default; wave 4 fix run).
+// The report files a payment on the SALON-LOCAL day (the branch's time zone — F5, Nov 6 2026; it used to be the session's
+// date(created_at), so an evening sale in New York landed on tomorrow). 'today' is therefore the branch's local date.
 let today = '';
 
 beforeAll(async () => {
@@ -28,7 +28,7 @@ beforeAll(async () => {
   await pg.exec(`SET TIME ZONE 'UTC'`);   // a production database session is UTC; the report's SQL and its rows then agree on the day
   await pg.exec(`
     INSERT INTO tenants (id, legal_name, display_name, tenant_slug, tenant_code, status) VALUES ('${T}', 'Rep LLC', 'Rep Salon', 'rep-salon', 'REPSALON', 'active');
-    INSERT INTO branches (id, tenant_id, name, status) VALUES ('${B}', '${T}', 'Main', 'active');
+    INSERT INTO branches (id, tenant_id, name, status, timezone) VALUES ('${B}', '${T}', 'Main', 'active', 'America/New_York');
     INSERT INTO customers (id, tenant_id, branch_id, first_name, last_name, full_name) VALUES ('${C}', '${T}', '${B}', 'Jen', 'W', 'Jen W');
     INSERT INTO technicians (id, tenant_id, branch_id, first_name, last_name, full_name, status) VALUES ('${L}', '${T}', '${B}', 'Lisa', 'T', 'Lisa T', 'active'), ('${M}', '${T}', '${B}', 'Mary', 'N', 'Mary N', 'active');
     INSERT INTO inventory_products (id, tenant_id, name) VALUES ('${P}', '${T}', 'Cuticle Oil');
@@ -52,7 +52,7 @@ beforeAll(async () => {
   // the payroll authority's tip allocation (Ticket 2's $20 split 1000 / 1000)
   const snap = async (ticket: string, tech: string, tip: number) => pg.query(`INSERT INTO ticket_compensation_snapshots (tenant_id, branch_id, ticket_id, service_line_id, engine_version, technician_id, card_tip_cents, cash_tip_cents, gross_price_cents, tech_service_earnings_cents) VALUES ($1,$2,$3,gen_random_uuid(),'test',$4,$5,0,0,0)`, [T, B, ticket, tech, tip]).catch((e: any) => { throw new Error('snapshot fixture: ' + e.message); });
   await snap(T1, L, 1000); await snap(T2, L, 1000); await snap(T2, M, 1000);
-  today = String((await pg.query(`select current_date::text as d`)).rows[0].d);
+  today = String((await pg.query(`select (now() at time zone 'America/New_York')::date::text as d`)).rows[0].d);
   repo = new KyselyReportsRepository(kyselyFor(pg) as any);
 }, 180_000);
 
@@ -96,7 +96,6 @@ describe('POS Reports reconcile with the day', () => {
     expect(state.appointmentsTrend.points.reduce((n: number, p: any) => n + p.completed, 0)).toBe(state.kpis.completedServices);
   });
   it('a preset without from/to is the period it names (before: always the last 7 days — "today", "month", "year" all alike)', async () => {
-    await pg.exec(`UPDATE branches SET timezone = 'UTC' WHERE id = '${B}'`);   // the rows are filed by the UTC day (see above), so the salon's day must be too
     const all = (await repo.query(ctx, { from: today, to: today })).state.salesKpis;
     expect(all.ticketsCount).toBeGreaterThan(0);
     expect((await repo.query(ctx, { preset: 'today' } as any)).state.salesKpis.ticketsCount).toBe(all.ticketsCount);
@@ -110,5 +109,15 @@ describe('POS Reports reconcile with the day', () => {
     expect(presetRange('month', at, 'America/New_York')).toEqual({ from: '2026-11-01', to: '2026-11-03' });
     expect(presetRange('quarter', at, 'America/New_York')).toEqual({ from: '2026-10-01', to: '2026-11-03' });
     expect(presetRange('year', at, 'UTC')).toEqual({ from: '2026-01-01', to: '2026-11-04' });
+  });
+  it('an evening sale is filed on the salon-local day, not the UTC day (F5, Nov 6 2026)', async () => {
+    // 2026-03-10 22:30 in New York = 2026-03-11 02:30 UTC: it belongs to Mar 10 for the salon
+    const TE = '7e000000-0000-4000-8000-0000000000e1';
+    await pg.exec(`INSERT INTO tickets (id, tenant_id, branch_id, customer_id, status, primary_technician_id, subtotal_cents, discount_cents, tip_cents, tax_cents, surcharge_cents, total_cents, paid_at)
+        VALUES ('${TE}', '${T}', '${B}', '${C}', 'paid', '${L}', 3000, 0, 0, 0, 0, 3000, '2026-03-11T02:30:00Z');
+      INSERT INTO payments (tenant_id, branch_id, ticket_id, method, amount_cents, tip_cents, surcharge_cents, status, created_at)
+        VALUES ('${T}', '${B}', '${TE}', 'cash', 3000, 0, 0, 'approved', '2026-03-11T02:30:00Z');`);
+    expect((await repo.query(ctx, { from: '2026-03-10', to: '2026-03-10' })).state.salesKpis.ticketsCount).toBe(1);
+    expect((await repo.query(ctx, { from: '2026-03-11', to: '2026-03-11' })).state.salesKpis.ticketsCount).toBe(0);
   });
 });

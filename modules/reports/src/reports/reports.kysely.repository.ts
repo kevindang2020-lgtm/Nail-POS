@@ -32,8 +32,13 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
   private async loadTx(ctx: ReportsContext, filters: ReportFilters): Promise<Tx[]> {
     const from = filters.from || daysAgo(400);
     const to = filters.to || daysAgo(0);
+    // F5 (Nov 6 2026): a payment's report DAY is the salon-local day (the same zone the presets use), not the UTC day —
+    // an 8 pm sale in New York is 00:xx UTC the next day and used to land on tomorrow (and fall out of "today"). The SQL
+    // window is one day wider on each side; `at` below is the local day and the builder applies the exact range.
+    const tz = await branchTimeZone(this.db, ctx.tenantId, ctx.branchId && /^[0-9a-f-]{36}$/i.test(ctx.branchId) ? ctx.branchId : null);
+    const localYmd = (v: any): string => { const d = v instanceof Date ? v : new Date(String(v)); return Number.isNaN(d.getTime()) ? dateOnly(v) : new Intl.DateTimeFormat('en-CA', { timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d); };
     const pays = await this.scoped(this.db.selectFrom('payments'), ctx)
-      .where((eb: any) => eb.between(sqlDate(eb, 'created_at'), from, to))
+      .where((eb: any) => eb.between(sqlDate(eb, 'created_at'), addYmdDays(from, -1), addYmdDays(to, 1)))
       // only revenue-bearing rows: a declined / not_configured / voided / pending payment collected nothing and must
       // never count toward reported sales. Refunds are kept (they net out as refundsCents in the summary).
       .where('status', 'in', [...REPORTABLE_PAYMENT_STATUSES])
@@ -76,7 +81,7 @@ export class KyselyReportsRepository implements ReportsRepositoryPort {
       const techId = t.primary_technician_id || '';
       const custId = t.customer_id || '';
       return {
-        id: p.id, ticketId: p.ticket_id || null, at: dateOnly(p.created_at), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
+        id: p.id, ticketId: p.ticket_id || null, at: localYmd(p.created_at), customerId: custId, customer: cName[custId] || '', customerType: 'returning',
         technicianId: techId, technician: tName[techId] || '', service: line.svcName, category: line.cat, paymentMethod: normMethod(p.method),
         bookingSource: 'walk_in', grossCents: Number(p.amount_cents || 0), surchargeCents: surchargeById[p.id] || 0, status: isRefund(p.status) ? 'refunded' : 'completed',
         // the ticket's own discount / tax / tip / sales ride on its ONE carrier row (payments rows never carried tax or

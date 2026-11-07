@@ -14,7 +14,7 @@
 // Nothing here changes a sale, an appointment, a price or a schedule.
 import { sql, type Kysely } from 'kysely';
 import { hasPermission } from '@aipowersalon/permissions';
-import { branchTimeZone } from '@aipowersalon/database';
+import { assertTransition, branchTimeZone, canMoveToSql, defineStateMachine } from '@aipowersalon/database';
 import { localHour } from '@aipowersalon/date-time';
 import type { AiBusinessContext } from './ai-business.dto';
 
@@ -22,6 +22,22 @@ type Row = Record<string, any>;
 export const BUSINESS_ALERT_INCIDENTS = 'BusinessAlertIncidents';
 export class AlertIncidentError extends Error { constructor(message: string, readonly code: string, readonly status = 400) { super(message); } }
 export const INCIDENT_ACTIONS = ['acknowledge', 'investigate', 'resolve', 'snooze', 'reopen', 'assign'] as const;
+/** A2 incident lifecycle (migration 826): ONE transition table for ai_business_alert_events.incident_status. An event
+ *  becomes an incident when it triggers (NULL → 'open', the initial state — like an insert). Acknowledge / investigate,
+ *  snooze and resolve are allowed from any live state (a second acknowledge or snooze refreshes it); only a resolved or
+ *  snoozed incident reopens; the snooze sweep wakes snoozed → open. */
+export const AI_BUSINESS_INCIDENT_LIFECYCLE = defineStateMachine({
+  name: 'ai_business_incident', table: 'ai_business_alert_events', column: 'incident_status',
+  states: ['open', 'investigating', 'snoozed', 'resolved'],
+  transitions: {
+    open: ['investigating', 'snoozed', 'resolved'],
+    investigating: ['investigating', 'snoozed', 'resolved'],
+    snoozed: ['open', 'investigating', 'snoozed', 'resolved'],
+    resolved: ['open'],
+  },
+  initial: ['open'],
+});
+
 export const INCIDENT_STATUSES = ['all', 'open', 'investigating', 'snoozed', 'resolved', 'active'] as const;
 export const ALERT_SEVERITIES = ['info', 'warning', 'critical'] as const;
 export const ALERT_CHANNELS = ['in_app', 'email', 'sms'] as const;
@@ -133,7 +149,7 @@ export class BusinessAlertIncidents {
       from ai_business_alert_events e join ai_business_alerts a on a.id = e.alert_id and a.tenant_id = e.tenant_id
       where e.tenant_id = ${tenantId} and e.id = ${eventId}::uuid`.execute(this.db)).rows[0];
     if (!e) return [];
-    if (kind === 'trigger') await sql`update ai_business_alert_events set incident_status = coalesce(incident_status, 'open') where id = ${eventId}::uuid`.execute(this.db);
+    // the incident's initial state ('open') is written with the triggered event row itself (business-center.ts evaluate)
     const now = new Date(this.now());
     const out: { channel: string; status: string; reason?: string | null; recipient?: string | null }[] = [];
     const record = async (channel: string, status: 'sent' | 'skipped' | 'failed', reason: string | null, userId: string | null = null, recipient: string | null = null, ref: string | null = null) => {
@@ -189,7 +205,7 @@ export class BusinessAlertIncidents {
   async sweep(): Promise<{ woke: number; escalated: number }> {
     const now = new Date(this.now());
     const woke = (await sql<Row>`update ai_business_alert_events set incident_status = 'open', snoozed_until = null, incident_version = incident_version + 1
-      where incident_status = 'snoozed' and snoozed_until <= ${now} returning id, tenant_id`.execute(this.db)).rows;
+      where incident_status = 'snoozed' and ${canMoveToSql(AI_BUSINESS_INCIDENT_LIFECYCLE, 'open')} and snoozed_until <= ${now} returning id, tenant_id`.execute(this.db)).rows;
     for (const w of woke) await this.log(String(w.tenant_id), String(w.id), 'status', 'Snooze ended — the incident is open again.', null);
     const due = (await sql<Row>`select e.id, e.tenant_id from ai_business_alert_events e join ai_business_alerts a on a.id = e.alert_id
       where e.incident_status = 'open' and e.escalated_at is null and e.acknowledged_at is null and a.severity = 'critical'
@@ -220,6 +236,7 @@ export class BusinessAlertIncidents {
       if (Number(e.incident_version) !== v) throw new AlertIncidentError('This incident changed on another screen — reload it.', 'VERSION_CONFLICT', 409);
       const st = String(e.incident_status);
       let set = sql``, line = '';
+      const target = action === 'acknowledge' || action === 'investigate' ? 'investigating' : action === 'resolve' ? 'resolved' : action === 'snooze' ? 'snoozed' : action === 'reopen' ? 'open' : null;
       if (action === 'acknowledge' || action === 'investigate') {
         if (st === 'resolved') throw new AlertIncidentError('The incident is resolved — reopen it first.', 'INCIDENT_RESOLVED', 409);
         set = sql`incident_status = 'investigating', snoozed_until = null, acknowledged_at = coalesce(acknowledged_at, now()), acknowledged_by = coalesce(acknowledged_by, ${me}::uuid), ack_note = coalesce(ack_note, ${note || null})`;
@@ -249,6 +266,7 @@ export class BusinessAlertIncidents {
         } else line = 'Unassigned.';
         set = sql`assignee_user_id = ${who}::uuid`;
       }
+      if (target) assertTransition(AI_BUSINESS_INCIDENT_LIFECYCLE, st, target);   // after the friendly refusals above: the lifecycle is the last word
       const r = (await sql<Row>`update ai_business_alert_events set ${set}, incident_version = incident_version + 1 where id = ${eventId}::uuid returning incident_status, incident_version`.execute(trx)).rows[0];
       await this.log(T, eventId, action === 'assign' ? 'assign' : 'status', note && action !== 'resolve' ? `${line} ${note}` : action === 'resolve' ? `${line} ${note}` : line, me, trx);
       return { eventId, incidentStatus: r.incident_status, version: Number(r.incident_version) };

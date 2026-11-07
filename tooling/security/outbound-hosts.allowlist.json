@@ -48,6 +48,7 @@
   "auth.reference.local": "PLACEHOLDER — the reference (documentation) integration adapter's authorize URL; never contacted",
   "hooks.example.com": "PLACEHOLDER — in-memory dev seed webhook (api-webhooks.repository.ts); deliveries go through safe-outbound",
   "your-endpoint.example.com": "PLACEHOLDER — webhook URL form placeholder",
-  "salon.com": "PLACEHOLDER — A2P website field placeholder"
+  "salon.com": "PLACEHOLDER — A2P website field placeholder",
+  "search.google.com": "LINK — the Google \"write a review\" URL for the salon's Place ID, sent to a customer in a review request (ai-review-reputation.integrations.ts); never fetched by our code"
  }
 }

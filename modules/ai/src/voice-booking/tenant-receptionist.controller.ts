@@ -74,7 +74,7 @@ export class TenantReceptionistController {
   @RequirePermission('ai.manage') @Patch('settings') async updateSettings(@Req() r: any, @Body(ValidatedBody(RECEPTIONIST_SETTINGS_BODY)) b: any) { const s = await runAgent(() => this.settings.update(ctxFrom(r) as SettingsCtx, b || {})); await this.aud(r, 'settings.updated', null, 'Updated receptionist settings', { changed: Object.keys(b || {}).filter((k) => k !== 'expectedVersion'), version: s.meta?.version ?? null }); return s; }
   /** Receptionist Settings guide: every saved version, newest first (before / after / who), for compare and restore */
   /** A9 Nov 6: an owner approves the exact recording notice; recording can only be on with an approved notice */
-  @RequirePermission('ai.manage') @Post('settings/consent/approve') async approveConsent(@Req() r: any, @Body(ValidatedBody(CONSENT_APPROVE_BODY)) b: any): Promise<ReceptionistSettingsWithMeta> {
+  @RequirePermission('ai.manage') @Post('settings/consent/approve') async approveConsent(@Req() r: any, @Body(ValidatedBody(CONSENT_APPROVE_BODY, { strict: true })) b: any): Promise<ReceptionistSettingsWithMeta> {
     const s = await runAgent(() => this.settings.approveConsent(ctxFrom(r) as SettingsCtx, b?.text)); await this.aud(r, 'settings.consent_approved', null, 'Approved the recording notice', { length: String(b?.text ?? '').trim().length }); return s;
   }
   /** A9 Nov 6: Check Receptionist Settings — read-only, recorded */

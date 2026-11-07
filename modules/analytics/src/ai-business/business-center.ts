@@ -25,7 +25,8 @@
 import { hasPermission } from '@aipowersalon/permissions';
 import { sql, type Kysely } from 'kysely';
 import { randomUUID } from 'node:crypto';
-import { branchTimeZone } from '@aipowersalon/database';
+import { branchTimeZone, canMoveToSql } from '@aipowersalon/database';
+import { AI_BUSINESS_INCIDENT_LIFECYCLE } from './business-alert-incidents';
 import type { ReportsService } from '@aipowersalon/reports';
 import { presetRange as presetRangeOf } from '@aipowersalon/reports';
 import type { AiBusinessContext } from './ai-business.dto';
@@ -328,9 +329,10 @@ export class BusinessCenter {
         order by e.evaluated_at desc, e.id desc limit 1`.execute(trx)).rows[0];
       const change = !ev.sampleOk ? 'not_evaluated' : ev.triggered && !prev?.triggered ? 'triggered' : !ev.triggered && prev?.triggered ? 'recovered' : 'unchanged';
       const row = (await sql<Row>`insert into ai_business_alert_events (tenant_id, branch_id, alert_id, source, metric_id, operator, threshold, preset, period_from, period_to, value, sample_size,
-          min_sample_size, sample_ok, triggered, state_change, reason, actor_user_id)
+          min_sample_size, sample_ok, triggered, state_change, reason, actor_user_id, incident_status)
         values (${T}, ${a.branch_id ?? null}, ${id}::uuid, ${source}, ${ev.metricId}, ${ev.operator}, ${ev.threshold}, ${ev.preset}, ${range.from}::date, ${range.to}::date, ${ev.value},
-          ${ev.sampleSize}, ${N(a.min_sample_size)}, ${ev.sampleOk}, ${ev.triggered}, ${change}, ${ev.reason}, ${isUuid(ctx.userId) ? ctx.userId : null})
+          ${ev.sampleSize}, ${N(a.min_sample_size)}, ${ev.sampleOk}, ${ev.triggered}, ${change}, ${ev.reason}, ${isUuid(ctx.userId) ? ctx.userId : null},
+          ${change === 'triggered' ? AI_BUSINESS_INCIDENT_LIFECYCLE.initial![0] : null})   -- A2: a trigger IS a new incident (its initial state, written with the row)
         returning id, evaluated_at`.execute(trx)).rows[0];
       return { ...ev, eventId: String(row.id), evaluatedAt: iso(row.evaluated_at), stateChange: change, period: { from: range.from, to: range.to, timeZone: tz } };
     });
@@ -377,7 +379,7 @@ export class BusinessCenter {
     if (!isUuid(eventId)) throw new BusinessCenterError('Alert event not found.', 'BC_EVENT_NOT_FOUND', 404);
     const note = typeof b.note === 'string' ? b.note.trim().slice(0, 500) : '';
     const r = (await sql<Row>`update ai_business_alert_events e set acknowledged_at = now(), acknowledged_by = ${isUuid(ctx.userId) ? ctx.userId : null}, ack_note = ${note || null},
-        incident_status = case when e.incident_status = 'open' then 'investigating' else e.incident_status end, incident_version = e.incident_version + 1
+        incident_status = case when e.incident_status = 'open' and ${canMoveToSql(AI_BUSINESS_INCIDENT_LIFECYCLE, 'investigating', 'e')} then 'investigating' else e.incident_status end, incident_version = e.incident_version + 1
       where e.tenant_id = ${ctx.tenantId} and e.id = ${eventId}::uuid and ${this.scope(ctx, 'e')} and e.triggered and e.acknowledged_at is null
       returning e.id, e.acknowledged_at`.execute(this.db)).rows[0];
     if (!r) {

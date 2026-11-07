@@ -36,6 +36,17 @@
    "running",
    "succeeded"
   ],
+  "ai_business_alert_deliveries.status": [
+   "failed",
+   "sent",
+   "skipped"
+  ],
+  "ai_business_alert_events.incident_status": [
+   "investigating",
+   "open",
+   "resolved",
+   "snoozed"
+  ],
   "ai_business_report_jobs.status": [
    "completed",
    "failed",
