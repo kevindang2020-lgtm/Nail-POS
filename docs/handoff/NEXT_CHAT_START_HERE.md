@@ -1,40 +1,103 @@
 # NEXT CHAT — START HERE
 
-## What this package is
-ONE canonical AI PowerSalon monorepo (npm workspaces: NestJS/Kysely/Postgres 16 API +
-six React/Vite frontends). It is the consolidation of six *snapshots of this same repo*
-(not six separate backends — see `SIX_SNAPSHOT_MERGE_2026-06-26.md` for the evidence and
-full branch map).
+Nov 6, 2026 · Kevin Dang · last commit `53b4492` (base `fb3738c` = the code Kevin uploaded Nov 4) · 23 commits since the
+upload, 492 files changed. The June version of this file is in git history (`git show fb3738c:docs/handoff/NEXT_CHAT_START_HERE.md`).
 
-## Verified-green baseline (reproduce before changing anything)
+## 1. Copy-paste opening prompt (for the new chat)
+
+> I'm Kevin, solo founder of AIPowerSalon (multi-tenant nail-salon POS SaaS). Attached: `Power-Salon-main.zip` (the
+> full repo WITH git history). Unzip it, read `docs/handoff/NEXT_CHAT_START_HERE.md` first, then
+> `docs/handoff/DEVELOPER_HANDOFF_2026-11-05.md` and `docs/handoff/SWEEP_REPORT_2026-11-05.md`. Run the verification in
+> section 3 and tell me if anything differs from the numbers there before changing code. Rules: honest status only,
+> never claim a test passed unless it ran; commits as "Kevin Dang <kevindang2020@gmail.com>"; no PAN/CVV/passwords/
+> terminal keys in anything; no live card transactions before Fiserv certification; no flat 3% surcharge; production
+> payments stay disabled. I write tersely — "continue" means do the next logical unit fully, without asking.
+> Open decision waiting for me: see section 5.
+
+## 2. What this is
+
+ONE monorepo (npm workspaces, Node 22): NestJS + Kysely + Postgres 16 API (`apps/api`, 26 domain modules in `modules/`),
+React/Vite apps (`pos-web`, `admin-web`, `owner-web`, `tech-web`, `customer-web`, `manager-pay-web`, `customer-display`, `booking-public`),
+Capacitor native shells for the four store apps, two single-file HTML apps (Go Check-In kiosk + admin), shared packages
+(`packages/`: ui, api-client, api-contracts, mobile-sdk, realtime-client, web-push, events, permissions, database, …).
+Payments: Fiserv CardPointe/Bolt + Clover Compact, sandbox/UAT only.
+
+## 3. Verify before changing anything (all of this ran green on Nov 6)
+
+```bash
+npm install
+node tooling/ci/run-gates.mjs                  # expect EXACTLY 2 failures: check:crosswire, check:unreached
+npm run architecture:test                      # "no regression"
+node tooling/ci/lint-ratchet.mjs               # 0 errors, under baseline
+npm run build:frontends                        # all 8 build
+node tooling/ci/run-tests.mjs api              # 3,011 pass, 0 fail (~45 min)
+node tooling/ci/run-tests.mjs modules          # 26 modules, all pass (~10,200 tests)
+node tooling/ci/run-tests.mjs packages         # 20 packages, all pass
+(cd apps/pos-web && npx vitest run)            # 1,594   — admin 1,032 · owner 275 · customer 254 · display 201 · tech 117 · manager-pay 60
+# real-Postgres race lane (needs a migrated PG16 + `trust` auth for 127.0.0.1 — one test makes a password-less role):
+DATABASE_URL=postgres://…/aps_race npm run db:migrate
+PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 files, 295 tests
 ```
-npm install --ignore-scripts
-npm run typecheck --workspace @aipowersalon/api        # 0 errors
-npm test --workspace @aipowersalon/api                 # 143 files / 909 tests, harness 74/74
-npm run typecheck --workspace aipowersalon-admin-web   # 0 errors + vite build
-```
 
-## What was just merged in
-- **help-center / support arc** (from snapshot files__4_): self-contained `help/` module
-  + `helpDashboard`; migrations 142–148.
-- **user-prefs / account arc** (from snapshot files__5_): profile prefs superset +
-  admin-web Appointments/Products screens; migrations 138–141.
-- All renumbered migrations have `migrate.mjs` rename aliases (safe on already-migrated DBs).
+## 4. What the Nov 4–6 sessions did (newest first; details in the sweep report + `git log`)
 
-## Highest-priority next tasks (in order)
-1. **Live Postgres migration smoke** — `npm run db:up && npm run db:setup`. The sandbox
-   PGlite lacks `pg_trgm` (pre-existing block at migration 107), so 130–148 still need a
-   real PG16 apply before relying on transactional behavior.
-2. **Fold the three deferred shared-service arcs** one at a time, re-running
-   `npm run typecheck && npm test` after each (list in `SIX_SNAPSHOT_MERGE_2026-06-26.md`):
-   files__1_ marketing-sources, files__2_ communications, files__3_ checkout/reconciliation.
-3. Build the other five frontends (pos-web, owner-web, tech-web, customer-web,
-   customer-display) to confirm parity.
+| Commit | What |
+| --- | --- |
+| `53b4492` | Busy-day sign-outs: refresh-token grace window (two POS tabs / a lost Wi-Fi reply no longer look like theft; `REFRESH_REUSE_GRACE_SECONDS`, default 30) + renewal retried on network errors/5xx |
+| `65751d3` | **Every app signed people out ~15 min after sign-in** — the access-token renewal (`installAuthRefresh`) was never switched on; now installed in all 6 apps; phone sign-ins keep the refresh token |
+| `4b69bbf` | 3 Vietnamese drafts approved; POS notifications banner translated (VI = DRAFT) |
+| `d299b83` | Notification permission asked from a tap ("Turn on notifications" banner), never at sign-in; Super Admin moved onto the shared push client |
+| `d74a353` | Face ID stays on after a normal sign-out (customer/tech/owner; Kevin's decision, changes Constitution 6 §37); migration 705 ends it whenever a session is revoked any other way; Manager Pay keeps the strict rule |
+| `6292cea` | Full sweep — 14 bugs (customer booking-code send always 400; captcha dead end; duplicate payment pushes; browser push could never work; missing security headers; app versions "unknown"; expense realtime; gift-card uuid; …) |
+| `bec2cd4`… | Mobile apps onto the shared SDK (transport, realtime, deep links, push), shared types, Face ID without stored passwords, manager-pay wire fixes |
+| earlier | Fiserv P0 build, Clover Compact, UAT kit, surcharge gate + disclosure, cross-server cancel, unassigned terminals |
 
-## Hard rules (do not violate)
-- This is ONE backend (`apps/api`). Do **not** recreate parallel/duplicate backends or
-  `*-final` / `*-merged` folders.
-- Honest verification only — never report a test/build as passing unless it actually ran.
-- Audit-first: grep for existing aggregates/DDL and extend rather than duplicate.
-- Money is integer cents. Payments are Fiserv (CardPointe/Bolt) + Clover only.
-- New SQL: tsc + harness + mocked tests are NOT a substitute for live PG16 smoke.
+## 5. Open — what is NOT done
+
+**Waiting on Kevin**
+- **Decision: the 12-hour session limit.** Recommended: the POS stays signed in while in use (renews; still ends after
+  8 h locked = each morning; idle PIN lock unchanged; hard cap 7 days). Alternatives: keep 12 h, or tick "Remember me"
+  by default on the POS. Not built until Kevin chooses.
+- Review the Vietnamese DRAFT for the POS notifications banner (`apps/pos-web/src/i18n/catalog.vi.ts`, `pos.pushPrompt.*`).
+- Manager Pay ends Face ID at sign-out (shared front-desk phones) — confirm or switch to the new rule.
+
+**Needs the lost "AI-PowerSalon POS 12" package** (server code that is not in this repo)
+- `check:crosswire`: 77 client calls with no server route — `/owner/finance/*`, payroll paychecks, booking drafts,
+  mobile-checkout devices, AI OCR receipt, wallet top-ups, `/tech/earnings/detail`.
+- `check:unreached`: server routes no screen calls (tech time-off, turn queue, …).
+
+**Owner-side** (handoff items 1–4): Fiserv answers + certification, Apple Tap to Pay entitlement, production hosting.
+Browser push for POS/Super Admin needs `VITE_FIREBASE_WEB_CONFIG` + `VITE_FIREBASE_VAPID_KEY` at build time.
+Deep links need `APPLE_TEAM_ID`, `ANDROID_CERT_SHA256_*`, `APP_LINK_WEB_*` (in `.env.production.template`).
+
+## 6. Hard rules
+
+- Honest verification: never report a test/build/gate as passing unless it ran in this session.
+- No PAN, CVV, passwords, terminal keys or portal credentials in code, logs, tests or evidence. Private Postman env only.
+- No live card transactions before Fiserv certification · no flat 3% surcharge · production payments disabled.
+- Money = integer cents. Payments = Fiserv + Clover only.
+- One backend (`apps/api` + `modules/`). Extend, never duplicate; grep for an existing helper/table first.
+- Frontends must not re-declare `api-contracts` types; customer apps never import the tenant realm.
+- New SQL must run on real Postgres 16, not only PGlite (pgcrypto is NOT guaranteed — use core `sha256()`).
+- Kevin reviews every Vietnamese string himself: mark new VI text `DRAFT`.
+- Commits: author `Kevin Dang <kevindang2020@gmail.com>`, with the Co-Authored-By / Claude-Session trailers.
+
+## 7. Gotchas learned the hard way
+
+- Zip: exclude BOTH `node_modules/*` and `*/node_modules/*` (and `dist`), or the root `node_modules` leaks in.
+- `pkill -f` with a pattern that also matches your own shell kills the shell.
+- `check:validated-bodies` brace-matcher does not skip `/* … */` comments: an apostrophe inside one breaks it.
+- Race lane: local Postgres must use `trust` for 127.0.0.1; restore `pg_hba.conf` afterwards.
+- The local Postgres cluster in a fresh sandbox may be stopped: `pg_ctlcluster 16 main start`.
+- `TZ=UTC` for vitest runs (date tests). The API suite is long — run it in the background with a JSON reporter.
+- iPad attachments sometimes arrive empty — ask Kevin to paste or send a PDF.
+
+## 8. Document map
+
+| Read | For |
+| --- | --- |
+| `docs/handoff/DEVELOPER_HANDOFF_2026-11-05.md` | Full handoff: what was added, items 1–17 left to finish, owners |
+| `docs/handoff/SWEEP_REPORT_2026-11-05.md` | Every bug found Nov 5–6, the proof, addenda (Face ID, push, sign-outs) |
+| `.env.example` / `.env.production.template` | Every env var the code reads, with notes |
+| `docs/EVENT_CATALOG.md` | Domain events (generated) |
+| `HANDOFF_MANIFEST.md`, `DEVELOPER_HANDOFF.md` (root) | Older July front doors — still accurate for architecture; numbers there are July's |

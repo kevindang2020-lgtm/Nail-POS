@@ -340,3 +340,9 @@ the run (readably — journeys are wrapped so a stall reports "did not complete"
 Stub field names were read from the files, not guessed — the device row keys off `d.deviceId`, not `d.id` (that
 exact mistake cost one red run). Chromium may need `npx playwright install chromium-headless-shell` once per
 sandbox. Not part of the vitest battery. Run it after editing either HTML file, alongside `check:html`.
+
+## Nov 6, 2026 — the current front door is `docs/handoff/NEXT_CHAT_START_HERE.md`
+
+Everything above this line is July–October history and still accurate for conventions. For the current state (Nov 6,
+commit `53b4492`), the verification numbers, what is open, and the hard rules, read `docs/handoff/NEXT_CHAT_START_HERE.md`
+first, then `docs/handoff/DEVELOPER_HANDOFF_2026-11-05.md` and `docs/handoff/SWEEP_REPORT_2026-11-05.md`.
