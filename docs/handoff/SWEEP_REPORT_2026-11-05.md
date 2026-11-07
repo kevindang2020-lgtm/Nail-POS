@@ -134,3 +134,13 @@ Two more ways a busy salon got signed out, both fixed:
 | A Wi-Fi blip or server restart during renewal | Any failed renewal signed the person out | No answer or a 5xx is retried twice (after 1 s and 3 s). Only a clear "no" from the server ends the session. |
 
 Proof: unit tests (two tabs, a lost reply, outside the window, grace off, settings); real Postgres 16 (two tabs at the very same instant both stay signed in and both keys renew later; with grace off the strict 10-way replay test still burns the family); the client retry tests. Race lane 295/295, identity 552, API auth 1,409, gates unchanged.
+
+## Addendum — hard-coded Firebase key removed (Nov 7)
+
+The pre-package security scan (`security-audit.mjs --lane fast`) failed CRITICAL: a Google (Firebase) API key and the web-push
+VAPID key were hard-coded in the shared push hook (they came with the uploaded code, in 8 files, and the cleanup had
+consolidated them into `packages/mobile-sdk/src/push/web-push.ts`), and so were baked into the customer, owner and tech
+builds. They now come from `VITE_FIREBASE_WEB_CONFIG` / `VITE_FIREBASE_VAPID_KEY` at build time, like POS and Super
+Admin. Without them, browser push is off and the "Turn on notifications" banner does not show on the web. Phone apps are
+unaffected. Scan after rebuild: PASSED 20 · FAILED 2 (crosswire, unreached) · secret scan clean. **Kevin:** the key is
+still in git history — restrict it in Google Cloud Console (HTTP referrers + Firebase APIs only).

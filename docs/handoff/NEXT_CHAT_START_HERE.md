@@ -1,6 +1,6 @@
 # NEXT CHAT — START HERE
 
-Nov 6, 2026 · Kevin Dang · last commit `53b4492` (base `fb3738c` = the code Kevin uploaded Nov 4) · 23 commits since the
+Nov 7, 2026 · Kevin Dang · last code commit: see `git log -1` (base `fb3738c` = the code Kevin uploaded Nov 4) · 23 commits since the
 upload, 492 files changed. The June version of this file is in git history (`git show fb3738c:docs/handoff/NEXT_CHAT_START_HERE.md`).
 
 ## 1. Copy-paste opening prompt (for the new chat)
@@ -27,6 +27,7 @@ Payments: Fiserv CardPointe/Bolt + Clover Compact, sandbox/UAT only.
 ```bash
 npm install
 node tooling/ci/run-gates.mjs                  # expect EXACTLY 2 failures: check:crosswire, check:unreached
+node apps/api/scripts/security-audit.mjs --lane fast   # PASSED 20 · FAILED 2 (the same two) · secret scan clean
 npm run architecture:test                      # "no regression"
 node tooling/ci/lint-ratchet.mjs               # 0 errors, under baseline
 npm run build:frontends                        # all 8 build
@@ -67,7 +68,9 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 fi
 - `check:unreached`: server routes no screen calls (tech time-off, turn queue, …).
 
 **Owner-side** (handoff items 1–4): Fiserv answers + certification, Apple Tap to Pay entitlement, production hosting.
-Browser push for POS/Super Admin needs `VITE_FIREBASE_WEB_CONFIG` + `VITE_FIREBASE_VAPID_KEY` at build time.
+Browser push for every web build (POS, Super Admin, and the customer/owner/tech web builds) needs `VITE_FIREBASE_WEB_CONFIG` +
+`VITE_FIREBASE_VAPID_KEY` at build time — the Firebase key is no longer in the source (commit after `327df91`). It IS in
+git history from the uploaded code: restrict that key in Google Cloud Console (HTTP referrers + Firebase APIs only).
 Deep links need `APPLE_TEAM_ID`, `ANDROID_CERT_SHA256_*`, `APP_LINK_WEB_*` (in `.env.production.template`).
 
 ## 6. Hard rules

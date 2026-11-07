@@ -10,17 +10,16 @@ import { Capacitor } from '@capacitor/core';
 import { PushNotifications } from '@capacitor/push-notifications';
 import { LocalNotifications } from '@capacitor/local-notifications';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyBfBQJ7Tlrv2aNc5MEtbvwE6uLFO3dbt9c",
-  authDomain: "ai-power-salon-71823.firebaseapp.com",
-  projectId: "ai-power-salon-71823",
-  storageBucket: "ai-power-salon-71823.firebasestorage.app",
-  messagingSenderId: "302674373949",
-  appId: "1:302674373949:web:bb41b69715a36f18e1a954",
-  measurementId: "G-49G251SNGJ"
-};
-
-const VAPID_KEY = "BJq7xD1DPmqV8uVQhJnVUyJAIsP0de6WBtN4rIctGMKWN3ArC-OPNd1wdK4frGyY_p40elUXtG0nSeSBRqrDwz8";
+// Nov 6 2026: the Firebase web config comes from the BUILD, not the source (the security scan's secret check fails on a
+// hard-coded Google API key, and a build should not ship one fixed project). Same variables as POS and Super Admin
+// (@aipowersalon/web-push webPushConfigFromEnv). Without them, BROWSER push stays off; the native apps are unaffected
+// (they register through Capacitor with google-services.json / APNs, not this config).
+const BUILD_ENV = (((import.meta as any).env ?? {}) as Record<string, string | undefined>);
+function firebaseWebConfig(): Record<string, string> | null {
+  try { const raw = BUILD_ENV.VITE_FIREBASE_WEB_CONFIG; const c = raw ? JSON.parse(raw) : null; return c && c.apiKey && c.projectId ? c : null; } catch { return null; }
+}
+const firebaseConfig = firebaseWebConfig();
+const VAPID_KEY = BUILD_ENV.VITE_FIREBASE_VAPID_KEY || '';
 
 // Nov 6 2026 — permission is asked from a TAP only (the "Turn on notifications" banner), never at sign-in.
 export const PUSH_ENABLED_EVENT = 'aps:push-enabled';
@@ -36,6 +35,7 @@ export async function pushPermission(): Promise<PushPermission> {
       return p.receive === 'granted' ? 'granted' : p.receive === 'denied' ? 'denied' : 'prompt';
     }
     if (typeof window === 'undefined' || !('Notification' in window) || !('serviceWorker' in navigator)) return 'unsupported';
+    if (!firebaseConfig || !VAPID_KEY) return 'unsupported';   // browser push not configured for this build: no banner
     const p = Notification.permission;
     return p === 'granted' ? 'granted' : p === 'denied' ? 'denied' : 'prompt';
   } catch { return 'unsupported'; }
@@ -249,6 +249,7 @@ export function useWebPush(o: WebPushOptions): void {
         return;
       }
 
+      if (!firebaseConfig || !VAPID_KEY) return;   // browser push not configured for this build
       const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
       const messaging = getMessaging(app);
 
