@@ -332,7 +332,7 @@ export function POSCustomersScreen() {
       {confirmUi}
 
       {/* 8 KPI cards */}
-      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2">
+      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-8 gap-2" data-module-id="customers-kpis">
         {kpis8.map((c) => (
           <div key={c.l} style={card}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -351,7 +351,7 @@ export function POSCustomersScreen() {
       {note ? <div className="err" style={{ marginBottom: 12 }}>{note}</div> : null}
 
       {/* Toolbar */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }} data-module-id="customers-toolbar">
         <ImeSafeInput type="search" enterKeyHint="search" placeholder={tx('pos.search_by_name_phone_email_loyalty_smpn')} value={search} onValue={(v) => { setSearch(v); setPage(1); }} style={{ ...ipt, flex: 1, minWidth: 240, height: 36 }} />
         <select value={status} onChange={(e) => setFilter(setStatus)(e.target.value)} style={sel}><option value="">{tx('pos.all_status')}</option>{s.filterFacets.statuses.map((x) => <option key={x} value={x}>{customerStatusLabel(x)}</option>)}</select>
         <select value={tag} onChange={(e) => setFilter(setTag)(e.target.value)} style={sel}><option value="">{tx('pos.all_tags')}</option>{s.filterFacets.tags.map((x) => <option key={x} value={x}>{x}</option>)}</select>
@@ -486,7 +486,7 @@ export function POSCustomersScreen() {
       {dupOverlay ? <DuplicateQueueOverlay canEdit={can('pos.customers.edit')} canMerge={can('pos.customers.merge')} onClose={() => setDupOverlay(false)} onChanged={() => { loadDups(); refetch(); }} /> : null}
 
       {/* 6 summary cards */}
-      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6  gap-2">
+      <div className="grid mb-3 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6  gap-2" data-module-id="customers-counters">
         {summary6.map((c) => (
           <button key={c.l} onClick={() => { setSegment(c.seg); setPage(1); }} style={{ ...card, textAlign: 'left', cursor: 'pointer', borderColor: segment === c.seg && c.seg ? 'var(--aps-orange)' : 'var(--line)' }}>
             <div style={{ fontSize: 10.5, color: 'var(--muted)', fontWeight: 700 }}>{c.l}</div>
@@ -499,7 +499,7 @@ export function POSCustomersScreen() {
       {/* main split: directory (left) + analytics rail (right) */}
       <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_312px] gap-3 items-start">
         <div>
-          <div className="overflow-x-auto wi-full mb-3">
+          <div className="overflow-x-auto wi-full mb-3" data-module-id="customers-tabs">
             <div className="flex whitespace-nowrap gap-1 border-b border-(--line)  min-w-125">
               {tabs.map((t) => {
                 const on = segment === t.id;
@@ -509,7 +509,7 @@ export function POSCustomersScreen() {
           </div>
 
           {/* directory table */}
-          <section className="panel" style={{ padding: 0, overflow: 'hidden' }}>
+          <section className="panel" data-module-id="customers-table" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12.5, minWidth: 850 }}>
                 <thead>
@@ -618,18 +618,18 @@ export function POSCustomersScreen() {
 
         {/* right analytics rail */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <section className="panel" style={{ margin: 0 }}>
+          <section className="panel" data-module-id="cd-demographics" style={{ margin: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_demographics')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
             <div className="s muted" style={{ marginBottom: 8 }}>{tx('pos.age_groups')}</div>
             {an && an.ageGroups.length > 0 ? <Donut items={an.ageGroups} /> : <div className="muted">{tx('pos.no_birthdays_on_file_yet')}</div>}
           </section>
-          <section className="panel" style={{ margin: 0 }}>
+          <section className="panel" data-module-id="cd-tags" style={{ margin: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.top_customer_tags')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} data-testid="cd-tags-all" onClick={() => setRailOverlay('tags')}>{tx('pos.view_all_4')}</button></div>
             {tagCounts.length === 0 ? <div className="muted">{tx('pos.no_tags_on_this_page')}</div> : tagCounts.slice(0, 6).map(([t, n]) => (
               <div key={t} style={{ display: 'flex', alignItems: 'center', padding: '4px 0' }}><span className="pill" style={{ background: '#FCEFD8', color: '#8B5A18' }}>{t}</span><span style={{ marginLeft: 'auto', color: 'var(--muted)', fontSize: 12 }}>{nf(n)} {tx('pos.customers_2')}</span></div>
             ))}
           </section>
-          <section className="panel" style={{ margin: 0 }}>
+          <section className="panel" data-module-id="cd-sources" style={{ margin: 0 }}>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_sources')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} data-testid="cd-sources-all" onClick={() => setRailOverlay('sources')}>{tx('pos.view_report')}</button></div>
             {srcCounts.length === 0 ? <div className="muted">{tx('pos.no_source_data_on_this_page')}</div> : srcCounts.slice(0, 6).map(([src, n]) => (
               <div key={src} style={{ marginBottom: 8 }}>
@@ -642,8 +642,8 @@ export function POSCustomersScreen() {
       </div>
 
       {/* bottom analytics: CLV · Retention Trend · RFM · Recent Activity */}
-   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 mt-14">
-        <section className="panel" style={{ margin: 0 }}>
+   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-3" data-module-id="customers-analytics">
+        <section className="panel" data-module-id="cd-clv" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_lifetime_value')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
           {!an ? <div className="muted">{tx('pos.loading')}</div> : (
             <div>
@@ -657,7 +657,7 @@ export function POSCustomersScreen() {
             </div>
           )}
         </section>
-        <section className="panel" style={{ margin: 0 }}>
+        <section className="panel" data-module-id="cd-retention-trend" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.customer_retention_trend')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/customers/retention')}>{tx('pos.view_report')}</button></div>
           {an ? (
             <div>
@@ -677,7 +677,7 @@ export function POSCustomersScreen() {
             </div>
           ) : <div className="muted">{tx('pos.loading')}</div>}
         </section>
-        <section className="panel" style={{ margin: 0 }}>
+        <section className="panel" data-module-id="cd-rfm" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.rfm_analysis')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/reports/customers')}>{tx('pos.view_report')}</button></div>
           {an && an.rfm.length > 0 ? an.rfm.map((x) => (
             <div key={x.segment} style={{ marginBottom: 7 }}>
@@ -690,7 +690,7 @@ export function POSCustomersScreen() {
       {/* F1 §35/§39-41 (Nov 5 2026): last row — Recent Customer Activity (≈72%) beside a compact AI Customer Profile Assistant
           card (≈28%); the large top AI banner is gone */}
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(260px,28%)] gap-3 items-start" style={{ marginTop: 12 }} data-testid="cd-bottom-row">
-        <section className="panel" style={{ margin: 0 }}>
+        <section className="panel" data-module-id="cd-activity" style={{ margin: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}><h2 style={{ margin: 0 }}>{tx('pos.recent_customer_activity')}</h2><button className="btn ghost" style={{ marginLeft: 'auto', padding: '3px 8px', fontSize: 11 }} onClick={() => nav('/tenant/customers/appointment-history')}>{tx('pos.view_all_4')}</button></div>
           {s.unavailable?.includes('recentActivity') && recentActivity.length === 0 ? <div className="muted" data-testid="cd-act-unavailable">{tx('cd.unavailable')}</div> : recentActivity.length === 0 ? <div className="muted">{tx('cd.act.empty')}</div> : recentActivity.map((r) => (
             <div key={r.kind + r.customerId} data-testid="cd-activity-row" style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', cursor: 'pointer' }} onClick={() => openProfile(rows.find((x) => x.customerId === r.customerId) ?? ({ customerId: r.customerId, displayName: r.displayName, avatarUrl: r.avatarUrl, tags: [] } as unknown as Row))}>

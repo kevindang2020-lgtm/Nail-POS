@@ -17,8 +17,8 @@ import registry from './module-registry.json';
 
 export type Verdict = 'PASS' | 'WARN' | 'FAIL' | 'NOT_TESTED';
 export interface Rect { x: number; y: number; w: number; h: number }
-export interface RegistryModule { id: string; label: string; minChildren?: number }
-export interface RegistryPage { key: string; title: string; routes: string[]; screens: string[]; guide: string; modules: RegistryModule[] }
+export interface RegistryModule { id: string; label: string; minItems?: number; items?: string }
+export interface RegistryPage { key: string; title: string; routes: string[]; screens: string[]; guide: string; modules: RegistryModule[]; scroll?: 'page'; scrollReason?: string }
 export interface CollectedModule { id: string; label: string; present: boolean; visible: boolean; inView: boolean; rect: Rect | null; children: number; minChildren: number | null }
 export interface Collected {
   route: string;
@@ -70,7 +70,9 @@ export function analyzeScreen(c: Collected, t: (k: string, v?: Record<string, st
 
   // 2 — page fit (no main-page scroll at a certified density; horizontal never)
   const v = Math.max(c.scroll.docY, c.scroll.mainY, c.scroll.rootY), h = Math.max(c.scroll.docX, c.scroll.mainX, c.scroll.rootX);
-  if (kb) out.push({ id: 'fit', verdict: 'NOT_TESTED', title: t('sunmi.check.fit'), detail: t('sunmi.check.keyboardOpen') });
+  const pageScroll = c.page?.scroll === 'page';   // a registered long page (Customer Directory, Booking): vertical scroll is by design
+  if (pageScroll) out.push({ id: 'fit', verdict: 'PASS', title: t('sunmi.check.fit'), detail: t('sunmi.check.pageScroll', { px: String(v) }) });
+  else if (kb) out.push({ id: 'fit', verdict: 'NOT_TESTED', title: t('sunmi.check.fit'), detail: t('sunmi.check.keyboardOpen') });
   else out.push({ id: 'fit', verdict: v > 1 ? (certified ? 'FAIL' : 'WARN') : 'PASS', title: t('sunmi.check.fit'),
     detail: v > 1 ? t('sunmi.check.scrollsBy', { px: String(v) }) : t('sunmi.check.noScroll'), remedy: v > 1 ? t('sunmi.fix.vertical') : undefined });
   out.push({ id: 'horizontal', verdict: h > 1 ? 'FAIL' : 'PASS', title: t('sunmi.check.horizontal'),
@@ -85,7 +87,7 @@ export function analyzeScreen(c: Collected, t: (k: string, v?: Record<string, st
     out.push({ id: 'modules', verdict: missing.length || hidden.length ? 'FAIL' : 'PASS', title: t('sunmi.check.modules'),
       detail: t('sunmi.check.modulesDetail', { ok: String(c.modules.length - missing.length - hidden.length), total: String(c.modules.length) }),
       remedy: missing.length || hidden.length ? t('sunmi.fix.restore') : undefined, modules: [...missing, ...hidden].map((m) => m.label) });
-    if (!kb) out.push({ id: 'in-view', verdict: outside.length ? (certified ? 'FAIL' : 'WARN') : 'PASS', title: t('sunmi.check.inView'),
+    if (!kb && !pageScroll) out.push({ id: 'in-view', verdict: outside.length ? (certified ? 'FAIL' : 'WARN') : 'PASS', title: t('sunmi.check.inView'),
       detail: outside.length ? t('sunmi.check.outside', { n: String(outside.length) }) : t('sunmi.check.allInView'),
       remedy: outside.length ? t('sunmi.fix.inView') : undefined, modules: outside.map((m) => m.label) });
     if (few.length) out.push({ id: 'counts', verdict: 'FAIL', title: t('sunmi.check.counts'), detail: few.map((m) => `${m.label}: ${m.children}/${m.minChildren}`).join(' · '), remedy: t('sunmi.fix.counts'), modules: few.map((m) => m.label) });
@@ -147,11 +149,11 @@ export function collectScreen(doc: Document, route: string, profile: DisplayProf
   const find = (id: string) => main?.querySelector(`[data-module-id="${CSS.escape(id)}"]`) ?? main?.querySelector(`[data-testid="${CSS.escape(id)}"]`) ?? null;
   const modules: CollectedModule[] = (page?.modules ?? []).map((m) => {
     const el = find(m.id);
-    if (!el) return { id: m.id, label: m.label, present: false, visible: false, inView: false, rect: null, children: 0, minChildren: m.minChildren ?? null };
+    if (!el) return { id: m.id, label: m.label, present: false, visible: false, inView: false, rect: null, children: 0, minChildren: m.minItems ?? null };
     const r = el.getBoundingClientRect();
     const isVis = vis(el);
     const inView = isVis && r.left >= content.left - 1 && r.right <= content.right + 1 && r.top >= content.top - 1 && r.bottom <= content.bottom + 1;
-    return { id: m.id, label: m.label, present: true, visible: isVis, inView, rect: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }, children: [...el.children].filter(vis).length, minChildren: m.minChildren ?? null };
+    return { id: m.id, label: m.label, present: true, visible: isVis, inView, rect: { x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) }, children: (m.items ? [...el.querySelectorAll(m.items)] : [...el.children]).filter(vis).length, minChildren: m.minItems ?? null };
   });
   const smallTargets: Collected['smallTargets'] = [], clipped: Collected['clipped'] = [];
   for (const el of (main?.querySelectorAll('button, [role="tab"], a.btn, .btn') ?? []) as NodeListOf<HTMLElement>) {

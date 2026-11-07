@@ -33,7 +33,7 @@ describe('startDisplayProfile', () => {
     expect(root.getAttribute('data-density')).toBe(densityFor(window.innerWidth, window.innerHeight));
     expect(root.getAttribute('data-keyboard')).toBe('closed');
     expect(root.style.getPropertyValue('--pos-vvh')).toMatch(/px$/);
-    expect(root.style.zoom || '').toBe('');
+    expect(root.style.getPropertyValue('zoom')).toBe('');
     expect(root.style.transform || '').toBe('');
     expect(displayProfile()?.innerW).toBe(window.innerWidth);
     expect(measureDisplay().density).toBe(displayProfile()?.density);

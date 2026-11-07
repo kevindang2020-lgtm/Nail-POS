@@ -34,6 +34,7 @@ export const SUNMI_VI: Record<string, string> = {
   'sunmi.check.displayDetail': '{w} × {h} px CSS · tỉ lệ điểm ảnh {dpr} · {density} · {mode} · vùng nội dung {cw} × {ch}',
   'sunmi.check.fit': 'Vừa một màn hình',
   'sunmi.check.keyboardOpen': 'Bàn phím ảo đang mở — sẽ kiểm tra lại khi bàn phím đóng.',
+  'sunmi.check.pageScroll': 'Trang làm việc dài: cuộn dọc là theo thiết kế ({px} px); mọi mô-đun được kiểm tra có mặt và không tràn ngang',
   'sunmi.check.scrollsBy': 'Trang cuộn thêm {px} px',
   'sunmi.check.noScroll': 'Trang không phải cuộn',
   'sunmi.check.horizontal': 'Không cuộn ngang',

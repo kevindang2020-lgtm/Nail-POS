@@ -186,7 +186,7 @@ export function VisitPlanPanel({ queueItemId, customerName, roster, can, onChang
   );
 
   return (
-    <div style={planUi.box} aria-label={tx('pos.visit_plan_for_customername', { customerName: String(customerName) })}>
+    <div className="vpp" style={planUi.box} aria-label={tx('pos.visit_plan_for_customername', { customerName: String(customerName) })}>
       {askUi}
       {head}
       {err ? <div role="alert" style={planUi.err}>{err}</div> : null}

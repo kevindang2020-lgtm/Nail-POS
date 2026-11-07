@@ -1451,7 +1451,10 @@ button, .qa-btn, .grp-head, .loc-btn, .loc-opt, .nav a, .helpbtn, .statuscard { 
 .fk-pager-range{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
 .fk-pager-btns{display:flex;align-items:center;gap:3px;flex:none}
 .fk-pbtn{min-width:36px;height:34px;padding:0 8px;border-radius:9px;border:1px solid var(--line);background:#FFFDF8;font:inherit;font-size:12px;font-weight:700;cursor:pointer;color:var(--text);position:relative}
-:root:not([data-hitslop="off"]) .fk-pbtn::after{content:'';position:absolute;inset:-5px -4px}
+:root:not([data-hitslop="off"]) .fk-pbtn::after{content:'';position:absolute;inset:-6px -4px}
+/* SUNMI (Nov 2026): a pager in a panel foot sat 3 px from the panel's clipping bottom edge, so its 44 px hit area was cut to 43 —
+   the foot keeps 6 px under the buttons (Invoices was the one screen where the list filled the panel). */
+.fk-panel-foot:has(>.fk-pager){padding-bottom:6px}
 .fk-pbtn.on{background:var(--g7);border-color:var(--g7);color:#fff}
 .fk-pbtn:disabled{opacity:.4;cursor:not-allowed}
 .fk-pager.compact .fk-pbtn-l{display:none}
@@ -2169,6 +2172,9 @@ button.ch-dif{cursor:pointer}button.ch-dif:focus-visible{outline:2px solid var(-
 .mos-dgrid section{min-width:0}
 .mos-mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;word-break:break-all}
 .mo-quick{grid-template-columns:repeat(5,minmax(0,1fr))}
+/* SUNMI FLEX 3 Membership addendum §04 (Nov 2026): all ten Quick Actions in ONE row from 1500 px — the second row of five was
+   below the fold at 1920 × 945 / 952 (85 px of page scroll). Below 1500 px the five-column rows return. */
+@media (min-width:1500px){.mo-quick{grid-template-columns:repeat(10,minmax(0,1fr))}.mo-qa{padding:0 6px}}
 @media (max-width:1500px){.mos-row.four{grid-template-columns:repeat(2,minmax(0,1fr))}.mos-table .t-opt2{display:none}}
 @media (max-width:1366px){.mos-row.three{grid-template-columns:repeat(2,minmax(0,1fr))}.mos-row.three>:last-child{grid-column:1/-1}.mos-table .t-opt{display:none}}
 @media (max-width:1100px){.mos-row.three,.mos-row.four{grid-template-columns:minmax(0,1fr)}.mo-quick{grid-template-columns:repeat(2,minmax(0,1fr))}}
@@ -3806,3 +3812,99 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .ex-bars .num{text-align:right}
 @media (max-width:1439px){.ex-table .t-opt{display:none}}
 @media (max-height:820px){.work.fit.ex .fn-scope{display:none}.work.fit.ex{grid-template-rows:auto auto var(--fk-kpi) auto minmax(0,1fr)}.work.fit.ex:has(>.fk-note){grid-template-rows:auto auto auto var(--fk-kpi) auto minmax(0,1fr)}}
+
+/* ── SUNMI FLEX 3 Tech Queue addendum (Nov 6 2026) §4 "Proportional 27-inch Tech Queue layout" ─────────────────────────────
+   One screen from 1536 × 820 up (COMPACT on the SUNMI 27″ / Windows 1920×1080 browser, TIGHT on 1600×900):
+   every module stays visible as a bounded panel whose body scrolls locally — Live Technician Queue ≈ 58 % beside AI
+   Assignment Insights ≈ 42 %, then Assigned Tickets beside the Workload Board, then Waiting Guests / Tech Performance /
+   Available Technicians, then the four E analytics, Quick Actions pinned at the bottom. The wrappers (.mos-row) become
+   display:contents so each panel is placed by its test id; nothing is removed, renamed or re-ordered in the DOM.
+   Transient panels (search results, break form, auto-balance preview, notes) float over the board instead of pushing it.
+   Below 1536 × 820 (1366 × 768 laptops — the addendum's honest fallback) the Oct 30 single vertical scroll layout is unchanged,
+   so nothing is squeezed below readability. Touch targets keep their 44 px. */
+@media (min-width:1536px) and (min-height:820px){
+  .work.mos.tqs{display:grid;position:relative;height:min(100%,calc(100dvh - var(--pos-header-height)));overflow:hidden;
+    grid-template-columns:repeat(12,minmax(0,1fr));gap:6px 8px;padding:8px 14px;
+    grid-template-rows:auto var(--tq-kpi,66px) minmax(0,1.3fr) minmax(0,1.3fr) minmax(0,.9fr) var(--tq-ana,100px) auto}
+  .work.mos.tqs>*{min-height:0}
+  .tqs>.mos-row{display:contents}
+  .tqs>.fk-head{grid-column:1/9;grid-row:1;min-width:0}
+  .tqs>.fk-head .vh .sub{display:none}
+  .tqs>.fk-head .vh h1{font-size:22px}
+  .work.mos.tqs>[data-testid="toolbar"]{grid-column:9/13;grid-row:1;align-self:center;min-width:0}
+  .work.mos.tqs>[data-testid="toolbar"] .mos-search{max-width:none}
+  .work.mos.tqs>[data-testid="kpis"]{grid-column:1/-1;grid-row:2;gap:6px}
+  .tqs>p.fk-hint{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}   /* kept for screen readers; the rule is each KPI's sub-line */
+  .work.mos.tqs [data-testid="live-queue"]{grid-column:1/8;grid-row:3}
+  .work.mos.tqs [data-testid="ai-insights"]{grid-column:8/13;grid-row:3}
+  .work.mos.tqs>[data-testid="assigned-tickets"]{grid-column:1/8;grid-row:4}
+  .work.mos.tqs>[data-testid="workload"]{grid-column:8/13;grid-row:4}
+  .work.mos.tqs [data-testid="waiting-guests"]{grid-column:1/5;grid-row:5}
+  .work.mos.tqs [data-testid="tech-performance"]{grid-column:5/9;grid-row:5}
+  .work.mos.tqs [data-testid="available-technicians"]{grid-column:9/13;grid-row:5}
+  .work.mos.tqs [data-testid="e1"]{grid-column:1/4;grid-row:6}.work.mos.tqs [data-testid="e2"]{grid-column:4/7;grid-row:6}
+  .work.mos.tqs [data-testid="e3"]{grid-column:7/10;grid-row:6}.work.mos.tqs [data-testid="e4"]{grid-column:10/13;grid-row:6}
+  .work.mos.tqs>[data-testid="quick-actions"]{grid-column:1/-1;grid-row:7;padding:6px;gap:6px}
+  /* History mode: no live board — Assigned Tickets (history) and Tech Performance share the main rows */
+  .work.mos.tqs:not(:has([data-testid="live-queue"])){grid-template-rows:auto var(--tq-kpi,62px) auto minmax(0,1fr) var(--tq-ana,104px) auto}
+  .work.mos.tqs:not(:has([data-testid="live-queue"]))>[data-testid="history-banner"]{grid-column:1/-1;grid-row:3}
+  .work.mos.tqs:not(:has([data-testid="live-queue"]))>[data-testid="assigned-tickets"]{grid-column:1/9;grid-row:4}
+  .work.mos.tqs:not(:has([data-testid="live-queue"])) [data-testid="tech-performance"]{grid-column:9/13;grid-row:4}
+  .work.mos.tqs:not(:has([data-testid="live-queue"])) [data-testid="e1"],.work.mos.tqs:not(:has([data-testid="live-queue"])) [data-testid="e2"],
+  .work.mos.tqs:not(:has([data-testid="live-queue"])) [data-testid="e3"],.work.mos.tqs:not(:has([data-testid="live-queue"])) [data-testid="e4"]{grid-row:5}
+  .work.mos.tqs:not(:has([data-testid="live-queue"]))>[data-testid="quick-actions"]{grid-row:6}
+  /* transient panels float over the board (viewport-contained, scroll inside, nothing pushed off-screen) */
+  .tqs>.fk-note:not([data-testid="history-banner"]),.tqs>[data-testid="search-results"],.tqs>[data-testid="break-panel"],.tqs>[data-testid="auto-balance"],.tqs>.vpp{
+    position:absolute;z-index:30;left:14px;right:14px;top:58px;max-height:calc(100% - 130px);overflow:auto;box-shadow:0 12px 32px rgba(60,40,10,.22)}
+  .tqs>.fk-note:not([data-testid="history-banner"]){left:auto;right:14px;max-width:min(720px,60%);top:8px}
+  .work.mos.tqs>[data-testid="history-banner"]{margin:0;padding-top:4px;padding-bottom:4px}
+  /* Assigned Tickets: tabs and the ticket search share one row so the list keeps its rows */
+  .work.mos.tqs>[data-testid="assigned-tickets"] .fk-panel-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(220px,30%);column-gap:8px;align-content:start}
+  .work.mos.tqs>[data-testid="assigned-tickets"] .fk-panel-body>*{grid-column:1/-1}
+  .work.mos.tqs>[data-testid="assigned-tickets"] .fk-panel-body>.fk-tabs{grid-column:1;grid-row:1;margin-bottom:4px}
+  .work.mos.tqs>[data-testid="assigned-tickets"] .fk-panel-body>.fk-tabs+.mos-tools{grid-column:2;grid-row:1}
+  /* bounded panels: the body scrolls, never the page */
+  .work.mos.tqs .fk-panel{overflow:hidden;min-height:0}
+  .work.mos.tqs .fk-panel-body{overflow:auto;overscroll-behavior:contain}
+  .work.mos.tqs .fk-panel-head{min-height:38px;padding-top:2px;padding-bottom:2px}
+  .work.mos.tqs .fk-panel-head h2{font-size:14px}
+  .work.mos.tqs .fk-panel-foot{padding-top:0;padding-bottom:0}
+  .work.mos.tqs .fk-panel-foot .fk-link{min-height:30px}
+  .work.mos.tqs .fk-panel .fk-hint{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:2px 0 0}
+  .work.mos.tqs .fk-kpi{min-height:0;padding:6px 10px}
+  .work.mos.tqs .fk-kpi-v{font-size:22px}
+  .work.mos.tqs .cg-kpis .fk-kpi-s{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .work.mos.tqs .fk-table td{height:44px}
+  .work.mos.tqs .fk-tabs{margin-bottom:4px;flex-wrap:nowrap;overflow-x:auto}
+  .work.mos.tqs .tq-col{min-height:0;overflow:auto;padding:6px}
+  .work.mos.tqs .tq-board{height:100%}
+  .work.mos.tqs .tq-spark{height:54px}
+  .work.mos.tqs .tq-mix{height:58px}.work.mos.tqs .tq-mix-bar{height:40px}
+  .work.mos.tqs .tq-qa-b{min-height:50px;flex-direction:row;gap:8px}
+  .work.mos.tqs .tq-ai-acts{flex-direction:row;flex-wrap:wrap;margin-top:4px}
+  .work.mos.tqs .tq-pager{margin-top:2px}
+  .work.mos.tqs .fk-kpi{display:flex;flex-direction:column;justify-content:center;gap:1px;line-height:1.15}
+  .work.mos.tqs .fk-kpi-l{font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+  .work.mos.tqs .fk-tabs button{white-space:nowrap;min-height:40px;padding:0 9px;flex:none}
+  .work.mos.tqs .fk-tabs button .tq-n{height:20px;min-width:20px}
+  .work.mos.tqs>[data-testid="assigned-tickets"] .fk-panel-body>.mos-tools .fk-search{min-height:40px}
+  .work.mos.tqs [data-testid="e1"] .fk-empty,.tqs [data-testid="e2"] .fk-empty,.tqs [data-testid="e3"] .fk-empty,.tqs [data-testid="e4"] .fk-empty{min-height:0;padding:6px 4px;justify-content:flex-start}
+  .work.mos.tqs [data-testid="workload"] .tq-drop{padding:4px;font-size:12px;line-height:1.2}
+}
+@media (min-width:1536px) and (min-height:1000px){.work.mos.tqs{--tq-kpi:72px;--tq-ana:124px}.work.mos.tqs .tq-spark{height:72px}.work.mos.tqs .tq-mix{height:76px}.work.mos.tqs .tq-mix-bar{height:56px}}
+@media (min-width:2200px) and (min-height:1200px){.work.mos.tqs{--tq-kpi:84px;--tq-ana:150px}}
+
+/* ── SUNMI FLEX 3 Membership Overview addendum (Nov 6 2026) §03–§05: one screen from 1536 × 820 up. The page was a natural-
+   height column (35 px over at 1920 × 945 even with one Quick Actions row): it now owns the viewport height, the main row
+   (Overview's three panels, or the open tab's panel) takes the remaining height and scrolls inside, the KPI row and the
+   sticky tab strip lose their dead padding. Every KPI, panel, analytic and all ten Quick Actions stay on screen. */
+@media (min-width:1536px) and (min-height:820px){
+  .work.mos[data-testid="memberships-screen"]{height:min(100%,calc(100dvh - var(--pos-header-height)));overflow:hidden;gap:8px;padding:8px 16px}
+  .work.mos[data-testid="memberships-screen"]>.mos-row.three,.work.mos[data-testid="memberships-screen"]>.fk-panel{flex:1 1 0;min-height:0}
+  .work.mos[data-testid="memberships-screen"]>.mos-row.three{grid-template-rows:minmax(0,1fr)}
+  .work.mos[data-testid="memberships-screen"] .mos-row.three>.fk-panel,.work.mos[data-testid="memberships-screen"]>.fk-panel{min-height:0;overflow:hidden}
+  .work.mos[data-testid="memberships-screen"] .mos-row.three .fk-panel-body,.work.mos[data-testid="memberships-screen"]>.fk-panel>.fk-panel-body{min-height:0;overflow:auto;overscroll-behavior:contain}
+  .work.mos[data-testid="memberships-screen"]>.mos-tabs{padding:2px 0;margin-top:0;position:static;box-shadow:none}
+  .work.mos[data-testid="memberships-screen"] .fk-kpi{min-height:70px;padding-top:6px;padding-bottom:6px}
+  .work.mos[data-testid="memberships-screen"]>.mo-ana .fk-panel-body{overflow:hidden}
+}

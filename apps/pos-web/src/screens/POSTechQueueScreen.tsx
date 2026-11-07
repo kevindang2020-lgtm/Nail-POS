@@ -393,7 +393,7 @@ export function POSTechQueueScreen() {
       <div className="fk-kpis eight cg-kpis" data-testid="kpis">
         {KPIS.map((c) => <KpiCard key={c.key} testId={'kpi-' + c.key} tone={c.tone} label={c.l} value={c.v} sub={trendSub(c.key, c.sub)} />)}
       </div>
-      <p className="fk-hint">{tx('tq.kpiRule')}</p>
+      <p className="fk-hint" title={tx('tq.kpiRule')}>{tx('tq.kpiRule')}</p>
 
       {live ? <>
         <div className="mos-row tq-ac">
@@ -440,7 +440,7 @@ export function POSTechQueueScreen() {
                 </span> : null}
               </div>
             ) : null}
-            <p className="fk-hint">{tx('tq.rotationRule')}</p>
+            <p className="fk-hint" title={tx('tq.rotationRule')}>{tx('tq.rotationRule')}</p>
           </FitPanel>
 
           {/* C. AI Assignment Insights */}
@@ -453,7 +453,7 @@ export function POSTechQueueScreen() {
               <button type="button" className="fk-btn primary" disabled={abBusy} onClick={runAutoBalance} data-testid="auto-balance-run">{abBusy ? tx('pos.balancing') : tx('pos.auto_balance_queue')}</button>
               <div className="cg-acts"><button type="button" className="fk-btn ghost" onClick={() => nav('/queue')}>{tx('pos.view_suggestions')}</button><button type="button" className="fk-btn ghost" onClick={() => nav('/messages')}>{tx('pos.send_alert')}</button></div>
             </div>
-            <p className="fk-hint">{tx('tq.aiRule')}</p>
+            <p className="fk-hint" title={tx('tq.aiRule')}>{tx('tq.aiRule')}</p>
           </FitPanel>
         </div>
 
@@ -500,14 +500,14 @@ export function POSTechQueueScreen() {
               </div>
             ))}
           </div>
-          <p className="fk-hint">{tx('tq.boardRule')}</p>
+          <p className="fk-hint" title={tx('tq.boardRule')}>{tx('tq.boardRule')}</p>
         </FitPanel>
       </> : <div className="fk-note info" data-testid="history-banner"><span>{tx('tq.historyBanner')}</span></div>}
 
       {/* Assigned Tickets — Live tabs in operational order (first assigned first), History newest first */}
       <FitPanel testId="assigned-tickets" title={<>{live ? tx('pos.assigned_tickets') : tx('tq.historyTitle')}{live && srvTab === 'live' && !tSearch ? <span className="fk-muted"> · {liveTickets.length} {tx('pos.in_queue')}</span> : listQ.data ? <span className="fk-muted"> · {tx('cg.matching', { n: String(listQ.data.totalItems ?? 0) })}</span> : null}</>}
         footer={srvTab !== 'live' || tSearch ? <Pager info={pageOf(listQ.data)} onPage={setTPage} label={tx('pos.assigned_tickets')} /> : undefined}>
-        {live ? <div className="fk-tabs tq-tabs" role="tablist" aria-label={tx('pos.assigned_tickets')}>{TQ_TAB_KEYS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
+        {live ? <div className="fk-tabs tq-tabs" data-hscroll role="tablist" aria-label={tx('pos.assigned_tickets')}>{TQ_TAB_KEYS.map((t) => <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
           {tx('tq.tab.' + t)}{tabCount(t) != null ? <span className="tq-n">{tabCount(t)}</span> : null}</button>)}</div> : null}
         <div className="mos-tools">
           <div className="fn-search mos-search"><input className="fk-search" type="search" value={tSearchRaw} onChange={(e) => setTSearchRaw(e.target.value)} placeholder={tx('tq.ticketSearchPh')} aria-label={tx('tq.ticketSearchPh')} data-testid="ticket-search" /></div>
@@ -566,7 +566,7 @@ export function POSTechQueueScreen() {
               <td>{chip(statusLabel('techTicket', t.status), TONE[t.status])}{t.delay ? <> {chip(codeLabel('tq.delay.' + t.delay, t.delay), 'bad')}</> : null}</td>
               <td className="num">{tx('ops.common.minutesShort', { n: String(t.waitMinutes) })}{t.waitFrozen ? <span className="fk-li-s">{tx('tq.waitFrozen')}</span> : null}</td>
               <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => setTicketId(t.id)} data-testid="server-ticket-open">{tx('pos.details')}</button></td></tr>)}</tbody></table></div>}
-        <p className="fk-hint">{live ? tx('tq.liveRule') : tx('tq.historyRule')}</p>
+        <p className="fk-hint" title={live ? tx('tq.liveRule') : tx('tq.historyRule')}>{live ? tx('tq.liveRule') : tx('tq.historyRule')}</p>
       </FitPanel>
 
       <div className={'mos-row cg-row ' + (live ? 'three' : 'one')}>
@@ -581,7 +581,7 @@ export function POSTechQueueScreen() {
               <td className="fn-acts">{g.queueItemId ? <button type="button" className="fk-btn ghost sm" style={{ width: 36, padding: 0 }} title={tx('pos.open_full_ipad_view')} aria-label={tx('pos.full_view')} onClick={() => openIPad(queueItemRequest({ queueItemId: g.queueItemId!, customerName: g.customerName, requestedServices: [{ serviceId: '', serviceName: g.serviceName }], priority: g.priority, actualWaitMinutes: g.waitMinutes, requestedTechnicianName: g.preferredTechName, bestMatchTechnicianName: g.bestMatchTechnicianName }))}><FaExpand aria-hidden="true" /></button> : null}
                 <button type="button" className="fk-btn sm" disabled={!!g.queueItemId && pendingAssign === g.queueItemId} onClick={() => assignToBestMatch(g)}>{g.queueItemId && pendingAssign === g.queueItemId ? tx('pos.assigning') : tx('pos.assign')}</button></td></tr>)}
               {waiting.length === 0 ? <tr><td colSpan={6} className="fk-empty-cell">{tx('pos.no_customers_waiting')}</td></tr> : null}</tbody></table></div>
-          <p className="fk-hint">{tx('tq.fairRule')}</p>
+          <p className="fk-hint" title={tx('tq.fairRule')}>{tx('tq.fairRule')}</p>
         </FitPanel> : null}
         <FitPanel testId="tech-performance" title={tx('pos.d2_tech_performance_today')} footer={<button type="button" className="fk-link" onClick={() => nav('/tenant/team/performance')}>{tx('tq.teamPerformance')}</button>}>
           <div className="tq-scroll"><table className="fk-table fn-table cg-table tq-table"><thead><tr><th>#</th><th>{tx('pos.technician')}</th><th className="num">{tx('pos.services')}</th><th className="num">{tx('pos.revenue')}</th><th className="num">{tx('pos.tips')}</th><th className="num">{tx('pos.util_2')}</th><th className="num">{tx('pos.rating')}</th></tr></thead>
@@ -597,7 +597,7 @@ export function POSTechQueueScreen() {
               <td>{chip(st(t.status).label, TONE[t.status])}</td><td>{nextLabel(t)}</td><td className="t-opt">{t.specialties.join(', ')}</td>
               <td className="fn-acts"><button type="button" className="fk-btn ghost sm" onClick={() => nav('/messages')} title={tx('ops.common.messageName', { name: t.technicianName })}>{tx('tq.message')}</button></td></tr>)}
               {avail.length === 0 ? <tr><td colSpan={5} className="fk-empty-cell">{tx('pos.no_available_technicians')}</td></tr> : null}</tbody></table></div>
-          <p className="fk-hint">{tx('tq.availRule')}</p>
+          <p className="fk-hint" title={tx('tq.availRule')}>{tx('tq.availRule')}</p>
         </FitPanel> : null}
       </div>
 
@@ -616,7 +616,7 @@ export function POSTechQueueScreen() {
           {(() => { const sl = a?.assignmentSource || []; const total = a?.assignmentSourceTotal || 0; if (!total) return <Empty title={tx('pos.no_assignments_yet')} />; return <ul className="fk-list dense tq-src">{sl.map((s2, i) => <li key={s2.source} className="fk-li">
             <span className="fk-li-t"><i style={{ background: COLORS[i % COLORS.length] }} />{s2.code ? tx(`ops.techQueue.sourceMix.${s2.code}`) : statusLabel('source', s2.source)}</span><span className="tq-src-bar"><span style={{ width: `${s2.percent}%`, background: COLORS[i % COLORS.length] }} /></span><span className="num">{s2.count} ({s2.percent}%)</span></li>)}
             <li className="fk-li"><span className="fk-li-t">{tx('pos.total')}</span><b>{total}</b></li></ul>; })()}
-          <p className="fk-hint">{tx('tq.sourceRule')}</p>
+          <p className="fk-hint" title={tx('tq.sourceRule')}>{tx('tq.sourceRule')}</p>
         </FitPanel>
         <FitPanel testId="e4" title={tx('pos.e4_top_revenue_techs')} footer={<button type="button" className="fk-link" onClick={() => nav('/tenant/reports/technicians')}>{tx('pos.view_full_report')}</button>}>
           <ol className="fk-list dense tq-top">{(a?.topRevenueTechs || []).slice(0, 5).map((t, i) => <li key={t.technicianId} className="fk-li"><span className={'tq-rank' + (i < 3 ? ' g' : '')}>{i + 1}</span>{avatar(t.technicianName, 24)}<span className="fk-li-t">{t.technicianName}</span><b>{m2(t.revenueCents)}</b></li>)}</ol>

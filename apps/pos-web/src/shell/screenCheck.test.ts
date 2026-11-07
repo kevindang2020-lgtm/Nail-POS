@@ -48,6 +48,12 @@ describe('analyzeScreen', () => {
   it('the open soft keyboard makes the fit NOT_TESTED, never a FAIL', () => {
     expect(v(base({ profile: prof(1920, 1032, { keyboardOpen: true, vvH: 600 }), scroll: { docY: 0, docX: 0, mainY: 0, mainX: 0, rootY: 300, rootX: 0 } }), 'fit')).toBe('NOT_TESTED');
   });
+  it('a registered long page (Customer Directory) passes vertical scroll by design but still fails sideways scroll and missing modules', () => {
+    const page = registryPageFor('/customers')!; expect(page.scroll).toBe('page');
+    const c = base({ route: '/customers', page, scroll: { docY: 0, docX: 0, mainY: 0, mainX: 0, rootY: 400, rootX: 0 } }); c.modules[1] = { ...c.modules[1], inView: false };
+    expect(v(c, 'fit')).toBe('PASS'); expect(analyzeScreen(c).find((f) => f.id === 'in-view')).toBeUndefined();
+    expect(v({ ...c, scroll: { ...c.scroll, rootX: 40 } }, 'horizontal')).toBe('FAIL');
+  });
   it('an unregistered screen is NOT_TESTED for modules', () => { expect(v(base({ page: null }), 'modules')).toBe('NOT_TESTED'); });
   it('interrupted live updates warn', () => { expect(v(base({ realtime: { status: 'RECONNECTING', lastSyncedAt: 1, lastErrorAt: null } }), 'realtime')).toBe('WARN'); });
 });

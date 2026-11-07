@@ -35,6 +35,7 @@ export const SUNMI_EN: Record<string, string> = {
   'sunmi.check.displayDetail': '{w} × {h} CSS px · pixel ratio {dpr} · {density} · {mode} · content area {cw} × {ch}',
   'sunmi.check.fit': 'Fits one screen',
   'sunmi.check.keyboardOpen': 'The on-screen keyboard is open — checked again when it closes.',
+  'sunmi.check.pageScroll': 'A long working page: vertical scrolling is by design ({px} px); every module is checked for presence and sideways fit',
   'sunmi.check.scrollsBy': 'The page scrolls by {px} px',
   'sunmi.check.noScroll': 'No page scrolling',
   'sunmi.check.horizontal': 'No sideways scrolling',

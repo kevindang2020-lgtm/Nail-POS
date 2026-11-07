@@ -350,7 +350,7 @@ export function POSMembershipsScreen() {
       ) : null}
 
       <nav className="mo-quick" aria-label={tx('pos.quick_actions_2')} data-testid="membership-quick">
-        {QUICK.map((x) => <button type="button" key={x.key} className="fk-btn ghost mo-qa" data-testid={'qa-' + x.key} onClick={x.run} disabled={(x.needsManage && !canManage) || x.busy} title={x.needsManage && !canManage ? tx('people.fit.noPermission') : undefined}>{x.busy ? tx('pos.loading') : x.label}</button>)}
+        {QUICK.map((x) => <button type="button" key={x.key} className="fk-btn ghost mo-qa" data-testid={'qa-' + x.key} onClick={x.run} disabled={(x.needsManage && !canManage) || x.busy} title={x.needsManage && !canManage ? tx('people.fit.noPermission') : x.label} aria-label={x.label}>{x.busy ? tx('pos.loading') : x.label}</button>)}
       </nav>
 
       {dlg?.kind === 'create' ? <MembershipPlanBuilder onClose={() => setDlg(null)} onCreated={() => { setDlg(null); changed(tx('pos.plan_published')); }} /> : null}

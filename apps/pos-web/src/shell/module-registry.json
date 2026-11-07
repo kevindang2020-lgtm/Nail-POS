@@ -15,7 +15,8 @@
    "modules": [
     {
      "id": "overview-kpis",
-     "label": "8 KPI cards"
+     "label": "8 KPI cards",
+     "minItems": 8
     },
     {
      "id": "ov-arrivals",
@@ -63,7 +64,9 @@
     },
     {
      "id": "overview-quick-actions",
-     "label": "9 Quick Actions"
+     "label": "9 Quick Actions",
+     "minItems": 9,
+     "items": "button"
     }
    ]
   },
@@ -82,7 +85,8 @@
    "modules": [
     {
      "id": "live-ops-kpis",
-     "label": "9 KPI cards"
+     "label": "9 KPI cards",
+     "minItems": 9
     },
     {
      "id": "lo-snapshot",
@@ -122,7 +126,9 @@
     },
     {
      "id": "live-ops-quick-actions",
-     "label": "Quick Actions"
+     "label": "Quick Actions",
+     "minItems": 9,
+     "items": "button"
     }
    ]
   },
@@ -139,7 +145,8 @@
    "modules": [
     {
      "id": "check-in-kpis",
-     "label": "9 KPI cards"
+     "label": "9 KPI cards",
+     "minItems": 9
     },
     {
      "id": "ci-queue",
@@ -183,7 +190,9 @@
     },
     {
      "id": "check-in-quick-actions",
-     "label": "9 Quick Actions"
+     "label": "9 Quick Actions",
+     "minItems": 9,
+     "items": "button"
     }
    ]
   },
@@ -197,7 +206,46 @@
     "POSBookingScreen"
    ],
    "guide": "AI_PowerSalon_Full-System_Engineering_Upgrade",
-   "modules": []
+   "modules": [
+    {
+     "id": "booking-header",
+     "label": "Title + Add Walk-in / New Booking"
+    },
+    {
+     "id": "booking-kpis",
+     "label": "Booking KPI cards"
+    },
+    {
+     "id": "booking-schedule",
+     "label": "Schedule (Day / Week, 12 technicians per page)"
+    },
+    {
+     "id": "booking-assistant",
+     "label": "Booking Assistant · new appointment"
+    },
+    {
+     "id": "booking-status-list",
+     "label": "Appointments by status"
+    },
+    {
+     "id": "booking-mix",
+     "label": "Channel / Service mix"
+    },
+    {
+     "id": "booking-upcoming",
+     "label": "Upcoming appointments"
+    },
+    {
+     "id": "booking-team",
+     "label": "Available technicians"
+    },
+    {
+     "id": "booking-quick-actions",
+     "label": "Quick Actions"
+    }
+   ],
+   "scroll": "page",
+   "scrollReason": "Booking is a long working page (schedule, Booking Assistant, status list, mix, upcoming, team, Quick Actions). The schedule grid scrolls in its own 560 px box; the page below it scrolls. A one-screen Booking is the separate Booking Schedule Board build (owner plan Oct 26 2026: build separately, test, then merge) — not restructured here."
   },
   {
    "key": "tech-queue",
@@ -216,7 +264,8 @@
     },
     {
      "id": "kpis",
-     "label": "KPI / status cards"
+     "label": "KPI / status cards",
+     "minItems": 8
     },
     {
      "id": "live-queue",
@@ -248,7 +297,9 @@
     },
     {
      "id": "quick-actions",
-     "label": "Quick Actions"
+     "label": "Quick Actions",
+     "minItems": 7,
+     "items": "button"
     }
    ]
   },
@@ -265,7 +316,8 @@
    "modules": [
     {
      "id": "queue-kpis",
-     "label": "KPI cards"
+     "label": "KPI cards",
+     "minItems": 8
     },
     {
      "id": "cq-queue",
@@ -317,7 +369,9 @@
     },
     {
      "id": "queue-quick-actions",
-     "label": "Quick Actions"
+     "label": "Quick Actions",
+     "minItems": 8,
+     "items": "button"
     }
    ]
   },
@@ -334,7 +388,8 @@
    "modules": [
     {
      "id": "serving-kpis",
-     "label": "KPI cards"
+     "label": "KPI cards",
+     "minItems": 9
     },
     {
      "id": "sv-floor",
@@ -382,7 +437,9 @@
     },
     {
      "id": "serving-quick-actions",
-     "label": "Quick Actions"
+     "label": "Quick Actions",
+     "minItems": 7,
+     "items": "button"
     }
    ]
   },
@@ -399,7 +456,8 @@
    "modules": [
     {
      "id": "service-done-kpis",
-     "label": "9 KPI cards"
+     "label": "9 KPI cards",
+     "minItems": 9
     },
     {
      "id": "sd-queue",
@@ -447,7 +505,9 @@
     },
     {
      "id": "service-done-quick-actions",
-     "label": "7 Quick Actions"
+     "label": "7 Quick Actions",
+     "minItems": 7,
+     "items": "button"
     }
    ]
   },
@@ -464,7 +524,8 @@
    "modules": [
     {
      "id": "checkout-kpis",
-     "label": "9 KPI cards"
+     "label": "9 KPI cards",
+     "minItems": 9
     },
     {
      "id": "checkout-queue",
@@ -508,7 +569,9 @@
     },
     {
      "id": "checkout-quick-actions",
-     "label": "9 Quick Actions"
+     "label": "9 Quick Actions",
+     "minItems": 9,
+     "items": "button"
     }
    ]
   },
@@ -538,7 +601,8 @@
    "modules": [
     {
      "id": "kpis",
-     "label": "Expense KPI cards"
+     "label": "Expense KPI cards",
+     "minItems": 4
     },
     {
      "id": "expenses",
@@ -587,7 +651,8 @@
    "modules": [
     {
      "id": "kpis",
-     "label": "Invoice KPI cards"
+     "label": "Invoice KPI cards",
+     "minItems": 4
     },
     {
      "id": "invoices",
@@ -620,7 +685,8 @@
    "modules": [
     {
      "id": "kpis",
-     "label": "Settlement KPI cards"
+     "label": "Settlement KPI cards",
+     "minItems": 6
     },
     {
      "id": "recon-strip",
@@ -657,7 +723,8 @@
    "modules": [
     {
      "id": "kpis",
-     "label": "Reconciliation KPI cards"
+     "label": "Reconciliation KPI cards",
+     "minItems": 5
     },
     {
      "id": "settlements-deposits",
@@ -691,7 +758,36 @@
     "POSAIOcrReceiptScreen"
    ],
    "guide": "AI_PowerSalon_Receipt_Expense_OCR_Accounting",
-   "modules": []
+   "modules": [
+    {
+     "id": "rrx-tabs",
+     "label": "Queue tabs (Overview … Upload)"
+    },
+    {
+     "id": "rrx-kpis",
+     "label": "Review KPI cards"
+    },
+    {
+     "id": "rrx-documents",
+     "label": "Documents list"
+    },
+    {
+     "id": "rrx-filters",
+     "label": "Search + date presets + sort"
+    },
+    {
+     "id": "rrx-search",
+     "label": "Search"
+    },
+    {
+     "id": "rrx-check",
+     "label": "Check Receipt & Document System"
+    },
+    {
+     "id": "rrx-refresh",
+     "label": "Refresh"
+    }
+   ]
   },
   {
    "key": "receipt-scanner",
@@ -743,7 +839,8 @@
    "modules": [
     {
      "id": "loyalty-kpis",
-     "label": "Five KPI cards"
+     "label": "Five KPI cards",
+     "minItems": 5
     },
     {
      "id": "panel-tiers",
@@ -784,7 +881,8 @@
    "modules": [
     {
      "id": "retention-kpis",
-     "label": "Retention KPI cards"
+     "label": "Retention KPI cards",
+     "minItems": 8
     },
     {
      "id": "panel-winback",
@@ -821,7 +919,8 @@
    "modules": [
     {
      "id": "membership-kpis",
-     "label": "Membership KPI cards"
+     "label": "Membership KPI cards",
+     "minItems": 5
     },
     {
      "id": "toolbar",
@@ -857,7 +956,9 @@
     },
     {
      "id": "membership-quick",
-     "label": "10 Quick Actions"
+     "label": "10 Quick Actions",
+     "minItems": 10,
+     "items": "button"
     }
    ]
   },
@@ -871,7 +972,67 @@
     "POSCustomersScreen"
    ],
    "guide": "AI_PowerSalon_Customer",
-   "modules": []
+   "modules": [
+    {
+     "id": "customers-kpis",
+     "label": "Eight primary KPIs",
+     "minItems": 8
+    },
+    {
+     "id": "customers-toolbar",
+     "label": "Search, Status / Tags / Groups / Sources, More Filters, Export, Add Customer"
+    },
+    {
+     "id": "customers-counters",
+     "label": "Secondary counters"
+    },
+    {
+     "id": "customers-tabs",
+     "label": "All / New / Returning / VIP / At Risk tabs"
+    },
+    {
+     "id": "customers-table",
+     "label": "Customer directory table"
+    },
+    {
+     "id": "cd-demographics",
+     "label": "Customer Demographics"
+    },
+    {
+     "id": "cd-tags",
+     "label": "Top Customer Tags"
+    },
+    {
+     "id": "cd-sources",
+     "label": "Customer Sources"
+    },
+    {
+     "id": "customers-analytics",
+     "label": "CLV / Retention Trend / RFM row"
+    },
+    {
+     "id": "cd-clv",
+     "label": "Customer Lifetime Value"
+    },
+    {
+     "id": "cd-retention-trend",
+     "label": "Customer Retention Trend"
+    },
+    {
+     "id": "cd-rfm",
+     "label": "RFM Analysis"
+    },
+    {
+     "id": "cd-activity",
+     "label": "Recent Customer Activity"
+    },
+    {
+     "id": "cd-ai-card",
+     "label": "AI Customer Profile Assistant (compact, bottom-right)"
+    }
+   ],
+   "scroll": "page",
+   "scrollReason": "Customer Directory SUNMI addendum §01: \"Retain the original intentional vertical page scroll\" — the directory is too information-rich for one screen. No sideways scroll; every module present."
   }
  ]
 }

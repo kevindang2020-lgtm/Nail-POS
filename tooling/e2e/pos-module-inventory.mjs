@@ -43,8 +43,8 @@ export const inspectPage = (page, registered) => page.evaluate((reg) => {
     const el = find(m.id);
     if (!el) return { id: m.id, label: m.label, present: false, visible: false, inView: false };
     const r = el.getBoundingClientRect();
-    const children = [...el.children].filter((c) => vis(c)).length;
-    return { id: m.id, label: m.label, present: true, visible: vis(el), inView: vis(el) && inView(r), children, minChildren: m.minChildren ?? null, x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
+    const children = (m.items ? [...el.querySelectorAll(m.items)] : [...el.children]).filter((c) => vis(c)).length;
+    return { id: m.id, label: m.label, present: true, visible: vis(el), inView: vis(el) && inView(r), children, minChildren: m.minItems ?? null, x: Math.round(r.left), y: Math.round(r.top), w: Math.round(r.width), h: Math.round(r.height) };
   });
   const se = document.scrollingElement;
   const root = main.querySelector(':scope > :not(.topbar):not(.community-alert-slot)');

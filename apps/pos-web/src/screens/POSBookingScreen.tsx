@@ -504,7 +504,7 @@ function BookingCalendar({ rows, technicians, grid, openTime, closeTime, dateLab
   })() : null;
 
   const body = (
-    <section className="panel mb-4" style={isFs ? { position: 'fixed', inset: 0, zIndex: 60, margin: 0, borderRadius: 0, overflow: 'auto', background: '#FBF6EC', padding: 18 } : undefined} aria-label={fs && fs !== 'all' ? tx('pos.full_day_schedule_for_v0', { v0: String(singleCol?.name ?? '') }) : tx('pos.booking_calendar')}>
+    <section className="panel mb-4" data-module-id="booking-schedule" style={isFs ? { position: 'fixed', inset: 0, zIndex: 60, margin: 0, borderRadius: 0, overflow: 'auto', background: '#FBF6EC', padding: 18 } : undefined} aria-label={fs && fs !== 'all' ? tx('pos.full_day_schedule_for_v0', { v0: String(singleCol?.name ?? '') }) : tx('pos.booking_calendar')}>
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-wrap">
         {singleCol ? (
           <>
@@ -1491,7 +1491,7 @@ export function POSBookingScreen() {
   return (
     <div className="work">
       {askUi}
-      <div className="vh flex flex-col md:flex-row gap-3 justify-between">
+      <div className="vh flex flex-col md:flex-row gap-3 justify-between" data-module-id="booking-header">
         <div>
           <h1 style={{ margin: 0, fontSize: 28, color: '#1f1b16' }}>{tx('pos.booking')}</h1>
           <div className="sub" style={{ fontSize: 14, color: 'var(--muted)', marginTop: 4 }}>{tx('pos.a_clear_day_for_your_team_cz0w')}</div>
@@ -1521,7 +1521,7 @@ export function POSBookingScreen() {
           calendar gets the full viewport — see BOOKING_VIEWALL_KPI_GAP_REPORT.md §1. */}
       {/* 6 Metric Cards (Section B2 of specifications) */}
       {fs !== 'all' ? (
-        <div className="kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
+        <div className="kpis" data-module-id="booking-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 12, marginBottom: 16 }}>
           {metricCards.map((c) => (
             <div
               className="kpi"
@@ -1790,7 +1790,7 @@ export function POSBookingScreen() {
         />
       )}
 
-      <section className="panel mb-3 " id="booking-assistant" ref={assistantRef as any}>
+      <section className="panel mb-3 " data-module-id="booking-assistant" id="booking-assistant" ref={assistantRef as any}>
         <h2>{tx('pos.booking_assistant')}{' '}<span className="s">{tx('pos.new_appointment')}</span></h2>
         <div
           className="w-full max-w-full min-w-0 overflow-x-auto"
@@ -1802,7 +1802,7 @@ export function POSBookingScreen() {
         </div>
       </section>
 
-      <section className="panel">
+      <section className="panel" data-module-id="booking-status-list">
         <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
           <ImeSafeInput type="search" enterKeyHint="search" placeholder={tx('pos.search_customer_phone_tech')} value={search} onValue={setSearch}
             style={{ flex: 1, minWidth: 200, height: 36, border: '1px solid var(--line)', borderRadius: 10, padding: '0 12px', background: '#FFFDF8', fontFamily: 'inherit', fontSize: 13 }} />
@@ -1966,12 +1966,12 @@ export function POSBookingScreen() {
           </div>); })()}
       </section>
 
-      <div className="grid grid-cols-1  md:grid-cols-2 gap-3 mt-3">
+      <div className="grid grid-cols-1  md:grid-cols-2 gap-3 mt-3" data-module-id="booking-mix">
         <MixDonut title={tx('pos.channel_source_mix')} sub={tx('pos.today')} items={(agg?.sourceCounts || []).map((x) => ({ label: srcLabel(x.source), count: x.count }))} />
         <MixDonut title={tx('pos.service_mix')} sub={tx('pos.today')} items={(agg?.serviceCounts || []).slice(0, 6).map((x) => ({ label: x.name, count: x.count }))} />
       </div>
 
-      <div className="grid grid-cols-1  md:grid-cols-2 gap-3 mt-3">
+      <div className="grid grid-cols-1  md:grid-cols-2 gap-3 mt-3" data-module-id="booking-upcoming">
         <section className="panel">
           <h2>{tx('pos.upcoming_appointments')}{' '}<span className="s">{tx('pos.booked_confirmed')}</span></h2>
           <div className="list">
@@ -2003,7 +2003,7 @@ export function POSBookingScreen() {
         </section>
       </div>
 
-      <div className="grid grid-cols-1  md:grid-cols-2 2xl:grid-cols-3 gap-3 mt-3">
+      <div className="grid grid-cols-1  md:grid-cols-2 2xl:grid-cols-3 gap-3 mt-3" data-module-id="booking-team">
         <section className="panel">
           <h2>{tx('pos.available_technicians')}{' '}<span className="s">{tx('pos.from_today_s_schedule')}</span></h2>
           <div className="list">
@@ -2047,7 +2047,7 @@ export function POSBookingScreen() {
         </section>
       </div>
 
-      <section className="panel" style={{ marginTop: 12 }}>
+      <section className="panel" data-module-id="booking-quick-actions" style={{ marginTop: 12 }}>
         <h2>{tx('pos.quick_actions_2')}</h2>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5 mt-2.5">
           {[

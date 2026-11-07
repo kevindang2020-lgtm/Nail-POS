@@ -105,7 +105,7 @@ export function POSAIOcrReceiptScreen() {
   const any = !!(f.q || f.preset);
 
   return (
-    <div style={{ height: '100vh', overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0,1fr)', background: 'var(--page,#F7EFE3)' }} data-testid="receipt-review-screen">
+    <div style={{ height: 'min(100%, calc(100dvh - var(--pos-header-height)))', minHeight: 0, overflow: 'hidden', display: 'grid', gridTemplateRows: 'auto auto minmax(0,1fr)', background: 'var(--page,#F7EFE3)' }} data-testid="receipt-review-screen">
       <div style={{ padding: '14px 18px 6px', display: 'flex', flexWrap: 'wrap', gap: 10, justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <div>
           <h1 style={{ font: '700 20px/1.1 "Playfair Display",serif', margin: 0 }}>{tx('pos.ai_receipt_document_recognition')}</h1>
@@ -117,7 +117,7 @@ export function POSAIOcrReceiptScreen() {
           <button onClick={() => { setHealth('loading'); rc.check().then(setHealth).catch((e) => setHealth({ error: errorTextOf(e, tx('rrx.loadFailed')) })); }} style={btn(GOLD, true)} data-testid="rrx-check">{tx('rrx.check')}</button>
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 6, padding: '4px 18px', flexWrap: 'wrap' }} role="tablist">
+      <div style={{ display: 'flex', gap: 6, padding: '4px 18px', flexWrap: 'wrap' }} role="tablist" data-module-id="rrx-tabs">
         {TABS.map((t) => {
           const n = t.states ? t.states.reduce((a, k) => a + st(k), 0) : null;
           return <button key={t.key} role="tab" aria-selected={tab === t.key} onClick={() => { setTab(t.key); setSelected(null); setF((x) => ({ ...x, page: 1 })); }} style={{ border: `1px solid ${tab === t.key ? GOLD : LINE}`, background: tab === t.key ? GOLD : '#fff', color: tab === t.key ? '#fff' : 'var(--text,#2B2118)', borderRadius: 20, padding: '5px 12px', fontSize: 12, cursor: 'pointer' }}>
@@ -144,7 +144,7 @@ export function POSAIOcrReceiptScreen() {
 
         {tab !== 'upload' && (
           <div className={'grid gap-[12px] ' + (selected ? tx('pos.grid_cols_1_lg_grid_cols_17ya') : 'grid-cols-1')} style={{ gap: 12 }}>
-            <div style={{ ...card, padding: 0, overflow: 'hidden' }}>
+            <div style={{ ...card, padding: 0, overflow: 'hidden' }} data-module-id="rrx-documents">
               <div style={{ padding: 10, display: 'grid', gap: 8 }} data-testid="rrx-filters">
                 {tab === 'overview' ? <div style={{ ...h2 }}>{tx('rrx.recent')}</div> : null}
                 <form style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }} onSubmit={(e) => { e.preventDefault(); set({ q: draft.trim() || undefined }); }}>

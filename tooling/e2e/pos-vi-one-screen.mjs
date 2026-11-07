@@ -86,7 +86,7 @@ export const measureRegistry = (page, key) => {
       if (!el) return { id: m.id, label: m.label, present: false, inView: false };
       const r = el.getBoundingClientRect();
       return { id: m.id, label: m.label, present: true, visible: vis(el), inView: vis(el) && r.left >= box.l - 1 && r.right <= box.r + 1 && r.top >= box.t - 1 && r.bottom <= box.b + 1,
-        children: [...el.children].filter(vis).length, minChildren: m.minChildren ?? null, rect: [r.left, r.top, r.width, r.height].map(Math.round) };
+        children: (m.items ? [...el.querySelectorAll(m.items)] : [...el.children]).filter(vis).length, minChildren: m.minItems ?? null, rect: [r.left, r.top, r.width, r.height].map(Math.round) };
     });
   }, reg);
 };
@@ -388,12 +388,13 @@ export function judge(rows) {
     const en = by.get(`${r.module}|en|${r.w}x${r.h}`);
     const reasons = [];
     if (r.docScrollX > 1 || r.hScroll > 1) reasons.push(`horizontal scroll ${Math.max(r.docScrollX, r.hScroll)}px`);
-    if (certified && (r.vScroll > 1 || r.docScrollY > 1)) reasons.push(`vertical scroll ${Math.max(r.vScroll, r.docScrollY)}px at ${r.w}×${r.h}`);
+    const pageScroll = REGISTRY.pages.find((p) => p.key === r.module)?.scroll === 'page';   // registered long pages scroll vertically by design
+    if (certified && !pageScroll && (r.vScroll > 1 || r.docScrollY > 1)) reasons.push(`vertical scroll ${Math.max(r.vScroll, r.docScrollY)}px at ${r.w}×${r.h}`);
     // the SUNMI module registry: every registered module present (any viewport) and inside the viewport (certified sizes)
     const reg = r.registry || [];
     const missing = reg.filter((x) => !x.present), outside = reg.filter((x) => x.present && !x.inView), few = reg.filter((x) => x.present && x.minChildren != null && x.children < x.minChildren);
     if (missing.length) reasons.push(`${missing.length} registered module(s) missing: ${missing.slice(0, 4).map((x) => x.id).join(', ')}`);
-    if (certified && outside.length) reasons.push(`${outside.length} registered module(s) outside the viewport: ${outside.slice(0, 4).map((x) => x.id).join(', ')}`);
+    if (certified && !pageScroll && outside.length) reasons.push(`${outside.length} registered module(s) outside the viewport: ${outside.slice(0, 4).map((x) => x.id).join(', ')}`);
     if (few.length) reasons.push(`incomplete set(s): ${few.map((x) => `${x.id} ${x.children}/${x.minChildren}`).join(', ')}`);
     if (r.clippedCount) reasons.push(`${r.clippedCount} clipped / spilling control text (${r.clipped.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
     if (r.cutOffCount) reasons.push(`${r.cutOffCount} controls / status pills cut off sideways by their card (${r.cutOff.slice(0, 2).map((c) => JSON.stringify(c.text)).join(', ')})`);
