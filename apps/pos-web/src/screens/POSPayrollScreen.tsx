@@ -96,7 +96,7 @@ export function POSPayrollScreen() {
         <KpiCard label={tx('pos.lifetime_commission')} value={money(k.lifetimeCommissionCents)} tone="purple" />
         <KpiCard label={tx('pos.lifetime_tips')} value={money(k.lifetimeTipsCents)} tone="teal" />
       </div>
-      <div role="tablist" aria-label={tx('pos.payroll_sections')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+      <div role="tablist" data-module-id="pr-tabs" aria-label={tx('pos.payroll_sections')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {TABS.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} style={btn(tab === t.id)} onClick={() => setTab(t.id)}>{t.label}</button>)}
       </div>
       <div className="pr-body" style={{ minHeight: 0, overflow: 'auto' }}>

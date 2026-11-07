@@ -588,8 +588,8 @@
    "guide": "AI_PowerSalon_Weekly_Technician_Paycheck",
    "modules": [
     {
-     "id": "pc-nav",
-     "label": "Weekly paychecks: This week / Reports / Preparation / Schedule + week picker"
+     "id": "pr-tabs",
+     "label": "Payroll sections: Weekly paychecks / Pay periods / Payouts / Adjustments (always shown)"
     }
    ]
   },

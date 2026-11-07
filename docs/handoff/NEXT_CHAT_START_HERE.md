@@ -45,6 +45,7 @@ PG_RACE_URL=postgres://…/aps_race node tooling/ci/run-race-tests.mjs   # 86 fi
 
 | Commit | What |
 | --- | --- |
+| (after `0e45a0bd`) | SUNMI certification re-run after the merge: 120/120 (20 pages × 1920×945 / 952 / 1032 × EN + VI) |
 | `ffec73be` | POS session limit (the §5 decision, recommended option): the POS stays signed in while in use, a locked POS ends 8 h after the lock, 7-day cap |
 | `8e8aec22` | SUNMI FLEX 3: Weekly Technician Paycheck one-screen workspace (1920×945 measured on the real stack) |
 | `09066094` | **Merge of Power-Salon-main** (26 developer commits) — decisions, renumbered migrations 836–841, dead code removed: `docs/handoff/MERGE_2026-11-07.md` |
