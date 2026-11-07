@@ -26,6 +26,7 @@ Payments: Fiserv CardPointe/Bolt + Clover Compact, sandbox/UAT only.
 
 ```bash
 npm install
+npm run build:packages && npm run build:modules && npm run build --workspace @aipowersalon/api   # gates read compiled output (as CI does)
 node tooling/ci/run-gates.mjs                  # expect EXACTLY 2 failures: check:crosswire, check:unreached
 node apps/api/scripts/security-audit.mjs --lane fast   # PASSED 20 · FAILED 2 (the same two) · secret scan clean
 npm run architecture:test                      # "no regression"
