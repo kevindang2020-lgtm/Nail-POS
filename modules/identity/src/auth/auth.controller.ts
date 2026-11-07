@@ -5,7 +5,7 @@ import { KyselyTenantAuthPolicy } from './tenant-auth-policy';
 import { StaffSessionGuard, ValidatedBody } from '@aipowersalon/permissions/guards';
 import { MFA_ATTEMPT_LIMITER, type KeyedRateLimiter } from '@aipowersalon/security';
 import { clientIp } from '@aipowersalon/security';
-import { sessionTtlSeconds } from '@aipowersalon/auth';
+import { sessionTtlSeconds, posSessionRenewal } from '@aipowersalon/auth';
 import { posClientType, sessionLockState, AUTO_LOCK_DEFAULT, LOCKED_FULL_SIGN_IN_HOURS, SESSION_LOCK_MAX_MS, PIN_UNLOCK_MAX_FAILURES, type SessionLockStatus, type SessionActivityResponse } from '@aipowersalon/api-contracts';
 /**
  * auth.controller.ts — HTTP endpoints for authentication. Thin by design: it calls LoginService.attempt and applies the
@@ -259,7 +259,20 @@ export class AuthController {
     }
     if (now?.ok) claims.permissions = now.permissions;
     if (versions) { claims.av = versions.av; claims.tv = versions.tv; }
-    const accessTtl = accessTtlSeconds(); const cookieTtl = Math.max(60, Math.floor((rotated.expiresAtMs - Date.now()) / 1000));
+    // Nov 7 2026 (Kevin's session-limit decision): a POS session in use slides forward; a locked one ends 8 h after the
+    // lock; 7-day hard cap (posSessionRenewal). Other apps keep their fixed lifetime. A failed read never ends a session.
+    let sessionEndMs = rotated.expiresAtMs;
+    try {
+      const pos = await this.renewPosSession(rotated.sessionId);
+      if (pos === 'ended') {
+        await this.refresh.revokeSession(rotated.sessionId);
+        if (this.sessions) { try { await this.sessions.revoke(rotated.sessionId); } catch { /* refresh tokens are already gone */ } }
+        this.ev(req, { type: 'SESSION_ENDED_ACCESS_CHANGED', outcome: 'info', userId: claims.userId ?? null, tenantId: claims.tenantId ?? null, sessionId: rotated.sessionId, reason: 'pos_session_limit' });
+        res.status(401).json({ ok: false, code: 'SESSION_ENDED', reason: 'pos_session_limit' }); return;
+      }
+      if (typeof pos === 'number') sessionEndMs = pos;
+    } catch (e) { console.warn('[refresh] POS session renewal skipped:', (e as Error)?.message); }
+    const accessTtl = accessTtlSeconds(); const cookieTtl = Math.max(60, Math.floor((sessionEndMs - Date.now()) / 1000));
     const token = signSession(claims as SessionClaims, { secret, ttlSeconds: accessTtl });
     const secure = process.env.NODE_ENV === 'production';
     const includeToken = shouldReturnToken(req);
@@ -270,6 +283,22 @@ export class AuthController {
       cookies: [{ name: refreshCookieNameFor(claims.role), value: rotated.refreshToken, maxAge: cookieTtl * 1000, httpOnly: true, sameSite: 'lax', secure, path: REFRESH_COOKIE_PATH }],
     };
     this.apply(res, spec);
+  }
+
+  /** posSessionRenewal on the session row (client_app = 'pos' only). Returns the new end (ms) when it moved — the live
+   *  refresh token moves with it — 'ended' when the POS limit is reached, or null for any other session. */
+  private async renewPosSession(sessionId: string): Promise<number | 'ended' | null> {
+    if (!this.db) return null;
+    const row = await this.db.selectFrom('sessions').select(['client_app', 'created_at', 'expires_at', 'locked_at']).where('id', '=', sessionId).executeTakeFirst();
+    if (!row || row.client_app !== 'pos') return null;
+    const ms = (v: unknown) => (v == null ? null : new Date(v as string).getTime());
+    const d = posSessionRenewal({ createdAtMs: ms(row.created_at)!, expiresAtMs: ms(row.expires_at)!, lockedAtMs: ms(row.locked_at) }, Date.now());
+    if (d.ended) return 'ended';
+    if (!d.changed) return d.expiresAtMs;
+    const at = new Date(d.expiresAtMs);
+    await this.db.updateTable('sessions').set({ expires_at: at }).where('id', '=', sessionId).where('status', '=', 'active').execute();
+    await this.db.updateTable('refresh_tokens').set({ expires_at: at }).where('session_id', '=', sessionId).where('revoked_at', 'is', null).where('superseded_by_token_id', 'is', null).execute();
+    return d.expiresAtMs;
   }
 
   /** M6-6: TOKEN_REUSE_DETECTED in the audit trail, scoped to the session's salon (read from its row). A failed write is

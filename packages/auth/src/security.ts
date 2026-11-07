@@ -145,6 +145,35 @@ export function sessionTtlSeconds(role: Role | string | undefined, rememberMe: b
   return rememberMe ? remember : normal;
 }
 
+/**
+ * POS session renewal — Kevin's decision (picked Nov 7 2026 from the Nov 6 handoff's recommendation): the front-desk POS
+ * stays signed in WHILE IT IS IN USE instead of signing out 12 hours after sign-in in the middle of a busy evening.
+ *
+ *   • in use (unlocked): every access-token renewal pushes the session's end to now + the normal session length
+ *     (AUTH_SESSION_TTL, 12 h) — never shortening it, never past the hard cap;
+ *   • locked (the idle PIN lock is on): the session no longer grows and ends AUTH_POS_LOCKED_MAX_SECONDS (8 h) after the
+ *     lock — a POS left locked overnight is signed out by the morning; the idle PIN lock itself is unchanged;
+ *   • hard cap: AUTH_POS_SESSION_MAX_SECONDS (7 days) after sign-in, whatever happens (floor 12 h, ceiling 30 days).
+ * Only sessions opened by the POS (sessions.client_app = 'pos') use this; every other app keeps its fixed lifetime.
+ * Pure: the caller reads the row, this decides, the caller writes the result.
+ */
+export const POS_LOCKED_MAX_DEFAULT_S = 8 * 60 * 60;
+export const POS_SESSION_MAX_DEFAULT_S = 7 * 24 * 60 * 60;
+export type PosSessionRenewal = { ended: true } | { ended: false; expiresAtMs: number; changed: boolean };
+export function posSessionRenewal(row: { createdAtMs: number; expiresAtMs: number; lockedAtMs: number | null }, nowMs: number,
+  env: Record<string, string | undefined> = process.env): PosSessionRenewal {
+  const ttl = (Number(env.AUTH_SESSION_TTL) || 12 * 60 * 60) * 1000;
+  const lockedMax = Math.max(15 * 60, Number(env.AUTH_POS_LOCKED_MAX_SECONDS) || POS_LOCKED_MAX_DEFAULT_S) * 1000;
+  const hardMax = Math.min(Math.max(Number(env.AUTH_POS_SESSION_MAX_SECONDS) || POS_SESSION_MAX_DEFAULT_S, 12 * 60 * 60), 30 * 24 * 60 * 60) * 1000;
+  const cap = row.createdAtMs + hardMax;
+  let next = row.expiresAtMs;
+  if (row.lockedAtMs != null) next = Math.min(next, row.lockedAtMs + lockedMax);   // locked: shrink toward lock + 8 h, never grow
+  else next = Math.max(next, nowMs + ttl);                                          // in use: slide forward
+  next = Math.min(next, cap);
+  if (next <= nowMs) return { ended: true };
+  return { ended: false, expiresAtMs: next, changed: next !== row.expiresAtMs };
+}
+
 /*
  * NOTE (Constitution 12, correcting the Phase 1 audit): refreshTokenDecision above is NOT WIRED. AI PowerSalon uses
  * server-side revocable sessions — the cookie carries a session id checked against the session store on every

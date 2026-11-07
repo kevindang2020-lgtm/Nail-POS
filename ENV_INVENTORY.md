@@ -9,7 +9,7 @@ with more than one process; the bucket settings when `MEDIA_STORE=s3`; the Tap t
 read the check for the exact condition. Every other row turns its feature off honestly ("not configured") or is a
 tuning knob with a default. Test-only and proof-script variables are not listed.
 
-383 names.
+413 names.
 
 | Name | Read by | Kind | Blocks production startup | Sensitive | In .env.example | In SECRETS_REQUIRED.md |
 |---|---|---|---|---|---|---|
@@ -17,12 +17,14 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `AI_BILLING_WEBHOOK_SCHEME` | modules/ai, modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_BILLING_WEBHOOK_SECRET` | modules/ai, modules/super-admin | runtime | no — feature degrades / tuning | secret | yes | — |
 | `AI_BOOKING_LINK_SECRET` | apps/api | runtime | no — feature degrades / tuning | secret | yes | — |
+| `AI_BUSINESS_ALERTS_SCHEDULE` | modules/analytics | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_CUSTOMER_PROFILE_SCAN_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_CUSTOMER_PROFILE_SCAN_INTERVAL_MS` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_CUSTOMER_PROFILE_SCAN_TENANTS_PER_TICK` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_DEFAULT_MODEL` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_DEFAULT_PROVIDER` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
-| `AI_ENTITLEMENT_ENFORCEMENT` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
+| `AI_ENTITLEMENT_ENFORCEMENT` | modules/ai, modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
+| `AI_FOLLOW_UP_ESCALATION` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MARKETING_SEND_SWEEP_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_MARKETING_SEND_SWEEP_INTERVAL_MS` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `AI_MARKETING_SEND_SWEEP_MAX_PER_TENANT` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
@@ -31,6 +33,8 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `AI_MONEY_PROTECTION_AI_SUMMARIES_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MONEY_PROTECTION_AUTO_DUP_PREVENTION_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MONEY_PROTECTION_BASELINES_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
+| `AI_MONEY_PROTECTION_DETECTION_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
+| `AI_MONEY_PROTECTION_DETECTION_INTERVAL_MS` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MONEY_PROTECTION_DETERMINISTIC_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MONEY_PROTECTION_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `AI_MONEY_PROTECTION_RECONCILIATION_ENABLED` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
@@ -58,13 +62,16 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `APNS_TOPIC_TECH` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `APP_BASE_URL` | modules/communications, packages/config | runtime | no — feature degrades / tuning | — | yes | — |
 | `APP_DATA_ENCRYPTION_KEY` | modules/super-admin | runtime | **checked at start** (may be conditional) | secret | yes | yes |
-| `APP_VERSION` | modules/tenants, packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
-| `APPLE_TEAM_ID` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
+| `APP_ENV` | modules/customers | runtime | no — feature degrades / tuning | — | no | — |
+| `APP_VERSION` | modules/super-admin, modules/tenants, packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
+| `APPLE_TEAM_ID` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
 | `APPROVALS_JOBS` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `APS_API_BASE` | apps/api, modules/ai, modules/communications, modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `APS_MOBILE_ENV` | apps/customer-web, apps/manager-pay-web, apps/owner-web, apps/tech-web | build-time (Vite) | no — feature degrades / tuning | — | no | — |
 | `AUTH_ACCESS_TTL` | modules/identity | runtime | no — feature degrades / tuning | — | yes | — |
-| `AUTH_SESSION_SECRET` | apps/api, modules/booking, modules/identity, modules/super-admin, modules/tenants, modules/workforce | runtime | **checked at start** (may be conditional) | secret | yes | yes |
+| `AUTH_POS_LOCKED_MAX_SECONDS` | packages/auth | runtime | no — feature degrades / tuning | — | yes | — |
+| `AUTH_POS_SESSION_MAX_SECONDS` | packages/auth | runtime | no — feature degrades / tuning | — | yes | — |
+| `AUTH_SESSION_SECRET` | apps/api, modules/ai, modules/booking, modules/identity, modules/super-admin, modules/tenants, modules/workforce | runtime | **checked at start** (may be conditional) | secret | yes | yes |
 | `AUTH_SESSION_TTL` | modules/booking, modules/identity, modules/tenants, modules/workforce, packages/auth | runtime | no — feature degrades / tuning | — | yes | — |
 | `AUTH_SESSION_TTL_REMEMBER` | packages/auth | runtime | no — feature degrades / tuning | — | yes | — |
 | `AUTH_SESSION_TTL_SUPER_ADMIN` | packages/auth | runtime | no — feature degrades / tuning | — | no | — |
@@ -72,8 +79,8 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `AUTHZ_OVERRIDE_SWEEP` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `AUTOMATION_SCHEDULER_CRON_ENABLED` | modules/platform | runtime | no — feature degrades / tuning | — | no | — |
 | `AWS_REGION` | apps/api, modules/safety, packages/media | runtime | **checked at start** (may be conditional) | — | yes | — |
-| `BACKUP_MAX_AGE_HOURS` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
-| `BACKUP_REPORT_TOKEN` | apps/api | runtime | no — feature degrades / tuning | secret | no | — |
+| `BACKUP_MAX_AGE_HOURS` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
+| `BACKUP_REPORT_TOKEN` | apps/api | runtime | no — feature degrades / tuning | secret | yes | — |
 | `BACKUP_REPORTS_REQUIRED` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `BILLING_CYCLE_WORKER_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
 | `BILLING_EXPORT_WORKER_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
@@ -101,7 +108,7 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `CARDPOINTE_USERNAME` | modules/payments | runtime | no — feature degrades / tuning | — | no | — |
 | `CERT_EXPIRY_REMINDER_ENABLED` | modules/queue | runtime | no — feature degrades / tuning | — | no | — |
 | `CHROMIUM_PATH` | apps/pos-web | build-time (Vite) | no — feature degrades / tuning | — | no | — |
-| `CLAMAV_HOST` | packages/media | runtime | no — feature degrades / tuning | — | no | — |
+| `CLAMAV_HOST` | packages/media | runtime | no — feature degrades / tuning | — | yes | — |
 | `CLAMAV_PORT` | packages/media | runtime | no — feature degrades / tuning | — | no | — |
 | `CLAMAV_REQUIRED` | packages/media | runtime | no — feature degrades / tuning | — | no | — |
 | `CLAMAV_TIMEOUT_MS` | packages/media | runtime | no — feature degrades / tuning | — | no | — |
@@ -111,8 +118,8 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `COMMERCEHUB_TTP_API_SECRET` | modules/checkout, modules/payments | runtime | no — feature degrades / tuning | secret | no | — |
 | `COMMERCEHUB_TTP_APPLE_MERCHANT_ID` | modules/checkout | runtime | no — feature degrades / tuning | — | no | — |
 | `COMMERCEHUB_TTP_CURRENCY` | modules/checkout, modules/payments | runtime | no — feature degrades / tuning | — | no | — |
-| `COMMERCEHUB_TTP_ENV` | modules/checkout | runtime | **checked at start** (may be conditional) | — | no | — |
-| `COMMERCEHUB_TTP_MERCHANT_ID` | modules/checkout, modules/payments | runtime | no — sandbox only since migration 704: each location's own Tap to Pay MID is set in Super Admin → merchant accounts; in production this env MID is never used unless PAYMENTS_ALLOW_ENV_FALLBACK=1 | — | no | — |
+| `COMMERCEHUB_TTP_ENV` | modules/checkout | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `COMMERCEHUB_TTP_MERCHANT_ID` | modules/checkout, modules/payments | runtime | no — feature degrades / tuning | — | no | — |
 | `COMMERCEHUB_TTP_TERMINAL_PROFILE_ID` | modules/checkout, modules/payments | runtime | no — feature degrades / tuning | — | no | — |
 | `COMMIT_SHA` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
 | `COMMUNITY_JOBS` | modules/safety | runtime | no — feature degrades / tuning | — | no | — |
@@ -120,21 +127,25 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `COMMUNITY_RISK_SALT` | modules/safety | runtime | no — feature degrades / tuning | — | no | — |
 | `COMPENSATION_RECOVERY` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `CUSTOMER_IMPORT_WORKER_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
+| `CUSTOMER_NOTIFICATION_ALERTS` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
 | `CUSTOMER_PHONE_SYNC_CRON_ENABLED` | modules/booking | runtime | no — feature degrades / tuning | — | no | — |
 | `CUSTOMER_SYNC_WORKER_ENABLED` | modules/customers | runtime | no — feature degrades / tuning | — | yes | — |
 | `DATABASE_REPLICA_URL` | modules/super-admin, packages/database | runtime | no — feature degrades / tuning | — | yes | — |
 | `DATABASE_SIZE_SNAPSHOT_JOB` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
-| `DATABASE_SLOW_QUERY_FLUSH` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
+| `DATABASE_SLOW_QUERY_FLUSH` | modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
 | `DATABASE_URL` | apps/api, modules/identity, packages/database | runtime | **checked at start** (may be conditional) | — | yes | yes |
 | `DB_ACTOR_STAMP` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `DB_INDEX_REPORT_WARMUP` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
-| `DB_SLOW_QUERY_MS` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
+| `DB_SLOW_QUERY_MS` | packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
 | `DB_TENANT_RLS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `DB_TENANT_RLS_SCOPE` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `DB_TENANT_RLS_STRICT` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `DEALS_LIFECYCLE_ENABLED` | modules/deals | runtime | no — feature degrades / tuning | — | no | — |
 | `DEFAULT_NEARBY_RADIUS_MILES` | modules/customers | runtime | no — feature degrades / tuning | — | yes | — |
 | `DEV` | apps/admin-web | build-time (Vite) | no — feature degrades / tuning | — | no | yes |
+| `EGRESS_ALLOWLIST` | packages/security | runtime | no — feature degrades / tuning | — | yes | — |
+| `EGRESS_POLICY` | packages/security | runtime | no — feature degrades / tuning | — | yes | — |
+| `EMAIL_UNSUBSCRIBE_SECRET` | modules/communications | runtime | no — feature degrades / tuning | secret | no | — |
 | `ENABLE_GOOGLE_NEARBY_SALON_SEARCH` | modules/customers | runtime | no — feature degrades / tuning | — | yes | — |
 | `EVENT_PUBLISHER_ENABLED` | packages/config | runtime | no — feature degrades / tuning | — | yes | — |
 | `EVIDENCE_S3_BUCKET` | modules/safety | runtime | no — feature degrades / tuning | — | yes | — |
@@ -154,12 +165,14 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `FISERV_RESIDUAL_AUTH` | modules/payments | runtime | no — feature degrades / tuning | — | yes | — |
 | `FISERV_RESIDUAL_URL` | modules/payments | runtime | no — feature degrades / tuning | — | yes | — |
 | `FISERV_SECRET` | modules/tenants | runtime | no — feature degrades / tuning | secret | yes | — |
-| `FOLLOWUP_PURGE_AFTER_DAYS` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `FOLLOWUP_SCHEDULER_DISABLED` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `FOLLOWUP_SCHEDULER_INTERVAL_MS` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `FUNDING_VAULT_KEK` | apps/api | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `GEMINI_API_KEY` | modules/ai | runtime | no — feature degrades / tuning | secret | yes | — |
 | `GIT_SHA` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
+| `GLOBAL_REWARDS_BOOKS_CHECK` | modules/loyalty | runtime | no — feature degrades / tuning | — | no | — |
+| `GLOBAL_REWARDS_HOLD_SWEEP` | modules/loyalty | runtime | no — feature degrades / tuning | — | no | — |
+| `GLOBAL_REWARDS_SANDBOX_PROVIDER` | modules/loyalty | runtime | no — feature degrades / tuning | — | no | — |
 | `GO_CHECKIN_TOKEN_TTL_DAYS` | modules/queue | runtime | no — feature degrades / tuning | secret | yes | — |
 | `GOOGLE_MAPS_DEFAULT_COUNTRY` | modules/tenants | runtime | no — feature degrades / tuning | — | yes | — |
 | `GOOGLE_MAPS_SERVER_API_KEY` | modules/tenants | runtime | no — feature degrades / tuning | secret | yes | — |
@@ -169,8 +182,8 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `HOSTNAME` | apps/api, packages/config | runtime | no — feature degrades / tuning | — | no | — |
 | `INVITE_NOTIFIER_URL` | modules/communications, modules/identity, modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
 | `JOBS_CONCURRENCY` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
-| `JOBS_IDLE_POLL_MS` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
-| `JOBS_PER_TENANT_CAP` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
+| `JOBS_IDLE_POLL_MS` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
+| `JOBS_PER_TENANT_CAP` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
 | `JOBS_SECRET` | modules/communications | runtime | no — feature degrades / tuning | secret | yes | — |
 | `JOBS_WORKER` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `LOG_LEVEL` | packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
@@ -186,7 +199,7 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `MAX_NEARBY_RADIUS_MILES` | modules/customers | runtime | no — feature degrades / tuning | — | yes | — |
 | `MEDIA_CDN_BASE_URL` | modules/workforce, packages/media | runtime | no — feature degrades / tuning | — | no | — |
 | `MEDIA_ENV` | apps/api, packages/media | runtime | no — feature degrades / tuning | — | no | — |
-| `MEDIA_LIFECYCLE` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
+| `MEDIA_LIFECYCLE` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
 | `MEDIA_LIVE_IMAGE_BASE` | modules/workforce, packages/media | runtime | no — feature degrades / tuning | — | no | — |
 | `MEDIA_ROOT` | apps/api, packages/media | runtime | no — feature degrades / tuning | — | yes | — |
 | `MEDIA_S3_BUCKET` | apps/api, modules/workforce, packages/media | runtime | **checked at start** (may be conditional) | — | no | — |
@@ -199,13 +212,15 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `MEDIA_S3_REGION` | apps/api, packages/media | runtime | **checked at start** (may be conditional) | — | no | — |
 | `MEDIA_STORE` | apps/api, packages/media | runtime | **checked at start** (may be conditional) | — | no | — |
 | `MEDIA_STORE_ALLOW_DISK` | apps/api, packages/media | runtime | **checked at start** (may be conditional) | — | no | — |
-| `MESSAGING_OFFBOARD_GRACE_DAYS` | modules/communications | runtime | no — default 30: a cancelled salon keeps its platform Twilio number this long before it is released (§149) | — | no | — |
-| `MESSAGING_OFFBOARD_DISABLED` | modules/communications | runtime | no — `1` stops the cancelled-salon Twilio shutdown sweep (§149) | — | no | — |
-| `MESSAGING_OFFBOARD_INTERVAL_MS` | modules/communications | runtime | no — sweep cadence, default 6 h | — | no | — |
 | `MEMBERSHIP_AUTOBILL_ENABLED` | modules/memberships | runtime | no — feature degrades / tuning | — | no | — |
 | `MEMBERSHIP_BILLING_SECRET` | modules/memberships | runtime | no — feature degrades / tuning | secret | yes | — |
 | `MEMBERSHIP_RENEWALS_CRON_ENABLED` | modules/memberships | runtime | no — feature degrades / tuning | — | yes | — |
+| `MESSAGING_HEALTH_SCHEDULE_ENABLED` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
 | `MESSAGING_MOCK_SENDERS` | packages/notifications | runtime | **checked at start** (may be conditional) | — | no | — |
+| `MESSAGING_OFFBOARD_DISABLED` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
+| `MESSAGING_OFFBOARD_GRACE_DAYS` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
+| `MESSAGING_OFFBOARD_INTERVAL_MS` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
+| `MESSAGING_REGISTRATION_SYNC_ENABLED` | modules/communications | runtime | no — feature degrades / tuning | — | no | — |
 | `METRICS_TOKEN` | apps/api | runtime | no — feature degrades / tuning | secret | no | — |
 | `MFA_ENC_KEY` | modules/super-admin | runtime | **checked at start** (may be conditional) | secret | yes | yes |
 | `MFA_REQUIRE_TOTP` | packages/auth | runtime | no — feature degrades / tuning | — | yes | — |
@@ -221,7 +236,7 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `MULTI_INSTANCE` | apps/api | runtime | mode switch | — | yes | — |
 | `NATIVE_APP_ORIGINS` | modules/identity | runtime | no — feature degrades / tuning | — | no | — |
 | `NETWORK_POLICY_CACHE_MS` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
-| `NODE_ENV` | apps/api, apps/pos-web, modules/ai, modules/booking, modules/checkout, modules/communications, modules/customers, modules/identity, modules/payments, modules/platform, modules/super-admin, modules/tenants, modules/workforce, packages/auth, packages/config, packages/media, packages/notifications, packages/observability, packages/security | runtime | mode switch | — | no | — |
+| `NODE_ENV` | apps/api, apps/pos-web, modules/ai, modules/booking, modules/catalog, modules/checkout, modules/communications, modules/customers, modules/identity, modules/loyalty, modules/payments, modules/platform, modules/super-admin, modules/tenants, modules/workforce, packages/auth, packages/config, packages/media, packages/notifications, packages/observability, packages/security | runtime | mode switch | — | no | — |
 | `OCR_COST_MICRO_USD_PER_PAGE` | modules/safety | runtime | no — feature degrades / tuning | — | yes | — |
 | `OCR_PIPELINE_SWEEP` | modules/safety | runtime | no — feature degrades / tuning | — | no | — |
 | `OCR_TEXTRACT_ENABLED` | modules/safety | runtime | no — feature degrades / tuning | — | yes | — |
@@ -231,13 +246,14 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `OPENAI_API_KEY` | modules/ai | runtime | no — feature degrades / tuning | secret | yes | — |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
 | `OTEL_EXPORTER_OTLP_HEADERS` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
-| `OTEL_SERVICE_NAME` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
+| `OTEL_SERVICE_NAME` | packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
 | `OTEL_TRACES_SAMPLER_ARG` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
 | `OVERVIEW_SNAPSHOT_CRON_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
 | `PAYMENT_ATTEMPT_STRANDED_MINUTES` | modules/checkout | runtime | no — feature degrades / tuning | — | yes | — |
 | `PAYMENT_ATTEMPT_SWEEP` | modules/checkout | runtime | no — feature degrades / tuning | — | yes | — |
 | `PAYMENT_ATTEMPT_SWEEP_EVERY_MS` | modules/checkout | runtime | no — feature degrades / tuning | — | no | — |
 | `PAYMENTS_ALLOW_ENV_FALLBACK` | modules/checkout, modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `PAYMENTS_LIVE_MODE` | modules/payments | runtime | no — feature degrades / tuning | — | no | — |
 | `PAYMENTS_REFUND_INQUIRY_VERIFIED` | modules/checkout | runtime | no — feature degrades / tuning | — | yes | — |
 | `PAYMENTS_SANDBOX` | modules/checkout, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `PAYMENTS_WEBHOOK_RAW_BODY` | modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
@@ -247,29 +263,30 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `PG_CONNECT_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_IDLE_IN_TRANSACTION_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_IDLE_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
+| `PG_JIT` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_POOL_MAX` | apps/api, packages/database | runtime | no — feature degrades / tuning | — | yes | — |
 | `PG_READ_POOL_MAX` | packages/database | runtime | no — feature degrades / tuning | — | yes | — |
 | `PG_STATEMENT_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_WORKER_APPLICATION_NAME` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
-| `PG_WORKER_DATABASE_URL` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
+| `PG_WORKER_DATABASE_URL` | apps/api, packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_WORKER_IDLE_IN_TRANSACTION_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_WORKER_POOL_MAX` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PG_WORKER_STATEMENT_TIMEOUT_MS` | packages/database | runtime | no — feature degrades / tuning | — | no | — |
 | `PLAN_PRICES_JSON` | modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
-| `PLATFORM_HOME_COUNTRY_CODE` | modules/booking | runtime | no — feature degrades / tuning | — | no | — |
+| `PLATFORM_HOME_COUNTRY_CODE` | modules/booking | runtime | no — feature degrades / tuning | — | yes | — |
 | `PLATFORM_TIMEZONE` | modules/customers | runtime | no — feature degrades / tuning | — | yes | — |
 | `PORT` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
 | `POST_RESTORE_HOLD` | apps/api, packages/config, packages/observability | runtime | no — feature degrades / tuning | — | no | — |
-| `PRIVATE_FILES_ROOT` | packages/media | runtime | no — feature degrades / tuning | secret | no | — |
+| `PRIVATE_FILES_ROOT` | packages/media | runtime | no — feature degrades / tuning | secret | yes | — |
 | `PRIVATE_S3_BUCKET` | packages/media | runtime | no — feature degrades / tuning | secret | no | — |
 | `PRIVATE_S3_PREFIX` | packages/media | runtime | no — feature degrades / tuning | secret | no | — |
-| `PROCESS_ROLE` | apps/api, packages/config, packages/database, packages/observability | runtime | mode switch | — | no | — |
+| `PROCESS_ROLE` | apps/api, packages/config, packages/database, packages/observability | runtime | mode switch | — | yes | — |
 | `PROVIDER_VAULT_KEK` | apps/api, modules/communications | runtime | **checked at start** (may be conditional) | — | yes | — |
-| `PUBLIC_API_BASE_URL` | apps/api, modules/ai, modules/communications, modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `PUBLIC_API_BASE_URL` | apps/api, modules/ai, modules/communications, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `PUBLIC_APP_URL` | packages/config | runtime | no — feature degrades / tuning | — | no | — |
 | `PUBLIC_BODY_LIMIT` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `PUBLIC_BOOKING_BASE_URL` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
-| `PUBLIC_CUSTOMER_BASE_URL` | apps/api, modules/ai | runtime | no — feature degrades / tuning | — | no | — |
+| `PUBLIC_CUSTOMER_BASE_URL` | apps/api, modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `QA_RESERVATION_BUFFER_MIN` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `RAILWAY_DEPLOYMENT_ID` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
 | `RAILWAY_ENVIRONMENT_NAME` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
@@ -291,6 +308,7 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `RECON_SWEEP_INTERVAL_MS` | modules/payments | runtime | no — feature degrades / tuning | — | yes | — |
 | `REDIS_COMMAND_TIMEOUT_MS` | packages/cache | runtime | no — feature degrades / tuning | — | no | — |
 | `REDIS_URL` | apps/api, modules/ai, modules/checkout, modules/identity | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `REFRESH_REUSE_GRACE_SECONDS` | modules/identity | runtime | no — feature degrades / tuning | — | yes | — |
 | `REFUND_CASH_MANAGER_THRESHOLD_CENTS` | modules/checkout, modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `REFUND_MANAGER_THRESHOLD_CENTS` | modules/checkout, modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `RELEASE_NOTES_URL` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
@@ -298,12 +316,15 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `REMINDERS_DEFAULT_TZ` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `REPO_DRIVER` | apps/api, modules/identity, packages/database | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `REPORTS_NOTIFIER_URL` | modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
+| `RESTORE_STAGING_DATABASE_URL` | apps/api | runtime | no — feature degrades / tuning | — | yes | — |
 | `RETELL_API_BASE_URL` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `RETELL_API_KEY` | apps/api, modules/ai | runtime | no — feature degrades / tuning | secret | no | — |
 | `RETELL_DEFAULT_VOICE_ID` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `RETELL_WEBHOOK_SIGNING_KEY` | apps/api, modules/ai | runtime | no — feature degrades / tuning | secret | yes | — |
 | `RETENTION_EXECUTOR` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
 | `RETENTION_POLICY_FILE` | apps/api, modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
+| `RETENTION_SNAPSHOTS_CRON_ENABLED` | modules/customers | runtime | no — feature degrades / tuning | — | no | — |
+| `REVIEW_REQUEST_SENDER` | modules/ai | runtime | no — feature degrades / tuning | — | no | — |
 | `SCHEDULED_REPORTS_CRON_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | yes | — |
 | `SCHEDULED_REPORTS_CRON_SECRET` | modules/super-admin | runtime | no — feature degrades / tuning | secret | yes | — |
 | `SECURITY_AUDIT_WORKER_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
@@ -326,10 +347,13 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `SEED_TENANT_LEGAL` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `SEED_TENANT_NAME` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `SEED_TENANT_SLUG` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
-| `SENDGRID_API_KEY` | modules/communications, packages/notifications | runtime | no — feature degrades / tuning | secret | yes | — |
+| `SENDGRID_API_KEY` | modules/ai, modules/communications, packages/notifications | runtime | no — feature degrades / tuning | secret | yes | — |
 | `SENDGRID_FROM` | packages/notifications | runtime | no — feature degrades / tuning | — | yes | — |
-| `SERVICE_NAME` | packages/observability | runtime | no — feature degrades / tuning | — | no | — |
+| `SENDGRID_WEBHOOK_VERIFICATION_KEY` | modules/communications | runtime | no — feature degrades / tuning | secret | no | — |
+| `SERVICE_NAME` | packages/observability | runtime | no — feature degrades / tuning | — | yes | — |
+| `SERVICE_PRICE_SCHEDULE_JOB` | modules/catalog | runtime | no — feature degrades / tuning | — | no | — |
 | `SERVICE_TOKEN_SECRET` | apps/api, packages/auth | runtime | no — feature degrades / tuning | secret | yes | — |
+| `SETUP_HEALTH_NIGHTLY_ENABLED` | modules/super-admin | runtime | no — feature degrades / tuning | — | no | — |
 | `SLA_BREACH_NOTIFY` | modules/support | runtime | no — feature degrades / tuning | — | no | — |
 | `SLA_BREACH_SWEEP_CRON` | modules/support | runtime | no — feature degrades / tuning | — | no | — |
 | `SLO_VALIDATION_MIN_DAYS` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
@@ -346,6 +370,8 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `SYNTHETIC_PAYMENT_SANDBOX_PASSWORD` | apps/api | runtime | no — feature degrades / tuning | secret | no | — |
 | `SYNTHETIC_PAYMENT_SANDBOX_URL` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `SYNTHETIC_PAYMENT_SANDBOX_USER` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
+| `TEAM_DATA_NIGHTLY_ENABLED` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
+| `TEAM_DATA_NIGHTLY_LOCAL_HOUR` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
 | `TECH_ACCEPTANCE_SCHEDULER_DISABLED` | modules/queue | runtime | no — feature degrades / tuning | — | yes | — |
 | `TECH_ACCEPTANCE_SCHEDULER_INTERVAL_MS` | modules/queue | runtime | no — feature degrades / tuning | — | yes | — |
 | `TECH_ACCEPTANCE_TIMEOUT_SECONDS` | modules/queue | runtime | no — feature degrades / tuning | — | yes | — |
@@ -362,18 +388,18 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `TTP_ATTESTATION_POLICY` | modules/checkout | runtime | no — feature degrades / tuning | — | no | — |
 | `TTP_UNUSUAL_REG_TENANT_PER_DAY` | modules/checkout | runtime | no — feature degrades / tuning | — | no | — |
 | `TTP_UNUSUAL_REG_USER_PER_DAY` | modules/checkout | runtime | no — feature degrades / tuning | — | no | — |
-| `TURN_DAY_CLOSE_DISABLED` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
-| `TURN_DAY_CLOSE_INTERVAL_MS` | modules/workforce | runtime | no — feature degrades / tuning | — | no | — |
+| `TURN_DAY_CLOSE_DISABLED` | modules/workforce | runtime | no — feature degrades / tuning | — | yes | — |
+| `TURN_DAY_CLOSE_INTERVAL_MS` | modules/workforce | runtime | no — feature degrades / tuning | — | yes | — |
 | `TWILIO_A2P_POLICY_SID` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
-| `TWILIO_ACCOUNT_SID` | apps/api, modules/ai, modules/communications, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `TWILIO_ACCOUNT_SID` | apps/api, modules/ai, modules/communications, modules/customers, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `TWILIO_AGENT_MEDIA_CHANNEL` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
-| `TWILIO_AUTH_TOKEN` | modules/ai, modules/communications, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | secret | yes | — |
-| `TWILIO_FROM` | modules/communications, modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `TWILIO_AUTH_TOKEN` | modules/ai, modules/communications, modules/customers, modules/payments, modules/super-admin | runtime | **checked at start** (may be conditional) | secret | yes | — |
+| `TWILIO_FROM` | modules/communications, modules/customers, modules/payments | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `TWILIO_INTELLIGENCE_BASE_URL` | modules/ai | runtime | no — feature degrades / tuning | — | yes | — |
 | `TWILIO_ISV_EMAIL` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `TWILIO_PRIMARY_PROFILE_SID` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
 | `TWILIO_SECONDARY_PROFILE_POLICY_SID` | modules/communications | runtime | no — feature degrades / tuning | — | yes | — |
-| `TWILIO_STATUS_CALLBACK_URL` | modules/communications, modules/payments, packages/notifications | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `TWILIO_STATUS_CALLBACK_URL` | modules/communications, modules/payments, modules/super-admin, packages/notifications | runtime | **checked at start** (may be conditional) | — | yes | — |
 | `TWILIO_TEST_ACCOUNT_SID` | apps/api | runtime | no — feature degrades / tuning | — | no | — |
 | `TWILIO_TEST_AUTH_TOKEN` | apps/api | runtime | no — feature degrades / tuning | secret | no | — |
 | `TWILIO_VERIFY_BASE_URL` | packages/notifications | runtime | no — feature degrades / tuning | — | no | — |
@@ -398,4 +424,5 @@ tuning knob with a default. Test-only and proof-script variables are not listed.
 | `WEBAUTHN_ORIGIN` | modules/identity | runtime | no — feature degrades / tuning | — | no | — |
 | `WEBAUTHN_RP_ID` | modules/identity | runtime | no — feature degrades / tuning | — | no | — |
 | `WEBHOOK_SIGNING_KEK` | apps/api | runtime | **checked at start** (may be conditional) | — | yes | — |
+| `WEBHOOK_UNKNOWN_FIELDS` | modules/payments | runtime | no — feature degrades / tuning | — | yes | — |
 | `WORKER_JOB_CLASSES` | packages/config | runtime | no — feature degrades / tuning | — | no | — |
