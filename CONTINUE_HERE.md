@@ -4,6 +4,35 @@ Hand this file to the next session first. **Tree:** branch `merge-github-main`, 
 commits). The build queue is `NEXT_STEPS.md` §1, and the section-by-section truth is `docs/mandates/status/*.md`.
 The narrative of what was done is in `CHANGELOG_HANDOFF.md` (M6 / M5 / M4 / Oct 26 sections).
 
+## HANDOFF — Nov 6 2026, 10:50 pm (start the new chat here)
+
+**How to restore:** `git clone aipowersalon-merged-2026-11-02.bundle aipowersalon && cd aipowersalon && git checkout merge-github-main`
+(or unzip `aipowersalon-source-2026-11-06.zip` — the same tree without git history). Then `npm ci`, Postgres 16, `apps/api`:
+`MIGRATE_DATABASE_URL=… node scripts/migrate.mjs` (773 migrations, through 835).
+
+**State at HEAD:** every `apps/api` `check:*` gate passes, root typecheck rc 0. Unit / PGlite lanes on HEAD: packages
+1,280 / 0 · modules 13,095 (4 clock-bound retention failures fixed and re-run) · apps 4,353 / 0 · API 3,248 / 0.
+Not re-run on this commit: `ci:test:race` (needs `PG_RACE_URL` to a migrated DB), live proofs, pilot day (last 236 / 236 at `835b58e`).
+Run API tests WITHOUT `DATABASE_URL` in the environment (several guard specs expect no DB).
+
+**Guide status:** Batch A done (except Retell live settings, SSE push for AI Calls, Twilio SID column — external).
+F7 Receipt / Expense / OCR: 204 DONE · 0 PARTIAL · 1 NOT DONE (decided) · 7 BLOCKED_EXTERNAL (Textract / S3).
+F5 Platform audit: 237 DONE · 12 PARTIAL · 13 BLOCKED_EXTERNAL (`docs/mandates/status/PLATFORM_ARCHITECTURE_AUDIT_STATUS.md`).
+Current executive summary + domain matrix: top of `TAKEOVER_MANDATE_FINAL_REPORT.md` ("Nov 6 2026 refresh").
+
+**Next, in order (internal, F5 PARTIAL):**
+1. §236 — run `ci:test:race`, the live proofs and the pilot day on this commit; then §249 / §250 can close.
+2. §219 — busy-state responsive report 53 / 90 at 2560/1600/1366/1280 (primary 1920×945 is 18 / 18): `tooling/e2e/pos-vi-one-screen.mjs`
+   (busy state runs inside the pilot day). First issue seen: compact controls with a hit area under 44 px ("Max FloorManager" 74×41).
+3. §220 — real-Chromium axe sweep with color-contrast across the primary screens (jsdom axe covers 5 screens only).
+4. §188 / §192 — CSP `unsafe-inline`, the I-8 list in `NEXT_STEPS.md`.
+5. §234 — `as any` debt (ratchet only shrinks).
+6. §3 — NestJS 10 → 11 (allow-listed until 2027-01-31).
+7. Needs Kevin's decision first: §7 / §48 merge the two global customer identity layers; §28 success envelope (bulk rewrite or keep v1-only);
+   Inventory — per-location service price override (not built).
+
+**Kevin's decisions so far:** `docs/DECISIONS_2026-11-06.md`. Guide queue + per-guide notes: `docs/GUIDE_QUEUE_2026-11-03.md`.
+
 ## Standing rules (Kevin's — keep them)
 
 - **Never push to GitHub.** Commit locally only, staging explicit paths: `git add -- <paths>` then

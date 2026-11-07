@@ -9,6 +9,75 @@
 
 ---
 
+## Nov 6 2026 refresh — §249 executive summary and §250 domain matrix on HEAD (`merge-github-main`)
+
+The October 14 text below is kept for the record; it predates the Oct 24 – Nov 6 mandates. This section is the current truth.
+Per-section status: `docs/mandates/status/PLATFORM_ARCHITECTURE_AUDIT_STATUS.md` (262 sections: **237 DONE · 12 PARTIAL ·
+0 NOT DONE · 13 BLOCKED_EXTERNAL**). Domain changes Oct 23 → Nov 6: `ARCHITECTURE_STATUS.md` (Nov 6 table). Tables:
+`docs/DATABASE_MATRIX_2026-11-06.md`. Routes: `docs/api/API_CHANGES_SINCE_2026-11-02.md`. Apps and builds:
+`docs/APP_AND_BUILD_MATRIX_2026-11-06.md`.
+
+### §249 — executive summary (Nov 6 2026)
+
+**What was run on HEAD (Nov 6 – 7 2026, this machine, real PostgreSQL 16 + PGlite):**
+
+| Lane | Result |
+|---|---|
+| `ci:test:packages` | 20 / 20 packages · **1,280 passed, 0 failed** |
+| `ci:test:modules` | 27 modules · **13,095 passed, 4 failed, 356 skipped** on the first run. The 4 failures were retention fixtures that used the UTC day against a New York salon (fail between 00:00 and 05:00 UTC); fixed, `modules/customers` re-run 498 / 498. Two identity PGlite files timed out in `beforeAll` under full-lane load; they pass alone (600 / 600) and every module's `hookTimeout` is now 120 s like the API's |
+| `ci:test:apps` | 8 / 8 apps · **4,353 passed, 0 failed** (pos 2,084 · admin 1,070 · owner 374 · customer 286 · tech 205 · display 205 · manager-pay 121 · kiosk 8) |
+| `ci:test:api` | first run 5 failed (guards that new Batch A routes had not been registered with: role matrix, IDOR fixtures, strict body, outbound host, tenant-consistency triggers, state vocabulary, job type) — all fixed; **re-run 3,248 passed, 0 failed** |
+| every `apps/api` `check:*` gate | **0 failed** |
+| root `typecheck` | rc 0 |
+
+**Real defects the run found and fixed (not test-only):**
+- **Sales reports filed an evening sale on the next day.** A payment's report day was the UTC date; a New York sale after
+  7 – 8 pm landed on tomorrow and fell out of "Today" and of the day's totals. It is now the salon-local day
+  (`reports.kysely.repository.ts`), with a regression test that fails without the fix.
+- AI Business alert incidents wrote their status outside a lifecycle; one transition table now guards every write.
+- Two A2 alert tables could reference another salon's alert event; tenant-consistency triggers added (migration 835).
+
+**Still open (internal, 12 PARTIAL):** §3 Nest 10 → 11 upgrade (allow-listed to 2027-01-31); §7 / §48 two global customer
+identity layers not merged; §28 success envelope only on v1-native modules (a recorded API decision, not a bulk rewrite);
+§188 / §192 defence-in-depth items (CSP `unsafe-inline`, the I-8 list); §219 busy-state responsive report 53 / 90 at the
+smaller viewports (primary viewport 18 / 18); §220 no platform-wide contrast / screen-reader pass; §234 `as any` debt;
+§236 the race / live-proof / pilot lanes were not re-run in this pass (pilot day 236 / 236 at `835b58e` on Nov 6);
+§249 / §250 — this refresh (they stay PARTIAL until §236's remaining lanes run on this commit).
+
+**Waiting on Kevin or a provider (13 BLOCKED_EXTERNAL):** Tap to Pay (Apple + Fiserv), TLS / KMS / Secrets Manager,
+hosted backups / PITR / restore, native app shells, edge WAF, processor signing spec, the Vietnamese review, a live Twilio
+parent account, a ClamAV host, a production-sized API host.
+
+### §250 — domain matrix (Nov 6 2026)
+
+Status words: PASS = chain built and proven by executed tests on HEAD; PARTIAL = a named internal piece is missing;
+BLOCKED_EXTERNAL = built, waiting on an outside account / device / host.
+
+| Domain | Module(s) | Status | Module tests on HEAD | Open item |
+|---|---|---|---|---|
+| Identity & auth | identity | PASS | 600 / 600 (alone) | — |
+| Tenants & branches | tenants | PASS | 166 | — |
+| Customers | customers | PARTIAL | 498 / 498 | two global identity layers (§48) |
+| Booking / appointments | booking, appointments | PASS | 764 + 36 | — |
+| Queue / Fair Turn / serving | queue | PASS | 806 | — |
+| Workforce & payroll | workforce | PASS | 1,302 | — |
+| Checkout & payments | checkout, payments | PASS (sandbox) | 1,030 + 444 | live processor certification |
+| Tap to Pay | checkout (mobile-checkout) | BLOCKED_EXTERNAL | (in checkout) | Apple + Fiserv |
+| Gift cards | gift-cards, checkout | PASS | 35 + checkout | — |
+| Loyalty & memberships | loyalty, memberships | PASS | 95 + 175 | — |
+| Deals & marketing | deals, marketing | PASS | 319 + 108 | — |
+| Inventory & catalog | inventory, catalog | PARTIAL | 88 + 66 | no per-location service price override |
+| Finance & receipts | finance, safety (OCR) | PASS / BLOCKED_EXTERNAL | 113 + 614 | real Textract / S3 reading |
+| Communications | communications | BLOCKED_EXTERNAL | 757 | live Twilio / e-mail / push providers |
+| Reports & analytics | reports, analytics | PASS | 61 + 343 (incl. the salon-day fix) | — |
+| AI platform & centers | ai | PASS (no provider) | 2,448 | provider keys |
+| Super Admin / control plane | super-admin, platform | PASS | 2,053 + 114 | — |
+| Security & audit | security-center, audit | PARTIAL | 14 + 35 | §188 / §192 items |
+| Support | support | PASS | 34 | — |
+| Events, realtime, workers | apps/api events, packages | PASS | in API 3,248 | — |
+| Files / media | packages/media | BLOCKED_EXTERNAL | in packages | ClamAV host |
+| POS responsive / accessibility | apps/pos-web | PARTIAL | 2,084 | §219 busy-state 53 / 90; §220 contrast pass |
+
 ## §249. Executive Summary
 
 This document represents the canonical, whole-platform takeover report for AI PowerSalon POS. Every finding identified in the Master Takeover Guide has been investigated in the actual source code, repaired with surgical precision, covered with automated regression tests, compiled across all packages and modules, and verified through live repository gates.
