@@ -8,7 +8,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 vi.mock('../api/posPayrollApi', () => ({ posPayrollApi: { payWeek: vi.fn(), payCalculate: vi.fn(), payApplyDefault: vi.fn(), paySubmit: vi.fn(), payApprove: vi.fn(), payReturn: vi.fn(), payReject: vi.fn(), payStatement: vi.fn(), payPlan: vi.fn(),
   payApproveHeld: vi.fn(), payAddPayout: vi.fn(), checkIssue: vi.fn(), checkDeliver: vi.fn(), checkClear: vi.fn(), checkVoid: vi.fn(), cashPrepare: vi.fn(), cashHandOff: vi.fn(), cashAckPin: vi.fn(), cashResolve: vi.fn(),
   openWeek: vi.fn(), payReport: vi.fn(), paySchedule: vi.fn(), savePaySchedule: vi.fn(), paySummary: vi.fn(),
-  payCancelPeriod: vi.fn(), payPreparation: vi.fn(), payEvidence: vi.fn(), cashHandoffToken: vi.fn(), cashAckSignature: vi.fn(), cashAckDual: vi.fn(), payStub: vi.fn() } }));
+  payCancelPeriod: vi.fn(), payPreparation: vi.fn(), payEvidence: vi.fn(), cashHandoffToken: vi.fn(), cashAckSignature: vi.fn(), cashAckDual: vi.fn(), payStub: vi.fn(), exportPeriod: vi.fn() } }));
 import { posPayrollApi } from '../api/posPayrollApi';
 import { PaycheckTab } from './POSPaycheckTab';
 
@@ -232,5 +232,37 @@ describe('POS weekly paychecks', () => {
     stroke('pointerdown', 10, 20); stroke('pointermove', 40, 50); stroke('pointermove', 80, 30); stroke('pointerup', 80, 30);
     fireEvent.click(within(dialog).getByText('Confirm with PIN + signature'));
     await waitFor(() => expect(api.cashAckSignature).toHaveBeenCalledWith('k1', { pin: '4321', signature: 'M 10 20 L 40 50 L 80 30' }));
+  });
+});
+
+describe('POS weekly paychecks — the SUNMI FLEX 3 one-screen workspace (Nov 7 2026)', () => {
+  it('shows the readiness steps, the server totals, the exception list and the role-aware Quick Actions; nothing is calculated here', async () => {
+    const flagged = { ...statement('draft'), id: 's2', technicianId: 't2', technicianName: 'Bao Tran', reviewRequired: true, exceptions: [{ code: 'negative_payable', message: 'Owes more than earned' }] };
+    api.payWeek.mockResolvedValue({ ...week('review', statement('draft')), statements: [statement('draft'), flagged], totals: { ...week('review').totals, technicians: 2, exceptions: 1 } });
+    render(<PaycheckTab periods={periods} reload={reload} can={all} stepUp={stepUp} />);
+    const steps = await screen.findByRole('list', { name: 'Pay week readiness' });
+    expect(within(steps).getByText('With the owner').getAttribute('aria-current')).toBe('step');
+    expect(within(steps).getByText(/Manager review/).textContent).toContain('✓');
+    const rows = screen.getAllByRole('row').map((r) => r.textContent || '');
+    expect(rows.findIndex((t) => t.includes('Bao Tran'))).toBeLessThan(rows.findIndex((t) => t.includes('Mia Chen')));   // flagged first
+    const ex = screen.getByText(/^Exceptions · 1$/).closest('section') as HTMLElement;
+    expect(within(ex).getByText('Bao Tran')).toBeInTheDocument();
+    expect(screen.getByTestId('pc-export')).toBeInTheDocument();
+  });
+  it('Export CSV downloads the server file and says how many rows', async () => {
+    api.exportPeriod.mockResolvedValue({ base64: btoa('a,b\n1,2\n'), mimeType: 'text/csv', filename: 'payroll.csv', rowCount: 1 });
+    Object.assign(URL, { createObjectURL: vi.fn(() => 'blob:csv'), revokeObjectURL: vi.fn() });
+    const clicked = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
+    render(<PaycheckTab periods={periods} reload={reload} can={all} stepUp={stepUp} />);
+    fireEvent.click(await screen.findByTestId('pc-export'));
+    await waitFor(() => expect(api.exportPeriod).toHaveBeenCalledWith('p1', 'csv'));
+    expect(clicked).toHaveBeenCalledTimes(1);
+    expect(await screen.findByText('Export downloaded (1 rows).')).toBeInTheDocument();
+    clicked.mockRestore();
+  });
+  it('without the export permission there is no Export button', async () => {
+    render(<PaycheckTab periods={periods} reload={reload} can={(k: string) => k !== 'payroll.export'} stepUp={stepUp} />);
+    await screen.findByText('Mia Chen');
+    expect(screen.queryByTestId('pc-export')).toBeNull();
   });
 });

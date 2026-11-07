@@ -3908,3 +3908,28 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
   .work.mos[data-testid="memberships-screen"] .fk-kpi{min-height:70px;padding-top:6px;padding-bottom:6px}
   .work.mos[data-testid="memberships-screen"]>.mo-ana .fk-panel-body{overflow:hidden}
 }
+
+/* ── SUNMI FLEX 3 Weekly Technician Paycheck addendum (Nov 6 2026) §05: the open pay week is ONE workspace from 1536 × 820
+   up. Readiness + server totals on top, the worklist down the left, the selected statement beside it with Exceptions,
+   Owner review, Payouts and Audit cards, Quick Actions pinned at the bottom. Every card scrolls inside itself; the page
+   and the tab body do not scroll. Narrower screens keep the stacked layout and the statement drawer. */
+.pc-steps{display:flex;gap:6px;flex-wrap:wrap;list-style:none;margin:6px 0 0;padding:0;font-size:12.5px}
+.pc-steps li{padding:4px 10px;border-radius:999px;border:1px solid var(--line);color:var(--muted);min-height:28px;display:flex;align-items:center}
+.pc-steps li.done{color:var(--aps-success);border-color:var(--aps-success)}
+.pc-steps li.on{color:var(--text,#1b1b1b);border-color:var(--accent,#B8892B);font-weight:800}
+@media (min-width:1536px) and (min-height:820px){
+  .pr-body:has(>.pc-week){overflow:hidden !important}
+  .pc-ws.pc-week{position:relative;height:100%;min-height:0;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:auto auto auto minmax(0,1fr) minmax(0,.8fr) auto;gap:8px !important}
+  .pc-week>.pc-nav,.pc-week>.pc-period,.pc-week>.pc-kpis,.pc-week>.pc-actions,.pc-week>[role="status"],.pc-week>[role="alert"]{grid-column:1/-1}
+  .pc-week>[role="status"],.pc-week>[role="alert"]{position:absolute;right:28px;z-index:5;background:var(--surface,#fff);padding:4px 10px;border-radius:8px;box-shadow:0 4px 14px rgba(0,0,0,.12)}
+  .pc-week>.pc-kpis{grid-template-columns:repeat(9,minmax(0,1fr)) !important;gap:8px !important}
+  .pc-week>.pc-kpis>*{min-height:0;padding-top:6px;padding-bottom:6px}
+  .pc-week>.pc-worklist{grid-column:1/6;grid-row:4/6}
+  .pc-week>.pc-selected{grid-column:6/10;grid-row:4}
+  .pc-week>.pc-exceptions{grid-column:10/13;grid-row:4}
+  .pc-week>.pc-owner{grid-column:6/9;grid-row:5}
+  .pc-week>.pc-payouts{grid-column:9/11;grid-row:5}
+  .pc-week>.pc-audit{grid-column:11/13;grid-row:5}
+  .pc-week>.pc-actions{grid-row:6}
+  .pc-week>section{margin:0}
+}

@@ -5,14 +5,14 @@
 //   holding some), returns or rejects → checks (number, deliver, void + replacement) and cash (from the drawer, the safe or
 //   the bank; hand over; the technician's PIN) → partially paid / paid.
 // The server decides every figure; this screen only sends choices (a split, a check number, a cash source, a PIN).
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { KpiCard, StatusBadge, DataTable, EmptyState, Drawer, parseDollarsToCents, qrPath, type Column, type Tone } from '@aipowersalon/ui';
 import type { PaycheckOwnerSummary, PaycheckWeek, PayStatementDetail, PaycheckPayout, PaycheckReport, PayrollScheduleView, PaycheckPolicyType, CashSource, PaycheckPreparationReport, PaycheckHandoffToken, PayrollTechnicianDetail } from '@aipowersalon/api-contracts/tenant';
 import { posPayrollApi } from '../api/posPayrollApi';
 import { t as tx, getLanguage } from '@aipowersalon/mobile-sdk/i18n';
 
 import { statusLabel } from '../i18n/status-label';
-import { displayLocale, fmtInZone } from '../i18n/format';
+import { displayLocale, fmtInZone, fmtDateTime } from '../i18n/format';
 type StepUp = <T>(action: () => Promise<T>) => Promise<T>;
 type PeriodRow = { id: string; label: string | null; periodStart: string; periodEnd: string; status: string };
 const money = (c: number | null | undefined) => { const n = Math.trunc(Number(c) || 0); const a = Math.abs(n); return `${n < 0 ? '−' : ''}$${Math.floor(a / 100).toLocaleString()}.${String(a % 100).padStart(2, '0')}`; };
@@ -60,6 +60,8 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
   const [hold, setHold] = useState<string[]>([]);
   const [decision, setDecision] = useState<'returned' | 'rejected' | null>(null);
   const [note, setNote] = useState('');
+  // the 27″ workspace (≥ 1536 × 820): the statement opens beside the worklist instead of in a drawer
+  const wide = useWideWorkspace();
 
   const [summary, setSummary] = useState<PaycheckOwnerSummary | null>(null);
   useEffect(() => { Promise.resolve().then(() => posPayrollApi.paySummary()).then((r) => setSummary(r ?? null)).catch(() => setSummary(null)); }, [week]);
@@ -92,9 +94,39 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
     ...(p?.status === 'review' && can('payroll.approve') ? [{ key: 'hold', get header() { return tx('pos.hold'); }, render: (s: PayStatementDetail) => <input type="checkbox" aria-label={tx('pos.hold_v0', { v0: String(s.technicianName || '') })} checked={hold.includes(s.technicianId)} onChange={(e) => setHold(e.target.checked ? [...hold, s.technicianId] : hold.filter((x) => x !== s.technicianId))} /> } as Column<PayStatementDetail>] : []),
   ], [p?.status, hold, can]);
 
+  // SUNMI FLEX 3 Weekly Technician Paycheck addendum (Nov 6 2026) §05: the week is ONE workspace on the 27″ screen — a
+  // readiness bar, the server's totals, the worklist beside the selected technician's statement, Exceptions / Owner review /
+  // Payouts / Audit cards and a role-aware Quick Actions bar. Every figure is the server's (PaycheckWeek totals, statement
+  // exceptions, the owner summary); nothing here calculates pay. On a narrower screen (or a test without layout) the same
+  // pieces stack and the statement opens in the drawer, as before.
+  const sorted = useMemo(() => (week ? [...week.statements].sort((a, b) => Number(!!(b.exceptions?.length || b.reviewRequired)) - Number(!!(a.exceptions?.length || a.reviewRequired))) : []), [week]);
+  const flagged = sorted.filter((x) => x.exceptions?.length || x.reviewRequired);
+  const steps: { id: string; label: string; done: boolean; on: boolean }[] = p ? [
+    { id: 'calculated', label: tx('sunmi.pay.ready.calculated'), done: (week?.statements.length ?? 0) > 0, on: p.status === 'draft' && !(week?.statements.length) },
+    { id: 'manager', label: tx('sunmi.pay.ready.managerReview'), done: ['review', 'finalized', 'paid'].includes(p.status), on: p.status === 'draft' && (week?.statements.length ?? 0) > 0 },
+    { id: 'owner', label: tx('sunmi.pay.ready.withOwner'), done: ['finalized', 'paid'].includes(p.status), on: p.status === 'review' },
+    { id: 'approved', label: tx('sunmi.pay.ready.approved'), done: p.status === 'paid', on: p.status === 'finalized' },
+    { id: 'paid', label: tx('sunmi.pay.ready.paid'), done: p.status === 'paid', on: false },
+  ] : [];
+  const exportCsv = async () => {
+    if (!p) return;
+    setBusy(true); setErr(null); setMsg(null);
+    try {
+      const f = await posPayrollApi.exportPeriod(p.id, 'csv');
+      const bin = atob(f.base64); const bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      const url = URL.createObjectURL(new Blob([bytes], { type: f.mimeType })); const a = document.createElement('a'); a.href = url; a.download = f.filename; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setMsg(tx('sunmi.pay.exported', { n: String(f.rowCount) }));
+    } catch (e: any) { setErr(errText(e, tx('pos.that_did_not_work'))); } finally { setBusy(false); }
+  };
+  const delta = week && week.previousPayableCents != null ? week.totals.payableCents - week.previousPayableCents : null;
+  const card2: React.CSSProperties = { ...card, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' };
+  const cardH: React.CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6, fontWeight: 800, fontSize: 14, marginBottom: 6 };
+  const cardB: React.CSSProperties = { flex: '1 1 auto', minHeight: 0, overflow: 'auto', fontSize: 13 };
+  const kv = (label: string, value: React.ReactNode) => <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '2px 0' }}><span style={small}>{label}</span><b>{value}</b></div>;
+
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+    <div className={'pc-ws' + (view === 'week' && week && p ? ' pc-week' : '')} style={{ display: 'grid', gap: 10 }}>
+      <div className="pc-nav" data-module-id="pc-nav" style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         <button style={btn(view === 'week')} onClick={() => setView('week')}>{tx('pos.this_week')}</button>
         <button style={btn(view === 'reports')} onClick={() => setView('reports')}>{tx('pos.payroll_reports_2')}</button>
         {can('payroll.issue_check') || can('payroll.cash_handoff') || can('payroll.approve') ? <button style={btn(view === 'prep')} onClick={() => setView('prep')}>{tx('people.paycheck.prep.tab')}</button> : null}
@@ -106,7 +138,7 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
           {can('payroll.manage') && !week?.period.branchScope ? <button style={btn()} disabled={busy} onClick={() => act(async () => { const r = await posPayrollApi.openWeek(); setPeriodId(r.periodId); }, (week?.schedule.frequency ?? 'weekly') === 'weekly' ? tx('people.paycheck.done.weekOpen') : tx('people.paycheck.done.periodOpen'))}>{(week?.schedule.frequency ?? 'weekly') === 'weekly' ? tx('pos.open_last_week') : tx('people.paycheck.open.period')}</button> : null}
         </> : null}
       </div>
-      {summary ? <div style={small}>{tx('pos.cash_waiting_to_hand_over')}{' '}{summary.cashAwaitingHandoff} ({money(summary.cashAwaitingHandoffCents)}{tx('pos.checks_to_deliver')}{' '}{summary.checksAwaitingDelivery} {tx('pos.payouts_with_a_problem')}{' '}{summary.exceptionPayouts} {tx('pos.approved_and_unpaid')}{' '}{money(summary.unpaidCents)}</div> : null}
+      {summary && !(view === 'week' && week && p) ? <div style={small}>{tx('pos.cash_waiting_to_hand_over')}{' '}{summary.cashAwaitingHandoff} ({money(summary.cashAwaitingHandoffCents)}{tx('pos.checks_to_deliver')}{' '}{summary.checksAwaitingDelivery} {tx('pos.payouts_with_a_problem')}{' '}{summary.exceptionPayouts} {tx('pos.approved_and_unpaid')}{' '}{money(summary.unpaidCents)}</div> : null}
       {msg ? <div role="status" style={{ ...small, color: 'var(--aps-success)' }}>{msg}</div> : null}
       {err ? <div role="alert" style={{ fontSize: 12, color: 'var(--aps-danger)' }}>{err}</div> : null}
 
@@ -115,7 +147,8 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
       {view === 'settings' ? <ScheduleView stepUp={stepUp} /> : null}
       {view === 'week' && !periodId ? <EmptyState title={tx('pos.no_pay_week_yet')} message={tx('pos.open_last_week_to_calculate_everyone_w7kh')} /> : null}
       {view === 'week' && week && p ? <>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div className="pc-period" data-module-id="pc-period">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <b>{p.periodStart} – {p.periodEnd}</b>
           <StatusBadge tone={p.status === 'paid' ? 'success' : p.status === 'review' ? 'warning' : p.status === 'finalized' ? 'info' : p.status === 'canceled' ? 'danger' : 'neutral'}>{PERIOD_LABEL[p.status] ?? p.status}</StatusBadge>
           {p.payDate ? <span style={small}>{tx('pos.pay_day')}{' '}{p.payDate}</span> : null}
@@ -124,21 +157,92 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
           {p.branchScope && can('payroll.manage') ? <span style={small}>{tx('people.paycheck.branchScoped')}</span> : null}
           {p.ownerDecision === 'returned' || p.ownerDecision === 'rejected' ? <span style={{ fontSize: 12, color: 'var(--aps-danger)' }}>{p.ownerDecision === 'rejected' ? tx('pos.rejected_by_the_owner') : tx('pos.returned_by_the_owner')}: {p.ownerNote}</span> : null}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+          <ol className="pc-steps" aria-label={tx('sunmi.pay.ready.label')}>
+            {p.status === 'canceled' ? <li className="on">{tx('sunmi.pay.ready.canceled')}</li> : steps.map((x) => <li key={x.id} className={x.done ? 'done' : x.on ? 'on' : ''} aria-current={x.on ? 'step' : undefined}>{x.done ? '✓ ' : ''}{x.label}</li>)}
+          </ol>
+        </div>
+        <div className="pc-kpis" data-module-id="pc-kpis" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
           <KpiCard label={tx('pos.technicians')} value={String(week.totals.technicians)} tone="info" />
+          <KpiCard label={tx('sunmi.pay.kpi.earned')} value={money(week.totals.grossEarningsCents)} tone="neutral" />
+          <KpiCard label={tx('sunmi.pay.kpi.alreadyPaid')} value={money(week.totals.alreadyPaidCents)} tone="neutral" />
           <KpiCard label={tx('pos.payable')} value={money(week.totals.payableCents)} tone="purple" />
           <KpiCard label={tx('pos.by_check')} value={money(week.totals.checkCents)} tone="teal" />
           <KpiCard label={tx('pos.in_cash')} value={money(week.totals.cashCents)} tone="success" />
           <KpiCard label={tx('pos.paid_3')} value={money(week.totals.paidCents)} tone="success" />
           <KpiCard label={tx('pos.unpaid')} value={money(week.totals.unpaidCents)} tone="warning" />
+          <KpiCard label={tx('sunmi.pay.kpi.exceptions')} value={String(week.totals.exceptions)} tone={week.totals.exceptions ? 'danger' : 'neutral'} />
         </div>
-        {week.previousPayableCents != null ? <div style={small}>{tx('pos.last_week')}{' '}{money(week.previousPayableCents)} {tx('pos.custom_splits')}{' '}{week.totals.overrides} {tx('pos.need_a_look')}{' '}{week.totals.exceptions}</div> : null}
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+        <section className="pc-worklist" data-module-id="pc-worklist" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.worklist')}</span><span style={{ ...small, fontWeight: 400 }}>{tx('sunmi.pay.worklistOrder')}</span></div>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
           <label style={{ ...small, display: 'flex', gap: 4, alignItems: 'center' }}><input type="checkbox" checked={exOnly} onChange={(e) => setExOnly(e.target.checked)} />{tx('pos.payroll_exceptions_only')}</label>
           <input aria-label={tx('pos.payroll_search_technician')} placeholder={tx('pos.payroll_search_technician')} style={{ ...sel, minWidth: 200 }} value={techQ} onChange={(e) => setTechQ(e.target.value)} />
           {week.view && (week.view.exceptionsOnly || week.view.search) ? <span style={small}>{tx('pos.payroll_showing_x_of_y', { x: String(week.view.matched), y: String(week.view.total) })}</span> : null}
         </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          <div style={{ flex: '1 1 auto', minHeight: 0, overflow: 'auto' }}>
+          <DataTable<PayStatementDetail> columns={cols} rows={sorted} getRowKey={(s) => s.id} maxHeight="100%" empty={<EmptyState title={tx('pos.no_statements_yet')} message={tx('pos.calculate_the_week_to_make_everyone_1pf1')} />} />
+        </div>
+        </section>
+        <section className="pc-selected" data-module-id="pc-selected" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.selected')}</span></div>
+          <div style={cardB}>{wide && open ? <StatementPanel id={open} can={can} stepUp={stepUp} onChanged={() => { void reload(); void load(periodId); }} /> : <div style={small}>{tx('sunmi.pay.selectHint')}</div>}</div>
+        </section>
+        <section className="pc-exceptions" data-module-id="pc-exceptions" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.exceptions')} · {week.totals.exceptions}</span><button style={{ ...btn(exOnly), minHeight: 36 }} onClick={() => setExOnly(!exOnly)}>{exOnly ? tx('sunmi.pay.showAll') : tx('sunmi.pay.showOnly')}</button></div>
+          <div style={cardB}>
+            {(week.view?.periodIssues ?? []).map((x) => <div key={x.code} style={{ padding: '2px 0' }}><b>{tx('sunmi.pay.weekIssue')}:</b> {x.message}{x.count > 1 ? ` (${x.count})` : ''}</div>)}
+            {flagged.slice(0, 20).map((x) => <button key={x.id} style={{ display: 'block', width: '100%', textAlign: 'left', border: 'none', background: 'transparent', padding: '4px 0', minHeight: 36, cursor: 'pointer', font: 'inherit' }} onClick={() => setOpen(x.id)}>
+              <b>{x.technicianName || x.technicianId}</b> <span style={small}>{x.exceptions?.length ? (EXCEPTION_LABEL[x.exceptions[0].code] ?? x.exceptions[0].message) : tx('pos.owes_more_than_earned')}{(x.exceptions?.length ?? 0) > 1 ? ` +${(x.exceptions?.length ?? 0) - 1}` : ''}</span></button>)}
+            {!flagged.length && !(week.view?.periodIssues ?? []).length ? <div style={small}>{tx('sunmi.pay.exceptionsNone')}</div> : null}
+          </div>
+        </section>
+        <section className="pc-owner" data-module-id="pc-owner" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.owner')}</span><StatusBadge tone={p.status === 'paid' ? 'success' : p.status === 'review' ? 'warning' : p.status === 'finalized' ? 'info' : p.status === 'canceled' ? 'danger' : 'neutral'}>{PERIOD_LABEL[p.status] ?? p.status}</StatusBadge></div>
+          <div style={cardB}>
+            <div style={small}>{p.submittedAt ? tx('sunmi.pay.submittedAt', { at: fmtDateTime(p.submittedAt) }) : tx('sunmi.pay.notSubmitted')}</div>
+            {p.ownerDecision ? <div style={{ fontSize: 12.5, color: p.ownerDecision === 'approved' ? 'var(--aps-success)' : 'var(--aps-danger)' }}>{tx('sunmi.pay.decision', { decision: p.ownerDecision === 'rejected' ? tx('pos.rejected_by_the_owner') : p.ownerDecision === 'returned' ? tx('pos.returned_by_the_owner') : PERIOD_LABEL[p.status] ?? p.ownerDecision })}{p.ownerNote ? ` — ${p.ownerNote}` : ''}</div> : null}
+            {week.previousPayableCents != null ? <>
+              {kv(tx('sunmi.pay.lastWeek'), money(week.previousPayableCents))}
+              {kv(tx('sunmi.pay.thisWeek'), money(week.totals.payableCents))}
+              {kv(tx('sunmi.pay.change'), delta == null ? '—' : `${delta >= 0 ? '+' : '−'}${money(Math.abs(delta))}`)}
+            </> : <div style={small}>{tx('sunmi.pay.noLastWeek')}</div>}
+            {kv(tx('sunmi.pay.customSplits'), String(week.totals.overrides))}
+            {cancelWhy != null && p.status === 'draft' ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input aria-label={tx('people.paycheck.cancel.why')} placeholder={tx('people.paycheck.cancel.why')} style={{ ...sel, flex: 1, minWidth: 260 }} value={cancelWhy} onChange={(e) => setCancelWhy(e.target.value)} />
+          <button style={btn(false, true)} disabled={busy || cancelWhy.trim().length < 3} onClick={() => act(() => stepUp(() => posPayrollApi.payCancelPeriod(p.id, cancelWhy.trim(), v)).then(() => setCancelWhy(null)), tx('people.paycheck.cancel.done'))}>{tx('people.paycheck.cancel.confirm')}</button>
+          <button style={btn()} onClick={() => setCancelWhy(null)}>{tx('pos.cancel')}</button>
+        </div> : null}
+            {decision ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <input aria-label={tx('pos.note_for_the_manager')} placeholder={decision === 'rejected' ? tx('pos.why_is_this_payroll_rejected') : tx('pos.what_should_the_manager_change')} style={{ ...sel, flex: 1, minWidth: 260 }} value={note} onChange={(e) => setNote(e.target.value)} />
+          <button style={btn(true)} disabled={busy || note.trim().length < 3} onClick={() => act(() => (decision === 'rejected' ? posPayrollApi.payReject(p.id, note.trim(), v) : posPayrollApi.payReturn(p.id, note.trim(), v)).then(() => { setDecision(null); setNote(''); }), decision === 'rejected' ? tx('pos.rejected_the_manager_was_told_why') : tx('pos.returned_to_the_manager'))}>{tx('pos.send')}</button>
+          <button style={btn()} onClick={() => setDecision(null)}>{tx('pos.cancel')}</button>
+        </div> : null}
+          </div>
+        </section>
+        <section className="pc-payouts" data-module-id="pc-payouts" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.payouts')}</span>{can('payroll.issue_check') || can('payroll.cash_handoff') || can('payroll.approve') ? <button style={{ ...btn(), minHeight: 36 }} onClick={() => setView('prep')}>{tx('sunmi.pay.openPrep')}</button> : null}</div>
+          <div style={cardB}>
+            {summary ? <>
+              {kv(tx('sunmi.pay.cashWaiting'), `${summary.cashAwaitingHandoff} · ${money(summary.cashAwaitingHandoffCents)}`)}
+              {kv(tx('sunmi.pay.checksToDeliver'), String(summary.checksAwaitingDelivery))}
+              {kv(tx('sunmi.pay.problemPayouts'), String(summary.exceptionPayouts))}
+              {kv(tx('sunmi.pay.pendingApproval'), String(summary.pendingOwnerApproval))}
+            </> : <div style={small}>{tx('sunmi.pay.summaryUnavailable')}</div>}
+            <div style={{ ...small, marginTop: 4 }}>{tx('sunmi.pay.notPaidYet')}</div>
+          </div>
+        </section>
+        <section className="pc-audit" data-module-id="pc-audit" style={card2}>
+          <div style={cardH}><span>{tx('sunmi.pay.audit')}</span></div>
+          <div style={cardB}>
+            {kv(tx('sunmi.pay.version'), String(p.version))}
+            {kv(tx('sunmi.pay.payoutStatus'), statusLabel('payout', p.payoutStatus))}
+            {kv(tx('sunmi.pay.approvedBy'), p.approvedBy ?? '—')}
+            {kv(tx('sunmi.pay.fingerprint'), p.approvalHash ? p.approvalHash.slice(0, 12) : '—')}
+            {kv(tx('sunmi.pay.scope'), p.branchScope ? tx('sunmi.pay.scopeBranch') : tx('sunmi.pay.scopeTenant'))}
+          </div>
+        </section>
+        <nav className="pc-actions" data-module-id="pc-actions" aria-label={tx('sunmi.pay.quick')}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
           {p.status === 'draft' && can('payroll.manage') && !p.branchScope ? <>
             <button style={btn()} disabled={busy} onClick={() => act(() => posPayrollApi.payCalculate(p.id), tx('people.paycheck.done.recalculated'))}>{tx('pos.calculate')}</button>
             <button style={btn()} disabled={busy} onClick={() => act(() => posPayrollApi.payApplyDefault(p.id), tx('people.paycheck.done.defaultSplit'))}>{tx('pos.use_the_default_split_for_everyone')}</button>
@@ -151,26 +255,24 @@ export function PaycheckTab({ periods, reload, can, stepUp }: { periods: PeriodR
             <button style={btn(false, true)} disabled={busy} onClick={() => setDecision('rejected')}>{tx('pos.reject')}</button>
           </> : null}
           {p.status === 'review' && !can('payroll.approve') ? <span style={small}>{tx('pos.waiting_for_the_owner_s_decision')}</span> : null}
-        </div>
-        {cancelWhy != null && p.status === 'draft' ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input aria-label={tx('people.paycheck.cancel.why')} placeholder={tx('people.paycheck.cancel.why')} style={{ ...sel, flex: 1, minWidth: 260 }} value={cancelWhy} onChange={(e) => setCancelWhy(e.target.value)} />
-          <button style={btn(false, true)} disabled={busy || cancelWhy.trim().length < 3} onClick={() => act(() => stepUp(() => posPayrollApi.payCancelPeriod(p.id, cancelWhy.trim(), v)).then(() => setCancelWhy(null)), tx('people.paycheck.cancel.done'))}>{tx('people.paycheck.cancel.confirm')}</button>
-          <button style={btn()} onClick={() => setCancelWhy(null)}>{tx('pos.cancel')}</button>
-        </div> : null}
-        {decision ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-          <input aria-label={tx('pos.note_for_the_manager')} placeholder={decision === 'rejected' ? tx('pos.why_is_this_payroll_rejected') : tx('pos.what_should_the_manager_change')} style={{ ...sel, flex: 1, minWidth: 260 }} value={note} onChange={(e) => setNote(e.target.value)} />
-          <button style={btn(true)} disabled={busy || note.trim().length < 3} onClick={() => act(() => (decision === 'rejected' ? posPayrollApi.payReject(p.id, note.trim(), v) : posPayrollApi.payReturn(p.id, note.trim(), v)).then(() => { setDecision(null); setNote(''); }), decision === 'rejected' ? tx('pos.rejected_the_manager_was_told_why') : tx('pos.returned_to_the_manager'))}>{tx('pos.send')}</button>
-          <button style={btn()} onClick={() => setDecision(null)}>{tx('pos.cancel')}</button>
-        </div> : null}
-        <div style={card}>
-          <DataTable<PayStatementDetail> columns={cols} rows={week.statements} getRowKey={(s) => s.id} maxHeight="100%" empty={<EmptyState title={tx('pos.no_statements_yet')} message={tx('pos.calculate_the_week_to_make_everyone_1pf1')} />} />
-        </div>
-        <Drawer open={!!open} onClose={() => setOpen(null)} title={tx('pos.pay_statement')} width={560}>
+                    {can('payroll.export') ? <button style={btn()} disabled={busy} onClick={exportCsv} data-testid="pc-export">{tx('sunmi.pay.export')}</button> : null}
+            <button style={btn()} onClick={() => setView('reports')}>{tx('pos.payroll_reports_2')}</button>
+          </div>
+        </nav>
+        <Drawer open={!!open && !wide} onClose={() => setOpen(null)} title={tx('pos.pay_statement')} width={560}>
           {open ? <StatementPanel id={open} can={can} stepUp={stepUp} onChanged={() => { void reload(); void load(periodId); }} /> : null}
         </Drawer>
       </> : null}
     </div>
   );
+}
+
+function useWideWorkspace(): boolean {
+  const q = '(min-width: 1536px) and (min-height: 820px)';
+  const get = () => typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia(q).matches;
+  const [on, setOn] = useState(get);
+  useEffect(() => { if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return; const m = window.matchMedia(q); const f = () => setOn(m.matches); m.addEventListener?.('change', f); return () => m.removeEventListener?.('change', f); }, []);
+  return on;
 }
 
 function Row({ label, cents, strong }: { label: string; cents: number; strong?: boolean }) {

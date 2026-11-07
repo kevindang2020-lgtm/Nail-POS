@@ -99,7 +99,7 @@ export function POSPayrollScreen() {
       <div role="tablist" aria-label={tx('pos.payroll_sections')} style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
         {TABS.map((t) => <button key={t.id} role="tab" aria-selected={tab === t.id} style={btn(tab === t.id)} onClick={() => setTab(t.id)}>{t.label}</button>)}
       </div>
-      <div style={{ minHeight: 0 }}>
+      <div className="pr-body" style={{ minHeight: 0, overflow: 'auto' }}>
         {tab === 'paychecks' && <PaycheckTab periods={s.periods} reload={loadState} can={can} stepUp={stepUp} />}
         {tab === 'periods' && <PeriodsTab state={s} reload={loadState} can={can} stepUp={stepUp} techs={techs} techName={techName} />}
         {tab === 'review' && <ReviewTab can={can} stepUp={stepUp} techName={techName} />}

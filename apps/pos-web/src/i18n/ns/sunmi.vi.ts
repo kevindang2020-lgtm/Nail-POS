@@ -75,4 +75,51 @@ export const SUNMI_VI: Record<string, string> = {
   'sunmi.fix.clipped': 'Cho phép hai dòng ngắn hoặc dấu “…”, chạm vào để xem đủ chữ.',
   'sunmi.fix.touch': 'Cho các nút nhỏ một vùng chạm 44 px (hit-slop) hoặc làm nút lớn hơn.',
   'sunmi.fix.realtime': 'Cập nhật trực tiếp đang gián đoạn: bấm “Tải lại dữ liệu ngay”; nếu vẫn vậy, hãy kiểm tra mạng.',
+  "sunmi.pay.ready.calculated": "Đã tính",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.managerReview": "Quản lý xem lại",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.withOwner": "Chờ chủ tiệm",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.approved": "Đã duyệt",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.paid": "Đã trả",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.canceled": "Đã hủy",   // DRAFT — Kevin reviews
+  "sunmi.pay.ready.label": "Tiến độ tuần lương",   // DRAFT — Kevin reviews
+  "sunmi.pay.kpi.earned": "Đã làm được",   // DRAFT — Kevin reviews
+  "sunmi.pay.kpi.alreadyPaid": "Đã trả trước",   // DRAFT — Kevin reviews
+  "sunmi.pay.kpi.exceptions": "Cần xem lại",   // DRAFT — Kevin reviews
+  "sunmi.pay.worklist": "Danh sách lương",   // DRAFT — Kevin reviews
+  "sunmi.pay.worklistOrder": "Thợ có việc cần kiểm tra được xếp lên trước.",   // DRAFT — Kevin reviews
+  "sunmi.pay.selected": "Thợ đang chọn",   // DRAFT — Kevin reviews
+  "sunmi.pay.selectHint": "Chạm vào một thợ để xem bảng lương, cách chia và các khoản trả ở đây.",   // DRAFT — Kevin reviews
+  "sunmi.pay.exceptions": "Ngoại lệ",   // DRAFT — Kevin reviews
+  "sunmi.pay.exceptionsNone": "Tuần này không có gì cần xem lại.",   // DRAFT — Kevin reviews
+  "sunmi.pay.showOnly": "Chỉ hiện những thợ này",   // DRAFT — Kevin reviews
+  "sunmi.pay.showAll": "Hiện tất cả",   // DRAFT — Kevin reviews
+  "sunmi.pay.weekIssue": "Cả tuần",   // DRAFT — Kevin reviews
+  "sunmi.pay.owner": "Chủ tiệm duyệt",   // DRAFT — Kevin reviews
+  "sunmi.pay.submittedAt": "Đã gửi lúc {at}",   // DRAFT — Kevin reviews
+  "sunmi.pay.notSubmitted": "Chưa gửi cho chủ tiệm.",   // DRAFT — Kevin reviews
+  "sunmi.pay.decision": "Chủ tiệm: {decision}",   // DRAFT — Kevin reviews
+  "sunmi.pay.lastWeek": "Tuần trước phải trả",   // DRAFT — Kevin reviews
+  "sunmi.pay.thisWeek": "Tuần này phải trả",   // DRAFT — Kevin reviews
+  "sunmi.pay.change": "Chênh lệch",   // DRAFT — Kevin reviews
+  "sunmi.pay.customSplits": "Cách chia riêng",   // DRAFT — Kevin reviews
+  "sunmi.pay.noLastWeek": "Chưa có tuần trước để so sánh.",   // DRAFT — Kevin reviews
+  "sunmi.pay.payouts": "Khoản trả",   // DRAFT — Kevin reviews
+  "sunmi.pay.cashWaiting": "Tiền mặt chờ giao",   // DRAFT — Kevin reviews
+  "sunmi.pay.checksToDeliver": "Chi phiếu chờ giao",   // DRAFT — Kevin reviews
+  "sunmi.pay.problemPayouts": "Khoản trả có vấn đề",   // DRAFT — Kevin reviews
+  "sunmi.pay.pendingApproval": "Bảng lương chờ chủ tiệm",   // DRAFT — Kevin reviews
+  "sunmi.pay.openPrep": "Mở phần chuẩn bị",   // DRAFT — Kevin reviews
+  "sunmi.pay.summaryUnavailable": "Không xem được tóm tắt khoản trả.",   // DRAFT — Kevin reviews
+  "sunmi.pay.audit": "Lịch sử kiểm tra",   // DRAFT — Kevin reviews
+  "sunmi.pay.version": "Phiên bản",   // DRAFT — Kevin reviews
+  "sunmi.pay.approvedBy": "Người duyệt",   // DRAFT — Kevin reviews
+  "sunmi.pay.fingerprint": "Mã xác nhận duyệt",   // DRAFT — Kevin reviews
+  "sunmi.pay.payoutStatus": "Tình trạng trả",   // DRAFT — Kevin reviews
+  "sunmi.pay.scope": "Phạm vi",   // DRAFT — Kevin reviews
+  "sunmi.pay.scopeTenant": "Cả tiệm",   // DRAFT — Kevin reviews
+  "sunmi.pay.scopeBranch": "Một chi nhánh",   // DRAFT — Kevin reviews
+  "sunmi.pay.quick": "Thao tác nhanh",   // DRAFT — Kevin reviews
+  "sunmi.pay.export": "Xuất CSV",   // DRAFT — Kevin reviews
+  "sunmi.pay.exported": "Đã tải tệp xuất ({n} dòng).",   // DRAFT — Kevin reviews
+  "sunmi.pay.notPaidYet": "Đã duyệt chưa phải là đã trả: khoản trả chỉ xong khi chi phiếu được thanh toán hoặc thợ xác nhận đã nhận tiền mặt.",   // DRAFT — Kevin reviews
 };
