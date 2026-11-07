@@ -302,10 +302,10 @@ export function POSServicesScreen() {
       {dialog?.kind === 'product' ? <ProductFormDialog onClose={() => setDialog(null)} onSaved={(id) => { setSelPrd(id); setDetailTab('product'); done(tx('prd.created')); }} /> : null}
       {dialog?.kind === 'addNew' ? <FitDialog title={tx('pos.add_new')} onClose={() => setDialog(null)} testId="dlg-add-new">
         <div className="cg-quick two">
-          <button type="button" className="fk-btn primary" disabled={!can('services.edit')} onClick={() => setDialog({ kind: 'service', service: null })} data-testid="add-new-service">{tx('cg.qa.addService')}</button>
-          <button type="button" className="fk-btn" disabled={!can('inventory.create')} onClick={() => setDialog({ kind: 'product' })} data-testid="add-new-product">{tx('cg.qa.addProduct')}</button>
-          <button type="button" className="fk-btn" disabled={!can('services.edit')} onClick={() => nav('/tenant/services/add-ons?new=1')}>{tx('cg.newAddOn')}</button>
-          <button type="button" className="fk-btn" disabled={!can('services.edit')} onClick={() => setDialog({ kind: 'bundle' })}>{tx('cg.qa.createBundle')}</button>
+          <button type="button" className="fk-btn primary" disabled={!can('services.edit')} title={!can('services.edit') ? tx('people.fit.noPermission') : undefined} onClick={() => setDialog({ kind: 'service', service: null })} data-testid="add-new-service">{tx('cg.qa.addService')}</button>
+          <button type="button" className="fk-btn" disabled={!can('inventory.create')} title={!can('inventory.create') ? tx('people.fit.noPermission') : undefined} onClick={() => setDialog({ kind: 'product' })} data-testid="add-new-product">{tx('cg.qa.addProduct')}</button>
+          <button type="button" className="fk-btn" disabled={!can('services.edit')} title={!can('services.edit') ? tx('people.fit.noPermission') : undefined} onClick={() => nav('/tenant/services/add-ons?new=1')}>{tx('cg.newAddOn')}</button>
+          <button type="button" className="fk-btn" disabled={!can('services.edit')} title={!can('services.edit') ? tx('people.fit.noPermission') : undefined} onClick={() => setDialog({ kind: 'bundle' })}>{tx('cg.qa.createBundle')}</button>
         </div>
       </FitDialog> : null}
     </div>

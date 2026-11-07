@@ -543,6 +543,7 @@ GET /pos/campaigns  realm=staff  auth=session  domain=marketing  perm=pos.market
 GET /pos/campaigns/state  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  resource=BRANCH/permission  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/campaigns/{id}  realm=staff  auth=session  domain=marketing  perm=pos.marketing.view  resource=TENANT/records  feature=marketing  guards=RolePermissionGuard,TenantAuthGuard
 GET /pos/cash-drawer  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission
+GET /pos/cash-drawer/activity  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission
 GET /pos/cash-drawer/history  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission
 GET /pos/cash-drawer/movements  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission
 GET /pos/cash-drawer/registers  realm=staff  auth=session  domain=payments  perm=pos.checkout.view  resource=BRANCH/permission

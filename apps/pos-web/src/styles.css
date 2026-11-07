@@ -3088,14 +3088,15 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .pm-title{font:700 22px/1.2 "Playfair Display",serif;margin:0;color:var(--text,#2B2118)}
 .pm-actions{display:flex;gap:8px;flex-wrap:wrap}
 .pm-actions .fk-btn{min-height:40px}
-.pm-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
-@media (max-width:1280px){.pm-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* scoped to the Phone center: an unscoped .pm-kpis overrode Payments & Money's 4 × 2 KPI grid (6 + 2 cards — Nov 7 2026) */
+.pm-page .pm-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}
+@media (max-width:1280px){.pm-page .pm-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}
 .pm-mid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:12px;align-items:start}
 @media (max-width:1180px){.pm-mid{grid-template-columns:minmax(0,1fr)}}
 .pm-card{background:#fff;border:1px solid var(--line,#E7DBC6);border-radius:12px;padding:14px 16px;min-width:0}
 .pm-card [data-testid="phone-settings"] section{margin-bottom:8px;padding:12px 14px}
 .pm-h2{font:600 15px/1.2 "Playfair Display",serif;color:#A96F22;letter-spacing:.02em;text-transform:uppercase;margin:0 0 8px}
-.pm-health{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.pm-page .pm-health{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
 .pm-h{display:grid;grid-template-columns:150px auto;grid-template-areas:"l c" "m m";gap:4px 8px;align-items:center;border:1px solid var(--line,#E7DBC6);border-radius:10px;padding:8px 10px;background:#FFFCF6}
 .pm-h-l{grid-area:l;font-weight:700;font-size:13px}.pm-h .pm-chip{grid-area:c;justify-self:start}.pm-h-m{grid-area:m;font-size:12.5px;color:#5E5141}
 .pm-chip{display:inline-flex;align-items:center;font-size:11px;font-weight:800;padding:3px 8px;border-radius:999px;border:1px solid var(--line,#E7DBC6);background:#F5F1EA;color:#6E5E48;white-space:nowrap;margin-left:4px}
@@ -3104,7 +3105,7 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .pm-lists{display:flex;flex-direction:column;gap:10px}
 .pm-tabs{align-self:flex-start;flex-wrap:wrap}.pm-tabs button{min-height:40px}
 .pm-filters{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-.pm-search{flex:1 1 320px;min-width:220px;min-height:40px}
+.pm-page .pm-search{flex:1 1 320px;min-width:220px;min-height:40px}
 .pm-filters .fk-select{min-height:40px;max-width:230px}
 .pm-check{display:inline-flex;gap:6px;align-items:center;font-size:13px;min-height:40px}
 .pm-order{font-size:12px}
@@ -3129,7 +3130,7 @@ div.ci-row{display:flex;gap:8px;align-items:center}div.ci-row.wrap{flex-wrap:wra
 .pm-code{font:700 20px/1 ui-monospace,monospace;letter-spacing:.4em;max-width:220px}
 .pm-ov-actions{display:flex;gap:8px;flex-wrap:wrap}.pm-ov-actions .fk-btn{min-height:44px}
 .pm-confirm{display:inline-flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px}
-.pm-recent ul,.pm-pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
+.pm-page .pm-recent ul,.pm-page .pm-pick{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;font-size:13px}
 .pm-pick li{display:flex;justify-content:space-between;align-items:center;gap:8px;border:1px solid var(--line,#E7DBC6);border-radius:10px;padding:8px 10px;min-height:44px}
 .pm-form{display:flex;flex-direction:column;gap:10px}.pm-form label{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600}
 

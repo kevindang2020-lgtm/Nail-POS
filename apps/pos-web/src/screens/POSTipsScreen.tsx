@@ -89,7 +89,7 @@ export function POSTipsScreen() {
           <KpiCard testId="kpi-notip" label={tx('tp.kpi.noTip')} loading={!k} value={k ? fmtNumber(k.noTipCount) : ''} sub={k ? tx('tp.kpi.noTipSub', { n: fmtNumber(k.eligibleTickets) }) : ''} onClick={() => { setStatus('no_tip'); setTab('transactions'); }} />
         </>}
       </div>
-      <div className="fk-seg fn-tabs tp-tabs" role="tablist" aria-label={tx('tp.views')}>
+      <div className="fk-seg fn-tabs tp-tabs" role="tablist" aria-label={tx('tp.views')} data-module-id="tp-views">
         {(['overview', 'transactions', 'distribution', 'adjustments'] as Tab[]).map((v) => <button key={v} type="button" role="tab" aria-selected={tab === v} className={tab === v ? 'on' : ''} onClick={() => setTab(v)} data-testid={'tab-' + v}>{tx('tp.tab.' + v)}</button>)}
         {rec ? <span className="tp-recon" data-testid="recon-strip">
           <span>{tx('tp.recon.collected')} <b>{fmtMoney(rec.collectedCents)}</b></span><span>{tx('tp.recon.allocated')} <b>{fmtMoney(rec.allocatedCents)}</b></span>

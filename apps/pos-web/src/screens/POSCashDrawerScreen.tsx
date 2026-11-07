@@ -79,15 +79,16 @@ export function POSCashDrawerScreen() {
   useEffect(() => { load(); }, [load]);
   useRealtime('cash-drawer', load);
 
-  useEffect(() => { setAPage(1); }, [JSON.stringify(aPeriod), aKind, aQ, registerId, date, pageSize]);
+  // the ledger's period as plain values (the drawer's own day, a preset, or a custom range)
+  const aPreset = aPeriod.preset; const aFrom = aPeriod.preset === 'custom' ? (aPeriod as PeriodState).from ?? '' : ''; const aTo = aPeriod.preset === 'custom' ? (aPeriod as PeriodState).to ?? '' : '';
+  useEffect(() => { setAPage(1); }, [aPreset, aFrom, aTo, aKind, aQ, registerId, date, pageSize]);
   useEffect(() => {
     if (!date) return;
     let live = true;
-    const per = aPeriod.preset === 'session' ? { preset: 'session', date } : aPeriod.preset === 'custom' ? { preset: 'custom', from: (aPeriod as PeriodState).from, to: (aPeriod as PeriodState).to } : { preset: aPeriod.preset };
-    posCashDrawerApi.activity({ registerId, ...per, kind: aKind || undefined, q: aQ || undefined, page: aPage, pageSize })
+    posCashDrawerApi.activity({ registerId, ...periodParams(aPreset, aFrom, aTo, date), kind: aKind || undefined, q: aQ || undefined, page: aPage, pageSize })
       .then((a) => { if (live) { setAct(a); setActErr(null); } }).catch((e: { message?: string }) => { if (live) setActErr(e?.message || t('cdr.act.failed')); });
     return () => { live = false; };
-  }, [date, registerId, JSON.stringify(aPeriod), aKind, aQ, aPage, pageSize, actTick]);
+  }, [date, registerId, aPreset, aFrom, aTo, aKind, aQ, aPage, pageSize, actTick]);
 
   const keys = useRef(createIntentKeys());
   const setFloat = async () => {
@@ -156,9 +157,8 @@ export function POSCashDrawerScreen() {
   const exportLedger = async () => {
     setBusy('export'); setError(null);
     try {
-      const per = aPeriod.preset === 'session' ? { preset: 'session', date } : aPeriod.preset === 'custom' ? { preset: 'custom', from: (aPeriod as PeriodState).from, to: (aPeriod as PeriodState).to } : { preset: aPeriod.preset };
       const rows: DrawerActivityRow[] = []; let page = 1, pages = 1;
-      do { const a = await posCashDrawerApi.activity({ registerId, ...per, kind: aKind || undefined, q: aQ || undefined, page, pageSize: 50 }); rows.push(...a.items); pages = a.pages; page++; } while (page <= pages && page <= 200);
+      do { const a = await posCashDrawerApi.activity({ registerId, ...periodParams(aPreset, aFrom, aTo, date), kind: aKind || undefined, q: aQ || undefined, page, pageSize: 50 }); rows.push(...a.items); pages = a.pages; page++; } while (page <= pages && page <= 200);
       downloadCsv(`cash-drawer-${date}.csv`, ['businessDate', 'time', 'movement', 'reference', 'customer', 'employee', 'ticket', 'cashIn', 'cashOut', 'status'].map((k) => t('cdr.csv.' + k)),
         rows.map((r) => [r.businessDate, r.at ? fmtInZone(r.at, { hour: 'numeric', minute: '2-digit' }) : '', t('cdr.kind.' + r.kind), r.reason ?? '', r.customer ?? '', r.employee ?? '', r.ticketNumber ? '#' + r.ticketNumber : '',
           (r.cashInCents / 100).toFixed(2), (r.cashOutCents / 100).toFixed(2), t('cdr.state.' + stateKey(r))]));
@@ -339,6 +339,11 @@ export function POSCashDrawerScreen() {
       </FitDialog> : null}
     </div>
   );
+}
+
+/** The ledger's period as query parameters: the drawer's own day, a preset, or a custom range. */
+function periodParams(preset: string, from: string, to: string, date: string): { preset: string; date?: string; from?: string; to?: string } {
+  return preset === 'session' ? { preset, date } : preset === 'custom' ? { preset, from, to } : { preset };
 }
 
 /** The status a ledger row shows: a voided movement, the drawer's state for its float, otherwise the payment / movement state. */

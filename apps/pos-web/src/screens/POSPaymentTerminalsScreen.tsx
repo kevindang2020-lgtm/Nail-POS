@@ -98,7 +98,7 @@ export function POSPaymentTerminalsScreen() {
       </div>
 
       <div className="fn-tabsrow">
-        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('pt.tabs')}>
+        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('pt.tabs')} data-module-id="pt-tabs">
           {(['physical', 'phones', 'activity', 'audit', 'routing'] as Tab[]).map((t) => (
             <button key={t} type="button" role="tab" aria-selected={tab === t} className={tab === t ? 'on' : ''} onClick={() => setTab(t)} data-testid={'tab-' + t}>
               {tx('pt.tab.' + t)}{t === 'phones' && ph ? <span className="fn-tabcount"> · {fmtNumber(ph.active)}/{fmtNumber(ph.total)}</span> : null}
@@ -331,7 +331,7 @@ function RoutingTab({ data, canEdit, onSaved, onOpenTerminal }: { data: { data: 
         <div className="pt-modes" role="radiogroup" aria-label={tx('pt.routingTitle')}>
           {(['terminal', 'front_desk'] as const).map((m) => (
             <label key={m} className={'pt-mode' + (mode === m ? ' on' : '')} data-testid={'mode-' + m}>
-              <input type="radio" name="capture-mode" checked={mode === m} disabled={!canEdit || busy} onChange={() => setMode(m)} />
+              <input type="radio" name="capture-mode" checked={mode === m} disabled={!canEdit || busy} title={!canEdit ? tx('people.fit.noPermission') : undefined} onChange={() => setMode(m)} />
               <span className="pt-mode-t">{tx('pt.mode.' + m)}{r.mode === m ? <span className="fk-chip ok">{tx('pt.current')}</span> : null}</span>
               <span className="pt-mode-d">{tx('pt.modeDesc.' + m)}</span>
             </label>

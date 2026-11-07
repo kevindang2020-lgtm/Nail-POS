@@ -1,7 +1,8 @@
 // posCashDrawerApi.ts — Front-desk cash drawer (register) reconciliation, POS surface (cash-drawer.pos.controller).
 import type { DrawerState, DrawerStatus } from '@aipowersalon/api-contracts/tenant';
 export type { DrawerState, DrawerStatus };   // the API's own contract (Constitution 13 §15) — never re-declare it here
-import type { CashMovement, MovementList, DrawerRegister, DrawerRegisterList } from '@aipowersalon/api-contracts/tenant';
+import type { CashMovement, MovementList, DrawerRegister, DrawerRegisterList, DrawerActivity, DrawerActivityRow } from '@aipowersalon/api-contracts/tenant';
+export type { DrawerActivity, DrawerActivityRow };
 export type { DrawerRegister };   // the wire contract (Constitution 13 §15)
 // Same-origin, session cookie; the drawer's branch is derived server-side from the session. Register cash excludes the
 // Skip-the-Line cash-to-technician payments (those reconcile in End-of-Day Cash).
@@ -41,8 +42,3 @@ export type { CashMovement, MovementList };
 export interface DrawerHistoryRow { businessDate: string; registerId: string; register: string | null; status: string; openingFloatCents: number; expectedCashCents: number | null; countedCents: number | null; varianceCents: number | null;
   countedAt: string | null; countedBy: string | null; notes: string | null; approvalRequired: boolean; approvedAt: string | null; approvedBy: string | null; approvalNote: string | null; denominations: Record<string, number> | null }
 export interface DrawerHistory { items: DrawerHistoryRow[]; total: number; page: number; pageSize: number; pages: number }
-
-/** One cash event of a register (Cash Drawer Activity). A customer appears only through Ticket → Customer; the phone is never sent. */
-export interface DrawerActivityRow { kind: 'sale' | 'refund' | 'cash_in' | 'cash_out' | 'float'; id: string; businessDate: string; at: string | null; cashInCents: number; cashOutCents: number;
-  state: string; reason: string | null; ticketId: string | null; ticketNumber: string | null; customer: string | null; employee: string | null }
-export interface DrawerActivity { preset: string; from: string; to: string; items: DrawerActivityRow[]; totals: { cashInCents: number; cashOutCents: number }; total: number; page: number; pageSize: number; pages: number }

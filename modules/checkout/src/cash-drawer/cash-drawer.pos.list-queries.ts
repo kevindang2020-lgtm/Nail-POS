@@ -8,4 +8,7 @@ export const CashDrawerPosControllerListQueries = {
   get: { filters: { date: { type: 'date' }, registerId: { type: 'id' } }, search: false },
   movements: { filters: { date: { type: 'date' }, registerId: { type: 'id' } }, search: false },
   history: { filters: { registerId: { type: 'id' }, status: { type: 'enum', values: ['open', 'reconciled', 'discrepancy', 'cancelled', 'needs_review'] } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 400 }, params: ['page'] },
+  // SUNMI Cash Drawer addendum §08–§09 (Nov 7 2026): the register's cash events; `preset` = session (the drawer's day) or a period
+  activity: { filters: { registerId: { type: 'id' }, date: { type: 'date' }, preset: { type: 'enum', values: ['session', 'today', 'week', 'month', 'year', 'custom'] },
+    kind: { type: 'enum', values: ['sale', 'refund', 'cash_in', 'cash_out', 'float'] } }, search: { maxLength: 100 }, maxLimit: 50, defaultLimit: 10, dateRange: { maxDays: 3700 }, params: ['page'] },
 } satisfies Record<string, ListQuerySpec>;

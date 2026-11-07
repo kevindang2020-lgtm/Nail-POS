@@ -5,6 +5,7 @@ import { CashDrawerRepository, DrawerCtx } from './cash-drawer.repository';
 import { hasPermission } from '@aipowersalon/permissions';
 import { DrawerState, DRAWER_EVENTS, OwnerDrawerSummary, MovementList, CashDrawerError, normDate, isUuid } from './cash-drawer.dto';
 import { withCode } from '@aipowersalon/api-contracts';   // V-5: a refusal's registry code beside its English
+import { utcDate } from '@aipowersalon/date-time';
 
 /** D15 gaps (Nov 5 2026): a count off by more than this (either way) is marked for a manager's review */
 export const DRAWER_REVIEW_LIMIT_CENTS = 2000;
@@ -196,7 +197,7 @@ export class CashDrawerService {
       const [y, m, d] = today.split('-').map(Number); const base = new Date(Date.UTC(y, m - 1, d));
       const start = preset === 'today' ? base : preset === 'week' ? new Date(base.getTime() - ((base.getUTCDay() + 6) % 7) * 86400000)
         : preset === 'month' ? new Date(Date.UTC(y, m - 1, 1)) : new Date(Date.UTC(y, 0, 1));
-      from = start.toISOString().slice(0, 10); to = today;
+      from = utcDate(start); to = today;   // `start` is a UTC-midnight calendar day built from the branch's day
     }
     const kinds = ['sale', 'refund', 'cash_in', 'cash_out', 'float'];
     const pageSize = [5, 6, 8, 10, 20, 50].includes(Number(q?.pageSize)) ? Number(q.pageSize) : 10;

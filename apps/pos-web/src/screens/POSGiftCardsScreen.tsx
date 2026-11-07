@@ -171,7 +171,7 @@ export function POSGiftCardsScreen() {
       </div>
 
       <div className="fn-tabsrow gc-toolbar">
-        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('finance.status')}>
+        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('finance.status')} data-module-id="gc-status">
           {(['', 'active', 'redeemed', 'pending', 'frozen', 'void'] as Group[]).map((g) => <button key={g || 'all'} type="button" role="tab" aria-selected={group === g} className={group === g ? 'on' : ''} onClick={() => setGroup(g)} data-testid={'tab-' + (g || 'all')}>{tx('gc.tab.' + (g || 'all'))}</button>)}
         </div>
         <div className="fn-search gc-search">

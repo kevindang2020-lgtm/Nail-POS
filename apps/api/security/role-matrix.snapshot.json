@@ -526,6 +526,7 @@
   "GET /pos/campaigns/{id}": "AADDDRRRRRRRRRRRR",
   "GET /pos/campaigns/state": "AADDDRRRRRRRRRRRR",
   "GET /pos/cash-drawer": "AAAADRRRRRRRRRRRR",
+  "GET /pos/cash-drawer/activity": "AAAADRRRRRRRRRRRR",
   "GET /pos/cash-drawer/history": "AAAADRRRRRRRRRRRR",
   "GET /pos/cash-drawer/movements": "AAAADRRRRRRRRRRRR",
   "GET /pos/cash-drawer/registers": "AAAADRRRRRRRRRRRR",

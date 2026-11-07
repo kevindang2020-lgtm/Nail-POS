@@ -106,7 +106,7 @@ export function POSInventoryAlertsScreen() {
         </>}
       </div>
       <div className="fn-tabsrow sa-toolbar">
-        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('sa.workspaces')}>
+        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('sa.workspaces')} data-module-id="sa-tabs">
           {TABS.map((x) => <button key={x} type="button" role="tab" aria-selected={tab === x} className={tab === x ? 'on' : ''} onClick={() => setTab(x)} data-testid={'tab-' + x}>{tx('sa.tab.' + x)}</button>)}
         </div>
         <div className="fn-search sa-search"><input className="fk-search wide" type="search" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={tx('sa.searchPh')} aria-label={tx('sa.searchPh')} data-testid="search" />

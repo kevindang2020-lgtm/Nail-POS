@@ -30,3 +30,12 @@ export type DrawerStatus = 'open' | 'reconciled' | 'discrepancy' | 'cancelled';
 /** D15 (Nov 4 2026): the registers a location keeps a drawer for — 'main' (cash with no register) first, then its stations. */
 export interface DrawerRegister { registerId: string; name: string }
 export interface DrawerRegisterList { registers: DrawerRegister[] }
+
+/** SUNMI Cash Drawer addendum §08 (Nov 7 2026): one cash event of a register — opening float, cash sale, cash refund, cash in
+ *  or cash out — read from the same rows as the drawer's math. A customer appears only through Ticket → Customer; the phone
+ *  is matched on its digits by the server and never sent. */
+export type DrawerActivityKind = 'sale' | 'refund' | 'cash_in' | 'cash_out' | 'float';
+export interface DrawerActivityRow { kind: DrawerActivityKind; id: string; businessDate: string; at: string | null; cashInCents: number; cashOutCents: number;
+  state: string; reason: string | null; ticketId: string | null; ticketNumber: string | null; customer: string | null; employee: string | null }
+/** GET /pos/cash-drawer/activity — newest first, server-paged; `totals` are over every matching row (voided movements excluded). */
+export interface DrawerActivity { preset: string; from: string; to: string; items: DrawerActivityRow[]; totals: { cashInCents: number; cashOutCents: number }; total: number; page: number; pageSize: number; pages: number }

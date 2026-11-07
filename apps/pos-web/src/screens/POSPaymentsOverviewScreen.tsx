@@ -60,7 +60,7 @@ export function POSPaymentsOverviewScreen() {
         <div className="vh" style={{ marginBottom: 0, minWidth: 0 }}><h1>{tx('pos.payments_money')}</h1><div className="sub">{tx('pm.subtitle', { scope: d?.scope === 'location' ? tx('pm.scope.location') : tx('pm.scope.salonWord') })}{d ? ' · ' + tx('pm.updated', { t: when(d.generatedAt) }) : ''}</div></div>
         <div className="fk-head-actions">
           <button type="button" className="fk-btn" onClick={() => setTick((t) => t + 1)} data-testid="refresh">{tx('finance.refresh')}</button>
-          <button type="button" className="fk-btn" onClick={() => nav('/tenant/reports/payments')} disabled={!can('reports.view')} data-testid="financial-report">{tx('pos.financial_report')}</button>
+          <button type="button" className="fk-btn" onClick={() => nav('/tenant/reports/payments')} disabled={!can('reports.view')} title={!can('reports.view') ? tx('people.fit.noPermission') : undefined} data-testid="financial-report">{tx('pos.financial_report')}</button>
         </div>
       </header>
       {note ? <div className={'fk-note ' + note.tone} role="status" data-testid="note"><span>{note.text}</span><button type="button" className="fk-x" aria-label={tx('pos.dismiss')} onClick={() => setNote(null)}>✕</button></div> : null}
@@ -83,7 +83,7 @@ export function POSPaymentsOverviewScreen() {
         </>}
       </div>
       <div className="fn-tabsrow pm-spaces">
-        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('pm.workspaces')}>{SPACES.map((s) => <button key={s} type="button" role="tab" aria-selected={space === s} className={space === s ? 'on' : ''} onClick={() => setSpace(s)} data-testid={'space-' + s}>{tx('pm.space.' + s)}</button>)}</div>
+        <div className="fk-seg fn-tabs" role="tablist" aria-label={tx('pm.workspaces')} data-module-id="pm-spaces">{SPACES.map((s) => <button key={s} type="button" role="tab" aria-selected={space === s} className={space === s ? 'on' : ''} onClick={() => setSpace(s)} data-testid={'space-' + s}>{tx('pm.space.' + s)}</button>)}</div>
         <span className="fk-hint">{tx('pm.spaceHint.' + space, { p: scopeP })}</span>
       </div>
       <div className="pm-body" data-testid={'body-' + space}>

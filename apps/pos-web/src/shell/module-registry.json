@@ -1368,6 +1368,413 @@
      "label": "AI Fraud / Money Protection (bottom)"
     }
    ]
+  },
+  {
+   "key": "stock-alerts",
+   "title": "Stock Alerts + Technician Product Usage",
+   "routes": [
+    "/tenant/inventory/alerts"
+   ],
+   "screens": [
+    "POSInventoryAlertsScreen"
+   ],
+   "guide": "AI_PowerSalon_Stock_Alerts_Technician_Product_Usage",
+   "modules": [
+    {
+     "id": "record-use",
+     "label": "Record Product Use"
+    },
+    {
+     "id": "view-inventory",
+     "label": "View Inventory"
+    },
+    {
+     "id": "create-po",
+     "label": "Create Purchase Order"
+    },
+    {
+     "id": "alert-settings",
+     "label": "Alert Settings"
+    },
+    {
+     "id": "export",
+     "label": "Export Report"
+    },
+    {
+     "id": "kpis",
+     "label": "Open Alerts, Out of Stock, Critical, Product Uses Today, Active Technicians",
+     "minItems": 5
+    },
+    {
+     "id": "sa-tabs",
+     "label": "Active Alerts | Product Usage | All Technicians | Alert History",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "search",
+     "label": "Universal search (product, SKU, barcode, brand, vendor, PO, technician)"
+    },
+    {
+     "id": "show-ack",
+     "label": "Show acknowledged alerts"
+    },
+    {
+     "id": "sa-list",
+     "label": "Active Alerts list + pager"
+    }
+   ]
+  },
+  {
+   "key": "payments",
+   "title": "Payments & Money",
+   "routes": [
+    "/tenant/payments/overview"
+   ],
+   "screens": [
+    "POSPaymentsOverviewScreen"
+   ],
+   "guide": "AI_PowerSalon_PAYMENTS__MONEY",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "financial-report",
+     "label": "Financial Report"
+    },
+    {
+     "id": "search",
+     "label": "Universal financial search + presets + Custom Range"
+    },
+    {
+     "id": "kpis",
+     "label": "Eight KPIs (4 × 2): Revenue, Collections, Refunds Issued, Outstanding, Total Transactions, Average Ticket, Failed, Pending Payouts",
+     "minItems": 8
+    },
+    {
+     "id": "pm-spaces",
+     "label": "Overview | Transactions | Revenue & Services | Payouts & Health",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "panel-trend",
+     "label": "Revenue Overview"
+    },
+    {
+     "id": "panel-methods",
+     "label": "Payment Methods Breakdown"
+    },
+    {
+     "id": "panel-recent",
+     "label": "Recent Transactions + View All"
+    },
+    {
+     "id": "panel-health",
+     "label": "Payment Health"
+    },
+    {
+     "id": "totals",
+     "label": "Six secondary totals",
+     "minItems": 6
+    },
+    {
+     "id": "quick-actions",
+     "label": "Eight Quick Actions",
+     "items": "button",
+     "minItems": 8
+    }
+   ]
+  },
+  {
+   "key": "transactions",
+   "title": "Transactions",
+   "routes": [
+    "/tenant/payments/transactions"
+   ],
+   "screens": [
+    "POSTransactionsScreen"
+   ],
+   "guide": "AI_PowerSalon_TRANSACTIONS",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export"
+    },
+    {
+     "id": "kpis",
+     "label": "Transactions, Gross, Tips, Net",
+     "minItems": 4
+    },
+    {
+     "id": "search",
+     "label": "Universal search (customer, phone, email, ticket, reference, technician, amount)"
+    },
+    {
+     "id": "preset-today",
+     "label": "Today / This Week / This Month / This Year / Custom Range"
+    },
+    {
+     "id": "ledger",
+     "label": "One row per tender, newest first, with Previous / 1 / 2 / 3 / Next"
+    }
+   ]
+  },
+  {
+   "key": "eod-cash",
+   "title": "End-of-Day Cash (Daily Closeout)",
+   "routes": [
+    "/cash-handoffs"
+   ],
+   "screens": [
+    "POSCashHandoffScreen"
+   ],
+   "guide": "AI_PowerSalon_End-of-Day_Cash",
+   "modules": [
+    {
+     "id": "record-handoff",
+     "label": "Record Hand-Off"
+    },
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export Report"
+    },
+    {
+     "id": "open-drawer",
+     "label": "Cash Drawer"
+    },
+    {
+     "id": "kpis",
+     "label": "Expected Cash, Counted Cash, Technicians, Reconciled, Awaiting",
+     "minItems": 5
+    },
+    {
+     "id": "difference-strip",
+     "label": "Difference summary: net, short, over, balanced, not yet counted"
+    },
+    {
+     "id": "search",
+     "label": "Universal search + status / technician / sort"
+    },
+    {
+     "id": "handoffs",
+     "label": "Technician Cash Hand-Offs table + pager"
+    }
+   ]
+  },
+  {
+   "key": "refunds",
+   "title": "Refunds & Voids",
+   "routes": [
+    "/tenant/payments/refunds-voids"
+   ],
+   "screens": [
+    "POSRefundsVoidsScreen"
+   ],
+   "guide": "AI_PowerSalon_REFUNDS__VOIDS",
+   "modules": [
+    {
+     "id": "find-payment",
+     "label": "Find Original Payment"
+    },
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export Report"
+    },
+    {
+     "id": "kpis",
+     "label": "Refunds, Voids, Total Reversed, Pending, Needs Review",
+     "minItems": 5
+    },
+    {
+     "id": "search",
+     "label": "Universal search + type / status / method / sort"
+    },
+    {
+     "id": "preset-today",
+     "label": "Today / This Week / This Month / This Year / Custom + date field"
+    },
+    {
+     "id": "ledger",
+     "label": "Reversal ledger, one row per reversal, paged"
+    }
+   ]
+  },
+  {
+   "key": "split",
+   "title": "Split Payments",
+   "routes": [
+    "/tenant/payments/split-payments"
+   ],
+   "screens": [
+    "POSSplitPaymentsScreen"
+   ],
+   "guide": "AI_PowerSalon_Split_Payments",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export"
+    },
+    {
+     "id": "kpis",
+     "label": "Split Tickets, Split Total, Avg Tenders, Completed, Outstanding",
+     "minItems": 5
+    },
+    {
+     "id": "search",
+     "label": "Universal search + status / method / register / sort + period"
+    },
+    {
+     "id": "tickets",
+     "label": "Split-Tender Tickets, one row per ticket, payment breakdown in place, paged"
+    }
+   ]
+  },
+  {
+   "key": "tips",
+   "title": "Tips & Gratuity",
+   "routes": [
+    "/tenant/payments/tips"
+   ],
+   "screens": [
+    "POSTipsScreen"
+   ],
+   "guide": "AI_PowerSalon_TIPS__GRATUITY",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "export",
+     "label": "Export"
+    },
+    {
+     "id": "search",
+     "label": "Search + presets + Custom Range + date field + technician / method / status"
+    },
+    {
+     "id": "kpis",
+     "label": "Total Tips, Card Tips, Cash Tips, Average Tip, No-Tip Count",
+     "minItems": 5
+    },
+    {
+     "id": "tp-views",
+     "label": "Overview | Tip Transactions | Technician Distribution | Adjustments & Reports",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "by-technician",
+     "label": "Tips by Technician"
+    },
+    {
+     "id": "distribution-mini",
+     "label": "Distribution"
+    },
+    {
+     "id": "recent",
+     "label": "Recent tip transactions"
+    }
+   ]
+  },
+  {
+   "key": "gift-cards",
+   "title": "Gift Cards",
+   "routes": [
+    "/tenant/customers/gift-cards"
+   ],
+   "screens": [
+    "POSGiftCardsScreen"
+   ],
+   "guide": "AI_PowerSalon_GIFT_CARDS",
+   "modules": [
+    {
+     "id": "check-balance",
+     "label": "Check Balance"
+    },
+    {
+     "id": "issue",
+     "label": "+ Issue Gift Card"
+    },
+    {
+     "id": "kpis",
+     "label": "Outstanding Liability, Active Cards, Total Issued, Redeemed Value, Total Cards",
+     "minItems": 5
+    },
+    {
+     "id": "gc-status",
+     "label": "All | Active | Redeemed | Void",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "search",
+     "label": "Universal search (masked ref / last 4, purchaser, recipient, phone, email) + filters"
+    },
+    {
+     "id": "cards",
+     "label": "Gift card list (masked identifiers) + pager"
+    }
+   ]
+  },
+  {
+   "key": "terminals",
+   "title": "Payment Terminals",
+   "routes": [
+    "/tenant/devices/payment-terminals"
+   ],
+   "screens": [
+    "POSPaymentTerminalsScreen"
+   ],
+   "guide": "AI_PowerSalon_Payment_Terminals_2",
+   "modules": [
+    {
+     "id": "refresh",
+     "label": "Refresh"
+    },
+    {
+     "id": "pair-terminal",
+     "label": "+ Pair Terminal"
+    },
+    {
+     "id": "kpis",
+     "label": "Physical Terminals, Online, Needs Attention, Disabled",
+     "minItems": 4
+    },
+    {
+     "id": "pt-tabs",
+     "label": "Physical Terminals | Tap to Pay iPhones | Payment Activity | Device history | Routing Settings",
+     "items": "[role=tab]",
+     "minItems": 4
+    },
+    {
+     "id": "search",
+     "label": "Search + status / register / processor / sort"
+    },
+    {
+     "id": "physical",
+     "label": "Physical Terminals registry + pager"
+    }
+   ]
   }
  ]
 }
